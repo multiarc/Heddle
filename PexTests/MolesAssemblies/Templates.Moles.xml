@@ -1,0 +1,2996 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Templates.Moles</name>
+    </assembly>
+    <members>
+        <member name="T:Templates.Moles.MAbstractTemplate">
+            <summary>Mole type of <see cref="T:Templates.AbstractTemplate"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Moles.MAbstractTemplate.#ctor(Templates.AbstractTemplate)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Moles.MAbstractTemplate.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Moles.MAbstractTemplate.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Moles.MAbstractTemplate.Bind(Templates.Core.ITemplate)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Moles.MAbstractTemplate.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Moles.MAbstractTemplate.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.AbstractTemplate.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MAbstractTemplate.DirectRenderGet">
+            <summary>Sets the mole of <see cref="P:Templates.AbstractTemplate.DirectRender"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MAbstractTemplate.DirectRenderSetBoolean">
+            <summary>Sets the mole of <see cref="P:Templates.AbstractTemplate.DirectRender"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MAbstractTemplate.InitializeInnerTemplateFastStringTypeTypeCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.AbstractTemplate.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MAbstractTemplate.InnerTemplateGet">
+            <summary>Sets the mole of <see cref="P:Templates.AbstractTemplate.InnerTemplate"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MAbstractTemplate.InnerTemplateSetTemplate">
+            <summary>Sets the mole of <see cref="P:Templates.AbstractTemplate.InnerTemplate"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MAbstractTemplate.ParseParameterFastStringTypeTypeBoolean">
+            <summary>Sets the mole of <see cref="M:Templates.AbstractTemplate.ParseParameter(Templates.Core.FastString,System.Type,System.Type,System.Boolean)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MAbstractTemplate.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.AbstractTemplate.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MAbstractTemplate.ProcessDataObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.AbstractTemplate.ProcessData(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Moles.MAbstractTemplate.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Moles.MAbstractTemplate.AllInstances.DirectRenderGet">
+            <summary>Sets the mole of <see cref="P:Templates.AbstractTemplate.DirectRender"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MAbstractTemplate.AllInstances.DirectRenderSetBoolean">
+            <summary>Sets the mole of <see cref="P:Templates.AbstractTemplate.DirectRender"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MAbstractTemplate.AllInstances.InitializeInnerTemplateFastStringTypeTypeCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.AbstractTemplate.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MAbstractTemplate.AllInstances.InnerTemplateGet">
+            <summary>Sets the mole of <see cref="P:Templates.AbstractTemplate.InnerTemplate"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MAbstractTemplate.AllInstances.InnerTemplateSetTemplate">
+            <summary>Sets the mole of <see cref="P:Templates.AbstractTemplate.InnerTemplate"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MAbstractTemplate.AllInstances.ParseParameterFastStringTypeTypeBoolean">
+            <summary>Sets the mole of <see cref="M:Templates.AbstractTemplate.ParseParameter(Templates.Core.FastString,System.Type,System.Type,System.Boolean)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MAbstractTemplate.AllInstances.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.AbstractTemplate.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MAbstractTemplate.AllInstances.ProcessDataObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.AbstractTemplate.ProcessData(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Attributes.Moles.MAdditionalTypeAttribute">
+            <summary>Mole type of <see cref="T:Templates.Attributes.AdditionalTypeAttribute"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MAdditionalTypeAttribute.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MAdditionalTypeAttribute.#ctor(Templates.Attributes.AdditionalTypeAttribute)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MAdditionalTypeAttribute.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MAdditionalTypeAttribute.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MAdditionalTypeAttribute.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MAdditionalTypeAttribute.ConstructorType">
+            <summary>Sets the mole of <see cref="M:Templates.Attributes.AdditionalTypeAttribute.#ctor(System.Type)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Attributes.Moles.MAdditionalTypeAttribute.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MAttributeSet">
+            <summary>Mole type of <see cref="T:Templates.Core.AttributeSet"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MAttributeSet.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MAttributeSet.#ctor(Templates.Core.AttributeSet)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MAttributeSet.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MAttributeSet.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MAttributeSet.GetAttribute``1(Microsoft.Moles.Framework.MolesDelegates.Func{``0})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.AttributeSet.GetAttribute``1"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MAttributeSet.GetAttributes``1(Microsoft.Moles.Framework.MolesDelegates.Func{System.Collections.Generic.IEnumerable{``0}})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.AttributeSet.GetAttributes``1"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MAttributeSet._GetAttributeb__3Attribute``1(Microsoft.Moles.Framework.MolesDelegates.Func{System.Attribute,System.Boolean})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.AttributeSet.&lt;GetAttribute&gt;b__3``1(System.Attribute)"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MAttributeSet._GetAttributesb__4Attribute``1(Microsoft.Moles.Framework.MolesDelegates.Func{System.Attribute,System.Boolean})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.AttributeSet.&lt;GetAttributes&gt;b__4``1(System.Attribute)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MAttributeSet.AllAttributesGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.AttributeSet.AllAttributes"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MAttributeSet.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MAttributeSet.ConstructorIEnumerableOfObject">
+            <summary>Sets the mole of <see cref="M:Templates.Core.AttributeSet.#ctor(System.Collections.Generic.IEnumerable`1{System.Object})"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MAttributeSet.ConstructorType">
+            <summary>Sets the mole of <see cref="M:Templates.Core.AttributeSet.#ctor(System.Type)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MAttributeSet.GetIsPresentAttributeType">
+            <summary>Sets the mole of <see cref="M:Templates.Core.AttributeSet.GetIsPresentAttribute(System.Type)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MAttributeSet.ParseAttributesIEnumerableOfObject">
+            <summary>Sets the mole of <see cref="M:Templates.Core.AttributeSet.ParseAttributes(System.Collections.Generic.IEnumerable`1{System.Object})"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MAttributeSet.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MAttributeSet.AllInstances.GetAttribute``1(Microsoft.Moles.Framework.MolesDelegates.Func{Templates.Core.AttributeSet,``0})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.AttributeSet.GetAttribute``1"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MAttributeSet.AllInstances.GetAttributes``1(Microsoft.Moles.Framework.MolesDelegates.Func{Templates.Core.AttributeSet,System.Collections.Generic.IEnumerable{``0}})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.AttributeSet.GetAttributes``1"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MAttributeSet.AllInstances.AllAttributesGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.AttributeSet.AllAttributes"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MAttributeSet.AllInstances.GetIsPresentAttributeType">
+            <summary>Sets the mole of <see cref="M:Templates.Core.AttributeSet.GetIsPresentAttribute(System.Type)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MAttributeSet.AllInstances.ParseAttributesIEnumerableOfObject">
+            <summary>Sets the mole of <see cref="M:Templates.Core.AttributeSet.ParseAttributes(System.Collections.Generic.IEnumerable`1{System.Object})"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MCompileContext">
+            <summary>Mole type of <see cref="T:Templates.Core.CompileContext"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MCompileContext.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MCompileContext.#ctor(Templates.Core.CompileContext)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MCompileContext.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MCompileContext.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MCompileContext.Bind(System.IDisposable)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.AddAutoReferences">
+            <summary>Sets the mole of <see cref="M:Templates.Core.CompileContext.AddAutoReferences"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.AddReferenceString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.CompileContext.AddReference(System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.Compile">
+            <summary>Sets the mole of <see cref="M:Templates.Core.CompileContext.Compile"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.ConstructorCompileContextString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.CompileContext.#ctor(Templates.Core.CompileContext,System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.ConstructorCompileContextType">
+            <summary>Sets the mole of <see cref="M:Templates.Core.CompileContext.#ctor(Templates.Core.CompileContext,System.Type)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.ConstructorCompileContextTypeString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.CompileContext.#ctor(Templates.Core.CompileContext,System.Type,System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.ConstructorTemplateOptions">
+            <summary>Sets the mole of <see cref="M:Templates.Core.CompileContext.#ctor(Templates.Core.TemplateOptions)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.Dispose">
+            <summary>Sets the mole of <see cref="M:Templates.Core.CompileContext.Dispose"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.GetNewMethod">
+            <summary>Sets the mole of <see cref="M:Templates.Core.CompileContext.GetNewMethod"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.ImportNamespaceString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.CompileContext.ImportNamespace(System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.InitNewCompileUnitStringCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Core.CompileContext.InitNewCompileUnit(System.String,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.ModelTypeGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.CompileContext.ModelType"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.ModelTypeSetType">
+            <summary>Sets the mole of <see cref="P:Templates.Core.CompileContext.ModelType"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.NamespacesGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.CompileContext.Namespaces"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.OptionsGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.CompileContext.Options"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.OptionsSetTemplateOptions">
+            <summary>Sets the mole of <see cref="P:Templates.Core.CompileContext.Options"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.TypeDeclarationGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.CompileContext.TypeDeclaration"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext._get_Namespacesb__2CodeNamespaceImport">
+            <summary>Sets the mole of <see cref="M:Templates.Core.CompileContext.&lt;get_Namespaces&gt;b__2(System.CodeDom.CodeNamespaceImport)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MCompileContext.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.AllInstances.AddAutoReferences">
+            <summary>Sets the mole of <see cref="M:Templates.Core.CompileContext.AddAutoReferences"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.AllInstances.AddReferenceString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.CompileContext.AddReference(System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.AllInstances.Compile">
+            <summary>Sets the mole of <see cref="M:Templates.Core.CompileContext.Compile"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.AllInstances.Dispose">
+            <summary>Sets the mole of <see cref="M:Templates.Core.CompileContext.Dispose"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.AllInstances.GetNewMethod">
+            <summary>Sets the mole of <see cref="M:Templates.Core.CompileContext.GetNewMethod"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.AllInstances.ImportNamespaceString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.CompileContext.ImportNamespace(System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.AllInstances.InitNewCompileUnitStringCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Core.CompileContext.InitNewCompileUnit(System.String,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.AllInstances.ModelTypeGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.CompileContext.ModelType"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.AllInstances.ModelTypeSetType">
+            <summary>Sets the mole of <see cref="P:Templates.Core.CompileContext.ModelType"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.AllInstances.NamespacesGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.CompileContext.Namespaces"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.AllInstances.OptionsGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.CompileContext.Options"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.AllInstances.OptionsSetTemplateOptions">
+            <summary>Sets the mole of <see cref="P:Templates.Core.CompileContext.Options"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MCompileContext.AllInstances.TypeDeclarationGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.CompileContext.TypeDeclaration"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MDateExtension">
+            <summary>Mole type of <see cref="T:Templates.Extensions.DateExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MDateExtension.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MDateExtension.#ctor(Templates.Extensions.DateExtension)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MDateExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MDateExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MDateExtension.Bind(Templates.Core.ITemplate)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MDateExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MDateExtension.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.DateExtension.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MDateExtension.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.DateExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MDateExtension.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MDateExtension.AllInstances.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.DateExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Attributes.Moles.MDirectRenderAttribute">
+            <summary>Mole type of <see cref="T:Templates.Attributes.DirectRenderAttribute"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MDirectRenderAttribute.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MDirectRenderAttribute.#ctor(Templates.Attributes.DirectRenderAttribute)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MDirectRenderAttribute.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MDirectRenderAttribute.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MDirectRenderAttribute.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MDirectRenderAttribute.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Attributes.DirectRenderAttribute.#ctor"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Attributes.Moles.MDirectRenderAttribute.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MEmptyExtension">
+            <summary>Mole type of <see cref="T:Templates.Extensions.EmptyExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MEmptyExtension.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MEmptyExtension.#ctor(Templates.Extensions.EmptyExtension)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MEmptyExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MEmptyExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MEmptyExtension.Bind(Templates.Core.ITemplate)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MEmptyExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MEmptyExtension.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.EmptyExtension.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MEmptyExtension.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.EmptyExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MEmptyExtension.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MEmptyExtension.AllInstances.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.EmptyExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MEnumerableExtension">
+            <summary>Mole type of <see cref="T:Templates.Core.EnumerableExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MEnumerableExtension.#ctor">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MEnumerableExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MEnumerableExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MEnumerableExtension.ToSmartArrayIEnumerableOfT``1(Microsoft.Moles.Framework.MolesDelegates.Func{System.Collections.Generic.IEnumerable{``0},Templates.Core.SmartArray{``0}})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.EnumerableExtension.ToSmartArray``1(System.Collections.Generic.IEnumerable`1{``0})"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MEnumerableExtension.ToSmartArrayIQueryableOfT``1(Microsoft.Moles.Framework.MolesDelegates.Func{System.Linq.IQueryable{``0},Templates.Core.SmartArray{``0}})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.EnumerableExtension.ToSmartArray``1(System.Linq.IQueryable`1{``0})"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MEnumerableExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MFalseExtension">
+            <summary>Mole type of <see cref="T:Templates.Extensions.FalseExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MFalseExtension.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MFalseExtension.#ctor(Templates.Extensions.FalseExtension)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MFalseExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MFalseExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MFalseExtension.Bind(Templates.Core.ITemplate)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MFalseExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MFalseExtension.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.FalseExtension.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MFalseExtension.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.FalseExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MFalseExtension.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MFalseExtension.AllInstances.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.FalseExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MFastString">
+            <summary>Mole type of <see cref="T:Templates.Core.FastString"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MFastString.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MFastString.#ctor(Templates.Core.FastString)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MFastString.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MFastString.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MFastString.Bind(System.ICloneable)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AddCharFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Add(System.Char,Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AddFastStringChar">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Add(Templates.Core.FastString,System.Char)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AddFastStringFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Add(Templates.Core.FastString,Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AddFastStringString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Add(Templates.Core.FastString,System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AddStringFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Add(System.String,Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AdditionOpCharFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.op_Addition(System.Char,Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AdditionOpFastStringChar">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.op_Addition(Templates.Core.FastString,System.Char)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AdditionOpFastStringFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.op_Addition(Templates.Core.FastString,Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AdditionOpFastStringString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.op_Addition(Templates.Core.FastString,System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AdditionOpStringFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.op_Addition(System.String,Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.BulkReplaceInt32ArrayFastStringInt32">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.BulkReplace(System.Int32[],Templates.Core.FastString,System.Int32)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.CharsGetInt32">
+            <summary>Sets the mole of <see cref="P:Templates.Core.FastString.Chars(System.Int32)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.Clone">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Clone"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.ConcatFastStringArray">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Concat(Templates.Core.FastString[])"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.ConcatFastStringChar">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Concat(Templates.Core.FastString,System.Char)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.ConcatFastStringFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Concat(Templates.Core.FastString,Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.ConcatFastStringFastStringFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Concat(Templates.Core.FastString,Templates.Core.FastString,Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.ConcatFastStringString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Concat(Templates.Core.FastString,System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.ConcatIEnumerableOfFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Concat(System.Collections.Generic.IEnumerable`1{Templates.Core.FastString})"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.ConstructorCharArray">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.#ctor(System.Char[])"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.ConstructorCharArrayInt32">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.#ctor(System.Char[],System.Int32)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.ConstructorString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.#ctor(System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.ConstructorStringBuilder">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.#ctor(System.Text.StringBuilder)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.EmptyGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.FastString.Empty"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.EqualityOpFastStringFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.op_Equality(Templates.Core.FastString,Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.EqualityOpStringFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.op_Equality(System.String,Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.EqualsFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Equals(Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.EqualsFastStringFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Equals(Templates.Core.FastString,Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.EqualsObject">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Equals(System.Object)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.EqualsStringFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Equals(System.String,Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.ExplicitOpStringBuilder">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.op_Explicit(System.Text.StringBuilder)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.FindForReplaceFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.FindForReplace(Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.GetHashCode">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.GetHashCode"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.ImplicitOpChar">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.op_Implicit(System.Char)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.ImplicitOpCharArray">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.op_Implicit(System.Char[])"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.ImplicitOpFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.op_Implicit(Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.ImplicitOpFastString01">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.op_Implicit(Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.ImplicitOpString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.op_Implicit(System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.IncrementFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Increment(Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.IncrementOpFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.op_Increment(Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.InequalityOpFastStringFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.op_Inequality(Templates.Core.FastString,Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.InequalityOpStringFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.op_Inequality(System.String,Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.IsNullOrEmptyFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.IsNullOrEmpty(Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.IsNullOrWhiteSpaceFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.IsNullOrWhiteSpace(Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.LengthGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.FastString.Length"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.ReplaceFastStringFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Replace(Templates.Core.FastString,Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.ToString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.ToString"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.Trim">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Trim"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MFastString.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AllInstances.BulkReplaceInt32ArrayFastStringInt32">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.BulkReplace(System.Int32[],Templates.Core.FastString,System.Int32)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AllInstances.CharsGetInt32">
+            <summary>Sets the mole of <see cref="P:Templates.Core.FastString.Chars(System.Int32)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AllInstances.Clone">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Clone"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AllInstances.EqualsFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Equals(Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AllInstances.EqualsObject">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Equals(System.Object)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AllInstances.FindForReplaceFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.FindForReplace(Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AllInstances.GetHashCode01">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.GetHashCode"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AllInstances.LengthGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.FastString.Length"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AllInstances.ReplaceFastStringFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Replace(Templates.Core.FastString,Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AllInstances.ToString01">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.ToString"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastString.AllInstances.Trim">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastString.Trim"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MFastStringBuilder">
+            <summary>Mole type of <see cref="T:Templates.Core.FastStringBuilder"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MFastStringBuilder.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MFastStringBuilder.#ctor(Templates.Core.FastStringBuilder)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MFastStringBuilder.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MFastStringBuilder.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.AppendFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastStringBuilder.Append(Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.AppendString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastStringBuilder.Append(System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.CapacitySetInt32">
+            <summary>Sets the mole of <see cref="P:Templates.Core.FastStringBuilder.Capacity"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.Clear">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastStringBuilder.Clear"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.CommitAppend">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastStringBuilder.CommitAppend"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastStringBuilder.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.ConstructorFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastStringBuilder.#ctor(Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.ConstructorString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastStringBuilder.#ctor(System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.LengthGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.FastStringBuilder.Length"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.ReplaceInt32Int32FastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastStringBuilder.Replace(System.Int32,System.Int32,Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.ToFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastStringBuilder.ToFastString"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.ToString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastStringBuilder.ToString"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MFastStringBuilder.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.AllInstances.AppendFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastStringBuilder.Append(Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.AllInstances.AppendString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastStringBuilder.Append(System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.AllInstances.CapacitySetInt32">
+            <summary>Sets the mole of <see cref="P:Templates.Core.FastStringBuilder.Capacity"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.AllInstances.Clear">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastStringBuilder.Clear"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.AllInstances.CommitAppend">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastStringBuilder.CommitAppend"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.AllInstances.LengthGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.FastStringBuilder.Length"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.AllInstances.ReplaceInt32Int32FastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastStringBuilder.Replace(System.Int32,System.Int32,Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.AllInstances.ToFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastStringBuilder.ToFastString"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MFastStringBuilder.AllInstances.ToString01">
+            <summary>Sets the mole of <see cref="M:Templates.Core.FastStringBuilder.ToString"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MGuidExtension">
+            <summary>Mole type of <see cref="T:Templates.Extensions.GuidExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MGuidExtension.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MGuidExtension.#ctor(Templates.Extensions.GuidExtension)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MGuidExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MGuidExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MGuidExtension.Bind(Templates.Core.ITemplate)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MGuidExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MGuidExtension.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.GuidExtension.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MGuidExtension.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.GuidExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MGuidExtension.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MGuidExtension.AllInstances.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.GuidExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Attributes.Moles.MHiddenAttribute">
+            <summary>Mole type of <see cref="T:Templates.Attributes.HiddenAttribute"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MHiddenAttribute.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MHiddenAttribute.#ctor(Templates.Attributes.HiddenAttribute)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MHiddenAttribute.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MHiddenAttribute.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MHiddenAttribute.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MHiddenAttribute.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Attributes.HiddenAttribute.#ctor"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Attributes.Moles.MHiddenAttribute.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MHtmlEncode">
+            <summary>Mole type of <see cref="T:Templates.Core.HtmlEncode"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MHtmlEncode.#ctor">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MHtmlEncode.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MHtmlEncode.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MHtmlEncode.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MHtmlEncode.EncodeFastString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.HtmlEncode.Encode(Templates.Core.FastString)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MHtmlEncode.GetReplaceFastStringCharBooleanOut">
+            <summary>Sets the mole of <see cref="M:Templates.Core.HtmlEncode.GetReplaceFastString(System.Char,System.Boolean@)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MImportExtension">
+            <summary>Mole type of <see cref="T:Templates.Extensions.ImportExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MImportExtension.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MImportExtension.#ctor(Templates.Extensions.ImportExtension)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MImportExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MImportExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MImportExtension.Bind(Templates.Core.ITemplate)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MImportExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MImportExtension.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.ImportExtension.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MImportExtension.InitializeInnerTemplateFastStringTypeTypeCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.ImportExtension.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MImportExtension.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MImportExtension.AllInstances.InitializeInnerTemplateFastStringTypeTypeCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.ImportExtension.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MInnerExtension">
+            <summary>Mole type of <see cref="T:Templates.Extensions.InnerExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MInnerExtension.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MInnerExtension.#ctor(Templates.Extensions.InnerExtension)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MInnerExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MInnerExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MInnerExtension.Bind(Templates.Core.ITemplate)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MInnerExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MInnerExtension.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.InnerExtension.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MInnerExtension.InitializeInnerTemplateFastStringTypeTypeCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.InnerExtension.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MInnerExtension.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.InnerExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MInnerExtension.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MInnerExtension.AllInstances.InitializeInnerTemplateFastStringTypeTypeCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.InnerExtension.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MInnerExtension.AllInstances.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.InnerExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MIntegerExtension">
+            <summary>Mole type of <see cref="T:Templates.Extensions.IntegerExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MIntegerExtension.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MIntegerExtension.#ctor(Templates.Extensions.IntegerExtension)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MIntegerExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MIntegerExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MIntegerExtension.Bind(Templates.Core.ITemplate)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MIntegerExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MIntegerExtension.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.IntegerExtension.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MIntegerExtension.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.IntegerExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MIntegerExtension.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MIntegerExtension.AllInstances.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.IntegerExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MListExtension">
+            <summary>Mole type of <see cref="T:Templates.Extensions.ListExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MListExtension.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MListExtension.#ctor(Templates.Extensions.ListExtension)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MListExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MListExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MListExtension.Bind(Templates.Core.ITemplate)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MListExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MListExtension.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.ListExtension.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MListExtension.InitializeInnerTemplateFastStringTypeTypeCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.ListExtension.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MListExtension.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.ListExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MListExtension.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MListExtension.AllInstances.InitializeInnerTemplateFastStringTypeTypeCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.ListExtension.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MListExtension.AllInstances.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.ListExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MMethodExtension">
+            <summary>Mole type of <see cref="T:Templates.Extensions.MethodExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MMethodExtension.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MMethodExtension.#ctor(Templates.Extensions.MethodExtension)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MMethodExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MMethodExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MMethodExtension.Bind(Templates.Core.ITemplate)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MMethodExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MMethodExtension.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.MethodExtension.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MMethodExtension.InitializeInnerTemplateFastStringTypeTypeCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.MethodExtension.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MMethodExtension.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.MethodExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MMethodExtension.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MMethodExtension.AllInstances.InitializeInnerTemplateFastStringTypeTypeCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.MethodExtension.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MMethodExtension.AllInstances.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.MethodExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MModelExtension">
+            <summary>Mole type of <see cref="T:Templates.Extensions.ModelExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MModelExtension.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MModelExtension.#ctor(Templates.Extensions.ModelExtension)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MModelExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MModelExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MModelExtension.Bind(Templates.Core.ITemplate)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MModelExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MModelExtension.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.ModelExtension.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MModelExtension.InitializeInnerTemplateFastStringTypeTypeCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.ModelExtension.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MModelExtension.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MModelExtension.AllInstances.InitializeInnerTemplateFastStringTypeTypeCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.ModelExtension.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MMoneyExtension">
+            <summary>Mole type of <see cref="T:Templates.Extensions.MoneyExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MMoneyExtension.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MMoneyExtension.#ctor(Templates.Extensions.MoneyExtension)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MMoneyExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MMoneyExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MMoneyExtension.Bind(Templates.Core.ITemplate)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MMoneyExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MMoneyExtension.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.MoneyExtension.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MMoneyExtension.GetCultureInfoString">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.MoneyExtension.GetCultureInfo(System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MMoneyExtension.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.MoneyExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MMoneyExtension.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MMoneyExtension.AllInstances.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.MoneyExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Attributes.Moles.MNameAttribute">
+            <summary>Mole type of <see cref="T:Templates.Attributes.NameAttribute"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MNameAttribute.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MNameAttribute.#ctor(Templates.Attributes.NameAttribute)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MNameAttribute.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MNameAttribute.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MNameAttribute.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MNameAttribute.ConstructorString">
+            <summary>Sets the mole of <see cref="M:Templates.Attributes.NameAttribute.#ctor(System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MNameAttribute.NameGet">
+            <summary>Sets the mole of <see cref="P:Templates.Attributes.NameAttribute.Name"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MNameAttribute.NameSetString">
+            <summary>Sets the mole of <see cref="P:Templates.Attributes.NameAttribute.Name"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Attributes.Moles.MNameAttribute.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MNameAttribute.AllInstances.NameGet">
+            <summary>Sets the mole of <see cref="P:Templates.Attributes.NameAttribute.Name"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MNameAttribute.AllInstances.NameSetString">
+            <summary>Sets the mole of <see cref="P:Templates.Attributes.NameAttribute.Name"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Attributes.Moles.MNotEncodeAttribute">
+            <summary>Mole type of <see cref="T:Templates.Attributes.NotEncodeAttribute"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MNotEncodeAttribute.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MNotEncodeAttribute.#ctor(Templates.Attributes.NotEncodeAttribute)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MNotEncodeAttribute.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MNotEncodeAttribute.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MNotEncodeAttribute.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MNotEncodeAttribute.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Attributes.NotEncodeAttribute.#ctor"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Attributes.Moles.MNotEncodeAttribute.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="T:Templates.Attributes.Moles.MOptionsAttribute">
+            <summary>Mole type of <see cref="T:Templates.Attributes.OptionsAttribute"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MOptionsAttribute.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MOptionsAttribute.#ctor(Templates.Attributes.OptionsAttribute)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MOptionsAttribute.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MOptionsAttribute.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MOptionsAttribute.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MOptionsAttribute.ConstructorString">
+            <summary>Sets the mole of <see cref="M:Templates.Attributes.OptionsAttribute.#ctor(System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MOptionsAttribute.FieldNameGet">
+            <summary>Sets the mole of <see cref="P:Templates.Attributes.OptionsAttribute.FieldName"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MOptionsAttribute.FieldNameSetString">
+            <summary>Sets the mole of <see cref="P:Templates.Attributes.OptionsAttribute.FieldName"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Attributes.Moles.MOptionsAttribute.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MOptionsAttribute.AllInstances.FieldNameGet">
+            <summary>Sets the mole of <see cref="P:Templates.Attributes.OptionsAttribute.FieldName"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MOptionsAttribute.AllInstances.FieldNameSetString">
+            <summary>Sets the mole of <see cref="P:Templates.Attributes.OptionsAttribute.FieldName"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MPartialExtension">
+            <summary>Mole type of <see cref="T:Templates.Extensions.PartialExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MPartialExtension.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MPartialExtension.#ctor(Templates.Extensions.PartialExtension)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MPartialExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MPartialExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MPartialExtension.Bind(Templates.Core.ITemplate)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MPartialExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MPartialExtension.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.PartialExtension.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MPartialExtension.InitializeInnerTemplateFastStringTypeTypeCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.PartialExtension.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MPartialExtension.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.PartialExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MPartialExtension.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MPartialExtension.AllInstances.InitializeInnerTemplateFastStringTypeTypeCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.PartialExtension.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MPartialExtension.AllInstances.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.PartialExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MPosition">
+            <summary>Mole type of <see cref="T:Templates.Core.Position"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MPosition.#ctor">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MPosition.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MPosition.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MPosition.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MPosition.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MPropertyInfoExtension">
+            <summary>Mole type of <see cref="T:Templates.Core.PropertyInfoExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MPropertyInfoExtension.#ctor">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MPropertyInfoExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MPropertyInfoExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MPropertyInfoExtension.GetAttributesPropertyInfo``1(Microsoft.Moles.Framework.MolesDelegates.Func{System.Reflection.PropertyInfo,System.Collections.Generic.IEnumerable{``0}})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.PropertyInfoExtension.GetAttributes``1(System.Reflection.PropertyInfo)"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MPropertyInfoExtension.IsHaveAttributePropertyInfo``1(Microsoft.Moles.Framework.MolesDelegates.Func{System.Reflection.PropertyInfo,System.Boolean})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.PropertyInfoExtension.IsHaveAttribute``1(System.Reflection.PropertyInfo)"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MPropertyInfoExtension._GetAttributesb__4Object``1(Microsoft.Moles.Framework.MolesDelegates.Func{System.Object,System.Boolean})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.PropertyInfoExtension.&lt;GetAttributes&gt;b__4``1(System.Object)"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MPropertyInfoExtension._IsHaveAttributeb__3Object``1(Microsoft.Moles.Framework.MolesDelegates.Func{System.Object,System.Boolean})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.PropertyInfoExtension.&lt;IsHaveAttribute&gt;b__3``1(System.Object)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MPropertyInfoExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MPropertyInfoExtension.GetAttributesPropertyInfoType">
+            <summary>Sets the mole of <see cref="M:Templates.Core.PropertyInfoExtension.GetAttributes(System.Reflection.PropertyInfo,System.Type)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MPropertyInfoExtension.IsHaveAttributePropertyInfoType">
+            <summary>Sets the mole of <see cref="M:Templates.Core.PropertyInfoExtension.IsHaveAttribute(System.Reflection.PropertyInfo,System.Type)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MReferenceExtension">
+            <summary>Mole type of <see cref="T:Templates.Extensions.ReferenceExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MReferenceExtension.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MReferenceExtension.#ctor(Templates.Extensions.ReferenceExtension)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MReferenceExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MReferenceExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MReferenceExtension.Bind(Templates.Core.ITemplate)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MReferenceExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MReferenceExtension.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.ReferenceExtension.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MReferenceExtension.InitializeInnerTemplateFastStringTypeTypeCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.ReferenceExtension.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MReferenceExtension.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MReferenceExtension.AllInstances.InitializeInnerTemplateFastStringTypeTypeCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.ReferenceExtension.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MReflectionHelper">
+            <summary>Mole type of <see cref="T:Templates.Core.ReflectionHelper"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MReflectionHelper.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MReflectionHelper.#ctor(Templates.Core.ReflectionHelper)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MReflectionHelper.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MReflectionHelper.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MReflectionHelper.InvokeStringObjectObjectArray01``1(Microsoft.Moles.Framework.MolesDelegates.Func{System.String,System.Object,System.Object[],``0})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.ReflectionHelper.Invoke``1(System.String,System.Object,System.Object[])"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.ConstructorObject">
+            <summary>Sets the mole of <see cref="M:Templates.Core.ReflectionHelper.#ctor(System.Object)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.ConstructorType">
+            <summary>Sets the mole of <see cref="M:Templates.Core.ReflectionHelper.#ctor(System.Type)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.InnerTypeGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.ReflectionHelper.InnerType"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.InvokeStringObjectObjectArray">
+            <summary>Sets the mole of <see cref="M:Templates.Core.ReflectionHelper.Invoke(System.String,System.Object,System.Object[])"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.IsClassGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.ReflectionHelper.IsClass"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.IsImplementType">
+            <summary>Sets the mole of <see cref="M:Templates.Core.ReflectionHelper.IsImplement(System.Type)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.IsInterfaceGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.ReflectionHelper.IsInterface"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.IsObjectGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.ReflectionHelper.IsObject"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.IsTypeObject">
+            <summary>Sets the mole of <see cref="M:Templates.Core.ReflectionHelper.IsType(System.Object)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.IsTypeType">
+            <summary>Sets the mole of <see cref="M:Templates.Core.ReflectionHelper.IsType(System.Type)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.ResolveSimpleTypeStringIEnumerableOfString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.ReflectionHelper.ResolveSimpleType(System.String,System.Collections.Generic.IEnumerable`1{System.String})"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.ResolveTypeStringIEnumerableOfString">
+            <summary>Sets the mole of <see cref="M:Templates.Core.ReflectionHelper.ResolveType(System.String,System.Collections.Generic.IEnumerable`1{System.String})"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MReflectionHelper.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MReflectionHelper.AllInstances.InvokeStringObjectObjectArray01``1(Microsoft.Moles.Framework.MolesDelegates.Func{Templates.Core.ReflectionHelper,System.String,System.Object,System.Object[],``0})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.ReflectionHelper.Invoke``1(System.String,System.Object,System.Object[])"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.AllInstances.InnerTypeGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.ReflectionHelper.InnerType"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.AllInstances.InvokeStringObjectObjectArray">
+            <summary>Sets the mole of <see cref="M:Templates.Core.ReflectionHelper.Invoke(System.String,System.Object,System.Object[])"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.AllInstances.IsClassGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.ReflectionHelper.IsClass"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.AllInstances.IsImplementType">
+            <summary>Sets the mole of <see cref="M:Templates.Core.ReflectionHelper.IsImplement(System.Type)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.AllInstances.IsInterfaceGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.ReflectionHelper.IsInterface"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.AllInstances.IsObjectGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.ReflectionHelper.IsObject"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.AllInstances.IsTypeObject">
+            <summary>Sets the mole of <see cref="M:Templates.Core.ReflectionHelper.IsType(System.Object)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MReflectionHelper.AllInstances.IsTypeType">
+            <summary>Sets the mole of <see cref="M:Templates.Core.ReflectionHelper.IsType(System.Type)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MSmartArray`1">
+            <summary>Mole type of <see cref="T:Templates.Core.SmartArray`1"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MSmartArray`1.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MSmartArray`1.#ctor(Templates.Core.SmartArray{`0})">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MSmartArray`1.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MSmartArray`1.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MSmartArray`1.Bind(System.Collections.IEnumerable)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MSmartArray`1.Bind(System.Collections.Generic.IEnumerable{`0})">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.AddT">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.Add(`1)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.Clear">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.Clear"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.ConstructorTArray">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.#ctor(`1[])"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.GetEnumerator">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.GetEnumerator"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.ImplicitOpSmartArrayOfT">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.op_Implicit(Templates.Core.SmartArray`1{`1})"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.ImplicitOpTArray">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.op_Implicit(`1[])"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.ItemsGetInt32">
+            <summary>Sets the mole of <see cref="P:Templates.Core.SmartArray`1.Items(System.Int32)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.ItemsSetInt32T">
+            <summary>Sets the mole of <see cref="P:Templates.Core.SmartArray`1.Items(System.Int32)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.LengthGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.SmartArray`1.Length"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.SystemCollectionsIEnumerableGetEnumerator">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.System.Collections.IEnumerable.GetEnumerator"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.ToArray">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.ToArray"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MSmartArray`1.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.AllInstances.AddT">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.Add(`1)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.AllInstances.Clear">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.Clear"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.AllInstances.GetEnumerator">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.GetEnumerator"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.AllInstances.ItemsGetInt32">
+            <summary>Sets the mole of <see cref="P:Templates.Core.SmartArray`1.Items(System.Int32)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.AllInstances.ItemsSetInt32T">
+            <summary>Sets the mole of <see cref="P:Templates.Core.SmartArray`1.Items(System.Int32)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.AllInstances.LengthGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.SmartArray`1.Length"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.AllInstances.SystemCollectionsIEnumerableGetEnumerator">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.System.Collections.IEnumerable.GetEnumerator"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.AllInstances.ToArray">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.ToArray"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator">
+            <summary>Mole type of <see cref="T:Templates.Core.SmartArray`1.SmartArrayEnumerator"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.#ctor(Templates.Core.SmartArray{`0}.SmartArrayEnumerator)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.Bind(System.IDisposable)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.Bind(System.Collections.IEnumerator)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.Bind(System.Collections.Generic.IEnumerator{`0})">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.ConstructorSmartArrayOfT">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.SmartArrayEnumerator.#ctor(Templates.Core.SmartArray`1{`1})"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.CurrentGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.SmartArray`1.SmartArrayEnumerator.Current"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.CurrentSystemCollectionsIEnumeratorget">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.SmartArrayEnumerator.System.Collections.IEnumerator.get_Current"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.Dispose">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.SmartArrayEnumerator.Dispose"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.DisposeBoolean">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.SmartArrayEnumerator.Dispose(System.Boolean)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.MoveNext">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.SmartArrayEnumerator.MoveNext"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.Reset">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.SmartArrayEnumerator.Reset"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.AllInstances.CurrentGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.SmartArray`1.SmartArrayEnumerator.Current"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.AllInstances.CurrentSystemCollectionsIEnumeratorget">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.SmartArrayEnumerator.System.Collections.IEnumerator.get_Current"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.AllInstances.Dispose">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.SmartArrayEnumerator.Dispose"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.AllInstances.DisposeBoolean">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.SmartArrayEnumerator.Dispose(System.Boolean)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.AllInstances.MoveNext">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.SmartArrayEnumerator.MoveNext"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MSmartArray`1.MSmartArrayEnumerator.AllInstances.Reset">
+            <summary>Sets the mole of <see cref="M:Templates.Core.SmartArray`1.SmartArrayEnumerator.Reset"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MStringExtension">
+            <summary>Mole type of <see cref="T:Templates.Extensions.StringExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MStringExtension.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MStringExtension.#ctor(Templates.Extensions.StringExtension)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MStringExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MStringExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MStringExtension.Bind(Templates.Core.ITemplate)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MStringExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MStringExtension.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.StringExtension.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MStringExtension.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.StringExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MStringExtension.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MStringExtension.AllInstances.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.StringExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MSystemExtension">
+            <summary>Mole type of <see cref="T:Templates.Extensions.SystemExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MSystemExtension.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MSystemExtension.#ctor(Templates.Extensions.SystemExtension)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MSystemExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MSystemExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MSystemExtension.Bind(Templates.Core.ITemplate)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MSystemExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MSystemExtension.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.SystemExtension.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MSystemExtension.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.SystemExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MSystemExtension.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MSystemExtension.AllInstances.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.SystemExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Moles.MTemplate">
+            <summary>Mole type of <see cref="T:Templates.Template"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Moles.MTemplate.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Moles.MTemplate.#ctor(Templates.Template)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Moles.MTemplate.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Moles.MTemplate.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Moles.MTemplate.Bind(System.IDisposable)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Moles.MTemplate.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Moles.MTemplate.ConstructorCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Template.#ctor(Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MTemplate.ConstructorFastStringCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Template.#ctor(Templates.Core.FastString,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MTemplate.ConstructorStringCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Template.#ctor(System.String,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MTemplate.Dispose">
+            <summary>Sets the mole of <see cref="M:Templates.Template.Dispose"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MTemplate.GenerateStringObject">
+            <summary>Sets the mole of <see cref="M:Templates.Template.GenerateString(System.Object)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MTemplate.InitializeTemplateFastStringCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Template.InitializeTemplate(Templates.Core.FastString,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MTemplate.TemplateContextGet">
+            <summary>Sets the mole of <see cref="P:Templates.Template.TemplateContext"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MTemplate.TemplateContextSetCompileContext">
+            <summary>Sets the mole of <see cref="P:Templates.Template.TemplateContext"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Moles.MTemplate.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Moles.MTemplate.AllInstances.Dispose">
+            <summary>Sets the mole of <see cref="M:Templates.Template.Dispose"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MTemplate.AllInstances.GenerateStringObject">
+            <summary>Sets the mole of <see cref="M:Templates.Template.GenerateString(System.Object)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MTemplate.AllInstances.InitializeTemplateFastStringCompileContext">
+            <summary>Sets the mole of <see cref="M:Templates.Template.InitializeTemplate(Templates.Core.FastString,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MTemplate.AllInstances.TemplateContextGet">
+            <summary>Sets the mole of <see cref="P:Templates.Template.TemplateContext"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.MTemplate.AllInstances.TemplateContextSetCompileContext">
+            <summary>Sets the mole of <see cref="P:Templates.Template.TemplateContext"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Exceptions.Moles.MTemplateCompileException">
+            <summary>Mole type of <see cref="T:Templates.Exceptions.TemplateCompileException"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateCompileException.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateCompileException.#ctor(Templates.Exceptions.TemplateCompileException)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateCompileException.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateCompileException.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateCompileException.Bind(System.Runtime.Serialization.ISerializable)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateCompileException.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateCompileException.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateCompileException.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateCompileException.ConstructorSerializationInfoStreamingContext">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateCompileException.#ctor(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateCompileException.ConstructorString">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateCompileException.#ctor(System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateCompileException.ConstructorStringException">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateCompileException.#ctor(System.String,System.Exception)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Exceptions.Moles.MTemplateCompileException.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="T:Templates.Exceptions.Moles.MTemplateCreateException">
+            <summary>Mole type of <see cref="T:Templates.Exceptions.TemplateCreateException"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateCreateException.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateCreateException.#ctor(Templates.Exceptions.TemplateCreateException)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateCreateException.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateCreateException.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateCreateException.Bind(System.Runtime.Serialization.ISerializable)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateCreateException.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateCreateException.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateCreateException.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateCreateException.ConstructorSerializationInfoStreamingContext">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateCreateException.#ctor(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateCreateException.ConstructorString">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateCreateException.#ctor(System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateCreateException.ConstructorStringException">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateCreateException.#ctor(System.String,System.Exception)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Exceptions.Moles.MTemplateCreateException.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="T:Templates.Moles.MTemplateExtension">
+            <summary>Mole type of <see cref="T:Templates.TemplateExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Moles.MTemplateExtension.#ctor">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Moles.MTemplateExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Moles.MTemplateExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Moles.MTemplateExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Moles.MTemplateExtension.ProcessDataTemplateObject">
+            <summary>Sets the mole of <see cref="M:Templates.TemplateExtension.ProcessData(Templates.Template,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Exceptions.Moles.MTemplateFileException">
+            <summary>Mole type of <see cref="T:Templates.Exceptions.TemplateFileException"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateFileException.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateFileException.#ctor(Templates.Exceptions.TemplateFileException)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateFileException.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateFileException.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateFileException.Bind(System.Runtime.Serialization.ISerializable)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateFileException.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateFileException.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateFileException.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateFileException.ConstructorSerializationInfoStreamingContext">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateFileException.#ctor(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateFileException.ConstructorString">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateFileException.#ctor(System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateFileException.ConstructorStringException">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateFileException.#ctor(System.String,System.Exception)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Exceptions.Moles.MTemplateFileException.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="T:Templates.Exceptions.Moles.MTemplateInitException">
+            <summary>Mole type of <see cref="T:Templates.Exceptions.TemplateInitException"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateInitException.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateInitException.#ctor(Templates.Exceptions.TemplateInitException)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateInitException.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateInitException.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateInitException.Bind(System.Runtime.Serialization.ISerializable)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateInitException.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateInitException.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateInitException.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateInitException.ConstructorSerializationInfoStreamingContext">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateInitException.#ctor(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateInitException.ConstructorString">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateInitException.#ctor(System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateInitException.ConstructorStringException">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateInitException.#ctor(System.String,System.Exception)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateInitException.ConstructorStringExceptionPosition">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateInitException.#ctor(System.String,System.Exception,Templates.Core.Position)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateInitException.GetObjectDataSerializationInfoStreamingContext">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateInitException.GetObjectData(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateInitException.PositionGet">
+            <summary>Sets the mole of <see cref="P:Templates.Exceptions.TemplateInitException.Position"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateInitException.PositionSetPosition">
+            <summary>Sets the mole of <see cref="P:Templates.Exceptions.TemplateInitException.Position"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Exceptions.Moles.MTemplateInitException.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateInitException.AllInstances.GetObjectDataSerializationInfoStreamingContext">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateInitException.GetObjectData(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateInitException.AllInstances.PositionGet">
+            <summary>Sets the mole of <see cref="P:Templates.Exceptions.TemplateInitException.Position"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateInitException.AllInstances.PositionSetPosition">
+            <summary>Sets the mole of <see cref="P:Templates.Exceptions.TemplateInitException.Position"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MTemplateOptions">
+            <summary>Mole type of <see cref="T:Templates.Core.TemplateOptions"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MTemplateOptions.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MTemplateOptions.#ctor(Templates.Core.TemplateOptions)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MTemplateOptions.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MTemplateOptions.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TemplateOptions.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.EqualityOpTemplateOptionsTemplateOptions">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TemplateOptions.op_Equality(Templates.Core.TemplateOptions,Templates.Core.TemplateOptions)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.EqualsObject">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TemplateOptions.Equals(System.Object)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.EqualsTemplateOptions">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TemplateOptions.Equals(Templates.Core.TemplateOptions)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.EqualsTemplateOptionsTemplateOptions">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TemplateOptions.Equals(Templates.Core.TemplateOptions,Templates.Core.TemplateOptions)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.FileNamePostfixGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.TemplateOptions.FileNamePostfix"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.FileNamePostfixSetString">
+            <summary>Sets the mole of <see cref="P:Templates.Core.TemplateOptions.FileNamePostfix"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.GetHashCode">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TemplateOptions.GetHashCode"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.InequalityOpTemplateOptionsTemplateOptions">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TemplateOptions.op_Inequality(Templates.Core.TemplateOptions,Templates.Core.TemplateOptions)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.RootPathGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.TemplateOptions.RootPath"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.RootPathSetString">
+            <summary>Sets the mole of <see cref="P:Templates.Core.TemplateOptions.RootPath"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.TemplateNameGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.TemplateOptions.TemplateName"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.TemplateNameSetString">
+            <summary>Sets the mole of <see cref="P:Templates.Core.TemplateOptions.TemplateName"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MTemplateOptions.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.AllInstances.EqualsObject">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TemplateOptions.Equals(System.Object)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.AllInstances.EqualsTemplateOptions">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TemplateOptions.Equals(Templates.Core.TemplateOptions)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.AllInstances.FileNamePostfixGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.TemplateOptions.FileNamePostfix"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.AllInstances.FileNamePostfixSetString">
+            <summary>Sets the mole of <see cref="P:Templates.Core.TemplateOptions.FileNamePostfix"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.AllInstances.GetHashCode01">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TemplateOptions.GetHashCode"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.AllInstances.RootPathGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.TemplateOptions.RootPath"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.AllInstances.RootPathSetString">
+            <summary>Sets the mole of <see cref="P:Templates.Core.TemplateOptions.RootPath"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.AllInstances.TemplateNameGet">
+            <summary>Sets the mole of <see cref="P:Templates.Core.TemplateOptions.TemplateName"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTemplateOptions.AllInstances.TemplateNameSetString">
+            <summary>Sets the mole of <see cref="P:Templates.Core.TemplateOptions.TemplateName"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Exceptions.Moles.MTemplateParseException">
+            <summary>Mole type of <see cref="T:Templates.Exceptions.TemplateParseException"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateParseException.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateParseException.#ctor(Templates.Exceptions.TemplateParseException)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateParseException.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateParseException.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateParseException.Bind(System.Runtime.Serialization.ISerializable)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateParseException.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateParseException.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateParseException.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateParseException.ConstructorSerializationInfoStreamingContext">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateParseException.#ctor(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateParseException.ConstructorString">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateParseException.#ctor(System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateParseException.ConstructorStringException">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateParseException.#ctor(System.String,System.Exception)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Exceptions.Moles.MTemplateParseException.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="T:Templates.Exceptions.Moles.MTemplateProcessingException">
+            <summary>Mole type of <see cref="T:Templates.Exceptions.TemplateProcessingException"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateProcessingException.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateProcessingException.#ctor(Templates.Exceptions.TemplateProcessingException)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateProcessingException.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateProcessingException.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.MTemplateProcessingException.Bind(System.Runtime.Serialization.ISerializable)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateProcessingException.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateProcessingException.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateProcessingException.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateProcessingException.ConstructorSerializationInfoStreamingContext">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateProcessingException.#ctor(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateProcessingException.ConstructorString">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateProcessingException.#ctor(System.String)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.MTemplateProcessingException.ConstructorStringException">
+            <summary>Sets the mole of <see cref="M:Templates.Exceptions.TemplateProcessingException.#ctor(System.String,System.Exception)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Exceptions.Moles.MTemplateProcessingException.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MTimeExtension">
+            <summary>Mole type of <see cref="T:Templates.Extensions.TimeExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MTimeExtension.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MTimeExtension.#ctor(Templates.Extensions.TimeExtension)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MTimeExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MTimeExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MTimeExtension.Bind(Templates.Core.ITemplate)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MTimeExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MTimeExtension.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.TimeExtension.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MTimeExtension.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.TimeExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MTimeExtension.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MTimeExtension.AllInstances.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.TimeExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MTrueExtension">
+            <summary>Mole type of <see cref="T:Templates.Extensions.TrueExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MTrueExtension.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MTrueExtension.#ctor(Templates.Extensions.TrueExtension)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MTrueExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MTrueExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.MTrueExtension.Bind(Templates.Core.ITemplate)">
+            <summary>Binds the members of the interface to the mole.</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MTrueExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MTrueExtension.Constructor">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.TrueExtension.#ctor"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MTrueExtension.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.TrueExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.MTrueExtension.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.MTrueExtension.AllInstances.ProcessDataInternalObjectObject">
+            <summary>Sets the mole of <see cref="M:Templates.Extensions.TrueExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Attributes.Moles.MTypeAttribute">
+            <summary>Mole type of <see cref="T:Templates.Attributes.TypeAttribute"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MTypeAttribute.#ctor">
+            <summary>Initializes a new mole</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MTypeAttribute.#ctor(Templates.Attributes.TypeAttribute)">
+            <summary>Initializes a new mole for the given instance</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MTypeAttribute.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.MTypeAttribute.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MTypeAttribute.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MTypeAttribute.ConstructorType">
+            <summary>Sets the mole of <see cref="M:Templates.Attributes.TypeAttribute.#ctor(System.Type)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MTypeAttribute.DataTypeGet">
+            <summary>Sets the mole of <see cref="P:Templates.Attributes.TypeAttribute.DataType"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MTypeAttribute.DataTypeSetType">
+            <summary>Sets the mole of <see cref="P:Templates.Attributes.TypeAttribute.DataType"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Attributes.Moles.MTypeAttribute.AllInstances">
+            <summary>Define moles for all instances members</summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MTypeAttribute.AllInstances.DataTypeGet">
+            <summary>Sets the mole of <see cref="P:Templates.Attributes.TypeAttribute.DataType"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.MTypeAttribute.AllInstances.DataTypeSetType">
+            <summary>Sets the mole of <see cref="P:Templates.Attributes.TypeAttribute.DataType"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Core.Moles.MTypeExtension">
+            <summary>Mole type of <see cref="T:Templates.Core.TypeExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MTypeExtension.#ctor">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MTypeExtension.BehaveAsCurrent">
+            <summary>Assigns the &apos;Current&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MTypeExtension.BehaveAsNotImplemented">
+            <summary>Assigns the &apos;NotImplemented&apos; behavior for all methods of the moled type</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MTypeExtension.GetAttributesType``1(Microsoft.Moles.Framework.MolesDelegates.Func{System.Type,``0[]})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TypeExtension.GetAttributes``1(System.Type)"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MTypeExtension.IsHaveAttributeType``1(Microsoft.Moles.Framework.MolesDelegates.Func{System.Type,System.Boolean})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TypeExtension.IsHaveAttribute``1(System.Type)"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MTypeExtension.IsImplementType``1(Microsoft.Moles.Framework.MolesDelegates.Func{System.Type,System.Boolean})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TypeExtension.IsImplement``1(System.Type)"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MTypeExtension.IsTypeType``1(Microsoft.Moles.Framework.MolesDelegates.Func{System.Type,System.Boolean})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TypeExtension.IsType``1(System.Type)"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MTypeExtension._GetAttributesb__8Object``1(Microsoft.Moles.Framework.MolesDelegates.Func{System.Object,System.Boolean})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TypeExtension.&lt;GetAttributes&gt;b__8``1(System.Object)"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MTypeExtension._IsHaveAttributeb__7Object``1(Microsoft.Moles.Framework.MolesDelegates.Func{System.Object,System.Boolean})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TypeExtension.&lt;IsHaveAttribute&gt;b__7``1(System.Object)"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Core.Moles.MTypeExtension._IsImplementb__3Type``1(Microsoft.Moles.Framework.MolesDelegates.Func{System.Type,System.Boolean})">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TypeExtension.&lt;IsImplement&gt;b__3``1(System.Type)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTypeExtension.Behavior">
+            <summary>Assigns the behavior for all methods of the moled type</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTypeExtension.IsHaveAttributeTypeType">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TypeExtension.IsHaveAttribute(System.Type,System.Type)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTypeExtension.IsImplementTypeType">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TypeExtension.IsImplement(System.Type,System.Type)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTypeExtension.IsTypeTypeObject">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TypeExtension.IsType(System.Type,System.Object)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Core.Moles.MTypeExtension.IsTypeTypeType">
+            <summary>Sets the mole of <see cref="M:Templates.Core.TypeExtension.IsType(System.Type,System.Type)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Moles.SAbstractTemplate">
+            <summary>Stub type of <see cref="T:Templates.AbstractTemplate"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Moles.SAbstractTemplate.#ctor">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Moles.SAbstractTemplate.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)">
+            <summary>Sets the stub of <see cref="M:Templates.AbstractTemplate.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="F:Templates.Moles.SAbstractTemplate.InitializeInnerTemplateFastStringTypeTypeCompileContext">
+            <summary>Sets the stub of <see cref="M:Templates.AbstractTemplate.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Moles.SAbstractTemplate.InitializeStub">
+            <summary>Initializes a new instance of type SAbstractTemplate</summary>
+        </member>
+        <member name="M:Templates.Moles.SAbstractTemplate.ProcessData(System.Object,System.Object)">
+            <summary>Sets the stub of <see cref="M:Templates.AbstractTemplate.ProcessData(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Moles.SAbstractTemplate.ProcessDataInternal(System.Object,System.Object)">
+            <summary>Sets the stub of <see cref="M:Templates.AbstractTemplate.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="F:Templates.Moles.SAbstractTemplate.ProcessDataInternalObjectObject">
+            <summary>Sets the stub of <see cref="M:Templates.AbstractTemplate.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="F:Templates.Moles.SAbstractTemplate.ProcessDataObjectObject">
+            <summary>Sets the stub of <see cref="M:Templates.AbstractTemplate.ProcessData(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Moles.SAbstractTemplate.CallBase">
+            <summary>Gets or sets a value that indicates if the base method should be called instead of the fallback behavior</summary>
+        </member>
+        <member name="P:Templates.Moles.SAbstractTemplate.InstanceBehavior">
+            <summary>Gets or sets the instance behavior.</summary>
+        </member>
+        <member name="T:Templates.Core.Moles.SAttributeSet">
+            <summary>Stub type of <see cref="T:Templates.Core.AttributeSet"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.SAttributeSet.#ctor(System.Type)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.SAttributeSet.#ctor(System.Collections.Generic.IEnumerable{System.Object})">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.SAttributeSet.InitializeStub">
+            <summary>Initializes a new instance of type SAttributeSet</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.SAttributeSet.CallBase">
+            <summary>Gets or sets a value that indicates if the base method should be called instead of the fallback behavior</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.SAttributeSet.InstanceBehavior">
+            <summary>Gets or sets the instance behavior.</summary>
+        </member>
+        <member name="T:Templates.Core.Moles.SCompileContext">
+            <summary>Stub type of <see cref="T:Templates.Core.CompileContext"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.SCompileContext.#ctor(Templates.Core.TemplateOptions)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.SCompileContext.#ctor(Templates.Core.CompileContext,System.String)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.SCompileContext.#ctor(Templates.Core.CompileContext,System.Type)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.SCompileContext.#ctor(Templates.Core.CompileContext,System.Type,System.String)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.SCompileContext.InitializeStub">
+            <summary>Initializes a new instance of type SCompileContext</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.SCompileContext.CallBase">
+            <summary>Gets or sets a value that indicates if the base method should be called instead of the fallback behavior</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.SCompileContext.InstanceBehavior">
+            <summary>Gets or sets the instance behavior.</summary>
+        </member>
+        <member name="T:Templates.Core.Moles.SITemplate">
+            <summary>Stub type of <see cref="T:Templates.Core.ITemplate"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.SITemplate.#ctor">
+            <summary>Initializes a new instance of type SITemplate</summary>
+        </member>
+        <member name="F:Templates.Core.Moles.SITemplate.InitializeInnerTemplateFastStringTypeTypeCompileContext">
+            <summary>Sets the stub of <see cref="M:Templates.Core.ITemplate.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="F:Templates.Core.Moles.SITemplate.ParseParameterFastStringTypeTypeBoolean">
+            <summary>Sets the stub of <see cref="M:Templates.Core.ITemplate.ParseParameter(Templates.Core.FastString,System.Type,System.Type,System.Boolean)"/>
+            </summary>
+        </member>
+        <member name="F:Templates.Core.Moles.SITemplate.ProcessDataObjectObject">
+            <summary>Sets the stub of <see cref="M:Templates.Core.ITemplate.ProcessData(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Core.Moles.SITemplate.t::Templates#Core#ITemplate#InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)">
+            <summary>Sets the stub of <see cref="M:Templates.Core.ITemplate.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Core.Moles.SITemplate.t::Templates#Core#ITemplate#ParseParameter(Templates.Core.FastString,System.Type,System.Type,System.Boolean)">
+            <summary>Sets the stub of <see cref="M:Templates.Core.ITemplate.ParseParameter(Templates.Core.FastString,System.Type,System.Type,System.Boolean)"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Core.Moles.SITemplate.t::Templates#Core#ITemplate#ProcessData(System.Object,System.Object)">
+            <summary>Sets the stub of <see cref="M:Templates.Core.ITemplate.ProcessData(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="T:Templates.Extensions.Moles.SInnerExtension">
+            <summary>Stub type of <see cref="T:Templates.Extensions.InnerExtension"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.SInnerExtension.#ctor">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.SInnerExtension.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)">
+            <summary>Sets the stub of <see cref="M:Templates.Extensions.InnerExtension.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="F:Templates.Extensions.Moles.SInnerExtension.InitializeInnerTemplateFastStringTypeTypeCompileContext">
+            <summary>Sets the stub of <see cref="M:Templates.Extensions.InnerExtension.InitializeInnerTemplate(Templates.Core.FastString,System.Type,System.Type,Templates.Core.CompileContext)"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.SInnerExtension.InitializeStub">
+            <summary>Initializes a new instance of type SInnerExtension</summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.SInnerExtension.ProcessData(System.Object,System.Object)">
+            <summary>Sets the stub of <see cref="M:Templates.AbstractTemplate.ProcessData(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Extensions.Moles.SInnerExtension.ProcessDataInternal(System.Object,System.Object)">
+            <summary>Sets the stub of <see cref="M:Templates.Extensions.InnerExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="F:Templates.Extensions.Moles.SInnerExtension.ProcessDataInternalObjectObject">
+            <summary>Sets the stub of <see cref="M:Templates.Extensions.InnerExtension.ProcessDataInternal(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="F:Templates.Extensions.Moles.SInnerExtension.ProcessDataObjectObject">
+            <summary>Sets the stub of <see cref="M:Templates.AbstractTemplate.ProcessData(System.Object,System.Object)"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.SInnerExtension.CallBase">
+            <summary>Gets or sets a value that indicates if the base method should be called instead of the fallback behavior</summary>
+        </member>
+        <member name="P:Templates.Extensions.Moles.SInnerExtension.InstanceBehavior">
+            <summary>Gets or sets the instance behavior.</summary>
+        </member>
+        <member name="T:Templates.Core.Moles.SReflectionHelper">
+            <summary>Stub type of <see cref="T:Templates.Core.ReflectionHelper"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.SReflectionHelper.#ctor(System.Object)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.SReflectionHelper.#ctor(System.Type)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.SReflectionHelper.InitializeStub">
+            <summary>Initializes a new instance of type SReflectionHelper</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.SReflectionHelper.CallBase">
+            <summary>Gets or sets a value that indicates if the base method should be called instead of the fallback behavior</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.SReflectionHelper.InstanceBehavior">
+            <summary>Gets or sets the instance behavior.</summary>
+        </member>
+        <member name="T:Templates.Core.Moles.SSmartArray`1">
+            <summary>Stub type of <see cref="T:Templates.Core.SmartArray`1"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.SSmartArray`1.#ctor">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.SSmartArray`1.#ctor(`0[])">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.SSmartArray`1.InitializeStub">
+            <summary>Initializes a new instance of type SSmartArray</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.SSmartArray`1.CallBase">
+            <summary>Gets or sets a value that indicates if the base method should be called instead of the fallback behavior</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.SSmartArray`1.InstanceBehavior">
+            <summary>Gets or sets the instance behavior.</summary>
+        </member>
+        <member name="T:Templates.Moles.STemplate">
+            <summary>Stub type of <see cref="T:Templates.Template"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Moles.STemplate.#ctor(Templates.Core.CompileContext)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Moles.STemplate.#ctor(Templates.Core.FastString,Templates.Core.CompileContext)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Moles.STemplate.#ctor(System.String,Templates.Core.CompileContext)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Moles.STemplate.InitializeStub">
+            <summary>Initializes a new instance of type STemplate</summary>
+        </member>
+        <member name="P:Templates.Moles.STemplate.CallBase">
+            <summary>Gets or sets a value that indicates if the base method should be called instead of the fallback behavior</summary>
+        </member>
+        <member name="P:Templates.Moles.STemplate.InstanceBehavior">
+            <summary>Gets or sets the instance behavior.</summary>
+        </member>
+        <member name="T:Templates.Exceptions.Moles.STemplateCompileException">
+            <summary>Stub type of <see cref="T:Templates.Exceptions.TemplateCompileException"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateCompileException.#ctor">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateCompileException.#ctor(System.String)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateCompileException.#ctor(System.String,System.Exception)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateCompileException.#ctor(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateCompileException.InitializeStub">
+            <summary>Initializes a new instance of type STemplateCompileException</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.STemplateCompileException.CallBase">
+            <summary>Gets or sets a value that indicates if the base method should be called instead of the fallback behavior</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.STemplateCompileException.InstanceBehavior">
+            <summary>Gets or sets the instance behavior.</summary>
+        </member>
+        <member name="T:Templates.Exceptions.Moles.STemplateCreateException">
+            <summary>Stub type of <see cref="T:Templates.Exceptions.TemplateCreateException"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateCreateException.#ctor">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateCreateException.#ctor(System.String)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateCreateException.#ctor(System.String,System.Exception)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateCreateException.#ctor(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateCreateException.InitializeStub">
+            <summary>Initializes a new instance of type STemplateCreateException</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.STemplateCreateException.CallBase">
+            <summary>Gets or sets a value that indicates if the base method should be called instead of the fallback behavior</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.STemplateCreateException.InstanceBehavior">
+            <summary>Gets or sets the instance behavior.</summary>
+        </member>
+        <member name="T:Templates.Exceptions.Moles.STemplateFileException">
+            <summary>Stub type of <see cref="T:Templates.Exceptions.TemplateFileException"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateFileException.#ctor">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateFileException.#ctor(System.String)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateFileException.#ctor(System.String,System.Exception)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateFileException.#ctor(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateFileException.InitializeStub">
+            <summary>Initializes a new instance of type STemplateFileException</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.STemplateFileException.CallBase">
+            <summary>Gets or sets a value that indicates if the base method should be called instead of the fallback behavior</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.STemplateFileException.InstanceBehavior">
+            <summary>Gets or sets the instance behavior.</summary>
+        </member>
+        <member name="T:Templates.Exceptions.Moles.STemplateInitException">
+            <summary>Stub type of <see cref="T:Templates.Exceptions.TemplateInitException"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateInitException.#ctor">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateInitException.#ctor(System.String)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateInitException.#ctor(System.String,System.Exception)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateInitException.#ctor(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateInitException.#ctor(System.String,System.Exception,Templates.Core.Position)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateInitException.GetObjectData(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)">
+            <summary>Sets the stub of <see cref="M:Templates.Exceptions.TemplateInitException.GetObjectData(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)"/>
+            </summary>
+        </member>
+        <member name="F:Templates.Exceptions.Moles.STemplateInitException.GetObjectDataSerializationInfoStreamingContext">
+            <summary>Sets the stub of <see cref="M:Templates.Exceptions.TemplateInitException.GetObjectData(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateInitException.InitializeStub">
+            <summary>Initializes a new instance of type STemplateInitException</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.STemplateInitException.CallBase">
+            <summary>Gets or sets a value that indicates if the base method should be called instead of the fallback behavior</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.STemplateInitException.InstanceBehavior">
+            <summary>Gets or sets the instance behavior.</summary>
+        </member>
+        <member name="T:Templates.Core.Moles.STemplateOptions">
+            <summary>Stub type of <see cref="T:Templates.Core.TemplateOptions"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.STemplateOptions.#ctor">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Core.Moles.STemplateOptions.GetHashCode">
+            <summary>Sets the stub of <see cref="M:Templates.Core.TemplateOptions.GetHashCode"/>
+            </summary>
+        </member>
+        <member name="F:Templates.Core.Moles.STemplateOptions.GetHashCode01">
+            <summary>Sets the stub of <see cref="M:Templates.Core.TemplateOptions.GetHashCode"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Core.Moles.STemplateOptions.InitializeStub">
+            <summary>Initializes a new instance of type STemplateOptions</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.STemplateOptions.CallBase">
+            <summary>Gets or sets a value that indicates if the base method should be called instead of the fallback behavior</summary>
+        </member>
+        <member name="P:Templates.Core.Moles.STemplateOptions.InstanceBehavior">
+            <summary>Gets or sets the instance behavior.</summary>
+        </member>
+        <member name="T:Templates.Exceptions.Moles.STemplateParseException">
+            <summary>Stub type of <see cref="T:Templates.Exceptions.TemplateParseException"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateParseException.#ctor">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateParseException.#ctor(System.String)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateParseException.#ctor(System.String,System.Exception)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateParseException.#ctor(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateParseException.InitializeStub">
+            <summary>Initializes a new instance of type STemplateParseException</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.STemplateParseException.CallBase">
+            <summary>Gets or sets a value that indicates if the base method should be called instead of the fallback behavior</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.STemplateParseException.InstanceBehavior">
+            <summary>Gets or sets the instance behavior.</summary>
+        </member>
+        <member name="T:Templates.Exceptions.Moles.STemplateProcessingException">
+            <summary>Stub type of <see cref="T:Templates.Exceptions.TemplateProcessingException"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateProcessingException.#ctor">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateProcessingException.#ctor(System.String)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateProcessingException.#ctor(System.String,System.Exception)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateProcessingException.#ctor(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Exceptions.Moles.STemplateProcessingException.InitializeStub">
+            <summary>Initializes a new instance of type STemplateProcessingException</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.STemplateProcessingException.CallBase">
+            <summary>Gets or sets a value that indicates if the base method should be called instead of the fallback behavior</summary>
+        </member>
+        <member name="P:Templates.Exceptions.Moles.STemplateProcessingException.InstanceBehavior">
+            <summary>Gets or sets the instance behavior.</summary>
+        </member>
+        <member name="T:Templates.Attributes.Moles.STypeAttribute">
+            <summary>Stub type of <see cref="T:Templates.Attributes.TypeAttribute"/>
+            .</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.STypeAttribute.#ctor(System.Type)">
+            <summary>Initializes a new instance</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.STypeAttribute.Equals(System.Object)">
+            <summary>Sets the stub of <see cref="M:System.Attribute.Equals(System.Object)"/>
+            </summary>
+        </member>
+        <member name="F:Templates.Attributes.Moles.STypeAttribute.EqualsObject">
+            <summary>Sets the stub of <see cref="M:System.Attribute.Equals(System.Object)"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.STypeAttribute.GetHashCode">
+            <summary>Sets the stub of <see cref="M:System.Attribute.GetHashCode"/>
+            </summary>
+        </member>
+        <member name="F:Templates.Attributes.Moles.STypeAttribute.GetHashCode01">
+            <summary>Sets the stub of <see cref="M:System.Attribute.GetHashCode"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.STypeAttribute.InitializeStub">
+            <summary>Initializes a new instance of type STypeAttribute</summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.STypeAttribute.IsDefaultAttribute">
+            <summary>Sets the stub of <see cref="M:System.Attribute.IsDefaultAttribute"/>
+            </summary>
+        </member>
+        <member name="F:Templates.Attributes.Moles.STypeAttribute.IsDefaultAttribute01">
+            <summary>Sets the stub of <see cref="M:System.Attribute.IsDefaultAttribute"/>
+            </summary>
+        </member>
+        <member name="M:Templates.Attributes.Moles.STypeAttribute.Match(System.Object)">
+            <summary>Sets the stub of <see cref="M:System.Attribute.Match(System.Object)"/>
+            </summary>
+        </member>
+        <member name="F:Templates.Attributes.Moles.STypeAttribute.MatchObject">
+            <summary>Sets the stub of <see cref="M:System.Attribute.Match(System.Object)"/>
+            </summary>
+        </member>
+        <member name="F:Templates.Attributes.Moles.STypeAttribute.TypeIdGet">
+            <summary>Sets the stub of <see cref="P:System.Attribute.TypeId"/>
+            </summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.STypeAttribute.CallBase">
+            <summary>Gets or sets a value that indicates if the base method should be called instead of the fallback behavior</summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.STypeAttribute.InstanceBehavior">
+            <summary>Gets or sets the instance behavior.</summary>
+        </member>
+        <member name="P:Templates.Attributes.Moles.STypeAttribute.TypeId">
+            <summary>Sets the stub of <see cref="P:System.Attribute.TypeId"/>
+            </summary>
+        </member>
+    </members>
+</doc>
