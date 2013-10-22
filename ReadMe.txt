@@ -1,4 +1,4 @@
-﻿Copyright (c) 2012 Aliaksandr Kukrash
+﻿Copyright (c) 2012-2013 Aliaksandr Kukrash
 Text Templating Language
 v2.0
 
