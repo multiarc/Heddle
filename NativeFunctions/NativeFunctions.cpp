@@ -1,6 +1,6 @@
 // This is the main DLL file.
 
-#include "stdafx.h"
+#include "Stdafx.h"
 
 #include "NativeFunctions.h"
 

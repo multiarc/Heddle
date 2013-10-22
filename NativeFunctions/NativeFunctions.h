@@ -5,8 +5,6 @@
 using namespace System;
 using namespace System::Reflection;
 
-#include <memory.h>
-#include <wchar.h>
 #define uint unsigned int
 #define byte unsigned char
 

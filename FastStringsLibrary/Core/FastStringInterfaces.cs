@@ -78,6 +78,7 @@ namespace FastStrings.Core {
             return Convert.ToChar(ToString(), provider);
         }
 
+        [CLSCompliant(false)]
         public sbyte ToSByte (IFormatProvider provider)
         {
             return Convert.ToSByte(ToString(), provider);
@@ -93,6 +94,7 @@ namespace FastStrings.Core {
             return Convert.ToInt16(ToString(), provider);
         }
 
+        [CLSCompliant(false)]
         public ushort ToUInt16 (IFormatProvider provider)
         {
             return Convert.ToUInt16(ToString(), provider);
@@ -103,6 +105,7 @@ namespace FastStrings.Core {
             return Convert.ToInt32(ToString(), provider);
         }
 
+        [CLSCompliant(false)]
         public uint ToUInt32 (IFormatProvider provider)
         {
             return Convert.ToUInt32(ToString(), provider);
@@ -113,6 +116,7 @@ namespace FastStrings.Core {
             return Convert.ToInt64(ToString(), provider);
         }
 
+        [CLSCompliant(false)]
         public ulong ToUInt64 (IFormatProvider provider)
         {
             return Convert.ToUInt64(ToString(), provider);

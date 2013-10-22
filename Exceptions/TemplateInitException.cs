@@ -18,8 +18,7 @@ namespace Templates.Exceptions {
             : base(message, inner)
         {
         }
-
-        public TemplateInitException (string message, Exception inner, Position position)
+        public TemplateInitException(string message, Exception inner, Position position)
             : base(message, inner)
         {
             Position = position;

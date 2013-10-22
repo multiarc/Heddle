@@ -1,5 +1,4 @@
 ﻿using System;
-
 namespace FastStrings.Core {
     /// <summary>
     /// Represents posision of the template string to replace
