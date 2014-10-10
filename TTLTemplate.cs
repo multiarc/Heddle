@@ -7,7 +7,7 @@ namespace Templates {
     /// <summary>
     /// Use this class to operate with engine, parse source template, make replace with data and generate result string.
     /// </summary>
-    public class TTLTemplate: IDisposable {
+    public class TtlTemplate: IDisposable {
         private const int FileCheckDelay = 5000; //seconds
         private readonly ManualResetEvent _allFinihed = new ManualResetEvent(true);
         private readonly CompileContext _context;
@@ -21,7 +21,7 @@ namespace Templates {
         private DocumentParser _parser;
         private int _pasersInprocessing;
 
-        public TTLTemplate (CompileContext context, bool enableFileChangeCheck = true)
+        public TtlTemplate (CompileContext context, bool enableFileChangeCheck = true)
         {
             if (context == null)
                 throw new ArgumentNullException("context");
@@ -56,7 +56,7 @@ namespace Templates {
             }
         }
 
-        public TTLTemplate (string document, CompileContext context)
+        public TtlTemplate (string document, CompileContext context)
         {
             if (context == null)
                 throw new ArgumentNullException("context");
@@ -82,7 +82,7 @@ namespace Templates {
 
         #endregion
 
-        ~TTLTemplate ()
+        ~TtlTemplate ()
         {
             if (_timer != null)
                 _timer.Dispose();

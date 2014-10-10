@@ -5,7 +5,7 @@ using Templates.Core.CompilerServices;
 
 namespace Templates {
     public abstract class AbstractExtension: IExtension {
-        protected TTLTemplate InnerTTLTemplate;
+        protected TtlTemplate InnerTTLTemplate;
         private bool _directRender;
 
         private string _innerResult = string.Empty;
@@ -32,7 +32,7 @@ namespace Templates {
             if (string.IsNullOrEmpty(parameter))
                 InnerTTLTemplate = null;
             else {
-                InnerTTLTemplate = new TTLTemplate(parameter, new CompileContext(context, additionalType));
+                InnerTTLTemplate = new TtlTemplate(parameter, new CompileContext(context, additionalType));
                 _innerResult = InnerTTLTemplate.Cached;
                 if (!string.IsNullOrEmpty(_innerResult))
                     InnerTTLTemplate = null;

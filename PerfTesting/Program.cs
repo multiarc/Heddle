@@ -44,32 +44,32 @@ namespace PerfTesting {
                 list.Add(DataFiller.FillData());
             _watcher = new Stopwatch();
             /*JIT*/
-            var test = new TTLTemplate
+            var test = new TtlTemplate
                 (new CompileContext
                      (new TemplateOptions
                      {
                          TemplateName = "template",
-                         FileNamePostfix = ".html",
-                         RootPath = @"D:\Tmp"
+                         FileNamePostfix = ".ttl",
+                         RootPath = @"G:\Work\Templater\PerfTesting\TestTemplates"
                      }));
             test.GenerateString(list.FirstOrDefault());
             test.Dispose();
             /*END JIT*/
             _watcher.Start();
-            var target = new TTLTemplate
+            var target = new TtlTemplate
                 (new CompileContext
                      (new TemplateOptions
                      {
                          TemplateName = "template",
-                         FileNamePostfix = ".html",
-                         RootPath = @"D:\Tmp"
+                         FileNamePostfix = ".ttl",
+                         RootPath = @"G:\Work\Templater\PerfTesting\TestTemplates"
                      }));
             _watcher.Stop();
             Console.WriteLine("Compile time: {0}", _watcher.Elapsed);
             _watcher.Reset();
             _lengthGenerated = 0;
             _watcher.Start();
-            long length = list.AsParallel().Sum(item => (long) target.GenerateString(item).Length);
+            long length = list.Sum(item => (long) target.GenerateString(item).Length);
             _watcher.Stop();
             test.Dispose();
             Console.WriteLine("{0} run times: {1}", _n, _watcher.Elapsed);

@@ -75,7 +75,7 @@ namespace UnitTesting {
             Type type = typeof (string);
             var target = new AttributeSet(type);
             ReadOnlyCollection<Attribute> actual = target.AllAttributes;
-            Assert.IsTrue(actual.Count == 3);
+            Assert.IsTrue(actual.Count == 4);
         }
 
         [TestMethod]
@@ -84,7 +84,7 @@ namespace UnitTesting {
             Type type = typeof (string);
             var target = new AttributeSet(type);
             ReadOnlyCollection<Attribute> actual = target.AllAttributes;
-            Assert.IsTrue(actual.Count == 3);
+            Assert.IsTrue(actual.Count == 4);
             target = new AttributeSet(type.GetCustomAttributes(false));
             ReadOnlyCollection<Attribute> expected = target.AllAttributes;
             for (int i = 0; i < 0; i++)

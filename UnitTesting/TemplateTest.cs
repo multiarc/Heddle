@@ -11,7 +11,7 @@ using Templates.Core.Data;
 namespace UnitTesting {
     [TestClass]
     public class TemplateTest {
-        private TTLTemplate _target;
+        private TtlTemplate _target;
 
         public TestContext TestContext
         {
@@ -24,11 +24,11 @@ namespace UnitTesting {
         {
             var options = new TemplateOptions
             {
-                FileNamePostfix = ".html",
-                RootPath = @"D:\tmp",
-                TemplateName = "template_unit_test"
+                FileNamePostfix = ".ttl",
+                RootPath = @"G:\Work\Templater\UnitTesting\TestTemplate",
+                TemplateName = "template"
             };
-            _target = new TTLTemplate(new CompileContext(options));
+            _target = new TtlTemplate(new CompileContext(options));
         }
 
         [TestMethod]
@@ -76,7 +76,7 @@ namespace UnitTesting {
                 Guid = Guid.Parse("{3E55A9AF-0031-4C54-B836-527EAB26867B}"),
                 Text = "SOME TEXT"
             };
-            StreamReader reader = File.OpenText(@"d:\Tmp\generated.html");
+            StreamReader reader = File.OpenText(@"g:\Work\Templater\UnitTesting\TestTemplate\generated.html");
             FastString expected = reader.ReadToEnd();
             reader.Close();
             FastString actual = _target.GenerateString(data);

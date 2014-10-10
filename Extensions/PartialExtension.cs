@@ -27,7 +27,7 @@ namespace Templates.Extensions {
                 if (context.Options.TemplateName == templateName)
                     throw new TemplateCreateException("Cannot initialize partial template of template itself.");
                 if (!string.IsNullOrEmpty(templateName))
-                    InnerTTLTemplate = new TTLTemplate(new CompileContext(context, dataType, templateName), false);
+                    InnerTTLTemplate = new TtlTemplate(new CompileContext(context, dataType, templateName), false);
             }
             return typeof (string);
         }

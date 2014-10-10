@@ -28,8 +28,8 @@ namespace UnitTesting.TemplateTests {
                 ("partial", typeof (TestListItem), null, new CompileContext
                                                              (new TemplateOptions
                                                              {
-                                                                 FileNamePostfix = ".html",
-                                                                 RootPath = @"D:\Tmp",
+                                                                 FileNamePostfix = ".ttl",
+                                                                 RootPath = @"G:\Work\Templater\UnitTesting\TestTemplate",
                                                                  TemplateName = "root"
                                                              }));
             var value = new TestListItem

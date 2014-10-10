@@ -168,7 +168,7 @@ namespace Templates.Core.CompilerServices {
                                     (sytaxParser.ResultExtensions, sytaxParser.ResultAdditionalDataName, sytaxParser.ResultDataName, _context);
                                 element.Position = new Position(startIndex, token.StartIndex - seed + token.Length - startIndex);
 
-                                //Means extension can don't not render or accept/return any data, so it can be skiped from processing list
+                                //Means extension can't render or accept/return any data, so it can be skiped from processing list
                                 if (element.TemplateBlock.RenderType != null)
                                     _elements.Add(element);
                                 else

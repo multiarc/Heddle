@@ -161,6 +161,7 @@
     <Compile Include="TemplateTests\TrueTemplateTest.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="packages.config" />
     <None Include="TestTemplate\partial.ttl" />
     <None Include="TestTemplate\template.ttl" />
   </ItemGroup>

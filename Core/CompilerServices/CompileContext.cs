@@ -85,8 +85,8 @@ namespace Templates.Core.CompilerServices {
         {
             get
             {
-                return (from CodeNamespaceImport ns in _data.Ns.Imports
-                        select ns.Namespace).ToList().AsReadOnly();
+                var list = _data.Ns.Imports.Cast<CodeNamespaceImport>().Select(ns => ns.Namespace).ToList();
+                return list.AsReadOnly();
             }
         }
 
