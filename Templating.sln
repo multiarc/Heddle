@@ -30,6 +30,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{C4CF38
 		.nuget\packages.config = .nuget\packages.config
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RazorTemplateTest", "RazorTemplateTest\RazorTemplateTest.csproj", "{4A73654C-C7E9-44B4-BA23-C491869BB827}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -139,6 +141,7 @@ Global
 		{A38AD252-2E08-4A53-947A-E773C0409D0B}.Release|x86.ActiveCfg = Release|x86
 		{A38AD252-2E08-4A53-947A-E773C0409D0B}.Release|x86.Build.0 = Release|x86
 		{835592EE-26CD-435F-B9B3-72C63A5193C4}.Debug|Any CPU.ActiveCfg = Debug|Win32
+		{835592EE-26CD-435F-B9B3-72C63A5193C4}.Debug|Any CPU.Build.0 = Debug|Win32
 		{835592EE-26CD-435F-B9B3-72C63A5193C4}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
 		{835592EE-26CD-435F-B9B3-72C63A5193C4}.Debug|Mixed Platforms.Build.0 = Debug|Win32
 		{835592EE-26CD-435F-B9B3-72C63A5193C4}.Debug|x64.ActiveCfg = Debug|x64
@@ -152,6 +155,22 @@ Global
 		{835592EE-26CD-435F-B9B3-72C63A5193C4}.Release|x64.Build.0 = Release|x64
 		{835592EE-26CD-435F-B9B3-72C63A5193C4}.Release|x86.ActiveCfg = Release|Win32
 		{835592EE-26CD-435F-B9B3-72C63A5193C4}.Release|x86.Build.0 = Release|Win32
+		{4A73654C-C7E9-44B4-BA23-C491869BB827}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4A73654C-C7E9-44B4-BA23-C491869BB827}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4A73654C-C7E9-44B4-BA23-C491869BB827}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{4A73654C-C7E9-44B4-BA23-C491869BB827}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{4A73654C-C7E9-44B4-BA23-C491869BB827}.Debug|x64.ActiveCfg = Debug|x64
+		{4A73654C-C7E9-44B4-BA23-C491869BB827}.Debug|x64.Build.0 = Debug|x64
+		{4A73654C-C7E9-44B4-BA23-C491869BB827}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{4A73654C-C7E9-44B4-BA23-C491869BB827}.Debug|x86.Build.0 = Debug|Any CPU
+		{4A73654C-C7E9-44B4-BA23-C491869BB827}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4A73654C-C7E9-44B4-BA23-C491869BB827}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4A73654C-C7E9-44B4-BA23-C491869BB827}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{4A73654C-C7E9-44B4-BA23-C491869BB827}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{4A73654C-C7E9-44B4-BA23-C491869BB827}.Release|x64.ActiveCfg = Release|x64
+		{4A73654C-C7E9-44B4-BA23-C491869BB827}.Release|x64.Build.0 = Release|x64
+		{4A73654C-C7E9-44B4-BA23-C491869BB827}.Release|x86.ActiveCfg = Release|Any CPU
+		{4A73654C-C7E9-44B4-BA23-C491869BB827}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

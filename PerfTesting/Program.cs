@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using FastStrings.Core;
 using Templates;
@@ -52,7 +53,8 @@ namespace PerfTesting {
                          FileNamePostfix = ".ttl",
                          RootPath = @"G:\Work\Templater\PerfTesting\TestTemplates"
                      }));
-            test.GenerateString(list.FirstOrDefault());
+            var testString = test.GenerateString(list.FirstOrDefault());
+            File.WriteAllText("test.html", testString);
             test.Dispose();
             /*END JIT*/
             _watcher.Start();

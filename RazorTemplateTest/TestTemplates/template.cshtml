@@ -1,0 +1,51 @@
+﻿@model RazorTemplateTest.TestDataStructure
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Привет!</title>
+</head>
+<body>
+    <table>
+        <tr>
+            <th>
+                Cost of something
+            </th>
+            <th>
+                Quantity of items
+            </th>
+            <th>
+                Name of something
+            </th>
+        </tr>
+        @foreach (var item in Model.Products) {
+            @RenderPartial(@"partial.cshtml", item)
+        }
+    </table>
+    <div>
+        Page Generated at
+        @Model.Date.ToShortTimeString()
+        on
+        @Model.Date.ToShortDateString()<br />
+        @if (Model.IsShow) {
+            <span style="color: aqua">Some fucking text</span>
+        }<br />
+        @if (!Model.IsShow) {
+            <span style="color: red">Don't show it</span>
+        }<br />
+        @if (Model.IsShow) {
+            @Model.Date.ToShortTimeString()
+        }<br />
+        @Model.Guid.ToString("X")<br />
+        @Model.Guid.ToString()<br />
+        @Model.FuckingInt.ToString()<br />
+        @Model.Text<br />
+        @@<br />
+        @@:
+        @Model.Date.AddDays(-1).ToShortDateString()
+        @foreach (var item in Model.Products.Where(i => i.Cost > 2000)) {
+            @RenderPartial(@"partial.cshtml", item)
+        }
+    </div>
+</body>
+</html>

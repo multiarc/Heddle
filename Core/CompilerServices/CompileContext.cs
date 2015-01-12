@@ -237,11 +237,11 @@ namespace Templates.Core.CompilerServices {
             public int MethodCount;
             public CodeNamespace Ns;
             public object ProxyCompiler;
-            public AppDomain ReservedCodeDomain;
+            public CodeTypeDeclaration Type;
 
+            public AppDomain ReservedCodeDomain;
             public IDictionary<string, Type> ReservedExtensions;
             public object ReservedProxyCompiler;
-            public CodeTypeDeclaration Type;
         }
 
         #endregion

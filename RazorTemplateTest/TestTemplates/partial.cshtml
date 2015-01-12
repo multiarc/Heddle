@@ -1,0 +1,8 @@
+﻿@using System.Globalization
+<tr>
+    <td>
+        @(((decimal)Model.Cost).ToString("c", new CultureInfo(Model.Locale)))
+    </td>
+    <td>@Model.Quantity</td>
+    <td>@Model.Name</td>
+</tr>

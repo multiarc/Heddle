@@ -21,7 +21,8 @@ namespace Templates.Extensions {
 
         protected override object ProcessDataInternal (object value, object additionalValue)
         {
-            if (_method != null && _method.UserData[StoredDataType.Method] != null) {
+            if (_method != null && _method.UserData[StoredDataType.Method] != null)
+            {
                 var caller = (DynamicMethodGateDelegate) _method.UserData[StoredDataType.Method];
                 return caller(value, additionalValue);
             }
