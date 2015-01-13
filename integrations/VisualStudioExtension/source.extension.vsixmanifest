@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
+  <Metadata>
+    <Identity Id="VisualStudioExtension..18244c29-f8cc-4d71-b8ce-b49173e0bed7" Version="1.0" Language="en-US" Publisher="Aliaksandr Kukrash" />
+    <DisplayName>VisualStudioExtension</DisplayName>
+    <Description xml:space="preserve">Text Template Language Support</Description>
+    <Tags>ASP .NET, HTML, VSIX, TTL, Performance</Tags>
+  </Metadata>
+  <Installation>
+    <InstallationTarget Id="Microsoft.VisualStudio.VWDExpress" Version="[12.0]" />
+  </Installation>
+  <Dependencies>
+    <Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" d:Source="Manual" Version="[4.5,)" />
+  </Dependencies>
+</PackageManifest>
