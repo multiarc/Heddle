@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
-using Templates.Core.Data;
+using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Language;

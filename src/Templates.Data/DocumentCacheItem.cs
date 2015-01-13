@@ -1,6 +1,6 @@
 using System;
 
-namespace Templates.Core.Data {
+namespace Templates.Data {
     public struct DocumentCacheItem: IEquatable<DocumentCacheItem> {
         private readonly string _document;
         public Type ModelType;

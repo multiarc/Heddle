@@ -1,4 +1,4 @@
-﻿using Templates.Core.Data;
+﻿using Templates.Data;
 
 namespace Templates.Runtime {
     internal static class ProcessorExtension {

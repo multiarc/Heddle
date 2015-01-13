@@ -110,7 +110,7 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <Reference Include="Westwind.RazorHosting">
-      <HintPath>..\packages\Westwind.RazorHosting.3.00\lib\net40\Westwind.RazorHosting.dll</HintPath>
+      <HintPath>..\..\src\packages\Westwind.RazorHosting.3.00\lib\net40\Westwind.RazorHosting.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -126,7 +126,7 @@
     <None Include="TestTemplates\template.cshtml" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\FastStringsLibrary\Templates.Strings.csproj">
+    <ProjectReference Include="..\..\src\Templates.Strings\Templates.Strings.csproj">
       <Project>{A38AD252-2E08-4A53-947A-E773C0409D0B}</Project>
       <Name>Templates.Strings</Name>
     </ProjectReference>

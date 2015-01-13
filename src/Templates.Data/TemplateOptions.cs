@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Templates.Core.Data {
+namespace Templates.Data {
     public struct TemplateOptions: IEquatable<TemplateOptions> {
         public string FileNamePostfix;
         public string RootPath;

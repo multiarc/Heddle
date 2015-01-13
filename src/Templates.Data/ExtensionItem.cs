@@ -1,4 +1,4 @@
-﻿namespace Templates.Core.Data {
+﻿namespace Templates.Data {
     public class ExtensionItem {
         public readonly string ExtensionName;
 

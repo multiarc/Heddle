@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Globalization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Templates.Data;
 using Templates.Runtime;
-using Templates.Core.Data;
 using Templates.Extensions;
 using Templates.Strings.Core;
 

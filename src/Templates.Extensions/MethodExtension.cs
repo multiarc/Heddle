@@ -2,7 +2,7 @@
 using System.CodeDom;
 using System.Text.RegularExpressions;
 using Templates.Attributes;
-using Templates.Core.Data;
+using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Runtime;

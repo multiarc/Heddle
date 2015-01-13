@@ -138,17 +138,17 @@
     <Compile Include="TestDataStructure.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\FastStringsLibrary\Templates.Strings.csproj">
-      <Project>{a38ad252-2e08-4a53-947a-e773c0409d0b}</Project>
-      <Name>Templates.Strings</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\src\NativeFunctions\NativeFunctions\NativeFunctions.vcxproj">
       <Project>{835592ee-26cd-435f-b9b3-72c63a5193c4}</Project>
       <Name>NativeFunctions</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\src\Templates.Core.Data\Templates.Core.Data.csproj">
+    <ProjectReference Include="..\..\src\Templates.Data\Templates.Data.csproj">
       <Project>{39C9221D-67B9-4A35-B074-896DF091DC12}</Project>
-      <Name>Templates.Core.Data</Name>
+      <Name>Templates.Data</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\Templates.Strings\Templates.Strings.csproj">
+      <Project>{A38AD252-2E08-4A53-947A-E773C0409D0B}</Project>
+      <Name>Templates.Strings</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\src\Templates\Templates.csproj">
       <Project>{FCCA75A7-9694-429F-9A41-FD1933464E85}</Project>

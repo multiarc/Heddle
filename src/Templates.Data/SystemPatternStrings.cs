@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Templates.Core.Data {
+namespace Templates.Data {
     /// <summary>
     /// System Template Configuration parser.Loads string defined in configuration file and creates apropriate objects as representation of configuration.
     /// </summary>

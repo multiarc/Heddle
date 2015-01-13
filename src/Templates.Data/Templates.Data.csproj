@@ -7,8 +7,8 @@
     <ProjectGuid>{39C9221D-67B9-4A35-B074-896DF091DC12}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Templates.Core.Data</RootNamespace>
-    <AssemblyName>Templates.Core.Data</AssemblyName>
+    <RootNamespace>Templates.Data</RootNamespace>
+    <AssemblyName>Templates.Data</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -94,7 +94,7 @@
     <Compile Include="TokenType.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\FastStringsLibrary\Templates.Strings.csproj">
+    <ProjectReference Include="..\Templates.Strings\Templates.Strings.csproj">
       <Project>{A38AD252-2E08-4A53-947A-E773C0409D0B}</Project>
       <Name>Templates.Strings</Name>
     </ProjectReference>

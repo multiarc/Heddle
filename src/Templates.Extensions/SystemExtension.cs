@@ -1,5 +1,5 @@
 ﻿using Templates.Attributes;
-using Templates.Core.Data;
+using Templates.Data;
 
 namespace Templates.Extensions {
     /// <summary>

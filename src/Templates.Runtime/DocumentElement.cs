@@ -1,4 +1,4 @@
-﻿using Templates.Core.Data;
+﻿using Templates.Data;
 using Templates.Strings.Core;
 
 namespace Templates.Runtime {

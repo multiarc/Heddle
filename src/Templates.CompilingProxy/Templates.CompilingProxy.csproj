@@ -8,8 +8,8 @@
     <ProjectGuid>{E414D2DE-5CC1-4D61-A027-4163E32F4025}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>CompilingProxy</RootNamespace>
-    <AssemblyName>CompilingProxy</AssemblyName>
+    <RootNamespace>Templates.CompilingProxy</RootNamespace>
+    <AssemblyName>Templates.CompilingProxy</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SccProjectName>
@@ -129,9 +129,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Templates.Core.Data\Templates.Core.Data.csproj">
+    <ProjectReference Include="..\Templates.Data\Templates.Data.csproj">
       <Project>{39C9221D-67B9-4A35-B074-896DF091DC12}</Project>
-      <Name>Templates.Core.Data</Name>
+      <Name>Templates.Data</Name>
     </ProjectReference>
     <ProjectReference Include="..\Templates.Helpers\Templates.Helpers.csproj">
       <Project>{2BDEF3DD-5527-48A9-8D63-C257076587B4}</Project>

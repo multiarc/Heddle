@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Globalization;
 using System.IO;
-using Templates.Core.Data;
+using Templates.Data;
 using Templates.Exceptions;
 
 namespace Templates {

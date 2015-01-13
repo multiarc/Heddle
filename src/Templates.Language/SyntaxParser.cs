@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using Templates.Core.Data;
+using Templates.Data;
 using Templates.Exceptions;
 using Templates.Strings.Core;
 

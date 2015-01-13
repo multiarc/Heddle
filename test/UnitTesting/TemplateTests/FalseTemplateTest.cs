@@ -1,5 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Templates.Core.Data;
+using Templates.Data;
 using Templates.Extensions;
 using Templates.Runtime;
 using Templates.Strings.Core;

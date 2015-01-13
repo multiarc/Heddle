@@ -91,13 +91,13 @@
     <Compile Include="TemplateProcessingException.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\FastStringsLibrary\Templates.Strings.csproj">
+    <None Include="exceptions.snk" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Templates.Strings\Templates.Strings.csproj">
       <Project>{A38AD252-2E08-4A53-947A-E773C0409D0B}</Project>
       <Name>Templates.Strings</Name>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="exceptions.snk" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -4,7 +4,7 @@ using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Templates.Core.Data;
+using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Strings.Core;
@@ -12,7 +12,7 @@ using Templates.Strings.Core;
 namespace Templates.Runtime {
     public class CompileContext: IDisposable {
         private const string TypeName = "Generated";
-        private const string ProxyAssembly = "CompilingProxy, Version=1.0.0.0, Culture=neutral, PublicKeyToken=144ba7f33aad5b85";
+        private const string ProxyAssembly = "Templates.CompilingProxy, Version=1.0.0.0, Culture=neutral, PublicKeyToken=144ba7f33aad5b85";
         private readonly int _encloseLevel;
 
         private DataWrapper _data;
@@ -141,7 +141,7 @@ namespace Templates.Runtime {
             }
             _data.Extensions = new Dictionary<string, Type>();
             _data.CodeDomain = AppDomain.CreateDomain(Options.TemplateName ?? "");
-            _data.ProxyCompiler = _data.CodeDomain.CreateInstanceAndUnwrap(ProxyAssembly, "CompilingProxy.Compiler");
+            _data.ProxyCompiler = _data.CodeDomain.CreateInstanceAndUnwrap(ProxyAssembly, "Templates.CompilingProxy.Compiler");
         }
 
         public void RevertBack ()

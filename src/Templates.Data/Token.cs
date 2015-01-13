@@ -1,4 +1,4 @@
-﻿namespace Templates.Core.Data {
+﻿namespace Templates.Data {
     /// <summary>
     /// Lexer's token
     /// </summary>

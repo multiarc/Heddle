@@ -88,17 +88,17 @@
     <Compile Include="SyntaxParser.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\FastStringsLibrary\Templates.Strings.csproj">
-      <Project>{A38AD252-2E08-4A53-947A-E773C0409D0B}</Project>
-      <Name>Templates.Strings</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Templates.Core.Data\Templates.Core.Data.csproj">
-      <Project>{39c9221d-67b9-4a35-b074-896df091dc12}</Project>
-      <Name>Templates.Core.Data</Name>
+    <ProjectReference Include="..\Templates.Data\Templates.Data.csproj">
+      <Project>{39C9221D-67B9-4A35-B074-896DF091DC12}</Project>
+      <Name>Templates.Data</Name>
     </ProjectReference>
     <ProjectReference Include="..\Templates.Exceptions\Templates.Exceptions.csproj">
       <Project>{AA3DE8FC-784A-469D-A4DE-6E81D7020844}</Project>
       <Name>Templates.Exceptions</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Templates.Strings\Templates.Strings.csproj">
+      <Project>{A38AD252-2E08-4A53-947A-E773C0409D0B}</Project>
+      <Name>Templates.Strings</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

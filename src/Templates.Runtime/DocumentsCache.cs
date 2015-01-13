@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using Templates.Core.Data;
+using Templates.Data;
 
 namespace Templates.Runtime {
     public static class DocumentsCache {

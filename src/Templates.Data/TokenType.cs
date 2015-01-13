@@ -1,4 +1,4 @@
-namespace Templates.Core.Data {
+namespace Templates.Data {
     public enum TokenType {
         StartTtl,
         EndTtl,

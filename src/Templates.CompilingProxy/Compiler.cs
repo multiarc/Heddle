@@ -6,11 +6,11 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using Microsoft.CSharp;
-using Templates.Core.Data;
+using Templates.Data;
 using Templates.Helpers;
 using Templates.Runtime;
 
-namespace CompilingProxy {
+namespace Templates.CompilingProxy {
     [Serializable]
     internal class Compiler {
         public CompilerResults Compile (CodeCompileUnit compileUnit, CodeTypeDeclaration type, CodeNamespace ns)

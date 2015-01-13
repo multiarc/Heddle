@@ -1,4 +1,4 @@
-namespace Templates.Core.Data {
+namespace Templates.Data {
     /// <summary>
     /// States of Sytax parser
     /// </summary>

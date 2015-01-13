@@ -4,8 +4,8 @@ using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Templates;
+using Templates.Data;
 using Templates.Runtime;
-using Templates.Core.Data;
 using Templates.Strings.Core;
 
 namespace UnitTesting {

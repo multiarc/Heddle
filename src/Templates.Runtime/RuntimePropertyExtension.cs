@@ -1,5 +1,5 @@
 ﻿using System.Reflection;
-using Templates.Core.Data;
+using Templates.Data;
 
 namespace Templates.Runtime {
     public static class RuntimePropertyExtension {

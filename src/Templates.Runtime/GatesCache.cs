@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
-using Templates.Core.Data;
+using Templates.Data;
 
 namespace Templates.Runtime {
     internal static class GatesCache {

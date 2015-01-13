@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Templates.Core.Data;
+using Templates.Data;
 
 namespace Templates.Language {
     /// <summary>
