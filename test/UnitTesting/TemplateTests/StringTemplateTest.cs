@@ -26,14 +26,14 @@ namespace UnitTesting.TemplateTests {
         {
             _target.InitializeInnerTemplate("", typeof (string), null, new CompileContext(new TemplateOptions()));
             string value = "fdsfasdfdasf";
-            FastString expected = value;
-            FastString actual = _target.ProcessData(value, null).ToString();
+            ExString expected = value;
+            ExString actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
             value = "";
             expected = value;
             actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
-            expected = FastString.Empty;
+            expected = ExString.Empty;
             actual = _target.ProcessData(null, null).ToString();
             Assert.AreEqual(expected, actual);
             _target.InitializeInnerTemplate("<%Str%>=<%Num%>", typeof (string), typeof (TestData), new CompileContext(new TemplateOptions()));

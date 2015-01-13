@@ -26,12 +26,12 @@ namespace UnitTesting {
             return result;
         }
 
-        private static FastString GenerateStringEx (int len)
+        private static ExString GenerateStringEx (int len)
         {
             string result = string.Empty;
             for (int i = 0; i < len; i++)
                 result += (char) _rnd.Next(30, 0x100);
-            return new FastString(result);
+            return new ExString(result);
         }
 
         [TestInitialize]
@@ -46,10 +46,10 @@ namespace UnitTesting {
         public void FastStringConstructorTest ()
         {
             string value = GenerateString(_rnd.Next(1, 100));
-            var target = new FastString(value);
+            var target = new ExString(value);
             Assert.AreEqual(value, target.ToString());
             value = string.Empty;
-            target = new FastString(value);
+            target = new ExString(value);
             Assert.AreEqual(value, target.ToString());
         }
 
@@ -59,10 +59,10 @@ namespace UnitTesting {
             var value = new StringBuilder();
             value.Append(GenerateString(_rnd.Next(1, 100)));
             value.Append(GenerateString(_rnd.Next(1, 100)));
-            var target = new FastString(value);
+            var target = new ExString(value);
             Assert.AreEqual(target.ToString(), value.ToString());
             value = new StringBuilder();
-            target = new FastString(value);
+            target = new ExString(value);
             Assert.AreEqual(target.ToString(), value.ToString());
         }
 
@@ -74,12 +74,12 @@ namespace UnitTesting {
             for (int i = 0; i < someValue.Length; i++)
                 value[i] = someValue[i];
             int length = someValue.Length;
-            var target = new FastString(value, length);
+            var target = new ExString(value, length);
             Assert.AreEqual(target.Length, someValue.Length);
             Assert.AreEqual(target.ToString(), new string(someValue));
             someValue = new char[0];
             length = someValue.Length;
-            target = new FastString(value, length);
+            target = new ExString(value, length);
             Assert.AreEqual(target.Length, someValue.Length);
             Assert.AreEqual(target.ToString(), new string(someValue));
         }
@@ -87,7 +87,7 @@ namespace UnitTesting {
         [TestMethod]
         public void FastStringConstructorTest3 ()
         {
-            var target = new FastString();
+            var target = new ExString();
             Assert.IsTrue(target.Length == 0);
             Assert.AreEqual(target.ToString(), string.Empty);
         }
@@ -96,11 +96,11 @@ namespace UnitTesting {
         public void FastStringConstructorTest4 ()
         {
             char[] value = GenerateString(_rnd.Next(1, 100)).ToCharArray();
-            var target = new FastString(value);
+            var target = new ExString(value);
             Assert.AreEqual((char[]) target, value);
             Assert.AreEqual(target.ToString(), new string(value));
             value = new char[0];
-            target = new FastString(value);
+            target = new ExString(value);
             Assert.AreEqual((char[]) target, value);
             Assert.AreEqual(target.ToString(), new string(value));
         }
@@ -109,28 +109,28 @@ namespace UnitTesting {
         public void AddTest ()
         {
             string one = GenerateString(_rnd.Next(1, 100));
-            FastString two = GenerateStringEx(_rnd.Next(1, 100));
-            var expected = new FastString(two.ToString() + one);
-            FastString actual = FastString.Add(one, two);
+            ExString two = GenerateStringEx(_rnd.Next(1, 100));
+            var expected = new ExString(two.ToString() + one);
+            ExString actual = ExString.Add(one, two);
             Assert.AreEqual(expected, actual);
             one = string.Empty;
             two = GenerateStringEx(_rnd.Next(1, 100));
-            actual = FastString.Add(one, two);
-            expected = new FastString(two.ToString() + one);
+            actual = ExString.Add(one, two);
+            expected = new ExString(two.ToString() + one);
             Assert.AreEqual(expected, actual);
             one = GenerateString(_rnd.Next(1, 100));
-            two = FastString.Empty;
-            actual = FastString.Add(one, two);
-            expected = new FastString(two.ToString() + one);
+            two = ExString.Empty;
+            actual = ExString.Add(one, two);
+            expected = new ExString(two.ToString() + one);
             Assert.AreEqual(expected, actual);
             one = string.Empty;
-            two = FastString.Empty;
-            actual = FastString.Add(one, two);
-            expected = new FastString(two.ToString() + one);
+            two = ExString.Empty;
+            actual = ExString.Add(one, two);
+            expected = new ExString(two.ToString() + one);
             Assert.AreEqual(expected, actual);
-            two = FastString.Empty;
-            actual = FastString.Add((string) null, two);
-            expected = new FastString(null + two.ToString());
+            two = ExString.Empty;
+            actual = ExString.Add((string) null, two);
+            expected = new ExString(null + two.ToString());
             Assert.AreEqual(expected, actual);
         }
 
@@ -138,52 +138,52 @@ namespace UnitTesting {
         public void AddTest1 ()
         {
             string one = GenerateString(_rnd.Next(1, 100));
-            FastString two = GenerateStringEx(_rnd.Next(1, 100));
-            var expected = new FastString(two.ToString() + one);
-            FastString actual = FastString.Add(two, one);
+            ExString two = GenerateStringEx(_rnd.Next(1, 100));
+            var expected = new ExString(two.ToString() + one);
+            ExString actual = ExString.Add(two, one);
             Assert.AreEqual(expected, actual);
             one = GenerateString(_rnd.Next(1, 100));
-            two = FastString.Empty;
-            actual = FastString.Add(two, one);
-            expected = new FastString(two.ToString() + one);
+            two = ExString.Empty;
+            actual = ExString.Add(two, one);
+            expected = new ExString(two.ToString() + one);
             Assert.AreEqual(expected, actual);
             one = string.Empty;
             two = GenerateStringEx(_rnd.Next(1, 100));
-            actual = FastString.Add(two, one);
-            expected = new FastString(two.ToString() + one);
+            actual = ExString.Add(two, one);
+            expected = new ExString(two.ToString() + one);
             Assert.AreEqual(expected, actual);
             one = string.Empty;
-            two = FastString.Empty;
-            actual = FastString.Add(two, one);
-            expected = new FastString(two.ToString() + one);
+            two = ExString.Empty;
+            actual = ExString.Add(two, one);
+            expected = new ExString(two.ToString() + one);
             Assert.AreEqual(expected, actual);
-            two = FastString.Empty;
-            actual = FastString.Add(two, (string) null);
-            expected = new FastString(two.ToString() + null);
+            two = ExString.Empty;
+            actual = ExString.Add(two, (string) null);
+            expected = new ExString(two.ToString() + null);
             Assert.AreEqual(expected, actual);
         }
 
         [TestMethod]
         public void AddTest2 ()
         {
-            FastString one = GenerateStringEx(_rnd.Next(1, 100));
-            FastString two = GenerateStringEx(_rnd.Next(1, 100));
-            var expected = new FastString(two.ToString() + one.ToString());
-            FastString actual = FastString.Add(two, one);
+            ExString one = GenerateStringEx(_rnd.Next(1, 100));
+            ExString two = GenerateStringEx(_rnd.Next(1, 100));
+            var expected = new ExString(two.ToString() + one.ToString());
+            ExString actual = ExString.Add(two, one);
             Assert.AreEqual(expected, actual);
             one = GenerateString(_rnd.Next(1, 100));
-            two = FastString.Empty;
-            actual = FastString.Add(two, one);
-            expected = new FastString(two.ToString() + one.ToString());
+            two = ExString.Empty;
+            actual = ExString.Add(two, one);
+            expected = new ExString(two.ToString() + one.ToString());
             Assert.AreEqual(expected, actual);
             one = string.Empty;
             two = GenerateStringEx(_rnd.Next(1, 100));
-            actual = FastString.Add(two, one);
-            expected = new FastString(two.ToString() + one.ToString());
+            actual = ExString.Add(two, one);
+            expected = new ExString(two.ToString() + one.ToString());
             Assert.AreEqual(expected, actual);
-            two = FastString.Empty;
-            actual = FastString.Add(two, (string) null);
-            expected = new FastString(two.ToString() + null);
+            two = ExString.Empty;
+            actual = ExString.Add(two, (string) null);
+            expected = new ExString(two.ToString() + null);
             Assert.AreEqual(expected, actual);
         }
 
@@ -191,88 +191,88 @@ namespace UnitTesting {
         public void ConcatTest ()
         {
             const int count = 100;
-            var strings = new FastString[count];
+            var strings = new ExString[count];
             for (int i = 0; i < count; i++)
                 strings[i] = GenerateStringEx(_rnd.Next(0, 100));
             string expected = string.Concat(strings.Select(s => (string) s).ToArray());
-            string actual = FastString.Concat(strings).ToString();
+            string actual = ExString.Concat(strings).ToString();
             Assert.AreEqual(expected, actual);
-            strings = new FastString[count];
+            strings = new ExString[count];
             for (int i = 0; i < count - 1; i++)
                 strings[i] = GenerateStringEx(_rnd.Next(0, 100));
             strings[count - 1] = null;
             expected = string.Concat(strings.Select(s => (string) s).ToArray());
-            actual = FastString.Concat(strings).ToString();
+            actual = ExString.Concat(strings).ToString();
             Assert.AreEqual(expected, actual);
-            Assert.AreEqual(string.Empty, FastString.Concat(null).ToString());
+            Assert.AreEqual(string.Empty, ExString.Concat(null).ToString());
         }
 
         [TestMethod]
         public void ConcatTest1 ()
         {
-            FastString one = GenerateStringEx(_rnd.Next(1, 100));
+            ExString one = GenerateStringEx(_rnd.Next(1, 100));
             string two = GenerateString(_rnd.Next(1, 100));
             string expected = one.ToString() + two;
-            string actual = FastString.Concat(one, two).ToString();
+            string actual = ExString.Concat(one, two).ToString();
             Assert.AreEqual(expected, actual);
-            one = FastString.Empty;
+            one = ExString.Empty;
             two = GenerateString(_rnd.Next(1, 100));
             expected = one.ToString() + two;
-            actual = FastString.Concat(one, two);
+            actual = ExString.Concat(one, two);
             Assert.AreEqual(expected, actual);
             one = GenerateStringEx(_rnd.Next(1, 100));
             two = string.Empty;
             expected = one.ToString() + two;
-            actual = FastString.Concat(one, two).ToString();
+            actual = ExString.Concat(one, two).ToString();
             Assert.AreEqual(expected, actual);
-            one = FastString.Empty;
+            one = ExString.Empty;
             two = string.Empty;
             expected = one.ToString() + two;
-            actual = FastString.Concat(one, two).ToString();
+            actual = ExString.Concat(one, two).ToString();
             Assert.AreEqual(expected, actual);
             expected = (string) null + null;
-            actual = FastString.Concat(one, (string) null).ToString();
+            actual = ExString.Concat(one, (string) null).ToString();
             Assert.AreEqual(expected, actual);
         }
 
         [TestMethod]
         public void ConcatTest2 ()
         {
-            FastString one = GenerateStringEx(_rnd.Next(1, 100));
-            FastString two = GenerateStringEx(_rnd.Next(1, 100));
-            FastString three = GenerateStringEx(_rnd.Next(1, 100));
+            ExString one = GenerateStringEx(_rnd.Next(1, 100));
+            ExString two = GenerateStringEx(_rnd.Next(1, 100));
+            ExString three = GenerateStringEx(_rnd.Next(1, 100));
             string expected = one.ToString() + two.ToString() + three.ToString();
-            string actual = FastString.Concat(one, two, three);
+            string actual = ExString.Concat(one, two, three);
             Assert.AreEqual(expected, actual);
             one = GenerateStringEx(_rnd.Next(1, 100));
-            two = FastString.Empty;
+            two = ExString.Empty;
             expected = one.ToString() + two.ToString() + null;
-            actual = FastString.Concat(one, two, null).ToString();
+            actual = ExString.Concat(one, two, null).ToString();
             Assert.AreEqual(expected, actual);
         }
 
         [TestMethod]
         public void ConcatTest3 ()
         {
-            FastString one = GenerateStringEx(_rnd.Next(1, 100));
-            FastString two = GenerateStringEx(_rnd.Next(1, 100));
+            ExString one = GenerateStringEx(_rnd.Next(1, 100));
+            ExString two = GenerateStringEx(_rnd.Next(1, 100));
             string expected = one.ToString() + two.ToString();
-            string actual = FastString.Concat(one, two);
+            string actual = ExString.Concat(one, two);
             Assert.AreEqual(expected, actual);
-            one = FastString.Empty;
+            one = ExString.Empty;
             two = GenerateStringEx(_rnd.Next(1, 100));
             expected = one.ToString() + two.ToString();
-            actual = FastString.Concat(one, two).ToString();
+            actual = ExString.Concat(one, two).ToString();
             Assert.AreEqual(expected, actual);
             one = GenerateStringEx(_rnd.Next(1, 100));
-            two = FastString.Empty;
+            two = ExString.Empty;
             expected = one.ToString() + two.ToString();
-            actual = FastString.Concat(one, two).ToString();
+            actual = ExString.Concat(one, two).ToString();
             Assert.AreEqual(expected, actual);
-            one = FastString.Empty;
-            two = FastString.Empty;
+            one = ExString.Empty;
+            two = ExString.Empty;
             expected = one.ToString() + two.ToString();
-            actual = FastString.Concat(one, two).ToString();
+            actual = ExString.Concat(one, two).ToString();
             Assert.AreEqual(expected, actual);
         }
 
@@ -280,94 +280,94 @@ namespace UnitTesting {
         public void ConcatTest4 ()
         {
             const int count = 100;
-            var strings = new List<FastString>();
+            var strings = new List<ExString>();
             for (int i = 0; i < count; i++)
                 strings.Add(GenerateStringEx(_rnd.Next(0, 100)));
             string expected = string.Concat(strings.Select(s => (string) s));
-            string actual = FastString.Concat(strings);
+            string actual = ExString.Concat(strings);
             Assert.AreEqual(expected, actual);
-            Assert.AreEqual(string.Empty, FastString.Concat((IEnumerable<FastString>) null).ToString());
+            Assert.AreEqual(string.Empty, ExString.Concat((IEnumerable<ExString>) null).ToString());
         }
 
         [TestMethod]
         public void EqualsTest ()
         {
             string one = string.Empty;
-            bool actual = FastString.Equals(one, null);
+            bool actual = ExString.Equals(one, null);
             Assert.AreEqual(false, actual);
             one = string.Empty;
-            FastString another = FastString.Empty;
-            actual = FastString.Equals(one, another);
+            ExString another = ExString.Empty;
+            actual = ExString.Equals(one, another);
             Assert.AreEqual(true, actual);
             one = GenerateString(_rnd.Next(1, 100));
-            another = new FastString(one);
-            actual = FastString.Equals(one, another);
+            another = new ExString(one);
+            actual = ExString.Equals(one, another);
             Assert.AreEqual(true, actual);
-            actual = FastString.Equals((string) null, null);
+            actual = ExString.Equals((string) null, null);
             Assert.AreEqual(true, actual);
         }
 
         [TestMethod]
         public void EqualsTest1 ()
         {
-            FastString one = GenerateStringEx(_rnd.Next(1, 100));
-            var another = (FastString) one.Clone();
-            bool actual = FastString.Equals(one, another);
+            ExString one = GenerateStringEx(_rnd.Next(1, 100));
+            var another = (ExString) one.Clone();
+            bool actual = ExString.Equals(one, another);
             Assert.AreEqual(true, actual);
-            one = FastString.Empty;
-            another = FastString.Empty;
-            actual = FastString.Equals(one, another);
+            one = ExString.Empty;
+            another = ExString.Empty;
+            actual = ExString.Equals(one, another);
             Assert.AreEqual(true, actual);
-            actual = FastString.Equals((FastString) null, null);
+            actual = ExString.Equals((ExString) null, null);
             Assert.AreEqual(true, actual);
-            another = FastString.Empty;
-            actual = FastString.Equals((FastString) null, another);
+            another = ExString.Empty;
+            actual = ExString.Equals((ExString) null, another);
             Assert.AreEqual(false, actual);
         }
 
         [TestMethod]
         public void IncrementTest ()
         {
-            FastString value = GenerateStringEx(_rnd.Next(1, 100));
+            ExString value = GenerateStringEx(_rnd.Next(1, 100));
             string expected = value.ToString() + value.ToString();
-            string actual = FastString.Increment(value).ToString();
+            string actual = ExString.Increment(value).ToString();
             Assert.AreEqual(expected, actual);
-            value = FastString.Empty;
+            value = ExString.Empty;
             expected = value.ToString() + value.ToString();
-            actual = FastString.Increment(value).ToString();
+            actual = ExString.Increment(value).ToString();
             Assert.AreEqual(expected, actual);
-            Assert.AreEqual(FastString.Increment(null), FastString.Empty);
+            Assert.AreEqual(ExString.Increment(null), ExString.Empty);
         }
 
         [TestMethod]
         public void IsNullOrEmptyTest ()
         {
-            bool actual = FastString.IsNullOrEmpty(null);
+            bool actual = ExString.IsNullOrEmpty(null);
             Assert.AreEqual(true, actual);
-            FastString value = FastString.Empty;
-            actual = FastString.IsNullOrEmpty(value);
+            ExString value = ExString.Empty;
+            actual = ExString.IsNullOrEmpty(value);
             Assert.AreEqual(true, actual);
             value = GenerateStringEx(_rnd.Next(1, 100));
-            actual = FastString.IsNullOrEmpty(value);
+            actual = ExString.IsNullOrEmpty(value);
             Assert.AreEqual(false, actual);
             value = " ";
-            actual = FastString.IsNullOrEmpty(value);
+            actual = ExString.IsNullOrEmpty(value);
             Assert.AreEqual(false, actual);
         }
 
         [TestMethod]
         public void IsNullOrWhiteSpaceTest ()
         {
-            bool actual = FastString.IsNullOrWhiteSpace(null);
+            bool actual = ExString.IsNullOrWhiteSpace(null);
             Assert.AreEqual(true, actual);
-            FastString value = FastString.Empty;
-            actual = FastString.IsNullOrWhiteSpace(value);
+            ExString value = ExString.Empty;
+            actual = ExString.IsNullOrWhiteSpace(value);
             Assert.AreEqual(true, actual);
             value = " \r\n\t \n\r\t \t\r\n \t\n\r \r\t\n ";
-            actual = FastString.IsNullOrWhiteSpace(value);
+            actual = ExString.IsNullOrWhiteSpace(value);
             Assert.AreEqual(true, actual);
             value = GenerateStringEx(_rnd.Next(1, 100));
-            actual = FastString.IsNullOrWhiteSpace(value);
+            actual = ExString.IsNullOrWhiteSpace(value);
             Assert.AreEqual(false, actual);
         }
 
@@ -377,7 +377,7 @@ namespace UnitTesting {
             string source = "aabaabccaab ab b aacb aab";
             string find = "aab";
             string replace = "xyz";
-            FastString target = source;
+            ExString target = source;
             string expected = source.Replace(find, replace);
             string actual = target.Replace(find, replace);
             Assert.AreEqual(expected, actual);
@@ -386,16 +386,16 @@ namespace UnitTesting {
         [TestMethod]
         public void EmptyTest ()
         {
-            Assert.AreEqual(string.Empty, FastString.Empty.ToString());
+            Assert.AreEqual(string.Empty, ExString.Empty.ToString());
         }
 
         [TestMethod]
         public void ConcatTest5 ()
         {
-            FastString one = GenerateStringEx(_rnd.Next(100, 1000));
+            ExString one = GenerateStringEx(_rnd.Next(100, 1000));
             char two = one[50];
             string expected = one + two;
-            string actual = FastString.Concat(one, two);
+            string actual = ExString.Concat(one, two);
             Assert.AreEqual(expected, actual);
         }
     }

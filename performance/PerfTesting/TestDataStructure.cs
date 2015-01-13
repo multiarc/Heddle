@@ -35,6 +35,23 @@ namespace PerfTesting {
             get;
             set;
         }
+
+        public bool Duplicate { get; set; }
+
+        public TestListItem Inner
+        {
+            get
+            {
+                return new TestListItem
+                {
+                    Cost = Cost,
+                    Duplicate = false,
+                    Locale = Locale,
+                    Name = Name + "DUP",
+                    Quantity = Quantity
+                };
+            }
+        }
     }
 
     internal class TestDataStructure {

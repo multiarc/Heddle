@@ -7,7 +7,7 @@ namespace Templates {
     /// Use this class to operate with engine, parse source template, make replace with data and generate result string.
     /// </summary>
     public class TtlTemplate: IDisposable {
-        private const int FileCheckDelay = 5000; //seconds
+        private const int FileCheckDelay = 5000; //milliseconds
         private readonly ManualResetEvent _allFinihed = new ManualResetEvent(true);
         private readonly CompileContext _context;
         private readonly bool _enableFileChangeCheck;
@@ -20,7 +20,7 @@ namespace Templates {
         private DocumentParser _parser;
         private int _pasersInprocessing;
 
-        public TtlTemplate (CompileContext context, bool enableFileChangeCheck = true)
+        public TtlTemplate (CompileContext context, bool enableFileChangeCheck = false)
         {
             if (context == null)
                 throw new ArgumentNullException("context");
@@ -69,14 +69,20 @@ namespace Templates {
             get { return _parser.Cached; }
         }
 
+        private bool _disposing;
+
         #region IDisposable Members
 
         public void Dispose ()
         {
-            if (_parser != null)
-                _parser.Dispose();
-            if (_context != null)
-                _context.Dispose();
+            if (!_disposing)
+            {
+                _disposing = true;
+                if (_parser != null)
+                    _parser.Dispose();
+                if (_context != null)
+                    _context.Dispose();
+            }
         }
 
         #endregion
@@ -140,12 +146,13 @@ namespace Templates {
                     if (!string.IsNullOrWhiteSpace(document)) {
                         try {
                             _context.ResetContext();
-                            var newParser = new DocumentParser(document, _context);
+                            var newParser = new DocumentParser(_context);
                             newParser.Completed += ParserDone;
                             Lock();
                             _allFinihed.WaitOne();
                             DocumentsCache.UpdateCaches(newParser, _parser.Document, _initialType, _context.Options.RootPath);
                             _parser = newParser;
+                            _parser.Parse(document);
                             _context.Commit();
                             Unlock();
                         }

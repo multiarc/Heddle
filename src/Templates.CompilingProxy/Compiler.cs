@@ -7,8 +7,10 @@ using System.Reflection;
 using System.Reflection.Emit;
 using Microsoft.CSharp;
 using Templates.Data;
+using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Runtime;
+using Templates.Strings.Core;
 
 namespace Templates.CompilingProxy {
     [Serializable]
@@ -24,6 +26,15 @@ namespace Templates.CompilingProxy {
                 GenerateInMemory = true
             };
             CompilerResults results = codeProvider.CompileAssemblyFromDom(parameters, compileUnit);
+            if (results.Errors.HasErrors)
+            {
+                ExStringBuilder textBuilder = new ExStringBuilder();
+                foreach (CompilerError error in results.Errors)
+                {
+                    textBuilder.Append("[{0}]{1}({2})", error.ErrorNumber, error.ErrorText, error.Line);
+                }
+                throw new TemplateCompileException(textBuilder.ToString());
+            }
 
             foreach (CodeTypeMember member in type.Members) {
                 if (member.GetType().IsType<CodeMemberMethod>()) {

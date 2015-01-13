@@ -17,7 +17,7 @@ namespace Templates.Language {
         private const string Identifier = "Identifier";
         private const string UnexpectedParameter = "Extension Parameter string didn't expected [{0}]";
         private readonly Stack<ExtensionItem> _currentExtensionsStack;
-        private readonly FastStringBuilder _currentParameter;
+        private readonly ExStringBuilder _currentParameter;
         private readonly List<ExtensionItem> _resultExtensions;
         private readonly Stack<Token> _stack;
         private string _currentExtension;
@@ -29,7 +29,7 @@ namespace Templates.Language {
             _stack = new Stack<Token>();
             _currentExtensionsStack = new Stack<ExtensionItem>();
             _resultExtensions = new List<ExtensionItem>();
-            _currentParameter = new FastStringBuilder();
+            _currentParameter = new ExStringBuilder();
             ResetState();
         }
 

@@ -288,6 +288,9 @@ Global
 		{39C9221D-67B9-4A35-B074-896DF091DC12} = {DCB9F91C-846A-4B80-97CF-BF89023F8965}
 		{A38AD252-2E08-4A53-947A-E773C0409D0B} = {DCB9F91C-846A-4B80-97CF-BF89023F8965}
 	EndGlobalSection
+	GlobalSection(Performance) = preSolution
+		HasPerformanceSessions = true
+	EndGlobalSection
 	GlobalSection(TestCaseManagementSettings) = postSolution
 		CategoryFile = Templating.vsmdi
 	EndGlobalSection

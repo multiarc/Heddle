@@ -4,13 +4,13 @@ using System.Globalization;
 using NativeFunctions;
 
 namespace Templates.Strings.Core {
-    public sealed partial class FastString: IComparable, ICloneable, IConvertible, IEnumerable, IEquatable<string>, IEquatable<FastString>,
+    public sealed partial class ExString: IComparable, ICloneable, IConvertible, IEnumerable, IEquatable<string>, IEquatable<ExString>,
                                             IEquatable<char[]> {
         #region ICloneable Members
 
         public object Clone ()
         {
-            return new FastString(_data, _length);
+            return new ExString(_data, _length);
         }
 
         #endregion
@@ -19,7 +19,7 @@ namespace Templates.Strings.Core {
 
         public int CompareTo (object obj)
         {
-            var fastString = obj as FastString;
+            var fastString = obj as ExString;
             int lenOne = _length;
             if (fastString != null) {
                 int lenTwo = fastString._length;
@@ -156,7 +156,7 @@ namespace Templates.Strings.Core {
 
             if (conversionType == typeof (string))
                 return ToString(provider);
-            if (conversionType == typeof (FastString))
+            if (conversionType == typeof (ExString))
                 return this;
             if (conversionType == typeof (DateTime))
                 return ToDateTime(provider);
@@ -230,7 +230,7 @@ namespace Templates.Strings.Core {
 
         #region IEquatable<FastString> Members
 
-        public bool Equals (FastString other)
+        public bool Equals (ExString other)
         {
             if (ReferenceEquals(null, other))
                 return false;

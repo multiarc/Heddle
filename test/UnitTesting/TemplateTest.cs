@@ -77,9 +77,9 @@ namespace UnitTesting {
                 Text = "SOME TEXT"
             };
             StreamReader reader = File.OpenText(@"g:\Work\Templater\UnitTesting\TestTemplate\generated.html");
-            FastString expected = reader.ReadToEnd();
+            ExString expected = reader.ReadToEnd();
             reader.Close();
-            FastString actual = _target.GenerateString(data);
+            ExString actual = _target.GenerateString(data);
             //var writer = File.CreateText(@"d:\Tmp\generated.html");
             //writer.Write((string)actual);
             //writer.Close();

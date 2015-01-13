@@ -27,8 +27,8 @@ namespace UnitTesting.TemplateTests {
         {
             _target.InitializeInnerTemplate("X", typeof (Guid), null, new CompileContext(new TemplateOptions()));
             Guid value = Guid.NewGuid();
-            FastString expected = value.ToString("X");
-            FastString actual = _target.ProcessData(value, null).ToString();
+            ExString expected = value.ToString("X");
+            ExString actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
             _target.InitializeInnerTemplate("<%GuidFormat%>", typeof (Guid), typeof (TestData), new CompileContext(new TemplateOptions()));
             value = Guid.NewGuid();

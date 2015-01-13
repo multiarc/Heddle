@@ -17,6 +17,30 @@ namespace Templates.Helpers {
 
         private readonly Type _innerType;
 
+        private static readonly Dictionary<string, Type> CSharpTypes;
+
+        static ReflectionHelper()
+        {
+            CSharpTypes = new Dictionary<string, Type>(StringComparer.Ordinal)
+            {
+                {"bool", typeof (bool)},
+                {"byte", typeof (byte)},
+                {"sbyte", typeof (sbyte)},
+                {"char", typeof (char)},
+                {"decimal", typeof (decimal)},
+                {"double", typeof (double)},
+                {"float", typeof (float)},
+                {"int", typeof (int)},
+                {"uint", typeof (uint)},
+                {"long", typeof (long)},
+                {"ulong", typeof (ulong)},
+                {"object", typeof (object)},
+                {"short", typeof (short)},
+                {"ushort", typeof (ushort)},
+                {"string", typeof (string)}
+            };
+        }
+
         public ReflectionHelper (Type innerType)
         {
             if (innerType == null)
@@ -91,12 +115,24 @@ namespace Templates.Helpers {
                 (T) _innerType.InvokeMember(methodName, BindingFlags.InvokeMethod | BindingFlags.Instance | BindingFlags.Public, null, o, parameters);
         }
 
+        private static Type ResolveCsharpType(string typeName)
+        {
+            Type result;
+            if (CSharpTypes.TryGetValue(typeName, out result))
+            {
+                return result;
+            }
+            return null;
+        }
+
         private static Type ResolveSimpleType (string typeName, IEnumerable<string> imports)
         {
             if (string.IsNullOrWhiteSpace(typeName))
                 throw new ArgumentException();
-
-            Type modelType = Type.GetType(typeName, false);
+            Type modelType = ResolveCsharpType(typeName);
+            if (modelType != null)
+                return modelType;
+            modelType = Type.GetType(typeName, false);
             if (modelType == null) {
                 Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
                 foreach (Assembly assembly in assemblies) {
@@ -117,7 +153,7 @@ namespace Templates.Helpers {
             throw new TemplateCompileException(string.Format(CultureInfo.InvariantCulture, "Couldn't resolve type [{0}]", typeName));
         }
 
-        public static Type ResolveType (string typeName, IEnumerable<string> imports)
+        public static Type ResolveType (string typeName, params string[] imports)
         {
             if (imports == null)
                 throw new ArgumentNullException("imports");
@@ -126,8 +162,9 @@ namespace Templates.Helpers {
                 throw new ArgumentException();
 
             Match match = GenericExpression.Match(typeName);
-            if (match.Success) {
-                string[] importsArray = imports.ToArray();
+            if (match.Success)
+            {
+                string[] importsArray = imports;
                 string[] genericParameters = match.Groups["generic_parameters"].Value.Split(',');
                 Type modelType = ResolveSimpleType(match.Groups["main_type"].Value + "`" + genericParameters.Length, importsArray);
                 modelType = modelType.MakeGenericType(genericParameters.Select(parameter => ResolveSimpleType(parameter, importsArray)).ToArray());

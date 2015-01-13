@@ -4,36 +4,36 @@ using NativeFunctions;
 namespace Templates.Strings.Core {
     public sealed class MutableString: IEquatable<MutableString> {
         private static readonly MutableString EmptyString = new MutableString();
-        public readonly bool IsFastString;
+        public readonly bool IsExString;
 
         public readonly int Length;
-        private readonly FastString _fastValue;
+        private readonly ExString _exValue;
         private readonly string _value;
 
         public MutableString (string value)
         {
             if (value != null) {
                 _value = value;
-                IsFastString = false;
+                IsExString = false;
                 Length = value.Length;
             } else {
-                _fastValue = FastString.Empty;
-                IsFastString = true;
+                _exValue = ExString.Empty;
+                IsExString = true;
                 Length = 0;
             }
         }
 
-        public MutableString (FastString value)
+        public MutableString (ExString value)
         {
-            _fastValue = value ?? FastString.Empty;
-            IsFastString = true;
-            Length = _fastValue.Length;
+            _exValue = value ?? ExString.Empty;
+            IsExString = true;
+            Length = _exValue.Length;
         }
 
         public MutableString ()
         {
-            _fastValue = FastString.Empty;
-            IsFastString = true;
+            _exValue = ExString.Empty;
+            IsExString = true;
             Length = 0;
         }
 
@@ -46,16 +46,16 @@ namespace Templates.Strings.Core {
 
         public bool Equals (MutableString other)
         {
-            if (IsFastString)
-                return _fastValue.Equals((FastString) other);
+            if (IsExString)
+                return _exValue.Equals((ExString) other);
             return _value.Equals(other);
         }
 
         #endregion
 
-        public static implicit operator MutableString (FastString value)
+        public static implicit operator MutableString (ExString value)
         {
-            if (FastString.IsNullOrEmpty(value))
+            if (ExString.IsNullOrEmpty(value))
                 return EmptyString;
             return new MutableString(value);
         }
@@ -67,13 +67,13 @@ namespace Templates.Strings.Core {
             return new MutableString(value);
         }
 
-        public static implicit operator FastString (MutableString value)
+        public static implicit operator ExString (MutableString value)
         {
             if (ReferenceEquals(null, value))
                 return null;
 
-            if (value.IsFastString)
-                return value._fastValue;
+            if (value.IsExString)
+                return value._exValue;
             return value._value;
         }
 
@@ -82,15 +82,15 @@ namespace Templates.Strings.Core {
             if (ReferenceEquals(null, value))
                 return null;
 
-            if (value.IsFastString)
-                return value._fastValue;
+            if (value.IsExString)
+                return value._exValue;
             return value._value;
         }
 
         public MutableString Trim ()
         {
-            if (IsFastString)
-                return _fastValue.Trim();
+            if (IsExString)
+                return _exValue.Trim();
             return _value.Trim();
         }
 
@@ -104,8 +104,8 @@ namespace Templates.Strings.Core {
             int len = value == null ? 0 : value.Length;
             if (len > 0) {
                 unsafe {
-                    if (value.IsFastString) {
-                        fixed (char* data = (char[]) (FastString) value) {
+                    if (value.IsExString) {
+                        fixed (char* data = (char[]) (ExString) value) {
                             for (int i = 0; i < len; i++) {
                                 if (!StringNativeHelper.IsWhiteSpace(data[i]))
                                     return false;
@@ -140,29 +140,29 @@ namespace Templates.Strings.Core {
                 return true;
 
             if (!ReferenceEquals(null, one))
-                return one.IsFastString ? one._fastValue.Equals((FastString) other) : one._value.Equals(other);
-            return other.IsFastString ? other._fastValue.Equals((FastString) null) : other._value.Equals(null);
+                return one.IsExString ? one._exValue.Equals((ExString) other) : one._value.Equals(other);
+            return other.IsExString ? other._exValue.Equals((ExString) null) : other._value.Equals(null);
         }
 
         public override bool Equals (object obj)
         {
-            if (IsFastString)
-                return _fastValue.Equals(obj);
+            if (IsExString)
+                return _exValue.Equals(obj);
             return _value.Equals(obj);
         }
 
         public override int GetHashCode ()
         {
-            if (IsFastString)
-                return _fastValue.GetHashCode();
+            if (IsExString)
+                return _exValue.GetHashCode();
             return _value.GetHashCode();
         }
 
         public override string ToString ()
         {
-            if (IsFastString) {
+            if (IsExString) {
 // ReSharper disable SpecifyACultureInStringConversionExplicitly
-                return _fastValue.ToString();
+                return _exValue.ToString();
 // ReSharper restore SpecifyACultureInStringConversionExplicitly
             }
             return _value;

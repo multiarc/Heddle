@@ -41,7 +41,7 @@ namespace Templates.Extensions {
         {
             if (value == null)
                 return string.Empty;
-            var builder = new FastStringBuilder();
+            var builder = new ExStringBuilder();
             if (!(value is IEnumerable))
                 return string.Empty;
             var enumerable = (IEnumerable<object>) value;

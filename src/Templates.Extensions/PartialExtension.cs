@@ -24,10 +24,12 @@ namespace Templates.Extensions {
 
             if (!string.IsNullOrEmpty(parameter)) {
                 string templateName = parameter.Trim();
-                if (context.Options.TemplateName == templateName)
-                    throw new TemplateCreateException("Cannot initialize partial template of template itself.");
+                //if (context.Options.TemplateName == templateName)
+                //    throw new TemplateCreateException("Cannot initialize partial template of template itself.");
                 if (!string.IsNullOrEmpty(templateName))
-                    InnerTtlTemplate = new TtlTemplate(new CompileContext(context, dataType, templateName), false);
+                {
+                    context.AddDelayedCompileTemplate(new CompileContext(context, dataType, templateName), this);
+                }
             }
             return typeof (string);
         }

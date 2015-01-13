@@ -16,14 +16,15 @@ namespace Templates.Runtime {
                 ModelType = context.ModelType
             };
 
+            DocumentParser result;
             lock (Cache) {
-                DocumentParser result;
                 if (Cache.TryGetValue(itemToSearch, out result))
                     return result;
-                result = new DocumentParser(document, context);
+                result = new DocumentParser(context);
                 Cache.Add(itemToSearch, result);
-                return result;
             }
+            result.Parse(document);
+            return result;
         }
 
         public static void UpdateCaches (DocumentParser newParser, string document, Type modelType, string rootPath)

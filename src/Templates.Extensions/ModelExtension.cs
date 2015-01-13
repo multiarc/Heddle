@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Templates.Attributes;
 using Templates.Exceptions;
 using Templates.Helpers;
@@ -13,7 +14,7 @@ namespace Templates.Extensions {
                 throw new ArgumentNullException("context");
             if (!string.IsNullOrWhiteSpace(parameter)) {
                 try {
-                    Type modelType = ReflectionHelper.ResolveType(parameter, context.Namespaces);
+                    Type modelType = ReflectionHelper.ResolveType(parameter, context.Namespaces.ToArray());
                     if (modelType == null)
                         throw new TemplateInitException("Type cannot be determined. Please use Assembly Qualified Name.");
 

@@ -28,9 +28,9 @@ namespace UnitTesting.TemplateTests {
             _target.InitializeInnerTemplate(null, typeof (object), null, new CompileContext(new TemplateOptions()));
             DateTime value = DateTime.Now;
 // ReSharper disable SpecifyACultureInStringConversionExplicitly
-            FastString expected = value.ToString();
+            ExString expected = value.ToString();
 // ReSharper restore SpecifyACultureInStringConversionExplicitly
-            FastString actual = _target.ProcessData(value, null).ToString();
+            ExString actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
             const int value2 = 2;
 // ReSharper disable SpecifyACultureInStringConversionExplicitly

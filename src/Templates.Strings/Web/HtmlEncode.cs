@@ -43,12 +43,12 @@ namespace Templates.Strings.Web {
                     replacements.Add
                         (new Replacement
                         {
-                            Position = new Position(i, 1),
+                            BlockPosition = new BlockPosition(i, 1),
                             ReplacementValue = replacement
                         });
                 }
             }
-            return replacements.Length > 0 ? FastStringBuilder.BulkReplace(replacements, input) : input;
+            return replacements.Length > 0 ? ExStringBuilder.BulkReplace(replacements, input) : input;
         }
     }
 }

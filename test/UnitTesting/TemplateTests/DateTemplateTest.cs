@@ -28,8 +28,8 @@ namespace UnitTesting.TemplateTests {
         {
             _target.InitializeInnerTemplate(null, typeof (DateTime), null, new CompileContext(new TemplateOptions()));
             DateTime value = DateTime.Now;
-            FastString expected = value.ToString("d", CultureInfo.InvariantCulture);
-            FastString actual = _target.ProcessData(value, null).ToString();
+            ExString expected = value.ToString("d", CultureInfo.InvariantCulture);
+            ExString actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
             _target.InitializeInnerTemplate("d", typeof (DateTime), null, new CompileContext(new TemplateOptions()));
             value = DateTime.Now;

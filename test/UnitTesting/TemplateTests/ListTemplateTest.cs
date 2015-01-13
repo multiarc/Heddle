@@ -40,9 +40,9 @@ namespace UnitTesting.TemplateTests {
                         Str = "TEST DATA " + i.ToString(CultureInfo.InvariantCulture)
                     });
             }
-            FastString expected = value.Aggregate<TestListItem, FastString>
+            ExString expected = value.Aggregate<TestListItem, ExString>
                 ("", (current, item) => current + string.Format("{0}={1}", item.Str, item.Num));
-            FastString actual = _target.ProcessData(value, null).ToString();
+            ExString actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
             expected = "";
             actual = _target.ProcessData(null, null).ToString();

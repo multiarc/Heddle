@@ -14,7 +14,7 @@ namespace Templates.Runtime {
         /// <summary>
         /// Position in the source (start and end)
         /// </summary>
-        public Position Position;
+        public BlockPosition BlockPosition;
 
         public DocumentElement (PropertyGateDelegate data, PropertyGateDelegate additionalData)
         {

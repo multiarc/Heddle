@@ -25,8 +25,8 @@ namespace UnitTesting.TemplateTests {
         public void ProcessDataTest ()
         {
             _target.InitializeInnerTemplate("<tag></tag>", typeof (bool), null, new CompileContext(new TemplateOptions()));
-            FastString expected = "<tag></tag>";
-            FastString actual = _target.ProcessData(true, null).ToString();
+            ExString expected = "<tag></tag>";
+            ExString actual = _target.ProcessData(true, null).ToString();
             Assert.AreEqual(expected, actual);
             expected = "";
             actual = _target.ProcessData(false, null).ToString();

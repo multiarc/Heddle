@@ -27,8 +27,8 @@ namespace UnitTesting.TemplateTests {
         {
             _target.InitializeInnerTemplate("", typeof (int), null, new CompileContext(new TemplateOptions()));
             const int value = 160;
-            FastString expected = value.ToString(CultureInfo.InvariantCulture);
-            FastString actual = _target.ProcessData(value, null).ToString();
+            ExString expected = value.ToString(CultureInfo.InvariantCulture);
+            ExString actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
             _target.InitializeInnerTemplate("<%IntFormat%>", typeof (int), typeof (TestData), new CompileContext(new TemplateOptions()));
             var testData = new TestData

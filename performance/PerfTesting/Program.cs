@@ -51,7 +51,7 @@ namespace PerfTesting {
                      {
                          TemplateName = "template",
                          FileNamePostfix = ".ttl",
-                         RootPath = @"G:\Work\Templater\PerfTesting\TestTemplates"
+                         RootPath = @"g:\Work\Templater\performance\PerfTesting\TestTemplates"
                      }));
             var testString = test.GenerateString(list.FirstOrDefault());
             File.WriteAllText("test.html", testString);
@@ -64,7 +64,7 @@ namespace PerfTesting {
                      {
                          TemplateName = "template",
                          FileNamePostfix = ".ttl",
-                         RootPath = @"G:\Work\Templater\PerfTesting\TestTemplates"
+                         RootPath = @"g:\Work\Templater\performance\PerfTesting\TestTemplates"
                      }));
             _watcher.Stop();
             Console.WriteLine("Compile time: {0}", _watcher.Elapsed);

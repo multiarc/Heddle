@@ -25,8 +25,8 @@ namespace UnitTesting.TemplateTests {
         public void ProcessDataTest ()
         {
             _target.InitializeInnerTemplate("", null, null, new CompileContext(new TemplateOptions()));
-            FastString expected = "";
-            FastString actual = _target.ProcessData(null, null).ToString();
+            ExString expected = "";
+            ExString actual = _target.ProcessData(null, null).ToString();
             Assert.AreEqual(expected, actual);
             _target.InitializeInnerTemplate(@"[]/\", null, null, new CompileContext(new TemplateOptions()));
             expected = "{}%><%";

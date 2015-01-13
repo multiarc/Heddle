@@ -27,7 +27,8 @@ namespace PerfTesting {
                         Locale =
                             Rand.Next(0, 5) == 1
                                 ? "en-US"
-                                : Rand.Next(0, 5) == 2 ? "ru-ru" : Rand.Next(0, 5) == 3 ? "ar-SA" : Rand.Next(0, 5) == 4 ? "th-TH" : "zh-HK"
+                                : Rand.Next(0, 5) == 2 ? "ru-ru" : Rand.Next(0, 5) == 3 ? "ar-SA" : Rand.Next(0, 5) == 4 ? "th-TH" : "zh-HK",
+                        Duplicate = Rand.Next(1, 2) == 1
                     });
             }
             result.Products = products;

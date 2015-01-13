@@ -39,6 +39,11 @@ namespace Templates {
             return typeof (string);
         }
 
+        public void ParseInnerTemplate(CompileContext newContext)
+        {
+            InnerTtlTemplate = new TtlTemplate(newContext);
+        }
+
         #endregion
 
         protected string GetInnerResult (object data)
@@ -53,12 +58,18 @@ namespace Templates {
             return null;
         }
 
+        private bool _disposing;
+
         #region Implementation of IDisposable
 
         public void Dispose ()
         {
-            if (InnerTtlTemplate != null)
-                InnerTtlTemplate.Dispose();
+            if (!_disposing)
+            {
+                _disposing = true;
+                if (InnerTtlTemplate != null)
+                    InnerTtlTemplate.Dispose();
+            }
         }
 
         #endregion

@@ -6,7 +6,7 @@ namespace Templates.Strings.Core {
     /// </summary>
     [Serializable]
     public struct Replacement {
-        public Position Position;
+        public BlockPosition BlockPosition;
 
         /// <summary>
         /// Replacement string

@@ -61,7 +61,7 @@ namespace Templates {
 
         public bool GetIsModified ()
         {
-            return _lastModified < GetModifiedDate(GetFileName());
+            return _lastModified != GetModifiedDate(GetFileName());
         }
     }
 }

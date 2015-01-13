@@ -28,38 +28,5 @@
               <%<partial>[partial]%>
         ] %>
     </table>
-    <div>
-        Page Generated at
-        <%<time>Date%>
-        on
-        <%<date>Date%><br />
-        <%<true>IsShow[<span style="color: aqua">Some fucking text</span>] %><br />
-        <%<false>IsShow[<span style="color: red">Don't show it</span>] %><br />
-        <%<true>IsShow[<%<time>Date%>] %><br />
-        <%<guid>Guid[X]%><br />
-        <%<guid>Guid%><br />
-        <%<int>FuckingInt%><br />
-        <%<string>Text%><br />
-        <%<system>[\] %><br />
-        <%<system>[/] %><br />
-	<%<date:call>Date
-		[
-			DateTime(data)
-			{
-				return data.AddDays(-1);
-			}
-		]
-	%>
-	<%<list:call>Products
-        [
-		IEnumerable<TestListItem>(data)
-		{
-			return data.Where(i => i.Cost > 2000);
-		}
-	]
-        [
-              <%<partial>[partial]%>
-        ] %>
-    </div>
 </body>
 </html>

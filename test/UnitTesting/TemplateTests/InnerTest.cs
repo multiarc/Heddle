@@ -30,8 +30,8 @@ namespace UnitTesting.TemplateTests {
                 Num = 10,
                 Str = "TEST DATA"
             };
-            FastString expected = "TEST DATA=10";
-            FastString actual = _target.ProcessData(value, null).ToString();
+            ExString expected = "TEST DATA=10";
+            ExString actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
             expected = "";
             actual = _target.ProcessData(null, null).ToString();

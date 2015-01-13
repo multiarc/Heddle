@@ -27,8 +27,8 @@ namespace UnitTesting.TemplateTests {
         {
             _target.InitializeInnerTemplate("", typeof (decimal), null, new CompileContext(new TemplateOptions()));
             const decimal value = 98.25m;
-            FastString expected = value.ToString("c", CultureInfo.InvariantCulture);
-            FastString actual = _target.ProcessData(value, null).ToString();
+            ExString expected = value.ToString("c", CultureInfo.InvariantCulture);
+            ExString actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
             _target.InitializeInnerTemplate("en-us", typeof (decimal), null, new CompileContext(new TemplateOptions()));
             expected = value.ToString("c", new CultureInfo("en-us"));

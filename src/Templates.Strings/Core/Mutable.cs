@@ -3,11 +3,11 @@
         public static MutableString ToMutableString (this object value)
         {
             if (value == null)
-                return FastString.Empty;
+                return ExString.Empty;
             var mutableString = value as MutableString;
             if (mutableString != null)
                 return mutableString;
-            var fastString = value as FastString;
+            var fastString = value as ExString;
             if (fastString != null)
                 return fastString.ToMutableString();
             var s = value as string;
@@ -23,9 +23,9 @@
             return new MutableString(value);
         }
 
-        public static MutableString ToMutableString (this FastString value)
+        public static MutableString ToMutableString (this ExString value)
         {
-            if (FastString.IsNullOrEmpty(value))
+            if (ExString.IsNullOrEmpty(value))
                 return MutableString.Empty;
             return new MutableString(value);
         }
@@ -40,14 +40,14 @@
             return MutableString.IsNullOrWhiteSpace(value);
         }
 
-        public static bool IsNullOrEmpty (this FastString value)
+        public static bool IsNullOrEmpty (this ExString value)
         {
-            return FastString.IsNullOrEmpty(value);
+            return ExString.IsNullOrEmpty(value);
         }
 
-        public static bool IsNullOrWhiteSpace (this FastString value)
+        public static bool IsNullOrWhiteSpace (this ExString value)
         {
-            return FastString.IsNullOrWhiteSpace(value);
+            return ExString.IsNullOrWhiteSpace(value);
         }
 
         public static bool IsNullOrEmpty (this string value)

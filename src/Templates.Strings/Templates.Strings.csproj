@@ -135,13 +135,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Core\EnumerableExtension.cs" />
-    <Compile Include="Core\FastString.cs" />
-    <Compile Include="Core\FastStringAllocator.cs" />
-    <Compile Include="Core\FastStringBuilder.cs" />
+    <Compile Include="Core\ExString.cs" />
+    <Compile Include="Core\ExStringAllocator.cs" />
+    <Compile Include="Core\ExStringBuilder.cs" />
     <Compile Include="Core\FastStringInterfaces.cs" />
     <Compile Include="Core\MutableString.cs" />
     <Compile Include="Core\Mutable.cs" />
-    <Compile Include="Core\Position.cs" />
+    <Compile Include="Core\BlockPosition.cs" />
     <Compile Include="Core\Replacement.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Core\SmartList.cs" />

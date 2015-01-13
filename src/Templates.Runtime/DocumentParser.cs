@@ -29,7 +29,7 @@ namespace Templates.Runtime {
         //}
 
         private readonly CompileContext _context;
-        private readonly string _document;
+        private string _document;
         private readonly ThreadLocal<Replacement[]> _mtReplacements;
         public FinishedEventHandler Completed;
 
@@ -37,19 +37,13 @@ namespace Templates.Runtime {
         private SmartList<DocumentElement> _elements;
         private string _workingDocument;
 
-        public DocumentParser (string document, CompileContext context)
+        public DocumentParser (CompileContext context)
         {
-            if (string.IsNullOrWhiteSpace(document))
-                throw new ArgumentNullException("document");
             _mtReplacements = new ThreadLocal<Replacement[]>(MakeNewArray);
-
-            _document = document;
-            _workingDocument = document;
 
             //_data = new DataWrapper();
 
             _context = context;
-            Parse();
             //_data.OnUpdated += PerformUpdate;
             //PerformUpdate();
         }
@@ -73,7 +67,7 @@ namespace Templates.Runtime {
         {
             var replacements = new Replacement[_elements.Count];
             for (int i = 0; i < _elements.Count; i++)
-                replacements[i].Position = _elements[i].Position;
+                replacements[i].BlockPosition = _elements[i].BlockPosition;
             return replacements;
         }
 
@@ -115,7 +109,7 @@ namespace Templates.Runtime {
                 Replacement[] replacements = _mtReplacements.Value;
                 for (int i = 0; i < _elements.Count; i++)
                     replacements[i].ReplacementValue = _elements[i].TemplateBlock.ProcessData(data);
-                return FastStringBuilder.BulkReplace(replacements, _workingDocument);
+                return ExStringBuilder.BulkReplace(replacements, _workingDocument);
             }
             finally {
                 OnDone();
@@ -147,8 +141,12 @@ namespace Templates.Runtime {
         /// Performs parse of document and creates full templates cache and returns it
         /// </summary>
         /// <returns>Full template list found in source template</returns>
-        private void Parse ()
+        public void Parse (string document)
         {
+            if (string.IsNullOrWhiteSpace(document))
+                throw new ArgumentNullException("document");
+            _workingDocument = document;
+            _document = document;
             _elements = new SmartList<DocumentElement>();
             IEnumerable<Token> tokens = LexisParser.Tokenize(_workingDocument);
             var sytaxParser = new SyntaxParser();
@@ -167,7 +165,7 @@ namespace Templates.Runtime {
                             if (sytaxParser.State == State.SequenceEnd) {
                                 DocumentElement element = EntityCompiler.CompileElement
                                     (sytaxParser.ResultExtensions, sytaxParser.ResultAdditionalDataName, sytaxParser.ResultDataName, _context);
-                                element.Position = new Position(startIndex, token.StartIndex - seed + token.Length - startIndex);
+                                element.BlockPosition = new BlockPosition(startIndex, token.StartIndex - seed + token.Length - startIndex);
 
                                 //Means extension can't render or accept/return any data, so it can be skiped from processing list
                                 if (element.TemplateBlock.RenderType != null)
@@ -180,16 +178,16 @@ namespace Templates.Runtime {
                     }
                 }
                 catch (TemplateParseException e) {
-                    throw new TemplateInitException("Error upon parsing template", e, new Position(token.StartIndex, token.Length));
+                    throw new TemplateInitException("Error upon parsing template", e, new BlockPosition(token.StartIndex, token.Length));
                 }
                 catch (TemplateCompileException e) {
-                    throw new TemplateInitException("Error upon processing template", e, new Position(token.StartIndex, token.Length));
+                    throw new TemplateInitException("Error upon processing template", e, new BlockPosition(token.StartIndex, token.Length));
                 }
                 catch (ArgumentException e) {
-                    throw new TemplateInitException("Error upon processing template", e, new Position(token.StartIndex, token.Length));
+                    throw new TemplateInitException("Error upon processing template", e, new BlockPosition(token.StartIndex, token.Length));
                 }
                 catch (TemplateCreateException e) {
-                    throw new TemplateInitException("Error upon creating template", e, new Position(token.StartIndex, token.Length));
+                    throw new TemplateInitException("Error upon creating template", e, new BlockPosition(token.StartIndex, token.Length));
                 }
             }
             _context.Compile();
@@ -197,24 +195,24 @@ namespace Templates.Runtime {
 
         private static int ApplyRemove (DocumentElement element, ref string source)
         {
-            int removeStart = element.Position.StartIndex;
-            int removeLength = element.Position.Length;
-            if (element.Position.StartIndex > 0 && source[element.Position.StartIndex - 1] == '\n') {
+            int removeStart = element.BlockPosition.StartIndex;
+            int removeLength = element.BlockPosition.Length;
+            if (element.BlockPosition.StartIndex > 0 && source[element.BlockPosition.StartIndex - 1] == '\n') {
                 removeStart--;
                 removeLength++;
-                if (element.Position.StartIndex > 1 && source[element.Position.StartIndex - 2] == '\r') {
+                if (element.BlockPosition.StartIndex > 1 && source[element.BlockPosition.StartIndex - 2] == '\r') {
                     removeStart--;
                     removeLength++;
                 }
-            } else if (element.Position.StartIndex + element.Position.Length < source.Length
-                       && source[element.Position.StartIndex + element.Position.Length] == '\r') {
+            } else if (element.BlockPosition.StartIndex + element.BlockPosition.Length < source.Length
+                       && source[element.BlockPosition.StartIndex + element.BlockPosition.Length] == '\r') {
                 removeLength++;
-                if (element.Position.StartIndex + element.Position.Length + 1 < source.Length
-                    && source[element.Position.StartIndex + element.Position.Length + 1] == '\n')
+                if (element.BlockPosition.StartIndex + element.BlockPosition.Length + 1 < source.Length
+                    && source[element.BlockPosition.StartIndex + element.BlockPosition.Length + 1] == '\n')
                     removeLength++;
             }
 
-            source = FastStringBuilder.Replace(removeStart, removeLength, string.Empty, source);
+            source = ExStringBuilder.Replace(removeStart, removeLength, string.Empty, source);
             return removeLength;
         }
 
@@ -227,13 +225,20 @@ namespace Templates.Runtime {
 
         #endregion
 
+        private bool _disposing;
+
         #region Implementation of IDisposable
 
         public void Dispose ()
         {
-            if (_elements != null) {
-                foreach (DocumentElement element in _elements)
-                    element.TemplateBlock.Dispose();
+            if (!_disposing)
+            {
+                _disposing = true;
+                if (_elements != null)
+                {
+                    foreach (DocumentElement element in _elements)
+                        element.TemplateBlock.Dispose();
+                }
             }
         }
 

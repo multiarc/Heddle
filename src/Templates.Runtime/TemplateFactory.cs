@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
@@ -19,7 +20,7 @@ namespace Templates.Runtime {
     /// Template factory, initializes and creates all templates
     /// </summary>
     public static class TemplateFactory {
-        private static readonly Dictionary<string, Type> Templates = LoadTemplates();
+        private static readonly Dictionary<string, Type> Templates = LoadBaseTemplates();
 
         #region Public Methods
 
@@ -76,12 +77,12 @@ namespace Templates.Runtime {
         #region Helper Methods
 
         /// <summary>
-        /// Loads all templates in current Assembly
+        /// Loads all base templates
         /// </summary>
         /// <returns>List of all template types</returns>
-        private static Dictionary<string, Type> LoadTemplates ()
+        private static Dictionary<string, Type> LoadBaseTemplates ()
         {
-            return LoadTemplates(Assembly.GetExecutingAssembly());
+            return LoadTemplates(Assembly.Load(ConfigurationManager.AppSettings["BaseTemplatesAssembly"]));
         }
 
         /// <summary>

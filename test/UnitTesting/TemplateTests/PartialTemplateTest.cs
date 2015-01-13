@@ -39,8 +39,8 @@ namespace UnitTesting.TemplateTests {
                 Name = "xxx",
                 Quantity = 1050
             };
-            FastString expected = "<tr>\r\n    <td>$1,024.25</td>\r\n    <td>1050</td>\r\n    <td>xxx</td>\r\n</tr>";
-            FastString actual = _target.ProcessData(value, null).ToString();
+            ExString expected = "<tr>\r\n    <td>$1,024.25</td>\r\n    <td>1050</td>\r\n    <td>xxx</td>\r\n</tr>";
+            ExString actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
             expected = "";
             actual = _target.ProcessData(null, null).ToString();

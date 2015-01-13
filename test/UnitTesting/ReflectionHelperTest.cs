@@ -17,7 +17,7 @@ namespace UnitTesting {
         [TestMethod]
         public void ReflectionHelperConstructorTest ()
         {
-            Type innerType = typeof (FastString);
+            Type innerType = typeof (ExString);
             var target = new ReflectionHelper(innerType);
             Assert.AreEqual(target.InnerType, innerType);
         }
@@ -25,7 +25,7 @@ namespace UnitTesting {
         [TestMethod]
         public void ReflectionHelperConstructorTest1 ()
         {
-            object value = new FastString();
+            object value = new ExString();
             var target = new ReflectionHelper(value);
             Assert.AreEqual(target.InnerType, value.GetType());
         }
@@ -100,7 +100,7 @@ namespace UnitTesting {
             var value = new object();
             bool actual = target.IsType(value);
             Assert.AreEqual(true, actual);
-            value = new FastString();
+            value = new ExString();
             actual = target.IsType(value);
             Assert.AreEqual(true, actual);
             innerType = typeof (IExtension);
@@ -133,7 +133,7 @@ namespace UnitTesting {
             Type value = typeof (object);
             bool actual = target.IsType(value);
             Assert.AreEqual(true, actual);
-            value = typeof (FastString);
+            value = typeof (ExString);
             actual = target.IsType(value);
             Assert.AreEqual(true, actual);
             innerType = typeof (IExtension);

@@ -199,12 +199,16 @@ namespace Templates.Runtime {
 
         public void Compile ()
         {
+            foreach (var delayedTemplate in _delayedTemplates) {
+                delayedTemplate.ForExtension.ParseInnerTemplate(delayedTemplate.NewContext);
+            }
+            _delayedTemplates.Clear();
             if (_encloseLevel == 0 && _data.Type.Members.Count > 0) {
                 AddAutoReferences();
                 var helper = new ReflectionHelper(_data.ProxyCompiler.GetType());
                 var results = helper.Invoke<CompilerResults>(_data.ProxyCompiler, "Compile", _data.CompileUnit, _data.Type, _data.Ns);
                 if (results.Errors.Count != 0) {
-                    var errors = new FastStringBuilder();
+                    var errors = new ExStringBuilder();
                     foreach (CompilerError error in results.Errors) {
                         errors.Append(error.ErrorText);
                         errors.Append("\n");
@@ -212,6 +216,23 @@ namespace Templates.Runtime {
                     throw new TemplateCompileException(errors.ToString());
                 }
             }
+        }
+
+        private class DelayedTemplate
+        {
+            public CompileContext NewContext;
+            public IExtension ForExtension;
+        }
+
+        private readonly List<DelayedTemplate> _delayedTemplates = new List<DelayedTemplate>();
+
+        public void AddDelayedCompileTemplate(CompileContext newContext, IExtension forExtension)
+        {
+            _delayedTemplates.Add(new DelayedTemplate
+            {
+                NewContext = newContext,
+                ForExtension = forExtension
+            });
         }
 
         public CodeMemberMethod GetNewMethod ()

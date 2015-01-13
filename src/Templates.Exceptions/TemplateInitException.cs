@@ -18,10 +18,10 @@ namespace Templates.Exceptions {
             : base(message, inner)
         {
         }
-        public TemplateInitException(string message, Exception inner, Position position)
+        public TemplateInitException(string message, Exception inner, BlockPosition blockPosition)
             : base(message, inner)
         {
-            Position = position;
+            BlockPosition = blockPosition;
         }
 
         protected TemplateInitException (SerializationInfo info, StreamingContext context)
@@ -29,7 +29,7 @@ namespace Templates.Exceptions {
         {
         }
 
-        public Position Position
+        public BlockPosition BlockPosition
         {
             get;
             private set;
@@ -38,7 +38,7 @@ namespace Templates.Exceptions {
         public override void GetObjectData (SerializationInfo info, StreamingContext context)
         {
             base.GetObjectData(info, context);
-            info.AddValue("position", Position);
+            info.AddValue("position", BlockPosition);
         }
     }
 }
