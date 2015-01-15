@@ -4,9 +4,15 @@
     <td><%<>Quantity%></td>
     <td><%Name%></td>
 </tr>
-<%<true> Duplicate
+<%<true:call>
   [
-	DUP OF
-    <%<template>Inner[partial]%>
+    bool()
+    {
+		var rnd = new Random();
+		return rnd.Next(1,2) == 1;
+    }
+  ]
+  [
+    <%<template>[partial]%>
   ]
 %>

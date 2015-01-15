@@ -94,7 +94,7 @@ namespace Templates.Runtime {
         {
             List<Type> types =
                 assembly.GetTypes().Where(t => t.IsImplement<IExtension>() && t.IsHaveAttribute<NameAttribute>()).OrderBy
-                    (t => t.GetAttributes<TypeAttribute>().Any(p => p.DataType.IsInterface)).OrderBy
+                    (t => t.GetAttributes<TypeAttribute>().Any(p => p.DataType.IsInterface)).ThenBy
                     (t => t.GetAttributes<AdditionalTypeAttribute>().Any(p => p.DataType.IsInterface)).ToList();
             var result = new Dictionary<string, Type>();
             foreach (Type type in types) {

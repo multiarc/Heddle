@@ -132,7 +132,7 @@ namespace Templates.Runtime {
                 _data = context._data;
         }
 
-        public void ResetContext ()
+        public virtual void ResetContext()
         {
             if (_data.ReservedCodeDomain == null) {
                 _data.ReservedCodeDomain = _data.CodeDomain;
@@ -144,7 +144,7 @@ namespace Templates.Runtime {
             _data.ProxyCompiler = _data.CodeDomain.CreateInstanceAndUnwrap(ProxyAssembly, "Templates.CompilingProxy.Compiler");
         }
 
-        public void RevertBack ()
+        public virtual void RevertBack()
         {
             if (_data.CodeDomain != null) {
                 AppDomain.Unload(_data.CodeDomain);
@@ -158,7 +158,7 @@ namespace Templates.Runtime {
             }
         }
 
-        public void Commit ()
+        public virtual void Commit()
         {
             if (_data.ReservedCodeDomain != null) {
                 AppDomain.Unload(_data.ReservedCodeDomain);
@@ -168,12 +168,12 @@ namespace Templates.Runtime {
             _data.ReservedProxyCompiler = null;
         }
 
-        public void ImportNamespace (string namespaceName)
+        public virtual void ImportNamespace (string namespaceName)
         {
             _data.Ns.Imports.Add(new CodeNamespaceImport(namespaceName));
         }
 
-        public void AddReference (string assemblyName)
+        public virtual void AddReference(string assemblyName)
         {
             _data.CompileUnit.ReferencedAssemblies.Add(assemblyName);
             var helper = new ReflectionHelper(_data.ProxyCompiler.GetType());
@@ -197,7 +197,7 @@ namespace Templates.Runtime {
             }
         }
 
-        public void Compile ()
+        public virtual void Compile()
         {
             foreach (var delayedTemplate in _delayedTemplates) {
                 delayedTemplate.ForExtension.ParseInnerTemplate(delayedTemplate.NewContext);
@@ -226,7 +226,7 @@ namespace Templates.Runtime {
 
         private readonly List<DelayedTemplate> _delayedTemplates = new List<DelayedTemplate>();
 
-        public void AddDelayedCompileTemplate(CompileContext newContext, IExtension forExtension)
+        public virtual void AddDelayedCompileTemplate(CompileContext newContext, IExtension forExtension)
         {
             _delayedTemplates.Add(new DelayedTemplate
             {
@@ -235,7 +235,7 @@ namespace Templates.Runtime {
             });
         }
 
-        public CodeMemberMethod GetNewMethod ()
+        public virtual CodeMemberMethod GetNewMethod()
         {
             var result = new CodeMemberMethod
             {
