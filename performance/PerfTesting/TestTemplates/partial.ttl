@@ -4,15 +4,3 @@
     <td><%<>Quantity%></td>
     <td><%Name%></td>
 </tr>
-<%<true:call>
-  [
-    bool()
-    {
-		var rnd = new Random();
-		return rnd.Next(1,2) == 1;
-    }
-  ]
-  [
-    <%<template>[partial]%>
-  ]
-%>

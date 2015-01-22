@@ -44,9 +44,11 @@ namespace Templates.Extensions {
             if (match.Groups["additional"].Value != string.Empty)
                 _method.Parameters.Add
                     (new CodeParameterDeclarationExpression(new CodeTypeReference(additionalType), match.Groups["additional"].Value));
-            _method.ReturnType = new CodeTypeReference(ReflectionHelper.ResolveType(match.Groups["return_type"].Value, context.Namespaces.ToArray()));
+            var returnType = ReflectionHelper.ResolveType(match.Groups["return_type"].Value,
+                context.Namespaces.ToArray());
+            _method.ReturnType = new CodeTypeReference(returnType);
             _method.Statements.Add(new CodeSnippetStatement(match.Groups["code"].Value));
-            return ReflectionHelper.ResolveType(_method.ReturnType.BaseType, context.Namespaces.ToArray());
+            return returnType;
         }
     }
 }
