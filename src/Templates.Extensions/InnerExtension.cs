@@ -1,5 +1,6 @@
 ﻿using System;
 using Templates.Attributes;
+using Templates.Helpers;
 using Templates.Runtime;
 
 namespace Templates.Extensions {
@@ -7,7 +8,7 @@ namespace Templates.Extensions {
     [Name ("describe")]
     [Type (typeof (object))]
     public class InnerExtension: AbstractExtension {
-        public override Type InitializeInnerTemplate (string parameter, Type dataType, Type additionalType, CompileContext context)
+        public override TypeReference InitializeInnerTemplate(string parameter, Type dataType, Type additionalType, CompileContext context)
         {
             return base.InitializeInnerTemplate(parameter, null, dataType, context);
         }

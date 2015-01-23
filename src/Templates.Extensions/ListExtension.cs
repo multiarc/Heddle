@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Templates.Attributes;
+using Templates.Helpers;
 using Templates.Runtime;
 using Templates.Strings.Core;
 
@@ -28,7 +29,7 @@ namespace Templates.Extensions {
     [Name ("list")]
     [Type (typeof (IEnumerable))]
     public class ListExtension: AbstractExtension {
-        public override Type InitializeInnerTemplate (string parameter, Type dataType, Type additionalType, CompileContext context)
+        public override TypeReference InitializeInnerTemplate(string parameter, Type dataType, Type additionalType, CompileContext context)
         {
             if (dataType == null)
                 throw new ArgumentNullException("dataType");

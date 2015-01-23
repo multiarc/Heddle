@@ -10,6 +10,10 @@ using Templates.Helpers;
 using Templates.Strings.Core;
 
 namespace Templates.Runtime {
+    /// <summary>
+    /// Compile Context class. Doing all work to compile extensions, saving type for each context level extension, import namespace/assembly. 
+    /// By loading assembly you can add or override existing extensions or add some extra funtionality parts to template.
+    /// </summary>
     public class CompileContext: IDisposable {
         private const string TypeName = "Generated";
         private const string ProxyAssembly = "Templates.CompilingProxy, Version=1.0.0.0, Culture=neutral, PublicKeyToken=144ba7f33aad5b85";
@@ -17,13 +21,25 @@ namespace Templates.Runtime {
 
         private DataWrapper _data;
 
-        public CompileContext (TemplateOptions options)
+        /// <summary>
+        /// Create new untyped (<see cref="System.Object"/>) initial level context to load and compile template from a file.
+        /// Enclosing template level = 0
+        /// </summary>
+        /// <param name="options"></param>
+        public CompileContext(TemplateOptions options)
         {
             InitNewCompileUnit(options.TemplateName);
             ModelType = typeof (object);
             Options = options;
         }
 
+        /// <summary>
+        /// Create new untyped (<see cref="System.Object"/>) Context using old Context data with new template file name
+        /// Enclosing template level = 0
+        /// Use for templates typed explicitly in template file but not in code.
+        /// </summary>
+        /// <param name="context">Old Context</param>
+        /// <param name="newName">New Tempalte File Name</param>
         public CompileContext (CompileContext context, string newName)
         {
             if (context == null)
@@ -37,10 +53,18 @@ namespace Templates.Runtime {
             {
                 FileNamePostfix = context.Options.FileNamePostfix,
                 RootPath = context.Options.RootPath,
-                TemplateName = newName
+                TemplateName = newName,
+                EnableFileChangeCheck = context.Options.EnableFileChangeCheck
             };
         }
 
+
+        /// <summary>
+        /// Create new typed Context using old Context data just changing Type.
+        /// Enclosing level = Old Context level + 1
+        /// </summary>
+        /// <param name="context">Old Context</param>
+        /// <param name="newType">New Enclosing Template Data Type</param>
         public CompileContext (CompileContext context, Type newType)
         {
             if (context == null)
@@ -52,6 +76,14 @@ namespace Templates.Runtime {
             _encloseLevel = context._encloseLevel + 1;
         }
 
+        /// <summary>
+        /// Create new typed Context using old Context data, changing type and template file name.
+        /// Enclosing template level = 0
+        /// Use for templates typed explicitly in code but not in template file.
+        /// </summary>
+        /// <param name="context">Old Context</param>
+        /// <param name="newType">New Template Data Type</param>
+        /// <param name="newName">New Tempalte File Name</param>
         public CompileContext (CompileContext context, Type newType, string newName)
         {
             if (context == null)
@@ -64,7 +96,8 @@ namespace Templates.Runtime {
             {
                 FileNamePostfix = context.Options.FileNamePostfix,
                 RootPath = context.Options.RootPath,
-                TemplateName = newName
+                TemplateName = newName,
+                EnableFileChangeCheck = context.Options.EnableFileChangeCheck
             };
             ModelType = newType ?? typeof (object);
         }
@@ -75,12 +108,21 @@ namespace Templates.Runtime {
             private set;
         }
 
-        public Type ModelType
+        /// <summary>
+        /// Model Type can be changed at any time you running your template extension.
+        /// Be carefull changing this type without re-creating context. 
+        /// Recommendation is to change it only once maximum per chained template block.
+        /// Used in &lt;model&gt; base extension. <see cref="Templates.Extensions.ModelExtension"/>
+        /// </summary>
+        public TypeReference ModelType
         {
             get;
             set;
         }
 
+        /// <summary>
+        /// Imported namespaces list
+        /// </summary>
         public IEnumerable<string> Namespaces
         {
             get
@@ -90,6 +132,9 @@ namespace Templates.Runtime {
             }
         }
 
+        /// <summary>
+        /// List of extensions loaded during template parsing in regards to this context only
+        /// </summary>
         public IDictionary<string, Type> Extensions
         {
             get { return _data.Extensions; }
@@ -127,12 +172,15 @@ namespace Templates.Runtime {
 
                 _data.Ns.Types.Add(_data.Type);
                 _data.CompileUnit.Namespaces.Add(_data.Ns);
-                ResetContext();
+                Clear();
             } else
                 _data = context._data;
         }
 
-        public virtual void ResetContext()
+        /// <summary>
+        /// Initialize new Code Domain, Extension List and instantiate new <see cref="Templates.CompilingProxy.Compiler"/>
+        /// </summary>
+        internal virtual void Clear()
         {
             if (_data.ReservedCodeDomain == null) {
                 _data.ReservedCodeDomain = _data.CodeDomain;
@@ -144,7 +192,10 @@ namespace Templates.Runtime {
             _data.ProxyCompiler = _data.CodeDomain.CreateInstanceAndUnwrap(ProxyAssembly, "Templates.CompilingProxy.Compiler");
         }
 
-        public virtual void RevertBack()
+        /// <summary>
+        /// Revert Clear/Compile even back.
+        /// </summary>
+        internal virtual void RevertBack()
         {
             if (_data.CodeDomain != null) {
                 AppDomain.Unload(_data.CodeDomain);
@@ -158,7 +209,10 @@ namespace Templates.Runtime {
             }
         }
 
-        public virtual void Commit()
+        /// <summary>
+        /// Commit changes and clear memory
+        /// </summary>
+        internal virtual void Commit()
         {
             if (_data.ReservedCodeDomain != null) {
                 AppDomain.Unload(_data.ReservedCodeDomain);
@@ -168,11 +222,42 @@ namespace Templates.Runtime {
             _data.ReservedProxyCompiler = null;
         }
 
+        /// <summary>
+        /// Compile delayed Extensions, Compile all dynamic property references and connect into template chain.
+        /// </summary>
+        internal virtual void Compile() {
+            foreach (var delayedTemplate in _delayedTemplates) {
+                delayedTemplate.ForExtension.ParseInnerTemplate(delayedTemplate.NewContext);
+            }
+            _delayedTemplates.Clear();
+            if (_encloseLevel == 0 && _data.Type.Members.Count > 0) {
+                AddAutoReferences();
+                var helper = new ReflectionHelper(_data.ProxyCompiler.GetType());
+                var results = helper.Invoke<CompilerResults>(_data.ProxyCompiler, "Compile", _data.CompileUnit, _data.Type, _data.Ns);
+                if (results.Errors.Count != 0) {
+                    var errors = new ExStringBuilder();
+                    foreach (CompilerError error in results.Errors) {
+                        errors.Append(error.ErrorText);
+                        errors.Append("\n");
+                    }
+                    throw new TemplateCompileException(errors.ToString());
+                }
+            }
+        }
+
+        /// <summary>
+        /// Import new namespace for type resolver by name 
+        /// </summary>
+        /// <param name="namespaceName">Namespace full name</param>
         public virtual void ImportNamespace (string namespaceName)
         {
             _data.Ns.Imports.Add(new CodeNamespaceImport(namespaceName));
         }
 
+        /// <summary>
+        /// Load assembly and inject all templates inside it.
+        /// </summary>
+        /// <param name="assemblyName">Assembly name according to <seealso cref="CodeCompileUnit.ReferencedAssemblies"/></param>
         public virtual void AddReference(string assemblyName)
         {
             _data.CompileUnit.ReferencedAssemblies.Add(assemblyName);
@@ -193,27 +278,6 @@ namespace Templates.Runtime {
                             && !_data.CompileUnit.ReferencedAssemblies.Contains(assembly.FullName))
                             _data.CompileUnit.ReferencedAssemblies.Add(assembly.Location);
                     }
-                }
-            }
-        }
-
-        public virtual void Compile()
-        {
-            foreach (var delayedTemplate in _delayedTemplates) {
-                delayedTemplate.ForExtension.ParseInnerTemplate(delayedTemplate.NewContext);
-            }
-            _delayedTemplates.Clear();
-            if (_encloseLevel == 0 && _data.Type.Members.Count > 0) {
-                AddAutoReferences();
-                var helper = new ReflectionHelper(_data.ProxyCompiler.GetType());
-                var results = helper.Invoke<CompilerResults>(_data.ProxyCompiler, "Compile", _data.CompileUnit, _data.Type, _data.Ns);
-                if (results.Errors.Count != 0) {
-                    var errors = new ExStringBuilder();
-                    foreach (CompilerError error in results.Errors) {
-                        errors.Append(error.ErrorText);
-                        errors.Append("\n");
-                    }
-                    throw new TemplateCompileException(errors.ToString());
                 }
             }
         }

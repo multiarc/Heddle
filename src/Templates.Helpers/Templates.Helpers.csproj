@@ -87,6 +87,7 @@
     <Compile Include="PropertyInfoExtension.cs" />
     <Compile Include="ReflectionHelper.cs" />
     <Compile Include="TypeExtension.cs" />
+    <Compile Include="TypeReference.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Templates.Exceptions\Templates.Exceptions.csproj">

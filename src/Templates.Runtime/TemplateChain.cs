@@ -26,7 +26,7 @@ namespace Templates.Runtime {
             _additionalData = additionalData;
         }
 
-        public Type RenderType
+        public TypeReference RenderType
         {
             get;
             private set;
@@ -47,12 +47,14 @@ namespace Templates.Runtime {
             object additionalData = _additionalData.GetValueOrDefault(source);
             foreach (TemplateItem item in _itemsToExecute) {
                 data = item.Extension.ProcessData(data, additionalData);
+#if DEBUG
                 if (data != null && item.ReturnType != null && !item.ReturnType.IsType(data)) {
                     throw new TemplateProcessingException
                         (string.Format
-                             (CultureInfo.InvariantCulture, "Returned data type not valid. Needed [{0}] Got [{1}]", item.ReturnType.FullName,
+                             (CultureInfo.InvariantCulture, "Returned data type not valid. Needed [{0}] Got [{1}]", item.ReturnType.TypeValue.FullName,
                               data.GetType().FullName));
                 }
+#endif
             }
             return data as string;
         }

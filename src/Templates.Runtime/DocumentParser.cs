@@ -100,12 +100,14 @@ namespace Templates.Runtime {
             try {
                 if (data == null)
                     return string.Empty;
+#if DEBUG
                 if (!_context.ModelType.IsType(data)) {
                     throw new TemplateProcessingException
                         (string.Format
-                             (CultureInfo.InvariantCulture, "Type mismatch. Need {0} but got {1}", _context.ModelType.FullName,
+                             (CultureInfo.InvariantCulture, "Type mismatch. Need {0} but got {1}", _context.ModelType.TypeValue.FullName,
                               data.GetType().FullName));
                 }
+#endif
                 Replacement[] replacements = _mtReplacements.Value;
                 for (int i = 0; i < _elements.Count; i++)
                     replacements[i].ReplacementValue = _elements[i].TemplateBlock.ProcessData(data);

@@ -1,4 +1,5 @@
 ﻿using System;
+using Templates.Helpers;
 using Templates.Runtime;
 using Templates.Strings.Web;
 
@@ -23,7 +24,7 @@ namespace Templates {
             _directRender = directRender;
         }
 
-        public virtual Type InitializeInnerTemplate (string parameter, Type dataType, Type additionalType, CompileContext context)
+        public virtual TypeReference InitializeInnerTemplate(string parameter, Type dataType, Type additionalType, CompileContext context)
         {
             if (context == null)
                 throw new ArgumentNullException("context");

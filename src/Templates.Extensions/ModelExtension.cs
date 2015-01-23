@@ -8,7 +8,7 @@ using Templates.Runtime;
 namespace Templates.Extensions {
     [Name ("model")]
     public class ModelExtension: AbstractExtension {
-        public override Type InitializeInnerTemplate (string parameter, Type dataType, Type additionalType, CompileContext context)
+        public override TypeReference InitializeInnerTemplate(string parameter, Type dataType, Type additionalType, CompileContext context)
         {
             if (context == null)
                 throw new ArgumentNullException("context");

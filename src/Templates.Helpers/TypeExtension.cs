@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace Templates.Helpers {
     public static class TypeExtension {
-        public static bool IsType (this Type typeToCheck, Type type)
+        public static bool IsType(this Type typeToCheck, Type type)
         {
             if (typeToCheck == null)
                 throw new ArgumentNullException("typeToCheck");
@@ -14,7 +14,12 @@ namespace Templates.Helpers {
             return typeToCheck.IsAssignableFrom(type);
         }
 
-        public static bool IsType (this Type typeToCheck, object data)
+        public static bool IsType(this TypeReference typeToCheck, Type type)
+        {
+            return IsType(typeToCheck.TypeValue, type);
+        }
+
+        public static bool IsType(this Type typeToCheck, object data)
         {
             if (typeToCheck == null)
                 throw new ArgumentNullException("typeToCheck");
@@ -25,7 +30,12 @@ namespace Templates.Helpers {
             return typeToCheck.IsInstanceOfType(data);
         }
 
-        public static bool IsType<T> (this Type typeToCheck)
+        public static bool IsType(this TypeReference typeToCheck, object data) {
+            return IsType(typeToCheck.TypeValue, data);
+        }
+
+
+        public static bool IsType<T>(this Type typeToCheck)
         {
             if (typeToCheck == null)
                 throw new ArgumentNullException("typeToCheck");
@@ -33,7 +43,11 @@ namespace Templates.Helpers {
             return typeToCheck.IsAssignableFrom(typeof (T));
         }
 
-        public static bool IsImplement (this Type type, Type interfaceType)
+        public static bool IsType<T>(this TypeReference typeToCheck) {
+            return IsType<T>(typeToCheck.TypeValue);
+        }
+
+        public static bool IsImplement(this Type type, Type interfaceType)
         {
             if (type == null)
                 throw new ArgumentNullException("type");
@@ -43,7 +57,7 @@ namespace Templates.Helpers {
             return type.GetInterfaces().Any(i => i == interfaceType);
         }
 
-        public static bool IsImplement<T> (this Type type)
+        public static bool IsImplement<T>(this Type type)
         {
             if (type == null)
                 throw new ArgumentNullException("type");
@@ -51,7 +65,7 @@ namespace Templates.Helpers {
             return type.GetInterfaces().Any(i => i == typeof (T));
         }
 
-        public static bool IsHaveAttribute (this Type type, Type attributeType)
+        public static bool IsHaveAttribute(this Type type, Type attributeType)
         {
             if (type == null)
                 throw new ArgumentNullException("type");
@@ -61,7 +75,7 @@ namespace Templates.Helpers {
             return type.GetCustomAttributes(false).Any(a => a.GetType() == attributeType);
         }
 
-        public static bool IsHaveAttribute<T> (this Type type)
+        public static bool IsHaveAttribute<T>(this Type type)
         {
             if (type == null)
                 throw new ArgumentNullException("type");
@@ -69,7 +83,7 @@ namespace Templates.Helpers {
             return type.GetCustomAttributes(false).Any(a => a is T);
         }
 
-        public static T[] GetAttributes<T> (this Type type)
+        public static T[] GetAttributes<T>(this Type type)
         {
             if (type == null)
                 throw new ArgumentNullException("type");

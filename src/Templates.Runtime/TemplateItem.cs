@@ -1,14 +1,15 @@
 ﻿using System;
+using Templates.Helpers;
 
 namespace Templates.Runtime {
     public class TemplateItem {
-        public TemplateItem (Type returnType, IExtension extension)
+        public TemplateItem(TypeReference returnType, IExtension extension)
         {
             ReturnType = returnType;
             Extension = extension;
         }
 
-        public Type ReturnType
+        public TypeReference ReturnType
         {
             get;
             private set;

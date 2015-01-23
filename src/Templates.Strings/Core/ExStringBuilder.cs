@@ -155,13 +155,17 @@ namespace Templates.Strings.Core {
                     Replacement replacement = replacements[i];
                     if (replacement.ReplacementValue == null)
                         replacement.ReplacementValue = string.Empty;
+#if DEBUG
                     if (replacement.BlockPosition.Length < 0)
                         throw new ArgumentException();
                     if (replacement.BlockPosition.StartIndex < 0)
                         throw new ArgumentException();
+#endif
                     capacity += replacement.ReplacementValue.Length - replacement.BlockPosition.Length;
+#if DEBUG
                     if (capacity < 0)
                         throw new ArgumentException();
+#endif
                 }
 
                 if (capacity == 0)
@@ -200,13 +204,17 @@ namespace Templates.Strings.Core {
             unchecked {
                 for (int i = 0; i < count; i++) {
                     Replacement replacement = replacements[i];
+#if DEBUG
                     if (replacement.BlockPosition.Length < 0)
                         throw new ArgumentException();
                     if (replacement.BlockPosition.StartIndex < 0)
                         throw new ArgumentException();
+#endif
                     capacity += (replacement.ReplacementValue != null ? replacement.ReplacementValue.Length : 0) - replacement.BlockPosition.Length;
+#if DEBUG
                     if (capacity < 0)
                         throw new ArgumentException();
+#endif
                 }
 
                 if (capacity == 0)
@@ -245,13 +253,17 @@ namespace Templates.Strings.Core {
             unchecked {
                 for (int i = 0; i < count; i++) {
                     Replacement replacement = replacements[i];
+#if DEBUG
                     if (replacement.BlockPosition.Length < 0)
                         throw new ArgumentException();
                     if (replacement.BlockPosition.StartIndex < 0)
                         throw new ArgumentException();
+#endif
                     capacity += (replacement.ReplacementValue != null ? replacement.ReplacementValue.Length : 0) - replacement.BlockPosition.Length;
+#if DEBUG
                     if (capacity < 0)
                         throw new ArgumentException();
+#endif
                 }
 
                 if (capacity == 0)
@@ -279,10 +291,12 @@ namespace Templates.Strings.Core {
                 Replacement replacement = replacements[i];
                 string replacementString = replacement.ReplacementValue ?? string.Empty;
                 int chunkLength = replacementString.Length;
+#if DEBUG
                 if (lastIndex + replacement.BlockPosition.StartIndex - current + chunkLength < 0
                     || lastIndex + replacement.BlockPosition.StartIndex - current + chunkLength > capacity || replacement.BlockPosition.StartIndex > srcLen
                     || current > srcLen)
                     throw new ArgumentException();
+#endif
                 fixed (char* middle = replacementString) {
                     StringNativeHelper.MemCpy(dest + lastIndex, src + current, replacement.BlockPosition.StartIndex - current);
                     lastIndex += replacement.BlockPosition.StartIndex - current;
@@ -292,8 +306,10 @@ namespace Templates.Strings.Core {
                     lastIndex += chunkLength;
                 }
             }
+#if DEBUG
             if (lastIndex + srcLen - current < 0 || lastIndex + srcLen - current > capacity || current > srcLen)
                 throw new ArgumentException();
+#endif
             StringNativeHelper.MemCpy(dest + lastIndex, src + current, srcLen - current);
         }
 
@@ -307,8 +323,10 @@ namespace Templates.Strings.Core {
             int sourceLen = source.Length;
             int replacementLength = replacement.Length;
             unchecked {
+#if DEBUG
                 if (start < 0 || start + length < 0 || start + length > sourceLen || sourceLen - length + replacement.Length < 0)
                     throw new ArgumentException();
+#endif
                 int newLen = sourceLen - length + replacement.Length;
                 string destination = StringNativeHelper.AllocateString(newLen);
                 unsafe {
@@ -337,8 +355,10 @@ namespace Templates.Strings.Core {
             int sourceLen = source.Length;
             int replacementLength = replacement.Length;
             unchecked {
+#if DEBUG
                 if (start < 0 || start + length < 0 || start + length > sourceLen || sourceLen - length + replacement.Length < 0)
                     throw new ArgumentException();
+#endif
                 int newLen = sourceLen - length + replacement.Length;
                 var destination = new char[newLen];
                 unsafe {
@@ -367,8 +387,10 @@ namespace Templates.Strings.Core {
             int sourceLen = source.Length;
             int replacementLength = replacement.Length;
             unchecked {
+#if DEBUG
                 if (start < 0 || start + length < 0 || start + length > sourceLen || sourceLen - length + replacement.Length < 0)
                     throw new ArgumentException();
+#endif
                 int newLen = sourceLen - length + replacement.Length;
                 var destination = new char[newLen];
                 unsafe {
@@ -398,8 +420,10 @@ namespace Templates.Strings.Core {
             int sourceLen = _data.Length;
             int replacementLength = replacement.Length;
             unchecked {
+#if DEBUG
                 if (start < 0 || start + length < 0 || start + length > sourceLen || sourceLen - length + replacement.Length < 0)
                     throw new ArgumentException();
+#endif
                 int newLen = sourceLen - length + replacement.Length;
                 var destination = new char[newLen];
                 unsafe {
@@ -429,8 +453,10 @@ namespace Templates.Strings.Core {
             int sourceLen = _data.Length;
             int replacementLength = replacement.Length;
             unchecked {
+#if DEBUG
                 if (start < 0 || start + length < 0 || start + length > sourceLen || sourceLen - length + replacement.Length < 0)
                     throw new ArgumentException();
+#endif
                 int newLen = sourceLen - length + replacement.Length;
                 var destination = new char[newLen];
                 unsafe {

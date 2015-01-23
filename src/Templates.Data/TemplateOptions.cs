@@ -5,6 +5,7 @@ namespace Templates.Data {
         public string FileNamePostfix;
         public string RootPath;
         public string TemplateName;
+        public bool EnableFileChangeCheck;
 
         #region IEquatable<TemplateOptions> Members
 

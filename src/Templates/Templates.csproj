@@ -182,6 +182,10 @@
       <Project>{AA3DE8FC-784A-469D-A4DE-6E81D7020844}</Project>
       <Name>Templates.Exceptions</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Templates.Helpers\Templates.Helpers.csproj">
+      <Project>{2BDEF3DD-5527-48A9-8D63-C257076587B4}</Project>
+      <Name>Templates.Helpers</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Templates.Runtime\Templates.Runtime.csproj">
       <Project>{9F2F4DF9-A516-4E61-B82C-B33B072C168F}</Project>
       <Name>Templates.Runtime</Name>

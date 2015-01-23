@@ -24,7 +24,7 @@ namespace Templates.Runtime {
             PropertyInfo data = null,
                          additionalData = null;
             if (!String.IsNullOrEmpty(resultDataName)) {
-                PropertyInfo dataProperty = context.ModelType.GetProperty(resultDataName);
+                PropertyInfo dataProperty = context.ModelType.TypeValue.GetProperty(resultDataName);
                 if (dataProperty != null && dataProperty.CanRead && !dataProperty.IsHaveAttribute<HiddenAttribute>())
                     data = dataProperty;
                 else {
@@ -33,7 +33,7 @@ namespace Templates.Runtime {
                 }
             }
             if (!String.IsNullOrEmpty(resultAdditionalDataName)) {
-                PropertyInfo dataProperty = context.ModelType.GetProperty(resultAdditionalDataName);
+                PropertyInfo dataProperty = context.ModelType.TypeValue.GetProperty(resultAdditionalDataName);
                 if (dataProperty != null && dataProperty.CanRead && !dataProperty.IsHaveAttribute<HiddenAttribute>())
                     additionalData = dataProperty;
                 else {
@@ -50,7 +50,7 @@ namespace Templates.Runtime {
             var result = new DocumentElement(data.GetPropertyGate(), additionalData.GetPropertyGate());
             foreach (ExtensionItem extensionItem in extensions) {
                 IExtension extension = TemplateFactory.Create(extensionItem.ExtensionName, context);
-                mainDataType = InitializeTemplate(extension, extensionItem.ParameterTemplate, mainDataType, additionalDataType, context);
+                var initType = InitializeTemplate(extension, extensionItem.ParameterTemplate, mainDataType, additionalDataType, context);
                 Type templateType = extension.GetType();
                 TypeAttribute typeAttribute = templateType.GetAttributes<TypeAttribute>().FirstOrDefault();
                 AdditionalTypeAttribute additionalTypeAttribute = templateType.GetAttributes<AdditionalTypeAttribute>().FirstOrDefault();
@@ -60,13 +60,13 @@ namespace Templates.Runtime {
                 CheckTypes(extension, data, typeAttribute);
                 CheckTypes(extension, additionalData, additionalTypeAttribute);
 
-                result.TemplateBlock.Add(new TemplateItem(mainDataType, extension));
+                result.TemplateBlock.Add(new TemplateItem(initType, extension));
             }
 
             return result;
         }
 
-        private static Type InitializeTemplate
+        private static TypeReference InitializeTemplate
             (IExtension extension, string parameterFastString, Type dataType, Type additionalType, CompileContext context)
         {
             try {

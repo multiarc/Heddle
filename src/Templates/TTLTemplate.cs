@@ -10,7 +10,6 @@ namespace Templates {
         private const int FileCheckDelay = 5000; //milliseconds
         private readonly ManualResetEvent _allFinihed = new ManualResetEvent(true);
         private readonly CompileContext _context;
-        private readonly bool _enableFileChangeCheck;
         private readonly Type _initialType;
         private readonly ManualResetEvent _objectLock = new ManualResetEvent(true);
         private readonly object _processingLock = new object();
@@ -20,7 +19,7 @@ namespace Templates {
         private DocumentParser _parser;
         private int _pasersInprocessing;
 
-        public TtlTemplate (CompileContext context, bool enableFileChangeCheck = false)
+        public TtlTemplate (CompileContext context)
         {
             if (context == null)
                 throw new ArgumentNullException("context");
@@ -32,9 +31,8 @@ namespace Templates {
                 throw new ArgumentException("Template Name should not be empty");
 
             _context = context;
-            if (enableFileChangeCheck) {
+            if (context.Options.EnableFileChangeCheck) {
                 _initialType = context.ModelType;
-                _enableFileChangeCheck = true;
                 _timer = new Timer(CheckFileChange, null, FileCheckDelay, int.MaxValue);
             }
 
@@ -47,7 +45,7 @@ namespace Templates {
 
             try {
                 _parser = DocumentsCache.GetDocumentParser(_reader.ReadEntireFile(), context);
-                if (enableFileChangeCheck)
+                if (context.Options.EnableFileChangeCheck)
                     _parser.Completed += ParserDone;
             }
             catch (ArgumentException e) {
@@ -123,7 +121,7 @@ namespace Templates {
         /// <returns>Fully replaced string</returns>
         public string GenerateString (object data)
         {
-            if (_enableFileChangeCheck) {
+            if (_context.Options.EnableFileChangeCheck) {
                 if (_locked)
                     _objectLock.WaitOne();
                 if (_parser != null) {
@@ -145,7 +143,7 @@ namespace Templates {
                     string document = _reader.ReadEntireFile();
                     if (!string.IsNullOrWhiteSpace(document)) {
                         try {
-                            _context.ResetContext();
+                            _context.Clear();
                             var newParser = new DocumentParser(_context);
                             newParser.Completed += ParserDone;
                             Lock();

@@ -1,4 +1,5 @@
 ﻿using System;
+using Templates.Helpers;
 
 namespace Templates.Runtime {
     /// <summary>
@@ -15,7 +16,7 @@ namespace Templates.Runtime {
 
         void ParseParameter (string parameter, Type dataType, Type additionalType, bool directRender);
 
-        Type InitializeInnerTemplate (string parameter, Type dataType, Type additionalType, CompileContext context);
+        TypeReference InitializeInnerTemplate(string parameter, Type dataType, Type additionalType, CompileContext context);
 
         void ParseInnerTemplate(CompileContext newContext);
     }
