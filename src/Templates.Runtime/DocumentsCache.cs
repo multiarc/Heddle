@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Templates.Data;
+using Templates.Helpers;
 
 namespace Templates.Runtime {
     public static class DocumentsCache {
@@ -27,7 +28,7 @@ namespace Templates.Runtime {
             return result;
         }
 
-        public static void UpdateCaches (DocumentParser newParser, string document, Type modelType, string rootPath)
+        public static void UpdateCaches (DocumentParser newParser, string document, TypeReference modelType, string rootPath)
         {
             if (!string.IsNullOrEmpty(document)) {
                 var itemToSearch = new DocumentCacheItem(document)

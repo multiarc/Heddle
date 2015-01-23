@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using Templates.Helpers;
 using Templates.Runtime;
 
 namespace Templates {
@@ -10,7 +11,7 @@ namespace Templates {
         private const int FileCheckDelay = 5000; //milliseconds
         private readonly ManualResetEvent _allFinihed = new ManualResetEvent(true);
         private readonly CompileContext _context;
-        private readonly Type _initialType;
+        private readonly TypeReference _initialType;
         private readonly ManualResetEvent _objectLock = new ManualResetEvent(true);
         private readonly object _processingLock = new object();
         private readonly FileReader _reader;

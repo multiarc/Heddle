@@ -50,7 +50,7 @@ namespace Templates.Runtime {
             var result = new DocumentElement(data.GetPropertyGate(), additionalData.GetPropertyGate());
             foreach (ExtensionItem extensionItem in extensions) {
                 IExtension extension = TemplateFactory.Create(extensionItem.ExtensionName, context);
-                var initType = InitializeTemplate(extension, extensionItem.ParameterTemplate, mainDataType, additionalDataType, context);
+                TypeReference initType = InitializeTemplate(extension, extensionItem.ParameterTemplate, mainDataType, additionalDataType, context);
                 Type templateType = extension.GetType();
                 TypeAttribute typeAttribute = templateType.GetAttributes<TypeAttribute>().FirstOrDefault();
                 AdditionalTypeAttribute additionalTypeAttribute = templateType.GetAttributes<AdditionalTypeAttribute>().FirstOrDefault();
@@ -71,9 +71,9 @@ namespace Templates.Runtime {
         {
             try {
                 bool directRender = extension.GetType().IsHaveAttribute<DirectRenderAttribute>();
-                extension.ParseParameter(parameterFastString, dataType ?? context.ModelType, additionalType ?? context.ModelType, directRender);
+                extension.ParseParameter(parameterFastString, dataType ?? context.ModelType.TypeValue, additionalType ?? context.ModelType.TypeValue, directRender);
                 return extension.InitializeInnerTemplate
-                    (parameterFastString, dataType ?? context.ModelType, additionalType ?? context.ModelType, context);
+                    (parameterFastString, dataType ?? context.ModelType.TypeValue, additionalType ?? context.ModelType.TypeValue, context);
             }
             catch (Exception e) {
                 throw new TemplateCreateException(string.Format(CultureInfo.InvariantCulture, "Unable to initialize Type {0}", extension), e);

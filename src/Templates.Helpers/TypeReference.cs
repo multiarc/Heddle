@@ -1,4 +1,5 @@
 ﻿using System;
+using Templates.Exceptions;
 
 namespace Templates.Helpers {
     /// <summary>
@@ -6,6 +7,16 @@ namespace Templates.Helpers {
     /// </summary>
     public class TypeReference
     {
+        protected bool Equals(TypeReference other)
+        {
+            return TypeValue == other.TypeValue;
+        }
+
+        public override int GetHashCode()
+        {
+            return TypeValue.GetHashCode();
+        }
+
         public TypeReference()
         {
             _default = typeof (object);
@@ -39,7 +50,7 @@ namespace Templates.Helpers {
             }
             else
             {
-                //throw new TemplateInitException(string.Format("The type [{0}] was already resolved. Avoid rewriting type resolver.", _typeValue));
+                throw new TemplateInitException(string.Format("The type [{0}] was already resolved. Avoid rewriting type resolver.", _typeValue));
             }
         }
 
@@ -50,11 +61,32 @@ namespace Templates.Helpers {
             return new TypeReference(type);
         }
 
-        public static implicit operator Type(TypeReference type)
+        public static explicit operator Type(TypeReference type)
         {
             if (type == null)
                 return null;
             return type.TypeValue;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(null, obj))
+                return false;
+            if (ReferenceEquals(this, obj))
+                return true;
+            var typeRef = obj as TypeReference;
+            if (typeRef != null)
+            {
+                return typeRef.TypeValue == TypeValue;
+            }
+            if (obj.GetType() != GetType())
+                return false;
+            return false;
+        }
+
+        public Type ToType()
+        {
+            return TypeValue;
         }
     }
 }

@@ -1,9 +1,10 @@
 using System;
+using Templates.Helpers;
 
 namespace Templates.Data {
     public struct DocumentCacheItem: IEquatable<DocumentCacheItem> {
         private readonly string _document;
-        public Type ModelType;
+        public TypeReference ModelType;
         public string RootPath;
 
         #region Implementation of IEquatable<DocumentCacheItem>
