@@ -1,25 +1,67 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Web.Mvc;
 
-namespace Templates.Mvc {
-    public class TtlViewEngine : IViewEngine {
-        public ViewEngineResult FindPartialView(ControllerContext controllerContext, string partialViewName, bool useCache)
+namespace Templates.Mvc
+{
+    public class TtlViewEngine : BuildManagerViewEngine
+    {
+        public TemplateResolver Resolver { get; set; }
+
+        protected override IView CreatePartialView(ControllerContext controllerContext, string partialPath)
         {
-            throw new NotImplementedException();
+            return CreateView(controllerContext, partialPath, null);
         }
 
-        public ViewEngineResult FindView(ControllerContext controllerContext, string viewName, string masterName, bool useCache)
+        protected override IView CreateView(ControllerContext controllerContext, string viewPath, string masterPath)
         {
-            throw new NotImplementedException();
+            if (string.IsNullOrWhiteSpace(viewPath))
+                throw new ArgumentException("viewName");
+            return (TtlView) Resolver.GetView(viewPath);
         }
 
-        public void ReleaseView(ControllerContext controllerContext, IView view)
+        public TtlViewEngine() : this(null)
         {
-            throw new NotImplementedException();
+            
+        }
+
+        public TtlViewEngine(IViewPageActivator viewPageActivator)
+            : base(viewPageActivator)
+        {
+            Resolver = new TemplateResolver();
+            AreaViewLocationFormats = new string[2]
+            {
+                @"\Areas\{2}\Views\{1}\{0}.thtml",
+                @"\Areas\{2}\Views\Shared\{0}.thtml"
+            };
+            AreaMasterLocationFormats = new string[2]
+            {
+                @"\Areas\{2}\Views\{1}\{0}.thtml",
+                @"\Areas\{2}\Views\Shared\{0}.thtml"
+            };
+            AreaPartialViewLocationFormats = new string[2]
+            {
+                @"\Areas\{2}\Views\{1}\{0}.thtml",
+                @"\Areas\{2}\Views\Shared\{0}.thtml"
+            };
+            ViewLocationFormats = new string[2]
+            {
+                @"\Views\{1}\{0}.thtml",
+                @"\Views\Shared\{0}.thtml"
+            };
+            MasterLocationFormats = new string[2]
+            {
+                @"\Views\{1}\{0}.thtml",
+                @"\Views\Shared\{0}.thtml"
+            };
+            PartialViewLocationFormats = new string[2]
+            {
+                @"\Views\{1}\{0}.thtml",
+                @"\Views\Shared\{0}.thtml"
+            };
+            FileExtensions = new string[1]
+            {
+                "thtml"
+            };
         }
     }
 }

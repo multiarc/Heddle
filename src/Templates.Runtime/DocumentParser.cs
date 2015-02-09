@@ -98,8 +98,8 @@ namespace Templates.Runtime {
         public string ProcessData (object data)
         {
             try {
-                if (data == null)
-                    return string.Empty;
+                //if (data == null && _elements.Count > 0)
+                //    return string.Empty;
 #if DEBUG
                 if (!_context.ModelType.IsType(data)) {
                     throw new TemplateProcessingException

@@ -52,6 +52,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates.Strings", "Templa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templater.Tests", "..\test\Templater.Tests\Templater.Tests.csproj", "{8DEF9E6C-BEB9-4CFC-B98D-030759F9A10C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates.Mvc", "Templates.Mvc\Templates.Mvc.csproj", "{B09CD603-C980-48BC-9353-8A3BACE87AAB}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "demo", "demo", "{271330C1-ACEC-410F-897B-A65DB1A8AB23}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DemoWebSite", "..\demo\DemoWebSite\DemoWebSite.csproj", "{397C02F2-C794-4E96-9FA6-31B8F3B49C1A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -367,6 +373,38 @@ Global
 		{8DEF9E6C-BEB9-4CFC-B98D-030759F9A10C}.Release|x64.Build.0 = Release|x64
 		{8DEF9E6C-BEB9-4CFC-B98D-030759F9A10C}.Release|x86.ActiveCfg = Release|x86
 		{8DEF9E6C-BEB9-4CFC-B98D-030759F9A10C}.Release|x86.Build.0 = Release|x86
+		{B09CD603-C980-48BC-9353-8A3BACE87AAB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B09CD603-C980-48BC-9353-8A3BACE87AAB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B09CD603-C980-48BC-9353-8A3BACE87AAB}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{B09CD603-C980-48BC-9353-8A3BACE87AAB}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{B09CD603-C980-48BC-9353-8A3BACE87AAB}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{B09CD603-C980-48BC-9353-8A3BACE87AAB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B09CD603-C980-48BC-9353-8A3BACE87AAB}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B09CD603-C980-48BC-9353-8A3BACE87AAB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B09CD603-C980-48BC-9353-8A3BACE87AAB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B09CD603-C980-48BC-9353-8A3BACE87AAB}.Release|ARM.ActiveCfg = Release|Any CPU
+		{B09CD603-C980-48BC-9353-8A3BACE87AAB}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{B09CD603-C980-48BC-9353-8A3BACE87AAB}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{B09CD603-C980-48BC-9353-8A3BACE87AAB}.Release|x64.ActiveCfg = Release|x64
+		{B09CD603-C980-48BC-9353-8A3BACE87AAB}.Release|x64.Build.0 = Release|x64
+		{B09CD603-C980-48BC-9353-8A3BACE87AAB}.Release|x86.ActiveCfg = Release|x86
+		{B09CD603-C980-48BC-9353-8A3BACE87AAB}.Release|x86.Build.0 = Release|x86
+		{397C02F2-C794-4E96-9FA6-31B8F3B49C1A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{397C02F2-C794-4E96-9FA6-31B8F3B49C1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{397C02F2-C794-4E96-9FA6-31B8F3B49C1A}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{397C02F2-C794-4E96-9FA6-31B8F3B49C1A}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{397C02F2-C794-4E96-9FA6-31B8F3B49C1A}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{397C02F2-C794-4E96-9FA6-31B8F3B49C1A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{397C02F2-C794-4E96-9FA6-31B8F3B49C1A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{397C02F2-C794-4E96-9FA6-31B8F3B49C1A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{397C02F2-C794-4E96-9FA6-31B8F3B49C1A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{397C02F2-C794-4E96-9FA6-31B8F3B49C1A}.Release|ARM.ActiveCfg = Release|Any CPU
+		{397C02F2-C794-4E96-9FA6-31B8F3B49C1A}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{397C02F2-C794-4E96-9FA6-31B8F3B49C1A}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{397C02F2-C794-4E96-9FA6-31B8F3B49C1A}.Release|x64.ActiveCfg = Release|x64
+		{397C02F2-C794-4E96-9FA6-31B8F3B49C1A}.Release|x64.Build.0 = Release|x64
+		{397C02F2-C794-4E96-9FA6-31B8F3B49C1A}.Release|x86.ActiveCfg = Release|x86
+		{397C02F2-C794-4E96-9FA6-31B8F3B49C1A}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -389,6 +427,8 @@ Global
 		{39C9221D-67B9-4A35-B074-896DF091DC12} = {DCB9F91C-846A-4B80-97CF-BF89023F8965}
 		{A38AD252-2E08-4A53-947A-E773C0409D0B} = {DCB9F91C-846A-4B80-97CF-BF89023F8965}
 		{8DEF9E6C-BEB9-4CFC-B98D-030759F9A10C} = {2D7F0A50-B9A0-43E1-A5DC-90BE173FE426}
+		{B09CD603-C980-48BC-9353-8A3BACE87AAB} = {DCB9F91C-846A-4B80-97CF-BF89023F8965}
+		{397C02F2-C794-4E96-9FA6-31B8F3B49C1A} = {271330C1-ACEC-410F-897B-A65DB1A8AB23}
 	EndGlobalSection
 	GlobalSection(TestCaseManagementSettings) = postSolution
 		CategoryFile = Templating.vsmdi
