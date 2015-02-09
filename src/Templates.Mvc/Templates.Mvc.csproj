@@ -117,6 +117,10 @@
       <Project>{39C9221D-67B9-4A35-B074-896DF091DC12}</Project>
       <Name>Templates.Data</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Templates.Extensions\Templates.Extensions.csproj">
+      <Project>{93649574-c954-4696-ac4c-6de56665b9be}</Project>
+      <Name>Templates.Extensions</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Templates.Runtime\Templates.Runtime.csproj">
       <Project>{9F2F4DF9-A516-4E61-B82C-B33B072C168F}</Project>
       <Name>Templates.Runtime</Name>
