@@ -225,7 +225,7 @@ namespace Templates.Runtime {
         /// <summary>
         /// Compile delayed Extensions, Compile all dynamic property references and connect into template chain.
         /// </summary>
-        internal virtual void Compile() {
+        public virtual void Compile() {
             foreach (var delayedTemplate in _delayedTemplates) {
                 delayedTemplate.ForExtension.ParseInnerTemplate(delayedTemplate.NewContext);
             }

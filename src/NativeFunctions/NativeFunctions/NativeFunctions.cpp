@@ -23,39 +23,6 @@ namespace NativeFunctions
             return -1;
 		if (lenTo > lenWith)
 			return 1;
-		/*while (lenTo >= 16) {
-            if (((ulong*) compareTo)[0] != ((ulong*) compareWith)[0] || ((ulong*) compareTo)[1] != ((ulong*) compareWith)[1]
-                || ((ulong*) compareTo)[2] != ((ulong*) compareWith)[2] || ((ulong*) compareTo)[3] != ((ulong*) compareWith)[3])
-                return false;
-            lenTo -= 16;
-            compareTo += 16;
-            compareWith += 16;
-        }
-        if ((lenTo & 8) != 0) {
-            if (((ulong*) compareTo)[0] != ((ulong*) compareWith)[0] || ((ulong*) compareTo)[1] != ((ulong*) compareWith)[1])
-                return false;
-            lenTo -= 8;
-            compareTo += 8;
-            compareWith += 8;
-        }
-        if ((lenTo & 4) != 0) {
-            if (((ulong*) compareTo)[0] != ((ulong*) compareWith)[0])
-                return false;
-            lenTo -= 4;
-            compareTo += 4;
-            compareWith += 4;
-        }
-        if ((lenTo & 2) != 0) {
-            if (((uint*) compareTo)[0] != ((uint*) compareWith)[0])
-                return false;
-            lenTo -= 2;
-            compareTo += 2;
-            compareWith += 2;
-        }
-        if ((lenTo & 1) != 0) {
-            if (compareTo[0] != compareWith[0])
-                return false;
-        }*/
         return wmemcmp(compareTo, compareWith, lenTo);
     }
 
