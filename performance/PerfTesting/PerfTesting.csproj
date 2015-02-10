@@ -133,8 +133,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DataFiller.cs" />
+    <Compile Include="Runners\HtmlEncodeTest.cs" />
+    <Compile Include="Runners\IRunner.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Runners\TemplaterMemory.cs" />
+    <Compile Include="Runners\TemplaterStrings.cs" />
+    <Compile Include="Runners\TemplaterTest.cs" />
     <Compile Include="TestDataStructure.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -142,25 +147,13 @@
       <Project>{835592ee-26cd-435f-b9b3-72c63a5193c4}</Project>
       <Name>NativeFunctions</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\src\Templates.Data\Templates.Data.csproj">
-      <Project>{39C9221D-67B9-4A35-B074-896DF091DC12}</Project>
-      <Name>Templates.Data</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\src\Templates.Extensions\Templates.Extensions.csproj">
       <Project>{93649574-c954-4696-ac4c-6de56665b9be}</Project>
       <Name>Templates.Extensions</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\src\Templates.Strings\Templates.Strings.csproj">
-      <Project>{A38AD252-2E08-4A53-947A-E773C0409D0B}</Project>
-      <Name>Templates.Strings</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\src\Templates\Templates.csproj">
       <Project>{FCCA75A7-9694-429F-9A41-FD1933464E85}</Project>
       <Name>Templates</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\src\Templates.Runtime\Templates.Runtime.csproj">
-      <Project>{9F2F4DF9-A516-4E61-B82C-B33B072C168F}</Project>
-      <Name>Templates.Runtime</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

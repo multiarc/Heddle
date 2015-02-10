@@ -7,8 +7,8 @@ namespace Templates.Extensions {
     /// <para>Optional string represents GUID formatting</para>
     /// </summary>
     [Name ("guid")]
-    [Type (typeof (Guid))]
-    [AdditionalType (typeof (object))]
+    [DataType (typeof (Guid))]
+    [AdditionalDataType (typeof (object))]
     [DirectRender]
     public class GuidExtension: AbstractExtension {
         protected override object ProcessDataInternal (object value, object additionalValue)

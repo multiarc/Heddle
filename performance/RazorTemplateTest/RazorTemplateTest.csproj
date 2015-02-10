@@ -127,9 +127,9 @@
     <None Include="TestTemplates\template.cshtml" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Templates.Strings\Templates.Strings.csproj">
-      <Project>{A38AD252-2E08-4A53-947A-E773C0409D0B}</Project>
-      <Name>Templates.Strings</Name>
+    <ProjectReference Include="..\..\src\Templates\Templates.csproj">
+      <Project>{FCCA75A7-9694-429F-9A41-FD1933464E85}</Project>
+      <Name>Templates</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

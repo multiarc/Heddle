@@ -101,6 +101,9 @@
       <AdditionalDependencies />
       <AdditionalLibraryDirectories>$(MSBuildProgramFiles32)\Windows Kits\8.0\Lib\win8\um\x86\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>"c:\Windows\Microsoft.NET\Framework64\v4.0.30319\ngen.exe" install "$(TargetPath)" /queue:1</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -115,6 +118,9 @@
       </AdditionalDependencies>
       <AdditionalLibraryDirectories>$(MSBuildProgramFiles32)\Windows Kits\8.0\Lib\win8\um\x64\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>"c:\Windows\Microsoft.NET\Framework64\v4.0.30319\ngen.exe" install "$(TargetPath)" /queue:1</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -128,6 +134,9 @@
       <AdditionalLibraryDirectories>$(MSBuildProgramFiles32)\Windows Kits\8.0\Lib\win8\um\x86\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <Profile>true</Profile>
     </Link>
+    <PostBuildEvent>
+      <Command>"c:\Windows\Microsoft.NET\Framework64\v4.0.30319\ngen.exe" install "$(TargetPath)" /queue:1</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -142,6 +151,9 @@
       <AdditionalLibraryDirectories>$(MSBuildProgramFiles32)\Windows Kits\8.0\Lib\win8\um\x64\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <Profile>true</Profile>
     </Link>
+    <PostBuildEvent>
+      <Command>"c:\Windows\Microsoft.NET\Framework64\v4.0.30319\ngen.exe" install "$(TargetPath)" /queue:1</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <Reference Include="System" />

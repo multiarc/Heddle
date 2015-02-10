@@ -8,8 +8,8 @@ namespace Templates.Extensions {
     /// <para>Optional parameter represents string to show if condition is false</para>
     /// </summary>
     [Name ("false")]
-    [Type (typeof (bool))]
-    [AdditionalType (typeof (object))]
+    [DataType (typeof (bool))]
+    [AdditionalDataType (typeof (object))]
     public class FalseExtension: AbstractExtension {
         protected override object ProcessDataInternal (object value, object additionalValue)
         {

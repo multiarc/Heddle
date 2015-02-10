@@ -9,8 +9,8 @@ namespace Templates.Extensions {
     /// <para>Optional parameter contains culture string to format</para>
     /// </summary>
     [Name ("money")]
-    [Type (typeof (decimal))]
-    [AdditionalType (typeof (object))]
+    [DataType (typeof (decimal))]
+    [AdditionalDataType (typeof (object))]
     [DirectRender]
     public class MoneyExtension: AbstractExtension {
         private static readonly Dictionary<string, CultureInfo> CultureCache = new Dictionary<string, CultureInfo>

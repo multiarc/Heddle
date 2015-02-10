@@ -5,6 +5,7 @@ using System.Linq;
 using Templates.Attributes;
 using Templates.Helpers;
 using Templates.Runtime;
+using Templates.Strings;
 using Templates.Strings.Core;
 
 namespace Templates.Extensions {
@@ -27,14 +28,14 @@ namespace Templates.Extensions {
     /// <para>...</para>
     /// </summary>
     [Name ("list")]
-    [Type (typeof (IEnumerable))]
+    [DataType (typeof (IEnumerable))]
     public class ListExtension: AbstractExtension {
-        public override TypeReference InitializeInnerTemplate(string parameter, Type dataType, Type additionalType, CompileContext context)
+        public override Type InitializeInnerTemplate(string parameter, System.Type dataType, System.Type additionalType, CompileContext context)
         {
             if (dataType == null)
                 throw new ArgumentNullException("dataType");
 
-            Type underliyingType = dataType.GetGenericArguments().FirstOrDefault() ?? typeof (object);
+            System.Type underliyingType = dataType.GetGenericArguments().FirstOrDefault() ?? typeof (object);
             return base.InitializeInnerTemplate(parameter, null, underliyingType, context);
         }
 

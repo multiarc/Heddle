@@ -15,7 +15,7 @@ namespace Templates.Extensions {
     /// <para>Will produce: &lt;% %&gt; &lt; &gt; [ ]</para>
     /// </summary>
     [Name ("system")]
-    [Type (typeof (object))]
+    [DataType (typeof (object))]
     [DirectRender]
     public class SystemExtension: AbstractExtension {
         protected override object ProcessDataInternal (object value, object additionalValue)

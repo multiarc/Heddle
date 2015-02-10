@@ -2,6 +2,7 @@
 using Templates.Data;
 using Templates.Extensions;
 using Templates.Runtime;
+using Templates.Strings;
 using Templates.Strings.Core;
 
 namespace Templater.Tests.TemplateTests {

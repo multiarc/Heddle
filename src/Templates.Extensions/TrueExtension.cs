@@ -8,8 +8,8 @@ namespace Templates.Extensions {
     /// <para>Optional parameter represents string to show if condition is true</para>
     /// </summary>
     [Name ("true")]
-    [Type (typeof (bool))]
-    [AdditionalType (typeof (object))]
+    [DataType (typeof (bool))]
+    [AdditionalDataType (typeof (object))]
     public class TrueExtension: AbstractExtension {
         protected override object ProcessDataInternal (object value, object additionalValue)
         {

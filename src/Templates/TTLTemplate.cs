@@ -7,11 +7,11 @@ namespace Templates {
     /// <summary>
     /// Use this class to operate with engine, parse source template, make replace with data and generate result string.
     /// </summary>
-    public class TtlTemplate: IDisposable {
+    public sealed class TtlTemplate: IDisposable {
         private const int FileCheckDelay = 5000; //milliseconds
         private readonly ManualResetEvent _allFinihed = new ManualResetEvent(true);
         private readonly CompileContext _context;
-        private readonly TypeReference _initialType;
+        private readonly Type _initialType;
         private readonly ManualResetEvent _objectLock = new ManualResetEvent(true);
         private readonly object _processingLock = new object();
         private readonly FileReader _reader;
@@ -77,22 +77,14 @@ namespace Templates {
             if (!_disposing)
             {
                 _disposing = true;
-                if (_parser != null)
-                    _parser.Dispose();
-                if (_context != null)
-                    _context.Dispose();
+                if (_timer != null)
+                    _timer.Dispose();
+                _objectLock.Close();
+                _allFinihed.Close();
             }
         }
 
         #endregion
-
-        ~TtlTemplate ()
-        {
-            if (_timer != null)
-                _timer.Dispose();
-            _objectLock.Close();
-            _allFinihed.Close();
-        }
 
         private void Lock ()
         {

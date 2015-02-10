@@ -11,14 +11,14 @@ namespace Templates.Extensions {
     /// </summary>
     [Name ("partial")]
     [Name ("template")]
-    [Type (typeof (object))] //External File Name
+    [DataType (typeof (object))] //External File Name
     public class PartialExtension: AbstractExtension {
         protected override object ProcessDataInternal (object value, object additionalValue)
         {
             return GetInnerResult(value);
         }
 
-        public override TypeReference InitializeInnerTemplate(string parameter, Type dataType, Type additionalType, CompileContext context)
+        public override Type InitializeInnerTemplate(string parameter, System.Type dataType, System.Type additionalType, CompileContext context)
         {
             if (context == null)
                 throw new ArgumentNullException("context");

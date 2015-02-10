@@ -6,7 +6,7 @@ namespace Templates.Extensions {
     /// <para>Represents universal template for all undetermined types</para>
     /// </summary>
     [Name ("")]
-    [Type (typeof (object))]
+    [DataType (typeof (object))]
     [DirectRender]
     public class EmptyExtension: AbstractExtension {
         protected override object ProcessDataInternal (object value, object additionalValue)

@@ -101,30 +101,6 @@
     <Compile Include="TrueExtension.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Templates.Attributes\Templates.Attributes.csproj">
-      <Project>{CC340830-AAEC-49DE-9BCA-964613E62CC2}</Project>
-      <Name>Templates.Attributes</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Templates.Data\Templates.Data.csproj">
-      <Project>{39C9221D-67B9-4A35-B074-896DF091DC12}</Project>
-      <Name>Templates.Data</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Templates.Exceptions\Templates.Exceptions.csproj">
-      <Project>{AA3DE8FC-784A-469D-A4DE-6E81D7020844}</Project>
-      <Name>Templates.Exceptions</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Templates.Helpers\Templates.Helpers.csproj">
-      <Project>{2BDEF3DD-5527-48A9-8D63-C257076587B4}</Project>
-      <Name>Templates.Helpers</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Templates.Runtime\Templates.Runtime.csproj">
-      <Project>{9F2F4DF9-A516-4E61-B82C-B33B072C168F}</Project>
-      <Name>Templates.Runtime</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Templates.Strings\Templates.Strings.csproj">
-      <Project>{A38AD252-2E08-4A53-947A-E773C0409D0B}</Project>
-      <Name>Templates.Strings</Name>
-    </ProjectReference>
     <ProjectReference Include="..\Templates\Templates.csproj">
       <Project>{FCCA75A7-9694-429F-9A41-FD1933464E85}</Project>
       <Name>Templates</Name>
@@ -134,6 +110,9 @@
     <None Include="extensions.snk" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>"c:\Windows\Microsoft.NET\Framework64\v4.0.30319\ngen.exe" install "$(TargetPath)" /queue:1</PostBuildEvent>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

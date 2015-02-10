@@ -113,24 +113,15 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Templates.Data\Templates.Data.csproj">
-      <Project>{39C9221D-67B9-4A35-B074-896DF091DC12}</Project>
-      <Name>Templates.Data</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Templates.Extensions\Templates.Extensions.csproj">
-      <Project>{93649574-c954-4696-ac4c-6de56665b9be}</Project>
-      <Name>Templates.Extensions</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Templates.Runtime\Templates.Runtime.csproj">
-      <Project>{9F2F4DF9-A516-4E61-B82C-B33B072C168F}</Project>
-      <Name>Templates.Runtime</Name>
-    </ProjectReference>
     <ProjectReference Include="..\Templates\Templates.csproj">
       <Project>{FCCA75A7-9694-429F-9A41-FD1933464E85}</Project>
       <Name>Templates</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>"c:\Windows\Microsoft.NET\Framework64\v4.0.30319\ngen.exe" install "$(TargetPath)" /queue:1</PostBuildEvent>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

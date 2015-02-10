@@ -8,7 +8,7 @@ namespace Templates.Extensions {
     /// <para>Optional parameter represents default value if data name is not set in template or the object value is null</para>
     /// </summary>
     [Name ("string")]
-    [Type (typeof (string))]
+    [DataType (typeof (string))]
     [DirectRender]
     public class StringExtension: AbstractExtension {
         protected override object ProcessDataInternal (object value, object additionalValue)

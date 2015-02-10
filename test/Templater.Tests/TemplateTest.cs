@@ -6,6 +6,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Templates;
 using Templates.Data;
 using Templates.Runtime;
+using Templates.Strings;
 using Templates.Strings.Core;
 
 namespace Templater.Tests {

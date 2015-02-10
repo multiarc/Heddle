@@ -18,7 +18,6 @@ namespace DemoWebSite
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
             RouteConfig.RegisterRoutes(RouteTable.Routes);
             BundleConfig.RegisterBundles(BundleTable.Bundles);
-            ViewEngines.Engines.Remove(ViewEngines.Engines.FirstOrDefault(e => e.GetType() == typeof(RazorViewEngine)));
             ViewEngines.Engines.Clear();
             ViewEngines.Engines.Add(new TtlViewEngine());
         }

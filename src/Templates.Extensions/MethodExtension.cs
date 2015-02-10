@@ -11,8 +11,8 @@ using Templates.Runtime;
 namespace Templates.Extensions {
     [Name ("method")]
     [Name ("call")]
-    [Type (typeof (object))]
-    [AdditionalType (typeof (object))]
+    [DataType (typeof (object))]
+    [AdditionalDataType (typeof (object))]
     public class MethodExtension: AbstractExtension {
         private static readonly Regex CodeParseExpression = new Regex
             (@"^\s*(?<return_type>(?<main_type>(@?[_\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Mn}\p{Mc}\p{Nd}\p{Pc}\p{Cf}]+?((\.)|(\+))?)+)(<(?<generic_parameters>((@?[_\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Mn}\p{Mc}\p{Nd}\p{Pc}\p{Cf}]+?((\.)|(\+))?)+(,)?)+)>)?)[\s\n\r\t]*\((?<data>[a-zA-Z_0-9]+)?\)[\s\n\r\t]*(,[\s\n\r\t]*(?<additional>[a-zA-Z_0-9]+))?[\s\n\r\t]*\{(?<code>.*)\}[\s\n\r\t]*$",
@@ -30,7 +30,7 @@ namespace Templates.Extensions {
             throw new TemplateProcessingException("Cannot find compiled method reference");
         }
 
-        public override TypeReference InitializeInnerTemplate(string parameter, Type dataType, Type additionalType, CompileContext context)
+        public override Type InitializeInnerTemplate(string parameter, System.Type dataType, System.Type additionalType, CompileContext context)
         {
             if (context == null)
                 throw new ArgumentNullException("context");

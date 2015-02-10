@@ -8,13 +8,13 @@ using Templates.Runtime;
 namespace Templates.Extensions {
     [Name ("model")]
     public class ModelExtension: AbstractExtension {
-        public override TypeReference InitializeInnerTemplate(string parameter, Type dataType, Type additionalType, CompileContext context)
+        public override Type InitializeInnerTemplate(string parameter, System.Type dataType, System.Type additionalType, CompileContext context)
         {
             if (context == null)
                 throw new ArgumentNullException("context");
             if (!string.IsNullOrWhiteSpace(parameter)) {
                 try {
-                    Type modelType = ReflectionHelper.ResolveType(parameter, context.Namespaces.ToArray());
+                    System.Type modelType = ReflectionHelper.ResolveType(parameter, context.Namespaces.ToArray());
                     if (modelType == null)
                         throw new TemplateInitException("Type cannot be determined. Please use Assembly Qualified Name.");
 

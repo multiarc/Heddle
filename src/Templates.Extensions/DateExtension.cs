@@ -14,8 +14,8 @@ namespace Templates.Extensions {
     /// </para>
     /// </summary>
     [Name ("date")]
-    [Type (typeof (DateTime))]
-    [AdditionalType (typeof (object))]
+    [DataType (typeof (DateTime))]
+    [AdditionalDataType (typeof (object))]
     [DirectRender]
     public class DateExtension: AbstractExtension {
         protected override object ProcessDataInternal (object value, object additionalValue)

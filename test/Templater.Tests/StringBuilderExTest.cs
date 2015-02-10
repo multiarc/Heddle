@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Templates.Strings;
 using Templates.Strings.Core;
 
 namespace Templater.Tests {
@@ -43,7 +44,7 @@ namespace Templater.Tests {
             ExString value = GenerateStringEx(50);
             target = new ExStringBuilder(value);
             Assert.AreEqual(target.Length, 50);
-            Assert.AreEqual(target.ToFastString(), value);
+            Assert.AreEqual(target.ToExString(), value);
         }
 
         [TestMethod]
@@ -51,7 +52,7 @@ namespace Templater.Tests {
         {
             var target = new ExStringBuilder();
             Assert.AreEqual(target.Length, 0);
-            Assert.AreEqual(target.ToFastString(), ExString.Empty);
+            Assert.AreEqual(target.ToExString(), ExString.Empty);
         }
 
         [TestMethod]
@@ -63,7 +64,7 @@ namespace Templater.Tests {
             target = new ExStringBuilder(value);
             Assert.AreEqual(50, target.Length);
             Assert.AreEqual(value, target.ToString());
-            Assert.AreEqual(new ExString(value), target.ToFastString());
+            Assert.AreEqual(new ExString(value), target.ToExString());
         }
 
         [TestMethod]
@@ -76,7 +77,7 @@ namespace Templater.Tests {
             target.Append(append1);
             target.Append(append2);
             expected += append1 + append2;
-            ExString actual = target.ToFastString();
+            ExString actual = target.ToExString();
             Assert.AreEqual(expected, actual);
             Assert.AreEqual(target.Length, 50);
         }
@@ -88,14 +89,14 @@ namespace Templater.Tests {
             target.Append(GenerateStringEx(10));
             target.Append(GenerateStringEx(20));
             target.Clear();
-            Assert.AreEqual(target.ToFastString(), ExString.Empty);
+            Assert.AreEqual(target.ToExString(), ExString.Empty);
             Assert.AreEqual(target.Length, 0);
             target = new ExStringBuilder(GenerateStringEx(20));
             target.Append(GenerateStringEx(10));
             target.Append(GenerateStringEx(20));
-            target.ToFastString();
+            target.ToExString();
             target.Clear();
-            Assert.AreEqual(target.ToFastString(), ExString.Empty);
+            Assert.AreEqual(target.ToExString(), ExString.Empty);
             Assert.AreEqual(target.Length, 0);
         }
 
@@ -110,7 +111,7 @@ namespace Templater.Tests {
             target.Append(append2);
             expected += append1 + append2;
             Assert.AreEqual(target.Length, 50);
-            ExString actual = target.ToFastString();
+            ExString actual = target.ToExString();
             Assert.AreEqual(expected, actual);
             Assert.AreEqual(target.Length, 50);
         }

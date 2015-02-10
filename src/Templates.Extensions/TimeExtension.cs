@@ -8,8 +8,8 @@ namespace Templates.Extensions {
     /// <para>Optional Parameter represents string to format</para>
     /// </summary>
     [Name ("time")]
-    [Type (typeof (DateTime))]
-    [AdditionalType (typeof (object))]
+    [DataType (typeof (DateTime))]
+    [AdditionalDataType (typeof (object))]
     [DirectRender]
     public class TimeExtension: AbstractExtension {
         protected override object ProcessDataInternal (object value, object additionalValue)

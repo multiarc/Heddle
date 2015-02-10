@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Net;
 using Templates.Helpers;
 using Templates.Runtime;
 using Templates.Strings.Web;
+
 
 namespace Templates {
     public abstract class AbstractExtension: IExtension {
@@ -14,9 +16,17 @@ namespace Templates {
 
         public virtual object ProcessData (object value, object additionalValue)
         {
-            return _directRender
-                       ? HtmlEncode.Encode(ProcessDataInternal(value, additionalValue) as string)
-                       : ProcessDataInternal(value, additionalValue);
+            var obj = ProcessDataInternal(value, additionalValue);
+            if (_directRender)
+            {
+                var dataToEncode = obj as string;
+                if (!string.IsNullOrEmpty(dataToEncode))
+                {
+                    return WebUtility.HtmlEncode(dataToEncode);
+                }
+                return obj;
+            }
+            return obj;
         }
 
         public void ParseParameter (string parameter, Type dataType, Type additionalType, bool directRender)
@@ -24,7 +34,7 @@ namespace Templates {
             _directRender = directRender;
         }
 
-        public virtual TypeReference InitializeInnerTemplate(string parameter, Type dataType, Type additionalType, CompileContext context)
+        public virtual Type InitializeInnerTemplate(string parameter, Type dataType, Type additionalType, CompileContext context)
         {
             if (context == null)
                 throw new ArgumentNullException("context");
@@ -65,8 +75,12 @@ namespace Templates {
 
         public void Dispose ()
         {
-            if (!_disposing)
-            {
+            Dispose(true);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposing && !disposing) {
                 _disposing = true;
                 if (InnerTtlTemplate != null)
                     InnerTtlTemplate.Dispose();

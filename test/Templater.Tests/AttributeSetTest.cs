@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Security;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Templates.Helpers;
+using Type = System.Type;
 
 namespace Templater.Tests {
     [TestClass]

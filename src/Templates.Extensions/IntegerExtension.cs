@@ -8,8 +8,8 @@ namespace Templates.Extensions {
     /// <para>Optional parameter represents default value if data name is not set in template or the object value is null</para>
     /// </summary>
     [Name ("int")]
-    [Type (typeof (int))]
-    [AdditionalType (typeof (object))]
+    [DataType (typeof (int))]
+    [AdditionalDataType (typeof (object))]
     [DirectRender]
     public class IntegerExtension: AbstractExtension {
         protected override object ProcessDataInternal (object value, object additionalValue)

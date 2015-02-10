@@ -53,7 +53,7 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <CodeAnalysisIgnoreGeneratedCode>true</CodeAnalysisIgnoreGeneratedCode>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -65,7 +65,7 @@
     <WarningLevel>4</WarningLevel>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
@@ -78,7 +78,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <PlatformTarget>x64</PlatformTarget>
     <OutputPath>bin\x64\Debug\</OutputPath>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Optimize>true</Optimize>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <CodeAnalysisIgnoreGeneratedCode>true</CodeAnalysisIgnoreGeneratedCode>
@@ -90,9 +90,9 @@
     <PlatformTarget>x64</PlatformTarget>
     <OutputPath>bin\x64\Release\</OutputPath>
     <Optimize>true</Optimize>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DefineConstants>TRACE</DefineConstants>
-    <RunCodeAnalysis>false</RunCodeAnalysis>
+    <RunCodeAnalysis>true</RunCodeAnalysis>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <UseVSHostingProcess>false</UseVSHostingProcess>
     <DebugType>pdbonly</DebugType>
@@ -103,7 +103,7 @@
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\x86\Debug\</OutputPath>
     <DefineConstants>TRACE;DEBUG;CODE_ANALYSIS;</DefineConstants>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Optimize>true</Optimize>
     <PlatformTarget>x86</PlatformTarget>
     <RunCodeAnalysis>false</RunCodeAnalysis>
@@ -120,7 +120,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
     <OutputPath>bin\x86\Release\</OutputPath>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Optimize>true</Optimize>
     <PlatformTarget>x86</PlatformTarget>
     <CodeAnalysisLogFile>bin\x64\Release\Templates.dll.CodeAnalysisLog.xml</CodeAnalysisLogFile>
@@ -135,14 +135,72 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AbstractExtension.cs" />
+    <Compile Include="Attributes\AdditionalDataTypeAttribute.cs" />
+    <Compile Include="Attributes\DirectRenderAttribute.cs" />
+    <Compile Include="Attributes\HiddenAttribute.cs" />
+    <Compile Include="Attributes\NameAttribute.cs" />
+    <Compile Include="Attributes\NotEncodeAttribute.cs" />
+    <Compile Include="Attributes\OptionsAttribute.cs" />
+    <Compile Include="Attributes\DataTypeAttribute.cs" />
+    <Compile Include="Data\DocumentCacheItem.cs" />
+    <Compile Include="Data\DynamicMethodGateDelegate.cs" />
+    <Compile Include="Data\ExtensionItem.cs" />
+    <Compile Include="Data\PropertyGateDelegate.cs" />
+    <Compile Include="Data\State.cs" />
+    <Compile Include="Data\StoredDataType.cs" />
+    <Compile Include="Data\SystemPatternStrings.cs" />
+    <Compile Include="Data\TemplateOptions.cs" />
+    <Compile Include="Data\Token.cs" />
+    <Compile Include="Data\TokenType.cs" />
+    <Compile Include="Exceptions\TemplateCompileException.cs" />
+    <Compile Include="Exceptions\TemplateCreateException.cs" />
+    <Compile Include="Exceptions\TemplateFileException.cs" />
+    <Compile Include="Exceptions\TemplateInitException.cs" />
+    <Compile Include="Exceptions\TemplateParseException.cs" />
+    <Compile Include="Exceptions\TemplateProcessingException.cs" />
     <Compile Include="FileReader.cs" />
+    <Compile Include="Helpers\AttributeSet.cs" />
+    <Compile Include="Helpers\EnumerableExtension.cs" />
+    <Compile Include="Helpers\PropertyInfoExtension.cs" />
+    <Compile Include="Helpers\ReflectionHelper.cs" />
+    <Compile Include="Helpers\TypeExtension.cs" />
+    <Compile Include="Language\LexisParser.cs" />
+    <Compile Include="Language\ParserConfiguration.cs" />
+    <Compile Include="Language\ParserHelper.cs" />
+    <Compile Include="Language\SyntaxParser.cs" />
     <Compile Include="ResultsCallBack.cs" />
+    <Compile Include="Runtime\CompileContext.cs" />
+    <Compile Include="Runtime\DocumentElement.cs" />
+    <Compile Include="Runtime\DocumentParser.cs" />
+    <Compile Include="Runtime\DocumentsCache.cs" />
+    <Compile Include="Runtime\EntityCompiler.cs" />
+    <Compile Include="Runtime\GatesCache.cs" />
+    <Compile Include="Runtime\IExtension.cs" />
+    <Compile Include="Runtime\ProcessorExtension.cs" />
+    <Compile Include="Runtime\RuntimePropertyExtension.cs" />
+    <Compile Include="Runtime\TemplateChain.cs" />
+    <Compile Include="Runtime\TemplateFactory.cs" />
+    <Compile Include="Runtime\TemplateItem.cs" />
+    <Compile Include="Strings\Core\BlockPosition.cs" />
+    <Compile Include="Collections\EnumerableExtension.cs" />
+    <Compile Include="Strings\Core\ExStringWriter.cs" />
+    <Compile Include="Strings\ExString.cs" />
+    <Compile Include="Strings\Core\ExStringAllocator.cs" />
+    <Compile Include="Strings\ExStringBuilder.cs" />
+    <Compile Include="Strings\FastStringInterfaces.cs" />
+    <Compile Include="Strings\Core\Mutable.cs" />
+    <Compile Include="Strings\Core\MutableString.cs" />
+    <Compile Include="Strings\Core\Replacement.cs" />
+    <Compile Include="Collections\SmartList.cs" />
+    <Compile Include="Collections\SmartListInterfaces.cs" />
+    <Compile Include="Strings\Web\HtmlEncode.cs" />
     <Compile Include="TemplateExtension.cs" />
     <Compile Include="TtlTemplate.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -174,31 +232,14 @@
     <Content Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Templates.Data\Templates.Data.csproj">
-      <Project>{39C9221D-67B9-4A35-B074-896DF091DC12}</Project>
-      <Name>Templates.Data</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Templates.Exceptions\Templates.Exceptions.csproj">
-      <Project>{AA3DE8FC-784A-469D-A4DE-6E81D7020844}</Project>
-      <Name>Templates.Exceptions</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Templates.Helpers\Templates.Helpers.csproj">
-      <Project>{2BDEF3DD-5527-48A9-8D63-C257076587B4}</Project>
-      <Name>Templates.Helpers</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Templates.Runtime\Templates.Runtime.csproj">
-      <Project>{9F2F4DF9-A516-4E61-B82C-B33B072C168F}</Project>
-      <Name>Templates.Runtime</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Templates.Strings\Templates.Strings.csproj">
-      <Project>{A38AD252-2E08-4A53-947A-E773C0409D0B}</Project>
-      <Name>Templates.Strings</Name>
+    <ProjectReference Include="..\NativeFunctions\NativeFunctions\NativeFunctions.vcxproj">
+      <Project>{835592ee-26cd-435f-b9b3-72c63a5193c4}</Project>
+      <Name>NativeFunctions</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>
-    </PostBuildEvent>
+    <PostBuildEvent>"c:\Windows\Microsoft.NET\Framework64\v4.0.30319\ngen.exe" install "$(TargetPath)" /queue:1</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
     <PreBuildEvent>
