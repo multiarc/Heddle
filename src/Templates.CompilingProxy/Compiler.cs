@@ -11,8 +11,6 @@ using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Runtime;
 using Templates.Strings;
-using Templates.Strings.Core;
-using Type = System.Type;
 
 namespace Templates.CompilingProxy {
     [Serializable]

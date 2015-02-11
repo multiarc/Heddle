@@ -176,7 +176,7 @@
     <Compile Include="Language\ParserHelper.cs" />
     <Compile Include="Language\SyntaxParser.cs" />
     <Compile Include="ResultsCallBack.cs" />
-    <Compile Include="Runtime\CompileContext.cs" />
+    <Compile Include="Runtime\DocumentContext.cs" />
     <Compile Include="Runtime\DocumentElement.cs" />
     <Compile Include="Runtime\DocumentParser.cs" />
     <Compile Include="Runtime\DocumentsCache.cs" />

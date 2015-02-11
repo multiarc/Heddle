@@ -45,7 +45,7 @@ namespace Templates.Runtime {
         /// <param name="templateName">Template name <see cref="NameAttribute"/></param>
         /// <param name="context"></param>
         /// <returns>ITemplate compatible object <see cref="IExtension"/></returns>
-        public static IExtension Create (string templateName, CompileContext context = null)
+        public static IExtension Create (string templateName, DocumentContext context = null)
         {
             if (templateName == null)
                 throw new ArgumentNullException("templateName");

@@ -16,7 +16,7 @@ namespace Templates.Runtime {
     /// </summary>
     public sealed class DocumentParser: ICloneable, IDisposable {
 
-        private readonly CompileContext _context;
+        private readonly DocumentContext _context;
         private string _document;
         private readonly ThreadLocal<Replacement[]> _mtReplacements;
         public FinishedEventHandler Completed;
@@ -24,7 +24,7 @@ namespace Templates.Runtime {
         private SmartList<DocumentElement> _elements;
         private string _workingDocument;
 
-        public DocumentParser (CompileContext context)
+        public DocumentParser (DocumentContext context)
         {
             _mtReplacements = new ThreadLocal<Replacement[]>(MakeNewArray);
 
@@ -88,7 +88,7 @@ namespace Templates.Runtime {
                 //if (data == null && _elements.Count > 0)
                 //    return string.Empty;
 #if DEBUG
-                if (!_context.ModelType.IsType(data)) {
+                if (data != null && !_context.ModelType.IsType(data)) {
                     throw new TemplateProcessingException
                         (string.Format
                              (CultureInfo.InvariantCulture, "Type mismatch. Need {0} but got {1}", _context.ModelType.FullName,
@@ -229,6 +229,7 @@ namespace Templates.Runtime {
                         element.Dispose();
                 }
                 _mtReplacements.Dispose();
+                _context.Dispose();
             }
         }
 

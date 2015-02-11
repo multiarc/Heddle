@@ -18,7 +18,7 @@ namespace Templates.Extensions {
             return GetInnerResult(value);
         }
 
-        public override Type InitializeInnerTemplate(string parameter, System.Type dataType, System.Type additionalType, CompileContext context)
+        public override Type InitializeInnerTemplate(string parameter, System.Type dataType, System.Type additionalType, DocumentContext context)
         {
             if (context == null)
                 throw new ArgumentNullException("context");
@@ -27,7 +27,7 @@ namespace Templates.Extensions {
                 string templateName = parameter.Trim();
                 if (!string.IsNullOrEmpty(templateName))
                 {
-                    context.AddDelayedCompileTemplate(new CompileContext(context, dataType, templateName), this);
+                    context.AddDelayedCompileTemplate(new DocumentContext(context, dataType, templateName), this);
                 }
             }
             return typeof (string);

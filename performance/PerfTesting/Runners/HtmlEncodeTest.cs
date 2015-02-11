@@ -45,7 +45,7 @@ namespace PerfTesting.Runners {
             Console.WriteLine("=======================================================");
             Console.WriteLine("Prepearing bigger string tests");
             var test = new TtlTemplate
-                    (new CompileContext
+                    (new DocumentContext
                          (new TemplateOptions {
                              TemplateName = "template",
                              FileNamePostfix = ".ttl",

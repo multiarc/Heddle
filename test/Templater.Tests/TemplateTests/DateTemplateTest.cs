@@ -27,22 +27,22 @@ namespace Templater.Tests.TemplateTests {
         [TestMethod]
         public void ProcessDataTest ()
         {
-            _target.InitializeInnerTemplate(null, typeof (DateTime), null, new CompileContext(new TemplateOptions()));
+            _target.InitializeInnerTemplate(null, typeof (DateTime), null, new DocumentContext(new TemplateOptions()));
             DateTime value = DateTime.Now;
             ExString expected = value.ToString("d", CultureInfo.InvariantCulture);
             ExString actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
-            _target.InitializeInnerTemplate("d", typeof (DateTime), null, new CompileContext(new TemplateOptions()));
+            _target.InitializeInnerTemplate("d", typeof (DateTime), null, new DocumentContext(new TemplateOptions()));
             value = DateTime.Now;
             expected = value.ToString("d", CultureInfo.InvariantCulture);
             actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
-            _target.InitializeInnerTemplate("t", typeof (DateTime), null, new CompileContext(new TemplateOptions()));
+            _target.InitializeInnerTemplate("t", typeof (DateTime), null, new DocumentContext(new TemplateOptions()));
             value = DateTime.Now;
             expected = value.ToString("t", CultureInfo.InvariantCulture);
             actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
-            _target.InitializeInnerTemplate("<%DateFormat%>", typeof (DateTime), typeof (TestData), new CompileContext(new TemplateOptions()));
+            _target.InitializeInnerTemplate("<%DateFormat%>", typeof (DateTime), typeof (TestData), new DocumentContext(new TemplateOptions()));
             var testData = new TestData
             {
                 DateFormat = "yyyy-mm-dd"

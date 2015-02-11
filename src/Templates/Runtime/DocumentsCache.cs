@@ -9,7 +9,7 @@ namespace Templates.Runtime {
     public static class DocumentsCache {
         private static readonly Dictionary<DocumentCacheItem, DocumentParser> Cache = new Dictionary<DocumentCacheItem, DocumentParser>();
 
-        public static DocumentParser GetDocumentParser (string document, CompileContext context)
+        public static DocumentParser GetDocumentParser (string document, DocumentContext context)
         {
             if (string.IsNullOrEmpty(document))
                 return null;

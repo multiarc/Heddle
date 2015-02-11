@@ -20,7 +20,7 @@ namespace PerfTesting.Runners {
             var watcher = new Stopwatch();
             watcher.Reset();
             var target = new TtlTemplate
-                (new CompileContext
+                (new DocumentContext
                      (new TemplateOptions {
                          TemplateName = "template",
                          FileNamePostfix = ".ttl",

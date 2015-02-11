@@ -30,7 +30,7 @@ namespace Templates.Mvc {
                 TemplateName = Path.GetFileNameWithoutExtension(viewPath)
             };
 
-            result = new TtlTemplate(new CompileContext(options));
+            result = new TtlTemplate(options);
             TemplatesCache.Add(viewPath, result);
             return result;
         }

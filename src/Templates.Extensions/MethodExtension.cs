@@ -30,7 +30,7 @@ namespace Templates.Extensions {
             throw new TemplateProcessingException("Cannot find compiled method reference");
         }
 
-        public override Type InitializeInnerTemplate(string parameter, System.Type dataType, System.Type additionalType, CompileContext context)
+        public override Type InitializeInnerTemplate(string parameter, System.Type dataType, System.Type additionalType, DocumentContext context)
         {
             if (context == null)
                 throw new ArgumentNullException("context");

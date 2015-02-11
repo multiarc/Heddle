@@ -25,14 +25,14 @@ namespace Templater.Tests.TemplateTests {
         [TestMethod]
         public void ProcessDataTest ()
         {
-            _target.InitializeInnerTemplate("<tag></tag>", typeof (bool), null, new CompileContext(new TemplateOptions()));
+            _target.InitializeInnerTemplate("<tag></tag>", typeof (bool), null, new DocumentContext(new TemplateOptions()));
             ExString expected = "<tag></tag>";
             ExString actual = _target.ProcessData(false, null).ToString();
             Assert.AreEqual(expected, actual);
             expected = "";
             actual = _target.ProcessData(true, null).ToString();
             Assert.AreEqual(expected, actual);
-            _target.InitializeInnerTemplate("<%Str%>=<%Num%>", typeof (bool), typeof (TestType), new CompileContext(new TemplateOptions()));
+            _target.InitializeInnerTemplate("<%Str%>=<%Num%>", typeof (bool), typeof (TestType), new DocumentContext(new TemplateOptions()));
             var testData = new TestType
             {
                 Num = 160,

@@ -26,7 +26,7 @@ namespace Templater.Tests.TemplateTests {
         [TestMethod]
         public void ProcessDataTest ()
         {
-            _target.InitializeInnerTemplate(null, typeof (object), null, new CompileContext(new TemplateOptions()));
+            _target.InitializeInnerTemplate(null, typeof (object), null, new DocumentContext(new TemplateOptions()));
             DateTime value = DateTime.Now;
 // ReSharper disable SpecifyACultureInStringConversionExplicitly
             ExString expected = value.ToString();

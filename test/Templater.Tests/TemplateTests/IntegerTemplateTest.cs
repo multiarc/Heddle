@@ -26,12 +26,12 @@ namespace Templater.Tests.TemplateTests {
         [TestMethod]
         public void ProcessDataTest ()
         {
-            _target.InitializeInnerTemplate("", typeof (int), null, new CompileContext(new TemplateOptions()));
+            _target.InitializeInnerTemplate("", typeof (int), null, new DocumentContext(new TemplateOptions()));
             const int value = 160;
             ExString expected = value.ToString(CultureInfo.InvariantCulture);
             ExString actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
-            _target.InitializeInnerTemplate("<%IntFormat%>", typeof (int), typeof (TestData), new CompileContext(new TemplateOptions()));
+            _target.InitializeInnerTemplate("<%IntFormat%>", typeof (int), typeof (TestData), new DocumentContext(new TemplateOptions()));
             var testData = new TestData
             {
                 IntFormat = "X"

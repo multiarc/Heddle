@@ -17,8 +17,8 @@ namespace Templates.Runtime {
 
         void ParseParameter (string parameter, Type dataType, Type additionalType, bool directRender);
 
-        Type InitializeInnerTemplate(string parameter, Type dataType, Type additionalType, CompileContext context);
+        Type InitializeInnerTemplate(string parameter, Type dataType, Type additionalType, DocumentContext context);
 
-        void ParseInnerTemplate(CompileContext newContext);
+        void ParseInnerTemplate(DocumentContext newContext);
     }
 }

@@ -29,7 +29,7 @@ namespace Templater.Tests {
                 RootPath = @"g:\Work\Templater\test\Templater.Tests\TestTemplate",
                 TemplateName = "template"
             };
-            _target = new TtlTemplate(new CompileContext(options));
+            _target = new TtlTemplate(new DocumentContext(options));
         }
 
         [TestMethod]

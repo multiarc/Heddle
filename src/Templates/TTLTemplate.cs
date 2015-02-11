@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using Templates.Data;
 using Templates.Helpers;
 using Templates.Runtime;
 
@@ -10,7 +11,7 @@ namespace Templates {
     public sealed class TtlTemplate: IDisposable {
         private const int FileCheckDelay = 5000; //milliseconds
         private readonly ManualResetEvent _allFinihed = new ManualResetEvent(true);
-        private readonly CompileContext _context;
+        private readonly DocumentContext _context;
         private readonly Type _initialType;
         private readonly ManualResetEvent _objectLock = new ManualResetEvent(true);
         private readonly object _processingLock = new object();
@@ -20,7 +21,12 @@ namespace Templates {
         private DocumentParser _parser;
         private int _pasersInprocessing;
 
-        public TtlTemplate (CompileContext context)
+        public TtlTemplate(TemplateOptions options) : this(new DocumentContext(options))
+        {
+            
+        }
+
+        public TtlTemplate (DocumentContext context)
         {
             if (context == null)
                 throw new ArgumentNullException("context");
@@ -54,7 +60,7 @@ namespace Templates {
             }
         }
 
-        public TtlTemplate (string document, CompileContext context)
+        public TtlTemplate (string document, DocumentContext context)
         {
             if (context == null)
                 throw new ArgumentNullException("context");

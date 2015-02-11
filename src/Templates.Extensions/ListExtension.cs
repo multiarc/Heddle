@@ -30,7 +30,7 @@ namespace Templates.Extensions {
     [Name ("list")]
     [DataType (typeof (IEnumerable))]
     public class ListExtension: AbstractExtension {
-        public override Type InitializeInnerTemplate(string parameter, System.Type dataType, System.Type additionalType, CompileContext context)
+        public override Type InitializeInnerTemplate(string parameter, System.Type dataType, System.Type additionalType, DocumentContext context)
         {
             if (dataType == null)
                 throw new ArgumentNullException("dataType");

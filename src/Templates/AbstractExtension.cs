@@ -34,7 +34,7 @@ namespace Templates {
             _directRender = directRender;
         }
 
-        public virtual Type InitializeInnerTemplate(string parameter, Type dataType, Type additionalType, CompileContext context)
+        public virtual Type InitializeInnerTemplate(string parameter, Type dataType, Type additionalType, DocumentContext context)
         {
             if (context == null)
                 throw new ArgumentNullException("context");
@@ -42,7 +42,7 @@ namespace Templates {
             if (string.IsNullOrEmpty(parameter))
                 InnerTtlTemplate = null;
             else {
-                InnerTtlTemplate = new TtlTemplate(parameter, new CompileContext(context, additionalType));
+                InnerTtlTemplate = new TtlTemplate(parameter, new DocumentContext(context, additionalType));
                 _innerResult = InnerTtlTemplate.Cached;
                 if (!string.IsNullOrEmpty(_innerResult))
                     InnerTtlTemplate = null;
@@ -50,7 +50,7 @@ namespace Templates {
             return typeof (string);
         }
 
-        public void ParseInnerTemplate(CompileContext newContext)
+        public void ParseInnerTemplate(DocumentContext newContext)
         {
             InnerTtlTemplate = new TtlTemplate(newContext);
         }

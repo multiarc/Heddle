@@ -8,7 +8,7 @@ namespace Templates.Extensions {
     [Name ("describe")]
     [DataType (typeof (object))]
     public class InnerExtension: AbstractExtension {
-        public override Type InitializeInnerTemplate(string parameter, System.Type dataType, System.Type additionalType, CompileContext context)
+        public override Type InitializeInnerTemplate(string parameter, System.Type dataType, System.Type additionalType, DocumentContext context)
         {
             return base.InitializeInnerTemplate(parameter, null, dataType, context);
         }

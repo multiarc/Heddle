@@ -13,7 +13,7 @@ namespace PerfTesting.Runners {
             string document = reader.ReadToEnd();
             reader.Close();
             var test = new TtlTemplate
-                    (new CompileContext
+                    (new DocumentContext
                          (new TemplateOptions {
                              TemplateName = "template",
                              FileNamePostfix = ".ttl",

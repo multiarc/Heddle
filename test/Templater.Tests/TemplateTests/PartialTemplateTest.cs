@@ -25,7 +25,7 @@ namespace Templater.Tests.TemplateTests {
         [TestMethod]
         public void ProcessDataTest ()
         {
-            var context = new CompileContext
+            var context = new DocumentContext
                 (new TemplateOptions
                 {
                     FileNamePostfix = ".ttl",

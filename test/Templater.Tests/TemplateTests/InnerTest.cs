@@ -25,7 +25,7 @@ namespace Templater.Tests.TemplateTests {
         [TestMethod]
         public void ProcessDataTest ()
         {
-            _target.InitializeInnerTemplate("<%Str%>=<%Num%>", typeof (TestData), null, new CompileContext(new TemplateOptions()));
+            _target.InitializeInnerTemplate("<%Str%>=<%Num%>", typeof (TestData), null, new DocumentContext(new TemplateOptions()));
             var value = new TestData
             {
                 Num = 10,

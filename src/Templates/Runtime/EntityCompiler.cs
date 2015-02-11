@@ -17,7 +17,7 @@ namespace Templates.Runtime {
         /// <exception cref="TemplateProcessingException">Throws upon any parse or data misstype errors</exception>
         /// <returns>Returns object with filled data about template <see cref="DocumentElement"/></returns>
         public static DocumentElement CompileElement
-            (IEnumerable<ExtensionItem> extensions, string resultAdditionalDataName, string resultDataName, CompileContext context)
+            (IEnumerable<ExtensionItem> extensions, string resultAdditionalDataName, string resultDataName, DocumentContext context)
         {
             if (context == null)
                 throw new ArgumentNullException("context");
@@ -68,7 +68,7 @@ namespace Templates.Runtime {
         }
 
         private static Type InitializeTemplate
-            (IExtension extension, string parameterFastString, Type dataType, Type additionalType, CompileContext context)
+            (IExtension extension, string parameterFastString, Type dataType, Type additionalType, DocumentContext context)
         {
             try {
                 bool directRender = extension.GetType().IsHaveAttribute<DirectRenderAttribute>();

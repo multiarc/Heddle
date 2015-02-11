@@ -31,7 +31,7 @@ namespace Templater.Tests.TemplateTests {
         [TestMethod]
         public void ProcessDataTest ()
         {
-            _target.InitializeInnerTemplate("<%Str%>=<%Num%>", typeof (List<TestListItem>), null, new CompileContext(new TemplateOptions()));
+            _target.InitializeInnerTemplate("<%Str%>=<%Num%>", typeof (List<TestListItem>), null, new DocumentContext(new TemplateOptions()));
             var value = new List<TestListItem>();
             for (int i = 0; i < 100; i++) {
                 value.Add

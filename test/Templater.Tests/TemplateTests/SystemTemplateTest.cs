@@ -25,11 +25,11 @@ namespace Templater.Tests.TemplateTests {
         [TestMethod]
         public void ProcessDataTest ()
         {
-            _target.InitializeInnerTemplate("", null, null, new CompileContext(new TemplateOptions()));
+            _target.InitializeInnerTemplate("", null, null, new DocumentContext(new TemplateOptions()));
             ExString expected = "";
             ExString actual = _target.ProcessData(null, null).ToString();
             Assert.AreEqual(expected, actual);
-            _target.InitializeInnerTemplate(@"[]/\", null, null, new CompileContext(new TemplateOptions()));
+            _target.InitializeInnerTemplate(@"[]/\", null, null, new DocumentContext(new TemplateOptions()));
             expected = "{}%><%";
             actual = _target.ProcessData(null, null).ToString();
             Assert.AreEqual(expected, actual);

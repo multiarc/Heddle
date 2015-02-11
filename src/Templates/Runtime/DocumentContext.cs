@@ -16,7 +16,7 @@ namespace Templates.Runtime {
     /// Compile Context class. Doing all work to compile extensions, saving type for each context level extension, import namespace/assembly. 
     /// By loading assembly you can add or override existing extensions or add some extra funtionality parts to template.
     /// </summary>
-    public class CompileContext: IDisposable {
+    public class DocumentContext: IDisposable {
         private const string TypeName = "Generated";
         private const string ProxyAssembly = "Templates.CompilingProxy, Version=1.0.0.0, Culture=neutral, PublicKeyToken=144ba7f33aad5b85";
         private readonly int _encloseLevel;
@@ -28,7 +28,7 @@ namespace Templates.Runtime {
         /// Enclosing template level = 0
         /// </summary>
         /// <param name="options"></param>
-        public CompileContext(TemplateOptions options)
+        public DocumentContext(TemplateOptions options)
         {
             InitNewCompileUnit(options.TemplateName);
             ModelType = typeof (object);
@@ -42,7 +42,7 @@ namespace Templates.Runtime {
         /// </summary>
         /// <param name="context">Old Context</param>
         /// <param name="newName">New Tempalte File Name</param>
-        public CompileContext (CompileContext context, string newName)
+        public DocumentContext(DocumentContext context, string newName)
         {
             if (context == null)
                 throw new ArgumentNullException("context");
@@ -67,7 +67,7 @@ namespace Templates.Runtime {
         /// </summary>
         /// <param name="context">Old Context</param>
         /// <param name="newType">New Enclosing Template Data Type</param>
-        public CompileContext (CompileContext context, Type newType)
+        public DocumentContext(DocumentContext context, Type newType)
         {
             if (context == null)
                 throw new ArgumentNullException("context");
@@ -86,7 +86,7 @@ namespace Templates.Runtime {
         /// <param name="context">Old Context</param>
         /// <param name="newType">New Template Data Type</param>
         /// <param name="newName">New Tempalte File Name</param>
-        public CompileContext (CompileContext context, Type newType, string newName)
+        public DocumentContext(DocumentContext context, Type newType, string newName)
         {
             if (context == null)
                 throw new ArgumentNullException("context");
@@ -168,7 +168,7 @@ namespace Templates.Runtime {
 
         #endregion
 
-        private void InitNewCompileUnit (string namespaceName = null, CompileContext context = null)
+        private void InitNewCompileUnit (string namespaceName = null, DocumentContext context = null)
         {
             if (context == null) {
                 _data = new DataWrapper
@@ -295,13 +295,13 @@ namespace Templates.Runtime {
 
         private class DelayedTemplate
         {
-            public CompileContext NewContext;
+            public DocumentContext NewContext;
             public IExtension ForExtension;
         }
 
         private readonly List<DelayedTemplate> _delayedTemplates = new List<DelayedTemplate>();
 
-        public virtual void AddDelayedCompileTemplate(CompileContext newContext, IExtension forExtension)
+        public virtual void AddDelayedCompileTemplate(DocumentContext newContext, IExtension forExtension)
         {
             _delayedTemplates.Add(new DelayedTemplate
             {

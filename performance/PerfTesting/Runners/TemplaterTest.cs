@@ -13,7 +13,7 @@ namespace PerfTesting.Runners {
         {
             /*JIT*/
             var test = new TtlTemplate
-                (new CompileContext
+                (new DocumentContext
                      (new TemplateOptions {
                          TemplateName = "template",
                          FileNamePostfix = ".ttl",
@@ -38,7 +38,7 @@ namespace PerfTesting.Runners {
             var watcher = new Stopwatch();
             watcher.Start();
             var target = new TtlTemplate
-                (new CompileContext
+                (new DocumentContext
                      (new TemplateOptions {
                          TemplateName = "template",
                          FileNamePostfix = ".ttl",

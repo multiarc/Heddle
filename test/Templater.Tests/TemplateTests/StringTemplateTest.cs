@@ -25,7 +25,7 @@ namespace Templater.Tests.TemplateTests {
         [TestMethod]
         public void ProcessDataTest ()
         {
-            _target.InitializeInnerTemplate("", typeof (string), null, new CompileContext(new TemplateOptions()));
+            _target.InitializeInnerTemplate("", typeof (string), null, new DocumentContext(new TemplateOptions()));
             string value = "fdsfasdfdasf";
             ExString expected = value;
             ExString actual = _target.ProcessData(value, null).ToString();
@@ -37,7 +37,7 @@ namespace Templater.Tests.TemplateTests {
             expected = ExString.Empty;
             actual = _target.ProcessData(null, null).ToString();
             Assert.AreEqual(expected, actual);
-            _target.InitializeInnerTemplate("<%Str%>=<%Num%>", typeof (string), typeof (TestData), new CompileContext(new TemplateOptions()));
+            _target.InitializeInnerTemplate("<%Str%>=<%Num%>", typeof (string), typeof (TestData), new DocumentContext(new TemplateOptions()));
             var testData = new TestData
             {
                 Str = "TEST DATA",
