@@ -1,0 +1,65 @@
+﻿<%<import>[Templater.Tests]%>
+<%<import>[System.Collections.Generic]%>
+<%<import>[System]%>
+<%<import>[System.Linq]%>
+<%<model>[TemplateTest+TestDataStructure]%>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Привет!</title>
+</head>
+<body>
+    <table>
+        <tr>
+            <th>
+                Cost of something
+            </th>
+            <th>
+                Quantity of items
+            </th>
+            <th>
+                Name of something
+            </th>
+        </tr>
+        <%<list>
+              Products
+              [
+              <%<partial>[partial]%>
+        ] %>
+    </table>
+    <div>
+        Page Generated at
+        <%<time>Date%>
+        on
+        <%<date>Date%><br />
+        <%<true>IsShow[<span style="color: aqua">Some fucking text</span>] %><br />
+        <%<false>IsShow[<span style="color: red">Don't show it</span>] %><br />
+        <%<true>IsShow[<%<time>Date%>] %><br />
+        <%<guid>Guid[X]%><br />
+        <%<guid>Guid%><br />
+        <%<int>FuckingInt%><br />
+        <%<string>Text%><br />
+        <%<system>[\] %><br />
+        <%<system>[/] %><br />
+	<%<date:call>Date
+		[
+			DateTime(data)
+			{
+				return data.AddDays(-1);
+			}
+		]
+	%>
+	<%<list:call>Products
+        [
+		IEnumerable<TemplateTest+TestListItem>(data)
+		{
+			return data.Where(i => i.Cost > 2000);
+		}
+	]
+        [
+              <%<partial>[partial]%>
+        ] %>
+    </div>
+</body>
+</html>

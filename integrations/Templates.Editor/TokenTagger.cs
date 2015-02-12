@@ -10,6 +10,7 @@ using Templates.Exceptions;
 using Templates.Language;
 using Templates.Runtime;
 using Templates.Strings.Core;
+using Microsoft.VisualStudio.Text.Classification;
 
 namespace Templates.Editor {
     internal sealed class TokenTagger: ITagger<TokenTag>
@@ -17,7 +18,9 @@ namespace Templates.Editor {
         private ITextBuffer _buffer;
         private readonly SyntaxParser _parser = new SyntaxParser();
 
-        internal TokenTagger(ITextBuffer buffer)
+        internal TokenTagger(ITextBuffer buffer,
+                               ITagAggregator<TokenTag> ookTagAggregator,
+                               IClassificationTypeRegistryService typeService)
         {
             _buffer = buffer;
         }

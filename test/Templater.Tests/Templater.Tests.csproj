@@ -109,6 +109,8 @@
   <ItemGroup>
     <None Include="app.config" />
     <None Include="TestTemplate\partial.ttl" />
+    <None Include="TestTemplate\partial.thtml" />
+    <None Include="TestTemplate\template.thtml" />
     <None Include="TestTemplate\template.ttl" />
   </ItemGroup>
   <ItemGroup>
