@@ -1,30 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.Composition;
+﻿using System.ComponentModel.Composition;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Classification;
-using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Tagging;
 using Microsoft.VisualStudio.Utilities;
 
-namespace Templates.Editor.Classification
+namespace Templates.Editor
 {
 
     [Export(typeof(ITaggerProvider))]
     [ContentType("ttl")]
     [TagType(typeof(ClassificationTag))]
-    internal sealed class TtlClassifier : ITaggerProvider
+    internal sealed class TaggerProvider : ITaggerProvider
     {
-        [Export]
-        [Name("ttl")]
-        [BaseDefinition("htmlx")]
-        internal static ContentTypeDefinition TtlContentTypeDefinition;
-
-        [Export]
-        [FileExtension(".thtml")]
-        [ContentType("ttl")]
-        internal static FileExtensionToContentTypeDefinition TtlFileExtensionToContentTypeDefinition;
-
         [Import]
         internal IClassificationTypeRegistryService ClassificationTypeRegistry = null;
 
