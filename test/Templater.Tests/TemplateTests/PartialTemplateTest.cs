@@ -45,7 +45,7 @@ namespace Templater.Tests.TemplateTests {
             ExString expected = "<tr>\r\n    <td>$1,024.25</td>\r\n    <td>1050</td>\r\n    <td>xxx</td>\r\n</tr>";
             ExString actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
-            expected = "";
+            expected = "<tr>\r\n    <td></td>\r\n    <td></td>\r\n    <td></td>\r\n</tr>";
             actual = _target.ProcessData(null, null).ToString();
             Assert.AreEqual(expected, actual);
         }

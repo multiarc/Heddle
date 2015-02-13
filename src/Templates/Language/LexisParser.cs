@@ -130,6 +130,18 @@ namespace Templates.Language {
                         break;
                 }
             }
+            if (tokenBuilder.Length > 0)
+            {
+                yield return
+                    new Token
+                    {
+                        CapturedString = tokenBuilder.ToString(),
+                        Length = tokenBuilder.Length,
+                        StartIndex = start - tokenBuilder.Length + 1,
+                        Type = DetermineTokenType(tokenBuilder.ToString())
+                    };
+                tokenBuilder.Clear();
+            }
         }
 
         //public static IEnumerable<Token> GetTemplateBlocks (string document)

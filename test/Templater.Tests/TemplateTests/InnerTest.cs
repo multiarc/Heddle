@@ -34,7 +34,7 @@ namespace Templater.Tests.TemplateTests {
             ExString expected = "TEST DATA=10";
             ExString actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
-            expected = "";
+            expected = "=";
             actual = _target.ProcessData(null, null).ToString();
             Assert.AreEqual(expected, actual);
         }
