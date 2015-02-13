@@ -17,6 +17,8 @@ namespace Templates.Editor.Classification {
         [Export]
         [Name("ttl")]
         [BaseDefinition("htmlx")]
+        [BaseDefinition("code")]
+        [BaseDefinition("projection")]
         internal static ContentTypeDefinition TtlContentTypeDefinition = null;
 
         [Export]

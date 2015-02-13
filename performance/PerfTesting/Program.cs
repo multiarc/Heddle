@@ -11,8 +11,8 @@ namespace PerfTesting {
         public static void SetUpTests()
         {
             //tests.Add(new HtmlEncodeTest());
-            //tests.Add(new TemplaterStrings());
-            tests.Add(new TemplaterTest());
+            tests.Add(new TemplaterStrings());
+            //tests.Add(new TemplaterTest());
         }
 
         private static void Main (string[] args)

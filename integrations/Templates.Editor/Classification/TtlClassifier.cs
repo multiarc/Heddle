@@ -28,7 +28,8 @@ namespace Templates.Editor.Classification {
                 {TokenType.ExtensionDelimeter, typeService.GetClassificationType("ExtensionDelimeter")},
                 {TokenType.StartParameter, typeService.GetClassificationType("StartParameter")},
                 {TokenType.EndParameter, typeService.GetClassificationType("EndParameter")},
-                {TokenType.Space, typeService.GetClassificationType("Space")}
+                {TokenType.Space, typeService.GetClassificationType("Space")},
+                {TokenType.Other, typeService.GetClassificationType("Space")}
             };
         }
 

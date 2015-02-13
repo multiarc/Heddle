@@ -4,6 +4,7 @@
     /// </summary>
     public static class ParserConfiguration {
         public const string SequenceLiteral = "%";
+
         public const string StartTtl = "<%";
 
         public const string EndTtl = "%>";

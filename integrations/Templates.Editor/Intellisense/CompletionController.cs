@@ -98,11 +98,7 @@ namespace Templates.Editor.Intellisense
                     switch ((VSConstants.VSStd2KCmdID)nCmdID)
                     {
                         case VSConstants.VSStd2KCmdID.TYPECHAR:
-                            char ch = GetTypeChar(pvaIn);
-                            if (ch == ' ')
-                                StartSession();
-                            else if (_currentSession != null)
-                                Filter();
+                            Filter();
                             break;
                         case VSConstants.VSStd2KCmdID.BACKSPACE:
                             Filter();

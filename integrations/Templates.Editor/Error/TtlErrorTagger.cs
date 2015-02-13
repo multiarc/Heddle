@@ -25,10 +25,28 @@ namespace Templates.Editor.Error {
             if (spans.Count == 0 || _buffer.CurrentSnapshot.Length == 0) {
                 yield break;
             }
-            foreach (IMappingTagSpan<TtlTokenTag> tagSpan in _aggregator.GetTags(spans)) {
-                if (tagSpan.Tag.ParserState == State.SyntaxError) {
+            foreach (IMappingTagSpan<TtlTokenTag> tagSpan in _aggregator.GetTags(spans))
+            {
+                if (tagSpan.Tag.ParserState == State.SyntaxError)
+                {
                     var tagSpans = tagSpan.Span.GetSpans(spans[0].Snapshot);
-                    yield return new TagSpan<ErrorTag>(tagSpans[0], new ErrorTag(PredefinedErrorTypeNames.SyntaxError, tagSpan.Tag.ErrorContainer.Message));
+                    yield return
+                        new TagSpan<ErrorTag>(tagSpans[0],
+                            new ErrorTag(PredefinedErrorTypeNames.SyntaxError, tagSpan.Tag.ErrorContainer.Message));
+                }
+                if (tagSpan.Tag.ParserState == State.CompileError)
+                {
+                    var tagSpans = tagSpan.Span.GetSpans(spans[0].Snapshot);
+                    yield return
+                        new TagSpan<ErrorTag>(tagSpans[0],
+                            new ErrorTag(PredefinedErrorTypeNames.CompilerError, tagSpan.Tag.ErrorContainer.Message));
+                }
+                if (tagSpan.Tag.ParserState == State.OtherError)
+                {
+                    var tagSpans = tagSpan.Span.GetSpans(spans[0].Snapshot);
+                    yield return
+                        new TagSpan<ErrorTag>(tagSpans[0],
+                            new ErrorTag(PredefinedErrorTypeNames.OtherError, tagSpan.Tag.ErrorContainer.Message));
                 }
             }
         }

@@ -18,16 +18,16 @@ namespace Templates.Editor.Intellisense
     {
         public ICompletionSource TryCreateCompletionSource(ITextBuffer textBuffer)
         {
-            return new TTLCompletionSource(textBuffer);
+            return new TtlCompletionSource(textBuffer);
         }
     }
 
-    class TTLCompletionSource : ICompletionSource
+    class TtlCompletionSource : ICompletionSource
     {
         private ITextBuffer _buffer;
         private bool _disposed = false;
 
-        public TTLCompletionSource(ITextBuffer buffer)
+        public TtlCompletionSource(ITextBuffer buffer)
         {
             _buffer = buffer;
         }
