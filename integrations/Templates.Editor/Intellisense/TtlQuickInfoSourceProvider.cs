@@ -49,7 +49,7 @@ namespace Templates.Editor.Intellisense {
                 //TO DO check additional tags for showing quick info
                 var tagSpan = curTag.Span.GetSpans(_buffer).First();
                 applicableToSpan = _buffer.CurrentSnapshot.CreateTrackingSpan(tagSpan, SpanTrackingMode.EdgeExclusive);
-                quickInfoContent.Add("Test quick info!");
+                //quickInfoContent.Add("Test quick info!");
             }
         }
 

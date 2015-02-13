@@ -14,21 +14,18 @@ using Microsoft.VisualStudio.Text.Classification;
 using Templates.Editor.Error;
 
 namespace Templates.Editor {
-    internal sealed class TtlTokenTagger: ITagger<TtlTokenTag>
-    {
+    internal sealed class TtlTokenTagger: ITagger<TtlTokenTag> {
         private ITextSnapshot _snapshot;
         private readonly SyntaxParser _parser = new SyntaxParser();
         private readonly List<ITagSpan<TtlTokenTag>> _tags;
 
-        internal TtlTokenTagger(ITextBuffer buffer)
-        {
+        internal TtlTokenTagger(ITextBuffer buffer) {
             _snapshot = buffer.CurrentSnapshot;
             _tags = new List<ITagSpan<TtlTokenTag>>();
             GetTags();
         }
 
-        public IEnumerable<ITagSpan<TtlTokenTag>> GetTags(NormalizedSnapshotSpanCollection spans)
-        {
+        public IEnumerable<ITagSpan<TtlTokenTag>> GetTags(NormalizedSnapshotSpanCollection spans) {
             if (_snapshot == spans[0].Snapshot)
                 return _tags;
             _snapshot = spans[0].Snapshot;
@@ -37,63 +34,46 @@ namespace Templates.Editor {
             return _tags;
         }
 
-        private void GetTags()
-        {
+        private void GetTags() {
             var tokens = LexisParser.Tokenize(_snapshot.GetText());
-            foreach (Token token in tokens)
-            {
-                try
-                {
-                    switch (_parser.State)
-                    {
-                        case State.Undefined:
-                            _parser.ParseNext(token);
-                            break;
-                        default:
-                            _parser.ParseNext(token);
-                            if (_parser.State == State.SequenceEnd)
-                            {
-                                _parser.ResetState();
-                            }
-                            break;
-                    }
+            foreach (Token token in tokens) {
+                try {
+                    _parser.ParseNext(token);
                 }
-                catch (TemplateParseException e)
-                {
+                catch (TemplateParseException e) {
                     var tokenSpan = new SnapshotSpan(_snapshot, new Span(token.StartIndex, token.Length));
                     _tags.Add(new TagSpan<TtlTokenTag>(tokenSpan,
                         new TtlTokenTag(token, State.SyntaxError,
                             new TtlTemplateErrorContainer(e, "Error parsing template"))));
                     _parser.ResetState();
                 }
-                catch (TemplateCompileException e)
-                {
+                catch (TemplateCompileException e) {
                     var tokenSpan = new SnapshotSpan(_snapshot, new Span(token.StartIndex, token.Length));
                     _tags.Add(new TagSpan<TtlTokenTag>(tokenSpan,
                         new TtlTokenTag(token, State.CompileError,
                             new TtlTemplateErrorContainer(e, "Error compiling template"))));
                     _parser.ResetState();
                 }
-                catch (ArgumentException e)
-                {
+                catch (ArgumentException e) {
                     var tokenSpan = new SnapshotSpan(_snapshot, new Span(token.StartIndex, token.Length));
                     _tags.Add(new TagSpan<TtlTokenTag>(tokenSpan,
                         new TtlTokenTag(token, State.CompileError,
                             new TtlTemplateErrorContainer(e, "Error compiling template"))));
                     _parser.ResetState();
                 }
-                catch (TemplateCreateException e)
-                {
+                catch (TemplateCreateException e) {
                     var tokenSpan = new SnapshotSpan(_snapshot, new Span(token.StartIndex, token.Length));
                     _tags.Add(new TagSpan<TtlTokenTag>(tokenSpan,
                         new TtlTokenTag(token, State.OtherError,
                             new TtlTemplateErrorContainer(e, "Error creating extension"))));
                     _parser.ResetState();
                 }
-                if (_parser.State != State.Undefined)
-                {
+                if (_parser.State != State.Undefined) {
                     var tokenSpan = new SnapshotSpan(_snapshot, new Span(token.StartIndex, token.Length));
                     _tags.Add(new TagSpan<TtlTokenTag>(tokenSpan, new TtlTokenTag(token, _parser.State)));
+                    if (_parser.State == State.SequenceEnd) {
+                        _parser.ResetState();
+                    }
                 }
             }
         }

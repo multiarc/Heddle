@@ -19,7 +19,9 @@ namespace Templates.Editor.Classification {
         public StartTtl()
         {
             DisplayName = "TTL Start";
-            ForegroundColor = Colors.Blue;
+            ForegroundColor = Colors.CadetBlue;
+            BackgroundColor = Colors.Honeydew;
+            IsBold = true;
         }
     }
 
@@ -32,7 +34,9 @@ namespace Templates.Editor.Classification {
         public EndTtl()
         {
             DisplayName = "TTL End";
-            ForegroundColor = Colors.Blue;
+            ForegroundColor = Colors.CadetBlue;
+            BackgroundColor = Colors.Honeydew;
+            IsBold = true;
         }
     }
 
@@ -45,7 +49,9 @@ namespace Templates.Editor.Classification {
         public StartExtensionsBlock()
         {
             DisplayName = "TTL Start Extension Block";
-            ForegroundColor = Colors.DarkCyan;
+            ForegroundColor = Colors.DarkBlue;
+            BackgroundColor = Colors.Honeydew;
+            IsBold = true;
         }
     }
 
@@ -58,7 +64,9 @@ namespace Templates.Editor.Classification {
         public EndExtensionsBlock()
         {
             DisplayName = "TTL End Extension Block";
-            ForegroundColor = Colors.DarkCyan;
+            ForegroundColor = Colors.DarkBlue;
+            BackgroundColor = Colors.Honeydew;
+            IsBold = true;
         }
     }
 
@@ -72,6 +80,7 @@ namespace Templates.Editor.Classification {
         {
             DisplayName = "TTL Valid Identifier";
             ForegroundColor = Colors.Black;
+            BackgroundColor = Colors.Honeydew;
             IsBold = true;
         }
     }
@@ -86,7 +95,7 @@ namespace Templates.Editor.Classification {
         {
             DisplayName = "TTL Extension Delimeter";
             ForegroundColor = Colors.Brown;
-            IsBold = true;
+            BackgroundColor = Colors.Honeydew;
         }
     }
 
@@ -100,6 +109,7 @@ namespace Templates.Editor.Classification {
         {
             DisplayName = "TTL Start Parameters";
             ForegroundColor = Colors.DarkGreen;
+            BackgroundColor = Colors.Honeydew;
         }
     }
 
@@ -113,6 +123,7 @@ namespace Templates.Editor.Classification {
         {
             DisplayName = "TTL End Parameters";
             ForegroundColor = Colors.DarkGreen;
+            BackgroundColor = Colors.Honeydew;
         }
     }
 
@@ -125,6 +136,7 @@ namespace Templates.Editor.Classification {
         public Space()
         {
             DisplayName = "TTL Space";
+            BackgroundColor = Colors.Honeydew;
         }
     }
 }

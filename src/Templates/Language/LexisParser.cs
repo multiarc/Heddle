@@ -72,7 +72,7 @@ namespace Templates.Language {
                                 {
                                     CapturedString = tokenBuilder.ToString(),
                                     Length = tokenBuilder.Length,
-                                    StartIndex = start - tokenBuilder.Length + 1,
+                                    StartIndex = start - tokenBuilder.Length,
                                     Type = DetermineTokenType(tokenBuilder.ToString())
                                 };
                             tokenBuilder.Clear();
@@ -108,7 +108,7 @@ namespace Templates.Language {
                                         {
                                             CapturedString = tokenBuilder.ToString(),
                                             Length = tokenBuilder.Length,
-                                            StartIndex = start - tokenBuilder.Length + 1,
+                                            StartIndex = start - tokenBuilder.Length,
                                             Type = DetermineTokenType(tokenBuilder.ToString())
                                         };
                                     tokenBuilder.Clear();
@@ -137,7 +137,7 @@ namespace Templates.Language {
                     {
                         CapturedString = tokenBuilder.ToString(),
                         Length = tokenBuilder.Length,
-                        StartIndex = start - tokenBuilder.Length + 1,
+                        StartIndex = start - tokenBuilder.Length,
                         Type = DetermineTokenType(tokenBuilder.ToString())
                     };
                 tokenBuilder.Clear();
