@@ -14,8 +14,7 @@ namespace Templates.Editor.Intellisense
     [Export(typeof(ICompletionSourceProvider))]
     [ContentType("ttl")]
     [Name("ttlCompletion")]
-    [Order(Before = "default")]
-    class OokCompletionSourceProvider : ICompletionSourceProvider
+    internal sealed class TtlCompletionSourceProvider : ICompletionSourceProvider
     {
         public ICompletionSource TryCreateCompletionSource(ITextBuffer textBuffer)
         {

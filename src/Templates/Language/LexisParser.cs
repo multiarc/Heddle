@@ -32,8 +32,8 @@ namespace Templates.Language {
         /// <returns>Tokens list, also available in the object in Tokens Property</returns>
         public static IEnumerable<Token> Tokenize(string document)
         {
-            if (string.IsNullOrWhiteSpace(document))
-                throw new ArgumentException();
+            if (string.IsNullOrEmpty(document))
+                return new Token[0];
 
             MatchCollection matches = LexicalExpression.Matches(document);
             return from Match match in matches
@@ -46,21 +46,21 @@ namespace Templates.Language {
                    };
         }
 
-        public static IEnumerable<Token> GetTemplateBlocks (string document)
-        {
-            if (document == null)
-                throw new ArgumentNullException("document");
+        //public static IEnumerable<Token> GetTemplateBlocks (string document)
+        //{
+        //    if (document == null)
+        //        throw new ArgumentNullException("document");
 
-            MatchCollection matches = TemplateBlockExpression.Matches(document);
-            return from Match match in matches
-                   select new Token
-                   {
-                       CapturedString = match.Value,
-                       Length = match.Length,
-                       StartIndex = match.Index,
-                       Type = TokenType.TemplateBlock
-                   };
-        }
+        //    MatchCollection matches = TemplateBlockExpression.Matches(document);
+        //    return from Match match in matches
+        //           select new Token
+        //           {
+        //               CapturedString = match.Value,
+        //               Length = match.Length,
+        //               StartIndex = match.Index,
+        //               Type = TokenType.TemplateBlock
+        //           };
+        //}
 
         private static TokenType DetermineTokenType (string capturedFastString)
         {

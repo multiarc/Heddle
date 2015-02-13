@@ -9,50 +9,43 @@ using Microsoft.VisualStudio.Text.Tagging;
 using System.ComponentModel.Composition;
 using Microsoft.VisualStudio.Utilities;
 
-namespace Templates.Editor.Intellisense
-{
+namespace Templates.Editor.Intellisense {
     [Export(typeof(IQuickInfoSourceProvider))]
     [ContentType("ttl")]
     [Name("ttlQuickInfo")]
-    class TtlQuickInfoSourceProvider : IQuickInfoSourceProvider
-    {
+    internal sealed class TtlQuickInfoSourceProvider: IQuickInfoSourceProvider {
 
         [Import]
-        IBufferTagAggregatorFactoryService aggService = null;
+        private IBufferTagAggregatorFactoryService _aggService = null;
 
-        public IQuickInfoSource TryCreateQuickInfoSource(ITextBuffer textBuffer)
-        {
-            return new TtlQuickInfoSource(textBuffer, aggService.CreateTagAggregator<TokenTag>(textBuffer));
+        public IQuickInfoSource TryCreateQuickInfoSource(ITextBuffer textBuffer) {
+            return new TtlQuickInfoSource(textBuffer, _aggService.CreateTagAggregator<TtlTokenTag>(textBuffer));
         }
     }
 
-    class TtlQuickInfoSource : IQuickInfoSource
-    {
-        private ITagAggregator<TokenTag> _aggregator;
-        private ITextBuffer _buffer;
+    class TtlQuickInfoSource: IQuickInfoSource {
+        private readonly ITagAggregator<TtlTokenTag> _aggregator;
+        private readonly ITextBuffer _buffer;
         private bool _disposed = false;
 
 
-        public TtlQuickInfoSource(ITextBuffer buffer, ITagAggregator<TokenTag> aggregator)
-        {
+        public TtlQuickInfoSource(ITextBuffer buffer, ITagAggregator<TtlTokenTag> aggregator) {
             _aggregator = aggregator;
             _buffer = buffer;
         }
 
-        public void AugmentQuickInfoSession(IQuickInfoSession session, IList<object> quickInfoContent, out ITrackingSpan applicableToSpan)
-        {
+        public void AugmentQuickInfoSession(IQuickInfoSession session, IList<object> quickInfoContent, out ITrackingSpan applicableToSpan) {
             applicableToSpan = null;
 
             if (_disposed)
                 throw new ObjectDisposedException("TestQuickInfoSource");
 
-            var triggerPoint = (SnapshotPoint) session.GetTriggerPoint(_buffer.CurrentSnapshot);
+            var triggerPoint = (SnapshotPoint)session.GetTriggerPoint(_buffer.CurrentSnapshot);
 
             if (triggerPoint == null)
                 return;
 
-            foreach (IMappingTagSpan<TokenTag> curTag in _aggregator.GetTags(new SnapshotSpan(triggerPoint, triggerPoint)))
-            {
+            foreach (IMappingTagSpan<TtlTokenTag> curTag in _aggregator.GetTags(new SnapshotSpan(triggerPoint, triggerPoint))) {
                 //TO DO check additional tags for showing quick info
                 var tagSpan = curTag.Span.GetSpans(_buffer).First();
                 applicableToSpan = _buffer.CurrentSnapshot.CreateTrackingSpan(tagSpan, SpanTrackingMode.EdgeExclusive);
@@ -60,8 +53,7 @@ namespace Templates.Editor.Intellisense
             }
         }
 
-        public void Dispose()
-        {
+        public void Dispose() {
             _disposed = true;
         }
     }

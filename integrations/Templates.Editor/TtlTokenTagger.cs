@@ -11,24 +11,22 @@ using Templates.Language;
 using Templates.Runtime;
 using Templates.Strings.Core;
 using Microsoft.VisualStudio.Text.Classification;
+using Templates.Editor.Error;
 
 namespace Templates.Editor {
-    internal sealed class TokenTagger: ITagger<TokenTag>
+    internal sealed class TtlTokenTagger: ITagger<TtlTokenTag>
     {
         private ITextBuffer _buffer;
         private readonly SyntaxParser _parser = new SyntaxParser();
 
-        internal TokenTagger(ITextBuffer buffer,
-                               ITagAggregator<TokenTag> ookTagAggregator,
-                               IClassificationTypeRegistryService typeService)
+        internal TtlTokenTagger(ITextBuffer buffer)
         {
             _buffer = buffer;
         }
 
-        public IEnumerable<ITagSpan<TokenTag>> GetTags(NormalizedSnapshotSpanCollection spans)
-        {
-            foreach (SnapshotSpan curSpan in spans)
-            {
+        public IEnumerable<ITagSpan<TtlTokenTag>> GetTags(NormalizedSnapshotSpanCollection spans) {
+            var tags = new List<ITagSpan<TtlTokenTag>>();
+            foreach (SnapshotSpan curSpan in spans) {
                 var tokens = LexisParser.Tokenize(curSpan.GetText());
                 foreach (Token token in tokens) {
                     try {
@@ -38,32 +36,37 @@ namespace Templates.Editor {
                             break;
                         default:
                             _parser.ParseNext(token);
-                            if (_parser.State == State.SequenceEnd) {                               
+                            if (_parser.State == State.SequenceEnd) {
                                 _parser.ResetState();
                             }
                             break;
                         }
                     }
                     catch (TemplateParseException e) {
-                        throw new TemplateInitException("Error upon parsing template", e, new BlockPosition(token.StartIndex, token.Length));
+                        var tokenSpan = new SnapshotSpan(curSpan.Snapshot, new Span(token.StartIndex, token.Length));
+                        tags.Add(new TagSpan<TtlTokenTag>(tokenSpan, new TtlTokenTag(token, State.SyntaxError, new TtlTemplateErrorContainer(e, "Error parsing template"))));
                     }
                     catch (TemplateCompileException e) {
-                        throw new TemplateInitException("Error upon processing template", e, new BlockPosition(token.StartIndex, token.Length));
+                        var tokenSpan = new SnapshotSpan(curSpan.Snapshot, new Span(token.StartIndex, token.Length));
+                        tags.Add(new TagSpan<TtlTokenTag>(tokenSpan, new TtlTokenTag(token, State.CompileError, new TtlTemplateErrorContainer(e, "Error compiling template"))));
                     }
                     catch (ArgumentException e) {
-                        throw new TemplateInitException("Error upon processing template", e, new BlockPosition(token.StartIndex, token.Length));
+                        var tokenSpan = new SnapshotSpan(curSpan.Snapshot, new Span(token.StartIndex, token.Length));
+                        tags.Add(new TagSpan<TtlTokenTag>(tokenSpan, new TtlTokenTag(token, State.CompileError, new TtlTemplateErrorContainer(e, "Error compiling template"))));
                     }
                     catch (TemplateCreateException e) {
-                        throw new TemplateInitException("Error upon creating template", e, new BlockPosition(token.StartIndex, token.Length));
+                        var tokenSpan = new SnapshotSpan(curSpan.Snapshot, new Span(token.StartIndex, token.Length));
+                        tags.Add(new TagSpan<TtlTokenTag>(tokenSpan, new TtlTokenTag(token, State.OtherError, new TtlTemplateErrorContainer(e, "Error creating extension"))));
                     }
                     if (_parser.State != State.Undefined) {
                         var tokenSpan = new SnapshotSpan(curSpan.Snapshot, new Span(token.StartIndex, token.Length));
                         if (tokenSpan.IntersectsWith(curSpan)) {
-                            yield return new TagSpan<TokenTag>(tokenSpan, new TokenTag(token, _parser.State));
+                            tags.Add(new TagSpan<TtlTokenTag>(tokenSpan, new TtlTokenTag(token, _parser.State)));
                         }
                     }
                 }
             }
+            return tags;
         }
 
         public event EventHandler<SnapshotSpanEventArgs> TagsChanged;

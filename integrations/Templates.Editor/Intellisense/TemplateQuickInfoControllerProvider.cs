@@ -9,14 +9,14 @@ using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
 
-namespace VSLTK.Intellisense
+namespace Templates.Editor.Intellisense
 {
     #region IIntellisenseControllerProvider
 
     [Export(typeof(IIntellisenseControllerProvider))]
-    [Name("Template QuickInfo Controller")]
+    [Name("TTL QuickInfo Controller")]
     [ContentType("text")]
-    internal class TemplateQuickInfoControllerProvider : IIntellisenseControllerProvider
+    internal sealed class TemplateQuickInfoControllerProvider : IIntellisenseControllerProvider
     {
         #region Asset Imports
 

@@ -9,7 +9,7 @@ namespace Templates.Data {
         ValidIdentifier,
         Space,
         ExtensionDelimeter,
-        TemplateBlock,
+        //TemplateBlock,
         Other
     }
 }

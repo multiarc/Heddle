@@ -23,17 +23,17 @@ namespace Templates.Editor.Intellisense
     internal sealed class VsTextViewCreationListener : IVsTextViewCreationListener
     {
         [Import]
-        IVsEditorAdaptersFactoryService AdaptersFactory = null;
+        IVsEditorAdaptersFactoryService _adaptersFactory = null;
 
         [Import]
-        ICompletionBroker CompletionBroker = null;
+        ICompletionBroker _completionBroker = null;
 
         public void VsTextViewCreated(IVsTextView textViewAdapter)
         {
-            IWpfTextView view = AdaptersFactory.GetWpfTextView(textViewAdapter);
+            IWpfTextView view = _adaptersFactory.GetWpfTextView(textViewAdapter);
             Debug.Assert(view != null);
 
-            CommandFilter filter = new CommandFilter(view, CompletionBroker);
+            TtlCommandFilter filter = new TtlCommandFilter(view, _completionBroker);
 
             IOleCommandTarget next;
             textViewAdapter.AddCommandFilter(filter, out next);
@@ -41,11 +41,11 @@ namespace Templates.Editor.Intellisense
         }
     }
 
-    internal sealed class CommandFilter : IOleCommandTarget
+    internal sealed class TtlCommandFilter : IOleCommandTarget
     {
         ICompletionSession _currentSession;
 
-        public CommandFilter(IWpfTextView textView, ICompletionBroker broker)
+        public TtlCommandFilter(IWpfTextView textView, ICompletionBroker broker)
         {
             _currentSession = null;
 

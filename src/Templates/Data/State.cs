@@ -56,6 +56,12 @@ namespace Templates.Data {
         /// <summary>
         /// Full parameter string ended
         /// </summary>
-        ParameterEnd
+        ParameterEnd,
+
+        SyntaxError,
+
+        CompileError,
+
+        OtherError
     }
 }
