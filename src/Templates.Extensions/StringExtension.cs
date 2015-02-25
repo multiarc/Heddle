@@ -9,12 +9,12 @@ namespace Templates.Extensions {
     /// </summary>
     [Name ("string")]
     [DataType (typeof (string))]
-    [DirectRender]
-    public class StringExtension: AbstractExtension {
-        protected override object ProcessDataInternal (object value, object additionalValue)
+    [EncodeOutput]
+    public class StringExtension: AbstractHtmlExtension {
+        protected override object ProcessDataInternal (object value, object chainedResult)
         {
             if (value == null)
-                return GetInnerResult(additionalValue);
+                return GetInnerResult(chainedResult, null);
             if (!(value is string)) {
                 try {
                     value = Convert.ChangeType(value, typeof (string), CultureInfo.InvariantCulture);

@@ -6,14 +6,22 @@ namespace Templates.Extensions {
     /// <para>Represents universal template for all undetermined types</para>
     /// </summary>
     [Name ("")]
-    [DataType (typeof (object))]
-    [DirectRender]
-    public class EmptyExtension: AbstractExtension {
-        protected override object ProcessDataInternal (object value, object additionalValue)
+    [EncodeOutput]
+    public class EmptyExtension: AbstractHtmlExtension {
+        protected override object ProcessDataInternal (object value, object chainedResult)
         {
-            if (value == null)
-                return GetInnerResult(additionalValue);
-            return value.ToString();
+            if (SubTemplate != null)
+            {
+                return GetInnerResult(value, chainedResult);
+            }
+            if (value != null)
+            {
+                var s = value as string;
+                if (s != null)
+                    return s;
+                return value.ToString();
+            }
+            return string.Empty;
         }
     }
 }

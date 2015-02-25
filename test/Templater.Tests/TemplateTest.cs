@@ -7,7 +7,6 @@ using Templates;
 using Templates.Data;
 using Templates.Runtime;
 using Templates.Strings;
-using Templates.Strings.Core;
 
 namespace Templater.Tests {
     [TestClass]
@@ -29,7 +28,7 @@ namespace Templater.Tests {
                 RootPath = @"g:\Work\Templater\test\Templater.Tests\TestTemplate",
                 TemplateName = "template"
             };
-            _target = new TtlTemplate(new DocumentContext(options));
+            _target = new TtlTemplate(new CompileContext(options));
         }
 
         [TestMethod]
@@ -80,7 +79,7 @@ namespace Templater.Tests {
             StreamReader reader = File.OpenText(@"G:\Work\Templater\test\Templater.Tests\TestTemplate\generated.html");
             ExString expected = reader.ReadToEnd();
             reader.Close();
-            ExString actual = _target.GenerateString(data);
+            ExString actual = _target.Generate(data);
             //var writer = File.CreateText(@"d:\Tmp\generated.html");
             //writer.Write((string)actual);
             //writer.Close();

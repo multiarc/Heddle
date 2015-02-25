@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
+using Templates.Data;
 
 namespace Templates.Runtime {
-    public class TemplateItem {
+    internal class TemplateItem {
         public TemplateItem(Type returnType, IExtension extension)
         {
             ReturnType = returnType;
@@ -13,6 +15,8 @@ namespace Templates.Runtime {
             get;
             private set;
         }
+
+        public RuntimeCallParameter Parameter { get; set; }
 
         public IExtension Extension
         {

@@ -444,6 +444,29 @@ namespace Templates.Strings {
             }
         }
 
+        public static int ApplyRemove(BlockPosition element, ref string source) {
+            int removeStart = element.StartIndex;
+            int removeLength = element.Length;
+            if (element.StartIndex > 0 && source[element.StartIndex - 1] == '\n') {
+                removeStart--;
+                removeLength++;
+                if (element.StartIndex > 1 && source[element.StartIndex - 2] == '\r') {
+                    removeStart--;
+                    removeLength++;
+                }
+            }
+            else if (element.StartIndex + element.Length < source.Length
+                       && source[element.StartIndex + element.Length] == '\r') {
+                removeLength++;
+                if (element.StartIndex + element.Length + 1 < source.Length
+                    && source[element.StartIndex + element.Length + 1] == '\n')
+                    removeLength++;
+            }
+
+            source = Replace(removeStart, removeLength, string.Empty, source);
+            return removeLength;
+        }
+
         public ExString Replace (int start, int length, ExString replacement)
         {
             if (_appendStrings.Length > 0)

@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Net;
-using System.Text;
-using System.Threading.Tasks;
 using Templates;
 using Templates.Data;
 using Templates.Runtime;
@@ -45,14 +41,14 @@ namespace PerfTesting.Runners {
             Console.WriteLine("=======================================================");
             Console.WriteLine("Prepearing bigger string tests");
             var test = new TtlTemplate
-                    (new DocumentContext
+                    (new CompileContext
                          (new TemplateOptions {
                              TemplateName = "template",
                              FileNamePostfix = ".ttl",
                              RootPath = @"g:\Work\Templater\performance\PerfTesting\TestTemplates"
                          }));
             var testItem = DataFiller.FillData();
-            var testBigString = test.GenerateString(testItem);
+            var testBigString = test.Generate(testItem);
             test.Dispose();
             watcher.Reset();
             length = 0;

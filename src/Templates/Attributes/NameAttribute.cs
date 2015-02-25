@@ -5,7 +5,7 @@ namespace Templates.Attributes {
     /// Attribute to mark every extension with name wich used in source template
     /// This attribute must set to any extension class
     /// </summary>
-    [AttributeUsage (AttributeTargets.All, Inherited = true, AllowMultiple = true)]
+    [AttributeUsage (AttributeTargets.All, AllowMultiple = true)]
     public sealed class NameAttribute: Attribute {
         /// <summary>
         /// Sets extension name

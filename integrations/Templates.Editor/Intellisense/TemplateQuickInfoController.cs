@@ -27,7 +27,7 @@ namespace Templates.Editor.Intellisense
             _subjectBuffers = subjectBuffers;
             _componentContext = componentContext;
 
-            _textView.MouseHover += this.OnTextViewMouseHover;
+            _textView.MouseHover += OnTextViewMouseHover;
         }
 
         #endregion
@@ -46,7 +46,7 @@ namespace Templates.Editor.Intellisense
         {
             if (_textView == textView)
             {
-                _textView.MouseHover -= this.OnTextViewMouseHover;
+                _textView.MouseHover -= OnTextViewMouseHover;
                 _textView = null;
             }
         }
@@ -57,7 +57,7 @@ namespace Templates.Editor.Intellisense
 
         private void OnTextViewMouseHover(object sender, MouseHoverEventArgs e)
         {
-            SnapshotPoint? point = this.GetMousePosition(new SnapshotPoint(_textView.TextSnapshot, e.Position));
+            SnapshotPoint? point = GetMousePosition(new SnapshotPoint(_textView.TextSnapshot, e.Position));
 
             if (point != null)
             {

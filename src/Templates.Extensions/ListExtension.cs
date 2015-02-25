@@ -3,10 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Templates.Attributes;
-using Templates.Helpers;
+using Templates.Language;
 using Templates.Runtime;
 using Templates.Strings;
-using Templates.Strings.Core;
 
 namespace Templates.Extensions {
     /// <summary>
@@ -29,17 +28,17 @@ namespace Templates.Extensions {
     /// </summary>
     [Name ("list")]
     [DataType (typeof (IEnumerable))]
-    public class ListExtension: AbstractExtension {
-        public override Type InitializeInnerTemplate(string parameter, System.Type dataType, System.Type additionalType, DocumentContext context)
+    public class ListExtension: AbstractHtmlExtension {
+        public override Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context, ParseContext parseContext)        
         {
             if (dataType == null)
                 throw new ArgumentNullException("dataType");
 
-            System.Type underliyingType = dataType.GetGenericArguments().FirstOrDefault() ?? typeof (object);
-            return base.InitializeInnerTemplate(parameter, null, underliyingType, context);
+            Type underliyingType = dataType.GetGenericArguments().FirstOrDefault() ?? typeof (object);
+            return base.InitStart(parameterTemplate, underliyingType, chainedType, context, parseContext);
         }
 
-        protected override object ProcessDataInternal (object value, object additionalValue)
+        protected override object ProcessDataInternal (object value, object chainedResult)
         {
             if (value == null)
                 return string.Empty;
@@ -48,7 +47,7 @@ namespace Templates.Extensions {
                 return string.Empty;
             var enumerable = (IEnumerable<object>) value;
             foreach (object item in enumerable)
-                builder.Append(GetInnerResult(item));
+                builder.Append(GetInnerResult(item, null));
             return builder.ToString();
         }
     }

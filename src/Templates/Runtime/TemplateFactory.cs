@@ -7,7 +7,7 @@ using System.Reflection;
 using Templates.Attributes;
 using Templates.Exceptions;
 using Templates.Helpers;
-using Type = System.Type;
+using Templates.Language;
 
 namespace Templates.Runtime {
     //DONE: пустой шаблон
@@ -21,7 +21,7 @@ namespace Templates.Runtime {
     /// Template factory, initializes and creates all templates
     /// </summary>
     public static class TemplateFactory {
-        private static readonly Dictionary<string, Type> Templates = LoadBaseTemplates();
+        private static readonly Dictionary<string, Type> Templates = LoadBaseExtensions();
 
         #region Public Methods
 
@@ -29,43 +29,50 @@ namespace Templates.Runtime {
         /// Loads all templates are in assembly
         /// </summary>
         /// <param name="assembly"></param>
-        public static void LoadAddTemplatesFromAssembly (Assembly assembly)
+        public static void LoadAddExtensionsFromAssembly(Assembly assembly)
         {
             if (assembly == null)
                 throw new ArgumentNullException("assembly");
 
-            Dictionary<string, Type> toAdd = LoadTemplates(assembly);
+            Dictionary<string, Type> toAdd = LoadExtensions(assembly);
             foreach (var type in toAdd)
-                Templates.Add(type.Key, type.Value);
+            {
+                if (Templates.ContainsKey(type.Key))
+                {
+                    if (Templates[type.Key].IsAssignableFrom(type.Value))
+                    {
+                        Templates[type.Key] = type.Value;
+                    }
+                    else
+                    {
+                        throw new TemplateOverrideException(
+                            string.Format("Cannot override {0} Extension, {1} is not inherited from {2}", type.Key,
+                                type.Value, Templates[type.Key]));
+                    }
+                }
+                else
+                {
+                    Templates.Add(type.Key, type.Value);
+                }
+            }
         }
 
         /// <summary>
         /// Creates template by it's name and adds parameter string if it's present
         /// </summary>
         /// <param name="templateName">Template name <see cref="NameAttribute"/></param>
-        /// <param name="context"></param>
+        /// <param name="context">Parser context, used to get defenitions list</param>
         /// <returns>ITemplate compatible object <see cref="IExtension"/></returns>
-        public static IExtension Create (string templateName, DocumentContext context = null)
+        public static IExtension Create (string templateName, ParseContext context)
         {
             if (templateName == null)
                 throw new ArgumentNullException("templateName");
-
             try {
-                Type resultType = Templates[templateName];
-                IExtension resultExtension = CreateTemplate(resultType);
+                Type extensionType = Templates[templateName];
+                IExtension resultExtension = CreateExtension(extensionType);
                 return resultExtension;
             }
             catch (KeyNotFoundException e) {
-                if (context != null) {
-                    try {
-                        Type resultType = context.Extensions[templateName];
-                        IExtension resultExtension = CreateTemplate(resultType);
-                        return resultExtension;
-                    }
-                    catch (KeyNotFoundException ex) {
-                        throw new ArgumentException("Template unrecognized. <" + templateName + ">", ex);
-                    }
-                }
                 throw new ArgumentException("Template unrecognized. <" + templateName + ">", e);
             }
             catch (ArgumentException e) {
@@ -81,9 +88,9 @@ namespace Templates.Runtime {
         /// Loads all base templates
         /// </summary>
         /// <returns>List of all template types</returns>
-        private static Dictionary<string, Type> LoadBaseTemplates ()
+        private static Dictionary<string, Type> LoadBaseExtensions ()
         {
-            return LoadTemplates(Assembly.Load(ConfigurationManager.AppSettings["BaseTemplatesAssembly"]));
+            return LoadExtensions(Assembly.Load(ConfigurationManager.AppSettings["BaseTemplatesAssembly"]));
         }
 
         /// <summary>
@@ -91,12 +98,12 @@ namespace Templates.Runtime {
         /// </summary>
         /// <param name="assembly">Assembly to get from</param>
         /// <returns>List of all template types</returns>
-        public static Dictionary<string, Type> LoadTemplates (Assembly assembly)
+        public static Dictionary<string, Type> LoadExtensions (Assembly assembly)
         {
             List<Type> types =
                 assembly.GetTypes().Where(t => t.IsImplement<IExtension>() && t.IsHaveAttribute<NameAttribute>()).OrderBy
                     (t => t.GetAttributes<DataTypeAttribute>().Any(p => p.DataType.IsInterface)).ThenBy
-                    (t => t.GetAttributes<AdditionalDataTypeAttribute>().Any(p => p.DataType.IsInterface)).ToList();
+                    (t => t.GetAttributes<ChainedTypeAttribute>().Any(p => p.DataType.IsInterface)).ToList();
             var result = new Dictionary<string, Type>();
             foreach (Type type in types) {
                 NameAttribute[] names = type.GetAttributes<NameAttribute>();
@@ -111,7 +118,7 @@ namespace Templates.Runtime {
         /// </summary>
         /// <param name="templateType">Type of template <see cref="Type"/></param>
         /// <returns></returns>
-        private static IExtension CreateTemplate (Type templateType)
+        private static IExtension CreateExtension (Type templateType)
         {
             try {
                 return (IExtension) Activator.CreateInstance(templateType);

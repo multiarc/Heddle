@@ -1,54 +1,52 @@
-﻿using System;
-using System.CodeDom;
-using System.Linq;
-using System.Text.RegularExpressions;
-using Templates.Attributes;
-using Templates.Data;
-using Templates.Exceptions;
-using Templates.Helpers;
-using Templates.Runtime;
+﻿//using System;
+//using System.CodeDom;
+//using System.Linq;
+//using System.Text.RegularExpressions;
+//using Templates.Attributes;
+//using Templates.Data;
+//using Templates.Exceptions;
+//using Templates.Helpers;
+//using Templates.Runtime;
 
-namespace Templates.Extensions {
-    [Name ("method")]
-    [Name ("call")]
-    [DataType (typeof (object))]
-    [AdditionalDataType (typeof (object))]
-    public class MethodExtension: AbstractExtension {
-        private static readonly Regex CodeParseExpression = new Regex
-            (@"^\s*(?<return_type>(?<main_type>(@?[_\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Mn}\p{Mc}\p{Nd}\p{Pc}\p{Cf}]+?((\.)|(\+))?)+)(<(?<generic_parameters>((@?[_\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Mn}\p{Mc}\p{Nd}\p{Pc}\p{Cf}]+?((\.)|(\+))?)+(,)?)+)>)?)[\s\n\r\t]*\((?<data>[a-zA-Z_0-9]+)?\)[\s\n\r\t]*(,[\s\n\r\t]*(?<additional>[a-zA-Z_0-9]+))?[\s\n\r\t]*\{(?<code>.*)\}[\s\n\r\t]*$",
-             RegexOptions.Singleline | RegexOptions.Compiled);
+//namespace Templates.Extensions
+//{
+//    [Name("method")]
+//    [Name("call")]
+//    public class MethodExtension : AbstractExtension
+//    {
+//        private static readonly Regex CodeParseExpression = new Regex
+//            (@"^\s*(?<return_type>(?<main_type>(@?[_\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Mn}\p{Mc}\p{Nd}\p{Pc}\p{Cf}]+?((\.)|(\+))?)+)(<(?<generic_parameters>((@?[_\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Mn}\p{Mc}\p{Nd}\p{Pc}\p{Cf}]+?((\.)|(\+))?)+(,)?)+)>)?)[\s\n\r\t]*\((?<data>[a-zA-Z_0-9]+)?\)[\s\n\r\t]*(,[\s\n\r\t]*(?<additional>[a-zA-Z_0-9]+))?[\s\n\r\t]*\{(?<code>.*)\}[\s\n\r\t]*$",
+//                RegexOptions.Singleline | RegexOptions.Compiled);
 
-        private CodeMemberMethod _method;
+//        private CodeMemberMethod _method;
 
-        protected override object ProcessDataInternal (object value, object additionalValue)
-        {
-            if (_method != null && _method.UserData[StoredDataType.Method] != null)
-            {
-                var caller = (DynamicMethodGateDelegate) _method.UserData[StoredDataType.Method];
-                return caller(value, additionalValue);
-            }
-            throw new TemplateProcessingException("Cannot find compiled method reference");
-        }
+//        protected override object ProcessDataInternal(object value, object chainedResult)
+//        {
+//            if (_method != null && _method.UserData[StoredDataType.Method] != null)
+//            {
+//                var caller = (DynamicMethodGateDelegate) _method.UserData[StoredDataType.Method];
+//                return caller(value, chainedResult);
+//            }
+//            throw new TemplateProcessingException("Cannot find compiled method reference");
+//        }
 
-        public override Type InitializeInnerTemplate(string parameter, System.Type dataType, System.Type additionalType, DocumentContext context)
-        {
-            if (context == null)
-                throw new ArgumentNullException("context");
-            Match match = CodeParseExpression.Match(parameter);
-            if (!match.Success)
-                throw new TemplateCompileException
-                    ("C# code not wraped up correctly, please see documentation. (ReturnType([data[,additionalData]]) { })");
-            _method = context.GetNewMethod();
-            if (match.Groups["data"].Value != string.Empty)
-                _method.Parameters.Add(new CodeParameterDeclarationExpression(new CodeTypeReference(dataType), match.Groups["data"].Value));
-            if (match.Groups["additional"].Value != string.Empty)
-                _method.Parameters.Add
-                    (new CodeParameterDeclarationExpression(new CodeTypeReference(additionalType), match.Groups["additional"].Value));
-            var returnType = ReflectionHelper.ResolveType(match.Groups["return_type"].Value,
-                context.Namespaces.ToArray());
-            _method.ReturnType = new CodeTypeReference(returnType);
-            _method.Statements.Add(new CodeSnippetStatement(match.Groups["code"].Value));
-            return returnType;
-        }
-    }
-}
+//        public override Type InitStart(string parameterTemplate, Type dataType, CompileContext context, ParseContext parseContext)
+//        {
+//            if (context == null)
+//                throw new ArgumentNullException("context");
+//            Match match = CodeParseExpression.Match(parameterTemplate);
+//            if (!match.Success)
+//                throw new TemplateCompileException
+//                    ("C# code not wraped up correctly, please see documentation. (ReturnType([data[,additionalData]]) { })");
+//            _method = context.GetNewMethod();
+//            if (match.Groups["data"].Value != string.Empty)
+//                _method.Parameters.Add(new CodeParameterDeclarationExpression(new CodeTypeReference(dataType),
+//                    match.Groups["data"].Value));
+//            var returnType = ReflectionHelper.ResolveType(match.Groups["return_type"].Value,
+//                context.Namespaces.ToArray());
+//            _method.ReturnType = new CodeTypeReference(returnType);
+//            _method.Statements.Add(new CodeSnippetStatement(match.Groups["code"].Value));
+//            return returnType;
+//        }
+//    }
+//}

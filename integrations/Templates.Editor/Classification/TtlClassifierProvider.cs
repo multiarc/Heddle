@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.Composition;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel.Composition;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Classification;
 using Microsoft.VisualStudio.Text.Tagging;
@@ -27,10 +22,10 @@ namespace Templates.Editor.Classification {
         internal static FileExtensionToContentTypeDefinition TtlFileExtensionToContentTypeDefinition = null;
 
         [Import]
-        internal IClassificationTypeRegistryService ClassificationTypeRegistry = null;
+        internal IClassificationTypeRegistryService ClassificationTypeRegistry;
 
         [Import]
-        internal IBufferTagAggregatorFactoryService AggregatorFactory = null;
+        internal IBufferTagAggregatorFactoryService AggregatorFactory;
 
         public ITagger<T> CreateTagger<T>(ITextBuffer buffer) where T : ITag
         {

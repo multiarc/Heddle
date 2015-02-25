@@ -92,20 +92,11 @@ namespace Templates.Collections {
                 array.SetValue(_array[i], j);
         }
 
-        public object SyncRoot
-        {
-            get { return this; }
-        }
+        public object SyncRoot => this;
 
-        public bool IsSynchronized
-        {
-            get { return false; }
-        }
+        public bool IsSynchronized => false;
 
-        public bool IsFixedSize
-        {
-            get { return false; }
-        }
+        public bool IsFixedSize => false;
 
         #endregion
 
@@ -133,10 +124,11 @@ namespace Templates.Collections {
         {
             if (index >= _length || index < 0)
                 throw new ArgumentException();
-
+            if (_length == int.MaxValue)
+                throw new OutOfMemoryException();
             _length++;
             if (_array.Length < _length)
-                Array.Resize(ref _array, _length << 1);
+                Array.Resize(ref _array, _length * 2);
             for (int i = _length; i > index; i--)
                 _array[i] = _array[i - 1];
             _array[index] = item;
@@ -185,9 +177,20 @@ namespace Templates.Collections {
 
         public void Add (T value)
         {
+            if (((long)_length + 1) > int.MaxValue)
+                throw new OutOfMemoryException();
             _length++;
             if (_array.Length < _length)
-                Array.Resize(ref _array, _length << 1);
+            {
+                if ((long) _length*2 > int.MaxValue)
+                {
+                    Array.Resize(ref _array, int.MaxValue);
+                }
+                else
+                {
+                    Array.Resize(ref _array, _length*2);
+                }
+            }
             _array[_length - 1] = value;
         }
 
@@ -225,15 +228,9 @@ namespace Templates.Collections {
             return true;
         }
 
-        public int Count
-        {
-            get { return _length; }
-        }
+        public int Count => _length;
 
-        public bool IsReadOnly
-        {
-            get { return false; }
-        }
+        public bool IsReadOnly => false;
 
         #endregion
     }

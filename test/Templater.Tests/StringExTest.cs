@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Templates.Strings;
-using Templates.Strings.Core;
 
 namespace Templater.Tests {
     [TestClass]

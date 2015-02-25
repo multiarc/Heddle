@@ -4,7 +4,7 @@ namespace Templates.Attributes {
     /// <summary>
     /// Attribute to set main data type goes to template extension
     /// </summary>
-    [AttributeUsage (AttributeTargets.Class, Inherited = true, AllowMultiple = true)]
+    [AttributeUsage (AttributeTargets.Class, AllowMultiple = true)]
     public class DataTypeAttribute: Attribute {
         /// <summary>
         /// Sets main data Type to template extension

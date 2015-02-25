@@ -1,7 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
+using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Editor;
 using Microsoft.VisualStudio.Language.Intellisense;
 using Microsoft.VisualStudio.OLE.Interop;
@@ -9,9 +10,6 @@ using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.TextManager.Interop;
 using Microsoft.VisualStudio.Utilities;
-using Microsoft.VisualStudio;
-using System.Windows;
-using System.Runtime.InteropServices;
 
 namespace Templates.Editor.Intellisense
 {
@@ -23,10 +21,10 @@ namespace Templates.Editor.Intellisense
     internal sealed class VsTextViewCreationListener : IVsTextViewCreationListener
     {
         [Import]
-        IVsEditorAdaptersFactoryService _adaptersFactory = null;
+        IVsEditorAdaptersFactoryService _adaptersFactory;
 
         [Import]
-        ICompletionBroker _completionBroker = null;
+        ICompletionBroker _completionBroker;
 
         public void VsTextViewCreated(IVsTextView textViewAdapter)
         {
@@ -139,11 +137,8 @@ namespace Templates.Editor.Intellisense
                 _currentSession.Dismiss();
                 return false;
             }
-            else
-            {
-                _currentSession.Commit();
-                return true;
-            }
+            _currentSession.Commit();
+            return true;
         }
 
         bool StartSession()

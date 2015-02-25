@@ -10,7 +10,7 @@ namespace Templates.Editor.Error {
     [TagType(typeof(ErrorTag))]
     internal sealed class TtlErrorTaggerProvider : ITaggerProvider {
         [Import]
-        internal IBufferTagAggregatorFactoryService AggregatorFactory = null;
+        internal IBufferTagAggregatorFactoryService AggregatorFactory;
 
         public ITagger<T> CreateTagger<T>(ITextBuffer buffer) where T : ITag
         {

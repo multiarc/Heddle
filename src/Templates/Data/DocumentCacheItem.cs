@@ -1,9 +1,7 @@
 using System;
-using Templates.Helpers;
-
 
 namespace Templates.Data {
-    public struct DocumentCacheItem: IEquatable<DocumentCacheItem> {
+    internal struct DocumentCacheItem: IEquatable<DocumentCacheItem> {
         private readonly string _document;
         public Type ModelType;
         public string RootPath;
@@ -26,7 +24,7 @@ namespace Templates.Data {
 
         public override int GetHashCode ()
         {
-            return _document != null ? _document.GetHashCode() : 0;
+            return _document?.GetHashCode() ?? 0;
         }
 
         public override bool Equals (object obj)

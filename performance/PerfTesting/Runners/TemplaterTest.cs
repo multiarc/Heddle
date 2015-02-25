@@ -13,13 +13,13 @@ namespace PerfTesting.Runners {
         {
             /*JIT*/
             var test = new TtlTemplate
-                (new DocumentContext
+                (new CompileContext
                      (new TemplateOptions {
                          TemplateName = "template",
                          FileNamePostfix = ".ttl",
                          RootPath = @"g:\Work\Templater\performance\PerfTesting\TestTemplates"
                      }));
-            var testString = test.GenerateString(DataFiller.FillData());
+            var testString = test.Generate(DataFiller.FillData());
             File.WriteAllText("test.html", testString);
             test.Dispose();
             /*END JIT*/
@@ -38,7 +38,7 @@ namespace PerfTesting.Runners {
             var watcher = new Stopwatch();
             watcher.Start();
             var target = new TtlTemplate
-                (new DocumentContext
+                (new CompileContext
                      (new TemplateOptions {
                          TemplateName = "template",
                          FileNamePostfix = ".ttl",
@@ -48,7 +48,7 @@ namespace PerfTesting.Runners {
             Console.WriteLine("Compile time: {0}", watcher.Elapsed);
             watcher.Reset();
             watcher.Start();
-            long length = list.Sum(item => (long)target.GenerateString(item).Length);
+            long length = list.Sum(item => (long)target.Generate(item).Length);
             watcher.Stop();
             target.Dispose();
             Console.WriteLine("{0} run times: {1}", n, watcher.Elapsed);

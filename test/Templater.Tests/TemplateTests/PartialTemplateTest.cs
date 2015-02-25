@@ -3,7 +3,6 @@ using Templates.Data;
 using Templates.Extensions;
 using Templates.Runtime;
 using Templates.Strings;
-using Templates.Strings.Core;
 
 namespace Templater.Tests.TemplateTests {
     [TestClass]
@@ -25,14 +24,14 @@ namespace Templater.Tests.TemplateTests {
         [TestMethod]
         public void ProcessDataTest ()
         {
-            var context = new DocumentContext
+            var context = new CompileContext
                 (new TemplateOptions
                 {
                     FileNamePostfix = ".ttl",
                     RootPath = @"g:\Work\Templater\test\Templater.Tests\TestTemplate",
                     TemplateName = "partial"
                 });
-            _target.InitializeInnerTemplate
+            _target.InitStart
                 ("partial", typeof(TestListItem), null, context);
             context.Compile();
             var value = new TestListItem

@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using Templates.Attributes;
 using Templates.Exceptions;
 
 namespace Templates.Helpers {
@@ -153,6 +154,43 @@ namespace Templates.Helpers {
             throw new TemplateCompileException(string.Format(CultureInfo.InvariantCulture, "Couldn't resolve type [{0}]", typeName));
         }
 
+        /*public static PropertyInfo ResolveProperty(string propertyName, Type sourceType = null)
+        {
+            string[] accessList = null;
+            if (propertyName.Contains("."))
+            {
+                accessList = propertyName.Split('.');
+            }
+            if (sourceType != null)
+            {
+                if (accessList == null)
+                {
+                    return sourceType.GetProperty(propertyName);
+                }
+                PropertyInfo result = null;
+                foreach (var accessor in accessList)
+                {
+                    if (result == null)
+                    {
+                        result = sourceType.GetProperty(accessor);
+                        if (result == null)
+                            return ResolveProperty(propertyName);
+                    }
+                    else
+                    {
+                        result = sourceType.GetProperty(accessor);
+                    }
+                    if (result == null || !result.CanRead || result.IsHaveAttribute<HiddenAttribute>())
+                        return null;
+                    sourceType = result.PropertyType;
+                }
+            }
+            else
+            {
+                
+            }
+        }*/
+
         public static Type ResolveType (string typeName, params string[] imports)
         {
             if (imports == null)
@@ -167,7 +205,7 @@ namespace Templates.Helpers {
                 string[] importsArray = imports;
                 string[] genericParameters = match.Groups["generic_parameters"].Value.Split(',');
                 Type modelType = ResolveSimpleType(match.Groups["main_type"].Value + "`" + genericParameters.Length, importsArray);
-                modelType = modelType.MakeGenericType(genericParameters.Select(parameter => ResolveSimpleType(parameter, importsArray)).ToArray());
+                modelType = modelType.MakeGenericType(genericParameters.Select(parameter => ResolveType(parameter, importsArray)).ToArray());
                 return modelType;
             }
             return ResolveSimpleType(typeName, imports);

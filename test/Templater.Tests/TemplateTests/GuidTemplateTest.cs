@@ -4,7 +4,6 @@ using Templates.Data;
 using Templates.Extensions;
 using Templates.Runtime;
 using Templates.Strings;
-using Templates.Strings.Core;
 
 namespace Templater.Tests.TemplateTests {
     [TestClass]
@@ -26,12 +25,12 @@ namespace Templater.Tests.TemplateTests {
         [TestMethod]
         public void ProcessDataTest ()
         {
-            _target.InitializeInnerTemplate("X", typeof (Guid), null, new DocumentContext(new TemplateOptions()));
+            _target.InitStart("X", typeof (Guid), null, new CompileContext(new TemplateOptions()));
             Guid value = Guid.NewGuid();
             ExString expected = value.ToString("X");
             ExString actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
-            _target.InitializeInnerTemplate("<%GuidFormat%>", typeof (Guid), typeof (TestData), new DocumentContext(new TemplateOptions()));
+            _target.InitStart("<%GuidFormat%>", typeof (Guid), typeof (TestData), new CompileContext(new TemplateOptions()));
             value = Guid.NewGuid();
             var testData = new TestData
             {
@@ -40,7 +39,7 @@ namespace Templater.Tests.TemplateTests {
             expected = value.ToString(testData.GuidFormat);
             actual = _target.ProcessData(value, testData).ToString();
             Assert.AreEqual(expected, actual);
-            _target.InitializeInnerTemplate("", typeof (Guid), null, new DocumentContext(new TemplateOptions()));
+            _target.InitStart("", typeof (Guid), null, new CompileContext(new TemplateOptions()));
             value = Guid.NewGuid();
             expected = value.ToString();
             actual = _target.ProcessData(value, null).ToString();

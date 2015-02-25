@@ -1,16 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Templates;
 using Templates.Collections;
 using Templates.Data;
 using Templates.Runtime;
 using Templates.Strings;
-using Templates.Strings.Core;
 
 namespace PerfTesting.Runners {
     public class TemplaterStrings :IRunner {
@@ -20,7 +17,7 @@ namespace PerfTesting.Runners {
             var watcher = new Stopwatch();
             watcher.Reset();
             var target = new TtlTemplate
-                (new DocumentContext
+                (new CompileContext
                      (new TemplateOptions {
                          TemplateName = "template",
                          FileNamePostfix = ".ttl",
@@ -36,7 +33,7 @@ namespace PerfTesting.Runners {
                 list.Add(DataFiller.FillData());
             foreach (TestDataStructure item in list)
             {
-                testFastList.Add(target.GenerateString(item));
+                testFastList.Add(target.Generate(item));
             }
 
             SmartList<string> testStringList = testFastList.Select(i => i.ToString(CultureInfo.InvariantCulture)).ToSmartArray();

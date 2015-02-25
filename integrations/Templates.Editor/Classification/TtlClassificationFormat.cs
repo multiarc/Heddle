@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.Composition;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel.Composition;
 using System.Windows.Media;
 using Microsoft.VisualStudio.Text.Classification;
 using Microsoft.VisualStudio.Utilities;
@@ -14,7 +9,7 @@ namespace Templates.Editor.Classification {
     [ClassificationType(ClassificationTypeNames = "StartTtl")]
     [Name("StartTtl")]
     [UserVisible(false)]
-    [Order(Before = Priority.Default)]
+    [Order(After = Priority.Default)]
     internal sealed class StartTtl: ClassificationFormatDefinition {
         public StartTtl()
         {
@@ -29,7 +24,7 @@ namespace Templates.Editor.Classification {
     [ClassificationType(ClassificationTypeNames = "EndTtl")]
     [Name("EndTtl")]
     [UserVisible(false)]
-    [Order(Before = Priority.Default)]
+    [Order(After = Priority.Default)]
     internal sealed class EndTtl: ClassificationFormatDefinition {
         public EndTtl()
         {
@@ -44,7 +39,7 @@ namespace Templates.Editor.Classification {
     [ClassificationType(ClassificationTypeNames = "StartExtensionsBlock")]
     [Name("StartExtensionsBlock")]
     [UserVisible(false)]
-    [Order(Before = Priority.Default)]
+    [Order(After = Priority.Default)]
     internal sealed class StartExtensionsBlock: ClassificationFormatDefinition {
         public StartExtensionsBlock()
         {
@@ -59,7 +54,7 @@ namespace Templates.Editor.Classification {
     [ClassificationType(ClassificationTypeNames = "EndExtensionsBlock")]
     [Name("EndExtensionsBlock")]
     [UserVisible(false)]
-    [Order(Before = Priority.Default)]
+    [Order(After = Priority.Default)]
     internal sealed class EndExtensionsBlock: ClassificationFormatDefinition {
         public EndExtensionsBlock()
         {
@@ -74,7 +69,7 @@ namespace Templates.Editor.Classification {
     [ClassificationType(ClassificationTypeNames = "ValidIdentifier")]
     [Name("ValidIdentifier")]
     [UserVisible(false)]
-    [Order(Before = Priority.Default)]
+    [Order(After = Priority.Default)]
     internal sealed class ValidIdentifier: ClassificationFormatDefinition {
         public ValidIdentifier()
         {
@@ -89,7 +84,7 @@ namespace Templates.Editor.Classification {
     [ClassificationType(ClassificationTypeNames = "ExtensionDelimeter")]
     [Name("ExtensionDelimeter")]
     [UserVisible(false)]
-    [Order(Before = Priority.Default)]
+    [Order(After = Priority.Default)]
     internal sealed class ExtensionDelimeter: ClassificationFormatDefinition {
         public ExtensionDelimeter()
         {
@@ -103,7 +98,7 @@ namespace Templates.Editor.Classification {
     [ClassificationType(ClassificationTypeNames = "StartParameter")]
     [Name("StartParameter")]
     [UserVisible(false)]
-    [Order(Before = Priority.Default)]
+    [Order(After = Priority.Default)]
     internal sealed class StartParameter: ClassificationFormatDefinition {
         public StartParameter()
         {
@@ -117,7 +112,7 @@ namespace Templates.Editor.Classification {
     [ClassificationType(ClassificationTypeNames = "EndParameter")]
     [Name("EndParameter")]
     [UserVisible(false)]
-    [Order(Before = Priority.Default)]
+    [Order(After = Priority.Default)]
     internal sealed class EndParameter: ClassificationFormatDefinition {
         public EndParameter()
         {
@@ -131,7 +126,7 @@ namespace Templates.Editor.Classification {
     [ClassificationType(ClassificationTypeNames = "Space")]
     [Name("Space")]
     [UserVisible(false)]
-    [Order(Before = Priority.Default)]
+    [Order(After = Priority.Default)]
     internal sealed class Space: ClassificationFormatDefinition {
         public Space()
         {

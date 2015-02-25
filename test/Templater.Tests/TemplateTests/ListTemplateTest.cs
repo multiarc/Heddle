@@ -7,7 +7,6 @@ using Templates.Data;
 using Templates.Extensions;
 using Templates.Runtime;
 using Templates.Strings;
-using Templates.Strings.Core;
 
 namespace Templater.Tests.TemplateTests {
     [TestClass]
@@ -31,7 +30,7 @@ namespace Templater.Tests.TemplateTests {
         [TestMethod]
         public void ProcessDataTest ()
         {
-            _target.InitializeInnerTemplate("<%Str%>=<%Num%>", typeof (List<TestListItem>), null, new DocumentContext(new TemplateOptions()));
+            _target.InitializeInnerTemplate("<%Str%>=<%Num%>", typeof (List<TestListItem>), null, new CompileContext(new TemplateOptions()));
             var value = new List<TestListItem>();
             for (int i = 0; i < 100; i++) {
                 value.Add

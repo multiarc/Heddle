@@ -4,7 +4,6 @@ using Templates.Data;
 using Templates.Extensions;
 using Templates.Runtime;
 using Templates.Strings;
-using Templates.Strings.Core;
 
 namespace Templater.Tests.TemplateTests {
     [TestClass]
@@ -26,16 +25,16 @@ namespace Templater.Tests.TemplateTests {
         [TestMethod]
         public void ProcessDataTest ()
         {
-            _target.InitializeInnerTemplate("", typeof (decimal), null, new DocumentContext(new TemplateOptions()));
+            _target.InitStart("", typeof (decimal), null, new CompileContext(new TemplateOptions()));
             const decimal value = 98.25m;
             ExString expected = value.ToString("c", CultureInfo.InvariantCulture);
             ExString actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
-            _target.InitializeInnerTemplate("en-us", typeof (decimal), null, new DocumentContext(new TemplateOptions()));
+            _target.InitStart("en-us", typeof (decimal), null, new CompileContext(new TemplateOptions()));
             expected = value.ToString("c", new CultureInfo("en-us"));
             actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
-            _target.InitializeInnerTemplate("<%Locale%>", typeof (decimal), typeof (TestData), new DocumentContext(new TemplateOptions()));
+            _target.InitStart("<%Locale%>", typeof (decimal), typeof (TestData), new CompileContext(new TemplateOptions()));
             var testData = new TestData
             {
                 Locale = "ru-ru"
@@ -44,7 +43,7 @@ namespace Templater.Tests.TemplateTests {
             actual = _target.ProcessData(value, testData).ToString();
             Assert.AreEqual(expected, actual);
             const int value2 = 98;
-            _target.InitializeInnerTemplate("ru-ru", typeof (int), null, new DocumentContext(new TemplateOptions()));
+            _target.InitStart("ru-ru", typeof (int), null, new CompileContext(new TemplateOptions()));
             expected = ((decimal) value2).ToString("c", new CultureInfo("ru-ru"));
             actual = _target.ProcessData(value2, testData).ToString();
             Assert.AreEqual(expected, actual);

@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Microsoft.VisualStudio.Language.Intellisense;
-using System.Collections.ObjectModel;
-using Microsoft.VisualStudio.Text;
-using Microsoft.VisualStudio.Text.Tagging;
 using System.ComponentModel.Composition;
+using System.Linq;
+using Microsoft.VisualStudio.Language.Intellisense;
+using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Utilities;
 
 namespace Templates.Editor.Intellisense
@@ -25,7 +22,7 @@ namespace Templates.Editor.Intellisense
     class TtlCompletionSource : ICompletionSource
     {
         private ITextBuffer _buffer;
-        private bool _disposed = false;
+        private bool _disposed;
 
         public TtlCompletionSource(ITextBuffer buffer)
         {
@@ -37,10 +34,10 @@ namespace Templates.Editor.Intellisense
             if (_disposed)
                 throw new ObjectDisposedException("OokCompletionSource");
 
-            List<Completion> completions = new List<Completion>()
+            List<Completion> completions = new List<Completion>
             {
                 new Completion("Test1"),
-                new Completion("Test2"),
+                new Completion("Test2")
             };
             
             ITextSnapshot snapshot = _buffer.CurrentSnapshot;

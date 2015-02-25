@@ -9,15 +9,14 @@ namespace Templates.Extensions {
     /// </summary>
     [Name ("time")]
     [DataType (typeof (DateTime))]
-    [AdditionalDataType (typeof (object))]
-    [DirectRender]
-    public class TimeExtension: AbstractExtension {
-        protected override object ProcessDataInternal (object value, object additionalValue)
+    [EncodeOutput]
+    public class TimeExtension: AbstractHtmlExtension {
+        protected override object ProcessDataInternal (object value, object chainedResult)
         {
-            string dateFormat = GetInnerResult(additionalValue);
+            string dateFormat = GetInnerResult(chainedResult, null);
             if (string.IsNullOrEmpty(dateFormat))
                 dateFormat = "t";
-            if (value == null || !(value is DateTime))
+            if (!(value is DateTime))
                 return string.Empty;
             return ((DateTime) value).ToString(dateFormat, CultureInfo.InvariantCulture);
         }

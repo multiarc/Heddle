@@ -3,7 +3,6 @@ using Templates.Data;
 using Templates.Extensions;
 using Templates.Runtime;
 using Templates.Strings;
-using Templates.Strings.Core;
 
 namespace Templater.Tests.TemplateTests {
     [TestClass]
@@ -25,7 +24,7 @@ namespace Templater.Tests.TemplateTests {
         [TestMethod]
         public void ProcessDataTest ()
         {
-            _target.InitializeInnerTemplate("<%Str%>=<%Num%>", typeof (TestData), null, new DocumentContext(new TemplateOptions()));
+            _target.InitializeInnerTemplate("<%Str%>=<%Num%>", typeof (TestData), null, new CompileContext(new TemplateOptions()));
             var value = new TestData
             {
                 Num = 10,

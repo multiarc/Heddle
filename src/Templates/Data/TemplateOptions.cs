@@ -7,6 +7,31 @@ namespace Templates.Data {
         public string TemplateName;
         public bool EnableFileChangeCheck;
 
+        public TemplateOptions()
+        {
+            FileNamePostfix = null;
+            RootPath = null;
+            TemplateName = null;
+            EnableFileChangeCheck = false;
+        }
+
+
+        public TemplateOptions(string fileNamePostfix, string rootPath, string templateName, bool enableFileChangeCheck = false)
+        {
+            FileNamePostfix = fileNamePostfix;
+            RootPath = rootPath;
+            TemplateName = templateName;
+            EnableFileChangeCheck = enableFileChangeCheck;
+        }
+
+        public TemplateOptions(TemplateOptions value)
+        {
+            FileNamePostfix = value.FileNamePostfix;
+            RootPath = value.RootPath;
+            TemplateName = value.TemplateName;
+            EnableFileChangeCheck = value.EnableFileChangeCheck;
+        }
+
         #region IEquatable<TemplateOptions> Members
 
         public bool Equals (TemplateOptions other)
@@ -38,12 +63,7 @@ namespace Templates.Data {
         public override int GetHashCode ()
         {
             unchecked {
-                // ReSharper disable NonReadonlyFieldInGetHashCode
-                int result = (FileNamePostfix != null ? FileNamePostfix.GetHashCode() : 0);
-                result = (result * 397) ^ (TemplateName != null ? TemplateName.GetHashCode() : 0);
-                result = (result * 397) ^ (RootPath != null ? RootPath.GetHashCode() : 0);
-                // ReSharper restore NonReadonlyFieldInGetHashCode
-                return result;
+                return TemplateName?.GetHashCode() ?? 0;
             }
         }
     }

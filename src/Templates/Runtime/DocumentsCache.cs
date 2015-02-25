@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Templates.Data;
-using Templates.Helpers;
-
+using Templates.Language;
 
 namespace Templates.Runtime {
     public static class DocumentsCache {
-        private static readonly Dictionary<DocumentCacheItem, DocumentParser> Cache = new Dictionary<DocumentCacheItem, DocumentParser>();
+        private static readonly Dictionary<DocumentCacheItem, RuntimeDocument> Cache = new Dictionary<DocumentCacheItem, RuntimeDocument>();
 
-        public static DocumentParser GetDocumentParser (string document, DocumentContext context)
+        public static RuntimeDocument GetRuntimeDocument(string document, CompileContext context)
         {
             if (string.IsNullOrEmpty(document))
                 return null;
@@ -19,15 +17,13 @@ namespace Templates.Runtime {
                 ModelType = context.ModelType
             };
 
-            DocumentParser result;
-            lock (Cache) {
+            lock (Cache)
+            {
+                RuntimeDocument result;
                 if (Cache.TryGetValue(itemToSearch, out result))
                     return result;
-                result = new DocumentParser(context);
-                Cache.Add(itemToSearch, result);
             }
-            result.Parse(document);
-            return result;
+            return null;
         }
 
         public static void Clear()
@@ -42,23 +38,37 @@ namespace Templates.Runtime {
             }
         }
 
-        public static void UpdateCaches (DocumentParser newParser, string document, Type modelType, string rootPath)
+        public static void UpdateCaches(RuntimeDocument newRuntimeDocument, string oldDocument, string newDocument, CompileContext context)
         {
-            if (!string.IsNullOrEmpty(document)) {
-                var itemToSearch = new DocumentCacheItem(document)
+            if (!string.IsNullOrEmpty(oldDocument))
+            {
+                var itemToSearch = new DocumentCacheItem(oldDocument)
                 {
-                    RootPath = rootPath,
-                    ModelType = modelType
+                    RootPath = context.Options.RootPath,
+                    ModelType = context.ModelType
                 };
-                lock (Cache) {
+                lock (Cache)
+                {
                     if (Cache.ContainsKey(itemToSearch))
                         Cache.Remove(itemToSearch);
-                    itemToSearch = new DocumentCacheItem(newParser.Document)
+                    itemToSearch = new DocumentCacheItem(newDocument)
                     {
-                        RootPath = rootPath,
-                        ModelType = modelType
+                        RootPath = context.Options.RootPath,
+                        ModelType = context.ModelType
                     };
-                    Cache.Add(itemToSearch, newParser);
+                    Cache.Add(itemToSearch, newRuntimeDocument);
+                }
+            }
+            else
+            {
+                var itemToSearch = new DocumentCacheItem(newDocument)
+                {
+                    RootPath = context.Options.RootPath,
+                    ModelType = context.ModelType
+                };
+                lock (Cache)
+                {
+                    Cache.Add(itemToSearch, newRuntimeDocument);
                 }
             }
         }

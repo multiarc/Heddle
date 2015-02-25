@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace Templates.Collections {
     [Serializable]
@@ -28,15 +29,9 @@ namespace Templates.Collections {
             _array = new T[capacity];
         }
 
-        public int Length
-        {
-            get { return _length; }
-        }
+        public int Length => _length;
 
-        public int Capacity
-        {
-            get { return _array.Length; }
-        }
+        public int Capacity => _array.Length;
 
         public T[] ToArray ()
         {
@@ -47,9 +42,7 @@ namespace Templates.Collections {
 
         public static implicit operator T[] (SmartList<T> value)
         {
-            if (value == null)
-                return null;
-            return value.ToArray();
+            return value?.ToArray();
         }
 
         public static implicit operator SmartList<T> (T[] value)
@@ -58,6 +51,38 @@ namespace Templates.Collections {
                 return null;
 
             return new SmartList<T>(value);
+        }
+
+        
+
+        public SmartList<T> AddRange(ICollection<T> items)
+        {
+            if (_length == int.MaxValue || (long)_length + items.Count > int.MaxValue)
+                throw new OutOfMemoryException();
+            var length = _length;
+            _length += items.Count;
+            if (_array.Length < _length)
+            {
+                if ((long) _length*2 > int.MaxValue)
+                {
+                    Array.Resize(ref _array, int.MaxValue);
+                }
+                else
+                {
+                    Array.Resize(ref _array, _length*2);
+                }
+            }
+            items.CopyTo(_array, length);
+            return this;
+        }
+
+        public SmartList<T> AddRange(IEnumerable<T> items)
+        {
+            foreach (var item in items)
+            {
+                Add(item);
+            }
+            return this;
         }
 
         public SmartList<T> GetCrossThreadCopy ()

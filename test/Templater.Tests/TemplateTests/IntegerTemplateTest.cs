@@ -4,7 +4,6 @@ using Templates.Data;
 using Templates.Extensions;
 using Templates.Runtime;
 using Templates.Strings;
-using Templates.Strings.Core;
 
 namespace Templater.Tests.TemplateTests {
     [TestClass]
@@ -26,12 +25,12 @@ namespace Templater.Tests.TemplateTests {
         [TestMethod]
         public void ProcessDataTest ()
         {
-            _target.InitializeInnerTemplate("", typeof (int), null, new DocumentContext(new TemplateOptions()));
+            _target.InitStart("", typeof (int), null, new CompileContext(new TemplateOptions()));
             const int value = 160;
             ExString expected = value.ToString(CultureInfo.InvariantCulture);
             ExString actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
-            _target.InitializeInnerTemplate("<%IntFormat%>", typeof (int), typeof (TestData), new DocumentContext(new TemplateOptions()));
+            _target.InitStart("<%IntFormat%>", typeof (int), typeof (TestData), new CompileContext(new TemplateOptions()));
             var testData = new TestData
             {
                 IntFormat = "X"

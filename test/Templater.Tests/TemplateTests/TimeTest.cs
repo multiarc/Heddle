@@ -5,7 +5,6 @@ using Templates.Data;
 using Templates.Extensions;
 using Templates.Runtime;
 using Templates.Strings;
-using Templates.Strings.Core;
 
 namespace Templater.Tests.TemplateTests {
     [TestClass]
@@ -27,22 +26,22 @@ namespace Templater.Tests.TemplateTests {
         [TestMethod]
         public void ProcessDataTest ()
         {
-            _target.InitializeInnerTemplate(null, typeof (DateTime), null, new DocumentContext(new TemplateOptions()));
+            _target.InitStart(null, typeof (DateTime), null, new CompileContext(new TemplateOptions()));
             DateTime value = DateTime.Now;
             ExString expected = value.ToString("t", CultureInfo.InvariantCulture);
             ExString actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
-            _target.InitializeInnerTemplate("d", typeof (DateTime), null, new DocumentContext(new TemplateOptions()));
+            _target.InitStart("d", typeof (DateTime), null, new CompileContext(new TemplateOptions()));
             value = DateTime.Now;
             expected = value.ToString("d", CultureInfo.InvariantCulture);
             actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
-            _target.InitializeInnerTemplate("t", typeof (DateTime), null, new DocumentContext(new TemplateOptions()));
+            _target.InitStart("t", typeof (DateTime), null, new CompileContext(new TemplateOptions()));
             value = DateTime.Now;
             expected = value.ToString("t", CultureInfo.InvariantCulture);
             actual = _target.ProcessData(value, null).ToString();
             Assert.AreEqual(expected, actual);
-            _target.InitializeInnerTemplate("<%TimeFormat%>", typeof (DateTime), typeof (TestData), new DocumentContext(new TemplateOptions()));
+            _target.InitStart("<%TimeFormat%>", typeof (DateTime), typeof (TestData), new CompileContext(new TemplateOptions()));
             var testData = new TestData
             {
                 TimeFormat = "yyyy-mm-dd"

@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.Composition;
 using System.Linq;
-using System.Text;
 using Microsoft.VisualStudio.Language.Intellisense;
-using System.Collections.ObjectModel;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Tagging;
-using System.ComponentModel.Composition;
 using Microsoft.VisualStudio.Utilities;
 
 namespace Templates.Editor.Intellisense {
@@ -16,7 +14,7 @@ namespace Templates.Editor.Intellisense {
     internal sealed class TtlQuickInfoSourceProvider: IQuickInfoSourceProvider {
 
         [Import]
-        private IBufferTagAggregatorFactoryService _aggService = null;
+        private IBufferTagAggregatorFactoryService _aggService;
 
         public IQuickInfoSource TryCreateQuickInfoSource(ITextBuffer textBuffer) {
             return new TtlQuickInfoSource(textBuffer, _aggService.CreateTagAggregator<TtlTokenTag>(textBuffer));
@@ -26,7 +24,7 @@ namespace Templates.Editor.Intellisense {
     class TtlQuickInfoSource: IQuickInfoSource {
         private readonly ITagAggregator<TtlTokenTag> _aggregator;
         private readonly ITextBuffer _buffer;
-        private bool _disposed = false;
+        private bool _disposed;
 
 
         public TtlQuickInfoSource(ITextBuffer buffer, ITagAggregator<TtlTokenTag> aggregator) {

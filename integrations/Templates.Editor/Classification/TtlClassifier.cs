@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Classification;
 using Microsoft.VisualStudio.Text.Tagging;
@@ -20,14 +17,14 @@ namespace Templates.Editor.Classification {
             _aggregator = tagAggregator;
             _tokenTypes = new Dictionary<TokenType, IClassificationType>
             {
-                {TokenType.StartTtl, typeService.GetClassificationType("StartTtl")},
-                {TokenType.EndTtl, typeService.GetClassificationType("EndTtl")},
-                {TokenType.StartExtensionsBlock, typeService.GetClassificationType("StartExtensionsBlock")},
-                {TokenType.EndExtensionsBlock, typeService.GetClassificationType("EndExtensionsBlock")},
+                {TokenType.DefinitionStart, typeService.GetClassificationType("StartTtl")},
+                {TokenType.DefinitionEnd, typeService.GetClassificationType("EndTtl")},
+                {TokenType.DefinitionNameStart, typeService.GetClassificationType("StartExtensionsBlock")},
+                {TokenType.DefinitionNameEnd, typeService.GetClassificationType("EndExtensionsBlock")},
                 {TokenType.ValidIdentifier, typeService.GetClassificationType("ValidIdentifier")},
                 {TokenType.ExtensionDelimeter, typeService.GetClassificationType("ExtensionDelimeter")},
-                {TokenType.StartParameter, typeService.GetClassificationType("StartParameter")},
-                {TokenType.EndParameter, typeService.GetClassificationType("EndParameter")},
+                {TokenType.ParameterStart, typeService.GetClassificationType("StartParameter")},
+                {TokenType.ParameterEnd, typeService.GetClassificationType("EndParameter")},
                 {TokenType.Space, typeService.GetClassificationType("Space")},
                 {TokenType.Other, typeService.GetClassificationType("Space")}
             };

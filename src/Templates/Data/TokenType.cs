@@ -1,15 +1,20 @@
 namespace Templates.Data {
     public enum TokenType {
-        StartTtl,
-        EndTtl,
-        StartExtensionsBlock,
-        EndExtensionsBlock,
-        StartParameter,
-        EndParameter,
+        DefinitionStart,
+        DefinitionEnd,
+        DefinitionNameStart,
+        DefinitionNameEnd,
+        ParameterStart,
+        ParameterEnd,
         ValidIdentifier,
         Space,
         ExtensionDelimeter,
-        //TemplateBlock,
+        TypeNameDefenition,
+        ModelParameterStart,
+        ModelParameterEnd,
+        OutputStart,
+        CommentStart,
+        CommentEnd,
         Other
     }
 }

@@ -3,18 +3,19 @@ using System.Linq;
 using Templates.Attributes;
 using Templates.Exceptions;
 using Templates.Helpers;
+using Templates.Language;
 using Templates.Runtime;
 
 namespace Templates.Extensions {
     [Name ("model")]
-    public class ModelExtension: AbstractExtension {
-        public override Type InitializeInnerTemplate(string parameter, System.Type dataType, System.Type additionalType, DocumentContext context)
+    public class ModelExtension: AbstractHtmlExtension {
+        public override Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context, ParseContext parseContext)
         {
             if (context == null)
                 throw new ArgumentNullException("context");
-            if (!string.IsNullOrWhiteSpace(parameter)) {
+            if (!string.IsNullOrWhiteSpace(parameterTemplate)) {
                 try {
-                    System.Type modelType = ReflectionHelper.ResolveType(parameter, context.Namespaces.ToArray());
+                    Type modelType = ReflectionHelper.ResolveType(parameterTemplate, context.Namespaces.ToArray());
                     if (modelType == null)
                         throw new TemplateInitException("Type cannot be determined. Please use Assembly Qualified Name.");
 
@@ -24,6 +25,11 @@ namespace Templates.Extensions {
                     throw new TemplateInitException("Type cannot be determined. Please use Assembly Qualified Name.", e);
                 }
             }
+            return null;
+        }
+
+        protected override object ProcessDataInternal(object value, object chainedResult)
+        {
             return null;
         }
     }

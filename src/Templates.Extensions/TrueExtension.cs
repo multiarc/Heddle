@@ -9,9 +9,8 @@ namespace Templates.Extensions {
     /// </summary>
     [Name ("true")]
     [DataType (typeof (bool))]
-    [AdditionalDataType (typeof (object))]
-    public class TrueExtension: AbstractExtension {
-        protected override object ProcessDataInternal (object value, object additionalValue)
+    public class TrueExtension: AbstractHtmlExtension {
+        protected override object ProcessDataInternal (object value, object chainedResult)
         {
             if (value == null)
                 return string.Empty;
@@ -27,7 +26,7 @@ namespace Templates.Extensions {
                 }
             }
             if ((bool) value)
-                return GetInnerResult(additionalValue);
+                return GetInnerResult(chainedResult, null);
             return string.Empty;
         }
     }

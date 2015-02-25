@@ -4,7 +4,6 @@ using Templates.Data;
 using Templates.Extensions;
 using Templates.Runtime;
 using Templates.Strings;
-using Templates.Strings.Core;
 
 namespace Templater.Tests.TemplateTests {
     [TestClass]
@@ -26,7 +25,7 @@ namespace Templater.Tests.TemplateTests {
         [TestMethod]
         public void ProcessDataTest ()
         {
-            _target.InitializeInnerTemplate(null, typeof (object), null, new DocumentContext(new TemplateOptions()));
+            _target.InitStart(null, typeof (object), null, new CompileContext(new TemplateOptions()));
             DateTime value = DateTime.Now;
 // ReSharper disable SpecifyACultureInStringConversionExplicitly
             ExString expected = value.ToString();

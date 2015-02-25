@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading;
 using Templates.Data;
-using Templates.Helpers;
 using Templates.Runtime;
 
 namespace Templates {
@@ -10,23 +9,18 @@ namespace Templates {
     /// </summary>
     public sealed class TtlTemplate: IDisposable {
         private const int FileCheckDelay = 5000; //milliseconds
-        private readonly ManualResetEvent _allFinihed = new ManualResetEvent(true);
-        private readonly DocumentContext _context;
-        private readonly Type _initialType;
-        private readonly ManualResetEvent _objectLock = new ManualResetEvent(true);
-        private readonly object _processingLock = new object();
+        private readonly CompileContext _context;
         private readonly FileReader _reader;
         private readonly Timer _timer;
-        private bool _locked;
-        private DocumentParser _parser;
-        private int _pasersInprocessing;
+        private volatile RuntimeDocument _runtimeDocument;
+        private string _document;
 
-        public TtlTemplate(TemplateOptions options) : this(new DocumentContext(options))
+        public TtlTemplate(TemplateOptions options) : this(new CompileContext(options))
         {
             
         }
 
-        public TtlTemplate (DocumentContext context)
+        public TtlTemplate (CompileContext context)
         {
             if (context == null)
                 throw new ArgumentNullException("context");
@@ -37,12 +31,6 @@ namespace Templates {
             if (string.IsNullOrWhiteSpace(context.Options.TemplateName))
                 throw new ArgumentException("Template Name should not be empty");
 
-            _context = context;
-            if (context.Options.EnableFileChangeCheck) {
-                _initialType = context.ModelType;
-                _timer = new Timer(CheckFileChange, null, FileCheckDelay, int.MaxValue);
-            }
-
             try {
                 _reader = new FileReader(context.Options);
             }
@@ -50,89 +38,64 @@ namespace Templates {
                 throw new ArgumentException("Cannot open file", e);
             }
 
-            try {
-                _parser = DocumentsCache.GetDocumentParser(_reader.ReadEntireFile(), context);
-                if (context.Options.EnableFileChangeCheck)
-                    _parser.Completed += ParserDone;
+            try
+            {
+                var document = _reader.ReadEntireFile();
+                var rtdoc = DocumentsCache.GetRuntimeDocument(document, context) ??
+                            TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
+                DocumentsCache.UpdateCaches(rtdoc, null, document, context);
+                _context = context;
+                _document = document;
+                _runtimeDocument = rtdoc;
             }
             catch (ArgumentException e) {
                 throw new ArgumentException("File not found", e);
             }
+            if (context.Options.EnableFileChangeCheck) {
+                _timer = new Timer(CheckFileChange, null, FileCheckDelay, int.MaxValue);
+            }
         }
 
-        public TtlTemplate (string document, DocumentContext context)
+        public TtlTemplate (string document, CompileContext context)
         {
             if (context == null)
                 throw new ArgumentNullException("context");
 
+            var rtdoc = DocumentsCache.GetRuntimeDocument(document, context) ??
+                            TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
+            DocumentsCache.UpdateCaches(rtdoc, null, document, context);
+            _runtimeDocument = rtdoc;
             _context = context;
-            _parser = DocumentsCache.GetDocumentParser(document, context);
+            _document = document;
         }
 
-        internal string Cached
-        {
-            get { return _parser.Cached; }
-        }
-
-        private bool _disposing;
+        public bool Empty => _runtimeDocument?.Empty ?? true;
 
         #region IDisposable Members
 
         public void Dispose ()
         {
-            if (!_disposing)
-            {
-                _disposing = true;
-                if (_timer != null)
-                    _timer.Dispose();
-                _objectLock.Close();
-                _allFinihed.Close();
-            }
+            _timer?.Dispose();
+            _runtimeDocument?.Dispose();
+            GC.SuppressFinalize(this);
         }
+
+        ~TtlTemplate()
+        {
+            _timer?.Dispose();
+            _runtimeDocument?.Dispose();
+        }
+
 
         #endregion
-
-        private void Lock ()
-        {
-            _objectLock.Reset();
-            _locked = true;
-        }
-
-        private void Unlock ()
-        {
-            _objectLock.Set();
-            _locked = false;
-        }
-
-        private void ParserDone ()
-        {
-            lock (_processingLock) {
-                _pasersInprocessing--;
-                if (_pasersInprocessing == 0)
-                    _allFinihed.Set();
-            }
-        }
 
         /// <summary>
         /// Generates result string (source template replaced with data). Data non-serialized
         /// </summary>
         /// <param name="data">Input object</param>
-        /// <returns>Fully replaced string</returns>
-        public string GenerateString (object data)
-        {
-            if (_context.Options.EnableFileChangeCheck) {
-                if (_locked)
-                    _objectLock.WaitOne();
-                if (_parser != null) {
-                    lock (_processingLock) {
-                        _pasersInprocessing++;
-                        if (_pasersInprocessing == 1)
-                            _allFinihed.Reset();
-                    }
-                    return _parser.ProcessData(data);
-                }
-            }
-            return _parser != null ? _parser.ProcessData(data) : string.Empty;
+        /// <returns>Generated string</returns>
+        public string Generate(object data) {
+            return _runtimeDocument?.ProcessData(data, null) ?? string.Empty;
         }
 
         private void CheckFileChange (object state)
@@ -141,21 +104,14 @@ namespace Templates {
                 if (_reader != null && _reader.GetIsModified()) {
                     string document = _reader.ReadEntireFile();
                     if (!string.IsNullOrWhiteSpace(document)) {
-                        try {
-                            _context.Clear();
-                            var newParser = new DocumentParser(_context);
-                            newParser.Completed += ParserDone;
-                            Lock();
-                            _allFinihed.WaitOne();
-                            DocumentsCache.UpdateCaches(newParser, _parser.Document, _initialType, _context.Options.RootPath);
-                            _parser = newParser;
-                            _parser.Parse(document);
-                            _context.Commit();
-                            Unlock();
+                        try
+                        {
+                            var rtdoc = TtlCompiler.Compile(document, _context, DocumentParser.Parse(document));
+                            DocumentsCache.UpdateCaches(rtdoc, _document, document, _context);
+                            _runtimeDocument = rtdoc;
+                            _document = document;
                         }
                         catch (Exception e) {
-                            Unlock();
-                            _context.RevertBack();
                             //TODO: Log Exception here
                         }
                     }

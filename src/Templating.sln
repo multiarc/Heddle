@@ -1,20 +1,17 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.22609.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{C4CF384A-35C9-4621-8AD5-06B79A451F66}"
 	ProjectSection(SolutionItems) = preProject
 		.nuget\packages.config = .nuget\packages.config
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates.Extensions", "Templates.Extensions\Templates.Extensions.csproj", "{93649574-C954-4696-AC4C-6DE56665B9BE}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates", "Templates\Templates.csproj", "{FCCA75A7-9694-429F-9A41-FD1933464E85}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{DCB9F91C-846A-4B80-97CF-BF89023F8965}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NativeFunctions", "NativeFunctions\NativeFunctions\NativeFunctions.vcxproj", "{835592EE-26CD-435F-B9B3-72C63A5193C4}"
+	ProjectSection(SolutionItems) = preProject
+		Templates\Runtime\DefinitionBlock.cs = Templates\Runtime\DefinitionBlock.cs
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "visuals", "visuals", "{CDFBE8DF-3ECF-471E-93F4-1E3B0E2267A7}"
 EndProject
@@ -22,25 +19,31 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "integrations", "integration
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{2D7F0A50-B9A0-43E1-A5DC-90BE173FE426}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PexTests", "..\test\PexTests\PexTests.csproj", "{31E90307-0D47-424B-8098-60DB38179FED}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "performance", "performance", "{0FCA16D9-8F22-4281-99BC-FA5BEE750299}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "demo", "demo", "{271330C1-ACEC-410F-897B-A65DB1A8AB23}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates.Extensions", "Templates.Extensions\Templates.Extensions.csproj", "{93649574-C954-4696-AC4C-6DE56665B9BE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates", "Templates\Templates.csproj", "{FCCA75A7-9694-429F-9A41-FD1933464E85}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NativeFunctions", "NativeFunctions\NativeFunctions\NativeFunctions.vcxproj", "{835592EE-26CD-435F-B9B3-72C63A5193C4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PexTests", "..\test\PexTests\PexTests.csproj", "{31E90307-0D47-424B-8098-60DB38179FED}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PerfTesting", "..\performance\PerfTesting\PerfTesting.csproj", "{42F7D21B-7C11-47BF-8075-C876A30716C2}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RazorTemplateTest", "..\performance\RazorTemplateTest\RazorTemplateTest.csproj", "{4A73654C-C7E9-44B4-BA23-C491869BB827}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates.CompilingProxy", "Templates.CompilingProxy\Templates.CompilingProxy.csproj", "{E414D2DE-5CC1-4D61-A027-4163E32F4025}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templater.Tests", "..\test\Templater.Tests\Templater.Tests.csproj", "{8DEF9E6C-BEB9-4CFC-B98D-030759F9A10C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates.Mvc", "Templates.Mvc\Templates.Mvc.csproj", "{B09CD603-C980-48BC-9353-8A3BACE87AAB}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "demo", "demo", "{271330C1-ACEC-410F-897B-A65DB1A8AB23}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DemoWebSite", "..\demo\DemoWebSite\DemoWebSite.csproj", "{397C02F2-C794-4E96-9FA6-31B8F3B49C1A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates.Editor", "..\integrations\Templates.Editor\Templates.Editor.csproj", "{4729444D-4629-43A7-9DB3-CB4E05D16F6A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates.Language", "Templates.Language\Templates.Language.csproj", "{8CB3116B-3163-4D26-BCD7-2E27EFCD48CA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -122,18 +125,6 @@ Global
 		{4A73654C-C7E9-44B4-BA23-C491869BB827}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{4A73654C-C7E9-44B4-BA23-C491869BB827}.Release|x64.ActiveCfg = Release|x64
 		{4A73654C-C7E9-44B4-BA23-C491869BB827}.Release|x64.Build.0 = Release|x64
-		{E414D2DE-5CC1-4D61-A027-4163E32F4025}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E414D2DE-5CC1-4D61-A027-4163E32F4025}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E414D2DE-5CC1-4D61-A027-4163E32F4025}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{E414D2DE-5CC1-4D61-A027-4163E32F4025}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{E414D2DE-5CC1-4D61-A027-4163E32F4025}.Debug|x64.ActiveCfg = Debug|x64
-		{E414D2DE-5CC1-4D61-A027-4163E32F4025}.Debug|x64.Build.0 = Debug|x64
-		{E414D2DE-5CC1-4D61-A027-4163E32F4025}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E414D2DE-5CC1-4D61-A027-4163E32F4025}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E414D2DE-5CC1-4D61-A027-4163E32F4025}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{E414D2DE-5CC1-4D61-A027-4163E32F4025}.Release|Mixed Platforms.Build.0 = Release|Any CPU
-		{E414D2DE-5CC1-4D61-A027-4163E32F4025}.Release|x64.ActiveCfg = Release|x64
-		{E414D2DE-5CC1-4D61-A027-4163E32F4025}.Release|x64.Build.0 = Release|x64
 		{8DEF9E6C-BEB9-4CFC-B98D-030759F9A10C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8DEF9E6C-BEB9-4CFC-B98D-030759F9A10C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8DEF9E6C-BEB9-4CFC-B98D-030759F9A10C}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
@@ -182,6 +173,16 @@ Global
 		{4729444D-4629-43A7-9DB3-CB4E05D16F6A}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{4729444D-4629-43A7-9DB3-CB4E05D16F6A}.Release|x64.ActiveCfg = Release|Any CPU
 		{4729444D-4629-43A7-9DB3-CB4E05D16F6A}.Release|x64.Build.0 = Release|Any CPU
+		{8CB3116B-3163-4D26-BCD7-2E27EFCD48CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8CB3116B-3163-4D26-BCD7-2E27EFCD48CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8CB3116B-3163-4D26-BCD7-2E27EFCD48CA}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{8CB3116B-3163-4D26-BCD7-2E27EFCD48CA}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{8CB3116B-3163-4D26-BCD7-2E27EFCD48CA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{8CB3116B-3163-4D26-BCD7-2E27EFCD48CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8CB3116B-3163-4D26-BCD7-2E27EFCD48CA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8CB3116B-3163-4D26-BCD7-2E27EFCD48CA}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{8CB3116B-3163-4D26-BCD7-2E27EFCD48CA}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{8CB3116B-3163-4D26-BCD7-2E27EFCD48CA}.Release|x64.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -193,11 +194,11 @@ Global
 		{31E90307-0D47-424B-8098-60DB38179FED} = {2D7F0A50-B9A0-43E1-A5DC-90BE173FE426}
 		{42F7D21B-7C11-47BF-8075-C876A30716C2} = {0FCA16D9-8F22-4281-99BC-FA5BEE750299}
 		{4A73654C-C7E9-44B4-BA23-C491869BB827} = {0FCA16D9-8F22-4281-99BC-FA5BEE750299}
-		{E414D2DE-5CC1-4D61-A027-4163E32F4025} = {DCB9F91C-846A-4B80-97CF-BF89023F8965}
 		{8DEF9E6C-BEB9-4CFC-B98D-030759F9A10C} = {2D7F0A50-B9A0-43E1-A5DC-90BE173FE426}
 		{B09CD603-C980-48BC-9353-8A3BACE87AAB} = {DCB9F91C-846A-4B80-97CF-BF89023F8965}
 		{397C02F2-C794-4E96-9FA6-31B8F3B49C1A} = {271330C1-ACEC-410F-897B-A65DB1A8AB23}
 		{4729444D-4629-43A7-9DB3-CB4E05D16F6A} = {5A6E418F-99E7-4E1E-9062-08929C0D8E4B}
+		{8CB3116B-3163-4D26-BCD7-2E27EFCD48CA} = {DCB9F91C-846A-4B80-97CF-BF89023F8965}
 	EndGlobalSection
 	GlobalSection(TestCaseManagementSettings) = postSolution
 		CategoryFile = Templating.vsmdi

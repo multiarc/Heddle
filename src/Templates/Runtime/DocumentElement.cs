@@ -6,21 +6,27 @@ namespace Templates.Runtime {
     /// <summary>
     /// Recognized template in the source template
     /// </summary>
-    public class DocumentElement : IDisposable {
+    internal class DocumentElement : IDisposable {
         /// <summary>
         /// Template chain to execute
         /// </summary>
-        public readonly TemplateChain TemplateBlock;
+        private readonly TemplateChain _callChain;
 
         /// <summary>
         /// Position in the source (start and end)
         /// </summary>
         public BlockPosition BlockPosition;
 
-        public DocumentElement (PropertyGateDelegate data, PropertyGateDelegate additionalData)
+        public DocumentElement (BlockPosition position)
         {
-            TemplateBlock = new TemplateChain(data, additionalData);
+            BlockPosition = position;
+            _callChain = new TemplateChain();
         }
+
+        /// <summary>
+        /// Template chain to execute
+        /// </summary>
+        public TemplateChain CallChain => _callChain;
 
         public void Dispose()
         {
@@ -31,7 +37,7 @@ namespace Templates.Runtime {
         {
             if (disposing)
             {
-                TemplateBlock.Dispose();
+                _callChain.Dispose();
                 GC.SuppressFinalize(this);
             }
         }

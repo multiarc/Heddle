@@ -3,7 +3,6 @@ using Templates.Data;
 using Templates.Extensions;
 using Templates.Runtime;
 using Templates.Strings;
-using Templates.Strings.Core;
 
 namespace Templater.Tests.TemplateTests {
     [TestClass]
@@ -25,14 +24,14 @@ namespace Templater.Tests.TemplateTests {
         [TestMethod]
         public void ProcessDataTest ()
         {
-            _target.InitializeInnerTemplate("<tag></tag>", typeof (bool), null, new DocumentContext(new TemplateOptions()));
+            _target.InitStart("<tag></tag>", typeof (bool), null, new CompileContext(new TemplateOptions()));
             ExString expected = "<tag></tag>";
             ExString actual = _target.ProcessData(true, null).ToString();
             Assert.AreEqual(expected, actual);
             expected = "";
             actual = _target.ProcessData(false, null).ToString();
             Assert.AreEqual(expected, actual);
-            _target.InitializeInnerTemplate("<%Str%>=<%Num%>", typeof (bool), typeof (TestType), new DocumentContext(new TemplateOptions()));
+            _target.InitStart("<%Str%>=<%Num%>", typeof (bool), typeof (TestType), new CompileContext(new TemplateOptions()));
             var testData = new TestType
             {
                 Num = 160,

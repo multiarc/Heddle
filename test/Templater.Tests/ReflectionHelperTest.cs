@@ -4,8 +4,6 @@ using Templates.Extensions;
 using Templates.Helpers;
 using Templates.Runtime;
 using Templates.Strings;
-using Templates.Strings.Core;
-using Type = System.Type;
 
 namespace Templater.Tests {
     [TestClass]

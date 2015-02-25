@@ -1,20 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using Templates.Data;
 
 namespace Templates.Runtime {
     internal static class GatesCache {
-        private static readonly Dictionary<RuntimeMethodHandle, PropertyGateDelegate> Cache =
-            new Dictionary<RuntimeMethodHandle, PropertyGateDelegate>();
+        private static readonly Dictionary<RuntimeMethodHandle, DynamicMethodGateDelegate> Cache =
+            new Dictionary<RuntimeMethodHandle, DynamicMethodGateDelegate>();
 
-        public static PropertyGateDelegate GetPropertyGate (PropertyInfo property)
+        public static DynamicMethodGateDelegate GetPropertyGate(PropertyInfo property)
         {
             if (property == null)
                 return null;
             RuntimeMethodHandle methodHandle = property.GetGetMethod().MethodHandle;
-            PropertyGateDelegate result;
+            DynamicMethodGateDelegate result;
             if (Cache.TryGetValue(methodHandle, out result))
                 return result;
             result = CreateGenericGate(property);
@@ -22,14 +23,14 @@ namespace Templates.Runtime {
             return result;
         }
 
-        private static PropertyGateDelegate CreateGenericGate (PropertyInfo property)
+        private static DynamicMethodGateDelegate CreateGenericGate(PropertyInfo property)
         {
             MethodInfo getMethod = property.GetGetMethod();
             var dynamic = new DynamicMethod
                 (getMethod.Name, typeof (object), new[]
                 {
                     typeof (object)
-                }, typeof (EntityCompiler), true);
+                }, typeof (TtlCompiler), true);
             Type propertyType = property.PropertyType;
             ILGenerator il = dynamic.GetILGenerator();
             if (getMethod.IsVirtual || getMethod.IsAbstract) {
@@ -44,7 +45,57 @@ namespace Templates.Runtime {
             if (propertyType.IsValueType)
                 il.Emit(OpCodes.Box, propertyType);
             il.Emit(OpCodes.Ret);
-            return (PropertyGateDelegate) dynamic.CreateDelegate(typeof (PropertyGateDelegate));
+            return (DynamicMethodGateDelegate)dynamic.CreateDelegate(typeof(DynamicMethodGateDelegate));
         }
+
+        #region Garbage
+
+        //public static DynamicMethodGateDelegate GetMethodGate(MethodInfo method) {
+        //    if (method == null)
+        //        return null;
+        //    RuntimeMethodHandle methodHandle = method.MethodHandle;
+        //    DynamicMethodGateDelegate result;
+        //    if (Cache.TryGetValue(methodHandle, out result))
+        //        return result;
+        //    result = CompileMethodReference(method);
+        //    Cache.Add(methodHandle, result);
+        //    return result;
+        //}
+
+        //private static void PushParameter(ILGenerator il, Type parameterType) {
+        //    il.Emit(OpCodes.Ldarg_0);
+        //    if (parameterType.IsValueType)
+        //        il.Emit(OpCodes.Unbox_Any, parameterType);
+        //    else if (parameterType != typeof(object))
+        //        il.Emit(OpCodes.Castclass, parameterType);
+        //}
+
+        //private static DynamicMethodGateDelegate CompileMethodReference(MethodInfo method) {
+        //    var dynamic = new DynamicMethod
+        //        (method.Name, typeof(object), new[]
+        //        {
+        //            typeof (object), typeof (object)
+        //        }, typeof(OutputChainCompiler), true);
+        //    ILGenerator il = dynamic.GetILGenerator();
+        //    ParameterInfo[] parameters = method.GetParameters();
+        //    ParameterInfo firstParameter = null;
+        //    ParameterInfo secondParameter = null;
+        //    if (parameters.Any())
+        //        firstParameter = parameters[0];
+        //    if (parameters.Count() > 1)
+        //        secondParameter = parameters[1];
+        //    if (firstParameter != null) {
+        //        PushParameter(il, firstParameter.ParameterType);
+        //        if (secondParameter != null)
+        //            PushParameter(il, secondParameter.ParameterType);
+        //    }
+        //    il.Emit(OpCodes.Call, method);
+        //    if (method.ReturnType.IsValueType)
+        //        il.Emit(OpCodes.Box, method.ReturnType);
+        //    il.Emit(OpCodes.Ret);
+        //    return (DynamicMethodGateDelegate)dynamic.CreateDelegate(typeof(DynamicMethodGateDelegate));
+        //}
+
+        #endregion
     }
 }

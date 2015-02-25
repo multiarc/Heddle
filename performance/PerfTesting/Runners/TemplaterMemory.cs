@@ -13,7 +13,7 @@ namespace PerfTesting.Runners {
             string document = reader.ReadToEnd();
             reader.Close();
             var test = new TtlTemplate
-                    (new DocumentContext
+                    (new CompileContext
                          (new TemplateOptions {
                              TemplateName = "template",
                              FileNamePostfix = ".ttl",
@@ -22,7 +22,7 @@ namespace PerfTesting.Runners {
             var testItem = DataFiller.FillData();
             int i = 0;
             while (i < 1000000) {
-                test.GenerateString(testItem);
+                test.Generate(testItem);
                 var writer = File.CreateText(@"D:\Tmp\template.html");
                 writer.Write(document);
                 writer.Close();

@@ -1,0 +1,176 @@
+Base = baseItem;
+                       
+            if (baseItem != null && baseItem.ModelType != null)
+            {
+                if (modelType != null)
+                {
+                    if (baseItem.ModelType.IsAssignableFrom(modelType))
+                    {
+                        ModelType = modelType;
+                    }
+                    else
+                    {
+                        throw new TemplateCompileException(
+                            string.Format(
+                                "The {0} definition has incompatible type with base element. Should be assignable from {1}",
+                                name, baseItem.ModelType));
+                    }
+                }
+                else
+                {
+                    ModelType = baseItem.ModelType;
+                }
+            }
+
+
+
+for example listField is item of IEnumerable<Item> and it's type is Item
+
+The defition syntax:
+{{ -- definition start
+}} -- defenition end
+< -- defenition name start
+> -- defenition name end
+[ -- inner template start
+] -- inner template end
+space = \t|\r|\n|" "
+output_nesting = id[:id[:id[...]]]
+the inherited definition, typed if base strongly typed or type specified, type cannot be changed in child definitions if specified anywhere in any base defenition
+{{
+	<new_id:id>
+	[
+	]
+	<new_id>id:id
+	[
+	]
+}}
+
+[>space*output_nesting\s*"[".*"]"]\s*}}
+
+The output syntax:
+@ -- output
+( -- parameter parenthesis start
+) -- parameter parenthesis end
+@[id]([parameter])[:id([parameter])[:id([parameter])[...]]]\s*["[".*"]"]
+if nothing specified in parameter then whole current context value passed
+
+
+The declaration of predefined template wich was produce output in the any place in current template or sub template
+Declared as abstract untyped template wich will be produced in real typed template when used
+<%
+	<text:typehelper>
+	[
+		<input type="text" name="@(PropertyName)" value="@(Value)" />
+	]
+%>
+<%
+	@*Inheritance*@
+	@*Full override the text paramter implementation second time*@
+	<text:text>
+	[
+		<input type="text" name="<%@(PropertyName)%>" id="id_<%@(PropertyName)%>" value="<%@(Value)%>" <%@out()%> />
+	]
+%>
+<%
+	<html.attributes>
+	[
+		@list(attributesList)
+		[
+			@(attributeName)="@(attributeValue)"
+		]
+	]
+%>
+<%
+	@text(Property)
+	[]
+	::attributes(attributesList)
+%>
+<%
+	@text(Property):attributes(attributesList)
+%>
+
+
+<%
+ <text>
+ [
+  <input type="text" name="@(PropertyName)" value="@(Value)" />
+ ]
+%>
+<%
+ <html.attributes>
+ [
+  <%@list(attributesList)
+   [
+    <%@(attributeName)%>="<%@(attributeValue)%>"
+   ]
+  %>
+ ]
+%>
+<%
+ @*Inheritance*@
+ @*Full override the text paramter implementation second time*@
+ <text:text>
+ [
+  <input type="text" name="<%@(PropertyName)%>" id="id_<%@(PropertyName)%>" value="<%@(Value)%>" <%@html.attributes(attributes)%> />
+ ]
+%>
+<%
+ @text(Model)
+%>
+
+
+<%
+	<head>[...]
+	<header>[...]
+	<body>
+	[
+		...
+	]
+	<footer>[...]
+	<base>
+	[
+		<html>
+			<head>@head()</head>
+			<body>
+				@header():[...]
+				@body()
+				@footer()
+			</body>
+		</html>
+	]
+	<head_landing:head>
+	[
+		
+	] :: modelType
+%>
+<%
+	<head>
+	[
+		<head>@out()</head>
+	] :: IEnumerable<T>
+	<head:head>head:list
+	[
+		<meta @(MetaName)... ></meta>
+	]
+%>
+
+@new_head(Model)
+
+
+Override all needed and use
+@use()[base_template_name]
+<%
+	<body:body>
+	[
+		...
+	]
+%>
+@base(Model)
+@use()[base_tempalte2]
+
+
+
+@base():(Model)
+[
+	@partial(Property) [partialName]
+]

@@ -17,7 +17,7 @@ namespace Templates.Mvc {
 
         public void Render(ViewContext viewContext, TextWriter writer)
         {
-            writer.Write(_template.GenerateString(viewContext.ViewData.Model));
+            writer.Write(_template.Generate(viewContext.ViewData.Model));
         }
 
         public static explicit operator TtlView(TtlTemplate template)

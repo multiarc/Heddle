@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Templates.Extensions</RootNamespace>
     <AssemblyName>Templates.Extensions</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
   </PropertyGroup>
@@ -87,17 +87,16 @@
     <Compile Include="FalseExtension.cs" />
     <Compile Include="GuidExtension.cs" />
     <Compile Include="ImportExtension.cs" />
-    <Compile Include="InnerExtension.cs" />
     <Compile Include="IntegerExtension.cs" />
     <Compile Include="ListExtension.cs" />
     <Compile Include="MethodExtension.cs" />
     <Compile Include="ModelExtension.cs" />
     <Compile Include="MoneyExtension.cs" />
+    <Compile Include="OutExtension.cs" />
     <Compile Include="PartialExtension.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ReferenceExtension.cs" />
     <Compile Include="StringExtension.cs" />
-    <Compile Include="SystemExtension.cs" />
     <Compile Include="TimeExtension.cs" />
     <Compile Include="TrueExtension.cs" />
   </ItemGroup>

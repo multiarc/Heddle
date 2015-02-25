@@ -10,9 +10,8 @@ namespace Templates.Extensions {
     /// </summary>
     [Name ("money")]
     [DataType (typeof (decimal))]
-    [AdditionalDataType (typeof (object))]
-    [DirectRender]
-    public class MoneyExtension: AbstractExtension {
+    [EncodeOutput]
+    public class MoneyExtension: AbstractHtmlExtension {
         private static readonly Dictionary<string, CultureInfo> CultureCache = new Dictionary<string, CultureInfo>
             (10, StringComparer.OrdinalIgnoreCase);
 
@@ -28,9 +27,9 @@ namespace Templates.Extensions {
             }
         }
 
-        protected override object ProcessDataInternal (object value, object additionalValue)
+        protected override object ProcessDataInternal (object value, object chainedResult)
         {
-            string locale = GetInnerResult(additionalValue);
+            string locale = GetInnerResult(chainedResult, null);
             if (value == null)
                 return string.Empty;
             if (!(value is decimal)) {

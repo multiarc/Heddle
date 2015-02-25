@@ -8,14 +8,13 @@ namespace Templates.Extensions {
     /// </summary>
     [Name ("guid")]
     [DataType (typeof (Guid))]
-    [AdditionalDataType (typeof (object))]
-    [DirectRender]
-    public class GuidExtension: AbstractExtension {
-        protected override object ProcessDataInternal (object value, object additionalValue)
+    [EncodeOutput]
+    public class GuidExtension: AbstractHtmlExtension {
+        protected override object ProcessDataInternal (object value, object chainedResult)
         {
-            if (value == null || !(value is Guid))
+            if (!(value is Guid))
                 return string.Empty;
-            return ((Guid) value).ToString(GetInnerResult(additionalValue));
+            return ((Guid) value).ToString(GetInnerResult(chainedResult, null));
         }
     }
 }

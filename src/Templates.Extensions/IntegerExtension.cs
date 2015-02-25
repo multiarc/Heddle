@@ -9,10 +9,9 @@ namespace Templates.Extensions {
     /// </summary>
     [Name ("int")]
     [DataType (typeof (int))]
-    [AdditionalDataType (typeof (object))]
-    [DirectRender]
-    public class IntegerExtension: AbstractExtension {
-        protected override object ProcessDataInternal (object value, object additionalValue)
+    [EncodeOutput]
+    public class IntegerExtension: AbstractHtmlExtension {
+        protected override object ProcessDataInternal (object value, object chainedResult)
         {
             if (value == null)
                 return string.Empty;
@@ -31,7 +30,7 @@ namespace Templates.Extensions {
                 }
             }
 
-            string fastStringFormat = GetInnerResult(additionalValue);
+            string fastStringFormat = GetInnerResult(chainedResult, null);
             if (!string.IsNullOrEmpty(fastStringFormat))
                 return ((int) value).ToString(fastStringFormat, CultureInfo.InvariantCulture);
             return ((int) value).ToString(CultureInfo.InvariantCulture);

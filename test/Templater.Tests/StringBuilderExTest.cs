@@ -1,7 +1,6 @@
 ﻿using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Templates.Strings;
-using Templates.Strings.Core;
 
 namespace Templater.Tests {
     [TestClass]

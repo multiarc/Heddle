@@ -1,3 +1,3 @@
 ﻿namespace Templates.Data {
-    public delegate object DynamicMethodGateDelegate (object data, object additional);
+    public delegate object DynamicMethodGateDelegate (object data);
 }
