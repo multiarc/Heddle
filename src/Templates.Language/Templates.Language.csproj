@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="..\packages\Antlr4.4.4.1-alpha001\build\Antlr4.props" Condition="Exists('..\packages\Antlr4.4.4.1-alpha001\build\Antlr4.props')" />
+  <Import Project="..\packages\Antlr4.4.3.0\build\Antlr4.props" Condition="Exists('..\packages\Antlr4.4.3.0\build\Antlr4.props')" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -10,9 +10,9 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Templates.Language</RootNamespace>
     <AssemblyName>Templates.Language</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <NuGetPackageImportStamp>ab1d5353</NuGetPackageImportStamp>
+    <NuGetPackageImportStamp>6fdacb0a</NuGetPackageImportStamp>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -32,10 +32,16 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>true</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>language.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Antlr4.Runtime, Version=4.4.0.0, Culture=neutral, PublicKeyToken=edc21c04cf562012, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Antlr4.Runtime.4.4.1-alpha001\lib\net45\Antlr4.Runtime.dll</HintPath>
+    <Reference Include="Antlr4.Runtime.net45, Version=4.3.0.0, Culture=neutral, PublicKeyToken=eb42632606e9261f, processorArchitecture=MSIL">
+      <HintPath>..\packages\Antlr4.Runtime.4.3.0\lib\net45\Antlr4.Runtime.net45.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -46,32 +52,37 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="obj\Release\TtlBaseListener.cs" />
-    <Compile Include="obj\Release\TtlLexer.cs" />
-    <Compile Include="obj\Release\TtlListener.cs" />
-    <Compile Include="obj\Release\TtlParser.cs" />
+    <Compile Include="obj\Debug\TtlLexer.cs" />
+    <Compile Include="obj\Debug\TtlParser.cs" />
+    <Compile Include="obj\Debug\TtlParserBaseListener.cs" />
+    <Compile Include="obj\Debug\TtlParserBaseVisitor.cs" />
+    <Compile Include="obj\Debug\TtlParserListener.cs" />
+    <Compile Include="obj\Debug\TtlParserVisitor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Ttl.g4.lexer.cs" />
-    <Compile Include="Ttl.g4.parser.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
-    <Antlr4 Include="Ttl.g4">
+    <None Include="language.snk" />
+    <Antlr4 Include="TtlLexer.g4">
       <Generator>MSBuild:Compile</Generator>
       <CustomToolNamespace>Templates.Language</CustomToolNamespace>
       <Visitor>False</Visitor>
+    </Antlr4>
+    <None Include="packages.config" />
+    <Antlr4 Include="TtlParser.g4">
+      <Generator>MSBuild:Compile</Generator>
+      <CustomToolNamespace>Templates.Language</CustomToolNamespace>
     </Antlr4>
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('..\packages\Antlr4.4.4.1-alpha001\build\Antlr4.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Antlr4.4.4.1-alpha001\build\Antlr4.props'))" />
-    <Error Condition="!Exists('..\packages\Antlr4.4.4.1-alpha001\build\Antlr4.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Antlr4.4.4.1-alpha001\build\Antlr4.targets'))" />
+    <Error Condition="!Exists('..\packages\Antlr4.4.3.0\build\Antlr4.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Antlr4.4.3.0\build\Antlr4.props'))" />
+    <Error Condition="!Exists('..\packages\Antlr4.4.3.0\build\Antlr4.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Antlr4.4.3.0\build\Antlr4.targets'))" />
   </Target>
-  <Import Project="..\packages\Antlr4.4.4.1-alpha001\build\Antlr4.targets" Condition="Exists('..\packages\Antlr4.4.4.1-alpha001\build\Antlr4.targets')" />
+  <Import Project="..\packages\Antlr4.4.3.0\build\Antlr4.targets" Condition="Exists('..\packages\Antlr4.4.3.0\build\Antlr4.targets')" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

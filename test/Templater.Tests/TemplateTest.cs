@@ -24,8 +24,8 @@ namespace Templater.Tests {
         {
             var options = new TemplateOptions
             {
-                FileNamePostfix = ".ttl",
-                RootPath = @"g:\Work\Templater\test\Templater.Tests\TestTemplate",
+                FileNamePostfix = ".thtml",
+                RootPath = @"..\..\TestTemplate",
                 TemplateName = "template"
             };
             _target = new TtlTemplate(new CompileContext(options));
@@ -76,7 +76,7 @@ namespace Templater.Tests {
                 Guid = Guid.Parse("{3E55A9AF-0031-4C54-B836-527EAB26867B}"),
                 Text = "SOME TEXT"
             };
-            StreamReader reader = File.OpenText(@"G:\Work\Templater\test\Templater.Tests\TestTemplate\generated.html");
+            StreamReader reader = File.OpenText(@"..\..\TestTemplate\generated.html");
             ExString expected = reader.ReadToEnd();
             reader.Close();
             ExString actual = _target.Generate(data);

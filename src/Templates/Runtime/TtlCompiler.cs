@@ -137,12 +137,12 @@ namespace Templates.Runtime
                 Type templateType = extension.GetType();
 
                 ChainedTypeAttribute chainedTypeAttribute =
-                    templateType.GetAttributes<ChainedTypeAttribute>().FirstOrDefault();
+                    templateType.GetAttributes<ChainedTypeAttribute>(true).FirstOrDefault();
 
                 if (returnTypeChainedPrevious != null)
                     CheckTypes(returnTypeChainedPrevious, chainedTypeAttribute?.DataType);
 
-                DataTypeAttribute dataTypeAttribute = templateType.GetAttributes<DataTypeAttribute>().FirstOrDefault();
+                DataTypeAttribute dataTypeAttribute = templateType.GetAttributes<DataTypeAttribute>(true).FirstOrDefault();
                 if (data != null)
                     CheckTypes(data, dataTypeAttribute?.DataType);
                 else
@@ -186,8 +186,8 @@ namespace Templates.Runtime
         private static Type InitializeTemplate
             (IExtension extension, string parameterFastString, Type modelType, Type chainedType, CompileContext context, ParseContext parseContext) {
             try {
-                RenderType directRender = extension.GetType().IsHaveAttribute<EncodeOutputAttribute>()
-                    ? RenderType.Encode
+                RenderType directRender = extension.GetType().IsHaveAttribute<EncodeOutputAttribute>(true)
+                    ? (extension.GetType().IsHaveAttribute<NotEncodeAttribute>(false) ? RenderType.Raw : RenderType.Encode)
                     : RenderType.Raw;
                 extension.SetUpRenderType(directRender);
                 return extension.InitStart(parameterFastString, modelType, chainedType, context, parseContext);

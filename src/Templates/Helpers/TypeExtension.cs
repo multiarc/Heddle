@@ -52,30 +52,30 @@ namespace Templates.Helpers {
             return type.GetInterfaces().Any(i => i == typeof (T));
         }
 
-        public static bool IsHaveAttribute(this Type type, Type attributeType)
+        public static bool IsHaveAttribute(this Type type, Type attributeType, bool inherit = false)
         {
             if (type == null)
                 throw new ArgumentNullException("type");
             if (attributeType == null)
                 throw new ArgumentNullException("attributeType");
 
-            return type.GetCustomAttributes(false).Any(a => a.GetType() == attributeType);
+            return type.GetCustomAttributes(inherit).Any(a => a.GetType() == attributeType);
         }
 
-        public static bool IsHaveAttribute<T>(this Type type)
+        public static bool IsHaveAttribute<T>(this Type type, bool inherit = false)
         {
             if (type == null)
                 throw new ArgumentNullException("type");
 
-            return type.GetCustomAttributes(false).Any(a => a is T);
+            return type.GetCustomAttributes(inherit).Any(a => a is T);
         }
 
-        public static T[] GetAttributes<T>(this Type type)
+        public static T[] GetAttributes<T>(this Type type, bool inherit = false)
         {
             if (type == null)
                 throw new ArgumentNullException("type");
 
-            return type.GetCustomAttributes(false).Where(a => a is T).Cast<T>().ToArray();
+            return type.GetCustomAttributes(inherit).Where(a => a is T).Cast<T>().ToArray();
         }
     }
 }

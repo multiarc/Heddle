@@ -90,7 +90,7 @@ namespace Templates.Runtime {
         /// <returns>List of all template types</returns>
         private static Dictionary<string, Type> LoadBaseExtensions ()
         {
-            return LoadExtensions(Assembly.Load(ConfigurationManager.AppSettings["BaseTemplatesAssembly"]));
+            return LoadExtensions(Assembly.GetExecutingAssembly());
         }
 
         /// <summary>
@@ -101,12 +101,12 @@ namespace Templates.Runtime {
         public static Dictionary<string, Type> LoadExtensions (Assembly assembly)
         {
             List<Type> types =
-                assembly.GetTypes().Where(t => t.IsImplement<IExtension>() && t.IsHaveAttribute<NameAttribute>()).OrderBy
-                    (t => t.GetAttributes<DataTypeAttribute>().Any(p => p.DataType.IsInterface)).ThenBy
-                    (t => t.GetAttributes<ChainedTypeAttribute>().Any(p => p.DataType.IsInterface)).ToList();
+                assembly.GetTypes().Where(t => t.IsImplement<IExtension>() && t.IsHaveAttribute<NameAttribute>(true)).OrderBy
+                    (t => t.GetAttributes<DataTypeAttribute>(true).Any(p => p.DataType.IsInterface)).ThenBy
+                    (t => t.GetAttributes<ChainedTypeAttribute>(true).Any(p => p.DataType.IsInterface)).ToList();
             var result = new Dictionary<string, Type>();
             foreach (Type type in types) {
-                NameAttribute[] names = type.GetAttributes<NameAttribute>();
+                NameAttribute[] names = type.GetAttributes<NameAttribute>(true);
                 foreach (NameAttribute name in names)
                     result.Add(name.Name, type);
             }

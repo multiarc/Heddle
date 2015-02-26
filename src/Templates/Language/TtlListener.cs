@@ -3,7 +3,7 @@ using System.Linq;
 using Templates.Strings.Core;
 
 namespace Templates.Language {
-    internal class TtlListener : TtlBaseListener
+    internal class TtlListener : TtlParserBaseListener
     {        
         private readonly Stack<ParseContext> _parserContextStack;
 
@@ -19,7 +19,7 @@ namespace Templates.Language {
         {
             CurrentParseContext.InDefinition = true;
             CurrentParseContext.DefinitionBlock.AddNewBlockPosition(
-                new BlockPosition(context.DefineStart().Symbol.StartIndex, context.GetText().Length));
+                new BlockPosition(context.Start.StartIndex, context.GetText().Length));
         }
 
         public override void ExitDefinition(TtlParser.DefinitionContext context)
@@ -58,9 +58,9 @@ namespace Templates.Language {
             CurrentParseContext.CurrentChain = null;
         }
 
-        public override void ExitRawoutput(TtlParser.RawoutputContext context)
+        public override void ExitTtl(TtlParser.TtlContext context)
         {
-            CurrentParseContext.RawOutputItems.Add(CurrentParseContext.CreateRawOutputItem(context));
+            CurrentParseContext.RawOutputItems.AddRange(CurrentParseContext.CreateRawOutputItems(context));
         }
 
         public override void EnterSubtemplate(TtlParser.SubtemplateContext context)
@@ -68,7 +68,7 @@ namespace Templates.Language {
             if (context.ttl()?.GetText()?.Length > 0)
             {
                 _parserContextStack.Push(new ParseContext(CurrentParseContext,
-                    context.TemplateStart().Symbol.StartIndex + 1));
+                    context.Start.StartIndex + 1));
             }
         }
 

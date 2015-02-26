@@ -8,12 +8,6 @@ namespace Templates.Language {
     public class ParseContext {
         private readonly int _offset;
 
-        internal ParseContext()
-        {
-            _offset = 0;
-            DefinitionBlock = new DefinitionBlock();
-        }
-
         internal ParseContext(ParseContext previous = null, int offset = 0)
         {
             _offset = offset;
@@ -25,11 +19,11 @@ namespace Templates.Language {
         internal DefinitionItem CreateDefinition(TtlParser.DefContext context)
         {
             return new DefinitionItem(
-                context.name().ID().GetText(), context.subtemplate().GetText(),
-                GetDefenition(context.name().BaseID()?.GetText()),
-                modelType: context.typedefenition()?.ID().GetText())
+                context.DEF_ID(0).GetText(), context.subtemplate().GetText(),
+                GetDefenition(context.DEF_ID(1)?.GetText()),
+                modelType: context.DEF_ID(2)?.GetText())
             {
-                Position = new BlockPosition(context.DefineNameStart().Symbol.StartIndex, context.GetText().Length)
+                Position = new BlockPosition(context.Start.StartIndex, context.GetText().Length)
             };
         }
 
@@ -45,19 +39,23 @@ namespace Templates.Language {
             var result = new OutputChain(this)
             {
                 Chain = CreateChain(context.call()),
-                BlockPosition = new BlockPosition(context.Out().Symbol.StartIndex - _offset, context.GetText().Length)
+                BlockPosition = new BlockPosition(context.Start.StartIndex - _offset, context.GetText().Length)
             };
-            result.Chain.Last().ParameterTemplate = context.subtemplate()?.ttl()?.GetText();
+            result.Chain.Last().ParameterTemplate = context.outtemplate()?.ttl()?.GetText();
             return result;
         }
 
-        internal RawOutputItem CreateRawOutputItem(TtlParser.RawoutputContext context)
+        internal IEnumerable<RawOutputItem> CreateRawOutputItems(TtlParser.TtlContext context)
         {
-            return new RawOutputItem
+            foreach (var raw in context.RAW())
             {
-                Position = new BlockPosition(context.RawStart().Symbol.StartIndex, context.GetText().Length),
-                Text = context.Anything()?.GetText()
-            };
+                var text = raw.GetText();
+                yield return new RawOutputItem
+                {
+                    Position = new BlockPosition(raw.Symbol.StartIndex, text.Length),
+                    Text = text.Substring(2, text.Length - 4)
+                };
+            }
         }
 
         public bool DefenitionExists(string name)
@@ -72,7 +70,7 @@ namespace Templates.Language {
 
         public SmartList<OutputChain> OutputChains { get; private set; }
 
-        public SmartList<RawOutputItem> RawOutputItems { get; set; }
+        public SmartList<RawOutputItem> RawOutputItems { get; private set; }
 
         internal bool InDefinition { get; set; } = false;
 
@@ -90,11 +88,11 @@ namespace Templates.Language {
 
         private OutputItem CreateItem(TtlParser.CallContext context)
         {
-            return new OutputItem(context.ChainName().GetText())
+            return new OutputItem(context.OUT_ID(0)?.GetText())
             {
                 CallParameter =
                 {
-                    ModelParameter = context.ModelName()?.GetText(),
+                    ModelParameter = context.OUT_ID(1)?.GetText(),
                     ChainParameter = CreateChain(context.call())
                 }
             };

@@ -10,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>PerfTesting</RootNamespace>
     <AssemblyName>PerfTesting</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
     <FileAlignment>512</FileAlignment>
@@ -146,10 +146,6 @@
     <ProjectReference Include="..\..\src\NativeFunctions\NativeFunctions\NativeFunctions.vcxproj">
       <Project>{835592ee-26cd-435f-b9b3-72c63a5193c4}</Project>
       <Name>NativeFunctions</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\src\Templates.Extensions\Templates.Extensions.csproj">
-      <Project>{93649574-c954-4696-ac4c-6de56665b9be}</Project>
-      <Name>Templates.Extensions</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\src\Templates\Templates.csproj">
       <Project>{FCCA75A7-9694-429F-9A41-FD1933464E85}</Project>

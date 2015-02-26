@@ -4,17 +4,17 @@ using Templates.Editor.Error;
 
 namespace Templates.Editor {
     internal sealed class TtlTokenTag : Token, ITag {
-        public TtlTokenTag(Token token, State syntaxState, TtlTemplateErrorContainer errorContainer = null)
+
+        public TtlTokenTag(Token token, TtlTemplateErrorContainer errorContainer = null)
         {
             CapturedString = token.CapturedString;
             Type = token.Type;
             StartIndex = token.StartIndex;
             Length = token.Length;
-            ParserState = syntaxState;
             ErrorContainer = errorContainer;
         }
 
-        public State ParserState { get; set; }
+        //public State ParserState { get; set; }
         public TtlTemplateErrorContainer ErrorContainer { get; set; }
     }
 }

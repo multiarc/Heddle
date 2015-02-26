@@ -10,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Templates</RootNamespace>
     <AssemblyName>Templates</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SccProjectName>
     </SccProjectName>
@@ -41,12 +41,12 @@
     <BootstrapperEnabled>true</BootstrapperEnabled>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
-    <NuGetPackageImportStamp>fec1befc</NuGetPackageImportStamp>
+    <NuGetPackageImportStamp>08424177</NuGetPackageImportStamp>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
-    <Optimize>true</Optimize>
+    <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
@@ -61,7 +61,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>CODE_ANALYSIS</DefineConstants>
+    <DefineConstants>TRACE;CODE_ANALYSIS</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
@@ -80,7 +80,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <OutputPath>bin\x64\Debug\</OutputPath>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Optimize>true</Optimize>
+    <Optimize>false</Optimize>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <CodeAnalysisIgnoreGeneratedCode>true</CodeAnalysisIgnoreGeneratedCode>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
@@ -105,8 +105,8 @@
     <OutputPath>bin\x86\Debug\</OutputPath>
     <DefineConstants>TRACE;DEBUG;CODE_ANALYSIS;</DefineConstants>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Optimize>true</Optimize>
-    <PlatformTarget>x86</PlatformTarget>
+    <Optimize>false</Optimize>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <CodeAnalysisLogFile>bin\x64\Debug\Templates.dll.CodeAnalysisLog.xml</CodeAnalysisLogFile>
     <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
@@ -137,9 +137,9 @@
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Antlr4.Runtime, Version=4.4.0.0, Culture=neutral, PublicKeyToken=edc21c04cf562012, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Antlr4.Runtime.4.4.1-alpha001\lib\net45\Antlr4.Runtime.dll</HintPath>
+    <Reference Include="Antlr4.Runtime.net45, Version=4.3.0.0, Culture=neutral, PublicKeyToken=eb42632606e9261f, processorArchitecture=MSIL">
+      <HintPath>..\packages\Antlr4.Runtime.4.3.0\lib\net45\Antlr4.Runtime.net45.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
@@ -157,6 +157,22 @@
     <Compile Include="Attributes\OptionsAttribute.cs" />
     <Compile Include="Attributes\DataTypeAttribute.cs" />
     <Compile Include="Exceptions\TemplateDefinitionTypeException.cs" />
+    <Compile Include="Extensions\DateExtension.cs" />
+    <Compile Include="Extensions\EmptyExtension.cs" />
+    <Compile Include="Extensions\FalseExtension.cs" />
+    <Compile Include="Extensions\GuidExtension.cs" />
+    <Compile Include="Extensions\ImportExtension.cs" />
+    <Compile Include="Extensions\IntegerExtension.cs" />
+    <Compile Include="Extensions\ListExtension.cs" />
+    <Compile Include="Extensions\MethodExtension.cs" />
+    <Compile Include="Extensions\ModelExtension.cs" />
+    <Compile Include="Extensions\MoneyExtension.cs" />
+    <Compile Include="Extensions\OutExtension.cs" />
+    <Compile Include="Extensions\PartialExtension.cs" />
+    <Compile Include="Extensions\ReferenceExtension.cs" />
+    <Compile Include="Extensions\StringExtension.cs" />
+    <Compile Include="Extensions\TimeExtension.cs" />
+    <Compile Include="Extensions\TrueExtension.cs" />
     <Compile Include="Language\CallParameter.cs" />
     <Compile Include="Language\DefinitionItem.cs" />
     <Compile Include="Data\DocumentCacheItem.cs" />
@@ -165,12 +181,7 @@
     <Compile Include="Language\OutputItem.cs" />
     <Compile Include="Language\RawOutputItem.cs" />
     <Compile Include="Data\RenderType.cs" />
-    <Compile Include="Data\State.cs" />
-    <Compile Include="Data\StoredDataType.cs" />
-    <Compile Include="Data\SystemPatternStrings.cs" />
     <Compile Include="Data\TemplateOptions.cs" />
-    <Compile Include="Data\Token.cs" />
-    <Compile Include="Data\TokenType.cs" />
     <Compile Include="DefenitionBaseExtension.cs" />
     <Compile Include="Exceptions\TemplateCompileException.cs" />
     <Compile Include="Exceptions\TemplateCreateException.cs" />
@@ -190,7 +201,7 @@
     <Compile Include="Runtime\CompileContext.cs" />
     <Compile Include="Language\DefinitionBlock.cs" />
     <Compile Include="Runtime\DocumentElement.cs" />
-    <Compile Include="Runtime\DocumentParser.cs" />
+    <Compile Include="Language\DocumentParser.cs" />
     <Compile Include="Runtime\DocumentsCache.cs" />
     <Compile Include="Runtime\GatesCache.cs" />
     <Compile Include="Runtime\IExtension.cs" />
@@ -266,13 +277,6 @@
     <PreBuildEvent>
     </PreBuildEvent>
   </PropertyGroup>
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\packages\Antlr4.4.4.1-alpha001\build\Antlr4.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Antlr4.4.4.1-alpha001\build\Antlr4.targets'))" />
-  </Target>
-  <Import Project="..\packages\Antlr4.4.4.1-alpha001\build\Antlr4.targets" Condition="Exists('..\packages\Antlr4.4.4.1-alpha001\build\Antlr4.targets')" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

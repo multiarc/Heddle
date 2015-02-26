@@ -93,36 +93,24 @@
     <Compile Include="StringBuilderExTest.cs" />
     <Compile Include="StringExTest.cs" />
     <Compile Include="TemplateTest.cs" />
-    <Compile Include="TemplateTests\DateTemplateTest.cs" />
-    <Compile Include="TemplateTests\EmptyTemplateTest.cs" />
-    <Compile Include="TemplateTests\FalseTemplateTest.cs" />
-    <Compile Include="TemplateTests\GuidTemplateTest.cs" />
-    <Compile Include="TemplateTests\InnerTest.cs" />
-    <Compile Include="TemplateTests\IntegerTemplateTest.cs" />
-    <Compile Include="TemplateTests\ListTemplateTest.cs" />
-    <Compile Include="TemplateTests\MoneyTest.cs" />
-    <Compile Include="TemplateTests\PartialTemplateTest.cs" />
-    <Compile Include="TemplateTests\StringTemplateTest.cs" />
-    <Compile Include="TemplateTests\SystemTemplateTest.cs" />
-    <Compile Include="TemplateTests\TimeTest.cs" />
-    <Compile Include="TemplateTests\TrueTemplateTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
-    <None Include="TestTemplate\partial.ttl" />
     <None Include="TestTemplate\partial.thtml" />
     <None Include="TestTemplate\template.thtml" />
-    <None Include="TestTemplate\template.ttl" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Templates.Extensions\Templates.Extensions.csproj">
-      <Project>{93649574-C954-4696-AC4C-6DE56665B9BE}</Project>
-      <Name>Templates.Extensions</Name>
+    <ProjectReference Include="..\..\src\Templates.Language\Templates.Language.csproj">
+      <Project>{8cb3116b-3163-4d26-bcd7-2e27efcd48ca}</Project>
+      <Name>Templates.Language</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\src\Templates\Templates.csproj">
       <Project>{FCCA75A7-9694-429F-9A41-FD1933464E85}</Project>
       <Name>Templates</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="TemplateTests\" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">
