@@ -4,13 +4,13 @@ using Templates.Strings.Core;
 
 namespace Templates.Language {
     public class OutputChain {
-        public OutputChain(ParseContext context)
+        public OutputChain()
         {
-            Context = context;
+            Context = new ParseContext();
             Chain = new SmartList<OutputItem>();
         }
 
-        public ParseContext Context { get; private set; }
+        public ParseContext Context { get; set; }
 
         public SmartList<OutputItem> Chain { get; set; }
 

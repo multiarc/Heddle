@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Globalization;
 using Templates.Attributes;
+using Templates.Language;
+using Templates.Runtime;
 
 namespace Templates.Extensions {
     /// <summary>
@@ -28,6 +30,10 @@ namespace Templates.Extensions {
             if ((bool) value)
                 return GetInnerResult(chainedResult, null);
             return string.Empty;
+        }
+
+        public override Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context, ParseContext parseContext) {
+            return base.InitStart(parameterTemplate, chainedType, null, context, parseContext);
         }
     }
 }

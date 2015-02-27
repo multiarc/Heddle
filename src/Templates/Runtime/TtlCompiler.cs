@@ -32,13 +32,13 @@ namespace Templates.Runtime
                 Type returnTypeChainedPrevious = null;
                 foreach (var item in extensions.Chain.Reverse())
                 {
-                    var compiledItem = CompileItem(item, compileContext, parseContext,
+                    var compiledItem = CompileItem(item, compileContext, extensions.Context,
                         ref returnTypeChainedPrevious);
                     element.CallChain.Add(compiledItem);
                 }
-                documentElements.Add(documentElements);
+                documentElements.Add(element);
             }
-
+            compileContext.Compile();
             return new RuntimeDocument(workingDocument, documentElements.ToArray(), compileContext.ModelType);
         }
 
@@ -185,7 +185,10 @@ namespace Templates.Runtime
 
         private static Type InitializeTemplate
             (IExtension extension, string parameterFastString, Type modelType, Type chainedType, CompileContext context, ParseContext parseContext) {
-            try {
+            try
+            {
+                modelType = modelType ?? typeof (object);
+                chainedType = chainedType ?? typeof (object);
                 RenderType directRender = extension.GetType().IsHaveAttribute<EncodeOutputAttribute>(true)
                     ? (extension.GetType().IsHaveAttribute<NotEncodeAttribute>(false) ? RenderType.Raw : RenderType.Encode)
                     : RenderType.Raw;

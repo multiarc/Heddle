@@ -83,9 +83,6 @@ namespace Templates.Strings {
                     throw new ArgumentNullException("value");
                 _data = EmptyExString._data;
             } else {
-                var len = (int) StringNativeHelper.StrLen(value);
-                if (len < length)
-                    length = len;
                 _data = new char[length];
                 fixed (char* dest = _data) {
                     StringNativeHelper.MemCpy(dest, value, length);

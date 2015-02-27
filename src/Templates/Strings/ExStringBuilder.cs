@@ -212,7 +212,7 @@ namespace Templates.Strings {
                     if (replacement.BlockPosition.StartIndex < 0)
                         throw new ArgumentException();
 #endif
-                    capacity += (replacement.ReplacementValue != null ? replacement.ReplacementValue.Length : 0) - replacement.BlockPosition.Length;
+                    capacity += (replacement.ReplacementValue?.Length ?? 0) - replacement.BlockPosition.Length;
 #if DEBUG
                     if (capacity < 0)
                         throw new ArgumentException();

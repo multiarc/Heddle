@@ -2,9 +2,9 @@
 
 namespace Templates.Language {
     public class OutputItem {
-        public OutputItem (string extensionName, string parameterTemplate = "")
+        public OutputItem (string extensionName, string parameterTemplate = null)
         {
-            ExtensionName = extensionName;
+            ExtensionName = extensionName ?? string.Empty;
             ParameterTemplate = parameterTemplate;
             OutList = new SmartList<OutputChain>();
             CallParameter = new CallParameter();

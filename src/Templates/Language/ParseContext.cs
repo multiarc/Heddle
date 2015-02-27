@@ -14,16 +14,17 @@ namespace Templates.Language {
             DefinitionBlock = new DefinitionBlock(previous?.DefinitionBlock);
             OutputChains = new SmartList<OutputChain>();
             RawOutputItems = new SmartList<RawOutputItem>();
+            CommentTokens = new SmartList<BlockPosition>();
         }
 
         internal DefinitionItem CreateDefinition(TtlParser.DefContext context)
         {
             return new DefinitionItem(
-                context.DEF_ID(0).GetText(), context.subtemplate().GetText(),
-                GetDefenition(context.DEF_ID(1)?.GetText()),
-                modelType: context.DEF_ID(2)?.GetText())
+                context.ID(0).GetText(), context.subtemplate().GetText(),
+                GetDefenition(context.ID(1)?.GetText()),
+                modelType: context.ID(2)?.GetText())
             {
-                Position = new BlockPosition(context.Start.StartIndex, context.GetText().Length)
+                Position = new BlockPosition(context.Start.StartIndex, context.Stop.StopIndex - context.Start.StartIndex + 1)
             };
         }
 
@@ -31,17 +32,19 @@ namespace Templates.Language {
         {
             if (baseName.IsNullOrEmpty())
                 return null;
-            return DefinitionBlock.Definitions[baseName];
+            if (DefenitionExists(baseName))
+                return DefinitionBlock.Definitions[baseName];
+            return null;
         }
 
         internal OutputChain CreateOutputChain(TtlParser.OutblockContext context)
         {
-            var result = new OutputChain(this)
+            var result = new OutputChain()
             {
-                Chain = CreateChain(context.call()),
-                BlockPosition = new BlockPosition(context.Start.StartIndex - _offset, context.GetText().Length)
+                Chain = CreateChain(context.chain().call()),
+                BlockPosition = new BlockPosition(context.Start.StartIndex - _offset, context.Stop.StopIndex - context.Start.StartIndex + 1)
             };
-            result.Chain.Last().ParameterTemplate = context.outtemplate()?.ttl()?.GetText();
+            result.Chain.First().ParameterTemplate = context.subtemplate()?.ttl()?.GetText();
             return result;
         }
 
@@ -52,7 +55,7 @@ namespace Templates.Language {
                 var text = raw.GetText();
                 yield return new RawOutputItem
                 {
-                    Position = new BlockPosition(raw.Symbol.StartIndex, text.Length),
+                    Position = new BlockPosition(raw.Symbol.StartIndex, raw.Symbol.StopIndex - raw.Symbol.StartIndex + 1),
                     Text = text.Substring(2, text.Length - 4)
                 };
             }
@@ -60,7 +63,7 @@ namespace Templates.Language {
 
         public bool DefenitionExists(string name)
         {
-            return DefinitionBlock.Definitions.ContainsKey(name);
+            return DefinitionBlock.Definitions.ContainsKey(name ?? string.Empty);
         }
 
 
@@ -72,6 +75,8 @@ namespace Templates.Language {
 
         public SmartList<RawOutputItem> RawOutputItems { get; private set; }
 
+        public SmartList<BlockPosition> CommentTokens { get; private set; }
+
         internal bool InDefinition { get; set; } = false;
 
         public DefinitionBlock DefinitionBlock { get; }
@@ -82,20 +87,37 @@ namespace Templates.Language {
             if (context == null)
                 return null;
             var result = new SmartList<OutputItem>();
-            result.AddRange(context.Select(CreateItem));
+            result.AddRange(context.Select(CreateItem).Where(item => item != null));
+            if (result.Length == 0)
+                return null;
             return result;
         }
 
         private OutputItem CreateItem(TtlParser.CallContext context)
         {
-            return new OutputItem(context.OUT_ID(0)?.GetText())
-            {
-                CallParameter =
+            var namedCall = context.named_call();
+            var unnamedCall = context.unnamed_call();
+            if (namedCall != null) {
+                return new OutputItem(namedCall.OUT_ID(0)?.GetText())
                 {
-                    ModelParameter = context.OUT_ID(1)?.GetText(),
-                    ChainParameter = CreateChain(context.call())
-                }
-            };
+                    CallParameter =
+                    {
+                        ModelParameter = namedCall.OUT_ID(1)?.GetText(),
+                        ChainParameter = CreateChain(namedCall.chain()?.call())
+                    }
+                };
+            }
+            if (unnamedCall != null) {
+                return new OutputItem(string.Empty)
+                {
+                    CallParameter =
+                    {
+                        ModelParameter = unnamedCall.OUT_ID()?.GetText(),
+                        ChainParameter = CreateChain(unnamedCall.chain()?.call())
+                    }
+                };
+            }
+            return null;
         }
 
         #endregion

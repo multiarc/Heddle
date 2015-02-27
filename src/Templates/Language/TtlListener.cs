@@ -19,7 +19,7 @@ namespace Templates.Language {
         {
             CurrentParseContext.InDefinition = true;
             CurrentParseContext.DefinitionBlock.AddNewBlockPosition(
-                new BlockPosition(context.Start.StartIndex, context.GetText().Length));
+                new BlockPosition(context.Start.StartIndex, context.Stop.StopIndex - context.Start.StartIndex + 1));
         }
 
         public override void ExitDefinition(TtlParser.DefinitionContext context)
@@ -65,16 +65,16 @@ namespace Templates.Language {
 
         public override void EnterSubtemplate(TtlParser.SubtemplateContext context)
         {
-            if (context.ttl()?.GetText()?.Length > 0)
+            if (context.ttl()?.Stop.StopIndex - context.ttl()?.Start.StartIndex + 1 > 0)
             {
                 _parserContextStack.Push(new ParseContext(CurrentParseContext,
-                    context.Start.StartIndex + 1));
+                    context.ttl().Start.StartIndex));
             }
         }
 
         public override void ExitSubtemplate(TtlParser.SubtemplateContext context)
         {
-            if (context.ttl()?.GetText()?.Length > 0)
+            if (context.ttl()?.Stop.StopIndex - context.ttl()?.Start.StartIndex + 1 > 0)
             {
                 var parserContext = _parserContextStack.Pop();
                 if (CurrentParseContext.InDefinition)
@@ -84,7 +84,8 @@ namespace Templates.Language {
                 }
                 else
                 {
-                    CurrentParseContext.CurrentChain.Chain.Last().OutList.AddRange(parserContext.OutputChains);
+                    CurrentParseContext.CurrentChain.Context = parserContext;
+                    CurrentParseContext.CurrentChain.Chain.First().OutList.AddRange(parserContext.OutputChains);
                 }
             }
         }

@@ -8,7 +8,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Templater.Tests</RootNamespace>
     <AssemblyName>Templater.Tests</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
@@ -73,6 +73,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Web.Extensions" />
   </ItemGroup>
   <Choose>
     <When Condition="('$(VisualStudioVersion)' == '10.0' or '$(VisualStudioVersion)' == '') and '$(TargetFrameworkVersion)' == 'v3.5'">
@@ -100,6 +102,10 @@
     <None Include="TestTemplate\template.thtml" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\src\NativeFunctions\NativeFunctions\NativeFunctions.vcxproj">
+      <Project>{835592ee-26cd-435f-b9b3-72c63a5193c4}</Project>
+      <Name>NativeFunctions</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\src\Templates.Language\Templates.Language.csproj">
       <Project>{8cb3116b-3163-4d26-bcd7-2e27efcd48ca}</Project>
       <Name>Templates.Language</Name>

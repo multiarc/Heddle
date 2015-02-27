@@ -1,6 +1,5 @@
-﻿<%<import>[System]%>
-<tr>
-    <td><%<money>Cost[<%Locale%>]%></td>
-    <td><%<>Quantity%></td>
-    <td><%Name%></td>
+﻿<tr>
+    <td>@money(Cost):(Locale);</td>
+    <td>@(Quantity);</td>
+    <td>@(Name);</td>
 </tr>

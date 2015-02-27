@@ -4,67 +4,162 @@
 
 lexer grammar TtlLexer;
 
-COMMENT: DEFAULT_COMMENT | SUB_COMMENT;
-RAW: DEFAULT_RAW | SUB_RAW;
-DEF_START: DEFAULT_DEFSTART | SUB_DEFSTART;
-OUT_START: DEFAULT_OUTSTART | SUB_OUTSTART;
-TEXT: DEFAULT_TEXT | SUB_TEXT;
+tokens { TEXT, OUT_ID }
 
-fragment DEFAULT_COMMENT: '@*' .*? '*@' -> skip;
-fragment DEFAULT_RAW: '@:' .*? ':@';
-fragment DEFAULT_DEFSTART: '<%' -> pushMode(DEF);
-fragment DEFAULT_OUTSTART: '@' -> pushMode(OUT);
-fragment DEFAULT_TEXT: .+?;
+fragment ID_START: 
+	LETTER
+	| '_'
+	;
 
-fragment NameChar : NameStartChar
+fragment LETTER: 
+	'a'..'z'
+	| 'A'..'Z'
+	;
+
+fragment ID_PART: 
+	ID_START
 	| '.'
 	| '0'..'9'
-	| '_'
-	| '\u00B7'
-	| '\u0300'..'\u036F'
-	| '\u203F'..'\u2040'
+	| '+'
 	;
-fragment NameStartChar 
-	: 'A'..'Z' | 'a'..'z'
-	| '\u00C0'..'\u00D6'
-	| '\u00D8'..'\u00F6'
-	| '\u00F8'..'\u02FF'
-	| '\u0370'..'\u037D'
-	| '\u037F'..'\u1FFF'
-	| '\u200C'..'\u200D'
-	| '\u2070'..'\u218F'
-	| '\u2C00'..'\u2FEF'
-	| '\u3001'..'\uD7FF'
-	| '\uF900'..'\uFDCF'
-	| '\uFDF0'..'\uFFFD'
-	;
+
+fragment SUB_ST: '[';
+fragment SUB_CL: ']';
+fragment PARA_ST: '(';
+fragment PARA_CL: ')';
+fragment DEF_ST: '<%';
+fragment DEF_CL: '%>';
+fragment OUT_ST: '@';
+
+COMMENT: 
+	'@*' .*? '*@' -> channel(COMMENT);
+
+RAW: 
+	'@:' .*? ':@';
+
+DEF_START: 
+	DEF_ST -> pushMode(DEF);
+
+OUT_START: 
+	OUT_ST -> pushMode(OUT);
+
+TEXT: .+?;
 
 mode DEF;
 
-DEF_CLOSE: '%>' ->popMode;
-DEF_STARTNAME : '<';
-DEF_ENDNAME : '>';
+
+DEF_COMMENT: 
+	COMMENT -> channel(COMMENT);
+
+DEF_WS: 
+	[ \r\n\t\f]+ -> channel(HIDDEN);
+
+DEF_CLOSE: 
+	DEF_CL -> popMode;
+
+SUB_START: 
+	SUB_ST -> pushMode(SUB);
+
+DEF_STARTNAME: '<';
+DEF_ENDNAME: '>';
 DEF_TYPE: '::';
-DEF_DELIM: ':';
-DEF_SUBSTART: '[' -> pushMode(SUB);
-DEF_ID : NameStartChar NameChar*;
-DEF_WS: [ \r\n\t]+ -> skip;
+DELIM: ':';
+ID: ID_START ID_PART*;
+
+
 
 mode SUB;
 
-SUB_COMMENT: '@*' .*? '*@' -> skip;
-SUB_RAW: '@:' .*? ':@';
-SUB_DEFSTART: '<%' -> pushMode(DEF);
-SUB_OUTSTART: '@' -> pushMode(OUT);
-SUB_CLOSE: ']' ->popMode;
-SUB_TEXT: .+?;
+
+
+SUB_COMMENT: 
+	COMMENT -> channel(COMMENT);
+
+SUB_CLOSE: 
+	SUB_CL -> popMode;
+
+SUB_RAW: 
+	RAW -> type(RAW);
+
+SUB_DEFSTART: 
+	DEF_START -> type(DEF_START), pushMode(DEF);
+
+SUB_OUTSTART: 
+	OUT_START -> type(OUT_START), pushMode(OUT_SUB);
+
+SUB_TEXT: 
+	TEXT -> type(TEXT);
+
+
 
 mode OUT;
 
-OUT_PARAMSTART: '(';
-OUT_PARAMEND: ')';
-OUT_DELIM: ':';
-OUT_SUBSTART: '[' -> pushMode(SUB);
-OUT_CLOSE: ';' -> popMode;
-OUT_ID : NameStartChar NameChar*;
-OUT_WS: [ \r\n\t]+ -> skip;
+
+OUT_COMMENT: 
+	COMMENT -> channel(COMMENT);
+
+OUT_WS: 
+	DEF_WS -> channel(HIDDEN);
+
+OUT_PARAMSTART: 
+	PARA_ST -> pushMode(CALL);
+
+OUT_DELIM: 
+	DELIM -> type(DELIM);
+
+OUT_SUBSTART: 
+	SUB_START -> type(SUB_START), popMode, pushMode(SUB);
+
+OUT_ID: ID;
+
+OUT_RAW: RAW -> type(RAW), popMode;
+OUT_DEF_START: DEF_START -> type(DEF_START), popMode, pushMode(DEF);
+OUT_OUT_START: OUT_START -> type(OUT_START), popMode, pushMode(OUT);
+OUT_SUB_CLOSE: SUB_CLOSE -> type(TEXT), popMode;
+OUT_OTHER: . -> type(TEXT), popMode;
+
+
+
+mode OUT_SUB;
+
+
+OUT_SUB_COMMENT: 
+	COMMENT -> channel(COMMENT);
+
+OUT_SUB_WS: 
+	DEF_WS -> channel(HIDDEN);
+
+OUT_SUB_PARAMSTART: 
+	OUT_PARAMSTART -> type(OUT_PARAMSTART), pushMode(CALL);
+
+OUT_SUB_DELIM: 
+	DELIM -> type(DELIM);
+
+OUT_SUB_SUBSTART: 
+	SUB_START -> type(SUB_START), popMode, pushMode(SUB);
+
+OUT_SUB_OUT_ID: OUT_ID -> type(OUT_ID);
+
+OUT_SUB_RAW: RAW -> type(RAW), popMode;
+OUT_SUB_DEF_START: DEF_START -> type(DEF_START), popMode, pushMode(DEF);
+OUT_SUB_OUT_START: OUT_START -> type(OUT_START), popMode, pushMode(OUT);
+OUT_SUB_SUB_CLOSE: SUB_CLOSE -> type(SUB_CLOSE), popMode, popMode;
+OUT_SUB_OTHER: . -> type(TEXT), popMode;
+
+
+mode CALL;
+
+
+CALL_OUT_WS: 
+	DEF_WS -> channel(HIDDEN);
+
+OUT_PARAMEND: 
+	PARA_CL -> popMode;
+
+CALL_OUT_PARAMSTART: 
+	OUT_PARAMSTART -> type(OUT_PARAMSTART), pushMode(CALL);
+
+CALL_OUT_DELIM: 
+	DELIM -> type(DELIM);
+
+CALL_OUT_ID: OUT_ID -> type(OUT_ID);

@@ -1,4 +1,4 @@
-﻿@*@import()[Templater.Tests]
+@*@import()[Templater.Tests]
 @import()[System.Collections.Generic]
 @import()[System]
 @import()[System.Linq]
@@ -29,18 +29,18 @@
     </table>
     <div>
         Page Generated at*@
-@import()[Templater.Tests]
-@model()[TemplateTest+TestDataStructure]
-        @time(Date)
+
+
+        05:14
         on
-        @date(Date)<br />
-        @true(IsShow)[<span style="color: aqua">Some fucking text</span>]<br />
-        @false(IsShow)[<span style="color: red">Don't show it</span>]<br />
-        @true(IsShow):param()[@time(Date)]<br />
-        @guid(Guid)[X]<br />
-        @guid(Guid)<br />
-        @int(FuckingInt)<br />
-        @string(Text)<br />
+        04/02/2012<br />
+        <span style="color: aqua">Some fucking text</span><br />
+        <br />
+        05:14<br />
+        {0x3e55a9af,0x0031,0x4c54,{0xb8,0x36,0x52,0x7e,0xab,0x26,0x86,0x7b}}<br />
+        3e55a9af-0031-4c54-b836-527eab26867b<br />
+        1059<br />
+        SOME TEXT<br />
         &lt;%<br />
         %&gt;<br />
     </div>

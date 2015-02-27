@@ -80,9 +80,9 @@ namespace Templater.Tests {
             ExString expected = reader.ReadToEnd();
             reader.Close();
             ExString actual = _target.Generate(data);
-            //var writer = File.CreateText(@"d:\Tmp\generated.html");
-            //writer.Write((string)actual);
-            //writer.Close();
+            var writer = File.CreateText(@"..\..\TestTemplate\test.html");
+            writer.Write((string)actual);
+            writer.Close();
             Assert.AreEqual(expected, actual);
         }
 

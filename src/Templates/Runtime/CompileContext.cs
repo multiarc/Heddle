@@ -27,7 +27,7 @@ namespace Templates.Runtime {
                 throw new ArgumentNullException("context");
             Options = new TemplateOptions(context.Options.FileNamePostfix, context.Options.RootPath,
                 fileName ?? context.Options.TemplateName, context.Options.EnableFileChangeCheck);
-            ModelType = modelType ?? typeof (object);
+            ModelType = modelType ?? context.ModelType ?? typeof(object);
             _namespaces = context._namespaces.ToList();
         }
 

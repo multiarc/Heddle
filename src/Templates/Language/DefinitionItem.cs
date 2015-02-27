@@ -7,13 +7,13 @@ namespace Templates.Language {
     /// Definition syntax element with inheritance support
     /// </summary>
     public class DefinitionItem {
-        public DefinitionItem(string name, string parameterTemplate, DefinitionItem baseDefinition, ParseContext context = null, string modelType = null)
+        public DefinitionItem(string name, string parameterTemplate, DefinitionItem baseDefinition, string modelType = null)
         {
             Name = name;
             ParameterTemplate = parameterTemplate;
             BaseDefinition = baseDefinition;
             ModelType = modelType;
-            Context = context;
+            Context = new ParseContext();
             OutList = new SmartList<OutputChain>();
         }
 

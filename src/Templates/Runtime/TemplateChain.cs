@@ -45,7 +45,7 @@ namespace Templates.Runtime {
             {
                 chainedResult = item.Extension.ProcessData(item.Parameter.GetParameterResult(data, chainedResult), chainedResult);
 #if DEBUG
-                if (data != null && item.ReturnType != null && !item.ReturnType.IsType(data)) {
+                if (chainedResult != null && item.ReturnType != null && !item.ReturnType.IsType(chainedResult)) {
                     throw new TemplateProcessingException
                         (string.Format
                              (CultureInfo.InvariantCulture, "Returned data type not valid. Needed [{0}] Got [{1}]", item.ReturnType.FullName,

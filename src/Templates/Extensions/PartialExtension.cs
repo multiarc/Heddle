@@ -16,7 +16,7 @@ namespace Templates.Extensions {
 
         protected override object ProcessDataInternal (object value, object chainedResult)
         {
-            return _innerTemplate.Generate(value);
+            return _innerTemplate?.Generate(value);
         }
 
         public override Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context, ParseContext parseContext)

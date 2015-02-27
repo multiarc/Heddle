@@ -59,6 +59,7 @@
     <Compile Include="obj\Debug\TtlParserListener.cs" />
     <Compile Include="obj\Debug\TtlParserVisitor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TtlLexer.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="language.snk" />

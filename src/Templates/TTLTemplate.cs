@@ -37,20 +37,21 @@ namespace Templates {
             catch (Exception e) {
                 throw new ArgumentException("Cannot open file", e);
             }
-
+            string document;
             try
             {
-                var document = _reader.ReadEntireFile();
-                var rtdoc = DocumentsCache.GetRuntimeDocument(document, context) ??
+                document = _reader.ReadEntireFile();
+            }
+            catch (ArgumentException e) {
+                throw new ArgumentException("File not found", e);
+            }
+            var rtdoc = DocumentsCache.GetRuntimeDocument(document, context) ??
                             TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
                 DocumentsCache.UpdateCaches(rtdoc, null, document, context);
                 _context = context;
                 _document = document;
                 _runtimeDocument = rtdoc;
-            }
-            catch (ArgumentException e) {
-                throw new ArgumentException("File not found", e);
-            }
+            
             if (context.Options.EnableFileChangeCheck) {
                 _timer = new Timer(CheckFileChange, null, FileCheckDelay, int.MaxValue);
             }

@@ -168,6 +168,7 @@
     <Compile Include="Extensions\ModelExtension.cs" />
     <Compile Include="Extensions\MoneyExtension.cs" />
     <Compile Include="Extensions\OutExtension.cs" />
+    <Compile Include="Extensions\ParamExtension.cs" />
     <Compile Include="Extensions\PartialExtension.cs" />
     <Compile Include="Extensions\ReferenceExtension.cs" />
     <Compile Include="Extensions\StringExtension.cs" />
