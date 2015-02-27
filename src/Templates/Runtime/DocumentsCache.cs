@@ -56,7 +56,8 @@ namespace Templates.Runtime {
                         RootPath = context.Options.RootPath,
                         ModelType = context.ModelType
                     };
-                    Cache.Add(itemToSearch, newRuntimeDocument);
+                    if (!Cache.ContainsKey(itemToSearch))
+                        Cache.Add(itemToSearch, newRuntimeDocument);
                 }
             }
             else
@@ -68,7 +69,8 @@ namespace Templates.Runtime {
                 };
                 lock (Cache)
                 {
-                    Cache.Add(itemToSearch, newRuntimeDocument);
+                    if (!Cache.ContainsKey(itemToSearch))
+                        Cache.Add(itemToSearch, newRuntimeDocument);
                 }
             }
         }

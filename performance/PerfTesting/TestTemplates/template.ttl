@@ -1,6 +1,6 @@
 ﻿@import()[PerfTesting]
 @model()[TestDataStructure]
-@*<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
@@ -21,11 +21,11 @@
         </tr>
         @list(Products)
         [
-			@partial()[partial];
-        ];
+			@partial()[partial]
+        ]
     </table>
     <div>
-        Page Generated at*@
+        Page Generated at
         @time(Date)
         on
         @date(Date)<br />
