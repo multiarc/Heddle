@@ -33,7 +33,10 @@ namespace Templates.Runtime {
             ParseTreeWalker walker = new ParseTreeWalker();
             TtlListener listener = new TtlListener();
             walker.Walk(listener, tree);
-            listener.CurrentParseContext.CommentTokens.AddRange(tokens.GetTokens().Where(t => t.Channel == TtlLexer.COMMENT).Select(t => new BlockPosition(t.StartIndex, t.StopIndex - t.StartIndex + 1)));
+            listener.CurrentParseContext.CommentTokens.AddRange(
+                tokens.GetTokens()
+                    .Where(t => t.Channel == TtlLexer.COMMENT)
+                    .Select(t => new BlockPosition(t.StartIndex, t.StopIndex - t.StartIndex + 1)));
             return listener.CurrentParseContext;
         }
     }

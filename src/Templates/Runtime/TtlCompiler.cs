@@ -21,6 +21,7 @@ namespace Templates.Runtime
         {
             string workingDocument = document;
             int seed = 0;
+            RemoveComments(parseContext, ref seed, ref workingDocument);
             RemoveDefinitions(parseContext, ref seed, ref workingDocument);
             ReplaceRawOutput(parseContext, ref seed, ref workingDocument);
             if (compileContext == null)
@@ -54,6 +55,18 @@ namespace Templates.Runtime
                     context.OutputChains.Where(c => c.BlockPosition.StartIndex > outputItem.Position.StartIndex);
                 foreach (var chain in itemsToUpdate)
                 {
+                    chain.BlockPosition = new BlockPosition(chain.BlockPosition.StartIndex - seed,
+                        chain.BlockPosition.Length);
+                }
+            }
+        }
+
+        private static void RemoveComments(ParseContext context, ref int seed, ref string workingDocument) {
+            foreach (var blockPosition in context.CommentTokens) {
+                seed += ExStringBuilder.ApplyRemove(blockPosition, ref workingDocument);
+                var position = blockPosition;
+                var itemsToUpdate = context.OutputChains.Where(c => c.BlockPosition.StartIndex > position.StartIndex);
+                foreach (var chain in itemsToUpdate) {
                     chain.BlockPosition = new BlockPosition(chain.BlockPosition.StartIndex - seed,
                         chain.BlockPosition.Length);
                 }
