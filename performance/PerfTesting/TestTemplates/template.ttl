@@ -1,28 +1,9 @@
-﻿@import()[PerfTesting]
-@model()[TestDataStructure]
-<!DOCTYPE html>
-<html>
-<head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Привет!</title>
-</head>
-<body>
-    <table>
-        <tr>
-            <th>
-                Cost of something
-            </th>
-            <th>
-                Quantity of items
-            </th>
-            <th>
-                Name of something
-            </th>
-        </tr>
+﻿@import()[PerfTesting];
+@model()[TestDataStructure];
         @list(Products)
-        [
-			@partial()[partial]
-        ]
+        [@
+			partial()[partial];
+        ];
     </table>
     <div>
         Page Generated at

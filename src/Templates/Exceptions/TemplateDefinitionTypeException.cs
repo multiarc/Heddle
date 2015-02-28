@@ -34,6 +34,8 @@ namespace Templates.Exceptions {
         }
 
         protected TemplateDefinitionTypeException(SerializationInfo info, StreamingContext context) : base(info, context) {
+            base.GetObjectData(info, context);
+            info.AddValue("Position", Position);
         }
     }
 }

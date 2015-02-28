@@ -4,7 +4,9 @@
 
 lexer grammar TtlLexer;
 
-tokens { TEXT, OUT_ID }
+tokens { TEXT, OUT_ID, WHITESPACE }
+
+channels { COMMENT_CHANNEL }
 
 fragment ID_START: 
 	LETTER
@@ -30,9 +32,11 @@ fragment PARA_CL: ')';
 fragment DEF_ST: '<%';
 fragment DEF_CL: '%>';
 fragment OUT_ST: '@';
+fragment LINE_TERM: ';';
+fragment WS: [ \r\n\t\f];
 
 COMMENT: 
-	'@*' .*? '*@' -> channel(COMMENT);
+	'@*' .*? '*@' -> channel(COMMENT_CHANNEL);
 
 RAW: 
 	'@:' .*? ':@';
@@ -49,10 +53,7 @@ mode DEF;
 
 
 DEF_COMMENT: 
-	COMMENT -> channel(COMMENT);
-
-DEF_WS: 
-	[ \r\n\t\f]+ -> channel(HIDDEN);
+	COMMENT -> channel(COMMENT_CHANNEL);
 
 DEF_CLOSE: 
 	DEF_CL -> popMode;
@@ -66,6 +67,7 @@ DEF_TYPE: '::';
 DELIM: ':';
 ID: ID_START ID_PART*;
 
+DEF_WS: WS+ -> type(WHITESPACE);
 
 
 mode SUB;
@@ -73,7 +75,10 @@ mode SUB;
 
 
 SUB_COMMENT: 
-	COMMENT -> channel(COMMENT);
+	COMMENT -> channel(COMMENT_CHANNEL);
+
+SUB_LINE_TERMINATE: 
+	SUB_CL WS* LINE_TERM WS* -> type(SUB_CLOSE), popMode;
 
 SUB_CLOSE: 
 	SUB_CL -> popMode;
@@ -96,10 +101,7 @@ mode OUT;
 
 
 OUT_COMMENT: 
-	COMMENT -> channel(COMMENT);
-
-OUT_WS: 
-	DEF_WS -> channel(HIDDEN);
+	COMMENT -> channel(COMMENT_CHANNEL);
 
 OUT_PARAMSTART: 
 	PARA_ST -> pushMode(CALL);
@@ -112,9 +114,15 @@ OUT_SUBSTART:
 
 OUT_ID: ID;
 
+LINE_TERMINATE: 
+	LINE_TERM WS* -> popMode;
+
+OUT_WS: WS+;
+
 OUT_RAW: RAW -> type(RAW), popMode;
 OUT_DEF_START: DEF_START -> type(DEF_START), popMode, pushMode(DEF);
 OUT_OUT_START: OUT_START -> type(OUT_START), popMode, pushMode(OUT);
+OUT_SUB_CLOSE2: SUB_CLOSE WS* LINE_TERM WS* -> type(TEXT), popMode;
 OUT_SUB_CLOSE: SUB_CLOSE -> type(TEXT), popMode;
 OUT_OTHER: . -> type(TEXT), popMode;
 
@@ -124,10 +132,7 @@ mode OUT_SUB;
 
 
 OUT_SUB_COMMENT: 
-	COMMENT -> channel(COMMENT);
-
-OUT_SUB_WS: 
-	DEF_WS -> channel(HIDDEN);
+	COMMENT -> channel(COMMENT_CHANNEL);
 
 OUT_SUB_PARAMSTART: 
 	OUT_PARAMSTART -> type(OUT_PARAMSTART), pushMode(CALL);
@@ -140,18 +145,21 @@ OUT_SUB_SUBSTART:
 
 OUT_SUB_OUT_ID: OUT_ID -> type(OUT_ID);
 
+OUT_SUB_LINE_TERMINATE: 
+	LINE_TERM WS* -> type(LINE_TERMINATE), popMode;
+
+OUT_SUB_WS: WS+ -> type(OUT_WS);
+
 OUT_SUB_RAW: RAW -> type(RAW), popMode;
 OUT_SUB_DEF_START: DEF_START -> type(DEF_START), popMode, pushMode(DEF);
 OUT_SUB_OUT_START: OUT_START -> type(OUT_START), popMode, pushMode(OUT);
+OUT_SUB_SUB_CLOSE2: SUB_CLOSE WS* LINE_TERM WS* -> type(SUB_CLOSE), popMode, popMode;
 OUT_SUB_SUB_CLOSE: SUB_CLOSE -> type(SUB_CLOSE), popMode, popMode;
 OUT_SUB_OTHER: . -> type(TEXT), popMode;
 
 
 mode CALL;
 
-
-CALL_OUT_WS: 
-	DEF_WS -> channel(HIDDEN);
 
 OUT_PARAMEND: 
 	PARA_CL -> popMode;
@@ -163,3 +171,8 @@ CALL_OUT_DELIM:
 	DELIM -> type(DELIM);
 
 CALL_OUT_ID: OUT_ID -> type(OUT_ID);
+
+CALL_LINE_TERMINATE: 
+	LINE_TERM WS* -> type(LINE_TERMINATE), popMode, popMode;
+
+CALL_OUT_WS: WS+ -> type(WHITESPACE);

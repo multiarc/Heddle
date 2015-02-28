@@ -20,7 +20,7 @@ namespace Templates {
             
         }
 
-        public TtlTemplate (CompileContext context)
+        public TtlTemplate(CompileContext context)
         {
             if (context == null)
                 throw new ArgumentNullException("context");
@@ -31,10 +31,12 @@ namespace Templates {
             if (string.IsNullOrWhiteSpace(context.Options.TemplateName))
                 throw new ArgumentException("Template Name should not be empty");
 
-            try {
+            try
+            {
                 _reader = new FileReader(context.Options);
             }
-            catch (Exception e) {
+            catch (Exception e)
+            {
                 throw new ArgumentException("Cannot open file", e);
             }
             string document;
@@ -42,17 +44,22 @@ namespace Templates {
             {
                 document = _reader.ReadEntireFile();
             }
-            catch (ArgumentException e) {
+            catch (ArgumentException e)
+            {
                 throw new ArgumentException("File not found", e);
             }
-            var rtdoc = DocumentsCache.GetRuntimeDocument(document, context) ??
-                            TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
+            var rtdoc = DocumentsCache.GetRuntimeDocument(document, context);
+            if (rtdoc == null)
+            {
+                rtdoc = TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
                 DocumentsCache.UpdateCaches(rtdoc, null, document, context);
-                _context = context;
-                _document = document;
-                _runtimeDocument = rtdoc;
-            
-            if (context.Options.EnableFileChangeCheck) {
+            }
+            _context = context;
+            _document = document;
+            _runtimeDocument = rtdoc;
+
+            if (context.Options.EnableFileChangeCheck)
+            {
                 _timer = new Timer(CheckFileChange, null, FileCheckDelay, int.MaxValue);
             }
         }
@@ -62,9 +69,12 @@ namespace Templates {
             if (context == null)
                 throw new ArgumentNullException("context");
 
-            var rtdoc = DocumentsCache.GetRuntimeDocument(document, context) ??
-                            TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
-            DocumentsCache.UpdateCaches(rtdoc, null, document, context);
+            var rtdoc = DocumentsCache.GetRuntimeDocument(document, context);
+            if (rtdoc == null)
+            {
+                rtdoc = TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
+                DocumentsCache.UpdateCaches(rtdoc, null, document, context);
+            }
             _runtimeDocument = rtdoc;
             _context = context;
             _document = document;
@@ -76,7 +86,7 @@ namespace Templates {
 
         public void Dispose ()
         {
-            _timer?.Dispose();
+            if (_timer != null) _timer.Dispose();
             _runtimeDocument?.Dispose();
             GC.SuppressFinalize(this);
         }

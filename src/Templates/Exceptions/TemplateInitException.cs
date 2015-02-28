@@ -38,7 +38,7 @@ namespace Templates.Exceptions {
         public override void GetObjectData (SerializationInfo info, StreamingContext context)
         {
             base.GetObjectData(info, context);
-            info.AddValue("position", BlockPosition);
+            info.AddValue("BlockPosition", BlockPosition);
         }
     }
 }

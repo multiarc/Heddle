@@ -209,7 +209,7 @@ namespace Templates.Runtime
                 return extension.InitStart(parameterFastString, modelType, chainedType, context, parseContext);
             }
             catch (Exception e) {
-                throw new TemplateCreateException(string.Format(CultureInfo.InvariantCulture, "Unable to initialize Type {0}", extension), e);
+                throw new TemplateCreateException(string.Format(CultureInfo.InvariantCulture, "Unable to initialize Extension {0}", extension), e);
             }
         }
 

@@ -1,0 +1,43 @@
+﻿@import()[TemplatesXTests];
+@model()[TtlTemplateTests+TestDataStructure];
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Привет!</title>
+</head>
+<body>
+    <table>
+        <tr>
+            <th>
+                Cost of something
+            </th>
+            <th>
+                Quantity of items
+            </th>
+            <th>
+                Name of something
+            </th>
+        </tr>
+        @list(Products)
+        [@
+			partial()[partial];
+        ];
+    </table>
+    <div>
+        Page Generated at
+        @time(Date)
+        on
+        @date(Date)<br />
+        @true(IsShow)[<span style="color: aqua">Some fucking text</span>]<br />
+        @false(IsShow)[<span style="color: red">Don't show it</span>]<br />
+        @true(IsShow):param()[@time(Date)]<br />
+        @guid(Guid)[X]<br />
+        @guid(Guid)<br />
+        @int(FuckingInt)<br />
+        @string(Text)<br />
+        &lt;%<br />
+        %&gt;<br />
+    </div>
+</body>
+</html>

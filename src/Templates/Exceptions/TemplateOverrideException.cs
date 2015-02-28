@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace Templates.Exceptions {
+    [Serializable]
     public class TemplateOverrideException : Exception {
         public TemplateOverrideException ()
         {

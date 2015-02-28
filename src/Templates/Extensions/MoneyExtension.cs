@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Globalization;
 using Templates.Attributes;
+using Templates.Language;
+using Templates.Runtime;
 
 namespace Templates.Extensions {
     /// <summary>
@@ -25,6 +27,12 @@ namespace Templates.Extensions {
                 CultureCache.Add(locale, cultureInfo);
                 return cultureInfo;
             }
+        }
+
+        public override Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context,
+            ParseContext parseContext)
+        {
+            return base.InitStart(parameterTemplate, chainedType, null, context, parseContext);
         }
 
         protected override object ProcessDataInternal (object value, object chainedResult)

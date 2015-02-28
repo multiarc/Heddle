@@ -35,7 +35,7 @@ namespace Templates.Runtime {
             walker.Walk(listener, tree);
             listener.CurrentParseContext.CommentTokens.AddRange(
                 tokens.GetTokens()
-                    .Where(t => t.Channel == TtlLexer.COMMENT)
+                    .Where(t => t.Channel == TtlLexer.COMMENT_CHANNEL)
                     .Select(t => new BlockPosition(t.StartIndex, t.StopIndex - t.StartIndex + 1)));
             return listener.CurrentParseContext;
         }

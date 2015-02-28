@@ -50,14 +50,16 @@ namespace Templates.Runtime {
                 lock (Cache)
                 {
                     if (Cache.ContainsKey(itemToSearch))
+                    {
+                        Cache[itemToSearch].Dispose();
                         Cache.Remove(itemToSearch);
+                    }
                     itemToSearch = new DocumentCacheItem(newDocument)
                     {
                         RootPath = context.Options.RootPath,
                         ModelType = context.ModelType
                     };
-                    if (!Cache.ContainsKey(itemToSearch))
-                        Cache.Add(itemToSearch, newRuntimeDocument);
+                    Cache.Add(itemToSearch, newRuntimeDocument);
                 }
             }
             else
@@ -69,8 +71,12 @@ namespace Templates.Runtime {
                 };
                 lock (Cache)
                 {
-                    if (!Cache.ContainsKey(itemToSearch))
-                        Cache.Add(itemToSearch, newRuntimeDocument);
+                    if (Cache.ContainsKey(itemToSearch))
+                    {
+                        Cache[itemToSearch].Dispose();
+                        Cache.Remove(itemToSearch);
+                    }
+                    Cache.Add(itemToSearch, newRuntimeDocument);
                 }
             }
         }
