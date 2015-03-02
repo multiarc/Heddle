@@ -9,7 +9,7 @@ using Templates.Strings.Core;
 namespace Templates.Exceptions {
     [Serializable]
     public class TemplateDefinitionTypeException: Exception {
-        public BlockPosition Position { get; private set; }
+        public BlockPosition Position { get; }
 
         public TemplateDefinitionTypeException(BlockPosition position)
         {

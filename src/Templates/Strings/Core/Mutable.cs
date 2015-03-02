@@ -1,4 +1,6 @@
-﻿namespace Templates.Strings.Core {
+﻿using System.Runtime.CompilerServices;
+
+namespace Templates.Strings.Core {
     public static class Mutable {
         public static MutableString ToMutableString (this object value)
         {
@@ -13,7 +15,7 @@
             var s = value as string;
             if (s != null)
                 return s.ToMutableString();
-            return MutableString.Empty;
+            return value.ToString();
         }
 
         public static MutableString ToMutableString (this string value)
@@ -30,31 +32,37 @@
             return new MutableString(value);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsNullOrEmpty (this MutableString value)
         {
             return MutableString.IsNullOrEmpty(value);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsNullOrWhiteSpace (this MutableString value)
         {
             return MutableString.IsNullOrWhiteSpace(value);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsNullOrEmpty (this ExString value)
         {
             return ExString.IsNullOrEmpty(value);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsNullOrWhiteSpace (this ExString value)
         {
             return ExString.IsNullOrWhiteSpace(value);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsNullOrEmpty (this string value)
         {
             return string.IsNullOrEmpty(value);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsNullOrWhiteSpace (this string value)
         {
             return string.IsNullOrWhiteSpace(value);

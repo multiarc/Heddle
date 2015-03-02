@@ -1,5 +1,6 @@
 using System;
 using Templates.Attributes;
+using Templates.Core;
 
 namespace Templates.Extensions {
     /// <summary>

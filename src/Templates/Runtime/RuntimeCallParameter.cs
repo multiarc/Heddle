@@ -1,4 +1,5 @@
-﻿using Templates.Data;
+﻿using System.Runtime.CompilerServices;
+using Templates.Data;
 
 namespace Templates.Runtime {
     internal class RuntimeCallParameter
@@ -12,6 +13,7 @@ namespace Templates.Runtime {
             _getModelParameter = getModelParameter;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public object GetParameterResult(object data, object chainedResult)
         {
             if (_getModelParameter == null && _callParameterChain == null)

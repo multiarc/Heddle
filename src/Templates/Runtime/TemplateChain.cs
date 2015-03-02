@@ -71,8 +71,7 @@ namespace Templates.Runtime {
                 {
                     foreach (TemplateItem templateItem in _itemsToExecute)
                     {
-                        if (templateItem.Extension != null)
-                            templateItem.Extension.Dispose();
+                        templateItem.Extension?.Dispose();
                     }
                 }
             }

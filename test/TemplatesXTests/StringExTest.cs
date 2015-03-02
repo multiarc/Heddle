@@ -318,13 +318,13 @@ namespace TemplatesXTests {
         {
             ExString value = GenerateStringEx(Rnd.Next(1, 100));
             string expected = value.ToString() + value.ToString();
-            string actual = ExString.Increment(value).ToString();
+            string actual = ExString.Duplicate(value).ToString();
             Assert.Equal(expected, actual);
             value = ExString.Empty;
             expected = value.ToString() + value.ToString();
-            actual = ExString.Increment(value).ToString();
+            actual = ExString.Duplicate(value).ToString();
             Assert.Equal(expected, actual);
-            Assert.Equal(ExString.Increment(null), ExString.Empty);
+            Assert.Equal(ExString.Duplicate(null), ExString.Empty);
         }
 
         [Fact]

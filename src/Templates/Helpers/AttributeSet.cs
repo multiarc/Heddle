@@ -28,10 +28,7 @@ namespace Templates.Helpers {
         /// <summary>
         /// Gets list of custom attributes of type/property/field etc.
         /// </summary>
-        public ReadOnlyCollection<Attribute> AllAttributes
-        {
-            get { return _attributes.AsReadOnly(); }
-        }
+        public ReadOnlyCollection<Attribute> AllAttributes => _attributes.AsReadOnly();
 
         private void ParseAttributes (IEnumerable<object> attributes)
         {

@@ -1,9 +1,11 @@
 ﻿using System.Reflection;
+using System.Runtime.CompilerServices;
 using Templates.Data;
 
 namespace Templates.Runtime {
     public static class RuntimePropertyExtension {
-        public static DynamicMethodGateDelegate GetPropertyGate(this PropertyInfo property) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static DynamicMethodGateDelegate ToPropertyGate(this PropertyInfo property) {
             return GatesCache.GetPropertyGate(property);
         }
     }

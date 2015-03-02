@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using Templates.Attributes;
+using Templates.Core;
 
 namespace Templates.Extensions {
     /// <summary>

@@ -1,18 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
-using Templates.Collections;
-using Templates.Data;
-using Templates.Exceptions;
-using Templates.Language;
-using Templates.Strings;
 using Templates.Strings.Core;
 
-namespace Templates.Runtime {
+namespace Templates.Language {
     /// <summary>
     /// Parses document and creates template cache that can be used multiple times as source template representation, also used to replace templates with data multiple times (template source preserved)
     /// </summary>

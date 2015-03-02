@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using Templates.Data;
+using Templates.Exceptions;
+using Templates.Language;
 using Templates.Runtime;
 
 namespace Templates {
@@ -9,7 +12,7 @@ namespace Templates {
     /// </summary>
     public sealed class TtlTemplate: IDisposable {
         private const int FileCheckDelay = 5000; //milliseconds
-        private readonly CompileContext _context;
+        private CompileContext _context;
         private readonly FileReader _reader;
         private readonly Timer _timer;
         private volatile RuntimeDocument _runtimeDocument;
@@ -18,6 +21,10 @@ namespace Templates {
         public TtlTemplate(TemplateOptions options) : this(new CompileContext(options))
         {
             
+        }
+
+        public TtlTemplate(TemplateOptions options, Type modelType) : this(new CompileContext(options) {ModelType =  modelType}) {
+
         }
 
         public TtlTemplate(CompileContext context)
@@ -48,21 +55,18 @@ namespace Templates {
             {
                 throw new ArgumentException("File not found", e);
             }
-            var rtdoc = DocumentsCache.GetRuntimeDocument(document, context);
-            if (rtdoc == null)
-            {
-                rtdoc = TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
-                DocumentsCache.UpdateCaches(rtdoc, null, document, context);
-            }
-            _context = context;
-            _document = document;
-            _runtimeDocument = rtdoc;
-
+            Compile(context, document);
             if (context.Options.EnableFileChangeCheck)
             {
                 _timer = new Timer(CheckFileChange, null, FileCheckDelay, int.MaxValue);
             }
         }
+
+        public TtlTemplate()
+        {
+            
+        }
+
 
         public TtlTemplate (string document, CompileContext context)
         {
@@ -86,7 +90,7 @@ namespace Templates {
 
         public void Dispose ()
         {
-            if (_timer != null) _timer.Dispose();
+            _timer?.Dispose();
             _runtimeDocument?.Dispose();
             GC.SuppressFinalize(this);
         }
@@ -105,8 +109,58 @@ namespace Templates {
         /// </summary>
         /// <param name="data">Input object</param>
         /// <returns>Generated string</returns>
-        public string Generate(object data) {
-            return _runtimeDocument?.ProcessData(data, null) ?? string.Empty;
+        public string Generate(object data)
+        {
+            if (_runtimeDocument == null)
+                throw new TemplateInitException("Compile first.");
+            return _runtimeDocument.ProcessData(data, null) ?? string.Empty;
+        }
+
+        public TtlCompileResult Recompile(Type newModelType)
+        {
+            try
+            {
+                return Compile(new CompileContext(newModelType), _document);
+            }
+            catch (Exception e)
+            {
+                var result = new TtlCompileResult(false);
+                result.Errors.Add(new TtlCompileError()
+                {
+                    Error = e.Message,
+                    Exception = e
+                });
+                return result;
+            }
+        }
+
+        public TtlCompileResult Compile(string document, Type modelType = null)
+        {
+            try {
+                return Compile(new CompileContext(modelType), document);
+            }
+            catch (Exception e) {
+                var result = new TtlCompileResult(false);
+                result.Errors.Add(new TtlCompileError()
+                {
+                    Error = e.Message,
+                    Exception = e
+                });
+                return result;
+            }
+        }
+
+
+        private TtlCompileResult Compile(CompileContext context, string document) {
+            var rtdoc = DocumentsCache.GetRuntimeDocument(_document, _context);
+            if (rtdoc == null) {
+                rtdoc = TtlCompiler.Compile(_document, _context, DocumentParser.Parse(_document));
+                DocumentsCache.UpdateCaches(rtdoc, null, _document, _context);
+            }
+            _context = context;
+            _document = document;
+            _runtimeDocument = rtdoc;
+            return new TtlCompileResult(true);
         }
 
         private void CheckFileChange (object state)

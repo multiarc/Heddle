@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using NativeFunctions;
 using Templates.Collections;
+using Templates.Strings.Core;
 
 namespace Templates.Strings {
     [Serializable]
@@ -136,15 +137,9 @@ namespace Templates.Strings {
             }
         }
 
-        public int Length
-        {
-            get { return _length; }
-        }
+        public int Length => _length;
 
-        public static ExString Empty
-        {
-            get { return EmptyExString; }
-        }
+        public static ExString Empty => EmptyExString;
 
         public override string ToString ()
         {
@@ -240,10 +235,10 @@ namespace Templates.Strings {
 
         public ExString Replace (ExString toFind, ExString toReplace)
         {
-            if (toFind == null)
+            if ((object)toFind == null)
                 throw new ArgumentNullException("toFind");
 
-            if (toReplace == null)
+            if ((object)toReplace == null)
                 throw new ArgumentNullException("toReplace");
 
             return BulkReplace(FindForReplace(toFind), toReplace, toFind.Length);
@@ -317,14 +312,17 @@ namespace Templates.Strings {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsNullOrEmpty (ExString value)
         {
-            return value == null || value._length == 0;
+            return (object)value == null || value._length == 0;
         }
 
         public static bool IsNullOrWhiteSpace (ExString value)
         {
-            int len = value == null ? 0 : value.Length;
+            if (IsNullOrEmpty(value))
+                return true;
+            int len = value.Length;
             if (len > 0) {
                 unsafe {
                     fixed (char* data = value._data) {
@@ -340,7 +338,7 @@ namespace Templates.Strings {
 
         public static implicit operator string (ExString value)
         {
-            if (value == null)
+            if ((object)value == null)
                 return string.Empty;
             int len = value._length;
             unsafe {
@@ -362,7 +360,7 @@ namespace Templates.Strings {
 
         public static implicit operator char[] (ExString value)
         {
-            if (value == null)
+            if ((object)value == null)
                 return EmptyExString._data;
             return value._data;
         }
@@ -381,21 +379,25 @@ namespace Templates.Strings {
                 });
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator == (ExString compareTo, ExString compareWith)
         {
             return Equals(compareTo, compareWith);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator != (ExString compareTo, ExString compareWith)
         {
             return !Equals(compareTo, compareWith);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator == (string compareWith, ExString compareTo)
         {
             return Equals(compareTo, compareWith);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator != (string compareWith, ExString compareTo)
         {
             return !Equals(compareTo, compareWith);
@@ -403,23 +405,23 @@ namespace Templates.Strings {
 
         public static ExString Concat (ExString one, string two)
         {
-            int lenOne = one == null ? 0 : one._length,
-                lenTwo = two == null ? 0 : two.Length;
+            //Do some optimizations here, maximum two checks in any case
 
-            //Do some optimiztions here, maximum two checks in any case
-
-            if (lenOne == 0) {
-                if (lenTwo == 0)
+            if (IsNullOrEmpty(one))
+            {
+                if (string.IsNullOrEmpty(two))
                     return EmptyExString;
-                unsafe {
-                    fixed (char* src = two) {
-                        return new ExString(src, lenTwo);
+                unsafe
+                {
+                    fixed (char* src = two)
+                    {
+                        return new ExString(src, two.Length);
                     }
                 }
             }
-            if (lenTwo == 0)
+            if (string.IsNullOrEmpty(two))
                 return one;
-
+            int lenOne = one.Length, lenTwo = two.Length;
             var data = new char[lenOne + lenTwo];
             unsafe {
                 fixed (char* dest = data) {
@@ -435,9 +437,9 @@ namespace Templates.Strings {
 
         public static ExString Concat (ExString one, char two)
         {
-            int lenOne = one == null ? 0 : one._length;
-            if (lenOne == 0)
+            if (IsNullOrEmpty(one))
                 return two;
+            int lenOne = one._length;
             var data = new char[lenOne + 1];
             unsafe {
                 fixed (char* dest = data) {
@@ -452,19 +454,16 @@ namespace Templates.Strings {
 
         public static ExString Concat (ExString one, ExString two)
         {
-            int lenOne = one == null ? 0 : one._length,
-                lenTwo = two == null ? 0 : two._length;
-
             //Do some optimiztions here, maximum two checks in any case
 
-            if (lenOne == 0) {
-                if (lenTwo == 0)
-                    return EmptyExString;
-                return two;
+            if (IsNullOrEmpty(one))
+            {
+                return IsNullOrEmpty(two) ? EmptyExString : two;
             }
-            if (lenTwo == 0)
+            if (IsNullOrEmpty(two))
                 return one;
-
+            int lenOne = one._length,
+                lenTwo = two._length;
             var data = new char[lenOne + lenTwo];
             unsafe {
                 fixed (char* dest = data) {
@@ -498,7 +497,7 @@ namespace Templates.Strings {
 
                 int totalLen = 0;
                 for (int i = 0; i < count; i++)
-                    totalLen += exStrings[i] == null ? 0 : exStrings[i].Length;
+                    totalLen += (object)exStrings[i] == null ? 0 : exStrings[i].Length;
                 if (totalLen == 0)
                     return EmptyExString;
                 var data = new char[totalLen];
@@ -506,7 +505,7 @@ namespace Templates.Strings {
                     fixed (char* dest = data) {
                         int seed = 0;
                         for (int i = 0; i < count; i++) {
-                            int len = exStrings[i] == null ? 0 : exStrings[i].Length;
+                            int len = (object)exStrings[i] == null ? 0 : exStrings[i].Length;
                             if (len > 0) {
                                 fixed (char* src = (char[]) exStrings[i]) {
                                     StringNativeHelper.MemCpy(dest + seed, src, len);
@@ -521,6 +520,7 @@ namespace Templates.Strings {
             return EmptyExString;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static unsafe void ConcatNative (char* dest, char* one, char* two, int lenOne, int lenTwo)
         {
             StringNativeHelper.MemCpy(dest, one, lenOne);
@@ -577,7 +577,7 @@ namespace Templates.Strings {
             return Concat(two, one);
         }
 
-        public static ExString Increment (ExString value)
+        public static ExString Duplicate (ExString value)
         {
             return ++value;
         }
@@ -607,23 +607,23 @@ namespace Templates.Strings {
 
         public override bool Equals (object obj)
         {
-            if (ReferenceEquals(null, obj))
+            if (obj == null)
                 return false;
             if (ReferenceEquals(this, obj))
                 return true;
-
+            var fastString = obj as ExString;
+            if (fastString != null)
+                return Equals(fastString);
             var str = obj as string;
             if (str != null)
                 return Equals(str);
             var chr = obj as char[];
             if (chr != null)
                 return Equals(chr);
-            var fastString = obj as ExString;
-            if (fastString != null)
-                return Equals(fastString);
             return false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Equals (ExString one, ExString another)
         {
             if (ReferenceEquals(one, another))
@@ -633,7 +633,7 @@ namespace Templates.Strings {
             return one.Equals(another);
         }
 
-        //NULL native strings and NULL FastStrings are equals
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Equals (string one, ExString another)
         {
             if ((object) one == null && (object) another == null)

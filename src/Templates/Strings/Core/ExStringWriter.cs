@@ -5,12 +5,8 @@ namespace Templates.Strings.Core {
     public class ExStringWriter : TextWriter
     {
         private readonly ExStringBuilder _builder = new ExStringBuilder();
-        private readonly Encoding _encoding = new UnicodeEncoding(false, false);
 
-        public override Encoding Encoding
-        {
-            get { return _encoding; }
-        }
+        public override Encoding Encoding { get; } = new UnicodeEncoding(false, false);
 
         public override void Write(string value)
         {

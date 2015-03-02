@@ -31,6 +31,11 @@ namespace Templates.Runtime {
             _namespaces = context._namespaces.ToList();
         }
 
+        public CompileContext(Type modelType = null) {
+            ModelType = modelType ?? typeof(object);
+            Options = new TemplateOptions();
+        }
+
         /// <summary>
         /// Create new untyped (<see cref="System.Object"/>) initial level context to load and compile template from a file.
         /// Enclosing template level = 0

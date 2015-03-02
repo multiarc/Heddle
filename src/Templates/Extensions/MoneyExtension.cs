@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using Templates.Attributes;
+using Templates.Core;
 using Templates.Language;
 using Templates.Runtime;
 

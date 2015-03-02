@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Templates.Attributes;
 using Templates.Exceptions;
@@ -58,25 +59,13 @@ namespace Templates.Helpers {
             _innerType = value.GetType();
         }
 
-        public Type InnerType
-        {
-            get { return _innerType; }
-        }
+        public Type InnerType => _innerType;
 
-        public bool IsInterface
-        {
-            get { return _innerType.IsInterface; }
-        }
+        public bool IsInterface => _innerType.IsInterface;
 
-        public bool IsObject
-        {
-            get { return _innerType == typeof (object); }
-        }
+        public bool IsObject => _innerType == typeof (object);
 
-        public bool IsClass
-        {
-            get { return _innerType.IsClass; }
-        }
+        public bool IsClass => _innerType.IsClass;
 
         public bool IsImplement (Type type)
         {

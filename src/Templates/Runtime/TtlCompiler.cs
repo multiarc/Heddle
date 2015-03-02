@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Threading;
 using Templates.Attributes;
 using Templates.Collections;
+using Templates.Core;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
@@ -212,13 +213,6 @@ namespace Templates.Runtime
                 throw new TemplateCreateException(string.Format(CultureInfo.InvariantCulture, "Unable to initialize Extension {0}", extension), e);
             }
         }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="extension"></param>
-        /// <param name="property"></param>
-        /// <param name="dataTypeAttribute"></param>
         private static void CheckTypes(PropertyInfo property, Type dataType) {
             dataType = dataType ?? typeof(object);
 

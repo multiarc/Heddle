@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace Templates.Helpers {
     public static class TypeExtension {
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsType(this Type typeToCheck, Type type)
         {
             if (typeToCheck == null)
@@ -14,6 +17,7 @@ namespace Templates.Helpers {
             return typeToCheck.IsAssignableFrom(type);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsType(this Type typeToCheck, object data)
         {
             if (typeToCheck == null)
@@ -25,7 +29,7 @@ namespace Templates.Helpers {
             return typeToCheck.IsInstanceOfType(data);
         }
 
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsType<T>(this Type typeToCheck)
         {
             if (typeToCheck == null)

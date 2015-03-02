@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Templates.Attributes;
+using Templates.Core;
 using Templates.Language;
 using Templates.Runtime;
 using Templates.Strings;

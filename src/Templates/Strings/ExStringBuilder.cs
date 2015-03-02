@@ -46,10 +46,7 @@ namespace Templates.Strings {
             }
         }
 
-        public int Length
-        {
-            get { return _data.Length + _appendlength; }
-        }
+        public int Length => _data.Length + _appendlength;
 
         public void Clear ()
         {

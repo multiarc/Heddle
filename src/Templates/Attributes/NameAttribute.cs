@@ -1,5 +1,4 @@
 ﻿using System;
-
 namespace Templates.Attributes {
     /// <summary>
     /// Attribute to mark every extension with name wich used in source template
@@ -10,7 +9,7 @@ namespace Templates.Attributes {
         /// <summary>
         /// Sets extension name
         /// </summary>
-        /// <param name="name">Extension name (empty string is reserved for <see cref="EmptyExtension"/>)</param>
+        /// <param name="name">Extension name (empty string is reserved for <see cref="Templates.Extensions.EmptyExtension"/>)</param>
         public NameAttribute (string name)
         {
             Name = name;

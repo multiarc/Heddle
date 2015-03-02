@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Templates.Attributes;
+using Templates.Core;
 
 namespace Templates.Extensions {
     [Name("out")]

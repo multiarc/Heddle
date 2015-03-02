@@ -4,7 +4,7 @@ using Templates.Data;
 using Templates.Language;
 using Templates.Runtime;
 
-namespace Templates {
+namespace Templates.Core {
     public abstract class AbstractHtmlExtension: IExtension {
         private bool _directRender;
 

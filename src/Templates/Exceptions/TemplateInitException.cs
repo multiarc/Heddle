@@ -29,11 +29,7 @@ namespace Templates.Exceptions {
         {
         }
 
-        public BlockPosition BlockPosition
-        {
-            get;
-            private set;
-        }
+        public BlockPosition BlockPosition { get; }
 
         public override void GetObjectData (SerializationInfo info, StreamingContext context)
         {
