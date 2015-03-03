@@ -11,11 +11,11 @@ namespace Templates.Extensions {
     /// </summary>
     [Name ("partial")]
     [Name ("template")]
-    public class PartialExtension: AbstractHtmlExtension
+    public class PartialExtension: AbstractExtension
     {
         private TtlTemplate _innerTemplate;
 
-        protected override object ProcessDataInternal (object value, object chainedResult)
+        public override object ProcessData (object value, object chainedResult)
         {
             return _innerTemplate?.Generate(value);
         }

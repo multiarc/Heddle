@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Threading;
 using Templates.Data;
 using Templates.Exceptions;
+using Templates.Helpers;
 using Templates.Language;
 using Templates.Runtime;
 
@@ -67,7 +69,6 @@ namespace Templates {
             
         }
 
-
         public TtlTemplate (string document, CompileContext context)
         {
             if (context == null)
@@ -113,9 +114,16 @@ namespace Templates {
         {
             if (_runtimeDocument == null)
                 throw new TemplateInitException("Compile first.");
-            return _runtimeDocument.ProcessData(data, null) ?? string.Empty;
+#if DEBUG
+            if (data != null && !_context.ModelType.IsType(data)) {
+                throw new TemplateProcessingException
+                    (string.Format
+                         (CultureInfo.InvariantCulture, "Type mismatch. Need {0} but got {1}", _context.ModelType.FullName,
+                          data.GetType().FullName));
+            }
+#endif
+            return _runtimeDocument.ProcessData(data, null) as string ?? string.Empty;
         }
-
         public TtlCompileResult Recompile(Type newModelType)
         {
             try
@@ -152,10 +160,10 @@ namespace Templates {
 
 
         private TtlCompileResult Compile(CompileContext context, string document) {
-            var rtdoc = DocumentsCache.GetRuntimeDocument(_document, _context);
+            var rtdoc = DocumentsCache.GetRuntimeDocument(document, context);
             if (rtdoc == null) {
-                rtdoc = TtlCompiler.Compile(_document, _context, DocumentParser.Parse(_document));
-                DocumentsCache.UpdateCaches(rtdoc, null, _document, _context);
+                rtdoc = TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
+                DocumentsCache.UpdateCaches(rtdoc, null, document, context);
             }
             _context = context;
             _document = document;

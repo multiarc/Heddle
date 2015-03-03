@@ -1,30 +1,44 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Runtime.CompilerServices;
 using Templates.Data;
 
 namespace Templates.Runtime {
     internal class RuntimeCallParameter
     {
-        private readonly TemplateChain _callParameterChain;
+        private readonly IDataProcessor _callParameterChain;
         private readonly DynamicMethodGateDelegate _getModelParameter;
 
         public RuntimeCallParameter(DynamicMethodGateDelegate getModelParameter, TemplateChain callParameterChain)
         {
-            _callParameterChain = callParameterChain;
+            if (callParameterChain != null)
+            {
+                if (callParameterChain.ItemsToExecute.Count == 1)
+                {
+                    _callParameterChain = callParameterChain.ItemsToExecute[0];
+                }
+                else
+                {
+                    _callParameterChain = callParameterChain;
+                }
+            }
             _getModelParameter = getModelParameter;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public object GetParameterResult(object data, object chainedResult)
+        public void Dispose()
         {
-            if (_getModelParameter == null && _callParameterChain == null)
+            _callParameterChain?.Dispose();
+        }
+
+        public object GetParameter(object value, object chainedResult)
+        {
+            if (_getModelParameter != null)
             {
-                return data;
+                return _getModelParameter(value);
             }
-            if (_getModelParameter == null)
-            {
-                return _callParameterChain.ProcessData(data, chainedResult);
+            if (_callParameterChain == null) {
+                return value;
             }
-            return _getModelParameter(data);
+            return _callParameterChain.ProcessData(value, chainedResult);
         }
     }
 }

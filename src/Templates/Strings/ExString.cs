@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
-using NativeFunctions;
 using Templates.Collections;
+using Templates.Native;
 using Templates.Strings.Core;
 
 namespace Templates.Strings {

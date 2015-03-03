@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Globalization;
-using NativeFunctions;
+using Templates.Native;
 
 namespace Templates.Strings {
     public sealed partial class ExString: IComparable, ICloneable, IConvertible, IEnumerable, IEquatable<string>, IEquatable<ExString>,

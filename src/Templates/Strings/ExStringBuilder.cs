@@ -1,6 +1,6 @@
 ﻿using System;
-using NativeFunctions;
 using Templates.Collections;
+using Templates.Native;
 using Templates.Strings.Core;
 
 namespace Templates.Strings {

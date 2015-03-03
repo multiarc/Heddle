@@ -7,7 +7,7 @@ using Templates.Runtime;
 namespace Templates.Extensions {
     [Name ("import")]
     [Name ("using")]
-    public class ImportExtension: AbstractHtmlExtension {
+    public class ImportExtension: AbstractExtension {
         public override Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context, ParseContext parseContext)
         {
             if (context == null)
@@ -18,7 +18,7 @@ namespace Templates.Extensions {
             return null;
         }
 
-        protected override object ProcessDataInternal(object value, object chainedResult)
+        public override object ProcessData(object value, object chainedResult)
         {
             return null;
         }

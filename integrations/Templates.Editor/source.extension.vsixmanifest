@@ -16,6 +16,6 @@
   <Assets>
     <Asset Type="Microsoft.VisualStudio.MefComponent" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%|" />
     <Asset Type="Microsoft.VisualStudio.Assembly" d:Source="Project" d:ProjectName="Templates" Path="|Templates|" AssemblyName="|Templates;AssemblyName|" />
-    <Asset Type="Microsoft.VisualStudio.Assembly" d:Source="Project" d:ProjectName="NativeFunctions" Path="|NativeFunctions|" AssemblyName="|NativeFunctions;AssemblyName|" />
+    <Asset Type="Microsoft.VisualStudio.Assembly" d:Source="Project" d:ProjectName="Templates.Native" Path="|Templates.Native|" AssemblyName="|Templates.Native;AssemblyName|" />
   </Assets>
 </PackageManifest>

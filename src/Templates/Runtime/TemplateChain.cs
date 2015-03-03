@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Linq;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
+using Templates.Strings.Core;
 
 namespace Templates.Runtime {
-    internal class TemplateChain: IDisposable {
+    internal class TemplateChain: IDataProcessor {
 
         private readonly List<TemplateItem> _itemsToExecute;
 
@@ -30,31 +33,16 @@ namespace Templates.Runtime {
             RenderType = templateItem.ReturnType;
         }
 
-        //public void PushFirst(TemplateItem templateItem)
-        //{
-        //    if (templateItem == null)
-        //        throw new ArgumentNullException("templateItem");
-
-        //    _itemsToExecute.Insert(0, templateItem);
-        //    RenderType = templateItem.ReturnType;
-        //}
+        public int Count => _itemsToExecute.Count;
 
         public object ProcessData (object data, object chainedResult)
         {
-            foreach (TemplateItem item in _itemsToExecute)
-            {
-                chainedResult = item.Extension.ProcessData(item.Parameter.GetParameterResult(data, chainedResult), chainedResult);
-#if DEBUG
-                if (chainedResult != null && item.ReturnType != null && !item.ReturnType.IsType(chainedResult)) {
-                    throw new TemplateProcessingException
-                        (string.Format
-                             (CultureInfo.InvariantCulture, "Returned data type not valid. Needed [{0}] Got [{1}]", item.ReturnType.FullName,
-                              data.GetType().FullName));
-                }
-#endif
-            }
-            return chainedResult;
+            return _itemsToExecute.Aggregate(chainedResult, (current, item) => item.ProcessData(data, current));
         }
+
+        public BlockPosition Position { get; set; }
+
+        public ReadOnlyCollection<TemplateItem> ItemsToExecute => _itemsToExecute.AsReadOnly();
 
         #region Implementation of IDisposable
 
@@ -74,6 +62,7 @@ namespace Templates.Runtime {
                         templateItem.Extension?.Dispose();
                     }
                 }
+                GC.SuppressFinalize(this);
             }
         }
 

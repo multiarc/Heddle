@@ -6,7 +6,7 @@ namespace Templates.Runtime {
     /// <summary>
     /// Recognized template in the source template
     /// </summary>
-    internal class DocumentElement : IDisposable {
+    internal class DocumentElement : IDataProcessor {
         /// <summary>
         /// Template chain to execute
         /// </summary>
@@ -15,11 +15,11 @@ namespace Templates.Runtime {
         /// <summary>
         /// Position in the source (start and end)
         /// </summary>
-        public BlockPosition BlockPosition;
+        public BlockPosition Position { get; set; }
 
         public DocumentElement (BlockPosition position)
         {
-            BlockPosition = position;
+            Position = position;
             _callChain = new TemplateChain();
         }
 
@@ -40,6 +40,11 @@ namespace Templates.Runtime {
                 _callChain.Dispose();
                 GC.SuppressFinalize(this);
             }
+        }
+
+        public object ProcessData(object value, object chainedResult)
+        {
+            return CallChain.ProcessData(value, chainedResult);
         }
     }
 }

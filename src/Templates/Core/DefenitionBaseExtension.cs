@@ -1,6 +1,6 @@
 ﻿namespace Templates.Core {
-    internal class DefenitionBaseExtension : AbstractHtmlExtension {
-        protected override object ProcessDataInternal(object value, object chainedResult)
+    internal class DefenitionBaseExtension : AbstractExtension {
+        public override object ProcessData(object value, object chainedResult)
         {
             return GetInnerResult(value, chainedResult);
         }

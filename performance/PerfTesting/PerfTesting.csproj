@@ -143,9 +143,9 @@
     <Compile Include="TestDataStructure.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\NativeFunctions\NativeFunctions\NativeFunctions.vcxproj">
-      <Project>{835592ee-26cd-435f-b9b3-72c63a5193c4}</Project>
-      <Name>NativeFunctions</Name>
+    <ProjectReference Include="..\..\src\Templates.Native\Templates.Native.vcxproj">
+      <Project>{50ca3f77-1f20-4bdd-9a6f-26d8fae7467b}</Project>
+      <Name>Templates.Native</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\src\Templates\Templates.csproj">
       <Project>{FCCA75A7-9694-429F-9A41-FD1933464E85}</Project>

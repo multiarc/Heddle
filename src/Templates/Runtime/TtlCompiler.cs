@@ -16,15 +16,14 @@ using Templates.Strings.Core;
 
 namespace Templates.Runtime
 {
-    public class TtlCompiler
+    internal class TtlCompiler
     {
         public static RuntimeDocument Compile(string document, CompileContext compileContext, ParseContext parseContext)
         {
             string workingDocument = document;
-            int seed = 0;
-            RemoveComments(parseContext, ref seed, ref workingDocument);
-            RemoveDefinitions(parseContext, ref seed, ref workingDocument);
-            ReplaceRawOutput(parseContext, ref seed, ref workingDocument);
+            RemoveComments(parseContext, ref workingDocument);
+            RemoveDefinitions(parseContext, ref workingDocument);
+            ReplaceRawOutput(parseContext, ref workingDocument);
             if (compileContext == null)
                 throw new ArgumentNullException("compileContext");
             var documentElements = new SmartList<DocumentElement>();
@@ -38,14 +37,34 @@ namespace Templates.Runtime
                         ref returnTypeChainedPrevious);
                     element.CallChain.Add(compiledItem);
                 }
-                documentElements.Add(element);
+                if (returnTypeChainedPrevious == null)
+                {
+                    RemoveEmptyItem(parseContext, extensions.BlockPosition, ref workingDocument);
+                }
+                else
+                {
+                    documentElements.Add(element);
+                }
             }
             compileContext.Compile();
-            return new RuntimeDocument(workingDocument, documentElements.ToArray(), compileContext.ModelType);
+            return new RuntimeDocument(workingDocument, documentElements.ToArray());
         }
 
-        private static void ReplaceRawOutput(ParseContext context, ref int seed, ref string workingDocument)
+        private static void RemoveEmptyItem(ParseContext context, BlockPosition blockPosition,
+            ref string workingDocument)
         {
+            int seed = ExStringBuilder.ApplyRemove(blockPosition, ref workingDocument);
+            var itemsToUpdate = context.OutputChains.Where(c => c.BlockPosition.StartIndex > blockPosition.StartIndex);
+            foreach (var chain in itemsToUpdate)
+            {
+                chain.BlockPosition = new BlockPosition(chain.BlockPosition.StartIndex - seed,
+                    chain.BlockPosition.Length);
+            }
+        }
+
+        private static void ReplaceRawOutput(ParseContext context, ref string workingDocument)
+        {
+            int seed = 0;
             foreach (var rawOut in context.RawOutputItems)
             {
                 workingDocument = ExStringBuilder.Replace(rawOut.Position.StartIndex, rawOut.Position.Length,
@@ -62,7 +81,9 @@ namespace Templates.Runtime
             }
         }
 
-        private static void RemoveComments(ParseContext context, ref int seed, ref string workingDocument) {
+        private static void RemoveComments(ParseContext context, ref string workingDocument)
+        {
+            int seed = 0;
             foreach (var blockPosition in context.CommentTokens) {
                 seed += ExStringBuilder.ApplyRemove(blockPosition, ref workingDocument);
                 var position = blockPosition;
@@ -74,8 +95,9 @@ namespace Templates.Runtime
             }
         }
 
-        private static void RemoveDefinitions(ParseContext context, ref int seed, ref string workingDocument)
+        private static void RemoveDefinitions(ParseContext context, ref string workingDocument)
         {
+            int seed = 0;
             foreach (var blockPosition in context.DefinitionBlock.Positions)
             {
                 seed += ExStringBuilder.ApplyRemove(blockPosition, ref workingDocument);

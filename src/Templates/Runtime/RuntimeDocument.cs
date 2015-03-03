@@ -1,59 +1,107 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
+using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Strings;
 using Templates.Strings.Core;
 
 namespace Templates.Runtime {
-    public class RuntimeDocument : IDisposable
-    {
+    internal class RuntimeDocument : IDataProcessor {
         private readonly string _document;
-        private readonly DocumentElement[] _executeItems;
+        private readonly IDataProcessor[] _optimizedElements;
+        private readonly IDataProcessor _singleProcessor;
+        private bool _canFullOptimize;
         private readonly ThreadLocal<Replacement[]> _threadLocal;
-        private readonly Type _modelType;
 
-        internal RuntimeDocument(string document, DocumentElement[] executeItems = null, Type modelType = null)
+        public RuntimeDocument(string document, DocumentElement[] executeItems)
         {
             _document = document;
-            _executeItems = executeItems;
             _threadLocal = new ThreadLocal<Replacement[]>(MakeNewArray);
-            _modelType = modelType ?? typeof(object);
+            _optimizedElements = OptimizeCallTree(executeItems);
+            if (_optimizedElements.Length == 1)
+            {
+                _singleProcessor = _optimizedElements[0];
+            }
         }
 
-        public string ProcessData(object data, object chainedResult)
+        private IDataProcessor[] OptimizeCallTree(DocumentElement[] items)
         {
-            if (_executeItems.Length == 0)
+            if (items == null || items.Length == 0)
+                return new IDataProcessor[0];
+            List<IDataProcessor> resultTree = new List<IDataProcessor>();
+            if (items.Length == 1 && items[0].CallChain.Count == 1)
             {
-                return _document;
+                var singleProcessor = items[0].CallChain.ItemsToExecute[0];
+                singleProcessor.Position = items[0].Position;
+                if (_document.Length == items[0].Position.Length &&
+                    items[0].CallChain.ItemsToExecute[0].ReturnType == typeof (string))
+                    _canFullOptimize = true;
+                return new IDataProcessor[] {singleProcessor};
             }
-#if DEBUG
-            if (data != null && !_modelType.IsType(data)) {
-                throw new TemplateProcessingException
-                    (string.Format
-                         (CultureInfo.InvariantCulture, "Type mismatch. Need {0} but got {1}", _modelType.FullName,
-                          data.GetType().FullName));
-            }
-#endif
-            Replacement[] replacements = _threadLocal.Value;
-            for (int i = 0; i < _executeItems.Length; i++)
+            int totalLength = 0;
+            foreach (var item in items)
             {
-                var result = _executeItems[i].CallChain.ProcessData(data, chainedResult);
-                if (!(result is string))
-                    replacements[i].ReplacementValue = result?.ToString();
+                totalLength += item.Position.Length;
+                if (item.CallChain.Count == 1)
+                {
+                    IDataProcessor resultItem = item.CallChain.ItemsToExecute[0];
+                    resultItem.Position = item.Position;
+                    resultTree.Add(resultItem);
+                }
                 else
-                    replacements[i].ReplacementValue = result as string;
+                {
+                    IDataProcessor resultItem = item.CallChain;
+                    resultItem.Position = item.Position;
+                    resultTree.Add(resultItem);
+                }
+            }
+            if (totalLength == _document.Length)
+                _canFullOptimize = true;
+            return resultTree.ToArray();
+        }
+
+
+        public object ProcessData(object data, object chainedResult)
+        {
+            if (_singleProcessor != null)
+            {
+                string replacementValue = _singleProcessor.ProcessData(data, chainedResult) as string ?? string.Empty;
+                if (_canFullOptimize)
+                    return replacementValue;
+                return ExStringBuilder.Replace(_singleProcessor.Position.StartIndex, _singleProcessor.Position.Length,
+                    replacementValue, _document);
+            }
+            if (_canFullOptimize) {
+                ExStringBuilder builder = new ExStringBuilder();
+                foreach (IDataProcessor item in _optimizedElements) {
+                    builder.Append(item.ProcessData(data, chainedResult) as string);
+                }
+                return builder.ToString();
+            }
+            Replacement[] replacements = _threadLocal.Value;
+            for (int i = 0; i < _optimizedElements.Length; i++)
+            {
+                replacements[i].ReplacementValue = _optimizedElements[i].ProcessData(data, chainedResult) as string ??
+                                                   string.Empty;
             }
             return ExStringBuilder.BulkReplace(replacements, _document);
         }
 
-        public bool Empty => _executeItems.Length == 0;
+        public BlockPosition Position { get; set; }
+
+        public bool Empty => _optimizedElements.Length == 0;
+
+        public bool CanFullOptimize => _singleProcessor != null && _canFullOptimize;
+
+        public IDataProcessor SingleProcessor => _singleProcessor;
 
         private Replacement[] MakeNewArray() {
-            var replacements = new Replacement[_executeItems.Length];
-            for (int i = 0; i < _executeItems.Length; i++)
-                replacements[i].BlockPosition = _executeItems[i].BlockPosition;
+            var replacements = new Replacement[_optimizedElements.Length];
+            for (int i = 0; i < _optimizedElements.Length; i++)
+                replacements[i].BlockPosition = _optimizedElements[i].Position;
             return replacements;
         }
 
@@ -61,6 +109,10 @@ namespace Templates.Runtime {
         {
             if (disposing)
             {
+                foreach (var processor in _optimizedElements)
+                {
+                    processor.Dispose();
+                }
                 GC.SuppressFinalize(this);
             }
             _threadLocal.Dispose();

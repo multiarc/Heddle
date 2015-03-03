@@ -12,8 +12,8 @@ namespace Templates.Extensions {
     /// </summary>
     [Name ("true")]
     [DataType (typeof (bool))]
-    public class TrueExtension: AbstractHtmlExtension {
-        protected override object ProcessDataInternal (object value, object chainedResult)
+    public class TrueExtension: AbstractExtension {
+        public override object ProcessData(object value, object chainedResult)
         {
             if (value == null)
                 return string.Empty;

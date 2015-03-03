@@ -29,7 +29,7 @@ namespace Templates.Extensions {
     /// </summary>
     [Name ("list")]
     [DataType (typeof (IEnumerable))]
-    public class ListExtension: AbstractHtmlExtension {
+    public class ListExtension: AbstractExtension {
         public override Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context, ParseContext parseContext)        
         {
             if (dataType == null)
@@ -39,7 +39,7 @@ namespace Templates.Extensions {
             return base.InitStart(parameterTemplate, underliyingType, chainedType, context, parseContext);
         }
 
-        protected override object ProcessDataInternal (object value, object chainedResult)
+        public override object ProcessData(object value, object chainedResult)
         {
             if (value == null)
                 return string.Empty;

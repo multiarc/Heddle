@@ -9,10 +9,10 @@ namespace Templates.Language {
 
         public ParseContext CurrentParseContext => _parserContextStack.Peek();
 
-        public TtlListener()
+        public TtlListener(ParseContext context)
         {
             _parserContextStack = new Stack<ParseContext>();
-            _parserContextStack.Push(new ParseContext());
+            _parserContextStack.Push(context);
         }
 
         public override void EnterDefinition(TtlParser.DefinitionContext context)

@@ -11,14 +11,14 @@ using namespace System::Security::Permissions;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 //
-[assembly:AssemblyTitleAttribute("NativeFunctions")];
-[assembly:AssemblyDescriptionAttribute("")];
-[assembly:AssemblyConfigurationAttribute("")];
-[assembly:AssemblyCompanyAttribute("")];
-[assembly:AssemblyProductAttribute("NativeFunctions")];
-[assembly:AssemblyCopyrightAttribute("Copyright (c) Aliaksandr Kukrash 2012")];
-[assembly:AssemblyTrademarkAttribute("")];
-[assembly:AssemblyCultureAttribute("")];
+[assembly:AssemblyTitleAttribute(L"TemplatesNative")];
+[assembly:AssemblyDescriptionAttribute(L"")];
+[assembly:AssemblyConfigurationAttribute(L"")];
+[assembly:AssemblyCompanyAttribute(L"")];
+[assembly:AssemblyProductAttribute(L"TemplatesNative")];
+[assembly:AssemblyCopyrightAttribute(L"Copyright (c)  2015")];
+[assembly:AssemblyTrademarkAttribute(L"")];
+[assembly:AssemblyCultureAttribute(L"")];
 
 //
 // Version information for an assembly consists of the following four values:
@@ -32,9 +32,7 @@ using namespace System::Security::Permissions;
 // by using the '*' as shown below:
 
 [assembly:AssemblyVersionAttribute("1.0.*")];
-[assembly:AssemblyFileVersionAttribute("1.0.0.0")];
 
 [assembly:ComVisible(false)];
 
-[assembly:CLSCompliantAttribute(true)];
-[assembly:AssemblyKeyFile("native.snk")];
+[assembly:CLSCompliantAttribute(false)];

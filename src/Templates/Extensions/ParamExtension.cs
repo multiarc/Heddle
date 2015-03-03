@@ -11,11 +11,11 @@ using Templates.Runtime;
 namespace Templates.Extensions {
 
     [Name("param")]
-    public class ParamExtension: AbstractHtmlExtension {
+    public class ParamExtension: AbstractExtension {
         public override Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context, ParseContext parseContext) {
             return dataType;
         }
-        protected override object ProcessDataInternal(object value, object chainedResult) {
+        public override object ProcessData(object value, object chainedResult) {
             return value;
         }
     }

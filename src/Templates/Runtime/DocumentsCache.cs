@@ -4,7 +4,7 @@ using Templates.Data;
 using Templates.Language;
 
 namespace Templates.Runtime {
-    public static class DocumentsCache {
+    internal static class DocumentsCache {
         private static readonly Dictionary<DocumentCacheItem, RuntimeDocument> Cache = new Dictionary<DocumentCacheItem, RuntimeDocument>();
 
         public static RuntimeDocument GetRuntimeDocument(string document, CompileContext context)

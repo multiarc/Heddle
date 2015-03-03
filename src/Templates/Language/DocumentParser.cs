@@ -16,6 +16,13 @@ namespace Templates.Language {
         /// <returns>Full template context tree found in source template</returns>
         public static ParseContext Parse(string document)
         {
+            var context = new ParseContext();
+            Parse(document, context);
+            return context;
+        }
+
+        public static void Parse(string document, ParseContext context)
+        {
             if (document == null)
                 throw new ArgumentNullException("document");
             AntlrInputStream stream = new AntlrInputStream(new StringReader(document));
@@ -24,13 +31,12 @@ namespace Templates.Language {
             TtlParser parser = new TtlParser(tokens);
             var tree = parser.ttl();
             ParseTreeWalker walker = new ParseTreeWalker();
-            TtlListener listener = new TtlListener();
+            TtlListener listener = new TtlListener(context);
             walker.Walk(listener, tree);
             listener.CurrentParseContext.CommentTokens.AddRange(
                 tokens.GetTokens()
                     .Where(t => t.Channel == TtlLexer.COMMENT_CHANNEL)
                     .Select(t => new BlockPosition(t.StartIndex, t.StopIndex - t.StartIndex + 1)));
-            return listener.CurrentParseContext;
         }
     }
 }

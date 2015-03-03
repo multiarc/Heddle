@@ -1,5 +1,4 @@
 ﻿using System;
-using NativeFunctions;
 
 namespace Templates.Strings.Core {
     public sealed class MutableString: IEquatable<MutableString> {

@@ -208,6 +208,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Core\AbstractExtension.cs" />
     <Compile Include="Core\AbstractHtmlExtension.cs" />
     <Compile Include="Attributes\ChainedTypeAttribute.cs" />
     <Compile Include="Attributes\EncodeOutputAttribute.cs" />
@@ -237,6 +238,7 @@
     <Compile Include="Extensions\StringExtension.cs" />
     <Compile Include="Extensions\TimeExtension.cs" />
     <Compile Include="Extensions\TrueExtension.cs" />
+    <Compile Include="Extensions\UseExtension.cs" />
     <Compile Include="Language\CallParameter.cs" />
     <Compile Include="Language\DefinitionItem.cs" />
     <Compile Include="Data\DocumentCacheItem.cs" />
@@ -267,6 +269,7 @@
     <Compile Include="Language\DocumentParser.cs" />
     <Compile Include="Runtime\DocumentsCache.cs" />
     <Compile Include="Runtime\GatesCache.cs" />
+    <Compile Include="Runtime\IDataProcessor.cs" />
     <Compile Include="Runtime\IExtension.cs" />
     <Compile Include="Language\ParseContext.cs" />
     <Compile Include="Runtime\RuntimeCallParameter.cs" />
@@ -320,13 +323,13 @@
     <Content Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\NativeFunctions\NativeFunctions\NativeFunctions.vcxproj">
-      <Project>{835592ee-26cd-435f-b9b3-72c63a5193c4}</Project>
-      <Name>NativeFunctions</Name>
-    </ProjectReference>
     <ProjectReference Include="..\Templates.Language\Templates.Language.csproj">
       <Project>{8cb3116b-3163-4d26-bcd7-2e27efcd48ca}</Project>
       <Name>Templates.Language</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Templates.Native\Templates.Native.vcxproj">
+      <Project>{50ca3f77-1f20-4bdd-9a6f-26d8fae7467b}</Project>
+      <Name>Templates.Native</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
