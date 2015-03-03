@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Threading;
 using Templates.Data;
 using Templates.Exceptions;
@@ -13,10 +14,9 @@ namespace Templates {
     /// Use this class to operate with engine, parse source template, make replace with data and generate result string.
     /// </summary>
     public sealed class TtlTemplate: IDisposable {
-        private const int FileCheckDelay = 5000; //milliseconds
         private CompileContext _context;
         private readonly FileReader _reader;
-        private readonly Timer _timer;
+        private readonly FileSystemWatcher _watcher;
         private volatile RuntimeDocument _runtimeDocument;
         private string _document;
 
@@ -60,7 +60,16 @@ namespace Templates {
             Compile(context, document);
             if (context.Options.EnableFileChangeCheck)
             {
-                _timer = new Timer(CheckFileChange, null, FileCheckDelay, int.MaxValue);
+                var fullPath = Path.Combine(context.Options.RootPath, context.Options.TemplateName);
+                // ReSharper disable once AssignNullToNotNullAttribute
+                _watcher = new FileSystemWatcher(Path.GetDirectoryName(fullPath))
+                {
+                    NotifyFilter = NotifyFilters.FileName | NotifyFilters.Size | NotifyFilters.LastWrite,
+                    Filter = Path.GetFileName(fullPath)
+                };
+                _watcher.Changed += FileChanged;
+                _watcher.Deleted += FileDeleted;
+                _watcher.Renamed += FileRenamed;
             }
         }
 
@@ -87,18 +96,20 @@ namespace Templates {
 
         public bool Empty => _runtimeDocument?.Empty ?? true;
 
+        public CompileContext Context => _context;
+
         #region IDisposable Members
 
         public void Dispose ()
         {
-            _timer?.Dispose();
+            _watcher?.Dispose();
             _runtimeDocument?.Dispose();
             GC.SuppressFinalize(this);
         }
 
         ~TtlTemplate()
         {
-            _timer?.Dispose();
+            _watcher?.Dispose();
             _runtimeDocument?.Dispose();
         }
 
@@ -171,30 +182,39 @@ namespace Templates {
             return new TtlCompileResult(true);
         }
 
-        private void CheckFileChange (object state)
+        public event FileSystemEventHandler OnFileDeleted;
+
+        public event RenamedEventHandler OnFileRenamed;
+
+        public void FileDeleted(object sender, FileSystemEventArgs e)
         {
-            try {
-                if (_reader != null && _reader.GetIsModified()) {
+            OnFileDeleted?.Invoke(this, e);
+        }
+
+        public void FileRenamed(object sender, RenamedEventArgs e)
+        {
+            OnFileRenamed?.Invoke(this, e);
+        }
+
+        public void FileChanged(object sender, FileSystemEventArgs e) {
+            if (e.ChangeType == WatcherChangeTypes.Changed) {
+                try {
                     string document = _reader.ReadEntireFile();
                     if (!string.IsNullOrWhiteSpace(document)) {
-                        try
-                        {
+                        try {
                             var rtdoc = TtlCompiler.Compile(document, _context, DocumentParser.Parse(document));
                             DocumentsCache.UpdateCaches(rtdoc, _document, document, _context);
                             _runtimeDocument = rtdoc;
                             _document = document;
                         }
-                        catch (Exception e) {
+                        catch (Exception) {
                             //TODO: Log Exception here
                         }
                     }
                 }
-            }
-            catch (Exception e) {
-                //TODO: Log Exception here
-            }
-            finally {
-                _timer.Change(FileCheckDelay, int.MaxValue);
+                catch (Exception) {
+                    //TODO: Log Exception here
+                }
             }
         }
     }

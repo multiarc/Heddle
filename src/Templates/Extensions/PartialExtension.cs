@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+using System.Web.Mvc;
 using Templates.Attributes;
 using Templates.Core;
 using Templates.Language;
@@ -13,11 +15,11 @@ namespace Templates.Extensions {
     [Name ("template")]
     public class PartialExtension: AbstractExtension
     {
-        private TtlTemplate _innerTemplate;
+        protected TtlTemplate InnerTemplate;
 
         public override object ProcessData (object value, object chainedResult)
         {
-            return _innerTemplate?.Generate(value);
+            return InnerTemplate?.Generate(value);
         }
 
         public override Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context, ParseContext parseContext)
@@ -37,7 +39,7 @@ namespace Templates.Extensions {
 
         public override void CompleteInit(CompileContext newContext, ParseContext parseContext)
         {
-            _innerTemplate = new TtlTemplate(newContext);
+            InnerTemplate = new TtlTemplate(newContext);
         }
     }
 }

@@ -1,8 +1,9 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Web.Mvc;
 
 namespace Templates.Mvc {
-    public class TtlView : IView {
+    public class TtlView : IView, IDisposable {
         private readonly TtlTemplate _template;
 
         public TtlView(TtlTemplate template)
@@ -10,10 +11,7 @@ namespace Templates.Mvc {
             _template = template;
         }
 
-        public TtlTemplate Template
-        {
-            get { return _template; }
-        }
+        public TtlTemplate Template => _template;
 
         public void Render(ViewContext viewContext, TextWriter writer)
         {
@@ -28,6 +26,11 @@ namespace Templates.Mvc {
         public static explicit operator TtlTemplate(TtlView view)
         {
             return view.Template;
+        }
+
+        public void Dispose()
+        {
+            _template?.Dispose();
         }
     }
 }

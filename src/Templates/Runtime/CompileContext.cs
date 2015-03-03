@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Web.Mvc;
 using Templates.Data;
 using Templates.Language;
 
@@ -17,6 +18,8 @@ namespace Templates.Runtime {
             public ParseContext ParseContext;
         }
 
+        public string ControllerName { get; set; }
+
         private readonly List<string> _namespaces = new List<string>();
 
         private readonly List<DelayedTemplate> _delayedTemplates = new List<DelayedTemplate>();
@@ -25,6 +28,7 @@ namespace Templates.Runtime {
         {
             if (context == null)
                 throw new ArgumentNullException("context");
+            ControllerName = context.ControllerName;
             Options = new TemplateOptions(context.Options.FileNamePostfix, context.Options.RootPath,
                 fileName ?? context.Options.TemplateName, context.Options.EnableFileChangeCheck);
             ModelType = modelType ?? context.ModelType ?? typeof(object);
@@ -87,7 +91,7 @@ namespace Templates.Runtime {
         {
         }
 
-        public TemplateOptions Options { get; }
+        public TemplateOptions Options { get; set; }
 
         /// <summary>
         /// Model Type can be changed at any time you running your template extension.

@@ -98,7 +98,7 @@ namespace Templates.Runtime {
         /// </summary>
         /// <param name="assembly">Assembly to get from</param>
         /// <returns>List of all template types</returns>
-        public static Dictionary<string, Type> LoadExtensions (Assembly assembly)
+        internal static Dictionary<string, Type> LoadExtensions (Assembly assembly)
         {
             List<Type> types =
                 assembly.GetTypes().Where(t => t.IsImplement<IExtension>() && t.IsHaveAttribute<NameAttribute>(true)).OrderBy

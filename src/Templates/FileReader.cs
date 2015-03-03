@@ -5,7 +5,7 @@ using Templates.Data;
 using Templates.Exceptions;
 
 namespace Templates {
-    internal class FileReader {
+    public class FileReader {
         private readonly TemplateOptions _options;
         private readonly string _templateName;
         private DateTime _lastModified;
@@ -57,11 +57,6 @@ namespace Templates {
         public string GetFileName ()
         {
             return Path.Combine(_options.RootPath, _templateName + _options.FileNamePostfix);
-        }
-
-        public bool GetIsModified ()
-        {
-            return _lastModified != GetModifiedDate(GetFileName());
         }
     }
 }

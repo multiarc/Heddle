@@ -1,67 +1,65 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Web;
 using System.Web.Mvc;
+using Templates.Data;
+using Templates.Runtime;
 
 namespace Templates.Mvc
 {
-    public class TtlViewEngine : BuildManagerViewEngine
+    public class TtlViewEngine : IViewEngine
     {
-        public TemplateResolver Resolver { get; set; }
+        public static TemplateResolver Resolver { get; }
 
-        protected override IView CreatePartialView(ControllerContext controllerContext, string partialPath)
+        static TtlViewEngine()
         {
-            return CreateView(controllerContext, partialPath, null);
+            Resolver = new TemplateResolver(Path.GetDirectoryName(HttpRuntime.AppDomainAppPath));
         }
 
-        protected override IView CreateView(ControllerContext controllerContext, string viewPath, string masterPath)
+        public ViewEngineResult FindPartialView(ControllerContext controllerContext, string partialViewName, bool useCache)
         {
-            if (string.IsNullOrWhiteSpace(viewPath))
+            if (string.IsNullOrWhiteSpace(partialViewName))
                 throw new ArgumentException("viewName");
-            return (TtlView) Resolver.GetView(viewPath);
+            var controllerName = GetControllerName(controllerContext);
+            IEnumerable<string> searchLocations;
+            var result = Resolver.GetTemplate(partialViewName, controllerName, out searchLocations, null, TemplatePathType.PartialView);
+            if (result != null) {
+                return new ViewEngineResult((TtlView)result, this);
+            }
+            return new ViewEngineResult(searchLocations);
         }
 
-        public TtlViewEngine() : this(null)
+        private static string GetControllerName(ControllerContext controllerContext)
         {
-            
+            object controllerOption;
+            string controllerName = string.Empty;
+            if (controllerContext.RouteData.Values.TryGetValue("controller", out controllerOption))
+            {
+                controllerName = controllerOption.ToString();
+            }
+            return controllerName;
         }
 
-        public TtlViewEngine(IViewPageActivator viewPageActivator)
-            : base(viewPageActivator)
+        public ViewEngineResult FindView(ControllerContext controllerContext, string viewName, string masterName, bool useCache)
         {
-            Resolver = new TemplateResolver();
-            AreaViewLocationFormats = new string[2]
+            if (string.IsNullOrWhiteSpace(viewName))
+                throw new ArgumentException("viewName");
+            var controllerName = GetControllerName(controllerContext);
+            IEnumerable<string> searchLocations;
+            var result = Resolver.GetTemplate(viewName, controllerName, out searchLocations, null, TemplatePathType.View);
+            if (result != null)
             {
-                @"\Areas\{2}\Views\{1}\{0}.thtml",
-                @"\Areas\{2}\Views\Shared\{0}.thtml"
-            };
-            AreaMasterLocationFormats = new string[2]
-            {
-                @"\Areas\{2}\Views\{1}\{0}.thtml",
-                @"\Areas\{2}\Views\Shared\{0}.thtml"
-            };
-            AreaPartialViewLocationFormats = new string[2]
-            {
-                @"\Areas\{2}\Views\{1}\{0}.thtml",
-                @"\Areas\{2}\Views\Shared\{0}.thtml"
-            };
-            ViewLocationFormats = new string[2]
-            {
-                @"\Views\{1}\{0}.thtml",
-                @"\Views\Shared\{0}.thtml"
-            };
-            MasterLocationFormats = new string[2]
-            {
-                @"\Views\{1}\{0}.thtml",
-                @"\Views\Shared\{0}.thtml"
-            };
-            PartialViewLocationFormats = new string[2]
-            {
-                @"\Views\{1}\{0}.thtml",
-                @"\Views\Shared\{0}.thtml"
-            };
-            FileExtensions = new string[1]
-            {
-                "thtml"
-            };
+                return new ViewEngineResult((TtlView)result, this);
+            }
+            return new ViewEngineResult(searchLocations);
+        }
+
+        public void ReleaseView(ControllerContext controllerContext, IView view)
+        {
+            var template = view as TtlView;
+            Resolver.RemoveFromCache(template?.Template);
+            template?.Dispose();
         }
     }
 }
