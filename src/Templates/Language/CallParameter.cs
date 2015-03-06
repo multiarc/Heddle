@@ -16,5 +16,7 @@ namespace Templates.Language
         public SmartList<OutputItem> ChainParameter { get; set; }
 
         public bool IsModelTypeParameter => ChainParameter == null;
+
+        public string CSharpExpression { get; set; }
     }
 }

@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Linq;
-using System.Web.Mvc;
 using Templates.Attributes;
 using Templates.Core;
 using Templates.Language;
@@ -12,7 +10,6 @@ namespace Templates.Extensions {
     /// <para>Optional parameter is sub-template (fully inclusive)</para>
     /// </summary>
     [Name ("partial")]
-    [Name ("template")]
     public class PartialExtension: AbstractExtension
     {
         protected TtlTemplate InnerTemplate;

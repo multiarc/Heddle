@@ -2,6 +2,7 @@
 using System.Linq;
 using Templates.Collections;
 using Templates.Data;
+using Antlr4.Runtime.Misc;
 using Templates.Strings.Core;
 
 namespace Templates.Language {
@@ -17,12 +18,13 @@ namespace Templates.Language {
             CommentTokens = new SmartList<BlockPosition>();
         }
 
-        internal DefinitionItem CreateDefinition(TtlParser.DefContext context)
-        {
+        internal DefinitionItem CreateDefinition(TtlParser.DefContext context) {
+            var ttl = context.subtemplate().ttl();
+            string parameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
             return new DefinitionItem(
-                context.ID(0).GetText(), context.subtemplate().GetText(),
-                GetDefenition(context.ID(1)?.GetText()),
-                modelType: context.ID(2)?.GetText())
+            context.ID(0).GetText(), parameterTemplate,
+            GetDefenition(context.ID(1)?.GetText()),
+            modelType: context.ID(2)?.GetText())
             {
                 Position = new BlockPosition(context.Start.StartIndex, context.Stop.StopIndex - context.Start.StartIndex + 1)
             };
@@ -44,7 +46,10 @@ namespace Templates.Language {
                 Chain = CreateChain(context.chain().call()),
                 BlockPosition = new BlockPosition(context.Start.StartIndex - _offset, context.Stop.StopIndex - context.Start.StartIndex + 1)
             };
-            result.Chain.First().ParameterTemplate = context.subtemplate()?.ttl()?.GetText();
+            var ttl = context.subtemplate()?.ttl() ?? null;
+            if (ttl != null) {
+                result.Chain.First().ParameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
+            }
             return result;
         }
 
@@ -103,7 +108,8 @@ namespace Templates.Language {
                     CallParameter =
                     {
                         ModelParameter = namedCall.OUT_ID(1)?.GetText(),
-                        ChainParameter = CreateChain(namedCall.chain()?.call())
+                        ChainParameter = CreateChain(namedCall.chain()?.call()),
+                        //CSharpExpression = namedCall.CSHARP_EXPRESSION().GetText()
                     }
                 };
             }
@@ -113,7 +119,8 @@ namespace Templates.Language {
                     CallParameter =
                     {
                         ModelParameter = unnamedCall.OUT_ID()?.GetText(),
-                        ChainParameter = CreateChain(unnamedCall.chain()?.call())
+                        ChainParameter = CreateChain(unnamedCall.chain()?.call()),
+                        //CSharpExpression = unnamedCall.CSHARP_EXPRESSION().GetText()
                     }
                 };
             }

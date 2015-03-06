@@ -16,7 +16,6 @@ namespace DemoWebSite
             ConfigureAuth(app);
             ViewEngines.Engines.Clear();
             ViewEngines.Engines.Add(new TtlViewEngine());
-            TemplateFactory.LoadAddExtensionsFromAssembly(Assembly.GetAssembly(typeof (TtlViewEngine)));
         }
     }
 }

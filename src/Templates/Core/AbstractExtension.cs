@@ -33,9 +33,8 @@ namespace Templates.Core {
             DirectRender = renderType == RenderType.Encode;
         }
 
-        public virtual Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context,
-            ParseContext parseContext)
-        {
+        public static Type InitSubTemplate(string parameterTemplate, Type dataType, Type chainedType, CompileContext context,
+            ParseContext parseContext, out IDataProcessor result) {
             if (context == null)
                 throw new ArgumentNullException("context");
 
@@ -43,18 +42,32 @@ namespace Templates.Core {
                 ? null
                 : TtlCompiler.Compile(parameterTemplate, new CompileContext(context, dataType), parseContext);
             if (subTemplate == null || subTemplate.Empty) {
-                _innerResult = parameterTemplate;
                 subTemplate?.Dispose();
-                SubTemplate = null;
+                result = null;
             }
             else {
                 if (subTemplate.CanFullOptimize) {
-                    SubTemplate = subTemplate.SingleProcessor;
+                    result = subTemplate.SingleProcessor;
                 }
-                SubTemplate = subTemplate;
+                else {
+                    result = subTemplate;
+                }
             }
 
             return typeof(string);
+        }
+
+        public virtual Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context,
+            ParseContext parseContext)
+        {
+            if (context == null)
+                throw new ArgumentNullException("context");
+            IDataProcessor subTemplate;
+            var type = InitSubTemplate(parameterTemplate, dataType, chainedType, context, parseContext, out subTemplate);
+            if (subTemplate == null)
+                _innerResult = parameterTemplate;
+            SubTemplate = subTemplate;
+            return type;
         }
 
         public virtual void CompleteInit(CompileContext newContext, ParseContext parseContext)

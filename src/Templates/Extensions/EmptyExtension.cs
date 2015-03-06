@@ -2,21 +2,15 @@
 using Templates.Core;
 
 namespace Templates.Extensions {
-    /// <summary>
-    /// <para>Empty Template</para>
-    /// <para>Represents universal template for all undetermined types</para>
-    /// </summary>
-    [Name ("")]
+    [Name("")]
     [EncodeOutput]
-    public class EmptyExtension: AbstractHtmlExtension {
-        protected override object ProcessDataInternal (object value, object chainedResult)
+    public class EmptyExtension: AbstractExtension {
+        public override object ProcessData(object value, object chainedResult)
         {
-            if (SubTemplate != null)
-            {
+            if (SubTemplate != null) {
                 return GetInnerResult(value, chainedResult);
             }
-            if (value != null)
-            {
+            if (value != null) {
                 var s = value as string;
                 if (s != null)
                     return s;

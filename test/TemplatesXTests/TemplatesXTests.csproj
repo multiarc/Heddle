@@ -113,6 +113,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="app.config" />
     <None Include="packages.config" />
     <None Include="TestTemplate\partial.thtml" />
     <None Include="TestTemplate\template.thtml" />

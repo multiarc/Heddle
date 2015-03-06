@@ -1,0 +1,51 @@
+﻿<%
+    <body>[]
+    <scripts>[]
+    <main>
+    [@use()[mvc];
+
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>@(=>ViewBag.Title) - My ASP.NET Application</title>
+                @html.styles("~/Content/css")
+                @html.scripts("~/bundles/modernizr")
+            </head>
+            <body>
+                <div class="navbar navbar-inverse navbar-fixed-top">
+                    <div class="container">
+                        <div class="navbar-header">
+                            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                                <span class="icon-bar"></span>
+                                <span class="icon-bar"></span>
+                                <span class="icon-bar"></span>
+                            </button>
+                            @link(route("Index"):("Home")):("class=nvbar-brand")[Application name]
+                        </div>
+                        <div class="navbar-collapse collapse">
+                            <ul class="nav navbar-nav">
+                                <li>@link(route("Index"):("Home"))[Home]</li>
+                                <li>@link(route("Index"):("About"))[About]</li>
+                                <li>@link(route("Index"):("Contact"))[Contact]</li>
+                            </ul>
+                            @partial()[_LoginPartial]
+                        </div>
+                    </div>
+                </div>
+                <div class="container body-content">
+                    @body()
+                    <hr />
+                    <footer>
+                        <p>&copy; @(=>DateTime.Now.Year) - My ASP.NET Application</p>
+                    </footer>
+                </div>
+
+                @html.scripts("~/bundles/jquery")
+                @html.scripts("~/bundles/bootstrap")
+                @scripts()
+            </body>
+        </html>
+    ]
+%>

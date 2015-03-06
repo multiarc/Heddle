@@ -82,6 +82,9 @@
       <HintPath>..\packages\Microsoft.AspNet.Mvc.5.2.3\lib\net45\System.Web.Mvc.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="System.Web.Optimization">
+      <HintPath>..\packages\Microsoft.AspNet.Web.Optimization.1.1.3\lib\net40\System.Web.Optimization.dll</HintPath>
+    </Reference>
     <Reference Include="System.Web.Razor, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.AspNet.Razor.3.2.3\lib\net45\System.Web.Razor.dll</HintPath>
       <Private>True</Private>
@@ -105,13 +108,16 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="PartialMvcExtension.cs" />
+    <Compile Include="Extensions\PartialMvcExtension.cs" />
+    <Compile Include="Extensions\ScriptsExtensions.cs" />
+    <Compile Include="Extensions\StylesExtension.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TtlView.cs" />
     <Compile Include="TtlViewEngine.cs" />
-    <Compile Include="UseMvcExtension.cs" />
+    <Compile Include="Extensions\UseMvcExtension.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

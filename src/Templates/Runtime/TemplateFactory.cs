@@ -20,10 +20,30 @@ namespace Templates.Runtime {
     /// <summary>
     /// Template factory, initializes and creates all templates
     /// </summary>
-    public static class TemplateFactory {
-        private static readonly Dictionary<string, Type> Templates = LoadBaseExtensions();
+    public static class TemplateFactory
+    {
+        private static readonly Dictionary<string, Type> Templates = new Dictionary<string, Type>();
 
-        #region Public Methods
+        static TemplateFactory()
+        {
+            AddExtensions(LoadBaseExtensions());
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var exportAttributes = assembly.GetCustomAttributes<ExportExtensionsAttribute>();
+                foreach (var exportAttribute in exportAttributes)
+                {
+                    if (exportAttribute != null)
+                    {
+                        if (exportAttribute.All)
+                        {
+                            LoadAddExtensionsFromAssembly(assembly);
+                            break;
+                        }
+                        AddExtensions(LoadExtensions(exportAttribute.Extensions));
+                    }
+                }
+            }
+        }
 
         /// <summary>
         /// Loads all templates are in assembly
@@ -34,7 +54,12 @@ namespace Templates.Runtime {
             if (assembly == null)
                 throw new ArgumentNullException("assembly");
 
-            Dictionary<string, Type> toAdd = LoadExtensions(assembly);
+            IEnumerable<KeyValuePair<string, Type>> toAdd = LoadExtensions(assembly);
+            AddExtensions(toAdd);
+        }
+
+        public static void AddExtensions(IEnumerable<KeyValuePair<string, Type>> toAdd)
+        {
             foreach (var type in toAdd)
             {
                 if (Templates.ContainsKey(type.Key))
@@ -80,15 +105,13 @@ namespace Templates.Runtime {
             }
         }
 
-        #endregion
-
         #region Helper Methods
 
         /// <summary>
         /// Loads all base templates
         /// </summary>
         /// <returns>List of all template types</returns>
-        private static Dictionary<string, Type> LoadBaseExtensions ()
+        private static IEnumerable<KeyValuePair<string, Type>> LoadBaseExtensions ()
         {
             return LoadExtensions(Assembly.GetExecutingAssembly());
         }
@@ -98,17 +121,21 @@ namespace Templates.Runtime {
         /// </summary>
         /// <param name="assembly">Assembly to get from</param>
         /// <returns>List of all template types</returns>
-        internal static Dictionary<string, Type> LoadExtensions (Assembly assembly)
+        internal static IEnumerable<KeyValuePair<string, Type>> LoadExtensions (Assembly assembly)
         {
+            return LoadExtensions(assembly.GetTypes());
+        }
+
+        internal static IEnumerable<KeyValuePair<string, Type>> LoadExtensions(IEnumerable<Type> extensions) {
             List<Type> types =
-                assembly.GetTypes().Where(t => t.IsImplement<IExtension>() && t.IsHaveAttribute<NameAttribute>(true)).OrderBy
+                extensions.Where(t => t.IsImplement<IExtension>() && t.IsHaveAttribute<NameAttribute>(true)).OrderBy
                     (t => t.GetAttributes<DataTypeAttribute>(true).Any(p => p.DataType.IsInterface)).ThenBy
                     (t => t.GetAttributes<ChainedTypeAttribute>(true).Any(p => p.DataType.IsInterface)).ToList();
-            var result = new Dictionary<string, Type>();
+            var result = new List<KeyValuePair<string, Type>>();
             foreach (Type type in types) {
                 NameAttribute[] names = type.GetAttributes<NameAttribute>(true);
                 foreach (NameAttribute name in names)
-                    result.Add(name.Name, type);
+                    result.Add(new KeyValuePair<string, Type>(name.Name, type));
             }
             return result;
         }

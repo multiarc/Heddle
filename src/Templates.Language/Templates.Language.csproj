@@ -95,6 +95,10 @@
     <Compile Include="TtlLexer.g4.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Antlr4 Include="CSharp.g4">
+      <Generator>MSBuild:Compile</Generator>
+      <CustomToolNamespace>Templates.Language</CustomToolNamespace>
+    </Antlr4>
     <None Include="generated\TtlLexer.tokens" />
     <None Include="generated\TtlParser.tokens" />
     <None Include="language.snk" />

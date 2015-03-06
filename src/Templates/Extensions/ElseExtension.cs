@@ -8,9 +8,9 @@ namespace Templates.Extensions {
     /// <para>Condition template</para>
     /// <para>Optional parameter represents string to show if condition is false</para>
     /// </summary>
-    [Name ("false")]
+    [Name ("else")]
     [DataType (typeof (bool))]
-    public class FalseExtension: AbstractExtension {
+    public class ElseExtension: AbstractExtension {
         public override object ProcessData(object value, object chainedResult)
         {
             if (value == null)

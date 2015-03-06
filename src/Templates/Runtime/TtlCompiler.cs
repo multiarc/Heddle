@@ -155,20 +155,23 @@ namespace Templates.Runtime
                 dataType = callParameter.RenderType;
             }
             IExtension extension;
-            if (parseContext.DefenitionExists(extensionItem.ExtensionName))
-            {
+            if (parseContext.DefenitionExists(extensionItem.ExtensionName)) {
                 DefinitionItem definition = parseContext.GetDefenition(extensionItem.ExtensionName);
                 Type acceptType;
-                extension = CompileFromDefenition(definition, compileContext, out acceptType);
+                var def = CompileFromDefenition(definition, compileContext, out acceptType);
+                extension = def;
                 if (data != null)
                     CheckTypes(data, acceptType);
                 else
                     CheckTypes(dataType, acceptType);
-                returnTypeChainedPrevious = InitializeTemplate(extension, definition.ParameterTemplate, dataType,
+                returnTypeChainedPrevious = InitializeTemplate(extension, extensionItem.ParameterTemplate, dataType,
+                    returnTypeChainedPrevious, compileContext, parseContext);
+
+                def.DefenitionTemplate = CompileFromDefenition(definition, compileContext, out acceptType);
+                returnTypeChainedPrevious = InitializeTemplate(def.DefenitionTemplate, definition.ParameterTemplate, dataType,
                     returnTypeChainedPrevious, compileContext, definition.Context);
             }
-            else
-            {
+            else {
                 extension = TemplateFactory.Create(extensionItem.ExtensionName, parseContext);
                 Type templateType = extension.GetType();
 
@@ -194,10 +197,10 @@ namespace Templates.Runtime
             };
         }
 
-        private static IExtension CompileFromDefenition(DefinitionItem definition, CompileContext compileContext, out Type acceptType)
+        private static DefenitionBaseExtension CompileFromDefenition(DefinitionItem definition, CompileContext compileContext, out Type acceptType)
         {
             WalkValidateDefinitionType(definition, compileContext);
-            IExtension result = new DefenitionBaseExtension();
+            var result = new DefenitionBaseExtension();
             acceptType = ReflectionHelper.ResolveType(definition.ModelType, compileContext.Namespaces.ToArray()) ?? typeof(object);
             return result;
         }
@@ -226,7 +229,7 @@ namespace Templates.Runtime
                 modelType = modelType ?? typeof (object);
                 chainedType = chainedType ?? typeof (object);
                 RenderType directRender = extension.GetType().IsHaveAttribute<EncodeOutputAttribute>(true)
-                    ? (extension.GetType().IsHaveAttribute<NotEncodeAttribute>(false) ? RenderType.Raw : RenderType.Encode)
+                    ? (extension.GetType().IsHaveAttribute<NotEncodeAttribute>(true) ? RenderType.Raw : RenderType.Encode)
                     : RenderType.Raw;
                 extension.SetUpRenderType(directRender);
                 return extension.InitStart(parameterFastString, modelType, chainedType, context, parseContext);

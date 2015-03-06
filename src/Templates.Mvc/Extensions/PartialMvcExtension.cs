@@ -1,18 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 using Templates.Attributes;
-using Templates.Core;
 using Templates.Data;
 using Templates.Extensions;
 using Templates.Language;
+using Templates.Mvc.Extensions;
 using Templates.Runtime;
 
-namespace Templates.Mvc {
-    [Name("partial")]
-    [Name("template")]
+[assembly: ExportExtensions(typeof(PartialMvcExtension))]
+
+namespace Templates.Mvc.Extensions {
     public class PartialMvcExtension: PartialExtension {
         public override void CompleteInit(CompileContext newContext, ParseContext parseContext)
         {

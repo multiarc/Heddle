@@ -5,9 +5,8 @@ using Templates.Language;
 using Templates.Runtime;
 
 namespace Templates.Extensions {
-    [Name ("import")]
     [Name ("using")]
-    public class ImportExtension: AbstractExtension {
+    public class UsingExtension: AbstractExtension {
         public override Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context, ParseContext parseContext)
         {
             if (context == null)

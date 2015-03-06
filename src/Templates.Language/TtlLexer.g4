@@ -4,26 +4,39 @@
 
 lexer grammar TtlLexer;
 
-tokens { TEXT, OUT_ID, WHITESPACE }
+tokens { TEXT, OUT_ID }
 
 channels { COMMENT_CHANNEL }
 
-fragment ID_START: 
-	LETTER
+fragment NEW_LINE:
+	[\r\n] | '\u0085' | '\u2028' | '\u2029';
+
+fragment IDENTIFIER: '@'? IDENTIFIER_START IDENTIFIER_PART*;
+
+fragment IDENTIFIER_START: 
+	{IsLetter(InputStream.La(2))}? .
+	| UNICODE_ESCAPE
 	| '_'
 	;
 
-fragment LETTER: 
-	'a'..'z'
-	| 'A'..'Z'
+fragment IDENTIFIER_PART:
+	{IsIdPart(InputStream.La(2))}? .
+	| UNICODE_ESCAPE
+	| '_'
 	;
 
-fragment ID_PART: 
-	ID_START
-	| '.'
-	| '0'..'9'
-	| '+'
+fragment UNICODE_ESCAPE:
+	'\\u' HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT
+	| '\\U' HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT
 	;
+
+fragment HEX_DIGIT:
+	'0'..'9'
+	| 'a'..'f'
+	| 'A'..'F'
+	;
+
+fragment ID: IDENTIFIER;
 
 fragment SUB_ST: '[';
 fragment SUB_CL: ']';
@@ -33,7 +46,16 @@ fragment DEF_ST: '<%';
 fragment DEF_CL: '%>';
 fragment OUT_ST: '@';
 fragment LINE_TERM: ';';
-fragment WS: [ \r\n\t\f];
+fragment WS: NEW_LINE
+	| [ \t\f] 
+	| '\u000B'
+	| '\u00A0' 
+	| '\u1680' 
+	| '\u2000'..'\u200A' 
+	| '\u202F' 
+	| '\u205F' 
+	| '\u3000'
+	;
 
 COMMENT: 
 	'@*' .*? '*@' -> channel(COMMENT_CHANNEL);
@@ -65,9 +87,11 @@ DEF_STARTNAME: '<';
 DEF_ENDNAME: '>';
 DEF_TYPE: '::';
 DELIM: ':';
-ID: ID_START ID_PART*;
+DEF_ID: ID;
 
-DEF_WS: WS+ -> type(WHITESPACE);
+DEF_WS: WS+ -> skip;
+
+//DEF_WS: WS+ -> type(WHITESPACE);
 
 
 mode SUB;
@@ -117,7 +141,9 @@ OUT_ID: ID;
 LINE_TERMINATE: 
 	LINE_TERM WS* -> popMode;
 
-OUT_WS: WS+;
+OUT_WS: WS+ -> skip;
+
+//OUT_WS: WS+ -> type(WHITESPACE);
 
 OUT_RAW: RAW -> type(RAW), popMode;
 OUT_DEF_START: DEF_START -> type(DEF_START), popMode, pushMode(DEF);
@@ -148,7 +174,7 @@ OUT_SUB_OUT_ID: OUT_ID -> type(OUT_ID);
 OUT_SUB_LINE_TERMINATE: 
 	LINE_TERM WS* -> type(LINE_TERMINATE), popMode;
 
-OUT_SUB_WS: WS+ -> type(OUT_WS);
+OUT_SUB_WS: WS+ -> type(OUT_WS), skip;
 
 OUT_SUB_RAW: RAW -> type(RAW), popMode;
 OUT_SUB_DEF_START: DEF_START -> type(DEF_START), popMode, pushMode(DEF);
@@ -159,7 +185,6 @@ OUT_SUB_OTHER: . -> type(TEXT), popMode;
 
 
 mode CALL;
-
 
 OUT_PARAMEND: 
 	PARA_CL -> popMode;
@@ -175,4 +200,10 @@ CALL_OUT_ID: OUT_ID -> type(OUT_ID);
 CALL_LINE_TERMINATE: 
 	LINE_TERM WS* -> type(LINE_TERMINATE), popMode, popMode;
 
-CALL_OUT_WS: WS+ -> type(WHITESPACE);
+CALL_OUT_WS: WS+ -> skip;
+
+//CALL_OUT_WS: WS+ -> type(WHITESPACE);
+
+mode CS;
+
+SCHARP_WS: WS+ -> skip;

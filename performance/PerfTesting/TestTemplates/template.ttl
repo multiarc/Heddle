@@ -1,4 +1,5 @@
-﻿@import()[PerfTesting];
+﻿@list(@ item => item.id == 0) [];
+@using()[PerfTesting];
 @model()[TestDataStructure];
         @list(Products)
         [@
@@ -10,9 +11,9 @@
         @time(Date)
         on
         @date(Date)<br />
-        @true(IsShow)[<span style="color: aqua">Some fucking text</span>]<br />
-        @false(IsShow)[<span style="color: red">Don't show it</span>]<br />
-        @true(IsShow):param()[@time(Date)]<br />
+        @if(IsShow)[<span style="color: aqua">Some fucking text</span>]<br />
+        @else(IsShow)[<span style="color: red">Don't show it</span>]<br />
+        @if(IsShow):param()[@time(Date)]<br />
         @guid(Guid)[X]<br />
         @guid(Guid)<br />
         @int(FuckingInt)<br />

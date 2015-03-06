@@ -1,8 +1,12 @@
-﻿using Antlr4.Runtime;
+﻿using System.Text.RegularExpressions;
+using Antlr4.Runtime;
 
 namespace Templates.Language {
     public partial class TtlLexer {
-        public int CurrentMode { get; private set; }
+        public int CurrentMode { get; protected set; }
+
+        private static readonly Regex Letter = new Regex(@"[\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}]", RegexOptions.Compiled);
+        private static readonly Regex IdPart = new Regex(@"[\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Mn}\p{Mc}\p{Nd}\p{Pc}\p{Cf}]", RegexOptions.Compiled);
 
         public override void Mode(int m) {
             CurrentMode = m;
@@ -12,6 +16,21 @@ namespace Templates.Language {
         public override void Reset() {
             CurrentMode = 0;
             base.Reset();
+        }
+
+        public bool IsLetter(int character)
+        {
+            if (character == -1)
+                return false;
+            return Letter.IsMatch(((char)character).ToString());
+            //return char.IsLetter((char)character);
+        }
+
+        public bool IsIdPart(int character)
+        {
+            if (character == -1)
+                return false;
+            return IdPart.IsMatch(((char) character).ToString());
         }
 
         public override void Emit(IToken token) {
@@ -75,18 +94,15 @@ namespace Templates.Language {
                 if (la != -1 && c != ':' && c != '[' && prev == ')') {
                     Type = TEXT;
                     PopMode();
-
                     token = new CommonToken(token)
                     {
                         Type = TEXT
                     };
                 }
-                else {
-                    Type = WHITESPACE;
-                    token = new CommonToken(token)
-                    {
-                        Type = WHITESPACE
-                    };
+                else
+                {
+                    Skip();
+                    return;
                 }
                 break;
             }

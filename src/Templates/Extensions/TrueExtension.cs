@@ -10,9 +10,9 @@ namespace Templates.Extensions {
     /// <para>Condition Template</para>
     /// <para>Optional parameter represents string to show if condition is true</para>
     /// </summary>
-    [Name ("true")]
+    [Name ("if")]
     [DataType (typeof (bool))]
-    public class TrueExtension: AbstractExtension {
+    public class IfExtension: AbstractExtension {
         public override object ProcessData(object value, object chainedResult)
         {
             if (value == null)
