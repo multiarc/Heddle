@@ -58,9 +58,9 @@ namespace Templates.Language {
             CurrentParseContext.CurrentChain = null;
         }
 
-        public override void ExitTtl(TtlParser.TtlContext context)
+        public override void EnterRaw(TtlParser.RawContext context)
         {
-            CurrentParseContext.RawOutputItems.AddRange(CurrentParseContext.CreateRawOutputItems(context));
+            CurrentParseContext.RawOutputItems.Add(CurrentParseContext.CreateRawOutputItem(context));
         }
 
         public override void EnterSubtemplate(TtlParser.SubtemplateContext context)
@@ -84,7 +84,7 @@ namespace Templates.Language {
                 }
                 else
                 {
-                    CurrentParseContext.CurrentChain.Context = parserContext;
+                    CurrentParseContext.CurrentChain.Chain.First().Context = parserContext;
                     CurrentParseContext.CurrentChain.Chain.First().OutList.AddRange(parserContext.OutputChains);
                 }
             }

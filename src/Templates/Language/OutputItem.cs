@@ -2,13 +2,16 @@
 
 namespace Templates.Language {
     public class OutputItem {
-        public OutputItem (string extensionName, string parameterTemplate = null)
+        public OutputItem (string extensionName, ParseContext context, string parameterTemplate = null)
         {
             ExtensionName = extensionName ?? string.Empty;
             ParameterTemplate = parameterTemplate;
             OutList = new SmartList<OutputChain>();
             CallParameter = new CallParameter();
+            Context = context;
         }
+
+        public ParseContext Context { get; set; }
 
         public string ExtensionName { get; }
 

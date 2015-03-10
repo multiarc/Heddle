@@ -45,7 +45,8 @@ namespace PerfTesting.Runners {
                          (new TemplateOptions {
                              TemplateName = "template",
                              FileNamePostfix = ".ttl",
-                             RootPath = @"g:\Work\Templater\performance\PerfTesting\TestTemplates"
+                             RootPath = @"g:\Work\Templater\performance\PerfTesting\TestTemplates",
+                             AllowCSharp = true
                          }));
             var testItem = DataFiller.FillData();
             var testBigString = test.Generate(testItem);

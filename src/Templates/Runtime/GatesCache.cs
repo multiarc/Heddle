@@ -14,7 +14,7 @@ namespace Templates.Runtime {
         {
             if (property == null)
                 return null;
-            RuntimeMethodHandle methodHandle = property.GetGetMethod().MethodHandle;
+            RuntimeMethodHandle methodHandle = property.GetGetMethod(true).MethodHandle;
             DynamicMethodGateDelegate result;
             if (Cache.TryGetValue(methodHandle, out result))
                 return result;
@@ -23,9 +23,34 @@ namespace Templates.Runtime {
             return result;
         }
 
+        public static CompiledMethodDelegate CreateCompiledDelegate(MethodInfo method, Type model, Type chained)
+        {
+            if (!method.IsStatic)
+                throw new ArgumentException("Method should be static only");
+            var dynamic = new DynamicMethod(method.Name, typeof (object), new[] {typeof (object), typeof (object)},
+                typeof (CompileContext), false);
+            ILGenerator il = dynamic.GetILGenerator();
+
+            il.Emit(OpCodes.Ldarg_0);
+            if (model.IsValueType)
+                il.Emit(OpCodes.Unbox_Any, model);
+            else if (model != typeof(object))
+                il.Emit(OpCodes.Castclass, model);
+
+            il.Emit(OpCodes.Ldarg_1);
+            if (chained.IsValueType)
+                il.Emit(OpCodes.Unbox_Any, chained);
+            else if (chained != typeof(object))
+                il.Emit(OpCodes.Castclass, chained);
+
+            il.Emit(OpCodes.Call, method);
+            il.Emit(OpCodes.Ret);
+            return (CompiledMethodDelegate)dynamic.CreateDelegate(typeof(CompiledMethodDelegate));
+        }
+
         private static DynamicMethodGateDelegate CreateGenericGate(PropertyInfo property)
         {
-            MethodInfo getMethod = property.GetGetMethod();
+            MethodInfo getMethod = property.GetGetMethod(true);
             var dynamic = new DynamicMethod
                 (getMethod.Name, typeof (object), new[]
                 {

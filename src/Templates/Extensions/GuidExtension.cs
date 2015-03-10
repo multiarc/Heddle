@@ -9,9 +9,8 @@ namespace Templates.Extensions {
     /// </summary>
     [Name ("guid")]
     [DataType (typeof (Guid))]
-    [EncodeOutput]
-    public class GuidExtension: AbstractHtmlExtension {
-        protected override object ProcessDataInternal (object value, object chainedResult)
+    public class GuidExtension: AbstractExtension {
+        public override object ProcessData(object value, object chainedResult)
         {
             if (!(value is Guid))
                 return string.Empty;

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace PerfTesting {
-    internal class TestData: TestDataStructure {
+    public class TestData: TestDataStructure {
         public override List<TestListItem> Products
         {
             get { return ProductsCollection.Where(p => p.Cost > 1000).ToList(); }
@@ -54,7 +54,7 @@ namespace PerfTesting {
         }
     }
 
-    internal class TestDataStructure {
+    public class TestDataStructure {
         protected List<TestListItem> ProductsCollection;
 
         public virtual List<TestListItem> Products

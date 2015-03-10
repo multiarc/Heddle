@@ -4,37 +4,11 @@
 
 lexer grammar TtlLexer;
 
-tokens { TEXT, OUT_ID }
+import CSharp;
+
+tokens { TEXT, OUT_ID, OUT_START, SUB_START, SUB_CLOSE, CSHARP_END, CSHARP_TOKEN, CSHARP_START, DEF_STARTNAME, DEF_ENDNAME, DEF_TYPE, DELIM, DEF_ID, DEF_START, DEF_CLOSE }
 
 channels { COMMENT_CHANNEL }
-
-fragment NEW_LINE:
-	[\r\n] | '\u0085' | '\u2028' | '\u2029';
-
-fragment IDENTIFIER: '@'? IDENTIFIER_START IDENTIFIER_PART*;
-
-fragment IDENTIFIER_START: 
-	{IsLetter(InputStream.La(2))}? .
-	| UNICODE_ESCAPE
-	| '_'
-	;
-
-fragment IDENTIFIER_PART:
-	{IsIdPart(InputStream.La(2))}? .
-	| UNICODE_ESCAPE
-	| '_'
-	;
-
-fragment UNICODE_ESCAPE:
-	'\\u' HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT
-	| '\\U' HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT
-	;
-
-fragment HEX_DIGIT:
-	'0'..'9'
-	| 'a'..'f'
-	| 'A'..'F'
-	;
 
 fragment ID: IDENTIFIER;
 
@@ -46,16 +20,7 @@ fragment DEF_ST: '<%';
 fragment DEF_CL: '%>';
 fragment OUT_ST: '@';
 fragment LINE_TERM: ';';
-fragment WS: NEW_LINE
-	| [ \t\f] 
-	| '\u000B'
-	| '\u00A0' 
-	| '\u1680' 
-	| '\u2000'..'\u200A' 
-	| '\u202F' 
-	| '\u205F' 
-	| '\u3000'
-	;
+fragment WS: WHITESPACE+;
 
 COMMENT: 
 	'@*' .*? '*@' -> channel(COMMENT_CHANNEL);
@@ -77,19 +42,20 @@ mode DEF;
 DEF_COMMENT: 
 	COMMENT -> channel(COMMENT_CHANNEL);
 
+DEF_WS: WS+ -> skip;
+
 DEF_CLOSE: 
 	DEF_CL -> popMode;
+
+DEF_STARTNAME: '<';
+DEF_ENDNAME: '>';
 
 SUB_START: 
 	SUB_ST -> pushMode(SUB);
 
-DEF_STARTNAME: '<';
-DEF_ENDNAME: '>';
 DEF_TYPE: '::';
 DELIM: ':';
 DEF_ID: ID;
-
-DEF_WS: WS+ -> skip;
 
 //DEF_WS: WS+ -> type(WHITESPACE);
 
@@ -102,7 +68,7 @@ SUB_COMMENT:
 	COMMENT -> channel(COMMENT_CHANNEL);
 
 SUB_LINE_TERMINATE: 
-	SUB_CL WS* LINE_TERM WS* -> type(SUB_CLOSE), popMode;
+	SUB_CL LINE_TERM WS* -> type(SUB_CLOSE), popMode;
 
 SUB_CLOSE: 
 	SUB_CL -> popMode;
@@ -117,7 +83,7 @@ SUB_OUTSTART:
 	OUT_START -> type(OUT_START), pushMode(OUT_SUB);
 
 SUB_TEXT: 
-	TEXT -> type(TEXT);
+	.+? -> type(TEXT);
 
 
 
@@ -148,7 +114,7 @@ OUT_WS: WS+ -> skip;
 OUT_RAW: RAW -> type(RAW), popMode;
 OUT_DEF_START: DEF_START -> type(DEF_START), popMode, pushMode(DEF);
 OUT_OUT_START: OUT_START -> type(OUT_START), popMode, pushMode(OUT);
-OUT_SUB_CLOSE2: SUB_CLOSE WS* LINE_TERM WS* -> type(TEXT), popMode;
+OUT_SUB_CLOSE2: SUB_CLOSE LINE_TERM WS* -> type(TEXT), popMode;
 OUT_SUB_CLOSE: SUB_CLOSE -> type(TEXT), popMode;
 OUT_OTHER: . -> type(TEXT), popMode;
 
@@ -186,6 +152,9 @@ OUT_SUB_OTHER: . -> type(TEXT), popMode;
 
 mode CALL;
 
+CSHARP_START:
+	OUT_ST -> pushMode(CS);
+
 OUT_PARAMEND: 
 	PARA_CL -> popMode;
 
@@ -206,4 +175,11 @@ CALL_OUT_WS: WS+ -> skip;
 
 mode CS;
 
-SCHARP_WS: WS+ -> skip;
+CSHARP_WS: WS+ -> skip;
+
+CS_CSHARP_START:
+	PARA_ST -> type(CSHARP_TOKEN), pushMode(CS);
+
+CSHARP_END: PARA_CL -> popMode;
+
+CSHARP_TOKEN: TOKEN;

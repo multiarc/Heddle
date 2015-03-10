@@ -18,16 +18,39 @@ namespace Templates.Language {
             CommentTokens = new SmartList<BlockPosition>();
         }
 
-        internal DefinitionItem CreateDefinition(TtlParser.DefContext context) {
-            var ttl = context.subtemplate().ttl();
-            string parameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
-            return new DefinitionItem(
-            context.ID(0).GetText(), parameterTemplate,
-            GetDefenition(context.ID(1)?.GetText()),
-            modelType: context.ID(2)?.GetText())
+        internal DefinitionItem CreateDefinition(TtlParser.DefContext context)
+        {
+            var inherited = context.inherited_def();
+            var simple = context.simple_def();
+            if (simple != null)
             {
-                Position = new BlockPosition(context.Start.StartIndex, context.Stop.StopIndex - context.Start.StartIndex + 1)
-            };
+                var ttl = simple.subtemplate().ttl();
+                string parameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
+                return new DefinitionItem(
+                    simple.DEF_ID(0).GetText(), parameterTemplate,
+                    null,
+                    modelType: simple.DEF_ID(1)?.GetText())
+                {
+                    Position =
+                        new BlockPosition(context.Start.StartIndex,
+                            context.Stop.StopIndex - context.Start.StartIndex + 1)
+                };
+            }
+            if (inherited != null)
+            {
+                var ttl = inherited.subtemplate().ttl();
+                string parameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
+                return new DefinitionItem(
+                    inherited.DEF_ID(0).GetText(), parameterTemplate,
+                    GetDefenition(inherited.DEF_ID(1)?.GetText()),
+                    modelType: inherited.DEF_ID(2)?.GetText())
+                {
+                    Position =
+                        new BlockPosition(context.Start.StartIndex,
+                            context.Stop.StopIndex - context.Start.StartIndex + 1)
+                };
+            }
+            return null;
         }
 
         public DefinitionItem GetDefenition(string baseName)
@@ -41,29 +64,29 @@ namespace Templates.Language {
 
         internal OutputChain CreateOutputChain(TtlParser.OutblockContext context)
         {
-            var result = new OutputChain()
+            var result = new OutputChain(this)
             {
                 Chain = CreateChain(context.chain().call()),
                 BlockPosition = new BlockPosition(context.Start.StartIndex - _offset, context.Stop.StopIndex - context.Start.StartIndex + 1)
             };
-            var ttl = context.subtemplate()?.ttl() ?? null;
+            var ttl = context.subtemplate()?.ttl();
             if (ttl != null) {
                 result.Chain.First().ParameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
             }
             return result;
         }
 
-        internal IEnumerable<RawOutputItem> CreateRawOutputItems(TtlParser.TtlContext context)
+        internal RawOutputItem CreateRawOutputItem(TtlParser.RawContext context)
         {
-            foreach (var raw in context.RAW())
+            var raw = context.RAW();
+
+            var text = raw.GetText();
+            return new RawOutputItem
             {
-                var text = raw.GetText();
-                yield return new RawOutputItem
-                {
-                    Position = new BlockPosition(raw.Symbol.StartIndex, raw.Symbol.StopIndex - raw.Symbol.StartIndex + 1),
-                    Text = text.Substring(2, text.Length - 4)
-                };
-            }
+                Position =
+                    new BlockPosition(raw.Symbol.StartIndex - _offset, raw.Symbol.StopIndex - raw.Symbol.StartIndex + 1),
+                Text = text.Substring(2, text.Length - 4)
+            };
         }
 
         public bool DefenitionExists(string name)
@@ -103,24 +126,24 @@ namespace Templates.Language {
             var namedCall = context.named_call();
             var unnamedCall = context.unnamed_call();
             if (namedCall != null) {
-                return new OutputItem(namedCall.OUT_ID(0)?.GetText())
+                return new OutputItem(namedCall.OUT_ID(0)?.GetText(), this)
                 {
                     CallParameter =
                     {
                         ModelParameter = namedCall.OUT_ID(1)?.GetText(),
                         ChainParameter = CreateChain(namedCall.chain()?.call()),
-                        //CSharpExpression = namedCall.CSHARP_EXPRESSION().GetText()
+                        CSharpExpression = namedCall.csharp_expression()?.GetText()
                     }
                 };
             }
             if (unnamedCall != null) {
-                return new OutputItem(string.Empty)
+                return new OutputItem(string.Empty, this)
                 {
                     CallParameter =
                     {
                         ModelParameter = unnamedCall.OUT_ID()?.GetText(),
                         ChainParameter = CreateChain(unnamedCall.chain()?.call()),
-                        //CSharpExpression = unnamedCall.CSHARP_EXPRESSION().GetText()
+                        CSharpExpression = unnamedCall.csharp_expression()?.GetText()
                     }
                 };
             }

@@ -21,7 +21,8 @@ namespace PerfTesting.Runners {
                      (new TemplateOptions {
                          TemplateName = "template",
                          FileNamePostfix = ".ttl",
-                         RootPath = @"g:\Work\Templater\performance\PerfTesting\TestTemplates"
+                         RootPath = @"g:\Work\Templater\performance\PerfTesting\TestTemplates",
+                         AllowCSharp = true
                      }));
             var testFastList = new SmartList<ExString>();
             var list = new SmartList<TestDataStructure>();

@@ -17,7 +17,8 @@ namespace PerfTesting.Runners {
                      (new TemplateOptions {
                          TemplateName = "template",
                          FileNamePostfix = ".ttl",
-                         RootPath = @"g:\Work\Templater\performance\PerfTesting\TestTemplates"
+                         RootPath = @"g:\Work\Templater\performance\PerfTesting\TestTemplates",
+                         AllowCSharp = true
                      }));
             var testString = test.Generate(DataFiller.FillData());
             File.WriteAllText("test.html", testString);
@@ -42,7 +43,8 @@ namespace PerfTesting.Runners {
                      (new TemplateOptions {
                          TemplateName = "template",
                          FileNamePostfix = ".ttl",
-                         RootPath = @"g:\Work\Templater\performance\PerfTesting\TestTemplates"
+                         RootPath = @"g:\Work\Templater\performance\PerfTesting\TestTemplates",
+                         AllowCSharp = true
                      }));
             watcher.Stop();
             Console.WriteLine("Compile time: {0}", watcher.Elapsed);

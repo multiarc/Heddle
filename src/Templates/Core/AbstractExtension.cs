@@ -38,20 +38,27 @@ namespace Templates.Core {
             if (context == null)
                 throw new ArgumentNullException("context");
 
-            var subTemplate = string.IsNullOrEmpty(parameterTemplate)
-                ? null
-                : TtlCompiler.Compile(parameterTemplate, new CompileContext(context, dataType), parseContext);
+            RuntimeDocument subTemplate;
+            if (string.IsNullOrEmpty(parameterTemplate))
+                subTemplate = null;
+            else
+            {
+                var newContext = new CompileContext(context, dataType);
+                subTemplate = DocumentsCache.GetRuntimeDocument(parameterTemplate, newContext);
+                if (subTemplate == null)
+                {
+                    subTemplate = TtlCompiler.Compile(parameterTemplate, newContext,
+                        parseContext);
+                    DocumentsCache.UpdateCaches(subTemplate, null, parameterTemplate, newContext);
+                    newContext.Compile();
+                }
+            }
             if (subTemplate == null || subTemplate.Empty) {
                 subTemplate?.Dispose();
                 result = null;
             }
             else {
-                if (subTemplate.CanFullOptimize) {
-                    result = subTemplate.SingleProcessor;
-                }
-                else {
-                    result = subTemplate;
-                }
+                result = subTemplate.CanFullOptimize ? subTemplate.SingleProcessor : subTemplate;
             }
 
             return typeof(string);

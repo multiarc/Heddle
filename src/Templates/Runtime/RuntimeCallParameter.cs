@@ -7,6 +7,7 @@ namespace Templates.Runtime {
     {
         private readonly IDataProcessor _callParameterChain;
         private readonly DynamicMethodGateDelegate _getModelParameter;
+        public CompiledMethodDelegate ParameterImplementation { get; set; }
 
         public RuntimeCallParameter(DynamicMethodGateDelegate getModelParameter, TemplateChain callParameterChain)
         {
@@ -35,10 +36,11 @@ namespace Templates.Runtime {
             {
                 return _getModelParameter(value);
             }
-            if (_callParameterChain == null) {
-                return value;
+            if (ParameterImplementation != null)
+            {
+                return ParameterImplementation(value, chainedResult);
             }
-            return _callParameterChain.ProcessData(value, chainedResult);
+            return _callParameterChain == null ? value : _callParameterChain.ProcessData(value, chainedResult);
         }
     }
 }

@@ -15,9 +15,11 @@ namespace Templates.Runtime {
         private readonly IDataProcessor _singleProcessor;
         private bool _canFullOptimize;
         private readonly ThreadLocal<Replacement[]> _threadLocal;
+        private readonly CompileContext _context;
 
-        public RuntimeDocument(string document, DocumentElement[] executeItems)
+        public RuntimeDocument(string document, DocumentElement[] executeItems, CompileContext context)
         {
+            _context = context;
             _document = document;
             _threadLocal = new ThreadLocal<Replacement[]>(MakeNewArray);
             _optimizedElements = OptimizeCallTree(executeItems);
@@ -113,6 +115,7 @@ namespace Templates.Runtime {
                 {
                     processor.Dispose();
                 }
+                _context.Dispose();
                 GC.SuppressFinalize(this);
             }
             _threadLocal.Dispose();

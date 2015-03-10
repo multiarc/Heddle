@@ -88,6 +88,7 @@ namespace Templates {
             {
                 rtdoc = TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
                 DocumentsCache.UpdateCaches(rtdoc, null, document, context);
+                context.Compile();
             }
             _runtimeDocument = rtdoc;
             _context = context;
@@ -175,6 +176,7 @@ namespace Templates {
             if (rtdoc == null) {
                 rtdoc = TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
                 DocumentsCache.UpdateCaches(rtdoc, null, document, context);
+                context.Compile();
             }
             _context = context;
             _document = document;
@@ -204,6 +206,7 @@ namespace Templates {
                         try {
                             var rtdoc = TtlCompiler.Compile(document, _context, DocumentParser.Parse(document));
                             DocumentsCache.UpdateCaches(rtdoc, _document, document, _context);
+                            _context.Compile();
                             _runtimeDocument = rtdoc;
                             _document = document;
                         }

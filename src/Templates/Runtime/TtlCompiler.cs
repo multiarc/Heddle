@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -33,7 +35,7 @@ namespace Templates.Runtime
                 Type returnTypeChainedPrevious = null;
                 foreach (var item in extensions.Chain.Reverse())
                 {
-                    var compiledItem = CompileItem(item, compileContext, extensions.Context,
+                    var compiledItem = CompileItem(item, compileContext, item.Context,
                         ref returnTypeChainedPrevious);
                     element.CallChain.Add(compiledItem);
                 }
@@ -46,8 +48,7 @@ namespace Templates.Runtime
                     documentElements.Add(element);
                 }
             }
-            compileContext.Compile();
-            return new RuntimeDocument(workingDocument, documentElements.ToArray());
+            return new RuntimeDocument(workingDocument, documentElements.ToArray(), compileContext);
         }
 
         private static void RemoveEmptyItem(ParseContext context, BlockPosition blockPosition,
@@ -128,14 +129,16 @@ namespace Templates.Runtime
             PropertyInfo data = null;
             Type dataType = null;
             TemplateChain callParameter = null;
+            IExtension extension;
+            Type acceptType;
             if (extensionItem.CallParameter.IsModelTypeParameter)
             {
                 if (!string.IsNullOrEmpty(extensionItem.CallParameter.ModelParameter) &&
                     extensionItem.CallParameter.ModelParameter != "null")
                 {
                     PropertyInfo dataProperty =
-                        compileContext.ModelType.GetProperty(extensionItem.CallParameter.ModelParameter);
-                    if (dataProperty != null && dataProperty.CanRead && !dataProperty.IsHaveAttribute<HiddenAttribute>())
+                        compileContext.ModelType.GetProperty(extensionItem.CallParameter.ModelParameter, BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+                    if (dataProperty != null && dataProperty.CanRead && !dataProperty.IsHaveAttribute<HiddenAttribute>() && (dataProperty.GetGetMethod(true).IsAssembly || dataProperty.GetGetMethod(true).IsPublic))
                         data = dataProperty;
                     else
                     {
@@ -149,15 +152,44 @@ namespace Templates.Runtime
                     dataType = data?.PropertyType ?? compileContext.ModelType;
                 }
             }
+            else if (!string.IsNullOrEmpty(extensionItem.CallParameter.CSharpExpression))
+            {
+                if (!compileContext.Options.AllowCSharp)
+                    throw new TemplateCompileException(
+                        "C# Code Not allowed here, see TemplateOptions.AllowCSharp Property");
+                var chainedType = returnTypeChainedPrevious ?? typeof(object);
+                var expressionOptions = new ExpressionOptions
+                {
+                    ChainedType = chainedType,
+                    Expression = extensionItem.CallParameter.CSharpExpression,
+                    ExtensionName = extensionItem.ExtensionName
+                };
+                dataType = compileContext.ParseAndGetResultType(expressionOptions);
+                extension = CreateExtension(extensionItem, compileContext, parseContext, ref returnTypeChainedPrevious, null, dataType, out acceptType);
+                return new TemplateItem(returnTypeChainedPrevious, extension)
+                {
+                    Parameter = compileContext.PushCompileExpression(expressionOptions)
+                };
+            }
             else
             {
                 callParameter = CompileParameterChain(extensionItem.CallParameter.ChainParameter, compileContext, parseContext);
                 dataType = callParameter.RenderType;
             }
+            extension = CreateExtension(extensionItem, compileContext, parseContext, ref returnTypeChainedPrevious, data, dataType, out acceptType);
+            return new TemplateItem(returnTypeChainedPrevious, extension)
+            {
+                Parameter = new RuntimeCallParameter(data.ToPropertyGate(), callParameter)
+            };
+        }
+
+        private static IExtension CreateExtension(OutputItem extensionItem, CompileContext compileContext, ParseContext parseContext,
+            ref Type returnTypeChainedPrevious, PropertyInfo data, Type dataType, out Type acceptType)
+        {
             IExtension extension;
-            if (parseContext.DefenitionExists(extensionItem.ExtensionName)) {
+            if (parseContext.DefenitionExists(extensionItem.ExtensionName))
+            {
                 DefinitionItem definition = parseContext.GetDefenition(extensionItem.ExtensionName);
-                Type acceptType;
                 var def = CompileFromDefenition(definition, compileContext, out acceptType);
                 extension = def;
                 if (data != null)
@@ -171,7 +203,8 @@ namespace Templates.Runtime
                 returnTypeChainedPrevious = InitializeTemplate(def.DefenitionTemplate, definition.ParameterTemplate, dataType,
                     returnTypeChainedPrevious, compileContext, definition.Context);
             }
-            else {
+            else
+            {
                 extension = TemplateFactory.Create(extensionItem.ExtensionName, parseContext);
                 Type templateType = extension.GetType();
 
@@ -182,19 +215,16 @@ namespace Templates.Runtime
                     CheckTypes(returnTypeChainedPrevious, chainedTypeAttribute?.DataType);
 
                 DataTypeAttribute dataTypeAttribute = templateType.GetAttributes<DataTypeAttribute>(true).FirstOrDefault();
+                acceptType = dataTypeAttribute?.DataType ?? typeof (object);
                 if (data != null)
-                    CheckTypes(data, dataTypeAttribute?.DataType);
+                    CheckTypes(data, acceptType);
                 else
-                    CheckTypes(dataType, dataTypeAttribute?.DataType);
+                    CheckTypes(dataType, acceptType);
 
                 returnTypeChainedPrevious = InitializeTemplate(extension, extensionItem.ParameterTemplate, dataType,
                     returnTypeChainedPrevious, compileContext, parseContext);
             }
-
-            return new TemplateItem(returnTypeChainedPrevious, extension)
-            {
-                Parameter = new RuntimeCallParameter(GatesCache.GetPropertyGate(data), callParameter)
-            };
+            return extension;
         }
 
         private static DefenitionBaseExtension CompileFromDefenition(DefinitionItem definition, CompileContext compileContext, out Type acceptType)

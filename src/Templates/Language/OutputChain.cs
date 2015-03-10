@@ -4,9 +4,9 @@ using Templates.Strings.Core;
 
 namespace Templates.Language {
     public class OutputChain {
-        public OutputChain()
+        public OutputChain(ParseContext context)
         {
-            Context = new ParseContext();
+            Context = context;
             Chain = new SmartList<OutputItem>();
         }
 

@@ -46,6 +46,18 @@ public partial class TtlParserBaseListener : ITtlParserListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitTtl([NotNull] TtlParser.TtlContext context) { }
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="TtlParser.raw"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterRaw([NotNull] TtlParser.RawContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="TtlParser.raw"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitRaw([NotNull] TtlParser.RawContext context) { }
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="TtlParser.definition"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>
@@ -69,6 +81,30 @@ public partial class TtlParserBaseListener : ITtlParserListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitDef([NotNull] TtlParser.DefContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="TtlParser.inherited_def"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterInherited_def([NotNull] TtlParser.Inherited_defContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="TtlParser.inherited_def"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitInherited_def([NotNull] TtlParser.Inherited_defContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="TtlParser.simple_def"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterSimple_def([NotNull] TtlParser.Simple_defContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="TtlParser.simple_def"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitSimple_def([NotNull] TtlParser.Simple_defContext context) { }
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="TtlParser.outblock"/>.
 	/// <para>The default implementation does nothing.</para>
@@ -129,6 +165,18 @@ public partial class TtlParserBaseListener : ITtlParserListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitUnnamed_call([NotNull] TtlParser.Unnamed_callContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="TtlParser.csharp_expression"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterCsharp_expression([NotNull] TtlParser.Csharp_expressionContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="TtlParser.csharp_expression"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitCsharp_expression([NotNull] TtlParser.Csharp_expressionContext context) { }
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="TtlParser.subtemplate"/>.
 	/// <para>The default implementation does nothing.</para>

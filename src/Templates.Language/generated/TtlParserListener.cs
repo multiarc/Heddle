@@ -40,6 +40,16 @@ public interface ITtlParserListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitTtl([NotNull] TtlParser.TtlContext context);
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="TtlParser.raw"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterRaw([NotNull] TtlParser.RawContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="TtlParser.raw"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitRaw([NotNull] TtlParser.RawContext context);
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="TtlParser.definition"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -59,6 +69,26 @@ public interface ITtlParserListener : IParseTreeListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	void ExitDef([NotNull] TtlParser.DefContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="TtlParser.inherited_def"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterInherited_def([NotNull] TtlParser.Inherited_defContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="TtlParser.inherited_def"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitInherited_def([NotNull] TtlParser.Inherited_defContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="TtlParser.simple_def"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterSimple_def([NotNull] TtlParser.Simple_defContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="TtlParser.simple_def"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitSimple_def([NotNull] TtlParser.Simple_defContext context);
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="TtlParser.outblock"/>.
 	/// </summary>
@@ -109,6 +139,16 @@ public interface ITtlParserListener : IParseTreeListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	void ExitUnnamed_call([NotNull] TtlParser.Unnamed_callContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="TtlParser.csharp_expression"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterCsharp_expression([NotNull] TtlParser.Csharp_expressionContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="TtlParser.csharp_expression"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitCsharp_expression([NotNull] TtlParser.Csharp_expressionContext context);
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="TtlParser.subtemplate"/>.
 	/// </summary>

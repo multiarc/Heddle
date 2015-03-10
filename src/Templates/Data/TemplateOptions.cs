@@ -6,6 +6,7 @@ namespace Templates.Data {
         public string RootPath;
         public string TemplateName;
         public bool EnableFileChangeCheck;
+        public bool AllowCSharp;
 
         public TemplateOptions()
         {
@@ -13,15 +14,17 @@ namespace Templates.Data {
             RootPath = null;
             TemplateName = null;
             EnableFileChangeCheck = false;
+            AllowCSharp = false;
         }
 
 
-        public TemplateOptions(string fileNamePostfix, string rootPath, string templateName, bool enableFileChangeCheck = false)
+        public TemplateOptions(string fileNamePostfix, string rootPath, string templateName, bool enableFileChangeCheck = false, bool allowCSharp = false)
         {
             FileNamePostfix = fileNamePostfix;
             RootPath = rootPath;
             TemplateName = templateName;
             EnableFileChangeCheck = enableFileChangeCheck;
+            AllowCSharp = allowCSharp;
         }
 
         public TemplateOptions(TemplateOptions value)
@@ -30,6 +33,7 @@ namespace Templates.Data {
             RootPath = value.RootPath;
             TemplateName = value.TemplateName;
             EnableFileChangeCheck = value.EnableFileChangeCheck;
+            AllowCSharp = value.AllowCSharp;
         }
 
         #region IEquatable<TemplateOptions> Members

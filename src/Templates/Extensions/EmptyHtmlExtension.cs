@@ -2,9 +2,10 @@
 using Templates.Core;
 
 namespace Templates.Extensions {
-    [Name("")]
-    public class EmptyExtension: AbstractExtension {
-        public override object ProcessData(object value, object chainedResult)
+    [Name("html")]
+    [EncodeOutput]
+    public class EmptyHtmlExtension: AbstractHtmlExtension {
+        protected override object ProcessDataInternal(object value, object chainedResult)
         {
             if (SubTemplate != null) {
                 return GetInnerResult(value, chainedResult);

@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 // associated with an assembly.
 
 [assembly:AssemblyTitle ("Performance Testing")]
-[assembly:AssemblyDescription ("Performance UTL Testing")]
+[assembly: AssemblyDescription("Performance TTL Testing")]
 [assembly:AssemblyConfiguration ("")]
 [assembly:AssemblyCompany ("Aliaksandr Kukrash")]
 [assembly:AssemblyProduct ("Performance Testing")]

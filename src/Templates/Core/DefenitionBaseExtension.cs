@@ -9,7 +9,7 @@ namespace Templates.Core {
         public override object ProcessData(object value, object chainedResult)
         {
             chainedResult = GetInnerResult(value, chainedResult);
-            return DefenitionTemplate.ProcessData(value, chainedResult);
+            return DefenitionTemplate?.ProcessData(value, chainedResult) ?? chainedResult;
         }
     }
 }

@@ -5,14 +5,24 @@ options { tokenVocab=TtlLexer; }
  * Parser Rules
  */
 
-ttl: (definition | outblock | RAW | TEXT)*;
+ttl: (definition | outblock | raw | TEXT)*;
+
+raw: RAW;
 
 definition: DEF_START def+ DEF_CLOSE;
 
-def: DEF_STARTNAME ID DELIM ID DEF_ENDNAME subtemplate DEF_TYPE ID
-	| DEF_STARTNAME ID DEF_ENDNAME subtemplate DEF_TYPE ID
-	| DEF_STARTNAME ID DELIM ID DEF_ENDNAME subtemplate
-	| DEF_STARTNAME ID DEF_ENDNAME subtemplate
+def: simple_def
+	| inherited_def
+	;
+
+inherited_def:
+	DEF_STARTNAME DEF_ID DELIM DEF_ID DEF_ENDNAME subtemplate DEF_TYPE DEF_ID
+	| DEF_STARTNAME DEF_ID DELIM DEF_ID DEF_ENDNAME subtemplate
+	;
+
+simple_def:
+	DEF_STARTNAME DEF_ID DEF_ENDNAME subtemplate DEF_TYPE DEF_ID
+	| DEF_STARTNAME DEF_ID DEF_ENDNAME subtemplate
 	;
 
 outblock: OUT_START chain subtemplate?
@@ -27,12 +37,14 @@ call: named_call
 
 named_call: OUT_ID OUT_PARAMSTART OUT_ID? OUT_PARAMEND
 	| OUT_ID OUT_PARAMSTART chain OUT_PARAMEND
-	//| OUT_ID OUT_PARAMSTART CALL_CSHARP CSHARP_EXPRESSION OUT_PARAMEND
+	| OUT_ID OUT_PARAMSTART CSHARP_START csharp_expression OUT_PARAMEND
 	;
 
 unnamed_call: OUT_PARAMSTART OUT_ID? OUT_PARAMEND
 	| OUT_PARAMSTART chain OUT_PARAMEND
-	//| OUT_PARAMSTART CALL_CSHARP CSHARP_EXPRESSION OUT_PARAMEND
+	| OUT_PARAMSTART CSHARP_START csharp_expression OUT_PARAMEND
 	;
+
+csharp_expression: CSHARP_TOKEN*;
 
 subtemplate: SUB_START ttl SUB_CLOSE;

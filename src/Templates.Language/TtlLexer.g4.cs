@@ -18,19 +18,17 @@ namespace Templates.Language {
             base.Reset();
         }
 
-        public bool IsLetter(int character)
-        {
+        public bool IsLetter(int character) {
             if (character == -1)
                 return false;
             return Letter.IsMatch(((char)character).ToString());
             //return char.IsLetter((char)character);
         }
 
-        public bool IsIdPart(int character)
-        {
+        public bool IsIdPart(int character) {
             if (character == -1)
                 return false;
-            return IdPart.IsMatch(((char) character).ToString());
+            return IdPart.IsMatch(((char)character).ToString());
         }
 
         public override void Emit(IToken token) {
@@ -99,10 +97,24 @@ namespace Templates.Language {
                         Type = TEXT
                     };
                 }
-                else
-                {
+                else {
                     Skip();
                     return;
+                }
+                break;
+            case CSHARP_END:
+                if (CurrentMode == CALL) {
+                    PopMode();
+                    token = new CommonToken(token)
+                    {
+                        Type = OUT_PARAMEND
+                    };
+                }
+                else {
+                    token = new CommonToken(token)
+                    {
+                        Type = CSHARP_TOKEN
+                    };
                 }
                 break;
             }
