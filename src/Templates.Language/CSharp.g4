@@ -29,7 +29,7 @@ fragment WHITESPACE: NEW_LINE
 	;
 
 /*
-* C# C# Keywords
+* C# Keywords
 */
 
 fragment KEYWORD:
