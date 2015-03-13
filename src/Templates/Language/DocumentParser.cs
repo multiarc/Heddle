@@ -21,7 +21,7 @@ namespace Templates.Language {
             return context;
         }
 
-        public static void Parse(string document, ParseContext context)
+        public static void Parse(string document, ParseContext context, bool loadDefenitionsOnly = false)
         {
             if (document == null)
                 throw new ArgumentNullException("document");
@@ -31,8 +31,10 @@ namespace Templates.Language {
             TtlParser parser = new TtlParser(tokens);
             var tree = parser.ttl();
             ParseTreeWalker walker = new ParseTreeWalker();
-            TtlListener listener = new TtlListener(context);
+            context.DefenitionsOnly = loadDefenitionsOnly;
+            TtlMainListener listener = new TtlMainListener(context);
             walker.Walk(listener, tree);
+            context.DefenitionsOnly = false;
             listener.CurrentParseContext.CommentTokens.AddRange(
                 tokens.GetTokens()
                     .Where(t => t.Channel == TtlLexer.COMMENT_CHANNEL)

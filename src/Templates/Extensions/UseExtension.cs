@@ -20,7 +20,7 @@ namespace Templates.Extensions {
             int outputCount = parseContext.OutputChains.Length;
             using (var file = File.OpenText(Path.Combine(context.Options.RootPath, parameterTemplate))) {
                 string document = file.ReadToEnd();
-                DocumentParser.Parse(document, parseContext);
+                DocumentParser.Parse(document, parseContext, true);
             }
             if (parseContext.OutputChains.Length > outputCount)
                 throw new TemplateParseException("The Defenitions template cannot contain output items");

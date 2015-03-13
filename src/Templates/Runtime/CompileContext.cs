@@ -266,13 +266,10 @@ namespace Templates.Runtime {
             var syntax = tree.GetRoot().DescendantNodes().OfType<ReturnStatementSyntax>().First().Expression;
             var model = compilation.GetSemanticModel(tree);
             var typeInfo = model.GetTypeInfo(syntax);
-            if (typeInfo.Type.IsAnonymousType)
+            if (typeInfo.Type.IsAnonymousType || typeInfo.Type.TypeKind == TypeKind.Dynamic)
             {
-                throw new TemplateCompileException("C# anonymous types is not supported.");
-            }
-            if (typeInfo.Type.TypeKind == TypeKind.Dynamic)
                 return ExType.Dynamic;
-
+            }
             return
                 ReflectionHelper.ResolveType(typeInfo.Type.ToDisplayString(DisplayFormat), _namespaces.ToArray());
         }

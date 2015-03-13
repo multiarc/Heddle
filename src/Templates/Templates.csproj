@@ -230,7 +230,7 @@
     <Compile Include="Helpers\PropertyInfoExtension.cs" />
     <Compile Include="Helpers\ReflectionHelper.cs" />
     <Compile Include="Helpers\TypeExtension.cs" />
-    <Compile Include="Language\TtlListener.cs" />
+    <Compile Include="Language\TtlMainListener.cs" />
     <Compile Include="Runtime\CompileContext.cs" />
     <Compile Include="Language\DefinitionBlock.cs" />
     <Compile Include="Runtime\DocumentElement.cs" />

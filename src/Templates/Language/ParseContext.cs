@@ -9,6 +9,8 @@ namespace Templates.Language {
     public class ParseContext {
         private readonly int _offset;
 
+        internal bool DefenitionsOnly { get; set; } = false;
+
         internal ParseContext(ParseContext previous = null, int offset = 0)
         {
             _offset = offset;

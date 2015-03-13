@@ -9,10 +9,10 @@ using Templates.Language;
 using Templates.Mvc.Extensions;
 using Templates.Runtime;
 
-[assembly: ExportExtensions(typeof(UseMvcExtension))]
+[assembly: ExportExtensions(typeof(ImportMvcExtension))]
 
 namespace Templates.Mvc.Extensions {
-    public class UseMvcExtension: ImportExtension {
+    public class ImportMvcExtension: ImportExtension {
         public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context, ParseContext parseContext) {
             IEnumerable<string> searched;
             TtlTemplate cached;
@@ -22,7 +22,7 @@ namespace Templates.Mvc.Extensions {
             using (var file = File.OpenText(path))
             {
                 string document = file.ReadToEnd();
-                DocumentParser.Parse(document, parseContext);
+                DocumentParser.Parse(document, parseContext, true);
             }
             if (parseContext.OutputChains.Length > outputCount)
                 throw new TemplateParseException("The Defenitions template cannot contain output items");

@@ -1,10 +1,30 @@
-﻿@using()[TemplatesXTests];
-@model()[TtlTemplateTests+TestDataStructure];
+﻿@*Comment Test*@
+<%
+	@*text dynamic template for using it with *@
+	<text>@*Baseless definition test*@
+	[
+		<input type="text" name="@(Name)" value="@(Value)" @out() />
+	] :: dynamic
+	<multi_text@*text area with @out()*@>
+	[
+		<textarea>@
+			out();
+		</textarea>
+	]
+	<labeled_text:text@*Inheritance test*@>
+	[
+		<label>
+			@text()@*use base defenition*@
+		</label>
+	]
+%>
+@using()[Templates@*Comment Test*@XTests];
+@model(@*Comment Test*@)[TtlTemplateTests+@*Comment Test*@TestDataStructure];
 <!DOCTYPE html>
-<html>
+<html>@*Comment Test*@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Привет!</title>
+    <title>Привет!</ti@*Comment Test*@tle>
 </head>
 <body>
     <table>
@@ -19,13 +39,31 @@
                 Name of something
             </th>
         </tr>
-        @list(Products)
+        @list(Products@*Comment Test*@)
+        [@
+			@*Comment Test*@partial(@*Comment Test*@)[partial@*Comment Test*@];
+        ];
+    </table>
+	<table>
+        <tr>
+            <th>
+                Cost of something
+            </th>
+            <th>
+                Quantity of items
+            </th>
+            <th>
+                Name of something
+            </th>
+        </tr>
+		@* C# Test *@
+        @list(@model.Products.Where(p => p.Quantity < 95))
         [@
 			partial()[partial];
         ];
     </table>
     <div>
-        Page Generated at
+        Page Generated at@*Comment Test*@
         @time(Date)
         on
         @date(Date)<br />
@@ -38,6 +76,9 @@
         @string(Text)<br />
         &lt;%<br />
         %&gt;<br />
+		@text(@new { Name = "input-name", Value="input-value" })[ class="testcssclass" ]
+		@labeled_text(@new { Name = "input-name", Value="input-value" })[ class="testcssclass" ]
     </div>
 </body>
 </html>
+@*Comment Test*@
