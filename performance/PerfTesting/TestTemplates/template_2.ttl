@@ -1,7 +1,7 @@
 ﻿@using()[PerfTesting];
 @using()[System.Linq];
-@model()[dynamic];
-        @list(Products)
+@model()[TestDataStructure];
+        @list(@model.Products.Where(p => p.Quantity < 95))
         [@
 			partial()[partial];
         ];

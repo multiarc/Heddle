@@ -3,7 +3,7 @@ using System;
 namespace Templates.Data {
     internal struct DocumentCacheItem: IEquatable<DocumentCacheItem> {
         private readonly string _document;
-        public Type ModelType;
+        public ExType ModelType;
         public string RootPath;
 
         #region Implementation of IEquatable<DocumentCacheItem>

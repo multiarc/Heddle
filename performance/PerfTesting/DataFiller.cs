@@ -6,10 +6,10 @@ namespace PerfTesting {
     internal static class DataFiller {
         private static readonly Random Rand = new Random(DateTime.Now.Second);
 
-        public static TestDataStructure FillData ()
+        public static dynamic FillData ()
         {
             var products = new List<TestListItem>();
-            var result = new TestDataStructure
+            dynamic result = new TestDataStructure
             {
                 Date = DateTime.Now,
                 FuckingInt = Rand.Next(9000, 10000),

@@ -111,6 +111,7 @@ namespace Templates.Runtime {
         {
             if (disposing)
             {
+                DocumentsCache.DeleteMe(this, _document, _context);
                 foreach (var processor in _optimizedElements)
                 {
                     processor.Dispose();
@@ -120,6 +121,8 @@ namespace Templates.Runtime {
             }
             _threadLocal.Dispose();
         }
+
+        public string Document { get { return _document; } }
 
         public void Dispose()
         {

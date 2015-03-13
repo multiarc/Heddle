@@ -1,6 +1,7 @@
 ﻿using System;
 using Templates.Attributes;
 using Templates.Core;
+using Templates.Data;
 using Templates.Language;
 using Templates.Runtime;
 
@@ -19,7 +20,7 @@ namespace Templates.Extensions {
             return InnerTemplate?.Generate(value);
         }
 
-        public override Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context, ParseContext parseContext)
+        public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context, ParseContext parseContext)
         {
             if (context == null)
                 throw new ArgumentNullException("context");

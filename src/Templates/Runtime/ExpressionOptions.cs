@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Templates.Data;
 
 namespace Templates.Runtime {
     internal class ExpressionOptions {
 
-        public Type ModelType { get; set; }
+        public ExType ModelType { get; set; }
 
-        public Type ChainedType { get; set; }
+        public ExType ChainedType { get; set; }
 
         public string ExtensionName { get; set; }
 

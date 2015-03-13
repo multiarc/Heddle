@@ -18,7 +18,7 @@ namespace Templates.Runtime {
             _itemsToExecute = new List<TemplateItem>();
         }
 
-        public Type RenderType
+        public ExType RenderType
         {
             get;
             private set;

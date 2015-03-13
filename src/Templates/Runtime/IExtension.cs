@@ -9,7 +9,7 @@ namespace Templates.Runtime {
     public interface IExtension: IDisposable {
         void SetUpRenderType(RenderType renderType);
 
-        Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context, ParseContext parseContext);
+        ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context, ParseContext parseContext);
 
         void CompleteInit(CompileContext newContext, ParseContext parseContext);
 

@@ -14,7 +14,7 @@ using Templates.Runtime;
 namespace Templates.Extensions {
     [Name("import")]
     public class ImportExtension:AbstractExtension {
-        public override Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context,
+        public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context,
             ParseContext parseContext)
         {
             int outputCount = parseContext.OutputChains.Length;

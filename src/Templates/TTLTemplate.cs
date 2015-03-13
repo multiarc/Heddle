@@ -25,7 +25,7 @@ namespace Templates {
             
         }
 
-        public TtlTemplate(TemplateOptions options, Type modelType) : this(new CompileContext(options) {ModelType =  modelType}) {
+        public TtlTemplate(TemplateOptions options, ExType modelType) : this(new CompileContext(options) {ModelType =  modelType}) {
 
         }
 
@@ -87,7 +87,7 @@ namespace Templates {
             if (rtdoc == null)
             {
                 rtdoc = TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
-                DocumentsCache.UpdateCaches(rtdoc, null, document, context);
+                DocumentsCache.UpdateCaches(rtdoc, null, context);
                 context.Compile();
             }
             _runtimeDocument = rtdoc;
@@ -127,16 +127,16 @@ namespace Templates {
             if (_runtimeDocument == null)
                 throw new TemplateInitException("Compile first.");
 #if DEBUG
-            if (data != null && !_context.ModelType.IsType(data)) {
+            if (data != null && !_context.ModelType.Type.IsType(data)) {
                 throw new TemplateProcessingException
                     (string.Format
-                         (CultureInfo.InvariantCulture, "Type mismatch. Need {0} but got {1}", _context.ModelType.FullName,
+                         (CultureInfo.InvariantCulture, "Type mismatch. Need {0} but got {1}", _context.ModelType.Type?.FullName ?? _context.ModelType.ToString(),
                           data.GetType().FullName));
             }
 #endif
             return _runtimeDocument.ProcessData(data, null) as string ?? string.Empty;
         }
-        public TtlCompileResult Recompile(Type newModelType)
+        public TtlCompileResult Recompile(ExType newModelType)
         {
             try
             {
@@ -154,7 +154,7 @@ namespace Templates {
             }
         }
 
-        public TtlCompileResult Compile(string document, Type modelType = null)
+        public TtlCompileResult Compile(string document, ExType modelType = null)
         {
             try {
                 return Compile(new CompileContext(modelType), document);
@@ -175,7 +175,7 @@ namespace Templates {
             var rtdoc = DocumentsCache.GetRuntimeDocument(document, context);
             if (rtdoc == null) {
                 rtdoc = TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
-                DocumentsCache.UpdateCaches(rtdoc, null, document, context);
+                DocumentsCache.UpdateCaches(rtdoc, null, context);
                 context.Compile();
             }
             _context = context;
@@ -205,7 +205,7 @@ namespace Templates {
                     if (!string.IsNullOrWhiteSpace(document)) {
                         try {
                             var rtdoc = TtlCompiler.Compile(document, _context, DocumentParser.Parse(document));
-                            DocumentsCache.UpdateCaches(rtdoc, _document, document, _context);
+                            DocumentsCache.UpdateCaches(rtdoc, _runtimeDocument.Document, _context);
                             _context.Compile();
                             _runtimeDocument = rtdoc;
                             _document = document;

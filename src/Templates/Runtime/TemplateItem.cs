@@ -8,13 +8,13 @@ using Templates.Strings.Core;
 
 namespace Templates.Runtime {
     internal class TemplateItem: IDataProcessor {
-        public TemplateItem(Type returnType, IExtension extension)
+        public TemplateItem(ExType returnType, IExtension extension)
         {
             ReturnType = returnType;
             Extension = extension;
         }
 
-        public Type ReturnType { get; }
+        public ExType ReturnType { get; }
 
         public RuntimeCallParameter Parameter { get; set; }
 
@@ -24,12 +24,12 @@ namespace Templates.Runtime {
         {
             var result = Extension.ProcessData(Parameter.GetParameter(value, chainedResult), chainedResult);
 #if DEBUG
-            if (result != null && ReturnType != null && !ReturnType.IsType(result))
+            if (result != null && ReturnType != null && !ReturnType.Type.IsType(result))
             {
                 throw new TemplateProcessingException
                     (string.Format
                         (CultureInfo.InvariantCulture, "Returned data type not valid. Needed [{0}] Got [{1}]",
-                            ReturnType.FullName,
+                            ReturnType.Type.FullName,
                             result.GetType().FullName));
             }
 #endif

@@ -33,7 +33,7 @@ namespace Templates.Core {
             DirectRender = renderType == RenderType.Encode;
         }
 
-        public static Type InitSubTemplate(string parameterTemplate, Type dataType, Type chainedType, CompileContext context,
+        public static ExType InitSubTemplate(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context,
             ParseContext parseContext, out IDataProcessor result) {
             if (context == null)
                 throw new ArgumentNullException("context");
@@ -49,12 +49,11 @@ namespace Templates.Core {
                 {
                     subTemplate = TtlCompiler.Compile(parameterTemplate, newContext,
                         parseContext);
-                    DocumentsCache.UpdateCaches(subTemplate, null, parameterTemplate, newContext);
+                    DocumentsCache.UpdateCaches(subTemplate, null, newContext);
                     newContext.Compile();
                 }
             }
             if (subTemplate == null || subTemplate.Empty) {
-                subTemplate?.Dispose();
                 result = null;
             }
             else {
@@ -64,7 +63,7 @@ namespace Templates.Core {
             return typeof(string);
         }
 
-        public virtual Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context,
+        public virtual ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context,
             ParseContext parseContext)
         {
             if (context == null)

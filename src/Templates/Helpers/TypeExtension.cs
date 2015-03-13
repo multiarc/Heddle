@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using Templates.Data;
 
 namespace Templates.Helpers {
     public static class TypeExtension {

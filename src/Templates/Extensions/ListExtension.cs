@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Templates.Attributes;
 using Templates.Core;
+using Templates.Data;
 using Templates.Language;
 using Templates.Runtime;
 using Templates.Strings;
@@ -30,12 +31,14 @@ namespace Templates.Extensions {
     [Name ("list")]
     [DataType (typeof (IEnumerable))]
     public class ListExtension: AbstractExtension {
-        public override Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context, ParseContext parseContext)        
+        public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context, ParseContext parseContext)        
         {
             if (dataType == null)
                 throw new ArgumentNullException("dataType");
-
-            Type underliyingType = dataType.GetGenericArguments().FirstOrDefault() ?? typeof (object);
+            if (dataType.IsDynamic) {
+                return base.InitStart(parameterTemplate, ExType.Dynamic, chainedType, context, parseContext);
+            }
+            ExType underliyingType = (ExType)dataType.Type.GetGenericArguments().FirstOrDefault() ?? ExType.Dynamic;
             return base.InitStart(parameterTemplate, underliyingType, chainedType, context, parseContext);
         }
 

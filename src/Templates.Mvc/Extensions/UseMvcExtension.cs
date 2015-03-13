@@ -13,7 +13,7 @@ using Templates.Runtime;
 
 namespace Templates.Mvc.Extensions {
     public class UseMvcExtension: ImportExtension {
-        public override Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context, ParseContext parseContext) {
+        public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context, ParseContext parseContext) {
             IEnumerable<string> searched;
             TtlTemplate cached;
             var path = TtlViewEngine.Resolver.Search(parameterTemplate, context.ControllerName, TemplatePathType.Master,

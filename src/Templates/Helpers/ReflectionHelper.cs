@@ -39,7 +39,8 @@ namespace Templates.Helpers {
                 {"object", typeof (object)},
                 {"short", typeof (short)},
                 {"ushort", typeof (ushort)},
-                {"string", typeof (string)}
+                {"string", typeof (string)},
+                {"dynamic", typeof (object)}
             };
         }
 
@@ -182,22 +183,19 @@ namespace Templates.Helpers {
 
         public static Type ResolveType (string typeName, params string[] imports)
         {
-            if (imports == null)
-                throw new ArgumentNullException("imports");
-
             if (string.IsNullOrWhiteSpace(typeName))
                 throw new ArgumentException();
 
             Match match = GenericExpression.Match(typeName);
             if (match.Success)
             {
-                string[] importsArray = imports;
+                string[] importsArray = imports ?? new string[0];
                 string[] genericParameters = match.Groups["generic_parameters"].Value.Split(',');
                 Type modelType = ResolveSimpleType(match.Groups["main_type"].Value + "`" + genericParameters.Length, importsArray);
                 modelType = modelType.MakeGenericType(genericParameters.Select(parameter => ResolveType(parameter, importsArray)).ToArray());
                 return modelType;
             }
-            return ResolveSimpleType(typeName, imports);
+            return ResolveSimpleType(typeName, imports ?? new string[0]);
         }
     }
 }

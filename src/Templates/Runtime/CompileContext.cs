@@ -14,6 +14,7 @@ using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Language;
 using Templates.Strings;
+using System.Runtime.CompilerServices;
 
 namespace Templates.Runtime {
     /// <summary>
@@ -72,7 +73,7 @@ namespace Templates.Runtime {
         private readonly List<DelayedTemplate> _delayedTemplates = new List<DelayedTemplate>();
         private int _method;
 
-        private CompileContext(CompileContext context, string fileName = null, Type modelType = null)
+        private CompileContext(CompileContext context, string fileName = null, ExType modelType = null)
         {
             if (context == null)
                 throw new ArgumentNullException("context");
@@ -83,7 +84,7 @@ namespace Templates.Runtime {
             _namespaces = context._namespaces.ToList();
         }
 
-        public CompileContext(Type modelType = null) {
+        public CompileContext(ExType modelType = null) {
             ModelType = modelType ?? typeof(object);
             Options = new TemplateOptions();
         }
@@ -120,7 +121,7 @@ namespace Templates.Runtime {
         /// <param name="context">Old Context</param>
         /// <param name="newType">New Enclosing Template Data Type</param>
         public CompileContext(
-            CompileContext context, Type newType)
+            CompileContext context, ExType newType)
             : this(context, modelType: newType)
         {
         }
@@ -134,7 +135,7 @@ namespace Templates.Runtime {
         /// <param name="newType">New Template Data Type</param>
         /// <param name="newName">New Tempalte File Name</param>
         public CompileContext(
-            CompileContext context, Type newType, string newName)
+            CompileContext context, ExType newType, string newName)
             : this(context, newName, newType)
         {
         }
@@ -147,7 +148,7 @@ namespace Templates.Runtime {
         /// Recommendation is to change it only once maximum per chained template block.
         /// Used in &lt;model&gt; base extension. <see cref="Templates.Extensions.ModelExtension"/>
         /// </summary>
-        public Type ModelType
+        public ExType ModelType
         {
             get;
             set;
@@ -190,8 +191,8 @@ namespace Templates.Runtime {
                             GatesCache.CreateCompiledDelegate(
                                 classType.GetMethod(string.Format("PreProcessData_{0}{1}",
                                     expressionCompilation.ExtensionName, expressionCompilation.MethodNumber),
-                                    BindingFlags.Public | BindingFlags.Static), expressionCompilation.ModelType,
-                                expressionCompilation.ChainedType);
+                                    BindingFlags.Public | BindingFlags.Static), expressionCompilation.ModelType.Type,
+                                expressionCompilation.ChainedType.Type);
                     }
                 }
                 Compiled = true;
@@ -227,13 +228,15 @@ namespace Templates.Runtime {
                 MethodNumber = _method,
                 ModelType = ModelType
             });
-            DependentAssemblies.Add(ModelType.Assembly);
-            DependentAssemblies.Add(expressionOptions.ChainedType.Assembly);
+            DependentAssemblies.Add(ModelType.Type.Assembly);
+            if (expressionOptions.ChainedType.IsDynamic)
+                DependentAssemblies.Add(typeof(CallSite<>).Assembly);
+            DependentAssemblies.Add(expressionOptions.ChainedType.Type.Assembly);
             _method++;
             return parameter;
         }
 
-        internal Type ParseAndGetResultType(ExpressionOptions expressionOptions)
+        internal ExType ParseAndGetResultType(ExpressionOptions expressionOptions)
         {
             if (string.IsNullOrEmpty(expressionOptions.Expression))
             {
@@ -243,14 +246,18 @@ namespace Templates.Runtime {
             expressionOptions.ModelType = ModelType;
             var code = PreparseGenerator.Generate(expressionOptions);
             var tree = CSharpSyntaxTree.ParseText(code);
-            var compilation = CSharpCompilation.Create(null, new[] {tree},
-                new[]
-                {
-                    MetadataReference.CreateFromAssembly(typeof (object).Assembly),
-                    MetadataReference.CreateFromAssembly(typeof (Enumerable).Assembly),
-                    MetadataReference.CreateFromAssembly(ModelType.Assembly),
-                    MetadataReference.CreateFromAssembly(expressionOptions.ChainedType.Assembly)
-                });
+
+            HashSet<MetadataReference> assemblySet = new HashSet<MetadataReference>();
+            assemblySet.Add(MetadataReference.CreateFromAssembly(typeof(object).Assembly));
+            assemblySet.Add(MetadataReference.CreateFromAssembly(ModelType.Type.Assembly));
+            if (ModelType.IsDynamic) 
+                MetadataReference.CreateFromAssembly(typeof(CallSite<>).Assembly);
+            assemblySet.Add(MetadataReference.CreateFromAssembly(typeof(Enumerable).Assembly));
+            if (expressionOptions.ChainedType.IsDynamic)
+                MetadataReference.CreateFromAssembly(typeof(CallSite<>).Assembly);
+            assemblySet.Add(MetadataReference.CreateFromAssembly(expressionOptions.ChainedType.Type.Assembly));
+
+            var compilation = CSharpCompilation.Create(null, new[] { tree }, assemblySet);
             var diagnostics = compilation.GetDiagnostics();
             if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
             {
@@ -263,6 +270,9 @@ namespace Templates.Runtime {
             {
                 throw new TemplateCompileException("C# anonymous types is not supported.");
             }
+            if (typeInfo.Type.TypeKind == TypeKind.Dynamic)
+                return ExType.Dynamic;
+
             return
                 ReflectionHelper.ResolveType(typeInfo.Type.ToDisplayString(DisplayFormat), _namespaces.ToArray());
         }

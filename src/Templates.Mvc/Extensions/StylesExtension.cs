@@ -2,6 +2,7 @@
 using System.Web.Optimization;
 using Templates.Attributes;
 using Templates.Core;
+using Templates.Data;
 using Templates.Language;
 using Templates.Mvc.Extensions;
 using Templates.Runtime;
@@ -20,9 +21,9 @@ namespace Templates.Mvc.Extensions {
             return Styles.RenderFormat(value as string, _bundle);
         }
 
-        public override Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context,
+        public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context,
             ParseContext parseContext) {
-            if (dataType != null && dataType == typeof(string)) {
+            if (dataType != null && dataType.Type == typeof(string)) {
                 _renderAlways = true;
                 _bundle = parameterTemplate;
             }

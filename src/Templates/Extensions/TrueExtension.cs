@@ -2,6 +2,7 @@
 using System.Globalization;
 using Templates.Attributes;
 using Templates.Core;
+using Templates.Data;
 using Templates.Language;
 using Templates.Runtime;
 
@@ -33,7 +34,7 @@ namespace Templates.Extensions {
             return string.Empty;
         }
 
-        public override Type InitStart(string parameterTemplate, Type dataType, Type chainedType, CompileContext context, ParseContext parseContext) {
+        public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context, ParseContext parseContext) {
             return base.InitStart(parameterTemplate, chainedType, null, context, parseContext);
         }
     }

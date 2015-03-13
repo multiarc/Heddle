@@ -11,7 +11,7 @@ namespace Templates.Runtime {
         {
             if (string.IsNullOrEmpty(document))
                 return null;
-            var itemToSearch = new DocumentCacheItem(document)
+            var itemToSearch = new DocumentCacheItem(document)  
             {
                 RootPath = context.Options.RootPath,
                 ModelType = context.ModelType
@@ -38,7 +38,20 @@ namespace Templates.Runtime {
             }
         }
 
-        public static void UpdateCaches(RuntimeDocument newRuntimeDocument, string oldDocument, string newDocument, CompileContext context)
+        internal static void DeleteMe(RuntimeDocument runtimeDocument, string document, CompileContext context) {
+            var itemToSearch = new DocumentCacheItem(document)
+            {
+                RootPath = context.Options.RootPath,
+                ModelType = context.ModelType
+            };
+            lock (Cache) {
+                if (Cache.ContainsKey(itemToSearch)) {
+                    Cache.Remove(itemToSearch);
+                }
+            }
+        }
+
+        public static void UpdateCaches(RuntimeDocument newRuntimeDocument, string oldDocument, CompileContext context)
         {
             if (!string.IsNullOrEmpty(oldDocument))
             {
@@ -54,7 +67,7 @@ namespace Templates.Runtime {
                         Cache[itemToSearch].Dispose();
                         Cache.Remove(itemToSearch);
                     }
-                    itemToSearch = new DocumentCacheItem(newDocument)
+                    itemToSearch = new DocumentCacheItem(newRuntimeDocument.Document)
                     {
                         RootPath = context.Options.RootPath,
                         ModelType = context.ModelType
@@ -64,7 +77,7 @@ namespace Templates.Runtime {
             }
             else
             {
-                var itemToSearch = new DocumentCacheItem(newDocument)
+                var itemToSearch = new DocumentCacheItem(newRuntimeDocument.Document)
                 {
                     RootPath = context.Options.RootPath,
                     ModelType = context.ModelType

@@ -129,9 +129,9 @@
     <StartupObject>PerfTesting.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.CSharp" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Runtime, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3, processorArchitecture=MSIL" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DataFiller.cs" />
@@ -158,6 +158,7 @@
     <None Include="app.config" />
     <None Include="TestTemplates\partial.ttl" />
     <None Include="TestTemplates\template.ttl" />
+    <None Include="TestTemplates\template_2.ttl" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.0">
