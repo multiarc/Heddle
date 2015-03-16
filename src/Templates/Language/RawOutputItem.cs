@@ -2,7 +2,7 @@
 
 namespace Templates.Language {
     public class RawOutputItem {
-        public BlockPosition Position { get; set; }
+        public BlockPosition BlockPosition { get; set; }
 
         public string Text { get; set; }
     }

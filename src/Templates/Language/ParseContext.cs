@@ -85,7 +85,7 @@ namespace Templates.Language {
             var text = raw.GetText();
             return new RawOutputItem
             {
-                Position =
+                BlockPosition =
                     new BlockPosition(raw.Symbol.StartIndex - _offset, raw.Symbol.StopIndex - raw.Symbol.StartIndex + 1),
                 Text = text.Substring(2, text.Length - 4)
             };

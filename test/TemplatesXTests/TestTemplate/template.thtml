@@ -78,6 +78,17 @@
         %&gt;<br />
 		@text(@new { Name = "input-name", Value="input-value" })[ class="testcssclass" ]
 		@labeled_text(@new { Name = "input-name", Value="input-value" })[ class="testcssclass" ]
+		@multi_text()
+		[
+			@text()
+			<%
+				<multi_text:multi_text>
+				[
+					<textarea>shit</textarea>
+				]
+			%>
+			@multi_text()
+		]
     </div>
 </body>
 </html>

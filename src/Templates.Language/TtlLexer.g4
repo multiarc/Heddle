@@ -155,6 +155,9 @@ mode CALL;
 CSHARP_START:
 	OUT_ST -> pushMode(CS);
 
+CALL_COMMENT:
+	COMMENT -> channel(COMMENT_CHANNEL);
+
 OUT_PARAMEND: 
 	PARA_CL -> popMode;
 
