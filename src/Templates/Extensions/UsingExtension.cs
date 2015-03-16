@@ -12,7 +12,8 @@ namespace Templates.Extensions {
         {
             if (context == null)
                 throw new ArgumentNullException("context");
-
+            base.InitStart(parameterTemplate, dataType, chainedType, context, parseContext);
+            parameterTemplate = GetInnerResult(null, null);
             if (!string.IsNullOrWhiteSpace(parameterTemplate))
                 context.ImportNamespace(parameterTemplate);
             return null;

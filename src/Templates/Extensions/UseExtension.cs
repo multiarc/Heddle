@@ -17,6 +17,8 @@ namespace Templates.Extensions {
         public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context,
             ParseContext parseContext)
         {
+            base.InitStart(parameterTemplate, dataType, chainedType, context, parseContext);
+            parameterTemplate = GetInnerResult(null, null);
             int outputCount = parseContext.OutputChains.Length;
             using (var file = File.OpenText(Path.Combine(context.Options.RootPath, parameterTemplate))) {
                 string document = file.ReadToEnd();

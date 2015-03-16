@@ -18,8 +18,9 @@
 		</label>
 	]
 %>
-@using()[Templates@*Comment Test*@XTests];
-@model(@*Comment Test*@)[TtlTemplateTests+@*Comment Test*@TestDataStructure];
+@using()[Perf@*Comment Test*@Testin@:g:@];
+@using()[System.Linq];
+@model(@*Comment Test*@)[TestData@*Comment Test*@Structure];
 <!DOCTYPE html>
 <html>@*Comment Test*@
 <head>
@@ -76,9 +77,9 @@
         @string(Text)<br />
         &lt;%<br />
         %&gt;<br />
-		@text(@new { Name = "input-name", Value="input-value" })[ class="testcssclass" ]
-		@labeled_text(@new { Name = "input-name", Value="input-value" })[ class="testcssclass" ]
-		@multi_text()
+		@text(@new { Name = "input1-name", Value="input1-value" })[ class="testcssclass1" ]
+		@labeled_text(@new { Name = "input2-name", Value="input2-value" })[ class="testcssclass2" ]
+		@multi_text(@new { Name = "input3-name", Value="input3-value" })
 		[
 			@text()
 			<%

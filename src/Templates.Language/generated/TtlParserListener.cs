@@ -40,6 +40,16 @@ public interface ITtlParserListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitTtl([NotNull] TtlParser.TtlContext context);
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="TtlParser.comment"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterComment([NotNull] TtlParser.CommentContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="TtlParser.comment"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitComment([NotNull] TtlParser.CommentContext context);
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="TtlParser.raw"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>

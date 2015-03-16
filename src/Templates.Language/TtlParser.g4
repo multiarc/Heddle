@@ -5,7 +5,9 @@ options { tokenVocab=TtlLexer; }
  * Parser Rules
  */
 
-ttl: (definition | outblock | raw | TEXT)*;
+ttl: (definition | outblock | raw | comment | TEXT)*;
+
+comment: SUB_COMMENT;
 
 raw: RAW;
 

@@ -24,7 +24,8 @@ namespace Templates.Extensions {
         {
             if (context == null)
                 throw new ArgumentNullException("context");
-
+            base.InitStart(parameterTemplate, dataType, chainedType, context, parseContext);
+            parameterTemplate = GetInnerResult(null, null);
             if (!string.IsNullOrEmpty(parameterTemplate)) {
                 string templateName = parameterTemplate.Trim();
                 if (!string.IsNullOrEmpty(templateName))

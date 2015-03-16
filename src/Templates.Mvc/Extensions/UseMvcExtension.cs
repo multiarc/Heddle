@@ -16,6 +16,8 @@ namespace Templates.Mvc.Extensions {
         public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context, ParseContext parseContext) {
             IEnumerable<string> searched;
             TtlTemplate cached;
+            base.InitStart(parameterTemplate, dataType, chainedType, context, parseContext);
+            parameterTemplate = GetInnerResult(null, null);
             var path = TtlViewEngine.Resolver.Search(parameterTemplate, context.ControllerName, TemplatePathType.Master,
                 out searched, out cached);
             int outputCount = parseContext.OutputChains.Length;

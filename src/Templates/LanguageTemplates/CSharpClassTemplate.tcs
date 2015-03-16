@@ -16,10 +16,11 @@
 %>
 @using()[Templates.Runtime];
 @model()[CompileContext];
+using System.Runtime.CompilerServices;
 @list(Namespaces) [
 	using @();;
 ]
-
+[assembly: InternalsVisibleTo("Templates")]
 namespace Templates.Runtime {
 	@class()
 }

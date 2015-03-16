@@ -15,8 +15,7 @@ namespace Templates.Language {
 
         public override void EnterDefinition(TtlParser.DefinitionContext context) {
             CurrentParseContext.InDefinition = true;
-            CurrentParseContext.DefinitionBlock.AddNewBlockPosition(
-                new BlockPosition(context.Start.StartIndex, context.Stop.StopIndex - context.Start.StartIndex + 1));
+            CurrentParseContext.DefinitionBlock.AddNewBlockPosition(CurrentParseContext.GetBlockPosition(context));
         }
 
         public override void ExitDefinition(TtlParser.DefinitionContext context) {
@@ -53,6 +52,11 @@ namespace Templates.Language {
 
         public override void EnterRaw(TtlParser.RawContext context) {
             CurrentParseContext.RawOutputItems.Add(CurrentParseContext.CreateRawOutputItem(context));
+        }
+
+        public override void EnterComment(TtlParser.CommentContext context)
+        {
+            CurrentParseContext.CommentTokens.Add(CurrentParseContext.GetBlockPosition(context));
         }
 
         public override void EnterSubtemplate(TtlParser.SubtemplateContext context) {

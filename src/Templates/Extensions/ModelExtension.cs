@@ -15,12 +15,11 @@ namespace Templates.Extensions {
         {
             if (context == null)
                 throw new ArgumentNullException("context");
+            base.InitStart(parameterTemplate, dataType, chainedType, context, parseContext);
+            parameterTemplate = GetInnerResult(null, null);
             if (!string.IsNullOrWhiteSpace(parameterTemplate)) {
                 try {
                     ExType modelType = new ExType(parameterTemplate, context.Namespaces.ToArray());
-                    if (modelType == null)
-                        throw new TemplateInitException("Type cannot be determined. Please use Assembly Qualified Name.");
-
                     context.ModelType = modelType;
                 }
                 catch (Exception e) {

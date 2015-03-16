@@ -46,6 +46,18 @@ public partial class TtlParserBaseListener : ITtlParserListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitTtl([NotNull] TtlParser.TtlContext context) { }
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="TtlParser.comment"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterComment([NotNull] TtlParser.CommentContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="TtlParser.comment"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitComment([NotNull] TtlParser.CommentContext context) { }
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="TtlParser.raw"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>

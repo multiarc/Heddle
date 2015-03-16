@@ -33,7 +33,7 @@ namespace Templates.Core {
             DirectRender = renderType == RenderType.Encode;
         }
 
-        public static ExType InitSubTemplate(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context,
+        private static ExType InitSubTemplate(ref string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context,
             ParseContext parseContext, out IDataProcessor result) {
             if (context == null)
                 throw new ArgumentNullException("context");
@@ -53,6 +53,10 @@ namespace Templates.Core {
                     newContext.Compile();
                 }
             }
+            if (subTemplate != null)
+            {
+                parameterTemplate = subTemplate.Document;
+            }
             if (subTemplate == null || subTemplate.Empty) {
                 result = null;
             }
@@ -69,7 +73,7 @@ namespace Templates.Core {
             if (context == null)
                 throw new ArgumentNullException("context");
             IDataProcessor subTemplate;
-            var type = InitSubTemplate(parameterTemplate, dataType, chainedType, context, parseContext, out subTemplate);
+            var type = InitSubTemplate(ref parameterTemplate, dataType, chainedType, context, parseContext, out subTemplate);
             if (subTemplate == null)
                 _innerResult = parameterTemplate;
             SubTemplate = subTemplate;

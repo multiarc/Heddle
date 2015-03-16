@@ -6,36 +6,39 @@ using System.Threading.Tasks;
 using Templates.Helpers;
 
 namespace Templates.Data {
-    public class ExType: IEquatable<ExType> {
+    public class ExType: IEquatable<ExType>
+    {
         public static ExType Dynamic { get; }
-        = new ExType("dynamic");
+            = new ExType(typeof (object), "dynamic");
 
         private readonly string _name;
 
         private readonly bool _isDynamic;
 
-        public bool IsDynamic {
-            get {
-                return _isDynamic;
-            }
-        }
+        public bool IsDynamic => _isDynamic;
 
         public Type Type { get; }
 
+        public ExType(Type type, string name) {
+            Type = type;
+            _name = name;
+            _isDynamic = _name == "dynamic";
+        }
+
         public ExType(Type type) {
             Type = type;
-            _name = type.ToString();
+            _name = Type.ToString();
             _isDynamic = _name == "dynamic";
         }
 
         public ExType(string name, params string[] imports) {
             _name = name;
             _isDynamic = _name == "dynamic";
-            Type = ReflectionHelper.ResolveType(name, imports);
+            Type = _isDynamic ? Dynamic.Type : ReflectionHelper.ResolveType(name, imports ?? new string[0]);
         }
 
         public static implicit operator ExType(Type type) {
-            if (type == null)
+            if ((object)type == null)
                 return null;
             return new ExType(type);
         }
@@ -61,7 +64,7 @@ namespace Templates.Data {
         }
 
         public static bool Equals(ExType one, ExType another) {
-            if (one == (object)another)
+            if (ReferenceEquals(one, another))
                 return true;
             if ((object)one == null || (object)another == null) {
                 return false;

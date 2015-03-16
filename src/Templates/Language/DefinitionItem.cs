@@ -12,7 +12,7 @@ namespace Templates.Language {
             Name = name;
             ParameterTemplate = parameterTemplate;
             BaseDefinition = baseDefinition;
-            ModelType = modelType;
+            ModelType = modelType ?? "object";
             Context = new ParseContext();
             OutList = new SmartList<OutputChain>();
         }

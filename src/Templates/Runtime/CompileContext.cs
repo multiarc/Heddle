@@ -42,7 +42,7 @@ namespace Templates.Runtime {
         internal Assembly CompiledAssembly { get; private set; }
 
         internal HashSet<Assembly> DependentAssemblies { get; }
-            = new HashSet<Assembly>(new[] {typeof (object).Assembly, typeof(Enumerable).Assembly});
+            = new HashSet<Assembly>(new[] {typeof (object).Assembly, typeof(Enumerable).Assembly, typeof(InternalsVisibleToAttribute).Assembly});
 
         public bool Compiled { get; private set; }
 
@@ -85,7 +85,7 @@ namespace Templates.Runtime {
         }
 
         public CompileContext(ExType modelType = null) {
-            ModelType = modelType ?? typeof(object);
+            ModelType = modelType ?? (ExType)typeof(object);
             Options = new TemplateOptions();
         }
 

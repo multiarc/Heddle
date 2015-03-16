@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Antlr4.Runtime;
 using Templates.Collections;
 using Templates.Data;
 using Antlr4.Runtime.Misc;
@@ -33,23 +34,20 @@ namespace Templates.Language {
                     null,
                     modelType: simple.DEF_ID(1)?.GetText())
                 {
-                    Position =
-                        new BlockPosition(context.Start.StartIndex,
-                            context.Stop.StopIndex - context.Start.StartIndex + 1)
+                    Position =GetBlockPosition(context)
                 };
             }
             if (inherited != null)
             {
                 var ttl = inherited.subtemplate().ttl();
                 string parameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
+                var baseDefenition = GetDefenition(inherited.DEF_ID(1)?.GetText());
                 return new DefinitionItem(
                     inherited.DEF_ID(0).GetText(), parameterTemplate,
-                    GetDefenition(inherited.DEF_ID(1)?.GetText()),
-                    modelType: inherited.DEF_ID(2)?.GetText())
+                    baseDefenition,
+                    modelType: inherited.DEF_ID(2)?.GetText() ?? baseDefenition.ModelType)
                 {
-                    Position =
-                        new BlockPosition(context.Start.StartIndex,
-                            context.Stop.StopIndex - context.Start.StartIndex + 1)
+                    Position = GetBlockPosition(context)
                 };
             }
             return null;
@@ -64,12 +62,18 @@ namespace Templates.Language {
             return null;
         }
 
+        internal BlockPosition GetBlockPosition(ParserRuleContext context)
+        {
+            return new BlockPosition(context.Start.StartIndex - _offset,
+                context.Stop.StopIndex - context.Start.StartIndex + 1);
+        }
+
         internal OutputChain CreateOutputChain(TtlParser.OutblockContext context)
         {
             var result = new OutputChain(this)
             {
                 Chain = CreateChain(context.chain().call()),
-                BlockPosition = new BlockPosition(context.Start.StartIndex - _offset, context.Stop.StopIndex - context.Start.StartIndex + 1)
+                BlockPosition = GetBlockPosition(context)
             };
             var ttl = context.subtemplate()?.ttl();
             if (ttl != null) {

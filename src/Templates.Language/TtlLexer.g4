@@ -6,7 +6,7 @@ lexer grammar TtlLexer;
 
 import CSharp;
 
-tokens { TEXT, OUT_ID, OUT_START, SUB_START, SUB_CLOSE, CSHARP_END, CSHARP_TOKEN, CSHARP_START, DEF_STARTNAME, DEF_ENDNAME, DEF_TYPE, DELIM, DEF_ID, DEF_START, DEF_CLOSE }
+tokens { TEXT, OUT_ID, OUT_START, SUB_START, SUB_CLOSE, CSHARP_END, CSHARP_TOKEN, CSHARP_START, DEF_STARTNAME, DEF_ENDNAME, DEF_TYPE, DELIM, DEF_ID, DEF_START, DEF_CLOSE, SUB_COMMENT }
 
 channels { COMMENT_CHANNEL }
 
@@ -40,7 +40,7 @@ mode DEF;
 
 
 DEF_COMMENT: 
-	COMMENT -> channel(COMMENT_CHANNEL);
+	COMMENT -> skip;
 
 DEF_WS: WS+ -> skip;
 
@@ -57,15 +57,13 @@ DEF_TYPE: '::';
 DELIM: ':';
 DEF_ID: ID;
 
-//DEF_WS: WS+ -> type(WHITESPACE);
-
 
 mode SUB;
 
 
 
 SUB_COMMENT: 
-	COMMENT -> channel(COMMENT_CHANNEL);
+	COMMENT -> type(SUB_COMMENT);
 
 SUB_LINE_TERMINATE: 
 	SUB_CL LINE_TERM WS* -> type(SUB_CLOSE), popMode;
@@ -91,7 +89,7 @@ mode OUT;
 
 
 OUT_COMMENT: 
-	COMMENT -> channel(COMMENT_CHANNEL);
+	COMMENT -> skip;
 
 OUT_PARAMSTART: 
 	PARA_ST -> pushMode(CALL);
@@ -109,8 +107,6 @@ LINE_TERMINATE:
 
 OUT_WS: WS+ -> skip;
 
-//OUT_WS: WS+ -> type(WHITESPACE);
-
 OUT_RAW: RAW -> type(RAW), popMode;
 OUT_DEF_START: DEF_START -> type(DEF_START), popMode, pushMode(DEF);
 OUT_OUT_START: OUT_START -> type(OUT_START), popMode, pushMode(OUT);
@@ -124,7 +120,7 @@ mode OUT_SUB;
 
 
 OUT_SUB_COMMENT: 
-	COMMENT -> channel(COMMENT_CHANNEL);
+	COMMENT -> skip;
 
 OUT_SUB_PARAMSTART: 
 	OUT_PARAMSTART -> type(OUT_PARAMSTART), pushMode(CALL);
@@ -156,7 +152,7 @@ CSHARP_START:
 	OUT_ST -> pushMode(CS);
 
 CALL_COMMENT:
-	COMMENT -> channel(COMMENT_CHANNEL);
+	COMMENT -> skip;
 
 OUT_PARAMEND: 
 	PARA_CL -> popMode;
@@ -173,8 +169,6 @@ CALL_LINE_TERMINATE:
 	LINE_TERM WS* -> type(LINE_TERMINATE), popMode, popMode;
 
 CALL_OUT_WS: WS+ -> skip;
-
-//CALL_OUT_WS: WS+ -> type(WHITESPACE);
 
 mode CS;
 

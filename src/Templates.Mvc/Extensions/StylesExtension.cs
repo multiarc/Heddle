@@ -23,6 +23,8 @@ namespace Templates.Mvc.Extensions {
 
         public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context,
             ParseContext parseContext) {
+            base.InitStart(parameterTemplate, dataType, chainedType, context, parseContext);
+            parameterTemplate = GetInnerResult(null, null);
             if (dataType != null && dataType.Type == typeof(string)) {
                 _renderAlways = true;
                 _bundle = parameterTemplate;
