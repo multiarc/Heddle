@@ -18,7 +18,7 @@
 		</label>
 	]
 %>
-@using()[Perf@*Comment Test 2*@Testin@:g:@];
+@using()[Templates@*Comment Test 2*@@:X:@Tests.Data];
 @using()[System.Linq];
 @model(@*Comment Test 3*@)[TestData@*Comment Test 4*@Structure];
 <!DOCTYPE html>

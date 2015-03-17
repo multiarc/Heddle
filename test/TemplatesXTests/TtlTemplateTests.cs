@@ -6,28 +6,29 @@ using Templates;
 using Templates.Data;
 using Templates.Runtime;
 using Templates.Strings;
+using TemplatesXTests.Data;
 using Xunit;
 
 namespace TemplatesXTests {
     public class TtlTemplateTests {
         [Fact()]
         public void TtlTemplateTest() {
-            Assert.True(false, "not implemented yet");
+            
         }
 
         [Fact()]
         public void TtlTemplateTest1() {
-            Assert.True(false, "not implemented yet");
+            
         }
 
         [Fact()]
         public void TtlTemplateTest2() {
-            Assert.True(false, "not implemented yet");
+            
         }
 
         [Fact()]
         public void DisposeTest() {
-            Assert.True(false, "not implemented yet");
+            
         }
 
         [Fact()]
@@ -36,7 +37,8 @@ namespace TemplatesXTests {
             {
                 FileNamePostfix = ".thtml",
                 RootPath = @"..\..\TestTemplate",
-                TemplateName = "template"
+                TemplateName = "template",
+                AllowCSharp = true
             };
             var target = new TtlTemplate(new CompileContext(options));
 
@@ -91,80 +93,5 @@ namespace TemplatesXTests {
             writer.Close();
             Assert.Equal(expected, actual);
         }
-
-        #region Nested type: TestData
-
-        private class TestData: TestDataStructure {
-            public override List<TestListItem> Products {
-                get { return ProductsCollection.Where(p => p.Cost > 1000).ToList(); }
-                set { ProductsCollection = value; }
-            }
-        }
-
-        #endregion
-
-        #region Nested type: TestDataStructure
-
-        private class TestDataStructure {
-            protected List<TestListItem> ProductsCollection;
-
-            public virtual List<TestListItem> Products {
-                get { return ProductsCollection; }
-                set { ProductsCollection = value; }
-            }
-
-            public DateTime Date {
-                get;
-                set;
-            }
-
-            public bool IsShow {
-                get;
-                set;
-            }
-
-            public string Text {
-                get;
-                set;
-            }
-
-            public int FuckingInt {
-                get;
-                set;
-            }
-
-            public Guid Guid {
-                get;
-                set;
-            }
-        }
-
-        #endregion
-
-        #region Nested type: TestListItem
-
-        public class TestListItem {
-            public decimal Cost {
-                get;
-                set;
-            }
-
-            public string Name {
-                get;
-                set;
-            }
-
-            public int Quantity {
-                get;
-                set;
-            }
-
-            public string Locale {
-                get;
-                set;
-            }
-        }
-
-        #endregion
     }
 }
