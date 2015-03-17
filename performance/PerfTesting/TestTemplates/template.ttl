@@ -1,4 +1,4 @@
-﻿@*Comment Test*@
+﻿@*Comment Test 1*@
 <%
 	@*text dynamic template for using it with *@
 	<text>@*Baseless definition test*@
@@ -18,14 +18,14 @@
 		</label>
 	]
 %>
-@using()[Perf@*Comment Test*@Testin@:g:@];
+@using()[Perf@*Comment Test 2*@Testin@:g:@];
 @using()[System.Linq];
-@model(@*Comment Test*@)[TestData@*Comment Test*@Structure];
+@model(@*Comment Test 3*@)[TestData@*Comment Test 4*@Structure];
 <!DOCTYPE html>
-<html>@*Comment Test*@
+<html>@*Comment Test 5*@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Привет!</ti@*Comment Test*@tle>
+    <title>Привет!</ti@*Comment Test 6*@tle>
 </head>
 <body>
     <table>
@@ -40,9 +40,9 @@
                 Name of something
             </th>
         </tr>
-        @list(Products@*Comment Test*@)
+        @list(Products@*Comment Test 7*@)
         [@
-			@*Comment Test*@partial(@*Comment Test*@)[partial@*Comment Test*@];
+			@*Comment Test 8*@partial(@*Comment Test 9*@)[partial@*Comment Test 10*@];
         ];
     </table>
 	<table>
@@ -64,7 +64,7 @@
         ];
     </table>
     <div>
-        Page Generated at@*Comment Test*@
+        Page Generated at@*Comment Test 11*@
         @time(Date)
         on
         @date(Date)<br />
@@ -81,7 +81,7 @@
 		@labeled_text(@new { Name = "input2-name", Value="input2-value" })[ class="testcssclass2" ]
 		@multi_text(@new { Name = "input3-name", Value="input3-value" })
 		[
-			@text()
+			@text() [ class="testcssclass3" ]
 			<%
 				<multi_text:multi_text>
 				[
@@ -90,7 +90,14 @@
 			%>
 			@multi_text()
 		]
+<%
+	<text:text>
+	[
+		Full override
+	]
+%>
+@text()
     </div>
 </body>
 </html>
-@*Comment Test*@
+@*Comment Test 12*@

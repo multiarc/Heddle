@@ -70,7 +70,7 @@ namespace Templates.Language {
 
         internal OutputChain CreateOutputChain(TtlParser.OutblockContext context)
         {
-            var result = new OutputChain(this)
+            var result = new OutputChain(new ParseContext(this, _offset))
             {
                 Chain = CreateChain(context.chain().call()),
                 BlockPosition = GetBlockPosition(context)
@@ -132,7 +132,7 @@ namespace Templates.Language {
             var namedCall = context.named_call();
             var unnamedCall = context.unnamed_call();
             if (namedCall != null) {
-                return new OutputItem(namedCall.OUT_ID(0)?.GetText(), this)
+                return new OutputItem(namedCall.OUT_ID(0)?.GetText(), new ParseContext(this, _offset))
                 {
                     CallParameter =
                     {
@@ -143,7 +143,7 @@ namespace Templates.Language {
                 };
             }
             if (unnamedCall != null) {
-                return new OutputItem(string.Empty, this)
+                return new OutputItem(string.Empty, new ParseContext(this, _offset))
                 {
                     CallParameter =
                     {

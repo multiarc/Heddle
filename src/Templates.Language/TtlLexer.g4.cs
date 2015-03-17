@@ -31,11 +31,16 @@ namespace Templates.Language {
             return IdPart.IsMatch(((char)character).ToString());
         }
 
+        public override IToken Emit()
+        {
+            return base.Emit();
+        }
+
         public override void Emit(IToken token) {
             switch (token.Type) {
             //@ext(...)sometext handling to interpret "sometext" as TEXT
             case OUT_ID:
-                int i = -2;
+                int i = -1 - (token.StopIndex - token.StartIndex + 1);
                 int la = InputStream.La(i);
 
                 char c = (char)la;
@@ -57,7 +62,7 @@ namespace Templates.Language {
                 break;
             //@ext(...)(... handling to interpret "(..." as TEXT
             case OUT_PARAMSTART:
-                i = -2;
+                i = -1 - (token.StopIndex - token.StartIndex + 1);
                 la = InputStream.La(i);
                 c = (char)la;
                 while (la != -1 && c != ':' && c != '@' && c != '(' && c != ')') {
@@ -78,7 +83,7 @@ namespace Templates.Language {
                 break;
             //@ext(...)WS*...sometext handling to interpret "\s...sometext" as TEXT
             case OUT_WS:
-                i = -2;
+                i = -1 - (token.StopIndex - token.StartIndex + 1);
                 la = InputStream.La(i);
 
                 char prev = (char)la;
@@ -97,9 +102,33 @@ namespace Templates.Language {
                         Type = TEXT
                     };
                 }
+                else
+                {
+                    token = NextToken();
+                }
+                break;
+            case OUT_SUB_COMMENT:
+                i = -1 - (token.StopIndex - token.StartIndex + 1);
+                la = InputStream.La(i);
+
+                prev = (char)la;
+                while (la != -1 && prev != ':' && prev != '@' && prev != '(' && prev != ')') {
+                    i--;
+                    prev = (char)InputStream.La(i);
+                }
+                i = 1;
+                la = InputStream.La(i);
+                c = (char)la;
+                if (la != -1 && c != ':' && c != '[' && prev == ')') {
+                    Type = SUB_COMMENT;
+                    PopMode();
+                    token = new CommonToken(token)
+                    {
+                        Type = SUB_COMMENT
+                    };
+                }
                 else {
-                    Skip();
-                    return;
+                    token = NextToken();
                 }
                 break;
             case CSHARP_END:
