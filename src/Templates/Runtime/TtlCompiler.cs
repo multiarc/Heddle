@@ -1,11 +1,10 @@
-﻿using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
+using System.Runtime.CompilerServices;
+using Microsoft.CSharp.RuntimeBinder;
 using Templates.Attributes;
 using Templates.Collections;
 using Templates.Core;
@@ -15,8 +14,7 @@ using Templates.Helpers;
 using Templates.Language;
 using Templates.Strings;
 using Templates.Strings.Core;
-using Microsoft.CSharp.RuntimeBinder;
-using System.Runtime.CompilerServices;
+using Binder = Microsoft.CSharp.RuntimeBinder.Binder;
 
 namespace Templates.Runtime {
     internal class TtlCompiler {
@@ -177,7 +175,7 @@ namespace Templates.Runtime {
                         csharpArgumentInfoArray[0] = CSharpArgumentInfo.Create(CSharpArgumentInfoFlags.None, null);
                         var callSite =
                             CallSite<Func<CallSite, object, object>>.Create(
-                                Microsoft.CSharp.RuntimeBinder.Binder.GetMember(CSharpBinderFlags.None,
+                                Binder.GetMember(CSharpBinderFlags.None,
                                     extensionItem.CallParameter.ModelParameter, typeof(RuntimeCallParameter),
                                     csharpArgumentInfoArray));
                         parameter = new RuntimeCallParameter(dynamicModelParameter: callSite);

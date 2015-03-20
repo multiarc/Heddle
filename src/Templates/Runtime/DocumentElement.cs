@@ -1,5 +1,4 @@
 ﻿using System;
-using Templates.Data;
 using Templates.Strings.Core;
 
 namespace Templates.Runtime {

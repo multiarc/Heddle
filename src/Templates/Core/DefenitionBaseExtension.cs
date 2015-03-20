@@ -1,8 +1,4 @@
-﻿using System;
-using Templates.Language;
-using Templates.Runtime;
-
-namespace Templates.Core {
+﻿namespace Templates.Core {
     internal class DefenitionBaseExtension : AbstractExtension {
         public DefenitionBaseExtension DefenitionTemplate { get; set; }
 

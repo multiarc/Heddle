@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using Templates.Collections;
-using Templates.Data;
 using Templates.Strings.Core;
 
 namespace Templates.Language

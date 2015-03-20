@@ -4,7 +4,6 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using Templates.Collections;
 using Templates.Native;
-using Templates.Strings.Core;
 
 namespace Templates.Strings {
     [Serializable]

@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Templates.Data;
-using Templates.Language;
 
 namespace Templates.Runtime {
     internal static class DocumentsCache {

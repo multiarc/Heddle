@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Reflection;
 
 namespace Templates.Data {
     public struct TemplateOptions: IEquatable<TemplateOptions> {
@@ -12,7 +13,7 @@ namespace Templates.Data {
         public TemplateOptions()
         {
             FileNamePostfix = string.Empty;
-            RootPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().CodeBase);
+            RootPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().CodeBase);
             TemplateName = string.Empty;
             EnableFileChangeCheck = false;
             AllowCSharp = false;
@@ -20,7 +21,7 @@ namespace Templates.Data {
 
         public TemplateOptions(string templateName) {
             FileNamePostfix = string.Empty;
-            RootPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().CodeBase);
+            RootPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().CodeBase);
             TemplateName = templateName ?? string.Empty;
             EnableFileChangeCheck = false;
             AllowCSharp = false;

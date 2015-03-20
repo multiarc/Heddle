@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using Templates.Exceptions;
-using Templates.Strings.Core;
 
 namespace Templates.Language {
     internal sealed class TtlMainListener: TtlParserBaseListener {

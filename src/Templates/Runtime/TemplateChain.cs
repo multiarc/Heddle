@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.Linq;
 using Templates.Data;
-using Templates.Exceptions;
-using Templates.Helpers;
 using Templates.Strings.Core;
 
 namespace Templates.Runtime {

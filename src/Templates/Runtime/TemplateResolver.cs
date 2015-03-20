@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using Templates.Data;
 using Templates.Exceptions;
-using Templates.Strings;
 
 namespace Templates.Runtime {
     public class TemplateResolver {

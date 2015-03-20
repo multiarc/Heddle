@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Templates.Runtime
+﻿namespace Templates.Runtime
 {
     internal class ExpressionCompilation: ExpressionOptions {
         public ExpressionCompilation(ExpressionOptions options)

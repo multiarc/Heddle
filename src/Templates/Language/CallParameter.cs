@@ -1,5 +1,4 @@
 ﻿using Templates.Collections;
-using Templates.Data;
 
 namespace Templates.Language
 {

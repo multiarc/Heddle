@@ -1,9 +1,4 @@
-﻿using System;
-using System.Net;
-using Templates.Data;
-using Templates.Language;
-using Templates.Runtime;
-using Templates.Strings.Core;
+﻿using System.Net;
 
 namespace Templates.Core {
     public abstract class AbstractHtmlExtension: AbstractExtension {

@@ -3,19 +3,15 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Reflection;
-using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Emit;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Language;
-using Templates.Strings;
-using System.Runtime.CompilerServices;
 
 namespace Templates.Runtime {
     /// <summary>

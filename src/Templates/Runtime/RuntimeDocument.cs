@@ -1,10 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Threading;
-using Templates.Data;
-using Templates.Exceptions;
-using Templates.Helpers;
 using Templates.Strings;
 using Templates.Strings.Core;
 

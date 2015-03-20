@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
+﻿using System.Globalization;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
