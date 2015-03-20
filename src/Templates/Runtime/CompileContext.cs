@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
@@ -46,21 +47,36 @@ namespace Templates.Runtime {
 
         public bool Compiled { get; private set; }
 
+        public static TtlCompileResult InitErrors { get; }
+
         private static readonly TtlTemplate CodeGenerator;
 
         private static readonly TtlTemplate PreparseGenerator;
 
         static CompileContext()
         {
-            CodeGenerator = new TtlTemplate();
-            PreparseGenerator = new TtlTemplate();
-            var result = CodeGenerator.Compile(File.ReadAllText(@"CSharpClassTemplate.tcs"));
-            var resultPre = PreparseGenerator.Compile(File.ReadAllText(@"CSharpPreparseTemplate.tcs"));
-            if (!result.Success || !resultPre.Success)
+            try
             {
-                throw new TemplateCompileException("Cannot compile base C# templates",
-                    result.Errors.Union(resultPre.Errors).First().Exception);
-                //TODO: Log Errors Here
+                CodeGenerator = new TtlTemplate();
+                PreparseGenerator = new TtlTemplate();
+                var result = CodeGenerator.Compile(File.ReadAllText(@"CSharpClassTemplate.tcs"));
+                var resultPre = PreparseGenerator.Compile(File.ReadAllText(@"CSharpPreparseTemplate.tcs"));
+                if (!result.Success || !resultPre.Success)
+                {
+                    InitErrors = new TtlCompileResult(false);
+                    InitErrors.Errors.AddRange(result.ErrorList);
+                    InitErrors.Errors.AddRange(resultPre.ErrorList);
+                }
+                InitErrors = new TtlCompileResult(true);
+            }
+            catch (Exception e)
+            {
+                InitErrors = new TtlCompileResult(false);
+                InitErrors.Errors.Add(new TtlCompileError
+                {
+                    Error = e.Message,
+                    Exception = e
+                });
             }
         }
 
@@ -96,6 +112,12 @@ namespace Templates.Runtime {
         /// <param name="options"></param>
         public CompileContext(TemplateOptions options)
         {
+            if (string.IsNullOrWhiteSpace(options.FileNamePostfix))
+                throw new ArgumentException("File Name postfix (extension) should not be empty");
+            if (string.IsNullOrWhiteSpace(options.RootPath))
+                throw new ArgumentException("Root Path (directory) should not be empty");
+            if (string.IsNullOrWhiteSpace(options.TemplateName))
+                throw new ArgumentException("Template Name should not be empty");
             ModelType = typeof (object);
             Options = options;
         }
@@ -169,14 +191,17 @@ namespace Templates.Runtime {
                 _delayedTemplates.Clear();
                 if (Options.AllowCSharp && Methods.Count > 0)
                 {
+                    if (!InitErrors.Success)
+                        throw new TemplateCompileException("Cannot compile base C# generation templates", InitErrors.Errors);
                     var code = CodeGenerator.Generate(this);
                     var tree = CSharpSyntaxTree.ParseText(code);
                     var compilation = CSharpCompilation.Create(null, new[] {tree},
                         DependentAssemblies.Select(MetadataReference.CreateFromAssembly),
                         new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
                     var diagnostics = compilation.GetDiagnostics();
-                    if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error)) {
-                        throw new TemplateCompileException(diagnostics.Aggregate("", (current, next) => current + "\r\n" + next.GetMessage()));
+                    if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
+                    {
+                        throw new TemplateCompileException(FormatErrors(diagnostics));
                     }
                     var stream = new MemoryStream();
                     compilation.Emit(stream);
@@ -197,6 +222,21 @@ namespace Templates.Runtime {
                 }
                 Compiled = true;
             }
+        }
+
+        private static IEnumerable<TtlCompileError> FormatErrors(ImmutableArray<Diagnostic> diagnostics)
+        {
+            return diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+                .Select(d => new TtlCompileError
+                {
+                    Error = d.GetMessage()
+                })
+                .Union(
+                    diagnostics.Where(d => d.Severity == DiagnosticSeverity.Warning)
+                        .Select(d => new TtlCompileWarning
+                        {
+                            Error = d.GetMessage()
+                        }));
         }
 
         public virtual void AddDelayedCompileTemplate(CompileContext newContext, ParseContext parserContext, IExtension forExtension)
@@ -247,9 +287,11 @@ namespace Templates.Runtime {
             var code = PreparseGenerator.Generate(expressionOptions);
             var tree = CSharpSyntaxTree.ParseText(code);
 
-            HashSet<MetadataReference> assemblySet = new HashSet<MetadataReference>();
-            assemblySet.Add(MetadataReference.CreateFromAssembly(typeof(object).Assembly));
-            assemblySet.Add(MetadataReference.CreateFromAssembly(ModelType.Type.Assembly));
+            HashSet<MetadataReference> assemblySet = new HashSet<MetadataReference>
+            {
+                MetadataReference.CreateFromAssembly(typeof (object).Assembly),
+                MetadataReference.CreateFromAssembly(ModelType.Type.Assembly)
+            };
             if (ModelType.IsDynamic) 
                 MetadataReference.CreateFromAssembly(typeof(CallSite<>).Assembly);
             assemblySet.Add(MetadataReference.CreateFromAssembly(typeof(Enumerable).Assembly));
@@ -261,7 +303,7 @@ namespace Templates.Runtime {
             var diagnostics = compilation.GetDiagnostics();
             if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
             {
-                throw new TemplateCompileException(diagnostics.Aggregate("", (current, next) => current + "\r\n" + next.GetMessage()));
+                throw new TemplateCompileException(FormatErrors(diagnostics));
             }
             var syntax = tree.GetRoot().DescendantNodes().OfType<ReturnStatementSyntax>().First().Expression;
             var model = compilation.GetSemanticModel(tree);

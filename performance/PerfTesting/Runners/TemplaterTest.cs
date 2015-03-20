@@ -14,8 +14,7 @@ namespace PerfTesting.Runners {
             /*JIT*/
             var test = new TtlTemplate
                 (new CompileContext
-                     (new TemplateOptions {
-                         TemplateName = "template",
+                     (new TemplateOptions("tempalte") {
                          FileNamePostfix = ".ttl",
                          RootPath = @"g:\Work\Templater\performance\PerfTesting\TestTemplates",
                          AllowCSharp = true
@@ -40,8 +39,8 @@ namespace PerfTesting.Runners {
             watcher.Start();
             var target = new TtlTemplate
                 (new CompileContext
-                     (new TemplateOptions {
-                         TemplateName = "template",
+                     (new TemplateOptions("tempalte")
+                     {
                          FileNamePostfix = ".ttl",
                          RootPath = @"g:\Work\Templater\performance\PerfTesting\TestTemplates",
                          AllowCSharp = true

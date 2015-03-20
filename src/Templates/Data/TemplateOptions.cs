@@ -1,34 +1,45 @@
 ﻿using System;
+using System.IO;
 
 namespace Templates.Data {
     public struct TemplateOptions: IEquatable<TemplateOptions> {
         public string FileNamePostfix;
         public string RootPath;
-        public string TemplateName;
+        public readonly string TemplateName;
         public bool EnableFileChangeCheck;
         public bool AllowCSharp;
 
         public TemplateOptions()
         {
-            FileNamePostfix = null;
-            RootPath = null;
-            TemplateName = null;
+            FileNamePostfix = string.Empty;
+            RootPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().CodeBase);
+            TemplateName = string.Empty;
             EnableFileChangeCheck = false;
             AllowCSharp = false;
         }
 
+        public TemplateOptions(string templateName) {
+            FileNamePostfix = string.Empty;
+            RootPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().CodeBase);
+            TemplateName = templateName ?? string.Empty;
+            EnableFileChangeCheck = false;
+            AllowCSharp = false;
+        }
 
         public TemplateOptions(string fileNamePostfix, string rootPath, string templateName, bool enableFileChangeCheck = false, bool allowCSharp = false)
         {
-            FileNamePostfix = fileNamePostfix;
+            if (rootPath == null) throw new ArgumentNullException("rootPath");
             RootPath = rootPath;
-            TemplateName = templateName;
+            FileNamePostfix = fileNamePostfix ?? string.Empty;
+            TemplateName = templateName ?? string.Empty;
             EnableFileChangeCheck = enableFileChangeCheck;
             AllowCSharp = allowCSharp;
         }
 
         public TemplateOptions(TemplateOptions value)
         {
+            if (value.RootPath == null)
+                throw new ArgumentException();
             FileNamePostfix = value.FileNamePostfix;
             RootPath = value.RootPath;
             TemplateName = value.TemplateName;

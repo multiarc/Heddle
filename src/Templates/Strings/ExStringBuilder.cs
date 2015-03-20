@@ -103,7 +103,9 @@ namespace Templates.Strings {
             }
         }
 
-        public void Append(string format, params object[] args) {
+        public void Append(string format, params object[] args)
+        {
+            if (format == null) throw new ArgumentNullException("format");
             if (!string.IsNullOrEmpty(format))
             {
                 string formatted = string.Format(format, args);

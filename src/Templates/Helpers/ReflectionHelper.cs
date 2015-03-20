@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Templates.Attributes;
+using Templates.Data;
 using Templates.Exceptions;
 
 namespace Templates.Helpers {
@@ -141,7 +142,7 @@ namespace Templates.Helpers {
                 }
             } else
                 return modelType;
-            throw new TemplateCompileException(string.Format(CultureInfo.InvariantCulture, "Couldn't resolve type [{0}]", typeName));
+            throw new TemplateCompileException(string.Format(CultureInfo.InvariantCulture, "Couldn't resolve type [{0}]", typeName).ToError());
         }
 
         /*public static PropertyInfo ResolveProperty(string propertyName, Type sourceType = null)

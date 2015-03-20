@@ -11,6 +11,8 @@ namespace Templates.Strings.Core {
 
         public BlockPosition (int startIndex, int length)
         {
+            if (startIndex < 0 || length < 0)
+                throw new ArgumentException();
             StartIndex = startIndex;
             Length = length;
         }

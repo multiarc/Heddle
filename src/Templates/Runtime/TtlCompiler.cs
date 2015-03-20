@@ -194,7 +194,7 @@ namespace Templates.Runtime {
                         else {
                             throw new TemplateCompileException
                                 (string.Format(CultureInfo.InvariantCulture, "Property {0} no found in Type [{1}]",
-                                    extensionItem.CallParameter.ModelParameter, compileContext.ModelType));
+                                    extensionItem.CallParameter.ModelParameter, compileContext.ModelType).ToError());
                         }
                         parameter = new RuntimeCallParameter(data.ToPropertyGate());
                     }
@@ -212,7 +212,7 @@ namespace Templates.Runtime {
             else if (!string.IsNullOrEmpty(extensionItem.CallParameter.CSharpExpression)) {
                 if (!compileContext.Options.AllowCSharp)
                     throw new TemplateCompileException(
-                        "C# Code Not allowed here, see TemplateOptions.AllowCSharp Property");
+                        "C# Code Not allowed here, see TemplateOptions.AllowCSharp Property".ToError());
                 var chainedType = returnTypeChainedPrevious ?? ExType.Dynamic;
                 var expressionOptions = new ExpressionOptions
                 {
@@ -321,7 +321,7 @@ namespace Templates.Runtime {
                         (string.Format
                             (CultureInfo.InvariantCulture, "Property {0} have Type {1} but {2} expected.", property.Name,
                                 property.PropertyType.FullName,
-                                dataType.FullName));
+                                dataType.FullName).ToError());
                 }
             }
         }
@@ -335,7 +335,7 @@ namespace Templates.Runtime {
                 throw new TemplateCompileException
                     (string.Format
                         (CultureInfo.InvariantCulture, "Return Type is {0} but {1} expected.", returnType.Type.FullName,
-                            dataType.Type.FullName));
+                            dataType.Type.FullName).ToError());
             }
         }
     }

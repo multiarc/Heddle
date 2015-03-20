@@ -21,12 +21,15 @@ namespace Templates.Runtime {
         private readonly bool _checkFileChange;
 
         public TemplateResolver(string rootPath, bool checkFileChange = false) {
+            if (string.IsNullOrWhiteSpace(rootPath)) throw new ArgumentException();
             _checkFileChange = checkFileChange;
             _rootPath = Path.GetDirectoryName(rootPath);
             TemplatesCache = new Dictionary<string, TtlTemplate>(StringComparer.OrdinalIgnoreCase);
         }
 
         public TtlTemplate GetTemplate(string viewName, string controllerName, out IEnumerable<string> searchedLocations, CompileContext context = null, TemplatePathType searchType = TemplatePathType.None) {
+            if (viewName == null) throw new ArgumentNullException("viewName");
+            if (controllerName == null) throw new ArgumentNullException("controllerName");
             TtlTemplate result;
             TemplateOptions options;
             string path;
@@ -37,12 +40,11 @@ namespace Templates.Runtime {
                     return result;
                 }
                 if (File.Exists(Path.Combine(_rootPath, viewName))) {
-                    options = new TemplateOptions
+                    options = new TemplateOptions(Path.GetFileNameWithoutExtension(viewName))
                     {
                         EnableFileChangeCheck = _checkFileChange,
                         FileNamePostfix = Path.GetExtension(viewName),
                         RootPath = _rootPath,
-                        TemplateName = Path.GetFileNameWithoutExtension(viewName)
                     };
                     if (context == null)
                     {
@@ -60,24 +62,22 @@ namespace Templates.Runtime {
                 path = Search(viewName, controllerName, searchType, out searchedLocations, out result);
                 if (result != null)
                     return result;
-                options = new TemplateOptions
+                options = new TemplateOptions(Path.GetFileNameWithoutExtension(path))
                 {
                     EnableFileChangeCheck = _checkFileChange,
                     FileNamePostfix = Path.GetExtension(path),
-                    RootPath = _rootPath,
-                    TemplateName = Path.GetFileNameWithoutExtension(path)
+                    RootPath = _rootPath
                 };
                 return Create(path, new CompileContext(options) { ControllerName = controllerName });
             case TemplatePathType.PartialView:
                 path = Search(viewName, controllerName, searchType, out searchedLocations, out result);
                 if (result != null)
                     return result;
-                options = new TemplateOptions
+                options = new TemplateOptions(Path.GetFileNameWithoutExtension(path))
                 {
                     EnableFileChangeCheck = _checkFileChange,
                     FileNamePostfix = Path.GetExtension(path),
                     RootPath = _rootPath,
-                    TemplateName = Path.GetFileNameWithoutExtension(path)
                 };
                 if (context != null) {
                     context.ControllerName = controllerName;
@@ -94,6 +94,8 @@ namespace Templates.Runtime {
         public string Search(string viewName, string controllerName, TemplatePathType searchType,
             out IEnumerable<string> searchedLocations, out TtlTemplate cached)
         {
+            if (viewName == null) throw new ArgumentNullException("viewName");
+            if (controllerName == null) throw new ArgumentNullException("controllerName");
             if (!Path.HasExtension(viewName))
             {
                 viewName = viewName + FileExtension;
@@ -117,6 +119,9 @@ namespace Templates.Runtime {
         }
 
         private string Search(string viewName, string controllerName, string[] locations, out IEnumerable<string> searchedLocations, out TtlTemplate cached) {
+            if (viewName == null) throw new ArgumentNullException("viewName");
+            if (controllerName == null) throw new ArgumentNullException("controllerName");
+            if (locations == null) throw new ArgumentNullException("locations");
             List<string> searched = new List<string>();
             foreach (var path in locations) {
                 var relativePath = string.Format(path, viewName, controllerName);
@@ -142,6 +147,7 @@ namespace Templates.Runtime {
         }
 
         public TtlTemplate Create(string viewName, CompileContext context) {
+            if (context == null) throw new ArgumentNullException("context");
             var result = new TtlTemplate(context);
             result.OnFileDeleted += OnDeleted;
             result.OnFileRenamed += OnRenamed;

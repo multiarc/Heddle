@@ -1,9 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Antlr4.Runtime;
 using Templates.Collections;
 using Templates.Data;
 using Antlr4.Runtime.Misc;
+using Templates.Exceptions;
 using Templates.Strings.Core;
 
 namespace Templates.Language {
@@ -23,11 +25,16 @@ namespace Templates.Language {
 
         internal DefinitionItem CreateDefinition(TtlParser.DefContext context)
         {
+            if (context == null) throw new ArgumentNullException("context");
             var inherited = context.inherited_def();
             var simple = context.simple_def();
             if (simple != null)
             {
-                var ttl = simple.subtemplate().ttl();
+                var ttl = simple.subtemplate()?.ttl();
+                if (ttl?.Start?.InputStream == null)
+                    return null;
+                if (simple.DEF_ID(0) == null)
+                    throw new TemplateParseException("The Definition should have the Name");
                 string parameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
                 return new DefinitionItem(
                     simple.DEF_ID(0).GetText(), parameterTemplate,
@@ -39,7 +46,11 @@ namespace Templates.Language {
             }
             if (inherited != null)
             {
-                var ttl = inherited.subtemplate().ttl();
+                var ttl = inherited.subtemplate()?.ttl();
+                if (ttl?.Start?.InputStream == null)
+                    return null;
+                if (inherited.DEF_ID(0) == null)
+                    throw new TemplateParseException("The Definition should have the Name");
                 string parameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
                 var baseDefenition = GetDefenition(inherited.DEF_ID(1)?.GetText());
                 return new DefinitionItem(
@@ -64,15 +75,19 @@ namespace Templates.Language {
 
         internal BlockPosition GetBlockPosition(ParserRuleContext context)
         {
+            if (context == null) throw new ArgumentNullException("context");
+            if (context.Start == null || context.Stop == null)
+                throw new ArgumentException();
             return new BlockPosition(context.Start.StartIndex - _offset,
                 context.Stop.StopIndex - context.Start.StartIndex + 1);
         }
 
         internal OutputChain CreateOutputChain(TtlParser.OutblockContext context)
         {
+            if (context == null) throw new ArgumentNullException("context");
             var result = new OutputChain(new ParseContext(this, _offset))
             {
-                Chain = CreateChain(context.chain().call()),
+                Chain = CreateChain(context.chain()?.call()),
                 BlockPosition = GetBlockPosition(context)
             };
             var ttl = context.subtemplate()?.ttl();
@@ -84,9 +99,13 @@ namespace Templates.Language {
 
         internal RawOutputItem CreateRawOutputItem(TtlParser.RawContext context)
         {
+            if (context == null) throw new ArgumentNullException("context");
             var raw = context.RAW();
-
+            if (raw == null)
+                throw new TemplateParseException("Raw block is strangely null");
             var text = raw.GetText();
+            if (text.Length < 4)
+                throw new TemplateParseException("Raw block is wrongly formatted");
             return new RawOutputItem
             {
                 BlockPosition =
@@ -129,6 +148,7 @@ namespace Templates.Language {
 
         private OutputItem CreateItem(TtlParser.CallContext context)
         {
+            if (context == null) throw new ArgumentNullException("context");
             var namedCall = context.named_call();
             var unnamedCall = context.unnamed_call();
             if (namedCall != null) {

@@ -183,6 +183,7 @@
     <Compile Include="Attributes\OptionsAttribute.cs" />
     <Compile Include="Attributes\DataTypeAttribute.cs" />
     <Compile Include="Data\CompiledMethodDelegate.cs" />
+    <Compile Include="Data\CompileError.cs" />
     <Compile Include="Data\ExType.cs" />
     <Compile Include="Data\TemplatePathType.cs" />
     <Compile Include="Data\TtlCompileError.cs" />
@@ -206,7 +207,6 @@
     <Compile Include="Extensions\TimeExtension.cs" />
     <Compile Include="Extensions\TrueExtension.cs" />
     <Compile Include="Extensions\UseExtension.cs" />
-    <Compile Include="LanguageTemplates\ExampleTemplate.cs" />
     <Compile Include="Language\CallParameter.cs" />
     <Compile Include="Language\DefinitionItem.cs" />
     <Compile Include="Data\DocumentCacheItem.cs" />
@@ -291,9 +291,6 @@
     <None Include="LanguageTemplates\CSharpClassTemplate.tcs" />
     <None Include="packages.config" />
     <None Include="templater.snk" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Templates.Language\Templates.Language.csproj">

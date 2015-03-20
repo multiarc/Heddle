@@ -60,8 +60,11 @@ namespace Templates.Runtime {
 
         public static void AddExtensions(IEnumerable<KeyValuePair<string, Type>> toAdd)
         {
+            if (toAdd == null) throw new ArgumentNullException("toAdd");
             foreach (var type in toAdd)
             {
+                if (type.Key == null || type.Value == null )
+                    throw new ArgumentException();
                 if (Templates.ContainsKey(type.Key))
                 {
                     if (Templates[type.Key].IsAssignableFrom(type.Value))

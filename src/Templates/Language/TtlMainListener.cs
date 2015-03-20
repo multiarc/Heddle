@@ -1,32 +1,41 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using Templates.Exceptions;
 using Templates.Strings.Core;
 
 namespace Templates.Language {
-    internal class TtlMainListener: TtlParserBaseListener {
+    internal sealed class TtlMainListener: TtlParserBaseListener {
         private readonly Stack<ParseContext> _parserContextStack;
 
         public ParseContext CurrentParseContext => _parserContextStack.Peek();
 
         public TtlMainListener(ParseContext context) {
+            if (context == null) throw new ArgumentNullException("context");
             _parserContextStack = new Stack<ParseContext>();
             _parserContextStack.Push(context);
         }
 
         public override void EnterDefinition(TtlParser.DefinitionContext context) {
+            if (context == null) throw new ArgumentNullException("context");
             CurrentParseContext.InDefinition = true;
             CurrentParseContext.DefinitionBlock.AddNewBlockPosition(CurrentParseContext.GetBlockPosition(context));
         }
 
-        public override void ExitDefinition(TtlParser.DefinitionContext context) {
+        public override void ExitDefinition(TtlParser.DefinitionContext context)
+        {
+            if (context == null) throw new ArgumentNullException("context");
             CurrentParseContext.InDefinition = false;
         }
 
-        public override void EnterDef(TtlParser.DefContext context) {
+        public override void EnterDef(TtlParser.DefContext context)
+        {
+            if (context == null) throw new ArgumentNullException("context");
             CurrentParseContext.CurrentDefenition = CurrentParseContext.CreateDefinition(context);
         }
 
         public override void ExitDef(TtlParser.DefContext context) {
+            if (context == null) throw new ArgumentNullException("context");
             if (!CurrentParseContext.DefinitionBlock.Definitions.ContainsKey(CurrentParseContext.CurrentDefenition.Name)) {
                 CurrentParseContext.DefinitionBlock.Definitions.Add(CurrentParseContext.CurrentDefenition.Name,
                     CurrentParseContext.CurrentDefenition);
@@ -38,36 +47,55 @@ namespace Templates.Language {
             CurrentParseContext.CurrentDefenition = null;
         }
 
-        public override void EnterOutblock(TtlParser.OutblockContext context) {
+        public override void EnterOutblock(TtlParser.OutblockContext context)
+        {
+            if (context == null) throw new ArgumentNullException("context");
             if (!CurrentParseContext.DefenitionsOnly)
                 CurrentParseContext.CurrentChain = CurrentParseContext.CreateOutputChain(context);
         }
 
-        public override void ExitOutblock(TtlParser.OutblockContext context) {
+        public override void ExitOutblock(TtlParser.OutblockContext context)
+        {
+            if (context == null) throw new ArgumentNullException("context");
             if (!CurrentParseContext.DefenitionsOnly) {
                 CurrentParseContext.OutputChains.Add(CurrentParseContext.CurrentChain);
                 CurrentParseContext.CurrentChain = null;
             }
         }
 
-        public override void EnterRaw(TtlParser.RawContext context) {
+        public override void EnterRaw(TtlParser.RawContext context)
+        {
+            if (context == null) throw new ArgumentNullException("context");
             CurrentParseContext.RawOutputItems.Add(CurrentParseContext.CreateRawOutputItem(context));
         }
 
         public override void EnterComment(TtlParser.CommentContext context)
         {
+            if (context == null) throw new ArgumentNullException("context");
             CurrentParseContext.CommentTokens.Add(CurrentParseContext.GetBlockPosition(context));
         }
 
-        public override void EnterSubtemplate(TtlParser.SubtemplateContext context) {
-            if (context.ttl()?.Stop.StopIndex - context.ttl()?.Start.StartIndex + 1 > 0) {
+        public override void EnterSubtemplate(TtlParser.SubtemplateContext context)
+        {
+            if (context == null) throw new ArgumentNullException("context");
+            if (context.ttl()?.Stop == null || context.ttl()?.Start == null)
+                throw new ArgumentException();
+            if (context.ttl()?.Stop?.StopIndex - context.ttl()?.Start?.StartIndex + 1 > 0) {
                 _parserContextStack.Push(new ParseContext(CurrentParseContext,
                     context.ttl().Start.StartIndex));
             }
         }
 
-        public override void ExitSubtemplate(TtlParser.SubtemplateContext context) {
+        public override void ExitSubtemplate(TtlParser.SubtemplateContext context)
+        {
+            if (context == null) throw new ArgumentNullException("context");
+            if (context.ttl()?.Stop == null || context.ttl()?.Start == null)
+                throw new ArgumentException();
             if (context.ttl()?.Stop.StopIndex - context.ttl()?.Start.StartIndex + 1 > 0) {
+                if (_parserContextStack.Count <= 1)
+                {
+                    throw new TemplateParseException("Subtemplate close block appears too early.");
+                }
                 var parserContext = _parserContextStack.Pop();
                 if (CurrentParseContext.InDefinition) {
                     CurrentParseContext.CurrentDefenition.Context = parserContext;

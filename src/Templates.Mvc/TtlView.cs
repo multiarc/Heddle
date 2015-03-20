@@ -15,17 +15,20 @@ namespace Templates.Mvc {
 
         public void Render(ViewContext viewContext, TextWriter writer)
         {
+            if (viewContext == null) throw new ArgumentNullException("viewContext");
+            if (writer == null) throw new ArgumentNullException("writer");
             writer.Write(_template.Generate(viewContext.ViewData.Model));
         }
 
         public static explicit operator TtlView(TtlTemplate template)
         {
+            if (template == null) throw new ArgumentNullException("template");
             return new TtlView(template);
         }
 
         public static explicit operator TtlTemplate(TtlView view)
         {
-            return view.Template;
+            return view?.Template;
         }
 
         public void Dispose()

@@ -53,10 +53,9 @@ namespace Templates.Collections {
             return new SmartList<T>(value);
         }
 
-        
-
         public SmartList<T> AddRange(ICollection<T> items)
         {
+            if (items == null) throw new ArgumentNullException("items");
             if (_length == int.MaxValue || (long)_length + items.Count > int.MaxValue)
                 throw new OutOfMemoryException();
             var length = _length;
@@ -78,6 +77,7 @@ namespace Templates.Collections {
 
         public SmartList<T> AddRange(IEnumerable<T> items)
         {
+            if (items == null) throw new ArgumentNullException("items");
             foreach (var item in items)
             {
                 Add(item);

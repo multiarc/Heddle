@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Templates.Strings.Core;
 
 namespace Templates.Data {
+    [Serializable]
     public class TtlCompileError {
         public BlockPosition Position { get; set; }
 

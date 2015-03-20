@@ -33,48 +33,46 @@ namespace TemplatesXTests {
 
         [Fact()]
         public void GenerateTest() {
-            var options = new TemplateOptions
+            var options = new TemplateOptions("template")
             {
                 FileNamePostfix = ".thtml",
                 RootPath = @"..\..\TestTemplate",
-                TemplateName = "template",
                 AllowCSharp = true
             };
             var target = new TtlTemplate(new CompileContext(options));
+            Assert.True(target.CompileResult.Success);
 
-            var products = new List<TestListItem>();
-            products.Add
-                (new TestListItem
+            var products = new List<TestListItem>
+            {
+                new TestListItem
                 {
                     Cost = 1024m,
                     Locale = "en-us",
                     Name = "Name 1",
                     Quantity = 14509
-                });
-            products.Add
-                (new TestListItem
+                },
+                new TestListItem
                 {
                     Cost = 90008880m,
                     Locale = "ru-ru",
                     Name = "Name 2",
                     Quantity = 1609
-                });
-            products.Add
-                (new TestListItem
+                },
+                new TestListItem
                 {
                     Cost = 7800m,
                     Locale = "de-DE",
                     Name = "Name 3",
                     Quantity = 160921
-                });
-            products.Add
-                (new TestListItem
+                },
+                new TestListItem
                 {
                     Cost = 70m,
                     Locale = "de-DE",
                     Name = "Name 4",
                     Quantity = 1609709
-                });
+                }
+            };
             var data = new TestData
             {
                 Products = products,

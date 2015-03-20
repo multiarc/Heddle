@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Threading;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
@@ -15,84 +13,58 @@ namespace Templates {
     /// </summary>
     public sealed class TtlTemplate: IDisposable {
         private CompileContext _context;
+        public TtlCompileResult CompileResult { get; private set; }
         private readonly FileReader _reader;
         private readonly FileSystemWatcher _watcher;
         private volatile RuntimeDocument _runtimeDocument;
         private string _document;
 
-        public TtlTemplate(TemplateOptions options) : this(new CompileContext(options))
-        {
-            
+        public TtlTemplate(TemplateOptions options) : this(new CompileContext(options)) {
         }
 
-        public TtlTemplate(TemplateOptions options, ExType modelType) : this(new CompileContext(options) {ModelType =  modelType}) {
-
+        public TtlTemplate(TemplateOptions options, ExType modelType) : this(new CompileContext(options) { ModelType =  modelType }) {
         }
 
-        public TtlTemplate(CompileContext context)
-        {
+        public TtlTemplate(CompileContext context) {
             if (context == null)
                 throw new ArgumentNullException("context");
-            if (string.IsNullOrWhiteSpace(context.Options.FileNamePostfix))
-                throw new ArgumentException("File Name postfix (extension) should not be empty");
-            if (string.IsNullOrWhiteSpace(context.Options.RootPath))
-                throw new ArgumentException("Root Path (directory) should not be empty");
-            if (string.IsNullOrWhiteSpace(context.Options.TemplateName))
-                throw new ArgumentException("Template Name should not be empty");
-
-            try
-            {
+            try {
                 _reader = new FileReader(context.Options);
+                var document = _reader.ReadEntireFile();
+                CompileResult = Compile(context, document);
+                if (context.Options.EnableFileChangeCheck) {
+                    var fullPath = Path.Combine(context.Options.RootPath, context.Options.TemplateName);
+                    var directory = Path.GetDirectoryName(fullPath);
+                    if (directory != null) {
+                        _watcher = new FileSystemWatcher(directory)
+                        {
+                            NotifyFilter = NotifyFilters.FileName | NotifyFilters.Size | NotifyFilters.LastWrite,
+                            Filter = Path.GetFileName(fullPath)
+                        };
+                        _watcher.Changed += FileChanged;
+                        _watcher.Deleted += FileDeleted;
+                        _watcher.Renamed += FileRenamed;
+                    }
+                }
             }
-            catch (Exception e)
-            {
-                throw new ArgumentException("Cannot open file", e);
-            }
-            string document;
-            try
-            {
-                document = _reader.ReadEntireFile();
-            }
-            catch (ArgumentException e)
-            {
-                throw new ArgumentException("File not found", e);
-            }
-            Compile(context, document);
-            if (context.Options.EnableFileChangeCheck)
-            {
-                var fullPath = Path.Combine(context.Options.RootPath, context.Options.TemplateName);
-                // ReSharper disable once AssignNullToNotNullAttribute
-                _watcher = new FileSystemWatcher(Path.GetDirectoryName(fullPath))
-                {
-                    NotifyFilter = NotifyFilters.FileName | NotifyFilters.Size | NotifyFilters.LastWrite,
-                    Filter = Path.GetFileName(fullPath)
-                };
-                _watcher.Changed += FileChanged;
-                _watcher.Deleted += FileDeleted;
-                _watcher.Renamed += FileRenamed;
+            catch (Exception e) {
+                CompileResult = new TtlCompileResult(false);
+                CompileResult.Errors.Add(e.ToError());
             }
         }
 
-        public TtlTemplate()
-        {
-            
+        public TtlTemplate() {
+
         }
 
-        public TtlTemplate (string document, CompileContext context)
-        {
+        public TtlTemplate(string document) {
+            CompileResult = Compile(new CompileContext(), document);
+        }
+
+        public TtlTemplate(string document, CompileContext context) {
             if (context == null)
                 throw new ArgumentNullException("context");
-
-            var rtdoc = DocumentsCache.GetRuntimeDocument(document, context);
-            if (rtdoc == null)
-            {
-                rtdoc = TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
-                DocumentsCache.UpdateCaches(rtdoc, null, context);
-                context.Compile();
-            }
-            _runtimeDocument = rtdoc;
-            _context = context;
-            _document = document;
+            CompileResult = Compile(context, document);
         }
 
         public bool Empty => _runtimeDocument?.Empty ?? true;
@@ -101,15 +73,13 @@ namespace Templates {
 
         #region IDisposable Members
 
-        public void Dispose ()
-        {
+        public void Dispose() {
             _watcher?.Dispose();
             _runtimeDocument?.Dispose();
             GC.SuppressFinalize(this);
         }
 
-        ~TtlTemplate()
-        {
+        ~TtlTemplate() {
             _watcher?.Dispose();
             _runtimeDocument?.Dispose();
         }
@@ -122,8 +92,7 @@ namespace Templates {
         /// </summary>
         /// <param name="data">Input object</param>
         /// <returns>Generated string</returns>
-        public string Generate(object data)
-        {
+        public string Generate(object data) {
             if (_runtimeDocument == null)
                 throw new TemplateInitException("Compile first.");
 #if DEBUG
@@ -136,65 +105,46 @@ namespace Templates {
 #endif
             return _runtimeDocument.ProcessData(data, null) as string ?? string.Empty;
         }
-        public TtlCompileResult Recompile(ExType newModelType)
-        {
-            try
-            {
-                return Compile(new CompileContext(newModelType), _document);
-            }
-            catch (Exception e)
-            {
-                var result = new TtlCompileResult(false);
-                result.Errors.Add(new TtlCompileError()
-                {
-                    Error = e.Message,
-                    Exception = e
-                });
-                return result;
-            }
+        public TtlCompileResult Recompile(ExType newModelType) {
+            return Compile(new CompileContext(newModelType), _document);
         }
 
-        public TtlCompileResult Compile(string document, ExType modelType = null)
-        {
-            try {
-                return Compile(new CompileContext(modelType), document);
-            }
-            catch (Exception e) {
-                var result = new TtlCompileResult(false);
-                result.Errors.Add(new TtlCompileError()
-                {
-                    Error = e.Message,
-                    Exception = e
-                });
-                return result;
-            }
+        public TtlCompileResult Compile(string document, ExType modelType = null) {
+            if (_runtimeDocument != null)
+                throw new TemplateInitException("Template already compiled.");
+            return Compile(new CompileContext(modelType), document);
         }
 
 
         private TtlCompileResult Compile(CompileContext context, string document) {
-            var rtdoc = DocumentsCache.GetRuntimeDocument(document, context);
-            if (rtdoc == null) {
-                rtdoc = TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
-                DocumentsCache.UpdateCaches(rtdoc, null, context);
-                context.Compile();
+            try {
+                var rtdoc = DocumentsCache.GetRuntimeDocument(document, context);
+                if (rtdoc == null) {
+                    rtdoc = TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
+                    DocumentsCache.UpdateCaches(rtdoc, null, context);
+                    context.Compile();
+                }
+                _context = context;
+                _document = document;
+                _runtimeDocument = rtdoc;
+                return new TtlCompileResult(true);
             }
-            _context = context;
-            _document = document;
-            _runtimeDocument = rtdoc;
-            return new TtlCompileResult(true);
+            catch (Exception e) {
+                var result = new TtlCompileResult(false);
+                result.Errors.Add(e.ToError());
+                return result;
+            }
         }
 
         public event FileSystemEventHandler OnFileDeleted;
 
         public event RenamedEventHandler OnFileRenamed;
 
-        public void FileDeleted(object sender, FileSystemEventArgs e)
-        {
+        public void FileDeleted(object sender, FileSystemEventArgs e) {
             OnFileDeleted?.Invoke(this, e);
         }
 
-        public void FileRenamed(object sender, RenamedEventArgs e)
-        {
+        public void FileRenamed(object sender, RenamedEventArgs e) {
             OnFileRenamed?.Invoke(this, e);
         }
 

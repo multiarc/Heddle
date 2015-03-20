@@ -42,8 +42,7 @@ namespace PerfTesting.Runners {
             Console.WriteLine("Prepearing bigger string tests");
             var test = new TtlTemplate
                     (new CompileContext
-                         (new TemplateOptions {
-                             TemplateName = "template",
+                         (new TemplateOptions("template") {
                              FileNamePostfix = ".ttl",
                              RootPath = @"g:\Work\Templater\performance\PerfTesting\TestTemplates",
                              AllowCSharp = true

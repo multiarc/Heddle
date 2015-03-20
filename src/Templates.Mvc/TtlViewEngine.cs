@@ -15,7 +15,19 @@ namespace Templates.Mvc
 
         static TtlViewEngine()
         {
-            Resolver = new TemplateResolver(Path.GetDirectoryName(HttpRuntime.AppDomainAppPath));
+            string path = ".";
+            try
+            {
+                path = HttpRuntime.AppDomainAppPath;
+            }
+            catch (ArgumentException)
+            {
+                path = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
+            }
+            finally
+            {
+                Resolver = new TemplateResolver(Path.GetDirectoryName(path));
+            }
         }
 
         public ViewEngineResult FindPartialView(ControllerContext controllerContext, string partialViewName, bool useCache)
@@ -33,6 +45,7 @@ namespace Templates.Mvc
 
         private static string GetControllerName(ControllerContext controllerContext)
         {
+            if (controllerContext == null) throw new ArgumentNullException("controllerContext");
             object controllerOption;
             string controllerName = string.Empty;
             if (controllerContext.RouteData.Values.TryGetValue("controller", out controllerOption))
@@ -44,6 +57,7 @@ namespace Templates.Mvc
 
         public ViewEngineResult FindView(ControllerContext controllerContext, string viewName, string masterName, bool useCache)
         {
+            if (controllerContext == null) throw new ArgumentNullException("controllerContext");
             if (string.IsNullOrWhiteSpace(viewName))
                 throw new ArgumentException("viewName");
             var controllerName = GetControllerName(controllerContext);

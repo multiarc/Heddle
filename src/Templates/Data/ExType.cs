@@ -26,6 +26,7 @@ namespace Templates.Data {
         }
 
         public ExType(Type type) {
+            if (type == null) throw new ArgumentNullException("type");
             Type = type;
             _name = Type.ToString();
             _isDynamic = _name == "dynamic";
