@@ -36,10 +36,12 @@ namespace TemplatesXTests {
             var options = new TemplateOptions("template")
             {
                 FileNamePostfix = ".thtml",
-                RootPath = @"..\..\TestTemplate",
+                RootPath = @"TestTemplate",
                 AllowCSharp = true
             };
             var target = new TtlTemplate(new CompileContext(options));
+            if (!target.CompileResult.Success)
+                throw new Exception(target.CompileResult.ErrorList.Aggregate("", (current, next) => current + " " + next.Error), target.CompileResult.ErrorList.First().Exception);
             Assert.True(target.CompileResult.Success);
 
             var products = new List<TestListItem>
@@ -84,11 +86,11 @@ namespace TemplatesXTests {
             };
             StreamReader reader = File.OpenText(@"..\..\TestTemplate\generated.html");
             var expected = reader.ReadToEnd();
-            reader.Close();
+            reader.Dispose();
             var actual = target.Generate(data);
             var writer = File.CreateText(@"..\..\TestTemplate\test.html");
             writer.Write(actual);
-            writer.Close();
+            writer.Dispose();
             Assert.Equal(expected, actual);
         }
     }

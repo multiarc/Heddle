@@ -207,6 +207,7 @@
     <Compile Include="Extensions\TimeExtension.cs" />
     <Compile Include="Extensions\TrueExtension.cs" />
     <Compile Include="Extensions\UseExtension.cs" />
+    <Compile Include="ITtlTemplate.cs" />
     <Compile Include="Language\CallParameter.cs" />
     <Compile Include="Language\DefinitionItem.cs" />
     <Compile Include="Data\DocumentCacheItem.cs" />
@@ -242,6 +243,7 @@
     <Compile Include="Runtime\IExtension.cs" />
     <Compile Include="Language\ParseContext.cs" />
     <Compile Include="Runtime\ExpressionOptions.cs" />
+    <Compile Include="Runtime\ITemplateResolver.cs" />
     <Compile Include="Runtime\RuntimeCallParameter.cs" />
     <Compile Include="Runtime\RuntimeDocument.cs" />
     <Compile Include="Runtime\RuntimePropertyExtension.cs" />

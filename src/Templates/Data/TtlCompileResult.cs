@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace Templates.Data
 {
@@ -14,6 +15,6 @@ namespace Templates.Data
 
         internal List<TtlCompileError> Errors { get; set; }
 
-        public IReadOnlyCollection<TtlCompileError> ErrorList => Errors.AsReadOnly();
+        public IReadOnlyCollection<TtlCompileError> ErrorList => new ReadOnlyCollection<TtlCompileError>(Errors);
     }
 }

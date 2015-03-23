@@ -1,11 +1,20 @@
-﻿using System;
+﻿#if ASPNETCORE50
+using Microsoft.Framework.Runtime;
+using Microsoft.Framework.Runtime.Loader;
+#endif
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+#if ASPNETCORE50
+using System.Runtime.Loader;
+#endif
 using System.Text.RegularExpressions;
+using System.Threading;
 using Templates.Data;
 using Templates.Exceptions;
+using Templates.Native;
 
 namespace Templates.Helpers {
     /// <summary>
@@ -61,11 +70,11 @@ namespace Templates.Helpers {
 
         public Type InnerType => _innerType;
 
-        public bool IsInterface => _innerType.IsInterface;
+        public bool IsInterface => _innerType.GetTypeInfo().IsInterface;
 
         public bool IsObject => _innerType == typeof (object);
 
-        public bool IsClass => _innerType.IsClass;
+        public bool IsClass => _innerType.GetTypeInfo().IsClass;
 
         public bool IsImplement (Type type)
         {
@@ -90,21 +99,6 @@ namespace Templates.Helpers {
             return IsType(value.GetType());
         }
 
-        public object Invoke (object o, string methodName, params object[] parameters)
-        {
-            if (string.IsNullOrEmpty(methodName))
-                throw new ArgumentException();
-            return _innerType.InvokeMember(methodName, BindingFlags.InvokeMethod | BindingFlags.Instance | BindingFlags.Public, null, o, parameters);
-        }
-
-        public T Invoke<T> (object o, string methodName, params object[] parameters)
-        {
-            if (string.IsNullOrEmpty(methodName))
-                throw new ArgumentException();
-            return
-                (T) _innerType.InvokeMember(methodName, BindingFlags.InvokeMethod | BindingFlags.Instance | BindingFlags.Public, null, o, parameters);
-        }
-
         private static Type ResolveCsharpType(string typeName)
         {
             Type result;
@@ -124,16 +118,21 @@ namespace Templates.Helpers {
                 return modelType;
             modelType = Type.GetType(typeName, false);
             if (modelType == null) {
+#if !ASPNETCORE50
                 Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+#endif
+#if ASPNETCORE50
+                Assembly[] assemblies = NativeHelper.GetAssemblies();
+#endif
                 foreach (Assembly assembly in assemblies) {
-                    modelType = assembly.GetType(typeName, false);
+                    modelType = assembly.GetType(typeName);
                     if (modelType != null)
                         return modelType;
                 }
                 string[] importsArray = imports.Select(namespc => namespc + "." + typeName).ToArray();
                 foreach (Assembly assembly in assemblies) {
                     foreach (string import in importsArray) {
-                        modelType = assembly.GetType(import, false);
+                        modelType = assembly.GetType(import);
                         if (modelType != null)
                             return modelType;
                     }

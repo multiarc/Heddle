@@ -5,7 +5,9 @@ namespace Templates.Exceptions {
     /// <summary>
     /// Parse Exception, at any stage can be raised
     /// </summary>
+#if !ASPNETCORE50
     [Serializable]
+#endif
     public class TemplateParseException: Exception {
         public TemplateParseException ()
         {
@@ -20,10 +22,11 @@ namespace Templates.Exceptions {
             : base(message, inner)
         {
         }
-
+#if !ASPNETCORE50
         protected TemplateParseException (SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
         }
+#endif
     }
 }

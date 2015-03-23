@@ -156,6 +156,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+    <Content Include="LanguageTemplates\CSharpClassTemplate.tcs">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LanguageTemplates\CSharpPreparseTemplate.tcs">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <None Include="TestTemplates\partial.ttl" />
     <None Include="TestTemplates\template.ttl" />
     <None Include="TestTemplates\template_2.ttl" />

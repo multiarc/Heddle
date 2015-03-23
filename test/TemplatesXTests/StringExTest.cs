@@ -299,7 +299,7 @@ namespace TemplatesXTests {
         public void EqualsTest1 ()
         {
             ExString one = GenerateStringEx(Rnd.Next(1, 100));
-            var another = (ExString) one.Clone();
+            var another = new ExString(one);
             bool actual = ExString.Equals(one, another);
             Assert.Equal(true, actual);
             one = ExString.Empty;

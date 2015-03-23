@@ -1,6 +1,9 @@
 ﻿using System;
 using System.IO;
 using System.Reflection;
+#if ASPNETCORE50
+using System.Runtime.Loader;
+#endif
 
 namespace Templates.Data {
     public struct TemplateOptions: IEquatable<TemplateOptions> {
@@ -13,7 +16,11 @@ namespace Templates.Data {
         public TemplateOptions()
         {
             FileNamePostfix = string.Empty;
-            RootPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().CodeBase);
+#if !ASPNETCORE50
+            RootPath = Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory);
+#else
+            RootPath = Path.GetDirectoryName(AppContext.BaseDirectory);
+#endif
             TemplateName = string.Empty;
             EnableFileChangeCheck = false;
             AllowCSharp = false;
@@ -21,7 +28,11 @@ namespace Templates.Data {
 
         public TemplateOptions(string templateName) {
             FileNamePostfix = string.Empty;
-            RootPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().CodeBase);
+#if !ASPNETCORE50
+            RootPath = Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory);
+#else
+            RootPath = Path.GetDirectoryName(AppContext.BaseDirectory);
+#endif
             TemplateName = templateName ?? string.Empty;
             EnableFileChangeCheck = false;
             AllowCSharp = false;
@@ -48,14 +59,14 @@ namespace Templates.Data {
             AllowCSharp = value.AllowCSharp;
         }
 
-        #region IEquatable<TemplateOptions> Members
+#region IEquatable<TemplateOptions> Members
 
         public bool Equals (TemplateOptions other)
         {
             return other.FileNamePostfix == FileNamePostfix && other.TemplateName == TemplateName && other.RootPath == RootPath;
         }
 
-        #endregion
+#endregion
 
         public static bool operator == (TemplateOptions value1, TemplateOptions value2)
         {

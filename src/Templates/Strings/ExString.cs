@@ -6,7 +6,9 @@ using Templates.Collections;
 using Templates.Native;
 
 namespace Templates.Strings {
+#if !ASPNETCORE50
     [Serializable]
+#endif
     public sealed partial class ExString {
         private static readonly ExString EmptyExString = new ExString(new char[0]);
         private readonly char[] _data;
@@ -53,7 +55,7 @@ namespace Templates.Strings {
                 unsafe {
                     fixed (char* dest = _data) {
                         fixed (char* src = value) {
-                            StringNativeHelper.MemCpy(dest, src, length);
+                            NativeHelper.MemCpy(dest, src, length);
                         }
                     }
                 }
@@ -73,6 +75,11 @@ namespace Templates.Strings {
             _length = _data.Length;
         }
 
+        public ExString(ExString value) {
+            _data = value ?? EmptyExString;
+            _length = _data.Length;
+        }
+
         private unsafe ExString (char* value, int length)
         {
             if (length < 0)
@@ -85,7 +92,7 @@ namespace Templates.Strings {
             } else {
                 _data = new char[length];
                 fixed (char* dest = _data) {
-                    StringNativeHelper.MemCpy(dest, value, length);
+                    NativeHelper.MemCpy(dest, value, length);
                 }
             }
             _length = _data.Length;
@@ -102,7 +109,7 @@ namespace Templates.Strings {
                 unsafe {
                     fixed (char* dest = _data) {
                         fixed (char* src = value) {
-                            StringNativeHelper.MemCpy(dest, src, _length);
+                            NativeHelper.MemCpy(dest, src, _length);
                         }
                     }
                 }
@@ -163,7 +170,7 @@ namespace Templates.Strings {
         {
             int startIndex = 0;
             for (int i = 0; i < len; i++) {
-                if (!StringNativeHelper.IsWhiteSpace(src[i])) {
+                if (!NativeHelper.IsWhiteSpace(src[i])) {
                     startIndex = i;
                     break;
                 }
@@ -172,7 +179,7 @@ namespace Templates.Strings {
                 return EmptyExString;
             int endIndex = len - 1;
             for (int i = len - 1; i >= 0; i--) {
-                if (StringNativeHelper.IsWhiteSpace(src[i]))
+                if (NativeHelper.IsWhiteSpace(src[i]))
                     endIndex = i - 1;
                 else
                     break;
@@ -180,7 +187,7 @@ namespace Templates.Strings {
             int newLength = endIndex - startIndex + 1;
             var result = new char[newLength];
             fixed (char* dest = result) {
-                StringNativeHelper.MemCpy(dest, src + startIndex, newLength);
+                NativeHelper.MemCpy(dest, src + startIndex, newLength);
             }
             return new ExString(result);
         }
@@ -216,16 +223,16 @@ namespace Templates.Strings {
                     lastIndex = MoveChunk(findStringLen, src, dest, replacement, indexes, count, lastIndex, chunkLength, ref current);
                 }
             }
-            StringNativeHelper.MemCpy(dest + lastIndex, src + current, srcLen - current);
+            NativeHelper.MemCpy(dest + lastIndex, src + current, srcLen - current);
         }
 
         private static unsafe int MoveChunk
             (int findStringLen, char* src, char* dest, char* replacement, int* indexes, int count, int lastIndex, int chunkLength, ref int current)
         {
             for (int i = 0; i < count; i++) {
-                StringNativeHelper.MemCpy(dest + lastIndex, src + current, indexes[i] - current);
+                NativeHelper.MemCpy(dest + lastIndex, src + current, indexes[i] - current);
                 lastIndex += indexes[i] - current;
-                StringNativeHelper.MemCpy(dest + lastIndex, replacement, chunkLength);
+                NativeHelper.MemCpy(dest + lastIndex, replacement, chunkLength);
                 current = indexes[i] + findStringLen;
                 lastIndex += chunkLength;
             }
@@ -301,12 +308,12 @@ namespace Templates.Strings {
 
                 for (int j = 1; j < findLen; j++)
                     needleTable[(byte) find[j - 1]] = findLen - j;
-                int found = StringNativeHelper.StartsWith(data + i, find, needleTable, dataLen - i, findLen);
+                int found = NativeHelper.StartsWith(data + i, find, needleTable, dataLen - i, findLen);
                 while (found != -1) {
                     i += found;
                     replacements.Add(i);
                     i += findLen - 1;
-                    found = StringNativeHelper.StartsWith(data + i, find, needleTable, dataLen - i, findLen);
+                    found = NativeHelper.StartsWith(data + i, find, needleTable, dataLen - i, findLen);
                 }
             }
         }
@@ -326,7 +333,7 @@ namespace Templates.Strings {
                 unsafe {
                     fixed (char* data = value._data) {
                         for (int i = 0; i < len; i++) {
-                            if (!StringNativeHelper.IsWhiteSpace(data[i]))
+                            if (!NativeHelper.IsWhiteSpace(data[i]))
                                 return false;
                         }
                     }
@@ -443,7 +450,7 @@ namespace Templates.Strings {
             unsafe {
                 fixed (char* dest = data) {
                     fixed (char* src = one._data) {
-                        StringNativeHelper.MemCpy(dest, src, lenOne);
+                        NativeHelper.MemCpy(dest, src, lenOne);
                         dest[lenOne] = two;
                     }
                 }
@@ -507,7 +514,7 @@ namespace Templates.Strings {
                             int len = (object)exStrings[i] == null ? 0 : exStrings[i].Length;
                             if (len > 0) {
                                 fixed (char* src = (char[]) exStrings[i]) {
-                                    StringNativeHelper.MemCpy(dest + seed, src, len);
+                                    NativeHelper.MemCpy(dest + seed, src, len);
                                     seed += len;
                                 }
                             }
@@ -522,8 +529,8 @@ namespace Templates.Strings {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static unsafe void ConcatNative (char* dest, char* one, char* two, int lenOne, int lenTwo)
         {
-            StringNativeHelper.MemCpy(dest, one, lenOne);
-            StringNativeHelper.MemCpy(dest + lenOne, two, lenTwo);
+            NativeHelper.MemCpy(dest, one, lenOne);
+            NativeHelper.MemCpy(dest + lenOne, two, lenTwo);
         }
 
         public static ExString Add (ExString one, ExString two)

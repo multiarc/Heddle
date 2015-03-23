@@ -11,7 +11,8 @@ namespace Templates {
     /// <summary>
     /// Use this class to operate with engine, parse source template, make replace with data and generate result string.
     /// </summary>
-    public sealed class TtlTemplate: IDisposable {
+    public sealed class TtlTemplate: ITtlTemplate
+    {
         private CompileContext _context;
         public TtlCompileResult CompileResult { get; private set; }
         private readonly FileReader _reader;
@@ -140,33 +141,30 @@ namespace Templates {
 
         public event RenamedEventHandler OnFileRenamed;
 
-        public void FileDeleted(object sender, FileSystemEventArgs e) {
+        public event FileSystemEventHandler OnFileChanged;
+
+        private void FileDeleted(object sender, FileSystemEventArgs e) {
             OnFileDeleted?.Invoke(this, e);
         }
 
-        public void FileRenamed(object sender, RenamedEventArgs e) {
+        private void FileRenamed(object sender, RenamedEventArgs e) {
             OnFileRenamed?.Invoke(this, e);
         }
 
-        public void FileChanged(object sender, FileSystemEventArgs e) {
+        private void FileChanged(object sender, FileSystemEventArgs e) {
             if (e.ChangeType == WatcherChangeTypes.Changed) {
+                OnFileChanged?.Invoke(sender, e);
                 try {
                     string document = _reader.ReadEntireFile();
-                    if (!string.IsNullOrWhiteSpace(document)) {
-                        try {
-                            var rtdoc = TtlCompiler.Compile(document, _context, DocumentParser.Parse(document));
-                            DocumentsCache.UpdateCaches(rtdoc, _runtimeDocument.Document, _context);
-                            _context.Compile();
-                            _runtimeDocument = rtdoc;
-                            _document = document;
-                        }
-                        catch (Exception) {
-                            //TODO: Log Exception here
-                        }
+                    if (!string.IsNullOrWhiteSpace(document))
+                    {
+                        CompileResult = Compile(_context, document);
                     }
                 }
-                catch (Exception) {
-                    //TODO: Log Exception here
+                catch (Exception ex)
+                {
+                    CompileResult = new TtlCompileResult(false);
+                    CompileResult.Errors.Add(ex.ToError());
                 }
             }
         }

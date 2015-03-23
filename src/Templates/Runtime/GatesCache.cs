@@ -6,19 +6,19 @@ using Templates.Data;
 
 namespace Templates.Runtime {
     internal static class GatesCache {
-        private static readonly Dictionary<RuntimeMethodHandle, DynamicMethodGateDelegate> Cache =
-            new Dictionary<RuntimeMethodHandle, DynamicMethodGateDelegate>();
+        private static readonly Dictionary<MethodInfo, DynamicMethodGateDelegate> Cache =
+            new Dictionary<MethodInfo, DynamicMethodGateDelegate>();
 
         public static DynamicMethodGateDelegate GetPropertyGate(PropertyInfo property)
         {
             if (property == null)
                 return null;
-            RuntimeMethodHandle methodHandle = property.GetGetMethod(true).MethodHandle;
+            MethodInfo methodInfo = property.GetGetMethod(true);
             DynamicMethodGateDelegate result;
-            if (Cache.TryGetValue(methodHandle, out result))
+            if (Cache.TryGetValue(methodInfo, out result))
                 return result;
             result = CreateGenericGate(property);
-            Cache.Add(methodHandle, result);
+            Cache.Add(methodInfo, result);
             return result;
         }
 
@@ -31,13 +31,13 @@ namespace Templates.Runtime {
             ILGenerator il = dynamic.GetILGenerator();
 
             il.Emit(OpCodes.Ldarg_0);
-            if (model.IsValueType)
+            if (model.GetTypeInfo().IsValueType)
                 il.Emit(OpCodes.Unbox_Any, model);
             else if (model != typeof(object))
                 il.Emit(OpCodes.Castclass, model);
 
             il.Emit(OpCodes.Ldarg_1);
-            if (chained.IsValueType)
+            if (chained.GetTypeInfo().IsValueType)
                 il.Emit(OpCodes.Unbox_Any, chained);
             else if (chained != typeof(object))
                 il.Emit(OpCodes.Castclass, chained);
@@ -66,7 +66,7 @@ namespace Templates.Runtime {
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Call, getMethod);
             }
-            if (propertyType.IsValueType)
+            if (propertyType.GetTypeInfo().IsValueType)
                 il.Emit(OpCodes.Box, propertyType);
             il.Emit(OpCodes.Ret);
             return (DynamicMethodGateDelegate)dynamic.CreateDelegate(typeof(DynamicMethodGateDelegate));

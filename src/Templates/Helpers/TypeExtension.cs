@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace Templates.Helpers {
@@ -63,7 +64,7 @@ namespace Templates.Helpers {
             if (attributeType == null)
                 throw new ArgumentNullException("attributeType");
 
-            return type.GetCustomAttributes(inherit).Any(a => a.GetType() == attributeType);
+            return type.GetTypeInfo().GetCustomAttributes(inherit).Any(a => a.GetType() == attributeType);
         }
 
         public static bool IsHaveAttribute<T>(this Type type, bool inherit = false)
@@ -71,7 +72,7 @@ namespace Templates.Helpers {
             if (type == null)
                 throw new ArgumentNullException("type");
 
-            return type.GetCustomAttributes(inherit).Any(a => a is T);
+            return type.GetTypeInfo().GetCustomAttributes(inherit).Any(a => a is T);
         }
 
         public static T[] GetAttributes<T>(this Type type, bool inherit = false)
@@ -79,7 +80,7 @@ namespace Templates.Helpers {
             if (type == null)
                 throw new ArgumentNullException("type");
 
-            return type.GetCustomAttributes(inherit).Where(a => a is T).Cast<T>().ToArray();
+            return type.GetTypeInfo().GetCustomAttributes(inherit).Where(a => a is T).Cast<T>().ToArray();
         }
     }
 }

@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using Templates.Attributes;
 using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Language;
+using Templates.Native;
 
 namespace Templates.Runtime {
     //DONE: пустой шаблон
@@ -26,7 +28,11 @@ namespace Templates.Runtime {
         static TemplateFactory()
         {
             AddExtensions(LoadBaseExtensions());
+#if !ASPNETCORE50
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+#else
+            foreach (var assembly in NativeHelper.GetAssemblies())
+#endif
             {
                 var exportAttributes = assembly.GetCustomAttributes<ExportExtensionsAttribute>();
                 foreach (var exportAttribute in exportAttributes)
@@ -115,7 +121,7 @@ namespace Templates.Runtime {
         /// <returns>List of all template types</returns>
         private static IEnumerable<KeyValuePair<string, Type>> LoadBaseExtensions ()
         {
-            return LoadExtensions(Assembly.GetExecutingAssembly());
+            return LoadExtensions(typeof(TemplateFactory).GetTypeInfo().Assembly);
         }
 
         /// <summary>
@@ -131,8 +137,8 @@ namespace Templates.Runtime {
         internal static IEnumerable<KeyValuePair<string, Type>> LoadExtensions(IEnumerable<Type> extensions) {
             List<Type> types =
                 extensions.Where(t => t.IsImplement<IExtension>() && t.IsHaveAttribute<NameAttribute>(true)).OrderBy
-                    (t => t.GetAttributes<DataTypeAttribute>(true).Any(p => p.DataType.IsInterface)).ThenBy
-                    (t => t.GetAttributes<ChainedTypeAttribute>(true).Any(p => p.DataType.IsInterface)).ToList();
+                    (t => t.GetAttributes<DataTypeAttribute>(true).Any(p => p.DataType.GetTypeInfo().IsInterface)).ThenBy
+                    (t => t.GetAttributes<ChainedTypeAttribute>(true).Any(p => p.DataType.GetTypeInfo().IsInterface)).ToList();
             var result = new List<KeyValuePair<string, Type>>();
             foreach (Type type in types) {
                 NameAttribute[] names = type.GetAttributes<NameAttribute>(true);

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Templates.Attributes;
 using Templates.Core;
 using Templates.Data;
@@ -38,7 +39,7 @@ namespace Templates.Extensions {
             if (dataType.IsDynamic) {
                 return base.InitStart(parameterTemplate, ExType.Dynamic, chainedType, context, parseContext);
             }
-            ExType underliyingType = (ExType)dataType.Type.GetGenericArguments().FirstOrDefault() ?? ExType.Dynamic;
+            ExType underliyingType = (ExType)dataType.Type.GenericTypeArguments.FirstOrDefault() ?? ExType.Dynamic;
             return base.InitStart(parameterTemplate, underliyingType, chainedType, context, parseContext);
         }
 

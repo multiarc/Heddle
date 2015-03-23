@@ -23,30 +23,5 @@ namespace Templates.Helpers
             return result;
             // TODO: add assertions to method ReflectionHelperTest.ResolveType(String, String[])
         }
-        [PexMethod]
-        [PexAllowedException(typeof(MissingMethodException))]
-        public object Invoke(
-            [PexAssumeUnderTest]ReflectionHelper target,
-            object o,
-            string methodName,
-            object[] parameters
-        ) {
-            object result = target.Invoke(o, methodName, parameters);
-            return result;
-            // TODO: add assertions to method ReflectionHelperTest.Invoke(ReflectionHelper, Object, String, Object[])
-        }
-        [PexGenericArguments(typeof(int))]
-        [PexMethod]
-        [PexAllowedException(typeof(MissingMethodException))]
-        public T Invoke01<T>(
-            [PexAssumeUnderTest]ReflectionHelper target,
-            object o,
-            string methodName,
-            object[] parameters
-        ) {
-            T result = target.Invoke<T>(o, methodName, parameters);
-            return result;
-            // TODO: add assertions to method ReflectionHelperTest.Invoke01(ReflectionHelper, Object, String, Object[])
-        }
     }
 }

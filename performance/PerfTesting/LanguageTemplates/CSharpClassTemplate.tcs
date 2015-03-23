@@ -1,0 +1,26 @@
+﻿<% <class>
+	[
+	public static class CSharpExtensionParameterExpressions_@guid(ClassGuid)[N] {
+		
+		private static void Main (string@:[]:@ args) {}
+
+		@list(Methods)
+		[
+		public static object PreProcessData_@(ExtensionName)@(MethodNumber) (@(ModelType) model, @(ChainedType) chained)
+		{
+			return @(Expression);;
+		}
+		]
+	}
+	] :: CompileContext
+%>
+@using()[Templates.Runtime];
+@model()[CompileContext];
+using System.Runtime.CompilerServices;
+@list(Namespaces) [
+	using @();;
+]
+[assembly: InternalsVisibleTo("Templates")]
+namespace Templates.Runtime {
+	@class()
+}

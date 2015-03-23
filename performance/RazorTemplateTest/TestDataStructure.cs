@@ -4,7 +4,6 @@ using System.Linq;
 
 namespace RazorTemplateTest {
 
-    [Serializable]
     public class TestData: TestDataStructure {
         public override List<TestListItem> Products
         {
@@ -13,7 +12,6 @@ namespace RazorTemplateTest {
         }
     }
 
-    [Serializable]
     public class TestListItem {
         public decimal Cost
         {
@@ -40,7 +38,6 @@ namespace RazorTemplateTest {
         }
     }
 
-    [Serializable]
     public class TestDataStructure {
         protected List<TestListItem> ProductsCollection;
 

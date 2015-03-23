@@ -4,7 +4,9 @@ using Templates.Native;
 using Templates.Strings.Core;
 
 namespace Templates.Strings {
+#if !ASPNETCORE50
     [Serializable]
+#endif
     public sealed class ExStringBuilder {
         private readonly SmartList<ExString> _appendFastStrings = new SmartList<ExString>();
         private readonly SmartList<string> _appendStrings = new SmartList<string>();
@@ -35,10 +37,10 @@ namespace Templates.Strings {
                     unsafe {
                         int newLen = value;
                         int oldLen = _data.Length;
-                        _data = StringNativeHelper.AllocateString(newLen);
+                        _data = NativeHelper.AllocateString(newLen);
                         fixed (char* dest = _data) {
                             fixed (char* src = old) {
-                                StringNativeHelper.MemCpy(dest, src, oldLen);
+                                NativeHelper.MemCpy(dest, src, oldLen);
                             }
                         }
                     }
@@ -68,7 +70,7 @@ namespace Templates.Strings {
                     unsafe {
                         fixed (char* dest = _data) {
                             fixed (char* src = _appendStrings[i]) {
-                                StringNativeHelper.MemCpy(dest + seed, src, len);
+                                NativeHelper.MemCpy(dest + seed, src, len);
                             }
                         }
                     }
@@ -83,7 +85,7 @@ namespace Templates.Strings {
                     unsafe {
                         fixed (char* dest = _data) {
                             fixed (char* src = (char[]) _appendFastStrings[i]) {
-                                StringNativeHelper.MemCpy(dest + seed, src, len);
+                                NativeHelper.MemCpy(dest + seed, src, len);
                             }
                         }
                     }
@@ -221,7 +223,7 @@ namespace Templates.Strings {
                 if (capacity == 0)
                     return string.Empty;
 
-                string result = StringNativeHelper.AllocateString(capacity);
+                string result = NativeHelper.AllocateString(capacity);
 
                 unsafe {
                     fixed (char* dest = result) {
@@ -270,7 +272,7 @@ namespace Templates.Strings {
                 if (capacity == 0)
                     return string.Empty;
 
-                string result = StringNativeHelper.AllocateString(capacity);
+                string result = NativeHelper.AllocateString(capacity);
 
                 unsafe {
                     fixed (char* dest = result) {
@@ -299,10 +301,10 @@ namespace Templates.Strings {
                     throw new ArgumentException();
 #endif
                 fixed (char* middle = replacementString) {
-                    StringNativeHelper.MemCpy(dest + lastIndex, src + current, replacement.BlockPosition.StartIndex - current);
+                    NativeHelper.MemCpy(dest + lastIndex, src + current, replacement.BlockPosition.StartIndex - current);
                     lastIndex += replacement.BlockPosition.StartIndex - current;
 
-                    StringNativeHelper.MemCpy(dest + lastIndex, middle, chunkLength);
+                    NativeHelper.MemCpy(dest + lastIndex, middle, chunkLength);
                     current = replacement.BlockPosition.StartIndex + replacement.BlockPosition.Length;
                     lastIndex += chunkLength;
                 }
@@ -311,7 +313,7 @@ namespace Templates.Strings {
             if (lastIndex + srcLen - current < 0 || lastIndex + srcLen - current > capacity || current > srcLen)
                 throw new ArgumentException();
 #endif
-            StringNativeHelper.MemCpy(dest + lastIndex, src + current, srcLen - current);
+            NativeHelper.MemCpy(dest + lastIndex, src + current, srcLen - current);
         }
 
         public static string Replace (int start, int length, string replacement, string source)
@@ -329,15 +331,15 @@ namespace Templates.Strings {
                     throw new ArgumentException();
 #endif
                 int newLen = sourceLen - length + replacement.Length;
-                string destination = StringNativeHelper.AllocateString(newLen);
+                string destination = NativeHelper.AllocateString(newLen);
                 unsafe {
                     fixed (char* dest = destination) {
                         fixed (char* src = source) {
                             fixed (char* repl = replacement) {
                                 if (start > 0)
-                                    StringNativeHelper.MemCpy(dest, src, start);
-                                StringNativeHelper.MemCpy(dest + start, repl, replacementLength);
-                                StringNativeHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
+                                    NativeHelper.MemCpy(dest, src, start);
+                                NativeHelper.MemCpy(dest + start, repl, replacementLength);
+                                NativeHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
                             }
                         }
                     }
@@ -367,9 +369,9 @@ namespace Templates.Strings {
                         fixed (char* src = (char[]) source) {
                             fixed (char* repl = replacement) {
                                 if (start > 0)
-                                    StringNativeHelper.MemCpy(dest, src, start);
-                                StringNativeHelper.MemCpy(dest + start, repl, replacementLength);
-                                StringNativeHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
+                                    NativeHelper.MemCpy(dest, src, start);
+                                NativeHelper.MemCpy(dest + start, repl, replacementLength);
+                                NativeHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
                             }
                         }
                     }
@@ -399,9 +401,9 @@ namespace Templates.Strings {
                         fixed (char* src = (char[]) source) {
                             fixed (char* repl = (char[]) replacement) {
                                 if (start > 0)
-                                    StringNativeHelper.MemCpy(dest, src, start);
-                                StringNativeHelper.MemCpy(dest + start, repl, replacementLength);
-                                StringNativeHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
+                                    NativeHelper.MemCpy(dest, src, start);
+                                NativeHelper.MemCpy(dest + start, repl, replacementLength);
+                                NativeHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
                             }
                         }
                     }
@@ -432,9 +434,9 @@ namespace Templates.Strings {
                         fixed (char* src = _data) {
                             fixed (char* repl = replacement) {
                                 if (start > 0)
-                                    StringNativeHelper.MemCpy(dest, src, start);
-                                StringNativeHelper.MemCpy(dest + start, repl, replacementLength);
-                                StringNativeHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
+                                    NativeHelper.MemCpy(dest, src, start);
+                                NativeHelper.MemCpy(dest + start, repl, replacementLength);
+                                NativeHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
                             }
                         }
                     }
@@ -472,9 +474,9 @@ namespace Templates.Strings {
                         fixed (char* src = _data) {
                             fixed (char* repl = (char[]) replacement) {
                                 if (start > 0)
-                                    StringNativeHelper.MemCpy(dest, src, start);
-                                StringNativeHelper.MemCpy(dest + start, repl, replacementLength);
-                                StringNativeHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
+                                    NativeHelper.MemCpy(dest, src, start);
+                                NativeHelper.MemCpy(dest + start, repl, replacementLength);
+                                NativeHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
                             }
                         }
                     }

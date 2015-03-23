@@ -5,12 +5,12 @@ using Templates.Data;
 using Templates.Exceptions;
 
 namespace Templates.Runtime {
-    public class TemplateResolver {
-        private readonly string[] _viewPath = new[] { @"\views\{1}\{0}", @"\views\{0}" };
-        private readonly string[] _masterPath = new[] { @"\views\base\{1}\{0}", @"\views\base\{0}" };
+    public class TemplateResolver : ITemplateResolver
+    {
+        private readonly string[] _viewPath = { @"\views\{1}\{0}", @"\views\{0}" };
+        private readonly string[] _masterPath = { @"\views\base\{1}\{0}", @"\views\base\{0}" };
 
-        private readonly string[] _partialPath = new[]
-        {@"\views\partial\{1}\{0}", @"\views\partial\{0}", @"\views\{1}\{0}", @"\views\{0}"};
+        private readonly string[] _partialPath = {@"\views\partial\{1}\{0}", @"\views\partial\{0}", @"\views\{1}\{0}", @"\views\{0}"};
 
         private const string FileExtension = ".thtml";
 
@@ -65,7 +65,8 @@ namespace Templates.Runtime {
                 {
                     EnableFileChangeCheck = _checkFileChange,
                     FileNamePostfix = Path.GetExtension(path),
-                    RootPath = _rootPath
+                    RootPath = _rootPath,
+                    AllowCSharp = true
                 };
                 return Create(path, new CompileContext(options) { ControllerName = controllerName });
             case TemplatePathType.PartialView:
@@ -77,6 +78,7 @@ namespace Templates.Runtime {
                     EnableFileChangeCheck = _checkFileChange,
                     FileNamePostfix = Path.GetExtension(path),
                     RootPath = _rootPath,
+                    AllowCSharp = true
                 };
                 if (context != null) {
                     context.ControllerName = controllerName;

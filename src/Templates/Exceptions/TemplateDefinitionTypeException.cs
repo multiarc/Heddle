@@ -3,7 +3,9 @@ using System.Runtime.Serialization;
 using Templates.Strings.Core;
 
 namespace Templates.Exceptions {
+#if !ASPNETCORE50
     [Serializable]
+#endif
     public class TemplateDefinitionTypeException: Exception {
         public BlockPosition Position { get; }
 
@@ -28,10 +30,11 @@ namespace Templates.Exceptions {
 
         public TemplateDefinitionTypeException(string message, Exception innerException) : base(message, innerException) {
         }
-
+#if !ASPNETCORE50
         protected TemplateDefinitionTypeException(SerializationInfo info, StreamingContext context) : base(info, context) {
             base.GetObjectData(info, context);
             info.AddValue("Position", Position);
         }
+#endif
     }
 }

@@ -4,7 +4,9 @@ using System.Runtime.Serialization;
 using Templates.Data;
 
 namespace Templates.Exceptions {
+#if !ASPNETCORE50
     [Serializable]
+#endif
     public class TemplateCompileException: Exception {
         public List<TtlCompileError> Errors { get; }
 
@@ -33,7 +35,7 @@ namespace Templates.Exceptions {
             if (errors == null) throw new ArgumentNullException("errors");
             Errors = new List<TtlCompileError>(errors);
         }
-
+#if !ASPNETCORE50
         protected TemplateCompileException (SerializationInfo info, StreamingContext context, IEnumerable<TtlCompileError> errors)
             : base(info, context)
         {
@@ -42,5 +44,6 @@ namespace Templates.Exceptions {
             base.GetObjectData(info, context);
             info.AddValue("Errors", Errors);
         }
+#endif
     }
 }

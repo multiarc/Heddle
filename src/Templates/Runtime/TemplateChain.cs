@@ -39,7 +39,7 @@ namespace Templates.Runtime {
 
         public BlockPosition Position { get; set; }
 
-        public ReadOnlyCollection<TemplateItem> ItemsToExecute => _itemsToExecute.AsReadOnly();
+        public ReadOnlyCollection<TemplateItem> ItemsToExecute => new ReadOnlyCollection<TemplateItem>(_itemsToExecute);
 
         #region Implementation of IDisposable
 

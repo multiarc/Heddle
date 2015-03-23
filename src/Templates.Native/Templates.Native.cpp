@@ -6,18 +6,13 @@ namespace Templates
 {
 	namespace Native
 	{
-		void StringNativeHelper::MemCpy(wchar_t* dest, wchar_t* src, int len)
+		void NativeHelper::MemCpy(wchar_t* dest, wchar_t* src, int len)
 		{
 			if (len > 0 && dest != NULL && src != NULL)
 				memcpy(dest, src, len << 1);
 		}
 
-		size_t StringNativeHelper::StrLen(wchar_t* value)
-		{
-			return wcslen(value);
-		}
-
-		int StringNativeHelper::Equals(wchar_t* compareTo, wchar_t* compareWith, int lenTo, int lenWith)
+		int NativeHelper::Equals(wchar_t* compareTo, wchar_t* compareWith, int lenTo, int lenWith)
 		{
 			if (lenTo < lenWith)
 				return -1;
@@ -26,12 +21,12 @@ namespace Templates
 			return wmemcmp(compareTo, compareWith, lenTo);
 		}
 
-		String^ StringNativeHelper::AllocateDefault(int length)
+		String^ NativeHelper::AllocateDefault(int length)
 		{
 			return gcnew String('\0', length);
 		}
 
-		static StringNativeHelper::StringNativeHelper()
+		static NativeHelper::NativeHelper()
 		{
 			try
 			{
@@ -47,14 +42,14 @@ namespace Templates
 			}
 		}
 
-		String^ StringNativeHelper::AllocateString(int length)
+		String^ NativeHelper::AllocateString(int length)
 		{
 			if (Allocator == NULL)
 				return AllocateDefault(length);
 			return Allocator(length);
 		}
 
-		int StringNativeHelper::StartsWith(wchar_t* data, wchar_t* find, int* needleTable, int dataLen, int findLen)
+		int NativeHelper::StartsWith(wchar_t* data, wchar_t* find, int* needleTable, int dataLen, int findLen)
 		{
 			if (dataLen >= findLen) {
 				int found = 0;
@@ -77,7 +72,7 @@ namespace Templates
 			return -1;
 		}
 
-		bool StringNativeHelper::IsWhiteSpace(wchar_t c)
+		bool NativeHelper::IsWhiteSpace(wchar_t c)
 		{
 			return c == ' ' || c == '\x00a0' || c == '\x0085' || c >= '\x0009' && c <= '\x000d';
 		}

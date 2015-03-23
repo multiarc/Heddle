@@ -1,0 +1,56 @@
+﻿{
+    "version": "2.0.0-*",
+    "code": [ "../Templates/**/*.cs", "**/*.cs" ],
+    "compilationOptions": { "allowUnsafe": true },
+    "dependencies": {
+        "Antlr4.Runtime.K": "4.5.0.0",
+        "Templates.Language.K": "1.0.0-*",
+        "Templates.Native.K": "1.0.0-*",
+        "Microsoft.CodeAnalysis.CSharp": "1.0.0-*",
+        "Microsoft.Framework.DependencyInjection": "1.0.0-*"
+    },
+
+    "frameworks": {
+        "aspnet50": {
+            "dependencies": {
+            },
+            "frameworkAssemblies": {
+                "System.Runtime": "4.0.10.0",
+                "System.Reflection": "4.0.0.0",
+                "System.Text.Encoding": "4.0.0.0",
+                "System.Threading.Tasks": "4.0.0.0",
+                "System.IO": "4.0.0.0"
+            }
+        },
+        "aspnetcore50": {
+            "dependencies": {
+                "Microsoft.Framework.Runtime": "1.0.0-*",
+                "System.Runtime": "4.0.20.0",
+                "System.AppContext": "4.0.0.0",
+                "System.Runtime.Extensions": "4.0.10.0",
+                "System.Runtime.Loader": "4.0.0.0",
+                "System.Runtime.Serialization.Primitives": "4.0.0.0",
+                "Microsoft.CSharp": "4.0.0.0",
+                "System.Collections": "4.0.10.0",
+                "System.Linq": "4.0.0.0",
+                "System.IO": "4.0.10.0",
+                "System.IO.FileSystem": "4.0.0.0",
+                "System.IO.FileSystem.Primitives": "4.0.10.0",
+                "System.IO.FileSystem.Watcher": "4.0.0.0",
+                "System.Reflection": "4.0.10.0",
+                "System.Reflection.Extensions": "4.0.0.0",
+                "System.Reflection.Primitives": "4.0.0.0",
+                "System.Reflection.TypeExtensions": "4.0.0.0",
+                "System.Reflection.Emit": "4.0.0.0",
+                "System.Reflection.Emit.Lightweight": "4.0.0.0",
+                "System.Reflection.Emit.ILGeneration": "4.0.0.0",
+                "System.Globalization": "4.0.10.0",
+                "System.Globalization.Extensions": "4.0.0.0",
+                "System.Text.Encoding": "4.0.10.0",
+                "System.Text.Encoding.CodePages": "4.0.0.0",
+                "System.Text.Encoding.Extensions": "4.0.10.0",
+                "System.Text.RegularExpressions": "4.0.10-*"
+            }
+        }
+    }
+}

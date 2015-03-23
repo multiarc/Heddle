@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reflection;
 
 namespace Templates.Helpers {
     /// <summary>
@@ -14,7 +15,7 @@ namespace Templates.Helpers {
         {
             if (type == null)
                 throw new ArgumentNullException("type");
-            ParseAttributes(type.GetCustomAttributes(false));
+            ParseAttributes(type.GetTypeInfo().GetCustomAttributes(false));
         }
 
         public AttributeSet (IEnumerable<object> attributes)
@@ -28,7 +29,7 @@ namespace Templates.Helpers {
         /// <summary>
         /// Gets list of custom attributes of type/property/field etc.
         /// </summary>
-        public ReadOnlyCollection<Attribute> AllAttributes => _attributes.AsReadOnly();
+        public ReadOnlyCollection<Attribute> AllAttributes => new ReadOnlyCollection<Attribute>(_attributes);
 
         private void ParseAttributes (IEnumerable<object> attributes)
         {

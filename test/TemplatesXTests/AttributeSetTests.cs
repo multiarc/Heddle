@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security;
 using Templates.Helpers;
@@ -23,7 +24,6 @@ namespace TemplatesXTests {
         [Fact]
         public void GetAttributeTest ()
         {
-            GetAttributeTestHelper<SerializableAttribute, object, SecuritySafeCriticalAttribute>();
             GetAttributeTestHelper<ComVisibleAttribute, string, SecuritySafeCriticalAttribute>();
         }
 
@@ -42,7 +42,6 @@ namespace TemplatesXTests {
         [Fact]
         public void GetAttributesTest ()
         {
-            GetAttributesTestHelper<SerializableAttribute, object, SecuritySafeCriticalAttribute>();
             GetAttributesTestHelper<ComVisibleAttribute, string, SecuritySafeCriticalAttribute>();
         }
 
@@ -58,7 +57,6 @@ namespace TemplatesXTests {
         [Fact]
         public void GetIsPresentAttributeTest ()
         {
-            GetIsPresentAttributeHelper<object>(typeof (SerializableAttribute), typeof (SecuritySafeCriticalAttribute));
             GetIsPresentAttributeHelper<string>(typeof (ComVisibleAttribute), typeof (SecuritySafeCriticalAttribute));
         }
 
@@ -79,7 +77,7 @@ namespace TemplatesXTests {
             ReadOnlyCollection<Attribute> actual = target.AllAttributes;
             Assert.True(actual.Count == 4);
 
-            target = new AttributeSet(type.GetCustomAttributes(false));
+            target = new AttributeSet(type.GetTypeInfo().GetCustomAttributes(false));
             ReadOnlyCollection<Attribute> expected = target.AllAttributes;
             for (int i = 0; i < 0; i++)
                 Assert.Equal(expected[i], actual[i]);

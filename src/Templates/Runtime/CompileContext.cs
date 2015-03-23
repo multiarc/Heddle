@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -12,6 +13,10 @@ using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Language;
+#if ASPNETCORE50
+using Microsoft.Framework.Runtime.Loader;
+using System.Runtime.Loader;
+#endif
 
 namespace Templates.Runtime {
     /// <summary>
@@ -39,7 +44,7 @@ namespace Templates.Runtime {
         internal Assembly CompiledAssembly { get; private set; }
 
         internal HashSet<Assembly> DependentAssemblies { get; }
-            = new HashSet<Assembly>(new[] {typeof (object).Assembly, typeof(Enumerable).Assembly, typeof(InternalsVisibleToAttribute).Assembly});
+            = new HashSet<Assembly>(new[] {typeof (object).GetTypeInfo().Assembly, typeof(Enumerable).GetTypeInfo().Assembly, typeof(InternalsVisibleToAttribute).GetTypeInfo().Assembly });
 
         public bool Compiled { get; private set; }
 
@@ -172,7 +177,7 @@ namespace Templates.Runtime {
             set;
         }
 
-        public IReadOnlyCollection<string> Namespaces => _namespaces.AsReadOnly();
+        public IReadOnlyCollection<string> Namespaces => new ReadOnlyCollection<string>(_namespaces);
 
         /// <summary>
         /// Compile delayed Extensions, Compile all dynamic property references and connect into template chain.
@@ -201,7 +206,11 @@ namespace Templates.Runtime {
                     }
                     var stream = new MemoryStream();
                     compilation.Emit(stream);
+#if !ASPNETCORE50
                     CompiledAssembly = Assembly.Load(stream.GetBuffer());
+#else
+                    CompiledAssembly = ((LoadContext)AssemblyLoadContext.Default).LoadStream(stream, null);
+#endif
                     var classType =
                         CompiledAssembly.GetType(
                             string.Format("Templates.Runtime.CSharpExtensionParameterExpressions_{0}",
@@ -264,10 +273,10 @@ namespace Templates.Runtime {
                 MethodNumber = _method,
                 ModelType = ModelType
             });
-            DependentAssemblies.Add(ModelType.Type.Assembly);
+            DependentAssemblies.Add(ModelType.Type.GetTypeInfo().Assembly);
             if (expressionOptions.ChainedType.IsDynamic)
-                DependentAssemblies.Add(typeof(CallSite<>).Assembly);
-            DependentAssemblies.Add(expressionOptions.ChainedType.Type.Assembly);
+                DependentAssemblies.Add(typeof(CallSite<>).GetTypeInfo().Assembly);
+            DependentAssemblies.Add(expressionOptions.ChainedType.Type.GetTypeInfo().Assembly);
             _method++;
             return parameter;
         }
@@ -282,18 +291,17 @@ namespace Templates.Runtime {
             expressionOptions.ModelType = ModelType;
             var code = PreparseGenerator.Generate(expressionOptions);
             var tree = CSharpSyntaxTree.ParseText(code);
-
             HashSet<MetadataReference> assemblySet = new HashSet<MetadataReference>
             {
-                MetadataReference.CreateFromAssembly(typeof (object).Assembly),
-                MetadataReference.CreateFromAssembly(ModelType.Type.Assembly)
+                MetadataReference.CreateFromAssembly(typeof (object).GetTypeInfo().Assembly),
+                MetadataReference.CreateFromAssembly(ModelType.Type.GetTypeInfo().Assembly)
             };
             if (ModelType.IsDynamic) 
-                MetadataReference.CreateFromAssembly(typeof(CallSite<>).Assembly);
-            assemblySet.Add(MetadataReference.CreateFromAssembly(typeof(Enumerable).Assembly));
+                MetadataReference.CreateFromAssembly(typeof(CallSite<>).GetTypeInfo().Assembly);
+            assemblySet.Add(MetadataReference.CreateFromAssembly(typeof(Enumerable).GetTypeInfo().Assembly));
             if (expressionOptions.ChainedType.IsDynamic)
-                MetadataReference.CreateFromAssembly(typeof(CallSite<>).Assembly);
-            assemblySet.Add(MetadataReference.CreateFromAssembly(expressionOptions.ChainedType.Type.Assembly));
+                MetadataReference.CreateFromAssembly(typeof(CallSite<>).GetTypeInfo().Assembly);
+            assemblySet.Add(MetadataReference.CreateFromAssembly(expressionOptions.ChainedType.Type.GetTypeInfo().Assembly));
 
             var compilation = CSharpCompilation.Create(null, new[] { tree }, assemblySet);
             var diagnostics = compilation.GetDiagnostics();

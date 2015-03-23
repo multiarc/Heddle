@@ -8,7 +8,6 @@ namespace Templates {
     public class FileReader {
         private readonly TemplateOptions _options;
         private readonly string _templateName;
-        private DateTime _lastModified;
 
         public FileReader (TemplateOptions options)
         {
@@ -21,23 +20,6 @@ namespace Templates {
 
             _templateName = options.TemplateName;
             _options = options;
-            try {
-                _lastModified = GetModifiedDate(GetFileName());
-            }
-            catch (ArgumentException e) {
-                throw new ArgumentException("Cannoc connect with file", e);
-            }
-        }
-
-        private static DateTime GetModifiedDate (string fileName)
-        {
-            try {
-                var fileInfo = new FileInfo(fileName);
-                return fileInfo.LastWriteTimeUtc;
-            }
-            catch (Exception e) {
-                throw new TemplateFileException("Get last edit date failed.", e);
-            }
         }
 
         public string ReadEntireFile ()
@@ -45,7 +27,6 @@ namespace Templates {
             string fileName = GetFileName();
             try {
                 using (StreamReader reader = File.OpenText(fileName)) {
-                    _lastModified = GetModifiedDate(fileName);
                     return reader.ReadToEnd();
                 }
             }
