@@ -1,12 +1,12 @@
 ﻿<% <class>
 	[
-	public static class CSharpExtensionParameterExpressions_@guid(ClassGuid)[N] {
+	public static class CSE_@guid(ClassGuid)[N] {
 		
 		private static void Main (string@:[]:@ args) {}
 
 		@list(Methods)
 		[
-		public static object PreProcessData_@(ExtensionName)@(MethodNumber) (@(ModelType) model, @(ChainedType) chained)
+		public static object ProcessData_@(ExtensionName)@(MethodNumber) (@(ModelType) model, @(ChainedType) chained)
 		{
 			return @(Expression);;
 		}

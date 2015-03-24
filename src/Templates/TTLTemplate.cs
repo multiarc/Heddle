@@ -94,8 +94,12 @@ namespace Templates {
         /// <param name="data">Input object</param>
         /// <returns>Generated string</returns>
         public string Generate(object data) {
-            if (_runtimeDocument == null)
-                throw new TemplateInitException("Compile first.");
+            if (_runtimeDocument == null) {
+                if (CompileResult == null)
+                    throw new TemplateInitException("Compile first.");
+                throw new TemplateCompileException(CompileResult.ErrorList);
+            }
+                
 #if DEBUG
             if (data != null && !_context.ModelType.Type.IsType(data)) {
                 throw new TemplateProcessingException

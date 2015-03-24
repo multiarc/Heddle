@@ -1,29 +1,40 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
+using Microsoft.CodeAnalysis;
+using Microsoft.Framework.Runtime;
+using Microsoft.Framework.Runtime.Infrastructure;
 
 namespace Templates.Native {
     public static class NativeHelper
     {
-        private static readonly AllocatorDelegate Allocator;
+        private static readonly ILibraryManager LibraryManager =
+            (ILibraryManager) CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (ILibraryManager));
+        private static readonly IApplicationEnvironment Environment =
+            (IApplicationEnvironment)
+                CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IApplicationEnvironment));
+#if ASPNETCORE50
+        private static readonly IAssemblyLoadContextAccessor LoadContextAccessor =
+            (IAssemblyLoadContextAccessor)
+                CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IAssemblyLoadContextAccessor));
+#endif
+        private static readonly Func<int, string> Allocator;
         private static readonly MemcpyDelegate Memcpy;
 #if ASPNETCORE50
-        private static readonly GetCurrentDomainDelegate GetCurrentDomain;
+        private static readonly Func<object> GetCurrentDomain;
+        private static readonly Func<object, Assembly[]> AssembliesGetter;
 #endif
 
         public static unsafe void MemCpy(char* dest, char* src, int len)
         {
-            if (len > 0 && dest != null && src != null)
 #if ASPNETCORE50
                 Buffer.MemoryCopy(src, dest, len * 2, len * 2);
 #else
                 Memcpy(dest, src, len);
 #endif
-        }
-
-        public static string AllocateDefault(int length)
-        {
-            return new string('\0', length);
         }
 
         //Copied implementation of coreclr CompareOrdinal
@@ -105,45 +116,101 @@ namespace Templates.Native {
 
         static NativeHelper()
         {
-            try
+            MethodInfo method = typeof (string).GetMethod("FastAllocateString",
+                BindingFlags.Static | BindingFlags.NonPublic);
+            if (method == null) {
+                throw new InvalidOperationException("Cannot find string.FastAllocateString() system method");
+            }
+            Allocator = method.CompileAccessor<int, string>();
+            method = typeof (string).GetMethod("wstrcpy", BindingFlags.Static | BindingFlags.NonPublic);
+            if (method == null)
             {
-                MethodInfo method = typeof (string).GetMethod("FastAllocateString", BindingFlags.Static | BindingFlags.NonPublic);
-                if (method != null)
-                {
-                    Allocator = (AllocatorDelegate) method.CreateDelegate(typeof (AllocatorDelegate));
-                }
-                method = typeof (string).GetMethod("wstrcpy", BindingFlags.Static | BindingFlags.NonPublic);
-                if (method == null)
-                {
-                    throw new InvalidOperationException("Cannot find string.wstrcpy() system method");
-                }
-                Memcpy = (MemcpyDelegate)method.CreateDelegate(typeof(MemcpyDelegate));
+                throw new InvalidOperationException("Cannot find string.wstrcpy() system method");
+            }
+            Memcpy = (MemcpyDelegate)method.CompileStaticDelegateAccessor<MemcpyDelegate>();
 #if ASPNETCORE50
-                method = typeof(object).GetTypeInfo().Assembly.GetType("AppDomain").GetProperty("CurrentDomain", BindingFlags.Public | BindingFlags.Static).GetGetMethod();
-                if (method == null) {
-                    throw new InvalidOperationException("Cannot find AppDomain.CurrentDomain Property get method in Core Mode, investigate to issue and rewrite assembly list acquire");
-                }
-                GetCurrentDomain = (GetCurrentDomainDelegate)method.CreateDelegate(typeof(GetCurrentDomainDelegate));
+            var type = typeof(object).GetTypeInfo().Assembly.GetType("System.AppDomain");
+            if (type == null) {
+                throw new InvalidOperationException("Cannot find System.AppDomain class in system library, investigate to issue and rewrite assembly list acquire");
+            }
+            method = type.GetProperty("CurrentDomain", BindingFlags.Public | BindingFlags.Static).GetGetMethod();
+            if (method == null) {
+                throw new InvalidOperationException("Cannot find System.AppDomain.CurrentDomain Property get method in Core Mode, investigate to issue and rewrite assembly list acquire");
+            }
+            GetCurrentDomain = method.CompileStaticAccessor<object>();
+            method = type.GetMethod("GetAssemblies", BindingFlags.Public | BindingFlags.Instance);
+            AssembliesGetter = method.CompileAccessor<object, Assembly[]>();
 #endif
-            }
-            catch (Exception)
-            {
-                //TODO: Log error here
-            }
         }
 
 #if ASPNETCORE50
         public static Assembly[] GetAssemblies() {
             var domain = GetCurrentDomain();
-            var method = typeof(object).GetTypeInfo().Assembly.GetType("AppDomain").GetMethod("GetAssemblies", BindingFlags.Public | BindingFlags.Instance);
-            return ((GetAssembliesDelegate)method.CreateDelegate(typeof(GetAssembliesDelegate), domain))();
+            return AssembliesGetter(domain);
+        }
+
+        public static IAssemblyLoadContext GetAssemblyLoadContext()
+        {
+            return LoadContextAccessor.Default;
         }
 #endif
+        private static MetadataReference ConvertMetadataReference(IMetadataReference metadataReference) {
+            var roslynReference = metadataReference as IRoslynMetadataReference;
+
+            if (roslynReference != null) {
+                return roslynReference.MetadataReference;
+            }
+
+            var embeddedReference = metadataReference as IMetadataEmbeddedReference;
+
+            if (embeddedReference != null) {
+                return MetadataReference.CreateFromImage(embeddedReference.Contents);
+            }
+
+            var fileMetadataReference = metadataReference as IMetadataFileReference;
+
+            if (fileMetadataReference != null) {
+                return CreateMetadataFileReference(fileMetadataReference.Path);
+            }
+
+            var projectReference = metadataReference as IMetadataProjectReference;
+            if (projectReference != null) {
+                using (var ms = new MemoryStream()) {
+                    projectReference.EmitReferenceAssembly(ms);
+
+                    return MetadataReference.CreateFromImage(ms.ToArray());
+                }
+            }
+
+            throw new NotSupportedException();
+        }
+
+        private static MetadataReference CreateMetadataFileReference(string path)
+        {
+            return MetadataReference.CreateFromFile(path);
+        }
+
+        public static List<MetadataReference> GetMetadataReferences()
+        {
+            var references = new List<MetadataReference>();
+            var libraryExport = LibraryManager.GetLibraryExport(Environment.ApplicationName);
+            if (libraryExport?.MetadataReferences?.Count > 0) {
+                var roslynReference = libraryExport.MetadataReferences[0] as IRoslynMetadataReference;
+                var compilationReference = roslynReference?.MetadataReference as CompilationReference;
+                if (compilationReference != null) {
+                    references.AddRange(compilationReference.Compilation.References);
+                    references.Add(roslynReference.MetadataReference);
+                    return references;
+                }
+            }
+            var export = LibraryManager.GetAllExports(Environment.ApplicationName);
+            references.AddRange(export.MetadataReferences.Select(ConvertMetadataReference));
+
+            return references;
+        }
 
         public static string AllocateString(int length)
         {
-            if (Allocator == null)
-                return AllocateDefault(length);
             return Allocator(length);
         }
 

@@ -4,7 +4,7 @@
     "dependencies": {
         "Antlr4.Runtime.K": "4.5.0.0"
     },
-
+    "configurations": {"release" : {"compilationOptions": {"define": ["TRACE"]}}, "debug" : {"compilationOptions": {"define": ["TRACE", "DEBUG"]}}},
     "frameworks" : {
         "aspnet50" : { 
             "dependencies": {

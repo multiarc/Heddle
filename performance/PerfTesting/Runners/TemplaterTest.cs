@@ -2,21 +2,20 @@
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using Templates;
 using Templates.Collections;
 using Templates.Data;
 using Templates.Runtime;
 
-namespace PerfTesting.Runners {
+namespace Templates.Performance.Runners {
     public class TemplaterTest : IRunner {
         public TemplaterTest()
         {
             /*JIT*/
             var test = new TtlTemplate
                 (new CompileContext
-                     (new TemplateOptions("tempalte") {
+                     (new TemplateOptions("template") {
                          FileNamePostfix = ".ttl",
-                         RootPath = @"g:\Work\Templater\performance\PerfTesting\TestTemplates",
+                         RootPath = @"TestTemplates",
                          AllowCSharp = true
                      }));
             var testString = test.Generate(DataFiller.FillData());
@@ -39,10 +38,10 @@ namespace PerfTesting.Runners {
             watcher.Start();
             var target = new TtlTemplate
                 (new CompileContext
-                     (new TemplateOptions("tempalte")
+                     (new TemplateOptions("template")
                      {
                          FileNamePostfix = ".ttl",
-                         RootPath = @"g:\Work\Templater\performance\PerfTesting\TestTemplates",
+                         RootPath = @"TestTemplates",
                          AllowCSharp = true
                      }));
             watcher.Stop();

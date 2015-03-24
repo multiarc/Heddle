@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 
-namespace PerfTesting {
+namespace Templates.Performance {
     internal static class DataFiller {
         private static readonly Random Rand = new Random(DateTime.Now.Second);
 

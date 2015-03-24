@@ -1,4 +1,4 @@
-﻿namespace PerfTesting.Runners {
+﻿namespace Templates.Performance.Runners {
     public interface IRunner
     {
         void Run();

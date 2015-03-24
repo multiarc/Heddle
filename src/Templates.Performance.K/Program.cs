@@ -1,10 +1,11 @@
-﻿using System;
+﻿using Templates.Performance.Runners;
+using System;
 using Templates.Collections;
-using Templates.Performance.Runners;
 
-namespace Templates.Performance {
-    internal class Program {
-
+namespace Templates.Performance
+{
+    public class Program
+    {
         private static readonly SmartList<IRunner> Tests = new SmartList<IRunner>();
 
         public static void SetUpTests() {
@@ -13,14 +14,19 @@ namespace Templates.Performance {
             Tests.Add(new TemplaterTest());
         }
 
-        private static void Main(string[] args) {
+        public void Main(string[] args)
+        {
             SetUpTests();
             //Run all tests
             foreach (var test in Tests) {
                 test.Run();
             }
             Console.WriteLine("Done all, press any key to exit...");
+#if !ASPNETCORE50
             Console.ReadKey();
+#else
+            Console.ReadLine();
+#endif
         }
     }
 }

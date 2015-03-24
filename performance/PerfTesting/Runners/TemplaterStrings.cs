@@ -3,13 +3,12 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using Templates;
 using Templates.Collections;
 using Templates.Data;
 using Templates.Runtime;
 using Templates.Strings;
 
-namespace PerfTesting.Runners {
+namespace Templates.Performance.Runners {
     public class TemplaterStrings :IRunner {
         public void Run()
         {
@@ -20,7 +19,7 @@ namespace PerfTesting.Runners {
                 (new CompileContext
                      (new TemplateOptions("template") {
                          FileNamePostfix = ".ttl",
-                         RootPath = @"g:\Work\Templater\performance\PerfTesting\TestTemplates",
+                         RootPath = @"TestTemplates",
                          AllowCSharp = true
                      }));
             var testFastList = new SmartList<ExString>();

@@ -13,6 +13,8 @@ using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Language;
+using Templates.Native;
+
 #if ASPNETCORE50
 using Microsoft.Framework.Runtime.Loader;
 using System.Runtime.Loader;
@@ -195,9 +197,16 @@ namespace Templates.Runtime {
                     if (!InitErrors.Success)
                         throw new TemplateCompileException("Cannot compile base C# generation templates", InitErrors.Errors);
                     var code = CodeGenerator.Generate(this);
+                    CompiledAssembly = GeneratedAssemblyCache.TryGetCached(code);
+                    if (CompiledAssembly != null)
+                        return;
                     var tree = CSharpSyntaxTree.ParseText(code);
-                    var compilation = CSharpCompilation.Create(null, new[] {tree},
+                    var compilation = CSharpCompilation.Create(ModelType.ToString() + "_" + ClassGuid.ToString("N"), new[] {tree},
+#if ASPNETCORE50 || ASPNET50
+                        NativeHelper.GetMetadataReferences(),
+#else
                         DependentAssemblies.Select(MetadataReference.CreateFromAssembly),
+#endif
                         new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
                     var diagnostics = compilation.GetDiagnostics();
                     if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
@@ -206,20 +215,22 @@ namespace Templates.Runtime {
                     }
                     var stream = new MemoryStream();
                     compilation.Emit(stream);
+                    stream.Seek(0, SeekOrigin.Begin);
 #if !ASPNETCORE50
                     CompiledAssembly = Assembly.Load(stream.GetBuffer());
 #else
-                    CompiledAssembly = ((LoadContext)AssemblyLoadContext.Default).LoadStream(stream, null);
+                    CompiledAssembly = NativeHelper.GetAssemblyLoadContext().LoadStream(stream, null);
 #endif
+                    GeneratedAssemblyCache.AddToCache(code, CompiledAssembly);
                     var classType =
                         CompiledAssembly.GetType(
-                            string.Format("Templates.Runtime.CSharpExtensionParameterExpressions_{0}",
+                            string.Format("Templates.Runtime.CSE_{0}",
                                 ClassGuid.ToString("N")));
                     foreach (var expressionCompilation in Methods)
                     {
                         expressionCompilation.RuntimeCallParameter.ParameterImplementation =
                             GatesCache.CreateCompiledDelegate(
-                                classType.GetMethod(string.Format("PreProcessData_{0}{1}",
+                                classType.GetMethod(string.Format("ProcessData_{0}{1}",
                                     expressionCompilation.ExtensionName, expressionCompilation.MethodNumber),
                                     BindingFlags.Public | BindingFlags.Static), expressionCompilation.ModelType.Type,
                                 expressionCompilation.ChainedType.Type);
@@ -291,6 +302,9 @@ namespace Templates.Runtime {
             expressionOptions.ModelType = ModelType;
             var code = PreparseGenerator.Generate(expressionOptions);
             var tree = CSharpSyntaxTree.ParseText(code);
+#if ASPNET50 || ASPNETCORE50
+            var assemblySet = NativeHelper.GetMetadataReferences();
+#else
             HashSet<MetadataReference> assemblySet = new HashSet<MetadataReference>
             {
                 MetadataReference.CreateFromAssembly(typeof (object).GetTypeInfo().Assembly),
@@ -302,7 +316,7 @@ namespace Templates.Runtime {
             if (expressionOptions.ChainedType.IsDynamic)
                 MetadataReference.CreateFromAssembly(typeof(CallSite<>).GetTypeInfo().Assembly);
             assemblySet.Add(MetadataReference.CreateFromAssembly(expressionOptions.ChainedType.Type.GetTypeInfo().Assembly));
-
+#endif
             var compilation = CSharpCompilation.Create(null, new[] { tree }, assemblySet);
             var diagnostics = compilation.GetDiagnostics();
             if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))

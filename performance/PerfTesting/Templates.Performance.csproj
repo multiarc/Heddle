@@ -9,8 +9,8 @@
     <ProjectGuid>{42F7D21B-7C11-47BF-8075-C876A30716C2}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>PerfTesting</RootNamespace>
-    <AssemblyName>PerfTesting</AssemblyName>
+    <RootNamespace>Templates.Performance</RootNamespace>
+    <AssemblyName>Templates.Performance</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
@@ -126,7 +126,7 @@
     </AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject>PerfTesting.Program</StartupObject>
+    <StartupObject>Templates.Performance.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.CSharp" />
@@ -162,9 +162,15 @@
     <Content Include="LanguageTemplates\CSharpPreparseTemplate.tcs">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <None Include="TestTemplates\partial.ttl" />
-    <None Include="TestTemplates\template.ttl" />
-    <None Include="TestTemplates\template_2.ttl" />
+    <Content Include="TestTemplates\partial.ttl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="TestTemplates\template.ttl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="TestTemplates\template_2.ttl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.0">

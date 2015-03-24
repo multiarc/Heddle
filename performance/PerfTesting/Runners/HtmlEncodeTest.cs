@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Net;
-using Templates;
 using Templates.Data;
 using Templates.Runtime;
 using Templates.Strings.Web;
 
-namespace PerfTesting.Runners {
+namespace Templates.Performance.Runners {
     public class HtmlEncodeTest : IRunner {
         public void Run()
         {
@@ -44,7 +43,7 @@ namespace PerfTesting.Runners {
                     (new CompileContext
                          (new TemplateOptions("template") {
                              FileNamePostfix = ".ttl",
-                             RootPath = @"g:\Work\Templater\performance\PerfTesting\TestTemplates",
+                             RootPath = @"TestTemplates",
                              AllowCSharp = true
                          }));
             var testItem = DataFiller.FillData();

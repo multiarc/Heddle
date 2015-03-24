@@ -115,6 +115,9 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="TestTemplate\generated.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <None Include="app.config" />
     <Content Include="LanguageTemplates\CSharpClassTemplate.tcs">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -123,8 +126,12 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <None Include="packages.config" />
-    <None Include="TestTemplate\partial.thtml" />
-    <None Include="TestTemplate\template.thtml" />
+    <Content Include="TestTemplate\partial.thtml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="TestTemplate\template.thtml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">

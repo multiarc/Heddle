@@ -239,6 +239,7 @@
     <Compile Include="Runtime\DocumentsCache.cs" />
     <Compile Include="Runtime\ExpressionCompilation.cs" />
     <Compile Include="Runtime\GatesCache.cs" />
+    <Compile Include="Runtime\GeneratedAssemblyCache.cs" />
     <Compile Include="Runtime\IDataProcessor.cs" />
     <Compile Include="Runtime\IExtension.cs" />
     <Compile Include="Language\ParseContext.cs" />

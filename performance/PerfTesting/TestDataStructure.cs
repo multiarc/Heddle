@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PerfTesting {
+namespace Templates.Performance {
     public class TestData: TestDataStructure {
         public override List<TestListItem> Products
         {
