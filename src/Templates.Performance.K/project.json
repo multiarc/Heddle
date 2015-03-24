@@ -5,7 +5,7 @@
     "dependencies": {
         "Templates.K": "2.0.0-*"
     },
-    "configurations": {"release" : {"compilationOptions": {"define": ["TRACE"]}}, "debug" : {"compilationOptions": {"define": ["TRACE", "DEBUG"]}}},
+    "configurations": {"release" : {"compilationOptions": {"define": ["TRACE"]}, "optimize": true}, "debug" : {"compilationOptions": {"define": ["TRACE", "DEBUG"]}}},
     "commands": {
         "Templates.Performance.K": "run"
     },

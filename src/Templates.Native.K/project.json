@@ -4,7 +4,7 @@
         "Microsoft.Framework.Runtime": "1.0.0-*",
         "Microsoft.Framework.Runtime.Roslyn": "1.0.0-*"
     },
-    "configurations": {"release" : {"compilationOptions": {"define": ["TRACE"]}}, "debug" : {"compilationOptions": {"define": ["TRACE", "DEBUG"]}}},
+    "configurations": {"release" : {"compilationOptions": {"define": ["TRACE"]}, "optimize": true}, "debug" : {"compilationOptions": {"define": ["TRACE", "DEBUG"]}}},
     "compilationOptions": { "allowUnsafe": true },
     "frameworks": {
         "aspnet50": {
@@ -13,7 +13,7 @@
         },
         "aspnetcore50": {
             "dependencies": {
-                "System.IO":  "4.0.10.0",
+                "System.IO": "4.0.10.0",
                 "System.Collections": "4.0.10.0",
                 "System.Runtime": "4.0.20.0",
                 "System.Runtime.Extensions": "4.0.10.0",

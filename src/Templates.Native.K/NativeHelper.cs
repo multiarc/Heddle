@@ -4,42 +4,241 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
 using Microsoft.Framework.Runtime;
 using Microsoft.Framework.Runtime.Infrastructure;
 
 namespace Templates.Native {
-    public static class NativeHelper
-    {
+    public static class NativeHelper {
         private static readonly ILibraryManager LibraryManager =
-            (ILibraryManager) CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (ILibraryManager));
+            (ILibraryManager)CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(ILibraryManager));
         private static readonly IApplicationEnvironment Environment =
             (IApplicationEnvironment)
-                CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IApplicationEnvironment));
+                CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(IApplicationEnvironment));
 #if ASPNETCORE50
         private static readonly IAssemblyLoadContextAccessor LoadContextAccessor =
             (IAssemblyLoadContextAccessor)
                 CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IAssemblyLoadContextAccessor));
-#endif
-        private static readonly Func<int, string> Allocator;
-        private static readonly MemcpyDelegate Memcpy;
-#if ASPNETCORE50
+
         private static readonly Func<object> GetCurrentDomain;
         private static readonly Func<object, Assembly[]> AssembliesGetter;
 #endif
 
-        public static unsafe void MemCpy(char* dest, char* src, int len)
-        {
-#if ASPNETCORE50
-                Buffer.MemoryCopy(src, dest, len * 2, len * 2);
-#else
-                Memcpy(dest, src, len);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [System.Security.SecurityCritical]  // auto-generated 
+        public static unsafe void MemCpy(char* dmem, char* smem, int charCount) {
+            if (charCount > 0)
+            {
+#if ALIGN_ACCESS
+                if ((((int)dmem | (int)smem) & 1) == 0) { 
 #endif
+                // First Align dmem to a pointer boundary
+                if (((int)dmem & 2) != 0) {
+                    dmem[0] = smem[0];
+                    dmem      += 1;
+                    smem      += 1;
+                    charCount -= 1;
+                }
+#if WIN64
+                    if ((((int)dmem & 4) != 0) && (charCount >= 2))
+                    {
+#if IA64
+                        if (((int)smem & 2) != 0)
+                        { 
+                            dmem[0] = smem[0]; 
+                            dmem[1] = smem[1];
+                        } 
+                        else
+#endif
+                        {
+                            ((uint *)dmem)[0] = ((uint *)smem)[0]; 
+                        }
+                        dmem += 2; 
+                        smem += 2; 
+                        charCount -= 2;
+                    } 
+#endif
+                // Both x86 and AMD64 perform much faster if all writes are pointer aligned
+                // Unaligned reads perform better than 2-byte aligned reads and
+                //  better than pointer aligned reads with 16-bit shift and OR operation 
+                // So on x86 or AMD64 after aligning dmem to a pointer boundry
+                //  we just use standard mechanism 
+#if !WIN64
+                while (charCount >= 8) {
+                    ((uint*)dmem)[0] = ((uint*)smem)[0];
+                    ((uint*)dmem)[1] = ((uint*)smem)[1];
+                    ((uint*)dmem)[2] = ((uint*)smem)[2];
+                    ((uint*)dmem)[3] = ((uint*)smem)[3];
+                    dmem      += 8;
+                    smem      += 8;
+                    charCount -= 8;
+                }
+                if ((charCount & 4) != 0) {
+                    ((uint*)dmem)[0] = ((uint*)smem)[0];
+                    ((uint*)dmem)[1] = ((uint*)smem)[1];
+                    dmem += 4;
+                    smem += 4;
+                }
+                if ((charCount & 2) != 0) {
+                    ((uint*)dmem)[0] = ((uint*)smem)[0];
+                    dmem += 2;
+                    smem += 2;
+                }
+#else
+#if AMD64
+                    while (charCount >= 16) 
+                    { 
+                        ((ulong *)dmem)[0] = ((ulong *)smem)[0];
+                        ((ulong *)dmem)[1] = ((ulong *)smem)[1]; 
+                        ((ulong *)dmem)[2] = ((ulong *)smem)[2];
+                        ((ulong *)dmem)[3] = ((ulong *)smem)[3];
+                        dmem      += 16;
+                        smem      += 16; 
+                        charCount -= 16;
+                    } 
+                    if ((charCount & 8) != 0) 
+                    {
+                        ((ulong *)dmem)[0] = ((ulong *)smem)[0]; 
+                        ((ulong *)dmem)[1] = ((ulong *)smem)[1];
+                        dmem += 8;
+                        smem += 8;
+                    } 
+                    if ((charCount & 4) != 0)
+                    { 
+                        ((ulong *)dmem)[0] = ((ulong *)smem)[0]; 
+                        dmem += 4;
+                        smem += 4; 
+                    }
+                    if ((charCount & 2) != 0)
+                    {
+                        ((uint *)dmem)[0] = ((uint *)smem)[0]; 
+                        dmem += 2;
+                        smem += 2; 
+                    } 
+#elif IA64
+                    // On IA64 we MUST use aligned reads otherwise 
+                    // we will fault
+                    if (((int)smem & 2) == 0)
+                    {
+                        // align is 0 or 4 
+                        if  (((int)smem & alignConst) == 0)
+                        { 
+                            while (charCount >= 16) 
+                            {
+                                ((ulong *)dmem)[0] = ((ulong *)smem)[0]; 
+                                ((ulong *)dmem)[1] = ((ulong *)smem)[1];
+                                ((ulong *)dmem)[2] = ((ulong *)smem)[2];
+                                ((ulong *)dmem)[3] = ((ulong *)smem)[3];
+                                dmem      += 16; 
+                                smem      += 16;
+                                charCount -= 16; 
+                            } 
+
+                            if ((charCount & 8) != 0) 
+                            {
+                                ((ulong *)dmem)[0] = ((ulong *)smem)[0];
+                                ((ulong *)dmem)[1] = ((ulong *)smem)[1];
+                                dmem += 8; 
+                                smem += 8;
+                            } 
+ 
+                            if ((charCount & 4) != 0)
+                            { 
+                                ((ulong *)dmem)[0] = ((ulong *)smem)[0];
+                                dmem += 4;
+                                smem += 4;
+                            } 
+                        }
+                        else // align is 4 
+                        { 
+                            while (charCount >= 8)
+                            { 
+                                ((uint *)dmem)[0] = ((uint *)smem)[0];
+                                ((uint *)dmem)[1] = ((uint *)smem)[1];
+                                ((uint *)dmem)[2] = ((uint *)smem)[2];
+                                ((uint *)dmem)[3] = ((uint *)smem)[3]; 
+                                dmem      += 8;
+                                smem      += 8; 
+                                charCount -= 8; 
+                            }
+ 
+                            if ((charCount & 4) != 0)
+                            {
+                                ((uint *)dmem)[0] = ((uint *)smem)[0];
+                                ((uint *)dmem)[1] = ((uint *)smem)[1]; 
+                                dmem += 4;
+                                smem += 4; 
+                            } 
+                        }
+                        if ((charCount & 2) != 0) 
+                        {
+                            ((uint *)dmem)[0] = ((uint *)smem)[0];
+                            dmem += 2;
+                            smem += 2; 
+                        }
+                    } 
+                    else // align is 2 or 6 
+                    {
+                        while (charCount >= 8) 
+                        {
+                            dmem[0] = smem[0];
+                            dmem[1] = smem[1];
+                            dmem[2] = smem[2]; 
+                            dmem[3] = smem[3];
+                            dmem[4] = smem[4]; 
+                            dmem[5] = smem[5]; 
+                            dmem[6] = smem[6];
+                            dmem[7] = smem[7]; 
+                            dmem += 8;
+                            smem += 8;
+                            charCount -= 8;
+                        } 
+
+                        if ((charCount & 4) != 0) 
+                        { 
+                            dmem[0] = smem[0];
+                            dmem[1] = smem[1]; 
+                            dmem[2] = smem[2];
+                            dmem[3] = smem[3];
+                            dmem += 4;
+                            smem += 4; 
+                        }
+                        if ((charCount & 2) != 0) 
+                        { 
+                            dmem[0] = smem[0];
+                            dmem[1] = smem[1]; 
+                            dmem += 2;
+                            smem += 2;
+                        }
+                    } 
+#endif
+#endif
+                if ((charCount & 1) != 0) {
+                    dmem[0] = smem[0];
+                }
+#if ALIGN_ACCESS
+                }
+                else 
+                {
+                    // This is rare case where at least one of the pointers is only byte aligned. 
+                    do { 
+                        ((byte *)dmem)[0] = ((byte *)smem)[0];
+                        ((byte *)dmem)[1] = ((byte *)smem)[1]; 
+                        charCount -= 1;
+                        dmem += 1;
+                        smem += 1;
+                    } 
+                    while (charCount > 0);
+                } 
+#endif 
+            }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [System.Security.SecurityCritical]  // auto-generated 
         //Copied implementation of coreclr CompareOrdinal
-        public static unsafe int Equals(char* one, char* two, int lenOne, int lenTwo)
-        {
+        public static unsafe int Equals(char* one, char* two, int lenOne, int lenTwo) {
             if (one == two) {
                 return 0;
             }
@@ -114,26 +313,13 @@ namespace Templates.Native {
             return lenOne - lenTwo;
         }
 
-        static NativeHelper()
-        {
-            MethodInfo method = typeof (string).GetMethod("FastAllocateString",
-                BindingFlags.Static | BindingFlags.NonPublic);
-            if (method == null) {
-                throw new InvalidOperationException("Cannot find string.FastAllocateString() system method");
-            }
-            Allocator = method.CompileAccessor<int, string>();
-            method = typeof (string).GetMethod("wstrcpy", BindingFlags.Static | BindingFlags.NonPublic);
-            if (method == null)
-            {
-                throw new InvalidOperationException("Cannot find string.wstrcpy() system method");
-            }
-            Memcpy = (MemcpyDelegate)method.CompileStaticDelegateAccessor<MemcpyDelegate>();
+        static NativeHelper() {
 #if ASPNETCORE50
             var type = typeof(object).GetTypeInfo().Assembly.GetType("System.AppDomain");
             if (type == null) {
                 throw new InvalidOperationException("Cannot find System.AppDomain class in system library, investigate to issue and rewrite assembly list acquire");
             }
-            method = type.GetProperty("CurrentDomain", BindingFlags.Public | BindingFlags.Static).GetGetMethod();
+            var method = type.GetProperty("CurrentDomain", BindingFlags.Public | BindingFlags.Static).GetGetMethod();
             if (method == null) {
                 throw new InvalidOperationException("Cannot find System.AppDomain.CurrentDomain Property get method in Core Mode, investigate to issue and rewrite assembly list acquire");
             }
@@ -185,13 +371,11 @@ namespace Templates.Native {
             throw new NotSupportedException();
         }
 
-        private static MetadataReference CreateMetadataFileReference(string path)
-        {
+        private static MetadataReference CreateMetadataFileReference(string path) {
             return MetadataReference.CreateFromFile(path);
         }
 
-        public static List<MetadataReference> GetMetadataReferences()
-        {
+        public static List<MetadataReference> GetMetadataReferences() {
             var references = new List<MetadataReference>();
             var libraryExport = LibraryManager.GetLibraryExport(Environment.ApplicationName);
             if (libraryExport?.MetadataReferences?.Count > 0) {
@@ -209,29 +393,21 @@ namespace Templates.Native {
             return references;
         }
 
-        public static string AllocateString(int length)
-        {
-            return Allocator(length);
-        }
-
-        public static unsafe int StartsWith(char* data, char* find, int* needleTable, int dataLen, int findLen)
-        {
-            if (dataLen >= findLen)
-            {
+        [System.Security.SecurityCritical]  // auto-generated 
+        public static unsafe int StartsWith(char* data, char* find, int* needleTable, int dataLen, int findLen) {
+            if (dataLen >= findLen) {
                 int found = 0;
                 int currentIndex = findLen - 1;
                 int counter = currentIndex;
 
-                while (counter >= 0 && currentIndex < dataLen)
-                {
+                while (counter >= 0 && currentIndex < dataLen) {
                     counter = findLen - 1;
                     found = currentIndex;
-                    while (counter >= 0 && data[found] == find[counter])
-                    {
+                    while (counter >= 0 && data[found] == find[counter]) {
                         found--;
                         counter--;
                     }
-                    currentIndex += needleTable[(sbyte) data[currentIndex]];
+                    currentIndex += needleTable[(sbyte)data[currentIndex]];
                 }
                 found++;
                 if (found <= dataLen - findLen)
@@ -240,8 +416,8 @@ namespace Templates.Native {
             return -1;
         }
 
-        public static bool IsWhiteSpace(char c)
-        {
+        [System.Security.SecurityCritical]  // auto-generated 
+        public static bool IsWhiteSpace(char c) {
             return c == ' ' || c == '\x00a0' || c == '\x0085' || c >= '\x0009' && c <= '\x000d';
         }
     }

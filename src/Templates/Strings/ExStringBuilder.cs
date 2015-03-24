@@ -37,7 +37,11 @@ namespace Templates.Strings {
                     unsafe {
                         int newLen = value;
                         int oldLen = _data.Length;
+#if ASPNETCORE50 || ASPNET50
+                        _data = new string('\0', newLen);
+#else
                         _data = NativeHelper.AllocateString(newLen);
+#endif
                         fixed (char* dest = _data) {
                             fixed (char* src = old) {
                                 NativeHelper.MemCpy(dest, src, oldLen);
@@ -222,9 +226,11 @@ namespace Templates.Strings {
 
                 if (capacity == 0)
                     return string.Empty;
-
+#if ASPNETCORE50 || ASPNET50
+                string result = new string('\0', capacity);
+#else
                 string result = NativeHelper.AllocateString(capacity);
-
+#endif
                 unsafe {
                     fixed (char* dest = result) {
                         fixed (char* src = source) {
@@ -271,8 +277,11 @@ namespace Templates.Strings {
 
                 if (capacity == 0)
                     return string.Empty;
-
+#if ASPNETCORE50 || ASPNET50
+                string result = new string('\0', capacity);
+#else
                 string result = NativeHelper.AllocateString(capacity);
+#endif
 
                 unsafe {
                     fixed (char* dest = result) {
@@ -331,7 +340,11 @@ namespace Templates.Strings {
                     throw new ArgumentException();
 #endif
                 int newLen = sourceLen - length + replacement.Length;
+#if ASPNETCORE50 || ASPNET50
+                string destination = new string('\0', newLen);
+#else
                 string destination = NativeHelper.AllocateString(newLen);
+#endif
                 unsafe {
                     fixed (char* dest = destination) {
                         fixed (char* src = source) {
