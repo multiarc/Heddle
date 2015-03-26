@@ -1,12 +1,17 @@
 ﻿using System;
 using System.IO;
 using System.Reflection;
-#if DNXCORE50
-using System.Runtime.Loader;
+#if DNXCORE50 || DNX451
+using Microsoft.Framework.Runtime;
+using Microsoft.Framework.Runtime.Infrastructure;
 #endif
 
 namespace Templates.Data {
     public class TemplateOptions: IEquatable<TemplateOptions> {
+#if DNXCORE50 || DNX451
+        private static readonly IApplicationEnvironment Environment = 
+            (IApplicationEnvironment)CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(IApplicationEnvironment));
+#endif
         public string FileNamePostfix { get; set; }
         public string RootPath { get; set; }
         public string TemplateName { get; }
@@ -16,10 +21,10 @@ namespace Templates.Data {
         public TemplateOptions()
         {
             FileNamePostfix = string.Empty;
-#if !DNXCORE50
-            RootPath = Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory);
+#if DNX451 || DNXCORE50
+            RootPath = Environment.ApplicationBasePath;
 #else
-            RootPath = Path.GetDirectoryName(AppContext.BaseDirectory);
+            RootPath = Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory);
 #endif
             TemplateName = string.Empty;
             EnableFileChangeCheck = false;
@@ -28,10 +33,10 @@ namespace Templates.Data {
 
         public TemplateOptions(string templateName) {
             FileNamePostfix = string.Empty;
-#if !DNXCORE50
-            RootPath = Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory);
+#if DNX451 || DNXCORE50
+            RootPath = Environment.ApplicationBasePath;
 #else
-            RootPath = Path.GetDirectoryName(AppContext.BaseDirectory);
+            RootPath = Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory);
 #endif
             TemplateName = templateName ?? string.Empty;
             EnableFileChangeCheck = false;

@@ -21,6 +21,7 @@ using System.Runtime.CompilerServices;
 	using @();;
 ]
 [assembly: InternalsVisibleTo("Templates.K")]
+[assembly: InternalsVisibleTo("Templates.Tests.K")]
 namespace Templates.Runtime {
 	@class()
 }
