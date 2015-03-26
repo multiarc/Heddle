@@ -1,4 +1,4 @@
-﻿#if ASPNETCORE50
+﻿#if DNXCORE50
 using Microsoft.Framework.Runtime;
 using Microsoft.Framework.Runtime.Loader;
 #endif
@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-#if ASPNETCORE50
+#if DNXCORE50
 using System.Runtime.Loader;
 #endif
 using System.Text.RegularExpressions;
@@ -118,10 +118,10 @@ namespace Templates.Helpers {
                 return modelType;
             modelType = Type.GetType(typeName, false);
             if (modelType == null) {
-#if !ASPNETCORE50
+#if !DNXCORE50
                 Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
 #endif
-#if ASPNETCORE50
+#if DNXCORE50
                 Assembly[] assemblies = NativeHelper.GetAssemblies();
 #endif
                 foreach (Assembly assembly in assemblies) {

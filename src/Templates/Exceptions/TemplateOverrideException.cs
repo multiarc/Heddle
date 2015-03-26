@@ -2,7 +2,7 @@
 using System.Runtime.Serialization;
 
 namespace Templates.Exceptions {
-#if !ASPNETCORE50
+#if !DNXCORE50
     [Serializable]
 #endif
     public class TemplateOverrideException : Exception {
@@ -19,7 +19,7 @@ namespace Templates.Exceptions {
             : base(message, inner)
         {
         }
-#if !ASPNETCORE50
+#if !DNXCORE50
         protected TemplateOverrideException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {

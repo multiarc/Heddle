@@ -22,7 +22,7 @@ namespace Templates.Performance
                 test.Run();
             }
             Console.WriteLine("Done all, press any key to exit...");
-#if !ASPNETCORE50
+#if !DNXCORE50
             Console.ReadKey();
 #else
             Console.ReadLine();

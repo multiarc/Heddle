@@ -15,7 +15,7 @@ using Templates.Helpers;
 using Templates.Language;
 using Templates.Native;
 
-#if ASPNETCORE50
+#if DNXCORE50
 using Microsoft.Framework.Runtime.Loader;
 using System.Runtime.Loader;
 #endif
@@ -202,7 +202,7 @@ namespace Templates.Runtime {
                         return;
                     var tree = CSharpSyntaxTree.ParseText(code);
                     var compilation = CSharpCompilation.Create(ModelType.ToString() + "_" + ClassGuid.ToString("N"), new[] {tree},
-#if ASPNETCORE50 || ASPNET50
+#if DNXCORE50 || DNX451
                         NativeHelper.GetMetadataReferences(),
 #else
                         DependentAssemblies.Select(MetadataReference.CreateFromAssembly),
@@ -216,7 +216,7 @@ namespace Templates.Runtime {
                     var stream = new MemoryStream();
                     compilation.Emit(stream);
                     stream.Seek(0, SeekOrigin.Begin);
-#if !ASPNETCORE50
+#if !DNXCORE50
                     CompiledAssembly = Assembly.Load(stream.GetBuffer());
 #else
                     CompiledAssembly = NativeHelper.GetAssemblyLoadContext().LoadStream(stream, null);
@@ -302,7 +302,7 @@ namespace Templates.Runtime {
             expressionOptions.ModelType = ModelType;
             var code = PreparseGenerator.Generate(expressionOptions);
             var tree = CSharpSyntaxTree.ParseText(code);
-#if ASPNET50 || ASPNETCORE50
+#if DNX451 || DNXCORE50
             var assemblySet = NativeHelper.GetMetadataReferences();
 #else
             HashSet<MetadataReference> assemblySet = new HashSet<MetadataReference>

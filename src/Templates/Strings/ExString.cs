@@ -6,7 +6,7 @@ using Templates.Collections;
 using Templates.Native;
 
 namespace Templates.Strings {
-#if !ASPNETCORE50
+#if !DNXCORE50
     [Serializable]
 #endif
     public sealed partial class ExString {

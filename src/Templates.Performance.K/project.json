@@ -1,21 +1,26 @@
 ﻿{
-    "code": [ "../../performance/PerfTesting/**/*.cs", "**/*.cs" ],
+    "compile": [ "../../performance/PerfTesting/**/*.cs", "**/*.cs" ],
     "exclude": "../../performance/PerfTesting/Program.cs",
     "version": "1.0.0-*",
     "dependencies": {
         "Templates.K": "2.0.0-*"
     },
-    "configurations": {"release" : {"compilationOptions": {"define": ["TRACE"]}, "optimize": true}, "debug" : {"compilationOptions": {"define": ["TRACE", "DEBUG"]}}},
+    "configurations": { "release": { "compilationOptions": { "define": [ "TRACE" ] }, "optimize": true }, "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } } },
     "commands": {
         "Templates.Performance.K": "run"
     },
     "frameworks": {
-        "aspnet50": { },
-        "aspnetcore50": {
+        "dnx451": {
+            "compilationOptions": { "define": [ "DNX451" ] },
             "dependencies": {
-                "System.Runtime": "4.0.20.0",
-                "System.Console": "4.0.0.0"
+            }
+        },
+        "dnxcore50": {
+            "compilationOptions": { "define": [ "DNXCORE50" ] },
+            "dependencies": {
+                "System.Runtime": "4.0.20-*",
+                "System.Console": "4.0.0-*"
             }
         }
     }
-}
+    }

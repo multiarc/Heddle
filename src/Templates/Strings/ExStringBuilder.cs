@@ -4,7 +4,7 @@ using Templates.Native;
 using Templates.Strings.Core;
 
 namespace Templates.Strings {
-#if !ASPNETCORE50
+#if !DNXCORE50
     [Serializable]
 #endif
     public sealed class ExStringBuilder {
@@ -37,7 +37,7 @@ namespace Templates.Strings {
                     unsafe {
                         int newLen = value;
                         int oldLen = _data.Length;
-#if ASPNETCORE50 || ASPNET50
+#if DNXCORE50 || DNX451
                         _data = new string('\0', newLen);
 #else
                         _data = NativeHelper.AllocateString(newLen);
@@ -226,7 +226,7 @@ namespace Templates.Strings {
 
                 if (capacity == 0)
                     return string.Empty;
-#if ASPNETCORE50 || ASPNET50
+#if DNXCORE50 || DNX451
                 string result = new string('\0', capacity);
 #else
                 string result = NativeHelper.AllocateString(capacity);
@@ -277,7 +277,7 @@ namespace Templates.Strings {
 
                 if (capacity == 0)
                     return string.Empty;
-#if ASPNETCORE50 || ASPNET50
+#if DNXCORE50 || DNX451
                 string result = new string('\0', capacity);
 #else
                 string result = NativeHelper.AllocateString(capacity);
@@ -340,7 +340,7 @@ namespace Templates.Strings {
                     throw new ArgumentException();
 #endif
                 int newLen = sourceLen - length + replacement.Length;
-#if ASPNETCORE50 || ASPNET50
+#if DNXCORE50 || DNX451
                 string destination = new string('\0', newLen);
 #else
                 string destination = NativeHelper.AllocateString(newLen);

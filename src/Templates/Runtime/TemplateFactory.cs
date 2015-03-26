@@ -28,7 +28,7 @@ namespace Templates.Runtime {
         static TemplateFactory()
         {
             AddExtensions(LoadBaseExtensions());
-#if !ASPNETCORE50
+#if !DNXCORE50
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
 #else
             foreach (var assembly in NativeHelper.GetAssemblies())

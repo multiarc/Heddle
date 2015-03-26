@@ -3,7 +3,7 @@ using System.Runtime.Serialization;
 using Templates.Strings.Core;
 
 namespace Templates.Exceptions {
-#if !ASPNETCORE50
+#if !DNXCORE50
     [Serializable]
 #endif
     public class TemplateInitException: Exception {
@@ -27,7 +27,7 @@ namespace Templates.Exceptions {
         {
             BlockPosition = blockPosition;
         }
-#if !ASPNETCORE50
+#if !DNXCORE50
         protected TemplateInitException (SerializationInfo info, StreamingContext context)
             : base(info, context)
         {

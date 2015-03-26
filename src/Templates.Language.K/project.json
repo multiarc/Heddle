@@ -1,20 +1,22 @@
 ﻿{
     "version": "1.0.0-*",
-    "code": [ "../Templates.Language/**/*.cs", "**/*.cs" ],
+    "compile": [ "../Templates.Language/**/*.cs", "**/*.cs" ],
     "dependencies": {
-        "Antlr4.Runtime.K": "4.5.0.0"
+        "Antlr4.Runtime.K": "4.5.0.1"
     },
-    "configurations": {"release" : {"compilationOptions": {"define": ["TRACE"]}, "optimize": true}, "debug" : {"compilationOptions": {"define": ["TRACE", "DEBUG"]}}},
-    "frameworks" : {
-        "aspnet50" : { 
+    "configurations": { "release": { "compilationOptions": { "define": [ "TRACE" ] }, "optimize": true }, "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } } },
+    "frameworks": {
+        "dnx451": {
+            "compilationOptions": { "define": [ "DNX451" ] },
             "dependencies": {
             }
         },
-        "aspnetcore50" : { 
+        "dnxcore50": {
+            "compilationOptions": { "define": [ "DNXCORE50" ] },
             "dependencies": {
-                "System.Runtime": "4.0.20.0",
-                "System.Text.Encoding": "4.0.10.0",
-                "System.Runtime.Extensions": "4.0.10.0",
+                "System.Runtime": "4.0.20-*",
+                "System.Text.Encoding": "4.0.10-*",
+                "System.Runtime.Extensions": "4.0.10-*",
                 "System.Text.RegularExpressions": "4.0.10-*"
             }
         }

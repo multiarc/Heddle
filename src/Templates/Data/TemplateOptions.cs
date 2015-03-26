@@ -1,22 +1,22 @@
 ﻿using System;
 using System.IO;
 using System.Reflection;
-#if ASPNETCORE50
+#if DNXCORE50
 using System.Runtime.Loader;
 #endif
 
 namespace Templates.Data {
-    public struct TemplateOptions: IEquatable<TemplateOptions> {
-        public string FileNamePostfix;
-        public string RootPath;
-        public readonly string TemplateName;
-        public bool EnableFileChangeCheck;
-        public bool AllowCSharp;
+    public class TemplateOptions: IEquatable<TemplateOptions> {
+        public string FileNamePostfix { get; set; }
+        public string RootPath { get; set; }
+        public string TemplateName { get; }
+        public bool EnableFileChangeCheck { get; set; }
+        public bool AllowCSharp { get; set; }
 
         public TemplateOptions()
         {
             FileNamePostfix = string.Empty;
-#if !ASPNETCORE50
+#if !DNXCORE50
             RootPath = Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory);
 #else
             RootPath = Path.GetDirectoryName(AppContext.BaseDirectory);
@@ -28,7 +28,7 @@ namespace Templates.Data {
 
         public TemplateOptions(string templateName) {
             FileNamePostfix = string.Empty;
-#if !ASPNETCORE50
+#if !DNXCORE50
             RootPath = Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory);
 #else
             RootPath = Path.GetDirectoryName(AppContext.BaseDirectory);

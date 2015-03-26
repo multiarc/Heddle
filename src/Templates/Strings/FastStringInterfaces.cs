@@ -6,7 +6,7 @@ using Templates.Native;
 
 namespace Templates.Strings {
     public sealed partial class ExString: IComparable,
-#if !ASPNETCORE50
+#if !DNXCORE50
         IConvertible, 
 #endif
         IEnumerable, IEquatable<string>, IEquatable<ExString>, IEquatable<char[]> {
@@ -64,7 +64,7 @@ namespace Templates.Strings {
         #endregion
 
         #region IConvertible Members
-#if !ASPNETCORE50
+#if !DNXCORE50
         public TypeCode GetTypeCode ()
         {
             return TypeCode.Object;

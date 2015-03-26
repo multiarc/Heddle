@@ -3,7 +3,7 @@ using System.Runtime.Serialization;
 using Templates.Strings.Core;
 
 namespace Templates.Exceptions {
-#if !ASPNETCORE50
+#if !DNXCORE50
     [Serializable]
 #endif
     public class TemplateDefinitionTypeException: Exception {
@@ -30,7 +30,7 @@ namespace Templates.Exceptions {
 
         public TemplateDefinitionTypeException(string message, Exception innerException) : base(message, innerException) {
         }
-#if !ASPNETCORE50
+#if !DNXCORE50
         protected TemplateDefinitionTypeException(SerializationInfo info, StreamingContext context) : base(info, context) {
             base.GetObjectData(info, context);
             info.AddValue("Position", Position);

@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
 using Microsoft.Framework.Runtime;
 using Microsoft.Framework.Runtime.Infrastructure;
+using Microsoft.Framework.Runtime.Roslyn;
 
 namespace Templates.Native {
     public static class NativeHelper {
@@ -16,7 +17,7 @@ namespace Templates.Native {
         private static readonly IApplicationEnvironment Environment =
             (IApplicationEnvironment)
                 CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(IApplicationEnvironment));
-#if ASPNETCORE50
+#if DNXCORE50
         private static readonly IAssemblyLoadContextAccessor LoadContextAccessor =
             (IAssemblyLoadContextAccessor)
                 CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IAssemblyLoadContextAccessor));
@@ -314,7 +315,7 @@ namespace Templates.Native {
         }
 
         static NativeHelper() {
-#if ASPNETCORE50
+#if DNXCORE50
             var type = typeof(object).GetTypeInfo().Assembly.GetType("System.AppDomain");
             if (type == null) {
                 throw new InvalidOperationException("Cannot find System.AppDomain class in system library, investigate to issue and rewrite assembly list acquire");
@@ -329,7 +330,7 @@ namespace Templates.Native {
 #endif
         }
 
-#if ASPNETCORE50
+#if DNXCORE50
         public static Assembly[] GetAssemblies() {
             var domain = GetCurrentDomain();
             return AssembliesGetter(domain);
