@@ -1,9 +1,10 @@
 ﻿{
-    "version": "1.0.0-*",
+    "version": "1.0.0-beta1",
     "dependencies": {
         "Microsoft.Framework.Runtime": "1.0.0-*",
         "Microsoft.Framework.Runtime.Roslyn": "1.0.0-*"
     },
+    "exclude": [ "bin" ],
     "configurations": { "release": { "compilationOptions": { "define": [ "TRACE" ] }, "optimize": true }, "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } } },
     "compilationOptions": { "allowUnsafe": true },
     "frameworks": {

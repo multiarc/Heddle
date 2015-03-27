@@ -246,7 +246,7 @@
     },
     "Microsoft.Framework.ApplicationHost/1.0.0-beta5-11380": {
       "serviceable": false,
-      "sha": "VB4htFRuICI7Uwe9ng6s2/bFDtwC+BSst/Ki9PLMW4OfW4vnwmaHTnaoplqN2zSsISSY1Vnci/dALv034q0Pkg==",
+      "sha": "UJrhhjjX0mPE+BDhMliiUwbJJ3p67Hhh9XyV/1IZcxK/R5xdJ6VQ12B+pxaLCdCOcT+kl4TePizOGNlWlzTDvg==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {
@@ -302,7 +302,7 @@
     },
     "Microsoft.Framework.CommandLineUtils/1.0.0-beta5-11380": {
       "serviceable": false,
-      "sha": "iUcNkFRAYjgvreUJ2LGqo+fYcYIMvysb+EAQZE9tktn3xSfab5tSvCN/iikaYe3HbKFJx3RBU043mATk87RT8w==",
+      "sha": "rbXk4YnJq3BQQJycePyCfC6WXtZFnLj6zuT0AzbZgeRTMTelpIPDmRFGuIH3w4uZ4LrMjCGCxwkcI4eaONLWew==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {},
@@ -350,7 +350,7 @@
     },
     "Microsoft.Framework.DependencyInjection.Interfaces/1.0.0-beta5-11092": {
       "serviceable": false,
-      "sha": "iGKv8+VABHOBOwTD626MusWNQdejAzRNDyMC/dO25NjP0eShF0NDeeEUj+ZKrbRfeyhoZe6UXrs6x0yeHrOdgA==",
+      "sha": "/wUSK4thoOHKvCqhKu5w8iEtOtIxtEVqbAKfJols2TOE4vWjONOEcTnxbhF0lNUKh5zYOqECGYQaAvJ9P87ouA==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {},
@@ -402,7 +402,7 @@
     },
     "Microsoft.Framework.Logging/1.0.0-beta5-11086": {
       "serviceable": false,
-      "sha": "zF5tCj4B4ogp+1n0T4O8u3W6VcU+D9NK2TGrABpbAe6nd7vmZL7lw+rmwSz4w2chzIDTv6GBZtuTipoXlXVyRg==",
+      "sha": "0cdQkIWCD/N4Ip/uR1d4eYVbt9jaPd6AxhcN9fUWo6wy3treNXGOBeLeqldkbIYiWhM9ZzbYbHbswvcNMBI/OA==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {
@@ -459,7 +459,7 @@
     },
     "Microsoft.Framework.Logging.Interfaces/1.0.0-beta5-11086": {
       "serviceable": false,
-      "sha": "7WgBmXrKqsy/9iOoaoCeEqmbrDo/H0k1vSldpcSiciKJlDL5kCMKpiI1wD0IEOlJmPMelw1FUKgJtrcgcRMimg==",
+      "sha": "VJLP7u+Hg6HNcD2m+USVEMjPY0k+9d1RuK3JbpQhs162XA5ROoPQrXdVcOaUhDAGilCdI7CXcmAoMZs/tqffhg==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {},
@@ -512,7 +512,7 @@
     },
     "Microsoft.Framework.Runtime/1.0.0-beta5-11380": {
       "serviceable": false,
-      "sha": "eGr8ieI/miVsT49vVvauodZYM9AhmHI3OWk4RugEtAs6+gDSI0O0AWY3p1eF1aKoTKp7y0sAtoqQXNKH0FCgkA==",
+      "sha": "bj73mRg1quGZKAVoInHuqAT6h9BBX/z8HJto36AX9yGIl2lOMqGkcUF+vYm5CK2tM70bvEZYmo7JOsl7cHJwJQ==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {
@@ -594,7 +594,7 @@
     },
     "Microsoft.Framework.Runtime.Interfaces/1.0.0-beta5-11380": {
       "serviceable": false,
-      "sha": "ajgmfYqqSFJKWcxAs3ymgW0xfXikVovopojGliVUHMjCwVvec/rM6dZtF/qzgEZ+toP8T+UAKBkkFq7LGkAlwQ==",
+      "sha": "QJXQ7e/BRejYf/PbGP4qnC7H9CoPtmv82BnC9a/Fw87gufRpAZ6sL2vj36WBF8YwuvU6EoiOvGeeqJ3soA5Srw==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {},
@@ -641,7 +641,7 @@
     },
     "Microsoft.Framework.Runtime.Loader/1.0.0-beta5-11380": {
       "serviceable": false,
-      "sha": "jsMccfDumt5Pdew03pXrlXcueXUWJdDVAx4SBG9HKHgG4mMuNnd3yj0i6N3ME7hdyYMdr5FxYGDWKPOihfQaFA==",
+      "sha": "Bu/4z22Ijco0Rww4rLvRuK4Lwhpgz2dF7fiVTef7gC55mEzyZpjyOLPRRQ7cs4cObGlYFAZySYYLIsSFo0V81Q==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {
@@ -691,7 +691,7 @@
     },
     "Microsoft.Framework.Runtime.Roslyn/1.0.0-beta5-11380": {
       "serviceable": false,
-      "sha": "RhtlUuiyCFAuoS8o/OpvgtXmaKEmKZR3496Cbj9YBZ8MAEqXTO4kKgVemIxO7M/tdEOouTJqnZvxwEgSXJVICA==",
+      "sha": "hlcBqoEN5u/vnqV55YdorrB1DdX6thMsa6DVPDHHZ4EOcFYESlnXhV5itCWgF0U0v3YgTKsIxvCovg7W92dDkw==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {
@@ -747,7 +747,7 @@
     },
     "Microsoft.Framework.Runtime.Roslyn.Interfaces/1.0.0-beta5-11380": {
       "serviceable": false,
-      "sha": "lGuJdBYmlLsyF/59nZP/IaX1vkjkQ6Np9FZBMK11O/zZs02yAuPX0zNzswRZgYCwZhpcwo/O4yZfUHB3ZfdKvg==",
+      "sha": "HjfWfkdPUBe6v9JkbCDGQww9Pht4NV7l3t5SIuXNXWaqqh09iC2o0XGq8NDImyJbyRTUsKqIrOuLBLDO8x7MeQ==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {
@@ -794,7 +794,7 @@
     },
     "Microsoft.Framework.TestAdapter/1.0.0-beta5-11137": {
       "serviceable": false,
-      "sha": "FrypSaU/j4ew5sJTBc1XGrgdlnh5QHGibHi+Vckp4Ygi9RzHtByzQxlv0mDcBonWYKNaX3ENEfhfoVeXmaMj3A==",
+      "sha": "C7bBVOg3+VdUntCtFBoGiUG/OTmsvgji3cdnypIq8mEKhG8cPDgsJd9R8YZEB02N2ZEUuh7EAm61Pm8J+jq7Gg==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {},
@@ -838,7 +838,7 @@
     },
     "Microsoft.Framework.TestHost/1.0.0-beta5-11137": {
       "serviceable": false,
-      "sha": "vdSfUMYTKDqXEi+ijVdWb+nGOOFyLv3Nx92JrLb2ALS1GY6Ne3HBAH9KBunK0NKlVrYzv/zCVbXvNkelw9/Kxw==",
+      "sha": "ln6OIkKG/j3OslkEh3avDEZg5IOUkXaQNgoKKrZr0jQIFcZ9NC1HNN73PH+V5gRKvDN3ihtF7h6UTR7tXbYyFQ==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {

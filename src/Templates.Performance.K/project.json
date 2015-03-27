@@ -1,6 +1,6 @@
 ﻿{
     "compile": [ "../../performance/PerfTesting/**/*.cs", "**/*.cs" ],
-    "exclude": "../../performance/PerfTesting/Program.cs",
+    "exclude": [ "../../performance/PerfTesting/Program.cs", "bin" ],
     "version": "1.0.0-*",
     "dependencies": {
         "Templates.K": "2.0.0-*"
@@ -23,4 +23,4 @@
             }
         }
     }
-    }
+}

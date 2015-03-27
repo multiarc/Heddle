@@ -1,13 +1,13 @@
 ﻿{
-    "version": "2.0.0-*",
+    "version": "2.0.0-beta1",
     "compile": [ "../Templates/**/*.cs", "**/*.cs" ],
+    "exclude": [ "bin" ],
     "compilationOptions": { "allowUnsafe": true },
     "dependencies": {
         "Antlr4.Runtime.K": "4.5.0.1",
         "Templates.Language.K": "1.0.0-*",
         "Templates.Native.K": "1.0.0-*",
-        "Microsoft.CodeAnalysis.CSharp": "1.0.0-*",
-        "Microsoft.Framework.ApplicationHost": "1.0.0-*"
+        "Microsoft.CodeAnalysis.CSharp": "1.0.0-*"
     },
     "configurations": { "release": { "compilationOptions": { "define": [ "TRACE" ] }, "optimize": true }, "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } } },
     "frameworks": {

@@ -146,7 +146,7 @@
     },
     "Microsoft.Framework.Runtime/1.0.0-beta5-11380": {
       "serviceable": false,
-      "sha": "eGr8ieI/miVsT49vVvauodZYM9AhmHI3OWk4RugEtAs6+gDSI0O0AWY3p1eF1aKoTKp7y0sAtoqQXNKH0FCgkA==",
+      "sha": "bj73mRg1quGZKAVoInHuqAT6h9BBX/z8HJto36AX9yGIl2lOMqGkcUF+vYm5CK2tM70bvEZYmo7JOsl7cHJwJQ==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {
@@ -228,7 +228,7 @@
     },
     "Microsoft.Framework.Runtime.Interfaces/1.0.0-beta5-11380": {
       "serviceable": false,
-      "sha": "ajgmfYqqSFJKWcxAs3ymgW0xfXikVovopojGliVUHMjCwVvec/rM6dZtF/qzgEZ+toP8T+UAKBkkFq7LGkAlwQ==",
+      "sha": "QJXQ7e/BRejYf/PbGP4qnC7H9CoPtmv82BnC9a/Fw87gufRpAZ6sL2vj36WBF8YwuvU6EoiOvGeeqJ3soA5Srw==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {},
@@ -275,7 +275,7 @@
     },
     "Microsoft.Framework.Runtime.Loader/1.0.0-beta5-11380": {
       "serviceable": false,
-      "sha": "jsMccfDumt5Pdew03pXrlXcueXUWJdDVAx4SBG9HKHgG4mMuNnd3yj0i6N3ME7hdyYMdr5FxYGDWKPOihfQaFA==",
+      "sha": "Bu/4z22Ijco0Rww4rLvRuK4Lwhpgz2dF7fiVTef7gC55mEzyZpjyOLPRRQ7cs4cObGlYFAZySYYLIsSFo0V81Q==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {
@@ -325,7 +325,7 @@
     },
     "Microsoft.Framework.Runtime.Roslyn/1.0.0-beta5-11380": {
       "serviceable": false,
-      "sha": "RhtlUuiyCFAuoS8o/OpvgtXmaKEmKZR3496Cbj9YBZ8MAEqXTO4kKgVemIxO7M/tdEOouTJqnZvxwEgSXJVICA==",
+      "sha": "hlcBqoEN5u/vnqV55YdorrB1DdX6thMsa6DVPDHHZ4EOcFYESlnXhV5itCWgF0U0v3YgTKsIxvCovg7W92dDkw==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {
@@ -381,7 +381,7 @@
     },
     "Microsoft.Framework.Runtime.Roslyn.Interfaces/1.0.0-beta5-11380": {
       "serviceable": false,
-      "sha": "lGuJdBYmlLsyF/59nZP/IaX1vkjkQ6Np9FZBMK11O/zZs02yAuPX0zNzswRZgYCwZhpcwo/O4yZfUHB3ZfdKvg==",
+      "sha": "HjfWfkdPUBe6v9JkbCDGQww9Pht4NV7l3t5SIuXNXWaqqh09iC2o0XGq8NDImyJbyRTUsKqIrOuLBLDO8x7MeQ==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {
