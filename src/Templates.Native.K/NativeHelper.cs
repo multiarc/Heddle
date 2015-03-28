@@ -9,6 +9,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.Framework.Runtime;
 using Microsoft.Framework.Runtime.Infrastructure;
 using Microsoft.Framework.Runtime.Roslyn;
+using Microsoft.Framework.Runtime.Compilation;
 
 namespace Templates.Native {
     public static class NativeHelper {
