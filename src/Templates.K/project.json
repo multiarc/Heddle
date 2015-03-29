@@ -6,8 +6,9 @@
     "dependencies": {
         "Antlr4.Runtime.K": "4.5.0.1",
         "Templates.Language.K": "1.0.0-*",
-        "Templates.Native.K": "1.0.0-*",
-        "Microsoft.CodeAnalysis.CSharp": "1.0.0-*"
+        "Microsoft.CodeAnalysis.CSharp": "1.0.0-*",
+        "Microsoft.Framework.Runtime": "1.0.0-*",
+        "Microsoft.Framework.Runtime.Roslyn": "1.0.0-*"
     },
     "configurations": { "release": { "compilationOptions": { "define": [ "TRACE" ] }, "optimize": true }, "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } } },
     "frameworks": {
@@ -26,7 +27,6 @@
         "dnxcore50": {
             "compilationOptions": { "define": [ "DNXCORE50" ] },
             "dependencies": {
-                "Microsoft.Framework.Runtime": "1.0.0-*",
                 "System.Runtime": "4.0.20-*",
                 "System.Runtime.Extensions": "4.0.10-*",
                 "System.Runtime.Loader": "4.0.0-*",

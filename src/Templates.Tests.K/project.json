@@ -3,7 +3,6 @@
     "compile": [ "../../test/TemplatesXTests/**/*.cs", "**/*.cs" ],
     "dependencies": {
         "Templates.K": "2.0.0-*",
-        "Templates.Native.K": "1.0.0-*",
         "xunit.runner.aspnet": "2.0.0-aspnet-*"
     },
     "commands": {

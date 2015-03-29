@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+#if DNXCORE50
+using System.Reflection;
+#endif
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
 using Microsoft.Framework.Runtime;
@@ -233,7 +234,7 @@ namespace Templates.Native {
                     } 
                     while (charCount > 0);
                 } 
-#endif 
+#endif
             }
         }
 
