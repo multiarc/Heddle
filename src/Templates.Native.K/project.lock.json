@@ -144,16 +144,16 @@
         "lib/portable-net45+win8/Microsoft.CodeAnalysis.CSharp.xml"
       ]
     },
-    "Microsoft.Framework.Runtime/1.0.0-beta5-11401": {
+    "Microsoft.Framework.Runtime/1.0.0-beta5-11406": {
       "serviceable": false,
-      "sha": "Al6HQwjVBfk6doG2NtPkb48vnFidazK3y6wq7IosqMRbIP0t+6i1A2SCdVnWuz3oVWhAIA1EL6m6syIgw1wzWQ==",
+      "sha": "u7ePrLA9tovQJiyVQsUBq6GJb9JxPDkKKGI8GjGThYQIoGcOfxPBI5geoqy4jLa5XfUuxuh8e+pMjltiB/b2PQ==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {
             "System.Reflection.Metadata": "1.0.18-beta",
-            "Microsoft.Framework.Runtime.Loader": "1.0.0-beta5-11401",
-            "Microsoft.Framework.Runtime.Caching": "1.0.0-beta5-11401",
-            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11401",
+            "Microsoft.Framework.Runtime.Loader": "1.0.0-beta5-11406",
+            "Microsoft.Framework.Runtime.Caching": "1.0.0-beta5-11406",
+            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11406",
             "Newtonsoft.Json": "6.0.6"
           },
           "frameworkAssemblies": [
@@ -181,9 +181,9 @@
         "DNXCore,Version=v5.0": {
           "dependencies": {
             "System.Reflection.Metadata": "1.0.18-beta",
-            "Microsoft.Framework.Runtime.Loader": "1.0.0-beta5-11401",
-            "Microsoft.Framework.Runtime.Caching": "1.0.0-beta5-11401",
-            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11401",
+            "Microsoft.Framework.Runtime.Loader": "1.0.0-beta5-11406",
+            "Microsoft.Framework.Runtime.Caching": "1.0.0-beta5-11406",
+            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11406",
             "Newtonsoft.Json": "6.0.6",
             "System.Collections.Concurrent": "4.0.10-beta-22727",
             "System.Diagnostics.Tools": "4.0.0-beta-22727",
@@ -215,8 +215,8 @@
         }
       },
       "files": [
-        "Microsoft.Framework.Runtime.1.0.0-beta5-11401.nupkg",
-        "Microsoft.Framework.Runtime.1.0.0-beta5-11401.nupkg.sha512",
+        "Microsoft.Framework.Runtime.1.0.0-beta5-11406.nupkg",
+        "Microsoft.Framework.Runtime.1.0.0-beta5-11406.nupkg.sha512",
         "Microsoft.Framework.Runtime.nuspec",
         "lib/dnx451/Microsoft.Framework.Runtime.dll",
         "lib/dnx451/Microsoft.Framework.Runtime.xml",
@@ -224,13 +224,13 @@
         "lib/dnxcore50/Microsoft.Framework.Runtime.xml"
       ]
     },
-    "Microsoft.Framework.Runtime.Caching/1.0.0-beta5-11401": {
+    "Microsoft.Framework.Runtime.Caching/1.0.0-beta5-11406": {
       "serviceable": false,
-      "sha": "UcXmXV+A6eOYScEWxn1zP/g/ZbCAHCcTS8mRQvddwImBb5nShn+fHsicYPeBTNbi+dmCMrlUmYcttVgvAcNZxw==",
+      "sha": "3ubGzjN8jJmJI/KKFPGRUxEXiWNfB6W4OjjJAKDXyTzxH1mTtN/QwZ0E2vvWMq/lB1Bw44uYMqLE3PzW7JuvTw==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {
-            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11401"
+            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11406"
           },
           "frameworkAssemblies": [
             "mscorlib",
@@ -247,7 +247,7 @@
         },
         "DNXCore,Version=v5.0": {
           "dependencies": {
-            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11401",
+            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11406",
             "System.Runtime": "4.0.20-beta-22727",
             "System.IO.FileSystem": "4.0.0-beta-22727",
             "System.Linq": "4.0.0-beta-22727",
@@ -263,8 +263,8 @@
         }
       },
       "files": [
-        "Microsoft.Framework.Runtime.Caching.1.0.0-beta5-11401.nupkg",
-        "Microsoft.Framework.Runtime.Caching.1.0.0-beta5-11401.nupkg.sha512",
+        "Microsoft.Framework.Runtime.Caching.1.0.0-beta5-11406.nupkg",
+        "Microsoft.Framework.Runtime.Caching.1.0.0-beta5-11406.nupkg.sha512",
         "Microsoft.Framework.Runtime.Caching.nuspec",
         "lib/dnx451/Microsoft.Framework.Runtime.Caching.dll",
         "lib/dnx451/Microsoft.Framework.Runtime.Caching.xml",
@@ -272,9 +272,9 @@
         "lib/dnxcore50/Microsoft.Framework.Runtime.Caching.xml"
       ]
     },
-    "Microsoft.Framework.Runtime.Interfaces/1.0.0-beta5-11401": {
+    "Microsoft.Framework.Runtime.Interfaces/1.0.0-beta5-11406": {
       "serviceable": false,
-      "sha": "Ao2rFIxzvkMcUcfdd+05z8XKRo6t51DHW24w8dslmVFN8HG/TcS/CvyYco0EzHyU8oAQcSvHtcTiUQE1UabeAQ==",
+      "sha": "3jPfmDYoDz1qecr/pYNoZmtF41GGLi8/efnrDHDOPfb6SJQ9bXBZx+MisaMzCqQGV9vWWi/zqb1ehnez2SW56w==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {},
@@ -310,8 +310,8 @@
         }
       },
       "files": [
-        "Microsoft.Framework.Runtime.Interfaces.1.0.0-beta5-11401.nupkg",
-        "Microsoft.Framework.Runtime.Interfaces.1.0.0-beta5-11401.nupkg.sha512",
+        "Microsoft.Framework.Runtime.Interfaces.1.0.0-beta5-11406.nupkg",
+        "Microsoft.Framework.Runtime.Interfaces.1.0.0-beta5-11406.nupkg.sha512",
         "Microsoft.Framework.Runtime.Interfaces.nuspec",
         "lib/dnx451/Microsoft.Framework.Runtime.Interfaces.dll",
         "lib/dnx451/Microsoft.Framework.Runtime.Interfaces.xml",
@@ -319,13 +319,13 @@
         "lib/dnxcore50/Microsoft.Framework.Runtime.Interfaces.xml"
       ]
     },
-    "Microsoft.Framework.Runtime.Loader/1.0.0-beta5-11401": {
+    "Microsoft.Framework.Runtime.Loader/1.0.0-beta5-11406": {
       "serviceable": false,
-      "sha": "9GRDeD0lRltIcmmcUVm/yMPP0GSzNvUFO1812e8+5ekheWxSzdcEv5iJgLcoqvP6YIql7jZhQ++j/VQJ9PCK8w==",
+      "sha": "unNVF9JgkPPrX/9Ma1uMnao39fSQhXq/e/C8mt8hhqDnXBsKcAIJYDquPgwnKOfdrr1be5/pM47tlW7wahNq3Q==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {
-            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11401"
+            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11406"
           },
           "frameworkAssemblies": [
             "mscorlib",
@@ -342,7 +342,7 @@
         },
         "DNXCore,Version=v5.0": {
           "dependencies": {
-            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11401",
+            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11406",
             "System.Collections": "4.0.10-beta-22727",
             "System.Collections.Concurrent": "4.0.10-beta-22727",
             "System.Runtime.Loader": "4.0.0-beta-22727",
@@ -360,8 +360,8 @@
         }
       },
       "files": [
-        "Microsoft.Framework.Runtime.Loader.1.0.0-beta5-11401.nupkg",
-        "Microsoft.Framework.Runtime.Loader.1.0.0-beta5-11401.nupkg.sha512",
+        "Microsoft.Framework.Runtime.Loader.1.0.0-beta5-11406.nupkg",
+        "Microsoft.Framework.Runtime.Loader.1.0.0-beta5-11406.nupkg.sha512",
         "Microsoft.Framework.Runtime.Loader.nuspec",
         "lib/dnx451/Microsoft.Framework.Runtime.Loader.dll",
         "lib/dnx451/Microsoft.Framework.Runtime.Loader.xml",
@@ -369,15 +369,15 @@
         "lib/dnxcore50/Microsoft.Framework.Runtime.Loader.xml"
       ]
     },
-    "Microsoft.Framework.Runtime.Roslyn/1.0.0-beta5-11401": {
+    "Microsoft.Framework.Runtime.Roslyn/1.0.0-beta5-11406": {
       "serviceable": false,
-      "sha": "2PUkln+bBY8INBqPADcdPVP7lSsAolM+MS1lw65FFI1s+k612i0yNtBJB9S7shtKyGWGdfQOscScTo+dKAvq9g==",
+      "sha": "cFjvmijYqtAfpdqfM1HuqYFSQFbMTZthGbD/ZmE6a47A+TUIDe8Ip3TOMAUK2hrQ0bjltiL9h2rbQc2MitfpDw==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {
-            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11401",
-            "Microsoft.Framework.Runtime.Roslyn.Interfaces": "1.0.0-beta5-11401",
-            "Microsoft.Framework.Runtime.Caching": "1.0.0-beta5-11401"
+            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11406",
+            "Microsoft.Framework.Runtime.Roslyn.Interfaces": "1.0.0-beta5-11406",
+            "Microsoft.Framework.Runtime.Caching": "1.0.0-beta5-11406"
           },
           "frameworkAssemblies": [
             "System.Collections",
@@ -398,9 +398,9 @@
         },
         "DNXCore,Version=v5.0": {
           "dependencies": {
-            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11401",
-            "Microsoft.Framework.Runtime.Roslyn.Interfaces": "1.0.0-beta5-11401",
-            "Microsoft.Framework.Runtime.Caching": "1.0.0-beta5-11401",
+            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11406",
+            "Microsoft.Framework.Runtime.Roslyn.Interfaces": "1.0.0-beta5-11406",
+            "Microsoft.Framework.Runtime.Caching": "1.0.0-beta5-11406",
             "System.Collections.Concurrent": "4.0.10-beta-22727",
             "System.Runtime.InteropServices": "4.0.20-beta-22727",
             "System.IO.FileSystem": "4.0.0-beta-22727"
@@ -415,8 +415,8 @@
         }
       },
       "files": [
-        "Microsoft.Framework.Runtime.Roslyn.1.0.0-beta5-11401.nupkg",
-        "Microsoft.Framework.Runtime.Roslyn.1.0.0-beta5-11401.nupkg.sha512",
+        "Microsoft.Framework.Runtime.Roslyn.1.0.0-beta5-11406.nupkg",
+        "Microsoft.Framework.Runtime.Roslyn.1.0.0-beta5-11406.nupkg.sha512",
         "Microsoft.Framework.Runtime.Roslyn.nuspec",
         "lib/dnx451/Microsoft.Framework.Runtime.Roslyn.dll",
         "lib/dnx451/Microsoft.Framework.Runtime.Roslyn.xml",
@@ -424,13 +424,13 @@
         "lib/dnxcore50/Microsoft.Framework.Runtime.Roslyn.xml"
       ]
     },
-    "Microsoft.Framework.Runtime.Roslyn.Interfaces/1.0.0-beta5-11401": {
+    "Microsoft.Framework.Runtime.Roslyn.Interfaces/1.0.0-beta5-11406": {
       "serviceable": false,
-      "sha": "zY7aOXkknFBJETsrsuapIw/XXSxIoacOxWsi3rSTlCOZ4/yAh7Hv4ZvR+zKf+fi6XQvks8xBWunx3f4K2JiwFw==",
+      "sha": "HwuHxcUpkoSeOPDRZ5hcImXgpXmhoTBFnVyZ/WrRcqlkpy9d4WXl8uA1Y6lHA4P9++nz5+M4hEnp8IQmgYe4Jg==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {
-            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11401",
+            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11406",
             "Microsoft.CodeAnalysis.CSharp": "1.0.0-rc2-20150327-07"
           },
           "frameworkAssemblies": [
@@ -448,7 +448,7 @@
         },
         "DNXCore,Version=v5.0": {
           "dependencies": {
-            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11401",
+            "Microsoft.Framework.Runtime.Interfaces": "1.0.0-beta5-11406",
             "Microsoft.CodeAnalysis.CSharp": "1.0.0-rc2-20150327-07",
             "System.Runtime": "4.0.20-beta-22727"
           },
@@ -462,8 +462,8 @@
         }
       },
       "files": [
-        "Microsoft.Framework.Runtime.Roslyn.Interfaces.1.0.0-beta5-11401.nupkg",
-        "Microsoft.Framework.Runtime.Roslyn.Interfaces.1.0.0-beta5-11401.nupkg.sha512",
+        "Microsoft.Framework.Runtime.Roslyn.Interfaces.1.0.0-beta5-11406.nupkg",
+        "Microsoft.Framework.Runtime.Roslyn.Interfaces.1.0.0-beta5-11406.nupkg.sha512",
         "Microsoft.Framework.Runtime.Roslyn.Interfaces.nuspec",
         "lib/dnx451/Microsoft.Framework.Runtime.Roslyn.Interfaces.dll",
         "lib/dnx451/Microsoft.Framework.Runtime.Roslyn.Interfaces.xml",

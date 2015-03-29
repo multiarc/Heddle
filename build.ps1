@@ -23,3 +23,4 @@ Push-Location Templates.Native.K
 dnu pack --out ..\..\pack --configuration Release
 Pop-Location
 Pop-Location
+Get-ChildItem "pack\Release\" *.nupkg -rec -erroraction 'silentlycontinue' | Select-Object -Expand FullName | Foreach { Write-Host `#`#teamcity`[publishArtifacts `'$_`'`] }
