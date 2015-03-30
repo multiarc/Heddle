@@ -98,3 +98,4 @@ UpgradeLog*.XML
 /front/studexpress.js
 
 /src/StudExpress.Web/assets/
+project.lock.json
