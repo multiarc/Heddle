@@ -17,8 +17,6 @@
     ],
     "DNX,Version=v4.5.1": [],
     "DNXCore,Version=v5.0": [
-      "System.Runtime >= 4.0.20-*",
-      "System.Runtime.Extensions >= 4.0.10-*",
       "System.Runtime.Loader >= 4.0.0-*",
       "System.Runtime.Serialization.Primitives >= 4.0.10-*",
       "Microsoft.CSharp >= 4.0.0-*",
@@ -36,10 +34,8 @@
       "System.Reflection.Emit.ILGeneration >= 4.0.0-*",
       "System.Globalization >= 4.0.10-*",
       "System.Globalization.Extensions >= 4.0.0-*",
-      "System.Text.Encoding >= 4.0.10-*",
       "System.Text.Encoding.CodePages >= 4.0.0-*",
-      "System.Text.Encoding.Extensions >= 4.0.10-*",
-      "System.Text.RegularExpressions >= 4.0.10-*"
+      "System.Text.Encoding.Extensions >= 4.0.10-*"
     ]
   },
   "libraries": {
