@@ -1,0 +1,31 @@
+﻿{
+    "version": "1.0.0-*",
+    "exclude": [ "bin" ],
+    "dependencies": {
+        "Antlr4.Runtime": "4.5.0-*"
+    },
+    "scripts": {
+        "prebuild": "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.5-complete.jar\" -Dlanguage=CSharp \"%project:Directory%\\TtlLexer.g4\" \"%project:Directory%\\TtlParser.g4\" -o \"%project:Directory%\\generated\" -lib \"%project:Directory%\\generated\" -package Templates.Language"
+    },
+    "configurations": { "release": { "compilationOptions": { "define": [ "TRACE" ] }, "optimize": true }, "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } } },
+    "frameworks": {
+        "net45": {
+            "dependencies": {
+            }
+        },
+        "dnx451": {
+            "compilationOptions": { "define": [ "DNX451" ] },
+            "dependencies": {
+            }
+        },
+        "dnxcore50": {
+            "compilationOptions": { "define": [ "DNXCORE50" ] },
+            "dependencies": {
+                "System.Runtime": "4.0.20-*",
+                "System.Text.Encoding": "4.0.10-*",
+                "System.Runtime.Extensions": "4.0.10-*",
+                "System.Text.RegularExpressions": "4.0.10-*"
+            }
+        }
+    }
+}

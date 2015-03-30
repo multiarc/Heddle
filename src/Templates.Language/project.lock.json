@@ -1,0 +1,463 @@
+{
+  "locked": false,
+  "version": -9998,
+  "projectFileDependencyGroups": {
+    "": [
+      "Antlr4.Runtime >= 4.5.0-*"
+    ],
+    ".NETFramework,Version=v4.5": [],
+    "DNX,Version=v4.5.1": [],
+    "DNXCore,Version=v5.0": [
+      "System.Runtime >= 4.0.20-*",
+      "System.Text.Encoding >= 4.0.10-*",
+      "System.Runtime.Extensions >= 4.0.10-*",
+      "System.Text.RegularExpressions >= 4.0.10-*"
+    ]
+  },
+  "libraries": {
+    "Antlr4.Runtime/4.5.0": {
+      "serviceable": false,
+      "sha": "fgkiVxBHwN/t83LptQ48mRRpI+93C702FbkJYOG4mzAD6+kJDvwSXGWu/WNJwIaZD8Zu+gxGE2KF39d6qX3Ndw==",
+      "frameworks": {
+        ".NETFramework,Version=v4.5": {
+          "dependencies": {},
+          "frameworkAssemblies": [],
+          "runtimeAssemblies": [
+            "lib/net45/Antlr4.Runtime.dll"
+          ],
+          "compileAssemblies": [
+            "lib/net45/Antlr4.Runtime.dll"
+          ]
+        },
+        "DNX,Version=v4.5.1": {
+          "dependencies": {},
+          "frameworkAssemblies": [],
+          "runtimeAssemblies": [
+            "lib/dnx451/Antlr4.Runtime.dll"
+          ],
+          "compileAssemblies": [
+            "lib/dnx451/Antlr4.Runtime.dll"
+          ]
+        },
+        "DNXCore,Version=v5.0": {
+          "dependencies": {},
+          "frameworkAssemblies": [],
+          "runtimeAssemblies": [
+            "lib/dnxcore50/Antlr4.Runtime.dll"
+          ],
+          "compileAssemblies": [
+            "lib/dnxcore50/Antlr4.Runtime.dll"
+          ]
+        }
+      },
+      "files": [
+        "Antlr4.Runtime.4.5.0.nupkg",
+        "Antlr4.Runtime.4.5.0.nupkg.sha512",
+        "Antlr4.Runtime.nuspec",
+        "lib/dnx451/Antlr4.Runtime.dll",
+        "lib/dnx451/Antlr4.Runtime.pdb",
+        "lib/dnx451/Antlr4.Runtime.xml",
+        "lib/dnxcore50/Antlr4.Runtime.dll",
+        "lib/dnxcore50/Antlr4.Runtime.pdb",
+        "lib/dnxcore50/Antlr4.Runtime.xml",
+        "lib/net45/Antlr4.Runtime.dll",
+        "lib/net45/Antlr4.Runtime.pdb",
+        "lib/net45/Antlr4.Runtime.xml",
+        "src/Antlr4.Runtime/AntlrFileStream.cs",
+        "src/Antlr4.Runtime/AntlrInputStream.cs",
+        "src/Antlr4.Runtime/BailErrorStrategy.cs",
+        "src/Antlr4.Runtime/BaseErrorListener.cs",
+        "src/Antlr4.Runtime/BufferedTokenStream.cs",
+        "src/Antlr4.Runtime/CommonToken.cs",
+        "src/Antlr4.Runtime/CommonTokenFactory.cs",
+        "src/Antlr4.Runtime/CommonTokenStream.cs",
+        "src/Antlr4.Runtime/ConsoleErrorListener.cs",
+        "src/Antlr4.Runtime/DefaultErrorStrategy.cs",
+        "src/Antlr4.Runtime/Dependents.cs",
+        "src/Antlr4.Runtime/DiagnosticErrorListener.cs",
+        "src/Antlr4.Runtime/FailedPredicateException.cs",
+        "src/Antlr4.Runtime/IAntlrErrorListener`1.cs",
+        "src/Antlr4.Runtime/IAntlrErrorStrategy.cs",
+        "src/Antlr4.Runtime/ICharStream.cs",
+        "src/Antlr4.Runtime/IIntStream.cs",
+        "src/Antlr4.Runtime/InputMismatchException.cs",
+        "src/Antlr4.Runtime/InterpreterRuleContext.cs",
+        "src/Antlr4.Runtime/IParserErrorListener.cs",
+        "src/Antlr4.Runtime/IRecognizer.cs",
+        "src/Antlr4.Runtime/IToken.cs",
+        "src/Antlr4.Runtime/ITokenFactory.cs",
+        "src/Antlr4.Runtime/ITokenSource.cs",
+        "src/Antlr4.Runtime/ITokenStream.cs",
+        "src/Antlr4.Runtime/IVocabulary.cs",
+        "src/Antlr4.Runtime/IWritableToken.cs",
+        "src/Antlr4.Runtime/Lexer.cs",
+        "src/Antlr4.Runtime/LexerInterpreter.cs",
+        "src/Antlr4.Runtime/LexerNoViableAltException.cs",
+        "src/Antlr4.Runtime/ListTokenSource.cs",
+        "src/Antlr4.Runtime/NoViableAltException.cs",
+        "src/Antlr4.Runtime/Parser.cs",
+        "src/Antlr4.Runtime/ParserInterpreter.cs",
+        "src/Antlr4.Runtime/ParserRuleContext.cs",
+        "src/Antlr4.Runtime/ProxyErrorListener`1.cs",
+        "src/Antlr4.Runtime/ProxyParserErrorListener.cs",
+        "src/Antlr4.Runtime/RecognitionException.cs",
+        "src/Antlr4.Runtime/Recognizer.cs",
+        "src/Antlr4.Runtime/RuleContext.cs",
+        "src/Antlr4.Runtime/RuleDependencyAttribute.cs",
+        "src/Antlr4.Runtime/RuleVersionAttribute.cs",
+        "src/Antlr4.Runtime/TokenStreamRewriter.cs",
+        "src/Antlr4.Runtime/TokenTypes.cs",
+        "src/Antlr4.Runtime/UnbufferedCharStream.cs",
+        "src/Antlr4.Runtime/UnbufferedTokenStream.cs",
+        "src/Antlr4.Runtime/Vocabulary.cs",
+        "src/Antlr4.Runtime/Atn/AbstractPredicateTransition.cs",
+        "src/Antlr4.Runtime/Atn/ActionTransition.cs",
+        "src/Antlr4.Runtime/Atn/AmbiguityInfo.cs",
+        "src/Antlr4.Runtime/Atn/ArrayPredictionContext.cs",
+        "src/Antlr4.Runtime/Atn/ATN.cs",
+        "src/Antlr4.Runtime/Atn/ATNConfig.cs",
+        "src/Antlr4.Runtime/Atn/ATNConfigSet.cs",
+        "src/Antlr4.Runtime/Atn/ATNDeserializationOptions.cs",
+        "src/Antlr4.Runtime/Atn/ATNDeserializer.cs",
+        "src/Antlr4.Runtime/Atn/ATNSimulator.cs",
+        "src/Antlr4.Runtime/Atn/ATNState.cs",
+        "src/Antlr4.Runtime/Atn/ATNType.cs",
+        "src/Antlr4.Runtime/Atn/AtomTransition.cs",
+        "src/Antlr4.Runtime/Atn/BasicBlockStartState.cs",
+        "src/Antlr4.Runtime/Atn/BasicState.cs",
+        "src/Antlr4.Runtime/Atn/BlockEndState.cs",
+        "src/Antlr4.Runtime/Atn/BlockStartState.cs",
+        "src/Antlr4.Runtime/Atn/ConflictInfo.cs",
+        "src/Antlr4.Runtime/Atn/ContextSensitivityInfo.cs",
+        "src/Antlr4.Runtime/Atn/DecisionEventInfo.cs",
+        "src/Antlr4.Runtime/Atn/DecisionInfo.cs",
+        "src/Antlr4.Runtime/Atn/DecisionState.cs",
+        "src/Antlr4.Runtime/Atn/EmptyPredictionContext.cs",
+        "src/Antlr4.Runtime/Atn/EpsilonTransition.cs",
+        "src/Antlr4.Runtime/Atn/ErrorInfo.cs",
+        "src/Antlr4.Runtime/Atn/ILexerAction.cs",
+        "src/Antlr4.Runtime/Atn/LexerActionExecutor.cs",
+        "src/Antlr4.Runtime/Atn/LexerActionType.cs",
+        "src/Antlr4.Runtime/Atn/LexerATNSimulator.cs",
+        "src/Antlr4.Runtime/Atn/LexerChannelAction.cs",
+        "src/Antlr4.Runtime/Atn/LexerCustomAction.cs",
+        "src/Antlr4.Runtime/Atn/LexerIndexedCustomAction.cs",
+        "src/Antlr4.Runtime/Atn/LexerModeAction.cs",
+        "src/Antlr4.Runtime/Atn/LexerMoreAction.cs",
+        "src/Antlr4.Runtime/Atn/LexerPopModeAction.cs",
+        "src/Antlr4.Runtime/Atn/LexerPushModeAction.cs",
+        "src/Antlr4.Runtime/Atn/LexerSkipAction.cs",
+        "src/Antlr4.Runtime/Atn/LexerTypeAction.cs",
+        "src/Antlr4.Runtime/Atn/LL1Analyzer.cs",
+        "src/Antlr4.Runtime/Atn/LookaheadEventInfo.cs",
+        "src/Antlr4.Runtime/Atn/LoopEndState.cs",
+        "src/Antlr4.Runtime/Atn/NotSetTransition.cs",
+        "src/Antlr4.Runtime/Atn/OrderedATNConfigSet.cs",
+        "src/Antlr4.Runtime/Atn/ParseInfo.cs",
+        "src/Antlr4.Runtime/Atn/ParserATNSimulator.cs",
+        "src/Antlr4.Runtime/Atn/PlusBlockStartState.cs",
+        "src/Antlr4.Runtime/Atn/PlusLoopbackState.cs",
+        "src/Antlr4.Runtime/Atn/PrecedencePredicateTransition.cs",
+        "src/Antlr4.Runtime/Atn/PredicateEvalInfo.cs",
+        "src/Antlr4.Runtime/Atn/PredicateTransition.cs",
+        "src/Antlr4.Runtime/Atn/PredictionContext.cs",
+        "src/Antlr4.Runtime/Atn/PredictionContextCache.cs",
+        "src/Antlr4.Runtime/Atn/PredictionMode.cs",
+        "src/Antlr4.Runtime/Atn/ProfilingATNSimulator.cs",
+        "src/Antlr4.Runtime/Atn/RangeTransition.cs",
+        "src/Antlr4.Runtime/Atn/RuleStartState.cs",
+        "src/Antlr4.Runtime/Atn/RuleStopState.cs",
+        "src/Antlr4.Runtime/Atn/RuleTransition.cs",
+        "src/Antlr4.Runtime/Atn/SemanticContext.cs",
+        "src/Antlr4.Runtime/Atn/SetTransition.cs",
+        "src/Antlr4.Runtime/Atn/SimulatorState.cs",
+        "src/Antlr4.Runtime/Atn/SingletonPredictionContext.cs",
+        "src/Antlr4.Runtime/Atn/StarBlockStartState.cs",
+        "src/Antlr4.Runtime/Atn/StarLoopbackState.cs",
+        "src/Antlr4.Runtime/Atn/StarLoopEntryState.cs",
+        "src/Antlr4.Runtime/Atn/StateType.cs",
+        "src/Antlr4.Runtime/Atn/TokensStartState.cs",
+        "src/Antlr4.Runtime/Atn/Transition.cs",
+        "src/Antlr4.Runtime/Atn/TransitionType.cs",
+        "src/Antlr4.Runtime/Atn/WildcardTransition.cs",
+        "src/Antlr4.Runtime/Dfa/AbstractEdgeMap`1.cs",
+        "src/Antlr4.Runtime/Dfa/AcceptStateInfo.cs",
+        "src/Antlr4.Runtime/Dfa/ArrayEdgeMap`1.cs",
+        "src/Antlr4.Runtime/Dfa/DFA.cs",
+        "src/Antlr4.Runtime/Dfa/DFASerializer.cs",
+        "src/Antlr4.Runtime/Dfa/DFAState.cs",
+        "src/Antlr4.Runtime/Dfa/EmptyEdgeMap`1.cs",
+        "src/Antlr4.Runtime/Dfa/IEdgeMap`1.cs",
+        "src/Antlr4.Runtime/Dfa/LexerDFASerializer.cs",
+        "src/Antlr4.Runtime/Dfa/SingletonEdgeMap`1.cs",
+        "src/Antlr4.Runtime/Dfa/SparseEdgeMap`1.cs",
+        "src/Antlr4.Runtime/Misc/Args.cs",
+        "src/Antlr4.Runtime/Misc/IIntSet.cs",
+        "src/Antlr4.Runtime/Misc/Interval.cs",
+        "src/Antlr4.Runtime/Misc/IntervalSet.cs",
+        "src/Antlr4.Runtime/Misc/MultiMap`2.cs",
+        "src/Antlr4.Runtime/Misc/MurmurHash.cs",
+        "src/Antlr4.Runtime/Misc/NotNullAttribute.cs",
+        "src/Antlr4.Runtime/Misc/NullableAttribute.cs",
+        "src/Antlr4.Runtime/Misc/ParseCanceledException.cs",
+        "src/Antlr4.Runtime/Misc/RuleDependencyChecker.cs",
+        "src/Antlr4.Runtime/Misc/Utils.cs",
+        "src/Antlr4.Runtime/Properties/AssemblyInfo.cs",
+        "src/Antlr4.Runtime/Sharpen/Arrays.cs",
+        "src/Antlr4.Runtime/Sharpen/AtomicReference`1.cs",
+        "src/Antlr4.Runtime/Sharpen/BitSet.cs",
+        "src/Antlr4.Runtime/Sharpen/Collections.cs",
+        "src/Antlr4.Runtime/Sharpen/DictionaryExtensions.cs",
+        "src/Antlr4.Runtime/Sharpen/ListExtensions.cs",
+        "src/Antlr4.Runtime/Sharpen/Runtime.cs",
+        "src/Antlr4.Runtime/Sharpen/SequenceEqualityComparer`1.cs",
+        "src/Antlr4.Runtime/Sharpen/Compat/CollectionDebuggerView`2.cs",
+        "src/Antlr4.Runtime/Sharpen/Compat/ConcurrentDictionary`2.cs",
+        "src/Antlr4.Runtime/Sharpen/Compat/Enumerable.cs",
+        "src/Antlr4.Runtime/Sharpen/Compat/ExtensionAttribute.cs",
+        "src/Antlr4.Runtime/Sharpen/Compat/Funcs.cs",
+        "src/Antlr4.Runtime/Sharpen/Compat/HashSet`1.cs",
+        "src/Antlr4.Runtime/Sharpen/Compat/IStructuralComparable.cs",
+        "src/Antlr4.Runtime/Sharpen/Compat/IStructuralEquatable.cs",
+        "src/Antlr4.Runtime/Sharpen/Compat/SerializableAttribute.cs",
+        "src/Antlr4.Runtime/Sharpen/Compat/SplitOrderedList`2.cs",
+        "src/Antlr4.Runtime/Sharpen/Compat/Tuple.cs",
+        "src/Antlr4.Runtime/Sharpen/Compat/Tuples.cs",
+        "src/Antlr4.Runtime/Tree/AbstractParseTreeVisitor`1.cs",
+        "src/Antlr4.Runtime/Tree/ErrorNodeImpl.cs",
+        "src/Antlr4.Runtime/Tree/IErrorNode.cs",
+        "src/Antlr4.Runtime/Tree/IParseTree.cs",
+        "src/Antlr4.Runtime/Tree/IParseTreeListener.cs",
+        "src/Antlr4.Runtime/Tree/IParseTreeVisitor`1.cs",
+        "src/Antlr4.Runtime/Tree/IRuleNode.cs",
+        "src/Antlr4.Runtime/Tree/ISyntaxTree.cs",
+        "src/Antlr4.Runtime/Tree/ITerminalNode.cs",
+        "src/Antlr4.Runtime/Tree/ITree.cs",
+        "src/Antlr4.Runtime/Tree/ParseTreeProperty`1.cs",
+        "src/Antlr4.Runtime/Tree/ParseTreeWalker.cs",
+        "src/Antlr4.Runtime/Tree/TerminalNodeImpl.cs",
+        "src/Antlr4.Runtime/Tree/Trees.cs",
+        "src/Antlr4.Runtime/Tree/Pattern/Chunk.cs",
+        "src/Antlr4.Runtime/Tree/Pattern/ParseTreeMatch.cs",
+        "src/Antlr4.Runtime/Tree/Pattern/ParseTreePattern.cs",
+        "src/Antlr4.Runtime/Tree/Pattern/ParseTreePatternMatcher.cs",
+        "src/Antlr4.Runtime/Tree/Pattern/RuleTagToken.cs",
+        "src/Antlr4.Runtime/Tree/Pattern/TagChunk.cs",
+        "src/Antlr4.Runtime/Tree/Pattern/TextChunk.cs",
+        "src/Antlr4.Runtime/Tree/Pattern/TokenTagToken.cs",
+        "src/Antlr4.Runtime/Tree/Xpath/XPath.cs",
+        "src/Antlr4.Runtime/Tree/Xpath/XPathElement.cs",
+        "src/Antlr4.Runtime/Tree/Xpath/XPathLexer.cs",
+        "src/Antlr4.Runtime/Tree/Xpath/XPathLexerErrorListener.cs",
+        "src/Antlr4.Runtime/Tree/Xpath/XPathRuleAnywhereElement.cs",
+        "src/Antlr4.Runtime/Tree/Xpath/XPathRuleElement.cs",
+        "src/Antlr4.Runtime/Tree/Xpath/XPathTokenAnywhereElement.cs",
+        "src/Antlr4.Runtime/Tree/Xpath/XPathTokenElement.cs",
+        "src/Antlr4.Runtime/Tree/Xpath/XPathWildcardAnywhereElement.cs",
+        "src/Antlr4.Runtime/Tree/Xpath/XPathWildcardElement.cs"
+      ]
+    },
+    "System.Runtime/4.0.20-beta-22727": {
+      "serviceable": false,
+      "sha": "NrsWlVlozwWyekB4zG4i6jlNWwjYPFXxOwLxY1KxGn6GOMevEU8zt1gCAAQmTRZmrQEXEbHJ9kkc6YkHmIRuAw==",
+      "frameworks": {
+        ".NETFramework,Version=v4.5": {
+          "dependencies": {},
+          "frameworkAssemblies": [],
+          "runtimeAssemblies": [
+            "lib/net45/System.Runtime.dll"
+          ],
+          "compileAssemblies": [
+            "lib/net45/System.Runtime.dll"
+          ]
+        },
+        "DNX,Version=v4.5.1": {
+          "dependencies": {},
+          "frameworkAssemblies": [],
+          "runtimeAssemblies": [
+            "lib/net45/System.Runtime.dll"
+          ],
+          "compileAssemblies": [
+            "lib/net45/System.Runtime.dll"
+          ]
+        },
+        "DNXCore,Version=v5.0": {
+          "dependencies": {},
+          "frameworkAssemblies": [],
+          "runtimeAssemblies": [
+            "lib/aspnetcore50/System.Runtime.dll"
+          ],
+          "compileAssemblies": [
+            "lib/contract/System.Runtime.dll"
+          ]
+        }
+      },
+      "files": [
+        "License.rtf",
+        "System.Runtime.4.0.20-beta-22727.nupkg",
+        "System.Runtime.4.0.20-beta-22727.nupkg.sha512",
+        "System.Runtime.nuspec",
+        "lib/aspnetcore50/System.Runtime.dll",
+        "lib/contract/System.Runtime.dll",
+        "lib/net45/System.Runtime.dll",
+        "lib/portable-wpa81+wp80+win80+net45+aspnetcore50/System.Runtime.dll"
+      ]
+    },
+    "System.Runtime.Extensions/4.0.10-beta-22727": {
+      "serviceable": false,
+      "sha": "4q3+RZmRnMOquGHi21iGr9PQceEE1luj5mHyBtCZHDD0MxCWRZU6N+P2qY8zYsxOZf95bktuuwqXqOSxAMlsBw==",
+      "frameworks": {
+        ".NETFramework,Version=v4.5": {
+          "dependencies": {
+            "System.Runtime": "4.0.20-beta-22727"
+          },
+          "frameworkAssemblies": [],
+          "runtimeAssemblies": [
+            "lib/net45/System.Runtime.Extensions.dll"
+          ],
+          "compileAssemblies": [
+            "lib/net45/System.Runtime.Extensions.dll"
+          ]
+        },
+        "DNX,Version=v4.5.1": {
+          "dependencies": {
+            "System.Runtime": "4.0.20-beta-22727"
+          },
+          "frameworkAssemblies": [],
+          "runtimeAssemblies": [
+            "lib/net45/System.Runtime.Extensions.dll"
+          ],
+          "compileAssemblies": [
+            "lib/net45/System.Runtime.Extensions.dll"
+          ]
+        },
+        "DNXCore,Version=v5.0": {
+          "dependencies": {
+            "System.Runtime": "4.0.20-beta-22727"
+          },
+          "frameworkAssemblies": [],
+          "runtimeAssemblies": [
+            "lib/aspnetcore50/System.Runtime.Extensions.dll"
+          ],
+          "compileAssemblies": [
+            "lib/contract/System.Runtime.Extensions.dll"
+          ]
+        }
+      },
+      "files": [
+        "License.rtf",
+        "System.Runtime.Extensions.4.0.10-beta-22727.nupkg",
+        "System.Runtime.Extensions.4.0.10-beta-22727.nupkg.sha512",
+        "System.Runtime.Extensions.nuspec",
+        "lib/aspnetcore50/System.Runtime.Extensions.dll",
+        "lib/contract/System.Runtime.Extensions.dll",
+        "lib/net45/System.Runtime.Extensions.dll",
+        "lib/portable-wpa81+wp80+win80+net45+aspnetcore50/System.Runtime.Extensions.dll"
+      ]
+    },
+    "System.Text.Encoding/4.0.10-beta-22727": {
+      "serviceable": false,
+      "sha": "OMubuzuuWHNjF2zyN93D/3H+0oHGdzcHyfU5oAMKjpdeUBgKHYCDNaZIS6uMwBUmUwq7beDJ5HdwfNCX2a6R7w==",
+      "frameworks": {
+        ".NETFramework,Version=v4.5": {
+          "dependencies": {
+            "System.Runtime": "4.0.0-beta-22727"
+          },
+          "frameworkAssemblies": [],
+          "runtimeAssemblies": [
+            "lib/net45/System.Text.Encoding.dll"
+          ],
+          "compileAssemblies": [
+            "lib/net45/System.Text.Encoding.dll"
+          ]
+        },
+        "DNX,Version=v4.5.1": {
+          "dependencies": {
+            "System.Runtime": "4.0.0-beta-22727"
+          },
+          "frameworkAssemblies": [],
+          "runtimeAssemblies": [
+            "lib/net45/System.Text.Encoding.dll"
+          ],
+          "compileAssemblies": [
+            "lib/net45/System.Text.Encoding.dll"
+          ]
+        },
+        "DNXCore,Version=v5.0": {
+          "dependencies": {
+            "System.Runtime": "4.0.0-beta-22727"
+          },
+          "frameworkAssemblies": [],
+          "runtimeAssemblies": [
+            "lib/aspnetcore50/System.Text.Encoding.dll"
+          ],
+          "compileAssemblies": [
+            "lib/contract/System.Text.Encoding.dll"
+          ]
+        }
+      },
+      "files": [
+        "License.rtf",
+        "System.Text.Encoding.4.0.10-beta-22727.nupkg",
+        "System.Text.Encoding.4.0.10-beta-22727.nupkg.sha512",
+        "System.Text.Encoding.nuspec",
+        "lib/aspnetcore50/System.Text.Encoding.dll",
+        "lib/contract/System.Text.Encoding.dll",
+        "lib/net45/System.Text.Encoding.dll",
+        "lib/portable-wpa81+wp80+win80+net45+aspnetcore50/System.Text.Encoding.dll"
+      ]
+    },
+    "System.Text.RegularExpressions/4.0.10-beta-22727": {
+      "serviceable": false,
+      "sha": "ixfgkAoSKqEDbvnb4xt3y19lGpJHJ+Vy9qttZmtDLE6kvoilhlyKdCWmiY/spYP2rFVV6HQZl3wyndPf93WVrA==",
+      "frameworks": {
+        ".NETFramework,Version=v4.5": {
+          "dependencies": {
+            "System.Runtime": "4.0.0-beta-22727"
+          },
+          "frameworkAssemblies": [],
+          "runtimeAssemblies": [
+            "lib/net45/System.Text.RegularExpressions.dll"
+          ],
+          "compileAssemblies": [
+            "lib/net45/System.Text.RegularExpressions.dll"
+          ]
+        },
+        "DNX,Version=v4.5.1": {
+          "dependencies": {
+            "System.Runtime": "4.0.0-beta-22727"
+          },
+          "frameworkAssemblies": [],
+          "runtimeAssemblies": [
+            "lib/net45/System.Text.RegularExpressions.dll"
+          ],
+          "compileAssemblies": [
+            "lib/net45/System.Text.RegularExpressions.dll"
+          ]
+        },
+        "DNXCore,Version=v5.0": {
+          "dependencies": {
+            "System.Runtime": "4.0.0-beta-22727"
+          },
+          "frameworkAssemblies": [],
+          "runtimeAssemblies": [
+            "lib/aspnetcore50/System.Text.RegularExpressions.dll"
+          ],
+          "compileAssemblies": [
+            "lib/contract/System.Text.RegularExpressions.dll"
+          ]
+        }
+      },
+      "files": [
+        "License.rtf",
+        "System.Text.RegularExpressions.4.0.10-beta-22727.nupkg",
+        "System.Text.RegularExpressions.4.0.10-beta-22727.nupkg.sha512",
+        "System.Text.RegularExpressions.nuspec",
+        "lib/aspnetcore50/System.Text.RegularExpressions.dll",
+        "lib/contract/System.Text.RegularExpressions.dll",
+        "lib/net45/System.Text.RegularExpressions.dll",
+        "lib/portable-wpa81+wp80+win80+net45+aspnetcore50/System.Text.RegularExpressions.dll"
+      ]
+    }
+  }
+}
