@@ -149,10 +149,6 @@
       <Project>{50ca3f77-1f20-4bdd-9a6f-26d8fae7467b}</Project>
       <Name>Templates.Native</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\src\Templates\Templates.csproj">
-      <Project>{FCCA75A7-9694-429F-9A41-FD1933464E85}</Project>
-      <Name>Templates</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
