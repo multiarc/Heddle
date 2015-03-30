@@ -20,8 +20,8 @@ using System.Runtime.CompilerServices;
 @list(Namespaces) [
 	using @();;
 ]
-[assembly: InternalsVisibleTo("Templates.K")]
-[assembly: InternalsVisibleTo("Templates.Tests.K")]
+[assembly: InternalsVisibleTo("Templates")]
+[assembly: InternalsVisibleTo("Templates.Tests")]
 namespace Templates.Runtime {
 	@class()
 }
