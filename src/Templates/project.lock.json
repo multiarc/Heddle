@@ -4,26 +4,18 @@
   "projectFileDependencyGroups": {
     "": [
       "Templates.Language >= 1.0.0-*",
-      "Antlr4.Runtime >= 4.5.0-*",
       "Microsoft.CodeAnalysis.CSharp >= 1.0.0-*",
       "Microsoft.Framework.Runtime >= 1.0.0-*",
       "Microsoft.Framework.Runtime.Roslyn >= 1.0.0-*"
     ],
     ".NETFramework,Version=v4.5": [
       "framework/System.Runtime >= 4.0.0.0",
-      "framework/System.Reflection >= 4.0.0.0",
       "framework/System.Text.Encoding >= 4.0.0.0",
       "framework/System.Threading.Tasks >= 4.0.0.0",
       "framework/System.IO >= 4.0.0.0",
-      "framework/Microsoft.CSharp >= 4.0.0.0"
+      "framework/System.Reflection >= 4.0.0.0"
     ],
-    "DNX,Version=v4.5.1": [
-      "framework/System.Runtime >= 4.0.10.0",
-      "framework/System.Reflection >= 4.0.0.0",
-      "framework/System.Text.Encoding >= 4.0.0.0",
-      "framework/System.Threading.Tasks >= 4.0.0.0",
-      "framework/System.IO >= 4.0.0.0"
-    ],
+    "DNX,Version=v4.5.1": [],
     "DNXCore,Version=v5.0": [
       "System.Runtime >= 4.0.20-*",
       "System.Runtime.Extensions >= 4.0.10-*",

@@ -4,7 +4,6 @@
     "compilationOptions": { "allowUnsafe": true },
     "dependencies": {
         "Templates.Language": "1.0.0-*",
-        "Antlr4.Runtime": "4.5.0-*",
         "Microsoft.CodeAnalysis.CSharp": "1.0.0-*",
         "Microsoft.Framework.Runtime": "1.0.0-*",
         "Microsoft.Framework.Runtime.Roslyn": "1.0.0-*"
@@ -14,11 +13,10 @@
         "net45": {
             "frameworkAssemblies": {
                 "System.Runtime": "4.0.0.0",
-                "System.Reflection": "4.0.0.0",
                 "System.Text.Encoding": "4.0.0.0",
                 "System.Threading.Tasks": "4.0.0.0",
                 "System.IO": "4.0.0.0",
-                "Microsoft.CSharp": "4.0.0.0"
+                "System.Reflection": "4.0.0.0"
             }
         },
         "dnx451": {
@@ -26,11 +24,6 @@
             "dependencies": {
             },
             "frameworkAssemblies": {
-                "System.Runtime": "4.0.10.0",
-                "System.Reflection": "4.0.0.0",
-                "System.Text.Encoding": "4.0.0.0",
-                "System.Threading.Tasks": "4.0.0.0",
-                "System.IO": "4.0.0.0"
             }
         },
         "dnxcore50": {
