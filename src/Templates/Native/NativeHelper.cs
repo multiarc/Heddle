@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-#if DNXCORE50
-using System.Reflection;
-#endif
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -37,7 +34,7 @@ namespace Templates.Native {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [System.Security.SecurityCritical]  // auto-generated 
-        public static unsafe void MemCpy(char* dmem, char* smem, int charCount) {
+        internal static unsafe void MemCpy(char* dmem, char* smem, int charCount) {
             if (charCount > 0)
             {
 #if ALIGN_ACCESS
@@ -248,7 +245,7 @@ namespace Templates.Native {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [System.Security.SecurityCritical]  // auto-generated 
         //Copied implementation of coreclr CompareOrdinal
-        public static unsafe int Equals(char* one, char* two, int lenOne, int lenTwo) {
+        internal static unsafe int Equals(char* one, char* two, int lenOne, int lenTwo) {
             if (one == two) {
                 return 0;
             }
@@ -345,12 +342,12 @@ namespace Templates.Native {
         }
 
 #if DNXCORE50
-        public static Assembly[] GetAssemblies() {
+        internal static Assembly[] GetAssemblies() {
             var domain = GetCurrentDomain();
             return AssembliesGetter(domain);
         }
 
-        public static IAssemblyLoadContext GetAssemblyLoadContext()
+        internal static IAssemblyLoadContext GetAssemblyLoadContext()
         {
             return LoadContextAccessor.Default;
         }
@@ -395,7 +392,7 @@ namespace Templates.Native {
             return MetadataReference.CreateFromFile(path);
         }
 
-        public static List<MetadataReference> GetMetadataReferences() {
+        internal static List<MetadataReference> GetMetadataReferences() {
             var references = new List<MetadataReference>();
             var libraryExport = LibraryManager.GetLibraryExport(Environment.ApplicationName);
             if (libraryExport?.MetadataReferences?.Count > 0) {
@@ -416,7 +413,7 @@ namespace Templates.Native {
 #endif
 
         [System.Security.SecurityCritical]  // auto-generated 
-        public static unsafe int StartsWith(char* data, char* find, int* needleTable, int dataLen, int findLen) {
+        internal static unsafe int StartsWith(char* data, char* find, int* needleTable, int dataLen, int findLen) {
             if (dataLen >= findLen) {
                 int found = 0;
                 int currentIndex = findLen - 1;
@@ -439,7 +436,7 @@ namespace Templates.Native {
         }
 
         [System.Security.SecurityCritical]  // auto-generated 
-        public static bool IsWhiteSpace(char c) {
+        internal static bool IsWhiteSpace(char c) {
             return c == ' ' || c == '\x00a0' || c == '\x0085' || c >= '\x0009' && c <= '\x000d';
         }
     }

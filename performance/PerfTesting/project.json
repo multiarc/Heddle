@@ -19,7 +19,8 @@
             "compilationOptions": { "define": [ "DNXCORE50" ] },
             "dependencies": {
                 "System.Runtime": "4.0.20-*",
-                "System.Console": "4.0.0-*"
+                "System.Console": "4.0.0-*",
+                "System.Linq.Parallel" : "4.0.0-*"
             }
         }
     }

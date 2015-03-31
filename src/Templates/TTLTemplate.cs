@@ -19,6 +19,8 @@ namespace Templates {
         private readonly FileSystemWatcher _watcher;
         private volatile RuntimeDocument _runtimeDocument;
         private string _document;
+        private volatile bool _disposeAfterComplete = false;
+        private volatile int _runners = 0;
 
         public TtlTemplate(TemplateOptions options) : this(new CompileContext(options)) {
         }
@@ -58,14 +60,8 @@ namespace Templates {
 
         }
 
-        public TtlTemplate(string document) {
-            CompileResult = Compile(new CompileContext(), document);
-        }
-
-        public TtlTemplate(string document, CompileContext context) {
-            if (context == null)
-                throw new ArgumentNullException("context");
-            CompileResult = Compile(context, document);
+        public TtlTemplate(string document, CompileContext context = null) {
+            CompileResult = Compile(context ?? new CompileContext(), document);
         }
 
         public bool Empty => _runtimeDocument?.Empty ?? true;
@@ -75,9 +71,14 @@ namespace Templates {
         #region IDisposable Members
 
         public void Dispose() {
-            _watcher?.Dispose();
-            _runtimeDocument?.Dispose();
-            GC.SuppressFinalize(this);
+            if (_runners == 0) {
+                _watcher?.Dispose();
+                _runtimeDocument?.Dispose();
+                GC.SuppressFinalize(this);
+            }
+            else {
+                _disposeAfterComplete = true;
+            }
         }
 
         ~TtlTemplate() {
@@ -99,7 +100,7 @@ namespace Templates {
                     throw new TemplateInitException("Compile first.");
                 throw new TemplateCompileException(CompileResult.ErrorList);
             }
-                
+
 #if DEBUG
             if (data != null && !_context.ModelType.Type.IsType(data)) {
                 throw new TemplateProcessingException
@@ -108,7 +109,18 @@ namespace Templates {
                           data.GetType().FullName));
             }
 #endif
-            return _runtimeDocument.ProcessData(data, null) as string ?? string.Empty;
+            _runners++;
+            string result = null;
+            try {
+                result = _runtimeDocument.ProcessData(data, null) as string ?? string.Empty;
+            }
+            finally {
+                _runners--;
+                if (_disposeAfterComplete && _runners == 0) {
+                    Dispose();
+                }
+            }
+            return result;
         }
         public TtlCompileResult Recompile(ExType newModelType) {
             return Compile(new CompileContext(newModelType), _document);
