@@ -1,5 +1,5 @@
 Push-Location src
-dnu restore
+dnu restore --parallel
 Push-Location Templates.Tests
 dnu build --configuration Release
 dnx . test
