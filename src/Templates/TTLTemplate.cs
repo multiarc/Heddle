@@ -60,13 +60,19 @@ namespace Templates {
 
         }
 
-        public TtlTemplate(string document, CompileContext context = null) {
+        public TtlTemplate(string document, CompileContext context = null)
+        {
             CompileResult = Compile(context ?? new CompileContext(), document);
         }
 
         public bool Empty => _runtimeDocument?.Empty ?? true;
 
         public CompileContext Context => _context;
+
+        public DateTime DateCreated { get; set; } = DateTime.Now;
+
+        public DateTime MasterDateCreated { get; set; }
+            = DateTime.Now;
 
         #region IDisposable Members
 
@@ -122,8 +128,18 @@ namespace Templates {
             }
             return result;
         }
-        public TtlCompileResult Recompile(ExType newModelType) {
-            return Compile(new CompileContext(newModelType), _document);
+        public TtlCompileResult Recompile(ExType newModelType)
+        {
+            DateCreated = DateTime.Now;
+            CompileResult = Compile(new CompileContext(newModelType), _document);
+            return CompileResult;
+        }
+
+        public TtlCompileResult Recompile(string newDocument, ExType newModelType = null)
+        {
+            DateCreated = DateTime.Now;
+            CompileResult = Compile(new CompileContext(newModelType), newDocument);
+            return CompileResult;
         }
 
         public TtlCompileResult Compile(string document, ExType modelType = null) {
@@ -138,7 +154,7 @@ namespace Templates {
                 var rtdoc = DocumentsCache.GetRuntimeDocument(document, context);
                 if (rtdoc == null) {
                     rtdoc = TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
-                    DocumentsCache.UpdateCaches(rtdoc, null, context);
+                    DocumentsCache.UpdateCaches(rtdoc, _document, context);
                     context.Compile();
                 }
                 _context = context;

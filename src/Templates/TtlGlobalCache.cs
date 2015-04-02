@@ -9,48 +9,45 @@ namespace Templates
 {
     public class TtlGlobalCache : ITtlGlobalCache
     {
-        private readonly Dictionary<TemplateCacheItem, ITtlTemplate> _cache = new Dictionary<TemplateCacheItem, ITtlTemplate>();
-        private static readonly object LockObject = new object();
+        private readonly Dictionary<IdPair, ITtlTemplate> _cache = new Dictionary<IdPair, ITtlTemplate>();
+        private readonly object _lockObject = new object();
 
-        private struct TemplateCacheItem: IEquatable<TemplateCacheItem> {
-            private readonly string _master;
-            private readonly string _template;
-            private readonly DateTime _dateUpdated;
-            private readonly DateTime _masterDateUpdated;
+        private struct IdPair: IEquatable<IdPair>
+        {
+            private readonly int _idMaster;
+            private readonly int _idTemplate;
 
-            public TemplateCacheItem(string master, string template, DateTime dateUpdated, DateTime masterDateUpdated) {
-                _template = template;
-                _master = master;
-                _dateUpdated = dateUpdated;
-                _masterDateUpdated = masterDateUpdated;
+            public IdPair(int idMaster, int idTemplate) {
+                _idTemplate = idTemplate;
+                _idMaster = idMaster;
             }
 
-            public bool Equals(TemplateCacheItem other) {
-                return other._master == _master && other._template == _template && other._dateUpdated == _dateUpdated && other._masterDateUpdated == _masterDateUpdated;
+            public bool Equals(IdPair other) {
+                return other._idMaster == _idMaster && other._idTemplate == _idTemplate;
             }
 
             public override int GetHashCode() {
-                return _dateUpdated.GetHashCode();
+                return _idTemplate.GetHashCode();
             }
 
             public override bool Equals(object obj) {
-                if (!(obj is TemplateCacheItem))
+                if (!(obj is IdPair))
                     return false;
-                return Equals((TemplateCacheItem)obj);
+                return Equals((IdPair)obj);
             }
 
-            public static bool operator ==(TemplateCacheItem one, TemplateCacheItem another) {
+            public static bool operator ==(IdPair one, IdPair another) {
                 return one.Equals(another);
             }
 
-            public static bool operator !=(TemplateCacheItem one, TemplateCacheItem another) {
-                return !(one == another);
+            public static bool operator !=(IdPair one, IdPair another) {
+                return !one.Equals(another);
             }
         }
 
-        public void RemoveFromCache(string masterTemplate, string template, DateTime dateUpdated, DateTime masterDateUpdated) {
-            var searchValue = new TemplateCacheItem(masterTemplate, template, dateUpdated, masterDateUpdated);
-            lock (LockObject) {
+        public void RemoveFromCache(int idMaster, int idContent) {
+            var searchValue = new IdPair(idMaster, idContent);
+            lock (_lockObject) {
                 if (_cache.ContainsKey(searchValue)) {
                     var ttlTemplate = _cache[searchValue];
                     _cache.Remove(searchValue);
@@ -59,18 +56,33 @@ namespace Templates
             }
         }
 
-        public ITtlTemplate GetOrCreateTemplate(string masterTemplate, string template, DateTime dateUpdated, DateTime masterDateUpdated) {
+        public ITtlTemplate GetOrCreateTemplate(string masterTemplate, string template, DateTime dateUpdated, DateTime masterDateUpdated, int idMaster, int idContent) 
+            { 
             ITtlTemplate result;
-            var searchValue = new TemplateCacheItem(masterTemplate, template, dateUpdated, masterDateUpdated);
-            lock(LockObject) {
+            var searchValue = new IdPair(idMaster, idContent);
+            lock(_lockObject) {
                 if (_cache.TryGetValue(searchValue, out result)) {
+                    if (result.DateCreated != dateUpdated || result.MasterDateCreated != dateUpdated)
+                    {
+                        if (!result.Recompile(masterTemplate + template).Success)
+                        {
+                            //Update dates so old template using in runtime next request ok
+                            result.MasterDateCreated = masterDateUpdated;
+                            result.DateCreated = dateUpdated;
+                            throw new TemplateCompileException(result.CompileResult.Errors);
+                        }
+                        result.MasterDateCreated = masterDateUpdated;
+                        result.DateCreated = dateUpdated;
+                    }
                     return result;
                 }
             }
             result = new TtlTemplate(masterTemplate + template);
             if (!result.CompileResult.Success)
                 throw new TemplateCompileException(result.CompileResult.Errors);
-            lock (LockObject) {
+            result.MasterDateCreated = masterDateUpdated;
+            result.DateCreated = dateUpdated;
+            lock (_lockObject) {
                 _cache.Add(searchValue, result);
             }
             return result;

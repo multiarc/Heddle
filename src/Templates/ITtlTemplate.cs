@@ -9,6 +9,11 @@ namespace Templates
     {
         TtlCompileResult CompileResult { get; }
         bool Empty { get; }
+
+        DateTime DateCreated { get; set; }
+
+        DateTime MasterDateCreated { get; set; }
+
         CompileContext Context { get; }
         /// <summary>
         /// Generates result string (invoke template helpers and render).
@@ -18,6 +23,9 @@ namespace Templates
         string Generate(object data);
 
         TtlCompileResult Recompile(ExType newModelType);
+
+        TtlCompileResult Recompile(string newDocument, ExType newModelType = null);
+
         TtlCompileResult Compile(string document, ExType modelType = null);
         event FileSystemEventHandler OnFileDeleted;
         event RenamedEventHandler OnFileRenamed;
