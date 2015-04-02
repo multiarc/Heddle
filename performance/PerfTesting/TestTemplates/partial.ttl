@@ -1,5 +1,5 @@
 ﻿<tr>
-    <td>@money(Cost):param()[@(Locale)]</td>
+    <td>@money(Cost):param(){{@(Locale)}}</td>
     <td>@(Quantity)</td>
     <td>@(Name)</td>
 </tr>

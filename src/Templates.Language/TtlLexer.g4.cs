@@ -94,7 +94,9 @@ namespace Templates.Language {
                 i = 1;
                 la = InputStream.La(i);
                 c = (char)la;
-                if (la != -1 && c != ':' && c != '[' && prev == ')') {
+                int nextLa = InputStream.La(i + 1);
+                char nextC = (char)nextLa; 
+                if (la == -1 || c != ':' && (c != '{' || nextLa != -1 && nextC != '{') && prev == ')') {
                     Type = TEXT;
                     PopMode();
                     token = new CommonToken(token)
@@ -119,7 +121,9 @@ namespace Templates.Language {
                 i = 1;
                 la = InputStream.La(i);
                 c = (char)la;
-                if (la != -1 && c != ':' && c != '[' && prev == ')') {
+                nextLa = InputStream.La(i + 1);
+                nextC = (char)nextLa;
+                if (la == -1 || c != ':' && (c != '{' || nextLa == -1 || nextC != '{') && prev == ')') {
                     Type = SUB_COMMENT;
                     PopMode();
                     token = new CommonToken(token)

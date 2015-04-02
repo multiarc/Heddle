@@ -12,8 +12,8 @@ channels { COMMENT_CHANNEL }
 
 fragment ID: IDENTIFIER;
 
-fragment SUB_ST: '[';
-fragment SUB_CL: ']';
+fragment SUB_ST: '{{';
+fragment SUB_CL: '}}';
 fragment PARA_ST: '(';
 fragment PARA_CL: ')';
 fragment DEF_ST: '<%';
@@ -26,7 +26,7 @@ COMMENT:
 	'@*' .*? '*@' -> channel(COMMENT_CHANNEL);
 
 RAW: 
-	'@:' .*? ':@';
+	'@{' .*? '}@';
 
 DEF_START: 
 	DEF_ST -> pushMode(DEF);

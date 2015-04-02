@@ -2,25 +2,25 @@
 <%
 	@*text dynamic template for using it with *@
 	<text>@*Baseless definition test*@
-	[
+	{{
 		<input type="text" name="@(Name)" value="@(Value)" @out() />
-	] :: dynamic
+	}} :: dynamic
 	<multi_text@*text area with @out()*@>
-	[
+	{{
 		<textarea>@
 			out();
 		</textarea>
-	]
+	}}
 	<labeled_text:text@*Inheritance test*@>
-	[
+	{{
 		<label>
 			@text()@*use base defenition*@
 		</label>
-	]
+	}}
 %>
-@using()[Templates@*Comment Test 2*@@:X:@Tests.Data];
-@using()[System.Linq];
-@model(@*Comment Test 3*@)[TestData@*Comment Test 4*@Structure];
+@using(){{Templates@*Comment Test 2*@@{X}@Tests.Data}};
+@using(){{System.Linq}};
+@model(@*Comment Test 3*@){{TestData@*Comment Test 4*@Structure}};
 <!DOCTYPE html>
 <html>@*Comment Test 5*@
 <head>
@@ -41,9 +41,9 @@
             </th>
         </tr>
         @list(Products@*Comment Test 7*@)
-        [@
-			@*Comment Test 8*@partial(@*Comment Test 9*@)[partial@*Comment Test 10*@];
-        ];
+        {{@
+			@*Comment Test 8*@partial(@*Comment Test 9*@){{partial@*Comment Test 10*@}};
+        }};
     </table>
 	<table>
         <tr>
@@ -59,42 +59,42 @@
         </tr>
 		@* C# Test *@
         @list(@model.Products.Where(p => p.Quantity < 95))
-        [@
-			partial()[partial];
-        ];
+        {{@
+			partial(){{partial}};
+        }};
     </table>
     <div>
         Page Generated at@*Comment Test 11*@
         @time(Date)
         on
         @date(Date)<br />
-        @if(IsShow)[<span style="color: aqua">Some fucking text</span>]<br />
-        @else(IsShow)[<span style="color: red">Don't show it</span>]<br />
-        @if(IsShow):param()[@time(Date)]<br />
-        @guid(Guid)[X]<br />
+        @if(IsShow){{<span style="color: aqua">Some fucking text</span>}}<br />
+        @else(IsShow){{<span style="color: red">Don't show it</span>}}<br />
+        @if(IsShow):param(){{@time(Date)}}<br />
+        @guid(Guid){{X}}<br />
         @guid(Guid)<br />
         @int(FuckingInt)<br />
         @string(Text)<br />
         &lt;%<br />
         %&gt;<br />
-		@text(@new { Name = "input1-name", Value="input1-value" })[ class="testcssclass1" ]
-		@labeled_text(@new { Name = "input2-name", Value="input2-value" })[ class="testcssclass2" ]
+		@text(@new { Name = "input1-name", Value="input1-value" }){{ class="testcssclass1" }}
+		@labeled_text(@new { Name = "input2-name", Value="input2-value" }){{ class="testcssclass2" }}
 		@multi_text(@new { Name = "input3-name", Value="input3-value" })
-		[
-			@text() [ class="testcssclass3" ]
+		{{
+			@text() {{ class="testcssclass3" }}
 			<%
 				<multi_text:multi_text>
-				[
+				{{
 					<textarea>shit</textarea>
-				]
+				}}
 			%>
 			@multi_text()
-		]
+		}}
 <%
 	<text:text>
-	[
+	{{
 		Full override
-	]
+	}}
 %>
 @text()
     </div>

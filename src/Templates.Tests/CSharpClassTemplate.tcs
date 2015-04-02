@@ -1,27 +1,26 @@
 ﻿<% <class>
-	[
-	public static class CSE_@guid(ClassGuid)[N] {
+	{{
+	public static class CSE_@guid(ClassGuid){{N}} {
 		
-		private static void Main (string@:[]:@ args) {}
+		private static void Main (string[] args) {}
 
 		@list(Methods)
-		[
+		{{
 		public static object ProcessData_@(ExtensionName)@(MethodNumber) (@(ModelType) model, @(ChainedType) chained)
 		{
 			return @(Expression);;
 		}
-		]
+		}}
 	}
-	] :: CompileContext
+	}} :: CompileContext
 %>
-@using()[Templates.Runtime];
-@model()[CompileContext];
+@using(){{Templates.Runtime}};
+@model(){{CompileContext}};
 using System.Runtime.CompilerServices;
-@list(Namespaces) [
+@list(Namespaces) {{
 	using @();;
-]
+}}
 [assembly: InternalsVisibleTo("Templates")]
-[assembly: InternalsVisibleTo("Templates.Tests")]
 namespace Templates.Runtime {
 	@class()
 }
