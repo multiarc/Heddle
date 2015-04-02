@@ -154,7 +154,7 @@ namespace Templates {
                 var rtdoc = DocumentsCache.GetRuntimeDocument(document, context);
                 if (rtdoc == null) {
                     rtdoc = TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
-                    DocumentsCache.UpdateCaches(rtdoc, _document, context);
+                    DocumentsCache.UpdateCaches(rtdoc, _runtimeDocument?.Document, context);
                     context.Compile();
                 }
                 _context = context;

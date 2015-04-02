@@ -62,7 +62,7 @@ namespace Templates
             var searchValue = new IdPair(idMaster, idContent);
             lock(_lockObject) {
                 if (_cache.TryGetValue(searchValue, out result)) {
-                    if (result.DateCreated != dateUpdated || result.MasterDateCreated != dateUpdated)
+                    if (result.DateCreated != dateUpdated || result.MasterDateCreated != masterDateUpdated)
                     {
                         if (!result.Recompile(masterTemplate + template).Success)
                         {
