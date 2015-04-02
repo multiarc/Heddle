@@ -16,15 +16,17 @@ namespace Templates
             private readonly string _master;
             private readonly string _template;
             private readonly DateTime _dateUpdated;
+            private readonly DateTime _masterDateUpdated;
 
-            public TemplateCacheItem(string master, string template, DateTime dateUpdated) {
+            public TemplateCacheItem(string master, string template, DateTime dateUpdated, DateTime masterDateUpdated) {
                 _template = template;
                 _master = master;
                 _dateUpdated = dateUpdated;
+                _masterDateUpdated = masterDateUpdated;
             }
 
             public bool Equals(TemplateCacheItem other) {
-                return other._master == _master && other._template == _template && other._dateUpdated == _dateUpdated;
+                return other._master == _master && other._template == _template && other._dateUpdated == _dateUpdated && other._masterDateUpdated == _masterDateUpdated;
             }
 
             public override int GetHashCode() {
@@ -46,8 +48,8 @@ namespace Templates
             }
         }
 
-        public void RemoveFromCache(string masterTemplate, string template, DateTime dateUpdated) {
-            var searchValue = new TemplateCacheItem(masterTemplate, template, dateUpdated);
+        public void RemoveFromCache(string masterTemplate, string template, DateTime dateUpdated, DateTime masterDateUpdated) {
+            var searchValue = new TemplateCacheItem(masterTemplate, template, dateUpdated, masterDateUpdated);
             lock (LockObject) {
                 if (_cache.ContainsKey(searchValue)) {
                     var ttlTemplate = _cache[searchValue];
@@ -57,9 +59,9 @@ namespace Templates
             }
         }
 
-        public ITtlTemplate GetOrCreateTemplate(string masterTemplate, string template, DateTime dateUpdated) {
+        public ITtlTemplate GetOrCreateTemplate(string masterTemplate, string template, DateTime dateUpdated, DateTime masterDateUpdated) {
             ITtlTemplate result;
-            var searchValue = new TemplateCacheItem(masterTemplate, template, dateUpdated);
+            var searchValue = new TemplateCacheItem(masterTemplate, template, dateUpdated, masterDateUpdated);
             lock(LockObject) {
                 if (_cache.TryGetValue(searchValue, out result)) {
                     return result;
