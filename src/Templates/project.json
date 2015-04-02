@@ -1,11 +1,11 @@
 ﻿{
-    "version": "2.0.0-1",
+    "version": "2.0.1",
     "authors": [ "Aliaksandr Kukrash" ],
     "description": "Robust template engine with C# expressions (Roslyn) support, text template inheritance and override support",
     "exclude": [ "bin" ],
     "compilationOptions": { "allowUnsafe": true },
     "dependencies": {
-        "Templates.Language": "1.0.0-*",
+        "Templates.Language": "1.0-*",
         "Microsoft.CodeAnalysis.CSharp": "1.0.0-*",
         "Microsoft.Framework.Runtime": "1.0.0-*",
         "Microsoft.Framework.Runtime.Roslyn": "1.0.0-*"
