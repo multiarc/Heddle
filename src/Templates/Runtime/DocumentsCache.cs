@@ -7,20 +7,20 @@ namespace Templates.Runtime {
 
         public static RuntimeDocument GetRuntimeDocument(string document, CompileContext context)
         {
-            if (string.IsNullOrEmpty(document))
-                return null;
-            var itemToSearch = new DocumentCacheItem(document)  
-            {
-                RootPath = context.Options.RootPath,
-                ModelType = context.ModelType
-            };
+            //if (string.IsNullOrEmpty(document))
+            //    return null;
+            //var itemToSearch = new DocumentCacheItem(document)  
+            //{
+            //    RootPath = context.Options.RootPath,
+            //    ModelType = context.ModelType
+            //};
 
-            lock (Cache)
-            {
-                RuntimeDocument result;
-                if (Cache.TryGetValue(itemToSearch, out result))
-                    return result;
-            }
+            //lock (Cache)
+            //{
+            //    RuntimeDocument result;
+            //    if (Cache.TryGetValue(itemToSearch, out result))
+            //        return result;
+            //}
             return null;
         }
 
@@ -37,59 +37,59 @@ namespace Templates.Runtime {
         }
 
         internal static void DeleteMe(RuntimeDocument runtimeDocument, string document, CompileContext context) {
-            var itemToSearch = new DocumentCacheItem(document)
-            {
-                RootPath = context.Options.RootPath,
-                ModelType = context.ModelType
-            };
-            lock (Cache) {
-                if (Cache.ContainsKey(itemToSearch)) {
-                    Cache.Remove(itemToSearch);
-                }
-            }
+            //var itemToSearch = new DocumentCacheItem(document)
+            //{
+            //    RootPath = context.Options.RootPath,
+            //    ModelType = context.ModelType
+            //};
+            //lock (Cache) {
+            //    if (Cache.ContainsKey(itemToSearch)) {
+            //        Cache.Remove(itemToSearch);
+            //    }
+            //}
         }
 
         public static void UpdateCaches(RuntimeDocument newRuntimeDocument, string oldDocument, CompileContext context)
         {
-            if (!string.IsNullOrEmpty(oldDocument))
-            {
-                var itemToSearch = new DocumentCacheItem(oldDocument)
-                {
-                    RootPath = context.Options.RootPath,
-                    ModelType = context.ModelType
-                };
-                lock (Cache)
-                {
-                    if (Cache.ContainsKey(itemToSearch))
-                    {
-                        Cache[itemToSearch].Dispose();
-                        Cache.Remove(itemToSearch);
-                    }
-                    itemToSearch = new DocumentCacheItem(newRuntimeDocument.Document)
-                    {
-                        RootPath = context.Options.RootPath,
-                        ModelType = context.ModelType
-                    };
-                    Cache.Add(itemToSearch, newRuntimeDocument);
-                }
-            }
-            else
-            {
-                var itemToSearch = new DocumentCacheItem(newRuntimeDocument.Document)
-                {
-                    RootPath = context.Options.RootPath,
-                    ModelType = context.ModelType
-                };
-                lock (Cache)
-                {
-                    if (Cache.ContainsKey(itemToSearch))
-                    {
-                        Cache[itemToSearch].Dispose();
-                        Cache.Remove(itemToSearch);
-                    }
-                    Cache.Add(itemToSearch, newRuntimeDocument);
-                }
-            }
+            //if (!string.IsNullOrEmpty(oldDocument))
+            //{
+            //    var itemToSearch = new DocumentCacheItem(oldDocument)
+            //    {
+            //        RootPath = context.Options.RootPath,
+            //        ModelType = context.ModelType
+            //    };
+            //    lock (Cache)
+            //    {
+            //        if (Cache.ContainsKey(itemToSearch))
+            //        {
+            //            Cache[itemToSearch].Dispose();
+            //            Cache.Remove(itemToSearch);
+            //        }
+            //        itemToSearch = new DocumentCacheItem(newRuntimeDocument.Document)
+            //        {
+            //            RootPath = context.Options.RootPath,
+            //            ModelType = context.ModelType
+            //        };
+            //        Cache.Add(itemToSearch, newRuntimeDocument);
+            //    }
+            //}
+            //else
+            //{
+            //    var itemToSearch = new DocumentCacheItem(newRuntimeDocument.Document)
+            //    {
+            //        RootPath = context.Options.RootPath,
+            //        ModelType = context.ModelType
+            //    };
+            //    lock (Cache)
+            //    {
+            //        if (Cache.ContainsKey(itemToSearch))
+            //        {
+            //            Cache[itemToSearch].Dispose();
+            //            Cache.Remove(itemToSearch);
+            //        }
+            //        Cache.Add(itemToSearch, newRuntimeDocument);
+            //    }
+            //}
         }
     }
 }
