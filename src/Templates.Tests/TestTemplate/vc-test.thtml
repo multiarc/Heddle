@@ -92,14 +92,14 @@
 
 
 
-
+<body>{{@out()}}
 @*---------Start center column---*@
 @*-------------------------------*@
 <center>
 {{
 @*---------editable--------------*@
 	<div style="float:left;">
-		@out()
+		@body(){{@out()}}
 	</div>
 @*---------editable--------------*@	
 }}
@@ -172,15 +172,36 @@
 @*-------------------------------*@
 @*----Output top misc----*@
 <div style="width:1000px; margin:auto auto;"><img src="http://www.vitalchoice.com/shop/pc/catalog/kitchen_portal/in-the-kitchen-header-4-24-14a.png" width="955" height="90"></div>
+@default()
 <%
-	<center:center>
+	<body:body>
 	{{
 		This is individual body
 	}}
 	<left:left>
 	{{
-		@left()
+		@left(){{@out()}}
 		Addition to the left
+	}}
+	<chef_videos:chef_videos>
+	{{
+		@chef_videos()
+		Added new video
 	}}
 %>
 @default()
+@layout() {{
+		@left()
+		{{
+			@chef_videos()
+			@recipes_by_category()
+		}}
+		@center()
+		{{
+			This is master body
+		}}
+		@right()
+		{{
+			@seafood_how_to()
+		}}
+	}}

@@ -15,7 +15,9 @@ namespace Templates.Language {
 
         private readonly bool _inDefintionContext;
 
-        private static Dictionary<ParseContext, ParseContext> IsolatedSet;
+        private static Dictionary<ParseContext, ParseContext> _isolatedSet;
+
+        private static HashSet<ParseContext> _isolatedList;
 
         internal ParseContext(ParseContext parentContext = null, int offset = 0) {
             _inDefintionContext = (parentContext?.InDefinition ?? false) || (parentContext?._inDefintionContext ?? false);
@@ -26,9 +28,8 @@ namespace Templates.Language {
             CommentTokens = new SmartList<BlockPosition>();
         }
 
-        private static ParseContext IsolateContextFrom(ParseContext context, string definitionName) {
+        private static ParseContext IsolateContextFrom(ParseContext context) {
             var newContext = new ParseContext(context, context._offset) { DefenitionsOnly = context.DefenitionsOnly };
-            newContext.OutputChains.AddRange(context.OutputChains.Select(chain => new OutputChain(chain, newContext, definitionName)));
             newContext.RawOutputItems.AddRange(context.RawOutputItems);
             newContext.CommentTokens.AddRange(context.CommentTokens);
             return newContext;
@@ -36,22 +37,29 @@ namespace Templates.Language {
 
         public ParseContext IsolateContextWithTree(string definitionName = null)
         {
-            IsolatedSet = new Dictionary<ParseContext, ParseContext>();
+            _isolatedSet = new Dictionary<ParseContext, ParseContext>();
+            _isolatedList = new HashSet<ParseContext>();
             var result = IsolateContext(definitionName);
-            IsolatedSet = null;
+            _isolatedSet = null;
+            _isolatedList = null;
             return result;
         }
 
         internal ParseContext IsolateContext(string definitionName = null)
         {
-            var result = IsolateContextFrom(this, definitionName);
-            if (!IsolatedSet.ContainsKey(this))
+            var result = IsolateContextFrom(this);
+            if (_isolatedList.Contains(this))
             {
-                IsolatedSet.Add(this, result);
+                return this;
+            }
+            if (!_isolatedSet.ContainsKey(this))
+            {
+                _isolatedSet.Add(this, result);
+                _isolatedList.Add(result);
             }
             else
             {
-                return IsolatedSet[this];
+                return _isolatedSet[this];
             }
             if (definitionName != null)
             {
@@ -82,6 +90,7 @@ namespace Templates.Language {
                     result.DefinitionsBlock.Definitions[definition.Key] = item;
                 }
             }
+            result.OutputChains.AddRange(OutputChains.Select(chain => new OutputChain(chain, result, definitionName)));
             return result;
         }
 
