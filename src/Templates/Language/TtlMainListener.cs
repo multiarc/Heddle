@@ -100,11 +100,9 @@ namespace Templates.Language {
                 {
                     newContext = newContext.IsolateContextWithTree();
                 }
-                else
-                {
+                else {
                     if (currentContext.InDefinition && currentContext.CurrentDefenition != null &&
-                        currentContext.CurrentDefenition.FullOverride)
-                    {
+                        currentContext.CurrentDefenition.FullOverride) {
                         newContext = newContext.IsolateContextWithTree(currentContext.CurrentDefenition.Name);
                     }
                 }

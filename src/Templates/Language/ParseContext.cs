@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Misc;
+using Microsoft.CodeAnalysis;
 using Templates.Collections;
 using Templates.Exceptions;
 using Templates.Strings.Core;
@@ -19,6 +20,8 @@ namespace Templates.Language {
 
         private static HashSet<ParseContext> _isolatedList;
 
+        private static readonly object LockObject = new object();
+
         internal ParseContext(ParseContext parentContext = null, int offset = 0) {
             _inDefintionContext = (parentContext?.InDefinition ?? false) || (parentContext?._inDefintionContext ?? false);
             _offset = offset;
@@ -30,6 +33,7 @@ namespace Templates.Language {
 
         private static ParseContext IsolateContextFrom(ParseContext context) {
             var newContext = new ParseContext(context, context._offset) { DefenitionsOnly = context.DefenitionsOnly };
+            newContext.DefinitionsBlock.Positions.AddRange(context.DefinitionsBlock.Positions);
             newContext.RawOutputItems.AddRange(context.RawOutputItems);
             newContext.CommentTokens.AddRange(context.CommentTokens);
             return newContext;
@@ -37,26 +41,32 @@ namespace Templates.Language {
 
         public ParseContext IsolateContextWithTree(string definitionName = null)
         {
-            _isolatedSet = new Dictionary<ParseContext, ParseContext>();
-            _isolatedList = new HashSet<ParseContext>();
-            var result = IsolateContext(definitionName);
-            _isolatedSet = null;
-            _isolatedList = null;
-            return result;
+            lock (LockObject)
+            {
+                _isolatedSet = new Dictionary<ParseContext, ParseContext>();
+                _isolatedList = new HashSet<ParseContext>();
+                var result = IsolateContext(definitionName);
+                _isolatedSet = null;
+                _isolatedList = null;
+                return result;
+            }
         }
 
         internal ParseContext IsolateContext(string definitionName = null)
         {
             var result = IsolateContextFrom(this);
+            //Check if this context already was isolated from other one in the call tree
             if (_isolatedList.Contains(this))
             {
                 return this;
             }
+            //Prevent from stack overflow if child items could have the same context or subsequent contexts
             if (!_isolatedSet.ContainsKey(this))
             {
                 _isolatedSet.Add(this, result);
                 _isolatedList.Add(result);
             }
+            //Return already isolated context instance
             else
             {
                 return _isolatedSet[this];

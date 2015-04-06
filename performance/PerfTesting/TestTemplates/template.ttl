@@ -149,6 +149,13 @@
 <default>
 {{
 @*---------editable--------------*@
+	<%
+		<center:center>
+		{{
+			@center() {{@out()}}
+			CENTER FOOTER
+		}}
+	%>
 	@layout() {{
 		@left()
 		{{
@@ -164,6 +171,13 @@
 			@seafood_how_to()
 		}}
 	}}
+	<%
+		<right:right>
+		{{
+			@right() {{@out()}}
+			@chef_videos()
+		}}
+	%>
 @*---------editable--------------*@
 }}
 %>
@@ -180,7 +194,7 @@
 	}}
 	<left:left>
 	{{
-		@left()
+		@left(){{@out()}}
 		Addition to the left
 	}}
 	<chef_videos:chef_videos>
@@ -190,3 +204,18 @@
 	}}
 %>
 @default()
+@layout() {{
+		@left()
+		{{
+			@chef_videos()
+			@recipes_by_category()
+		}}
+		@center()
+		{{
+			This is master body
+		}}
+		@right()
+		{{
+			@seafood_how_to()
+		}}
+	}}

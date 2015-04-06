@@ -9,7 +9,8 @@ namespace Templates.Language {
     public class DefinitionItem {
         internal DefinitionItem(DefinitionItem definition)
         {
-            BaseDefinition = definition.BaseDefinition;
+            if (definition.BaseDefinition != null)
+                BaseDefinition = new DefinitionItem(definition.BaseDefinition);
             Context = definition.Context;
             Position = definition.Position;
             ModelType = definition.ModelType;
