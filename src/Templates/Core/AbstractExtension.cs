@@ -29,8 +29,10 @@ namespace Templates.Core {
             DirectRender = renderType == RenderType.Encode;
         }
 
-        private static ExType InitSubTemplate(ref string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context,
-            ParseContext parseContext, out IDataProcessor result) {
+        private static ExType InitSubTemplate(ref string parameterTemplate, ExType dataType, ExType chainedType,
+            CompileContext context,
+            ParseContext parseContext, out IDataProcessor result)
+        {
             if (context == null)
                 throw new ArgumentNullException("context");
 
@@ -40,27 +42,23 @@ namespace Templates.Core {
             else
             {
                 var newContext = new CompileContext(context, dataType);
-                subTemplate = DocumentsCache.GetRuntimeDocument(parameterTemplate, newContext);
-                if (subTemplate == null)
-                {
-                    subTemplate = TtlCompiler.Compile(parameterTemplate, newContext,
-                        parseContext);
-                    DocumentsCache.UpdateCaches(subTemplate, null, newContext);
-                    newContext.Compile();
-                }
+                subTemplate = TtlCompiler.Compile(parameterTemplate, newContext, parseContext);
+                newContext.Compile();
             }
             if (subTemplate != null)
             {
                 parameterTemplate = subTemplate.Document;
             }
-            if (subTemplate == null || subTemplate.Empty) {
+            if (subTemplate == null || subTemplate.Empty)
+            {
                 result = null;
             }
-            else {
+            else
+            {
                 result = subTemplate.CanFullOptimize ? subTemplate.SingleProcessor : subTemplate;
             }
 
-            return typeof(string);
+            return typeof (string);
         }
 
         public virtual ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context,

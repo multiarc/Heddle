@@ -148,15 +148,10 @@ namespace Templates {
             return Compile(new CompileContext(modelType), document);
         }
 
-
         private TtlCompileResult Compile(CompileContext context, string document) {
             try {
-                var rtdoc = DocumentsCache.GetRuntimeDocument(document, context);
-                if (rtdoc == null) {
-                    rtdoc = TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
-                    DocumentsCache.UpdateCaches(rtdoc, _runtimeDocument?.Document, context);
-                    context.Compile();
-                }
+                RuntimeDocument rtdoc = TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
+                context.Compile();
                 _context = context;
                 _document = document;
                 _runtimeDocument = rtdoc;
