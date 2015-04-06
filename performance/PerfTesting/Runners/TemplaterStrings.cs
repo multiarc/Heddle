@@ -35,8 +35,8 @@ namespace Templates.Performance.Runners {
                 testFastList.Add(target.Generate(item));
             }
 
-            SmartList<string> testStringList = testFastList.Select(i => i.ToString(CultureInfo.InvariantCulture)).ToSmartArray();
-            SmartList<StringBuilder> testBuilderList = testStringList.Select(i => new StringBuilder(i)).ToSmartArray();
+            SmartList<string> testStringList = testFastList.Select(i => i.ToString(CultureInfo.InvariantCulture)).ToSmartList();
+            SmartList<StringBuilder> testBuilderList = testStringList.Select(i => new StringBuilder(i)).ToSmartList();
 
             Console.WriteLine("Starting Replace Test");
 

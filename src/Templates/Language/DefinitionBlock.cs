@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Templates.Collections;
 using Templates.Strings.Core;
 
@@ -11,9 +12,14 @@ namespace Templates.Language
         public DefinitionBlock(DefinitionBlock definitions = null)
         {
             Positions = new SmartList<BlockPosition>();
-            Definitions = definitions?.Definitions == null
-                ? new Dictionary<string, DefinitionItem>()
-                : new Dictionary<string, DefinitionItem>(definitions.Definitions);
+            Definitions = new Dictionary<string, DefinitionItem>();
+            if (definitions?.Definitions != null)
+            {
+                foreach (var pair in definitions.Definitions)
+                {
+                    Definitions.Add(pair.Key, pair.Value);
+                }
+            }
         }
 
         public void AddNewBlockPosition(BlockPosition position)

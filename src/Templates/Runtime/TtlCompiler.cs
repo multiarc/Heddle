@@ -30,8 +30,7 @@ namespace Templates.Runtime {
                 var element = new DocumentElement(extensions.BlockPosition);
                 ExType returnTypeChainedPrevious = null;
                 foreach (var item in extensions.Chain.Reverse()) {
-                    var compiledItem = CompileItem(item, compileContext, item.Context, extensions.Context,
-                        ref returnTypeChainedPrevious);
+                    var compiledItem = CompileItem(item, compileContext, extensions.Context, ref returnTypeChainedPrevious);
                     element.CallChain.Add(compiledItem);
                 }
                 if (returnTypeChainedPrevious == null) {
@@ -93,17 +92,17 @@ namespace Templates.Runtime {
                         break;
                     }
                 }
-                for (int index = context.DefinitionBlock.Positions.Length - 1; index >= 0; index--) {
-                    var position = context.DefinitionBlock.Positions[index];
+                for (int index = context.DefinitionsBlock.Positions.Length - 1; index >= 0; index--) {
+                    var position = context.DefinitionsBlock.Positions[index];
                     if (position.StartIndex < blockPosition.StartIndex &&
                         position.StartIndex + position.Length >
                         blockPosition.StartIndex + blockPosition.Length) {
-                        context.DefinitionBlock.Positions[index] =
+                        context.DefinitionsBlock.Positions[index] =
                             new BlockPosition(position.StartIndex - seed + blockPosition.Length,
                                 position.Length - blockPosition.Length);
                     }
                     else if (position.StartIndex + position.Length > blockPosition.StartIndex) {
-                        context.DefinitionBlock.Positions[index] = new BlockPosition(position.StartIndex - seed,
+                        context.DefinitionsBlock.Positions[index] = new BlockPosition(position.StartIndex - seed,
                             position.Length);
                     }
                     else {
@@ -123,7 +122,7 @@ namespace Templates.Runtime {
         }
 
         private static void RemoveDefinitions(ParseContext context, ref string workingDocument) {
-            foreach (var blockPosition in context.DefinitionBlock.Positions.Reverse()) {
+            foreach (var blockPosition in context.DefinitionsBlock.Positions.Reverse()) {
                 int seed = ExStringBuilder.ApplyRemove(blockPosition, ref workingDocument);
                 foreach (var chain in context.OutputChains.Reverse()) {
                     if (chain.BlockPosition.StartIndex > blockPosition.StartIndex)
@@ -145,18 +144,18 @@ namespace Templates.Runtime {
             }
         }
 
-        private static TemplateChain CompileParameterChain(IEnumerable<OutputItem> items, CompileContext compileContext, ParseContext parseContext, ParseContext parentContext) {
+        private static TemplateChain CompileParameterChain(IEnumerable<OutputItem> items, CompileContext compileContext, ParseContext parseContext) {
             TemplateChain result = new TemplateChain();
             ExType returnTypeChainedPrevious = null;
             foreach (var item in items.Reverse()) {
-                var compiledItem = CompileItem(item, compileContext, parseContext, parentContext, ref returnTypeChainedPrevious);
+                var compiledItem = CompileItem(item, compileContext, parseContext, ref returnTypeChainedPrevious);
                 result.Add(compiledItem);
             }
             return result;
         }
 
         private static TemplateItem CompileItem
-            (OutputItem extensionItem, CompileContext compileContext, ParseContext parseContext, ParseContext parentContext,
+            (OutputItem extensionItem, CompileContext compileContext, ParseContext parseContext,
                 ref ExType returnTypeChainedPrevious) {
             PropertyInfo data = null;
             ExType dataType = null;
@@ -164,8 +163,8 @@ namespace Templates.Runtime {
             IExtension extension;
             Type acceptType;
             DefinitionItem definitionItem = null;
-            if (parentContext.DefenitionExists(extensionItem.ExtensionName)) {
-                definitionItem = parentContext.GetDefenition(extensionItem.ExtensionName);
+            if (parseContext.DefenitionExists(extensionItem.ExtensionName)) {
+                definitionItem = parseContext.GetDefenition(extensionItem.ExtensionName);
             }
             if (extensionItem.CallParameter.IsModelTypeParameter) {
                 if (!string.IsNullOrEmpty(extensionItem.CallParameter.ModelParameter)) {
@@ -219,18 +218,18 @@ namespace Templates.Runtime {
                     ExtensionName = extensionItem.ExtensionName
                 };
                 dataType = compileContext.ParseAndGetResultType(expressionOptions);
-                extension = CreateExtension(extensionItem, compileContext, parseContext, ref returnTypeChainedPrevious, null, dataType, out acceptType, definitionItem);
+                extension = CreateExtension(extensionItem, compileContext, extensionItem.Context ?? parseContext, ref returnTypeChainedPrevious, null, dataType, out acceptType, definitionItem);
                 return new TemplateItem(returnTypeChainedPrevious, extension)
                 {
                     Parameter = compileContext.PushCompileExpression(expressionOptions)
                 };
             }
             else {
-                var callParameter = CompileParameterChain(extensionItem.CallParameter.ChainParameter, compileContext, parseContext, parentContext);
+                var callParameter = CompileParameterChain(extensionItem.CallParameter.ChainParameter, compileContext, parseContext);
                 dataType = callParameter.RenderType;
                 parameter = new RuntimeCallParameter(callParameterChain: callParameter);
             }
-            extension = CreateExtension(extensionItem, compileContext, parseContext, ref returnTypeChainedPrevious, data, dataType, out acceptType, definitionItem);
+            extension = CreateExtension(extensionItem, compileContext, extensionItem.Context ?? parseContext, ref returnTypeChainedPrevious, data, dataType, out acceptType, definitionItem);
             return new TemplateItem(returnTypeChainedPrevious, extension)
             {
                 Parameter = parameter

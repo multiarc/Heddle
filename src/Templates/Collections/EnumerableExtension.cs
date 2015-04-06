@@ -2,7 +2,7 @@
 
 namespace Templates.Collections {
     public static class EnumerableExtension {
-        public static SmartList<T> ToSmartArray<T> (this IEnumerable<T> values)
+        public static SmartList<T> ToSmartList<T> (this IEnumerable<T> values)
         {
             var result = new SmartList<T>();
             if (values != null) {

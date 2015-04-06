@@ -11,29 +11,91 @@ namespace Templates.Language {
     public class ParseContext {
         private readonly int _offset;
 
-        internal bool DefenitionsOnly { get; set; } = false;
+        internal bool DefenitionsOnly { get; set; }
 
-        internal ParseContext(ParseContext previous = null, int offset = 0)
-        {
+        private readonly bool _inDefintionContext;
+
+        private static Dictionary<ParseContext, ParseContext> IsolatedSet;
+
+        internal ParseContext(ParseContext parentContext = null, int offset = 0) {
+            _inDefintionContext = (parentContext?.InDefinition ?? false) || (parentContext?._inDefintionContext ?? false);
             _offset = offset;
-            DefinitionBlock = new DefinitionBlock(previous?.DefinitionBlock);
+            DefinitionsBlock = new DefinitionBlock(parentContext?.DefinitionsBlock);
             OutputChains = new SmartList<OutputChain>();
             RawOutputItems = new SmartList<RawOutputItem>();
             CommentTokens = new SmartList<BlockPosition>();
         }
 
-        internal DefinitionItem CreateDefinition(TtlParser.DefContext context)
+        private static ParseContext IsolateContextFrom(ParseContext context, string definitionName) {
+            var newContext = new ParseContext(context, context._offset) { DefenitionsOnly = context.DefenitionsOnly };
+            newContext.OutputChains.AddRange(context.OutputChains.Select(chain => new OutputChain(chain, newContext, definitionName)));
+            newContext.RawOutputItems.AddRange(context.RawOutputItems);
+            newContext.CommentTokens.AddRange(context.CommentTokens);
+            return newContext;
+        }
+
+        public ParseContext IsolateContextWithTree(string definitionName = null)
         {
-            if (context == null) throw new ArgumentNullException("context");
+            IsolatedSet = new Dictionary<ParseContext, ParseContext>();
+            var result = IsolateContext(definitionName);
+            IsolatedSet = null;
+            return result;
+        }
+
+        internal ParseContext IsolateContext(string definitionName = null)
+        {
+            var result = IsolateContextFrom(this, definitionName);
+            if (!IsolatedSet.ContainsKey(this))
+            {
+                IsolatedSet.Add(this, result);
+            }
+            else
+            {
+                return IsolatedSet[this];
+            }
+            if (definitionName != null)
+            {
+                if (DefinitionsBlock.Definitions.ContainsKey(definitionName))
+                {
+                    var item = new DefinitionItem(DefinitionsBlock.Definitions[definitionName]);
+
+                    var newContest = item.Context.IsolateContext(definitionName);
+
+                    item.Context = newContest;
+                    if (item.BaseDefinition != null)
+                    {
+                        item.BaseDefinition.Context = item.BaseDefinition.Context.IsolateContext(definitionName);
+                    }
+                    result.DefinitionsBlock.Definitions[definitionName] = item;
+                }
+            }
+            else
+            {
+                foreach (var definition in DefinitionsBlock.Definitions)
+                {
+                    var item = new DefinitionItem(definition.Value);
+                    item.Context = item.Context.IsolateContext();
+                    if (item.BaseDefinition != null)
+                    {
+                        item.BaseDefinition.Context = item.BaseDefinition.Context.IsolateContext();
+                    }
+                    result.DefinitionsBlock.Definitions[definition.Key] = item;
+                }
+            }
+            return result;
+        }
+
+        internal DefinitionItem CreateDefinition(TtlParser.DefContext context) {
+            if (context == null)
+                throw new ArgumentNullException("context");
             var inherited = context.inherited_def();
             var simple = context.simple_def();
-            if (simple != null)
-            {
+            if (simple != null) {
                 var ttl = simple.subtemplate()?.ttl();
                 if (ttl?.Start?.InputStream == null)
                     return null;
                 if (simple.DEF_ID(0) == null)
-                    throw new TemplateParseException("The Definition should have the Name");
+                    throw new TemplateParseException("The Definition should have the Name", GetBlockPosition(context));
                 string parameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
                 return new DefinitionItem(
                     simple.DEF_ID(0).GetText(), parameterTemplate,
@@ -43,13 +105,12 @@ namespace Templates.Language {
                     Position =GetBlockPosition(context)
                 };
             }
-            if (inherited != null)
-            {
+            if (inherited != null) {
                 var ttl = inherited.subtemplate()?.ttl();
                 if (ttl?.Start?.InputStream == null)
                     return null;
                 if (inherited.DEF_ID(0) == null)
-                    throw new TemplateParseException("The Definition should have the Name");
+                    throw new TemplateParseException("The Definition should have the Name", GetBlockPosition(context));
                 string parameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
                 var baseDefenition = GetDefenition(inherited.DEF_ID(1)?.GetText());
                 return new DefinitionItem(
@@ -63,28 +124,27 @@ namespace Templates.Language {
             return null;
         }
 
-        public DefinitionItem GetDefenition(string baseName)
-        {
+        public DefinitionItem GetDefenition(string baseName) {
             if (baseName.IsNullOrEmpty())
                 return null;
             if (DefenitionExists(baseName))
-                return DefinitionBlock.Definitions[baseName];
+                return DefinitionsBlock.Definitions[baseName];
             return null;
         }
 
-        internal BlockPosition GetBlockPosition(ParserRuleContext context)
-        {
-            if (context == null) throw new ArgumentNullException("context");
+        internal BlockPosition GetBlockPosition(ParserRuleContext context) {
+            if (context == null)
+                throw new ArgumentNullException("context");
             if (context.Start == null || context.Stop == null)
                 throw new ArgumentException();
             return new BlockPosition(context.Start.StartIndex - _offset,
                 context.Stop.StopIndex - context.Start.StartIndex + 1);
         }
 
-        internal OutputChain CreateOutputChain(TtlParser.OutblockContext context)
-        {
-            if (context == null) throw new ArgumentNullException("context");
-            var result = new OutputChain(new ParseContext(this, _offset))
+        internal OutputChain CreateOutputChain(TtlParser.OutblockContext context) {
+            if (context == null)
+                throw new ArgumentNullException("context");
+            var result = new OutputChain(InDefintionContext ? this : IsolateContextWithTree())
             {
                 Chain = CreateChain(context.chain()?.call()),
                 BlockPosition = GetBlockPosition(context)
@@ -96,15 +156,15 @@ namespace Templates.Language {
             return result;
         }
 
-        internal RawOutputItem CreateRawOutputItem(TtlParser.RawContext context)
-        {
-            if (context == null) throw new ArgumentNullException("context");
+        internal RawOutputItem CreateRawOutputItem(TtlParser.RawContext context) {
+            if (context == null)
+                throw new ArgumentNullException("context");
             var raw = context.RAW();
             if (raw == null)
-                throw new TemplateParseException("Raw block is strangely null");
+                throw new TemplateParseException("Raw block is strangely null", GetBlockPosition(context));
             var text = raw.GetText();
             if (text.Length < 4)
-                throw new TemplateParseException("Raw block is wrongly formatted");
+                throw new TemplateParseException("Raw block is wrongly formatted", GetBlockPosition(context));
             return new RawOutputItem
             {
                 BlockPosition =
@@ -113,9 +173,8 @@ namespace Templates.Language {
             };
         }
 
-        public bool DefenitionExists(string name)
-        {
-            return DefinitionBlock.Definitions.ContainsKey(name ?? string.Empty);
+        public bool DefenitionExists(string name) {
+            return DefinitionsBlock.Definitions.ContainsKey(name ?? string.Empty);
         }
 
 
@@ -129,9 +188,14 @@ namespace Templates.Language {
 
         public SmartList<BlockPosition> CommentTokens { get; private set; }
 
-        internal bool InDefinition { get; set; } = false;
+        internal bool InDefinition { get; set; }
+        = false;
 
-        public DefinitionBlock DefinitionBlock { get; }
+        public DefinitionBlock DefinitionsBlock { get; set; }
+
+        internal bool InDefintionContext => _inDefintionContext;
+
+        public int Offset => _offset;
 
         #region Helper Methods
 
@@ -145,13 +209,14 @@ namespace Templates.Language {
             return result;
         }
 
-        private OutputItem CreateItem(TtlParser.CallContext context)
-        {
-            if (context == null) throw new ArgumentNullException("context");
+        private OutputItem CreateItem(TtlParser.CallContext context) {
+            if (context == null)
+                throw new ArgumentNullException("context");
             var namedCall = context.named_call();
             var unnamedCall = context.unnamed_call();
             if (namedCall != null) {
-                return new OutputItem(namedCall.OUT_ID(0)?.GetText(), new ParseContext(this, _offset))
+                string itemName = namedCall.OUT_ID(0)?.GetText();
+                return new OutputItem(itemName)
                 {
                     CallParameter =
                     {
@@ -162,7 +227,7 @@ namespace Templates.Language {
                 };
             }
             if (unnamedCall != null) {
-                return new OutputItem(string.Empty, new ParseContext(this, _offset))
+                return new OutputItem(string.Empty)
                 {
                     CallParameter =
                     {

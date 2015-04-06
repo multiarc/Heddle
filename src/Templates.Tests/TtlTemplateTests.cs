@@ -32,6 +32,32 @@ namespace TemplatesXTests {
         }
 
         [Fact()]
+        public void VcGenerateTest()
+        {
+            var options = new TemplateOptions("vc-test")
+            {
+                FileNamePostfix = ".thtml",
+                RootPath = @"TestTemplate",
+                AllowCSharp = true
+            };
+            var target = new TtlTemplate(new CompileContext(options));
+            if (!target.CompileResult.Success)
+                throw new Exception(target.CompileResult.ErrorList.Aggregate("", (current, next) => current + " " + next.Error), target.CompileResult.ErrorList.First().Exception);
+            Assert.True(target.CompileResult.Success);
+            string expected;
+            using (StreamReader reader = File.OpenText(@"TestTemplate\generated-vc.html"))
+            {
+                expected = reader.ReadToEnd();
+            }
+            var actual = target.Generate(null);
+            using (var writer = File.CreateText(@"TestTemplate\test-vc.html"))
+            {
+                writer.Write(actual);
+            }
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact()]
         public void GenerateTest() {
             var options = new TemplateOptions("template")
             {

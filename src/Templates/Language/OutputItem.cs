@@ -1,14 +1,20 @@
-﻿using Templates.Collections;
+﻿using System.Linq;
+using Templates.Collections;
 
 namespace Templates.Language {
     public class OutputItem {
-        public OutputItem (string extensionName, ParseContext context, string parameterTemplate = null)
+        internal OutputItem(OutputItem toIsolate, string definitionName) {
+            ExtensionName = toIsolate.ExtensionName;
+            ParameterTemplate = toIsolate.ParameterTemplate;
+            CallParameter = toIsolate.CallParameter;
+            Context = toIsolate.Context?.IsolateContext(definitionName);
+        }
+
+        public OutputItem (string extensionName, string parameterTemplate = null)
         {
             ExtensionName = extensionName ?? string.Empty;
             ParameterTemplate = parameterTemplate;
-            OutList = new SmartList<OutputChain>();
             CallParameter = new CallParameter();
-            Context = context;
         }
 
         public ParseContext Context { get; set; }
@@ -16,8 +22,6 @@ namespace Templates.Language {
         public string ExtensionName { get; }
 
         public string ParameterTemplate { get; set; }
-
-        public SmartList<OutputChain> OutList { get; private set; }
 
         public CallParameter CallParameter { get; }
     }
