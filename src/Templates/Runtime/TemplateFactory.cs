@@ -57,7 +57,7 @@ namespace Templates.Runtime {
         public static void LoadAddExtensionsFromAssembly(Assembly assembly)
         {
             if (assembly == null)
-                throw new ArgumentNullException("assembly");
+                throw new ArgumentNullException(nameof(assembly));
 
             IEnumerable<KeyValuePair<string, Type>> toAdd = LoadExtensions(assembly);
             AddExtensions(toAdd);
@@ -65,7 +65,7 @@ namespace Templates.Runtime {
 
         public static void AddExtensions(IEnumerable<KeyValuePair<string, Type>> toAdd)
         {
-            if (toAdd == null) throw new ArgumentNullException("toAdd");
+            if (toAdd == null) throw new ArgumentNullException(nameof(toAdd));
             foreach (var type in toAdd)
             {
                 if (type.Key == null || type.Value == null )
@@ -99,7 +99,7 @@ namespace Templates.Runtime {
         public static IExtension Create (string templateName, ParseContext context)
         {
             if (templateName == null)
-                throw new ArgumentNullException("templateName");
+                throw new ArgumentNullException(nameof(templateName));
             try {
                 Type extensionType = Templates[templateName];
                 IExtension resultExtension = CreateExtension(extensionType);

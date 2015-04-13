@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace Templates.Data
 {
@@ -16,5 +17,10 @@ namespace Templates.Data
         internal List<TtlCompileError> Errors { get; set; }
 
         public IReadOnlyCollection<TtlCompileError> ErrorList => new ReadOnlyCollection<TtlCompileError>(Errors);
+
+        public override string ToString()
+        {
+            return Errors.Aggregate("", (s, error) => $"{s}{error.ToString()}\r\n");
+        }
     }
 }

@@ -18,9 +18,16 @@ namespace Templates.Performance.Runners {
                          RootPath = @"TestTemplates",
                          AllowCSharp = true
                      }));
-            var testString = test.Generate(DataFiller.FillData());
-            File.WriteAllText("test.html", testString);
-            test.Dispose();
+            if (!test.CompileResult.Success)
+            {
+                Console.Write(test.CompileResult.ToString());
+            }
+            else
+            {
+                var testString = test.Generate(DataFiller.FillData());
+                File.WriteAllText("test.html", testString);
+                test.Dispose();
+            }
             /*END JIT*/
         }
 
@@ -46,6 +53,10 @@ namespace Templates.Performance.Runners {
                      }));
             watcher.Stop();
             Console.WriteLine("Compile time: {0}", watcher.Elapsed);
+            if (!target.CompileResult.Success) {
+                Console.Write(target.CompileResult.ToString());
+                return;
+            }
             watcher.Reset();
             watcher.Start();
             long length = list.AsParallel().Sum(item => (long)target.Generate(item).Length);

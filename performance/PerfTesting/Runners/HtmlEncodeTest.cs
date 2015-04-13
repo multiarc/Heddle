@@ -46,6 +46,10 @@ namespace Templates.Performance.Runners {
                              RootPath = @"TestTemplates",
                              AllowCSharp = true
                          }));
+            if (!test.CompileResult.Success) {
+                Console.Write(test.CompileResult.ToString());
+                return;
+            }
             var testItem = DataFiller.FillData();
             var testBigString = test.Generate(testItem);
             test.Dispose();

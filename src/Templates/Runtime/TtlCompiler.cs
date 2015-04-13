@@ -20,7 +20,7 @@ namespace Templates.Runtime {
     internal class TtlCompiler {
         public static RuntimeDocument Compile(string document, CompileContext compileContext, ParseContext parseContext) {
             if (compileContext == null)
-                throw new ArgumentNullException("compileContext");
+                throw new ArgumentNullException(nameof(compileContext));
             string workingDocument = document;
             RemoveComments(parseContext, ref workingDocument);
             RemoveDefinitions(parseContext, ref workingDocument);

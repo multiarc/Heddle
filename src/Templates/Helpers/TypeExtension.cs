@@ -10,10 +10,10 @@ namespace Templates.Helpers {
         public static bool IsType(this Type typeToCheck, Type type)
         {
             if (typeToCheck == null)
-                throw new ArgumentNullException("typeToCheck");
+                throw new ArgumentNullException(nameof(typeToCheck));
 
             if (type == null)
-                throw new ArgumentNullException("type");
+                throw new ArgumentNullException(nameof(type));
 
             return typeToCheck.IsAssignableFrom(type);
         }
@@ -22,10 +22,10 @@ namespace Templates.Helpers {
         public static bool IsType(this Type typeToCheck, object data)
         {
             if (typeToCheck == null)
-                throw new ArgumentNullException("typeToCheck");
+                throw new ArgumentNullException(nameof(typeToCheck));
 
             if (data == null)
-                throw new ArgumentNullException("data");
+                throw new ArgumentNullException(nameof(data));
 
             return typeToCheck.IsInstanceOfType(data);
         }
@@ -34,7 +34,7 @@ namespace Templates.Helpers {
         public static bool IsType<T>(this Type typeToCheck)
         {
             if (typeToCheck == null)
-                throw new ArgumentNullException("typeToCheck");
+                throw new ArgumentNullException(nameof(typeToCheck));
 
             return typeToCheck.IsAssignableFrom(typeof (T));
         }
@@ -42,9 +42,9 @@ namespace Templates.Helpers {
         public static bool IsImplement(this Type type, Type interfaceType)
         {
             if (type == null)
-                throw new ArgumentNullException("type");
+                throw new ArgumentNullException(nameof(type));
             if (interfaceType == null)
-                throw new ArgumentNullException("interfaceType");
+                throw new ArgumentNullException(nameof(interfaceType));
 
             return type.GetInterfaces().Any(i => i == interfaceType);
         }
@@ -52,7 +52,7 @@ namespace Templates.Helpers {
         public static bool IsImplement<T>(this Type type)
         {
             if (type == null)
-                throw new ArgumentNullException("type");
+                throw new ArgumentNullException(nameof(type));
 
             return type.GetInterfaces().Any(i => i == typeof (T));
         }
@@ -60,9 +60,9 @@ namespace Templates.Helpers {
         public static bool IsHaveAttribute(this Type type, Type attributeType, bool inherit = false)
         {
             if (type == null)
-                throw new ArgumentNullException("type");
+                throw new ArgumentNullException(nameof(type));
             if (attributeType == null)
-                throw new ArgumentNullException("attributeType");
+                throw new ArgumentNullException(nameof(attributeType));
 
             return type.GetTypeInfo().GetCustomAttributes(inherit).Any(a => a.GetType() == attributeType);
         }
@@ -70,7 +70,7 @@ namespace Templates.Helpers {
         public static bool IsHaveAttribute<T>(this Type type, bool inherit = false)
         {
             if (type == null)
-                throw new ArgumentNullException("type");
+                throw new ArgumentNullException(nameof(type));
 
             return type.GetTypeInfo().GetCustomAttributes(inherit).Any(a => a is T);
         }
@@ -78,7 +78,7 @@ namespace Templates.Helpers {
         public static T[] GetAttributes<T>(this Type type, bool inherit = false)
         {
             if (type == null)
-                throw new ArgumentNullException("type");
+                throw new ArgumentNullException(nameof(type));
 
             return type.GetTypeInfo().GetCustomAttributes(inherit).Where(a => a is T).Cast<T>().ToArray();
         }

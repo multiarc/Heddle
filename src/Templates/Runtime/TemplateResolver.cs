@@ -27,8 +27,8 @@ namespace Templates.Runtime {
         }
 
         public TtlTemplate GetTemplate(string viewName, string controllerName, out IEnumerable<string> searchedLocations, CompileContext context = null, TemplatePathType searchType = TemplatePathType.None) {
-            if (viewName == null) throw new ArgumentNullException("viewName");
-            if (controllerName == null) throw new ArgumentNullException("controllerName");
+            if (viewName == null) throw new ArgumentNullException(nameof(viewName));
+            if (controllerName == null) throw new ArgumentNullException(nameof(controllerName));
             TtlTemplate result;
             TemplateOptions options;
             string path;
@@ -88,15 +88,15 @@ namespace Templates.Runtime {
             case TemplatePathType.Master:
                 throw new TemplateCreateException("You cannot get master template using GetTemplate, please see Search method.");
             default:
-                throw new ArgumentOutOfRangeException("searchType");
+                throw new ArgumentOutOfRangeException(nameof(searchType));
             }
         }
 
         public string Search(string viewName, string controllerName, TemplatePathType searchType,
             out IEnumerable<string> searchedLocations, out TtlTemplate cached)
         {
-            if (viewName == null) throw new ArgumentNullException("viewName");
-            if (controllerName == null) throw new ArgumentNullException("controllerName");
+            if (viewName == null) throw new ArgumentNullException(nameof(viewName));
+            if (controllerName == null) throw new ArgumentNullException(nameof(controllerName));
             if (!Path.HasExtension(viewName))
             {
                 viewName = viewName + FileExtension;
@@ -115,14 +115,14 @@ namespace Templates.Runtime {
                 case TemplatePathType.Master:
                     return Search(viewName, controllerName, _masterPath, out searchedLocations, out cached);
                 default:
-                    throw new ArgumentOutOfRangeException("searchType");
+                    throw new ArgumentOutOfRangeException(nameof(searchType));
             }
         }
 
         private string Search(string viewName, string controllerName, string[] locations, out IEnumerable<string> searchedLocations, out TtlTemplate cached) {
-            if (viewName == null) throw new ArgumentNullException("viewName");
-            if (controllerName == null) throw new ArgumentNullException("controllerName");
-            if (locations == null) throw new ArgumentNullException("locations");
+            if (viewName == null) throw new ArgumentNullException(nameof(viewName));
+            if (controllerName == null) throw new ArgumentNullException(nameof(controllerName));
+            if (locations == null) throw new ArgumentNullException(nameof(locations));
             List<string> searched = new List<string>();
             foreach (var path in locations) {
                 var relativePath = string.Format(path, viewName, controllerName);
@@ -148,7 +148,7 @@ namespace Templates.Runtime {
         }
 
         public TtlTemplate Create(string viewName, CompileContext context) {
-            if (context == null) throw new ArgumentNullException("context");
+            if (context == null) throw new ArgumentNullException(nameof(context));
             var result = new TtlTemplate(context);
             result.OnFileDeleted += OnDeleted;
             result.OnFileRenamed += OnRenamed;

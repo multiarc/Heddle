@@ -45,7 +45,7 @@ namespace Templates.Data {
 
         public TemplateOptions(string fileNamePostfix, string rootPath, string templateName, bool enableFileChangeCheck = false, bool allowCSharp = false)
         {
-            if (rootPath == null) throw new ArgumentNullException("rootPath");
+            if (rootPath == null) throw new ArgumentNullException(nameof(rootPath));
             RootPath = rootPath;
             FileNamePostfix = fileNamePostfix ?? string.Empty;
             TemplateName = templateName ?? string.Empty;

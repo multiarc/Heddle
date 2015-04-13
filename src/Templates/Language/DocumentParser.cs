@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
+using Templates.Exceptions;
 using Templates.Strings.Core;
 
 namespace Templates.Language {
@@ -24,12 +25,17 @@ namespace Templates.Language {
         public static void Parse(string document, ParseContext context, bool loadDefenitionsOnly = false)
         {
             if (document == null)
-                throw new ArgumentNullException("document");
+                throw new ArgumentNullException(nameof(document));
             AntlrInputStream stream = new AntlrInputStream(new StringReader(document));
             TtlLexer lexer = new TtlLexer(stream);
             CommonTokenStream tokens = new CommonTokenStream(lexer);
             TtlParser parser = new TtlParser(tokens);
+            var syntaxErrorListener = new TtlSyntaxErrorListener(context);
+            parser.RemoveErrorListeners();
+            parser.AddErrorListener(syntaxErrorListener);
             var tree = parser.ttl();
+            if (context.Errors.Length > 0)
+                throw new TemplateParseException(context.Errors);
             ParseTreeWalker walker = new ParseTreeWalker();
             context.DefenitionsOnly = loadDefenitionsOnly;
             TtlMainListener listener = new TtlMainListener(context);

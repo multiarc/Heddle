@@ -18,5 +18,10 @@ namespace Templates.Strings.Core {
             StartIndex = startIndex;
             Length = length;
         }
+
+        public override string ToString()
+        {
+            return $"{StartIndex}:{Length}";
+        }
     }
 }

@@ -111,7 +111,7 @@ namespace Templates.Strings {
 
         public void Append(string format, params object[] args)
         {
-            if (format == null) throw new ArgumentNullException("format");
+            if (format == null) throw new ArgumentNullException(nameof(format));
             if (!string.IsNullOrEmpty(format))
             {
                 string formatted = string.Format(format, args);
@@ -145,7 +145,7 @@ namespace Templates.Strings {
             if (_appendStrings.Length > 0)
                 CommitAppend();
             if (replacements == null)
-                throw new ArgumentNullException("replacements");
+                throw new ArgumentNullException(nameof(replacements));
 
             int count = replacements.Length;
 
@@ -194,9 +194,9 @@ namespace Templates.Strings {
         public static string BulkReplace (Replacement[] replacements, string source)
         {
             if (replacements == null)
-                throw new ArgumentNullException("replacements");
+                throw new ArgumentNullException(nameof(replacements));
             if (source == null)
-                throw new ArgumentNullException("source");
+                throw new ArgumentNullException(nameof(source));
 
             int count = replacements.Length;
 
@@ -245,9 +245,9 @@ namespace Templates.Strings {
         public static string BulkReplace (Replacement[] replacements, ExString source)
         {
             if (replacements == null)
-                throw new ArgumentNullException("replacements");
+                throw new ArgumentNullException(nameof(replacements));
             if (source == null)
-                throw new ArgumentNullException("source");
+                throw new ArgumentNullException(nameof(source));
 
             int count = replacements.Length;
 
@@ -328,9 +328,9 @@ namespace Templates.Strings {
         public static string Replace (int start, int length, string replacement, string source)
         {
             if (replacement == null)
-                throw new ArgumentNullException("replacement");
+                throw new ArgumentNullException(nameof(replacement));
             if (source == null)
-                throw new ArgumentNullException("source");
+                throw new ArgumentNullException(nameof(source));
 
             int sourceLen = source.Length;
             int replacementLength = replacement.Length;
@@ -364,9 +364,9 @@ namespace Templates.Strings {
         public static ExString Replace (int start, int length, string replacement, ExString source)
         {
             if (replacement == null)
-                throw new ArgumentNullException("replacement");
+                throw new ArgumentNullException(nameof(replacement));
             if (source == null)
-                throw new ArgumentNullException("source");
+                throw new ArgumentNullException(nameof(source));
 
             int sourceLen = source.Length;
             int replacementLength = replacement.Length;
@@ -396,9 +396,9 @@ namespace Templates.Strings {
         public static ExString Replace (int start, int length, ExString replacement, ExString source)
         {
             if (replacement == null)
-                throw new ArgumentNullException("replacement");
+                throw new ArgumentNullException(nameof(replacement));
             if (source == null)
-                throw new ArgumentNullException("source");
+                throw new ArgumentNullException(nameof(source));
 
             int sourceLen = source.Length;
             int replacementLength = replacement.Length;
@@ -431,7 +431,7 @@ namespace Templates.Strings {
                 CommitAppend();
 
             if (replacement == null)
-                throw new ArgumentNullException("replacement");
+                throw new ArgumentNullException(nameof(replacement));
 
             int sourceLen = _data.Length;
             int replacementLength = replacement.Length;
@@ -471,7 +471,7 @@ namespace Templates.Strings {
                 CommitAppend();
 
             if (replacement == null)
-                throw new ArgumentNullException("replacement");
+                throw new ArgumentNullException(nameof(replacement));
 
             int sourceLen = _data.Length;
             int replacementLength = replacement.Length;

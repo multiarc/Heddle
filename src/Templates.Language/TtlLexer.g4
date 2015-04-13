@@ -6,11 +6,11 @@ lexer grammar TtlLexer;
 
 import CSharp;
 
-tokens { TEXT, OUT_ID, OUT_START, SUB_START, SUB_CLOSE, CSHARP_END, CSHARP_TOKEN, CSHARP_START, DEF_STARTNAME, DEF_ENDNAME, DEF_TYPE, DELIM, DEF_ID, DEF_START, DEF_CLOSE, SUB_COMMENT, OUT_SUB_COMMENT }
+tokens { TEXT, ID, OUT, SUB_START, SUB_CLOSE, CSHARP_END, CSHARP_TOKEN, CSHARP_START, DEF_STARTNAME, DEF_ENDNAME, DEF_TYPE, DELIM, DEF_START, DEF_CLOSE, COMMENT, RAW, OUT_PARAMSTART, OUT_PARAMEND, LINE_TERMINATE }
 
 channels { COMMENT_CHANNEL }
 
-fragment ID: IDENTIFIER;
+fragment ID_TOKEN: IDENTIFIER;
 
 fragment SUB_ST: '{{';
 fragment SUB_CL: '}}';
@@ -19,51 +19,55 @@ fragment PARA_CL: ')';
 fragment DEF_ST: '<%';
 fragment DEF_CL: '%>';
 fragment OUT_ST: '@';
+fragment DEF_T: '::';
+fragment EXT_DELIM: ':';
+fragment DEF_STNAME: '<';
+fragment DEF_CLNAME: '>';
 fragment LINE_TERM: ';';
 fragment WS: WHITESPACE+;
+fragment COMMENT_BLOCK: '@*' .*? '*@';
+fragment RAW_BLOCK : '@{' .*? '}@';
 
-COMMENT: 
-	'@*' .*? '*@' -> channel(COMMENT_CHANNEL);
+START_COMMENT:
+	COMMENT_BLOCK -> channel(COMMENT_CHANNEL);
 
-RAW: 
-	'@{' .*? '}@';
+START_RAW:
+	RAW_BLOCK -> type(RAW);
 
-DEF_START: 
-	DEF_ST -> pushMode(DEF);
+START_DEF_START:
+	DEF_ST -> type(DEF_START), pushMode(DEF);
 
-OUT_START: 
-	OUT_ST -> pushMode(OUT);
+START_OUT:
+	OUT_ST -> type(OUT), pushMode(OUT_MODE);
 
-TEXT: .+?;
+START_TEXT: .+? -> type(TEXT);
 
 mode DEF;
 
 
 DEF_COMMENT: 
-	COMMENT -> skip;
+	COMMENT_BLOCK -> skip;
 
 DEF_WS: WS+ -> skip;
 
-DEF_CLOSE: 
-	DEF_CL -> popMode;
+DEF_DEFCLOSE:
+	DEF_CL -> type(DEF_CLOSE), popMode;
 
-DEF_STARTNAME: '<';
-DEF_ENDNAME: '>';
+DEF_DEFSTARTNAME: DEF_STNAME -> type(DEF_STARTNAME);
+DEF_DEFENDNAME: DEF_CLNAME -> type(DEF_ENDNAME);
 
-SUB_START: 
-	SUB_ST -> pushMode(SUB);
+DEF_SUBSTART:
+	SUB_ST -> type(SUB_START), pushMode(SUB);
 
-DEF_TYPE: '::';
-DELIM: ':';
-DEF_ID: ID;
+DEF_DEFTYPE: DEF_T -> type(DEF_TYPE);
+DEF_DELIM: EXT_DELIM -> type(DELIM);
+DEF_ID: ID_TOKEN -> type(ID);
 
 
 mode SUB;
 
-
-
-SUB_COMMENT: 
-	COMMENT -> type(SUB_COMMENT);
+SUB_COMMENT:
+	COMMENT_BLOCK -> type(COMMENT);
 
 SUB_LINE_TERMINATE: 
 	SUB_CL LINE_TERM WS* -> type(SUB_CLOSE), popMode;
@@ -72,77 +76,76 @@ SUB_CLOSE:
 	SUB_CL -> popMode;
 
 SUB_RAW: 
-	RAW -> type(RAW);
+	RAW_BLOCK -> type(RAW);
 
 SUB_DEFSTART: 
-	DEF_START -> type(DEF_START), pushMode(DEF);
+	DEF_ST -> type(DEF_START), pushMode(DEF);
 
 SUB_OUTSTART: 
-	OUT_START -> type(OUT_START), pushMode(OUT_SUB);
+	OUT_ST -> type(OUT), pushMode(OUT_SUB);
 
 SUB_TEXT: 
 	.+? -> type(TEXT);
 
 
 
-mode OUT;
+mode OUT_MODE;
 
 
 OUT_COMMENT: 
-	COMMENT -> skip;
+	COMMENT_BLOCK -> skip;
 
-OUT_PARAMSTART: 
-	PARA_ST -> pushMode(CALL);
+OUT_OUTPARAMSTART:
+	PARA_ST -> type(OUT_PARAMSTART), pushMode(CALL);
 
 OUT_DELIM: 
-	DELIM -> type(DELIM);
+	EXT_DELIM -> type(DELIM);
 
 OUT_SUBSTART: 
-	SUB_START -> type(SUB_START), popMode, pushMode(SUB);
+	SUB_ST -> type(SUB_START), popMode, pushMode(SUB);
 
-OUT_ID: ID;
+OUT_ID: ID_TOKEN -> type(ID);
 
-LINE_TERMINATE: 
-	LINE_TERM WS* -> popMode;
+OUT_LINE_TERMINATE:
+	LINE_TERM WS* -> type(LINE_TERMINATE), popMode;
 
 OUT_WS: WS+;
 
-OUT_RAW: RAW -> type(RAW), popMode;
-OUT_DEF_START: DEF_START -> type(DEF_START), popMode, pushMode(DEF);
-OUT_OUT_START: OUT_START -> type(OUT_START), popMode, pushMode(OUT);
-OUT_SUB_CLOSE2: SUB_CLOSE LINE_TERM WS* -> type(TEXT), popMode;
-OUT_SUB_CLOSE: SUB_CLOSE -> type(TEXT), popMode;
-OUT_OTHER: . -> type(TEXT), popMode;
-
+OUT_RAW: RAW_BLOCK -> type(RAW), popMode;
+OUT_DEF_START: DEF_ST -> type(DEF_START), popMode, pushMode(DEF);
+OUT_OUT_START: OUT_ST -> type(OUT), popMode, pushMode(OUT_MODE);
+OUT_SUBCLOSE_TERMINATED: SUB_CL LINE_TERM WS* -> type(TEXT), popMode;
+OUT_SUBCLOSE: SUB_CL -> type(TEXT), popMode;
+OUT_OTHER: .+? -> type(TEXT), popMode;
 
 
 mode OUT_SUB;
 
 
-OUT_SUB_COMMENT: COMMENT;
+OUT_SUBCOMMENT: COMMENT_BLOCK -> type(COMMENT);
 
-OUT_SUB_PARAMSTART: 
-	OUT_PARAMSTART -> type(OUT_PARAMSTART), pushMode(CALL);
+OUT_SUBPARAMSTART:
+	PARA_ST -> type(OUT_PARAMSTART), pushMode(CALL);
 
-OUT_SUB_DELIM: 
-	DELIM -> type(DELIM);
+OUT_SUBDELIM:
+	EXT_DELIM -> type(DELIM);
 
-OUT_SUB_SUBSTART: 
-	SUB_START -> type(SUB_START), popMode, pushMode(SUB);
+OUT_SUBSUBSTART:
+	SUB_ST -> type(SUB_START), popMode, pushMode(SUB);
 
-OUT_SUB_OUT_ID: OUT_ID -> type(OUT_ID);
+OUT_SUBOUTID: OUT_ID -> type(ID);
 
-OUT_SUB_LINE_TERMINATE: 
+OUT_SUBLINE_TERMINATE:
 	LINE_TERM WS* -> type(LINE_TERMINATE), popMode;
 
-OUT_SUB_WS: WS+ -> type(OUT_WS);
+OUT_SUBWS: WS+ -> type(OUT_WS);
 
-OUT_SUB_RAW: RAW -> type(RAW), popMode;
-OUT_SUB_DEF_START: DEF_START -> type(DEF_START), popMode, pushMode(DEF);
-OUT_SUB_OUT_START: OUT_START -> type(OUT_START), popMode, pushMode(OUT);
-OUT_SUB_SUB_CLOSE2: SUB_CLOSE LINE_TERM WS* -> type(SUB_CLOSE), popMode, popMode;
-OUT_SUB_SUB_CLOSE: SUB_CLOSE -> type(SUB_CLOSE), popMode, popMode;
-OUT_SUB_OTHER: . -> type(TEXT), popMode;
+OUT_SUBRAW: RAW_BLOCK -> type(RAW), popMode;
+OUT_SUBDEFSTART: DEF_ST -> type(DEF_START), popMode, pushMode(DEF);
+OUT_SUBOUTSTART: OUT_ST -> type(OUT), popMode, pushMode(OUT);
+OUT_SUBSUBCLOSE_TERMINATED: SUB_CL LINE_TERM WS* -> type(SUB_CLOSE), popMode, popMode;
+OUT_SUBSUBCLOSE: SUB_CL -> type(SUB_CLOSE), popMode, popMode;
+OUT_SUBOTHER: . -> type(TEXT), popMode;
 
 
 mode CALL;
@@ -151,18 +154,18 @@ CSHARP_START:
 	OUT_ST -> pushMode(CS);
 
 CALL_COMMENT:
-	COMMENT -> skip;
+	COMMENT_BLOCK -> skip;
 
 OUT_PARAMEND: 
 	PARA_CL -> popMode;
 
 CALL_OUT_PARAMSTART: 
-	OUT_PARAMSTART -> type(OUT_PARAMSTART), pushMode(CALL);
+	PARA_ST -> type(OUT_PARAMSTART), pushMode(CALL);
 
 CALL_OUT_DELIM: 
-	DELIM -> type(DELIM);
+	EXT_DELIM -> type(DELIM);
 
-CALL_OUT_ID: OUT_ID -> type(OUT_ID);
+CALL_OUT_ID: ID_TOKEN -> type(ID);
 
 CALL_LINE_TERMINATE: 
 	LINE_TERM WS* -> type(LINE_TERMINATE), popMode, popMode;
@@ -171,11 +174,11 @@ CALL_OUT_WS: WS+ -> skip;
 
 mode CS;
 
-CSHARP_WS: WS+ -> skip;
+CS_CSHARP_WS: WS+ -> skip;
 
 CS_CSHARP_START:
 	PARA_ST -> type(CSHARP_TOKEN), pushMode(CS);
 
-CSHARP_END: PARA_CL -> popMode;
+CS_CSHARP_END: PARA_CL -> type(CSHARP_END), popMode;
 
-CSHARP_TOKEN: TOKEN;
+CS_CSHARP_TOKEN: TOKEN -> type(CSHARP_TOKEN);

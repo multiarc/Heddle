@@ -55,7 +55,7 @@ namespace Templates.Helpers {
         public ReflectionHelper (Type innerType)
         {
             if (innerType == null)
-                throw new ArgumentNullException("innerType");
+                throw new ArgumentNullException(nameof(innerType));
 
             _innerType = innerType;
         }
@@ -63,7 +63,7 @@ namespace Templates.Helpers {
         public ReflectionHelper (object value)
         {
             if (value == null)
-                throw new ArgumentNullException("value");
+                throw new ArgumentNullException(nameof(value));
 
             _innerType = value.GetType();
         }
@@ -79,7 +79,7 @@ namespace Templates.Helpers {
         public bool IsImplement (Type type)
         {
             if (type == null)
-                throw new ArgumentNullException("type");
+                throw new ArgumentNullException(nameof(type));
 
             return _innerType.GetInterfaces().Any(i => i == type);
         }
@@ -87,7 +87,7 @@ namespace Templates.Helpers {
         public bool IsType (Type type)
         {
             if (type == null)
-                throw new ArgumentNullException("type");
+                throw new ArgumentNullException(nameof(type));
 
             return _innerType.IsType(type);
         }

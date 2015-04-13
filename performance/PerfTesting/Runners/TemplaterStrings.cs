@@ -22,6 +22,10 @@ namespace Templates.Performance.Runners {
                          RootPath = @"TestTemplates",
                          AllowCSharp = true
                      }));
+            if (!target.CompileResult.Success) {
+                Console.Write(target.CompileResult.ToString());
+                return;
+            }
             var testFastList = new SmartList<ExString>();
             var list = new SmartList<TestDataStructure>();
             Console.WriteLine("Enter tries count (strings test):");

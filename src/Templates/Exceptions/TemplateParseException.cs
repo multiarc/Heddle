@@ -1,40 +1,36 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.Serialization;
+using Templates.Data;
 using Templates.Strings.Core;
 
-namespace Templates.Exceptions {
+namespace Templates.Exceptions
+{
     /// <summary>
     /// Parse Exception, at any stage can be raised
     /// </summary>
 #if !DNXCORE50
     [Serializable]
 #endif
-    public class TemplateParseException: Exception {
+    public sealed class TemplateParseException : TemplateCompileException
+    {
 
-        public BlockPosition Position { get; }
-        public TemplateParseException (BlockPosition position)
+        public TemplateParseException(IEnumerable<TtlCompileError> errors) : base(errors)
         {
-            Position = position;
         }
 
-        public TemplateParseException (string message, BlockPosition position)
-            : base(message)
+        public TemplateParseException(TtlCompileError error) : base(error)
         {
-            Position = position;
         }
 
-        public TemplateParseException (string message, Exception inner, BlockPosition position)
-            : base(message, inner)
+        public TemplateParseException(string message, IEnumerable<TtlCompileError> errors)
+            : base(message, errors)
         {
-            Position = position;
         }
 
-#if !DNXCORE50
-        protected TemplateParseException (SerializationInfo info, StreamingContext context, BlockPosition position)
-            : base(info, context)
+        public TemplateParseException(string message, Exception inner, IEnumerable<TtlCompileError> errors)
+            : base(message, inner, errors)
         {
-            Position = position;
         }
-#endif
     }
 }

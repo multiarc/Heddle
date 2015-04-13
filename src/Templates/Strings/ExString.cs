@@ -44,7 +44,7 @@ namespace Templates.Strings {
         {
             if (value == null) {
                 if (length != 0)
-                    throw new ArgumentNullException("value");
+                    throw new ArgumentNullException(nameof(value));
                 _data = EmptyExString._data;
             } else {
                 if (length < 0)
@@ -87,7 +87,7 @@ namespace Templates.Strings {
 
             if (value == null) {
                 if (length != 0)
-                    throw new ArgumentNullException("value");
+                    throw new ArgumentNullException(nameof(value));
                 _data = EmptyExString._data;
             } else {
                 _data = new char[length];
@@ -242,10 +242,10 @@ namespace Templates.Strings {
         public ExString Replace (ExString toFind, ExString toReplace)
         {
             if ((object)toFind == null)
-                throw new ArgumentNullException("toFind");
+                throw new ArgumentNullException(nameof(toFind));
 
             if ((object)toReplace == null)
-                throw new ArgumentNullException("toReplace");
+                throw new ArgumentNullException(nameof(toReplace));
 
             return BulkReplace(FindForReplace(toFind), toReplace, toFind.Length);
         }

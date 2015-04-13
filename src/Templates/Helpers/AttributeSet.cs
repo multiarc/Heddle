@@ -14,14 +14,14 @@ namespace Templates.Helpers {
         public AttributeSet (Type type)
         {
             if (type == null)
-                throw new ArgumentNullException("type");
+                throw new ArgumentNullException(nameof(type));
             ParseAttributes(type.GetTypeInfo().GetCustomAttributes(false));
         }
 
         public AttributeSet (IEnumerable<object> attributes)
         {
             if (attributes == null)
-                throw new ArgumentNullException("attributes");
+                throw new ArgumentNullException(nameof(attributes));
 
             ParseAttributes(attributes);
         }
@@ -34,7 +34,7 @@ namespace Templates.Helpers {
         private void ParseAttributes (IEnumerable<object> attributes)
         {
             if (attributes == null)
-                throw new ArgumentNullException("attributes");
+                throw new ArgumentNullException(nameof(attributes));
             _attributes = new List<Attribute>();
             _attributes.AddRange(attributes.Cast<Attribute>());
         }
@@ -47,7 +47,7 @@ namespace Templates.Helpers {
         public bool GetIsPresentAttribute (Type attributeType)
         {
             if (attributeType == null)
-                throw new ArgumentNullException("attributeType");
+                throw new ArgumentNullException(nameof(attributeType));
 
             return AllAttributes.Any(a => a.GetType() == attributeType);
         }

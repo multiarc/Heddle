@@ -138,9 +138,9 @@ namespace Templates.Strings {
 
         public object ToType(Type conversionType, IFormatProvider provider) {
             if (conversionType == null)
-                throw new ArgumentNullException("conversionType");
+                throw new ArgumentNullException(nameof(conversionType));
             if (provider == null)
-                throw new ArgumentNullException("provider");
+                throw new ArgumentNullException(nameof(provider));
 
             if (conversionType == typeof(string))
                 return ToString(provider);

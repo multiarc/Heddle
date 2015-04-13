@@ -11,7 +11,7 @@ namespace Templates.Extensions {
         public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context, ParseContext parseContext)
         {
             if (context == null)
-                throw new ArgumentNullException("context");
+                throw new ArgumentNullException(nameof(context));
             base.InitStart(parameterTemplate, dataType, chainedType, context, parseContext);
             parameterTemplate = GetInnerResult(null, null);
             if (!string.IsNullOrWhiteSpace(parameterTemplate))

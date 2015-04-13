@@ -9,7 +9,7 @@ namespace Templates.Helpers {
         public static bool IsHaveAttribute (this PropertyInfo property, Type attributeType)
         {
             if (property == null)
-                throw new ArgumentNullException("property");
+                throw new ArgumentNullException(nameof(property));
 
             return property.GetCustomAttributes(false).Any(a => a.GetType() == attributeType);
         }
@@ -17,7 +17,7 @@ namespace Templates.Helpers {
         public static bool IsHaveAttribute<T> (this PropertyInfo property)
         {
             if (property == null)
-                throw new ArgumentNullException("property");
+                throw new ArgumentNullException(nameof(property));
 
             return property.GetCustomAttributes(false).Any(a => a is T);
         }
@@ -25,7 +25,7 @@ namespace Templates.Helpers {
         public static IEnumerable<T> GetAttributes<T> (this PropertyInfo type)
         {
             if (type == null)
-                throw new ArgumentNullException("type");
+                throw new ArgumentNullException(nameof(type));
 
             return type.GetCustomAttributes(false).Where(a => a is T).Cast<T>();
         }
@@ -33,7 +33,7 @@ namespace Templates.Helpers {
         public static IEnumerable GetAttributes (this PropertyInfo type, Type attributeType)
         {
             if (type == null)
-                throw new ArgumentNullException("type");
+                throw new ArgumentNullException(nameof(type));
 
             return type.GetCustomAttributes(false).Where(a => a.GetType() == attributeType);
         }

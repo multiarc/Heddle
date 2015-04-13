@@ -11,5 +11,10 @@ namespace Templates.Data {
         public string Error { get; set; }
 
         public Exception Exception { get; set; }
+
+        public override string ToString()
+        {
+            return $"[{Position}]{Error}";
+        }
     }
 }

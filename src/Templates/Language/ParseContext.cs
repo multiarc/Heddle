@@ -5,6 +5,7 @@ using Antlr4.Runtime;
 using Antlr4.Runtime.Misc;
 using Microsoft.CodeAnalysis;
 using Templates.Collections;
+using Templates.Data;
 using Templates.Exceptions;
 using Templates.Strings.Core;
 
@@ -29,6 +30,8 @@ namespace Templates.Language {
             OutputChains = new SmartList<OutputChain>();
             RawOutputItems = new SmartList<RawOutputItem>();
             CommentTokens = new SmartList<BlockPosition>();
+            Errors = parentContext?.Errors ?? new SmartList<TtlCompileError>();
+            Warnings = parentContext?.Warnings ?? new SmartList<TtlCompileWarning>();
         }
 
         private static ParseContext IsolateContextFrom(ParseContext context) {
@@ -104,22 +107,47 @@ namespace Templates.Language {
             return result;
         }
 
+        internal TtlCompileWarning CreateWarning(string message, string fix, int startIndex, int stopIndex)
+        {
+            return new TtlCompileWarning
+            {
+                Error = message,
+                Position = new BlockPosition(startIndex, stopIndex - startIndex + 1),
+                Fix = fix
+            };
+        }
+
+        internal TtlCompileError CreateError(RecognitionException exception, string message, IToken token = null)
+        {
+            TtlCompileError error;
+            if (token != null)
+            {
+                error = message.ToError(GetAbsoluteBlockPosition(token));
+                error.Exception = exception;
+                return error;
+            }
+            error = message.ToError();
+            error.Exception = exception;
+            return error;
+        }
+
         internal DefinitionItem CreateDefinition(TtlParser.DefContext context) {
             if (context == null)
-                throw new ArgumentNullException("context");
+                throw new ArgumentNullException(nameof(context));
             var inherited = context.inherited_def();
             var simple = context.simple_def();
             if (simple != null) {
                 var ttl = simple.subtemplate()?.ttl();
                 if (ttl?.Start?.InputStream == null)
                     return null;
-                if (simple.DEF_ID(0) == null)
-                    throw new TemplateParseException("The Definition should have the Name", GetBlockPosition(context));
+                var definitionName = simple.ID(0);
+                if (definitionName == null)
+                    throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(context)));
                 string parameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
                 return new DefinitionItem(
-                    simple.DEF_ID(0).GetText(), parameterTemplate,
+                    definitionName.GetText(), parameterTemplate,
                     null,
-                    modelType: simple.DEF_ID(1)?.GetText())
+                    modelType: simple.ID(1)?.GetText())
                 {
                     Position =GetBlockPosition(context)
                 };
@@ -128,14 +156,15 @@ namespace Templates.Language {
                 var ttl = inherited.subtemplate()?.ttl();
                 if (ttl?.Start?.InputStream == null)
                     return null;
-                if (inherited.DEF_ID(0) == null)
-                    throw new TemplateParseException("The Definition should have the Name", GetBlockPosition(context));
+                var definitionName = inherited.ID(0);
+                if (definitionName == null)
+                    throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(context)));
                 string parameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
-                var baseDefenition = GetDefenition(inherited.DEF_ID(1)?.GetText());
+                var baseDefenition = GetDefenition(inherited.ID(1)?.GetText());
                 return new DefinitionItem(
-                    inherited.DEF_ID(0).GetText(), parameterTemplate,
+                    definitionName.GetText(), parameterTemplate,
                     baseDefenition,
-                    modelType: inherited.DEF_ID(2)?.GetText() ?? baseDefenition.ModelType)
+                    modelType: inherited.ID(2)?.GetText() ?? baseDefenition.ModelType)
                 {
                     Position = GetBlockPosition(context)
                 };
@@ -151,18 +180,41 @@ namespace Templates.Language {
             return null;
         }
 
+        internal BlockPosition GetAbsoluteBlockPosition(IToken token)
+        {
+            if (token == null)
+                throw new ArgumentNullException(nameof(token));
+            return new BlockPosition(token.StartIndex, token.StopIndex - token.StartIndex + 1);
+        }
+
+        internal BlockPosition GetBlockPosition(IToken token) {
+            if (token == null)
+                throw new ArgumentNullException(nameof(token));
+            return new BlockPosition(token.StartIndex - _offset, token.StopIndex - token.StartIndex + 1);
+        }
+
         internal BlockPosition GetBlockPosition(ParserRuleContext context) {
             if (context == null)
-                throw new ArgumentNullException("context");
+                throw new ArgumentNullException(nameof(context));
             if (context.Start == null || context.Stop == null)
                 throw new ArgumentException();
             return new BlockPosition(context.Start.StartIndex - _offset,
                 context.Stop.StopIndex - context.Start.StartIndex + 1);
         }
 
+        internal BlockPosition GetAbsoluteBlockPosition(ParserRuleContext context)
+        {
+            if (context == null)
+                throw new ArgumentNullException(nameof(context));
+            if (context.Start == null || context.Stop == null)
+                throw new ArgumentException();
+            return new BlockPosition(context.Start.StartIndex,
+                context.Stop.StopIndex - context.Start.StartIndex + 1);
+        }
+
         internal OutputChain CreateOutputChain(TtlParser.OutblockContext context) {
             if (context == null)
-                throw new ArgumentNullException("context");
+                throw new ArgumentNullException(nameof(context));
             var result = new OutputChain(InDefintionContext ? this : IsolateContextWithTree())
             {
                 Chain = CreateChain(context.chain()?.call()),
@@ -177,13 +229,13 @@ namespace Templates.Language {
 
         internal RawOutputItem CreateRawOutputItem(TtlParser.RawContext context) {
             if (context == null)
-                throw new ArgumentNullException("context");
+                throw new ArgumentNullException(nameof(context));
             var raw = context.RAW();
             if (raw == null)
-                throw new TemplateParseException("Raw block is strangely null", GetBlockPosition(context));
+                throw new TemplateParseException("Raw block is strangely null".ToError(GetAbsoluteBlockPosition(context)));
             var text = raw.GetText();
             if (text.Length < 4)
-                throw new TemplateParseException("Raw block is wrongly formatted", GetBlockPosition(context));
+                throw new TemplateParseException("Raw block is wrongly formatted".ToError(GetAbsoluteBlockPosition(context)));
             return new RawOutputItem
             {
                 BlockPosition =
@@ -201,11 +253,15 @@ namespace Templates.Language {
 
         internal OutputChain CurrentChain { get; set; }
 
-        public SmartList<OutputChain> OutputChains { get; private set; }
+        public SmartList<TtlCompileError> Errors { get; }
 
-        public SmartList<RawOutputItem> RawOutputItems { get; private set; }
+        public SmartList<TtlCompileWarning> Warnings { get; }
 
-        public SmartList<BlockPosition> CommentTokens { get; private set; }
+        public SmartList<OutputChain> OutputChains { get; }
+
+        public SmartList<RawOutputItem> RawOutputItems { get; }
+
+        public SmartList<BlockPosition> CommentTokens { get; }
 
         internal bool InDefinition { get; set; }
         = false;
@@ -230,16 +286,16 @@ namespace Templates.Language {
 
         private OutputItem CreateItem(TtlParser.CallContext context) {
             if (context == null)
-                throw new ArgumentNullException("context");
+                throw new ArgumentNullException(nameof(context));
             var namedCall = context.named_call();
             var unnamedCall = context.unnamed_call();
             if (namedCall != null) {
-                string itemName = namedCall.OUT_ID(0)?.GetText();
+                string itemName = namedCall.ID(0)?.GetText();
                 return new OutputItem(itemName)
                 {
                     CallParameter =
                     {
-                        ModelParameter = namedCall.OUT_ID(1)?.GetText(),
+                        ModelParameter = namedCall.ID(1)?.GetText(),
                         ChainParameter = CreateChain(namedCall.chain()?.call()),
                         CSharpExpression = namedCall.csharp_expression()?.GetText()
                     }
@@ -250,7 +306,7 @@ namespace Templates.Language {
                 {
                     CallParameter =
                     {
-                        ModelParameter = unnamedCall.OUT_ID()?.GetText(),
+                        ModelParameter = unnamedCall.ID()?.GetText(),
                         ChainParameter = CreateChain(unnamedCall.chain()?.call()),
                         CSharpExpression = unnamedCall.csharp_expression()?.GetText()
                     }

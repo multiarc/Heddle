@@ -91,7 +91,7 @@ namespace Templates.Runtime {
         private CompileContext(CompileContext context, string fileName = null, ExType modelType = null)
         {
             if (context == null)
-                throw new ArgumentNullException("context");
+                throw new ArgumentNullException(nameof(context));
             ControllerName = context.ControllerName;
             Options = new TemplateOptions(context.Options.FileNamePostfix, context.Options.RootPath,
                 fileName ?? context.Options.TemplateName, context.Options.EnableFileChangeCheck, context.Options.AllowCSharp);

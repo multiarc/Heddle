@@ -27,7 +27,7 @@
 @*---------Start Widget 2--------*@
 @*-------------------------------*@
 @*---------name------------------*@
-<recipes_by_category>
+<recipes_by_category:seafood_how_to>
 {{
 @*---------editable--------------*@
 	<div>

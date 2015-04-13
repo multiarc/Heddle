@@ -32,12 +32,11 @@ using DFA = Antlr4.Runtime.Dfa.DFA;
 [System.CLSCompliant(false)]
 public partial class TtlParser : Parser {
 	public const int
-		TEXT=1, OUT_ID=2, OUT_START=3, SUB_START=4, SUB_CLOSE=5, CSHARP_END=6, 
-		CSHARP_TOKEN=7, CSHARP_START=8, DEF_STARTNAME=9, DEF_ENDNAME=10, DEF_TYPE=11, 
-		DELIM=12, DEF_ID=13, DEF_START=14, DEF_CLOSE=15, SUB_COMMENT=16, OUT_SUB_COMMENT=17, 
-		COMMENT=18, RAW=19, DEF_COMMENT=20, DEF_WS=21, OUT_COMMENT=22, OUT_PARAMSTART=23, 
-		LINE_TERMINATE=24, OUT_WS=25, CALL_COMMENT=26, OUT_PARAMEND=27, CALL_OUT_WS=28, 
-		CSHARP_WS=29;
+		TEXT=1, ID=2, OUT=3, SUB_START=4, SUB_CLOSE=5, CSHARP_END=6, CSHARP_TOKEN=7, 
+		CSHARP_START=8, DEF_STARTNAME=9, DEF_ENDNAME=10, DEF_TYPE=11, DELIM=12, 
+		DEF_START=13, DEF_CLOSE=14, COMMENT=15, RAW=16, OUT_PARAMSTART=17, OUT_PARAMEND=18, 
+		LINE_TERMINATE=19, START_COMMENT=20, DEF_COMMENT=21, DEF_WS=22, OUT_COMMENT=23, 
+		OUT_WS=24, CALL_COMMENT=25, CALL_OUT_WS=26, CS_CSHARP_WS=27;
 	public const int
 		RULE_ttl = 0, RULE_comment = 1, RULE_raw = 2, RULE_definition = 3, RULE_def = 4, 
 		RULE_inherited_def = 5, RULE_simple_def = 6, RULE_outblock = 7, RULE_chain = 8, 
@@ -50,16 +49,13 @@ public partial class TtlParser : Parser {
 	};
 
 	private static readonly string[] _LiteralNames = {
-		null, null, null, null, null, null, null, null, null, "'<'", "'>'", "'::'", 
-		"':'"
 	};
 	private static readonly string[] _SymbolicNames = {
-		null, "TEXT", "OUT_ID", "OUT_START", "SUB_START", "SUB_CLOSE", "CSHARP_END", 
-		"CSHARP_TOKEN", "CSHARP_START", "DEF_STARTNAME", "DEF_ENDNAME", "DEF_TYPE", 
-		"DELIM", "DEF_ID", "DEF_START", "DEF_CLOSE", "SUB_COMMENT", "OUT_SUB_COMMENT", 
-		"COMMENT", "RAW", "DEF_COMMENT", "DEF_WS", "OUT_COMMENT", "OUT_PARAMSTART", 
-		"LINE_TERMINATE", "OUT_WS", "CALL_COMMENT", "OUT_PARAMEND", "CALL_OUT_WS", 
-		"CSHARP_WS"
+		null, "TEXT", "ID", "OUT", "SUB_START", "SUB_CLOSE", "CSHARP_END", "CSHARP_TOKEN", 
+		"CSHARP_START", "DEF_STARTNAME", "DEF_ENDNAME", "DEF_TYPE", "DELIM", "DEF_START", 
+		"DEF_CLOSE", "COMMENT", "RAW", "OUT_PARAMSTART", "OUT_PARAMEND", "LINE_TERMINATE", 
+		"START_COMMENT", "DEF_COMMENT", "DEF_WS", "OUT_COMMENT", "OUT_WS", "CALL_COMMENT", 
+		"CALL_OUT_WS", "CS_CSHARP_WS"
 	};
 	public static readonly IVocabulary DefaultVocabulary = new Vocabulary(_LiteralNames, _SymbolicNames);
 
@@ -138,7 +134,7 @@ public partial class TtlParser : Parser {
 			State = 35;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.La(1);
-			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << TEXT) | (1L << OUT_START) | (1L << DEF_START) | (1L << SUB_COMMENT) | (1L << RAW))) != 0)) {
+			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << TEXT) | (1L << OUT) | (1L << DEF_START) | (1L << COMMENT) | (1L << RAW))) != 0)) {
 				{
 				State = 33;
 				switch (TokenStream.La(1)) {
@@ -147,7 +143,7 @@ public partial class TtlParser : Parser {
 					State = 28; definition();
 					}
 					break;
-				case OUT_START:
+				case OUT:
 					{
 					State = 29; outblock();
 					}
@@ -157,7 +153,7 @@ public partial class TtlParser : Parser {
 					State = 30; raw();
 					}
 					break;
-				case SUB_COMMENT:
+				case COMMENT:
 					{
 					State = 31; comment();
 					}
@@ -189,7 +185,7 @@ public partial class TtlParser : Parser {
 	}
 
 	public partial class CommentContext : ParserRuleContext {
-		public ITerminalNode SUB_COMMENT() { return GetToken(TtlParser.SUB_COMMENT, 0); }
+		public ITerminalNode COMMENT() { return GetToken(TtlParser.COMMENT, 0); }
 		public CommentContext(ParserRuleContext parent, int invokingState)
 			: base(parent, invokingState)
 		{
@@ -212,7 +208,7 @@ public partial class TtlParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 38; Match(SUB_COMMENT);
+			State = 38; Match(COMMENT);
 			}
 		}
 		catch (RecognitionException re) {
@@ -380,9 +376,9 @@ public partial class TtlParser : Parser {
 
 	public partial class Inherited_defContext : ParserRuleContext {
 		public ITerminalNode DEF_STARTNAME() { return GetToken(TtlParser.DEF_STARTNAME, 0); }
-		public ITerminalNode[] DEF_ID() { return GetTokens(TtlParser.DEF_ID); }
-		public ITerminalNode DEF_ID(int i) {
-			return GetToken(TtlParser.DEF_ID, i);
+		public ITerminalNode[] ID() { return GetTokens(TtlParser.ID); }
+		public ITerminalNode ID(int i) {
+			return GetToken(TtlParser.ID, i);
 		}
 		public ITerminalNode DELIM() { return GetToken(TtlParser.DELIM, 0); }
 		public ITerminalNode DEF_ENDNAME() { return GetToken(TtlParser.DEF_ENDNAME, 0); }
@@ -416,22 +412,22 @@ public partial class TtlParser : Parser {
 				EnterOuterAlt(_localctx, 1);
 				{
 				State = 54; Match(DEF_STARTNAME);
-				State = 55; Match(DEF_ID);
+				State = 55; Match(ID);
 				State = 56; Match(DELIM);
-				State = 57; Match(DEF_ID);
+				State = 57; Match(ID);
 				State = 58; Match(DEF_ENDNAME);
 				State = 59; subtemplate();
 				State = 60; Match(DEF_TYPE);
-				State = 61; Match(DEF_ID);
+				State = 61; Match(ID);
 				}
 				break;
 			case 2:
 				EnterOuterAlt(_localctx, 2);
 				{
 				State = 63; Match(DEF_STARTNAME);
-				State = 64; Match(DEF_ID);
+				State = 64; Match(ID);
 				State = 65; Match(DELIM);
-				State = 66; Match(DEF_ID);
+				State = 66; Match(ID);
 				State = 67; Match(DEF_ENDNAME);
 				State = 68; subtemplate();
 				}
@@ -451,9 +447,9 @@ public partial class TtlParser : Parser {
 
 	public partial class Simple_defContext : ParserRuleContext {
 		public ITerminalNode DEF_STARTNAME() { return GetToken(TtlParser.DEF_STARTNAME, 0); }
-		public ITerminalNode[] DEF_ID() { return GetTokens(TtlParser.DEF_ID); }
-		public ITerminalNode DEF_ID(int i) {
-			return GetToken(TtlParser.DEF_ID, i);
+		public ITerminalNode[] ID() { return GetTokens(TtlParser.ID); }
+		public ITerminalNode ID(int i) {
+			return GetToken(TtlParser.ID, i);
 		}
 		public ITerminalNode DEF_ENDNAME() { return GetToken(TtlParser.DEF_ENDNAME, 0); }
 		public SubtemplateContext subtemplate() {
@@ -486,18 +482,18 @@ public partial class TtlParser : Parser {
 				EnterOuterAlt(_localctx, 1);
 				{
 				State = 71; Match(DEF_STARTNAME);
-				State = 72; Match(DEF_ID);
+				State = 72; Match(ID);
 				State = 73; Match(DEF_ENDNAME);
 				State = 74; subtemplate();
 				State = 75; Match(DEF_TYPE);
-				State = 76; Match(DEF_ID);
+				State = 76; Match(ID);
 				}
 				break;
 			case 2:
 				EnterOuterAlt(_localctx, 2);
 				{
 				State = 78; Match(DEF_STARTNAME);
-				State = 79; Match(DEF_ID);
+				State = 79; Match(ID);
 				State = 80; Match(DEF_ENDNAME);
 				State = 81; subtemplate();
 				}
@@ -516,7 +512,7 @@ public partial class TtlParser : Parser {
 	}
 
 	public partial class OutblockContext : ParserRuleContext {
-		public ITerminalNode OUT_START() { return GetToken(TtlParser.OUT_START, 0); }
+		public ITerminalNode OUT() { return GetToken(TtlParser.OUT, 0); }
 		public ChainContext chain() {
 			return GetRuleContext<ChainContext>(0);
 		}
@@ -550,7 +546,7 @@ public partial class TtlParser : Parser {
 			case 1:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 84; Match(OUT_START);
+				State = 84; Match(OUT);
 				State = 85; chain();
 				State = 87;
 				_la = TokenStream.La(1);
@@ -565,7 +561,7 @@ public partial class TtlParser : Parser {
 			case 2:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 89; Match(OUT_START);
+				State = 89; Match(OUT);
 				State = 90; chain();
 				State = 92;
 				_la = TokenStream.La(1);
@@ -682,7 +678,7 @@ public partial class TtlParser : Parser {
 		try {
 			State = 108;
 			switch (TokenStream.La(1)) {
-			case OUT_ID:
+			case ID:
 				EnterOuterAlt(_localctx, 1);
 				{
 				State = 106; named_call();
@@ -710,9 +706,9 @@ public partial class TtlParser : Parser {
 	}
 
 	public partial class Named_callContext : ParserRuleContext {
-		public ITerminalNode[] OUT_ID() { return GetTokens(TtlParser.OUT_ID); }
-		public ITerminalNode OUT_ID(int i) {
-			return GetToken(TtlParser.OUT_ID, i);
+		public ITerminalNode[] ID() { return GetTokens(TtlParser.ID); }
+		public ITerminalNode ID(int i) {
+			return GetToken(TtlParser.ID, i);
 		}
 		public ITerminalNode OUT_PARAMSTART() { return GetToken(TtlParser.OUT_PARAMSTART, 0); }
 		public ITerminalNode OUT_PARAMEND() { return GetToken(TtlParser.OUT_PARAMEND, 0); }
@@ -749,13 +745,13 @@ public partial class TtlParser : Parser {
 			case 1:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 110; Match(OUT_ID);
+				State = 110; Match(ID);
 				State = 111; Match(OUT_PARAMSTART);
 				State = 113;
 				_la = TokenStream.La(1);
-				if (_la==OUT_ID) {
+				if (_la==ID) {
 					{
-					State = 112; Match(OUT_ID);
+					State = 112; Match(ID);
 					}
 				}
 
@@ -765,7 +761,7 @@ public partial class TtlParser : Parser {
 			case 2:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 116; Match(OUT_ID);
+				State = 116; Match(ID);
 				State = 117; Match(OUT_PARAMSTART);
 				State = 118; chain();
 				State = 119; Match(OUT_PARAMEND);
@@ -774,7 +770,7 @@ public partial class TtlParser : Parser {
 			case 3:
 				EnterOuterAlt(_localctx, 3);
 				{
-				State = 121; Match(OUT_ID);
+				State = 121; Match(ID);
 				State = 122; Match(OUT_PARAMSTART);
 				State = 123; Match(CSHARP_START);
 				State = 124; csharp_expression();
@@ -797,7 +793,7 @@ public partial class TtlParser : Parser {
 	public partial class Unnamed_callContext : ParserRuleContext {
 		public ITerminalNode OUT_PARAMSTART() { return GetToken(TtlParser.OUT_PARAMSTART, 0); }
 		public ITerminalNode OUT_PARAMEND() { return GetToken(TtlParser.OUT_PARAMEND, 0); }
-		public ITerminalNode OUT_ID() { return GetToken(TtlParser.OUT_ID, 0); }
+		public ITerminalNode ID() { return GetToken(TtlParser.ID, 0); }
 		public ChainContext chain() {
 			return GetRuleContext<ChainContext>(0);
 		}
@@ -834,9 +830,9 @@ public partial class TtlParser : Parser {
 				State = 129; Match(OUT_PARAMSTART);
 				State = 131;
 				_la = TokenStream.La(1);
-				if (_la==OUT_ID) {
+				if (_la==ID) {
 					{
-					State = 130; Match(OUT_ID);
+					State = 130; Match(ID);
 					}
 				}
 
@@ -972,7 +968,7 @@ public partial class TtlParser : Parser {
 	}
 
 	public static readonly string _serializedATN =
-		"\x3\x430\xD6D1\x8206\xAD2D\x4417\xAEF1\x8D80\xAADD\x3\x1F\x9E\x4\x2\t"+
+		"\x3\x430\xD6D1\x8206\xAD2D\x4417\xAEF1\x8D80\xAADD\x3\x1D\x9E\x4\x2\t"+
 		"\x2\x4\x3\t\x3\x4\x4\t\x4\x4\x5\t\x5\x4\x6\t\x6\x4\a\t\a\x4\b\t\b\x4\t"+
 		"\t\t\x4\n\t\n\x4\v\t\v\x4\f\t\f\x4\r\t\r\x4\xE\t\xE\x4\xF\t\xF\x3\x2\x3"+
 		"\x2\x3\x2\x3\x2\x3\x2\a\x2$\n\x2\f\x2\xE\x2\'\v\x2\x3\x3\x3\x3\x3\x4\x3"+
@@ -992,34 +988,34 @@ public partial class TtlParser : Parser {
 		"\x1C\x99\x3\x2\x2\x2\x1E$\x5\b\x5\x2\x1F$\x5\x10\t\x2 $\x5\x6\x4\x2!$"+
 		"\x5\x4\x3\x2\"$\a\x3\x2\x2#\x1E\x3\x2\x2\x2#\x1F\x3\x2\x2\x2# \x3\x2\x2"+
 		"\x2#!\x3\x2\x2\x2#\"\x3\x2\x2\x2$\'\x3\x2\x2\x2%#\x3\x2\x2\x2%&\x3\x2"+
-		"\x2\x2&\x3\x3\x2\x2\x2\'%\x3\x2\x2\x2()\a\x12\x2\x2)\x5\x3\x2\x2\x2*+"+
-		"\a\x15\x2\x2+\a\x3\x2\x2\x2,.\a\x10\x2\x2-/\x5\n\x6\x2.-\x3\x2\x2\x2/"+
-		"\x30\x3\x2\x2\x2\x30.\x3\x2\x2\x2\x30\x31\x3\x2\x2\x2\x31\x32\x3\x2\x2"+
-		"\x2\x32\x33\a\x11\x2\x2\x33\t\x3\x2\x2\x2\x34\x37\x5\xE\b\x2\x35\x37\x5"+
-		"\f\a\x2\x36\x34\x3\x2\x2\x2\x36\x35\x3\x2\x2\x2\x37\v\x3\x2\x2\x2\x38"+
-		"\x39\a\v\x2\x2\x39:\a\xF\x2\x2:;\a\xE\x2\x2;<\a\xF\x2\x2<=\a\f\x2\x2="+
-		">\x5\x1C\xF\x2>?\a\r\x2\x2?@\a\xF\x2\x2@H\x3\x2\x2\x2\x41\x42\a\v\x2\x2"+
-		"\x42\x43\a\xF\x2\x2\x43\x44\a\xE\x2\x2\x44\x45\a\xF\x2\x2\x45\x46\a\f"+
-		"\x2\x2\x46H\x5\x1C\xF\x2G\x38\x3\x2\x2\x2G\x41\x3\x2\x2\x2H\r\x3\x2\x2"+
-		"\x2IJ\a\v\x2\x2JK\a\xF\x2\x2KL\a\f\x2\x2LM\x5\x1C\xF\x2MN\a\r\x2\x2NO"+
-		"\a\xF\x2\x2OU\x3\x2\x2\x2PQ\a\v\x2\x2QR\a\xF\x2\x2RS\a\f\x2\x2SU\x5\x1C"+
-		"\xF\x2TI\x3\x2\x2\x2TP\x3\x2\x2\x2U\xF\x3\x2\x2\x2VW\a\x5\x2\x2WY\x5\x12"+
+		"\x2\x2&\x3\x3\x2\x2\x2\'%\x3\x2\x2\x2()\a\x11\x2\x2)\x5\x3\x2\x2\x2*+"+
+		"\a\x12\x2\x2+\a\x3\x2\x2\x2,.\a\xF\x2\x2-/\x5\n\x6\x2.-\x3\x2\x2\x2/\x30"+
+		"\x3\x2\x2\x2\x30.\x3\x2\x2\x2\x30\x31\x3\x2\x2\x2\x31\x32\x3\x2\x2\x2"+
+		"\x32\x33\a\x10\x2\x2\x33\t\x3\x2\x2\x2\x34\x37\x5\xE\b\x2\x35\x37\x5\f"+
+		"\a\x2\x36\x34\x3\x2\x2\x2\x36\x35\x3\x2\x2\x2\x37\v\x3\x2\x2\x2\x38\x39"+
+		"\a\v\x2\x2\x39:\a\x4\x2\x2:;\a\xE\x2\x2;<\a\x4\x2\x2<=\a\f\x2\x2=>\x5"+
+		"\x1C\xF\x2>?\a\r\x2\x2?@\a\x4\x2\x2@H\x3\x2\x2\x2\x41\x42\a\v\x2\x2\x42"+
+		"\x43\a\x4\x2\x2\x43\x44\a\xE\x2\x2\x44\x45\a\x4\x2\x2\x45\x46\a\f\x2\x2"+
+		"\x46H\x5\x1C\xF\x2G\x38\x3\x2\x2\x2G\x41\x3\x2\x2\x2H\r\x3\x2\x2\x2IJ"+
+		"\a\v\x2\x2JK\a\x4\x2\x2KL\a\f\x2\x2LM\x5\x1C\xF\x2MN\a\r\x2\x2NO\a\x4"+
+		"\x2\x2OU\x3\x2\x2\x2PQ\a\v\x2\x2QR\a\x4\x2\x2RS\a\f\x2\x2SU\x5\x1C\xF"+
+		"\x2TI\x3\x2\x2\x2TP\x3\x2\x2\x2U\xF\x3\x2\x2\x2VW\a\x5\x2\x2WY\x5\x12"+
 		"\n\x2XZ\x5\x1C\xF\x2YX\x3\x2\x2\x2YZ\x3\x2\x2\x2Z\x63\x3\x2\x2\x2[\\\a"+
 		"\x5\x2\x2\\^\x5\x12\n\x2]_\x5\x1C\xF\x2^]\x3\x2\x2\x2^_\x3\x2\x2\x2_`"+
-		"\x3\x2\x2\x2`\x61\a\x1A\x2\x2\x61\x63\x3\x2\x2\x2\x62V\x3\x2\x2\x2\x62"+
+		"\x3\x2\x2\x2`\x61\a\x15\x2\x2\x61\x63\x3\x2\x2\x2\x62V\x3\x2\x2\x2\x62"+
 		"[\x3\x2\x2\x2\x63\x11\x3\x2\x2\x2\x64i\x5\x14\v\x2\x65\x66\a\xE\x2\x2"+
 		"\x66h\x5\x14\v\x2g\x65\x3\x2\x2\x2hk\x3\x2\x2\x2ig\x3\x2\x2\x2ij\x3\x2"+
 		"\x2\x2j\x13\x3\x2\x2\x2ki\x3\x2\x2\x2lo\x5\x16\f\x2mo\x5\x18\r\x2nl\x3"+
-		"\x2\x2\x2nm\x3\x2\x2\x2o\x15\x3\x2\x2\x2pq\a\x4\x2\x2qs\a\x19\x2\x2rt"+
-		"\a\x4\x2\x2sr\x3\x2\x2\x2st\x3\x2\x2\x2tu\x3\x2\x2\x2u\x82\a\x1D\x2\x2"+
-		"vw\a\x4\x2\x2wx\a\x19\x2\x2xy\x5\x12\n\x2yz\a\x1D\x2\x2z\x82\x3\x2\x2"+
-		"\x2{|\a\x4\x2\x2|}\a\x19\x2\x2}~\a\n\x2\x2~\x7F\x5\x1A\xE\x2\x7F\x80\a"+
-		"\x1D\x2\x2\x80\x82\x3\x2\x2\x2\x81p\x3\x2\x2\x2\x81v\x3\x2\x2\x2\x81{"+
-		"\x3\x2\x2\x2\x82\x17\x3\x2\x2\x2\x83\x85\a\x19\x2\x2\x84\x86\a\x4\x2\x2"+
+		"\x2\x2\x2nm\x3\x2\x2\x2o\x15\x3\x2\x2\x2pq\a\x4\x2\x2qs\a\x13\x2\x2rt"+
+		"\a\x4\x2\x2sr\x3\x2\x2\x2st\x3\x2\x2\x2tu\x3\x2\x2\x2u\x82\a\x14\x2\x2"+
+		"vw\a\x4\x2\x2wx\a\x13\x2\x2xy\x5\x12\n\x2yz\a\x14\x2\x2z\x82\x3\x2\x2"+
+		"\x2{|\a\x4\x2\x2|}\a\x13\x2\x2}~\a\n\x2\x2~\x7F\x5\x1A\xE\x2\x7F\x80\a"+
+		"\x14\x2\x2\x80\x82\x3\x2\x2\x2\x81p\x3\x2\x2\x2\x81v\x3\x2\x2\x2\x81{"+
+		"\x3\x2\x2\x2\x82\x17\x3\x2\x2\x2\x83\x85\a\x13\x2\x2\x84\x86\a\x4\x2\x2"+
 		"\x85\x84\x3\x2\x2\x2\x85\x86\x3\x2\x2\x2\x86\x87\x3\x2\x2\x2\x87\x92\a"+
-		"\x1D\x2\x2\x88\x89\a\x19\x2\x2\x89\x8A\x5\x12\n\x2\x8A\x8B\a\x1D\x2\x2"+
-		"\x8B\x92\x3\x2\x2\x2\x8C\x8D\a\x19\x2\x2\x8D\x8E\a\n\x2\x2\x8E\x8F\x5"+
-		"\x1A\xE\x2\x8F\x90\a\x1D\x2\x2\x90\x92\x3\x2\x2\x2\x91\x83\x3\x2\x2\x2"+
+		"\x14\x2\x2\x88\x89\a\x13\x2\x2\x89\x8A\x5\x12\n\x2\x8A\x8B\a\x14\x2\x2"+
+		"\x8B\x92\x3\x2\x2\x2\x8C\x8D\a\x13\x2\x2\x8D\x8E\a\n\x2\x2\x8E\x8F\x5"+
+		"\x1A\xE\x2\x8F\x90\a\x14\x2\x2\x90\x92\x3\x2\x2\x2\x91\x83\x3\x2\x2\x2"+
 		"\x91\x88\x3\x2\x2\x2\x91\x8C\x3\x2\x2\x2\x92\x19\x3\x2\x2\x2\x93\x95\a"+
 		"\t\x2\x2\x94\x93\x3\x2\x2\x2\x95\x98\x3\x2\x2\x2\x96\x94\x3\x2\x2\x2\x96"+
 		"\x97\x3\x2\x2\x2\x97\x1B\x3\x2\x2\x2\x98\x96\x3\x2\x2\x2\x99\x9A\a\x6"+

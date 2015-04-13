@@ -58,15 +58,14 @@ fragment KEYWORD:
 fragment IDENTIFIER: IDENTIFIER_START IDENTIFIER_PART*;
 
 fragment IDENTIFIER_START: 
-	{IsLetter(InputStream.La(1))}? .
+	[a-zA-Zà-ÿÀ-ß_]
 	| UNICODE_ESCAPE
-	| '_'
 	;
 
 fragment IDENTIFIER_PART:
-	{IsIdPart(InputStream.La(1))}? .
+	IDENTIFIER_START
 	| UNICODE_ESCAPE
-	| '_'
+	| [\.\+0-9]
 	;
 
 /*

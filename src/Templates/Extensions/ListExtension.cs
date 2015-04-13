@@ -35,7 +35,7 @@ namespace Templates.Extensions {
         public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context, ParseContext parseContext)        
         {
             if (dataType == null)
-                throw new ArgumentNullException("dataType");
+                throw new ArgumentNullException(nameof(dataType));
             if (dataType.IsDynamic) {
                 return base.InitStart(parameterTemplate, ExType.Dynamic, chainedType, context, parseContext);
             }

@@ -158,7 +158,7 @@ namespace Templates.Native
         }
 
         private static void EmitParameters(this ILGenerator il, MethodInfo method, Type[] parameterTypes) {
-            if (parameterTypes == null) throw new ArgumentNullException("parameterTypes");
+            if (parameterTypes == null) throw new ArgumentNullException(nameof(parameterTypes));
             if (parameterTypes.Length == 0)
                 return;
             int seed = method.IsStatic ? 0 : 1;

@@ -30,7 +30,7 @@ namespace Templates {
 
         public TtlTemplate(CompileContext context) {
             if (context == null)
-                throw new ArgumentNullException("context");
+                throw new ArgumentNullException(nameof(context));
             try {
                 _reader = new FileReader(context.Options);
                 var document = _reader.ReadEntireFile();
@@ -149,13 +149,20 @@ namespace Templates {
         }
 
         private TtlCompileResult Compile(CompileContext context, string document) {
-            try {
+            try
+            {
                 RuntimeDocument rtdoc = TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
                 context.Compile();
                 _context = context;
                 _document = document;
                 _runtimeDocument = rtdoc;
                 return new TtlCompileResult(true);
+            }
+            catch (TemplateCompileException e)
+            {
+                var result = new TtlCompileResult(false);
+                result.Errors.AddRange(e.Errors);
+                return result;
             }
             catch (Exception e) {
                 var result = new TtlCompileResult(false);

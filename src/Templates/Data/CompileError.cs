@@ -3,11 +3,12 @@ using Templates.Strings.Core;
 
 namespace Templates.Data
 {
-    public static class CompileError {
+    internal static class CompileError {
         public static TtlCompileError ToError(this string errorMessage, BlockPosition position = default (BlockPosition)) {
             return new TtlCompileError
             {
-                Error = errorMessage
+                Error = errorMessage,
+                Position = position
             };
         }
 
@@ -15,7 +16,8 @@ namespace Templates.Data
             return new TtlCompileError
             {
                 Error = exception.Message,
-                Exception = exception
+                Exception = exception,
+                Position = position
             };
         }
     }

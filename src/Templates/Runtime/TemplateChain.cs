@@ -24,7 +24,7 @@ namespace Templates.Runtime {
         public void Add (TemplateItem templateItem)
         {
             if (templateItem == null)
-                throw new ArgumentNullException("templateItem");
+                throw new ArgumentNullException(nameof(templateItem));
 
             _itemsToExecute.Add(templateItem);
             RenderType = templateItem.ReturnType;

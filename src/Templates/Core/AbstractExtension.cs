@@ -34,7 +34,7 @@ namespace Templates.Core {
             ParseContext parseContext, out IDataProcessor result)
         {
             if (context == null)
-                throw new ArgumentNullException("context");
+                throw new ArgumentNullException(nameof(context));
 
             RuntimeDocument subTemplate;
             if (string.IsNullOrEmpty(parameterTemplate))
@@ -65,7 +65,7 @@ namespace Templates.Core {
             ParseContext parseContext)
         {
             if (context == null)
-                throw new ArgumentNullException("context");
+                throw new ArgumentNullException(nameof(context));
             IDataProcessor subTemplate;
             var type = InitSubTemplate(ref parameterTemplate, dataType, chainedType, context, parseContext, out subTemplate);
             if (subTemplate == null)

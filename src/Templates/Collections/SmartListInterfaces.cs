@@ -72,7 +72,7 @@ namespace Templates.Collections {
         public void CopyTo (Array array, int index)
         {
             if (array == null)
-                throw new ArgumentNullException("array");
+                throw new ArgumentNullException(nameof(array));
             if (index < 0 || _length + index < 0 || _length + index > array.Length)
                 throw new ArgumentException();
 
@@ -199,7 +199,7 @@ namespace Templates.Collections {
         public void CopyTo (T[] array, int index)
         {
             if (array == null)
-                throw new ArgumentNullException("array");
+                throw new ArgumentNullException(nameof(array));
             if (index < 0 || _length + index < 0 || _length + index > array.Length)
                 throw new ArgumentException();
 
