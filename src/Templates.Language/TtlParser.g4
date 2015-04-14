@@ -18,14 +18,16 @@ def: simple_def
 	;
 
 inherited_def:
-	DEF_STARTNAME ID DELIM ID DEF_ENDNAME subtemplate DEF_TYPE ID
-	| DEF_STARTNAME ID DELIM ID DEF_ENDNAME subtemplate
+	DEF_STARTNAME ID DELIM ID DEF_ENDNAME default_chain? subtemplate DEF_TYPE ID
+	| DEF_STARTNAME ID DELIM ID DEF_ENDNAME default_chain? subtemplate
 	;
 
 simple_def:
-	DEF_STARTNAME ID DEF_ENDNAME subtemplate DEF_TYPE ID
-	| DEF_STARTNAME ID DEF_ENDNAME subtemplate
+	DEF_STARTNAME ID DEF_ENDNAME default_chain? subtemplate DEF_TYPE ID
+	| DEF_STARTNAME ID DEF_ENDNAME default_chain? subtemplate
 	;
+
+default_chain: DEF_OUTPUTONEND chain;
 
 outblock: OUT chain subtemplate?
 	| OUT chain subtemplate? LINE_TERMINATE
@@ -47,6 +49,6 @@ unnamed_call: OUT_PARAMSTART ID? OUT_PARAMEND
 	| OUT_PARAMSTART CSHARP_START csharp_expression OUT_PARAMEND
 	;
 
-csharp_expression: CSHARP_TOKEN*;
+csharp_expression: CSHARP_TOKEN+;
 
 subtemplate: SUB_START ttl SUB_CLOSE;

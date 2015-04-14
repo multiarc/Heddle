@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace TemplatesXTests.Data {
+namespace Templates.Tests.Data {
     #region Nested type: TestData
 
     public class TestData: TestDataStructure {

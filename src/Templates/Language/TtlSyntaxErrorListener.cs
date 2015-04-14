@@ -14,27 +14,6 @@ namespace Templates.Language
             Context = context ?? new ParseContext();
         }
 
-        //public override void ReportAmbiguity(Parser recognizer, DFA dfa, int startIndex, int stopIndex, bool exact,
-        //    BitSet ambigAlts,
-        //    ATNConfigSet configs)
-        //{
-
-        //}
-
-        //public override void ReportAttemptingFullContext(Parser recognizer, DFA dfa, int startIndex, int stopIndex,
-        //    BitSet conflictingAlts,
-        //    SimulatorState conflictState)
-        //{
-
-        //}
-
-        //public override void ReportContextSensitivity(Parser recognizer, DFA dfa, int startIndex, int stopIndex,
-        //    int prediction,
-        //    SimulatorState acceptState)
-        //{
-
-        //}
-
         public override void SyntaxError(IRecognizer recognizer, IToken offendingSymbol, int line,
             int charPositionInLine, string msg,
             RecognitionException e)

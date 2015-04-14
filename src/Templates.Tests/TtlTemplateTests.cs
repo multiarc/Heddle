@@ -1,15 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using Templates;
 using Templates.Data;
 using Templates.Runtime;
-using Templates.Strings;
-using TemplatesXTests.Data;
+using Templates.Tests.Data;
 using Xunit;
 
-namespace TemplatesXTests {
+namespace Templates.Tests {
     public class TtlTemplateTests {
         [Fact()]
         public void TtlTemplateTest() {
@@ -41,9 +38,7 @@ namespace TemplatesXTests {
                 AllowCSharp = true
             };
             var target = new TtlTemplate(new CompileContext(options));
-            if (!target.CompileResult.Success)
-                throw new Exception(target.CompileResult.ErrorList.Aggregate("", (current, next) => current + " " + next.Error), target.CompileResult.ErrorList.First().Exception);
-            Assert.True(target.CompileResult.Success);
+            Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
             string expected;
             using (StreamReader reader = File.OpenText(@"TestTemplate\generated-vc.html"))
             {
@@ -66,9 +61,7 @@ namespace TemplatesXTests {
                 AllowCSharp = true
             };
             var target = new TtlTemplate(new CompileContext(options));
-            if (!target.CompileResult.Success)
-                throw new Exception(target.CompileResult.ErrorList.Aggregate("", (current, next) => current + " " + next.Error), target.CompileResult.ErrorList.First().Exception);
-            Assert.True(target.CompileResult.Success);
+            Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
 
             var products = new List<TestListItem>
             {

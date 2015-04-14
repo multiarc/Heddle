@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Linq;
 using Antlr4.Runtime.Tree;
 using Templates.Data;
 using Templates.Exceptions;
+using Templates.Strings.Core;
 
 namespace Templates.Language {
     internal sealed class TtlMainListener: TtlParserBaseListener {
@@ -32,7 +34,12 @@ namespace Templates.Language {
         public override void EnterDef(TtlParser.DefContext context)
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
-            CurrentParseContext.CurrentDefenition = CurrentParseContext.CreateDefinition(context);
+            OutputChain chain;
+            CurrentParseContext.CurrentDefenition = CurrentParseContext.CreateDefinition(context, out chain);
+            if (chain != null)
+            {
+                CurrentParseContext.DefaultChains.Add(chain);
+            }
         }
 
         public override void ExitDef(TtlParser.DefContext context) {
@@ -138,6 +145,19 @@ namespace Templates.Language {
                         chainItem.Context = parserContext;
                     }
                 }
+            }
+        }
+
+        public override void ExitTtl(TtlParser.TtlContext context)
+        {
+            if (CurrentParseContext.DefaultChains.Length > 0)
+            {
+                foreach (var chain in CurrentParseContext.DefaultChains)
+                {
+                    chain.BlockPosition = new BlockPosition(context.Stop.StopIndex + 1, 0);
+                }
+                CurrentParseContext.OutputChains.AddRange(CurrentParseContext.DefaultChains);
+                CurrentParseContext.DefaultChains.Clear();
             }
         }
     }

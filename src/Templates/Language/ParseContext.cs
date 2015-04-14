@@ -17,12 +17,6 @@ namespace Templates.Language {
 
         private readonly bool _inDefintionContext;
 
-        private static Dictionary<ParseContext, ParseContext> _isolatedSet;
-
-        private static HashSet<ParseContext> _isolatedList;
-
-        private static readonly object LockObject = new object();
-
         internal ParseContext(ParseContext parentContext = null, int offset = 0) {
             _inDefintionContext = (parentContext?.InDefinition ?? false) || (parentContext?._inDefintionContext ?? false);
             _offset = offset;
@@ -30,6 +24,7 @@ namespace Templates.Language {
             OutputChains = new SmartList<OutputChain>();
             RawOutputItems = new SmartList<RawOutputItem>();
             CommentTokens = new SmartList<BlockPosition>();
+            DefaultChains = new SmartList<OutputChain>();
             Errors = parentContext?.Errors ?? new SmartList<TtlCompileError>();
             Warnings = parentContext?.Warnings ?? new SmartList<TtlCompileWarning>();
         }
@@ -63,7 +58,7 @@ namespace Templates.Language {
             {
                 return this;
             }
-            //Prevent from stack overflow if child items could have the same context or subsequent contexts
+            //Prevent from stack overflow if child items could have the same context or same subsequent contexts
             if (!_isolatedSet.ContainsKey(this))
             {
                 _isolatedSet.Add(this, result);
@@ -131,7 +126,7 @@ namespace Templates.Language {
             return error;
         }
 
-        internal DefinitionItem CreateDefinition(TtlParser.DefContext context) {
+        internal DefinitionItem CreateDefinition(TtlParser.DefContext context, out OutputChain chain) {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
             var inherited = context.inherited_def();
@@ -139,13 +134,18 @@ namespace Templates.Language {
             if (simple != null) {
                 var ttl = simple.subtemplate()?.ttl();
                 if (ttl?.Start?.InputStream == null)
+                {
+                    chain = null;
                     return null;
-                var definitionName = simple.ID(0);
-                if (definitionName == null)
-                    throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(context)));
+                }
+                var definition = simple.ID(0);
+                if (definition == null)
+                    throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(simple)));
                 string parameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
+                var definitionName = definition.GetText();
+                chain = CreateOutputChain(simple.default_chain()?.chain(), definitionName);
                 return new DefinitionItem(
-                    definitionName.GetText(), parameterTemplate,
+                    definitionName, parameterTemplate,
                     null,
                     modelType: simple.ID(1)?.GetText())
                 {
@@ -155,20 +155,38 @@ namespace Templates.Language {
             if (inherited != null) {
                 var ttl = inherited.subtemplate()?.ttl();
                 if (ttl?.Start?.InputStream == null)
+                {
+                    chain = null;
                     return null;
-                var definitionName = inherited.ID(0);
-                if (definitionName == null)
-                    throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(context)));
+                }
+                var definition = inherited.ID(0);
+                if (definition == null)
+                    throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(inherited)));
                 string parameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
-                var baseDefenition = GetDefenition(inherited.ID(1)?.GetText());
+                var baseName = inherited.ID(1)?.GetText();
+                var baseDefenition = GetDefenition(baseName);
+                if (baseDefenition == null)
+                {
+                    throw new TemplateCompileException($"Base definition {baseName} couldn't be found".ToError(GetAbsoluteBlockPosition(inherited)));
+                }
+                var chainContext = inherited.default_chain()?.chain();
+                var definitionName = definition.GetText();
+                if (baseDefenition.Name == definitionName && chainContext != null)
+                {
+                    throw new TemplateCompileException(
+                        "Default output call chain can't be used in fully overriden definitions".ToError(
+                            GetAbsoluteBlockPosition(chainContext)));
+                }
+                chain = CreateOutputChain(inherited.default_chain()?.chain(), definitionName);
                 return new DefinitionItem(
-                    definitionName.GetText(), parameterTemplate,
+                    definitionName, parameterTemplate,
                     baseDefenition,
                     modelType: inherited.ID(2)?.GetText() ?? baseDefenition.ModelType)
                 {
                     Position = GetBlockPosition(context)
                 };
             }
+            chain = null;
             return null;
         }
 
@@ -227,6 +245,18 @@ namespace Templates.Language {
             return result;
         }
 
+        internal OutputChain CreateOutputChain(TtlParser.ChainContext context, string firstCallOverride)
+        {
+            if (context == null)
+                return null;
+            var result = new OutputChain(this)
+            {
+                Chain = CreateChain(context.call(), firstCallOverride),
+                BlockPosition = GetBlockPosition(context)
+            };
+            return result;
+        }
+
         internal RawOutputItem CreateRawOutputItem(TtlParser.RawContext context) {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
@@ -248,10 +278,11 @@ namespace Templates.Language {
             return DefinitionsBlock.Definitions.ContainsKey(name ?? string.Empty);
         }
 
-
         internal DefinitionItem CurrentDefenition { get; set; }
 
         internal OutputChain CurrentChain { get; set; }
+
+        internal SmartList<OutputChain> DefaultChains { get; set; }
 
         public SmartList<TtlCompileError> Errors { get; }
 
@@ -272,19 +303,36 @@ namespace Templates.Language {
 
         public int Offset => _offset;
 
-        #region Helper Methods
-
-        private SmartList<OutputItem> CreateChain(IEnumerable<TtlParser.CallContext> context) {
+        private SmartList<OutputItem> CreateChain(IEnumerable<TtlParser.CallContext> context,
+            string firstCallOverride = null)
+        {
             if (context == null)
                 return null;
             var result = new SmartList<OutputItem>();
-            result.AddRange(context.Select(CreateItem).Where(item => item != null));
+            bool first = true;
+            foreach (var callContext in context)
+            {
+                if (first)
+                {
+                    first = false;
+                    var item = CreateItem(callContext, firstCallOverride);
+                    if (item != null)
+                        result.Add(item);
+                }
+                else
+                {
+                    var item = CreateItem(callContext);
+                    if (item != null)
+                        result.Add(item);
+                }
+            }
+
             if (result.Length == 0)
                 return null;
             return result;
         }
 
-        private OutputItem CreateItem(TtlParser.CallContext context) {
+        private OutputItem CreateItem(TtlParser.CallContext context, string callNameOverride = null) {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
             var namedCall = context.named_call();
@@ -302,7 +350,7 @@ namespace Templates.Language {
                 };
             }
             if (unnamedCall != null) {
-                return new OutputItem(string.Empty)
+                return new OutputItem(callNameOverride ?? string.Empty)
                 {
                     CallParameter =
                     {
@@ -314,6 +362,14 @@ namespace Templates.Language {
             }
             return null;
         }
+
+        #region Helpers
+
+        private static Dictionary<ParseContext, ParseContext> _isolatedSet;
+
+        private static HashSet<ParseContext> _isolatedList;
+
+        private static readonly object LockObject = new object();
 
         #endregion
     }

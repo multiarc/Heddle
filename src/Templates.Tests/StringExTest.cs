@@ -5,7 +5,7 @@ using System.Text;
 using Templates.Strings;
 using Xunit;
 
-namespace TemplatesXTests {
+namespace Templates.Tests {
     public class StringExTest {
 
         #region Additional test attributes

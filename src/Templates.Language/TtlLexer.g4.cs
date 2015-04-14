@@ -1,16 +1,24 @@
 ﻿using System.Text.RegularExpressions;
 using Antlr4.Runtime;
 
-namespace Templates.Language {
-    public partial class TtlLexer {
+namespace Templates.Language
+{
+    public partial class TtlLexer
+    {
         public int CurrentMode { get; protected set; }
 
-        public override void Mode(int m) {
+        public int PreviousMode { get; protected set; }
+
+        public override void Mode(int m)
+        {
+            PreviousMode = CurrentMode;
             CurrentMode = m;
             base.Mode(m);
         }
 
-        public override void Reset() {
+        public override void Reset()
+        {
+            PreviousMode = CurrentMode;
             CurrentMode = 0;
             base.Reset();
         }
@@ -19,10 +27,11 @@ namespace Templates.Language {
         {
             int i, la, nextLa;
             char c, prev, nextC;
-            switch (token.Type) {
-            //@ext(...)sometext handling to interpret "sometext" as TEXT
-            case ID:
-                    if (CurrentMode == OUT_MODE || CurrentMode == OUT_SUB)
+            switch (token.Type)
+            {
+                //@ext(...)sometext handling to interpret "sometext" as TEXT
+                case ID:
+                    if (CurrentMode == OUT_MODE || CurrentMode == OUT_SUB || CurrentMode == DEF_OUT)
                     {
                         i = -1 - (token.StopIndex - token.StartIndex + 1);
                         la = InputStream.La(i);
@@ -32,13 +41,12 @@ namespace Templates.Language {
                         while (la != -1 && c != ':' && c != '@' && c != '(' && c != ')')
                         {
                             i--;
-                            c = (char) InputStream.La(i);
+                            la = InputStream.La(i);
+                            c = (char) la;
                         }
                         if (c == ')')
                         {
                             Type = TEXT;
-                            if (CurrentMode == CALL)
-                                PopMode();
                             PopMode();
 
                             token = new CommonToken(token)
@@ -48,57 +56,64 @@ namespace Templates.Language {
                         }
                     }
                     break;
-            //@ext(...)(... handling to interpret "(..." as TEXT
-            case OUT_PARAMSTART:
-                i = -1 - (token.StopIndex - token.StartIndex + 1);
-                la = InputStream.La(i);
-                c = (char)la;
-                while (la != -1 && c != ':' && c != '@' && c != '(' && c != ')') {
-                    i--;
-                    c = (char)InputStream.La(i);
-                }
-                if (c == ')') {
-                    Type = TEXT;
-                    if (CurrentMode == CALL)
+                //@ext(...)(... handling to interpret "(..." as TEXT
+                case OUT_PARAMSTART:
+                    if (PreviousMode != DEF_OUT && CurrentMode != CALL)
+                    {
+                        i = -1 - (token.StopIndex - token.StartIndex + 1);
+                        la = InputStream.La(i);
+                        c = (char) la;
+                        while (la != -1 && c != ':' && c != '@' && c != '(' && c != ')')
+                        {
+                            i--;
+                            la = InputStream.La(i);
+                            c = (char) la;
+                        }
+                        if (c == ')')
+                        {
+                            Type = TEXT;
+                            PopMode();
+
+                            token = new CommonToken(token)
+                            {
+                                Type = TEXT
+                            };
+                        }
+                    }
+                    break;
+                //@ext(...)WS*...sometext handling to interpret "\s...sometext" as TEXT
+                case OUT_WS:
+                    i = -1 - (token.StopIndex - token.StartIndex + 1);
+                    la = InputStream.La(i);
+
+                    prev = (char) la;
+                    while (la != -1 && prev != ':' && prev != '@' && prev != '(' && prev != ')')
+                    {
+                        i--;
+                        la = InputStream.La(i);
+                        prev = (char) la;
+                    }
+                    i = 1;
+                    la = InputStream.La(i);
+                    c = (char) la;
+                    nextLa = InputStream.La(i + 1);
+                    nextC = (char) nextLa;
+                    if (la == -1 || c != ':' && (c != '{' || nextLa != -1 && nextC != '{') && prev == ')')
+                    {
+                        Type = TEXT;
                         PopMode();
-                    PopMode();
-
-                    token = new CommonToken(token)
+                        token = new CommonToken(token)
+                        {
+                            Type = TEXT
+                        };
+                    }
+                    else
                     {
-                        Type = TEXT
-                    };
-                }
-                break;
-            //@ext(...)WS*...sometext handling to interpret "\s...sometext" as TEXT
-            case OUT_WS:
-                i = -1 - (token.StopIndex - token.StartIndex + 1);
-                la = InputStream.La(i);
-
-                prev = (char)la;
-                while (la != -1 && prev != ':' && prev != '@' && prev != '(' && prev != ')') {
-                    i--;
-                    prev = (char)InputStream.La(i);
-                }
-                i = 1;
-                la = InputStream.La(i);
-                c = (char)la;
-                nextLa = InputStream.La(i + 1);
-                nextC = (char)nextLa; 
-                if (la == -1 || c != ':' && (c != '{' || nextLa != -1 && nextC != '{') && prev == ')') {
-                    Type = TEXT;
-                    PopMode();
-                    token = new CommonToken(token)
-                    {
-                        Type = TEXT
-                    };
-                }
-                else
-                {
-                    token = NextToken();
-                }
-                break;
-            case COMMENT:
-                    if (CurrentMode == OUT_SUB)
+                        token = NextToken();
+                    }
+                    break;
+                case COMMENT:
+                    if (CurrentMode == OUT_SUB || CurrentMode == OUT_MODE)
                     {
                         i = -1 - (token.StopIndex - token.StartIndex + 1);
                         la = InputStream.La(i);
@@ -107,7 +122,8 @@ namespace Templates.Language {
                         while (la != -1 && prev != ':' && prev != '@' && prev != '(' && prev != ')')
                         {
                             i--;
-                            prev = (char) InputStream.La(i);
+                            la = InputStream.La(i);
+                            prev = (char) la;
                         }
                         i = 1;
                         la = InputStream.La(i);
@@ -129,21 +145,23 @@ namespace Templates.Language {
                         }
                     }
                     break;
-            case CSHARP_END:
-                if (CurrentMode == CALL) {
-                    PopMode();
-                    token = new CommonToken(token)
+                case CSHARP_END:
+                    if (CurrentMode == CALL)
                     {
-                        Type = OUT_PARAMEND
-                    };
-                }
-                else {
-                    token = new CommonToken(token)
+                        PopMode();
+                        token = new CommonToken(token)
+                        {
+                            Type = OUT_PARAMEND
+                        };
+                    }
+                    else
                     {
-                        Type = CSHARP_TOKEN
-                    };
-                }
-                break;
+                        token = new CommonToken(token)
+                        {
+                            Type = CSHARP_TOKEN
+                        };
+                    }
+                    break;
             }
             base.Emit(token);
         }

@@ -100,6 +100,16 @@ public interface ITtlParserListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitSimple_def([NotNull] TtlParser.Simple_defContext context);
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="TtlParser.default_chain"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterDefault_chain([NotNull] TtlParser.Default_chainContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="TtlParser.default_chain"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitDefault_chain([NotNull] TtlParser.Default_chainContext context);
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="TtlParser.outblock"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>

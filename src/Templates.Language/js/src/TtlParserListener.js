@@ -75,6 +75,15 @@ define(function(require, exports, module) {
     };
 
 
+// Enter a parse tree produced by TtlParser#default_chain.
+    TtlParserListener.prototype.enterDefault_chain = function(ctx) {
+    };
+
+// Exit a parse tree produced by TtlParser#default_chain.
+    TtlParserListener.prototype.exitDefault_chain = function(ctx) {
+    };
+
+
 // Enter a parse tree produced by TtlParser#outblock.
     TtlParserListener.prototype.enterOutblock = function(ctx) {
     };
@@ -139,4 +148,5 @@ define(function(require, exports, module) {
 
 
     exports.TtlParserListener = TtlParserListener;
+
 });

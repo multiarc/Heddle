@@ -118,6 +118,18 @@ public partial class TtlParserBaseListener : ITtlParserListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitSimple_def([NotNull] TtlParser.Simple_defContext context) { }
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="TtlParser.default_chain"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterDefault_chain([NotNull] TtlParser.Default_chainContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="TtlParser.default_chain"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitDefault_chain([NotNull] TtlParser.Default_chainContext context) { }
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="TtlParser.outblock"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>

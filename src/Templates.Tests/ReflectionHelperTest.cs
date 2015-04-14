@@ -5,7 +5,7 @@ using Templates.Runtime;
 using Templates.Strings;
 using Xunit;
 
-namespace TemplatesXTests {
+namespace Templates.Tests {
     public class ReflectionHelperTest {
         [Fact]
         public void ReflectionHelperConstructorTest ()

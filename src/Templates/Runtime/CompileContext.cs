@@ -62,12 +62,16 @@ namespace Templates.Runtime {
                 PreparseGenerator = new TtlTemplate();
                 var result = CodeGenerator.Compile(File.ReadAllText(@"CSharpClassTemplate.tcs"));
                 var resultPre = PreparseGenerator.Compile(File.ReadAllText(@"CSharpPreparseTemplate.tcs"));
-                if (!result.Success || !resultPre.Success) {
+                if (!result.Success || !resultPre.Success)
+                {
                     InitErrors = new TtlCompileResult(false);
                     InitErrors.Errors.AddRange(result.ErrorList);
                     InitErrors.Errors.AddRange(resultPre.ErrorList);
                 }
-                InitErrors = new TtlCompileResult(true);
+                else
+                {
+                    InitErrors = new TtlCompileResult(true);
+                }
             }
             catch (Exception e) {
                 InitErrors = new TtlCompileResult(false);

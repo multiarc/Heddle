@@ -7,50 +7,57 @@ define(function(require, exports, module) {
 
     var serializedATN = [
         "\3\u0430\ud6d1\u8206\uad2d\u4417\uaef1\u8d80\uaadd",
-        "\3\35\u009e\4\2\t\2\4\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7\4\b\t\b",
-        "\4\t\t\t\4\n\t\n\4\13\t\13\4\f\t\f\4\r\t\r\4\16\t\16\4\17\t\17\3\2\3",
-        "\2\3\2\3\2\3\2\7\2$\n\2\f\2\16\2\'\13\2\3\3\3\3\3\4\3\4\3\5\3\5\6\5",
-        "/\n\5\r\5\16\5\60\3\5\3\5\3\6\3\6\5\6\67\n\6\3\7\3\7\3\7\3\7\3\7\3\7",
-        "\3\7\3\7\3\7\3\7\3\7\3\7\3\7\3\7\3\7\5\7H\n\7\3\b\3\b\3\b\3\b\3\b\3",
-        "\b\3\b\3\b\3\b\3\b\3\b\5\bU\n\b\3\t\3\t\3\t\5\tZ\n\t\3\t\3\t\3\t\5\t",
-        "_\n\t\3\t\3\t\5\tc\n\t\3\n\3\n\3\n\7\nh\n\n\f\n\16\nk\13\n\3\13\3\13",
-        "\5\13o\n\13\3\f\3\f\3\f\5\ft\n\f\3\f\3\f\3\f\3\f\3\f\3\f\3\f\3\f\3\f",
-        "\3\f\3\f\3\f\5\f\u0082\n\f\3\r\3\r\5\r\u0086\n\r\3\r\3\r\3\r\3\r\3\r",
-        "\3\r\3\r\3\r\3\r\3\r\5\r\u0092\n\r\3\16\7\16\u0095\n\16\f\16\16\16\u0098",
-        "\13\16\3\17\3\17\3\17\3\17\3\17\2\2\20\2\4\6\b\n\f\16\20\22\24\26\30",
-        "\32\34\2\2\u00a4\2%\3\2\2\2\4(\3\2\2\2\6*\3\2\2\2\b,\3\2\2\2\n\66\3",
-        "\2\2\2\fG\3\2\2\2\16T\3\2\2\2\20b\3\2\2\2\22d\3\2\2\2\24n\3\2\2\2\26",
-        "\u0081\3\2\2\2\30\u0091\3\2\2\2\32\u0096\3\2\2\2\34\u0099\3\2\2\2\36",
-        "$\5\b\5\2\37$\5\20\t\2 $\5\6\4\2!$\5\4\3\2\"$\7\3\2\2#\36\3\2\2\2#\37",
-        "\3\2\2\2# \3\2\2\2#!\3\2\2\2#\"\3\2\2\2$\'\3\2\2\2%#\3\2\2\2%&\3\2\2",
-        "\2&\3\3\2\2\2\'%\3\2\2\2()\7\21\2\2)\5\3\2\2\2*+\7\22\2\2+\7\3\2\2\2",
-        ",.\7\17\2\2-/\5\n\6\2.-\3\2\2\2/\60\3\2\2\2\60.\3\2\2\2\60\61\3\2\2",
-        "\2\61\62\3\2\2\2\62\63\7\20\2\2\63\t\3\2\2\2\64\67\5\16\b\2\65\67\5",
-        "\f\7\2\66\64\3\2\2\2\66\65\3\2\2\2\67\13\3\2\2\289\7\13\2\29:\7\4\2",
-        "\2:;\7\16\2\2;<\7\4\2\2<=\7\f\2\2=>\5\34\17\2>?\7\r\2\2?@\7\4\2\2@H",
-        "\3\2\2\2AB\7\13\2\2BC\7\4\2\2CD\7\16\2\2DE\7\4\2\2EF\7\f\2\2FH\5\34",
-        "\17\2G8\3\2\2\2GA\3\2\2\2H\r\3\2\2\2IJ\7\13\2\2JK\7\4\2\2KL\7\f\2\2",
-        "LM\5\34\17\2MN\7\r\2\2NO\7\4\2\2OU\3\2\2\2PQ\7\13\2\2QR\7\4\2\2RS\7",
-        "\f\2\2SU\5\34\17\2TI\3\2\2\2TP\3\2\2\2U\17\3\2\2\2VW\7\5\2\2WY\5\22",
-        "\n\2XZ\5\34\17\2YX\3\2\2\2YZ\3\2\2\2Zc\3\2\2\2[\\\7\5\2\2\\^\5\22\n",
-        "\2]_\5\34\17\2^]\3\2\2\2^_\3\2\2\2_`\3\2\2\2`a\7\25\2\2ac\3\2\2\2bV",
-        "\3\2\2\2b[\3\2\2\2c\21\3\2\2\2di\5\24\13\2ef\7\16\2\2fh\5\24\13\2ge",
-        "\3\2\2\2hk\3\2\2\2ig\3\2\2\2ij\3\2\2\2j\23\3\2\2\2ki\3\2\2\2lo\5\26",
-        "\f\2mo\5\30\r\2nl\3\2\2\2nm\3\2\2\2o\25\3\2\2\2pq\7\4\2\2qs\7\23\2\2",
-        "rt\7\4\2\2sr\3\2\2\2st\3\2\2\2tu\3\2\2\2u\u0082\7\24\2\2vw\7\4\2\2w",
-        "x\7\23\2\2xy\5\22\n\2yz\7\24\2\2z\u0082\3\2\2\2{|\7\4\2\2|}\7\23\2\2",
-        "}~\7\n\2\2~\177\5\32\16\2\177\u0080\7\24\2\2\u0080\u0082\3\2\2\2\u0081",
-        "p\3\2\2\2\u0081v\3\2\2\2\u0081{\3\2\2\2\u0082\27\3\2\2\2\u0083\u0085",
-        "\7\23\2\2\u0084\u0086\7\4\2\2\u0085\u0084\3\2\2\2\u0085\u0086\3\2\2",
-        "\2\u0086\u0087\3\2\2\2\u0087\u0092\7\24\2\2\u0088\u0089\7\23\2\2\u0089",
-        "\u008a\5\22\n\2\u008a\u008b\7\24\2\2\u008b\u0092\3\2\2\2\u008c\u008d",
-        "\7\23\2\2\u008d\u008e\7\n\2\2\u008e\u008f\5\32\16\2\u008f\u0090\7\24",
-        "\2\2\u0090\u0092\3\2\2\2\u0091\u0083\3\2\2\2\u0091\u0088\3\2\2\2\u0091",
-        "\u008c\3\2\2\2\u0092\31\3\2\2\2\u0093\u0095\7\t\2\2\u0094\u0093\3\2",
-        "\2\2\u0095\u0098\3\2\2\2\u0096\u0094\3\2\2\2\u0096\u0097\3\2\2\2\u0097",
-        "\33\3\2\2\2\u0098\u0096\3\2\2\2\u0099\u009a\7\6\2\2\u009a\u009b\5\2",
-        "\2\2\u009b\u009c\7\7\2\2\u009c\35\3\2\2\2\22#%\60\66GTY^bins\u0081\u0085",
-        "\u0091\u0096"
+        "\3\36\u00ae\4\2\t\2\4\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7\4\b\t\b",
+        "\4\t\t\t\4\n\t\n\4\13\t\13\4\f\t\f\4\r\t\r\4\16\t\16\4\17\t\17\4\20",
+        "\t\20\3\2\3\2\3\2\3\2\3\2\7\2&\n\2\f\2\16\2)\13\2\3\3\3\3\3\4\3\4\3",
+        "\5\3\5\6\5\61\n\5\r\5\16\5\62\3\5\3\5\3\6\3\6\5\69\n\6\3\7\3\7\3\7\3",
+        "\7\3\7\3\7\5\7A\n\7\3\7\3\7\3\7\3\7\3\7\3\7\3\7\3\7\3\7\3\7\5\7M\n\7",
+        "\3\7\5\7P\n\7\3\b\3\b\3\b\3\b\5\bV\n\b\3\b\3\b\3\b\3\b\3\b\3\b\3\b\3",
+        "\b\5\b`\n\b\3\b\5\bc\n\b\3\t\3\t\3\t\3\n\3\n\3\n\5\nk\n\n\3\n\3\n\3",
+        "\n\5\np\n\n\3\n\3\n\5\nt\n\n\3\13\3\13\3\13\7\13y\n\13\f\13\16\13|\13",
+        "\13\3\f\3\f\5\f\u0080\n\f\3\r\3\r\3\r\5\r\u0085\n\r\3\r\3\r\3\r\3\r",
+        "\3\r\3\r\3\r\3\r\3\r\3\r\3\r\3\r\5\r\u0093\n\r\3\16\3\16\5\16\u0097",
+        "\n\16\3\16\3\16\3\16\3\16\3\16\3\16\3\16\3\16\3\16\3\16\5\16\u00a3\n",
+        "\16\3\17\6\17\u00a6\n\17\r\17\16\17\u00a7\3\20\3\20\3\20\3\20\3\20\2",
+        "\2\21\2\4\6\b\n\f\16\20\22\24\26\30\32\34\36\2\2\u00b7\2\'\3\2\2\2\4",
+        "*\3\2\2\2\6,\3\2\2\2\b.\3\2\2\2\n8\3\2\2\2\fO\3\2\2\2\16b\3\2\2\2\20",
+        "d\3\2\2\2\22s\3\2\2\2\24u\3\2\2\2\26\177\3\2\2\2\30\u0092\3\2\2\2\32",
+        "\u00a2\3\2\2\2\34\u00a5\3\2\2\2\36\u00a9\3\2\2\2 &\5\b\5\2!&\5\22\n",
+        "\2\"&\5\6\4\2#&\5\4\3\2$&\7\3\2\2% \3\2\2\2%!\3\2\2\2%\"\3\2\2\2%#\3",
+        "\2\2\2%$\3\2\2\2&)\3\2\2\2\'%\3\2\2\2\'(\3\2\2\2(\3\3\2\2\2)\'\3\2\2",
+        "\2*+\7\21\2\2+\5\3\2\2\2,-\7\22\2\2-\7\3\2\2\2.\60\7\17\2\2/\61\5\n",
+        "\6\2\60/\3\2\2\2\61\62\3\2\2\2\62\60\3\2\2\2\62\63\3\2\2\2\63\64\3\2",
+        "\2\2\64\65\7\20\2\2\65\t\3\2\2\2\669\5\16\b\2\679\5\f\7\28\66\3\2\2",
+        "\28\67\3\2\2\29\13\3\2\2\2:;\7\13\2\2;<\7\4\2\2<=\7\16\2\2=>\7\4\2\2",
+        ">@\7\f\2\2?A\5\20\t\2@?\3\2\2\2@A\3\2\2\2AB\3\2\2\2BC\5\36\20\2CD\7",
+        "\r\2\2DE\7\4\2\2EP\3\2\2\2FG\7\13\2\2GH\7\4\2\2HI\7\16\2\2IJ\7\4\2\2",
+        "JL\7\f\2\2KM\5\20\t\2LK\3\2\2\2LM\3\2\2\2MN\3\2\2\2NP\5\36\20\2O:\3",
+        "\2\2\2OF\3\2\2\2P\r\3\2\2\2QR\7\13\2\2RS\7\4\2\2SU\7\f\2\2TV\5\20\t",
+        "\2UT\3\2\2\2UV\3\2\2\2VW\3\2\2\2WX\5\36\20\2XY\7\r\2\2YZ\7\4\2\2Zc\3",
+        "\2\2\2[\\\7\13\2\2\\]\7\4\2\2]_\7\f\2\2^`\5\20\t\2_^\3\2\2\2_`\3\2\2",
+        "\2`a\3\2\2\2ac\5\36\20\2bQ\3\2\2\2b[\3\2\2\2c\17\3\2\2\2de\7\26\2\2",
+        "ef\5\24\13\2f\21\3\2\2\2gh\7\5\2\2hj\5\24\13\2ik\5\36\20\2ji\3\2\2\2",
+        "jk\3\2\2\2kt\3\2\2\2lm\7\5\2\2mo\5\24\13\2np\5\36\20\2on\3\2\2\2op\3",
+        "\2\2\2pq\3\2\2\2qr\7\25\2\2rt\3\2\2\2sg\3\2\2\2sl\3\2\2\2t\23\3\2\2",
+        "\2uz\5\26\f\2vw\7\16\2\2wy\5\26\f\2xv\3\2\2\2y|\3\2\2\2zx\3\2\2\2z{",
+        "\3\2\2\2{\25\3\2\2\2|z\3\2\2\2}\u0080\5\30\r\2~\u0080\5\32\16\2\177",
+        "}\3\2\2\2\177~\3\2\2\2\u0080\27\3\2\2\2\u0081\u0082\7\4\2\2\u0082\u0084",
+        "\7\23\2\2\u0083\u0085\7\4\2\2\u0084\u0083\3\2\2\2\u0084\u0085\3\2\2",
+        "\2\u0085\u0086\3\2\2\2\u0086\u0093\7\24\2\2\u0087\u0088\7\4\2\2\u0088",
+        "\u0089\7\23\2\2\u0089\u008a\5\24\13\2\u008a\u008b\7\24\2\2\u008b\u0093",
+        "\3\2\2\2\u008c\u008d\7\4\2\2\u008d\u008e\7\23\2\2\u008e\u008f\7\n\2",
+        "\2\u008f\u0090\5\34\17\2\u0090\u0091\7\24\2\2\u0091\u0093\3\2\2\2\u0092",
+        "\u0081\3\2\2\2\u0092\u0087\3\2\2\2\u0092\u008c\3\2\2\2\u0093\31\3\2",
+        "\2\2\u0094\u0096\7\23\2\2\u0095\u0097\7\4\2\2\u0096\u0095\3\2\2\2\u0096",
+        "\u0097\3\2\2\2\u0097\u0098\3\2\2\2\u0098\u00a3\7\24\2\2\u0099\u009a",
+        "\7\23\2\2\u009a\u009b\5\24\13\2\u009b\u009c\7\24\2\2\u009c\u00a3\3\2",
+        "\2\2\u009d\u009e\7\23\2\2\u009e\u009f\7\n\2\2\u009f\u00a0\5\34\17\2",
+        "\u00a0\u00a1\7\24\2\2\u00a1\u00a3\3\2\2\2\u00a2\u0094\3\2\2\2\u00a2",
+        "\u0099\3\2\2\2\u00a2\u009d\3\2\2\2\u00a3\33\3\2\2\2\u00a4\u00a6\7\t",
+        "\2\2\u00a5\u00a4\3\2\2\2\u00a6\u00a7\3\2\2\2\u00a7\u00a5\3\2\2\2\u00a7",
+        "\u00a8\3\2\2\2\u00a8\35\3\2\2\2\u00a9\u00aa\7\6\2\2\u00aa\u00ab\5\2",
+        "\2\2\u00ab\u00ac\7\7\2\2\u00ac\37\3\2\2\2\26%\'\628@LOU_bjosz\177\u0084",
+        "\u0092\u0096\u00a2\u00a7"
     ].join("");
 
 
@@ -67,15 +74,15 @@ define(function(require, exports, module) {
         "CSHARP_END", "CSHARP_TOKEN", "CSHARP_START", "DEF_STARTNAME",
         "DEF_ENDNAME", "DEF_TYPE", "DELIM", "DEF_START", "DEF_CLOSE",
         "COMMENT", "RAW", "OUT_PARAMSTART", "OUT_PARAMEND",
-        "LINE_TERMINATE", "START_COMMENT", "DEF_COMMENT",
-        "DEF_WS", "OUT_COMMENT", "OUT_WS", "CALL_COMMENT",
-        "CALL_OUT_WS", "CS_CSHARP_WS"
+        "LINE_TERMINATE", "DEF_OUTPUTONEND", "START_COMMENT",
+        "DEF_WS", "DEF_OUT_COMMENT", "DEF_OUT_WS", "OUT_WS",
+        "CALL_COMMENT", "CALL_OUT_WS", "CS_CSHARP_WS"
     ];
 
     var ruleNames = [
         "ttl", "comment", "raw", "definition", "def", "inherited_def",
-        "simple_def", "outblock", "chain", "call", "named_call",
-        "unnamed_call", "csharp_expression", "subtemplate"
+        "simple_def", "default_chain", "outblock", "chain", "call",
+        "named_call", "unnamed_call", "csharp_expression", "subtemplate"
     ];
 
     function TtlParser(input) {
@@ -116,14 +123,15 @@ define(function(require, exports, module) {
     TtlParser.OUT_PARAMSTART = 17;
     TtlParser.OUT_PARAMEND = 18;
     TtlParser.LINE_TERMINATE = 19;
-    TtlParser.START_COMMENT = 20;
-    TtlParser.DEF_COMMENT = 21;
+    TtlParser.DEF_OUTPUTONEND = 20;
+    TtlParser.START_COMMENT = 21;
     TtlParser.DEF_WS = 22;
-    TtlParser.OUT_COMMENT = 23;
-    TtlParser.OUT_WS = 24;
-    TtlParser.CALL_COMMENT = 25;
-    TtlParser.CALL_OUT_WS = 26;
-    TtlParser.CS_CSHARP_WS = 27;
+    TtlParser.DEF_OUT_COMMENT = 23;
+    TtlParser.DEF_OUT_WS = 24;
+    TtlParser.OUT_WS = 25;
+    TtlParser.CALL_COMMENT = 26;
+    TtlParser.CALL_OUT_WS = 27;
+    TtlParser.CS_CSHARP_WS = 28;
 
     TtlParser.RULE_ttl = 0;
     TtlParser.RULE_comment = 1;
@@ -132,13 +140,14 @@ define(function(require, exports, module) {
     TtlParser.RULE_def = 4;
     TtlParser.RULE_inherited_def = 5;
     TtlParser.RULE_simple_def = 6;
-    TtlParser.RULE_outblock = 7;
-    TtlParser.RULE_chain = 8;
-    TtlParser.RULE_call = 9;
-    TtlParser.RULE_named_call = 10;
-    TtlParser.RULE_unnamed_call = 11;
-    TtlParser.RULE_csharp_expression = 12;
-    TtlParser.RULE_subtemplate = 13;
+    TtlParser.RULE_default_chain = 7;
+    TtlParser.RULE_outblock = 8;
+    TtlParser.RULE_chain = 9;
+    TtlParser.RULE_call = 10;
+    TtlParser.RULE_named_call = 11;
+    TtlParser.RULE_unnamed_call = 12;
+    TtlParser.RULE_csharp_expression = 13;
+    TtlParser.RULE_subtemplate = 14;
 
     function TtlContext(parser, parent, invokingState) {
         if (parent === undefined) {
@@ -234,36 +243,36 @@ define(function(require, exports, module) {
         var _la = 0; // Token type
         try {
             this.enterOuterAlt(localctx, 1);
-            this.state = 35;
+            this.state = 37;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
             while ((((_la) & ~0x1f) == 0 && ((1 << _la) & ((1 << TtlParser.TEXT) | (1 << TtlParser.OUT) | (1 << TtlParser.DEF_START) | (1 << TtlParser.COMMENT) | (1 << TtlParser.RAW))) !== 0)) {
-                this.state = 33;
+                this.state = 35;
                 switch (this._input.LA(1)) {
                 case TtlParser.DEF_START:
-                    this.state = 28;
+                    this.state = 30;
                     this.definition();
                     break;
                 case TtlParser.OUT:
-                    this.state = 29;
+                    this.state = 31;
                     this.outblock();
                     break;
                 case TtlParser.RAW:
-                    this.state = 30;
+                    this.state = 32;
                     this.raw();
                     break;
                 case TtlParser.COMMENT:
-                    this.state = 31;
+                    this.state = 33;
                     this.comment();
                     break;
                 case TtlParser.TEXT:
-                    this.state = 32;
+                    this.state = 34;
                     this.match(TtlParser.TEXT);
                     break;
                 default:
                     throw new antlr4.error.NoViableAltException(this);
                 }
-                this.state = 37;
+                this.state = 39;
                 this._errHandler.sync(this);
                 _la = this._input.LA(1);
             }
@@ -322,7 +331,7 @@ define(function(require, exports, module) {
         this.enterRule(localctx, 2, TtlParser.RULE_comment);
         try {
             this.enterOuterAlt(localctx, 1);
-            this.state = 38;
+            this.state = 40;
             this.match(TtlParser.COMMENT);
         } catch (re) {
             if (re instanceof antlr4.error.RecognitionException) {
@@ -379,7 +388,7 @@ define(function(require, exports, module) {
         this.enterRule(localctx, 4, TtlParser.RULE_raw);
         try {
             this.enterOuterAlt(localctx, 1);
-            this.state = 40;
+            this.state = 42;
             this.match(TtlParser.RAW);
         } catch (re) {
             if (re instanceof antlr4.error.RecognitionException) {
@@ -452,19 +461,19 @@ define(function(require, exports, module) {
         var _la = 0; // Token type
         try {
             this.enterOuterAlt(localctx, 1);
-            this.state = 42;
-            this.match(TtlParser.DEF_START);
             this.state = 44;
+            this.match(TtlParser.DEF_START);
+            this.state = 46;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
             do {
-                this.state = 43;
+                this.state = 45;
                 this.def();
-                this.state = 46;
+                this.state = 48;
                 this._errHandler.sync(this);
                 _la = this._input.LA(1);
             } while (_la === TtlParser.DEF_STARTNAME);
-            this.state = 48;
+            this.state = 50;
             this.match(TtlParser.DEF_CLOSE);
         } catch (re) {
             if (re instanceof antlr4.error.RecognitionException) {
@@ -524,18 +533,18 @@ define(function(require, exports, module) {
         var localctx = new DefContext(this, this._ctx, this.state);
         this.enterRule(localctx, 8, TtlParser.RULE_def);
         try {
-            this.state = 52;
+            this.state = 54;
             var la_ = this._interp.adaptivePredict(this._input, 3, this._ctx);
             switch (la_) {
             case 1:
                 this.enterOuterAlt(localctx, 1);
-                this.state = 50;
+                this.state = 52;
                 this.simple_def();
                 break;
 
             case 2:
                 this.enterOuterAlt(localctx, 2);
-                this.state = 51;
+                this.state = 53;
                 this.inherited_def();
                 break;
 
@@ -602,6 +611,10 @@ define(function(require, exports, module) {
         return this.getToken(TtlParser.DEF_TYPE, 0);
     };
 
+    Inherited_defContext.prototype.default_chain = function() {
+        return this.getTypedRuleContext(Default_chainContext, 0);
+    };
+
     Inherited_defContext.prototype.enterRule = function(listener) {
         if (listener instanceof TtlParserListener) {
             listener.enterInherited_def(this);
@@ -621,43 +634,58 @@ define(function(require, exports, module) {
 
         var localctx = new Inherited_defContext(this, this._ctx, this.state);
         this.enterRule(localctx, 10, TtlParser.RULE_inherited_def);
+        var _la = 0; // Token type
         try {
-            this.state = 69;
-            var la_ = this._interp.adaptivePredict(this._input, 4, this._ctx);
+            this.state = 77;
+            var la_ = this._interp.adaptivePredict(this._input, 6, this._ctx);
             switch (la_) {
             case 1:
                 this.enterOuterAlt(localctx, 1);
-                this.state = 54;
-                this.match(TtlParser.DEF_STARTNAME);
-                this.state = 55;
-                this.match(TtlParser.ID);
                 this.state = 56;
-                this.match(TtlParser.DELIM);
+                this.match(TtlParser.DEF_STARTNAME);
                 this.state = 57;
                 this.match(TtlParser.ID);
                 this.state = 58;
-                this.match(TtlParser.DEF_ENDNAME);
+                this.match(TtlParser.DELIM);
                 this.state = 59;
-                this.subtemplate();
+                this.match(TtlParser.ID);
                 this.state = 60;
+                this.match(TtlParser.DEF_ENDNAME);
+                this.state = 62;
+                _la = this._input.LA(1);
+                if (_la === TtlParser.DEF_OUTPUTONEND) {
+                    this.state = 61;
+                    this.default_chain();
+                }
+
+                this.state = 64;
+                this.subtemplate();
+                this.state = 65;
                 this.match(TtlParser.DEF_TYPE);
-                this.state = 61;
+                this.state = 66;
                 this.match(TtlParser.ID);
                 break;
 
             case 2:
                 this.enterOuterAlt(localctx, 2);
-                this.state = 63;
-                this.match(TtlParser.DEF_STARTNAME);
-                this.state = 64;
-                this.match(TtlParser.ID);
-                this.state = 65;
-                this.match(TtlParser.DELIM);
-                this.state = 66;
-                this.match(TtlParser.ID);
-                this.state = 67;
-                this.match(TtlParser.DEF_ENDNAME);
                 this.state = 68;
+                this.match(TtlParser.DEF_STARTNAME);
+                this.state = 69;
+                this.match(TtlParser.ID);
+                this.state = 70;
+                this.match(TtlParser.DELIM);
+                this.state = 71;
+                this.match(TtlParser.ID);
+                this.state = 72;
+                this.match(TtlParser.DEF_ENDNAME);
+                this.state = 74;
+                _la = this._input.LA(1);
+                if (_la === TtlParser.DEF_OUTPUTONEND) {
+                    this.state = 73;
+                    this.default_chain();
+                }
+
+                this.state = 76;
                 this.subtemplate();
                 break;
 
@@ -720,6 +748,10 @@ define(function(require, exports, module) {
         return this.getToken(TtlParser.DEF_TYPE, 0);
     };
 
+    Simple_defContext.prototype.default_chain = function() {
+        return this.getTypedRuleContext(Default_chainContext, 0);
+    };
+
     Simple_defContext.prototype.enterRule = function(listener) {
         if (listener instanceof TtlParserListener) {
             listener.enterSimple_def(this);
@@ -739,39 +771,117 @@ define(function(require, exports, module) {
 
         var localctx = new Simple_defContext(this, this._ctx, this.state);
         this.enterRule(localctx, 12, TtlParser.RULE_simple_def);
+        var _la = 0; // Token type
         try {
-            this.state = 82;
-            var la_ = this._interp.adaptivePredict(this._input, 5, this._ctx);
+            this.state = 96;
+            var la_ = this._interp.adaptivePredict(this._input, 9, this._ctx);
             switch (la_) {
             case 1:
                 this.enterOuterAlt(localctx, 1);
-                this.state = 71;
+                this.state = 79;
                 this.match(TtlParser.DEF_STARTNAME);
-                this.state = 72;
+                this.state = 80;
                 this.match(TtlParser.ID);
-                this.state = 73;
+                this.state = 81;
                 this.match(TtlParser.DEF_ENDNAME);
-                this.state = 74;
+                this.state = 83;
+                _la = this._input.LA(1);
+                if (_la === TtlParser.DEF_OUTPUTONEND) {
+                    this.state = 82;
+                    this.default_chain();
+                }
+
+                this.state = 85;
                 this.subtemplate();
-                this.state = 75;
+                this.state = 86;
                 this.match(TtlParser.DEF_TYPE);
-                this.state = 76;
+                this.state = 87;
                 this.match(TtlParser.ID);
                 break;
 
             case 2:
                 this.enterOuterAlt(localctx, 2);
-                this.state = 78;
+                this.state = 89;
                 this.match(TtlParser.DEF_STARTNAME);
-                this.state = 79;
+                this.state = 90;
                 this.match(TtlParser.ID);
-                this.state = 80;
+                this.state = 91;
                 this.match(TtlParser.DEF_ENDNAME);
-                this.state = 81;
+                this.state = 93;
+                _la = this._input.LA(1);
+                if (_la === TtlParser.DEF_OUTPUTONEND) {
+                    this.state = 92;
+                    this.default_chain();
+                }
+
+                this.state = 95;
                 this.subtemplate();
                 break;
 
             }
+        } catch (re) {
+            if (re instanceof antlr4.error.RecognitionException) {
+                localctx.exception = re;
+                this._errHandler.reportError(this, re);
+                this._errHandler.recover(this, re);
+            } else {
+                throw re;
+            }
+        } finally {
+            this.exitRule();
+        }
+        return localctx;
+    };
+
+    function Default_chainContext(parser, parent, invokingState) {
+        if (parent === undefined) {
+            parent = null;
+        }
+        if (invokingState === undefined || invokingState === null) {
+            invokingState = -1;
+        }
+        antlr4.ParserRuleContext.call(this, parent, invokingState);
+        this.parser = parser;
+        this.ruleIndex = TtlParser.RULE_default_chain;
+        return this;
+    }
+
+    Default_chainContext.prototype = Object.create(antlr4.ParserRuleContext.prototype);
+    Default_chainContext.prototype.constructor = Default_chainContext;
+
+    Default_chainContext.prototype.DEF_OUTPUTONEND = function() {
+        return this.getToken(TtlParser.DEF_OUTPUTONEND, 0);
+    };
+
+    Default_chainContext.prototype.chain = function() {
+        return this.getTypedRuleContext(ChainContext, 0);
+    };
+
+    Default_chainContext.prototype.enterRule = function(listener) {
+        if (listener instanceof TtlParserListener) {
+            listener.enterDefault_chain(this);
+        }
+    };
+
+    Default_chainContext.prototype.exitRule = function(listener) {
+        if (listener instanceof TtlParserListener) {
+            listener.exitDefault_chain(this);
+        }
+    };
+
+
+    TtlParser.Default_chainContext = Default_chainContext;
+
+    TtlParser.prototype.default_chain = function() {
+
+        var localctx = new Default_chainContext(this, this._ctx, this.state);
+        this.enterRule(localctx, 14, TtlParser.RULE_default_chain);
+        try {
+            this.enterOuterAlt(localctx, 1);
+            this.state = 98;
+            this.match(TtlParser.DEF_OUTPUTONEND);
+            this.state = 99;
+            this.chain();
         } catch (re) {
             if (re instanceof antlr4.error.RecognitionException) {
                 localctx.exception = re;
@@ -836,22 +946,22 @@ define(function(require, exports, module) {
     TtlParser.prototype.outblock = function() {
 
         var localctx = new OutblockContext(this, this._ctx, this.state);
-        this.enterRule(localctx, 14, TtlParser.RULE_outblock);
+        this.enterRule(localctx, 16, TtlParser.RULE_outblock);
         var _la = 0; // Token type
         try {
-            this.state = 96;
-            var la_ = this._interp.adaptivePredict(this._input, 8, this._ctx);
+            this.state = 113;
+            var la_ = this._interp.adaptivePredict(this._input, 12, this._ctx);
             switch (la_) {
             case 1:
                 this.enterOuterAlt(localctx, 1);
-                this.state = 84;
+                this.state = 101;
                 this.match(TtlParser.OUT);
-                this.state = 85;
+                this.state = 102;
                 this.chain();
-                this.state = 87;
+                this.state = 104;
                 _la = this._input.LA(1);
                 if (_la === TtlParser.SUB_START) {
-                    this.state = 86;
+                    this.state = 103;
                     this.subtemplate();
                 }
 
@@ -859,18 +969,18 @@ define(function(require, exports, module) {
 
             case 2:
                 this.enterOuterAlt(localctx, 2);
-                this.state = 89;
+                this.state = 106;
                 this.match(TtlParser.OUT);
-                this.state = 90;
+                this.state = 107;
                 this.chain();
-                this.state = 92;
+                this.state = 109;
                 _la = this._input.LA(1);
                 if (_la === TtlParser.SUB_START) {
-                    this.state = 91;
+                    this.state = 108;
                     this.subtemplate();
                 }
 
-                this.state = 94;
+                this.state = 111;
                 this.match(TtlParser.LINE_TERMINATE);
                 break;
 
@@ -946,21 +1056,21 @@ define(function(require, exports, module) {
     TtlParser.prototype.chain = function() {
 
         var localctx = new ChainContext(this, this._ctx, this.state);
-        this.enterRule(localctx, 16, TtlParser.RULE_chain);
+        this.enterRule(localctx, 18, TtlParser.RULE_chain);
         var _la = 0; // Token type
         try {
             this.enterOuterAlt(localctx, 1);
-            this.state = 98;
+            this.state = 115;
             this.call();
-            this.state = 103;
+            this.state = 120;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
             while (_la === TtlParser.DELIM) {
-                this.state = 99;
+                this.state = 116;
                 this.match(TtlParser.DELIM);
-                this.state = 100;
+                this.state = 117;
                 this.call();
-                this.state = 105;
+                this.state = 122;
                 this._errHandler.sync(this);
                 _la = this._input.LA(1);
             }
@@ -1020,18 +1130,18 @@ define(function(require, exports, module) {
     TtlParser.prototype.call = function() {
 
         var localctx = new CallContext(this, this._ctx, this.state);
-        this.enterRule(localctx, 18, TtlParser.RULE_call);
+        this.enterRule(localctx, 20, TtlParser.RULE_call);
         try {
-            this.state = 108;
+            this.state = 125;
             switch (this._input.LA(1)) {
             case TtlParser.ID:
                 this.enterOuterAlt(localctx, 1);
-                this.state = 106;
+                this.state = 123;
                 this.named_call();
                 break;
             case TtlParser.OUT_PARAMSTART:
                 this.enterOuterAlt(localctx, 2);
-                this.state = 107;
+                this.state = 124;
                 this.unnamed_call();
                 break;
             default:
@@ -1117,52 +1227,52 @@ define(function(require, exports, module) {
     TtlParser.prototype.named_call = function() {
 
         var localctx = new Named_callContext(this, this._ctx, this.state);
-        this.enterRule(localctx, 20, TtlParser.RULE_named_call);
+        this.enterRule(localctx, 22, TtlParser.RULE_named_call);
         var _la = 0; // Token type
         try {
-            this.state = 127;
-            var la_ = this._interp.adaptivePredict(this._input, 12, this._ctx);
+            this.state = 144;
+            var la_ = this._interp.adaptivePredict(this._input, 16, this._ctx);
             switch (la_) {
             case 1:
                 this.enterOuterAlt(localctx, 1);
-                this.state = 110;
+                this.state = 127;
                 this.match(TtlParser.ID);
-                this.state = 111;
+                this.state = 128;
                 this.match(TtlParser.OUT_PARAMSTART);
-                this.state = 113;
+                this.state = 130;
                 _la = this._input.LA(1);
                 if (_la === TtlParser.ID) {
-                    this.state = 112;
+                    this.state = 129;
                     this.match(TtlParser.ID);
                 }
 
-                this.state = 115;
+                this.state = 132;
                 this.match(TtlParser.OUT_PARAMEND);
                 break;
 
             case 2:
                 this.enterOuterAlt(localctx, 2);
-                this.state = 116;
+                this.state = 133;
                 this.match(TtlParser.ID);
-                this.state = 117;
+                this.state = 134;
                 this.match(TtlParser.OUT_PARAMSTART);
-                this.state = 118;
+                this.state = 135;
                 this.chain();
-                this.state = 119;
+                this.state = 136;
                 this.match(TtlParser.OUT_PARAMEND);
                 break;
 
             case 3:
                 this.enterOuterAlt(localctx, 3);
-                this.state = 121;
+                this.state = 138;
                 this.match(TtlParser.ID);
-                this.state = 122;
+                this.state = 139;
                 this.match(TtlParser.OUT_PARAMSTART);
-                this.state = 123;
+                this.state = 140;
                 this.match(TtlParser.CSHARP_START);
-                this.state = 124;
+                this.state = 141;
                 this.csharp_expression();
-                this.state = 125;
+                this.state = 142;
                 this.match(TtlParser.OUT_PARAMEND);
                 break;
 
@@ -1239,46 +1349,46 @@ define(function(require, exports, module) {
     TtlParser.prototype.unnamed_call = function() {
 
         var localctx = new Unnamed_callContext(this, this._ctx, this.state);
-        this.enterRule(localctx, 22, TtlParser.RULE_unnamed_call);
+        this.enterRule(localctx, 24, TtlParser.RULE_unnamed_call);
         var _la = 0; // Token type
         try {
-            this.state = 143;
-            var la_ = this._interp.adaptivePredict(this._input, 14, this._ctx);
+            this.state = 160;
+            var la_ = this._interp.adaptivePredict(this._input, 18, this._ctx);
             switch (la_) {
             case 1:
                 this.enterOuterAlt(localctx, 1);
-                this.state = 129;
+                this.state = 146;
                 this.match(TtlParser.OUT_PARAMSTART);
-                this.state = 131;
+                this.state = 148;
                 _la = this._input.LA(1);
                 if (_la === TtlParser.ID) {
-                    this.state = 130;
+                    this.state = 147;
                     this.match(TtlParser.ID);
                 }
 
-                this.state = 133;
+                this.state = 150;
                 this.match(TtlParser.OUT_PARAMEND);
                 break;
 
             case 2:
                 this.enterOuterAlt(localctx, 2);
-                this.state = 134;
+                this.state = 151;
                 this.match(TtlParser.OUT_PARAMSTART);
-                this.state = 135;
+                this.state = 152;
                 this.chain();
-                this.state = 136;
+                this.state = 153;
                 this.match(TtlParser.OUT_PARAMEND);
                 break;
 
             case 3:
                 this.enterOuterAlt(localctx, 3);
-                this.state = 138;
+                this.state = 155;
                 this.match(TtlParser.OUT_PARAMSTART);
-                this.state = 139;
+                this.state = 156;
                 this.match(TtlParser.CSHARP_START);
-                this.state = 140;
+                this.state = 157;
                 this.csharp_expression();
-                this.state = 141;
+                this.state = 158;
                 this.match(TtlParser.OUT_PARAMEND);
                 break;
 
@@ -1343,20 +1453,20 @@ define(function(require, exports, module) {
     TtlParser.prototype.csharp_expression = function() {
 
         var localctx = new Csharp_expressionContext(this, this._ctx, this.state);
-        this.enterRule(localctx, 24, TtlParser.RULE_csharp_expression);
+        this.enterRule(localctx, 26, TtlParser.RULE_csharp_expression);
         var _la = 0; // Token type
         try {
             this.enterOuterAlt(localctx, 1);
-            this.state = 148;
+            this.state = 163;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
-            while (_la === TtlParser.CSHARP_TOKEN) {
-                this.state = 145;
+            do {
+                this.state = 162;
                 this.match(TtlParser.CSHARP_TOKEN);
-                this.state = 150;
+                this.state = 165;
                 this._errHandler.sync(this);
                 _la = this._input.LA(1);
-            }
+            } while (_la === TtlParser.CSHARP_TOKEN);
         } catch (re) {
             if (re instanceof antlr4.error.RecognitionException) {
                 localctx.exception = re;
@@ -1417,14 +1527,14 @@ define(function(require, exports, module) {
     TtlParser.prototype.subtemplate = function() {
 
         var localctx = new SubtemplateContext(this, this._ctx, this.state);
-        this.enterRule(localctx, 26, TtlParser.RULE_subtemplate);
+        this.enterRule(localctx, 28, TtlParser.RULE_subtemplate);
         try {
             this.enterOuterAlt(localctx, 1);
-            this.state = 151;
+            this.state = 167;
             this.match(TtlParser.SUB_START);
-            this.state = 152;
+            this.state = 168;
             this.ttl();
-            this.state = 153;
+            this.state = 169;
             this.match(TtlParser.SUB_CLOSE);
         } catch (re) {
             if (re instanceof antlr4.error.RecognitionException) {
@@ -1442,4 +1552,5 @@ define(function(require, exports, module) {
 
 
     exports.TtlParser = TtlParser;
+
 });

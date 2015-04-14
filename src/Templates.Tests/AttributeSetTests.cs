@@ -8,7 +8,7 @@ using System.Security;
 using Templates.Helpers;
 using Xunit;
 
-namespace TemplatesXTests {
+namespace Templates.Tests {
     public class AttributeSetTest {
 
         public void GetAttributeTestHelper<TAttribute, TType, TNotExists> ()

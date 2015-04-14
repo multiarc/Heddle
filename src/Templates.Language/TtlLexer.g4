@@ -6,7 +6,7 @@ lexer grammar TtlLexer;
 
 import CSharp;
 
-tokens { TEXT, ID, OUT, SUB_START, SUB_CLOSE, CSHARP_END, CSHARP_TOKEN, CSHARP_START, DEF_STARTNAME, DEF_ENDNAME, DEF_TYPE, DELIM, DEF_START, DEF_CLOSE, COMMENT, RAW, OUT_PARAMSTART, OUT_PARAMEND, LINE_TERMINATE }
+tokens { TEXT, ID, OUT, SUB_START, SUB_CLOSE, CSHARP_END, CSHARP_TOKEN, CSHARP_START, DEF_STARTNAME, DEF_ENDNAME, DEF_TYPE, DELIM, DEF_START, DEF_CLOSE, COMMENT, RAW, OUT_PARAMSTART, OUT_PARAMEND, LINE_TERMINATE, DEF_OUTPUTONEND }
 
 channels { COMMENT_CHANNEL }
 
@@ -23,6 +23,7 @@ fragment DEF_T: '::';
 fragment EXT_DELIM: ':';
 fragment DEF_STNAME: '<';
 fragment DEF_CLNAME: '>';
+fragment DEF_MAKEOUT: '->';
 fragment LINE_TERM: ';';
 fragment WS: WHITESPACE+;
 fragment COMMENT_BLOCK: '@*' .*? '*@';
@@ -46,7 +47,7 @@ mode DEF;
 
 
 DEF_COMMENT: 
-	COMMENT_BLOCK -> skip;
+	COMMENT_BLOCK -> type(COMMENT), skip;
 
 DEF_WS: WS+ -> skip;
 
@@ -56,6 +57,9 @@ DEF_DEFCLOSE:
 DEF_DEFSTARTNAME: DEF_STNAME -> type(DEF_STARTNAME);
 DEF_DEFENDNAME: DEF_CLNAME -> type(DEF_ENDNAME);
 
+DEF_DEFOUTPUTONEND:
+	DEF_MAKEOUT -> type(DEF_OUTPUTONEND), pushMode(DEF_OUT);
+
 DEF_SUBSTART:
 	SUB_ST -> type(SUB_START), pushMode(SUB);
 
@@ -63,8 +67,27 @@ DEF_DEFTYPE: DEF_T -> type(DEF_TYPE);
 DEF_DELIM: EXT_DELIM -> type(DELIM);
 DEF_ID: ID_TOKEN -> type(ID);
 
+mode DEF_OUT;
+
+
+DEF_OUT_COMMENT: 
+	COMMENT_BLOCK -> skip;
+
+DEF_OUT_WS: WS+ -> skip;
+
+DEF_OUT_OUTPARAMSTART:
+	PARA_ST -> type(OUT_PARAMSTART), pushMode(CALL);
+
+DEF_OUT_DELIM: 
+	EXT_DELIM -> type(DELIM);
+
+DEF_OUT_SUBSTART: 
+	SUB_ST -> type(SUB_START), popMode, pushMode(SUB);
+
+DEF_OUT_ID: ID_TOKEN -> type(ID);
 
 mode SUB;
+
 
 SUB_COMMENT:
 	COMMENT_BLOCK -> type(COMMENT);
@@ -88,12 +111,11 @@ SUB_TEXT:
 	.+? -> type(TEXT);
 
 
-
 mode OUT_MODE;
 
 
 OUT_COMMENT: 
-	COMMENT_BLOCK -> skip;
+	COMMENT_BLOCK -> type(COMMENT);
 
 OUT_OUTPARAMSTART:
 	PARA_ST -> type(OUT_PARAMSTART), pushMode(CALL);
@@ -116,7 +138,7 @@ OUT_DEF_START: DEF_ST -> type(DEF_START), popMode, pushMode(DEF);
 OUT_OUT_START: OUT_ST -> type(OUT), popMode, pushMode(OUT_MODE);
 OUT_SUBCLOSE_TERMINATED: SUB_CL LINE_TERM WS* -> type(TEXT), popMode;
 OUT_SUBCLOSE: SUB_CL -> type(TEXT), popMode;
-OUT_OTHER: .+? -> type(TEXT), popMode;
+OUT_OTHER: . -> type(TEXT), popMode;
 
 
 mode OUT_SUB;
@@ -142,7 +164,7 @@ OUT_SUBWS: WS+ -> type(OUT_WS);
 
 OUT_SUBRAW: RAW_BLOCK -> type(RAW), popMode;
 OUT_SUBDEFSTART: DEF_ST -> type(DEF_START), popMode, pushMode(DEF);
-OUT_SUBOUTSTART: OUT_ST -> type(OUT), popMode, pushMode(OUT);
+OUT_SUBOUTSTART: OUT_ST -> type(OUT), popMode, pushMode(OUT_SUB);
 OUT_SUBSUBCLOSE_TERMINATED: SUB_CL LINE_TERM WS* -> type(SUB_CLOSE), popMode, popMode;
 OUT_SUBSUBCLOSE: SUB_CL -> type(SUB_CLOSE), popMode, popMode;
 OUT_SUBOTHER: . -> type(TEXT), popMode;
@@ -150,14 +172,14 @@ OUT_SUBOTHER: . -> type(TEXT), popMode;
 
 mode CALL;
 
-CSHARP_START:
-	OUT_ST -> pushMode(CS);
-
 CALL_COMMENT:
 	COMMENT_BLOCK -> skip;
 
-OUT_PARAMEND: 
-	PARA_CL -> popMode;
+CSHARP_START:
+	OUT_ST -> pushMode(CS);
+
+CALL_OUT_PARAMEND: 
+	PARA_CL -> type(OUT_PARAMEND), popMode;
 
 CALL_OUT_PARAMSTART: 
 	PARA_ST -> type(OUT_PARAMSTART), pushMode(CALL);

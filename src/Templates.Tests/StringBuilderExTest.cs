@@ -2,7 +2,7 @@
 using Templates.Strings;
 using Xunit;
 
-namespace TemplatesXTests {
+namespace Templates.Tests {
     public class StringBuilderExTest
     {
         private static readonly Random Rnd = new Random(DateTime.Now.Millisecond);
