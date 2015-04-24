@@ -4,6 +4,7 @@ using Microsoft.Framework.Runtime;
 using System;
 using System.Collections.Generic;
 using Templates.Exceptions;
+using Templates.Strings.Core;
 
 namespace Templates
 {
@@ -59,7 +60,7 @@ namespace Templates
         public ITtlTemplate GetOrCreateTemplate(string masterTemplate, string template, DateTime dateUpdated, DateTime masterDateUpdated, int idMaster, int idContent) 
             { 
             ITtlTemplate result;
-            var searchValue = new IdPair(idMaster, idContent);
+            var searchValue = new IdPair(idMaster, template.IsNullOrEmpty() ? 0 : idContent);
             lock(_lockObject) {
                 if (_cache.TryGetValue(searchValue, out result)) {
                     if (result.DateCreated != dateUpdated || result.MasterDateCreated != masterDateUpdated)

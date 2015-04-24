@@ -25,7 +25,7 @@ fragment DEF_STNAME: '<';
 fragment DEF_CLNAME: '>';
 fragment DEF_MAKEOUT: '->';
 fragment LINE_TERM: ';';
-fragment WS: WHITESPACE+;
+fragment WS: WHITESPACE;
 fragment COMMENT_BLOCK: '@*' .*? '*@';
 fragment RAW_BLOCK : '@{' .*? '}@';
 
