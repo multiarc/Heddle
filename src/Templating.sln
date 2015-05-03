@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.22609.0
+VisualStudioVersion = 14.0.22823.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{DCB9F91C-846A-4B80-97CF-BF89023F8965}"
 EndProject
@@ -21,18 +21,18 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates.Editor", "..\inte
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Templates.Native", "Templates.Native\Templates.Native.vcxproj", "{50CA3F77-1F20-4BDD-9A6F-26D8FAE7467B}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Templates", "Templates\Templates.kproj", "{F3F3EA3A-393B-4355-B476-B3C7C7CA8C5F}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Templates", "Templates\Templates.xproj", "{F3F3EA3A-393B-4355-B476-B3C7C7CA8C5F}"
 	ProjectSection(ProjectDependencies) = postProject
 		{F408F08F-ABF8-43BF-971C-558B1CAAFA1C} = {F408F08F-ABF8-43BF-971C-558B1CAAFA1C}
 	EndProjectSection
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Templates.Language", "Templates.Language\Templates.Language.kproj", "{F408F08F-ABF8-43BF-971C-558B1CAAFA1C}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Templates.Language", "Templates.Language\Templates.Language.xproj", "{F408F08F-ABF8-43BF-971C-558B1CAAFA1C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "vnext", "vnext", "{C2D20712-7ED1-48B6-87C8-AD09DBDC561D}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Templates.Tests", "Templates.Tests\Templates.Tests.kproj", "{E1F6FDB6-8FC3-4BF3-BB32-3869FAD49BF8}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Templates.Tests", "Templates.Tests\Templates.Tests.xproj", "{E1F6FDB6-8FC3-4BF3-BB32-3869FAD49BF8}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Templates.Performance", "..\performance\PerfTesting\Templates.Performance.kproj", "{43114037-D664-4A46-92BC-DE60BBD2DBEE}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Templates.Performance", "..\performance\PerfTesting\Templates.Performance.xproj", "{43114037-D664-4A46-92BC-DE60BBD2DBEE}"
 	ProjectSection(ProjectDependencies) = postProject
 		{F3F3EA3A-393B-4355-B476-B3C7C7CA8C5F} = {F3F3EA3A-393B-4355-B476-B3C7C7CA8C5F}
 	EndProjectSection

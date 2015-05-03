@@ -1,7 +1,7 @@
 ﻿{
     "version": "1.0.0-*",
     "dependencies": {
-        "Templates": "2.2.0"
+        "Templates": "2.2.2"
     },
     "commands": {
         "test": "xunit.runner.aspnet"
