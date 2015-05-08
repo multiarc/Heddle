@@ -99,3 +99,4 @@ UpgradeLog*.XML
 
 /src/StudExpress.Web/assets/
 project.lock.json
+/.vs
