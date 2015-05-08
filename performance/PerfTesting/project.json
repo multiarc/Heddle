@@ -3,7 +3,7 @@
     "exclude": [ "../../performance/PerfTesting/Program.cs", "bin" ],
     "version": "1.0.0-*",
     "dependencies": {
-        "Templates": "2.2.2"
+        "Templates": "2.2.3"
     },
     "configurations": { "release": { "compilationOptions": { "define": [ "TRACE" ] }, "optimize": true }, "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } } },
     "commands": {
