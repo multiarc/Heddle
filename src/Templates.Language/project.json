@@ -1,10 +1,10 @@
 ﻿{
-    "version": "1.1.2",
+    "version": "1.1.2-beta4",
     "authors": [ "Aliaksandr Kukrash" ],
     "description": "Template engine language parsers support package, basing on ANTLR4.5 C# target",
     "exclude": [ "bin" ],
     "dependencies": {
-        "Antlr4.Runtime": "4.5.0-*"
+        "Antlr4.Runtime": "4.5.0-beta4"
     },
     "scripts": {
         "prebuild": "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.5-complete.jar\" -Dlanguage=CSharp \"%project:Directory%\\TtlLexer.g4\" \"%project:Directory%\\TtlParser.g4\" -o \"%project:Directory%\\generated\" -lib \"%project:Directory%\\generated\" -package Templates.Language",
