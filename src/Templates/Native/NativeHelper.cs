@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 #if DNX451 || DNXCORE50
+using Microsoft.Framework.Runtime.Compilation;
 using Microsoft.CodeAnalysis;
 using Microsoft.Framework.Runtime;
 using Microsoft.Framework.Runtime.Infrastructure;
