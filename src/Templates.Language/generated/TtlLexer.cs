@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-// Generated from G:\Work\Templater\src\Templates.Language\TtlLexer.g4 by ANTLR 4.5
+// Generated from D:\Work\Templater\src\Templates.Language\TtlLexer.g4 by ANTLR 4.5
 
 // Unreachable code detected
 #pragma warning disable 0162

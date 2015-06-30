@@ -205,7 +205,7 @@ namespace Templates.Runtime {
 #if DNXCORE50 || DNX451
                         NativeHelper.GetMetadataReferences(),
 #else
-                        DependentAssemblies.Select(MetadataReference.CreateFromAssembly),
+                        DependentAssemblies.Select(a => MetadataReference.CreateFromFile(a.Location)),
 #endif
                         new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
                     var diagnostics = compilation.GetDiagnostics();
@@ -307,15 +307,15 @@ namespace Templates.Runtime {
 #else
             HashSet<MetadataReference> assemblySet = new HashSet<MetadataReference>
             {
-                MetadataReference.CreateFromAssembly(typeof (object).GetTypeInfo().Assembly),
-                MetadataReference.CreateFromAssembly(ModelType.Type.GetTypeInfo().Assembly)
+                MetadataReference.CreateFromFile(typeof (object).GetTypeInfo().Assembly.Location),
+                MetadataReference.CreateFromFile(ModelType.Type.GetTypeInfo().Assembly.Location)
             };
             if (ModelType.IsDynamic) 
-                MetadataReference.CreateFromAssembly(typeof(CallSite<>).GetTypeInfo().Assembly);
-            assemblySet.Add(MetadataReference.CreateFromAssembly(typeof(Enumerable).GetTypeInfo().Assembly));
+                MetadataReference.CreateFromFile(typeof(CallSite<>).GetTypeInfo().Assembly.Location);
+            assemblySet.Add(MetadataReference.CreateFromFile(typeof(Enumerable).GetTypeInfo().Assembly.Location));
             if (expressionOptions.ChainedType.IsDynamic)
-                MetadataReference.CreateFromAssembly(typeof(CallSite<>).GetTypeInfo().Assembly);
-            assemblySet.Add(MetadataReference.CreateFromAssembly(expressionOptions.ChainedType.Type.GetTypeInfo().Assembly));
+                MetadataReference.CreateFromFile(typeof(CallSite<>).GetTypeInfo().Assembly.Location);
+            assemblySet.Add(MetadataReference.CreateFromFile(expressionOptions.ChainedType.Type.GetTypeInfo().Assembly.Location));
 #endif
             var compilation = CSharpCompilation.Create(null, new[] { tree }, assemblySet);
             var diagnostics = compilation.GetDiagnostics();
@@ -324,7 +324,7 @@ namespace Templates.Runtime {
                 throw new TemplateCompileException(FormatErrors(diagnostics));
             }
             var syntax = tree.GetRoot().DescendantNodes().OfType<ReturnStatementSyntax>().First().Expression;
-            var model = compilation.GetSemanticModel(tree);
+            var model = compilation.GetSemanticModel(tree, false);
             var typeInfo = model.GetTypeInfo(syntax);
             if (typeInfo.Type.IsAnonymousType || typeInfo.Type.TypeKind == TypeKind.Dynamic)
             {
