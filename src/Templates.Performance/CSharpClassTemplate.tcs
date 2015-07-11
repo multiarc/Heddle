@@ -17,10 +17,14 @@
 @using(){{Templates.Runtime}};
 @model(){{CompileContext}};
 using System.Runtime.CompilerServices;
+using System.Reflection;
 @list(Namespaces) {{
 	using @();;
 }}
-[assembly: InternalsVisibleTo("Templates")]
+@list(InternalsVisibleTo) {{
+	[assembly: InternalsVisibleTo("@()")]
+}}
+[assembly: AssemblyKeyName("Templates.KeyContainer")]
 namespace Templates.Runtime {
 	@class()
 }

@@ -1,12 +1,12 @@
-﻿@using()[Templates.Runtime];
-@model()[ExpressionOptions];
-@list(Namespaces) [
+﻿@using(){{Templates.Runtime}};
+@model(){{ExpressionOptions}};
+@list(Namespaces) {{
 	using @();;
-]
+}}
 
 namespace Templates.Runtime {
 	public static class CSharpExpression {
-		private static void Main (string@:[]:@ args) {}
+		private static void Main (string[] args) {}
 
 		public static object PreProcessData(@(ModelType) model, @(ChainedType) chained)
 		{

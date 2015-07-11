@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
+using System.Dynamic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -9,6 +10,8 @@ using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CSharp.RuntimeBinder;
+using Microsoft.Framework.Runtime;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
@@ -179,6 +182,45 @@ namespace Templates.Runtime {
             set;
         }
 
+        private static string FormatAssemblyName(AssemblyName assemblyName, bool fullPublic = true)
+        {
+            if (!fullPublic)
+                return assemblyName.FullName;
+            var publicKey = assemblyName.GetPublicKey();
+            return publicKey.Length > 0
+                ? $"{assemblyName.Name},PublicKey={assemblyName.GetPublicKey().ToHexString()}"
+                : assemblyName.Name;
+        }
+
+        public IEnumerable<string> InternalsVisibleTo
+        {
+            get
+            {
+                var currentAssemblyName = GetType().GetTypeInfo().Assembly.GetName();
+                yield return FormatAssemblyName(currentAssemblyName);
+#if DNXCORE50
+                var systemAssemblyName = NativeHelper.GetAssemblyName("System.Dynamic.Runtime");
+                if (systemAssemblyName != null)
+                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
+                systemAssemblyName = NativeHelper.GetAssemblyName("System.Core");
+                if (systemAssemblyName != null)
+                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
+                systemAssemblyName = NativeHelper.GetAssemblyName("System.Runtime");
+                if (systemAssemblyName != null)
+                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
+                systemAssemblyName = NativeHelper.GetAssemblyName("System");
+                if (systemAssemblyName != null)
+                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
+                systemAssemblyName = typeof(object).GetTypeInfo().Assembly.GetName();
+                if (systemAssemblyName != null)
+                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
+                systemAssemblyName = NativeHelper.GetAssemblyName("Microsoft.CSharp");
+                if (systemAssemblyName != null)
+                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
+#endif
+            }
+        }
+
         public IReadOnlyCollection<string> Namespaces => new ReadOnlyCollection<string>(_namespaces);
 
         /// <summary>
@@ -201,13 +243,14 @@ namespace Templates.Runtime {
                     if (CompiledAssembly != null)
                         return;
                     var tree = CSharpSyntaxTree.ParseText(code);
-                    var compilation = CSharpCompilation.Create(ModelType.ToString() + "_" + ClassGuid.ToString("N"), new[] {tree},
+                    var compilation = CSharpCompilation.Create(ModelType + "_" + ClassGuid.ToString("N"), new[] {tree},
 #if DNXCORE50 || DNX451
                         NativeHelper.GetMetadataReferences(),
 #else
                         DependentAssemblies.Select(a => MetadataReference.CreateFromFile(a.Location)),
 #endif
-                        new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+                        new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithCryptoPublicKey(
+                            GetType().GetTypeInfo().Assembly.GetName().GetPublicKey().ToImmutableArray()).WithDelaySign(false));
                     var diagnostics = compilation.GetDiagnostics();
                     if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
                     {
@@ -223,15 +266,13 @@ namespace Templates.Runtime {
 #endif
                     GeneratedAssemblyCache.AddToCache(code, CompiledAssembly);
                     var classType =
-                        CompiledAssembly.GetType(
-                            string.Format("Templates.Runtime.CSE_{0}",
-                                ClassGuid.ToString("N")));
+                        CompiledAssembly.GetType($"Templates.Runtime.CSE_{ClassGuid.ToString("N")}");
                     foreach (var expressionCompilation in Methods)
                     {
                         expressionCompilation.RuntimeCallParameter.ParameterImplementation =
                             GatesCache.CreateCompiledDelegate(
-                                classType.GetMethod(string.Format("ProcessData_{0}{1}",
-                                    expressionCompilation.ExtensionName, expressionCompilation.MethodNumber),
+                                classType.GetMethod(
+                                    $"ProcessData_{expressionCompilation.ExtensionName}{expressionCompilation.MethodNumber}",
                                     BindingFlags.Public | BindingFlags.Static), expressionCompilation.ModelType.Type,
                                 expressionCompilation.ChainedType.Type);
                     }
@@ -277,7 +318,7 @@ namespace Templates.Runtime {
             {
                 throw new ArgumentException("Expression cannot be null or empty");
             }
-            RuntimeCallParameter parameter = new RuntimeCallParameter(null, null);
+            RuntimeCallParameter parameter = new RuntimeCallParameter();
             Methods.Add(new ExpressionCompilation(expressionOptions)
             {
                 RuntimeCallParameter = parameter,

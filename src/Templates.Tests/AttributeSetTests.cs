@@ -59,28 +59,5 @@ namespace Templates.Tests {
         {
             GetIsPresentAttributeHelper<string>(typeof (ComVisibleAttribute), typeof (SecuritySafeCriticalAttribute));
         }
-
-        [Fact]
-        public void AllAttributesTest ()
-        {
-            Type type = typeof (string);
-            var target = new AttributeSet(type);
-            ReadOnlyCollection<Attribute> actual = target.AllAttributes;
-            Assert.True(actual.Count == 4);
-        }
-
-        [Fact]
-        public void ConstructDifferenceTest ()
-        {
-            Type type = typeof (string);
-            var target = new AttributeSet(type);
-            ReadOnlyCollection<Attribute> actual = target.AllAttributes;
-            Assert.True(actual.Count == 4);
-
-            target = new AttributeSet(type.GetTypeInfo().GetCustomAttributes(false));
-            ReadOnlyCollection<Attribute> expected = target.AllAttributes;
-            for (int i = 0; i < 0; i++)
-                Assert.Equal(expected[i], actual[i]);
-        }
     }
 }

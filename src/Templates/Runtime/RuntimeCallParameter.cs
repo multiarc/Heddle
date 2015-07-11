@@ -1,7 +1,8 @@
 ﻿using System;
+using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Security;
 using Templates.Data;
-
 namespace Templates.Runtime {
     internal class RuntimeCallParameter
     {
@@ -12,6 +13,7 @@ namespace Templates.Runtime {
 
         public RuntimeCallParameter(DynamicMethodGateDelegate getModelParameter = null, TemplateChain callParameterChain = null, CallSite<Func<CallSite, object, object>> dynamicModelParameter = null)
         {
+
             _dynamicModelParameter = dynamicModelParameter;
             if (callParameterChain != null)
             {

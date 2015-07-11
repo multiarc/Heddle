@@ -100,3 +100,5 @@ UpgradeLog*.XML
 /src/StudExpress.Web/assets/
 project.lock.json
 /.vs
+/src/Templates.Language/project - Copy.json
+/src/Templates/project - Copy.json

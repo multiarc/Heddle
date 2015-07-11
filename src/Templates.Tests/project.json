@@ -1,31 +1,19 @@
 ﻿{
   "version": "1.0.0-*",
   "dependencies": {
-    "Templates": "2.2.3-beta5"
+    "Templates": "2.2.3-beta6",
+    "xunit.runner.aspnet": "2.0.0-aspnet-*"
   },
   "commands": {
-    "test": "xunit.runner.dnx"
+    "test": "xunit.runner.aspnet"
   },
   "frameworks": {
-    "net45": {
-      "dependencies": {
-        "xunit": "2.1.0-*"
-      }
-    },
     "dnx451": {
-      "compilationOptions": { "define": [ "DNX451" ] },
       "dependencies": {
-        "xunit.runner.dnx": "2.1.0-*",
-        "xunit.core": "2.1.0-*",
-        "xunit.assert": "2.1.0-*"
       }
     },
     "dnxcore50": {
-      "compilationOptions": { "define": [ "DNXCORE50" ] },
       "dependencies": {
-        "xunit.runner.dnx": "2.1.0-*",
-        "xunit.core": "2.1.0-*",
-        "xunit.assert": "2.1.0-*",
         "System.Runtime": "4.0.20-*",
         "System.Reflection": "4.0.10-*",
         "System.Linq": "4.0.0-*",

@@ -118,12 +118,7 @@ namespace Templates.Helpers {
                 return modelType;
             modelType = Type.GetType(typeName, false);
             if (modelType == null) {
-#if !DNXCORE50
-                Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-#endif
-#if DNXCORE50
                 Assembly[] assemblies = NativeHelper.GetAssemblies();
-#endif
                 foreach (Assembly assembly in assemblies) {
                     modelType = assembly.GetType(typeName);
                     if (modelType != null)

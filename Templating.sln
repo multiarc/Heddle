@@ -26,7 +26,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "vnext", "vnext", "{C2D20712
 EndProject
 Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Templates.Tests", "src\Templates.Tests\Templates.Tests.xproj", "{E1F6FDB6-8FC3-4BF3-BB32-3869FAD49BF8}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Templates.Performance", "performance\PerfTesting\Templates.Performance.xproj", "{43114037-D664-4A46-92BC-DE60BBD2DBEE}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Templates.Performance", "src\Templates.Performance\Templates.Performance.xproj", "{43114037-D664-4A46-92BC-DE60BBD2DBEE}"
 	ProjectSection(ProjectDependencies) = postProject
 		{F3F3EA3A-393B-4355-B476-B3C7C7CA8C5F} = {F3F3EA3A-393B-4355-B476-B3C7C7CA8C5F}
 	EndProjectSection

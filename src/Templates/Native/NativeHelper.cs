@@ -355,7 +355,20 @@ namespace Templates.Native {
         internal static string AllocateString(int len) {
             return Allocator(len);
         }
+
+        internal static Assembly[] GetAssemblies() {
+            return AppDomain.CurrentDomain.GetAssemblies();
+        }
 #endif
+
+        internal static AssemblyName GetAssemblyName(string name)
+        {
+            return
+                GetAssemblies()
+                    .Select(assembly => assembly.GetName())
+                    .FirstOrDefault(assemblyName => assemblyName.Name == name);
+        }
+
 #if DNX451 || DNXCORE50
         private static MetadataReference ConvertMetadataReference(IMetadataReference metadataReference) {
             var roslynReference = metadataReference as IRoslynMetadataReference;
