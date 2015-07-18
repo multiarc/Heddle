@@ -1,8 +1,6 @@
 ﻿using System;
 using System.IO;
-using System.Threading.Tasks;
-using Microsoft.AspNet.Mvc;
-using Microsoft.AspNet.Mvc.Rendering;
+using System.Web.Mvc;
 
 namespace Templates.Mvc {
     public class TtlView : IView, IDisposable {
@@ -15,9 +13,16 @@ namespace Templates.Mvc {
 
         public TtlTemplate Template => _template;
 
+        public void Render(ViewContext viewContext, TextWriter writer)
+        {
+            if (viewContext == null) throw new ArgumentNullException("viewContext");
+            if (writer == null) throw new ArgumentNullException("writer");
+            writer.Write(_template.Generate(viewContext.ViewData.Model));
+        }
+
         public static explicit operator TtlView(TtlTemplate template)
         {
-            if (template == null) throw new ArgumentNullException(nameof(template));
+            if (template == null) throw new ArgumentNullException("template");
             return new TtlView(template);
         }
 
@@ -30,14 +35,5 @@ namespace Templates.Mvc {
         {
             _template?.Dispose();
         }
-
-        public async Task RenderAsync(ViewContext context)
-        {
-            if (context == null)
-                throw new ArgumentNullException(nameof(context));
-            await context.Writer.WriteAsync(_template.Generate(context.ViewData.Model));
-        }
-
-        public string Path => _template.Context.Options.FullPath;
     }
 }

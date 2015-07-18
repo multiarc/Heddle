@@ -1,10 +1,14 @@
 using System;
+using System.Threading.Tasks;
 
 namespace Templates
 {
-    public interface ITtlGlobalCache
+    public interface ITtlGlobalCache : IDisposable
+
     {
-        void RemoveFromCache(int idMaster, int idContent);
-        ITtlTemplate GetOrCreateTemplate(string masterTemplate, string template, DateTime dateUpdated, DateTime masterDateUpdated, int idMaster, int idContent);
+        Task RemoveFromCache(int idMaster, int idContent);
+
+        ITtlTemplate GetOrCreateTemplate(string masterTemplate, string template, DateTime dateUpdated,
+            DateTime masterDateUpdated, int idMaster, int idContent);
     }
 }

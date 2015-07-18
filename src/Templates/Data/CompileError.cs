@@ -3,7 +3,7 @@ using Templates.Strings.Core;
 
 namespace Templates.Data
 {
-    internal static class CompileError {
+    public static class CompileError {
         public static TtlCompileError ToError(this string errorMessage, BlockPosition position = default (BlockPosition)) {
             return new TtlCompileError
             {

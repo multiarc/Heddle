@@ -27,7 +27,7 @@ namespace Templates.Mvc.Extensions {
                 DocumentParser.Parse(document, parseContext, true);
             }
             if (parseContext.OutputChains.Length > outputCount)
-                throw new TemplateParseException("The Defenitions template cannot contain output items".ToError());
+                throw new TemplateParseException("The Defenitions template cannot contain output items");
             return null;
         }
     }

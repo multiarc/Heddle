@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Web;
-using System.Web.Mvc;
+using System.Reflection;
+using Microsoft.AspNet.Mvc;
+using Microsoft.AspNet.Mvc.Rendering;
+using Microsoft.Framework.Runtime;
+using Microsoft.Framework.Runtime.Infrastructure;
 using Templates.Attributes;
 using Templates.Data;
 using Templates.Runtime;
@@ -18,11 +21,8 @@ namespace Templates.Mvc
             string path = ".";
             try
             {
-                path = HttpRuntime.AppDomainAppPath;
-            }
-            catch (ArgumentException)
-            {
-                path = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
+                var env = (IApplicationEnvironment)CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(IApplicationEnvironment));
+                path = env.ApplicationBasePath;
             }
             finally
             {
@@ -30,51 +30,45 @@ namespace Templates.Mvc
             }
         }
 
-        public ViewEngineResult FindPartialView(ControllerContext controllerContext, string partialViewName, bool useCache)
+        private static string GetControllerName(ActionContext context)
         {
-            if (string.IsNullOrWhiteSpace(partialViewName))
-                throw new ArgumentException("viewName");
-            var controllerName = GetControllerName(controllerContext);
-            IEnumerable<string> searchLocations;
-            var result = Resolver.GetTemplate(partialViewName, controllerName, out searchLocations, null, TemplatePathType.PartialView);
-            if (result != null) {
-                return new ViewEngineResult((TtlView)result, this);
-            }
-            return new ViewEngineResult(searchLocations);
-        }
-
-        private static string GetControllerName(ControllerContext controllerContext)
-        {
-            if (controllerContext == null) throw new ArgumentNullException("controllerContext");
+            if (context == null) throw new ArgumentNullException(nameof(context));
             object controllerOption;
             string controllerName = string.Empty;
-            if (controllerContext.RouteData.Values.TryGetValue("controller", out controllerOption))
+            if (context.RouteData.Values.TryGetValue("controller", out controllerOption))
             {
                 controllerName = controllerOption.ToString();
             }
             return controllerName;
         }
 
-        public ViewEngineResult FindView(ControllerContext controllerContext, string viewName, string masterName, bool useCache)
+        public ViewEngineResult FindView(ActionContext context, string viewName)
         {
-            if (controllerContext == null) throw new ArgumentNullException("controllerContext");
+            if (context == null) throw new ArgumentNullException(nameof(context));
             if (string.IsNullOrWhiteSpace(viewName))
                 throw new ArgumentException("viewName");
-            var controllerName = GetControllerName(controllerContext);
+            var controllerName = GetControllerName(context);
             IEnumerable<string> searchLocations;
             var result = Resolver.GetTemplate(viewName, controllerName, out searchLocations, null, TemplatePathType.View);
             if (result != null)
             {
-                return new ViewEngineResult((TtlView)result, this);
+                return ViewEngineResult.Found(viewName, (TtlView) result);
             }
-            return new ViewEngineResult(searchLocations);
+            return ViewEngineResult.NotFound(viewName, searchLocations);
         }
 
-        public void ReleaseView(ControllerContext controllerContext, IView view)
+        public ViewEngineResult FindPartialView(ActionContext context, string partialViewName)
         {
-            var template = view as TtlView;
-            Resolver.RemoveFromCache(template?.Template);
-            template?.Dispose();
+            if (string.IsNullOrWhiteSpace(partialViewName))
+                throw new ArgumentException("viewName");
+            var controllerName = GetControllerName(context);
+            IEnumerable<string> searchLocations;
+            var result = Resolver.GetTemplate(partialViewName, controllerName, out searchLocations, null, TemplatePathType.PartialView);
+            if (result != null)
+            {
+                return ViewEngineResult.Found(partialViewName, (TtlView)result);
+            }
+            return ViewEngineResult.NotFound(partialViewName, searchLocations);
         }
     }
 }

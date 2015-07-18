@@ -64,7 +64,9 @@ namespace Templates.Data {
             AllowCSharp = value.AllowCSharp;
         }
 
-#region IEquatable<TemplateOptions> Members
+        public string FullPath => RootPath + TemplateName + FileNamePostfix;
+
+        #region IEquatable<TemplateOptions> Members
 
         public bool Equals (TemplateOptions other)
         {
