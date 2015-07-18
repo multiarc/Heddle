@@ -333,7 +333,7 @@ namespace Templates.Runtime {
             return parameter;
         }
 
-        internal ExType ParseAndGetResultType(ExpressionOptions expressionOptions)
+        internal ExType ParseAndGetResultType(ExpressionOptions expressionOptions, out object constantResult)
         {
             if (string.IsNullOrEmpty(expressionOptions.Expression))
             {
@@ -364,13 +364,21 @@ namespace Templates.Runtime {
             {
                 throw new TemplateCompileException(FormatErrors(diagnostics));
             }
-            var syntax = tree.GetRoot().DescendantNodes().OfType<ReturnStatementSyntax>().First().Expression;
+            var syntax = tree.GetRoot().DescendantNodes().OfType<ReturnStatementSyntax>().Single().Expression;
             var model = compilation.GetSemanticModel(tree, false);
+            var constantValue = model.GetConstantValue(syntax);
+            if (constantValue.HasValue)
+            {
+                constantResult = constantValue.Value;
+                return constantValue.Value.GetType();
+            }
             var typeInfo = model.GetTypeInfo(syntax);
             if (typeInfo.Type.IsAnonymousType || typeInfo.Type.TypeKind == TypeKind.Dynamic)
             {
+                constantResult = null;
                 return ExType.Dynamic;
             }
+            constantResult = null;
             return
                 ReflectionHelper.ResolveType(typeInfo.Type.ToDisplayString(DisplayFormat), _namespaces.ToArray());
         }

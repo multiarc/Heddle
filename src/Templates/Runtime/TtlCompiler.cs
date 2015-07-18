@@ -206,7 +206,8 @@ namespace Templates.Runtime {
                     parameter = new RuntimeCallParameter();
                 }
             }
-            else if (!string.IsNullOrEmpty(extensionItem.CallParameter.CSharpExpression)) {
+            else if (!string.IsNullOrEmpty(extensionItem.CallParameter.CSharpExpression))
+            {
                 if (!compileContext.Options.AllowCSharp)
                     throw new TemplateCompileException(
                         "C# Code Not allowed here, see TemplateOptions.AllowCSharp Property".ToError());
@@ -217,15 +218,26 @@ namespace Templates.Runtime {
                     Expression = extensionItem.CallParameter.CSharpExpression,
                     ExtensionName = extensionItem.ExtensionName
                 };
-                dataType = compileContext.ParseAndGetResultType(expressionOptions);
-                extension = CreateExtension(extensionItem, compileContext, extensionItem.Context ?? parseContext, ref returnTypeChainedPrevious, null, dataType, out acceptType, definitionItem);
+                object constantResult;
+                dataType = compileContext.ParseAndGetResultType(expressionOptions, out constantResult);
+                extension = CreateExtension(extensionItem, compileContext, extensionItem.Context ?? parseContext,
+                    ref returnTypeChainedPrevious, null, dataType, out acceptType, definitionItem);
+                if (constantResult == null)
+                {
+                    return new TemplateItem(returnTypeChainedPrevious, extension)
+                    {
+                        Parameter = compileContext.PushCompileExpression(expressionOptions)
+                    };
+                }
                 return new TemplateItem(returnTypeChainedPrevious, extension)
                 {
-                    Parameter = compileContext.PushCompileExpression(expressionOptions)
+                    Parameter = new RuntimeCallParameter(constantResult: constantResult)
                 };
             }
-            else {
-                var callParameter = CompileParameterChain(extensionItem.CallParameter.ChainParameter, compileContext, parseContext);
+            else
+            {
+                var callParameter = CompileParameterChain(extensionItem.CallParameter.ChainParameter, compileContext,
+                    parseContext);
                 dataType = callParameter.RenderType;
                 parameter = new RuntimeCallParameter(callParameterChain: callParameter);
             }

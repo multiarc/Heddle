@@ -9,11 +9,14 @@ namespace Templates.Runtime {
         private readonly IDataProcessor _callParameterChain;
         private readonly DynamicMethodGateDelegate _getModelParameter;
         private readonly CallSite<Func<CallSite, object, object>> _dynamicModelParameter;
+        private readonly object _constantResult;
         public CompiledMethodDelegate ParameterImplementation { get; set; }
 
-        public RuntimeCallParameter(DynamicMethodGateDelegate getModelParameter = null, TemplateChain callParameterChain = null, CallSite<Func<CallSite, object, object>> dynamicModelParameter = null)
+        public RuntimeCallParameter(DynamicMethodGateDelegate getModelParameter = null,
+            TemplateChain callParameterChain = null,
+            CallSite<Func<CallSite, object, object>> dynamicModelParameter = null, object constantResult = null)
         {
-
+            _constantResult = constantResult;
             _dynamicModelParameter = dynamicModelParameter;
             if (callParameterChain != null)
             {
@@ -36,6 +39,10 @@ namespace Templates.Runtime {
 
         public object GetParameter(object value, object chainedResult)
         {
+            if (_constantResult != null)
+            {
+                return _constantResult;
+            }
             if (_getModelParameter != null)
             {
                 return _getModelParameter(value);
