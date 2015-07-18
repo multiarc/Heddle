@@ -9,7 +9,7 @@ namespace Templates.Runtime {
         private readonly string _document;
         private readonly IDataProcessor[] _optimizedElements;
         private readonly IDataProcessor _singleProcessor;
-        private bool _canFullOptimize;
+        private bool _canDoFullOptimize;
         private readonly ThreadLocal<Replacement[]> _threadLocal;
         private readonly CompileContext _context;
 
@@ -36,7 +36,7 @@ namespace Templates.Runtime {
                 singleProcessor.Position = items[0].Position;
                 if (_document.Length == items[0].Position.Length &&
                     items[0].CallChain.ItemsToExecute[0].ReturnType == typeof (string))
-                    _canFullOptimize = true;
+                    _canDoFullOptimize = true;
                 return new IDataProcessor[] {singleProcessor};
             }
             int totalLength = 0;
@@ -57,7 +57,7 @@ namespace Templates.Runtime {
                 }
             }
             if (totalLength == _document.Length)
-                _canFullOptimize = true;
+                _canDoFullOptimize = true;
             return resultTree.ToArray();
         }
 
@@ -67,12 +67,12 @@ namespace Templates.Runtime {
             if (_singleProcessor != null)
             {
                 string replacementValue = _singleProcessor.ProcessData(data, chainedResult) as string ?? string.Empty;
-                if (_canFullOptimize)
+                if (_canDoFullOptimize)
                     return replacementValue;
                 return ExStringBuilder.Replace(_singleProcessor.Position.StartIndex, _singleProcessor.Position.Length,
                     replacementValue, _document);
             }
-            if (_canFullOptimize) {
+            if (_canDoFullOptimize) {
                 ExStringBuilder builder = new ExStringBuilder();
                 foreach (IDataProcessor item in _optimizedElements) {
                     builder.Append(item.ProcessData(data, chainedResult) as string);
@@ -92,7 +92,7 @@ namespace Templates.Runtime {
 
         public bool Empty => _optimizedElements.Length == 0;
 
-        public bool CanFullOptimize => _singleProcessor != null && _canFullOptimize;
+        public bool CanOptimizeSelf => _singleProcessor != null && _canDoFullOptimize;
 
         public IDataProcessor SingleProcessor => _singleProcessor;
 

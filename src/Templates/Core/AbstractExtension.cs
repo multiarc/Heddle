@@ -55,7 +55,7 @@ namespace Templates.Core {
             }
             else
             {
-                result = subTemplate.CanFullOptimize ? subTemplate.SingleProcessor : subTemplate;
+                result = subTemplate.CanOptimizeSelf ? subTemplate.SingleProcessor : subTemplate;
             }
 
             return typeof (string);
