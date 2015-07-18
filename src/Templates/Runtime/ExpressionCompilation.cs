@@ -1,4 +1,6 @@
-﻿namespace Templates.Runtime
+﻿using Templates.Runtime.Parameters;
+
+namespace Templates.Runtime
 {
     internal class ExpressionCompilation: ExpressionOptions {
         public ExpressionCompilation(ExpressionOptions options)
@@ -10,6 +12,6 @@
         }
 
         public int MethodNumber { get; set; }
-        public RuntimeCallParameter RuntimeCallParameter { get; set; }
+        public IRuntimeParameter RuntimeCallParameter { get; set; }
     }
 }

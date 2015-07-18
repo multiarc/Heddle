@@ -2,6 +2,7 @@
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
+using Templates.Runtime.Parameters;
 using Templates.Strings.Core;
 
 namespace Templates.Runtime {
@@ -14,7 +15,7 @@ namespace Templates.Runtime {
 
         public ExType ReturnType { get; }
 
-        public RuntimeCallParameter Parameter { get; set; }
+        public IRuntimeParameter Parameter { get; set; }
 
         public IExtension Extension { get; }
 

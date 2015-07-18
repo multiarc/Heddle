@@ -17,6 +17,7 @@ using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Language;
 using Templates.Native;
+using Templates.Runtime.Parameters;
 
 #if DNXCORE50
 using Microsoft.Framework.Runtime.Loader;
@@ -237,7 +238,8 @@ namespace Templates.Runtime {
                 if (Options.AllowCSharp && Methods.Count > 0)
                 {
                     if (!InitErrors.Success)
-                        throw new TemplateCompileException("Cannot compile base C# generation templates", InitErrors.Errors);
+                        throw new TemplateCompileException("Cannot compile base C# generation templates",
+                            InitErrors.Errors);
                     var code = CodeGenerator.Generate(this);
                     CompiledAssembly = GeneratedAssemblyCache.TryGetCached(code);
                     if (CompiledAssembly != null)
@@ -250,7 +252,8 @@ namespace Templates.Runtime {
                         DependentAssemblies.Select(a => MetadataReference.CreateFromFile(a.Location)),
 #endif
                         new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithCryptoPublicKey(
-                            GetType().GetTypeInfo().Assembly.GetName().GetPublicKey().ToImmutableArray()).WithDelaySign(false));
+                            GetType().GetTypeInfo().Assembly.GetName().GetPublicKey().ToImmutableArray())
+                            .WithDelaySign(false));
                     var diagnostics = compilation.GetDiagnostics();
                     if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
                     {
@@ -269,7 +272,9 @@ namespace Templates.Runtime {
                         CompiledAssembly.GetType($"Templates.Runtime.CSE_{ClassGuid.ToString("N")}");
                     foreach (var expressionCompilation in Methods)
                     {
-                        expressionCompilation.RuntimeCallParameter.ParameterImplementation =
+                        var compiledParameter = expressionCompilation.RuntimeCallParameter as CompiledParameter;
+                        if (compiledParameter == null) continue;
+                        compiledParameter.ParameterImplementation =
                             GatesCache.CreateCompiledDelegate(
                                 classType.GetMethod(
                                     $"ProcessData_{expressionCompilation.ExtensionName}{expressionCompilation.MethodNumber}",
@@ -312,13 +317,13 @@ namespace Templates.Runtime {
                 _namespaces.Add(parameterTemplate);
         }
 
-        internal RuntimeCallParameter PushCompileExpression(ExpressionOptions expressionOptions)
+        internal IRuntimeParameter PushCompileExpression(ExpressionOptions expressionOptions)
         {
             if (string.IsNullOrEmpty(expressionOptions.Expression))
             {
                 throw new ArgumentException("Expression cannot be null or empty");
             }
-            RuntimeCallParameter parameter = new RuntimeCallParameter();
+            IRuntimeParameter parameter = new CompiledParameter();
             Methods.Add(new ExpressionCompilation(expressionOptions)
             {
                 RuntimeCallParameter = parameter,

@@ -12,6 +12,7 @@ using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Language;
+using Templates.Runtime.Parameters;
 using Templates.Strings;
 using Templates.Strings.Core;
 using Binder = Microsoft.CSharp.RuntimeBinder.Binder;
@@ -159,7 +160,7 @@ namespace Templates.Runtime {
                 ref ExType returnTypeChainedPrevious) {
             PropertyInfo data = null;
             ExType dataType = null;
-            RuntimeCallParameter parameter;
+            IRuntimeParameter parameter;
             IExtension extension;
             Type acceptType;
             DefinitionItem definitionItem = null;
@@ -175,9 +176,9 @@ namespace Templates.Runtime {
                         var callSite =
                             CallSite<Func<CallSite, object, object>>.Create(
                                 Binder.GetMember(CSharpBinderFlags.None,
-                                    extensionItem.CallParameter.ModelParameter, typeof(RuntimeCallParameter),
+                                    extensionItem.CallParameter.ModelParameter, typeof(IRuntimeParameter),
                                     csharpArgumentInfoArray));
-                        parameter = new RuntimeCallParameter(dynamicModelParameter: callSite);
+                        parameter = new DynamicParameter(callSite);
                     }
                     else {
                         PropertyInfo dataProperty =
@@ -193,7 +194,7 @@ namespace Templates.Runtime {
                                 (string.Format(CultureInfo.InvariantCulture, "Property {0} no found in Type [{1}]",
                                     extensionItem.CallParameter.ModelParameter, compileContext.ModelType).ToError());
                         }
-                        parameter = new RuntimeCallParameter(data.ToPropertyGate());
+                        parameter = new ModelParameter(data.ToPropertyGate());
                     }
                 }
                 else {
@@ -203,7 +204,7 @@ namespace Templates.Runtime {
                     else {
                         dataType = compileContext.ModelType;
                     }
-                    parameter = new RuntimeCallParameter();
+                    parameter = new EmptyParameter();
                 }
             }
             else if (!string.IsNullOrEmpty(extensionItem.CallParameter.CSharpExpression))
@@ -231,7 +232,7 @@ namespace Templates.Runtime {
                 }
                 return new TemplateItem(returnTypeChainedPrevious, extension)
                 {
-                    Parameter = new RuntimeCallParameter(constantResult: constantResult)
+                    Parameter = new ConstantParameter(constantResult)
                 };
             }
             else
@@ -239,7 +240,7 @@ namespace Templates.Runtime {
                 var callParameter = CompileParameterChain(extensionItem.CallParameter.ChainParameter, compileContext,
                     parseContext);
                 dataType = callParameter.RenderType;
-                parameter = new RuntimeCallParameter(callParameterChain: callParameter);
+                parameter = new ChainedParameter(callParameter);
             }
             extension = CreateExtension(extensionItem, compileContext, extensionItem.Context ?? parseContext, ref returnTypeChainedPrevious, data, dataType, out acceptType, definitionItem);
             return new TemplateItem(returnTypeChainedPrevious, extension)
