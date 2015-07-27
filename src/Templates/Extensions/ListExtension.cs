@@ -52,7 +52,7 @@ namespace Templates.Extensions {
                 return string.Empty;
             var enumerable = (IEnumerable<object>) value;
             foreach (object item in enumerable)
-                builder.Append(GetInnerResult(item, null));
+                builder.Append(GetInnerResult(item, chainedResult));
             return builder.ToString();
         }
     }
