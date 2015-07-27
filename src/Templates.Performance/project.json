@@ -1,7 +1,7 @@
 ﻿{
   "version": "1.0.0-*",
   "dependencies": {
-    "Templates": "2.2.3-beta5"
+    "Templates": "2.2.3-beta6"
   },
   "configurations": { "release": { "compilationOptions": { "define": [ "TRACE" ] }, "optimize": true }, "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } } },
   "commands": {
