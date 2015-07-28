@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Adornments;
 using Microsoft.VisualStudio.Text.Tagging;
-using Templates.Data;
 
 namespace Templates.Editor.Error {
     internal sealed class TtlErrorTagger :ITagger<ErrorTag>

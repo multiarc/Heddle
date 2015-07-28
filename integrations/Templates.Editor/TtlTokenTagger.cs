@@ -2,10 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Tagging;
-using Templates.Data;
 using Templates.Editor.Error;
-using Templates.Exceptions;
-using Templates.Language;
 
 namespace Templates.Editor {
     internal sealed class TtlTokenTagger: ITagger<TtlTokenTag> {

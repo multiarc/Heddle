@@ -1,5 +1,4 @@
 ﻿using Microsoft.VisualStudio.Text.Tagging;
-using Templates.Data;
 using Templates.Editor.Error;
 
 namespace Templates.Editor {

@@ -10,7 +10,13 @@
     "Microsoft.Framework.Runtime": "1.0.0-*",
     "Microsoft.Framework.Runtime.Roslyn": "1.0.0-*"
   },
-  "configurations": { "release": { "compilationOptions": { "define": [ "TRACE" ] }, "optimize": true }, "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } } },
+  "configurations": {
+    "release": {
+      "compilationOptions": { "define": [ "TRACE" ] },
+      "optimize": true
+    },
+    "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } }
+  },
   "frameworks": {
     "dnx451": {
       "dependencies": {

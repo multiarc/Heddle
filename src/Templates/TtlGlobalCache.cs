@@ -14,8 +14,8 @@ namespace Templates
 {
     public class TtlGlobalCache : ITtlGlobalCache
     {
-        private static readonly string PipeName = "TtlGlobalCachePipe";
-        private static readonly string PipeServerName = "localhost";
+        private static readonly string PipeName = "\\\\.\\pipe\\TtlGlobalCachePipe";
+        private static readonly string PipeServerName = ".";
         private readonly Dictionary<IdPair, ITtlTemplate> _cache = new Dictionary<IdPair, ITtlTemplate>();
         private readonly object _lockObject = new object();
         private readonly PipeStream _server;
@@ -75,14 +75,26 @@ namespace Templates
             {
                 _server = null;
             }
+            catch (Exception)
+            {
+                
+            }
             if (_server == null)
             {
-                var clientThread = new Thread(ListenClientThread) {IsBackground = true};
-                _client = new NamedPipeClientStream(PipeServerName, PipeName, PipeDirection.InOut, PipeOptions.Asynchronous)
+                try
                 {
-                    ReadMode = PipeTransmissionMode.Message
-                };
-                clientThread.Start();
+                    var clientThread = new Thread(ListenClientThread) {IsBackground = true};
+                    _client = new NamedPipeClientStream(PipeServerName, PipeName, PipeDirection.InOut,
+                        PipeOptions.Asynchronous)
+                    {
+                        ReadMode = PipeTransmissionMode.Message
+                    };
+                    clientThread.Start();
+                }
+                catch (Exception)
+                {
+                    
+                }
             }
         }
 
@@ -108,6 +120,7 @@ namespace Templates
                 }
                 catch (Exception)
                 {
+                    Thread.Sleep(1000);
                 }
             }
         }
@@ -130,6 +143,7 @@ namespace Templates
                 }
                 catch (Exception)
                 {
+                    Thread.Sleep(1000);
                 }
             }
         }

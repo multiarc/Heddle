@@ -4,7 +4,6 @@ using System.Linq;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Classification;
 using Microsoft.VisualStudio.Text.Tagging;
-using Templates.Data;
 
 namespace Templates.Editor.Classification {
     internal sealed class TtlClassifier: ITagger<ClassificationTag> {
