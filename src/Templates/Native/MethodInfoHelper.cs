@@ -195,6 +195,24 @@ namespace Templates.Native
                     il.Emit(OpCodes.Box, one);
                     return;
                 }
+                if (toOther.IsImplementGeneric(typeof (Nullable<>)) && !one.IsImplementGeneric(typeof(Nullable<>)))
+                {
+                    var constructor = toOther.GetConstructor(new[] {toOther.UnwrapNullable()});
+                    if (constructor != null)
+                    {
+                        il.Emit(OpCodes.Newobj, constructor);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"{toOther} Type doesn't have parameterless constructor.");
+                    }
+                    return;
+                }
+                if (one.IsImplementGeneric(typeof(Nullable<>)) && !toOther.IsImplementGeneric(typeof(Nullable<>)))
+                {
+                    il.Emit(OpCodes.Call, one.GetProperty("Value").GetGetMethod());
+                    return;
+                }
                 throw new InvalidOperationException("The ValueType parameters cast isn't allowed with this compiler");
             }
             il.Emit(OpCodes.Castclass, toOther);
