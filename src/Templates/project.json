@@ -1,14 +1,16 @@
 ﻿{
-  "version": "2.2.5-beta6",
+  "version": "2.2.5-beta7",
   "authors": [ "Aliaksandr Kukrash" ],
   "description": "Robust template engine with C# expressions (Roslyn) support, text template inheritance and override support",
   "exclude": [ "bin" ],
   "compilationOptions": { "allowUnsafe": true },
   "dependencies": {
-    "Templates.Language": "1.1.2-beta6",
-    "Microsoft.CodeAnalysis.CSharp": "1.0.0-*",
-    "Microsoft.Framework.Runtime": "1.0.0-*",
-    "Microsoft.Framework.Runtime.Roslyn": "1.0.0-*"
+    "Templates.Language": "1.1.2-beta7",
+    "Microsoft.CodeAnalysis.CSharp": "1.1.0-*",
+    "Microsoft.Dnx.Runtime": "1.0.0-*",
+    "Microsoft.Dnx.Compilation.CSharp": "1.0.0-*",
+    "Microsoft.Dnx.Compilation.CSharp.Abstractions": "1.0.0-*",
+    "System.Reflection.Primitives": "4.0.0"
   },
   "configurations": {
     "release": {
@@ -26,26 +28,27 @@
     },
     "dnxcore50": {
       "dependencies": {
+        "System.Runtime" : "4.0.21-*",
         "System.IO.Pipes": "4.0.0-*",
         "System.Runtime.Loader": "4.0.0-*",
-        "System.Runtime.Serialization.Primitives": "4.0.10-*",
-        "Microsoft.CSharp": "4.0.0-*",
-        "System.Collections": "4.0.10-*",
-        "System.Linq": "4.0.0-*",
-        "System.IO": "4.0.10-*",
-        "System.IO.FileSystem": "4.0.0-*",
+        "System.Runtime.Serialization.Primitives": "4.0.11-*",
+        "Microsoft.CSharp": "4.0.1-*",
+        "System.Collections": "4.0.11-*",
+        "System.Linq": "4.0.1-*",
+        "System.IO": "4.0.11-*",
+        "System.IO.FileSystem": "4.0.1-*",
         "System.IO.FileSystem.Watcher": "4.0.0-*",
-        "System.Reflection": "4.0.10-*",
-        "System.Reflection.Extensions": "4.0.0-*",
-        "System.Reflection.TypeExtensions": "4.0.0-*",
-        "System.Reflection.Emit": "4.0.0-*",
-        "System.Reflection.Emit.Lightweight": "4.0.0-*",
-        "System.Reflection.Emit.ILGeneration": "4.0.0-*",
-        "System.Globalization": "4.0.10-*",
-        "System.Globalization.Extensions": "4.0.0-*",
-        "System.Text.Encoding.CodePages": "4.0.0-*",
-        "System.Text.Encoding.Extensions": "4.0.10-*",
-        "System.Threading": "4.0.10-*"
+        "System.Reflection": "4.1.0-*",
+        "System.Reflection.Extensions": "4.0.1-*",
+        "System.Reflection.TypeExtensions": "4.0.1-*",
+        "System.Reflection.Emit": "4.0.1-*",
+        "System.Reflection.Emit.Lightweight": "4.0.1-*",
+        "System.Reflection.Emit.ILGeneration": "4.0.1-*",
+        "System.Globalization": "4.0.11-*",
+        "System.Globalization.Extensions": "4.0.1-*",
+        "System.Text.Encoding.CodePages": "4.0.1-*",
+        "System.Text.Encoding.Extensions": "4.0.11-*",
+        "System.Threading": "4.0.11-*"
       }
     }
   }

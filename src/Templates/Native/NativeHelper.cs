@@ -4,19 +4,19 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using Microsoft.Dnx.Compilation;
+using Microsoft.Dnx.Runtime;
+using Microsoft.Dnx.Runtime.Infrastructure;
+using Microsoft.Dnx.Compilation.CSharp;
 #if DNX451 || DNXCORE50
-using Microsoft.Framework.Runtime.Compilation;
 using Microsoft.CodeAnalysis;
-using Microsoft.Framework.Runtime;
-using Microsoft.Framework.Runtime.Infrastructure;
-using Microsoft.Framework.Runtime.Roslyn;
 #endif
 
 namespace Templates.Native {
     public static class NativeHelper {
 #if DNX451 || DNXCORE50
-        private static readonly ILibraryManager LibraryManager =
-            (ILibraryManager)CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(ILibraryManager));
+        private static readonly ILibraryExporter LibraryManager =
+            (ILibraryExporter)CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(ILibraryExporter));
         private static readonly IApplicationEnvironment Environment =
             (IApplicationEnvironment)
                 CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(IApplicationEnvironment));
@@ -407,7 +407,7 @@ namespace Templates.Native {
 
         internal static List<MetadataReference> GetMetadataReferences() {
             var references = new List<MetadataReference>();
-            var libraryExport = LibraryManager.GetLibraryExport(Environment.ApplicationName);
+            var libraryExport = LibraryManager.GetExport(Environment.ApplicationName);
             if (libraryExport?.MetadataReferences?.Count > 0) {
                 var roslynReference = libraryExport.MetadataReferences[0] as IRoslynMetadataReference;
                 var compilationReference = roslynReference?.MetadataReference as CompilationReference;

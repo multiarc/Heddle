@@ -11,7 +11,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CSharp.RuntimeBinder;
-using Microsoft.Framework.Runtime;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
@@ -20,7 +19,6 @@ using Templates.Native;
 using Templates.Runtime.Parameters;
 
 #if DNXCORE50
-using Microsoft.Framework.Runtime.Loader;
 using System.Runtime.Loader;
 #endif
 

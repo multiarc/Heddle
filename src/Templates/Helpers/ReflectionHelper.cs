@@ -1,6 +1,4 @@
 ﻿#if DNXCORE50
-using Microsoft.Framework.Runtime;
-using Microsoft.Framework.Runtime.Loader;
 #endif
 using System;
 using System.Collections.Generic;

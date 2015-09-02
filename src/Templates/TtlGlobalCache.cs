@@ -1,5 +1,4 @@
 ﻿#if DNXCORE50 || DNX451
-using Microsoft.Framework.Runtime;
 #endif
 using System;
 using System.Collections.Generic;

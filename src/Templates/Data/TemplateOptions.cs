@@ -2,8 +2,8 @@
 using System.IO;
 using System.Reflection;
 #if DNXCORE50 || DNX451
-using Microsoft.Framework.Runtime;
-using Microsoft.Framework.Runtime.Infrastructure;
+using Microsoft.Dnx.Runtime;
+using Microsoft.Dnx.Runtime.Infrastructure;
 #endif
 
 namespace Templates.Data {

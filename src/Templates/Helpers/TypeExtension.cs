@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -81,6 +82,103 @@ namespace Templates.Helpers {
                 throw new ArgumentNullException(nameof(type));
 
             return type.GetTypeInfo().GetCustomAttributes(inherit).Where(a => a is T).Cast<T>().ToArray();
+        }
+
+        public static Type TryGetElementType(this Type type, Type baseType)
+        {
+            if (type == null)
+                return null;
+
+            var typeInfo = type.GetTypeInfo();
+            if (typeInfo.IsGenericTypeDefinition)
+                return null;
+
+            if (typeInfo.IsGenericType && type.GetGenericTypeDefinition() == baseType)
+                return type.GenericTypeArguments.FirstOrDefault();
+
+            if (baseType.GetTypeInfo().IsInterface)
+            {
+                var implementation =
+                    typeInfo.ImplementedInterfaces.FirstOrDefault(
+                        t => t.GetTypeInfo().IsGenericType && t.GetGenericTypeDefinition() == baseType);
+                return implementation?.GenericTypeArguments.FirstOrDefault();
+            }
+            var baseImplementation =
+                type.GetBaseTypes()
+                    .FirstOrDefault(
+                        t => t.GetTypeInfo().IsGenericType && t.GetGenericTypeDefinition() == baseType);
+            return baseImplementation?.GenericTypeArguments.FirstOrDefault();
+        }
+
+        public static Type UnwrapNullable(this Type type)
+        {
+            return type.IsImplementGeneric(typeof(Nullable<>))
+                ? Nullable.GetUnderlyingType(type)
+                : type;
+        }
+
+        public static Type TryUnwrapEnum(this Type type)
+        {
+            if (type.GetTypeInfo().IsEnum)
+            {
+                return Enum.GetUnderlyingType(type);
+            }
+            return null;
+        }
+
+        public static Type[] TryGetTypeArguments(this Type type, Type baseType)
+        {
+            if (type == null)
+                return null;
+
+            var typeInfo = type.GetTypeInfo();
+            if (typeInfo.IsGenericTypeDefinition)
+                return null;
+
+            if (typeInfo.IsGenericType && type.GetGenericTypeDefinition() == baseType)
+                return type.GenericTypeArguments;
+
+            if (baseType.GetTypeInfo().IsInterface)
+            {
+                var implementation =
+                    typeInfo.ImplementedInterfaces.FirstOrDefault(
+                        t => t.GetTypeInfo().IsGenericType && t.GetGenericTypeDefinition() == baseType);
+                return implementation?.GenericTypeArguments;
+            }
+            var baseImplementation =
+                type.GetBaseTypes()
+                    .FirstOrDefault(
+                        t => t.GetTypeInfo().IsGenericType && t.GetGenericTypeDefinition() == baseType);
+            return baseImplementation?.GenericTypeArguments;
+        }
+
+        public static bool IsImplementGeneric(this Type type, Type baseType)
+        {
+            var typeInfo = type.GetTypeInfo();
+            if (typeInfo.IsGenericTypeDefinition)
+                return false;
+
+            if (typeInfo.IsGenericType && type.GetGenericTypeDefinition() == baseType)
+                return true;
+
+            if (baseType.GetTypeInfo().IsInterface)
+            {
+                return typeInfo.ImplementedInterfaces.Any(
+                    t => t.GetTypeInfo().IsGenericType && t.GetGenericTypeDefinition() == baseType);
+            }
+            return type.GetBaseTypes().Any(t => t.GetTypeInfo().IsGenericType && t.GetGenericTypeDefinition() == baseType);
+        }
+
+        public static IEnumerable<Type> GetBaseTypes(this Type type)
+        {
+            type = type.GetTypeInfo().BaseType;
+
+            while (type != null)
+            {
+                yield return type;
+
+                type = type.GetTypeInfo().BaseType;
+            }
         }
     }
 }
