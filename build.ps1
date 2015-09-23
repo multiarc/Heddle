@@ -2,7 +2,7 @@ Push-Location src
 dnu restore --parallel
 Push-Location Templates.Tests
 dnu build --configuration Release
-dnx . test
+dnx test
 Pop-Location
 Push-Location Templates.Language
 dnu pack --out ..\..\packages --configuration Release

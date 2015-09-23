@@ -1,7 +1,7 @@
 ﻿{
   "version": "1.0.0-*",
   "dependencies": {
-    "Templates": "2.2.5-beta7"
+    "Templates": "2.2.6-beta7"
   },
   "configurations": { "release": { "compilationOptions": { "define": [ "TRACE" ] }, "optimize": true }, "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } } },
   "commands": {
@@ -14,7 +14,7 @@
     },
     "dnxcore50": {
       "dependencies": {
-        "System.Reflection.Primitives":  "4.0.1-*",
+        "System.Reflection.Primitives": "4.0.1-*",
         "System.Runtime": "4.0.21-*",
         "System.Console": "4.0.0-*",
         "System.Linq.Parallel": "4.0.1-*"

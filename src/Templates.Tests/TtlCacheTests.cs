@@ -11,7 +11,6 @@ namespace Templates.Tests
         [Fact]
         public void TestCacheConstruction()
         {
-            TtlGlobalCache cache = new TtlGlobalCache();
         }
     }
 }

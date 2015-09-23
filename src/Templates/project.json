@@ -1,5 +1,5 @@
 ﻿{
-  "version": "2.2.5-beta7",
+  "version": "2.2.6-beta7",
   "authors": [ "Aliaksandr Kukrash" ],
   "description": "Robust template engine with C# expressions (Roslyn) support, text template inheritance and override support",
   "exclude": [ "bin" ],
@@ -28,7 +28,7 @@
     },
     "dnxcore50": {
       "dependencies": {
-        "System.Runtime" : "4.0.21-*",
+        "System.Runtime": "4.0.21-*",
         "System.IO.Pipes": "4.0.0-*",
         "System.Runtime.Loader": "4.0.0-*",
         "System.Runtime.Serialization.Primitives": "4.0.11-*",
