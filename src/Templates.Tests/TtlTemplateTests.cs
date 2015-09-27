@@ -106,7 +106,7 @@ namespace Templates.Tests {
             StreamReader reader = File.OpenText(@"TestTemplate\generated.html");
             var expected = reader.ReadToEnd();
             reader.Dispose();
-            var actual = target.Generate(data);
+            var actual = target.Generate(data.Products);
             var writer = File.CreateText(@"TestTemplate\test.html");
             writer.Write(actual);
             writer.Dispose();

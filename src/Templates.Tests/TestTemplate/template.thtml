@@ -20,6 +20,7 @@
 %>
 @using(){{Templates@*Comment Test 2*@@{.}@Tests.Data}};
 @using(){{System.Linq}};
+@using(){{Templates.Models}};
 @model(@*Comment Test 3*@){{TestData@*Comment Test 4*@Structure}};
 <!DOCTYPE html><!--@(@"HTML ")@(@5)-->
 <html>@*Comment Test 5*@
@@ -40,10 +41,15 @@
                 Name of something
             </th>
         </tr>
-        @list(Products@*Comment Test 7*@)
-        {{@
-			@*Comment Test 8*@partial(@*Comment Test 9*@){{partial@*Comment Test 10*@}};
-        }};
+		@for(Products):param(@new ForModel() { Last = model.Products.Count() / 3, Step = 3 })
+		{{
+			<div>
+				@list(@model.Skip(chained).Take(3))
+				{{@
+					@*Comment Test 8*@partial(@*Comment Test 9*@){{partial@*Comment Test 10*@}};
+				}};
+			</div>
+		}}
     </table>
 	<table>
         <tr>

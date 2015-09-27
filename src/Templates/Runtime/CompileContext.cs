@@ -48,7 +48,12 @@ namespace Templates.Runtime {
         internal Assembly CompiledAssembly { get; private set; }
 
         internal HashSet<Assembly> DependentAssemblies { get; }
-            = new HashSet<Assembly>(new[] {typeof (object).GetTypeInfo().Assembly, typeof(Enumerable).GetTypeInfo().Assembly, typeof(InternalsVisibleToAttribute).GetTypeInfo().Assembly });
+            =
+            new HashSet<Assembly>(new[]
+            {
+                typeof (object).GetTypeInfo().Assembly, typeof (Enumerable).GetTypeInfo().Assembly,
+                typeof (InternalsVisibleToAttribute).GetTypeInfo().Assembly
+            });
 
         public bool Compiled { get; private set; }
 

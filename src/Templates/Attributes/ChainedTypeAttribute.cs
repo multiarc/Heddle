@@ -1,18 +1,25 @@
 ﻿using System;
+using Templates.Data;
 
 namespace Templates.Attributes {
     /// <summary>
     /// Attribute to set additional data type goes to template extension
     /// </summary>
-    [AttributeUsage (AttributeTargets.Class)]
-    public sealed class ChainedTypeAttribute: DataTypeAttribute {
+    [AttributeUsage (AttributeTargets.Class, AllowMultiple = true)]
+    public sealed class ChainedTypeAttribute: Attribute {
         /// <summary>
         /// Sets additional data Type to template extension
         /// </summary>
         /// <param name="dataType">Additional Data Type</param>
-        public ChainedTypeAttribute (Type dataType)
-            : base(dataType)
+        public ChainedTypeAttribute(Type dataType)
         {
+            DataType = dataType;
+        }
+
+        public Type DataType
+        {
+            get;
+            private set;
         }
     }
 }
