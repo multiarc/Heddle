@@ -1,7 +1,7 @@
 ﻿using System;
 
 namespace Templates.Strings.Core {
-    public sealed class MutableString: IEquatable<MutableString> {
+    public struct MutableString: IEquatable<MutableString> {
         private static readonly MutableString EmptyString = new MutableString();
         private readonly bool _isExString;
 
@@ -15,8 +15,10 @@ namespace Templates.Strings.Core {
                 _value = value;
                 _isExString = false;
                 _length = value.Length;
+                _exValue = null;
             } else {
                 _exValue = ExString.Empty;
+                _value = null;
                 _isExString = true;
                 _length = 0;
             }
@@ -25,15 +27,9 @@ namespace Templates.Strings.Core {
         public MutableString (ExString value)
         {
             _exValue = value ?? ExString.Empty;
+            _value = null;
             _isExString = true;
             _length = _exValue.Length;
-        }
-
-        public MutableString ()
-        {
-            _exValue = ExString.Empty;
-            _isExString = true;
-            _length = 0;
         }
 
         public static MutableString Empty => EmptyString;
@@ -41,6 +37,10 @@ namespace Templates.Strings.Core {
         public int Length => _length;
 
         public bool IsExString => _isExString;
+
+        public ExString ExStringValue => _exValue;
+
+        public string StringValue => _value;
 
         #region IEquatable<MutableString> Members
 
@@ -69,9 +69,6 @@ namespace Templates.Strings.Core {
 
         public static implicit operator ExString (MutableString value)
         {
-            if ((object)value == null)
-                return null;
-
             if (value._isExString)
                 return value._exValue;
             return value._value;
@@ -79,9 +76,6 @@ namespace Templates.Strings.Core {
 
         public static implicit operator string (MutableString value)
         {
-            if ((object)value == null)
-                return null;
-
             if (value._isExString)
                 return value._exValue;
             return value._value;
@@ -96,13 +90,11 @@ namespace Templates.Strings.Core {
 
         public static bool IsNullOrEmpty (MutableString value)
         {
-            return (object)value == null || value._length == 0;
+            return value._length == 0;
         }
 
         public static bool IsNullOrWhiteSpace (MutableString value)
         {
-            if ((object) value == null)
-                return true;
             int len = value._length;
             if (len > 0)
             {
@@ -127,12 +119,6 @@ namespace Templates.Strings.Core {
 
         public static bool Equals(MutableString one, MutableString other)
         {
-            if (ReferenceEquals(one, other))
-                return true;
-            if ((object) one == null || (object) other == null)
-            {
-                return false;
-            }
             if (one._isExString)
             {
                 if (other._isExString)

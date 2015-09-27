@@ -16,6 +16,13 @@ namespace Templates.Extensions
     [ChainedType(typeof(ForModel))]
     public class ForIndexExtension : AbstractExtension
     {
+        public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType,
+            CompileContext context,
+            ParseContext parseContext)
+        {
+            return base.InitStart(parameterTemplate, dataType, typeof (int), context, parseContext);
+        }
+
         public override object ProcessData(object value, object chainedResult)
         {
             if (!(chainedResult is ForModel))

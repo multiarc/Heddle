@@ -6,6 +6,7 @@ using System.Reflection;
 using Templates.Attributes;
 using Templates.Core;
 using Templates.Data;
+using Templates.Helpers;
 using Templates.Language;
 using Templates.Runtime;
 using Templates.Strings;
@@ -37,9 +38,9 @@ namespace Templates.Extensions {
             if (dataType == null)
                 throw new ArgumentNullException(nameof(dataType));
             if (dataType.IsDynamic) {
-                return base.InitStart(parameterTemplate, ExType.Dynamic, chainedType, context, parseContext);
+                return base.InitStart(parameterTemplate, dataType, chainedType, context, parseContext);
             }
-            ExType underliyingType = (ExType)dataType.Type.GenericTypeArguments.FirstOrDefault() ?? ExType.Dynamic;
+            ExType underliyingType = dataType.Type.TryGetElementType(typeof(IEnumerable<>)) ?? ExType.Dynamic;
             return base.InitStart(parameterTemplate, underliyingType, chainedType, context, parseContext);
         }
 

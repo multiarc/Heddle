@@ -78,26 +78,26 @@ namespace Templates.Performance.Runners {
             Console.WriteLine("Out Speed: {0} Mb/s", (length / watcher.Elapsed.TotalSeconds / 1048576.0 * sizeof(char)).ToString("F"));
             watcher.Reset();
 
-            Console.WriteLine("Starting Concat Test");
-            ExString resultF = new ExString("xxxx") + new ExString("ffff"); //JIT
-            resultF = ExString.Empty;
-            watcher.Start();
-            for (int i = 0; i < testFastList.Length; i++) {
-                resultF += testFastList[i];
-                testFastList[i] = null;
-            }
-            watcher.Stop();
-            Console.WriteLine("ExString.Concat Run time: {0}", watcher.Elapsed);
-            Console.WriteLine("Out Speed: {0} Mb/s", (resultF.Length / watcher.Elapsed.TotalSeconds / 1048576.0 * sizeof(char)).ToString("F"));
-            watcher.Reset();
-            resultF = null;
+            //Console.WriteLine("Starting Concat Test");
+            //ExString resultF = new ExString("xxxx") + new ExString("ffff"); //JIT
+            //resultF = ExString.Empty;
+            //watcher.Start();
+            //for (int i = 0; i < testFastList.Length; i++) {
+            //    resultF += testFastList[i];
+            //    testFastList[i] = null;
+            //}
+            //watcher.Stop();
+            //Console.WriteLine("ExString.Concat Run time: {0}", watcher.Elapsed);
+            //Console.WriteLine("Out Speed: {0} Mb/s", (resultF.Length / watcher.Elapsed.TotalSeconds / 1048576.0 * sizeof(char)).ToString("F"));
+            //watcher.Reset();
+            //resultF = null;
 
-            watcher.Start();
-            string resultS = testStringList.Aggregate(string.Empty, (current, t) => current + t);
-            watcher.Stop();
-            Console.WriteLine("String.Concat Run time: {0}", watcher.Elapsed);
-            Console.WriteLine("Out Speed: {0} Mb/s", (resultS.Length / watcher.Elapsed.TotalSeconds / 1048576.0 * sizeof(char)).ToString("F"));
-            watcher.Reset();
+            //watcher.Start();
+            //string resultS = testStringList.Aggregate(string.Empty, (current, t) => current + t);
+            //watcher.Stop();
+            //Console.WriteLine("String.Concat Run time: {0}", watcher.Elapsed);
+            //Console.WriteLine("Out Speed: {0} Mb/s", (resultS.Length / watcher.Elapsed.TotalSeconds / 1048576.0 * sizeof(char)).ToString("F"));
+            //watcher.Reset();
 
             Console.WriteLine("Prepearing append test");
 
@@ -120,6 +120,20 @@ namespace Templates.Performance.Runners {
                 testFastBuilder.Append(t);
             }
             length = testFastBuilder.ToExString().Length;
+            watcher.Stop();
+
+            Console.WriteLine("ExStringBuilder.Append Run time: {0}", watcher.Elapsed);
+            Console.WriteLine("Out Speed: {0} Mb/s", (length / watcher.Elapsed.TotalSeconds / 1048576.0 * sizeof(char)).ToString("F"));
+            Console.WriteLine("Total Size: {0} Mb", testFastBuilder.ToExString().Length / 1048576.0 * sizeof(char));
+
+            testFastBuilder.Clear();
+            watcher.Reset();
+            watcher.Start();
+            foreach (string t in testStringList)
+            {
+                testFastBuilder.Append(t);
+            }
+            length = testFastBuilder.ToString().Length;
             watcher.Stop();
 
             Console.WriteLine("ExStringBuilder.Append Run time: {0}", watcher.Elapsed);

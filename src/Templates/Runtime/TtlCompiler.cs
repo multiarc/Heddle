@@ -21,7 +21,7 @@ namespace Templates.Runtime
 {
     internal class TtlCompiler
     {
-        public static RuntimeDocument Compile(string document, CompileContext compileContext, ParseContext parseContext)
+        public static RuntimeDocument Compile(string document, CompileContext compileContext, ParseContext parseContext, ExType chainedType)
         {
             if (compileContext == null)
                 throw new ArgumentNullException(nameof(compileContext));
@@ -33,7 +33,7 @@ namespace Templates.Runtime
             foreach (var extensions in parseContext.OutputChains)
             {
                 var element = new DocumentElement(extensions.BlockPosition);
-                ExType returnTypeChainedPrevious = null;
+                ExType returnTypeChainedPrevious = chainedType;
                 foreach (var item in extensions.Chain.Reverse())
                 {
                     var compiledItem = CompileItem(item, compileContext, extensions.Context,
@@ -201,7 +201,6 @@ namespace Templates.Runtime
             ExType dataType = null;
             IRuntimeParameter parameter;
             IExtension extension;
-            Type acceptType;
             DefinitionItem definitionItem = null;
             if (parseContext.DefenitionExists(extensionItem.ExtensionName))
             {

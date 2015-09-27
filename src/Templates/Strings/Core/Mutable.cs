@@ -6,9 +6,8 @@ namespace Templates.Strings.Core {
         {
             if (value == null)
                 return ExString.Empty;
-            var mutableString = value as MutableString;
-            if (mutableString != null)
-                return mutableString;
+            if (value is MutableString)
+                return (MutableString) value;
             var fastString = value as ExString;
             if (fastString != null)
                 return fastString.ToMutableString();

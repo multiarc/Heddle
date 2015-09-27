@@ -32,213 +32,75 @@ namespace Templates.Native {
         private static readonly Allocate Allocator;
 #endif
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [System.Security.SecurityCritical]  // auto-generated 
-        internal static unsafe void MemCpy(char* dmem, char* smem, int charCount) {
+        internal static unsafe void MemCpy(char* dmem, char* smem, int charCount)
+        {
             if (charCount > 0)
             {
-#if ALIGN_ACCESS
-                if ((((int)dmem | (int)smem) & 1) == 0) { 
-#endif
-                // First Align dmem to a pointer boundary
-                if (((int)dmem & 2) != 0) {
-                    dmem[0] = smem[0];
-                    dmem      += 1;
-                    smem      += 1;
-                    charCount -= 1;
-                }
-#if WIN64
-                    if ((((int)dmem & 4) != 0) && (charCount >= 2))
+                if ((((int) dmem | (int) smem) & 1) == 0)
+                {
+                    // First Align dmem to a pointer boundary
+                    if (((int) dmem & 2) != 0)
                     {
-#if IA64
-                        if (((int)smem & 2) != 0)
-                        { 
-                            dmem[0] = smem[0]; 
-                            dmem[1] = smem[1];
-                        } 
-                        else
-#endif
+                        dmem[0] = smem[0];
+                        dmem += 1;
+                        smem += 1;
+                        charCount -= 1;
+                    }
+                    if ((((int) dmem & 4) != 0) && (charCount >= 2))
+                    {
                         {
-                            ((uint *)dmem)[0] = ((uint *)smem)[0]; 
+                            ((uint*) dmem)[0] = ((uint*) smem)[0];
                         }
-                        dmem += 2; 
-                        smem += 2; 
+                        dmem += 2;
+                        smem += 2;
                         charCount -= 2;
-                    } 
-#endif
-                // Both x86 and AMD64 perform much faster if all writes are pointer aligned
-                // Unaligned reads perform better than 2-byte aligned reads and
-                //  better than pointer aligned reads with 16-bit shift and OR operation 
-                // So on x86 or AMD64 after aligning dmem to a pointer boundry
-                //  we just use standard mechanism 
-#if !WIN64
-                while (charCount >= 8) {
-                    ((uint*)dmem)[0] = ((uint*)smem)[0];
-                    ((uint*)dmem)[1] = ((uint*)smem)[1];
-                    ((uint*)dmem)[2] = ((uint*)smem)[2];
-                    ((uint*)dmem)[3] = ((uint*)smem)[3];
-                    dmem      += 8;
-                    smem      += 8;
-                    charCount -= 8;
-                }
-                if ((charCount & 4) != 0) {
-                    ((uint*)dmem)[0] = ((uint*)smem)[0];
-                    ((uint*)dmem)[1] = ((uint*)smem)[1];
-                    dmem += 4;
-                    smem += 4;
-                }
-                if ((charCount & 2) != 0) {
-                    ((uint*)dmem)[0] = ((uint*)smem)[0];
-                    dmem += 2;
-                    smem += 2;
-                }
-#else
-#if AMD64
-                    while (charCount >= 16) 
-                    { 
-                        ((ulong *)dmem)[0] = ((ulong *)smem)[0];
-                        ((ulong *)dmem)[1] = ((ulong *)smem)[1]; 
-                        ((ulong *)dmem)[2] = ((ulong *)smem)[2];
-                        ((ulong *)dmem)[3] = ((ulong *)smem)[3];
-                        dmem      += 16;
-                        smem      += 16; 
-                        charCount -= 16;
-                    } 
-                    if ((charCount & 8) != 0) 
+                    }
+                    while (charCount >= 16)
                     {
-                        ((ulong *)dmem)[0] = ((ulong *)smem)[0]; 
-                        ((ulong *)dmem)[1] = ((ulong *)smem)[1];
+                        ((ulong*) dmem)[0] = ((ulong*) smem)[0];
+                        ((ulong*) dmem)[1] = ((ulong*) smem)[1];
+                        ((ulong*) dmem)[2] = ((ulong*) smem)[2];
+                        ((ulong*) dmem)[3] = ((ulong*) smem)[3];
+                        dmem += 16;
+                        smem += 16;
+                        charCount -= 16;
+                    }
+                    if ((charCount & 8) != 0)
+                    {
+                        ((ulong*) dmem)[0] = ((ulong*) smem)[0];
+                        ((ulong*) dmem)[1] = ((ulong*) smem)[1];
                         dmem += 8;
                         smem += 8;
-                    } 
+                    }
                     if ((charCount & 4) != 0)
-                    { 
-                        ((ulong *)dmem)[0] = ((ulong *)smem)[0]; 
+                    {
+                        ((ulong*) dmem)[0] = ((ulong*) smem)[0];
                         dmem += 4;
-                        smem += 4; 
+                        smem += 4;
                     }
                     if ((charCount & 2) != 0)
                     {
-                        ((uint *)dmem)[0] = ((uint *)smem)[0]; 
+                        ((uint*) dmem)[0] = ((uint*) smem)[0];
                         dmem += 2;
-                        smem += 2; 
-                    } 
-#elif IA64
-                    // On IA64 we MUST use aligned reads otherwise 
-                    // we will fault
-                    if (((int)smem & 2) == 0)
+                        smem += 2;
+                    }
+                    if ((charCount & 1) != 0)
                     {
-                        // align is 0 or 4 
-                        if  (((int)smem & alignConst) == 0)
-                        { 
-                            while (charCount >= 16) 
-                            {
-                                ((ulong *)dmem)[0] = ((ulong *)smem)[0]; 
-                                ((ulong *)dmem)[1] = ((ulong *)smem)[1];
-                                ((ulong *)dmem)[2] = ((ulong *)smem)[2];
-                                ((ulong *)dmem)[3] = ((ulong *)smem)[3];
-                                dmem      += 16; 
-                                smem      += 16;
-                                charCount -= 16; 
-                            } 
-
-                            if ((charCount & 8) != 0) 
-                            {
-                                ((ulong *)dmem)[0] = ((ulong *)smem)[0];
-                                ((ulong *)dmem)[1] = ((ulong *)smem)[1];
-                                dmem += 8; 
-                                smem += 8;
-                            } 
- 
-                            if ((charCount & 4) != 0)
-                            { 
-                                ((ulong *)dmem)[0] = ((ulong *)smem)[0];
-                                dmem += 4;
-                                smem += 4;
-                            } 
-                        }
-                        else // align is 4 
-                        { 
-                            while (charCount >= 8)
-                            { 
-                                ((uint *)dmem)[0] = ((uint *)smem)[0];
-                                ((uint *)dmem)[1] = ((uint *)smem)[1];
-                                ((uint *)dmem)[2] = ((uint *)smem)[2];
-                                ((uint *)dmem)[3] = ((uint *)smem)[3]; 
-                                dmem      += 8;
-                                smem      += 8; 
-                                charCount -= 8; 
-                            }
- 
-                            if ((charCount & 4) != 0)
-                            {
-                                ((uint *)dmem)[0] = ((uint *)smem)[0];
-                                ((uint *)dmem)[1] = ((uint *)smem)[1]; 
-                                dmem += 4;
-                                smem += 4; 
-                            } 
-                        }
-                        if ((charCount & 2) != 0) 
-                        {
-                            ((uint *)dmem)[0] = ((uint *)smem)[0];
-                            dmem += 2;
-                            smem += 2; 
-                        }
-                    } 
-                    else // align is 2 or 6 
-                    {
-                        while (charCount >= 8) 
-                        {
-                            dmem[0] = smem[0];
-                            dmem[1] = smem[1];
-                            dmem[2] = smem[2]; 
-                            dmem[3] = smem[3];
-                            dmem[4] = smem[4]; 
-                            dmem[5] = smem[5]; 
-                            dmem[6] = smem[6];
-                            dmem[7] = smem[7]; 
-                            dmem += 8;
-                            smem += 8;
-                            charCount -= 8;
-                        } 
-
-                        if ((charCount & 4) != 0) 
-                        { 
-                            dmem[0] = smem[0];
-                            dmem[1] = smem[1]; 
-                            dmem[2] = smem[2];
-                            dmem[3] = smem[3];
-                            dmem += 4;
-                            smem += 4; 
-                        }
-                        if ((charCount & 2) != 0) 
-                        { 
-                            dmem[0] = smem[0];
-                            dmem[1] = smem[1]; 
-                            dmem += 2;
-                            smem += 2;
-                        }
-                    } 
-#endif
-#endif
-                if ((charCount & 1) != 0) {
-                    dmem[0] = smem[0];
+                        dmem[0] = smem[0];
+                    }
                 }
-#if ALIGN_ACCESS
-                }
-                else 
+                else
                 {
                     // This is rare case where at least one of the pointers is only byte aligned. 
-                    do { 
-                        ((byte *)dmem)[0] = ((byte *)smem)[0];
-                        ((byte *)dmem)[1] = ((byte *)smem)[1]; 
+                    do
+                    {
+                        ((byte*) dmem)[0] = ((byte*) smem)[0];
+                        ((byte*) dmem)[1] = ((byte*) smem)[1];
                         charCount -= 1;
                         dmem += 1;
                         smem += 1;
-                    } 
-                    while (charCount > 0);
-                } 
-#endif
+                    } while (charCount > 0);
+                }
             }
         }
 

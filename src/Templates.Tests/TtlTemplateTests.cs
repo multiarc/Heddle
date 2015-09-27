@@ -95,7 +95,7 @@ namespace Templates.Tests {
                 },
                 new TestListItem
                 {
-                    Cost = 70m,
+                    Cost = 7000m,
                     Locale = "de-DE",
                     Name = "Name 4",
                     Quantity = 20
@@ -113,7 +113,7 @@ namespace Templates.Tests {
             StreamReader reader = File.OpenText(@"TestTemplate\generated.html");
             var expected = reader.ReadToEnd();
             reader.Dispose();
-            var actual = target.Generate(data.Products);
+            var actual = target.Generate(data);
             var writer = File.CreateText(@"TestTemplate\test.html");
             writer.Write(actual);
             writer.Dispose();

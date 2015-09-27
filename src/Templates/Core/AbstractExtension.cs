@@ -42,7 +42,7 @@ namespace Templates.Core {
             else
             {
                 var newContext = new CompileContext(context, dataType);
-                subTemplate = TtlCompiler.Compile(parameterTemplate, newContext, parseContext);
+                subTemplate = TtlCompiler.Compile(parameterTemplate, newContext, parseContext, chainedType);
                 newContext.Compile();
             }
             if (subTemplate != null)

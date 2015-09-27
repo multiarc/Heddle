@@ -1,8 +1,8 @@
 ﻿{
   "version": "1.0.0-*",
   "dependencies": {
-    "Templates": "2.2.10-beta7",
-    "xunit.runner.dnx": "2.1.0-beta5-*",
+    "Templates": "2.3.0-beta7",
+    "xunit.runner.dnx": "2.1.0-beta5a-*",
     "xunit": "2.1.0-*",
     "Microsoft.Dnx.TestAdapter": "1.0.0-*",
     "Microsoft.Dnx.TestHost": "1.0.0-*",
@@ -23,7 +23,8 @@
         "System.Linq": "4.0.1-*",
         "System.Collections": "4.0.11-*",
         "System.IO": "4.0.11-*",
-        "System.IO.FileSystem": "4.0.1-*"
+        "System.IO.FileSystem": "4.0.1-*",
+        "System.Security.Cryptography.Hashing.Algorithms": "4.0.0-beta-*"
       }
     }
   }

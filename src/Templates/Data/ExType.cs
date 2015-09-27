@@ -1,8 +1,5 @@
 ﻿using System;
 using System.CodeDom;
-#if DNXCORE50
-using Microsoft.CodeDom.Providers.DotNetCompilerPlatform;
-#endif
 using Microsoft.CSharp;
 using Templates.Helpers;
 
@@ -57,11 +54,7 @@ namespace Templates.Data {
             if (_isDynamic)
                 return DynamicConst;
 
-            using (var codeProvider = new CSharpCodeProvider())
-            {
-                var typeReference = new CodeTypeReference(Type);
-                return codeProvider.GetTypeOutput(typeReference);
-            }
+            return Type.GetTypeOutput();
         }
 
         public override bool Equals(object obj) {

@@ -151,7 +151,7 @@ namespace Templates {
         private TtlCompileResult Compile(CompileContext context, string document) {
             try
             {
-                RuntimeDocument rtdoc = TtlCompiler.Compile(document, context, DocumentParser.Parse(document));
+                RuntimeDocument rtdoc = TtlCompiler.Compile(document, context, DocumentParser.Parse(document), null);
                 context.Compile();
                 _context = context;
                 _document = document;

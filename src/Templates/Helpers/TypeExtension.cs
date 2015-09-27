@@ -1,8 +1,11 @@
 ﻿using System;
+using System.CodeDom;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
+using Templates.Strings;
 
 namespace Templates.Helpers {
     public static class TypeExtension {
@@ -179,6 +182,33 @@ namespace Templates.Helpers {
 
                 type = type.GetTypeInfo().BaseType;
             }
+        }
+
+        public static string GetTypeOutput(this Type typeRef)
+        {
+            var s = new ExStringBuilder();
+
+            Type baseTypeRef = typeRef;
+            while (baseTypeRef.IsArray)
+            {
+                baseTypeRef = baseTypeRef.GetElementType();
+            }
+            s += TypeNameHelper.GetBaseTypeOutput(baseTypeRef);
+
+            while (typeRef != null && typeRef.IsArray)
+            {
+                char[] results = new char[typeRef.GetArrayRank() + 1];
+                results[0] = '[';
+                results[typeRef.GetArrayRank()] = ']';
+                for (int i = 1; i < typeRef.GetArrayRank(); i++)
+                {
+                    results[i] = ',';
+                }
+                s += new string(results);
+                typeRef = typeRef.GetElementType();
+            }
+
+            return s.ToString();
         }
     }
 }

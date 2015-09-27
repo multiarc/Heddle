@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using Templates.Collections;
 using Templates.Native;
 using Templates.Strings.Core;
@@ -8,8 +9,7 @@ namespace Templates.Strings {
     [Serializable]
 #endif
     public sealed class ExStringBuilder {
-        private readonly SmartList<ExString> _appendFastStrings = new SmartList<ExString>();
-        private readonly SmartList<string> _appendStrings = new SmartList<string>();
+        private readonly SmartList<MutableString> _appendStrings = new SmartList<MutableString>();
         private int _appendlength;
         private string _data;
 
@@ -58,45 +58,44 @@ namespace Templates.Strings {
         {
             _appendlength = 0;
             _appendStrings.Clear();
-            _appendFastStrings.Clear();
             _data = ExString.Empty;
         }
 
-        private void CommitAppend ()
+        private void CommitAppend()
         {
-            if (_appendlength != 0) {
+            if (_appendlength != 0)
+            {
                 int seed = _data.Length;
                 int newLength = _data.Length + _appendlength;
-                for (int i = 0; i < _appendStrings.Length; i++) {
+                for (int i = 0; i < _appendStrings.Length; i++)
+                {
                     if (_data.Length < newLength)
                         Capacity = newLength;
                     int len = _appendStrings[i].Length;
-                    unsafe {
-                        fixed (char* dest = _data) {
-                            fixed (char* src = _appendStrings[i]) {
-                                NativeHelper.MemCpy(dest + seed, src, len);
+                    unsafe
+                    {
+                        fixed (char* dest = _data)
+                        {
+                            if (_appendStrings[i].IsExString)
+                            {
+                                fixed (char* src = _appendStrings[i].ExStringValue.Data)
+                                {
+                                    NativeHelper.MemCpy(dest + seed, src, len);
+                                }
+                            }
+                            else
+                            {
+                                fixed (char* src = _appendStrings[i].StringValue)
+                                {
+                                    NativeHelper.MemCpy(dest + seed, src, len);
+                                }
                             }
                         }
                     }
                     seed += len;
-                    _appendStrings[i] = null;
+                    //_appendStrings[i] = string.Empty;
                 }
                 _appendStrings.Clear();
-                for (int i = 0; i < _appendFastStrings.Length; i++) {
-                    if (_data.Length < newLength)
-                        Capacity = newLength;
-                    int len = _appendFastStrings[i].Length;
-                    unsafe {
-                        fixed (char* dest = _data) {
-                            fixed (char* src = (char[]) _appendFastStrings[i]) {
-                                NativeHelper.MemCpy(dest + seed, src, len);
-                            }
-                        }
-                    }
-                    seed += len;
-                    _appendFastStrings[i] = null;
-                }
-                _appendFastStrings.Clear();
                 _appendlength = 0;
             }
         }
@@ -107,6 +106,24 @@ namespace Templates.Strings {
                 _appendStrings.Add(value);
                 _appendlength += value.Length;
             }
+        }
+
+        public static ExStringBuilder operator +(ExStringBuilder builder, string value)
+        {
+            builder.Append(value);
+            return builder;
+        }
+
+        public static ExStringBuilder operator +(ExStringBuilder builder, ExString value)
+        {
+            builder.Append(value);
+            return builder;
+        }
+
+        public static ExStringBuilder operator +(ExStringBuilder builder, ExStringBuilder value)
+        {
+            builder.Append(value.ToString());
+            return builder;
         }
 
         public void Append(string format, params object[] args)
@@ -123,7 +140,7 @@ namespace Templates.Strings {
         public void Append (ExString value)
         {
             if (!ExString.IsNullOrEmpty(value)) {
-                _appendFastStrings.Add(value);
+                _appendStrings.Add(value);
                 _appendlength += value.Length;
             }
         }

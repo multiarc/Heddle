@@ -102,7 +102,7 @@ namespace Templates.Runtime {
 
         public string ControllerName { get; set; }
 
-        private readonly List<string> _namespaces = new List<string>();
+        private readonly HashSet<string> _namespaces = new HashSet<string>();
 
         private readonly List<DelayedTemplate> _delayedTemplates = new List<DelayedTemplate>();
         private int _method;
@@ -115,7 +115,7 @@ namespace Templates.Runtime {
             Options = new TemplateOptions(context.Options.FileNamePostfix, context.Options.RootPath,
                 fileName ?? context.Options.TemplateName, context.Options.EnableFileChangeCheck, context.Options.AllowCSharp);
             ModelType = modelType ?? context.ModelType ?? typeof(object);
-            _namespaces = context._namespaces.ToList();
+            _namespaces = new HashSet<string>(context._namespaces);
         }
 
         public CompileContext(ExType modelType = null) {
@@ -227,7 +227,7 @@ namespace Templates.Runtime {
             }
         }
 
-        public IReadOnlyCollection<string> Namespaces => new ReadOnlyCollection<string>(_namespaces);
+        public IEnumerable<string> Namespaces => _namespaces;
 
         /// <summary>
         /// Compile delayed Extensions, Compile all dynamic property references and connect into template chain.
@@ -349,8 +349,26 @@ namespace Templates.Runtime {
             {
                 throw new ArgumentException("Expression cannot be null or empty");
             }
-            expressionOptions.Namespaces = Namespaces;
             expressionOptions.ModelType = ModelType;
+            _namespaces.Add(expressionOptions.ModelType.Type.Namespace);
+            _namespaces.Add(expressionOptions.ChainedType.Type.Namespace);
+            var modelTypeInfo = expressionOptions.ModelType.Type.GetTypeInfo();
+            if (modelTypeInfo.IsGenericType)
+            {
+                foreach (var type in modelTypeInfo.GenericTypeArguments)
+                {
+                    _namespaces.Add(type.Namespace);
+                }
+            }
+            var chainTypeInfo = expressionOptions.ChainedType.Type.GetTypeInfo();
+            if (chainTypeInfo.IsGenericType)
+            {
+                foreach (var type in chainTypeInfo.GenericTypeArguments)
+                {
+                    _namespaces.Add(type.Namespace);
+                }
+            }
+            expressionOptions.Namespaces = Namespaces;
             if (!InitErrors.Success)
                 throw new TemplateCompileException("Cannot compile base C# generation templates",
                     InitErrors.Errors);

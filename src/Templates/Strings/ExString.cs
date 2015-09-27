@@ -147,6 +147,8 @@ namespace Templates.Strings {
 
         public static ExString Empty => EmptyExString;
 
+        public char[] Data => _data;
+
         public override string ToString ()
         {
             int len = _length;

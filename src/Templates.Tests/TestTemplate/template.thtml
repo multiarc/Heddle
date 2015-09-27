@@ -48,7 +48,7 @@
                 Name of something
             </th>
         </tr>
-		@for(Products):param(@new ForModel() { Last = model.Products.Count() / 3, Step = 3 })
+		@for(Products):param(@new ForModel() { Last = model.Products.Count(), Step = 3 })
 		{{
 			<div>
 				@list(@model.Skip(chained).Take(3))

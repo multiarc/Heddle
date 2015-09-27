@@ -8,7 +8,8 @@ namespace Templates.Extensions {
 
     [Name("param")]
     public class ParamExtension: AbstractExtension {
-        public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context, ParseContext parseContext) {
+        public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context, ParseContext parseContext)
+        {
             return dataType;
         }
         public override object ProcessData(object value, object chainedResult) {
