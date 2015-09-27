@@ -135,10 +135,10 @@ namespace Templates {
             return CompileResult;
         }
 
-        public TtlCompileResult Recompile(string newDocument, ExType newModelType = null)
+        public TtlCompileResult Recompile(string newDocument, CompileContext context = null)
         {
             DateCreated = DateTime.Now;
-            CompileResult = Compile(new CompileContext(newModelType), newDocument);
+            CompileResult = Compile(context ?? new CompileContext((ExType)null), newDocument);
             return CompileResult;
         }
 

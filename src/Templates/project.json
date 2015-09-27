@@ -1,11 +1,11 @@
 ﻿{
-  "version": "2.2.6-beta7",
+  "version": "2.2.10-beta7",
   "authors": [ "Aliaksandr Kukrash" ],
   "description": "Robust template engine with C# expressions (Roslyn) support, text template inheritance and override support",
   "exclude": [ "bin" ],
   "compilationOptions": { "allowUnsafe": true },
   "dependencies": {
-    "Templates.Language": "1.1.2-beta7",
+    "Templates.Language": "1.1.7-beta7",
     "Microsoft.CodeAnalysis.CSharp": "1.1.0-*",
     "Microsoft.Dnx.Runtime": "1.0.0-*",
     "Microsoft.Dnx.Compilation.CSharp": "1.0.0-*",

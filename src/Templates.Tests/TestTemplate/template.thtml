@@ -17,6 +17,13 @@
 			@text()@*use base defenition*@
 		</label>
 	}}
+	<test_list>
+	{{@
+		list(@model.Products.Where(p => p.Quantity < 95))
+        {{@
+			partial(){{partial}};
+        }};
+	}} :: TestDataStructure
 %>
 @using(){{Templates@*Comment Test 2*@@{.}@Tests.Data}};
 @using(){{System.Linq}};
@@ -58,10 +65,7 @@
             </th>
         </tr>
 		@* C# Test *@
-        @list(@model.Products.Where(p => p.Quantity < 95))
-        {{@
-			partial(){{partial}};
-        }};
+        @test_list();
     </table>
     <div>
         Page Generated at@*Comment Test 11*@

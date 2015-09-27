@@ -11,6 +11,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CSharp.RuntimeBinder;
+using Microsoft.Dnx.Runtime;
+using Microsoft.Dnx.Runtime.Infrastructure;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
@@ -62,8 +64,14 @@ namespace Templates.Runtime {
             try {
                 CodeGenerator = new TtlTemplate();
                 PreparseGenerator = new TtlTemplate();
-                var result = CodeGenerator.Compile(File.ReadAllText(@"CSharpClassTemplate.tcs"));
-                var resultPre = PreparseGenerator.Compile(File.ReadAllText(@"CSharpPreparseTemplate.tcs"));
+#if DNX451 || DNXCORE50
+                IApplicationEnvironment env = (IApplicationEnvironment)CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IApplicationEnvironment));
+                var path = env.ApplicationBasePath + "\\";
+#else
+                var path = "";
+#endif
+                var result = CodeGenerator.Compile(File.ReadAllText($"{path}CSharpClassTemplate.tcs"));
+                var resultPre = PreparseGenerator.Compile(File.ReadAllText($"{path}CSharpPreparseTemplate.tcs"));
                 if (!result.Success || !resultPre.Success)
                 {
                     InitErrors = new TtlCompileResult(false);
@@ -117,12 +125,6 @@ namespace Templates.Runtime {
         /// <param name="options"></param>
         public CompileContext(TemplateOptions options)
         {
-            if (string.IsNullOrWhiteSpace(options.FileNamePostfix))
-                throw new ArgumentException("File Name postfix (extension) should not be empty");
-            if (string.IsNullOrWhiteSpace(options.RootPath))
-                throw new ArgumentException("Root Path (directory) should not be empty");
-            if (string.IsNullOrWhiteSpace(options.TemplateName))
-                throw new ArgumentException("Template Name should not be empty");
             ModelType = typeof (object);
             Options = options;
         }
@@ -344,6 +346,9 @@ namespace Templates.Runtime {
             }
             expressionOptions.Namespaces = Namespaces;
             expressionOptions.ModelType = ModelType;
+            if (!InitErrors.Success)
+                throw new TemplateCompileException("Cannot compile base C# generation templates",
+                    InitErrors.Errors);
             var code = PreparseGenerator.Generate(expressionOptions);
             var tree = CSharpSyntaxTree.ParseText(code);
 #if DNX451 || DNXCORE50

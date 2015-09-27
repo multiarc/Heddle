@@ -1,7 +1,7 @@
 ﻿{
   "version": "1.0.0-*",
   "dependencies": {
-    "Templates": "2.2.6-beta7",
+    "Templates": "2.2.10-beta7",
     "xunit.runner.dnx": "2.1.0-beta5-*",
     "xunit": "2.1.0-*",
     "Microsoft.Dnx.TestAdapter": "1.0.0-*",

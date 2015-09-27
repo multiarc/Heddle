@@ -92,6 +92,13 @@ namespace Templates.Tests {
                     Locale = "de-DE",
                     Name = "Name 4",
                     Quantity = 1609709
+                },
+                new TestListItem
+                {
+                    Cost = 70m,
+                    Locale = "de-DE",
+                    Name = "Name 4",
+                    Quantity = 20
                 }
             };
             var data = new TestData

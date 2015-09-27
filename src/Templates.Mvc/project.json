@@ -8,7 +8,7 @@
 
   "dependencies": {
     "Microsoft.AspNet.Mvc.ViewFeatures": "6.0.0-*",
-    "Templates": "2.2.6-beta7"
+    "Templates": "2.2.10-beta7"
   },
 
   "frameworks" : {

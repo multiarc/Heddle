@@ -24,7 +24,7 @@ namespace Templates
 
         TtlCompileResult Recompile(ExType newModelType);
 
-        TtlCompileResult Recompile(string newDocument, ExType newModelType = null);
+        TtlCompileResult Recompile(string newDocument, CompileContext context = null);
 
         TtlCompileResult Compile(string document, ExType modelType = null);
         event FileSystemEventHandler OnFileDeleted;
