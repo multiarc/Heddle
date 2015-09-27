@@ -5,21 +5,17 @@ namespace Templates.Language
 {
     public partial class TtlLexer
     {
-        public int CurrentMode { get; protected set; }
-
         public int PreviousMode { get; protected set; }
 
         public override void Mode(int m)
         {
             PreviousMode = CurrentMode;
-            CurrentMode = m;
             base.Mode(m);
         }
 
         public override void Reset()
         {
             PreviousMode = CurrentMode;
-            CurrentMode = 0;
             base.Reset();
         }
 

@@ -1,13 +1,18 @@
 ﻿using System;
+using System.CodeDom;
+#if DNXCORE50
+using Microsoft.CodeDom.Providers.DotNetCompilerPlatform;
+#endif
+using Microsoft.CSharp;
 using Templates.Helpers;
 
 namespace Templates.Data {
     public class ExType: IEquatable<ExType>
     {
-        public static ExType Dynamic { get; }
-            = new ExType(typeof (object), "dynamic");
+        private const string DynamicConst = "dynamic";
 
-        private readonly string _name;
+        public static ExType Dynamic { get; }
+            = new ExType(typeof (object), DynamicConst);
 
         private readonly bool _isDynamic;
 
@@ -17,20 +22,17 @@ namespace Templates.Data {
 
         public ExType(Type type, string name) {
             Type = type;
-            _name = name;
-            _isDynamic = _name == "dynamic";
+            _isDynamic = name == DynamicConst;
         }
 
         public ExType(Type type) {
             if (type == null) throw new ArgumentNullException(nameof(type));
             Type = type;
-            _name = Type.ToString();
-            _isDynamic = _name == "dynamic";
+            _isDynamic = false;
         }
 
         public ExType(string name, params string[] imports) {
-            _name = name;
-            _isDynamic = _name == "dynamic";
+            _isDynamic = name == DynamicConst;
             Type = _isDynamic ? Dynamic.Type : ReflectionHelper.ResolveType(name, imports ?? new string[0]);
         }
 
@@ -47,15 +49,23 @@ namespace Templates.Data {
         }
 
         public override int GetHashCode() {
-            return _name?.GetHashCode() ?? Type?.GetHashCode() ?? string.Empty.GetHashCode();
+            return _isDynamic ? DynamicConst.GetHashCode() : Type?.GetHashCode() ?? string.Empty.GetHashCode();
         }
 
-        public override string ToString() {
-            return _name ?? Type?.ToString() ?? string.Empty;
+        public override string ToString()
+        {
+            if (_isDynamic)
+                return DynamicConst;
+
+            using (var codeProvider = new CSharpCodeProvider())
+            {
+                var typeReference = new CodeTypeReference(Type);
+                return codeProvider.GetTypeOutput(typeReference);
+            }
         }
 
         public override bool Equals(object obj) {
-            if (obj == null || !(obj is ExType))
+            if (!(obj is ExType))
                 return false;
             return Equals(this, (ExType)obj);
         }
@@ -66,7 +76,7 @@ namespace Templates.Data {
             if ((object)one == null || (object)another == null) {
                 return false;
             }
-            return one.Type == another.Type;
+            return one.Type == another.Type && one._isDynamic == another._isDynamic;
         }
 
         public bool Equals(ExType other) {

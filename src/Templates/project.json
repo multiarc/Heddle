@@ -33,6 +33,7 @@
         "System.Runtime.Loader": "4.0.0-*",
         "System.Runtime.Serialization.Primitives": "4.0.11-*",
         "Microsoft.CSharp": "4.0.1-*",
+        "Microsoft.CodeDom.Providers.DotNetCompilerPlatform": "1.0.1",
         "System.Collections": "4.0.11-*",
         "System.Linq": "4.0.1-*",
         "System.IO": "4.0.11-*",

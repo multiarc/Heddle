@@ -4,11 +4,11 @@
   "description": "Template engine language parsers support package, basing on ANTLR4.5 C# target",
   "exclude": [ "bin" ],
   "dependencies": {
-    "Antlr4.Runtime": "4.5.0-beta7"
+    "Antlr4.Runtime": "4.5.1-beta7"
   },
   "scripts": {
-    "prebuild": "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.5-complete.jar\" -Dlanguage=CSharp \"%project:Directory%\\TtlLexer.g4\" \"%project:Directory%\\TtlParser.g4\" -o \"%project:Directory%\\generated\" -lib \"%project:Directory%\\generated\" -package Templates.Language",
-    "postbuild": "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.5-complete.jar\" -Dlanguage=JavaScript \"%project:Directory%\\TtlLexer.g4\" \"%project:Directory%\\TtlParser.g4\" -o \"%project:Directory%\\js\" -lib \"%project:Directory%\\js\" "
+    "prebuild": "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.5.1-complete.jar\" -Dlanguage=CSharp \"%project:Directory%\\TtlLexer.g4\" \"%project:Directory%\\TtlParser.g4\" -o \"%project:Directory%\\generated\" -lib \"%project:Directory%\\generated\" -package Templates.Language",
+    "postbuild": "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.5.1-complete.jar\" -Dlanguage=JavaScript \"%project:Directory%\\TtlLexer.g4\" \"%project:Directory%\\TtlParser.g4\" -o \"%project:Directory%\\js\" -lib \"%project:Directory%\\js\" "
   },
   "configurations": { "release": { "compilationOptions": { "define": [ "TRACE" ] }, "optimize": true }, "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } } },
   "frameworks": {

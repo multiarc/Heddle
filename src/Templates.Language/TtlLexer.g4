@@ -196,7 +196,7 @@ CALL_OUT_WS: WS+ -> skip;
 
 mode CS;
 
-CS_CSHARP_WS: WS+ -> skip;
+CS_CSHARP_WS: WS+ -> type(CSHARP_TOKEN);
 
 CS_CSHARP_START:
 	PARA_ST -> type(CSHARP_TOKEN), pushMode(CS);
