@@ -1,4 +1,4 @@
-define(function(require, exports, module) {
+define(function (require, exports, module) {
     // Generated from d:\Work\Templater\src\Templates.Language\TtlParser.g4 by ANTLR 4.5.1
     // jshint ignore: start
     var antlr4 = require('antlr4/index');
@@ -1627,5 +1627,4 @@ define(function(require, exports, module) {
 
 
     exports.TtlParser = TtlParser;
-
 });
