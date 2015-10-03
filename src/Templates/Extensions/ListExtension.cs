@@ -33,27 +33,27 @@ namespace Templates.Extensions {
     [Name ("list")]
     [DataType (typeof (IEnumerable))]
     public class ListExtension: AbstractExtension {
-        public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context, ParseContext parseContext)        
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)        
         {
             if (dataType == null)
                 throw new ArgumentNullException(nameof(dataType));
             if (dataType.IsDynamic) {
-                return base.InitStart(parameterTemplate, dataType, chainedType, context, parseContext);
+                return base.InitStart(initContext, dataType, chainedType);
             }
             ExType underliyingType = dataType.Type.TryGetElementType(typeof(IEnumerable<>)) ?? ExType.Dynamic;
-            return base.InitStart(parameterTemplate, underliyingType, chainedType, context, parseContext);
+            return base.InitStart(initContext, underliyingType, chainedType);
         }
 
-        public override object ProcessData(object value, object chainedResult)
+        public override object ProcessData(object data, object chained)
         {
-            if (value == null)
+            if (data == null)
                 return string.Empty;
             var builder = new ExStringBuilder();
-            if (!(value is IEnumerable))
+            if (!(data is IEnumerable))
                 return string.Empty;
-            var enumerable = (IEnumerable<object>) value;
+            var enumerable = (IEnumerable<object>) data;
             foreach (object item in enumerable)
-                builder.Append(GetInnerResult(item, chainedResult));
+                builder.Append(GetInnerResult(item, chained));
             return builder.ToString();
         }
     }

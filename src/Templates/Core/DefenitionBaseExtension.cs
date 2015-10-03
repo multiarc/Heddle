@@ -2,10 +2,10 @@
     internal class DefenitionBaseExtension : AbstractExtension {
         public DefenitionBaseExtension DefenitionTemplate { get; set; }
 
-        public override object ProcessData(object value, object chainedResult)
+        public override object ProcessData(object data, object chained)
         {
-            chainedResult = GetInnerResult(value, chainedResult);
-            return DefenitionTemplate?.ProcessData(value, chainedResult) ?? chainedResult;
+            chained = GetInnerResult(data, chained);
+            return DefenitionTemplate?.ProcessData(data, chained) ?? chained;
         }
     }
 }

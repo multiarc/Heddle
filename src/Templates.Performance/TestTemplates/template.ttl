@@ -77,9 +77,9 @@
         @string(Text)<br />
         &lt;%<br />
         %&gt;<br />
-		@text(@new { Name = "input1-name", Value="input1-value" }){{ class="testcssclass1" }}
-		@labeled_text(@new { Name = "input2-name", Value="input2-value" }){{ class="testcssclass2" }}
-		@multi_text(@new { Name = "input3-name", Value="input3-value" })
+		@text(@new NameValuePair { Name = "input1-name", Value="input1-value" }){{ class="testcssclass1" }}
+		@labeled_text(@new NameValuePair { Name = "input2-name", Value="input2-value" }){{ class="testcssclass2" }}
+		@multi_text(@new NameValuePair { Name = "input3-name", Value="input3-value" })
 		{{
 			@text() {{ class="testcssclass3" }}
 			<%

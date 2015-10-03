@@ -4,9 +4,9 @@ using Templates.Core;
 namespace Templates.Extensions {
     [Name("out")]
     public class OutExtension : AbstractExtension {
-        public override object ProcessData(object value, object chainedResult)
+        public override object ProcessData(object data, object chained)
         {
-            return chainedResult;
+            return chained;
         }
     }
 }

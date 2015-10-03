@@ -3,6 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace Templates.Performance {
+    public class NameValuePair
+    {
+        public string Name { get; set; }
+        public string Value { get; set; }
+    }
+
     public class TestData: TestDataStructure {
         public override List<TestListItem> Products
         {

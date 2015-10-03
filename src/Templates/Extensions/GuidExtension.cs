@@ -10,11 +10,11 @@ namespace Templates.Extensions {
     [Name ("guid")]
     [DataType (typeof (Guid))]
     public class GuidExtension: AbstractExtension {
-        public override object ProcessData(object value, object chainedResult)
+        public override object ProcessData(object data, object chained)
         {
-            if (!(value is Guid))
+            if (!(data is Guid))
                 return string.Empty;
-            return ((Guid) value).ToString(GetInnerResult(chainedResult, null));
+            return ((Guid) data).ToString(GetInnerResult(chained, null));
         }
     }
 }

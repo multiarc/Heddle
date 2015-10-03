@@ -4,16 +4,16 @@ using Templates.Core;
 namespace Templates.Extensions {
     [Name("")]
     public class EmptyExtension: AbstractExtension {
-        public override object ProcessData(object value, object chainedResult)
+        public override object ProcessData(object data, object chained)
         {
             if (SubTemplate != null) {
-                return GetInnerResult(value, chainedResult);
+                return GetInnerResult(data, chained);
             }
-            if (value != null) {
-                var s = value as string;
+            if (data != null) {
+                var s = data as string;
                 if (s != null)
                     return s;
-                return value.ToString();
+                return data.ToString();
             }
             return string.Empty;
         }

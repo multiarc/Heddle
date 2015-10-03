@@ -9,22 +9,21 @@ using Templates.Runtime;
 namespace Templates.Extensions {
     [Name("import")]
     public class ImportExtension:AbstractExtension {
-        public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context,
-            ParseContext parseContext)
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
         {
-            base.InitStart(parameterTemplate, dataType, chainedType, context, parseContext);
-            parameterTemplate = GetInnerResult(null, null);
-            int outputCount = parseContext.OutputChains.Length;
-            using (var file = File.OpenText(Path.Combine(context.Options.RootPath, parameterTemplate))) {
+            base.InitStart(initContext, dataType, chainedType);
+            initContext.ParameterTemplate = GetInnerResult(null, null);
+            int outputCount = initContext.ParseContext.OutputChains.Length;
+            using (var file = File.OpenText(Path.Combine(initContext.Context.Options.RootPath, initContext.ParameterTemplate))) {
                 string document = file.ReadToEnd();
-                DocumentParser.Parse(document, parseContext, true);
+                DocumentParser.Parse(document, initContext.ParseContext, true);
             }
-            if (parseContext.OutputChains.Length > outputCount)
+            if (initContext.ParseContext.OutputChains.Length > outputCount)
                 throw new TemplateCompileException("The Defenitions template cannot contain output items".ToError());
             return null;
         }
 
-        public override object ProcessData(object value, object chainedResult)
+        public override object ProcessData(object data, object chained)
         {
             return null;
         }

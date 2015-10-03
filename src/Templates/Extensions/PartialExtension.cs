@@ -15,22 +15,22 @@ namespace Templates.Extensions {
     {
         protected TtlTemplate InnerTemplate;
 
-        public override object ProcessData (object value, object chainedResult)
+        public override object ProcessData (object data, object chained)
         {
-            return InnerTemplate?.Generate(value);
+            return InnerTemplate?.Generate(data);
         }
 
-        public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context, ParseContext parseContext)
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
         {
-            if (context == null)
-                throw new ArgumentNullException(nameof(context));
-            base.InitStart(parameterTemplate, dataType, chainedType, context, parseContext);
-            parameterTemplate = GetInnerResult(null, null);
-            if (!string.IsNullOrEmpty(parameterTemplate)) {
-                string templateName = parameterTemplate.Trim();
+            if (initContext.Context == null)
+                throw new ArgumentNullException(nameof(initContext.Context));
+            base.InitStart(initContext, dataType, chainedType);
+            initContext.ParameterTemplate = GetInnerResult(null, null);
+            if (!string.IsNullOrEmpty(initContext.ParameterTemplate)) {
+                string templateName = initContext.ParameterTemplate.Trim();
                 if (!string.IsNullOrEmpty(templateName))
                 {
-                    context.AddDelayedCompileTemplate(new CompileContext(context, dataType, templateName), parseContext, this);
+                    initContext.Context.AddDelayedCompileTemplate(new CompileContext(initContext.Context, dataType, templateName), initContext.ParseContext, this);
                 }
             }
             return typeof (string);

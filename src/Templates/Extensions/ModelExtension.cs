@@ -10,16 +10,16 @@ using Templates.Runtime;
 namespace Templates.Extensions {
     [Name ("model")]
     public class ModelExtension: AbstractExtension {
-        public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context, ParseContext parseContext)
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
         {
-            if (context == null)
-                throw new ArgumentNullException(nameof(context));
-            base.InitStart(parameterTemplate, dataType, chainedType, context, parseContext);
-            parameterTemplate = GetInnerResult(null, null);
-            if (!string.IsNullOrWhiteSpace(parameterTemplate)) {
+            if (initContext.Context == null)
+                throw new ArgumentNullException(nameof(initContext.Context));
+            base.InitStart(initContext, dataType, chainedType);
+            initContext.ParameterTemplate = GetInnerResult(null, null);
+            if (!string.IsNullOrWhiteSpace(initContext.ParameterTemplate)) {
                 try {
-                    ExType modelType = new ExType(parameterTemplate, context.Namespaces.ToArray());
-                    context.ModelType = modelType;
+                    ExType modelType = new ExType(initContext.ParameterTemplate, initContext.Context.Namespaces.ToArray());
+                    initContext.Context.ModelType = modelType;
                 }
                 catch (Exception e) {
                     throw new TemplateInitException("Type cannot be determined. Please use Assembly Qualified Name.", e);
@@ -28,7 +28,7 @@ namespace Templates.Extensions {
             return null;
         }
 
-        public override object ProcessData(object value, object chainedResult)
+        public override object ProcessData(object data, object chained)
         {
             return null;
         }

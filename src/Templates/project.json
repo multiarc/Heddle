@@ -21,10 +21,6 @@
   },
   "frameworks": {
     "dnx451": {
-      "dependencies": {
-      },
-      "frameworkAssemblies": {
-      }
     },
     "dnxcore50": {
       "dependencies": {

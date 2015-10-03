@@ -55,7 +55,7 @@ namespace Templates.Strings {
                 unsafe {
                     fixed (char* dest = _data) {
                         fixed (char* src = value) {
-                            NativeHelper.MemCpy(dest, src, length);
+                            AssemblyHelper.MemCpy(dest, src, length);
                         }
                     }
                 }
@@ -92,7 +92,7 @@ namespace Templates.Strings {
             } else {
                 _data = new char[length];
                 fixed (char* dest = _data) {
-                    NativeHelper.MemCpy(dest, value, length);
+                    AssemblyHelper.MemCpy(dest, value, length);
                 }
             }
             _length = _data.Length;
@@ -109,7 +109,7 @@ namespace Templates.Strings {
                 unsafe {
                     fixed (char* dest = _data) {
                         fixed (char* src = value) {
-                            NativeHelper.MemCpy(dest, src, _length);
+                            AssemblyHelper.MemCpy(dest, src, _length);
                         }
                     }
                 }
@@ -172,7 +172,7 @@ namespace Templates.Strings {
         {
             int startIndex = 0;
             for (int i = 0; i < len; i++) {
-                if (!NativeHelper.IsWhiteSpace(src[i])) {
+                if (!AssemblyHelper.IsWhiteSpace(src[i])) {
                     startIndex = i;
                     break;
                 }
@@ -181,7 +181,7 @@ namespace Templates.Strings {
                 return EmptyExString;
             int endIndex = len - 1;
             for (int i = len - 1; i >= 0; i--) {
-                if (NativeHelper.IsWhiteSpace(src[i]))
+                if (AssemblyHelper.IsWhiteSpace(src[i]))
                     endIndex = i - 1;
                 else
                     break;
@@ -189,7 +189,7 @@ namespace Templates.Strings {
             int newLength = endIndex - startIndex + 1;
             var result = new char[newLength];
             fixed (char* dest = result) {
-                NativeHelper.MemCpy(dest, src + startIndex, newLength);
+                AssemblyHelper.MemCpy(dest, src + startIndex, newLength);
             }
             return new ExString(result);
         }
@@ -225,16 +225,16 @@ namespace Templates.Strings {
                     lastIndex = MoveChunk(findStringLen, src, dest, replacement, indexes, count, lastIndex, chunkLength, ref current);
                 }
             }
-            NativeHelper.MemCpy(dest + lastIndex, src + current, srcLen - current);
+            AssemblyHelper.MemCpy(dest + lastIndex, src + current, srcLen - current);
         }
 
         private static unsafe int MoveChunk
             (int findStringLen, char* src, char* dest, char* replacement, int* indexes, int count, int lastIndex, int chunkLength, ref int current)
         {
             for (int i = 0; i < count; i++) {
-                NativeHelper.MemCpy(dest + lastIndex, src + current, indexes[i] - current);
+                AssemblyHelper.MemCpy(dest + lastIndex, src + current, indexes[i] - current);
                 lastIndex += indexes[i] - current;
-                NativeHelper.MemCpy(dest + lastIndex, replacement, chunkLength);
+                AssemblyHelper.MemCpy(dest + lastIndex, replacement, chunkLength);
                 current = indexes[i] + findStringLen;
                 lastIndex += chunkLength;
             }
@@ -310,12 +310,12 @@ namespace Templates.Strings {
 
                 for (int j = 1; j < findLen; j++)
                     needleTable[(byte) find[j - 1]] = findLen - j;
-                int found = NativeHelper.StartsWith(data + i, find, needleTable, dataLen - i, findLen);
+                int found = AssemblyHelper.StartsWith(data + i, find, needleTable, dataLen - i, findLen);
                 while (found != -1) {
                     i += found;
                     replacements.Add(i);
                     i += findLen - 1;
-                    found = NativeHelper.StartsWith(data + i, find, needleTable, dataLen - i, findLen);
+                    found = AssemblyHelper.StartsWith(data + i, find, needleTable, dataLen - i, findLen);
                 }
             }
         }
@@ -335,7 +335,7 @@ namespace Templates.Strings {
                 unsafe {
                     fixed (char* data = value._data) {
                         for (int i = 0; i < len; i++) {
-                            if (!NativeHelper.IsWhiteSpace(data[i]))
+                            if (!AssemblyHelper.IsWhiteSpace(data[i]))
                                 return false;
                         }
                     }
@@ -452,7 +452,7 @@ namespace Templates.Strings {
             unsafe {
                 fixed (char* dest = data) {
                     fixed (char* src = one._data) {
-                        NativeHelper.MemCpy(dest, src, lenOne);
+                        AssemblyHelper.MemCpy(dest, src, lenOne);
                         dest[lenOne] = two;
                     }
                 }
@@ -516,7 +516,7 @@ namespace Templates.Strings {
                             int len = (object)exStrings[i] == null ? 0 : exStrings[i].Length;
                             if (len > 0) {
                                 fixed (char* src = (char[]) exStrings[i]) {
-                                    NativeHelper.MemCpy(dest + seed, src, len);
+                                    AssemblyHelper.MemCpy(dest + seed, src, len);
                                     seed += len;
                                 }
                             }
@@ -531,8 +531,8 @@ namespace Templates.Strings {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static unsafe void ConcatNative (char* dest, char* one, char* two, int lenOne, int lenTwo)
         {
-            NativeHelper.MemCpy(dest, one, lenOne);
-            NativeHelper.MemCpy(dest + lenOne, two, lenTwo);
+            AssemblyHelper.MemCpy(dest, one, lenOne);
+            AssemblyHelper.MemCpy(dest + lenOne, two, lenTwo);
         }
 
         public static ExString Add (ExString one, ExString two)

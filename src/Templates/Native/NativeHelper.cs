@@ -13,7 +13,7 @@ using Microsoft.CodeAnalysis;
 #endif
 
 namespace Templates.Native {
-    public static class NativeHelper {
+    public static class AssemblyHelper {
 #if DNX451 || DNXCORE50
         private static readonly ILibraryExporter LibraryManager =
             (ILibraryExporter)CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(ILibraryExporter));
@@ -31,7 +31,7 @@ namespace Templates.Native {
 #else
         private static readonly Allocate Allocator;
 #endif
-
+#if DNX451
         internal static unsafe void MemCpy(char* dmem, char* smem, int charCount)
         {
             if (charCount > 0)
@@ -103,12 +103,18 @@ namespace Templates.Native {
                 }
             }
         }
-
+#else
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [System.Security.SecurityCritical]  // auto-generated 
+        internal static unsafe void MemCpy(char* dmem, char* smem, int charCount)
+        {
+            Buffer.MemoryCopy(smem, dmem, charCount*2, charCount*2);
+        }
+#endif
         //Copied implementation of coreclr CompareOrdinal
-        internal static unsafe int Equals(char* one, char* two, int lenOne, int lenTwo) {
-            if (one == two) {
+        internal static unsafe int Equals(char* one, char* two, int lenOne, int lenTwo)
+        {
+            if (one == two)
+            {
                 return 0;
             }
             char* a = one;
@@ -117,28 +123,34 @@ namespace Templates.Native {
             int diffOffset = -1;
 
             // unroll the loop
-            while (length >= 10) {
-                if (*(int*)a != *(int*)b) {
+            while (length >= 10)
+            {
+                if (*(int*) a != *(int*) b)
+                {
                     diffOffset = 0;
                     break;
                 }
 
-                if (*(int*)(a+2) != *(int*)(b+2)) {
+                if (*(int*) (a + 2) != *(int*) (b + 2))
+                {
                     diffOffset = 2;
                     break;
                 }
 
-                if (*(int*)(a+4) != *(int*)(b+4)) {
+                if (*(int*) (a + 4) != *(int*) (b + 4))
+                {
                     diffOffset = 4;
                     break;
                 }
 
-                if (*(int*)(a+6) != *(int*)(b+6)) {
+                if (*(int*) (a + 6) != *(int*) (b + 6))
+                {
                     diffOffset = 6;
                     break;
                 }
 
-                if (*(int*)(a+8) != *(int*)(b+8)) {
+                if (*(int*) (a + 8) != *(int*) (b + 8))
+                {
                     diffOffset = 8;
                     break;
                 }
@@ -147,23 +159,27 @@ namespace Templates.Native {
                 length -= 10;
             }
 
-            if (diffOffset != -1) {
+            if (diffOffset != -1)
+            {
                 // we already see a difference in the unrolled loop above
                 a += diffOffset;
                 b += diffOffset;
                 int order;
-                if ((order = (int)*a - (int)*b) != 0) {
+                if ((order = (int) *a - (int) *b) != 0)
+                {
                     return order;
                 }
-                return ((int)*(a+1) - (int)*(b+1));
+                return ((int) *(a + 1) - (int) *(b + 1));
             }
 
             // now go back to slower code path and do comparison on 4 bytes one time. 
             // Following code also take advantage of the fact strings will
             // use even numbers of characters (runtime will have a extra zero at the end.) 
             // so even if length is 1 here, we can still do the comparsion. 
-            while (length > 0) {
-                if (*(int*)a != *(int*)b) {
+            while (length > 0)
+            {
+                if (*(int*) a != *(int*) b)
+                {
                     break;
                 }
                 a += 2;
@@ -171,18 +187,20 @@ namespace Templates.Native {
                 length -= 2;
             }
 
-            if (length > 0) {
+            if (length > 0)
+            {
                 int c;
                 // found a different int on above loop
-                if ((c = (int)*a - (int)*b) != 0) {
+                if ((c = (int) *a - (int) *b) != 0)
+                {
                     return c;
                 }
-                return ((int)*(a+1) - (int)*(b+1));
+                return ((int) *(a + 1) - (int) *(b + 1));
             }
             return lenOne - lenTwo;
         }
 
-        static NativeHelper() {
+        static AssemblyHelper() {
 #if !DNXCORE50
             var method = typeof(string).GetMethod("FastAllocateString", BindingFlags.Static | BindingFlags.NonPublic);
             Allocator = (Allocate)method.CreateDelegate(typeof(Allocate));
@@ -213,6 +231,7 @@ namespace Templates.Native {
         {
             return LoadContextAccessor.Default;
         }
+
 #else
         internal static string AllocateString(int len) {
             return Allocator(len);
@@ -286,8 +305,6 @@ namespace Templates.Native {
         }
 
 #endif
-
-        [System.Security.SecurityCritical]  // auto-generated 
         internal static unsafe int StartsWith(char* data, char* find, int* needleTable, int dataLen, int findLen) {
             if (dataLen >= findLen) {
                 int found = 0;
@@ -310,7 +327,6 @@ namespace Templates.Native {
             return -1;
         }
 
-        [System.Security.SecurityCritical]  // auto-generated 
         internal static bool IsWhiteSpace(char c) {
             return c == ' ' || c == '\x00a0' || c == '\x0085' || c >= '\x0009' && c <= '\x000d';
         }

@@ -44,7 +44,7 @@ namespace Templates.Strings {
 #endif
                         fixed (char* dest = _data) {
                             fixed (char* src = old) {
-                                NativeHelper.MemCpy(dest, src, oldLen);
+                                AssemblyHelper.MemCpy(dest, src, oldLen);
                             }
                         }
                     }
@@ -80,14 +80,14 @@ namespace Templates.Strings {
                             {
                                 fixed (char* src = _appendStrings[i].ExStringValue.Data)
                                 {
-                                    NativeHelper.MemCpy(dest + seed, src, len);
+                                    AssemblyHelper.MemCpy(dest + seed, src, len);
                                 }
                             }
                             else
                             {
                                 fixed (char* src = _appendStrings[i].StringValue)
                                 {
-                                    NativeHelper.MemCpy(dest + seed, src, len);
+                                    AssemblyHelper.MemCpy(dest + seed, src, len);
                                 }
                             }
                         }
@@ -327,10 +327,10 @@ namespace Templates.Strings {
                     throw new ArgumentException();
 #endif
                 fixed (char* middle = replacementString) {
-                    NativeHelper.MemCpy(dest + lastIndex, src + current, replacement.BlockPosition.StartIndex - current);
+                    AssemblyHelper.MemCpy(dest + lastIndex, src + current, replacement.BlockPosition.StartIndex - current);
                     lastIndex += replacement.BlockPosition.StartIndex - current;
 
-                    NativeHelper.MemCpy(dest + lastIndex, middle, chunkLength);
+                    AssemblyHelper.MemCpy(dest + lastIndex, middle, chunkLength);
                     current = replacement.BlockPosition.StartIndex + replacement.BlockPosition.Length;
                     lastIndex += chunkLength;
                 }
@@ -339,7 +339,7 @@ namespace Templates.Strings {
             if (lastIndex + srcLen - current < 0 || lastIndex + srcLen - current > capacity || current > srcLen)
                 throw new ArgumentException();
 #endif
-            NativeHelper.MemCpy(dest + lastIndex, src + current, srcLen - current);
+            AssemblyHelper.MemCpy(dest + lastIndex, src + current, srcLen - current);
         }
 
         public static string Replace (int start, int length, string replacement, string source)
@@ -367,9 +367,9 @@ namespace Templates.Strings {
                         fixed (char* src = source) {
                             fixed (char* repl = replacement) {
                                 if (start > 0)
-                                    NativeHelper.MemCpy(dest, src, start);
-                                NativeHelper.MemCpy(dest + start, repl, replacementLength);
-                                NativeHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
+                                    AssemblyHelper.MemCpy(dest, src, start);
+                                AssemblyHelper.MemCpy(dest + start, repl, replacementLength);
+                                AssemblyHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
                             }
                         }
                     }
@@ -399,9 +399,9 @@ namespace Templates.Strings {
                         fixed (char* src = (char[]) source) {
                             fixed (char* repl = replacement) {
                                 if (start > 0)
-                                    NativeHelper.MemCpy(dest, src, start);
-                                NativeHelper.MemCpy(dest + start, repl, replacementLength);
-                                NativeHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
+                                    AssemblyHelper.MemCpy(dest, src, start);
+                                AssemblyHelper.MemCpy(dest + start, repl, replacementLength);
+                                AssemblyHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
                             }
                         }
                     }
@@ -431,9 +431,9 @@ namespace Templates.Strings {
                         fixed (char* src = (char[]) source) {
                             fixed (char* repl = (char[]) replacement) {
                                 if (start > 0)
-                                    NativeHelper.MemCpy(dest, src, start);
-                                NativeHelper.MemCpy(dest + start, repl, replacementLength);
-                                NativeHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
+                                    AssemblyHelper.MemCpy(dest, src, start);
+                                AssemblyHelper.MemCpy(dest + start, repl, replacementLength);
+                                AssemblyHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
                             }
                         }
                     }
@@ -464,9 +464,9 @@ namespace Templates.Strings {
                         fixed (char* src = _data) {
                             fixed (char* repl = replacement) {
                                 if (start > 0)
-                                    NativeHelper.MemCpy(dest, src, start);
-                                NativeHelper.MemCpy(dest + start, repl, replacementLength);
-                                NativeHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
+                                    AssemblyHelper.MemCpy(dest, src, start);
+                                AssemblyHelper.MemCpy(dest + start, repl, replacementLength);
+                                AssemblyHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
                             }
                         }
                     }
@@ -504,9 +504,9 @@ namespace Templates.Strings {
                         fixed (char* src = _data) {
                             fixed (char* repl = (char[]) replacement) {
                                 if (start > 0)
-                                    NativeHelper.MemCpy(dest, src, start);
-                                NativeHelper.MemCpy(dest + start, repl, replacementLength);
-                                NativeHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
+                                    AssemblyHelper.MemCpy(dest, src, start);
+                                AssemblyHelper.MemCpy(dest + start, repl, replacementLength);
+                                AssemblyHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
                             }
                         }
                     }

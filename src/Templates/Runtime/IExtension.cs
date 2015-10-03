@@ -1,4 +1,5 @@
 ﻿using System;
+using Templates.Core;
 using Templates.Data;
 using Templates.Language;
 
@@ -9,10 +10,10 @@ namespace Templates.Runtime {
     public interface IExtension: IDisposable {
         void SetUpRenderType(RenderType renderType);
 
-        ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context, ParseContext parseContext);
+        ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType);
 
         void CompleteInit(CompileContext newContext, ParseContext parseContext);
 
-        object ProcessData(object value, object chainedResult);
+        object ProcessData(object data, object chained);
     }
 }

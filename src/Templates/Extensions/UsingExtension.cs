@@ -8,18 +8,18 @@ using Templates.Runtime;
 namespace Templates.Extensions {
     [Name ("using")]
     public class UsingExtension: AbstractExtension {
-        public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context, ParseContext parseContext)
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
         {
-            if (context == null)
-                throw new ArgumentNullException(nameof(context));
-            base.InitStart(parameterTemplate, dataType, chainedType, context, parseContext);
-            parameterTemplate = GetInnerResult(null, null);
-            if (!string.IsNullOrWhiteSpace(parameterTemplate))
-                context.ImportNamespace(parameterTemplate);
+            if (initContext.Context == null)
+                throw new ArgumentNullException(nameof(initContext.Context));
+            base.InitStart(initContext, dataType, chainedType);
+            initContext.ParameterTemplate = GetInnerResult(null, null);
+            if (!string.IsNullOrWhiteSpace(initContext.ParameterTemplate))
+                initContext.Context.ImportNamespace(initContext.ParameterTemplate);
             return null;
         }
 
-        public override object ProcessData(object value, object chainedResult)
+        public override object ProcessData(object data, object chained)
         {
             return null;
         }

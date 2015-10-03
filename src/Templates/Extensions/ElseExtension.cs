@@ -11,13 +11,13 @@ namespace Templates.Extensions {
     [Name ("else")]
     [DataType (typeof (bool))]
     public class ElseExtension: AbstractExtension {
-        public override object ProcessData(object value, object chainedResult)
+        public override object ProcessData(object data, object chained)
         {
-            if (value == null)
+            if (data == null)
                 return string.Empty;
-            if (!(value is bool)) {
+            if (!(data is bool)) {
                 try {
-                    value = Convert.ChangeType(value, typeof (bool), CultureInfo.InvariantCulture);
+                    data = Convert.ChangeType(data, typeof (bool), CultureInfo.InvariantCulture);
                 }
                 catch (InvalidCastException) {
                     return string.Empty;
@@ -26,8 +26,8 @@ namespace Templates.Extensions {
                     return string.Empty;
                 }
             }
-            if (!(bool) value)
-                return GetInnerResult(chainedResult, null);
+            if (!(bool) data)
+                return GetInnerResult(chained, null);
             return string.Empty;
         }
     }

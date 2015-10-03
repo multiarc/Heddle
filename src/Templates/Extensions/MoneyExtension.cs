@@ -31,10 +31,9 @@ namespace Templates.Extensions {
             }
         }
 
-        public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context,
-            ParseContext parseContext)
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
         {
-            return base.InitStart(parameterTemplate, chainedType, null, context, parseContext);
+            return base.InitStart(initContext, chainedType, null);
         }
 
         protected override object ProcessDataInternal (object value, object chainedResult)
@@ -57,7 +56,7 @@ namespace Templates.Extensions {
                 CultureInfo localeInfo = GetCultureInfo(locale);
                 return ((decimal) value).ToString("c", localeInfo);
             }
-            return ((decimal) value).ToString("c", CultureInfo.InvariantCulture);
+            return ((decimal) value).ToString("c");
         }
     }
 }

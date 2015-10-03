@@ -61,15 +61,14 @@ namespace Templates.Core {
             return typeof (string);
         }
 
-        public virtual ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context,
-            ParseContext parseContext)
+        public virtual ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
         {
-            if (context == null)
-                throw new ArgumentNullException(nameof(context));
+            if (initContext.Context == null)
+                throw new ArgumentNullException(nameof(initContext.Context));
             IDataProcessor subTemplate;
-            var type = InitSubTemplate(ref parameterTemplate, dataType, chainedType, context, parseContext, out subTemplate);
+            var type = InitSubTemplate(ref initContext.ParameterTemplate, dataType, chainedType, initContext.Context, initContext.ParseContext, out subTemplate);
             if (subTemplate == null)
-                _innerResult = parameterTemplate;
+                _innerResult = initContext.ParameterTemplate;
             SubTemplate = subTemplate;
             return type;
         }
@@ -79,6 +78,6 @@ namespace Templates.Core {
             
         }
 
-        public abstract object ProcessData(object value, object chainedResult);
+        public abstract object ProcessData(object data, object chained);
     }
 }

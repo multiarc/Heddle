@@ -116,7 +116,7 @@ namespace Templates.Helpers {
                 return modelType;
             modelType = Type.GetType(typeName, false);
             if (modelType == null) {
-                Assembly[] assemblies = NativeHelper.GetAssemblies();
+                Assembly[] assemblies = AssemblyHelper.GetAssemblies();
                 foreach (Assembly assembly in assemblies) {
                     modelType = assembly.GetType(typeName);
                     if (modelType != null)

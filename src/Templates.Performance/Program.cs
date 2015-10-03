@@ -10,8 +10,8 @@ namespace Templates.Performance
 
         public static void SetUpTests() {
             //tests.Add(new HtmlEncodeTest());
-            //tests.Add(new TemplaterStrings());
-            //Tests.Add(new TemplaterTest());
+            
+            Tests.Add(new TemplaterTest());
             Tests.Add(new TemplaterStrings());
         }
 #if !DNXCORE50 && !DNX451

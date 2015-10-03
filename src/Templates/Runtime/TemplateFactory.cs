@@ -31,7 +31,7 @@ namespace Templates.Runtime {
 #if !DNXCORE50
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
 #else
-            foreach (var assembly in NativeHelper.GetAssemblies())
+            foreach (var assembly in AssemblyHelper.GetAssemblies())
 #endif
             {
                 var exportAttributes = assembly.GetCustomAttributes<ExportExtensionsAttribute>();

@@ -23,7 +23,7 @@ namespace Templates.Strings {
                     {
                         fixed (char* one = _data)
                         {
-                            return NativeHelper.Equals(one, two, lenOne, lenTwo);
+                            return AssemblyHelper.Equals(one, two, lenOne, lenTwo);
                         }
                     }
                 }
@@ -37,7 +37,7 @@ namespace Templates.Strings {
                     {
                         fixed (char* one = _data)
                         {
-                            return NativeHelper.Equals(one, two, lenOne, lenTwo);
+                            return AssemblyHelper.Equals(one, two, lenOne, lenTwo);
                         }
                     }
                 }
@@ -51,7 +51,7 @@ namespace Templates.Strings {
                     {
                         fixed (char* one = _data)
                         {
-                            return NativeHelper.Equals(one, two, lenOne, lenTwo);
+                            return AssemblyHelper.Equals(one, two, lenOne, lenTwo);
                         }
                     }
                 }
@@ -209,7 +209,7 @@ namespace Templates.Strings {
                 {
                     fixed (char* one = _data)
                     {
-                        return NativeHelper.Equals(one, two, lenOne, lenTwo) == 0;
+                        return AssemblyHelper.Equals(one, two, lenOne, lenTwo) == 0;
                     }
                 }
             }
@@ -232,7 +232,7 @@ namespace Templates.Strings {
                 {
                     fixed (char* one = _data)
                     {
-                        return NativeHelper.Equals(one, two, lenOne, lenTwo) == 0;
+                        return AssemblyHelper.Equals(one, two, lenOne, lenTwo) == 0;
                     }
                 }
             }
@@ -254,7 +254,7 @@ namespace Templates.Strings {
                 {
                     fixed (char* one = _data)
                     {
-                        return NativeHelper.Equals(one, two, lenOne, lenTwo) == 0;
+                        return AssemblyHelper.Equals(one, two, lenOne, lenTwo) == 0;
                     }
                 }
             }

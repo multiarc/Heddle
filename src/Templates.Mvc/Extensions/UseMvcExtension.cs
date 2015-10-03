@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using Templates.Attributes;
+using Templates.Core;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Extensions;
@@ -13,20 +14,20 @@ using Templates.Runtime;
 
 namespace Templates.Mvc.Extensions {
     public class ImportMvcExtension: ImportExtension {
-        public override ExType InitStart(string parameterTemplate, ExType dataType, ExType chainedType, CompileContext context, ParseContext parseContext) {
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType) {
             IEnumerable<string> searched;
             TtlTemplate cached;
-            base.InitStart(parameterTemplate, dataType, chainedType, context, parseContext);
-            parameterTemplate = GetInnerResult(null, null);
-            var path = TtlViewEngine.Resolver.Search(parameterTemplate, context.ControllerName, TemplatePathType.Master,
+            base.InitStart(initContext, dataType, chainedType);
+            initContext.ParameterTemplate = GetInnerResult(null, null);
+            var path = TtlViewEngine.Resolver.Search(initContext.ParameterTemplate, initContext.Context.ControllerName, TemplatePathType.Master,
                 out searched, out cached);
-            int outputCount = parseContext.OutputChains.Length;
+            int outputCount = initContext.ParseContext.OutputChains.Length;
             using (var file = File.OpenText(path))
             {
                 string document = file.ReadToEnd();
-                DocumentParser.Parse(document, parseContext, true);
+                DocumentParser.Parse(document, initContext.ParseContext, true);
             }
-            if (parseContext.OutputChains.Length > outputCount)
+            if (initContext.ParseContext.OutputChains.Length > outputCount)
                 throw new TemplateParseException("The Defenitions template cannot contain output items".ToError());
             return null;
         }

@@ -5,6 +5,12 @@ using System.Linq;
 namespace Templates.Tests.Data {
     #region Nested type: TestData
 
+    public class NameValuePair
+    {
+        public string Name { get; set; }
+        public string Value { get; set; }
+    }
+
     public class TestData: TestDataStructure {
         public override List<TestListItem> Products {
             get { return ProductsCollection.Where(p => p.Cost > 1000).ToList(); }

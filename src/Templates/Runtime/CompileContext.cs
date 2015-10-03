@@ -25,17 +25,18 @@ using System.Runtime.Loader;
 #endif
 
 namespace Templates.Runtime {
+    internal class DelayedTemplate
+    {
+        public CompileContext NewContext;
+        public IExtension ForExtension;
+        public ParseContext ParseContext;
+    }
+
     /// <summary>
     /// Compile Context class. Doing all work to compile extensions, saving type for each context level extension, import namespace/assembly. 
     /// By loading assembly you can add or override existing extensions or add some extra funtionality parts to template.
     /// </summary>
     public class CompileContext: IDisposable {
-
-        private class DelayedTemplate {
-            public CompileContext NewContext;
-            public IExtension ForExtension;
-            public ParseContext ParseContext;
-        }
 
         internal static readonly SymbolDisplayFormat DisplayFormat =
             new SymbolDisplayFormat(SymbolDisplayGlobalNamespaceStyle.OmittedAsContaining,
@@ -47,8 +48,6 @@ namespace Templates.Runtime {
                 typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
                 miscellaneousOptions: SymbolDisplayMiscellaneousOptions.ExpandNullable);
 
-        internal Assembly CompiledAssembly { get; private set; }
-
         internal HashSet<Assembly> DependentAssemblies { get; }
             =
             new HashSet<Assembly>(new[]
@@ -57,30 +56,27 @@ namespace Templates.Runtime {
                 typeof (InternalsVisibleToAttribute).GetTypeInfo().Assembly
             });
 
-        public bool Compiled { get; private set; }
-
         public static TtlCompileResult InitErrors { get; }
-
-        private static readonly TtlTemplate CodeGenerator;
 
         private static readonly TtlTemplate PreparseGenerator;
 
-        static CompileContext() {
-            try {
-                CodeGenerator = new TtlTemplate();
+        static CompileContext()
+        {
+            try
+            {
                 PreparseGenerator = new TtlTemplate();
 #if DNX451 || DNXCORE50
-                IApplicationEnvironment env = (IApplicationEnvironment)CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IApplicationEnvironment));
+                IApplicationEnvironment env =
+                    (IApplicationEnvironment)
+                        CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IApplicationEnvironment));
                 var path = env.ApplicationBasePath + "\\";
 #else
                 var path = "";
 #endif
-                var result = CodeGenerator.Compile(File.ReadAllText($"{path}CSharpClassTemplate.tcs"));
                 var resultPre = PreparseGenerator.Compile(File.ReadAllText($"{path}CSharpPreparseTemplate.tcs"));
-                if (!result.Success || !resultPre.Success)
+                if (!resultPre.Success)
                 {
                     InitErrors = new TtlCompileResult(false);
-                    InitErrors.Errors.AddRange(result.ErrorList);
                     InitErrors.Errors.AddRange(resultPre.ErrorList);
                 }
                 else
@@ -88,7 +84,8 @@ namespace Templates.Runtime {
                     InitErrors = new TtlCompileResult(true);
                 }
             }
-            catch (Exception e) {
+            catch (Exception e)
+            {
                 InitErrors = new TtlCompileResult(false);
                 InitErrors.Errors.Add(new TtlCompileError
                 {
@@ -104,8 +101,11 @@ namespace Templates.Runtime {
 
         private readonly HashSet<string> _namespaces = new HashSet<string>();
 
-        private readonly List<DelayedTemplate> _delayedTemplates = new List<DelayedTemplate>();
-        private int _method;
+        internal Assembly CompiledAssembly { get; set; }
+        public bool Compiled { get; internal set; }
+
+        internal List<DelayedTemplate> DelayedTemplates { get; } = new List<DelayedTemplate>();
+        private volatile int _method;
 
         private CompileContext(CompileContext context, string fileName = null, ExType modelType = null)
         {
@@ -205,22 +205,22 @@ namespace Templates.Runtime {
                 var currentAssemblyName = GetType().GetTypeInfo().Assembly.GetName();
                 yield return FormatAssemblyName(currentAssemblyName);
 #if DNXCORE50
-                var systemAssemblyName = NativeHelper.GetAssemblyName("System.Dynamic.Runtime");
+                var systemAssemblyName = AssemblyHelper.GetAssemblyName("System.Dynamic.Runtime");
                 if (systemAssemblyName != null)
                     yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
-                systemAssemblyName = NativeHelper.GetAssemblyName("System.Core");
+                systemAssemblyName = AssemblyHelper.GetAssemblyName("System.Core");
                 if (systemAssemblyName != null)
                     yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
-                systemAssemblyName = NativeHelper.GetAssemblyName("System.Runtime");
+                systemAssemblyName = AssemblyHelper.GetAssemblyName("System.Runtime");
                 if (systemAssemblyName != null)
                     yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
-                systemAssemblyName = NativeHelper.GetAssemblyName("System");
+                systemAssemblyName = AssemblyHelper.GetAssemblyName("System");
                 if (systemAssemblyName != null)
                     yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
                 systemAssemblyName = typeof(object).GetTypeInfo().Assembly.GetName();
                 if (systemAssemblyName != null)
                     yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
-                systemAssemblyName = NativeHelper.GetAssemblyName("Microsoft.CSharp");
+                systemAssemblyName = AssemblyHelper.GetAssemblyName("Microsoft.CSharp");
                 if (systemAssemblyName != null)
                     yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
 #endif
@@ -229,86 +229,9 @@ namespace Templates.Runtime {
 
         public IEnumerable<string> Namespaces => _namespaces;
 
-        /// <summary>
-        /// Compile delayed Extensions, Compile all dynamic property references and connect into template chain.
-        /// </summary>
-        public virtual void Compile() {
-            if (!Compiled)
-            {
-                foreach (var delayedTemplate in _delayedTemplates)
-                {
-                    delayedTemplate.ForExtension.CompleteInit(delayedTemplate.NewContext, delayedTemplate.ParseContext);
-                }
-                _delayedTemplates.Clear();
-                if (Options.AllowCSharp && Methods.Count > 0)
-                {
-                    if (!InitErrors.Success)
-                        throw new TemplateCompileException("Cannot compile base C# generation templates",
-                            InitErrors.Errors);
-                    var code = CodeGenerator.Generate(this);
-                    CompiledAssembly = GeneratedAssemblyCache.TryGetCached(code);
-                    if (CompiledAssembly != null)
-                        return;
-                    var tree = CSharpSyntaxTree.ParseText(code);
-                    var compilation = CSharpCompilation.Create(ModelType + "_" + ClassGuid.ToString("N"), new[] {tree},
-#if DNXCORE50 || DNX451
-                        NativeHelper.GetMetadataReferences(),
-#else
-                        DependentAssemblies.Select(a => MetadataReference.CreateFromFile(a.Location)),
-#endif
-                        new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithCryptoPublicKey(
-                            GetType().GetTypeInfo().Assembly.GetName().GetPublicKey().ToImmutableArray())
-                            .WithDelaySign(false));
-                    var diagnostics = compilation.GetDiagnostics();
-                    if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
-                    {
-                        throw new TemplateCompileException(FormatErrors(diagnostics));
-                    }
-                    var stream = new MemoryStream();
-                    compilation.Emit(stream);
-                    stream.Seek(0, SeekOrigin.Begin);
-#if !DNXCORE50
-                    CompiledAssembly = Assembly.Load(stream.GetBuffer());
-#else
-                    CompiledAssembly = NativeHelper.GetAssemblyLoadContext().LoadStream(stream, null);
-#endif
-                    GeneratedAssemblyCache.AddToCache(code, CompiledAssembly);
-                    var classType =
-                        CompiledAssembly.GetType($"Templates.Runtime.CSE_{ClassGuid.ToString("N")}");
-                    foreach (var expressionCompilation in Methods)
-                    {
-                        var compiledParameter = expressionCompilation.RuntimeCallParameter as CompiledParameter;
-                        if (compiledParameter == null) continue;
-                        compiledParameter.ParameterImplementation =
-                            GatesCache.CreateCompiledDelegate(
-                                classType.GetMethod(
-                                    $"ProcessData_{expressionCompilation.ExtensionName}{expressionCompilation.MethodNumber}",
-                                    BindingFlags.Public | BindingFlags.Static), expressionCompilation.ModelType.Type,
-                                expressionCompilation.ChainedType.Type);
-                    }
-                }
-                Compiled = true;
-            }
-        }
-
-        private static IEnumerable<TtlCompileError> FormatErrors(ImmutableArray<Diagnostic> diagnostics)
-        {
-            return diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
-                .Select(d => new TtlCompileError
-                {
-                    Error = d.GetMessage()
-                })
-                .Union(
-                    diagnostics.Where(d => d.Severity == DiagnosticSeverity.Warning)
-                        .Select(d => new TtlCompileWarning
-                        {
-                            Error = d.GetMessage()
-                        }));
-        }
-
         public virtual void AddDelayedCompileTemplate(CompileContext newContext, ParseContext parserContext, IExtension forExtension)
         {
-            _delayedTemplates.Add(new DelayedTemplate
+            DelayedTemplates.Add(new DelayedTemplate
             {
                 NewContext = newContext,
                 ForExtension = forExtension,
@@ -321,6 +244,8 @@ namespace Templates.Runtime {
             if (!string.IsNullOrEmpty(parameterTemplate) && !_namespaces.Contains(parameterTemplate))
                 _namespaces.Add(parameterTemplate);
         }
+
+        internal List<ExpressionCompilation> Methods { get; } = new List<ExpressionCompilation>();
 
         internal IRuntimeParameter PushCompileExpression(ExpressionOptions expressionOptions)
         {
@@ -375,7 +300,7 @@ namespace Templates.Runtime {
             var code = PreparseGenerator.Generate(expressionOptions);
             var tree = CSharpSyntaxTree.ParseText(code);
 #if DNX451 || DNXCORE50
-            var assemblySet = NativeHelper.GetMetadataReferences();
+            var assemblySet = AssemblyHelper.GetMetadataReferences();
 #else
             HashSet<MetadataReference> assemblySet = new HashSet<MetadataReference>
             {
@@ -393,7 +318,7 @@ namespace Templates.Runtime {
             var diagnostics = compilation.GetDiagnostics();
             if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
             {
-                throw new TemplateCompileException(FormatErrors(diagnostics));
+                throw new TemplateCompileException(ContextCompilation.FormatErrors(diagnostics));
             }
             var syntax = tree.GetRoot().DescendantNodes().OfType<ReturnStatementSyntax>().Single().Expression;
             var model = compilation.GetSemanticModel(tree, false);
@@ -414,7 +339,6 @@ namespace Templates.Runtime {
                 ReflectionHelper.ResolveType(typeInfo.Type.ToDisplayString(DisplayFormat), _namespaces.ToArray());
         }
 
-        internal List<ExpressionCompilation> Methods { get; } = new List<ExpressionCompilation>();
 
         ~CompileContext()
         {
