@@ -35,10 +35,12 @@ namespace Templates.Collections {
 
         public int Capacity => _array.Length;
 
+        internal T[] Array => _array;
+
         public T[] ToArray ()
         {
             if (_array.Length != _length)
-                Array.Resize(ref _array, _length);
+                System.Array.Resize(ref _array, _length);
             return _array;
         }
 
@@ -66,11 +68,11 @@ namespace Templates.Collections {
             {
                 if ((long) _length*2 > int.MaxValue)
                 {
-                    Array.Resize(ref _array, int.MaxValue);
+                    System.Array.Resize(ref _array, int.MaxValue);
                 }
                 else
                 {
-                    Array.Resize(ref _array, _length*2);
+                    System.Array.Resize(ref _array, _length*2);
                 }
             }
             items.CopyTo(_array, length);
@@ -94,7 +96,7 @@ namespace Templates.Collections {
                 _array = new T[_length],
                 _length = _length
             };
-            Array.Copy(_array, result._array, _length);
+            System.Array.Copy(_array, result._array, _length);
             return result;
         }
     }

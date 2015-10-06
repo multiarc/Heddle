@@ -95,7 +95,7 @@ namespace Templates.Collections {
 
         public int IndexOf (T item)
         {
-            if (!ReferenceEquals(item, null)) {
+            if (item != null) {
                 for (int i = 0; i < _length; i++) {
                     if (ReferenceEquals(item, _array[i]))
                         return i;
@@ -104,7 +104,7 @@ namespace Templates.Collections {
                 }
             } else {
                 for (int i = 0; i < _length; i++) {
-                    if (ReferenceEquals(null, _array[i]))
+                    if (null == _array[i])
                         return i;
                 }
             }
@@ -113,14 +113,14 @@ namespace Templates.Collections {
 
         public void Insert (int index, T item)
         {
-            if (index >= _length || index < 0)
+            if (index > _length || index < 0)
                 throw new ArgumentException();
             if (_length == int.MaxValue)
                 throw new OutOfMemoryException();
             _length++;
             if (_array.Length < _length)
-                Array.Resize(ref _array, _length * 2);
-            for (int i = _length; i > index; i--)
+                System.Array.Resize(ref _array, _length * 2);
+            for (int i = _length - 1; i > index; i--)
                 _array[i] = _array[i - 1];
             _array[index] = item;
         }
@@ -175,11 +175,11 @@ namespace Templates.Collections {
             {
                 if ((long) _length*2 > int.MaxValue)
                 {
-                    Array.Resize(ref _array, int.MaxValue);
+                    System.Array.Resize(ref _array, int.MaxValue);
                 }
                 else
                 {
-                    Array.Resize(ref _array, _length*2);
+                    System.Array.Resize(ref _array, _length*2);
                 }
             }
             _array[_length - 1] = value;
@@ -202,7 +202,6 @@ namespace Templates.Collections {
                 throw new ArgumentNullException(nameof(array));
             if (index < 0 || _length + index < 0 || _length + index > array.Length)
                 throw new ArgumentException();
-
             for (int i = 0,
                      j = index;
                  i < _length;

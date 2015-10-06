@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Reflection;
+using System.Runtime;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Templates.Collections;
 using Templates.Native;
@@ -9,6 +12,8 @@ namespace Templates.Strings {
     [Serializable]
 #endif
     public sealed class ExStringBuilder {
+        private static readonly Allocate AllocateString;
+
         private readonly SmartList<MutableString> _appendStrings = new SmartList<MutableString>();
         private int _appendlength;
         private string _data;
@@ -28,23 +33,29 @@ namespace Templates.Strings {
             _data = string.Empty;
         }
 
+        static ExStringBuilder()
+        {
+            var method = typeof(string).GetMethod("FastAllocateString", BindingFlags.Static | BindingFlags.NonPublic);
+            AllocateString = (Allocate)method.CreateDelegate(typeof(Allocate));
+        }
+
         private int Capacity
         {
             set
             {
-                if (_data.Length != value) {
+                if (_data.Length != value)
+                {
                     string old = _data;
-                    unsafe {
+                    unsafe
+                    {
                         int newLen = value;
                         int oldLen = _data.Length;
-#if DNXCORE50 || DNX451
-                        _data = new string('\0', newLen);
-#else
-                        _data = NativeHelper.AllocateString(newLen);
-#endif
-                        fixed (char* dest = _data) {
-                            fixed (char* src = old) {
-                                AssemblyHelper.MemCpy(dest, src, oldLen);
+                        _data = AllocateString(newLen);
+                        fixed (char* dest = _data)
+                        {
+                            fixed (char* src = old)
+                            {
+                                MemCpy(dest, src, oldLen);
                             }
                         }
                     }
@@ -80,20 +91,20 @@ namespace Templates.Strings {
                             {
                                 fixed (char* src = _appendStrings[i].ExStringValue.Data)
                                 {
-                                    AssemblyHelper.MemCpy(dest + seed, src, len);
+                                    MemCpy(dest + seed, src, len);
                                 }
                             }
                             else
                             {
                                 fixed (char* src = _appendStrings[i].StringValue)
                                 {
-                                    AssemblyHelper.MemCpy(dest + seed, src, len);
+                                    MemCpy(dest + seed, src, len);
                                 }
                             }
                         }
                     }
                     seed += len;
-                    //_appendStrings[i] = string.Empty;
+                    _appendStrings[i] = string.Empty;
                 }
                 _appendStrings.Clear();
                 _appendlength = 0;
@@ -243,11 +254,7 @@ namespace Templates.Strings {
 
                 if (capacity == 0)
                     return string.Empty;
-#if DNXCORE50 || DNX451
-                string result = new string('\0', capacity);
-#else
-                string result = NativeHelper.AllocateString(capacity);
-#endif
+                string result = AllocateString(capacity);
                 unsafe {
                     fixed (char* dest = result) {
                         fixed (char* src = source) {
@@ -294,12 +301,7 @@ namespace Templates.Strings {
 
                 if (capacity == 0)
                     return string.Empty;
-#if DNXCORE50 || DNX451
-                string result = new string('\0', capacity);
-#else
-                string result = NativeHelper.AllocateString(capacity);
-#endif
-
+                string result = AllocateString(capacity);
                 unsafe {
                     fixed (char* dest = result) {
                         fixed (char* src = (char[]) source) {
@@ -327,10 +329,10 @@ namespace Templates.Strings {
                     throw new ArgumentException();
 #endif
                 fixed (char* middle = replacementString) {
-                    AssemblyHelper.MemCpy(dest + lastIndex, src + current, replacement.BlockPosition.StartIndex - current);
+                    MemCpy(dest + lastIndex, src + current, replacement.BlockPosition.StartIndex - current);
                     lastIndex += replacement.BlockPosition.StartIndex - current;
 
-                    AssemblyHelper.MemCpy(dest + lastIndex, middle, chunkLength);
+                    MemCpy(dest + lastIndex, middle, chunkLength);
                     current = replacement.BlockPosition.StartIndex + replacement.BlockPosition.Length;
                     lastIndex += chunkLength;
                 }
@@ -339,7 +341,7 @@ namespace Templates.Strings {
             if (lastIndex + srcLen - current < 0 || lastIndex + srcLen - current > capacity || current > srcLen)
                 throw new ArgumentException();
 #endif
-            AssemblyHelper.MemCpy(dest + lastIndex, src + current, srcLen - current);
+            MemCpy(dest + lastIndex, src + current, srcLen - current);
         }
 
         public static string Replace (int start, int length, string replacement, string source)
@@ -357,19 +359,15 @@ namespace Templates.Strings {
                     throw new ArgumentException();
 #endif
                 int newLen = sourceLen - length + replacement.Length;
-#if DNXCORE50 || DNX451
-                string destination = new string('\0', newLen);
-#else
-                string destination = NativeHelper.AllocateString(newLen);
-#endif
+                string destination = AllocateString(newLen);
                 unsafe {
                     fixed (char* dest = destination) {
                         fixed (char* src = source) {
                             fixed (char* repl = replacement) {
                                 if (start > 0)
-                                    AssemblyHelper.MemCpy(dest, src, start);
-                                AssemblyHelper.MemCpy(dest + start, repl, replacementLength);
-                                AssemblyHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
+                                    MemCpy(dest, src, start);
+                                MemCpy(dest + start, repl, replacementLength);
+                                MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
                             }
                         }
                     }
@@ -399,9 +397,9 @@ namespace Templates.Strings {
                         fixed (char* src = (char[]) source) {
                             fixed (char* repl = replacement) {
                                 if (start > 0)
-                                    AssemblyHelper.MemCpy(dest, src, start);
-                                AssemblyHelper.MemCpy(dest + start, repl, replacementLength);
-                                AssemblyHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
+                                    MemCpy(dest, src, start);
+                                MemCpy(dest + start, repl, replacementLength);
+                                MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
                             }
                         }
                     }
@@ -431,9 +429,9 @@ namespace Templates.Strings {
                         fixed (char* src = (char[]) source) {
                             fixed (char* repl = (char[]) replacement) {
                                 if (start > 0)
-                                    AssemblyHelper.MemCpy(dest, src, start);
-                                AssemblyHelper.MemCpy(dest + start, repl, replacementLength);
-                                AssemblyHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
+                                    MemCpy(dest, src, start);
+                                MemCpy(dest + start, repl, replacementLength);
+                                MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
                             }
                         }
                     }
@@ -464,9 +462,9 @@ namespace Templates.Strings {
                         fixed (char* src = _data) {
                             fixed (char* repl = replacement) {
                                 if (start > 0)
-                                    AssemblyHelper.MemCpy(dest, src, start);
-                                AssemblyHelper.MemCpy(dest + start, repl, replacementLength);
-                                AssemblyHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
+                                    MemCpy(dest, src, start);
+                                MemCpy(dest + start, repl, replacementLength);
+                                MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
                             }
                         }
                     }
@@ -504,9 +502,9 @@ namespace Templates.Strings {
                         fixed (char* src = _data) {
                             fixed (char* repl = (char[]) replacement) {
                                 if (start > 0)
-                                    AssemblyHelper.MemCpy(dest, src, start);
-                                AssemblyHelper.MemCpy(dest + start, repl, replacementLength);
-                                AssemblyHelper.MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
+                                    MemCpy(dest, src, start);
+                                MemCpy(dest + start, repl, replacementLength);
+                                MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
                             }
                         }
                     }
@@ -514,5 +512,174 @@ namespace Templates.Strings {
                 return new ExString(destination);
             }
         }
+
+#if DNX451
+        internal static unsafe void MemCpy(char* dmem, char* smem, int len)
+        {
+            //len *= 2;
+            //if (len >= 16)
+            //{
+            //    do
+            //    {
+            //        ((long*)dmem)[0] = ((long*)smem)[0]; 
+            //        ((long*)dmem)[1] = ((long*)smem)[1];
+            //        dmem += 8;
+            //        smem += 8;
+            //    } while ((len -= 16) >= 16);
+            //}
+            //if (len > 0)
+            //{
+            //    if ((len & 8) != 0)
+            //    {
+            //        ((long*) dmem)[0] = ((long*) smem)[0];
+            //        dmem += 4;
+            //        smem += 4;
+            //    }
+            //    if ((len & 4) != 0)
+            //    {
+            //        ((int*) dmem)[0] = ((int*) smem)[0];
+            //        dmem += 2;
+            //        smem += 2;
+            //    }
+            //    if ((len & 2) != 0)
+            //    {
+            //        *dmem = *smem;
+            //    }
+            //}
+
+            if (len > 0)
+            {
+                if ((((int)dmem | (int)smem) & 1) == 0)
+                {
+                    if (((int)dmem & 2) != 0)
+                    {
+                        dmem[0] = smem[0];
+                        dmem += 1;
+                        smem += 1;
+                        len -= 1;
+                    }
+                    if ((((int)dmem & 4) != 0) && (len >= 2))
+                    {
+                        {
+                            ((uint*)dmem)[0] = ((uint*)smem)[0];
+                        }
+                        dmem += 2;
+                        smem += 2;
+                        len -= 2;
+                    }
+                    while (len >= 16)
+                    {
+                        ((ulong*)dmem)[0] = ((ulong*)smem)[0];
+                        ((ulong*)dmem)[1] = ((ulong*)smem)[1];
+                        ((ulong*)dmem)[2] = ((ulong*)smem)[2];
+                        ((ulong*)dmem)[3] = ((ulong*)smem)[3];
+                        dmem += 16;
+                        smem += 16;
+                        len -= 16;
+                    }
+                    if ((len & 8) != 0)
+                    {
+                        ((ulong*)dmem)[0] = ((ulong*)smem)[0];
+                        ((ulong*)dmem)[1] = ((ulong*)smem)[1];
+                        dmem += 8;
+                        smem += 8;
+                    }
+                    if ((len & 4) != 0)
+                    {
+                        ((ulong*)dmem)[0] = ((ulong*)smem)[0];
+                        dmem += 4;
+                        smem += 4;
+                    }
+                    if ((len & 2) != 0)
+                    {
+                        ((uint*)dmem)[0] = ((uint*)smem)[0];
+                        dmem += 2;
+                        smem += 2;
+                    }
+                    if ((len & 1) != 0)
+                    {
+                        dmem[0] = smem[0];
+                    }
+                }
+                else
+                {
+                    // This is rare case where at least one of the pointers is only byte aligned. 
+                    do
+                    {
+                        ((byte*)dmem)[0] = ((byte*)smem)[0];
+                        ((byte*)dmem)[1] = ((byte*)smem)[1];
+                        len -= 1;
+                        dmem += 1;
+                        smem += 1;
+                    } while (len > 0);
+                }
+            }
+        }
+#else
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static unsafe void MemCpy(char* dmem, char* smem, int charCount)
+        {
+            Buffer.MemoryCopy(smem, dmem, charCount*2, charCount*2);
+        }
+#endif
+
+        internal static unsafe int Equals(char* one, char* two, int lenOne, int lenTwo)
+        {
+            if (one == two)
+            {
+                return 0;
+            }
+            char* a = one;
+            char* b = two;
+            int length = lenOne <= lenTwo ? lenOne : lenTwo;
+            if (lenOne != lenTwo)
+                return lenOne - lenTwo;
+            while (length > 0 && *a == *b)
+            {
+                a++;
+                b++;
+                length--;
+            }
+
+            if (length > 0)
+            {
+                return *a - *b;
+            }
+            return 0;
+        }
+
+
+        internal static unsafe int StartsWith(char* data, char* find, int* needleTable, int dataLen, int findLen)
+        {
+            if (dataLen >= findLen)
+            {
+                int found = 0;
+                int currentIndex = findLen - 1;
+                int counter = currentIndex;
+
+                while (counter >= 0 && currentIndex < dataLen)
+                {
+                    counter = findLen - 1;
+                    found = currentIndex;
+                    while (counter >= 0 && data[found] == find[counter])
+                    {
+                        found--;
+                        counter--;
+                    }
+                    currentIndex += needleTable[(sbyte)data[currentIndex]];
+                }
+                found++;
+                if (found <= dataLen - findLen)
+                    return found;
+            }
+            return -1;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static bool IsWhiteSpace(char c)
+        {
+            return c == ' ' || c == '\x00a0' || c == '\x0085' || c >= '\x0009' && c <= '\x000d';
+        }
+
     }
 }

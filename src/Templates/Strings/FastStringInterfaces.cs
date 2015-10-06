@@ -19,11 +19,11 @@ namespace Templates.Strings {
                 int lenTwo = fastString._length;
                 unsafe
                 {
-                    fixed (char* two = (char[])fastString)
+                    fixed (char* two = fastString._data)
                     {
                         fixed (char* one = _data)
                         {
-                            return AssemblyHelper.Equals(one, two, lenOne, lenTwo);
+                            return ExStringBuilder.Equals(one, two, lenOne, lenTwo);
                         }
                     }
                 }
@@ -37,7 +37,7 @@ namespace Templates.Strings {
                     {
                         fixed (char* one = _data)
                         {
-                            return AssemblyHelper.Equals(one, two, lenOne, lenTwo);
+                            return ExStringBuilder.Equals(one, two, lenOne, lenTwo);
                         }
                     }
                 }
@@ -51,7 +51,7 @@ namespace Templates.Strings {
                     {
                         fixed (char* one = _data)
                         {
-                            return AssemblyHelper.Equals(one, two, lenOne, lenTwo);
+                            return ExStringBuilder.Equals(one, two, lenOne, lenTwo);
                         }
                     }
                 }
@@ -209,7 +209,7 @@ namespace Templates.Strings {
                 {
                     fixed (char* one = _data)
                     {
-                        return AssemblyHelper.Equals(one, two, lenOne, lenTwo) == 0;
+                        return ExStringBuilder.Equals(one, two, lenOne, lenTwo) == 0;
                     }
                 }
             }
@@ -232,7 +232,7 @@ namespace Templates.Strings {
                 {
                     fixed (char* one = _data)
                     {
-                        return AssemblyHelper.Equals(one, two, lenOne, lenTwo) == 0;
+                        return ExStringBuilder.Equals(one, two, lenOne, lenTwo) == 0;
                     }
                 }
             }
@@ -254,7 +254,7 @@ namespace Templates.Strings {
                 {
                     fixed (char* one = _data)
                     {
-                        return AssemblyHelper.Equals(one, two, lenOne, lenTwo) == 0;
+                        return ExStringBuilder.Equals(one, two, lenOne, lenTwo) == 0;
                     }
                 }
             }
