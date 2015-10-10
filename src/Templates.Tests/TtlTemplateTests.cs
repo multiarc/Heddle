@@ -40,12 +40,12 @@ namespace Templates.Tests {
             var target = new TtlTemplate(new CompileContext(options));
             Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
             string expected;
-            using (StreamReader reader = File.OpenText(@"TestTemplate\generated-vc.html"))
+            using (StreamReader reader = File.OpenText(@"TestTemplate/generated-vc.html"))
             {
                 expected = reader.ReadToEnd();
             }
             var actual = target.Generate(null);
-            using (var writer = File.CreateText(@"TestTemplate\test-vc.html"))
+            using (var writer = File.CreateText(@"TestTemplate/test-vc.html"))
             {
                 writer.Write(actual);
             }
@@ -110,11 +110,11 @@ namespace Templates.Tests {
                 Guid = Guid.Parse("{3E55A9AF-0031-4C54-B836-527EAB26867B}"),
                 Text = "SOME TEXT"
             };
-            StreamReader reader = File.OpenText(@"TestTemplate\generated.html");
+            StreamReader reader = File.OpenText(@"TestTemplate/generated.html");
             var expected = reader.ReadToEnd();
             reader.Dispose();
             var actual = target.Generate(data);
-            var writer = File.CreateText(@"TestTemplate\test.html");
+            var writer = File.CreateText(@"TestTemplate/test.html");
             writer.Write(actual);
             writer.Dispose();
             Assert.Equal(expected, actual);

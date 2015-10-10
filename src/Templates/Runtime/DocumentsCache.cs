@@ -1,7 +1,4 @@
-﻿using System.Collections.Generic;
-using Templates.Data;
-
-namespace Templates.Runtime {
+﻿namespace Templates.Runtime {
     //internal static class DocumentsCache {
     //    private static readonly Dictionary<DocumentCacheItem, RuntimeDocument> Cache = new Dictionary<DocumentCacheItem, RuntimeDocument>();
 

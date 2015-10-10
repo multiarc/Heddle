@@ -11,7 +11,6 @@ using Microsoft.Dnx.Runtime.Infrastructure;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Native;
-using Templates.Runtime;
 using Templates.Runtime.Parameters;
 
 namespace Templates.Runtime
@@ -31,7 +30,7 @@ namespace Templates.Runtime
                 IApplicationEnvironment env =
                     (IApplicationEnvironment)
                         CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IApplicationEnvironment));
-                var path = env.ApplicationBasePath + "\\";
+                var path = env.ApplicationBasePath + "/";
 #else
                 var path = "";
 #endif

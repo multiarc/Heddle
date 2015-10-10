@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Collections.ObjectModel;
-using System.Dynamic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -10,7 +7,6 @@ using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CSharp.RuntimeBinder;
 using Microsoft.Dnx.Runtime;
 using Microsoft.Dnx.Runtime.Infrastructure;
 using Templates.Data;
@@ -19,10 +15,6 @@ using Templates.Helpers;
 using Templates.Language;
 using Templates.Native;
 using Templates.Runtime.Parameters;
-
-#if DNXCORE50
-using System.Runtime.Loader;
-#endif
 
 namespace Templates.Runtime {
     internal class DelayedTemplate
@@ -69,7 +61,7 @@ namespace Templates.Runtime {
                 IApplicationEnvironment env =
                     (IApplicationEnvironment)
                         CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IApplicationEnvironment));
-                var path = env.ApplicationBasePath + "\\";
+                var path = env.ApplicationBasePath + "/";
 #else
                 var path = "";
 #endif

@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Templates.Strings;
+﻿using Templates.Strings;
 
 namespace Templates.Helpers
 {

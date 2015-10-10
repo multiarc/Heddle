@@ -1,13 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Templates.Attributes;
+﻿using Templates.Attributes;
 using Templates.Core;
 using Templates.Data;
-using Templates.Language;
 using Templates.Models;
-using Templates.Runtime;
 using Templates.Strings;
 
 namespace Templates.Extensions

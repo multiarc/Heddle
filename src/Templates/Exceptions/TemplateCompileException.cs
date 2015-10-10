@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+#if !DNXCORE50
 using System.Runtime.Serialization;
+#endif
 using Templates.Data;
 
 namespace Templates.Exceptions {

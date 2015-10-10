@@ -4,8 +4,6 @@ using Templates.Attributes;
 using Templates.Core;
 using Templates.Data;
 using Templates.Exceptions;
-using Templates.Language;
-using Templates.Runtime;
 
 namespace Templates.Extensions {
     [Name ("model")]

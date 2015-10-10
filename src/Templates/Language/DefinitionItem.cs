@@ -1,6 +1,4 @@
-﻿using System.Linq;
-using Templates.Collections;
-using Templates.Strings.Core;
+﻿using Templates.Strings.Core;
 
 namespace Templates.Language {
     /// <summary>

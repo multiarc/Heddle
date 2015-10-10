@@ -2,7 +2,6 @@
 using System.Globalization;
 using System.IO;
 using Templates.Data;
-using Templates.Exceptions;
 
 namespace Templates {
     public class FileReader {

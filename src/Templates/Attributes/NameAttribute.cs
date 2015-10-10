@@ -1,5 +1,4 @@
 ﻿using System;
-using Templates.Extensions;
 
 namespace Templates.Attributes {
     /// <summary>

@@ -1,7 +1,4 @@
-﻿using System.Linq;
-using Templates.Collections;
-
-namespace Templates.Language {
+﻿namespace Templates.Language {
     public class OutputItem {
         internal OutputItem(OutputItem toIsolate, string definitionName) {
             ExtensionName = toIsolate.ExtensionName;

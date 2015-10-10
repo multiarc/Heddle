@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Templates.Native
+﻿namespace Templates.Native
 {
     internal delegate string Allocate(int len);
 }

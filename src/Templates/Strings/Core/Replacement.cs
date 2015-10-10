@@ -1,4 +1,6 @@
-﻿using System;
+﻿#if !DNXCORE50
+using System;
+#endif
 
 namespace Templates.Strings.Core {
     /// <summary>

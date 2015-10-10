@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Globalization;
 using System.Reflection;
-using System.Text;
 using Templates.Strings;
 
 namespace Templates.Helpers
@@ -203,7 +201,7 @@ namespace Templates.Helpers
                                     i++;
                                 }
 
-                                GetTypeArgumentsOutput(typeRef.GetGenericArguments(), currentTypeArgStart, numTypeArgs, sb);
+                                GetTypeArgumentsOutput(typeRef.GetTypeInfo().GenericTypeArguments, currentTypeArgStart, numTypeArgs, sb);
                                 currentTypeArgStart += numTypeArgs;
 
                                 // Arity can be in the middle of a nested type name, so we might have a . or + after it. 

@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.Serialization;
 using Templates.Data;
-using Templates.Strings.Core;
 
 namespace Templates.Exceptions
 {

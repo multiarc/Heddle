@@ -1,5 +1,4 @@
-﻿using System.Text.RegularExpressions;
-using Antlr4.Runtime;
+﻿using Antlr4.Runtime;
 
 namespace Templates.Language
 {

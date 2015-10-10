@@ -1,5 +1,7 @@
 ﻿using System;
+#if !DNXCORE50
 using System.Runtime.Serialization;
+#endif
 
 namespace Templates.Exceptions {
 #if !DNXCORE50

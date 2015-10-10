@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
 using Templates.Attributes;
 using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Language;
+#if DNXCORE50
 using Templates.Native;
+#endif
 
 namespace Templates.Runtime {
     //DONE: пустой шаблон

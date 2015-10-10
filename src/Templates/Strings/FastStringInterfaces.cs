@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Globalization;
 using System.Reflection;
-using Templates.Native;
 
 namespace Templates.Strings {
     public sealed partial class ExString: IComparable,

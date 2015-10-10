@@ -4,8 +4,6 @@ using System.Globalization;
 using Templates.Attributes;
 using Templates.Core;
 using Templates.Data;
-using Templates.Language;
-using Templates.Runtime;
 
 namespace Templates.Extensions {
     /// <summary>

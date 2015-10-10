@@ -1,6 +1,4 @@
 ﻿using System;
-using System.CodeDom;
-using Microsoft.CSharp;
 using Templates.Helpers;
 
 namespace Templates.Data {

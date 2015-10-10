@@ -5,11 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-#if DNXCORE50
-using System.Runtime.Loader;
-#endif
 using System.Text.RegularExpressions;
-using System.Threading;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Native;

@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
-namespace Templates.Native
+﻿namespace Templates.Native
 {
     public delegate void ExAction<in T>(T arg1);
     public delegate void ExAction<in T1, in T2>(T1 arg1, T2 arg2);
