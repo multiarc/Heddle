@@ -19,7 +19,8 @@ var defaultExtensions = [
     "if",
     "else",
     "import",
-    "using"
+    "using",
+    "for"
 ];
 
 function is(token, type) {

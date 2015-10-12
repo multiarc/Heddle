@@ -34,8 +34,6 @@ define(function (require, exports, module) {
     var RuleNode = require('./Tree').RuleNode;
     var ErrorNode = require('./Tree').ErrorNode;
     var TerminalNode = require('./Tree').TerminalNode;
-    var ParserRuleContext = require('./../ParserRuleContext').ParserRuleContext;
-
 
     /** A set of utility routines useful for all kinds of ANTLR trees. */
     function Trees() {
@@ -129,23 +127,6 @@ define(function (require, exports, module) {
         var nodes = [];
         Trees._findAllNodes(t, index, findTokens, nodes);
         return nodes;
-    };
-
-    Trees._findAllNodes = function (t, index, findTokens, nodes) {
-        // check this node (the root) first
-        if (findTokens && (t instanceof TerminalNode)) {
-            if (t.symbol.type === index) {
-                nodes.push(t);
-            }
-        } else if (!findTokens && (t instanceof ParserRuleContext)) {
-            if (t.ruleIndex === index) {
-                nodes.push(t);
-            }
-        }
-        // check children
-        for (var i = 0; i < t.getChildCount() ; i++) {
-            Trees._findAllNodes(t.getChild(i), index, findTokens, nodes);
-        }
     };
 
     Trees.descendants = function (t) {

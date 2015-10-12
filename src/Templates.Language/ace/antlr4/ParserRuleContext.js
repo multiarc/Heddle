@@ -58,6 +58,7 @@ define(function (require, exports, module) {
     var TerminalNodeImpl = Tree.TerminalNodeImpl;
     var ErrorNodeImpl = Tree.ErrorNodeImpl;
     var Interval = require("./IntervalSet").Interval;
+    var Trees = require('./tree/Trees').Trees;
 
     function ParserRuleContext(parent, invokingStateNumber) {
         parent = parent || null;
@@ -216,6 +217,23 @@ define(function (require, exports, module) {
             return INVALID_INTERVAL;
         } else {
             return Interval(this.start.tokenIndex, this.stop.tokenIndex);
+        }
+    };
+
+    Trees._findAllNodes = function (t, index, findTokens, nodes) {
+        // check this node (the root) first
+        if (findTokens && (t instanceof TerminalNode)) {
+            if (t.symbol.type === index) {
+                nodes.push(t);
+            }
+        } else if (!findTokens && (t instanceof ParserRuleContext)) {
+            if (t.ruleIndex === index) {
+                nodes.push(t);
+            }
+        }
+        // check children
+        for (var i = 0; i < t.getChildCount() ; i++) {
+            Trees._findAllNodes(t.getChild(i), index, findTokens, nodes);
         }
     };
 

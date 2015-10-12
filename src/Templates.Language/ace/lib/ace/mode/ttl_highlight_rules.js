@@ -3,153 +3,211 @@ define(function(require, exports, module) {
 
 var oop = require("../lib/oop");
 var HtmlHighlightRules = require("./html_highlight_rules").HtmlHighlightRules;
+var CSharpHighlightRules = require("./csharp_highlight_rules").CSharpHighlightRules;
 var TtlHighlightRules = function(options) {
     HtmlHighlightRules.call(this);
     var ttlRules = {
         "ttl-out": [
             {
                 token: "comment.block",
-                regex: "\\@\\*",
+                regex: /@\*/,
                 push: "ttl-comment"
             },
             {
+                token: "text",
+                regex: /(?=\))\s*(?!{{|\(|:|@)/,
+                next: "start"
+            },
+            {
+                token: "text",
+                regex: /(?=}})\s*/,
+                next: "start"
+            },
+            {
                 token: ["keyword.operator", "paren.lparen"],
-                regex: "\\{\\{",
+                regex: /{{/,
                 push: "start"
             },
             {
                 token: ["keyword.operator", "paren.rparen"],
-                regex: "\\}\\}",
+                regex: /}}/,
                 next: "pop"
             },
             {
                 token: "variable.language",
-                regex: "[a-zA-Z_]+[a-zA-Z_0-9]*",
+                regex: /[a-zA-Z_]+[a-zA-Z_0-9]*/,
                 next: "ttl-out"
             },
             {
                 token: "punctuation.operator",
-                regex: ":",
+                regex: /:/,
                 next: "ttl-out"
             },
             {
                 token: "paren.lparen",
-                regex: "\\(",
-                push: "ttl-out"
-            },
-            {
-                token: "paren.rparen",
-                regex: "\\)",
-                next: "pop"
+                regex: /\(/,
+                push: "ttl-call"
             },
             {
                 token: "punctuation.operator",
-                regex: ";",
+                regex: /;/,
                 next: "start"
             },
             {
                 token: ["keyword", "paren.lparen"],
-                regex: "\\@\\{",
+                regex: /@{/,
                 push: "ttl-raw"
             },
             {
                 token: ["keyword.operator", "paren.lparen"],
-                regex: "\\<\\%",
+                regex: /<%/,
                 push: "ttl-def"
             },
             {
                 token: "keyword",
-                regex: "\\@",
+                regex: /@/,
                 next: "ttl-out"
             },
             {include: "start"}
         ],
+        "ttl-call": [
+            {
+                token: "punctuation.operator",
+                regex: /:/,
+                next: "ttl-call"
+            },
+            {
+                token: "variable.language",
+                regex: /[a-zA-Z_]+[a-zA-Z_0-9]*/,
+                next: "ttl-call"
+            },
+            {
+                token: "paren.lparen",
+                regex: /\(/,
+                push: "ttl-call"
+            },
+            {
+                token: "paren.rparen",
+                regex: /\)/,
+                next: "pop"
+            },
+            {
+                token: "paren.rparen",
+                regex: /@/,
+                next: "ttl-csharp"
+            }
+        ],
+        "ttl-csharp": [
+            {
+                token: "paren.lparen",
+                regex: /\(/,
+                push: "ttl-csharp"
+            },
+            {
+                token: "paren.rparen",
+                regex: /\)/,
+                next: "pop"
+            },
+            { include: "cs-start" }
+        ],
         "ttl-raw": [
             {
                 token: ["keyword", "paren.rparen"],
-                regex: "\\}\\@",
+                regex: /}@/,
                 next: "pop"
             },
             {
                 token: "constant.other",
-                regex: "([^\\}]|\\}[^\\@])*",
+                regex: /([^}]|}[^@])*/,
                 next: "ttl-raw"
             }
         ],
         "ttl-def": [
             {
                 token: "comment.block",
-                regex: "\\@\\*",
+                regex: /@\*/,
                 push: "ttl-comment"
             },
             {
                 token: ["keyword.operator", "paren.rparen"],
-                regex: "\\%\\>",
+                regex: /%>/,
                 next: "pop"
             },
             {
                 token: ["punctuation.operator", "paren.lparen"],
-                regex: "\\<",
+                regex: /</,
                 next: "ttl-def_name"
             },
             {
                 token: ["keyword.operator", "paren.rparen"],
-                regex: "\\{\\{",
+                regex: /{{/,
                 push: "start"
             },
             {
                 token: "keyword.operator",
-                regex: "::",
+                regex: /::/,
                 next: "ttl-def_type"
             },
             {
                 token: "text",
-                regex: "\\s+",
+                regex: /\s+/,
                 next: "ttl-def"
             }
         ],
         "ttl-def_type": [
             {
                 token: "comment.block",
-                regex: "\\@\\*",
+                regex: /@\*/,
                 push: "ttl-comment"
             },
             {
                 token: "storage.type",
-                regex: "[a-zA-Z_]+[a-zA-Z_0-9\\.\\+]*",
+                regex: /[a-zA-Z_]+[a-zA-Z_0-9\.\+]*/,
                 next: "ttl-def"
             }
         ],
         "ttl-def_name": [
             {
                 token: "comment.block",
-                regex: "\\@\\*",
+                regex: /@\*/,
                 push: "ttl-comment"
             },
             {
                 token: "support.function",
-                regex: "[a-zA-Z_]+[a-zA-Z_0-9]*",
+                regex: /[a-zA-Z_]+[a-zA-Z_0-9]*/,
                 next: "ttl-def_name"
             }, {
                 token: ["punctuation.operator", "paren.rparen"],
-                regex: "\\>",
+                regex: />/,
                 next: "ttl-def"
             },
             {
                 token: "keyword.operator",
-                regex: ":",
+                regex: /:/,
                 next: "ttl-def_name"
             }
         ],
         "ttl-comment": [
             {
                 token: "comment.block",
-                regex: ".*?\\*\\@",
+                regex: /\*@/,
                 next: "pop"
             },
             {
                 token: "comment.block",
-                regex: "([^\\*]|\\*[^\\@])*",
+                regex: /([^\*]|\*[^@])*/,
+                next: "ttl-comment"
+            }
+        ],
+        "ttl-template-type": [
+            {
+                token: "comment.block",
+                regex: /\*@/,
+                next: "pop"
+            },
+            {
+                token: "comment.block",
+                regex: /([^\*]|\*[^@])*/,
                 next: "ttl-comment"
             }
         ]
@@ -157,39 +215,40 @@ var TtlHighlightRules = function(options) {
     this.$rules.start.unshift(
         {
             token: ["keyword.operator", "paren.rparen"],
-            regex: "\\%\\>",
+            regex: /%>/,
             next: "pop"
         },
         {
             token: "comment.block",
-            regex: "\\@\\*",
+            regex: /@\*/,
             push: "ttl-comment"
         },
         {
             token: ["keyword.operator", "paren.lparen"],
-            regex: "\\<\\%",
+            regex: /<%/,
             push: "ttl-def"
         },
         {
             token: ["keyword.operator", "paren.lparen"],
-            regex: "\\{\\{",
+            regex: /{{/,
             push: "start"
         },
         {
             token: ["keyword.operator", "paren.rparen"],
-            regex: "\\}\\}",
+            regex: /}}/,
             next: "pop"
         },
         {
             token: ["keyword", "paren.lparen"],
-            regex: "\\@\\{",
+            regex: /@{/,
             push: "ttl-raw"
         },
         {
             token: "keyword",
-            regex: "\\@",
+            regex: /@/,
             next: "ttl-out"
         });
+    this.embedRules(CSharpHighlightRules, "cs-");
     this.addRules(ttlRules);
     this.normalizeRules();
 };

@@ -6,7 +6,6 @@ define(function (require, exports, module) {
     exports.Token = require('./Token').Token;
     exports.CommonToken = require('./Token').CommonToken;
     exports.InputStream = require('./InputStream').InputStream;
-    exports.FileStream = require('./FileStream').FileStream;
     exports.CommonTokenStream = require('./CommonTokenStream').CommonTokenStream;
     exports.Lexer = require('./Lexer').Lexer;
     exports.Parser = require('./Parser').Parser;

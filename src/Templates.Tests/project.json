@@ -14,9 +14,6 @@
   "frameworks": {
     "dnx451": {
       "dependencies": {
-        "frameworkassemblies": {
-          "System.Core": "4.0.0.0"
-        }
       }
     },
     "dnxcore50": {

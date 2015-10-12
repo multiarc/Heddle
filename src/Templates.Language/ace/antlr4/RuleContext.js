@@ -126,8 +126,6 @@ define(function (require, exports, module) {
         return visitor.visitChildren(this);
     };
 
-    //need to manage circular dependencies, so export now
-    exports.RuleContext = RuleContext;
     var Trees = require('./tree/Trees').Trees;
 
 
@@ -163,5 +161,7 @@ define(function (require, exports, module) {
         s += "]";
         return s;
     };
+
+    exports.RuleContext = RuleContext;
 
 });

@@ -37,7 +37,7 @@ define(function(require, exports, module) {
                 return indent;
             }
 
-            var match = line.match(/^.*?(\<\%|\{\{)\s*$/);
+            var match = line.match(/^.*<%|{{|\(\s*$/);
             if (match) {
                 indent += tab;
             }
