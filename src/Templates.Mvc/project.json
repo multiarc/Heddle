@@ -1,5 +1,5 @@
 ﻿{
-  "version": "1.0.0-beta7",
+  "version": "1.0.0-beta8",
   "description": "",
   "authors": [ "" ],
   "tags": [ "" ],
@@ -8,7 +8,7 @@
 
   "dependencies": {
     "Microsoft.AspNet.Mvc.ViewFeatures": "6.0.0-*",
-    "Templates": "2.3.0-beta7"
+    "Templates": ""
   },
 
   "frameworks" : {
