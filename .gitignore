@@ -103,3 +103,4 @@ project.lock.json
 /src/Templates.Language/project - Copy.json
 /src/Templates/project - Copy.json
 /src/Templates.Language/ace/build
+/src/Templates.Demo/node_modules

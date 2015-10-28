@@ -21,12 +21,20 @@ namespace Templates.Language {
             if (context == null) throw new ArgumentNullException(nameof(context));
             CurrentParseContext.InDefinition = true;
             CurrentParseContext.DefinitionsBlock.AddNewBlockPosition(CurrentParseContext.GetBlockPosition(context));
+            if (CurrentParseContext.ProvideLanguageFeatures)
+            {
+                CurrentParseContext.AddToken(context.DEF_START(), TtlTokenType.DefStart);
+            }
         }
 
         public override void ExitDefinition(TtlParser.DefinitionContext context)
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
             CurrentParseContext.InDefinition = false;
+            if (CurrentParseContext.ProvideLanguageFeatures)
+            {
+                CurrentParseContext.AddToken(context.DEF_CLOSE(), TtlTokenType.DefClose);
+            }
         }
 
         public override void EnterDef(TtlParser.DefContext context)
@@ -91,6 +99,7 @@ namespace Templates.Language {
         public override void EnterComment(TtlParser.CommentContext context)
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
+            CurrentParseContext.AddToken(context.COMMENT(), TtlTokenType.Comment);
             CurrentParseContext.CommentTokens.Add(CurrentParseContext.GetBlockPosition(context));
         }
 

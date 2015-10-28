@@ -1,22 +1,13 @@
-﻿using Templates.Editor.Classification;
+﻿using Templates.Language;
 
-namespace Templates.Editor {
-    internal class Token {
-        public string CapturedString {
-            get;
-            internal set;
-        }
-        public int Length {
-            get;
-            internal set;
-        }
-        public int StartIndex {
-            get;
-            internal set;
-        }
-        public TokenType Type {
-            get;
-            internal set;
-        }
+namespace Templates.Editor.Classification {
+    internal class Token
+    {
+        public string CapturedString { get; set; }
+
+        public int Length { get; set; }
+        public int StartIndex { get; set; }
+        public TtlTokenType Type { get; set; }
+        public string Error { get; set; }
     }
 }

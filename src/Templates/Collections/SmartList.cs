@@ -5,7 +5,7 @@ namespace Templates.Collections {
 #if !DNXCORE50
     [Serializable]
 #endif
-    public sealed partial class SmartList<T> {
+    public partial class SmartList<T> {
         private static readonly T[] Empty = new T[0];
         private T[] _array;
         private int _length;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Misc;
+using Antlr4.Runtime.Tree;
 using Templates.Collections;
 using Templates.Data;
 using Templates.Exceptions;
@@ -16,9 +17,15 @@ namespace Templates.Language {
 
         private readonly bool _inDefintionContext;
 
-        internal ParseContext(ParseContext parentContext = null, int offset = 0) {
+        private readonly List<TtlToken> _tokens = new List<TtlToken>();
+
+        public IEnumerable<TtlToken> Tokens => _tokens;
+
+        internal ParseContext(ParseContext parentContext = null, int offset = 0, bool provideLanguageFeatures = false) {
             _inDefintionContext = (parentContext?.InDefinition ?? false) || (parentContext?._inDefintionContext ?? false);
+            ProvideLanguageFeatures = provideLanguageFeatures || (parentContext?.ProvideLanguageFeatures ?? false);
             _offset = offset;
+            ProvideLanguageFeatures = provideLanguageFeatures;
             DefinitionsBlock = new DefinitionBlock(parentContext?.DefinitionsBlock);
             OutputChains = new SmartList<OutputChain>();
             RawOutputItems = new SmartList<RawOutputItem>();
@@ -131,7 +138,9 @@ namespace Templates.Language {
             var inherited = context.inherited_def();
             var simple = context.simple_def();
             if (simple != null) {
-                var ttl = simple.subtemplate()?.ttl();
+                AddToken(simple.DEF_STARTNAME(), TtlTokenType.DefStartName);
+                var subTemplate = simple.subtemplate();
+                var ttl = subTemplate?.ttl();
                 if (ttl?.Start?.InputStream == null)
                 {
                     chain = null;
@@ -140,19 +149,30 @@ namespace Templates.Language {
                 var definition = simple.ID(0);
                 if (definition == null)
                     throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(simple)));
+                AddToken(definition, TtlTokenType.Id);
+                AddToken(simple.DEF_ENDNAME(), TtlTokenType.DefEndName);
                 string parameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
                 var definitionName = definition.GetText();
-                chain = CreateOutputChain(simple.default_chain()?.chain(), definitionName);
+                var defOutChain = simple.default_chain();
+                if (defOutChain != null)
+                {
+                    AddToken(defOutChain.DEF_OUTPUTONEND(), TtlTokenType.DefOutputOnEnd);
+                }
+                chain = CreateOutputChain(defOutChain?.chain(), definitionName);
+                AddToken(subTemplate.SUB_START(), TtlTokenType.SubStart);
+                AddToken(subTemplate.SUB_CLOSE(), TtlTokenType.SubClose);
                 return new DefinitionItem(
                     definitionName, parameterTemplate,
                     null,
                     modelType: simple.ID(1)?.GetText())
                 {
-                    Position =GetBlockPosition(context)
+                    Position = GetBlockPosition(context)
                 };
             }
             if (inherited != null) {
-                var ttl = inherited.subtemplate()?.ttl();
+                AddToken(inherited.DEF_STARTNAME(), TtlTokenType.DefStartName);
+                var subTemplate = inherited.subtemplate();
+                var ttl = subTemplate?.ttl();
                 if (ttl?.Start?.InputStream == null)
                 {
                     chain = null;
@@ -161,6 +181,7 @@ namespace Templates.Language {
                 var definition = inherited.ID(0);
                 if (definition == null)
                     throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(inherited)));
+                AddToken(definition, TtlTokenType.Id);
                 string parameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
                 var baseName = inherited.ID(1)?.GetText();
                 var baseDefenition = GetDefenition(baseName);
@@ -168,6 +189,8 @@ namespace Templates.Language {
                 {
                     throw new TemplateCompileException($"Base definition {baseName} couldn't be found".ToError(GetAbsoluteBlockPosition(inherited)));
                 }
+                AddToken(inherited.ID(1), TtlTokenType.Id);
+                AddToken(inherited.DEF_ENDNAME(), TtlTokenType.DefEndName);
                 var chainContext = inherited.default_chain()?.chain();
                 var definitionName = definition.GetText();
                 if (baseDefenition.Name == definitionName && chainContext != null)
@@ -176,11 +199,22 @@ namespace Templates.Language {
                         "Default output call chain can't be used in fully overriden definitions".ToError(
                             GetAbsoluteBlockPosition(chainContext)));
                 }
-                chain = CreateOutputChain(inherited.default_chain()?.chain(), definitionName);
+                var defOutChain = inherited.default_chain();
+                if (defOutChain != null)
+                {
+                    AddToken(defOutChain.DEF_OUTPUTONEND(), TtlTokenType.DefOutputOnEnd);
+                }
+                var modelType = inherited.ID(2);
+                AddToken(inherited.DEF_TYPE(), TtlTokenType.DefType);
+                AddToken(modelType, TtlTokenType.Id);
+                AddToken(inherited.DELIM(), TtlTokenType.Delim);
+                AddToken(subTemplate.SUB_START(), TtlTokenType.SubStart);
+                AddToken(subTemplate.SUB_CLOSE(), TtlTokenType.SubClose);
+                chain = CreateOutputChain(defOutChain?.chain(), definitionName);
                 return new DefinitionItem(
                     definitionName, parameterTemplate,
                     baseDefenition,
-                    modelType: inherited.ID(2)?.GetText() ?? baseDefenition.ModelType)
+                    modelType: modelType?.GetText() ?? baseDefenition.ModelType)
                 {
                     Position = GetBlockPosition(context)
                 };
@@ -201,7 +235,7 @@ namespace Templates.Language {
         {
             if (token == null)
                 throw new ArgumentNullException(nameof(token));
-            return new BlockPosition(token.StartIndex, token.StopIndex - token.StartIndex + 1);
+            return new BlockPosition(token);
         }
 
         internal BlockPosition GetBlockPosition(IToken token) {
@@ -232,14 +266,30 @@ namespace Templates.Language {
         internal OutputChain CreateOutputChain(TtlParser.OutblockContext context) {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
+            AddToken(context.OUT(), TtlTokenType.Out);
+            var delims = context.chain()?.DELIM();
+            if (delims != null)
+            {
+                foreach (var delim in delims)
+                {
+                    AddToken(delim, TtlTokenType.Delim);
+                }
+            }
             var result = new OutputChain(InDefintionContext ? this : IsolateContextWithTree())
             {
                 Chain = CreateChain(context.chain()?.call()),
                 BlockPosition = GetBlockPosition(context)
             };
-            var ttl = context.subtemplate()?.ttl();
-            if (ttl != null) {
-                result.Chain.First().ParameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
+            var lineTerminate = context.LINE_TERMINATE();
+            AddToken(lineTerminate, TtlTokenType.LineTerminate);
+            var subTemplate = context.subtemplate();
+            AddToken(subTemplate?.SUB_START(), TtlTokenType.SubStart);
+            AddToken(subTemplate?.SUB_CLOSE(), TtlTokenType.SubClose);
+            var ttl = subTemplate?.ttl();
+            if (ttl != null)
+            {
+                result.Chain.First().ParameterTemplate =
+                    ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
             }
             return result;
         }
@@ -248,6 +298,14 @@ namespace Templates.Language {
         {
             if (context == null)
                 return null;
+            var delims = context.DELIM();
+            if (delims != null)
+            {
+                foreach (var delim in delims)
+                {
+                    AddToken(delim, TtlTokenType.Delim);
+                }
+            }
             var result = new OutputChain(this)
             {
                 Chain = CreateChain(context.call(), firstCallOverride),
@@ -300,6 +358,8 @@ namespace Templates.Language {
 
         internal bool InDefintionContext => _inDefintionContext;
 
+        internal bool ProvideLanguageFeatures { get; }
+
         public int Offset => _offset;
 
         private SmartList<OutputItem> CreateChain(IEnumerable<TtlParser.CallContext> context,
@@ -337,29 +397,95 @@ namespace Templates.Language {
             var namedCall = context.named_call();
             var unnamedCall = context.unnamed_call();
             if (namedCall != null) {
-                string itemName = namedCall.ID(0)?.GetText();
+                var idTemplate = namedCall.ID(0);
+                AddToken(idTemplate, TtlTokenType.Id);
+                
+                string itemName = idTemplate?.GetText();
+                AddToken(namedCall.OUT_PARAMSTART(), TtlTokenType.OutParamStart);
+                
+                var idModel = namedCall.ID(1);
+                AddToken(idModel, TtlTokenType.Id);
+                AddToken(namedCall.OUT_PARAMEND(), TtlTokenType.OutParamEnd);
+                var delims = namedCall.chain()?.DELIM();
+                if (delims != null)
+                {
+                    foreach (var delim in delims)
+                    {
+                        AddToken(delim, TtlTokenType.Delim);
+                    }
+                }
+                var csharpExpression = namedCall.csharp_expression();
+                if (csharpExpression != null)
+                {
+                    AddToken(namedCall.CSHARP_START(), TtlTokenType.CSharpStart);
+                    foreach (var token in csharpExpression.CSHARP_TOKEN())
+                    {
+                        AddToken(token, TtlTokenType.CSharpToken);
+                    }
+                }
                 return new OutputItem(itemName)
                 {
                     CallParameter =
                     {
-                        ModelParameter = namedCall.ID(1)?.GetText(),
+                        ModelParameter = idModel?.GetText(),
                         ChainParameter = CreateChain(namedCall.chain()?.call()),
-                        CSharpExpression = namedCall.csharp_expression()?.GetText()
+                        CSharpExpression = csharpExpression?.GetText()
                     }
                 };
             }
             if (unnamedCall != null) {
+                AddToken(unnamedCall.OUT_PARAMSTART(), TtlTokenType.OutParamStart);
+                
+                var idModel = unnamedCall.ID();
+                AddToken(idModel, TtlTokenType.Id);
+                AddToken(unnamedCall.OUT_PARAMEND(), TtlTokenType.OutParamEnd);
+                
+                var delims = unnamedCall.chain()?.DELIM();
+                if (delims != null)
+                {
+                    foreach (var delim in delims)
+                    {
+                        AddToken(delim, TtlTokenType.Delim);
+                    }
+                }
+                var csharpExpression = unnamedCall.csharp_expression();
+                if (csharpExpression != null)
+                {
+                    AddToken(unnamedCall.CSHARP_START(), TtlTokenType.CSharpStart);
+                    foreach (var token in csharpExpression.CSHARP_TOKEN())
+                    {
+                        AddToken(token, TtlTokenType.CSharpToken);
+                    }
+                }
                 return new OutputItem(callNameOverride ?? string.Empty)
                 {
                     CallParameter =
                     {
                         ModelParameter = unnamedCall.ID()?.GetText(),
                         ChainParameter = CreateChain(unnamedCall.chain()?.call()),
-                        CSharpExpression = unnamedCall.csharp_expression()?.GetText()
+                        CSharpExpression = csharpExpression?.GetText()
                     }
                 };
             }
             return null;
+        }
+
+        internal void AddToken(ITerminalNode token, TtlTokenType tokenType)
+        {
+            if (token != null)
+                AddToken(token.Symbol, tokenType);
+        }
+
+        internal void AddToken(IToken token, TtlTokenType tokenType)
+        {
+            if (ProvideLanguageFeatures && token != null)
+            {
+                _tokens.Add(new TtlToken
+                {
+                    Position = new BlockPosition(token),
+                    TtlTokenType = tokenType
+                });
+            }
         }
 
         #region Helpers

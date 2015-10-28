@@ -15,9 +15,9 @@ namespace Templates.Language {
         /// Performs parse of document
         /// </summary>
         /// <returns>Full template context tree found in source template</returns>
-        public static ParseContext Parse(string document)
+        public static ParseContext Parse(string document, bool provideLanguageFeatures = false)
         {
-            var context = new ParseContext();
+            var context = new ParseContext(provideLanguageFeatures: provideLanguageFeatures);
             Parse(document, context);
             return context;
         }
@@ -44,7 +44,7 @@ namespace Templates.Language {
             listener.CurrentParseContext.CommentTokens.AddRange(
                 tokens.GetTokens()
                     .Where(t => t.Channel == TtlLexer.COMMENT_CHANNEL)
-                    .Select(t => new BlockPosition(t.StartIndex, t.StopIndex - t.StartIndex + 1)));
+                    .Select(t => new BlockPosition(t)));
         }
     }
 }

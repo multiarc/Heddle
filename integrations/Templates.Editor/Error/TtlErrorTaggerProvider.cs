@@ -6,8 +6,8 @@ using Microsoft.VisualStudio.Utilities;
 namespace Templates.Editor.Error {
 
     [Export(typeof(ITaggerProvider))]
+    [TagType(typeof(IErrorTag))]
     [ContentType("ttl")]
-    [TagType(typeof(ErrorTag))]
     internal sealed class TtlErrorTaggerProvider : ITaggerProvider {
         [Import]
         internal IBufferTagAggregatorFactoryService AggregatorFactory;

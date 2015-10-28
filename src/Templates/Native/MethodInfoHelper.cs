@@ -31,34 +31,34 @@ namespace Templates.Native
             return (Func<TResult>)dynamic.CreateDelegate(typeof(Func<TResult>));
         }
 
-        public static ExAction<T> CompileVoidAccessor<T>(this MethodInfo method)
+        public static Action<T> CompileVoidAccessor<T>(this MethodInfo method)
         {
             var dynamic = EmitDynamic(typeof(void), method, typeof(T));
-            return (ExAction<T>)dynamic.CreateDelegate(typeof(ExAction<T>));
+            return (Action<T>)dynamic.CreateDelegate(typeof(Action<T>));
         }
 
-        public static ExAction<T1, T2> CompileVoidAccessor<T1, T2>(this MethodInfo method)
+        public static Action<T1, T2> CompileVoidAccessor<T1, T2>(this MethodInfo method)
         {
             var dynamic = EmitDynamic(typeof(void), method, typeof(T1), typeof(T2));
-            return (ExAction<T1, T2>)dynamic.CreateDelegate(typeof(ExAction<T1, T2>));
+            return (Action<T1, T2>)dynamic.CreateDelegate(typeof(Action<T1, T2>));
         }
 
-        public static ExAction<T1, T2, T3> CompileVoidAccessor<T1, T2, T3>(this MethodInfo method)
+        public static Action<T1, T2, T3> CompileVoidAccessor<T1, T2, T3>(this MethodInfo method)
         {
             var dynamic = EmitDynamic(typeof(void), method, typeof(T1), typeof(T2), typeof(T3));
-            return (ExAction<T1, T2, T3>)dynamic.CreateDelegate(typeof(ExAction<T1, T2, T3>));
+            return (Action<T1, T2, T3>)dynamic.CreateDelegate(typeof(Action<T1, T2, T3>));
         }
 
-        public static ExAction<T1, T2, T3, T4> CompileVoidAccessor<T1, T2, T3, T4>(this MethodInfo method)
+        public static Action<T1, T2, T3, T4> CompileVoidAccessor<T1, T2, T3, T4>(this MethodInfo method)
         {
             var dynamic = EmitDynamic(typeof(void), method, typeof(T1), typeof(T2), typeof(T3), typeof(T4));
-            return (ExAction<T1, T2, T3, T4>)dynamic.CreateDelegate(typeof(ExAction<T1, T2, T3, T4>));
+            return (Action<T1, T2, T3, T4>)dynamic.CreateDelegate(typeof(Action<T1, T2, T3, T4>));
         }
 
-        public static ExAction<T1, T2, T3, T4, T5> CompileVoidAccessor<T1, T2, T3, T4, T5>(this MethodInfo method)
+        public static Action<T1, T2, T3, T4, T5> CompileVoidAccessor<T1, T2, T3, T4, T5>(this MethodInfo method)
         {
             var dynamic = EmitDynamic(typeof(void), method, typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5));
-            return (ExAction<T1, T2, T3, T4, T5>)dynamic.CreateDelegate(typeof(ExAction<T1, T2, T3, T4, T5>));
+            return (Action<T1, T2, T3, T4, T5>)dynamic.CreateDelegate(typeof(Action<T1, T2, T3, T4, T5>));
         }
 
         /// <summary>

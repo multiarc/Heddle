@@ -15,6 +15,7 @@ namespace Templates.Data {
         public string TemplateName { get; }
         public bool EnableFileChangeCheck { get; set; }
         public bool AllowCSharp { get; set; }
+        public bool ProvideLanguageFeatures { get; set; }
 
         public TemplateOptions()
         {

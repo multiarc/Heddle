@@ -32,7 +32,7 @@ namespace Templates.Collections {
             }
         }
 
-        public int Add (object value)
+        public virtual int Add (object value)
         {
             if (value is T) {
                 Add((T) value);
@@ -166,7 +166,7 @@ namespace Templates.Collections {
                 yield return _array[i];
         }
 
-        public void Add (T value)
+        public virtual void Add (T value)
         {
             if (((long)_length + 1) > int.MaxValue)
                 throw new OutOfMemoryException();

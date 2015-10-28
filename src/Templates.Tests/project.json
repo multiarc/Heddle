@@ -4,8 +4,8 @@
     "Templates": "",
     "xunit.runner.dnx": "2.1.0-beta5a-*",
     "xunit": "2.1.0-*",
-    "Microsoft.Dnx.TestHost": "1.0.0-*",
-    "Microsoft.Dnx.Runtime.Abstractions" :  "1.0.0-*"
+    "Microsoft.Dnx.TestHost": "1.0.0-beta8",
+    "Microsoft.Dnx.Runtime.Abstractions" :  "1.0.0-beta8"
   },
   "commands": {
     "test": "xunit.runner.dnx"

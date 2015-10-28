@@ -148,14 +148,30 @@ namespace Templates {
             return Compile(new CompileContext(modelType), document);
         }
 
-        private TtlCompileResult Compile(CompileContext context, string document) {
+        public TtlCompileResult TryCompilation(string document, ExType modelType = null)
+        {
+            if (_runtimeDocument != null)
+                throw new TemplateInitException("Template already compiled.");
+            return Compile(new CompileContext(modelType), document, true);
+        }
+
+        private TtlCompileResult Compile(CompileContext context, string document, bool simulate = false) {
             try
             {
-                RuntimeDocument rtdoc = TtlCompiler.Compile(document, context, DocumentParser.Parse(document), null);
-                context.Compile();
-                _context = context;
-                _document = document;
-                _runtimeDocument = rtdoc;
+                RuntimeDocument rtdoc = TtlCompiler.Compile(document, context,
+                    DocumentParser.Parse(document, context.Options.ProvideLanguageFeatures), null);
+                if (!simulate)
+                {
+                    context.Compile();
+                    _context = context;
+                    _document = document;
+                    _runtimeDocument = rtdoc;
+                }
+                else
+                {
+                    context.Dispose();
+                    rtdoc.Dispose();
+                }
                 return new TtlCompileResult(true);
             }
             catch (TemplateCompileException e)

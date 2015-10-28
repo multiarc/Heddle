@@ -27,6 +27,9 @@ namespace Templates
         TtlCompileResult Recompile(string newDocument, CompileContext context = null);
 
         TtlCompileResult Compile(string document, ExType modelType = null);
+
+        TtlCompileResult TryCompilation(string document, ExType modelType = null);
+
         event FileSystemEventHandler OnFileDeleted;
         event RenamedEventHandler OnFileRenamed;
         event FileSystemEventHandler OnFileChanged;

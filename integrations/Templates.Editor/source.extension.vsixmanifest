@@ -3,19 +3,19 @@
   <Metadata>
     <Identity Id="Templates.Editor..06361e50-c6b0-4621-8ea4-5f11a61ac3a0" Version="1.0" Language="en-US" Publisher="Aliaksandr Kukrash" />
     <DisplayName>Templates.Editor</DisplayName>
-    <Description>This is a sample classifier extension to the Visual Studio Editor.</Description>
+    <Description xml:space="preserve">This is a ttl highligh extension.</Description>
     <Tags>ASP .NET, HTML, VSIX, TTL, Performance</Tags>
   </Metadata>
   <Installation>
-    <InstallationTarget Id="Microsoft.VisualStudio.Pro" Version="12.0" />
-    <InstallationTarget Version="12.0" Id="Microsoft.VisualStudio.Ultimate" />
+    <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[12.0, 15.0)" />
+    <InstallationTarget Version="[12.0,15.0)" Id="Microsoft.VisualStudio.Pro" />
+    <InstallationTarget Version="[12.0,15.0)" Id="Microsoft.VisualStudio.Enterprise" />
+    <InstallationTarget Version="[12.0,15.0)" Id="Microsoft.VisualStudio.IntegratedShell" />
   </Installation>
   <Dependencies>
     <Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" d:Source="Manual" Version="4.5" />
   </Dependencies>
   <Assets>
     <Asset Type="Microsoft.VisualStudio.MefComponent" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%|" />
-    <Asset Type="Microsoft.VisualStudio.Assembly" d:Source="Project" d:ProjectName="Templates" Path="|Templates|" AssemblyName="|Templates;AssemblyName|" />
-    <Asset Type="Microsoft.VisualStudio.Assembly" d:Source="Project" d:ProjectName="Templates.Native" Path="|Templates.Native|" AssemblyName="|Templates.Native;AssemblyName|" />
   </Assets>
 </PackageManifest>

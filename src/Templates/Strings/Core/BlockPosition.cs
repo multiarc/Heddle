@@ -1,4 +1,5 @@
 ﻿using System;
+using Antlr4.Runtime;
 
 namespace Templates.Strings.Core {
     /// <summary>
@@ -17,6 +18,12 @@ namespace Templates.Strings.Core {
                 throw new ArgumentException();
             StartIndex = startIndex;
             Length = length;
+        }
+
+        public BlockPosition(IToken token)
+        {
+            StartIndex = token.StartIndex;
+            Length = token.StopIndex - token.StartIndex + 1;
         }
 
         public override string ToString()

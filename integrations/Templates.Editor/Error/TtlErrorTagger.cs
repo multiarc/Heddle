@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Adornments;
 using Microsoft.VisualStudio.Text.Tagging;
+using Templates.Editor.Classification;
+using Templates.Language;
 
 namespace Templates.Editor.Error {
     internal sealed class TtlErrorTagger :ITagger<ErrorTag>
@@ -23,27 +25,13 @@ namespace Templates.Editor.Error {
             }
             foreach (IMappingTagSpan<TtlTokenTag> tagSpan in _aggregator.GetTags(spans))
             {
-                //if (tagSpan.Tag.ParserState == State.SyntaxError)
-                //{
-                //    var tagSpans = tagSpan.Span.GetSpans(spans[0].Snapshot);
-                //    yield return
-                //        new TagSpan<ErrorTag>(tagSpans[0],
-                //            new ErrorTag(PredefinedErrorTypeNames.SyntaxError, tagSpan.Tag.ErrorContainer.Message));
-                //}
-                //if (tagSpan.Tag.ParserState == State.CompileError)
-                //{
-                //    var tagSpans = tagSpan.Span.GetSpans(spans[0].Snapshot);
-                //    yield return
-                //        new TagSpan<ErrorTag>(tagSpans[0],
-                //            new ErrorTag(PredefinedErrorTypeNames.CompilerError, tagSpan.Tag.ErrorContainer.Message));
-                //}
-                //if (tagSpan.Tag.ParserState == State.OtherError)
-                //{
-                //    var tagSpans = tagSpan.Span.GetSpans(spans[0].Snapshot);
-                //    yield return
-                //        new TagSpan<ErrorTag>(tagSpans[0],
-                //            new ErrorTag(PredefinedErrorTypeNames.OtherError, tagSpan.Tag.ErrorContainer.Message));
-                //}
+                if (tagSpan.Tag.Type == TtlTokenType.ParseError)
+                {
+                    var tagSpans = tagSpan.Span.GetSpans(spans[0].Snapshot);
+                    yield return
+                        new TagSpan<ErrorTag>(tagSpans[0],
+                            new ErrorTag(PredefinedErrorTypeNames.SyntaxError, tagSpan.Tag.Error));
+                }
             }
         }
 
