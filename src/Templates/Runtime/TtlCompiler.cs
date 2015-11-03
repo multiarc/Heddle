@@ -315,7 +315,12 @@ namespace Templates.Runtime
                     CheckTypes(data, acceptType);
                 }
                 else
+                {
+                    if (acceptType != typeof(object))
+                        dataType = acceptType;
+
                     CheckTypes(dataType, acceptType);
+                }
                 returnTypeChainedPrevious = InitializeTemplate(extension, extensionItem.ParameterTemplate, dataType,
                     returnTypeChainedPrevious, compileContext, parseContext);
 
