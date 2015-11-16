@@ -31,7 +31,7 @@ namespace Templates.Extensions {
 
         protected override object ProcessDataInternal (object value, object chainedResult)
         {
-            string locale = GetInnerResult(chainedResult, null);
+            string locale = GetInnerResult(value, chainedResult);
             if (value == null)
                 return string.Empty;
             if (!(value is decimal)) {

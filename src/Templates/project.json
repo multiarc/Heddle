@@ -1,5 +1,5 @@
 ﻿{
-  "version": "2.3.3-rc1",
+  "version": "2.3.4-rc1",
   "authors": [ "Aliaksandr Kukrash" ],
   "description": "Robust template engine with C# expressions (Roslyn) support, text template inheritance and override support",
   "exclude": [ "bin" ],
@@ -7,9 +7,9 @@
   "dependencies": {
     "Templates.Language": "",
     "Antlr4.Runtime": "",
-    "Microsoft.Extensions.PlatformAbstractions": "1.0.0-rc1-16110",
-    "Microsoft.Dnx.Compilation.CSharp.Abstractions": "1.0.0-rc1-16110",
-    "Microsoft.Dnx.Compilation.Abstractions": "1.0.0-rc1-16110",
+    "Microsoft.Extensions.PlatformAbstractions": "1.0.0-*",
+    "Microsoft.Dnx.Compilation.CSharp.Abstractions": "1.0.0-*",
+    "Microsoft.Dnx.Compilation.Abstractions": "1.0.0-*",
     "Microsoft.CodeAnalysis.CSharp": "1.1.0-*"
   },
   "configurations": {

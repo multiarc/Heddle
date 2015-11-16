@@ -181,10 +181,9 @@ namespace Templates.Runtime
         }
 
         private static TemplateChain CompileParameterChain(IEnumerable<OutputItem> items, CompileContext compileContext,
-            ParseContext parseContext)
+            ParseContext parseContext, ExType returnTypeChainedPrevious)
         {
             TemplateChain result = new TemplateChain();
-            ExType returnTypeChainedPrevious = null;
             foreach (var item in items.Reverse())
             {
                 var compiledItem = CompileItem(item, compileContext, parseContext, ref returnTypeChainedPrevious);
@@ -286,7 +285,7 @@ namespace Templates.Runtime
             else
             {
                 var callParameter = CompileParameterChain(extensionItem.CallParameter.ChainParameter, compileContext,
-                    parseContext);
+                    parseContext, returnTypeChainedPrevious);
                 dataType = callParameter.RenderType;
                 parameter = new ChainedParameter(callParameter);
             }

@@ -7,7 +7,7 @@ namespace Templates.Extensions {
     public class OutExtension : AbstractExtension {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
         {
-            base.InitStart(initContext, dataType, chainedType);
+            base.InitStart(initContext, chainedType, null);
             return chainedType;
         }
 
