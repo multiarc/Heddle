@@ -7,7 +7,7 @@ namespace Templates.Exceptions
     /// <summary>
     /// Parse Exception, at any stage can be raised
     /// </summary>
-#if !DNXCORE50
+#if !DOTNET5_4
     [Serializable]
 #endif
     public sealed class TemplateParseException : TemplateCompileException

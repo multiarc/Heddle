@@ -31,7 +31,7 @@ namespace Templates.Extensions {
                 }
             }
 
-            string fastStringFormat = GetInnerResult(chainedResult, null);
+            string fastStringFormat = GetInnerResult(value, chainedResult);
             if (!string.IsNullOrEmpty(fastStringFormat))
                 return ((int) value).ToString(fastStringFormat, CultureInfo.InvariantCulture);
             return ((int) value).ToString(CultureInfo.InvariantCulture);

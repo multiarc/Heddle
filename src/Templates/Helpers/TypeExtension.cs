@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 using Templates.Strings;
 
 namespace Templates.Helpers {
-    public static class TypeExtension {
+    internal static class TypeExtension {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsType(this Type typeToCheck, Type type)

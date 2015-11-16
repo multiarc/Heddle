@@ -14,7 +14,7 @@ namespace Templates.Extensions {
         {
             if (!(data is Guid))
                 return string.Empty;
-            return ((Guid) data).ToString(GetInnerResult(chained, null));
+            return ((Guid) data).ToString(GetInnerResult(data, chained));
         }
     }
 }

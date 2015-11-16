@@ -2,7 +2,7 @@
 
 namespace Templates.Helpers
 {
-    public static class ByteFormatter
+    internal static class ByteFormatter
     {
         public static string ToHexString(this byte[] array)
         {

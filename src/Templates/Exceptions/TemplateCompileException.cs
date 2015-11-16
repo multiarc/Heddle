@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-#if !DNXCORE50
+#if !DOTNET5_4
 using System.Runtime.Serialization;
 #endif
 using Templates.Data;
 
 namespace Templates.Exceptions {
-#if !DNXCORE50
+#if !DOTNET5_4
     [Serializable]
 #endif
     public class TemplateCompileException: Exception {
@@ -46,7 +46,7 @@ namespace Templates.Exceptions {
             return base.ToString();
         }
 
-#if !DNXCORE50
+#if !DOTNET5_4
         protected TemplateCompileException (SerializationInfo info, StreamingContext context, IEnumerable<TtlCompileError> errors)
             : base(info, context)
         {

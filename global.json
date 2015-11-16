@@ -1,6 +1,5 @@
 {
   "projects": [
-    "src",
-    "wrap"
+    "src"
   ]
 }

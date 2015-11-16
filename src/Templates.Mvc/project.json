@@ -7,13 +7,14 @@
   "licenseUrl": "",
 
   "dependencies": {
-    "Microsoft.AspNet.Mvc.ViewFeatures": "6.0.0-beta8",
+    "Microsoft.AspNet.Mvc.ViewFeatures": "6.0.0-*",
     "Templates": ""
   },
 
   "frameworks": {
+    "net451": {},
     "dnx451": { },
-    "dnxcore50": {
+    "dotnet5.4": {
       "dependencies": {
         "System.Collections": "4.0.11-*",
         "System.Linq": "4.0.1-*",

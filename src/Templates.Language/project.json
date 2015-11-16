@@ -1,10 +1,10 @@
 ﻿{
-  "version": "1.2.3-beta8",
+  "version": "1.2.3-rc1",
   "authors": [ "Aliaksandr Kukrash" ],
   "description": "Template engine language parsers support package, basing on ANTLR4.5 C# target",
   "exclude": [ "bin" ],
   "dependencies": {
-    "Antlr4.Runtime": "4.5.1-beta8"
+    "Antlr4.Runtime": ""
   },
   "scripts": {
     "prebuild": "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.5.1-complete.jar\" -Dlanguage=CSharp \"%project:Directory%\\TtlLexer.g4\" \"%project:Directory%\\TtlParser.g4\" -o \"%project:Directory%\\generated\" -lib \"%project:Directory%\\generated\" -package Templates.Language",
@@ -12,11 +12,9 @@
   },
   "configurations": { "release": { "compilationOptions": { "define": [ "TRACE" ] }, "optimize": true }, "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } } },
   "frameworks": {
-    "dnx451": {
-      "dependencies": {
-      }
-    },
-    "dnxcore50": {
+    "net451": {},
+    "dnx451": {},
+    "dotnet5.4": {
       "dependencies": {
         "System.Runtime": "4.0.21-*",
         "System.Reflection": "4.1.0-*",

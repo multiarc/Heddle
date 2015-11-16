@@ -7,7 +7,7 @@ using Templates.Attributes;
 using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Language;
-#if DNXCORE50
+#if DOTNET5_4
 using Templates.Native;
 #endif
 
@@ -22,14 +22,14 @@ namespace Templates.Runtime {
     /// <summary>
     /// Template factory, initializes and creates all templates
     /// </summary>
-    public static class TemplateFactory
+    internal static class TemplateFactory
     {
         private static readonly Dictionary<string, Type> Templates = new Dictionary<string, Type>();
 
         static TemplateFactory()
         {
             AddExtensions(LoadBaseExtensions());
-#if !DNXCORE50
+#if !DOTNET5_4
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
 #else
             foreach (var assembly in AssemblyHelper.GetAssemblies())

@@ -1,4 +1,4 @@
-﻿#if !DNXCORE50
+﻿#if !DOTNET5_4
 using System;
 #endif
 
@@ -6,7 +6,7 @@ namespace Templates.Strings.Core {
     /// <summary>
     /// Represents parsed result data to replace source template template
     /// </summary>
-#if !DNXCORE50
+#if !DOTNET5_4
     [Serializable]
 #endif
     public struct Replacement {

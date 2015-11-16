@@ -4,23 +4,18 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Dnx.Compilation;
-using Microsoft.Dnx.Runtime;
-using Microsoft.Dnx.Runtime.Infrastructure;
+using Microsoft.Extensions.PlatformAbstractions;
 using Microsoft.Dnx.Compilation.CSharp;
-#if DNX451 || DNXCORE50
 using Microsoft.CodeAnalysis;
-#endif
 
 namespace Templates.Native {
-    public static class AssemblyHelper {
-#if DNX451 || DNXCORE50
+    internal static class AssemblyHelper {
         private static readonly ILibraryExporter LibraryManager =
             (ILibraryExporter)CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(ILibraryExporter));
         private static readonly IApplicationEnvironment Environment =
             (IApplicationEnvironment)
                 CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(IApplicationEnvironment));
-#endif
-#if DNXCORE50
+#if DOTNET5_4
         private static readonly IAssemblyLoadContextAccessor LoadContextAccessor =
             (IAssemblyLoadContextAccessor)
                 CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IAssemblyLoadContextAccessor));
@@ -32,7 +27,7 @@ namespace Templates.Native {
 #endif
 
         static AssemblyHelper() {
-#if DNXCORE50
+#if DOTNET5_4
             var type = typeof(object).GetTypeInfo().Assembly.GetType("System.AppDomain");
             if (type == null) {
                 throw new InvalidOperationException("Cannot find System.AppDomain class in system library, investigate to issue and rewrite assembly list acquire");
@@ -47,7 +42,7 @@ namespace Templates.Native {
 #endif
         }
 
-#if DNXCORE50
+#if DOTNET5_4
         internal static Assembly[] GetAssemblies() {
             var domain = GetCurrentDomain();
             return AssembliesGetter(domain);
@@ -73,7 +68,6 @@ namespace Templates.Native {
                     .FirstOrDefault(assemblyName => assemblyName.Name == name);
         }
 
-#if DNX451 || DNXCORE50
         private static MetadataReference ConvertMetadataReference(IMetadataReference metadataReference) {
             var roslynReference = metadataReference as IRoslynMetadataReference;
 
@@ -127,6 +121,5 @@ namespace Templates.Native {
             return references;
         }
 
-#endif
     }
 }

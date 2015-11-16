@@ -1,11 +1,11 @@
 ﻿using System;
-#if !DNXCORE50
+#if !DOTNET5_4
 using System.Runtime.Serialization;
 #endif
 using Templates.Strings.Core;
 
 namespace Templates.Exceptions {
-#if !DNXCORE50
+#if !DOTNET5_4
     [Serializable]
 #endif
     public class TemplateDefinitionTypeException: Exception {
@@ -32,7 +32,7 @@ namespace Templates.Exceptions {
 
         public TemplateDefinitionTypeException(string message, Exception innerException) : base(message, innerException) {
         }
-#if !DNXCORE50
+#if !DOTNET5_4
         protected TemplateDefinitionTypeException(SerializationInfo info, StreamingContext context) : base(info, context) {
             base.GetObjectData(info, context);
             info.AddValue("Position", Position);

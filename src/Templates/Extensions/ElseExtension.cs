@@ -27,7 +27,7 @@ namespace Templates.Extensions {
                 }
             }
             if (!(bool) data)
-                return GetInnerResult(chained, null);
+                return GetInnerResult(data, chained);
             return string.Empty;
         }
     }

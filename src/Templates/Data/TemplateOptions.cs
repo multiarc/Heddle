@@ -1,15 +1,10 @@
 ﻿using System;
-#if DNXCORE50 || DNX451
-using Microsoft.Dnx.Runtime;
-using Microsoft.Dnx.Runtime.Infrastructure;
-#endif
+using Microsoft.Extensions.PlatformAbstractions;
 
 namespace Templates.Data {
     public class TemplateOptions: IEquatable<TemplateOptions> {
-#if DNXCORE50 || DNX451
         private static readonly IApplicationEnvironment Environment = 
             (IApplicationEnvironment)CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(IApplicationEnvironment));
-#endif
         public string FileNamePostfix { get; set; }
         public string RootPath { get; set; }
         public string TemplateName { get; }
@@ -20,11 +15,7 @@ namespace Templates.Data {
         public TemplateOptions()
         {
             FileNamePostfix = string.Empty;
-#if DNX451 || DNXCORE50
             RootPath = Environment.ApplicationBasePath;
-#else
-            RootPath = Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory);
-#endif
             TemplateName = string.Empty;
             EnableFileChangeCheck = false;
             AllowCSharp = false;
@@ -32,11 +23,7 @@ namespace Templates.Data {
 
         public TemplateOptions(string templateName) {
             FileNamePostfix = string.Empty;
-#if DNX451 || DNXCORE50
             RootPath = Environment.ApplicationBasePath;
-#else
-            RootPath = Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory);
-#endif
             TemplateName = templateName ?? string.Empty;
             EnableFileChangeCheck = false;
             AllowCSharp = false;
@@ -65,14 +52,11 @@ namespace Templates.Data {
 
         public string FullPath => RootPath + TemplateName + FileNamePostfix;
 
-        #region IEquatable<TemplateOptions> Members
-
         public bool Equals (TemplateOptions other)
         {
             return other.FileNamePostfix == FileNamePostfix && other.TemplateName == TemplateName && other.RootPath == RootPath;
         }
 
-#endregion
 
         public static bool operator == (TemplateOptions value1, TemplateOptions value2)
         {

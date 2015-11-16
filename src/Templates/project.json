@@ -1,15 +1,16 @@
 ﻿{
-  "version": "2.3.3-beta8",
+  "version": "2.3.3-rc1",
   "authors": [ "Aliaksandr Kukrash" ],
   "description": "Robust template engine with C# expressions (Roslyn) support, text template inheritance and override support",
   "exclude": [ "bin" ],
   "compilationOptions": { "allowUnsafe": true },
   "dependencies": {
     "Templates.Language": "",
-    "Microsoft.CodeAnalysis.CSharp": "1.1.0-beta1-20150928-02",
-    "Microsoft.Dnx.Runtime": "1.0.0-beta8",
-    "Microsoft.Dnx.Compilation.CSharp": "1.0.0-beta8",
-    "Microsoft.Dnx.Compilation.CSharp.Abstractions": "1.0.0-beta8"
+    "Antlr4.Runtime": "",
+    "Microsoft.Extensions.PlatformAbstractions": "1.0.0-rc1-16110",
+    "Microsoft.Dnx.Compilation.CSharp.Abstractions": "1.0.0-rc1-16110",
+    "Microsoft.Dnx.Compilation.Abstractions": "1.0.0-rc1-16110",
+    "Microsoft.CodeAnalysis.CSharp": "1.1.0-*"
   },
   "configurations": {
     "release": {
@@ -19,10 +20,27 @@
     "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } }
   },
   "frameworks": {
-    "dnx451": {
+    "net451": {
+      "frameworkAssemblies": {
+        "System.Runtime": "4.0.10.0",
+        "System.Text.Encoding": "4.0.0.0",
+        "System.Threading.Tasks": "4.0.0.0",
+        "System.IO": "4.0.0.0"
+      }
     },
-    "dnxcore50": {
+    "dnx451": {
+      "frameworkAssemblies": {
+        "System.Runtime": "4.0.10.0",
+        "System.Text.Encoding": "4.0.0.0",
+        "System.Threading.Tasks": "4.0.0.0",
+        "System.IO": "4.0.0.0"
+      },
       "dependencies": {
+      }
+    },
+    "dotnet5.4": {
+      "dependencies": {
+        "Microsoft.NETCore.Runtime": "1.0.0-*",
         "System.Runtime": "4.0.21-*",
         "System.IO.Pipes": "4.0.0-*",
         "System.Runtime.Loader": "4.0.0-*",

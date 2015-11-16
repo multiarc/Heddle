@@ -5,7 +5,7 @@ using System.Text;
 using Templates.Collections;
 
 namespace Templates.Strings {
-#if !DNXCORE50
+#if !DOTNET5_4
     [Serializable]
 #endif
     public sealed partial class ExString {

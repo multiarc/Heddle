@@ -1,10 +1,10 @@
 ﻿using System;
-#if !DNXCORE50
+#if !DOTNET5_4
 using System.Runtime.Serialization;
 #endif
 
 namespace Templates.Exceptions {
-#if !DNXCORE50
+#if !DOTNET5_4
     [Serializable]
 #endif
     public class TemplateCreateException: Exception {
@@ -21,7 +21,7 @@ namespace Templates.Exceptions {
             : base(message, inner)
         {
         }
-#if !DNXCORE50
+#if !DOTNET5_4
         protected TemplateCreateException (SerializationInfo info, StreamingContext context)
             : base(info, context)
         {

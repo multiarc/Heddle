@@ -28,12 +28,8 @@ namespace Templates.Extensions {
                 }
             }
             if ((bool) data)
-                return GetInnerResult(chained, null);
+                return GetInnerResult(data, chained);
             return string.Empty;
-        }
-
-        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType) {
-            return base.InitStart(initContext, chainedType, null);
         }
     }
 }

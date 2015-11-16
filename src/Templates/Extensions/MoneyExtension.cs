@@ -29,11 +29,6 @@ namespace Templates.Extensions {
             }
         }
 
-        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
-        {
-            return base.InitStart(initContext, chainedType, null);
-        }
-
         protected override object ProcessDataInternal (object value, object chainedResult)
         {
             string locale = GetInnerResult(chainedResult, null);

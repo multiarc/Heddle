@@ -1,4 +1,4 @@
-﻿#if DNXCORE50
+﻿#if DOTNET5_4
 namespace System.CodeDom.Compiler {
     [AttributeUsage(AttributeTargets.All, Inherited = false, AllowMultiple = false)]
     public sealed class GeneratedCodeAttribute: Attribute {

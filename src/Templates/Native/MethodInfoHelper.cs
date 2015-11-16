@@ -6,7 +6,7 @@ using Templates.Helpers;
 
 namespace Templates.Native
 {
-    public static class MethodInfoHelper
+    internal static class MethodInfoHelper
     {
         public static Delegate CompileStaticDelegateAccessor<TDelegate>(this MethodInfo method)
         {

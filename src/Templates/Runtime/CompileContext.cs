@@ -7,8 +7,7 @@ using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.Dnx.Runtime;
-using Microsoft.Dnx.Runtime.Infrastructure;
+using Microsoft.Extensions.PlatformAbstractions;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
@@ -57,7 +56,7 @@ namespace Templates.Runtime {
             try
             {
                 PreparseGenerator = new TtlTemplate();
-#if DNX451 || DNXCORE50
+#if DNX451 || DOTNET5_4
                 IApplicationEnvironment env =
                     (IApplicationEnvironment)
                         CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IApplicationEnvironment));
@@ -196,7 +195,7 @@ namespace Templates.Runtime {
             {
                 var currentAssemblyName = GetType().GetTypeInfo().Assembly.GetName();
                 yield return FormatAssemblyName(currentAssemblyName);
-#if DNXCORE50
+#if DOTNET5_4
                 var systemAssemblyName = AssemblyHelper.GetAssemblyName("System.Dynamic.Runtime");
                 if (systemAssemblyName != null)
                     yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
@@ -291,7 +290,7 @@ namespace Templates.Runtime {
                     InitErrors.Errors);
             var code = PreparseGenerator.Generate(expressionOptions);
             var tree = CSharpSyntaxTree.ParseText(code);
-#if DNX451 || DNXCORE50
+#if DNX451 || DOTNET5_4
             var assemblySet = AssemblyHelper.GetMetadataReferences();
 #else
             HashSet<MetadataReference> assemblySet = new HashSet<MetadataReference>

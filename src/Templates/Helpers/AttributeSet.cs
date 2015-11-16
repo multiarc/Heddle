@@ -8,7 +8,7 @@ namespace Templates.Helpers {
     /// <summary>
     /// Attribute set helper to simple check existance/get attribute of any type/property/field etc.
     /// </summary>
-    public class AttributeSet {
+    internal class AttributeSet {
         private List<Attribute> _attributes;
 
         public AttributeSet (Type type)

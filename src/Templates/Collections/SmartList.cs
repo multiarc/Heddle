@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 
 namespace Templates.Collections {
-#if !DNXCORE50
+#if !DOTNET5_4
     [Serializable]
 #endif
     public partial class SmartList<T> {

@@ -6,8 +6,7 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.Dnx.Runtime;
-using Microsoft.Dnx.Runtime.Infrastructure;
+using Microsoft.Extensions.PlatformAbstractions;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Native;
@@ -15,7 +14,7 @@ using Templates.Runtime.Parameters;
 
 namespace Templates.Runtime
 {
-    public static class ContextCompilation
+    internal static class ContextCompilation
     {
         private static readonly TtlTemplate CodeGenerator;
 
@@ -26,14 +25,10 @@ namespace Templates.Runtime
             try
             {
                 CodeGenerator = new TtlTemplate();
-#if DNX451 || DNXCORE50
                 IApplicationEnvironment env =
                     (IApplicationEnvironment)
                         CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IApplicationEnvironment));
                 var path = env.ApplicationBasePath + "/";
-#else
-                var path = "";
-#endif
                 var result =
                     CodeGenerator.Compile(File.ReadAllText($"{path}CSharpClassTemplate.tcs"));
                 if (!result.Success)
@@ -82,11 +77,7 @@ namespace Templates.Runtime
                     var tree = CSharpSyntaxTree.ParseText(code);
                     var compilation = CSharpCompilation.Create(
                         context.ModelType + "_" + context.ClassGuid.ToString("N"), new[] {tree},
-#if DNXCORE50 || DNX451
                         AssemblyHelper.GetMetadataReferences(),
-#else
-                        DependentAssemblies.Select(a => MetadataReference.CreateFromFile(a.Location)),
-#endif
                         new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithCryptoPublicKey(
                             context.GetType().GetTypeInfo().Assembly.GetName().GetPublicKey().ToImmutableArray())
                             .WithDelaySign(false));
@@ -98,7 +89,7 @@ namespace Templates.Runtime
                     var stream = new MemoryStream();
                     compilation.Emit(stream);
                     stream.Seek(0, SeekOrigin.Begin);
-#if !DNXCORE50
+#if !DOTNET5_4
                     context.CompiledAssembly = Assembly.Load(stream.GetBuffer());
 #else
                     context.CompiledAssembly = AssemblyHelper.GetAssemblyLoadContext().LoadStream(stream, null);

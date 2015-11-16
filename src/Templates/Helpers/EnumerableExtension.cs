@@ -3,7 +3,7 @@ using Templates.Collections;
 
 namespace Templates.Helpers
 {
-    public static class EnumerableExtension {
+    internal static class EnumerableExtension {
         public static SmartList<T> ToSmartArray<T> (this IEnumerable<T> values)
         {
             var arr = values as T[];

@@ -14,7 +14,7 @@ namespace Templates.Extensions {
     public class TimeExtension: AbstractHtmlExtension {
         protected override object ProcessDataInternal (object value, object chainedResult)
         {
-            string dateFormat = GetInnerResult(chainedResult, null);
+            string dateFormat = GetInnerResult(value, chainedResult);
             if (string.IsNullOrEmpty(dateFormat))
                 dateFormat = "t";
             if (!(value is DateTime))

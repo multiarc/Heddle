@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 
 namespace Templates.Helpers {
-    public static class PropertyInfoExtension {
+    internal static class PropertyInfoExtension {
         public static bool IsHaveAttribute (this PropertyInfo property, Type attributeType)
         {
             if (property == null)

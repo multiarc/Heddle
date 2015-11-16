@@ -1,11 +1,11 @@
 ﻿using System;
-#if !DNXCORE50
+#if !DOTNET5_4
 using System.Runtime.Serialization;
 #endif
 using Templates.Strings.Core;
 
 namespace Templates.Exceptions {
-#if !DNXCORE50
+#if !DOTNET5_4
     [Serializable]
 #endif
     public class TemplateInitException: Exception {
@@ -29,7 +29,7 @@ namespace Templates.Exceptions {
         {
             BlockPosition = blockPosition;
         }
-#if !DNXCORE50
+#if !DOTNET5_4
         protected TemplateInitException (SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
