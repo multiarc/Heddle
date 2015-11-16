@@ -6,7 +6,7 @@ using Templates.Exceptions;
 using Templates.Language;
 
 namespace Templates.Extensions {
-    [Name("import")]
+    [ExtensionName("import")]
     public class ImportExtension:AbstractExtension {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
         {

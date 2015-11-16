@@ -9,9 +9,14 @@ namespace Templates.Extensions {
     /// <para>Condition Template</para>
     /// <para>Optional parameter represents string to show if condition is true</para>
     /// </summary>
-    [Name ("if")]
+    [ExtensionName ("if")]
     [DataType (typeof (bool))]
     public class IfExtension: AbstractExtension {
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
+        {
+            return base.InitStart(initContext, chainedType, dataType);
+        }
+
         public override object ProcessData(object data, object chained)
         {
             if (data == null)
@@ -28,7 +33,7 @@ namespace Templates.Extensions {
                 }
             }
             if ((bool) data)
-                return GetInnerResult(data, chained);
+                return GetInnerResult(chained, data);
             return string.Empty;
         }
     }

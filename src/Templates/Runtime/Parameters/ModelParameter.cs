@@ -21,7 +21,7 @@ namespace Templates.Runtime.Parameters
 
         public object GetParameter(object value, object chainedResult)
         {
-            return _getModelParameter(value);
+            return value == null ? null : _getModelParameter(value);
         }
     }
 }

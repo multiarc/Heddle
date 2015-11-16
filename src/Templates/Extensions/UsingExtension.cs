@@ -4,7 +4,7 @@ using Templates.Core;
 using Templates.Data;
 
 namespace Templates.Extensions {
-    [Name ("using")]
+    [ExtensionName ("using")]
     public class UsingExtension: AbstractExtension {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
         {

@@ -94,7 +94,7 @@ namespace Templates.Runtime {
         /// <summary>
         /// Creates template by it's name and adds parameter string if it's present
         /// </summary>
-        /// <param name="templateName">Template name <see cref="NameAttribute"/></param>
+        /// <param name="templateName">Template name <see cref="ExtensionNameAttribute"/></param>
         /// <param name="context">Parser context, used to get defenitions list</param>
         /// <returns>ITemplate compatible object <see cref="IExtension"/></returns>
         public static IExtension Create (string templateName, ParseContext context)
@@ -137,13 +137,13 @@ namespace Templates.Runtime {
 
         internal static IEnumerable<KeyValuePair<string, Type>> LoadExtensions(IEnumerable<Type> extensions) {
             List<Type> types =
-                extensions.Where(t => t.IsImplement<IExtension>() && t.IsHaveAttribute<NameAttribute>(true)).OrderBy
+                extensions.Where(t => t.IsImplement<IExtension>() && t.IsHaveAttribute<ExtensionNameAttribute>(true)).OrderBy
                     (t => t.GetAttributes<DataTypeAttribute>(true).Any(p => p.DataType.GetTypeInfo().IsInterface)).ThenBy
                     (t => t.GetAttributes<ChainedTypeAttribute>(true).Any(p => p.DataType.GetTypeInfo().IsInterface)).ToList();
             var result = new List<KeyValuePair<string, Type>>();
             foreach (Type type in types) {
-                NameAttribute[] names = type.GetAttributes<NameAttribute>(true);
-                foreach (NameAttribute name in names)
+                ExtensionNameAttribute[] extensionNames = type.GetAttributes<ExtensionNameAttribute>(true);
+                foreach (ExtensionNameAttribute name in extensionNames)
                     result.Add(new KeyValuePair<string, Type>(name.Name, type));
             }
             return result;

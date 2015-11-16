@@ -2,7 +2,7 @@
 using Templates.Core;
 
 namespace Templates.Extensions {
-    [Name("html")]
+    [ExtensionName("html")]
     [EncodeOutput]
     public class EmptyHtmlExtension: AbstractHtmlExtension {
         protected override object ProcessDataInternal(object value, object chainedResult)

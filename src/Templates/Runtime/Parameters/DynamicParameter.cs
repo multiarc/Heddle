@@ -21,7 +21,7 @@ namespace Templates.Runtime.Parameters
 
         public object GetParameter(object value, object chainedResult)
         {
-            return _dynamicModelParameter.Target(_dynamicModelParameter, value);
+            return value == null ? null : _dynamicModelParameter.Target(_dynamicModelParameter, value);
         }
     }
 }

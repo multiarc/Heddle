@@ -2,7 +2,7 @@
 using Templates.Core;
 
 namespace Templates.Extensions {
-    [Name("")]
+    [ExtensionName("")]
     public class EmptyExtension: AbstractExtension {
         public override object ProcessData(object data, object chained)
         {

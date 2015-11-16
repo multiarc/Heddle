@@ -26,7 +26,7 @@ namespace Templates.Extensions {
     /// <para>Birth Date: 1976-04-15 Name: Anna</para>
     /// <para>...</para>
     /// </summary>
-    [Name ("list")]
+    [ExtensionName ("list")]
     [DataType (typeof (IEnumerable))]
     public class ListExtension: AbstractExtension {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)        

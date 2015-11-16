@@ -2,15 +2,21 @@
 using System.Globalization;
 using Templates.Attributes;
 using Templates.Core;
+using Templates.Data;
 
 namespace Templates.Extensions {
     /// <summary>
     /// <para>Condition template</para>
     /// <para>Optional parameter represents string to show if condition is false</para>
     /// </summary>
-    [Name ("else")]
+    [ExtensionName ("else")]
     [DataType (typeof (bool))]
     public class ElseExtension: AbstractExtension {
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
+        {
+            return base.InitStart(initContext, chainedType, dataType);
+        }
+
         public override object ProcessData(object data, object chained)
         {
             if (data == null)
@@ -27,7 +33,7 @@ namespace Templates.Extensions {
                 }
             }
             if (!(bool) data)
-                return GetInnerResult(data, chained);
+                return GetInnerResult(chained, data);
             return string.Empty;
         }
     }

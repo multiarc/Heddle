@@ -6,7 +6,7 @@ using Templates.Data;
 using Templates.Exceptions;
 
 namespace Templates.Extensions {
-    [Name ("model")]
+    [ExtensionName ("model")]
     public class ModelExtension: AbstractExtension {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
         {

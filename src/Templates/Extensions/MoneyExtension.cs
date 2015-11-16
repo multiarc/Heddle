@@ -10,7 +10,7 @@ namespace Templates.Extensions {
     /// <para>Money template</para>
     /// <para>Optional parameter contains culture string to format</para>
     /// </summary>
-    [Name ("money")]
+    [ExtensionName ("money")]
     [DataType (typeof (decimal))]
     [EncodeOutput]
     public class MoneyExtension: AbstractHtmlExtension {
@@ -29,9 +29,14 @@ namespace Templates.Extensions {
             }
         }
 
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
+        {
+            return base.InitStart(initContext, chainedType, dataType);
+        }
+
         protected override object ProcessDataInternal (object value, object chainedResult)
         {
-            string locale = GetInnerResult(value, chainedResult);
+            string locale = GetInnerResult(chainedResult, value);
             if (value == null)
                 return string.Empty;
             if (!(value is decimal)) {

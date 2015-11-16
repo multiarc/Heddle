@@ -10,7 +10,7 @@ namespace Templates.Extensions {
     /// <para>Partial Template</para>
     /// <para>Optional parameter is sub-template (fully inclusive)</para>
     /// </summary>
-    [Name ("partial")]
+    [ExtensionName ("partial")]
     public class PartialExtension: AbstractExtension
     {
         protected TtlTemplate InnerTemplate;

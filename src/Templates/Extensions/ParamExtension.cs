@@ -4,7 +4,7 @@ using Templates.Data;
 
 namespace Templates.Extensions {
 
-    [Name("param")]
+    [ExtensionName("param")]
     public class ParamExtension: AbstractExtension {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
         {

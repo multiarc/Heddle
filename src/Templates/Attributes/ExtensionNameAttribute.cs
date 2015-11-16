@@ -6,12 +6,12 @@ namespace Templates.Attributes {
     /// This attribute must set to any extension class
     /// </summary>
     [AttributeUsage (AttributeTargets.All, AllowMultiple = true)]
-    public sealed class NameAttribute: Attribute {
+    public sealed class ExtensionNameAttribute: Attribute {
         /// <summary>
         /// Sets extension name
         /// </summary>
         /// <param name="name">Extension name (empty string is reserved for <see cref="EmptyHtmlExtension"/>)</param>
-        public NameAttribute (string name)
+        public ExtensionNameAttribute (string name)
         {
             Name = name;
         }

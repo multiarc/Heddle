@@ -6,7 +6,7 @@ using Templates.Strings;
 
 namespace Templates.Extensions
 {
-    [Name("for")]
+    [ExtensionName("for")]
     [ChainedType(typeof(ForModel))]
     public class ForIndexExtension : AbstractExtension
     {

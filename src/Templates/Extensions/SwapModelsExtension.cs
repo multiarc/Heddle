@@ -2,18 +2,19 @@
 using Templates.Core;
 using Templates.Data;
 
-namespace Templates.Extensions {
-    [ExtensionName("out")]
-    public class OutExtension : AbstractExtension {
+namespace Templates.Extensions
+{
+    [ExtensionName("swap")]
+    public class SwapModelsExtension : AbstractExtension
+    {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
         {
-            base.InitStart(initContext, chainedType, null);
-            return chainedType;
+            return base.InitStart(initContext, chainedType, dataType);
         }
 
         public override object ProcessData(object data, object chained)
         {
-            return chained;
+            return GetInnerResult(chained, data);
         }
     }
 }
