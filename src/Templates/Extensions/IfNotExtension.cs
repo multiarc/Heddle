@@ -10,7 +10,6 @@ namespace Templates.Extensions {
     /// <para>Optional parameter represents string to show if condition is false</para>
     /// </summary>
     [ExtensionName ("ifnot")]
-    [DataType (typeof (bool))]
     public class IfNotExtension: AbstractExtension {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
