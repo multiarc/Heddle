@@ -8,9 +8,9 @@ using Templates.Language;
 namespace Templates.Extensions {
     [ExtensionName("import")]
     public class ImportExtension:AbstractExtension {
-        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
-            base.InitStart(initContext, dataType, chainedType);
+            base.InitStart(initContext, dataType, chainedType, parent);
             initContext.ParameterTemplate = GetInnerResult(null, null);
             int outputCount = initContext.ParseContext.OutputChains.Length;
             using (var file = File.OpenText(Path.Combine(initContext.Context.Options.RootPath, initContext.ParameterTemplate))) {
@@ -22,7 +22,7 @@ namespace Templates.Extensions {
             return null;
         }
 
-        public override object ProcessData(object data, object chained)
+        public override object ProcessData(object data, object chained, object parent)
         {
             return null;
         }

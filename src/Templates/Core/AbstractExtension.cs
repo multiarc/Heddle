@@ -61,7 +61,7 @@ namespace Templates.Core {
             return typeof (string);
         }
 
-        public virtual ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
+        public virtual ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
             if (initContext.Context == null)
                 throw new ArgumentNullException(nameof(initContext.Context));
@@ -78,6 +78,6 @@ namespace Templates.Core {
             
         }
 
-        public abstract object ProcessData(object data, object chained);
+        public abstract object ProcessData(object data, object chained, object parent);
     }
 }

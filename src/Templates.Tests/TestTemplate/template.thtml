@@ -48,10 +48,10 @@
                 Name of something
             </th>
         </tr>
-		@for(Products):param(@new ForModel() { Last = model.Products.Count(), Step = 3 })
+		@for(@new ForModel() { Last = model.Products.Count(), Step = 3 })
 		{{
 			<div>
-				@list(@model.Skip(chained).Take(3))
+				@list(@model.Products.Skip(chained).Take(3))
 				{{@
 					@*Comment Test 8*@partial(@*Comment Test 9*@){{partial@*Comment Test 10*@}};
 				}};
@@ -79,8 +79,8 @@
         on
         @date(Date)<br />
         @if(IsShow){{<span style="color: aqua">Some fucking text</span>}}<br />
-        @else(IsShow){{<span style="color: red">Don't show it</span>}}<br />
-        @if(IsShow):param(Date){{@time()}}<br />
+        @ifnot(IsShow){{<span style="color: red">Don't show it</span>}}<br />
+        @if(IsShow){{@time(Date)}}<br />
         @guid(Guid){{X}}<br />
         @guid(Guid)<br />
         @int(FuckingInt)<br />

@@ -29,14 +29,14 @@ namespace Templates.Extensions {
             }
         }
 
-        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
-            return base.InitStart(initContext, chainedType, dataType);
+            return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        protected override object ProcessDataInternal (object value, object chainedResult)
+        protected override object ProcessDataInternal (object value, object chainedResult, object parent)
         {
-            string locale = GetInnerResult(chainedResult, value);
+            string locale = GetInnerResult(parent, chainedResult);
             if (value == null)
                 return string.Empty;
             if (!(value is decimal)) {

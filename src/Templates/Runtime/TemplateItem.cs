@@ -21,7 +21,7 @@ namespace Templates.Runtime {
 
         public object ProcessData(object value, object chainedResult)
         {
-            var result = Extension.ProcessData(Parameter.GetParameter(value, chainedResult), chainedResult);
+            var result = Extension.ProcessData(Parameter.GetParameter(value, chainedResult), chainedResult, value);
 #if DEBUG
             if (result != null && ReturnType != null && !ReturnType.Type.IsType(result))
             {

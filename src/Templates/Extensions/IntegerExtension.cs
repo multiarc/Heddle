@@ -13,12 +13,12 @@ namespace Templates.Extensions {
     [DataType (typeof (int))]
     [EncodeOutput]
     public class IntegerExtension: AbstractHtmlExtension {
-        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
-            return base.InitStart(initContext, chainedType, dataType);
+            return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        protected override object ProcessDataInternal (object value, object chainedResult)
+        protected override object ProcessDataInternal (object value, object chainedResult, object parent)
         {
             if (value == null)
                 return string.Empty;
@@ -37,7 +37,7 @@ namespace Templates.Extensions {
                 }
             }
 
-            string fastStringFormat = GetInnerResult(chainedResult, value);
+            string fastStringFormat = GetInnerResult(parent, chainedResult);
             if (!string.IsNullOrEmpty(fastStringFormat))
                 return ((int) value).ToString(fastStringFormat, CultureInfo.InvariantCulture);
             return ((int) value).ToString(CultureInfo.InvariantCulture);

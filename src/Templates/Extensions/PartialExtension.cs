@@ -15,16 +15,16 @@ namespace Templates.Extensions {
     {
         protected TtlTemplate InnerTemplate;
 
-        public override object ProcessData (object data, object chained)
+        public override object ProcessData (object data, object chained, object parent)
         {
             return InnerTemplate?.Generate(data);
         }
 
-        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
             if (initContext.Context == null)
                 throw new ArgumentNullException(nameof(initContext.Context));
-            base.InitStart(initContext, dataType, chainedType);
+            base.InitStart(initContext, dataType, chainedType, parent);
             initContext.ParameterTemplate = GetInnerResult(null, null);
             if (!string.IsNullOrEmpty(initContext.ParameterTemplate)) {
                 string templateName = initContext.ParameterTemplate.Trim();

@@ -6,11 +6,12 @@ using Templates.Data;
 
 namespace Templates.Extensions {
     /// <summary>
-    /// <para>Condition Template</para>
-    /// <para>Optional parameter represents string to show if condition is true</para>
+    /// <para>Condition template</para>
+    /// <para>Optional parameter represents string to show if condition is false</para>
     /// </summary>
-    [ExtensionName ("if")]
-    public class IfExtension: AbstractExtension {
+    [ExtensionName ("ifnot")]
+    [DataType (typeof (bool))]
+    public class IfNotExtension: AbstractExtension {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
             return base.InitStart(initContext, parent, chainedType, null);
@@ -19,11 +20,15 @@ namespace Templates.Extensions {
         public override object ProcessData(object data, object chained, object parent)
         {
             if (data == null)
-                return string.Empty;
-
-            if (!(data is bool) || (bool)data) {
                 return GetInnerResult(parent, chained);
+
+            if (!(data is bool))
+            {
+                return string.Empty;
             }
+
+            if (!(bool) data)
+                return GetInnerResult(parent, chained);
 
             return string.Empty;
         }

@@ -3,9 +3,9 @@
 namespace Templates.Core {
     public abstract class AbstractHtmlExtension: AbstractExtension {
         
-        public override sealed object ProcessData (object data, object chained)
+        public sealed override object ProcessData (object data, object chained, object parent)
         {
-            var obj = ProcessDataInternal(data, chained);
+            var obj = ProcessDataInternal(data, chained, parent);
             if (DirectRender && obj != null)
             {
                 var dataToEncode = obj as string;
@@ -18,6 +18,6 @@ namespace Templates.Core {
             return obj;
         }
 
-        protected abstract object ProcessDataInternal(object value, object chainedResult);
+        protected abstract object ProcessDataInternal(object value, object chainedResult, object parent);
     }
 }

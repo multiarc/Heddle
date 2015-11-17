@@ -14,10 +14,10 @@ using Templates.Runtime;
 
 namespace Templates.Mvc.Extensions {
     public class ImportMvcExtension: ImportExtension {
-        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType) {
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent) {
             IEnumerable<string> searched;
             TtlTemplate cached;
-            base.InitStart(initContext, dataType, chainedType);
+            base.InitStart(initContext, dataType, chainedType, parent);
             initContext.ParameterTemplate = GetInnerResult(null, null);
             var path = TtlViewEngine.Resolver.Search(initContext.ParameterTemplate, initContext.Context.ControllerName, TemplatePathType.Master,
                 out searched, out cached);

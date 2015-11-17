@@ -19,14 +19,14 @@ namespace Templates.Extensions {
     [DataType (typeof (DateTime))]
     [EncodeOutput]
     public class DateExtension: AbstractHtmlExtension {
-        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
-            return base.InitStart(initContext, chainedType, dataType);
+            return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        protected override object ProcessDataInternal(object value, object chainedResult)
+        protected override object ProcessDataInternal(object value, object chainedResult, object parent)
         {
-            string dateFormat = GetInnerResult(chainedResult, value);
+            string dateFormat = GetInnerResult(parent, chainedResult);
             if (string.IsNullOrEmpty(dateFormat))
                 dateFormat = "d";
             if (!(value is DateTime))

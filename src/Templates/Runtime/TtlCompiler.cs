@@ -398,7 +398,7 @@ namespace Templates.Runtime
                 ? (extension.GetType().IsHaveAttribute<NotEncodeAttribute>(true) ? RenderType.Raw : RenderType.Encode)
                 : RenderType.Raw;
             extension.SetUpRenderType(directRender);
-            return extension.InitStart(new InitContext(parameterFastString, context, parseContext), modelType, chainedType);
+            return extension.InitStart(new InitContext(parameterFastString, context, parseContext), modelType, chainedType, context.ModelType);
         }
 
         private static void CheckTypes(PropertyInfo property, params Type[] dataTypes)

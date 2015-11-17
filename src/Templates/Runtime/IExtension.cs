@@ -10,10 +10,10 @@ namespace Templates.Runtime {
     public interface IExtension: IDisposable {
         void SetUpRenderType(RenderType renderType);
 
-        ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType);
+        ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent);
 
         void CompleteInit(CompileContext newContext, ParseContext parseContext);
 
-        object ProcessData(object data, object chained);
+        object ProcessData(object data, object chained, object parent);
     }
 }

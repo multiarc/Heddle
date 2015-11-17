@@ -4,7 +4,7 @@ using Templates.Core;
 namespace Templates.Extensions {
     [ExtensionName("")]
     public class EmptyExtension: AbstractExtension {
-        public override object ProcessData(object data, object chained)
+        public override object ProcessData(object data, object chained, object parent)
         {
             if (SubTemplate != null) {
                 return GetInnerResult(data, chained);

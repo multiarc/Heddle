@@ -11,16 +11,16 @@ namespace Templates.Extensions {
     [ExtensionName ("guid")]
     [DataType (typeof (Guid))]
     public class GuidExtension: AbstractExtension {
-        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
-            return base.InitStart(initContext, chainedType, dataType);
+            return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        public override object ProcessData(object data, object chained)
+        public override object ProcessData(object data, object chained, object parent)
         {
             if (!(data is Guid))
                 return string.Empty;
-            return ((Guid) data).ToString(GetInnerResult(chained, data));
+            return ((Guid) data).ToString(GetInnerResult(parent, chained));
         }
     }
 }

@@ -29,25 +29,25 @@ namespace Templates.Extensions {
     [ExtensionName ("list")]
     [DataType (typeof (IEnumerable))]
     public class ListExtension: AbstractExtension {
-        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)        
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)        
         {
             if (dataType == null)
                 throw new ArgumentNullException(nameof(dataType));
             if (dataType.IsDynamic) {
-                return base.InitStart(initContext, dataType, chainedType);
+                return base.InitStart(initContext, dataType, chainedType, null);
             }
             ExType underliyingType = dataType.Type.TryGetElementType(typeof(IEnumerable<>)) ?? ExType.Dynamic;
-            return base.InitStart(initContext, underliyingType, chainedType);
+            return base.InitStart(initContext, underliyingType, chainedType, parent);
         }
 
-        public override object ProcessData(object data, object chained)
+        public override object ProcessData(object data, object chained, object parent)
         {
             if (data == null)
                 return string.Empty;
             var builder = new ExStringBuilder();
             if (!(data is IEnumerable))
                 return string.Empty;
-            var enumerable = (IEnumerable<object>) data;
+            var enumerable = (IEnumerable) data;
             foreach (object item in enumerable)
                 builder.Append(GetInnerResult(item, chained));
             return builder.ToString();

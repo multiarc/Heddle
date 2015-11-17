@@ -5,7 +5,7 @@ namespace Templates.Extensions {
     [ExtensionName("html")]
     [EncodeOutput]
     public class EmptyHtmlExtension: AbstractHtmlExtension {
-        protected override object ProcessDataInternal(object value, object chainedResult)
+        protected override object ProcessDataInternal(object value, object chainedResult, object parent)
         {
             if (SubTemplate != null) {
                 return GetInnerResult(value, chainedResult);

@@ -8,11 +8,11 @@ using Templates.Exceptions;
 namespace Templates.Extensions {
     [ExtensionName ("model")]
     public class ModelExtension: AbstractExtension {
-        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
             if (initContext.Context == null)
                 throw new ArgumentNullException(nameof(initContext.Context));
-            base.InitStart(initContext, dataType, chainedType);
+            base.InitStart(initContext, dataType, chainedType, parent);
             initContext.ParameterTemplate = GetInnerResult(null, null);
             if (!string.IsNullOrWhiteSpace(initContext.ParameterTemplate)) {
                 try {
@@ -26,7 +26,7 @@ namespace Templates.Extensions {
             return null;
         }
 
-        public override object ProcessData(object data, object chained)
+        public override object ProcessData(object data, object chained, object parent)
         {
             return null;
         }

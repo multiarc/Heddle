@@ -13,15 +13,15 @@ namespace Templates.Extensions {
     [DataType (typeof (string))]
     [EncodeOutput]
     public class StringExtension: AbstractHtmlExtension {
-        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType)
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
-            return base.InitStart(initContext, chainedType, dataType);
+            return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        protected override object ProcessDataInternal (object value, object chainedResult)
+        protected override object ProcessDataInternal (object value, object chainedResult, object parent)
         {
             if (value == null)
-                return GetInnerResult(chainedResult, null);
+                return GetInnerResult(parent, chainedResult);
             if (!(value is string)) {
                 try {
                     value = Convert.ChangeType(value, typeof (string), CultureInfo.InvariantCulture);
