@@ -11,6 +11,7 @@ namespace Templates.Extensions {
     /// </summary>
     [ExtensionName ("int")]
     [DataType (typeof (int))]
+    [DataType(typeof(long))]
     [EncodeOutput]
     public class IntegerExtension: AbstractHtmlExtension {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
@@ -22,25 +23,54 @@ namespace Templates.Extensions {
         {
             if (value == null)
                 return string.Empty;
-            if (!(value is int)) {
-                try {
-                    value = Convert.ChangeType(value, typeof (int), CultureInfo.InvariantCulture);
+            var format = GetInnerResult(parent, chainedResult);
+            if (!(value is long) && !(value is int))
+            {
+                try
+                {
+                    value = Convert.ChangeType(value, typeof(long), CultureInfo.InvariantCulture);
                 }
-                catch (InvalidCastException) {
+                catch (InvalidCastException)
+                {
                     return string.Empty;
                 }
-                catch (OverflowException) {
+                catch (OverflowException)
+                {
                     return string.Empty;
                 }
-                catch (FormatException) {
+                catch (FormatException)
+                {
                     return string.Empty;
                 }
             }
-
-            string fastStringFormat = GetInnerResult(parent, chainedResult);
-            if (!string.IsNullOrEmpty(fastStringFormat))
-                return ((int) value).ToString(fastStringFormat, CultureInfo.InvariantCulture);
-            return ((int) value).ToString(CultureInfo.InvariantCulture);
+            else if (!(value is int))
+            {
+                try
+                {
+                    value = Convert.ChangeType(value, typeof (int), CultureInfo.InvariantCulture);
+                }
+                catch (InvalidCastException)
+                {
+                    return string.Empty;
+                }
+                catch (OverflowException)
+                {
+                    return string.Empty;
+                }
+                catch (FormatException)
+                {
+                    return string.Empty;
+                }
+            }
+            else
+            {
+                if (!string.IsNullOrEmpty(format))
+                    return ((int)value).ToString(format, CultureInfo.InvariantCulture);
+                return ((int)value).ToString(CultureInfo.InvariantCulture);
+            }
+            if (!string.IsNullOrEmpty(format))
+                return ((long) value).ToString(format, CultureInfo.InvariantCulture);
+            return ((long) value).ToString(CultureInfo.InvariantCulture);
         }
     }
 }

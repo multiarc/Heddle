@@ -1,5 +1,5 @@
 ﻿{
-  "version": "1.2.3-rc1",
+  "version": "1.3.0-rc1",
   "authors": [ "Aliaksandr Kukrash" ],
   "description": "Template engine language parsers support package, basing on ANTLR4.5 C# target",
   "exclude": [ "bin" ],
@@ -7,13 +7,16 @@
     "Antlr4.Runtime": ""
   },
   "scripts": {
-    "prebuild": "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.5.1-complete.jar\" -Dlanguage=CSharp \"%project:Directory%\\TtlLexer.g4\" \"%project:Directory%\\TtlParser.g4\" -o \"%project:Directory%\\generated\" -lib \"%project:Directory%\\generated\" -package Templates.Language",
+    "prebuild": [
+      "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.5.1-complete.jar\" -Dlanguage=CSharp \"%project:Directory%\\TtlLexer.g4\" \"%project:Directory%\\TtlParser.g4\" -o \"%project:Directory%\\generated\" -lib \"%project:Directory%\\generated\" -package Templates.Language",
+      "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.5.1-complete.jar\" -Dlanguage=CSharp \"%project:Directory%\\TtlLexerNoWS.g4\" -o \"%project:Directory%\\generated\" -lib \"%project:Directory%\\generated\" -package Templates.Language"
+    ],
     "postbuild": "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.5.1-complete.jar\" -Dlanguage=JavaScript \"%project:Directory%\\TtlLexer.g4\" \"%project:Directory%\\TtlParser.g4\" -o \"%project:Directory%\\js\" -lib \"%project:Directory%\\js\" "
   },
   "configurations": { "release": { "compilationOptions": { "define": [ "TRACE" ] }, "optimize": true }, "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } } },
   "frameworks": {
-    "net451": {},
-    "dnx451": {},
+    "net451": { },
+    "dnx451": { },
     "dotnet5.4": {
       "dependencies": {
         "System.Runtime": "4.0.21-*",

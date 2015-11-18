@@ -2,7 +2,7 @@
  * Lexer Rules
  */
 
-lexer grammar TtlLexer;
+lexer grammar TtlLexerNoWS;
 
 import CSharp;
 
@@ -12,23 +12,23 @@ channels { COMMENT_CHANNEL }
 
 fragment ID_TOKEN: IDENTIFIER;
 
+fragment WS: WHITESPACE;
 
-fragment SUB_ST: '{{';
-fragment SUB_CL: '}}';
+fragment SUB_ST: '{{' WS*;
+fragment SUB_CL: '}}' WS*;
 fragment PARA_ST: '(';
-fragment PARA_CL: ')';
-fragment DEF_ST: '<%';
-fragment DEF_CL: '%>';
-fragment OUT_ST: '@';
+fragment PARA_CL: ')' WS*;
+fragment DEF_ST: WS* '<%';
+fragment DEF_CL: '%>' WS*;
+fragment OUT_ST: WS* '@';
 fragment DEF_T: '::';
 fragment EXT_DELIM: ':';
 fragment DEF_STNAME: '<';
 fragment DEF_CLNAME: '>';
 fragment DEF_MAKEOUT: '->';
 fragment LINE_TERM: ';';
-fragment COMMENT_BLOCK: '@*' .*? '*@';
+fragment COMMENT_BLOCK: WS? '@*' .*? '*@' WS?;
 fragment RAW_BLOCK : '@{' .*? '}@';
-fragment WS: WHITESPACE;
 
 START_COMMENT:
 	COMMENT_BLOCK -> channel(COMMENT_CHANNEL);

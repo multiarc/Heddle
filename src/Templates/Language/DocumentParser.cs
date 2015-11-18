@@ -6,18 +6,20 @@ using Antlr4.Runtime.Tree;
 using Templates.Exceptions;
 using Templates.Strings.Core;
 
-namespace Templates.Language {
+namespace Templates.Language
+{
     /// <summary>
     /// Parses document and creates template cache that can be used multiple times as source template representation, also used to replace templates with data multiple times (template source preserved)
     /// </summary>
-    public static class DocumentParser {
+    public static class DocumentParser
+    {
         /// <summary>
         /// Performs parse of document
         /// </summary>
         /// <returns>Full template context tree found in source template</returns>
-        public static ParseContext Parse(string document, bool provideLanguageFeatures = false)
+        public static ParseContext Parse(string document, bool provideLanguageFeatures = false, bool forceRemoveWhitespace = false)
         {
-            var context = new ParseContext(provideLanguageFeatures: provideLanguageFeatures);
+            var context = new ParseContext(provideLanguageFeatures: provideLanguageFeatures, forceRemoveWhitespace: forceRemoveWhitespace);
             Parse(document, context);
             return context;
         }
@@ -27,7 +29,7 @@ namespace Templates.Language {
             if (document == null)
                 throw new ArgumentNullException(nameof(document));
             AntlrInputStream stream = new AntlrInputStream(new StringReader(document));
-            TtlLexer lexer = new TtlLexer(stream);
+            var lexer = context.ForceRemoveWhitespace ? (ITokenSource) new TtlLexerNoWS(stream) : new TtlLexer(stream);
             CommonTokenStream tokens = new CommonTokenStream(lexer);
             TtlParser parser = new TtlParser(tokens);
             var syntaxErrorListener = new TtlSyntaxErrorListener(context);

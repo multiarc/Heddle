@@ -11,6 +11,7 @@ namespace Templates.Data {
         public bool EnableFileChangeCheck { get; set; }
         public bool AllowCSharp { get; set; }
         public bool ProvideLanguageFeatures { get; set; }
+        public bool ForceRemoveWhitespace { get; set; }
 
         public TemplateOptions()
         {

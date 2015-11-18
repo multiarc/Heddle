@@ -159,7 +159,7 @@ namespace Templates {
             try
             {
                 RuntimeDocument rtdoc = TtlCompiler.Compile(document, context,
-                    DocumentParser.Parse(document, context.Options.ProvideLanguageFeatures), null);
+                    DocumentParser.Parse(document, context.Options.ProvideLanguageFeatures, context.Options.ForceRemoveWhitespace), null);
                 if (!simulate)
                 {
                     context.Compile();

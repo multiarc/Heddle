@@ -21,9 +21,10 @@ namespace Templates.Language {
 
         public IEnumerable<TtlToken> Tokens => _tokens;
 
-        internal ParseContext(ParseContext parentContext = null, int offset = 0, bool provideLanguageFeatures = false) {
+        internal ParseContext(ParseContext parentContext = null, int offset = 0, bool provideLanguageFeatures = false, bool forceRemoveWhitespace = false) {
             _inDefintionContext = (parentContext?.InDefinition ?? false) || (parentContext?._inDefintionContext ?? false);
             ProvideLanguageFeatures = provideLanguageFeatures || (parentContext?.ProvideLanguageFeatures ?? false);
+            ForceRemoveWhitespace = forceRemoveWhitespace || (parentContext?.ForceRemoveWhitespace ?? false);
             _offset = offset;
             ProvideLanguageFeatures = provideLanguageFeatures;
             DefinitionsBlock = new DefinitionBlock(parentContext?.DefinitionsBlock);
@@ -359,6 +360,8 @@ namespace Templates.Language {
         internal bool InDefintionContext => _inDefintionContext;
 
         internal bool ProvideLanguageFeatures { get; }
+
+        internal bool ForceRemoveWhitespace { get; }
 
         public int Offset => _offset;
 

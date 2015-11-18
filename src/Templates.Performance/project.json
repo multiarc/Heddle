@@ -8,6 +8,10 @@
     "Templates.Performance": "run"
   },
   "frameworks": {
+    "net451": {
+      "dependencies": {
+      }
+    },
     "dnx451": {
       "dependencies": {
       }
