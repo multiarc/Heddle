@@ -15,12 +15,12 @@ fragment ID_TOKEN: IDENTIFIER;
 fragment WS: WHITESPACE;
 
 fragment SUB_ST: '{{' WS*;
-fragment SUB_CL: '}}' WS*;
+fragment SUB_CL: WS* '}}';
 fragment PARA_ST: '(';
-fragment PARA_CL: ')' WS*;
-fragment DEF_ST: WS* '<%';
-fragment DEF_CL: '%>' WS*;
-fragment OUT_ST: WS* '@';
+fragment PARA_CL: ')';
+fragment DEF_ST: WS? '<%';
+fragment DEF_CL: '%>' WS?;
+fragment OUT_ST: '@';
 fragment DEF_T: '::';
 fragment EXT_DELIM: ':';
 fragment DEF_STNAME: '<';
