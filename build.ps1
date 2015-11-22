@@ -16,4 +16,7 @@ Pop-Location
 Push-Location Antlr4.Runtime
 dnu pack --out ..\..\packages\Antlr4.Runtime --configuration Release
 Pop-Location
+Push-Location Templates.Mvc
+dnu pack --out ..\..\packages\Templates.Mvc --configuration Release
+Pop-Location
 Pop-Location
