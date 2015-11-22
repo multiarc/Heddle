@@ -20,7 +20,7 @@ namespace Templates.Extensions {
                     initContext.Context.ModelType = modelType;
                 }
                 catch (InvalidOperationException e) {
-                    throw new TemplateCompileException(e.ToError(Position));
+                    initContext.Context.CompileErrors.Add(e.ToError(Position));
                 }
             }
             return null;

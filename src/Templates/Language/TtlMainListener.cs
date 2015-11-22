@@ -3,15 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using Templates.Data;
 using Templates.Exceptions;
+using Templates.Runtime;
 using Templates.Strings.Core;
 
 namespace Templates.Language {
     internal sealed class TtlMainListener: TtlParserBaseListener {
+        private readonly CompileContext _compileContext;
         private readonly Stack<ParseContext> _parserContextStack;
 
         public ParseContext CurrentParseContext => _parserContextStack.Peek();
 
-        public TtlMainListener(ParseContext context) {
+        public TtlMainListener(ParseContext context, CompileContext compileContext) {
+            _compileContext = compileContext;
             if (context == null) throw new ArgumentNullException(nameof(context));
             _parserContextStack = new Stack<ParseContext>();
             _parserContextStack.Push(context);
@@ -41,7 +44,7 @@ namespace Templates.Language {
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
             OutputChain chain;
-            CurrentParseContext.CurrentDefenition = CurrentParseContext.CreateDefinition(context, out chain);
+            CurrentParseContext.CurrentDefenition = CurrentParseContext.CreateDefinition(context, _compileContext, out chain);
             if (chain != null)
             {
                 CurrentParseContext.DefaultChains.Add(chain);
@@ -61,13 +64,21 @@ namespace Templates.Language {
                 if (CurrentParseContext.InDefintionContext)
                 {
                     if (definition != CurrentParseContext.CurrentDefenition.BaseDefinition)
-                        throw new TemplateParseException("The definition with the same name already exists".ToError(CurrentParseContext.GetBlockPosition(context)));
+                    {
+                        _compileContext.CompileErrors.Add(
+                            "The definition with the same name already exists".ToError(CurrentParseContext.GetBlockPosition(context)));
+                        return;
+                    }
                     CurrentParseContext.DefinitionsBlock.Definitions[CurrentParseContext.CurrentDefenition.Name] = CurrentParseContext.CurrentDefenition;
                 }
                 else
                 {
                     if (definition != CurrentParseContext.CurrentDefenition.BaseDefinition)
-                        throw new TemplateParseException("The definition with the same name already exists".ToError(CurrentParseContext.GetBlockPosition(context)));
+                    {
+                        _compileContext.CompileErrors.Add(
+                            "The definition with the same name already exists".ToError(CurrentParseContext.GetBlockPosition(context)));
+                        return;
+                    }
                     CurrentParseContext.DefinitionsBlock.Definitions[CurrentParseContext.CurrentDefenition.Name].OverrideWith(CurrentParseContext.CurrentDefenition);
                 }
             }

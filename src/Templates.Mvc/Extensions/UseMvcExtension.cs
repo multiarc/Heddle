@@ -27,10 +27,10 @@ namespace Templates.Mvc.Extensions {
             using (var file = File.OpenText(path))
             {
                 string document = file.ReadToEnd();
-                DocumentParser.Parse(document, initContext.ParseContext, true);
+                DocumentParser.Parse(document, initContext.ParseContext, initContext.Context, true);
             }
             if (initContext.ParseContext.OutputChains.Length > outputCount)
-                throw new TemplateParseException("The Defenitions template cannot contain output items".ToError(Position));
+                initContext.Context.CompileErrors.Add("The Defenitions template cannot contain output items".ToError(Position));
             return null;
         }
 

@@ -112,7 +112,7 @@ namespace Templates.Runtime {
         /// <param name="absoluteTextPosition">Extension usage position in source text</param>
         /// <param name="context">Parser context, used to get defenitions list</param>
         /// <returns>ITemplate compatible object <see cref="IExtension"/></returns>
-        public static IExtension Create(string templateName, BlockPosition absoluteTextPosition, ParseContext context)
+        public static IExtension Create(string templateName, BlockPosition absoluteTextPosition, ParseContext context, CompileContext compileContext)
         {
             if (templateName == null)
                 throw new ArgumentNullException(nameof(templateName));
@@ -125,11 +125,13 @@ namespace Templates.Runtime {
             }
             catch (KeyNotFoundException e)
             {
-                throw new TemplateCompileException($"Cannot find extension <{templateName}> ({e.Message})".ToError(absoluteTextPosition));
+                compileContext.CompileErrors.Add($"Cannot find extension <{templateName}> ({e.Message})".ToError(absoluteTextPosition));
+                return null;
             }
             catch (ArgumentException e)
             {
-                throw new TemplateCompileException($"Cannot create template <{templateName}>", e, e.ToError(absoluteTextPosition));
+                compileContext.CompileErrors.Add(e.ToError(absoluteTextPosition));
+                return null;
             }
         }
 

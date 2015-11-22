@@ -185,7 +185,15 @@ namespace Templates
             try
             {
                 RuntimeDocument rtdoc = TtlCompiler.Compile(document, context,
-                    DocumentParser.Parse(document, context.Options.ProvideLanguageFeatures, context.Options.ForceRemoveWhitespace), null);
+                    DocumentParser.Parse(document, context, context.Options.ProvideLanguageFeatures, context.Options.ForceRemoveWhitespace), null);
+                if (context.CompileErrors.Count > 0)
+                {
+                    context.Dispose();
+                    rtdoc?.Dispose();
+                    var result = new TtlCompileResult(false, document);
+                    result.Errors.AddRange(context.CompileErrors);
+                    return result;
+                }
                 if (!simulate)
                 {
                     context.Compile();

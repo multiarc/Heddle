@@ -78,7 +78,8 @@ namespace Templates.Runtime
                     var diagnostics = compilation.GetDiagnostics();
                     if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
                     {
-                        throw new TemplateCompileException(FormatErrors(diagnostics, context.Methods.First().Position));
+                        context.CompileErrors.AddRange(FormatErrors(diagnostics, context.Methods.First().Position));
+                        return;
                     }
                     var stream = new MemoryStream();
                     compilation.Emit(stream);

@@ -9,9 +9,6 @@ namespace Templates.Runtime.Parameters
 
         public DynamicParameter(CallSite<Func<CallSite, object, object>> dynamicModelParameter)
         {
-            if (dynamicModelParameter == null)
-                throw new ArgumentNullException(nameof(dynamicModelParameter));
-
             _dynamicModelParameter = dynamicModelParameter;
         }
 

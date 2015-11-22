@@ -14,12 +14,13 @@ namespace Templates.Extensions {
             base.InitStart(initContext, dataType, chainedType, parent);
             initContext.ParameterTemplate = GetInnerResult(null, null);
             int outputCount = initContext.ParseContext.OutputChains.Length;
-            using (var file = File.OpenText(Path.Combine(initContext.Context.Options.RootPath, initContext.ParameterTemplate))) {
+            using (var file = File.OpenText(Path.Combine(initContext.Context.Options.RootPath, initContext.ParameterTemplate)))
+            {
                 string document = file.ReadToEnd();
-                DocumentParser.Parse(document, initContext.ParseContext, true);
+                DocumentParser.Parse(document, initContext.ParseContext, initContext.Context, true);
             }
             if (initContext.ParseContext.OutputChains.Length > outputCount)
-                throw new TemplateCompileException("The Defenitions template cannot contain output items".ToError(default(BlockPosition)));
+                initContext.Context.CompileErrors.Add("The Defenitions template cannot contain output items".ToError(default(BlockPosition)));
             return null;
         }
 

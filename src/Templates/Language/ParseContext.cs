@@ -7,6 +7,7 @@ using Antlr4.Runtime.Tree;
 using Templates.Collections;
 using Templates.Data;
 using Templates.Exceptions;
+using Templates.Runtime;
 using Templates.Strings.Core;
 
 namespace Templates.Language {
@@ -133,7 +134,7 @@ namespace Templates.Language {
             return error;
         }
 
-        internal DefinitionItem CreateDefinition(TtlParser.DefContext context, out OutputChain chain) {
+        internal DefinitionItem CreateDefinition(TtlParser.DefContext context, CompileContext compileContext, out OutputChain chain) {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
             var inherited = context.inherited_def();
@@ -188,15 +189,15 @@ namespace Templates.Language {
                 var baseDefenition = GetDefenition(baseName);
                 if (baseDefenition == null)
                 {
-                    throw new TemplateCompileException($"Base definition {baseName} couldn't be found".ToError(GetAbsoluteBlockPosition(inherited)));
+                    compileContext.CompileErrors.Add($"Base definition {baseName} couldn't be found".ToError(GetAbsoluteBlockPosition(inherited)));
                 }
                 AddToken(inherited.ID(1), TtlTokenType.Id);
                 AddToken(inherited.DEF_ENDNAME(), TtlTokenType.DefEndName);
                 var chainContext = inherited.default_chain()?.chain();
-                var definitionName = definition.GetText();
-                if (baseDefenition.Name == definitionName && chainContext != null)
+                var definitionName = definition?.GetText();
+                if (baseDefenition?.Name == definitionName && chainContext != null)
                 {
-                    throw new TemplateCompileException(
+                    compileContext.CompileErrors.Add(
                         "Default output call chain can't be used in fully overriden definitions".ToError(
                             GetAbsoluteBlockPosition(chainContext)));
                 }
@@ -215,7 +216,7 @@ namespace Templates.Language {
                 return new DefinitionItem(
                     definitionName, parameterTemplate,
                     baseDefenition,
-                    modelType: modelType?.GetText() ?? baseDefenition.ModelType)
+                    modelType: modelType?.GetText() ?? baseDefenition?.ModelType)
                 {
                     Position = GetBlockPosition(context)
                 };

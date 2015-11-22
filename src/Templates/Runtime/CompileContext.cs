@@ -49,6 +49,10 @@ namespace Templates.Runtime {
 
         public static TtlCompileResult InitErrors { get; }
 
+        public List<TtlCompileError> CompileErrors { get; }
+
+        public List<TtlCompileWarning> CompileWarnings { get; }
+
         private static readonly TtlTemplate PreparseGenerator;
 
         static CompileContext()
@@ -91,6 +95,8 @@ namespace Templates.Runtime {
         {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
+            CompileErrors = context.CompileErrors;
+            CompileWarnings = context.CompileWarnings;
             ControllerName = context.ControllerName;
             Options = new TemplateOptions(context.Options.FileNamePostfix, context.Options.RootPath,
                 fileName ?? context.Options.TemplateName, context.Options.EnableFileChangeCheck, context.Options.AllowCSharp);
@@ -101,6 +107,8 @@ namespace Templates.Runtime {
         public CompileContext(ExType modelType = null) {
             ModelType = modelType ?? (ExType)typeof(object);
             Options = new TemplateOptions();
+            CompileErrors = new List<TtlCompileError>();
+            CompileWarnings = new List<TtlCompileWarning>();
         }
 
         /// <summary>
@@ -112,6 +120,8 @@ namespace Templates.Runtime {
         {
             ModelType = typeof (object);
             Options = options;
+            CompileErrors = new List<TtlCompileError>();
+            CompileWarnings = new List<TtlCompileWarning>();
         }
 
         /// <summary>
@@ -299,7 +309,9 @@ namespace Templates.Runtime {
             var diagnostics = compilation.GetDiagnostics();
             if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
             {
-                throw new TemplateCompileException(ContextCompilation.FormatErrors(diagnostics, expressionOptions.Position));
+                CompileErrors.AddRange(ContextCompilation.FormatErrors(diagnostics, expressionOptions.Position));
+                constantResult = null;
+                return typeof (object);
             }
             var syntax = tree.GetRoot().DescendantNodes().OfType<ReturnStatementSyntax>().Single().Expression;
             var model = compilation.GetSemanticModel(tree, false);
@@ -324,7 +336,8 @@ namespace Templates.Runtime {
             }
             catch (InvalidOperationException e)
             {
-                throw new TemplateCompileException(e.ToError(expressionOptions.Position));
+                CompileErrors.Add(e.ToError(expressionOptions.Position));
+                return typeof (object);
             }
         }
 

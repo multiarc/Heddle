@@ -9,9 +9,6 @@ namespace Templates.Runtime.Parameters
 
         public ModelParameter(DynamicMethodGateDelegate getModelParameter)
         {
-            if (getModelParameter == null)
-                throw new ArgumentNullException(nameof(getModelParameter));
-
             _getModelParameter = getModelParameter;
         }
 

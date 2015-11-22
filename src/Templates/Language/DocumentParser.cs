@@ -4,6 +4,7 @@ using System.Linq;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 using Templates.Exceptions;
+using Templates.Runtime;
 using Templates.Strings.Core;
 
 namespace Templates.Language
@@ -17,14 +18,14 @@ namespace Templates.Language
         /// Performs parse of document
         /// </summary>
         /// <returns>Full template context tree found in source template</returns>
-        public static ParseContext Parse(string document, bool provideLanguageFeatures = false, bool forceRemoveWhitespace = false)
+        public static ParseContext Parse(string document, CompileContext compileContext, bool provideLanguageFeatures = false, bool forceRemoveWhitespace = false)
         {
             var context = new ParseContext(provideLanguageFeatures: provideLanguageFeatures, forceRemoveWhitespace: forceRemoveWhitespace);
-            Parse(document, context);
+            Parse(document, context, compileContext);
             return context;
         }
 
-        public static void Parse(string document, ParseContext context, bool loadDefenitionsOnly = false)
+        public static void Parse(string document, ParseContext context, CompileContext compileContext, bool loadDefenitionsOnly = false)
         {
             if (document == null)
                 throw new ArgumentNullException(nameof(document));
@@ -40,7 +41,7 @@ namespace Templates.Language
                 throw new TemplateParseException(context.Errors);
             ParseTreeWalker walker = new ParseTreeWalker();
             context.DefenitionsOnly = loadDefenitionsOnly;
-            TtlMainListener listener = new TtlMainListener(context);
+            TtlMainListener listener = new TtlMainListener(context, compileContext);
             walker.Walk(listener, tree);
             context.DefenitionsOnly = false;
             listener.CurrentParseContext.CommentTokens.AddRange(
