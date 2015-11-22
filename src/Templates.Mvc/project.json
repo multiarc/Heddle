@@ -1,8 +1,9 @@
 ﻿{
   "version": "1.0.0-rc1",
-  "description": "",
-  "authors": [ "" ],
-  "tags": [ "" ],
+  "authors": [ "Aliaksandr Kukrash" ],
+  "description": "Template engine MVC extensions library, once referenced replace internal import with MVC based.",
+  "exclude": [ "bin" ],
+  "tags": [ "ttl" ],
   "projectUrl": "",
   "licenseUrl": "",
 

@@ -69,7 +69,7 @@
         on
         @date(Date)<br />
         @if(IsShow){{<span style="color: aqua">Some fucking text</span>}}<br />
-        @else(IsShow){{<span style="color: red">Don't show it</span>}}<br />
+        @ifnot(IsShow){{<span style="color: red">Don't show it</span>}}<br />
         @if(IsShow):param(){{@time(Date)}}<br />
         @guid(Guid){{X}}<br />
         @guid(Guid)<br />
