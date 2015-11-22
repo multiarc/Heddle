@@ -2,9 +2,11 @@
 using Templates.Data;
 using Templates.Language;
 using Templates.Runtime;
+using Templates.Strings.Core;
 
 namespace Templates.Core {
     public abstract class AbstractExtension: IExtension {
+
         protected bool DirectRender;
         private string _innerResult = string.Empty;
         public void Dispose()
@@ -79,5 +81,6 @@ namespace Templates.Core {
         }
 
         public abstract object ProcessData(object data, object chained, object parent);
+        public BlockPosition Position { get; set; }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Templates.Runtime.Parameters;
+using Templates.Strings.Core;
 
 namespace Templates.Runtime
 {
@@ -9,6 +10,7 @@ namespace Templates.Runtime
             Expression = options.Expression;
             ExtensionName = options.ExtensionName;
             ModelType = options.ModelType;
+            Position = options.Position;
         }
 
         public int MethodNumber { get; set; }

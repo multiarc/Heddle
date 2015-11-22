@@ -6,12 +6,14 @@ using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Language;
 using Templates.Runtime;
+using Templates.Strings.Core;
 
-namespace Templates {
+namespace Templates
+{
     /// <summary>
     /// Use this class to operate with engine, parse source template, make replace with data and generate result string.
     /// </summary>
-    public sealed class TtlTemplate: ITtlTemplate
+    public sealed class TtlTemplate : ITtlTemplate
     {
         private CompileContext _context;
         public TtlCompileResult CompileResult { get; private set; }
@@ -22,23 +24,30 @@ namespace Templates {
         private volatile bool _disposeAfterComplete = false;
         private volatile int _runners = 0;
 
-        public TtlTemplate(TemplateOptions options) : this(new CompileContext(options)) {
+        public TtlTemplate(TemplateOptions options) : this(new CompileContext(options))
+        {
         }
 
-        public TtlTemplate(TemplateOptions options, ExType modelType) : this(new CompileContext(options) { ModelType =  modelType }) {
+        public TtlTemplate(TemplateOptions options, ExType modelType) : this(new CompileContext(options) {ModelType = modelType})
+        {
         }
 
-        public TtlTemplate(CompileContext context) {
+        public TtlTemplate(CompileContext context)
+        {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
-            try {
+            string document = null;
+            try
+            {
                 _reader = new FileReader(context.Options);
-                var document = _reader.ReadEntireFile();
+                document = _reader.ReadEntireFile();
                 CompileResult = Compile(context, document);
-                if (context.Options.EnableFileChangeCheck) {
+                if (context.Options.EnableFileChangeCheck)
+                {
                     var fullPath = Path.Combine(context.Options.RootPath, context.Options.TemplateName);
                     var directory = Path.GetDirectoryName(fullPath);
-                    if (directory != null) {
+                    if (directory != null)
+                    {
                         _watcher = new FileSystemWatcher(directory)
                         {
                             NotifyFilter = NotifyFilters.FileName | NotifyFilters.Size | NotifyFilters.LastWrite,
@@ -50,13 +59,15 @@ namespace Templates {
                     }
                 }
             }
-            catch (Exception e) {
-                CompileResult = new TtlCompileResult(false);
-                CompileResult.Errors.Add(e.ToError());
+            catch (Exception e)
+            {
+                CompileResult = new TtlCompileResult(false, document);
+                CompileResult.Errors.Add(e.ToError(default(BlockPosition)));
             }
         }
 
-        public TtlTemplate() {
+        public TtlTemplate()
+        {
 
         }
 
@@ -66,6 +77,7 @@ namespace Templates {
         }
 
         public bool Empty => _runtimeDocument?.Empty ?? true;
+        public bool Compiled => _runtimeDocument != null;
 
         public CompileContext Context => _context;
 
@@ -76,18 +88,22 @@ namespace Templates {
 
         #region IDisposable Members
 
-        public void Dispose() {
-            if (_runners == 0) {
+        public void Dispose()
+        {
+            if (_runners == 0)
+            {
                 _watcher?.Dispose();
                 _runtimeDocument?.Dispose();
                 GC.SuppressFinalize(this);
             }
-            else {
+            else
+            {
                 _disposeAfterComplete = true;
             }
         }
 
-        ~TtlTemplate() {
+        ~TtlTemplate()
+        {
             _watcher?.Dispose();
             _runtimeDocument?.Dispose();
         }
@@ -100,34 +116,42 @@ namespace Templates {
         /// </summary>
         /// <param name="data">Input object</param>
         /// <returns>Generated string</returns>
-        public string Generate(object data) {
-            if (_runtimeDocument == null) {
+        public string Generate(object data)
+        {
+            if (_runtimeDocument == null)
+            {
                 if (CompileResult == null)
-                    throw new TemplateInitException("Compile first.");
+                    throw new TemplateInitException("Compile first");
                 throw new TemplateCompileException(CompileResult.ErrorList);
             }
 
 #if DEBUG
-            if (data != null && !_context.ModelType.Type.IsType(data)) {
+            if (data != null && !_context.ModelType.Type.IsType(data))
+            {
                 throw new TemplateProcessingException
                     (string.Format
-                         (CultureInfo.InvariantCulture, "Type mismatch. Need {0} but got {1}", _context.ModelType.Type?.FullName ?? _context.ModelType.ToString(),
-                          data.GetType().FullName));
+                        (CultureInfo.InvariantCulture, "Type mismatch. Need {0} but got {1}",
+                            _context.ModelType.Type?.FullName ?? _context.ModelType.ToString(),
+                            data.GetType().FullName));
             }
 #endif
             _runners++;
             string result = null;
-            try {
+            try
+            {
                 result = _runtimeDocument.ProcessData(data, null) as string ?? string.Empty;
             }
-            finally {
+            finally
+            {
                 _runners--;
-                if (_disposeAfterComplete && _runners == 0) {
+                if (_disposeAfterComplete && _runners == 0)
+                {
                     Dispose();
                 }
             }
             return result;
         }
+
         public TtlCompileResult Recompile(ExType newModelType)
         {
             DateCreated = DateTime.Now;
@@ -138,11 +162,12 @@ namespace Templates {
         public TtlCompileResult Recompile(string newDocument, CompileContext context = null)
         {
             DateCreated = DateTime.Now;
-            CompileResult = Compile(context ?? new CompileContext((ExType)null), newDocument);
+            CompileResult = Compile(context ?? new CompileContext((ExType) null), newDocument);
             return CompileResult;
         }
 
-        public TtlCompileResult Compile(string document, ExType modelType = null) {
+        public TtlCompileResult Compile(string document, ExType modelType = null)
+        {
             if (_runtimeDocument != null)
                 throw new TemplateInitException("Template already compiled.");
             return Compile(new CompileContext(modelType), document);
@@ -155,7 +180,8 @@ namespace Templates {
             return Compile(new CompileContext(modelType), document, true);
         }
 
-        private TtlCompileResult Compile(CompileContext context, string document, bool simulate = false) {
+        private TtlCompileResult Compile(CompileContext context, string document, bool simulate = false)
+        {
             try
             {
                 RuntimeDocument rtdoc = TtlCompiler.Compile(document, context,
@@ -172,17 +198,18 @@ namespace Templates {
                     context.Dispose();
                     rtdoc.Dispose();
                 }
-                return new TtlCompileResult(true);
+                return new TtlCompileResult(true, document);
             }
             catch (TemplateCompileException e)
             {
-                var result = new TtlCompileResult(false);
+                var result = new TtlCompileResult(false, document);
                 result.Errors.AddRange(e.Errors);
                 return result;
             }
-            catch (Exception e) {
-                var result = new TtlCompileResult(false);
-                result.Errors.Add(e.ToError());
+            catch (Exception e)
+            {
+                var result = new TtlCompileResult(false, document);
+                result.Errors.Add(e.ToError(default(BlockPosition)));
                 return result;
             }
         }
@@ -193,19 +220,25 @@ namespace Templates {
 
         public event FileSystemEventHandler OnFileChanged;
 
-        private void FileDeleted(object sender, FileSystemEventArgs e) {
+        private void FileDeleted(object sender, FileSystemEventArgs e)
+        {
             OnFileDeleted?.Invoke(this, e);
         }
 
-        private void FileRenamed(object sender, RenamedEventArgs e) {
+        private void FileRenamed(object sender, RenamedEventArgs e)
+        {
             OnFileRenamed?.Invoke(this, e);
         }
 
-        private void FileChanged(object sender, FileSystemEventArgs e) {
-            if (e.ChangeType == WatcherChangeTypes.Changed) {
+        private void FileChanged(object sender, FileSystemEventArgs e)
+        {
+            if (e.ChangeType == WatcherChangeTypes.Changed)
+            {
                 OnFileChanged?.Invoke(sender, e);
-                try {
-                    string document = _reader.ReadEntireFile();
+                string document = null;
+                try
+                {
+                    document = _reader.ReadEntireFile();
                     if (!string.IsNullOrWhiteSpace(document))
                     {
                         CompileResult = Compile(_context, document);
@@ -213,8 +246,8 @@ namespace Templates {
                 }
                 catch (Exception ex)
                 {
-                    CompileResult = new TtlCompileResult(false);
-                    CompileResult.Errors.Add(ex.ToError());
+                    CompileResult = new TtlCompileResult(false, document);
+                    CompileResult.Errors.Add(ex.ToError(default(BlockPosition)));
                 }
             }
         }

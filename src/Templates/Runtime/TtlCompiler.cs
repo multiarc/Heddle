@@ -236,7 +236,7 @@ namespace Templates.Runtime
                         {
                             throw new TemplateCompileException
                                 (string.Format(CultureInfo.InvariantCulture, "Property {0} no found in Type [{1}]",
-                                    extensionItem.CallParameter.ModelParameter, compileContext.ModelType).ToError());
+                                    extensionItem.CallParameter.ModelParameter, compileContext.ModelType).ToError(extensionItem.Position));
                         }
                         parameter = new ModelParameter(data.ToPropertyGate());
                     }
@@ -258,13 +258,14 @@ namespace Templates.Runtime
             {
                 if (!compileContext.Options.AllowCSharp)
                     throw new TemplateCompileException(
-                        "C# Code Not allowed here, see TemplateOptions.AllowCSharp Property".ToError());
+                        "C# Code Not allowed here, see TemplateOptions.AllowCSharp Property".ToError(extensionItem.Position));
                 var chainedType = returnTypeChainedPrevious ?? ExType.Dynamic;
                 var expressionOptions = new ExpressionOptions
                 {
                     ChainedType = chainedType,
                     Expression = extensionItem.CallParameter.CSharpExpression,
-                    ExtensionName = extensionItem.ExtensionName
+                    ExtensionName = extensionItem.ExtensionName,
+                    Position = extensionItem.Position
                 };
                 object constantResult;
                 dataType = compileContext.ParseAndGetResultType(expressionOptions, out constantResult);
@@ -311,14 +312,14 @@ namespace Templates.Runtime
                 if (data != null)
                 {
                     dataType = data.PropertyType;
-                    CheckTypes(data, acceptType);
+                    CheckTypes(data, definition.Position, acceptType);
                 }
                 else
                 {
                     if (acceptType != typeof(object))
                         dataType = acceptType;
 
-                    CheckTypes(dataType, acceptType);
+                    CheckTypes(dataType, definition.Position, acceptType);
                 }
                 returnTypeChainedPrevious = InitializeTemplate(extension, extensionItem.ParameterTemplate, dataType,
                     returnTypeChainedPrevious, compileContext, parseContext);
@@ -330,14 +331,14 @@ namespace Templates.Runtime
             }
             else
             {
-                extension = TemplateFactory.Create(extensionItem.ExtensionName, parseContext);
+                extension = TemplateFactory.Create(extensionItem.ExtensionName, extensionItem.Position, parseContext);
                 Type templateType = extension.GetType();
 
                 var chainedTypeAttributes = templateType.GetAttributes<ChainedTypeAttribute>(true);
 
                 if (returnTypeChainedPrevious != null)
                 {
-                    CheckTypes(returnTypeChainedPrevious, chainedTypeAttributes.Select(a => (ExType)a.DataType).ToArray());
+                    CheckTypes(returnTypeChainedPrevious, extensionItem.Position, chainedTypeAttributes.Select(a => (ExType)a.DataType).ToArray());
                 }
 
                 var dataTypeAttributes =
@@ -345,11 +346,11 @@ namespace Templates.Runtime
                 if (data != null)
                 {
                     dataType = data.PropertyType;
-                    CheckTypes(data, dataTypeAttributes.Select(a => a.DataType).ToArray());
+                    CheckTypes(data, extensionItem.Position, dataTypeAttributes.Select(a => a.DataType).ToArray());
                 }
                 else
                 {
-                    CheckTypes(dataType, dataTypeAttributes.Select(a => (ExType) a.DataType).ToArray());
+                    CheckTypes(dataType, extensionItem.Position, dataTypeAttributes.Select(a => (ExType) a.DataType).ToArray());
                 }
 
                 returnTypeChainedPrevious = InitializeTemplate(extension, extensionItem.ParameterTemplate, dataType,
@@ -362,28 +363,43 @@ namespace Templates.Runtime
             CompileContext compileContext, out Type acceptType)
         {
             WalkValidateDefinitionType(definition, compileContext);
-            var result = new DefenitionBaseExtension();
-            acceptType = ReflectionHelper.ResolveType(definition.ModelType, compileContext.Namespaces.ToArray()) ??
-                         typeof (object);
+            var result = new DefenitionBaseExtension {Position = definition.Position};
+            try
+            {
+                acceptType = ReflectionHelper.ResolveType(definition.ModelType, compileContext.Namespaces.ToArray()) ??
+                             typeof (object);
+            }
+            catch (InvalidOperationException e)
+            {
+                throw new TemplateCompileException(e.ToError(definition.Position));
+            }
             return result;
         }
 
         private static void WalkValidateDefinitionType(DefinitionItem definition, CompileContext context)
         {
-            var currentType = ReflectionHelper.ResolveType(definition.ModelType, context.Namespaces.ToArray()) ??
-                              typeof (object);
-            var definitionBase = definition.BaseDefinition;
-            while (definitionBase != null)
+            try
             {
-                var baseType = ReflectionHelper.ResolveType(definitionBase.ModelType, context.Namespaces.ToArray()) ??
-                               typeof (object);
-                if (!baseType.IsType(currentType))
-                {
-                    throw new TemplateDefinitionTypeException(definition.Position,
-                        "The new definition type isn't assignable to base.");
-                }
+                var currentType = ReflectionHelper.ResolveType(definition.ModelType, context.Namespaces.ToArray()) ??
+                                  typeof (object);
 
-                definitionBase = definitionBase.BaseDefinition;
+                var definitionBase = definition.BaseDefinition;
+                while (definitionBase != null)
+                {
+                    var baseType = ReflectionHelper.ResolveType(definitionBase.ModelType, context.Namespaces.ToArray()) ??
+                                   typeof (object);
+                    if (!baseType.IsType(currentType))
+                    {
+                        throw new TemplateCompileException(
+                            $"The new definition type <{currentType}> isn't assignable to base <{baseType}>.".ToError(definition.Position));
+                    }
+
+                    definitionBase = definitionBase.BaseDefinition;
+                }
+            }
+            catch (InvalidOperationException e)
+            {
+                throw new TemplateCompileException(e.ToError(definition.Position));
             }
         }
 
@@ -401,7 +417,7 @@ namespace Templates.Runtime
             return extension.InitStart(new InitContext(parameterFastString, context, parseContext), modelType, chainedType, context.ModelType);
         }
 
-        private static void CheckTypes(PropertyInfo property, params Type[] dataTypes)
+        private static void CheckTypes(PropertyInfo property, BlockPosition extensionPosition, params Type[] dataTypes)
         {
             if (property != null && dataTypes.Any() && dataTypes.All(type => !(type ?? typeof (object)).IsType(property.PropertyType)))
             {
@@ -410,11 +426,11 @@ namespace Templates.Runtime
                         (CultureInfo.InvariantCulture, "Property {0} have Type {1} but any of [{2}] expected.",
                             property.Name,
                             property.PropertyType.FullName,
-                            string.Join(", ", dataTypes.Select(t => t.FullName))).ToError());
+                            string.Join(", ", dataTypes.Select(t => t.FullName))).ToError(extensionPosition));
             }
         }
 
-        private static void CheckTypes(ExType returnType, params ExType[] dataTypes)
+        private static void CheckTypes(ExType returnType, BlockPosition extensionPosition, params ExType[] dataTypes)
         {
             returnType = returnType ?? typeof (object);
             if (dataTypes.Any() && dataTypes.All(dataType =>
@@ -429,7 +445,7 @@ namespace Templates.Runtime
                     (string.Format
                         (CultureInfo.InvariantCulture, "Return Type is {0} but any of [{1}] expected.",
                             returnType.Type.FullName,
-                            string.Join(", ", dataTypes.Select(t => t.Type.FullName))).ToError());
+                            string.Join(", ", dataTypes.Select(t => t.Type.FullName))).ToError(extensionPosition));
             }
         }
     }

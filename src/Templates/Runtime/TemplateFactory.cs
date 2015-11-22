@@ -4,25 +4,35 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using Templates.Attributes;
+using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Language;
+using Templates.Strings.Core;
+
 #if DOTNET5_4
 using Templates.Native;
 #endif
 
 namespace Templates.Runtime {
-    //DONE: пустой шаблон
-    //DONE: оптимизация производительности получения данных объекта
-    //DONE: трекинг изменения файла
-    //DONE: автооткат при ошибках
-    //DONE: HTML кодирование данных для вывода
-    //TODO: 1) логирование ошибок
+    public struct ExtensionType
+    {
+        public ExtensionType(string name, Type type, bool replace)
+        {
+            Name = name;
+            Type = type;
+            Replace = replace;
+        }
+
+        public string Name { get; set; }
+        public Type Type { get; set; }
+        public bool Replace { get; set; }
+    }
 
     /// <summary>
     /// Template factory, initializes and creates all templates
     /// </summary>
-    internal static class TemplateFactory
+    public static class TemplateFactory
     {
         private static readonly Dictionary<string, Type> Templates = new Dictionary<string, Type>();
 
@@ -60,57 +70,66 @@ namespace Templates.Runtime {
             if (assembly == null)
                 throw new ArgumentNullException(nameof(assembly));
 
-            IEnumerable<KeyValuePair<string, Type>> toAdd = LoadExtensions(assembly);
+            var toAdd = LoadExtensions(assembly);
             AddExtensions(toAdd);
         }
 
-        public static void AddExtensions(IEnumerable<KeyValuePair<string, Type>> toAdd)
+        public static void AddExtensions(IEnumerable<ExtensionType> toAdd)
         {
             if (toAdd == null) throw new ArgumentNullException(nameof(toAdd));
             foreach (var type in toAdd)
             {
-                if (type.Key == null || type.Value == null )
+                if (type.Type == null || type.Name == null )
                     throw new ArgumentException();
-                if (Templates.ContainsKey(type.Key))
+
+                if (Templates.ContainsKey(type.Name))
                 {
-                    if (Templates[type.Key].IsAssignableFrom(type.Value))
+                    if (type.Replace)
                     {
-                        Templates[type.Key] = type.Value;
+                        Templates[type.Name] = type.Type;
+                    }
+                    else if (Templates[type.Name].IsAssignableFrom(type.Type))
+                    {
+                        Templates[type.Name] = type.Type;
                     }
                     else
                     {
                         throw new TemplateOverrideException(
-                            string.Format("Cannot override {0} Extension, {1} is not inherited from {2}", type.Key,
-                                type.Value, Templates[type.Key]));
+                            $"Cannot override <{type.Name}> Extension, <{type.Type}> is not inherited from <{Templates[type.Name]}>");
                     }
                 }
                 else
                 {
-                    Templates.Add(type.Key, type.Value);
+                    Templates.Add(type.Name, type.Type);
                 }
             }
         }
 
         /// <summary>
-        /// Creates template by it's name and adds parameter string if it's present
+        /// Creates extension by it's name and adds parameter string if it's present
         /// </summary>
-        /// <param name="templateName">Template name <see cref="ExtensionNameAttribute"/></param>
+        /// <param name="templateName">Extension name <see cref="ExtensionNameAttribute"/></param>
+        /// <param name="absoluteTextPosition">Extension usage position in source text</param>
         /// <param name="context">Parser context, used to get defenitions list</param>
         /// <returns>ITemplate compatible object <see cref="IExtension"/></returns>
-        public static IExtension Create (string templateName, ParseContext context)
+        public static IExtension Create(string templateName, BlockPosition absoluteTextPosition, ParseContext context)
         {
             if (templateName == null)
                 throw new ArgumentNullException(nameof(templateName));
-            try {
+            try
+            {
                 Type extensionType = Templates[templateName];
                 IExtension resultExtension = CreateExtension(extensionType);
+                resultExtension.Position = absoluteTextPosition;
                 return resultExtension;
             }
-            catch (KeyNotFoundException e) {
-                throw new ArgumentException("Template unrecognized. <" + templateName + ">", e);
+            catch (KeyNotFoundException e)
+            {
+                throw new TemplateCompileException($"Cannot find extension <{templateName}> ({e.Message})".ToError(absoluteTextPosition));
             }
-            catch (ArgumentException e) {
-                throw new ArgumentException("Cannot create template", e);
+            catch (ArgumentException e)
+            {
+                throw new TemplateCompileException($"Cannot create template <{templateName}>", e, e.ToError(absoluteTextPosition));
             }
         }
 
@@ -120,7 +139,7 @@ namespace Templates.Runtime {
         /// Loads all base templates
         /// </summary>
         /// <returns>List of all template types</returns>
-        private static IEnumerable<KeyValuePair<string, Type>> LoadBaseExtensions ()
+        private static IEnumerable<ExtensionType> LoadBaseExtensions ()
         {
             return LoadExtensions(typeof(TemplateFactory).GetTypeInfo().Assembly);
         }
@@ -130,21 +149,23 @@ namespace Templates.Runtime {
         /// </summary>
         /// <param name="assembly">Assembly to get from</param>
         /// <returns>List of all template types</returns>
-        internal static IEnumerable<KeyValuePair<string, Type>> LoadExtensions (Assembly assembly)
+        internal static IEnumerable<ExtensionType> LoadExtensions (Assembly assembly)
         {
             return LoadExtensions(assembly.GetTypes());
         }
 
-        internal static IEnumerable<KeyValuePair<string, Type>> LoadExtensions(IEnumerable<Type> extensions) {
+        internal static ICollection<ExtensionType> LoadExtensions(IEnumerable<Type> extensions)
+        {
             List<Type> types =
                 extensions.Where(t => t.IsImplement<IExtension>() && t.IsHaveAttribute<ExtensionNameAttribute>(true)).OrderBy
                     (t => t.GetAttributes<DataTypeAttribute>(true).Any(p => p.DataType.GetTypeInfo().IsInterface)).ThenBy
                     (t => t.GetAttributes<ChainedTypeAttribute>(true).Any(p => p.DataType.GetTypeInfo().IsInterface)).ToList();
-            var result = new List<KeyValuePair<string, Type>>();
-            foreach (Type type in types) {
+            var result = new List<ExtensionType>();
+            foreach (Type type in types)
+            {
                 ExtensionNameAttribute[] extensionNames = type.GetAttributes<ExtensionNameAttribute>(true);
-                foreach (ExtensionNameAttribute name in extensionNames)
-                    result.Add(new KeyValuePair<string, Type>(name.Name, type));
+                bool replace = type.IsHaveAttribute<ExtensionReplaceAttribute>();
+                result.AddRange(extensionNames.Select(name => new ExtensionType(name.Name, type, replace)));
             }
             return result;
         }
@@ -160,7 +181,7 @@ namespace Templates.Runtime {
                 return (IExtension) Activator.CreateInstance(templateType);
             }
             catch (Exception e) {
-                throw new TemplateCreateException(string.Format(CultureInfo.InvariantCulture, "Unable to create Type {0}", templateType), e);
+                throw new TemplateCreateException($"Unable to create Type {templateType} ({e.Message})", e);
             }
         }
 

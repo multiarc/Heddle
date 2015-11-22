@@ -32,11 +32,11 @@ namespace Templates.Exceptions {
             Errors = new List<TtlCompileError>(errors);
         }
 
-        public TemplateCompileException (string message, Exception inner, IEnumerable<TtlCompileError> errors)
+        public TemplateCompileException(string message, Exception inner, TtlCompileError error)
             : base(message, inner)
         {
-            if (errors == null) throw new ArgumentNullException(nameof(errors));
-            Errors = new List<TtlCompileError>(errors);
+            if (error == null) throw new ArgumentNullException(nameof(error));
+            Errors = new List<TtlCompileError> {error};
         }
 
         public override string ToString()

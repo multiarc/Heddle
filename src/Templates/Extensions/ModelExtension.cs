@@ -19,8 +19,8 @@ namespace Templates.Extensions {
                     ExType modelType = new ExType(initContext.ParameterTemplate, initContext.Context.Namespaces.ToArray());
                     initContext.Context.ModelType = modelType;
                 }
-                catch (Exception e) {
-                    throw new TemplateInitException("Type cannot be determined. Please use Assembly Qualified Name.", e);
+                catch (InvalidOperationException e) {
+                    throw new TemplateCompileException(e.ToError(Position));
                 }
             }
             return null;

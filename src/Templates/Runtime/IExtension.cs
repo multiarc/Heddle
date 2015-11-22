@@ -2,6 +2,7 @@
 using Templates.Core;
 using Templates.Data;
 using Templates.Language;
+using Templates.Strings.Core;
 
 namespace Templates.Runtime {
     /// <summary>
@@ -15,5 +16,7 @@ namespace Templates.Runtime {
         void CompleteInit(CompileContext newContext, ParseContext parseContext);
 
         object ProcessData(object data, object chained, object parent);
+
+        BlockPosition Position { get; set; }
     }
 }

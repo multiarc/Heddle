@@ -26,8 +26,8 @@ namespace Templates.Exceptions
         {
         }
 
-        public TemplateParseException(string message, Exception inner, IEnumerable<TtlCompileError> errors)
-            : base(message, inner, errors)
+        public TemplateParseException(string message, Exception inner, TtlCompileError error)
+            : base(message, inner, error)
         {
         }
     }

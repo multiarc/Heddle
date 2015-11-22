@@ -4,6 +4,7 @@ using Templates.Core;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Language;
+using Templates.Strings.Core;
 
 namespace Templates.Extensions {
     [ExtensionName("import")]
@@ -18,7 +19,7 @@ namespace Templates.Extensions {
                 DocumentParser.Parse(document, initContext.ParseContext, true);
             }
             if (initContext.ParseContext.OutputChains.Length > outputCount)
-                throw new TemplateCompileException("The Defenitions template cannot contain output items".ToError());
+                throw new TemplateCompileException("The Defenitions template cannot contain output items".ToError(default(BlockPosition)));
             return null;
         }
 

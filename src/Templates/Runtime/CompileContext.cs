@@ -53,31 +53,20 @@ namespace Templates.Runtime {
 
         static CompileContext()
         {
+            string document = null;
             try
             {
                 PreparseGenerator = new TtlTemplate();
-#if DNX451 || DOTNET5_4
                 IApplicationEnvironment env =
                     (IApplicationEnvironment)
                         CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IApplicationEnvironment));
                 var path = env.ApplicationBasePath + "/";
-#else
-                var path = "";
-#endif
-                var resultPre = PreparseGenerator.Compile(File.ReadAllText($"{path}CSharpPreparseTemplate.tcs"));
-                if (!resultPre.Success)
-                {
-                    InitErrors = new TtlCompileResult(false);
-                    InitErrors.Errors.AddRange(resultPre.ErrorList);
-                }
-                else
-                {
-                    InitErrors = new TtlCompileResult(true);
-                }
+                document = File.ReadAllText($"{path}CSharpPreparseTemplate.tcs");
+                InitErrors = PreparseGenerator.Compile(document);
             }
             catch (Exception e)
             {
-                InitErrors = new TtlCompileResult(false);
+                InitErrors = new TtlCompileResult(false, document);
                 InitErrors.Errors.Add(new TtlCompileError
                 {
                     Error = e.Message,
@@ -242,7 +231,7 @@ namespace Templates.Runtime {
         {
             if (string.IsNullOrEmpty(expressionOptions.Expression))
             {
-                throw new ArgumentException("Expression cannot be null or empty");
+                throw new ArgumentException($"[{expressionOptions.Position}]<{expressionOptions.ExtensionName}> Expression cannot be null or empty");
             }
             IRuntimeParameter parameter = new CompiledParameter();
             Methods.Add(new ExpressionCompilation(expressionOptions)
@@ -263,7 +252,8 @@ namespace Templates.Runtime {
         {
             if (string.IsNullOrEmpty(expressionOptions.Expression))
             {
-                throw new ArgumentException("Expression cannot be null or empty");
+                throw new ArgumentException(
+                    $"[{expressionOptions.Position}]<{expressionOptions.ExtensionName}> Expression cannot be null or empty");
             }
             expressionOptions.ModelType = ModelType;
             _namespaces.Add(expressionOptions.ModelType.Type.Namespace);
@@ -298,18 +288,18 @@ namespace Templates.Runtime {
                 MetadataReference.CreateFromFile(typeof (object).GetTypeInfo().Assembly.Location),
                 MetadataReference.CreateFromFile(ModelType.Type.GetTypeInfo().Assembly.Location)
             };
-            if (ModelType.IsDynamic) 
-                MetadataReference.CreateFromFile(typeof(CallSite<>).GetTypeInfo().Assembly.Location);
-            assemblySet.Add(MetadataReference.CreateFromFile(typeof(Enumerable).GetTypeInfo().Assembly.Location));
+            if (ModelType.IsDynamic)
+                MetadataReference.CreateFromFile(typeof (CallSite<>).GetTypeInfo().Assembly.Location);
+            assemblySet.Add(MetadataReference.CreateFromFile(typeof (Enumerable).GetTypeInfo().Assembly.Location));
             if (expressionOptions.ChainedType.IsDynamic)
-                MetadataReference.CreateFromFile(typeof(CallSite<>).GetTypeInfo().Assembly.Location);
+                MetadataReference.CreateFromFile(typeof (CallSite<>).GetTypeInfo().Assembly.Location);
             assemblySet.Add(MetadataReference.CreateFromFile(expressionOptions.ChainedType.Type.GetTypeInfo().Assembly.Location));
 #endif
-            var compilation = CSharpCompilation.Create(null, new[] { tree }, assemblySet);
+            var compilation = CSharpCompilation.Create(null, new[] {tree}, assemblySet);
             var diagnostics = compilation.GetDiagnostics();
             if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
             {
-                throw new TemplateCompileException(ContextCompilation.FormatErrors(diagnostics));
+                throw new TemplateCompileException(ContextCompilation.FormatErrors(diagnostics, expressionOptions.Position));
             }
             var syntax = tree.GetRoot().DescendantNodes().OfType<ReturnStatementSyntax>().Single().Expression;
             var model = compilation.GetSemanticModel(tree, false);
@@ -326,8 +316,16 @@ namespace Templates.Runtime {
                 return ExType.Dynamic;
             }
             constantResult = null;
-            return
-                ReflectionHelper.ResolveType(typeInfo.Type.ToDisplayString(DisplayFormat), _namespaces.ToArray());
+            string typeName = typeInfo.Type.ToDisplayString(DisplayFormat);
+            try
+            {
+                return
+                    ReflectionHelper.ResolveType(typeName, _namespaces.ToArray());
+            }
+            catch (InvalidOperationException e)
+            {
+                throw new TemplateCompileException(e.ToError(expressionOptions.Position));
+            }
         }
 
 

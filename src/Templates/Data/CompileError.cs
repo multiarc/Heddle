@@ -4,7 +4,7 @@ using Templates.Strings.Core;
 namespace Templates.Data
 {
     public static class CompileError {
-        public static TtlCompileError ToError(this string errorMessage, BlockPosition position = default (BlockPosition)) {
+        public static TtlCompileError ToError(this string errorMessage, BlockPosition position) {
             return new TtlCompileError
             {
                 Error = errorMessage,
@@ -12,7 +12,7 @@ namespace Templates.Data
             };
         }
 
-        public static TtlCompileError ToError(this Exception exception, BlockPosition position = default(BlockPosition)) {
+        public static TtlCompileError ToError(this Exception exception, BlockPosition position) {
             return new TtlCompileError
             {
                 Error = exception.Message,

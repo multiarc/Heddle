@@ -13,7 +13,9 @@ using Templates.Runtime;
 [assembly: ExportExtensions(typeof(ImportMvcExtension))]
 
 namespace Templates.Mvc.Extensions {
-    public class ImportMvcExtension: ImportExtension {
+    [ExtensionName("import")]
+    public class ImportMvcExtension: AbstractExtension
+    {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent) {
             IEnumerable<string> searched;
             TtlTemplate cached;
@@ -28,7 +30,12 @@ namespace Templates.Mvc.Extensions {
                 DocumentParser.Parse(document, initContext.ParseContext, true);
             }
             if (initContext.ParseContext.OutputChains.Length > outputCount)
-                throw new TemplateParseException("The Defenitions template cannot contain output items".ToError());
+                throw new TemplateParseException("The Defenitions template cannot contain output items".ToError(Position));
+            return null;
+        }
+
+        public override object ProcessData(object data, object chained, object parent)
+        {
             return null;
         }
     }

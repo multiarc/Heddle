@@ -128,7 +128,7 @@ namespace Templates.Helpers {
                 }
             } else
                 return modelType;
-            throw new TemplateCompileException(string.Format(CultureInfo.InvariantCulture, "Couldn't resolve type [{0}]", typeName).ToError());
+            throw new InvalidOperationException($"Couldn't resolve type <{typeName}>");
         }
 
         /*public static PropertyInfo ResolveProperty(string propertyName, Type sourceType = null)

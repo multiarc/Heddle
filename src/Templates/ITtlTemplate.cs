@@ -9,6 +9,7 @@ namespace Templates
     {
         TtlCompileResult CompileResult { get; }
         bool Empty { get; }
+        bool Compiled { get; }
 
         DateTime DateCreated { get; set; }
 

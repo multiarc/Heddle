@@ -128,7 +128,7 @@ namespace Templates.Language {
                 error.Exception = exception;
                 return error;
             }
-            error = message.ToError();
+            error = message.ToError(default(BlockPosition));
             error.Exception = exception;
             return error;
         }
@@ -426,7 +426,7 @@ namespace Templates.Language {
                         AddToken(token, TtlTokenType.CSharpToken);
                     }
                 }
-                return new OutputItem(itemName)
+                return new OutputItem(itemName, GetAbsoluteBlockPosition(context))
                 {
                     CallParameter =
                     {
@@ -460,7 +460,7 @@ namespace Templates.Language {
                         AddToken(token, TtlTokenType.CSharpToken);
                     }
                 }
-                return new OutputItem(callNameOverride ?? string.Empty)
+                return new OutputItem(callNameOverride ?? string.Empty, GetAbsoluteBlockPosition(context))
                 {
                     CallParameter =
                     {

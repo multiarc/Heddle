@@ -11,6 +11,7 @@ using Templates.Data;
 using Templates.Exceptions;
 using Templates.Native;
 using Templates.Runtime.Parameters;
+using Templates.Strings.Core;
 
 namespace Templates.Runtime
 {
@@ -22,6 +23,7 @@ namespace Templates.Runtime
 
         static ContextCompilation()
         {
+            string document = null;
             try
             {
                 CodeGenerator = new TtlTemplate();
@@ -29,22 +31,14 @@ namespace Templates.Runtime
                     (IApplicationEnvironment)
                         CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IApplicationEnvironment));
                 var path = env.ApplicationBasePath + "/";
-                var result =
-                    CodeGenerator.Compile(File.ReadAllText($"{path}CSharpClassTemplate.tcs"));
-                if (!result.Success)
-                {
-                    InitErrors = new TtlCompileResult(false);
-                    InitErrors.Errors.AddRange(result.ErrorList);
-                }
-                else
-                {
-                    InitErrors = new TtlCompileResult(true);
-                }
+                document = File.ReadAllText($"{path}CSharpClassTemplate.tcs");
+                InitErrors =
+                    CodeGenerator.Compile(document);
 
             }
             catch (Exception e)
             {
-                InitErrors = new TtlCompileResult(false);
+                InitErrors = new TtlCompileResult(false, document);
                 InitErrors.Errors.Add(new TtlCompileError
                 {
                     Error = e.Message,
@@ -84,7 +78,7 @@ namespace Templates.Runtime
                     var diagnostics = compilation.GetDiagnostics();
                     if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
                     {
-                        throw new TemplateCompileException(FormatErrors(diagnostics));
+                        throw new TemplateCompileException(FormatErrors(diagnostics, context.Methods.First().Position));
                     }
                     var stream = new MemoryStream();
                     compilation.Emit(stream);
@@ -113,14 +107,14 @@ namespace Templates.Runtime
             }
         }
 
-        internal static IEnumerable<TtlCompileError> FormatErrors(ImmutableArray<Diagnostic> diagnostics)
+        internal static IEnumerable<TtlCompileError> FormatErrors(ImmutableArray<Diagnostic> diagnostics, BlockPosition position)
         {
             return
                 diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
                     .Select(d => new TtlCompileError {Error = d.GetMessage()})
                     .Union(
                         diagnostics.Where(d => d.Severity == DiagnosticSeverity.Warning)
-                            .Select(d => new TtlCompileWarning {Error = d.GetMessage()}));
+                            .Select(d => new TtlCompileWarning {Error = d.GetMessage(), Position = position}));
         }
     }
 }
