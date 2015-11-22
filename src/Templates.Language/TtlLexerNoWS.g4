@@ -18,8 +18,8 @@ fragment SUB_ST: '{{' WS*;
 fragment SUB_CL: WS* '}}';
 fragment PARA_ST: '(';
 fragment PARA_CL: ')';
-fragment DEF_ST: WS? '<%';
-fragment DEF_CL: '%>' WS?;
+fragment DEF_ST: '<%';
+fragment DEF_CL: '%>';
 fragment OUT_ST: '@';
 fragment DEF_T: '::';
 fragment EXT_DELIM: ':';
@@ -27,7 +27,7 @@ fragment DEF_STNAME: '<';
 fragment DEF_CLNAME: '>';
 fragment DEF_MAKEOUT: '->';
 fragment LINE_TERM: ';';
-fragment COMMENT_BLOCK: WS? '@*' .*? '*@' WS?;
+fragment COMMENT_BLOCK: '@*' .*? '*@';
 fragment RAW_BLOCK : '@{' .*? '}@';
 
 START_COMMENT:
