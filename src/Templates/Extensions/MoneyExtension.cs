@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Threading;
 using Templates.Attributes;
 using Templates.Core;
 using Templates.Data;
@@ -14,19 +15,21 @@ namespace Templates.Extensions {
     [DataType (typeof (decimal))]
     [EncodeOutput]
     public class MoneyExtension: AbstractHtmlExtension {
-        private static readonly Dictionary<string, CultureInfo> CultureCache = new Dictionary<string, CultureInfo>
+        private static volatile Dictionary<string, CultureInfo> _cultureCache = new Dictionary<string, CultureInfo>
             (10, StringComparer.OrdinalIgnoreCase);
 
         private static CultureInfo GetCultureInfo (string locale)
         {
-            lock (CultureCache) {
-                CultureInfo result;
-                if (CultureCache.TryGetValue(locale, out result))
-                    return result;
-                var cultureInfo = new CultureInfo(locale);
-                CultureCache.Add(locale, cultureInfo);
-                return cultureInfo;
+            CultureInfo result;
+            if (_cultureCache.TryGetValue(locale, out result))
+                return result;
+            var cultureInfo = new CultureInfo(locale);
+            lock (_cultureCache)
+            {
+                Dictionary<string, CultureInfo> newInfos = new Dictionary<string, CultureInfo>(_cultureCache) {{locale, cultureInfo}};
+                _cultureCache = newInfos;
             }
+            return cultureInfo;
         }
 
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
@@ -39,22 +42,33 @@ namespace Templates.Extensions {
             string locale = GetInnerResult(parent, chainedResult);
             if (value == null)
                 return string.Empty;
-            if (!(value is decimal)) {
-                try {
-                    value = Convert.ChangeType(value, typeof (decimal), CultureInfo.InvariantCulture);
-                }
-                catch (InvalidCastException) {
-                    return string.Empty;
-                }
-                catch (FormatException) {
-                    return string.Empty;
-                }
+            CultureInfo localeInfo = null;
+            if (!string.IsNullOrWhiteSpace(locale))
+            {
+                localeInfo = GetCultureInfo(locale);
             }
-            if (!string.IsNullOrWhiteSpace(locale)) {
-                CultureInfo localeInfo = GetCultureInfo(locale);
-                return ((decimal) value).ToString("c", localeInfo);
+            var decimalValue = value as decimal?;
+            if (decimalValue != null)
+            {
+                if (localeInfo != null)
+                    return decimalValue.Value.ToString("c", localeInfo);
+                return decimalValue.Value.ToString("c");
             }
-            return ((decimal) value).ToString("c");
+            try
+            {
+                decimalValue = (decimal)Convert.ChangeType(value, typeof (decimal), CultureInfo.InvariantCulture);
+                if (localeInfo != null)
+                    return decimalValue.Value.ToString("c", localeInfo);
+                return decimalValue.Value.ToString("c");
+            }
+            catch (InvalidCastException)
+            {
+                return string.Empty;
+            }
+            catch (FormatException)
+            {
+                return string.Empty;
+            }
         }
     }
 }
