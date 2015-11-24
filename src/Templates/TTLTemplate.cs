@@ -135,6 +135,10 @@ namespace Templates
                             data.GetType().FullName));
             }
 #endif
+            if (_disposeAfterComplete)
+            {
+                throw new ObjectDisposedException($"{GetType()} Disposed");
+            }
             _runners++;
             string result = null;
             try
@@ -162,7 +166,7 @@ namespace Templates
         public TtlCompileResult Recompile(string newDocument, CompileContext context = null)
         {
             DateCreated = DateTime.Now;
-            CompileResult = Compile(context ?? new CompileContext((ExType) null), newDocument);
+            CompileResult = Compile(context ?? new CompileContext(), newDocument);
             return CompileResult;
         }
 
