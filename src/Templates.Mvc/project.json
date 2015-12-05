@@ -1,5 +1,5 @@
 ﻿{
-  "version": "1.0.0-rc1",
+  "version": "1.0.1-rc1",
   "authors": [ "Aliaksandr Kukrash" ],
   "description": "Template engine MVC extensions library, once referenced replace internal import with MVC based.",
   "exclude": [ "bin" ],
@@ -14,7 +14,6 @@
 
   "frameworks": {
     "net451": { },
-    "dnx451": { },
     "dotnet5.4": {
       "dependencies": {
         "System.Collections": "4.0.11-*",

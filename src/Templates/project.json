@@ -1,5 +1,5 @@
 ﻿{
-  "version": "2.5.2-rc1",
+  "version": "2.5.3-rc1",
   "authors": [ "Aliaksandr Kukrash" ],
   "description": "Robust template engine with C# expressions (Roslyn) support, text template inheritance and override support",
   "exclude": [ "bin" ],
@@ -28,9 +28,9 @@
         "System.IO": "4.0.0.0"
       }
     },
-    "dnx451": {
+    "net461": {
       "frameworkAssemblies": {
-        "System.Runtime": "4.0.10.0",
+        "System.Runtime": "4.0.20.0",
         "System.Text.Encoding": "4.0.0.0",
         "System.Threading.Tasks": "4.0.0.0",
         "System.IO": "4.0.0.0"

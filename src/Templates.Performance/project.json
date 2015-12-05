@@ -9,12 +9,6 @@
   },
   "frameworks": {
     "net451": {
-      "dependencies": {
-      }
-    },
-    "dnx451": {
-      "dependencies": {
-      }
     },
     "dotnet5.4": {
       "dependencies": {

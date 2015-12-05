@@ -290,21 +290,7 @@ namespace Templates.Runtime {
                     InitErrors.Errors);
             var code = PreparseGenerator.Generate(expressionOptions);
             var tree = CSharpSyntaxTree.ParseText(code);
-#if DNX451 || DOTNET5_4
             var assemblySet = AssemblyHelper.GetMetadataReferences();
-#else
-            HashSet<MetadataReference> assemblySet = new HashSet<MetadataReference>
-            {
-                MetadataReference.CreateFromFile(typeof (object).GetTypeInfo().Assembly.Location),
-                MetadataReference.CreateFromFile(ModelType.Type.GetTypeInfo().Assembly.Location)
-            };
-            if (ModelType.IsDynamic)
-                MetadataReference.CreateFromFile(typeof (CallSite<>).GetTypeInfo().Assembly.Location);
-            assemblySet.Add(MetadataReference.CreateFromFile(typeof (Enumerable).GetTypeInfo().Assembly.Location));
-            if (expressionOptions.ChainedType.IsDynamic)
-                MetadataReference.CreateFromFile(typeof (CallSite<>).GetTypeInfo().Assembly.Location);
-            assemblySet.Add(MetadataReference.CreateFromFile(expressionOptions.ChainedType.Type.GetTypeInfo().Assembly.Location));
-#endif
             var compilation = CSharpCompilation.Create(null, new[] {tree}, assemblySet);
             var diagnostics = compilation.GetDiagnostics();
             if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
