@@ -10,6 +10,7 @@ namespace Templates.Data {
         public string TemplateName { get; }
         public bool EnableFileChangeCheck { get; set; }
         public bool AllowCSharp { get; set; }
+        public int MaxRecursionCount { get; set; }
         public bool ProvideLanguageFeatures { get; set; }
         public bool ForceRemoveWhitespace { get; set; }
 
@@ -20,6 +21,7 @@ namespace Templates.Data {
             TemplateName = string.Empty;
             EnableFileChangeCheck = false;
             AllowCSharp = false;
+            MaxRecursionCount = 100;
         }
 
         public TemplateOptions(string templateName) {
@@ -28,6 +30,7 @@ namespace Templates.Data {
             TemplateName = templateName ?? string.Empty;
             EnableFileChangeCheck = false;
             AllowCSharp = false;
+            MaxRecursionCount = 100;
         }
 
         public TemplateOptions(string fileNamePostfix, string rootPath, string templateName, bool enableFileChangeCheck = false, bool allowCSharp = false)
@@ -38,6 +41,7 @@ namespace Templates.Data {
             TemplateName = templateName ?? string.Empty;
             EnableFileChangeCheck = enableFileChangeCheck;
             AllowCSharp = allowCSharp;
+            MaxRecursionCount = 100;
         }
 
         public TemplateOptions(TemplateOptions value)
@@ -49,6 +53,7 @@ namespace Templates.Data {
             TemplateName = value.TemplateName;
             EnableFileChangeCheck = value.EnableFileChangeCheck;
             AllowCSharp = value.AllowCSharp;
+            MaxRecursionCount = value.MaxRecursionCount;
         }
 
         public string FullPath => RootPath + TemplateName + FileNamePostfix;

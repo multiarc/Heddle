@@ -18,8 +18,7 @@
 		</label>
 	}}
 	<test_list>
-	{{@
-		list(@model.Products.Where(p => p.Quantity < 95))
+	{{@list(@model.Products.Where(p => p.Quantity < 95))
         {{@
 			partial(){{partial}};
         }};

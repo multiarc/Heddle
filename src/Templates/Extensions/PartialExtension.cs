@@ -38,7 +38,12 @@ namespace Templates.Extensions {
 
         public override void CompleteInit(CompileContext newContext, ParseContext parseContext)
         {
-            InnerTemplate = new TtlTemplate(newContext);
+            InnerTemplate = new TtlTemplate();
+            var result = InnerTemplate.Compile(newContext);
+            if (!result.Success)
+            {
+                newContext.CompileErrors.AddRange(result.Errors);
+            }
         }
     }
 }

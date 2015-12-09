@@ -7,17 +7,12 @@ using Templates.Strings.Core;
 
 namespace Templates.Runtime {
     internal class TemplateItem: IDataProcessor {
-        public TemplateItem(ExType returnType, IExtension extension)
-        {
-            ReturnType = returnType;
-            Extension = extension;
-        }
 
-        public ExType ReturnType { get; }
+        public ExType ReturnType { get; set; }
 
         public IRuntimeParameter Parameter { get; set; }
 
-        public IExtension Extension { get; }
+        public IExtension Extension { get; set; }
 
         public object ProcessData(object value, object chainedResult)
         {

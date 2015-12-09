@@ -17,8 +17,8 @@ namespace Templates
     {
         private CompileContext _context;
         public TtlCompileResult CompileResult { get; private set; }
-        private readonly FileReader _reader;
-        private readonly FileSystemWatcher _watcher;
+        private FileReader _reader;
+        private FileSystemWatcher _watcher;
         private volatile RuntimeDocument _runtimeDocument;
         private string _document;
         private volatile bool _disposeAfterComplete = false;
@@ -170,11 +170,56 @@ namespace Templates
             return CompileResult;
         }
 
+        public TtlCompileResult Compile(CompileContext context)
+        {
+            if (_runtimeDocument != null)
+                throw new TemplateInitException("Template already compiled.");
+
+            string document = null;
+            try
+            {
+                _reader = new FileReader(context.Options);
+                document = _reader.ReadEntireFile();
+                CompileResult = Compile(context, document);
+                if (context.Options.EnableFileChangeCheck)
+                {
+                    var fullPath = Path.Combine(context.Options.RootPath, context.Options.TemplateName);
+                    var directory = Path.GetDirectoryName(fullPath);
+                    if (directory != null)
+                    {
+                        _watcher = new FileSystemWatcher(directory)
+                        {
+                            NotifyFilter = NotifyFilters.FileName | NotifyFilters.Size | NotifyFilters.LastWrite,
+                            Filter = Path.GetFileName(fullPath)
+                        };
+                        _watcher.Changed += FileChanged;
+                        _watcher.Deleted += FileDeleted;
+                        _watcher.Renamed += FileRenamed;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                CompileResult = new TtlCompileResult(false, document);
+                CompileResult.Errors.Add(e.ToError(default(BlockPosition)));
+            }
+            return CompileResult;
+        }
+
         public TtlCompileResult Compile(string document, ExType modelType = null)
         {
             if (_runtimeDocument != null)
                 throw new TemplateInitException("Template already compiled.");
             return Compile(new CompileContext(modelType), document);
+        }
+
+        public TtlCompileResult TryCompilation(CompileContext context)
+        {
+            if (_runtimeDocument != null)
+                throw new TemplateInitException("Template already compiled.");
+            var reader = new FileReader(context.Options);
+            var document = reader.ReadEntireFile();
+            return Compile(context, document, true);
         }
 
         public TtlCompileResult TryCompilation(string document, ExType modelType = null)

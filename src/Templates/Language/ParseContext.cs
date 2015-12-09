@@ -83,9 +83,9 @@ namespace Templates.Language {
                 {
                     var item = new DefinitionItem(DefinitionsBlock.Definitions[definitionName]);
 
-                    var newContest = item.Context.IsolateContext(definitionName);
+                    var newContext = item.Context.IsolateContext(definitionName);
 
-                    item.Context = newContest;
+                    item.Context = newContext;
                     if (item.BaseDefinition != null)
                     {
                         item.BaseDefinition.Context = item.BaseDefinition.Context.IsolateContext(definitionName);

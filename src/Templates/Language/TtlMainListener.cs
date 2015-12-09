@@ -45,6 +45,17 @@ namespace Templates.Language {
             if (context == null) throw new ArgumentNullException(nameof(context));
             OutputChain chain;
             CurrentParseContext.CurrentDefenition = CurrentParseContext.CreateDefinition(context, _compileContext, out chain);
+            if (CurrentParseContext.CurrentDefenition.BaseDefinition == null)
+            {
+                if (CurrentParseContext.DefinitionsBlock.Definitions.ContainsKey(CurrentParseContext.CurrentDefenition.Name))
+                {
+                    _compileContext.CompileErrors.Add(
+                        $"The definition <{CurrentParseContext.CurrentDefenition.Name}> with the same name already exists".ToError(CurrentParseContext.GetBlockPosition(context)));
+                    return;
+                }
+                CurrentParseContext.DefinitionsBlock.Definitions.Add(CurrentParseContext.CurrentDefenition.Name,
+                    CurrentParseContext.CurrentDefenition);
+            }
             if (chain != null)
             {
                 CurrentParseContext.DefaultChains.Add(chain);
@@ -53,33 +64,41 @@ namespace Templates.Language {
 
         public override void ExitDef(TtlParser.DefContext context) {
             if (context == null) throw new ArgumentNullException(nameof(context));
-            if (!CurrentParseContext.DefinitionsBlock.Definitions.ContainsKey(CurrentParseContext.CurrentDefenition.Name)) {
-                CurrentParseContext.DefinitionsBlock.Definitions.Add(CurrentParseContext.CurrentDefenition.Name,
-                    CurrentParseContext.CurrentDefenition);
-            }
-            else
+            if (CurrentParseContext.CurrentDefenition.BaseDefinition != null)
             {
-                var definition =
-                    CurrentParseContext.DefinitionsBlock.Definitions[CurrentParseContext.CurrentDefenition.Name];
-                if (CurrentParseContext.InDefintionContext)
+                if (!CurrentParseContext.DefinitionsBlock.Definitions.ContainsKey(CurrentParseContext.CurrentDefenition.Name))
                 {
-                    if (definition != CurrentParseContext.CurrentDefenition.BaseDefinition)
-                    {
-                        _compileContext.CompileErrors.Add(
-                            "The definition with the same name already exists".ToError(CurrentParseContext.GetBlockPosition(context)));
-                        return;
-                    }
-                    CurrentParseContext.DefinitionsBlock.Definitions[CurrentParseContext.CurrentDefenition.Name] = CurrentParseContext.CurrentDefenition;
+                    CurrentParseContext.DefinitionsBlock.Definitions.Add(CurrentParseContext.CurrentDefenition.Name,
+                        CurrentParseContext.CurrentDefenition);
                 }
                 else
                 {
-                    if (definition != CurrentParseContext.CurrentDefenition.BaseDefinition)
+                    var definition =
+                        CurrentParseContext.DefinitionsBlock.Definitions[CurrentParseContext.CurrentDefenition.Name];
+                    if (CurrentParseContext.InDefintionContext)
                     {
-                        _compileContext.CompileErrors.Add(
-                            "The definition with the same name already exists".ToError(CurrentParseContext.GetBlockPosition(context)));
-                        return;
+                        if (definition != CurrentParseContext.CurrentDefenition.BaseDefinition)
+                        {
+                            _compileContext.CompileErrors.Add(
+                                $"The definition <{CurrentParseContext.CurrentDefenition.Name}> with the same name already exists".ToError(
+                                    CurrentParseContext.GetBlockPosition(context)));
+                            return;
+                        }
+                        CurrentParseContext.DefinitionsBlock.Definitions[CurrentParseContext.CurrentDefenition.Name] =
+                            CurrentParseContext.CurrentDefenition;
                     }
-                    CurrentParseContext.DefinitionsBlock.Definitions[CurrentParseContext.CurrentDefenition.Name].OverrideWith(CurrentParseContext.CurrentDefenition);
+                    else
+                    {
+                        if (definition != CurrentParseContext.CurrentDefenition.BaseDefinition)
+                        {
+                            _compileContext.CompileErrors.Add(
+                                $"The definition <{CurrentParseContext.CurrentDefenition.Name}> with the same name already exists".ToError(
+                                    CurrentParseContext.GetBlockPosition(context)));
+                            return;
+                        }
+                        CurrentParseContext.DefinitionsBlock.Definitions[CurrentParseContext.CurrentDefenition.Name].OverrideWith(
+                            CurrentParseContext.CurrentDefenition);
+                    }
                 }
             }
             CurrentParseContext.CurrentDefenition = null;

@@ -8,13 +8,19 @@ using Templates.Runtime;
 
 [assembly: ExportExtensions(typeof(PartialMvcExtension))]
 
-namespace Templates.Mvc.Extensions {
-    public class PartialMvcExtension: PartialExtension {
+namespace Templates.Mvc.Extensions
+{
+    public class PartialMvcExtension : PartialExtension
+    {
         public override void CompleteInit(CompileContext newContext, ParseContext parseContext)
         {
             IEnumerable<string> locations;
             InnerTemplate = TtlViewEngine.Resolver.GetTemplate(newContext.Options.TemplateName,
                 newContext.ControllerName, out locations, newContext, TemplatePathType.PartialView);
+            if (!InnerTemplate.CompileResult.Success)
+            {
+                newContext.CompileErrors.AddRange(InnerTemplate.CompileResult.ErrorList);
+            }
         }
     }
 }

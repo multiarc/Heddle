@@ -196,9 +196,17 @@ namespace Templates.Runtime
             (OutputItem extensionItem, CompileContext compileContext, ParseContext parseContext,
                 ref ExType returnTypeChainedPrevious)
         {
+            CompiledElement result;
+            if (compileContext.CompiledItems.TryGetValue(extensionItem, out result))
+            {
+                returnTypeChainedPrevious = result.ReturnTypeChainedPrevious;
+                return result.CompiledItem;
+            }
+            result = new CompiledElement {CompiledItem = new TemplateItem(), ReturnTypeChainedPrevious = returnTypeChainedPrevious};
+            compileContext.CompiledItems.Add(extensionItem, result);
+
             PropertyInfo data = null;
             ExType dataType = null;
-            IRuntimeParameter parameter;
             IExtension extension;
             DefinitionItem definitionItem = null;
             if (parseContext.DefenitionExists(extensionItem.ExtensionName))
@@ -220,7 +228,7 @@ namespace Templates.Runtime
                                 Binder.GetMember(CSharpBinderFlags.None,
                                     extensionItem.CallParameter.ModelParameter, typeof (IRuntimeParameter),
                                     csharpArgumentInfoArray));
-                        parameter = new DynamicParameter(callSite);
+                        result.CompiledItem.Parameter = new DynamicParameter(callSite);
                     }
                     else
                     {
@@ -238,7 +246,7 @@ namespace Templates.Runtime
                                 (string.Format(CultureInfo.InvariantCulture, "Property {0} no found in Type [{1}]",
                                     extensionItem.CallParameter.ModelParameter, compileContext.ModelType).ToError(extensionItem.Position));
                         }
-                        parameter = new ModelParameter(data.ToPropertyGate());
+                        result.CompiledItem.Parameter = new ModelParameter(data.ToPropertyGate());
                     }
                 }
                 else
@@ -251,7 +259,7 @@ namespace Templates.Runtime
                     {
                         dataType = compileContext.ModelType;
                     }
-                    parameter = new EmptyParameter();
+                    result.CompiledItem.Parameter = new EmptyParameter();
                 }
             }
             else if (!string.IsNullOrEmpty(extensionItem.CallParameter.CSharpExpression))
@@ -273,32 +281,32 @@ namespace Templates.Runtime
                 object constantResult;
                 dataType = compileContext.ParseAndGetResultType(expressionOptions, out constantResult);
                 extension = CreateExtension(extensionItem, compileContext, extensionItem.Context ?? parseContext,
-                    ref returnTypeChainedPrevious, null, dataType,  definitionItem);
+                    ref result.ReturnTypeChainedPrevious, null, dataType,  definitionItem);
+
+                returnTypeChainedPrevious = result.ReturnTypeChainedPrevious;
+                result.CompiledItem.ReturnType = result.ReturnTypeChainedPrevious;
+                result.CompiledItem.Extension = extension;
                 if (constantResult == null)
                 {
-                    return new TemplateItem(returnTypeChainedPrevious, extension)
-                    {
-                        Parameter = compileContext.PushCompileExpression(expressionOptions)
-                    };
+                    result.CompiledItem.Parameter = compileContext.PushCompileExpression(expressionOptions);
+                    return result.CompiledItem;
                 }
-                return new TemplateItem(returnTypeChainedPrevious, extension)
-                {
-                    Parameter = new ConstantParameter(constantResult)
-                };
+                result.CompiledItem.Parameter = new ConstantParameter(constantResult);
+                return result.CompiledItem;
             }
             else
             {
                 var callParameter = CompileParameterChain(extensionItem.CallParameter.ChainParameter, compileContext,
                     parseContext, returnTypeChainedPrevious);
                 dataType = callParameter.RenderType;
-                parameter = new ChainedParameter(callParameter);
+                result.CompiledItem.Parameter = new ChainedParameter(callParameter);
             }
             extension = CreateExtension(extensionItem, compileContext, extensionItem.Context ?? parseContext,
-                ref returnTypeChainedPrevious, data, dataType, definitionItem);
-            return new TemplateItem(returnTypeChainedPrevious, extension)
-            {
-                Parameter = parameter
-            };
+                ref result.ReturnTypeChainedPrevious, data, dataType, definitionItem);
+            returnTypeChainedPrevious = result.ReturnTypeChainedPrevious;
+            result.CompiledItem.ReturnType = result.ReturnTypeChainedPrevious;
+            result.CompiledItem.Extension = extension;
+            return result.CompiledItem;
         }
 
         private static IExtension CreateExtension(OutputItem extensionItem, CompileContext compileContext,

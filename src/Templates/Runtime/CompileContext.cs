@@ -23,6 +23,27 @@ namespace Templates.Runtime {
         public ParseContext ParseContext;
     }
 
+    internal class ObjectReference<T>
+    {
+        public ObjectReference(T obj)
+        {
+            Object = obj;
+        }
+
+        public T Object { get; set; }
+
+        public static implicit operator T(ObjectReference<T> reference)
+        {
+            return reference.Object;
+        }
+    }
+
+    internal class CompiledElement
+    {
+        public TemplateItem CompiledItem;
+        public ExType ReturnTypeChainedPrevious;
+    }
+
     /// <summary>
     /// Compile Context class. Doing all work to compile extensions, saving type for each context level extension, import namespace/assembly. 
     /// By loading assembly you can add or override existing extensions or add some extra funtionality parts to template.
@@ -79,6 +100,8 @@ namespace Templates.Runtime {
             }
         }
 
+        internal Dictionary<OutputItem, CompiledElement> CompiledItems { get; }
+
         public Guid ClassGuid { get; } = Guid.NewGuid();
 
         public string ControllerName { get; set; }
@@ -95,6 +118,7 @@ namespace Templates.Runtime {
         {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
+            CompiledItems = context.CompiledItems;
             CompileErrors = context.CompileErrors;
             CompileWarnings = context.CompileWarnings;
             ControllerName = context.ControllerName;
@@ -109,6 +133,7 @@ namespace Templates.Runtime {
             Options = new TemplateOptions();
             CompileErrors = new List<TtlCompileError>();
             CompileWarnings = new List<TtlCompileWarning>();
+            CompiledItems = new Dictionary<OutputItem, CompiledElement>();
         }
 
         /// <summary>
@@ -122,6 +147,7 @@ namespace Templates.Runtime {
             Options = options;
             CompileErrors = new List<TtlCompileError>();
             CompileWarnings = new List<TtlCompileWarning>();
+            CompiledItems = new Dictionary<OutputItem, CompiledElement>();
         }
 
         /// <summary>
