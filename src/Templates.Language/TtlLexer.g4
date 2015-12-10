@@ -11,7 +11,7 @@ tokens { TEXT, ID, OUT, SUB_START, SUB_CLOSE, CSHARP_END, CSHARP_TOKEN, CSHARP_S
 channels { COMMENT_CHANNEL }
 
 fragment ID_TOKEN: IDENTIFIER;
-fragment ID_TYPE: IDENTIFIER ('<' (ID_TYPE ',')+ '>')?;
+fragment ID_TYPE: IDENTIFIER ('<' (ID_TYPE ','?)+ '>')?;
 
 
 fragment SUB_ST: '{{';

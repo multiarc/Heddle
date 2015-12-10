@@ -217,6 +217,60 @@ namespace Templates.Strings {
             }
         }
 
+        public static unsafe string BulkReplace(char** values, int* lengths, BlockPosition[] positions, string document)
+        {
+            if (values == null)
+                throw new ArgumentNullException(nameof(values));
+            if (document == null)
+                throw new ArgumentNullException(nameof(document));
+            if (positions == null)
+                throw new ArgumentNullException(nameof(positions));
+
+            int count = positions.Length;
+
+            if (count == 0)
+                return document;
+
+            if (document.Length == 0)
+                return string.Empty;
+
+            int capacity = document.Length;
+            int srcLen = capacity;
+            unchecked
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    BlockPosition block = positions[i];
+#if DEBUG
+                    if (block.Length < 0)
+                        throw new ArgumentException();
+                    if (block.StartIndex < 0)
+                        throw new ArgumentException();
+#endif
+                    capacity += (values[i] == null ? 0 : lengths[i]) - block.Length;
+#if DEBUG
+                    if (capacity < 0)
+                        throw new ArgumentException();
+#endif
+                }
+
+                if (capacity == 0)
+                    return string.Empty;
+                string result = AllocateString(capacity);
+                unsafe
+                {
+                    fixed (char* dest = result)
+                    {
+                        fixed (char* src = document)
+                        {
+                            MoveData(values, lengths, positions, srcLen, capacity, dest, src);
+                        }
+                    }
+                }
+                return result;
+            }
+        }
+
         public static string BulkReplace (Replacement[] replacements, string source)
         {
             if (replacements == null)
@@ -309,6 +363,47 @@ namespace Templates.Strings {
                 }
                 return result;
             }
+        }
+
+        private static unsafe void MoveData(char** values, int* lengths, BlockPosition[] positions, int srcLen, int capacity, char* dest, char* src)
+        {
+            int lastIndex = 0;
+            int current = 0;
+            int count = positions.Length;
+            for (int i = 0; i < count; i++)
+            {
+                int chunkLength = lengths[i];
+                BlockPosition block = positions[i];
+#if DEBUG
+                if (lastIndex + block.StartIndex - current + chunkLength < 0
+                    || lastIndex + block.StartIndex - current + chunkLength > capacity || block.StartIndex > srcLen
+                    || current > srcLen)
+                    throw new ArgumentException();
+#endif
+                char* middle = values[i];
+                MemCpy(dest + lastIndex, src + current, block.StartIndex - current);
+                lastIndex += block.StartIndex - current;
+                if (middle != null)
+                {
+                    MemCpy(dest + lastIndex, middle, chunkLength);
+                    current = block.StartIndex + block.Length;
+                    lastIndex += chunkLength;
+                }
+                else
+                {
+                    current = block.StartIndex + block.Length;
+#if DEBUG
+                    if (chunkLength > 0)
+                        throw new ArgumentException();
+
+#endif
+                }
+            }
+#if DEBUG
+            if (lastIndex + srcLen - current < 0 || lastIndex + srcLen - current > capacity || current > srcLen)
+                throw new ArgumentException();
+#endif
+            MemCpy(dest + lastIndex, src + current, srcLen - current);
         }
 
         private static unsafe void MoveData (Replacement[] replacements, int srcLen, int capacity, char* dest, char* src)

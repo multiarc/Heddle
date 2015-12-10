@@ -20,6 +20,18 @@ namespace Templates.Tests.Data {
 
     #endregion
 
+    public class Category
+    {
+        public Category()
+        {
+            SubCategories = new List<Category>();
+        }
+
+        public string Name { get; set; }
+
+        public ICollection<Category> SubCategories { get; set; }
+    }
+
     #region Nested type: TestDataStructure
 
     public class TestDataStructure {

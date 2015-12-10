@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading;
+using System.Runtime.InteropServices;
 using Templates.Strings;
 using Templates.Strings.Core;
 
@@ -8,20 +8,24 @@ namespace Templates.Runtime {
     internal class RuntimeDocument : IDataProcessor {
         private readonly string _document;
         private readonly IDataProcessor[] _optimizedElements;
+        private readonly BlockPosition[] _outputPositions;
         private readonly IDataProcessor _singleProcessor;
         private bool _canDoFullOptimize;
-        private readonly ThreadLocal<Replacement[]> _threadLocal;
         private readonly CompileContext _context;
 
         public RuntimeDocument(string document, DocumentElement[] executeItems, CompileContext context)
         {
             _context = context;
             _document = document;
-            _threadLocal = new ThreadLocal<Replacement[]>(MakeNewArray);
             _optimizedElements = OptimizeCallTree(executeItems);
             if (_optimizedElements.Length == 1)
             {
                 _singleProcessor = _optimizedElements[0];
+            }
+            _outputPositions = new BlockPosition[_optimizedElements.Length];
+            for (int i = 0; i < _optimizedElements.Length; i++)
+            {
+                _outputPositions[i] = _optimizedElements[i].Position;
             }
         }
 
@@ -79,13 +83,36 @@ namespace Templates.Runtime {
                 }
                 return builder.ToString();
             }
-            Replacement[] replacements = _threadLocal.Value;
-            for (int i = 0; i < _optimizedElements.Length; i++)
+            unsafe
             {
-                replacements[i].ReplacementValue = _optimizedElements[i].ProcessData(data, chainedResult) as string ??
-                                                   string.Empty;
+                int count = _optimizedElements.Length;
+                var replacements = stackalloc char*[count];
+                var lengths = stackalloc int[count];
+                var handles = stackalloc GCHandle[count];
+                for (int i = 0; i < count; i++)
+                {
+                    var resultBlock = _optimizedElements[i].ProcessData(data, chainedResult) as string;
+                    if (resultBlock != null)
+                    {
+                        lengths[i] = resultBlock.Length;
+                        var handle = GCHandle.Alloc(resultBlock, GCHandleType.Pinned);
+                        handles[i] = handle;
+                        replacements[i] = (char*) handle.AddrOfPinnedObject().ToPointer();
+                    }
+                    else
+                    {
+                        lengths[i] = 0;
+                        replacements[i] = null;
+                    }
+                }
+                var result = ExStringBuilder.BulkReplace(replacements, lengths, _outputPositions,  _document);
+                for (int i = 0; i < count; i++)
+                {
+                    if (handles[i].IsAllocated)
+                        handles[i].Free();
+                }
+                return result;
             }
-            return ExStringBuilder.BulkReplace(replacements, _document);
         }
 
         public BlockPosition Position { get; set; }
@@ -96,12 +123,12 @@ namespace Templates.Runtime {
 
         public IDataProcessor SingleProcessor => _singleProcessor;
 
-        private Replacement[] MakeNewArray() {
-            var replacements = new Replacement[_optimizedElements.Length];
-            for (int i = 0; i < _optimizedElements.Length; i++)
-                replacements[i].BlockPosition = _optimizedElements[i].Position;
-            return replacements;
-        }
+        //private Replacement[] MakeNewArray() {
+        //    var replacements = new Replacement[_optimizedElements.Length];
+        //    for (int i = 0; i < _optimizedElements.Length; i++)
+        //        replacements[i].BlockPosition = _optimizedElements[i].Position;
+        //    return replacements;
+        //}
 
         protected virtual void Dispose(bool disposing)
         {
@@ -114,10 +141,9 @@ namespace Templates.Runtime {
                 _context.Dispose();
                 GC.SuppressFinalize(this);
             }
-            _threadLocal.Dispose();
         }
 
-        public string Document { get { return _document; } }
+        public string Document => _document;
 
         public void Dispose()
         {

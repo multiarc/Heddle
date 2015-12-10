@@ -1,5 +1,5 @@
 ﻿{
-  "version": "1.3.4-rc1",
+  "version": "1.3.5-rc1",
   "authors": [ "Aliaksandr Kukrash" ],
   "description": "Template engine language parsers support package, basing on ANTLR4.5 C# target",
   "exclude": [ "bin" ],

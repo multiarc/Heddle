@@ -12,11 +12,6 @@ namespace Templates.Performance
             Tests.Add(new TemplaterTest());
             Tests.Add(new TemplaterStrings());
         }
-#if !DOTNET5_4 && !DNX451
-        public static void Main(string[] args) {
-
-        }
-#else
         public void Main(string[] args)
         {
             SetUpTests();
@@ -25,13 +20,12 @@ namespace Templates.Performance
                 test.Run();
             }
             Console.WriteLine("Done all, press any key to exit...");
-#if !DOTNET5_4
+#if !DNXCORE50
             Console.ReadKey();
 #else
             Console.ReadLine();
 #endif
         }
-#endif
 
     }
 }
