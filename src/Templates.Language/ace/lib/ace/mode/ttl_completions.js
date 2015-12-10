@@ -17,7 +17,7 @@ var defaultExtensions = [
     "partial",
     "string",
     "if",
-    "else",
+    "ifnot",
     "import",
     "using",
     "for"
