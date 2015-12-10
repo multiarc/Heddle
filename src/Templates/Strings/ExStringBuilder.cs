@@ -217,7 +217,7 @@ namespace Templates.Strings {
             }
         }
 
-        public static unsafe string BulkReplace(char** values, int* lengths, BlockPosition[] positions, string document)
+        internal static unsafe string BulkReplace(char** values, int* lengths, BlockPosition[] positions, string document)
         {
             if (values == null)
                 throw new ArgumentNullException(nameof(values));
