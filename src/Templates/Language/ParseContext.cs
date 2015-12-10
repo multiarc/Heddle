@@ -79,6 +79,8 @@ namespace Templates.Language {
             }
             if (definitionName != null)
             {
+                //DefinitionItem definition;
+                //if (DefinitionsBlock.Definitions.TryGetValue(definitionName, out definition) && definition.BaseDefinition != null)
                 if (DefinitionsBlock.Definitions.ContainsKey(definitionName))
                 {
                     var item = new DefinitionItem(DefinitionsBlock.Definitions[definitionName]);
