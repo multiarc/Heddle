@@ -116,7 +116,7 @@ namespace Templates
         /// </summary>
         /// <param name="data">Input object</param>
         /// <returns>Generated string</returns>
-        public string Generate(object data)
+        public string Generate(object data, object chained = null)
         {
             if (_runtimeDocument == null)
             {
@@ -143,7 +143,7 @@ namespace Templates
             string result = null;
             try
             {
-                result = _runtimeDocument.ProcessData(data, null) as string ?? string.Empty;
+                result = _runtimeDocument.ProcessData(data, chained) as string ?? string.Empty;
             }
             finally
             {

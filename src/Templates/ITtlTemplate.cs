@@ -21,7 +21,7 @@ namespace Templates
         /// </summary>
         /// <param name="data">Input object</param>
         /// <returns>Generated string</returns>
-        string Generate(object data);
+        string Generate(object data, object chained = null);
 
         TtlCompileResult Recompile(ExType newModelType);
 
@@ -29,7 +29,11 @@ namespace Templates
 
         TtlCompileResult Compile(string document, ExType modelType = null);
 
+        TtlCompileResult Compile(CompileContext context);    
+
         TtlCompileResult TryCompilation(string document, ExType modelType = null);
+
+        TtlCompileResult TryCompilation(CompileContext context);
 
         event FileSystemEventHandler OnFileDeleted;
         event RenamedEventHandler OnFileRenamed;

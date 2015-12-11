@@ -7,12 +7,13 @@ namespace Templates.Data {
             (IApplicationEnvironment)CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(IApplicationEnvironment));
         public string FileNamePostfix { get; set; }
         public string RootPath { get; set; }
-        public string TemplateName { get; }
+        public string TemplateName { get; internal set; }
         public bool EnableFileChangeCheck { get; set; }
         public bool AllowCSharp { get; set; }
         public int MaxRecursionCount { get; set; }
         public bool ProvideLanguageFeatures { get; set; }
         public bool ForceRemoveWhitespace { get; set; }
+        public virtual object Data { get; set; }
 
         public TemplateOptions()
         {

@@ -190,7 +190,7 @@ namespace Templates.Runtime {
         {
         }
 
-        public TemplateOptions Options { get; set; }
+        public TemplateOptions Options { get; }
 
         /// <summary>
         /// Model Type can be changed at any time you running your template extension.

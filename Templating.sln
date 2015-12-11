@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{DCB9F91C-846A-4B80-97CF-BF89023F8965}"
 EndProject
@@ -12,8 +12,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "demo", "demo", "{271330C1-ACEC-410F-897B-A65DB1A8AB23}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates.Editor", "integrations\Templates.Editor\Templates.Editor.csproj", "{4729444D-4629-43A7-9DB3-CB4E05D16F6A}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Templates.Native", "src\Templates.Native\Templates.Native.vcxproj", "{50CA3F77-1F20-4BDD-9A6F-26D8FAE7467B}"
 EndProject
 Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Templates", "src\Templates\Templates.xproj", "{F3F3EA3A-393B-4355-B476-B3C7C7CA8C5F}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -33,6 +31,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		build.cmd = build.cmd
 		build.ps1 = build.ps1
+		global.json = global.json
 	EndProjectSection
 EndProject
 Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Templates.Mvc", "src\Templates.Mvc\Templates.Mvc.xproj", "{174A8663-103D-4FDA-BBEA-2B887E3FDB0D}"
@@ -57,14 +56,6 @@ Global
 		{4729444D-4629-43A7-9DB3-CB4E05D16F6A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{4729444D-4629-43A7-9DB3-CB4E05D16F6A}.Release|x64.ActiveCfg = Release|Any CPU
 		{4729444D-4629-43A7-9DB3-CB4E05D16F6A}.Release|x64.Build.0 = Release|Any CPU
-		{50CA3F77-1F20-4BDD-9A6F-26D8FAE7467B}.Debug|Any CPU.ActiveCfg = Debug|Win32
-		{50CA3F77-1F20-4BDD-9A6F-26D8FAE7467B}.Debug|Any CPU.Build.0 = Debug|Win32
-		{50CA3F77-1F20-4BDD-9A6F-26D8FAE7467B}.Debug|x64.ActiveCfg = Debug|x64
-		{50CA3F77-1F20-4BDD-9A6F-26D8FAE7467B}.Debug|x64.Build.0 = Debug|x64
-		{50CA3F77-1F20-4BDD-9A6F-26D8FAE7467B}.Release|Any CPU.ActiveCfg = Release|Win32
-		{50CA3F77-1F20-4BDD-9A6F-26D8FAE7467B}.Release|Any CPU.Build.0 = Release|Win32
-		{50CA3F77-1F20-4BDD-9A6F-26D8FAE7467B}.Release|x64.ActiveCfg = Release|x64
-		{50CA3F77-1F20-4BDD-9A6F-26D8FAE7467B}.Release|x64.Build.0 = Release|x64
 		{F3F3EA3A-393B-4355-B476-B3C7C7CA8C5F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F3F3EA3A-393B-4355-B476-B3C7C7CA8C5F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F3F3EA3A-393B-4355-B476-B3C7C7CA8C5F}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -128,7 +119,6 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{4729444D-4629-43A7-9DB3-CB4E05D16F6A} = {5A6E418F-99E7-4E1E-9062-08929C0D8E4B}
-		{50CA3F77-1F20-4BDD-9A6F-26D8FAE7467B} = {DCB9F91C-846A-4B80-97CF-BF89023F8965}
 		{F3F3EA3A-393B-4355-B476-B3C7C7CA8C5F} = {DCB9F91C-846A-4B80-97CF-BF89023F8965}
 		{F408F08F-ABF8-43BF-971C-558B1CAAFA1C} = {DCB9F91C-846A-4B80-97CF-BF89023F8965}
 		{E1F6FDB6-8FC3-4BF3-BB32-3869FAD49BF8} = {DCB9F91C-846A-4B80-97CF-BF89023F8965}
