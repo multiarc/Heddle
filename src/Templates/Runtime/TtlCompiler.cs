@@ -278,20 +278,19 @@ namespace Templates.Runtime
                     ExtensionName = extensionItem.ExtensionName,
                     Position = extensionItem.Position
                 };
-                object constantResult;
-                dataType = compileContext.ParseAndGetResultType(expressionOptions, out constantResult);
+                OptionalValue<object> constantResult = compileContext.ParseAndGetResultType(expressionOptions, out dataType);
                 extension = CreateExtension(extensionItem, compileContext, extensionItem.Context ?? parseContext,
                     ref result.ReturnTypeChainedPrevious, null, dataType,  definitionItem);
 
                 returnTypeChainedPrevious = result.ReturnTypeChainedPrevious;
                 result.CompiledItem.ReturnType = result.ReturnTypeChainedPrevious;
                 result.CompiledItem.Extension = extension;
-                if (constantResult == null)
+                if (!constantResult.HasValue)
                 {
                     result.CompiledItem.Parameter = compileContext.PushCompileExpression(expressionOptions);
                     return result.CompiledItem;
                 }
-                result.CompiledItem.Parameter = new ConstantParameter(constantResult);
+                result.CompiledItem.Parameter = new ConstantParameter(constantResult.Value);
                 return result.CompiledItem;
             }
             else

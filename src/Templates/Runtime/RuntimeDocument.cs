@@ -86,32 +86,36 @@ namespace Templates.Runtime {
             unsafe
             {
                 int count = _optimizedElements.Length;
-                var replacements = stackalloc char*[count];
-                var lengths = stackalloc int[count];
-                var handles = stackalloc GCHandle[count];
-                for (int i = 0; i < count; i++)
+                if (count > 0)
                 {
-                    var resultBlock = _optimizedElements[i].ProcessData(data, chainedResult) as string;
-                    if (resultBlock != null)
+                    var values = stackalloc char*[count];
+                    var lengths = stackalloc int[count];
+                    var handles = stackalloc GCHandle[count];
+                    for (int i = 0; i < count; i++)
                     {
-                        lengths[i] = resultBlock.Length;
-                        var handle = GCHandle.Alloc(resultBlock, GCHandleType.Pinned);
-                        handles[i] = handle;
-                        replacements[i] = (char*) handle.AddrOfPinnedObject().ToPointer();
+                        var resultBlock = _optimizedElements[i].ProcessData(data, chainedResult) as string;
+                        if (resultBlock != null)
+                        {
+                            lengths[i] = resultBlock.Length;
+                            var handle = GCHandle.Alloc(resultBlock, GCHandleType.Pinned);
+                            handles[i] = handle;
+                            values[i] = (char*) handle.AddrOfPinnedObject().ToPointer();
+                        }
+                        else
+                        {
+                            lengths[i] = 0;
+                            values[i] = null;
+                        }
                     }
-                    else
+                    var result = ExStringBuilder.BulkReplace(values, lengths, _outputPositions, _document);
+                    for (int i = 0; i < count; i++)
                     {
-                        lengths[i] = 0;
-                        replacements[i] = null;
+                        if (handles[i].IsAllocated)
+                            handles[i].Free();
                     }
+                    return result;
                 }
-                var result = ExStringBuilder.BulkReplace(replacements, lengths, _outputPositions,  _document);
-                for (int i = 0; i < count; i++)
-                {
-                    if (handles[i].IsAllocated)
-                        handles[i].Free();
-                }
-                return result;
+                return _document;
             }
         }
 

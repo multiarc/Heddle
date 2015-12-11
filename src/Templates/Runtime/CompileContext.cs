@@ -44,6 +44,24 @@ namespace Templates.Runtime {
         public ExType ReturnTypeChainedPrevious;
     }
 
+    internal struct OptionalValue<T>
+    {
+        public OptionalValue(T value, bool hasValue = true)
+        {
+            HasValue = hasValue;
+            Value = value;
+        }
+
+        public T Value { get; }
+
+        public bool HasValue { get; }
+
+        public static implicit operator OptionalValue<T>(T value)
+        {
+            return new OptionalValue<T>(value);
+        }
+    }
+
     /// <summary>
     /// Compile Context class. Doing all work to compile extensions, saving type for each context level extension, import namespace/assembly. 
     /// By loading assembly you can add or override existing extensions or add some extra funtionality parts to template.
@@ -284,7 +302,7 @@ namespace Templates.Runtime {
             return parameter;
         }
 
-        internal ExType ParseAndGetResultType(ExpressionOptions expressionOptions, out object constantResult)
+        internal OptionalValue<object> ParseAndGetResultType(ExpressionOptions expressionOptions, out ExType objectType)
         {
             if (string.IsNullOrEmpty(expressionOptions.Expression))
             {
@@ -322,35 +340,35 @@ namespace Templates.Runtime {
             if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
             {
                 CompileErrors.AddRange(ContextCompilation.FormatErrors(diagnostics, expressionOptions.Position));
-                constantResult = null;
-                return typeof (object);
+                objectType = typeof (object);
+                return new OptionalValue<object>(null, false);
             }
             var syntax = tree.GetRoot().DescendantNodes().OfType<ReturnStatementSyntax>().Single().Expression;
             var model = compilation.GetSemanticModel(tree, false);
             var constantValue = model.GetConstantValue(syntax);
             if (constantValue.HasValue)
             {
-                constantResult = constantValue.Value;
-                return constantValue.Value.GetType();
+                objectType = constantValue.Value?.GetType() ?? typeof (object);
+                return constantValue.Value;
             }
             var typeInfo = model.GetTypeInfo(syntax);
             if (typeInfo.Type.IsAnonymousType || typeInfo.Type.TypeKind == TypeKind.Dynamic)
             {
-                constantResult = null;
-                return ExType.Dynamic;
+                objectType = ExType.Dynamic;
+                return new OptionalValue<object>(null, false);
             }
-            constantResult = null;
             string typeName = typeInfo.Type.ToDisplayString(DisplayFormat);
             try
             {
-                return
+                objectType =
                     ReflectionHelper.ResolveType(typeName, _namespaces.ToArray());
             }
             catch (InvalidOperationException e)
             {
                 CompileErrors.Add(e.ToError(expressionOptions.Position));
-                return typeof (object);
+                objectType = typeof (object);
             }
+            return new OptionalValue<object>(null, false);
         }
 
 

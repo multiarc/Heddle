@@ -11,10 +11,6 @@ namespace Templates
         bool Empty { get; }
         bool Compiled { get; }
 
-        DateTime DateCreated { get; set; }
-
-        DateTime MasterDateCreated { get; set; }
-
         CompileContext Context { get; }
         /// <summary>
         /// Generates result string (invoke template helpers and render).

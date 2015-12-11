@@ -81,11 +81,6 @@ namespace Templates
 
         public CompileContext Context => _context;
 
-        public DateTime DateCreated { get; set; } = DateTime.Now;
-
-        public DateTime MasterDateCreated { get; set; }
-            = DateTime.Now;
-
         #region IDisposable Members
 
         public void Dispose()
@@ -158,14 +153,12 @@ namespace Templates
 
         public TtlCompileResult Recompile(ExType newModelType)
         {
-            DateCreated = DateTime.Now;
             CompileResult = Compile(new CompileContext(newModelType), _document);
             return CompileResult;
         }
 
         public TtlCompileResult Recompile(string newDocument, CompileContext context = null)
         {
-            DateCreated = DateTime.Now;
             CompileResult = Compile(context ?? new CompileContext(), newDocument);
             return CompileResult;
         }
