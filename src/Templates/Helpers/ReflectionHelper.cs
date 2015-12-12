@@ -18,6 +18,7 @@ namespace Templates.Helpers {
         private static readonly Regex GenericExpression = new Regex
             (@"^(?<main_type>[_a-zA-Z@][a-zA-Z0-9\.]*)<(?<generic_parameters>[_a-zA-Z@][a-zA-Z0-9\.\+]*)>$",
              RegexOptions.Compiled | RegexOptions.Singleline);
+        private static readonly Regex WhitespaceChars = new Regex(@"\s+", RegexOptions.Compiled | RegexOptions.Singleline);
 
         private readonly Type _innerType;
 
@@ -107,6 +108,7 @@ namespace Templates.Helpers {
         {
             if (string.IsNullOrWhiteSpace(typeName))
                 throw new ArgumentException();
+            typeName = WhitespaceChars.Replace(typeName, string.Empty);
             Type modelType = ResolveCsharpType(typeName);
             if (modelType != null)
                 return modelType;

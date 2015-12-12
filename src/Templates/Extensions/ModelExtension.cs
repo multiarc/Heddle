@@ -13,11 +13,11 @@ namespace Templates.Extensions {
             if (initContext.Context == null)
                 throw new ArgumentNullException(nameof(initContext.Context));
             base.InitStart(initContext, dataType, chainedType, parent);
-            initContext.ParameterTemplate = GetInnerResult(null, null);
+            initContext.ParameterTemplate = GenerateInnerResult(null, null);
             if (!string.IsNullOrWhiteSpace(initContext.ParameterTemplate)) {
                 try {
                     ExType modelType = new ExType(initContext.ParameterTemplate, initContext.Context.Namespaces.ToArray());
-                    initContext.Context.ModelType = modelType;
+                    initContext.Context.ScopeType = modelType;
                 }
                 catch (InvalidOperationException e) {
                     initContext.Context.CompileErrors.Add(e.ToError(Position));
@@ -26,7 +26,7 @@ namespace Templates.Extensions {
             return null;
         }
 
-        public override object ProcessData(object data, object chained, object parent)
+        public override object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult)
         {
             return null;
         }

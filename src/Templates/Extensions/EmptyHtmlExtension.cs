@@ -1,14 +1,16 @@
-﻿using Templates.Attributes;
+﻿using System;
+using Templates.Attributes;
 using Templates.Core;
 
 namespace Templates.Extensions {
     [ExtensionName("html")]
     [EncodeOutput]
     public class EmptyHtmlExtension: AbstractHtmlExtension {
-        protected override object ProcessDataInternal(object value, object chainedResult, object parent)
+        protected override object ProcessDataInternal(object value, object chainedResult, object parent, Func<object, object, string> getInnerResult)
         {
-            if (SubTemplate != null) {
-                return GetInnerResult(value, chainedResult);
+            if (InnerExist)
+            {
+                return getInnerResult(value, chainedResult);
             }
             if (value != null) {
                 var s = value as string;

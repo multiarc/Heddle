@@ -18,10 +18,10 @@ namespace Templates.Extensions {
             return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        protected override object ProcessDataInternal (object value, object chainedResult, object parent)
+        protected override object ProcessDataInternal (object value, object chainedResult, object parent, Func<object, object, string> getInnerResult)
         {
             if (value == null)
-                return GetInnerResult(parent, chainedResult);
+                return getInnerResult(parent, chainedResult);
             if (!(value is string)) {
                 try {
                     value = Convert.ChangeType(value, typeof (string), CultureInfo.InvariantCulture);

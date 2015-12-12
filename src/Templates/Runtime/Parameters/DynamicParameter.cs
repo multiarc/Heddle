@@ -5,9 +5,9 @@ namespace Templates.Runtime.Parameters
 {
     internal class DynamicParameter : IRuntimeParameter
     {
-        private readonly CallSite<Func<CallSite, object, object>> _dynamicModelParameter;
+        private readonly CallSite<Func<CallSite, object, object>>[] _dynamicModelParameter;
 
-        public DynamicParameter(CallSite<Func<CallSite, object, object>> dynamicModelParameter)
+        public DynamicParameter(CallSite<Func<CallSite, object, object>>[] dynamicModelParameter)
         {
             _dynamicModelParameter = dynamicModelParameter;
         }
@@ -16,9 +16,17 @@ namespace Templates.Runtime.Parameters
         {
         }
 
-        public object GetParameter(object value, object chainedResult)
+        public object GetParameter(object value, object chainedResult, object rootValue)
         {
-            return value == null ? null : _dynamicModelParameter.Target(_dynamicModelParameter, value);
+            // ReSharper disable once ForCanBeConvertedToForeach
+            for (int i = 0; i < _dynamicModelParameter.Length; i++)
+            {
+                if (value == null)
+                    break;
+                var callSite = _dynamicModelParameter[i];
+                value = callSite.Target(callSite, value);
+            }
+            return value;
         }
     }
 }

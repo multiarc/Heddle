@@ -10,11 +10,11 @@ namespace Templates.Runtime.Parameters
         {
         }
 
-        public object GetParameter(object value, object chainedResult)
+        public object GetParameter(object value, object chainedResult, object rootValue)
         {
             if (ParameterImplementation != null)
             {
-                return ParameterImplementation(value, chainedResult);
+                return ParameterImplementation(value, chainedResult, rootValue);
             }
             return value;
         }

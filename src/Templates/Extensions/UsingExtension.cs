@@ -11,13 +11,13 @@ namespace Templates.Extensions {
             if (initContext.Context == null)
                 throw new ArgumentNullException(nameof(initContext.Context));
             base.InitStart(initContext, dataType, chainedType, parent);
-            initContext.ParameterTemplate = GetInnerResult(null, null);
+            initContext.ParameterTemplate = GenerateInnerResult(null, null);
             if (!string.IsNullOrWhiteSpace(initContext.ParameterTemplate))
                 initContext.Context.ImportNamespace(initContext.ParameterTemplate);
             return null;
         }
 
-        public override object ProcessData(object data, object chained, object parent)
+        public override object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult)
         {
             return null;
         }

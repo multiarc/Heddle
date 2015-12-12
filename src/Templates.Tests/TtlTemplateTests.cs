@@ -43,11 +43,25 @@ namespace Templates.Tests {
             {
                 new Category
                 {
+                    ComplexObject = new ComplexObject
+                    {
+                        Data = new TestDataStructure
+                        {
+                            Text = "TEST1"
+                        }
+                    },
                     Name = "test1",
                     SubCategories = new List<Category>
                     {
                         new Category
                         {
+                            ComplexObject = new ComplexObject
+                            {
+                                Data = new TestDataStructure
+                                {
+                                    Text = "TEST2"
+                                }
+                            },
                             Name = "test2",
                             SubCategories = new List<Category>
                             {
@@ -70,11 +84,16 @@ namespace Templates.Tests {
                     {
                         new Category
                         {
+                            ComplexObject = new ComplexObject
+                            {
+                                Data = new TestDataStructure()
+                            },
                             Name = "test5",
                             SubCategories = new List<Category>
                             {
                                 new Category
                                 {
+                                    ComplexObject = new ComplexObject(),
                                     Name = "test6"
                                 },
                                 new Category

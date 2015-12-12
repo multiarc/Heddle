@@ -16,10 +16,10 @@ namespace Templates.Extensions {
             return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        public override object ProcessData(object data, object chained, object parent)
+        public override object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult)
         {
             if (data == null)
-                return GetInnerResult(parent, chained);
+                return getInnerResult(parent, chained);
 
             if (!(data is bool))
             {
@@ -27,7 +27,7 @@ namespace Templates.Extensions {
             }
 
             if (!(bool) data)
-                return GetInnerResult(parent, chained);
+                return getInnerResult(parent, chained);
 
             return string.Empty;
         }

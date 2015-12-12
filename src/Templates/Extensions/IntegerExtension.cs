@@ -19,11 +19,11 @@ namespace Templates.Extensions {
             return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        protected override object ProcessDataInternal (object value, object chainedResult, object parent)
+        protected override object ProcessDataInternal (object value, object chainedResult, object parent, Func<object, object, string> getInnerResult)
         {
             if (value == null)
                 return string.Empty;
-            var format = GetInnerResult(parent, chainedResult);
+            var format = getInnerResult(parent, chainedResult);
             if (!(value is long) && !(value is int))
             {
                 try

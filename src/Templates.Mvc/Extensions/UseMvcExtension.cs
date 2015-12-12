@@ -20,7 +20,7 @@ namespace Templates.Mvc.Extensions {
             IEnumerable<string> searched;
             TtlTemplate cached;
             base.InitStart(initContext, dataType, chainedType, parent);
-            initContext.ParameterTemplate = GetInnerResult(null, null);
+            initContext.ParameterTemplate = GenerateInnerResult(null, null);
             var path = TtlViewEngine.Resolver.Search(initContext.ParameterTemplate, initContext.Context.ControllerName, TemplatePathType.Master,
                 out searched, out cached);
             int outputCount = initContext.ParseContext.OutputChains.Length;
@@ -34,7 +34,7 @@ namespace Templates.Mvc.Extensions {
             return null;
         }
 
-        public override object ProcessData(object data, object chained, object parent)
+        public override object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult)
         {
             return null;
         }

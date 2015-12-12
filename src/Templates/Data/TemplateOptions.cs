@@ -7,13 +7,13 @@ namespace Templates.Data {
             (IApplicationEnvironment)CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(IApplicationEnvironment));
         public string FileNamePostfix { get; set; }
         public string RootPath { get; set; }
-        public string TemplateName { get; internal set; }
+        public string TemplateName { get; }
         public bool EnableFileChangeCheck { get; set; }
         public bool AllowCSharp { get; set; }
         public int MaxRecursionCount { get; set; }
         public bool ProvideLanguageFeatures { get; set; }
         public bool ForceRemoveWhitespace { get; set; }
-        public virtual object Data { get; set; }
+        public object Data { get; set; }
 
         public TemplateOptions()
         {
@@ -33,37 +33,26 @@ namespace Templates.Data {
             AllowCSharp = false;
             MaxRecursionCount = 100;
         }
-
-        public TemplateOptions(string fileNamePostfix, string rootPath, string templateName, bool enableFileChangeCheck = false, bool allowCSharp = false)
-        {
-            if (rootPath == null) throw new ArgumentNullException(nameof(rootPath));
-            RootPath = rootPath;
-            FileNamePostfix = fileNamePostfix ?? string.Empty;
-            TemplateName = templateName ?? string.Empty;
-            EnableFileChangeCheck = enableFileChangeCheck;
-            AllowCSharp = allowCSharp;
-            MaxRecursionCount = 100;
-        }
-
-        public TemplateOptions(TemplateOptions value)
+        
+        public TemplateOptions(TemplateOptions value, string templateName = null)
         {
             if (value.RootPath == null)
                 throw new ArgumentException();
             FileNamePostfix = value.FileNamePostfix;
             RootPath = value.RootPath;
-            TemplateName = value.TemplateName;
+            TemplateName = templateName ?? value.TemplateName;
             EnableFileChangeCheck = value.EnableFileChangeCheck;
             AllowCSharp = value.AllowCSharp;
             MaxRecursionCount = value.MaxRecursionCount;
+            Data = value.Data;
         }
 
         public string FullPath => RootPath + TemplateName + FileNamePostfix;
 
-        public bool Equals (TemplateOptions other)
+        public bool Equals(TemplateOptions other)
         {
             return other.FileNamePostfix == FileNamePostfix && other.TemplateName == TemplateName && other.RootPath == RootPath;
         }
-
 
         public static bool operator == (TemplateOptions value1, TemplateOptions value2)
         {
@@ -81,7 +70,7 @@ namespace Templates.Data {
                 return false;
             if (!(obj is TemplateOptions))
                 return false;
-            return Equals((TemplateOptions) obj, this);
+            return Equals((TemplateOptions) obj);
         }
 
         public override int GetHashCode ()

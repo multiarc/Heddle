@@ -37,9 +37,9 @@ namespace Templates.Extensions {
             return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        protected override object ProcessDataInternal (object value, object chainedResult, object parent)
+        protected override object ProcessDataInternal (object value, object chainedResult, object parent, Func<object, object, string> getInnerResult)
         {
-            string locale = GetInnerResult(parent, chainedResult);
+            string locale = getInnerResult(parent, chainedResult);
             if (value == null)
                 return string.Empty;
             CultureInfo localeInfo = null;

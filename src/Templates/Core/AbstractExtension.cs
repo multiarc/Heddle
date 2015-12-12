@@ -4,27 +4,39 @@ using Templates.Language;
 using Templates.Runtime;
 using Templates.Strings.Core;
 
-namespace Templates.Core {
-    public abstract class AbstractExtension: IExtension {
-
+namespace Templates.Core
+{
+    public abstract class AbstractExtension : IExtension
+    {
         protected bool DirectRender;
         private string _innerResult = string.Empty;
+        private IDataProcessor _subTemplate;
+
         public void Dispose()
         {
             Dispose(true);
         }
 
-        protected virtual void Dispose(bool disposing) {
-            if (disposing) {
-                SubTemplate?.Dispose();
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _subTemplate?.Dispose();
                 GC.SuppressFinalize(this);
             }
         }
 
-        public IDataProcessor SubTemplate { get; protected set; }
-        protected string GetInnerResult(object data, object chainedResult) {
-            return (string)SubTemplate?.ProcessData(data, chainedResult) ?? _innerResult;
+        protected internal string GetInnerResult(object data, object chained, object root)
+        {
+            return (string) _subTemplate?.ProcessData(data, chained, root) ?? _innerResult;
         }
+
+        public string GenerateInnerResult(object data, object chained)
+        {
+            return (string) _subTemplate?.ProcessData(data, chained, null) ?? _innerResult;
+        }
+
+        public bool InnerExist => _subTemplate != null;
 
         public virtual void SetUpRenderType(RenderType renderType)
         {
@@ -68,19 +80,34 @@ namespace Templates.Core {
             if (initContext.Context == null)
                 throw new ArgumentNullException(nameof(initContext.Context));
             IDataProcessor subTemplate;
-            var type = InitSubTemplate(ref initContext.ParameterTemplate, dataType, chainedType, initContext.Context, initContext.ParseContext, out subTemplate);
+            var type = InitSubTemplate(ref initContext.ParameterTemplate, dataType, chainedType, initContext.Context,
+                initContext.ParseContext, out subTemplate);
             if (subTemplate == null)
                 _innerResult = initContext.ParameterTemplate;
-            SubTemplate = subTemplate;
+            _subTemplate = subTemplate;
             return type;
         }
 
         public virtual void CompleteInit(CompileContext newContext, ParseContext parseContext)
         {
-            
+
         }
 
-        public abstract object ProcessData(object data, object chained, object parent);
+        /// <summary>
+        /// Implementation with parameter redirection in function
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="chained"></param>
+        /// <param name="parent"></param>
+        /// <param name="root"></param>
+        /// <returns></returns>
+        public virtual object ProcessData(object data, object chained, object parent, object root)
+        {
+            return ProcessData(data, chained, parent, (d, c) => (string)_subTemplate?.ProcessData(d, c, root) ?? _innerResult);
+        }
+
+        public abstract object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult);
+
         public BlockPosition Position { get; set; }
     }
 }

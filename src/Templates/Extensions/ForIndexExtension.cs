@@ -1,4 +1,5 @@
-﻿using Templates.Attributes;
+﻿using System;
+using Templates.Attributes;
 using Templates.Core;
 using Templates.Data;
 using Templates.Models;
@@ -15,7 +16,7 @@ namespace Templates.Extensions
             return base.InitStart(initContext, parent, typeof (int), null);
         }
 
-        public override object ProcessData(object data, object chained, object parent)
+        public override object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult)
         {
             if (!(data is ForModel))
             {
@@ -25,7 +26,7 @@ namespace Templates.Extensions
             ExStringBuilder builder = new ExStringBuilder();
             for (int i = model.Start ?? 0; i < model.Last; i += model.Step ?? 1)
             {
-                builder.Append(GetInnerResult(parent, i));
+                builder.Append(getInnerResult(parent, i));
             }
             return builder.ToString();
         }

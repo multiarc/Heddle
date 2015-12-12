@@ -66,11 +66,11 @@ namespace Templates.Runtime {
         }
 
 
-        public object ProcessData(object data, object chainedResult)
+        public object ProcessData(object data, object chainedResult, object rootValue)
         {
             if (_singleProcessor != null)
             {
-                string replacementValue = _singleProcessor.ProcessData(data, chainedResult) as string ?? string.Empty;
+                string replacementValue = _singleProcessor.ProcessData(data, chainedResult, rootValue) as string ?? string.Empty;
                 if (_canDoFullOptimize)
                     return replacementValue;
                 return ExStringBuilder.Replace(_singleProcessor.Position.StartIndex, _singleProcessor.Position.Length,
@@ -79,7 +79,7 @@ namespace Templates.Runtime {
             if (_canDoFullOptimize) {
                 ExStringBuilder builder = new ExStringBuilder();
                 foreach (IDataProcessor item in _optimizedElements) {
-                    builder.Append(item.ProcessData(data, chainedResult) as string);
+                    builder.Append(item.ProcessData(data, chainedResult, rootValue) as string);
                 }
                 return builder.ToString();
             }
@@ -93,7 +93,7 @@ namespace Templates.Runtime {
                     var handles = stackalloc GCHandle[count];
                     for (int i = 0; i < count; i++)
                     {
-                        var resultBlock = _optimizedElements[i].ProcessData(data, chainedResult) as string;
+                        var resultBlock = _optimizedElements[i].ProcessData(data, chainedResult, rootValue) as string;
                         if (resultBlock != null)
                         {
                             lengths[i] = resultBlock.Length;

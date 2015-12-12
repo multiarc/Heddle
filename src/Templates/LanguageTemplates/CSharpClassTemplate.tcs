@@ -6,7 +6,7 @@
 
 		@list(Methods)
 		{{
-		public static object ProcessData_@(ExtensionName)@(MethodNumber) (@(ModelType) model, @(ChainedType) chained)
+		public static object ProcessData_@(ExtensionName)@(MethodNumber) (@(ModelType) model, @(ChainedType) chained, @(RootModelType) root)
 		{
 			return @(Expression);;
 		}

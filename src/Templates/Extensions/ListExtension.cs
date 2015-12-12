@@ -40,7 +40,7 @@ namespace Templates.Extensions {
             return base.InitStart(initContext, underliyingType, chainedType, parent);
         }
 
-        public override object ProcessData(object data, object chained, object parent)
+        public override object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult)
         {
             if (data == null)
                 return string.Empty;
@@ -49,7 +49,7 @@ namespace Templates.Extensions {
                 return string.Empty;
             var enumerable = (IEnumerable) data;
             foreach (object item in enumerable)
-                builder.Append(GetInnerResult(item, chained));
+                builder.Append(getInnerResult(item, chained));
             return builder.ToString();
         }
     }

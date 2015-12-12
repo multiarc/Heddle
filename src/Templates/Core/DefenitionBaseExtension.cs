@@ -1,10 +1,11 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using Templates.Data;
 using Templates.Exceptions;
 
 namespace Templates.Core {
     internal class DefenitionBaseExtension : AbstractExtension {
-        public DefenitionBaseExtension DefenitionTemplate { get; set; }
+        public DefenitionBaseExtension DefenitionParameterTemplate { get; set; }
         private readonly ThreadLocal<int> _recursionCount = new ThreadLocal<int>();
         private int _maxRecursionCount;
 
@@ -14,15 +15,20 @@ namespace Templates.Core {
             return base.InitStart(initContext, dataType, chainedType, parent);
         }
 
-        public override object ProcessData(object data, object chained, object parent)
+        public override object ProcessData(object data, object chained, object parent, object root)
         {
             if (_recursionCount.Value >= _maxRecursionCount)
                 throw new TemplateProcessingException("Recursion hit it's maximum");
             _recursionCount.Value++;
-            chained = GetInnerResult(data, chained);
-            var result = DefenitionTemplate?.ProcessData(data, chained, parent) ?? chained;
+            chained = GetInnerResult(data, chained, root);
+            var result = DefenitionParameterTemplate?.ProcessData(data, chained, parent, root) ?? chained;
             _recursionCount.Value--;
             return result;
+        }
+
+        public override object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult)
+        {
+            return null;
         }
     }
 }

@@ -22,6 +22,8 @@ namespace Templates.Tests.Data {
 
     public class Category
     {
+        public ComplexObject ComplexObject { get; set; }
+
         public Category()
         {
             SubCategories = new List<Category>();
@@ -30,6 +32,11 @@ namespace Templates.Tests.Data {
         public string Name { get; set; }
 
         public ICollection<Category> SubCategories { get; set; }
+    }
+
+    public class ComplexObject
+    {
+        public TestDataStructure Data { get; set; }
     }
 
     #region Nested type: TestDataStructure

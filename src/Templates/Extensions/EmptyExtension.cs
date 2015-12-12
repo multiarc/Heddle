@@ -1,13 +1,14 @@
-﻿using Templates.Attributes;
+﻿using System;
+using Templates.Attributes;
 using Templates.Core;
 
 namespace Templates.Extensions {
     [ExtensionName("")]
     public class EmptyExtension: AbstractExtension {
-        public override object ProcessData(object data, object chained, object parent)
+        public override object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult)
         {
-            if (SubTemplate != null) {
-                return GetInnerResult(data, chained);
+            if (InnerExist) {
+                return getInnerResult(data, chained);
             }
             if (data != null) {
                 var s = data as string;

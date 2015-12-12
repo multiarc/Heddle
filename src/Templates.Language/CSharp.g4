@@ -18,7 +18,11 @@ fragment NEW_LINE:
 	[\r\n] | '\u0085' | '\u2028' | '\u2029';
 
 fragment WHITESPACE: NEW_LINE
-	| [ \t\f] 
+	| SINGLE_LINE_WS
+	;
+
+ fragment SINGLE_LINE_WS:
+	[ \t\f] 
 	| '\u000B'
 	| '\u00A0' 
 	| '\u1680' 
@@ -65,7 +69,7 @@ fragment IDENTIFIER_START:
 fragment IDENTIFIER_PART:
 	IDENTIFIER_START
 	| UNICODE_ESCAPE
-	| [\.\+0-9]
+	| [\+0-9]
 	;
 
 /*

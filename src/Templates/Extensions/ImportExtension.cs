@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using Templates.Attributes;
 using Templates.Core;
 using Templates.Data;
@@ -12,7 +13,7 @@ namespace Templates.Extensions {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
             base.InitStart(initContext, dataType, chainedType, parent);
-            initContext.ParameterTemplate = GetInnerResult(null, null);
+            initContext.ParameterTemplate = GenerateInnerResult(null, null);
             int outputCount = initContext.ParseContext.OutputChains.Length;
             using (var file = File.OpenText(Path.Combine(initContext.Context.Options.RootPath, initContext.ParameterTemplate)))
             {
@@ -24,7 +25,7 @@ namespace Templates.Extensions {
             return null;
         }
 
-        public override object ProcessData(object data, object chained, object parent)
+        public override object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult)
         {
             return null;
         }

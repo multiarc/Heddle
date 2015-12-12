@@ -14,9 +14,9 @@ namespace Templates.Runtime {
 
         public IExtension Extension { get; set; }
 
-        public object ProcessData(object value, object chainedResult)
+        public object ProcessData(object value, object chainedResult, object rootValue)
         {
-            var result = Extension.ProcessData(Parameter.GetParameter(value, chainedResult), chainedResult, value);
+            var result = Extension.ProcessData(Parameter.GetParameter(value, chainedResult, rootValue), chainedResult, value, rootValue);
 #if DEBUG
             if (result != null && ReturnType != null && !ReturnType.Type.IsType(result))
             {

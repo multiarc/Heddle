@@ -28,7 +28,7 @@ namespace Templates
         {
         }
 
-        public TtlTemplate(TemplateOptions options, ExType modelType) : this(new CompileContext(options) {ModelType = modelType})
+        public TtlTemplate(TemplateOptions options, ExType modelType) : this(new CompileContext(options, modelType))
         {
         }
 
@@ -110,6 +110,7 @@ namespace Templates
         /// Generates result string (source template replaced with data). Data non-serialized
         /// </summary>
         /// <param name="data">Input object</param>
+        /// <param name="chained"></param>
         /// <returns>Generated string</returns>
         public string Generate(object data, object chained = null)
         {
@@ -121,12 +122,12 @@ namespace Templates
             }
 
 #if DEBUG
-            if (data != null && !_context.ModelType.Type.IsType(data))
+            if (data != null && !_context.ScopeType.Type.IsType(data))
             {
                 throw new TemplateProcessingException
                     (string.Format
                         (CultureInfo.InvariantCulture, "Type mismatch. Need {0} but got {1}",
-                            _context.ModelType.Type?.FullName ?? _context.ModelType.ToString(),
+                            _context.ScopeType.Type?.FullName ?? _context.ScopeType.ToString(),
                             data.GetType().FullName));
             }
 #endif
@@ -138,7 +139,7 @@ namespace Templates
             string result = null;
             try
             {
-                result = _runtimeDocument.ProcessData(data, chained) as string ?? string.Empty;
+                result = _runtimeDocument.ProcessData(data, chained, data) as string ?? string.Empty;
             }
             finally
             {

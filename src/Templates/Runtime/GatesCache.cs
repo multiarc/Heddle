@@ -22,11 +22,11 @@ namespace Templates.Runtime {
             return result;
         }
 
-        public static CompiledMethodDelegate CreateCompiledDelegate(MethodInfo method, Type model, Type chained)
+        public static CompiledMethodDelegate CreateCompiledDelegate(MethodInfo method, Type model, Type chained, Type rootType)
         {
             if (!method.IsStatic)
                 throw new ArgumentException("Method should be static only");
-            var dynamic = new DynamicMethod(method.Name, typeof (object), new[] {typeof (object), typeof (object)},
+            var dynamic = new DynamicMethod(method.Name, typeof (object), new[] {typeof (object), typeof (object), typeof(object)},
                 typeof (CompileContext), false);
             ILGenerator il = dynamic.GetILGenerator();
 
@@ -41,6 +41,12 @@ namespace Templates.Runtime {
                 il.Emit(OpCodes.Unbox_Any, chained);
             else if (chained != typeof(object))
                 il.Emit(OpCodes.Castclass, chained);
+
+            il.Emit(OpCodes.Ldarg_2);
+            if (rootType.GetTypeInfo().IsValueType)
+                il.Emit(OpCodes.Unbox_Any, rootType);
+            else if (rootType != typeof(object))
+                il.Emit(OpCodes.Castclass, rootType);
 
             il.Emit(OpCodes.Call, method);
             il.Emit(OpCodes.Ret);

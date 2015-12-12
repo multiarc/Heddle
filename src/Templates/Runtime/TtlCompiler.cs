@@ -205,8 +205,8 @@ namespace Templates.Runtime
             result = new CompiledElement {CompiledItem = new TemplateItem(), ReturnTypeChainedPrevious = returnTypeChainedPrevious};
             compileContext.CompiledItems.Add(extensionItem, result);
 
-            PropertyInfo data = null;
-            ExType dataType = null;
+            ExType inputModelType = null;
+            ExType dataType;
             IExtension extension;
             DefinitionItem definitionItem = null;
             if (parseContext.DefenitionExists(extensionItem.ExtensionName))
@@ -215,39 +215,10 @@ namespace Templates.Runtime
             }
             if (extensionItem.CallParameter.IsModelTypeParameter)
             {
-                if (!string.IsNullOrEmpty(extensionItem.CallParameter.ModelParameter))
+                if (extensionItem.CallParameter.ModelParameter.Any() &&
+                    !string.IsNullOrEmpty(extensionItem.CallParameter.ModelParameter.First()))
                 {
-                    if (compileContext.ModelType.IsDynamic ||
-                        definitionItem != null && definitionItem.ModelType == "dynamic")
-                    {
-                        dataType = ExType.Dynamic;
-                        CSharpArgumentInfo[] csharpArgumentInfoArray = new CSharpArgumentInfo[1];
-                        csharpArgumentInfoArray[0] = CSharpArgumentInfo.Create(CSharpArgumentInfoFlags.None, null);
-                        var callSite =
-                            CallSite<Func<CallSite, object, object>>.Create(
-                                Binder.GetMember(CSharpBinderFlags.None,
-                                    extensionItem.CallParameter.ModelParameter, typeof (IRuntimeParameter),
-                                    csharpArgumentInfoArray));
-                        result.CompiledItem.Parameter = new DynamicParameter(callSite);
-                    }
-                    else
-                    {
-                        PropertyInfo dataProperty =
-                            compileContext.ModelType.Type.GetProperty(extensionItem.CallParameter.ModelParameter,
-                                BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic |
-                                BindingFlags.Public);
-                        if (dataProperty != null && dataProperty.CanRead &&
-                            !dataProperty.IsHaveAttribute<HiddenAttribute>() &&
-                            (dataProperty.GetGetMethod(true).IsAssembly || dataProperty.GetGetMethod(true).IsPublic))
-                            data = dataProperty;
-                        else
-                        {
-                            compileContext.CompileErrors.Add
-                                (string.Format(CultureInfo.InvariantCulture, "Property {0} no found in Type [{1}]",
-                                    extensionItem.CallParameter.ModelParameter, compileContext.ModelType).ToError(extensionItem.Position));
-                        }
-                        result.CompiledItem.Parameter = new ModelParameter(data.ToPropertyGate());
-                    }
+                    dataType = CompileModelAccessor(extensionItem, compileContext, definitionItem, result, ref inputModelType);
                 }
                 else
                 {
@@ -257,7 +228,7 @@ namespace Templates.Runtime
                     }
                     else
                     {
-                        dataType = compileContext.ModelType;
+                        dataType = compileContext.ScopeType;
                     }
                     result.CompiledItem.Parameter = new EmptyParameter();
                 }
@@ -280,7 +251,7 @@ namespace Templates.Runtime
                 };
                 OptionalValue<object> constantResult = compileContext.ParseAndGetResultType(expressionOptions, out dataType);
                 extension = CreateExtension(extensionItem, compileContext, extensionItem.Context ?? parseContext,
-                    ref result.ReturnTypeChainedPrevious, null, dataType,  definitionItem);
+                    ref result.ReturnTypeChainedPrevious, null, dataType, definitionItem);
 
                 returnTypeChainedPrevious = result.ReturnTypeChainedPrevious;
                 result.CompiledItem.ReturnType = result.ReturnTypeChainedPrevious;
@@ -301,16 +272,61 @@ namespace Templates.Runtime
                 result.CompiledItem.Parameter = new ChainedParameter(callParameter);
             }
             extension = CreateExtension(extensionItem, compileContext, extensionItem.Context ?? parseContext,
-                ref result.ReturnTypeChainedPrevious, data, dataType, definitionItem);
+                ref result.ReturnTypeChainedPrevious, inputModelType, dataType, definitionItem);
             returnTypeChainedPrevious = result.ReturnTypeChainedPrevious;
             result.CompiledItem.ReturnType = result.ReturnTypeChainedPrevious;
             result.CompiledItem.Extension = extension;
             return result.CompiledItem;
         }
 
+        private static ExType CompileModelAccessor(OutputItem extensionItem, CompileContext compileContext, DefinitionItem definitionItem,
+            CompiledElement result, ref ExType inputType)
+        {
+            if (compileContext.ScopeType.IsDynamic ||
+                definitionItem != null && definitionItem.ModelType == "dynamic")
+            {
+                CSharpArgumentInfo[] csharpArgumentInfoArray = new CSharpArgumentInfo[1];
+                csharpArgumentInfoArray[0] = CSharpArgumentInfo.Create(CSharpArgumentInfoFlags.None, null);
+                var callSites =
+                    extensionItem.CallParameter.ModelParameter.Select(model => CreateBinder(model, csharpArgumentInfoArray)).ToArray();
+                result.CompiledItem.Parameter = new DynamicParameter(callSites);
+                return ExType.Dynamic;
+            }
+            var modelParameters = extensionItem.CallParameter.ModelParameter;
+            PropertyInfo[] dataProperties = new PropertyInfo[modelParameters.Length];
+            Type currentType = compileContext.ScopeType.Type;
+            for (int i = 0; i < modelParameters.Length; i++)
+            {
+                var dataProperty = currentType.GetProperty(modelParameters[i],
+                    BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic |
+                    BindingFlags.Public);
+                if (dataProperty == null || !dataProperty.CanRead || dataProperty.IsHaveAttribute<HiddenAttribute>() ||
+                    (!dataProperty.GetGetMethod(true).IsAssembly && !dataProperty.GetGetMethod(true).IsPublic))
+                {
+                    compileContext.CompileErrors.Add(
+                        $"Property {extensionItem.CallParameter.ModelParameter[i]} not found in Type [{currentType}]"
+                            .ToError(extensionItem.Position));
+                    return null;
+                }
+                dataProperties[i] = dataProperty;
+                currentType = dataProperty.PropertyType;
+            }
+            inputType = dataProperties.Last().PropertyType;
+
+            result.CompiledItem.Parameter = new ModelParameter(dataProperties.Select(prop => prop.ToPropertyGate()).ToArray());
+            return inputType;
+        }
+
+        private static CallSite<Func<CallSite, object, object>> CreateBinder(string model, CSharpArgumentInfo[] csharpArgumentInfoArray)
+        {
+            return
+                CallSite<Func<CallSite, object, object>>.Create(Binder.GetMember(CSharpBinderFlags.None, model, typeof (IRuntimeParameter),
+                    csharpArgumentInfoArray));
+        }
+
         private static IExtension CreateExtension(OutputItem extensionItem, CompileContext compileContext,
             ParseContext parseContext,
-            ref ExType returnTypeChainedPrevious, PropertyInfo data, ExType dataType, 
+            ref ExType returnTypeChainedPrevious, ExType inputModelType, ExType dataType, 
             DefinitionItem definition)
         {
             IExtension extension;
@@ -319,23 +335,21 @@ namespace Templates.Runtime
                 Type acceptType;
                 var def = CompileFromDefenition(definition, compileContext, out acceptType);
                 extension = def;
-                if (data != null)
+                if (inputModelType != null)
                 {
-                    dataType = data.PropertyType;
-                    CheckTypes(data, definition.Position, compileContext, acceptType);
+                    dataType = inputModelType;
                 }
                 else
                 {
-                    if (acceptType != typeof(object))
+                    if (acceptType != typeof (object))
                         dataType = acceptType;
-
-                    CheckTypes(dataType, definition.Position, compileContext, acceptType);
                 }
+                CheckTypes(dataType, definition.Position, compileContext, acceptType);
                 returnTypeChainedPrevious = InitializeTemplate(extension, extensionItem.ParameterTemplate, dataType,
                     returnTypeChainedPrevious, compileContext, parseContext);
 
-                def.DefenitionTemplate = CompileFromDefenition(definition, compileContext, out acceptType);
-                returnTypeChainedPrevious = InitializeTemplate(def.DefenitionTemplate, definition.ParameterTemplate,
+                def.DefenitionParameterTemplate = CompileFromDefenition(definition, compileContext, out acceptType);
+                returnTypeChainedPrevious = InitializeTemplate(def.DefenitionParameterTemplate, definition.ParameterTemplate,
                     dataType,
                     returnTypeChainedPrevious, compileContext, definition.Context);
             }
@@ -355,15 +369,11 @@ namespace Templates.Runtime
 
                 var dataTypeAttributes =
                     templateType.GetAttributes<DataTypeAttribute>(true);
-                if (data != null)
+                if (inputModelType != null)
                 {
-                    dataType = data.PropertyType;
-                    CheckTypes(data, extensionItem.Position, compileContext, dataTypeAttributes.Select(a => a.DataType).ToArray());
+                    dataType = inputModelType;
                 }
-                else
-                {
-                    CheckTypes(dataType, extensionItem.Position, compileContext, dataTypeAttributes.Select(a => (ExType) a.DataType).ToArray());
-                }
+                CheckTypes(dataType, extensionItem.Position, compileContext, dataTypeAttributes.Select(a => (ExType)a.DataType).ToArray());
 
                 returnTypeChainedPrevious = InitializeTemplate(extension, extensionItem.ParameterTemplate, dataType,
                     returnTypeChainedPrevious, compileContext, parseContext);
@@ -427,7 +437,7 @@ namespace Templates.Runtime
                 ? (extension.GetType().IsHaveAttribute<NotEncodeAttribute>(true) ? RenderType.Raw : RenderType.Encode)
                 : RenderType.Raw;
             extension.SetUpRenderType(directRender);
-            return extension.InitStart(new InitContext(parameterFastString, context, parseContext), modelType, chainedType, context.ModelType);
+            return extension.InitStart(new InitContext(parameterFastString, context, parseContext), modelType, chainedType, context.ScopeType);
         }
 
         private static void CheckTypes(PropertyInfo property, BlockPosition extensionPosition, CompileContext context, params Type[] dataTypes)

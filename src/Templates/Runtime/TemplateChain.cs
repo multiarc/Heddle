@@ -32,9 +32,9 @@ namespace Templates.Runtime {
 
         public int Count => _itemsToExecute.Count;
 
-        public object ProcessData (object data, object chainedResult)
+        public object ProcessData (object data, object chainedResult, object rootValue)
         {
-            return _itemsToExecute.Aggregate(chainedResult, (current, item) => item.ProcessData(data, current));
+            return _itemsToExecute.Aggregate(chainedResult, (current, item) => item.ProcessData(data, current, rootValue));
         }
 
         public BlockPosition Position { get; set; }

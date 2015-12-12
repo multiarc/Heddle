@@ -131,23 +131,24 @@ namespace Templates.Runtime {
 
         internal List<DelayedTemplate> DelayedTemplates { get; } = new List<DelayedTemplate>();
         private volatile int _method;
+        private ExType _scopeType;
 
         private CompileContext(CompileContext context, string fileName = null, ExType modelType = null)
         {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
+            RootScopeType = context.RootScopeType;
             CompiledItems = context.CompiledItems;
             CompileErrors = context.CompileErrors;
             CompileWarnings = context.CompileWarnings;
             ControllerName = context.ControllerName;
-            Options = new TemplateOptions(context.Options.FileNamePostfix, context.Options.RootPath,
-                fileName ?? context.Options.TemplateName, context.Options.EnableFileChangeCheck, context.Options.AllowCSharp);
-            ModelType = modelType ?? context.ModelType ?? typeof(object);
+            Options = new TemplateOptions(context.Options, fileName);
+            ScopeType = modelType ?? context.ScopeType ?? typeof(object);
             _namespaces = new HashSet<string>(context._namespaces);
         }
 
         public CompileContext(ExType modelType = null) {
-            ModelType = modelType ?? (ExType)typeof(object);
+            RootScopeType = ScopeType = modelType ?? (ExType)typeof(object);
             Options = new TemplateOptions();
             CompileErrors = new List<TtlCompileError>();
             CompileWarnings = new List<TtlCompileWarning>();
@@ -159,15 +160,16 @@ namespace Templates.Runtime {
         /// Enclosing template level = 0
         /// </summary>
         /// <param name="options"></param>
-        public CompileContext(TemplateOptions options)
+        /// <param name="modelType"></param>
+        public CompileContext(TemplateOptions options, ExType modelType = null)
         {
-            ModelType = typeof (object);
+            RootScopeType = ScopeType = modelType ?? typeof (object);
             Options = options;
             CompileErrors = new List<TtlCompileError>();
             CompileWarnings = new List<TtlCompileWarning>();
             CompiledItems = new Dictionary<OutputItem, CompiledElement>();
         }
-
+        
         /// <summary>
         /// Create new untyped (<see cref="System.Object"/>) Context using old Context data with new template file name
         /// Enclosing template level = 0
@@ -216,11 +218,20 @@ namespace Templates.Runtime {
         /// Recommendation is to change it only once maximum per chained template block.
         /// Used in &lt;model&gt; base extension. <see cref="Templates.Extensions.ModelExtension"/>
         /// </summary>
-        public ExType ModelType
+        public ExType ScopeType
         {
-            get;
-            set;
+            get { return _scopeType; }
+            set
+            {
+                _scopeType = value;
+                if (RootScopeType == null)
+                {
+                    RootScopeType = value;
+                }
+            }
         }
+
+        public ExType RootScopeType { get; private set; }
 
         private static string FormatAssemblyName(AssemblyName assemblyName, bool fullPublic = true)
         {
@@ -292,9 +303,10 @@ namespace Templates.Runtime {
             {
                 RuntimeCallParameter = parameter,
                 MethodNumber = _method,
-                ModelType = ModelType
+                ModelType = ScopeType,
+                RootModelType = RootScopeType
             });
-            DependentAssemblies.Add(ModelType.Type.GetTypeInfo().Assembly);
+            DependentAssemblies.Add(ScopeType.Type.GetTypeInfo().Assembly);
             if (expressionOptions.ChainedType.IsDynamic)
                 DependentAssemblies.Add(typeof(CallSite<>).GetTypeInfo().Assembly);
             DependentAssemblies.Add(expressionOptions.ChainedType.Type.GetTypeInfo().Assembly);
@@ -309,7 +321,8 @@ namespace Templates.Runtime {
                 throw new ArgumentException(
                     $"[{expressionOptions.Position}]<{expressionOptions.ExtensionName}> Expression cannot be null or empty");
             }
-            expressionOptions.ModelType = ModelType;
+            expressionOptions.ModelType = ScopeType;
+            expressionOptions.RootModelType = RootScopeType;
             _namespaces.Add(expressionOptions.ModelType.Type.Namespace);
             _namespaces.Add(expressionOptions.ChainedType.Type.Namespace);
             var modelTypeInfo = expressionOptions.ModelType.Type.GetTypeInfo();

@@ -409,8 +409,17 @@ namespace Templates.Language {
                 string itemName = idTemplate?.GetText();
                 AddToken(namedCall.OUT_PARAMSTART(), TtlTokenType.OutParamStart);
                 
-                var idModel = namedCall.ID(1);
-                AddToken(idModel, TtlTokenType.Id);
+                var members = namedCall.ID().Skip(1).ToArray();
+                foreach (var member in members)
+                {
+                    AddToken(member, TtlTokenType.Id);
+                }
+                var memberSelectors = namedCall.MEMBER_P();
+                foreach (var selectors in memberSelectors)
+                {
+                    AddToken(selectors, TtlTokenType.MemberSelector);
+                }
+                AddToken(namedCall.ROOT_REF(), TtlTokenType.RootReference);
                 AddToken(namedCall.OUT_PARAMEND(), TtlTokenType.OutParamEnd);
                 var delims = namedCall.chain()?.DELIM();
                 if (delims != null)
@@ -433,7 +442,8 @@ namespace Templates.Language {
                 {
                     CallParameter =
                     {
-                        ModelParameter = idModel?.GetText(),
+                        ModelParameter = members.Select(n => n.GetText()).ToArray(),
+                        RootReference = namedCall.ROOT_REF() != null,
                         ChainParameter = CreateChain(namedCall.chain()?.call()),
                         CSharpExpression = csharpExpression?.GetText()
                     }
@@ -442,8 +452,17 @@ namespace Templates.Language {
             if (unnamedCall != null) {
                 AddToken(unnamedCall.OUT_PARAMSTART(), TtlTokenType.OutParamStart);
                 
-                var idModel = unnamedCall.ID();
-                AddToken(idModel, TtlTokenType.Id);
+                var members = unnamedCall.ID();
+                foreach (var member in members)
+                {
+                    AddToken(member, TtlTokenType.Id);
+                }
+                var memberSelectors = unnamedCall.MEMBER_P();
+                foreach (var selectors in memberSelectors)
+                {
+                    AddToken(selectors, TtlTokenType.MemberSelector);
+                }
+                AddToken(unnamedCall.ROOT_REF(), TtlTokenType.RootReference);
                 AddToken(unnamedCall.OUT_PARAMEND(), TtlTokenType.OutParamEnd);
                 
                 var delims = unnamedCall.chain()?.DELIM();
@@ -467,7 +486,8 @@ namespace Templates.Language {
                 {
                     CallParameter =
                     {
-                        ModelParameter = unnamedCall.ID()?.GetText(),
+                        ModelParameter = members.Select(n => n.GetText()).ToArray(),
+                        RootReference = unnamedCall.ROOT_REF() != null,
                         ChainParameter = CreateChain(unnamedCall.chain()?.call()),
                         CSharpExpression = csharpExpression?.GetText()
                     }

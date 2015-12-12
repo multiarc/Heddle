@@ -9,6 +9,8 @@ namespace Templates.Language
     public enum TtlTokenType
     {
         Id,
+        RootReference,
+        MemberSelector,
         Out,
         SubStart,
         SubClose,

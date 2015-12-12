@@ -19,9 +19,9 @@ namespace Templates.Extensions {
         }
 
 
-        protected override object ProcessDataInternal (object value, object chainedResult, object parent)
+        protected override object ProcessDataInternal (object value, object chainedResult, object parent, Func<object, object, string> getInnerResult)
         {
-            string dateFormat = GetInnerResult(parent, chainedResult);
+            string dateFormat = getInnerResult(parent, chainedResult);
             if (string.IsNullOrEmpty(dateFormat))
                 dateFormat = "t";
             if (!(value is DateTime))

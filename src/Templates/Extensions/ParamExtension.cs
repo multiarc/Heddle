@@ -1,4 +1,5 @@
-﻿using Templates.Attributes;
+﻿using System;
+using Templates.Attributes;
 using Templates.Core;
 using Templates.Data;
 
@@ -10,7 +11,7 @@ namespace Templates.Extensions {
         {
             return dataType;
         }
-        public override object ProcessData(object data, object chained, object parent) {
+        public override object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult) {
             return data;
         }
     }

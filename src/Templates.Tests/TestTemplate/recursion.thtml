@@ -4,6 +4,7 @@
 <%
 <category>
 {{
+	@(ComplexObject.Data.Text)
     @if(@model.SubCategories.Count>0)
     {{
         <ul class="drop-menu sub-menu collapsed">
@@ -24,7 +25,49 @@
         </ul>
     }}
 }} :: Category
-    
+
+<dynamic_category>
+{{
+	@(ComplexObject.Data.Text)
+    @if(@model.SubCategories.Count>0)
+    {{
+        <ul class="drop-menu sub-menu collapsed">
+        @list(SubCategories)
+        {{
+            <li>
+                @if(@model.SubCategories.Count>0)
+                {{
+                <a class="trigger" href="#">@(Name)</a>
+                }}
+                @if(@model.SubCategories.Count==0)
+                {{
+                <a href="@(Name)">@(Name)</a>
+                }}
+                @category()
+            </li>
+        }}
+        </ul>
+    }}
+}}
+
+<dynamic_left> -> ()
+{{
+ <div class="left-content-pane">
+     <strong>ARTICLES BY TOPIC</strong>
+        <br/>
+        <br/>
+        <ul class="drop-menu">
+            @list()
+            {{
+                <li>
+                    <a class="trigger" href="#">@(Name)</a>
+					@dynamic_category()
+                </li>
+            }}
+        </ul>
+ </div>
+}}
+
 <left> -> ()
 {{
  <div class="left-content-pane">
@@ -42,4 +85,5 @@
         </ul>
  </div>
 }} :: ICollection<Category>
+
 %>

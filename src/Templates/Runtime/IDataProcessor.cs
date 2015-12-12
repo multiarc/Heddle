@@ -9,8 +9,9 @@ namespace Templates.Runtime
         /// </summary>
         /// <param name="value">Input data (serialized)</param>
         /// <param name="chainedResult">Additional input data (serialized)</param>
+        /// <param name="rootValue"></param>
         /// <returns>Generated string to be inserted in template instead of template</returns>
-        object ProcessData(object value, object chainedResult);
+        object ProcessData(object value, object chainedResult, object rootValue);
 
         BlockPosition Position { get; set; }
     }

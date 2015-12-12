@@ -1,3 +1,3 @@
 ﻿namespace Templates.Data {
-    internal delegate object CompiledMethodDelegate(object model, object chained);
+    internal delegate object CompiledMethodDelegate(object model, object chained, object rootValue);
 }

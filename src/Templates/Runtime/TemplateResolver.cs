@@ -51,7 +51,7 @@ namespace Templates.Runtime {
                         searchedLocations = null;
                         return Create(viewName, context);
                     }
-                    result = Create(viewName, new CompileContext(context, context.ModelType, Path.GetFileNameWithoutExtension(viewName)) { ControllerName = controllerName });
+                    result = Create(viewName, new CompileContext(context, context.ScopeType, Path.GetFileNameWithoutExtension(viewName)) { ControllerName = controllerName });
                     searchedLocations = null;
                     return result;
                 }

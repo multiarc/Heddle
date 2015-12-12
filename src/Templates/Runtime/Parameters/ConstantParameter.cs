@@ -13,7 +13,7 @@
         {
         }
 
-        public object GetParameter(object value, object chainedResult)
+        public object GetParameter(object value, object chainedResult, object rootValue)
         {
             return _constantResult;
         }

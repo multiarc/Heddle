@@ -41,9 +41,9 @@ namespace Templates.Runtime {
             }
         }
 
-        public object ProcessData(object value, object chainedResult)
+        public object ProcessData(object value, object chainedResult, object rootValue)
         {
-            return CallChain.ProcessData(value, chainedResult);
+            return CallChain.ProcessData(value, chainedResult, rootValue);
         }
     }
 }

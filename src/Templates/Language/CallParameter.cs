@@ -8,7 +8,9 @@ namespace Templates.Language
         /// <summary>
         /// Use directly the ModelParameter or ChainParameter
         /// </summary>
-        public string ModelParameter { get; set; }
+        public string[] ModelParameter { get; set; }
+
+        public bool RootReference { get; set; }
 
         /// <summary>
         /// Use directly the ModelParameter or ChainParameter

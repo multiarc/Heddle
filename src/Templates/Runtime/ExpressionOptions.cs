@@ -5,6 +5,8 @@ using Templates.Strings.Core;
 namespace Templates.Runtime {
     internal class ExpressionOptions {
 
+        public ExType RootModelType { get; set; }
+
         public ExType ModelType { get; set; }
 
         public ExType ChainedType { get; set; }

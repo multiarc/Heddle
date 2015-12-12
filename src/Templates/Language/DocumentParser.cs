@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
+using Templates.Data;
 using Templates.Exceptions;
 using Templates.Runtime;
 using Templates.Strings.Core;
@@ -38,7 +39,10 @@ namespace Templates.Language
             parser.AddErrorListener(syntaxErrorListener);
             var tree = parser.ttl();
             if (context.Errors.Length > 0)
-                throw new TemplateParseException(context.Errors);
+            {
+                compileContext.CompileErrors.AddRange(context.Errors);
+                return;
+            }
             ParseTreeWalker walker = new ParseTreeWalker();
             context.DefenitionsOnly = loadDefenitionsOnly;
             TtlMainListener listener = new TtlMainListener(context, compileContext);

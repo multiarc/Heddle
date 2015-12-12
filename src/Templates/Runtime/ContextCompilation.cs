@@ -70,7 +70,7 @@ namespace Templates.Runtime
                         return;
                     var tree = CSharpSyntaxTree.ParseText(code);
                     var compilation = CSharpCompilation.Create(
-                        context.ModelType + "_" + context.ClassGuid.ToString("N"), new[] {tree},
+                        context.ScopeType + "_" + context.ClassGuid.ToString("N"), new[] {tree},
                         AssemblyHelper.GetMetadataReferences(),
                         new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithCryptoPublicKey(
                             context.GetType().GetTypeInfo().Assembly.GetName().GetPublicKey().ToImmutableArray())
@@ -101,7 +101,7 @@ namespace Templates.Runtime
                                 classType.GetMethod(
                                     $"ProcessData_{expressionCompilation.ExtensionName}{expressionCompilation.MethodNumber}",
                                     BindingFlags.Public | BindingFlags.Static), expressionCompilation.ModelType.Type,
-                                expressionCompilation.ChainedType.Type);
+                                expressionCompilation.ChainedType.Type, expressionCompilation.RootModelType.Type);
                     }
                 }
                 context.Compiled = true;

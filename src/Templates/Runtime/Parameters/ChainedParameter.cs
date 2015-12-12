@@ -26,9 +26,9 @@ namespace Templates.Runtime.Parameters
             _callParameterChain.Dispose();
         }
 
-        public object GetParameter(object value, object chainedResult)
+        public object GetParameter(object value, object chainedResult, object rootValue)
         {
-            return _callParameterChain == null ? value : _callParameterChain.ProcessData(value, chainedResult);
+            return _callParameterChain == null ? value : _callParameterChain.ProcessData(value, chainedResult, rootValue);
         }
     }
 }

@@ -5,9 +5,9 @@ namespace Templates.Runtime.Parameters
 {
     internal class ModelParameter : IRuntimeParameter
     {
-        private readonly DynamicMethodGateDelegate _getModelParameter;
+        private readonly DynamicMethodGateDelegate[] _getModelParameter;
 
-        public ModelParameter(DynamicMethodGateDelegate getModelParameter)
+        public ModelParameter(DynamicMethodGateDelegate[] getModelParameter)
         {
             _getModelParameter = getModelParameter;
         }
@@ -16,9 +16,16 @@ namespace Templates.Runtime.Parameters
         {
         }
 
-        public object GetParameter(object value, object chainedResult)
+        public object GetParameter(object value, object chainedResult, object rootValue)
         {
-            return value == null ? null : _getModelParameter(value);
+            // ReSharper disable once ForCanBeConvertedToForeach
+            for (int i = 0; i < _getModelParameter.Length; i++)
+            {
+                if (value == null)
+                    break;
+                value = _getModelParameter[i](value);
+            }
+            return value;
         }
     }
 }
