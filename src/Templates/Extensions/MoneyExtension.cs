@@ -6,19 +6,21 @@ using Templates.Attributes;
 using Templates.Core;
 using Templates.Data;
 
-namespace Templates.Extensions {
+namespace Templates.Extensions
+{
     /// <summary>
     /// <para>Money template</para>
     /// <para>Optional parameter contains culture string to format</para>
     /// </summary>
-    [ExtensionName ("money")]
-    [DataType (typeof (decimal))]
+    [ExtensionName("money")]
+    [DataType(typeof (decimal))]
     [EncodeOutput]
-    public class MoneyExtension: AbstractHtmlExtension {
+    public class MoneyExtension : AbstractHtmlExtension
+    {
         private static volatile Dictionary<string, CultureInfo> _cultureCache = new Dictionary<string, CultureInfo>
             (10, StringComparer.OrdinalIgnoreCase);
 
-        private static CultureInfo GetCultureInfo (string locale)
+        private static CultureInfo GetCultureInfo(string locale)
         {
             CultureInfo result;
             if (_cultureCache.TryGetValue(locale, out result))
@@ -37,17 +39,17 @@ namespace Templates.Extensions {
             return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        protected override object ProcessDataInternal (object value, object chainedResult, object parent, Func<object, object, string> getInnerResult)
+        protected override object ProcessDataInternal(Scope scope)
         {
-            string locale = getInnerResult(parent, chainedResult);
-            if (value == null)
+            string locale = GetInnerResult(scope.Parent());
+            if (scope.ModelData == null)
                 return string.Empty;
             CultureInfo localeInfo = null;
             if (!string.IsNullOrWhiteSpace(locale))
             {
                 localeInfo = GetCultureInfo(locale);
             }
-            var decimalValue = value as decimal?;
+            var decimalValue = scope.ModelData as decimal?;
             if (decimalValue != null)
             {
                 if (localeInfo != null)
@@ -56,7 +58,7 @@ namespace Templates.Extensions {
             }
             try
             {
-                decimalValue = (decimal)Convert.ChangeType(value, typeof (decimal), CultureInfo.InvariantCulture);
+                decimalValue = (decimal) Convert.ChangeType(scope.ModelData, typeof (decimal), CultureInfo.InvariantCulture);
                 if (localeInfo != null)
                     return decimalValue.Value.ToString("c", localeInfo);
                 return decimalValue.Value.ToString("c");

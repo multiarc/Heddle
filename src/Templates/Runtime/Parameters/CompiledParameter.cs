@@ -10,13 +10,13 @@ namespace Templates.Runtime.Parameters
         {
         }
 
-        public object GetParameter(object value, object chainedResult, object rootValue)
+        public object GetParameter(Scope scope)
         {
             if (ParameterImplementation != null)
             {
-                return ParameterImplementation(value, chainedResult, rootValue);
+                return ParameterImplementation(scope.ModelData, scope.ChainedData, scope.RootData);
             }
-            return value;
+            return scope.ModelData;
         }
     }
 }

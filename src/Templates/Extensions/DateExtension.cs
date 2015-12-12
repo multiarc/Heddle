@@ -24,14 +24,14 @@ namespace Templates.Extensions {
             return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        protected override object ProcessDataInternal(object value, object chainedResult, object parent, Func<object, object, string> getInnerResult)
+        protected override object ProcessDataInternal(Scope scope)
         {
-            string dateFormat = getInnerResult(parent, chainedResult);
+            string dateFormat = GetInnerResult(scope.Parent());
             if (string.IsNullOrEmpty(dateFormat))
                 dateFormat = "d";
-            if (!(value is DateTime))
+            if (!(scope.ModelData is DateTime))
                 return string.Empty;
-            return ((DateTime) value).ToString(dateFormat, CultureInfo.InvariantCulture);
+            return ((DateTime)scope.ModelData).ToString(dateFormat, CultureInfo.InvariantCulture);
         }
     }
 }

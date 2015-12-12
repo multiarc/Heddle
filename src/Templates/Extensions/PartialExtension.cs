@@ -15,9 +15,9 @@ namespace Templates.Extensions {
     {
         protected TtlTemplate InnerTemplate;
 
-        public override object ProcessData (object data, object chained, object parent, Func<object, object, string> getInnerResult)
+        public override object ProcessData (Scope scope)
         {
-            return InnerTemplate?.Generate(data, chained);
+            return InnerTemplate?.Generate(scope.ModelData, scope.ChainedData);
         }
 
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
@@ -25,7 +25,7 @@ namespace Templates.Extensions {
             if (initContext.Context == null)
                 throw new ArgumentNullException(nameof(initContext.Context));
             base.InitStart(initContext, dataType, chainedType, parent);
-            initContext.ParameterTemplate = GenerateInnerResult(null, null);
+            initContext.ParameterTemplate = GetInnerResult(Scope.Null);
             if (!string.IsNullOrEmpty(initContext.ParameterTemplate)) {
                 string templateName = initContext.ParameterTemplate.Trim();
                 if (!string.IsNullOrEmpty(templateName))

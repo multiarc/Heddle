@@ -16,17 +16,17 @@ namespace Templates.Extensions
             return base.InitStart(initContext, parent, typeof (int), null);
         }
 
-        public override object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult)
+        public override object ProcessData(Scope scope)
         {
-            if (!(data is ForModel))
+            if (!(scope.ModelData is ForModel))
             {
                 return string.Empty;
             }
-            var model = (ForModel)data;
+            var model = (ForModel)scope.ModelData;
             ExStringBuilder builder = new ExStringBuilder();
             for (int i = model.Start ?? 0; i < model.Last; i += model.Step ?? 1)
             {
-                builder.Append(getInnerResult(parent, i));
+                builder.Append(GetInnerResult(scope.Parent(i)));
             }
             return builder.ToString();
         }

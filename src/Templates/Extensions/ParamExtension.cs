@@ -3,16 +3,20 @@ using Templates.Attributes;
 using Templates.Core;
 using Templates.Data;
 
-namespace Templates.Extensions {
+namespace Templates.Extensions
+{
 
     [ExtensionName("param")]
-    public class ParamExtension: AbstractExtension {
+    public class ParamExtension : AbstractExtension
+    {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
             return dataType;
         }
-        public override object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult) {
-            return data;
+
+        public override object ProcessData(Scope scope)
+        {
+            return scope.ModelData;
         }
     }
 }

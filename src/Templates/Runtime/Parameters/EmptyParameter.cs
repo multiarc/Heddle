@@ -1,4 +1,6 @@
-﻿namespace Templates.Runtime.Parameters
+﻿using Templates.Data;
+
+namespace Templates.Runtime.Parameters
 {
     internal class EmptyParameter : IRuntimeParameter
     {
@@ -6,9 +8,9 @@
         {
         }
 
-        public object GetParameter(object value, object chainedResult, object rootValue)
+        public object GetParameter(Scope scope)
         {
-            return value;
+            return scope.ModelData;
         }
     }
 }

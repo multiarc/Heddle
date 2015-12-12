@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
+using Templates.Data;
 
 namespace Templates.Runtime.Parameters
 {
@@ -16,17 +17,18 @@ namespace Templates.Runtime.Parameters
         {
         }
 
-        public object GetParameter(object value, object chainedResult, object rootValue)
+        public object GetParameter(Scope scope)
         {
+            var model = scope.ModelData;
             // ReSharper disable once ForCanBeConvertedToForeach
             for (int i = 0; i < _dynamicModelParameter.Length; i++)
             {
-                if (value == null)
+                if (model == null)
                     break;
                 var callSite = _dynamicModelParameter[i];
-                value = callSite.Target(callSite, value);
+                model = callSite.Target(callSite, model);
             }
-            return value;
+            return model;
         }
     }
 }

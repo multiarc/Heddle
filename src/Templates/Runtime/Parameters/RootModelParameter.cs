@@ -15,16 +15,17 @@ namespace Templates.Runtime.Parameters
         {
         }
 
-        public object GetParameter(object value, object chainedResult, object rootValue)
+        public object GetParameter(Scope scope)
         {
+            var root = scope.RootData;
             // ReSharper disable once ForCanBeConvertedToForeach
             for (int i = 0; i < _getModelParameter.Length; i++)
             {
-                if (rootValue == null)
+                if (root == null)
                     break;
-                rootValue = _getModelParameter[i](value);
+                root = _getModelParameter[i](root);
             }
-            return rootValue;
+            return root;
         }
     }
 }

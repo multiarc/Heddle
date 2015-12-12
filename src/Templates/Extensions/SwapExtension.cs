@@ -13,9 +13,9 @@ namespace Templates.Extensions
             return base.InitStart(initContext, chainedType, dataType, parent);
         }
 
-        public override object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult)
+        public override object ProcessData(Scope scope)
         {
-            return getInnerResult(chained, data);
+            return GetInnerResult(scope.Model(scope.ChainedData, scope.ModelData));
         }
     }
 }

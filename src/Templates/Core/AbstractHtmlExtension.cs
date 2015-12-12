@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Net;
+using Templates.Data;
 
 namespace Templates.Core {
     public abstract class AbstractHtmlExtension: AbstractExtension {
         
-        public sealed override object ProcessData (object data, object chained, object parent, Func<object, object, string> getInnerResult)
+        public sealed override object ProcessData (Scope scope)
         {
-            var obj = ProcessDataInternal(data, chained, parent, getInnerResult);
+            var obj = ProcessDataInternal(scope);
             if (DirectRender && obj != null)
             {
                 var dataToEncode = obj as string;
@@ -19,6 +20,6 @@ namespace Templates.Core {
             return obj;
         }
 
-        protected abstract object ProcessDataInternal(object value, object chainedResult, object parent, Func<object, object, string> getInnerResult);
+        protected abstract object ProcessDataInternal(Scope scope);
     }
 }

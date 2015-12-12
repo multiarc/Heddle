@@ -1,20 +1,21 @@
 ﻿using System;
 using Templates.Attributes;
 using Templates.Core;
+using Templates.Data;
 
 namespace Templates.Extensions {
     [ExtensionName("")]
     public class EmptyExtension: AbstractExtension {
-        public override object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult)
+        public override object ProcessData(Scope scope)
         {
             if (InnerExist) {
-                return getInnerResult(data, chained);
+                return GetInnerResult(scope);
             }
-            if (data != null) {
-                var s = data as string;
+            if (scope.ModelData != null) {
+                var s = scope.ModelData as string;
                 if (s != null)
                     return s;
-                return data.ToString();
+                return scope.ModelData.ToString();
             }
             return string.Empty;
         }

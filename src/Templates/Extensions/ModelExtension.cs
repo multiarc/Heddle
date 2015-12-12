@@ -5,29 +5,34 @@ using Templates.Core;
 using Templates.Data;
 using Templates.Exceptions;
 
-namespace Templates.Extensions {
-    [ExtensionName ("model")]
-    public class ModelExtension: AbstractExtension {
+namespace Templates.Extensions
+{
+    [ExtensionName("model")]
+    public class ModelExtension : AbstractExtension
+    {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
             if (initContext.Context == null)
                 throw new ArgumentNullException(nameof(initContext.Context));
             base.InitStart(initContext, dataType, chainedType, parent);
-            initContext.ParameterTemplate = GenerateInnerResult(null, null);
-            if (!string.IsNullOrWhiteSpace(initContext.ParameterTemplate)) {
-                try {
+            initContext.ParameterTemplate = GetInnerResult(Scope.Null);
+            if (!string.IsNullOrWhiteSpace(initContext.ParameterTemplate))
+            {
+                try
+                {
                     ExType modelType = new ExType(initContext.ParameterTemplate, initContext.Context.Namespaces.ToArray());
                     initContext.Context.ScopeType = modelType;
                     initContext.Context.RootScopeType = modelType;
                 }
-                catch (InvalidOperationException e) {
+                catch (InvalidOperationException e)
+                {
                     initContext.Context.CompileErrors.Add(e.ToError(Position));
                 }
             }
             return null;
         }
 
-        public override object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult)
+        public override object ProcessData(Scope scope)
         {
             return null;
         }

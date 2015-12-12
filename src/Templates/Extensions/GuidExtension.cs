@@ -16,11 +16,11 @@ namespace Templates.Extensions {
             return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        public override object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult)
+        public override object ProcessData(Scope scope)
         {
-            if (!(data is Guid))
+            if (!(scope.ModelData is Guid))
                 return string.Empty;
-            return ((Guid) data).ToString(getInnerResult(parent, chained));
+            return ((Guid)scope.ModelData).ToString(GetInnerResult(scope.Parent()));
         }
     }
 }

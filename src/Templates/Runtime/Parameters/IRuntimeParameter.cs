@@ -1,9 +1,10 @@
 ﻿using System;
+using Templates.Data;
 
 namespace Templates.Runtime.Parameters {
 
     internal interface IRuntimeParameter : IDisposable
     {
-        object GetParameter(object value, object chainedResult, object rootValue);
+        object GetParameter(Scope scope);
     }
 }

@@ -110,9 +110,10 @@ namespace Templates
         /// Generates result string (source template replaced with data). Data non-serialized
         /// </summary>
         /// <param name="data">Input object</param>
+        /// <param name="callerData"></param>
         /// <param name="chained"></param>
         /// <returns>Generated string</returns>
-        public string Generate(object data, object chained = null)
+        public string Generate(object data, object chained = null, dynamic callerData = null)
         {
             if (_runtimeDocument == null)
             {
@@ -139,7 +140,7 @@ namespace Templates
             string result = null;
             try
             {
-                result = _runtimeDocument.ProcessData(data, chained, data) as string ?? string.Empty;
+                result = _runtimeDocument.ProcessData(new Scope(data, callerData, data, chained)) as string ?? string.Empty;
             }
             finally
             {

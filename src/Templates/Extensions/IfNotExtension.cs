@@ -16,18 +16,22 @@ namespace Templates.Extensions {
             return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        public override object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult)
+        public override object ProcessData(Scope scope)
         {
-            if (data == null)
-                return getInnerResult(parent, chained);
+            if (scope.ModelData == null)
+            {
+                return GetInnerResult(scope.Parent());
+            }
 
-            if (!(data is bool))
+            if (!(scope.ModelData is bool))
             {
                 return string.Empty;
             }
 
-            if (!(bool) data)
-                return getInnerResult(parent, chained);
+            if (!(bool) scope.ModelData)
+            {
+                return GetInnerResult(scope.Parent());
+            }
 
             return string.Empty;
         }

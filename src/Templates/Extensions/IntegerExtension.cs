@@ -19,16 +19,17 @@ namespace Templates.Extensions {
             return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        protected override object ProcessDataInternal (object value, object chainedResult, object parent, Func<object, object, string> getInnerResult)
+        protected override object ProcessDataInternal (Scope scope)
         {
-            if (value == null)
+            var model = scope.ModelData;
+            if (model == null)
                 return string.Empty;
-            var format = getInnerResult(parent, chainedResult);
-            if (!(value is long) && !(value is int))
+            var format = GetInnerResult(scope.Parent());
+            if (!(model is long) && !(model is int))
             {
                 try
                 {
-                    value = Convert.ChangeType(value, typeof(long), CultureInfo.InvariantCulture);
+                    model = Convert.ChangeType(model, typeof(long), CultureInfo.InvariantCulture);
                 }
                 catch (InvalidCastException)
                 {
@@ -43,11 +44,11 @@ namespace Templates.Extensions {
                     return string.Empty;
                 }
             }
-            else if (!(value is int))
+            else if (!(model is int))
             {
                 try
                 {
-                    value = Convert.ChangeType(value, typeof (int), CultureInfo.InvariantCulture);
+                    model = Convert.ChangeType(model, typeof (int), CultureInfo.InvariantCulture);
                 }
                 catch (InvalidCastException)
                 {
@@ -65,12 +66,12 @@ namespace Templates.Extensions {
             else
             {
                 if (!string.IsNullOrEmpty(format))
-                    return ((int)value).ToString(format, CultureInfo.InvariantCulture);
-                return ((int)value).ToString(CultureInfo.InvariantCulture);
+                    return ((int)model).ToString(format, CultureInfo.InvariantCulture);
+                return ((int)model).ToString(CultureInfo.InvariantCulture);
             }
             if (!string.IsNullOrEmpty(format))
-                return ((long) value).ToString(format, CultureInfo.InvariantCulture);
-            return ((long) value).ToString(CultureInfo.InvariantCulture);
+                return ((long)model).ToString(format, CultureInfo.InvariantCulture);
+            return ((long)model).ToString(CultureInfo.InvariantCulture);
         }
     }
 }

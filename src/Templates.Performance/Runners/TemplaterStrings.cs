@@ -13,7 +13,7 @@ namespace Templates.Performance.Runners {
         public void Run()
         {
             Console.WriteLine("Prepearing string tests");
-            var watcher = new Stopwatch();
+            var watcher = new ExecutionStopwatch();
             watcher.Reset();
             var target = new TtlTemplate
                 (new CompileContext

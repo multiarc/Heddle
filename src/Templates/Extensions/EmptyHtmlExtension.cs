@@ -1,22 +1,23 @@
 ﻿using System;
 using Templates.Attributes;
 using Templates.Core;
+using Templates.Data;
 
 namespace Templates.Extensions {
     [ExtensionName("html")]
     [EncodeOutput]
     public class EmptyHtmlExtension: AbstractHtmlExtension {
-        protected override object ProcessDataInternal(object value, object chainedResult, object parent, Func<object, object, string> getInnerResult)
+        protected override object ProcessDataInternal(Scope scope)
         {
             if (InnerExist)
             {
-                return getInnerResult(value, chainedResult);
+                return GetInnerResult(scope);
             }
-            if (value != null) {
-                var s = value as string;
+            if (scope.ModelData != null) {
+                var s = scope.ModelData as string;
                 if (s != null)
                     return s;
-                return value.ToString();
+                return scope.ModelData.ToString();
             }
             return string.Empty;
         }

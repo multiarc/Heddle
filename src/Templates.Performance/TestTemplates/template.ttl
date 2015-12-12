@@ -17,6 +17,14 @@
 			@text()@*use base defenition*@
 		</label>
 	}}
+	<partial_func>
+	{{
+		<tr>
+			<td>@money(Cost){{@(Locale)}}</td>
+			<td>@(Quantity)</td>
+			<td>@(Name)</td>
+		</tr>
+	}}
 %>
 @using(){{Templates@*Comment Test 2*@@{.}@Performance}};
 @using(){{System.Linq}};
@@ -42,7 +50,7 @@
         </tr>
         @list(Products@*Comment Test 7*@)
         {{@
-			@*Comment Test 8*@partial(@*Comment Test 9*@){{partial@*Comment Test 10*@}};
+			partial_func();
         }};
     </table>
 	<table>
@@ -60,7 +68,7 @@
 		@* C# Test *@
         @list(@model.Products.Where(p => p.Quantity < 95))
         {{@
-			partial(){{partial}};
+			partial_func();
         }};
     </table>
     <div>

@@ -26,14 +26,9 @@ namespace Templates.Core
             }
         }
 
-        protected internal string GetInnerResult(object data, object chained, object root)
+        public string GetInnerResult(Scope scope)
         {
-            return (string) _subTemplate?.ProcessData(data, chained, root) ?? _innerResult;
-        }
-
-        public string GenerateInnerResult(object data, object chained)
-        {
-            return (string) _subTemplate?.ProcessData(data, chained, null) ?? _innerResult;
+            return (string) _subTemplate?.ProcessData(scope) ?? _innerResult;
         }
 
         public bool InnerExist => _subTemplate != null;
@@ -96,17 +91,9 @@ namespace Templates.Core
         /// <summary>
         /// Implementation with parameter redirection in function
         /// </summary>
-        /// <param name="data"></param>
-        /// <param name="chained"></param>
-        /// <param name="parent"></param>
-        /// <param name="root"></param>
+        /// <param name="scope"></param>
         /// <returns></returns>
-        public virtual object ProcessData(object data, object chained, object parent, object root)
-        {
-            return ProcessData(data, chained, parent, (d, c) => (string)_subTemplate?.ProcessData(d, c, root) ?? _innerResult);
-        }
-
-        public abstract object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult);
+        public abstract object ProcessData(Scope scope);
 
         public BlockPosition Position { get; set; }
     }

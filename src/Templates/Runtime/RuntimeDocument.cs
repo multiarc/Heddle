@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using Templates.Data;
 using Templates.Strings;
 using Templates.Strings.Core;
 
@@ -66,11 +67,11 @@ namespace Templates.Runtime {
         }
 
 
-        public object ProcessData(object data, object chainedResult, object rootValue)
+        public object ProcessData(Scope data)
         {
             if (_singleProcessor != null)
             {
-                string replacementValue = _singleProcessor.ProcessData(data, chainedResult, rootValue) as string ?? string.Empty;
+                string replacementValue = _singleProcessor.ProcessData(data) as string ?? string.Empty;
                 if (_canDoFullOptimize)
                     return replacementValue;
                 return ExStringBuilder.Replace(_singleProcessor.Position.StartIndex, _singleProcessor.Position.Length,
@@ -79,7 +80,7 @@ namespace Templates.Runtime {
             if (_canDoFullOptimize) {
                 ExStringBuilder builder = new ExStringBuilder();
                 foreach (IDataProcessor item in _optimizedElements) {
-                    builder.Append(item.ProcessData(data, chainedResult, rootValue) as string);
+                    builder.Append(item.ProcessData(data) as string);
                 }
                 return builder.ToString();
             }
@@ -93,7 +94,7 @@ namespace Templates.Runtime {
                     var handles = stackalloc GCHandle[count];
                     for (int i = 0; i < count; i++)
                     {
-                        var resultBlock = _optimizedElements[i].ProcessData(data, chainedResult, rootValue) as string;
+                        var resultBlock = _optimizedElements[i].ProcessData(data) as string;
                         if (resultBlock != null)
                         {
                             lengths[i] = resultBlock.Length;
@@ -107,13 +108,16 @@ namespace Templates.Runtime {
                             values[i] = null;
                         }
                     }
-                    var result = ExStringBuilder.BulkReplace(values, lengths, _outputPositions, _document);
-                    for (int i = 0; i < count; i++)
+                    fixed (BlockPosition* positions = _outputPositions)
                     {
-                        if (handles[i].IsAllocated)
-                            handles[i].Free();
+                        var result = ExStringBuilder.BulkReplace(values, lengths, positions, _outputPositions.Length, _document);
+                        for (int i = 0; i < count; i++)
+                        {
+                            if (handles[i].IsAllocated)
+                                handles[i].Free();
+                        }
+                        return result;
                     }
-                    return result;
                 }
                 return _document;
             }

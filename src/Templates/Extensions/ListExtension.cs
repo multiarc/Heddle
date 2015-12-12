@@ -7,7 +7,8 @@ using Templates.Data;
 using Templates.Helpers;
 using Templates.Strings;
 
-namespace Templates.Extensions {
+namespace Templates.Extensions
+{
     /// <summary>
     /// <para>List Template</para>
     /// <para>Optional parameter is sub-template (fully incluisive) wich represents one of element of the list.</para>
@@ -26,30 +27,32 @@ namespace Templates.Extensions {
     /// <para>Birth Date: 1976-04-15 Name: Anna</para>
     /// <para>...</para>
     /// </summary>
-    [ExtensionName ("list")]
-    [DataType (typeof (IEnumerable))]
-    public class ListExtension: AbstractExtension {
-        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)        
+    [ExtensionName("list")]
+    [DataType(typeof (IEnumerable))]
+    public class ListExtension : AbstractExtension
+    {
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
             if (dataType == null)
                 throw new ArgumentNullException(nameof(dataType));
-            if (dataType.IsDynamic) {
+            if (dataType.IsDynamic)
+            {
                 return base.InitStart(initContext, dataType, chainedType, null);
             }
-            ExType underliyingType = dataType.Type.TryGetElementType(typeof(IEnumerable<>)) ?? ExType.Dynamic;
+            ExType underliyingType = dataType.Type.TryGetElementType(typeof (IEnumerable<>)) ?? ExType.Dynamic;
             return base.InitStart(initContext, underliyingType, chainedType, parent);
         }
 
-        public override object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult)
+        public override object ProcessData(Scope scope)
         {
-            if (data == null)
+            if (scope.ModelData == null)
                 return string.Empty;
             var builder = new ExStringBuilder();
-            if (!(data is IEnumerable))
+            if (!(scope.ModelData is IEnumerable))
                 return string.Empty;
-            var enumerable = (IEnumerable) data;
+            var enumerable = (IEnumerable) scope.ModelData;
             foreach (object item in enumerable)
-                builder.Append(getInnerResult(item, chained));
+                builder.Append(GetInnerResult(scope.Model(item)));
             return builder.ToString();
         }
     }

@@ -14,13 +14,13 @@ namespace Templates.Extensions
             return chainedType;
         }
 
-        public override object ProcessData(object data, object chained, object parent, Func<object, object, string> getInnerResult)
+        public override object ProcessData(Scope scope)
         {
             if (InnerExist)
             {
-                return getInnerResult(chained, parent);
+                return GetInnerResult(scope.Model(scope.ChainedData, scope.ParentModelData));
             }
-            return chained;
+            return scope.ChainedData;
         }
     }
 }

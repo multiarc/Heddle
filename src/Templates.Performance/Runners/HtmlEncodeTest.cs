@@ -9,7 +9,7 @@ namespace Templates.Performance.Runners {
     public class HtmlEncodeTest : IRunner {
         public void Run()
         {
-            var watcher = new Stopwatch();
+            var watcher = new ExecutionStopwatch();
             watcher.Reset();
             Console.WriteLine("Starting HTML Encode tests");
             Console.WriteLine("Enter tries count (html encode cycles):");

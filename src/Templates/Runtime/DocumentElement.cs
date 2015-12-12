@@ -1,4 +1,5 @@
 ﻿using System;
+using Templates.Data;
 using Templates.Strings.Core;
 
 namespace Templates.Runtime {
@@ -41,9 +42,9 @@ namespace Templates.Runtime {
             }
         }
 
-        public object ProcessData(object value, object chainedResult, object rootValue)
+        public object ProcessData(Scope scope)
         {
-            return CallChain.ProcessData(value, chainedResult, rootValue);
+            return CallChain.ProcessData(scope);
         }
     }
 }

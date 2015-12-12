@@ -1,4 +1,5 @@
 ﻿using System;
+using Templates.Data;
 
 namespace Templates.Runtime.Parameters
 {
@@ -26,9 +27,9 @@ namespace Templates.Runtime.Parameters
             _callParameterChain.Dispose();
         }
 
-        public object GetParameter(object value, object chainedResult, object rootValue)
+        public object GetParameter(Scope scope)
         {
-            return _callParameterChain == null ? value : _callParameterChain.ProcessData(value, chainedResult, rootValue);
+            return _callParameterChain == null ? scope.ModelData : _callParameterChain.ProcessData(scope);
         }
     }
 }

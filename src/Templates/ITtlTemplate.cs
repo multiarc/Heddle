@@ -12,12 +12,15 @@ namespace Templates
         bool Compiled { get; }
 
         CompileContext Context { get; }
+
         /// <summary>
         /// Generates result string (invoke template helpers and render).
         /// </summary>
         /// <param name="data">Input object</param>
+        /// <param name="callerData"></param>
+        /// <param name="chained"></param>
         /// <returns>Generated string</returns>
-        string Generate(object data, object chained = null);
+        string Generate(object data, object chained = null, dynamic callerData = null);
 
         TtlCompileResult Recompile(ExType newModelType);
 
