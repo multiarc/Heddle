@@ -231,7 +231,7 @@ namespace Templates.Runtime {
             }
         }
 
-        public ExType RootScopeType { get; private set; }
+        public ExType RootScopeType { get; internal set; }
 
         private static string FormatAssemblyName(AssemblyName assemblyName, bool fullPublic = true)
         {

@@ -19,6 +19,8 @@
                 {{
                 <a href="@(Name)">@(Name)</a>
                 }}
+				@(@root.Count) C# Test
+				@(::Count) Model Access Test
                 @category()
             </li>
         }}

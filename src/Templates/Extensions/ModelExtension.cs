@@ -18,6 +18,7 @@ namespace Templates.Extensions {
                 try {
                     ExType modelType = new ExType(initContext.ParameterTemplate, initContext.Context.Namespaces.ToArray());
                     initContext.Context.ScopeType = modelType;
+                    initContext.Context.RootScopeType = modelType;
                 }
                 catch (InvalidOperationException e) {
                     initContext.Context.CompileErrors.Add(e.ToError(Position));

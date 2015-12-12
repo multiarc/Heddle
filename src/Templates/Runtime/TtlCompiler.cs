@@ -282,19 +282,27 @@ namespace Templates.Runtime
         private static ExType CompileModelAccessor(OutputItem extensionItem, CompileContext compileContext, DefinitionItem definitionItem,
             CompiledElement result, ref ExType inputType)
         {
-            if (compileContext.ScopeType.IsDynamic ||
+            ExType scopeType = extensionItem.CallParameter.RootReference ? compileContext.RootScopeType : compileContext.ScopeType;
+            if (scopeType.IsDynamic ||
                 definitionItem != null && definitionItem.ModelType == "dynamic")
             {
                 CSharpArgumentInfo[] csharpArgumentInfoArray = new CSharpArgumentInfo[1];
                 csharpArgumentInfoArray[0] = CSharpArgumentInfo.Create(CSharpArgumentInfoFlags.None, null);
                 var callSites =
                     extensionItem.CallParameter.ModelParameter.Select(model => CreateBinder(model, csharpArgumentInfoArray)).ToArray();
-                result.CompiledItem.Parameter = new DynamicParameter(callSites);
+                if (extensionItem.CallParameter.RootReference)
+                {
+                    result.CompiledItem.Parameter = new RootDynamicParameter(callSites);
+                }
+                else
+                {
+                    result.CompiledItem.Parameter = new DynamicParameter(callSites);
+                }
                 return ExType.Dynamic;
             }
             var modelParameters = extensionItem.CallParameter.ModelParameter;
             PropertyInfo[] dataProperties = new PropertyInfo[modelParameters.Length];
-            Type currentType = compileContext.ScopeType.Type;
+            Type currentType = scopeType.Type;
             for (int i = 0; i < modelParameters.Length; i++)
             {
                 var dataProperty = currentType.GetProperty(modelParameters[i],
@@ -312,8 +320,14 @@ namespace Templates.Runtime
                 currentType = dataProperty.PropertyType;
             }
             inputType = dataProperties.Last().PropertyType;
-
-            result.CompiledItem.Parameter = new ModelParameter(dataProperties.Select(prop => prop.ToPropertyGate()).ToArray());
+            if (extensionItem.CallParameter.RootReference)
+            {
+                result.CompiledItem.Parameter = new RootModelParameter(dataProperties.Select(prop => prop.ToPropertyGate()).ToArray());
+            }
+            else
+            {
+                result.CompiledItem.Parameter = new ModelParameter(dataProperties.Select(prop => prop.ToPropertyGate()).ToArray());
+            }
             return inputType;
         }
 
