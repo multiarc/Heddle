@@ -58,16 +58,16 @@ namespace Templates.Performance.Runners {
                 return;
             }
             watcher.Reset();
-            //watcher.Start();
-            //long length = list.AsParallel().Sum(item => (long)target.Generate(item).Length);
-            //watcher.Stop();
-            //Console.WriteLine("Parrallel implementation:");
-            //Console.WriteLine("{0} run times: {1}", n, watcher.Elapsed);
-            //Console.WriteLine("Out Speed: {0} Mb/s, ticks:{1}", (length / watcher.Elapsed.TotalSeconds / 1048576.0 * sizeof(char)).ToString("F"), watcher.CpuTicks);
-            //Console.WriteLine("Total Size: {0} Mb", length / 1048576.0 * sizeof(char));
-            //watcher.Reset();
             watcher.Start();
-            long length = list.Sum(item => (long)target.Generate(item).Length);
+            long length = list.AsParallel().Sum(item => (long)target.Generate(item).Length);
+            watcher.Stop();
+            Console.WriteLine("Parrallel implementation:");
+            Console.WriteLine("{0} run times: {1}", n, watcher.Elapsed);
+            Console.WriteLine("Out Speed: {0} Mb/s, ticks:{1}", (length / watcher.Elapsed.TotalSeconds / 1048576.0 * sizeof(char)).ToString("F"), watcher.CpuTicks);
+            Console.WriteLine("Total Size: {0} Mb", length / 1048576.0 * sizeof(char));
+            watcher.Reset();
+            watcher.Start();
+            length = list.Sum(item => (long)target.Generate(item).Length);
             watcher.Stop();
             target.Dispose();
             Console.WriteLine("Syncronous implementation:");
