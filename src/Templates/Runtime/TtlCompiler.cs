@@ -284,7 +284,7 @@ namespace Templates.Runtime
         {
             ExType scopeType = extensionItem.CallParameter.RootReference ? compileContext.RootScopeType : compileContext.ScopeType;
             if (scopeType.IsDynamic ||
-                definitionItem != null && definitionItem.ModelType == "dynamic")
+                definitionItem != null && definitionItem.ModelType == ExType.Dynamic.ToString())
             {
                 CSharpArgumentInfo[] csharpArgumentInfoArray = new CSharpArgumentInfo[1];
                 csharpArgumentInfoArray[0] = CSharpArgumentInfo.Create(CSharpArgumentInfoFlags.None, null);
