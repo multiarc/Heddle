@@ -56,7 +56,7 @@ namespace Templates.Runtime {
                 {
                     foreach (TemplateItem templateItem in _itemsToExecute)
                     {
-                        templateItem.Extension?.Dispose();
+                        templateItem.Dispose();
                     }
                 }
                 GC.SuppressFinalize(this);

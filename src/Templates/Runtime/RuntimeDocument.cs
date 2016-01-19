@@ -16,6 +16,9 @@ namespace Templates.Runtime {
 
         public RuntimeDocument(string document, DocumentElement[] executeItems, CompileContext context)
         {
+            if (context == null)
+                throw new ArgumentNullException(nameof(context));
+
             _context = context;
             _document = document;
             _optimizedElements = OptimizeCallTree(executeItems);

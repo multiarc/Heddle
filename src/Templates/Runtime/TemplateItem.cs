@@ -38,7 +38,8 @@ namespace Templates.Runtime {
 
         public void Dispose()
         {
-            Parameter.Dispose();
+            Parameter?.Dispose();
+            Extension?.Dispose();
         }
     }
 }
