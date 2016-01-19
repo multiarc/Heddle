@@ -19,9 +19,10 @@ namespace Templates.Language
         /// Performs parse of document
         /// </summary>
         /// <returns>Full template context tree found in source template</returns>
-        public static ParseContext Parse(string document, CompileContext compileContext, bool provideLanguageFeatures = false, bool forceRemoveWhitespace = false)
+        public static ParseContext Parse(string document, CompileContext compileContext)
         {
-            var context = new ParseContext(provideLanguageFeatures: provideLanguageFeatures, forceRemoveWhitespace: forceRemoveWhitespace);
+            var context = new ParseContext(provideLanguageFeatures: compileContext.Options.ProvideLanguageFeatures,
+                forceRemoveWhitespace: compileContext.Options.ForceRemoveWhitespace);
             Parse(document, context, compileContext);
             return context;
         }

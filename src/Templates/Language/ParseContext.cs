@@ -218,7 +218,7 @@ namespace Templates.Language {
                 return new DefinitionItem(
                     definitionName, parameterTemplate,
                     baseDefenition,
-                    modelType: modelType?.GetText() ?? baseDefenition?.ModelType)
+                    modelType: modelType?.GetText()?.Trim() ?? baseDefenition?.ModelType)
                 {
                     Position = GetBlockPosition(context)
                 };

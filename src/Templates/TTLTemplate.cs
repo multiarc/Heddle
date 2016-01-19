@@ -36,34 +36,7 @@ namespace Templates
         {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
-            string document = null;
-            try
-            {
-                _reader = new FileReader(context.Options);
-                document = _reader.ReadEntireFile();
-                CompileResult = Compile(context, document);
-                if (context.Options.EnableFileChangeCheck)
-                {
-                    var fullPath = Path.Combine(context.Options.RootPath, context.Options.TemplateName);
-                    var directory = Path.GetDirectoryName(fullPath);
-                    if (directory != null)
-                    {
-                        _watcher = new FileSystemWatcher(directory)
-                        {
-                            NotifyFilter = NotifyFilters.FileName | NotifyFilters.Size | NotifyFilters.LastWrite,
-                            Filter = Path.GetFileName(fullPath)
-                        };
-                        _watcher.Changed += FileChanged;
-                        _watcher.Deleted += FileDeleted;
-                        _watcher.Renamed += FileRenamed;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                CompileResult = new TtlCompileResult(false, document);
-                CompileResult.Errors.Add(e.ToError(default(BlockPosition)));
-            }
+            CompileResult = Compile(context);
         }
 
         public TtlTemplate()
@@ -229,7 +202,7 @@ namespace Templates
             try
             {
                 RuntimeDocument rtdoc = TtlCompiler.Compile(document, context,
-                    DocumentParser.Parse(document, context, context.Options.ProvideLanguageFeatures, context.Options.ForceRemoveWhitespace), null);
+                    DocumentParser.Parse(document, context), null);
                 if (context.CompileErrors.Count > 0)
                 {
                     context.Dispose();

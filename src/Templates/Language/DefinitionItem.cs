@@ -22,7 +22,7 @@ namespace Templates.Language {
             Name = name;
             ParameterTemplate = parameterTemplate;
             BaseDefinition = baseDefinition;
-            ModelType = modelType ?? "object";
+            ModelType = modelType?.Trim() ?? "object";
             Context = new ParseContext();
         }
 
