@@ -27,7 +27,6 @@ namespace Templates.Language {
             ProvideLanguageFeatures = provideLanguageFeatures || (parentContext?.ProvideLanguageFeatures ?? false);
             ForceRemoveWhitespace = forceRemoveWhitespace || (parentContext?.ForceRemoveWhitespace ?? false);
             _offset = offset;
-            ProvideLanguageFeatures = provideLanguageFeatures;
             DefinitionsBlock = new DefinitionBlock(parentContext?.DefinitionsBlock);
             OutputChains = new SmartList<OutputChain>();
             RawOutputItems = new SmartList<RawOutputItem>();

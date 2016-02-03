@@ -454,18 +454,18 @@ namespace Templates.Runtime
             return extension.InitStart(new InitContext(parameterFastString, context, parseContext), modelType, chainedType, context.ScopeType);
         }
 
-        private static void CheckTypes(PropertyInfo property, BlockPosition extensionPosition, CompileContext context, params Type[] dataTypes)
-        {
-            if (property != null && dataTypes.Any() && dataTypes.All(type => !(type ?? typeof (object)).IsType(property.PropertyType)))
-            {
-                context.CompileErrors.Add
-                    (string.Format
-                        (CultureInfo.InvariantCulture, "Property {0} have Type {1} but any of [{2}] expected.",
-                            property.Name,
-                            property.PropertyType.FullName,
-                            string.Join(", ", dataTypes.Select(t => t.FullName))).ToError(extensionPosition));
-            }
-        }
+        //private static void CheckTypes(PropertyInfo property, BlockPosition extensionPosition, CompileContext context, params Type[] dataTypes)
+        //{
+        //    if (property != null && dataTypes.Any() && dataTypes.All(type => !(type ?? typeof (object)).IsType(property.PropertyType)))
+        //    {
+        //        context.CompileErrors.Add
+        //            (string.Format
+        //                (CultureInfo.InvariantCulture, "Property {0} have Type {1} but any of [{2}] expected.",
+        //                    property.Name,
+        //                    property.PropertyType.FullName,
+        //                    string.Join(", ", dataTypes.Select(t => t.FullName))).ToError(extensionPosition));
+        //    }
+        //}
 
         private static void CheckTypes(ExType returnType, BlockPosition extensionPosition, CompileContext context, params ExType[] dataTypes)
         {

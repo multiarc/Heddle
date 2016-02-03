@@ -13,7 +13,13 @@
     ],
     "postbuild": "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.5.1-complete.jar\" -Dlanguage=JavaScript \"%project:Directory%\\TtlLexer.g4\" \"%project:Directory%\\TtlParser.g4\" -o \"%project:Directory%\\js\" -lib \"%project:Directory%\\js\" "
   },
-  "configurations": { "release": { "compilationOptions": { "define": [ "TRACE" ] }, "optimize": true }, "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } } },
+  "configurations": {
+    "release": {
+      "compilationOptions": { "define": [ "TRACE" ] },
+      "optimize": true
+    },
+    "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } }
+  },
   "frameworks": {
     "net451": { },
     "dotnet5.4": {
