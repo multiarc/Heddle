@@ -39,20 +39,20 @@ namespace Templates.Core
         }
 
         private static ExType InitSubTemplate(ref string parameterTemplate, ExType dataType, ExType chainedType,
-            CompileContext context,
+            CompileScope compileScope,
             ParseContext parseContext, out IDataProcessor result)
         {
-            if (context == null)
-                throw new ArgumentNullException(nameof(context));
+            if (compileScope == null)
+                throw new ArgumentNullException(nameof(compileScope));
 
             RuntimeDocument subTemplate;
             if (string.IsNullOrEmpty(parameterTemplate))
                 subTemplate = null;
             else
             {
-                var newContext = new CompileContext(context, dataType);
+                var newContext = new CompileScope(new CompileContext(compileScope.CompileContext, dataType), compileScope.CSharpContext);
                 subTemplate = TtlCompiler.Compile(parameterTemplate, newContext, parseContext, chainedType);
-                newContext.Compile();
+                newContext.CompileContext.Compile();
             }
             if (subTemplate != null)
             {
@@ -72,10 +72,10 @@ namespace Templates.Core
 
         public virtual ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
-            if (initContext.Context == null)
-                throw new ArgumentNullException(nameof(initContext.Context));
+            if (initContext.CompileScope == null)
+                throw new ArgumentNullException(nameof(initContext.CompileScope));
             IDataProcessor subTemplate;
-            var type = InitSubTemplate(ref initContext.ParameterTemplate, dataType, chainedType, initContext.Context,
+            var type = InitSubTemplate(ref initContext.ParameterTemplate, dataType, chainedType, initContext.CompileScope,
                 initContext.ParseContext, out subTemplate);
             if (subTemplate == null)
                 _innerResult = initContext.ParameterTemplate;
@@ -83,7 +83,7 @@ namespace Templates.Core
             return type;
         }
 
-        public virtual void CompleteInit(CompileContext newContext, ParseContext parseContext)
+        public virtual void CompleteInit(CompileScope newScope, ParseContext parseContext)
         {
 
         }

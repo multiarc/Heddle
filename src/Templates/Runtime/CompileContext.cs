@@ -1,15 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.Extensions.PlatformAbstractions;
 using Templates.Data;
-using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Language;
 using Templates.Native;
@@ -18,7 +10,7 @@ using Templates.Runtime.Parameters;
 namespace Templates.Runtime {
     internal class DelayedTemplate
     {
-        public CompileContext NewContext;
+        public CompileScope NewScope;
         public IExtension ForExtension;
         public ParseContext ParseContext;
     }
@@ -68,70 +60,19 @@ namespace Templates.Runtime {
     /// </summary>
     public class CompileContext: IDisposable {
 
-        internal static readonly SymbolDisplayFormat DisplayFormat =
-            new SymbolDisplayFormat(SymbolDisplayGlobalNamespaceStyle.OmittedAsContaining,
-                genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-                kindOptions: SymbolDisplayKindOptions.None,
-                delegateStyle: SymbolDisplayDelegateStyle.NameOnly,
-                extensionMethodStyle: SymbolDisplayExtensionMethodStyle.Default,
-                localOptions: SymbolDisplayLocalOptions.None, memberOptions: SymbolDisplayMemberOptions.None,
-                typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-                miscellaneousOptions: SymbolDisplayMiscellaneousOptions.ExpandNullable);
-
-        internal HashSet<Assembly> DependentAssemblies { get; }
-            =
-            new HashSet<Assembly>(new[]
-            {
-                typeof (object).GetTypeInfo().Assembly, typeof (Enumerable).GetTypeInfo().Assembly,
-                typeof (InternalsVisibleToAttribute).GetTypeInfo().Assembly
-            });
-
-        public static TtlCompileResult InitErrors { get; }
+        public bool Compiled { get; internal set; }
 
         public List<TtlCompileError> CompileErrors { get; }
 
         public List<TtlCompileWarning> CompileWarnings { get; }
 
-        private static readonly TtlTemplate PreparseGenerator;
-
-        static CompileContext()
-        {
-            string document = null;
-            try
-            {
-                PreparseGenerator = new TtlTemplate();
-                IApplicationEnvironment env =
-                    (IApplicationEnvironment)
-                        CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IApplicationEnvironment));
-                var path = env.ApplicationBasePath + "/";
-                document = File.ReadAllText($"{path}CSharpPreparseTemplate.tcs");
-                InitErrors = PreparseGenerator.Compile(document);
-            }
-            catch (Exception e)
-            {
-                InitErrors = new TtlCompileResult(false, document);
-                InitErrors.Errors.Add(new TtlCompileError
-                {
-                    Error = e.Message,
-                    Exception = e
-                });
-            }
-        }
-
         internal Dictionary<OutputItem, CompiledElement> CompiledItems { get; }
-
-        public Guid ClassGuid { get; } = Guid.NewGuid();
 
         public string ControllerName { get; set; }
 
-        private readonly HashSet<string> _namespaces = new HashSet<string>();
-
-        internal Assembly CompiledAssembly { get; set; }
-        public bool Compiled { get; internal set; }
-
         internal List<DelayedTemplate> DelayedTemplates { get; } = new List<DelayedTemplate>();
-        private volatile int _method;
         private ExType _scopeType;
+        private readonly CSharpContext _csharpContext;
 
         private CompileContext(CompileContext context, string fileName = null, ExType modelType = null)
         {
@@ -144,7 +85,7 @@ namespace Templates.Runtime {
             ControllerName = context.ControllerName;
             Options = new TemplateOptions(context.Options, fileName);
             ScopeType = modelType ?? context.ScopeType ?? typeof(object);
-            _namespaces = new HashSet<string>(context._namespaces);
+            _csharpContext = context._csharpContext;
         }
 
         public CompileContext(ExType modelType = null) {
@@ -153,6 +94,7 @@ namespace Templates.Runtime {
             CompileErrors = new List<TtlCompileError>();
             CompileWarnings = new List<TtlCompileWarning>();
             CompiledItems = new Dictionary<OutputItem, CompiledElement>();
+            _csharpContext = new CSharpContext();
         }
 
         /// <summary>
@@ -168,6 +110,7 @@ namespace Templates.Runtime {
             CompileErrors = new List<TtlCompileError>();
             CompileWarnings = new List<TtlCompileWarning>();
             CompiledItems = new Dictionary<OutputItem, CompiledElement>();
+            _csharpContext = new CSharpContext();
         }
         
         /// <summary>
@@ -233,158 +176,18 @@ namespace Templates.Runtime {
 
         public ExType RootScopeType { get; internal set; }
 
-        private static string FormatAssemblyName(AssemblyName assemblyName, bool fullPublic = true)
-        {
-            if (!fullPublic)
-                return assemblyName.FullName;
-            var publicKey = assemblyName.GetPublicKey();
-            return publicKey.Length > 0
-                ? $"{assemblyName.Name},PublicKey={assemblyName.GetPublicKey().ToHexString()}"
-                : assemblyName.Name;
-        }
+        
 
-        public IEnumerable<string> InternalsVisibleTo
-        {
-            get
-            {
-                var currentAssemblyName = GetType().GetTypeInfo().Assembly.GetName();
-                yield return FormatAssemblyName(currentAssemblyName);
-#if DOTNET5_4
-                var systemAssemblyName = AssemblyHelper.GetAssemblyName("System.Dynamic.Runtime");
-                if (systemAssemblyName != null)
-                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
-                systemAssemblyName = AssemblyHelper.GetAssemblyName("System.Core");
-                if (systemAssemblyName != null)
-                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
-                systemAssemblyName = AssemblyHelper.GetAssemblyName("System.Runtime");
-                if (systemAssemblyName != null)
-                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
-                systemAssemblyName = AssemblyHelper.GetAssemblyName("System");
-                if (systemAssemblyName != null)
-                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
-                systemAssemblyName = typeof(object).GetTypeInfo().Assembly.GetName();
-                if (systemAssemblyName != null)
-                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
-                systemAssemblyName = AssemblyHelper.GetAssemblyName("Microsoft.CSharp");
-                if (systemAssemblyName != null)
-                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
-#endif
-            }
-        }
-
-        public IEnumerable<string> Namespaces => _namespaces;
-
-        public virtual void AddDelayedCompileTemplate(CompileContext newContext, ParseContext parserContext, IExtension forExtension)
+        public virtual void AddDelayedCompileTemplate(CompileScope compileScope, ParseContext parserContext, IExtension forExtension)
         {
             DelayedTemplates.Add(new DelayedTemplate
             {
-                NewContext = newContext,
+                NewScope = compileScope,
                 ForExtension = forExtension,
                 ParseContext = parserContext
             });
         }
-
-        public void ImportNamespace(string parameterTemplate)
-        {
-            if (!string.IsNullOrEmpty(parameterTemplate) && !_namespaces.Contains(parameterTemplate))
-                _namespaces.Add(parameterTemplate);
-        }
-
-        internal List<ExpressionCompilation> Methods { get; } = new List<ExpressionCompilation>();
-
-        internal IRuntimeParameter PushCompileExpression(ExpressionOptions expressionOptions)
-        {
-            if (string.IsNullOrEmpty(expressionOptions.Expression))
-            {
-                throw new ArgumentException($"[{expressionOptions.Position}]<{expressionOptions.ExtensionName}> Expression cannot be null or empty");
-            }
-            IRuntimeParameter parameter = new CompiledParameter();
-            Methods.Add(new ExpressionCompilation(expressionOptions)
-            {
-                RuntimeCallParameter = parameter,
-                MethodNumber = _method,
-                ModelType = ScopeType,
-                RootModelType = RootScopeType
-            });
-            DependentAssemblies.Add(ScopeType.Type.GetTypeInfo().Assembly);
-            if (expressionOptions.ChainedType.IsDynamic)
-                DependentAssemblies.Add(typeof(CallSite<>).GetTypeInfo().Assembly);
-            DependentAssemblies.Add(expressionOptions.ChainedType.Type.GetTypeInfo().Assembly);
-            _method++;
-            return parameter;
-        }
-
-        internal OptionalValue<object> ParseAndGetResultType(ExpressionOptions expressionOptions, out ExType objectType)
-        {
-            if (string.IsNullOrEmpty(expressionOptions.Expression))
-            {
-                throw new ArgumentException(
-                    $"[{expressionOptions.Position}]<{expressionOptions.ExtensionName}> Expression cannot be null or empty");
-            }
-            expressionOptions.ModelType = ScopeType;
-            expressionOptions.RootModelType = RootScopeType;
-            _namespaces.Add(expressionOptions.ModelType.Type.Namespace);
-            _namespaces.Add(expressionOptions.ChainedType.Type.Namespace);
-            var modelTypeInfo = expressionOptions.ModelType.Type.GetTypeInfo();
-            if (modelTypeInfo.IsGenericType)
-            {
-                foreach (var type in modelTypeInfo.GenericTypeArguments)
-                {
-                    _namespaces.Add(type.Namespace);
-                }
-            }
-            var chainTypeInfo = expressionOptions.ChainedType.Type.GetTypeInfo();
-            if (chainTypeInfo.IsGenericType)
-            {
-                foreach (var type in chainTypeInfo.GenericTypeArguments)
-                {
-                    _namespaces.Add(type.Namespace);
-                }
-            }
-            expressionOptions.Namespaces = Namespaces;
-            if (!InitErrors.Success)
-                throw new TemplateCompileException("Cannot compile base C# generation templates",
-                    InitErrors.Errors);
-            var code = PreparseGenerator.Generate(expressionOptions);
-            var tree = CSharpSyntaxTree.ParseText(code);
-            var assemblySet = AssemblyHelper.GetMetadataReferences();
-            var compilation = CSharpCompilation.Create(null, new[] {tree}, assemblySet);
-            var diagnostics = compilation.GetDiagnostics();
-            if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
-            {
-                CompileErrors.AddRange(ContextCompilation.FormatErrors(diagnostics, expressionOptions.Position));
-                objectType = typeof (object);
-                return new OptionalValue<object>(null, false);
-            }
-            var syntax = tree.GetRoot().DescendantNodes().OfType<ReturnStatementSyntax>().Single().Expression;
-            var model = compilation.GetSemanticModel(tree, false);
-            var constantValue = model.GetConstantValue(syntax);
-            if (constantValue.HasValue)
-            {
-                objectType = constantValue.Value?.GetType() ?? typeof (object);
-                return constantValue.Value;
-            }
-            var typeInfo = model.GetTypeInfo(syntax);
-            if (typeInfo.Type.IsAnonymousType || typeInfo.Type.TypeKind == TypeKind.Dynamic)
-            {
-                objectType = ExType.Dynamic;
-                return new OptionalValue<object>(null, false);
-            }
-            string typeName = typeInfo.Type.ToDisplayString(DisplayFormat);
-            try
-            {
-                objectType =
-                    ReflectionHelper.ResolveType(typeName, _namespaces.ToArray());
-            }
-            catch (InvalidOperationException e)
-            {
-                CompileErrors.Add(e.ToError(expressionOptions.Position));
-                objectType = typeof (object);
-            }
-            return new OptionalValue<object>(null, false);
-        }
-
-
+        
         ~CompileContext()
         {
             Dispose(false);

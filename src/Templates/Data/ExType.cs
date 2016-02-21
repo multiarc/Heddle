@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Templates.Helpers;
 
 namespace Templates.Data {
@@ -27,6 +28,12 @@ namespace Templates.Data {
         }
 
         public ExType(string name, params string[] imports) {
+            _isDynamic = name == DynamicConst;
+            Type = _isDynamic ? Dynamic.Type : ReflectionHelper.ResolveType(name, imports ?? new string[0]);
+        }
+
+        public ExType(string name, ICollection<string> imports)
+        {
             _isDynamic = name == DynamicConst;
             Type = _isDynamic ? Dynamic.Type : ReflectionHelper.ResolveType(name, imports ?? new string[0]);
         }

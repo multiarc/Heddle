@@ -29,7 +29,7 @@ namespace Templates.Runtime.Parameters
 
         public object GetParameter(Scope scope)
         {
-            return _callParameterChain == null ? scope.ModelData : _callParameterChain.ProcessData(scope);
+            return _callParameterChain?.ProcessData(scope);
         }
     }
 }

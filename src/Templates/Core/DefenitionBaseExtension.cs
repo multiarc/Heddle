@@ -11,7 +11,7 @@ namespace Templates.Core {
 
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
-            _maxRecursionCount = initContext.Context.Options.MaxRecursionCount;
+            _maxRecursionCount = initContext.CompileScope.Options.MaxRecursionCount;
             return base.InitStart(initContext, dataType, chainedType, parent);
         }
 

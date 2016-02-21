@@ -13,7 +13,7 @@ namespace Templates.Runtime {
 
         ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent);
 
-        void CompleteInit(CompileContext newContext, ParseContext parseContext);
+        void CompleteInit(CompileScope newScope, ParseContext parseContext);
 
         object ProcessData(Scope scope);
 

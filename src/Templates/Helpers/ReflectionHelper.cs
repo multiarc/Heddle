@@ -184,7 +184,24 @@ namespace Templates.Helpers {
                 modelType = modelType.MakeGenericType(genericParameters.Select(parameter => ResolveType(parameter, importsArray)).ToArray());
                 return modelType;
             }
-            return ResolveSimpleType(typeName, imports ?? new string[0]);
+            return ResolveSimpleType(typeName, imports ?? Enumerable.Empty<string>());
+        }
+
+        public static Type ResolveType(string typeName, ICollection<string> imports)
+        {
+            if (string.IsNullOrWhiteSpace(typeName))
+                throw new ArgumentException();
+
+            Match match = GenericExpression.Match(typeName);
+            if (match.Success)
+            {
+                var importsArray = imports ?? new string[0];
+                var genericParameters = match.Groups["generic_parameters"].Value.Split(',');
+                Type modelType = ResolveSimpleType(match.Groups["main_type"].Value + "`" + genericParameters.Length, importsArray);
+                modelType = modelType.MakeGenericType(genericParameters.Select(parameter => ResolveType(parameter, importsArray)).ToArray());
+                return modelType;
+            }
+            return ResolveSimpleType(typeName, imports ?? Enumerable.Empty<string>());
         }
     }
 }

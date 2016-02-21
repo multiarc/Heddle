@@ -12,9 +12,9 @@ namespace Templates.Runtime {
         private readonly BlockPosition[] _outputPositions;
         private readonly IDataProcessor _singleProcessor;
         private bool _canDoFullOptimize;
-        private readonly CompileContext _context;
+        private readonly CompileScope _context;
 
-        public RuntimeDocument(string document, DocumentElement[] executeItems, CompileContext context)
+        public RuntimeDocument(string document, DocumentElement[] executeItems, CompileScope context)
         {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));

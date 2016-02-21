@@ -10,12 +10,12 @@ namespace Templates.Extensions
     {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
-            if (initContext.Context == null)
-                throw new ArgumentNullException(nameof(initContext.Context));
+            if (initContext.CompileScope == null)
+                throw new ArgumentNullException(nameof(initContext.CompileScope));
             base.InitStart(initContext, dataType, chainedType, parent);
             initContext.ParameterTemplate = GetInnerResult(Scope.Null);
             if (!string.IsNullOrWhiteSpace(initContext.ParameterTemplate))
-                initContext.Context.ImportNamespace(initContext.ParameterTemplate);
+                initContext.CompileScope.CSharpContext.ImportNamespace(initContext.ParameterTemplate);
             return null;
         }
 

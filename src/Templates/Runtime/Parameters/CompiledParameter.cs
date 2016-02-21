@@ -12,11 +12,7 @@ namespace Templates.Runtime.Parameters
 
         public object GetParameter(Scope scope)
         {
-            if (ParameterImplementation != null)
-            {
-                return ParameterImplementation(scope.ModelData, scope.ChainedData, scope.RootData);
-            }
-            return scope.ModelData;
+            return ParameterImplementation?.Invoke(scope.ModelData, scope.ChainedData, scope.RootData);
         }
     }
 }

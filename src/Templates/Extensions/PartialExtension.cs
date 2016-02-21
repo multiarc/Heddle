@@ -22,27 +22,29 @@ namespace Templates.Extensions {
 
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
-            if (initContext.Context == null)
-                throw new ArgumentNullException(nameof(initContext.Context));
+            if (initContext.CompileScope == null)
+                throw new ArgumentNullException(nameof(initContext.CompileScope));
             base.InitStart(initContext, dataType, chainedType, parent);
             initContext.ParameterTemplate = GetInnerResult(Scope.Null);
             if (!string.IsNullOrEmpty(initContext.ParameterTemplate)) {
                 string templateName = initContext.ParameterTemplate.Trim();
                 if (!string.IsNullOrEmpty(templateName))
                 {
-                    initContext.Context.AddDelayedCompileTemplate(new CompileContext(initContext.Context, dataType, templateName), initContext.ParseContext, this);
+                    initContext.CompileScope.CompileContext.AddDelayedCompileTemplate(
+                        new CompileScope(new CompileContext(initContext.CompileScope.CompileContext, dataType, templateName),
+                            initContext.CompileScope.CSharpContext), initContext.ParseContext, this);
                 }
             }
             return typeof (string);
         }
 
-        public override void CompleteInit(CompileContext newContext, ParseContext parseContext)
+        public override void CompleteInit(CompileScope newScope, ParseContext parseContext)
         {
             InnerTemplate = new TtlTemplate();
-            var result = InnerTemplate.Compile(newContext);
+            var result = InnerTemplate.Compile(newScope.CompileContext);
             if (!result.Success)
             {
-                newContext.CompileErrors.AddRange(result.Errors);
+                newScope.CompileErrors.AddRange(result.Errors);
             }
         }
     }

@@ -15,7 +15,7 @@ namespace Templates
     /// </summary>
     public sealed class TtlTemplate : ITtlTemplate
     {
-        private CompileContext _context;
+        private CompileScope _context;
         public TtlCompileResult CompileResult { get; private set; }
         private FileReader _reader;
         private FileSystemWatcher _watcher;
@@ -46,13 +46,13 @@ namespace Templates
 
         public TtlTemplate(string document, CompileContext context = null)
         {
-            CompileResult = Compile(context ?? new CompileContext(), document);
+            CompileResult = Compile(new CompileScope(context ?? new CompileContext()), document);
         }
 
         public bool Empty => _runtimeDocument?.Empty ?? true;
         public bool Compiled => _runtimeDocument != null;
 
-        public CompileContext Context => _context;
+        public CompileContext Context => _context.CompileContext;
 
         #region IDisposable Members
 
@@ -128,13 +128,13 @@ namespace Templates
 
         public TtlCompileResult Recompile(ExType newModelType)
         {
-            CompileResult = Compile(new CompileContext(newModelType), _document);
+            CompileResult = Compile(new CompileScope(new CompileContext(newModelType)), _document);
             return CompileResult;
         }
 
         public TtlCompileResult Recompile(string newDocument, CompileContext context = null)
         {
-            CompileResult = Compile(context ?? new CompileContext(), newDocument);
+            CompileResult = Compile(new CompileScope(context ?? new CompileContext()), newDocument);
             return CompileResult;
         }
 
@@ -148,7 +148,7 @@ namespace Templates
             {
                 _reader = new FileReader(context.Options);
                 document = _reader.ReadEntireFile();
-                CompileResult = Compile(context, document);
+                CompileResult = Compile(new CompileScope(context), document);
                 if (context.Options.EnableFileChangeCheck)
                 {
                     var fullPath = Path.Combine(context.Options.RootPath, context.Options.TemplateName);
@@ -178,7 +178,7 @@ namespace Templates
         {
             if (_runtimeDocument != null)
                 throw new TemplateInitException("Template already compiled.");
-            return Compile(new CompileContext(modelType), document);
+            return Compile(new CompileScope(new CompileContext(modelType)), document);
         }
 
         public TtlCompileResult TryCompilation(CompileContext context)
@@ -187,40 +187,40 @@ namespace Templates
                 throw new TemplateInitException("Template already compiled.");
             var reader = new FileReader(context.Options);
             var document = reader.ReadEntireFile();
-            return Compile(context, document, true);
+            return Compile(new CompileScope(context), document, true);
         }
 
         public TtlCompileResult TryCompilation(string document, ExType modelType = null)
         {
             if (_runtimeDocument != null)
                 throw new TemplateInitException("Template already compiled.");
-            return Compile(new CompileContext(modelType), document, true);
+            return Compile(new CompileScope(new CompileContext(modelType)), document, true);
         }
 
-        private TtlCompileResult Compile(CompileContext context, string document, bool simulate = false)
+        private TtlCompileResult Compile(CompileScope compileScope, string document, bool simulate = false)
         {
             try
             {
-                RuntimeDocument rtdoc = TtlCompiler.Compile(document, context,
-                    DocumentParser.Parse(document, context), null);
-                if (context.CompileErrors.Count > 0)
+                RuntimeDocument rtdoc = TtlCompiler.Compile(document, compileScope,
+                    DocumentParser.Parse(document, compileScope.CompileContext), null);
+                if (compileScope.CompileErrors.Count > 0)
                 {
-                    context.Dispose();
+                    compileScope.Dispose();
                     rtdoc?.Dispose();
                     var result = new TtlCompileResult(false, document);
-                    result.Errors.AddRange(context.CompileErrors);
+                    result.Errors.AddRange(compileScope.CompileErrors);
                     return result;
                 }
                 if (!simulate)
                 {
-                    context.Compile();
-                    _context = context;
+                    compileScope.Compile();
+                    _context = compileScope;
                     _document = document;
                     _runtimeDocument = rtdoc;
                 }
                 else
                 {
-                    context.Dispose();
+                    compileScope.Dispose();
                     rtdoc.Dispose();
                 }
                 return new TtlCompileResult(true, document);

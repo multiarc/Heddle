@@ -5,16 +5,16 @@ namespace Templates.Core
 {
     public struct InitContext
     {
-        public InitContext(string parameterTemplate, CompileContext context, ParseContext parseContext)
+        public InitContext(string parameterTemplate, CompileScope compileScope, ParseContext parseContext)
         {
             ParameterTemplate = parameterTemplate;
-            Context = context;
+            CompileScope = compileScope;
             ParseContext = parseContext;
         }
 
         public string ParameterTemplate;
 
-        public CompileContext Context;
+        public CompileScope CompileScope;
 
         public ParseContext ParseContext;
     }

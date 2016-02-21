@@ -12,21 +12,21 @@ namespace Templates.Extensions
     {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
-            if (initContext.Context == null)
-                throw new ArgumentNullException(nameof(initContext.Context));
+            if (initContext.CompileScope == null)
+                throw new ArgumentNullException(nameof(initContext.CompileScope));
             base.InitStart(initContext, dataType, chainedType, parent);
             initContext.ParameterTemplate = GetInnerResult(Scope.Null);
             if (!string.IsNullOrWhiteSpace(initContext.ParameterTemplate))
             {
                 try
                 {
-                    ExType modelType = new ExType(initContext.ParameterTemplate, initContext.Context.Namespaces.ToArray());
-                    initContext.Context.ScopeType = modelType;
-                    initContext.Context.RootScopeType = modelType;
+                    ExType modelType = new ExType(initContext.ParameterTemplate, initContext.CompileScope.Namespaces);
+                    initContext.CompileScope.ScopeType = modelType;
+                    initContext.CompileScope.RootScopeType = modelType;
                 }
                 catch (InvalidOperationException e)
                 {
-                    initContext.Context.CompileErrors.Add(e.ToError(Position));
+                    initContext.CompileScope.CompileErrors.Add(e.ToError(Position));
                 }
             }
             return null;

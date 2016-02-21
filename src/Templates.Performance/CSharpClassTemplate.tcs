@@ -12,10 +12,10 @@
 		}
 		}}
 	}
-	}} :: CompileContext
+	}} :: CSharpContext
 %>
 @using(){{Templates.Runtime}};
-@model(){{CompileContext}};
+@model(){{CSharpContext}};
 using System.Runtime.CompilerServices;
 using System.Reflection;
 @list(Namespaces) {{

@@ -47,64 +47,73 @@ namespace Templates.Runtime
             }
         }
 
-        /// <summary>
-        /// Compile delayed Extensions, Compile all dynamic property references and connect into template chain.
-        /// </summary>
         public static void Compile(this CompileContext context)
         {
             if (!context.Compiled)
             {
                 foreach (var delayedTemplate in context.DelayedTemplates)
                 {
-                    delayedTemplate.ForExtension.CompleteInit(delayedTemplate.NewContext, delayedTemplate.ParseContext);
+                    delayedTemplate.ForExtension.CompleteInit(delayedTemplate.NewScope, delayedTemplate.ParseContext);
                 }
                 context.DelayedTemplates.Clear();
-                if (context.Options.AllowCSharp && context.Methods.Count > 0)
-                {
-                    if (!CompileContext.InitErrors.Success)
-                        throw new TemplateCompileException("Cannot compile base C# generation templates",
-                            CompileContext.InitErrors.Errors);
-                    var code = CodeGenerator.Generate(context);
-                    context.CompiledAssembly = GeneratedAssemblyCache.TryGetCached(code);
-                    if (context.CompiledAssembly != null)
-                        return;
-                    var tree = CSharpSyntaxTree.ParseText(code);
-                    var compilation = CSharpCompilation.Create(
-                        context.ScopeType + "_" + context.ClassGuid.ToString("N"), new[] {tree},
-                        AssemblyHelper.GetMetadataReferences(),
-                        new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithCryptoPublicKey(
-                            context.GetType().GetTypeInfo().Assembly.GetName().GetPublicKey().ToImmutableArray())
-                            .WithDelaySign(false));
-                    var diagnostics = compilation.GetDiagnostics();
-                    if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
-                    {
-                        context.CompileErrors.AddRange(FormatErrors(diagnostics, context.Methods.First().Position));
-                        return;
-                    }
-                    var stream = new MemoryStream();
-                    compilation.Emit(stream);
-                    stream.Seek(0, SeekOrigin.Begin);
-#if !DOTNET5_4
-                    context.CompiledAssembly = Assembly.Load(stream.GetBuffer());
-#else
-                    context.CompiledAssembly = AssemblyHelper.GetAssemblyLoadContext().LoadStream(stream, null);
-#endif
-                    GeneratedAssemblyCache.AddToCache(code, context.CompiledAssembly);
-                    var classType =
-                        context.CompiledAssembly.GetType($"Templates.Runtime.CSE_{context.ClassGuid.ToString("N")}");
-                    foreach (var expressionCompilation in context.Methods)
-                    {
-                        var compiledParameter = expressionCompilation.RuntimeCallParameter as CompiledParameter;
-                        if (compiledParameter == null) continue;
-                        compiledParameter.ParameterImplementation =
-                            GatesCache.CreateCompiledDelegate(
-                                classType.GetMethod(
-                                    $"ProcessData_{expressionCompilation.ExtensionName}{expressionCompilation.MethodNumber}",
-                                    BindingFlags.Public | BindingFlags.Static), expressionCompilation.ModelType.Type,
-                                expressionCompilation.ChainedType.Type, expressionCompilation.RootModelType.Type);
-                    }
-                }
                 context.Compiled = true;
+            }
+        }
+
+        /// <summary>
+        /// Compile delayed Extensions, Compile all dynamic property references and connect into template chain.
+        /// </summary>
+        public static void Compile(this CompileScope context)
+        {
+            Compile(context.CompileContext);
+            if (context.CompileContext.Options.AllowCSharp && context.CSharpContext.Methods.Count > 0 && !context.CSharpContext.Compiled)
+            {
+                if (!InitErrors.Success)
+                    throw new TemplateCompileException("Cannot compile base C# generation templates",
+                        InitErrors.Errors);
+                var code = CodeGenerator.Generate(context.CSharpContext);
+                context.CSharpContext.CompiledAssembly = GeneratedAssemblyCache.TryGetCached(code);
+                if (context.CSharpContext.CompiledAssembly != null)
+                    return;
+                var tree = CSharpSyntaxTree.ParseText(code);
+                var compilation = CSharpCompilation.Create(
+                    context.CompileContext.ScopeType + "_" + context.CSharpContext.ClassGuid.ToString("N"), new[] {tree},
+                    AssemblyHelper.GetMetadataReferences(),
+                    new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithCryptoPublicKey(
+                        context.GetType().GetTypeInfo().Assembly.GetName().GetPublicKey().ToImmutableArray())
+                        .WithDelaySign(false));
+                var diagnostics = compilation.GetDiagnostics();
+                if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
+                {
+                    context.CompileContext.CompileErrors.AddRange(FormatErrors(diagnostics,
+                        context.CSharpContext.Methods.First().Position));
+                    return;
+                }
+                var stream = new MemoryStream();
+                compilation.Emit(stream);
+                stream.Seek(0, SeekOrigin.Begin);
+#if !DOTNET5_4
+                context.CSharpContext.CompiledAssembly = Assembly.Load(stream.GetBuffer());
+#else
+                    context.CSharpContext.CompiledAssembly = AssemblyHelper.GetAssemblyLoadContext().LoadStream(stream, null);
+#endif
+                GeneratedAssemblyCache.AddToCache(code, context.CSharpContext.CompiledAssembly);
+                var classType =
+                    context.CSharpContext.CompiledAssembly.GetType($"Templates.Runtime.CSE_{context.CSharpContext.ClassGuid.ToString("N")}");
+                int methodNumber = 0;
+                foreach (var expressionCompilation in context.CSharpContext.Methods)
+                {
+                    var compiledParameter = expressionCompilation.RuntimeCallParameter as CompiledParameter;
+                    if (compiledParameter == null) continue;
+                    compiledParameter.ParameterImplementation =
+                        GatesCache.CreateCompiledDelegate(
+                            classType.GetMethod(
+                                $"ProcessData_{expressionCompilation.ExtensionName}{methodNumber}",
+                                BindingFlags.Public | BindingFlags.Static), expressionCompilation.ModelType.Type,
+                            expressionCompilation.ChainedType.Type, expressionCompilation.RootModelType.Type);
+                    methodNumber++;
+                }
+                context.CSharpContext.Compiled = true;
             }
         }
 
