@@ -470,6 +470,7 @@ namespace Templates.Runtime
         private static void CheckTypes(ExType returnType, BlockPosition extensionPosition, CompileScope compileScope, params ExType[] dataTypes)
         {
             returnType = returnType ?? typeof (object);
+            returnType = returnType.Type.UnwrapNullable() ?? returnType;
             if (dataTypes.Any() && dataTypes.All(dataType =>
             {
                 dataType = dataType ?? typeof (object);
