@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -30,6 +31,9 @@ namespace Templates.Runtime
                 miscellaneousOptions: SymbolDisplayMiscellaneousOptions.ExpandNullable);
 
         private static readonly TtlTemplate PreparseGenerator;
+
+        private static readonly ConcurrentDictionary<string, Tuple<OptionalValue<object>, ExType>> _precompilationCache =
+            new ConcurrentDictionary<string, Tuple<OptionalValue<object>, ExType>>();
 
         static CSharpContext()
         {
@@ -103,7 +107,8 @@ namespace Templates.Runtime
             return parameter;
         }
 
-        internal OptionalValue<object> ParseAndGetResultType(CompileContext context, ExpressionOptions expressionOptions, out ExType objectType)
+        internal OptionalValue<object> ParseAndGetResultType(CompileContext context, ExpressionOptions expressionOptions,
+            out ExType objectType)
         {
             if (string.IsNullOrEmpty(expressionOptions.Expression))
             {
@@ -134,43 +139,46 @@ namespace Templates.Runtime
             if (!InitErrors.Success)
                 throw new TemplateCompileException("Cannot compile base C# generation templates",
                     InitErrors.Errors);
-            var code = PreparseGenerator.Generate(expressionOptions);
-            var tree = CSharpSyntaxTree.ParseText(code);
-            var assemblySet = AssemblyHelper.GetMetadataReferences();
-            var compilation = CSharpCompilation.Create(null, new[] { tree }, assemblySet);
-            var diagnostics = compilation.GetDiagnostics();
-            if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
+            var generatedCode = PreparseGenerator.Generate(expressionOptions);
+            var result = _precompilationCache.GetOrAdd(generatedCode, code =>
             {
-                context.CompileErrors.AddRange(ContextCompilation.FormatErrors(diagnostics, expressionOptions.Position));
-                objectType = typeof(object);
-                return new OptionalValue<object>(null, false);
-            }
-            var syntax = tree.GetRoot().DescendantNodes().OfType<ReturnStatementSyntax>().Single().Expression;
-            var model = compilation.GetSemanticModel(tree, false);
-            var constantValue = model.GetConstantValue(syntax);
-            if (constantValue.HasValue)
-            {
-                objectType = constantValue.Value?.GetType() ?? typeof(object);
-                return constantValue.Value;
-            }
-            var typeInfo = model.GetTypeInfo(syntax);
-            if (typeInfo.Type.IsAnonymousType || typeInfo.Type.TypeKind == TypeKind.Dynamic)
-            {
-                objectType = ExType.Dynamic;
-                return new OptionalValue<object>(null, false);
-            }
-            string typeName = typeInfo.Type.ToDisplayString(DisplayFormat);
-            try
-            {
-                objectType =
-                    ReflectionHelper.ResolveType(typeName, _namespaces.ToArray());
-            }
-            catch (InvalidOperationException e)
-            {
-                context.CompileErrors.Add(e.ToError(expressionOptions.Position));
-                objectType = typeof(object);
-            }
-            return new OptionalValue<object>(null, false);
+                var tree = CSharpSyntaxTree.ParseText(code);
+                var assemblySet = AssemblyHelper.GetMetadataReferences();
+                var compilation = CSharpCompilation.Create(null, new[] {tree}, assemblySet);
+                var diagnostics = compilation.GetDiagnostics();
+                if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
+                {
+                    context.CompileErrors.AddRange(ContextCompilation.FormatErrors(diagnostics, expressionOptions.Position));
+                    return new Tuple<OptionalValue<object>, ExType>(new OptionalValue<object>(null, false), typeof (object));
+                }
+                var syntax = tree.GetRoot().DescendantNodes().OfType<ReturnStatementSyntax>().Single().Expression;
+                var model = compilation.GetSemanticModel(tree, false);
+                var constantValue = model.GetConstantValue(syntax);
+                if (constantValue.HasValue)
+                {
+                    return new Tuple<OptionalValue<object>, ExType>(constantValue.Value, constantValue.Value?.GetType() ?? typeof (object));
+                }
+                var typeInfo = model.GetTypeInfo(syntax);
+                if (typeInfo.Type.IsAnonymousType || typeInfo.Type.TypeKind == TypeKind.Dynamic)
+                {
+                    return new Tuple<OptionalValue<object>, ExType>(new OptionalValue<object>(null, false), ExType.Dynamic);
+                }
+                string typeName = typeInfo.Type.ToDisplayString(DisplayFormat);
+                ExType objType;
+                try
+                {
+                    objType =
+                        ReflectionHelper.ResolveType(typeName, _namespaces.ToArray());
+                }
+                catch (InvalidOperationException e)
+                {
+                    context.CompileErrors.Add(e.ToError(expressionOptions.Position));
+                    objType = typeof (object);
+                }
+                return new Tuple<OptionalValue<object>, ExType>(new OptionalValue<object>(null, false), objType);
+            });
+            objectType = result.Item2;
+            return result.Item1;
         }
 
         private static string FormatAssemblyName(AssemblyName assemblyName, bool fullPublic = true)

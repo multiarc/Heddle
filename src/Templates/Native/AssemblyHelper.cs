@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using Microsoft.Dnx.Compilation;
 using Microsoft.Extensions.PlatformAbstractions;
 using Microsoft.Dnx.Compilation.CSharp;
@@ -15,6 +17,8 @@ namespace Templates.Native {
         private static readonly IApplicationEnvironment Environment =
             (IApplicationEnvironment)
                 CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(IApplicationEnvironment));
+
+        private static List<MetadataReference> _metadataReferences;
 #if DOTNET5_4
         private static readonly IAssemblyLoadContextAccessor LoadContextAccessor =
             (IAssemblyLoadContextAccessor)
@@ -104,21 +108,27 @@ namespace Templates.Native {
         }
 
         internal static List<MetadataReference> GetMetadataReferences() {
-            var references = new List<MetadataReference>();
-            var libraryExport = LibraryManager.GetExport(Environment.ApplicationName);
-            if (libraryExport?.MetadataReferences?.Count > 0) {
-                var roslynReference = libraryExport.MetadataReferences[0] as IRoslynMetadataReference;
-                var compilationReference = roslynReference?.MetadataReference as CompilationReference;
-                if (compilationReference != null) {
-                    references.AddRange(compilationReference.Compilation.References);
-                    references.Add(roslynReference.MetadataReference);
-                    return references;
+            if (_metadataReferences == null)
+            {
+                var references = new List<MetadataReference>();
+                var libraryExport = LibraryManager.GetExport(Environment.ApplicationName);
+                if (libraryExport?.MetadataReferences?.Count > 0)
+                {
+                    var roslynReference = libraryExport.MetadataReferences[0] as IRoslynMetadataReference;
+                    var compilationReference = roslynReference?.MetadataReference as CompilationReference;
+                    if (compilationReference != null)
+                    {
+                        references.AddRange(compilationReference.Compilation.References);
+                        references.Add(roslynReference.MetadataReference);
+                        return references;
+                    }
                 }
-            }
-            var export = LibraryManager.GetAllExports(Environment.ApplicationName);
-            references.AddRange(export.MetadataReferences.Select(ConvertMetadataReference));
+                var export = LibraryManager.GetAllExports(Environment.ApplicationName);
+                references.AddRange(export.MetadataReferences.Select(ConvertMetadataReference));
 
-            return references;
+                Interlocked.CompareExchange(ref _metadataReferences, references, null);
+            }
+            return _metadataReferences;
         }
 
     }

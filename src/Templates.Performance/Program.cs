@@ -9,8 +9,8 @@ namespace Templates.Performance
         private static readonly SmartList<IRunner> Tests = new SmartList<IRunner>();
 
         public static void SetUpTests() {
-            Tests.Add(new TemplaterTest());
-            Tests.Add(new TemplaterStrings());
+            Tests.Add(new TemplateCompilationTest());
+            //Tests.Add(new TemplaterStrings());
         }
         public void Main(string[] args)
         {
