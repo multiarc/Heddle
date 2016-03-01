@@ -1,4 +1,4 @@
-// Generated from d:\Work\Templater\src\Templates.Language\TtlLexer.g4 by ANTLR 4.5.1
+// Generated from D:\Work\Templater\src\Templates.Language\TtlLexer.g4 by ANTLR 4.5.1
 // jshint ignore: start
 var antlr4 = require('antlr4/index');
 
