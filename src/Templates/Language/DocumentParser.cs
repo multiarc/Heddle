@@ -39,7 +39,7 @@ namespace Templates.Language
             parser.RemoveErrorListeners();
             parser.AddErrorListener(syntaxErrorListener);
             var tree = parser.ttl();
-            if (context.Errors.Length > 0)
+            if (context.Errors.Count > 0)
             {
                 compileContext.CompileErrors.AddRange(context.Errors);
                 return;

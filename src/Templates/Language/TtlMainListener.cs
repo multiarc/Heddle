@@ -187,7 +187,7 @@ namespace Templates.Language {
 
         public override void ExitTtl(TtlParser.TtlContext context)
         {
-            if (CurrentParseContext.DefaultChains.Length > 0)
+            if (CurrentParseContext.DefaultChains.Count > 0)
             {
                 foreach (var chain in CurrentParseContext.DefaultChains)
                 {

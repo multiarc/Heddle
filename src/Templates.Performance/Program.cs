@@ -1,12 +1,13 @@
 ﻿using Templates.Performance.Runners;
 using System;
+using System.Collections.Generic;
 using Templates.Collections;
 
 namespace Templates.Performance
 {
     public class Program
     {
-        private static readonly SmartList<IRunner> Tests = new SmartList<IRunner>();
+        private static readonly List<IRunner> Tests = new List<IRunner>();
 
         public static void SetUpTests() {
             Tests.Add(new TemplateCompilationTest());

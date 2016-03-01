@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace Templates.Collections {
-    public partial class SmartList<T>: IList<T>, IList {
+    internal partial class SmartList<T>: IList<T>, IList {
         #region IList Members
 
         public void Remove (object value)

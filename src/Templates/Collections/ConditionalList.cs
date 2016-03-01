@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Templates.Collections
 {
-    public class ConditionalList<T> : SmartList<T>
+    internal class ConditionalList<T> : SmartList<T>
     {
         private readonly Func<T, bool> _addCondition;
 

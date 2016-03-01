@@ -28,12 +28,12 @@ namespace Templates.Language {
             ForceRemoveWhitespace = forceRemoveWhitespace || (parentContext?.ForceRemoveWhitespace ?? false);
             _offset = offset;
             DefinitionsBlock = new DefinitionBlock(parentContext?.DefinitionsBlock);
-            OutputChains = new SmartList<OutputChain>();
-            RawOutputItems = new SmartList<RawOutputItem>();
-            CommentTokens = new SmartList<BlockPosition>();
-            DefaultChains = new SmartList<OutputChain>();
-            Errors = parentContext?.Errors ?? new SmartList<TtlCompileError>();
-            Warnings = parentContext?.Warnings ?? new SmartList<TtlCompileWarning>();
+            OutputChains = new List<OutputChain>();
+            RawOutputItems = new List<RawOutputItem>();
+            CommentTokens = new List<BlockPosition>();
+            DefaultChains = new List<OutputChain>();
+            Errors = parentContext?.Errors ?? new List<TtlCompileError>();
+            Warnings = parentContext?.Warnings ?? new List<TtlCompileWarning>();
         }
 
         private static ParseContext IsolateContextFrom(ParseContext context) {
@@ -342,17 +342,17 @@ namespace Templates.Language {
 
         internal OutputChain CurrentChain { get; set; }
 
-        internal SmartList<OutputChain> DefaultChains { get; set; }
+        internal List<OutputChain> DefaultChains { get; set; }
 
-        public SmartList<TtlCompileError> Errors { get; }
+        public List<TtlCompileError> Errors { get; }
 
-        public SmartList<TtlCompileWarning> Warnings { get; }
+        public List<TtlCompileWarning> Warnings { get; }
 
-        public SmartList<OutputChain> OutputChains { get; }
+        public List<OutputChain> OutputChains { get; }
 
-        public SmartList<RawOutputItem> RawOutputItems { get; }
+        public List<RawOutputItem> RawOutputItems { get; }
 
-        public SmartList<BlockPosition> CommentTokens { get; }
+        public List<BlockPosition> CommentTokens { get; }
 
         internal bool InDefinition { get; set; }
         = false;
@@ -367,12 +367,12 @@ namespace Templates.Language {
 
         public int Offset => _offset;
 
-        private SmartList<OutputItem> CreateChain(IEnumerable<TtlParser.CallContext> context,
+        private List<OutputItem> CreateChain(IEnumerable<TtlParser.CallContext> context,
             string firstCallOverride = null)
         {
             if (context == null)
                 return null;
-            var result = new SmartList<OutputItem>();
+            var result = new List<OutputItem>();
             bool first = true;
             foreach (var callContext in context)
             {
@@ -391,7 +391,7 @@ namespace Templates.Language {
                 }
             }
 
-            if (result.Length == 0)
+            if (result.Count == 0)
                 return null;
             return result;
         }

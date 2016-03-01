@@ -1,4 +1,5 @@
-﻿using Templates.Collections;
+﻿using System.Collections.Generic;
+using Templates.Collections;
 using Templates.Strings.Core;
 
 namespace Templates.Language
@@ -15,7 +16,7 @@ namespace Templates.Language
         /// <summary>
         /// Use directly the ModelParameter or ChainParameter
         /// </summary>
-        public SmartList<OutputItem> ChainParameter { get; set; }
+        public List<OutputItem> ChainParameter { get; set; }
 
         public bool IsModelTypeParameter => ChainParameter == null && CSharpExpression == null;
 

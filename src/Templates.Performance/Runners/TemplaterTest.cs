@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -33,7 +34,7 @@ namespace Templates.Performance.Runners {
 
         public void Run()
         {
-            var list = new SmartList<TestDataStructure>();
+            var list = new List<TestDataStructure>();
             Console.WriteLine("Enter tries count (template generate):");
             // = 1000;
             string quantity = Console.ReadLine();

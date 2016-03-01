@@ -6,11 +6,11 @@ namespace Templates.Language
 {
     public class DefinitionBlock
     {
-        public SmartList<BlockPosition> Positions { get; }
+        public List<BlockPosition> Positions { get; }
 
         public DefinitionBlock(DefinitionBlock definitions = null)
         {
-            Positions = new SmartList<BlockPosition>();
+            Positions = new List<BlockPosition>();
             Definitions = new Dictionary<string, DefinitionItem>();
             if (definitions?.Definitions != null)
             {

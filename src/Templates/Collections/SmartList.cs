@@ -5,7 +5,7 @@ namespace Templates.Collections {
 #if !DOTNET5_4
     [Serializable]
 #endif
-    public partial class SmartList<T> {
+    internal partial class SmartList<T> {
         private static readonly T[] Empty = new T[0];
         private T[] _array;
         private int _length;
@@ -20,7 +20,8 @@ namespace Templates.Collections {
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
 
-            _array = value;
+            _array = new T[value.Length];
+            value.CopyTo(_array, 0);
             _length = _array.Length;
         }
 

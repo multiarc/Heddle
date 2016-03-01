@@ -29,12 +29,12 @@ namespace Templates.Runtime
             RemoveComments(parseContext, ref workingDocument);
             RemoveDefinitions(parseContext, ref workingDocument);
             ReplaceRawOutput(parseContext, ref workingDocument);
-            var documentElements = new SmartList<DocumentElement>();
+            var documentElements = new List<DocumentElement>();
             foreach (var extensions in parseContext.OutputChains)
             {
                 var element = new DocumentElement(extensions.BlockPosition);
                 ExType returnTypeChainedPrevious = chainedType;
-                foreach (var item in extensions.Chain.Reverse())
+                foreach (var item in ((ICollection<OutputItem>)extensions.Chain).Reverse())
                 {
                     var compiledItem = CompileItem(item, compileScope, extensions.Context,
                         ref returnTypeChainedPrevious);
@@ -56,7 +56,7 @@ namespace Templates.Runtime
             ref string workingDocument)
         {
             int seed = ExStringBuilder.ApplyRemove(blockPosition, ref workingDocument);
-            foreach (var chain in context.OutputChains.Reverse())
+            foreach (var chain in ((ICollection<OutputChain>)context.OutputChains).Reverse())
             {
                 if (chain.BlockPosition.StartIndex > blockPosition.StartIndex)
                     chain.BlockPosition = new BlockPosition(chain.BlockPosition.StartIndex - seed,
@@ -70,13 +70,13 @@ namespace Templates.Runtime
 
         private static void ReplaceRawOutput(ParseContext context, ref string workingDocument)
         {
-            foreach (var rawOut in context.RawOutputItems.Reverse())
+            foreach (var rawOut in ((ICollection<RawOutputItem>)context.RawOutputItems).Reverse())
             {
                 workingDocument = ExStringBuilder.Replace(rawOut.BlockPosition.StartIndex, rawOut.BlockPosition.Length,
                     rawOut.Text, workingDocument);
                 int seed = rawOut.BlockPosition.Length - rawOut.Text.Length;
                 var outputItem = rawOut;
-                foreach (var chain in context.OutputChains.Reverse())
+                foreach (var chain in ((ICollection<OutputChain>)context.OutputChains).Reverse())
                 {
                     if (chain.BlockPosition.StartIndex > outputItem.BlockPosition.StartIndex)
                         chain.BlockPosition = new BlockPosition(chain.BlockPosition.StartIndex - seed,
@@ -91,10 +91,10 @@ namespace Templates.Runtime
 
         private static void RemoveComments(ParseContext context, ref string workingDocument)
         {
-            foreach (var blockPosition in context.CommentTokens.Reverse())
+            foreach (var blockPosition in ((ICollection<BlockPosition>)context.CommentTokens).Reverse())
             {
                 int seed = ExStringBuilder.ApplyRemove(blockPosition, ref workingDocument);
-                foreach (var chain in context.OutputChains.Reverse())
+                foreach (var chain in ((ICollection<OutputChain>)context.OutputChains).Reverse())
                 {
                     if (chain.BlockPosition.StartIndex < blockPosition.StartIndex &&
                         chain.BlockPosition.StartIndex + chain.BlockPosition.Length >
@@ -114,7 +114,7 @@ namespace Templates.Runtime
                         break;
                     }
                 }
-                for (int index = context.DefinitionsBlock.Positions.Length - 1; index >= 0; index--)
+                for (int index = context.DefinitionsBlock.Positions.Count - 1; index >= 0; index--)
                 {
                     var position = context.DefinitionsBlock.Positions[index];
                     if (position.StartIndex < blockPosition.StartIndex &&
@@ -135,7 +135,7 @@ namespace Templates.Runtime
                         break;
                     }
                 }
-                foreach (var raw in context.RawOutputItems.Reverse())
+                foreach (var raw in ((ICollection<RawOutputItem>)context.RawOutputItems).Reverse())
                 {
                     if (raw.BlockPosition.StartIndex + raw.BlockPosition.Length > blockPosition.StartIndex)
                     {
@@ -152,10 +152,10 @@ namespace Templates.Runtime
 
         private static void RemoveDefinitions(ParseContext context, ref string workingDocument)
         {
-            foreach (var blockPosition in context.DefinitionsBlock.Positions.Reverse())
+            foreach (var blockPosition in ((ICollection<BlockPosition>)context.DefinitionsBlock.Positions).Reverse())
             {
                 int seed = ExStringBuilder.ApplyRemove(blockPosition, ref workingDocument);
-                foreach (var chain in context.OutputChains.Reverse())
+                foreach (var chain in ((ICollection<OutputChain>)context.OutputChains).Reverse())
                 {
                     if (chain.BlockPosition.StartIndex > blockPosition.StartIndex)
                         chain.BlockPosition = new BlockPosition(chain.BlockPosition.StartIndex - seed,
@@ -165,7 +165,7 @@ namespace Templates.Runtime
                         break;
                     }
                 }
-                foreach (var raw in context.RawOutputItems.Reverse())
+                foreach (var raw in ((ICollection<RawOutputItem>)context.RawOutputItems).Reverse())
                 {
                     if (raw.BlockPosition.StartIndex + raw.BlockPosition.Length > blockPosition.StartIndex)
                     {

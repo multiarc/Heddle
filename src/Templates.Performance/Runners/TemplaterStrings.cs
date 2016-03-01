@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
@@ -26,8 +27,8 @@ namespace Templates.Performance.Runners {
                 Console.Write(target.CompileResult.ToString());
                 return;
             }
-            var testFastList = new SmartList<ExString>();
-            var list = new SmartList<TestDataStructure>();
+            var testFastList = new List<ExString>();
+            var list = new List<TestDataStructure>();
             Console.WriteLine("Enter tries count (strings test):");
             string quantity = Console.ReadLine();
             int n;
@@ -39,8 +40,8 @@ namespace Templates.Performance.Runners {
                 testFastList.Add(target.Generate(item));
             }
 
-            SmartList<string> testStringList = testFastList.Select(i => i.ToString(CultureInfo.InvariantCulture)).ToSmartList();
-            SmartList<StringBuilder> testBuilderList = testStringList.Select(i => new StringBuilder(i)).ToSmartList();
+            List<string> testStringList = testFastList.Select(i => i.ToString(CultureInfo.InvariantCulture)).ToList();
+            List<StringBuilder> testBuilderList = testStringList.Select(i => new StringBuilder(i)).ToList();
 
             Console.WriteLine("Starting Replace Test");
 
@@ -101,7 +102,7 @@ namespace Templates.Performance.Runners {
 
             Console.WriteLine("Prepearing append test");
 
-            for (int i = 0; i < testBuilderList.Length; i++) {
+            for (int i = 0; i < testBuilderList.Count; i++) {
                 testFastList[i] = testBuilderList[i].ToString();
                 testStringList[i] = testBuilderList[i].ToString();
                 testBuilderList[i] = null;
