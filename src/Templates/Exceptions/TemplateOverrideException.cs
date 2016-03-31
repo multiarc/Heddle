@@ -1,10 +1,10 @@
 ﻿using System;
-#if !DOTNET5_4
+#if !NETSTANDARD1_5
 using System.Runtime.Serialization;
 #endif
 
 namespace Templates.Exceptions {
-#if !DOTNET5_4
+#if !NETSTANDARD1_5
     [Serializable]
 #endif
     public class TemplateOverrideException : Exception {
@@ -21,7 +21,7 @@ namespace Templates.Exceptions {
             : base(message, inner)
         {
         }
-#if !DOTNET5_4
+#if !NETSTANDARD1_5
         protected TemplateOverrideException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {

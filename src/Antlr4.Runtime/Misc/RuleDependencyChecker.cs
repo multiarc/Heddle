@@ -484,7 +484,7 @@ namespace Antlr4.Runtime.Misc
         {
         }
 
-#if PORTABLE || DOTNET5_4
+#if PORTABLE || NETSTANDARD1_5
         public interface ICustomAttributeProvider
         {
             object[] GetCustomAttributes(Type attributeType, bool inherit);
@@ -589,7 +589,7 @@ using Antlr4.Runtime;
 using Antlr4.Runtime.Atn;
 using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Sharpen;
-#if DOTNET5_4
+#if NETSTANDARD1_5
 using System.Linq;
 #endif
 
@@ -1042,7 +1042,7 @@ namespace Antlr4.Runtime.Misc
         {
         }
 
-#if PORTABLE || DOTNET5_4
+#if PORTABLE || NETSTANDARD1_5
         public interface ICustomAttributeProvider
         {
             object[] GetCustomAttributes(Type attributeType, bool inherit);
@@ -1079,7 +1079,7 @@ namespace Antlr4.Runtime.Misc
 
             public object[] GetCustomAttributes(Type attributeType, bool inherit)
             {
-#if DOTNET5_4
+#if NETSTANDARD1_5
                 return _provider.GetTypeInfo().GetCustomAttributes(attributeType, inherit).ToArray();
 #else
                 return Attribute.GetCustomAttributes(_provider, attributeType, inherit);
@@ -1098,7 +1098,7 @@ namespace Antlr4.Runtime.Misc
 
             public object[] GetCustomAttributes(Type attributeType, bool inherit)
             {
-#if DOTNET5_4
+#if NETSTANDARD1_5
                 return _provider.GetCustomAttributes(attributeType, inherit).ToArray();
 #else
                 return Attribute.GetCustomAttributes(_provider, attributeType, inherit);
@@ -1117,7 +1117,7 @@ namespace Antlr4.Runtime.Misc
 
             public object[] GetCustomAttributes(Type attributeType, bool inherit)
             {
-#if DOTNET5_4
+#if NETSTANDARD1_5
                 return _provider.GetCustomAttributes(attributeType, inherit).ToArray();
 #else
                 return Attribute.GetCustomAttributes(_provider, attributeType, inherit);
@@ -1136,7 +1136,7 @@ namespace Antlr4.Runtime.Misc
 
             public object[] GetCustomAttributes(Type attributeType, bool inherit)
             {
-#if DOTNET5_4
+#if NETSTANDARD1_5
                 return _provider.GetCustomAttributes(attributeType, inherit).ToArray();
 #else
                 return Attribute.GetCustomAttributes(_provider, attributeType, inherit);

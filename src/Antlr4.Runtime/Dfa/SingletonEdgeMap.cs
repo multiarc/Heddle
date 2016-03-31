@@ -149,7 +149,7 @@ namespace Antlr4.Runtime.Dfa
             return this;
         }
 
-#if NET45PLUS && !DOTNET5_4
+#if NET45PLUS && !NETSTANDARD1_5
         public override IReadOnlyDictionary<int, T> ToMap()
 #else
         public override IDictionary<int, T> ToMap()

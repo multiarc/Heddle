@@ -1,4 +1,4 @@
-﻿#if DOTNET5_4
+﻿#if NETSTANDARD1_5
 namespace System.CodeDom.Compiler {
     [AttributeUsage(AttributeTargets.All, Inherited = false, AllowMultiple = false)]
     public sealed class GeneratedCodeAttribute: Attribute {

@@ -207,7 +207,7 @@ namespace Antlr4.Runtime.Dfa
             return new EmptyEdgeMap<T>(minIndex, maxIndex);
         }
 
-#if NET45PLUS && !DOTNET5_4
+#if NET45PLUS && !NETSTANDARD1_5
         public override IReadOnlyDictionary<int, T> ToMap()
 #else
         public override IDictionary<int, T> ToMap()
@@ -230,7 +230,7 @@ namespace Antlr4.Runtime.Dfa
                 {
                     result[keys[i]] = values[i];
                 }
-#if NET45PLUS && !DOTNET5_4
+#if NET45PLUS && !NETSTANDARD1_5
                 return new ReadOnlyDictionary<int, T>(result);
 #else
                 return result;

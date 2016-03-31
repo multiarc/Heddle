@@ -21,14 +21,23 @@
     "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } }
   },
   "frameworks": {
-    "net451": { },
-    "dotnet5.4": {
+    "net451": {
+      "frameworkAssemblies": {
+        "System.Runtime": "4.0.10.0"
+      }
+    },
+    "net461": {
+      "frameworkAssemblies": {
+        "System.Runtime": "4.0.20.0"
+      }
+    },
+    "netstandard1.5": {
       "dependencies": {
-        "System.Runtime": "4.0.21-*",
+        "System.Runtime": "4.1.0-*",
         "System.Reflection": "4.1.0-*",
         "System.Text.Encoding": "4.0.11-*",
-        "System.Runtime.Extensions": "4.0.11-*",
-        "System.Text.RegularExpressions": "4.0.11-*"
+        "System.Runtime.Extensions": "4.1.0-*",
+        "System.Text.RegularExpressions": "4.0.12-*"
       }
     }
   }

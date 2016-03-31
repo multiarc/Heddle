@@ -21,32 +21,39 @@
   "frameworks": {
     "net451": {
       "frameworkAssemblies": {
-        "System.Xml": "4.0.0.0"
+        "System.Xml": "4.0.0.0",
+        "System.Runtime": "4.0.10.0"
       }
     },
-    "dotnet5.4": {
+    "net461": {
+      "frameworkAssemblies": {
+        "System.Xml": "4.0.0.0",
+        "System.Runtime": "4.0.20.0"
+      }
+    },
+    "netstandard1.5": {
       "dependencies": {
-        "System.Runtime": "4.0.21-*",
+        "System.Runtime": "4.1.0-*",
         "System.Console": "4.0.0-*",
         "System.Runtime.Handles": "4.0.1-*",
-        "System.Runtime.Extensions": "4.0.11-*",
+        "System.Runtime.Extensions": "4.1.0-*",
         "System.Reflection": "4.1.0-*",
         "System.Reflection.Extensions": "4.0.1-*",
-        "System.Reflection.TypeExtensions": "4.0.1-*",
+        "System.Reflection.TypeExtensions": "4.1.0-*",
         "System.Threading": "4.0.11-*",
-        "System.Linq": "4.0.1-*",
-        "System.IO": "4.0.11-*",
+        "System.Linq": "4.1.0-*",
+        "System.IO": "4.1.0-*",
         "System.IO.FileSystem": "4.0.1-*",
         "System.IO.FileSystem.Primitives": "4.0.1-*",
         "System.Threading.Thread": "4.0.0-*",
         "System.Collections": "4.0.11-*",
-        "System.Collections.Concurrent": "4.0.11-*",
+        "System.Collections.Concurrent": "4.0.12-*",
         "System.Globalization": "4.0.11-*",
         "System.Globalization.Extensions": "4.0.1-*",
         "System.Text.Encoding": "4.0.11-*",
         "System.Text.Encoding.CodePages": "4.0.1-*",
         "System.Text.Encoding.Extensions": "4.0.11-*",
-        "System.Text.RegularExpressions": "4.0.11-*",
+        "System.Text.RegularExpressions": "4.0.12-*",
         "System.Diagnostics.Debug": "4.0.11-*"
       }
     }

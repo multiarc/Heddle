@@ -1,4 +1,4 @@
-﻿#if DOTNET5_4
+﻿#if NETSTANDARD1_5
 #endif
 using System;
 using System.Collections.Generic;

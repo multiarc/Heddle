@@ -24,7 +24,8 @@
     "Microsoft.Extensions.Configuration.UserSecrets": "1.0.0-*",
     "Microsoft.Extensions.Logging": "1.0.0-*",
     "Microsoft.Extensions.Logging.Console": "1.0.0-*",
-    "Microsoft.Extensions.Logging.Debug" : "1.0.0-*",
+    "Microsoft.Extensions.Logging.Debug": "1.0.0-*",
+    "Microsoft.Extensions.DependencyModel": "1.0.0-beta-*",
     "Templates.Mvc": ""
   },
 
@@ -35,7 +36,7 @@
 
   "frameworks": {
     "net451": { },
-    "dotnet5.4": { }
+    "netstandard1.5": { }
   },
 
   "exclude": [

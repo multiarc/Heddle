@@ -27,9 +27,7 @@ namespace Templates.Runtime
             try
             {
                 CodeGenerator = new TtlTemplate();
-                IApplicationEnvironment env =
-                    (IApplicationEnvironment)
-                        CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IApplicationEnvironment));
+                IApplicationEnvironment env = PlatformServices.Default.Application;
                 var path = env.ApplicationBasePath + "/";
                 document = File.ReadAllText($"{path}CSharpClassTemplate.tcs");
                 InitErrors =
@@ -92,7 +90,7 @@ namespace Templates.Runtime
                 var stream = new MemoryStream();
                 compilation.Emit(stream);
                 stream.Seek(0, SeekOrigin.Begin);
-#if !DOTNET5_4
+#if !NETSTANDARD1_5
                 context.CSharpContext.CompiledAssembly = Assembly.Load(stream.GetBuffer());
 #else
                     context.CSharpContext.CompiledAssembly = AssemblyHelper.GetAssemblyLoadContext().LoadStream(stream, null);

@@ -34,7 +34,7 @@ using Antlr4.Runtime.Dfa;
 using Antlr4.Runtime.Sharpen;
 using Interlocked = System.Threading.Interlocked;
 
-#if NET45PLUS || DNX451 || DOTNET5_4
+#if NET45PLUS || DNX451 || NETSTANDARD1_5
 using Volatile = System.Threading.Volatile;
 #elif !PORTABLE && !COMPACT
 using Thread = System.Threading.Thread;
@@ -60,7 +60,7 @@ namespace Antlr4.Runtime.Dfa
         {
             get
             {
-#if NET45PLUS || DNX451 || DOTNET5_4
+#if NET45PLUS || DNX451 || NETSTANDARD1_5
                 return Volatile.Read(ref size);
 #elif !PORTABLE && !COMPACT
                 return Thread.VolatileRead(ref size);
@@ -181,7 +181,7 @@ namespace Antlr4.Runtime.Dfa
             return new EmptyEdgeMap<T>(minIndex, maxIndex);
         }
 
-#if NET45PLUS && !DOTNET5_4
+#if NET45PLUS && !NETSTANDARD1_5
         public override IReadOnlyDictionary<int, T> ToMap()
 #else
         public override IDictionary<int, T> ToMap()
@@ -208,7 +208,7 @@ namespace Antlr4.Runtime.Dfa
                 }
                 result[i + minIndex] = element;
             }
-#if NET45PLUS && !DOTNET5_4
+#if NET45PLUS && !NETSTANDARD1_5
             return new ReadOnlyDictionary<int, T>(result);
 #else
             return result;

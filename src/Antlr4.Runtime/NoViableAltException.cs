@@ -44,7 +44,7 @@ namespace Antlr4.Runtime
     /// of the offending input and also knows where the parser was
     /// in the various paths when the error. Reported by reportNoViableAlternative()
     /// </remarks>
-#if !DOTNET5_4
+#if !NETSTANDARD1_5
     [System.Serializable]
 #endif
     public class NoViableAltException : RecognitionException

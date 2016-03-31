@@ -41,9 +41,7 @@ namespace Templates.Runtime
             try
             {
                 PreparseGenerator = new TtlTemplate();
-                IApplicationEnvironment env =
-                    (IApplicationEnvironment)
-                        CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(IApplicationEnvironment));
+                IApplicationEnvironment env = PlatformServices.Default.Application;
                 var path = env.ApplicationBasePath + "/";
                 document = File.ReadAllText($"{path}CSharpPreparseTemplate.tcs");
                 InitErrors = PreparseGenerator.Compile(document);
@@ -197,7 +195,7 @@ namespace Templates.Runtime
             {
                 var currentAssemblyName = GetType().GetTypeInfo().Assembly.GetName();
                 yield return FormatAssemblyName(currentAssemblyName);
-#if DOTNET5_4
+#if NETSTANDARD1_5
                 var systemAssemblyName = AssemblyHelper.GetAssemblyName("System.Dynamic.Runtime");
                 if (systemAssemblyName != null)
                     yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";

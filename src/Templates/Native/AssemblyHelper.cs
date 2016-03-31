@@ -12,17 +12,12 @@ using Microsoft.CodeAnalysis;
 
 namespace Templates.Native {
     internal static class AssemblyHelper {
-        private static readonly ILibraryExporter LibraryManager =
-            (ILibraryExporter)CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(ILibraryExporter));
-        private static readonly IApplicationEnvironment Environment =
-            (IApplicationEnvironment)
-                CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(IApplicationEnvironment));
+        private static readonly ILibraryExporter LibraryManager = CompilationServices.Default.LibraryExporter;
+        private static readonly IApplicationEnvironment Environment = PlatformServices.Default.Application;
 
         private static List<MetadataReference> _metadataReferences;
-#if DOTNET5_4
-        private static readonly IAssemblyLoadContextAccessor LoadContextAccessor =
-            (IAssemblyLoadContextAccessor)
-                CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IAssemblyLoadContextAccessor));
+#if NETSTANDARD1_5
+        private static readonly IAssemblyLoadContextAccessor LoadContextAccessor = DnxPlatformServices.Default.AssemblyLoadContextAccessor;
 
         private static readonly Func<object> GetCurrentDomain;
         private static readonly Func<object, Assembly[]> AssembliesGetter;
@@ -31,7 +26,7 @@ namespace Templates.Native {
 #endif
 
         static AssemblyHelper() {
-#if DOTNET5_4
+#if NETSTANDARD1_5
             var type = typeof(object).GetTypeInfo().Assembly.GetType("System.AppDomain");
             if (type == null) {
                 throw new InvalidOperationException("Cannot find System.AppDomain class in system library, investigate to issue and rewrite assembly list acquire");
@@ -46,7 +41,7 @@ namespace Templates.Native {
 #endif
         }
 
-#if DOTNET5_4
+#if NETSTANDARD1_5
         internal static Assembly[] GetAssemblies() {
             var domain = GetCurrentDomain();
             return AssembliesGetter(domain);
@@ -73,6 +68,7 @@ namespace Templates.Native {
         }
 
         private static MetadataReference ConvertMetadataReference(IMetadataReference metadataReference) {
+            // ReSharper disable once SuspiciousTypeConversion.Global
             var roslynReference = metadataReference as IRoslynMetadataReference;
 
             if (roslynReference != null) {

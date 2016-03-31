@@ -10,7 +10,7 @@ using Templates.Helpers;
 using Templates.Language;
 using Templates.Strings.Core;
 
-#if DOTNET5_4
+#if NETSTANDARD1_5
 using Templates.Native;
 #endif
 
@@ -39,7 +39,7 @@ namespace Templates.Runtime {
         static TemplateFactory()
         {
             AddExtensions(LoadBaseExtensions());
-#if !DOTNET5_4
+#if !NETSTANDARD1_5
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
 #else
             foreach (var assembly in AssemblyHelper.GetAssemblies())

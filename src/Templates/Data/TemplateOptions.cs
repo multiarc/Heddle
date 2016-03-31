@@ -2,9 +2,9 @@
 using Microsoft.Extensions.PlatformAbstractions;
 
 namespace Templates.Data {
-    public class TemplateOptions: IEquatable<TemplateOptions> {
-        private static readonly IApplicationEnvironment Environment = 
-            (IApplicationEnvironment)CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(IApplicationEnvironment));
+    public class TemplateOptions: IEquatable<TemplateOptions>
+    {
+        private static readonly IApplicationEnvironment Environment = PlatformServices.Default.Application;
         public string FileNamePostfix { get; set; }
         public string RootPath { get; set; }
         public string TemplateName { get; }

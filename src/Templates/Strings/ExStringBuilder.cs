@@ -6,7 +6,7 @@ using Templates.Native;
 using Templates.Strings.Core;
 
 namespace Templates.Strings {
-#if !DOTNET5_4
+#if !NETSTANDARD1_5
     [Serializable]
 #endif
     public sealed class ExStringBuilder {
@@ -600,7 +600,7 @@ namespace Templates.Strings {
             }
         }
 
-#if !DOTNET5_4
+#if !NETSTANDARD1_5
         internal static unsafe void MemCpy(char* dmem, char* smem, int len)
         {
             //len *= 2;

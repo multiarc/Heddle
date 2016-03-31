@@ -5,7 +5,7 @@ namespace Templates.Strings.Core {
     /// <summary>
     /// Represents posision of the template string to replace
     /// </summary>
-#if !DOTNET5_4
+#if !NETSTANDARD1_5
     [Serializable]
 #endif
     public struct BlockPosition {

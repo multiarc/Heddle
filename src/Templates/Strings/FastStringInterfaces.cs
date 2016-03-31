@@ -5,7 +5,7 @@ using System.Reflection;
 
 namespace Templates.Strings {
     public sealed partial class ExString: IComparable,
-#if !DOTNET5_4
+#if !NETSTANDARD1_5
         IConvertible, 
 #endif
         IEnumerable, IEquatable<string>, IEquatable<ExString>, IEquatable<char[]> {
@@ -63,7 +63,7 @@ namespace Templates.Strings {
         #endregion
 
         #region IConvertible Members
-#if !DOTNET5_4
+#if !NETSTANDARD1_5
         public TypeCode GetTypeCode ()
         {
             return TypeCode.Object;

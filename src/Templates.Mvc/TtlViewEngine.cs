@@ -21,7 +21,7 @@ namespace Templates.Mvc
             string path = ".";
             try
             {
-                var env = (IApplicationEnvironment)CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(IApplicationEnvironment));
+                var env = PlatformServices.Default.Application;
                 path = env.ApplicationBasePath;
             }
             finally
@@ -42,22 +42,31 @@ namespace Templates.Mvc
             return controllerName;
         }
 
-        public ViewEngineResult FindView(ActionContext context, string viewName)
+        public ViewEngineResult FindView(ActionContext context, string viewName, bool isMainPage)
         {
-            if (context == null) throw new ArgumentNullException(nameof(context));
-            if (string.IsNullOrWhiteSpace(viewName))
-                throw new ArgumentException("viewName");
-            var controllerName = GetControllerName(context);
-            IEnumerable<string> searchLocations;
-            var result = Resolver.GetTemplate(viewName, controllerName, out searchLocations, null, TemplatePathType.View);
-            if (result != null)
+            if (isMainPage)
             {
-                return ViewEngineResult.Found(viewName, (TtlView) result);
+                if (context == null) throw new ArgumentNullException(nameof(context));
+                if (string.IsNullOrWhiteSpace(viewName))
+                    throw new ArgumentException("viewName");
+                var controllerName = GetControllerName(context);
+                IEnumerable<string> searchLocations;
+                var result = Resolver.GetTemplate(viewName, controllerName, out searchLocations, null, TemplatePathType.View);
+                if (result != null)
+                {
+                    return ViewEngineResult.Found(viewName, (TtlView) result);
+                }
+                return ViewEngineResult.NotFound(viewName, searchLocations);
             }
-            return ViewEngineResult.NotFound(viewName, searchLocations);
+            return FindPartialView(context, viewName);
         }
 
-        public ViewEngineResult FindPartialView(ActionContext context, string partialViewName)
+        public ViewEngineResult GetView(string executingFilePath, string viewPath, bool isMainPage)
+        {
+            throw new NotImplementedException();
+        }
+
+        private ViewEngineResult FindPartialView(ActionContext context, string partialViewName)
         {
             if (string.IsNullOrWhiteSpace(partialViewName))
                 throw new ArgumentException("viewName");

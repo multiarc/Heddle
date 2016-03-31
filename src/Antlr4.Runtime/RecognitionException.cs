@@ -43,7 +43,7 @@ namespace Antlr4.Runtime
     /// in the input, where it is in the ATN, the rule invocation stack,
     /// and what kind of problem occurred.
     /// </remarks>
-#if !DOTNET5_4
+#if !NETSTANDARD1_5
     [System.Serializable]
 #endif
     public class RecognitionException : Exception

@@ -3,21 +3,27 @@
   "dependencies": {
     "Templates": "",
     "xunit": "2.1.0",
-    "xunit.runner.dnx": "2.1.0-rc1-*"
+    "xunit.runner.aspnet": "2.0.0-aspnet-rc2-*"
   },
   "commands": {
-    "test": "xunit.runner.dnx"
+    "test": "xunit.runner.aspnet"
   },
   "frameworks": {
     "dnx451": {
+      "frameworkAssemblies": {
+        "System": "4.0.0.0",
+        "System.IO": "4.0.0.0",
+        "System.Runtime.Extensions": "4.0.0.0",
+        "System.Collections": "4.0.0.0"
+      }
     },
     "dnxcore50": {
       "dependencies": {
-        "System.Runtime": "4.0.21-*",
+        "System.Runtime": "4.1.0-*",
         "System.Reflection": "4.1.0-*",
-        "System.Linq": "4.0.1-*",
+        "System.Linq": "4.1.0-*",
         "System.Collections": "4.0.11-*",
-        "System.IO": "4.0.11-*",
+        "System.IO": "4.1.0-*",
         "System.IO.FileSystem": "4.0.1-*"
       }
     }

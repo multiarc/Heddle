@@ -35,7 +35,7 @@ using Antlr4.Runtime.Sharpen;
 
 namespace Antlr4.Runtime
 {
-#if !DOTNET5_4
+#if !NETSTANDARD1_5
     [System.Serializable]
 #endif
     public class LexerNoViableAltException : RecognitionException

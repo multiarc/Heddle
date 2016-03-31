@@ -43,7 +43,7 @@ namespace Antlr4.Runtime.Tree.Pattern
     /// chunks where the
     /// tag corresponds to a lexer rule or token type.
     /// </summary>
-#if !DOTNET5_4
+#if !NETSTANDARD1_5
     [System.Serializable]
 #endif
     public class TokenTagToken : CommonToken

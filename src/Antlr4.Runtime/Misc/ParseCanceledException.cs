@@ -48,7 +48,7 @@ namespace Antlr4.Runtime.Misc
     /// response to a parse error.
     /// </remarks>
     /// <author>Sam Harwell</author>
-#if !DOTNET5_4
+#if !NETSTANDARD1_5
     [System.Serializable]
 #endif
     public class ParseCanceledException : OperationCanceledException

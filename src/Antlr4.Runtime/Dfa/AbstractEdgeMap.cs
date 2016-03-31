@@ -103,7 +103,7 @@ namespace Antlr4.Runtime.Dfa
             get;
         }
 
-#if NET45PLUS && !DOTNET5_4
+#if NET45PLUS && !NETSTANDARD1_5
         public abstract IReadOnlyDictionary<int, T> ToMap();
 #else
         public abstract IDictionary<int, T> ToMap();

@@ -2,7 +2,7 @@
 using Templates.Strings.Core;
 
 namespace Templates.Data {
-#if !DOTNET5_4
+#if !NETSTANDARD1_5
     [Serializable]
 #endif
     public class TtlCompileError {
