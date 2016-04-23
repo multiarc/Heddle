@@ -6,10 +6,10 @@ namespace Templates.Performance {
     internal static class DataFiller {
         private static readonly Random Rand = new Random(DateTime.Now.Second);
 
-        public static dynamic FillData ()
+        public static TestDataStructure FillData ()
         {
             var products = new List<TestListItem>();
-            dynamic result = new TestDataStructure
+            var result = new TestDataStructure
             {
                 Date = DateTime.Now,
                 FuckingInt = Rand.Next(9000, 10000),

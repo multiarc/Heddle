@@ -1,5 +1,7 @@
 ﻿#if !DOTNET5_4
 using System;
+using System.Runtime.InteropServices;
+
 #endif
 
 namespace Templates.Strings.Core {
