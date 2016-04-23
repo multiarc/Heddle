@@ -163,7 +163,7 @@ namespace Templates.Language {
                 {
                     AddToken(defOutChain.DEF_OUTPUTONEND(), TtlTokenType.DefOutputOnEnd);
                 }
-                chain = CreateOutputChain(defOutChain, definitionName);
+                chain = CreateOutputChain(defOutChain?.chain(), definitionName);
                 AddToken(subTemplate.SUB_START(), TtlTokenType.SubStart);
                 AddToken(subTemplate.SUB_CLOSE(), TtlTokenType.SubClose);
                 return new DefinitionItem(
@@ -215,7 +215,7 @@ namespace Templates.Language {
                 AddToken(inherited.DELIM(), TtlTokenType.Delim);
                 AddToken(subTemplate.SUB_START(), TtlTokenType.SubStart);
                 AddToken(subTemplate.SUB_CLOSE(), TtlTokenType.SubClose);
-                chain = CreateOutputChain(defOutChain, definitionName);
+                chain = CreateOutputChain(defOutChain?.chain(), definitionName);
                 return new DefinitionItem(
                     definitionName, parameterTemplate,
                     baseDefenition,
@@ -299,9 +299,8 @@ namespace Templates.Language {
             return result;
         }
 
-        internal OutputChain CreateOutputChain(TtlParser.Default_chainContext context, string firstCallOverride)
+        internal OutputChain CreateOutputChain(TtlParser.ChainContext chain, string firstCallOverride)
         {
-            var chain = context?.chain();
             if (chain == null)
                 return null;
             var delims = chain.DELIM();
@@ -315,7 +314,7 @@ namespace Templates.Language {
             var result = new OutputChain(this)
             {
                 Chain = CreateChain(chain.call(), firstCallOverride),
-                BlockPosition = GetBlockPosition(context)
+                BlockPosition = GetBlockPosition(chain)
             };
             return result;
         }
@@ -345,7 +344,7 @@ namespace Templates.Language {
 
         internal OutputChain CurrentChain { get; set; }
 
-        internal List<OutputChain> DefaultChains { get; set; }
+        public List<OutputChain> DefaultChains { get; }
 
         public List<TtlCompileError> Errors { get; }
 

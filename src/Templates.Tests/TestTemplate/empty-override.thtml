@@ -2,6 +2,31 @@
 @using(){{System.Collections.Generic}}
 @model(){{dynamic}}
 <%
+<category1>
+{{
+	@(ComplexObject.Data.Text)
+    @if(@model.SubCategories.Count>0)
+    {{
+        <ul class="drop-menu sub-menu collapsed">
+        @list(SubCategories)
+        {{
+            <li>
+                @if(@model.SubCategories.Count>0)
+                {{
+                <a class="trigger" href="#">@(Name)</a>
+                }}
+                @if(@model.SubCategories.Count==0)
+                {{
+                <a href="@(Name)">@(Name)</a>
+                }}
+				@(@root.Count) C# Test
+				@(::Count) Model Access Test
+            </li>
+        }}
+        </ul>
+    }}
+}} :: Category
+
 <category>
 {{
 	@(ComplexObject.Data.Text)
@@ -39,6 +64,7 @@
                 <li>
                     <a class="trigger" href="#">@(Name)</a>
                     @category()
+					@category1()
                 </li>
             }}
         </ul>
@@ -46,7 +72,9 @@
 }} :: ICollection<Category>
 
 <category:category>
-{{
-}}
+{{}}
+
+<category1:category1>
+{{}}
 
 %>

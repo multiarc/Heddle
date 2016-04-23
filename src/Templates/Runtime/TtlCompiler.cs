@@ -34,7 +34,7 @@ namespace Templates.Runtime
             {
                 var element = new DocumentElement(extensions.BlockPosition);
                 ExType returnTypeChainedPrevious = chainedType;
-                foreach (var item in ((ICollection<OutputItem>)extensions.Chain).Reverse())
+                foreach (var item in ((ICollection<OutputItem>) extensions.Chain).Reverse())
                 {
                     var compiledItem = CompileItem(item, compileScope, extensions.Context,
                         ref returnTypeChainedPrevious);
@@ -45,6 +45,21 @@ namespace Templates.Runtime
                     RemoveEmptyItem(parseContext, extensions.BlockPosition, ref workingDocument);
                 }
                 else
+                {
+                    documentElements.Add(element);
+                }
+            }
+            foreach (var extensions in parseContext.DefaultChains)
+            {
+                var element = new DocumentElement(new BlockPosition(workingDocument.Length, 0));
+                ExType returnTypeChainedPrevious = chainedType;
+                foreach (var item in ((ICollection<OutputItem>) extensions.Chain).Reverse())
+                {
+                    var compiledItem = CompileItem(item, compileScope, extensions.Context,
+                        ref returnTypeChainedPrevious);
+                    element.CallChain.Add(compiledItem);
+                }
+                if (returnTypeChainedPrevious != null)
                 {
                     documentElements.Add(element);
                 }
