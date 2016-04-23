@@ -56,11 +56,12 @@ namespace Templates.Runtime
             ref string workingDocument)
         {
             int seed = ExStringBuilder.ApplyRemove(blockPosition, ref workingDocument);
-            foreach (var chain in ((ICollection<OutputChain>)context.OutputChains).Reverse())
+            foreach (var chain in ((ICollection<OutputChain>) context.OutputChains).Reverse())
             {
                 if (chain.BlockPosition.StartIndex > blockPosition.StartIndex)
-                    chain.BlockPosition = new BlockPosition(chain.BlockPosition.StartIndex - seed,
-                        chain.BlockPosition.Length);
+                {
+                    chain.BlockPosition = new BlockPosition(chain.BlockPosition.StartIndex - seed, chain.BlockPosition.Length);
+                }
                 else
                 {
                     break;

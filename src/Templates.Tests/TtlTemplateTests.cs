@@ -28,6 +28,96 @@ namespace Templates.Tests {
             
         }
 
+        [Fact]
+        public void EmptyOverrideTest()
+        {
+            var options = new TemplateOptions("empty-override")
+            {
+                FileNamePostfix = ".thtml",
+                RootPath = @"TestTemplate",
+                AllowCSharp = true
+            };
+            var target = new TtlTemplate(new CompileContext(options));
+            Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
+            List<Category> testList = new List<Category>
+            {
+                new Category
+                {
+                    ComplexObject = new ComplexObject
+                    {
+                        Data = new TestDataStructure
+                        {
+                            Text = "TEST1"
+                        }
+                    },
+                    Name = "test1",
+                    SubCategories = new List<Category>
+                    {
+                        new Category
+                        {
+                            ComplexObject = new ComplexObject
+                            {
+                                Data = new TestDataStructure
+                                {
+                                    Text = "TEST2"
+                                }
+                            },
+                            Name = "test2",
+                            SubCategories = new List<Category>
+                            {
+                                new Category
+                                {
+                                    Name = "test3"
+                                },
+                                new Category
+                                {
+                                    Name = "test7"
+                                }
+                            }
+                        }
+                    }
+                },
+                new Category
+                {
+                    Name = "test4",
+                    SubCategories = new List<Category>
+                    {
+                        new Category
+                        {
+                            ComplexObject = new ComplexObject
+                            {
+                                Data = new TestDataStructure()
+                            },
+                            Name = "test5",
+                            SubCategories = new List<Category>
+                            {
+                                new Category
+                                {
+                                    ComplexObject = new ComplexObject(),
+                                    Name = "test6"
+                                },
+                                new Category
+                                {
+                                    Name = "test8"
+                                },
+                            }
+                        }
+                    }
+                }
+            };
+            var actual = target.Generate(testList);
+            using (var writer = File.CreateText(@"TestTemplate/test-empty-override.html"))
+            {
+                writer.Write(actual);
+            }
+            string expected;
+            using (StreamReader reader = File.OpenText(@"TestTemplate/generated-empty-override.html"))
+            {
+                expected = reader.ReadToEnd();
+            }
+            Assert.Equal(expected, actual);
+        }
+
         [Fact()]
         public void RecursionGenerateTest()
         {

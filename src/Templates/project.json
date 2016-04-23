@@ -1,5 +1,5 @@
 ﻿{
-  "version": "2.7.2-rc1",
+  "version": "2.7.4-rc1",
   "authors": [ "Aliaksandr Kukrash" ],
   "description": "Robust template engine with C# expressions (Roslyn) support, text template inheritance and override support",
   "exclude": [ "bin" ],
@@ -9,8 +9,7 @@
     "Antlr4.Runtime": "",
     "Microsoft.Extensions.PlatformAbstractions": "1.0.0-*",
     "Microsoft.Dnx.Compilation.CSharp.Abstractions": "1.0.0-*",
-    "Microsoft.Dnx.Compilation.Abstractions": "1.0.0-*",
-    "Microsoft.CodeAnalysis.CSharp": "1.1.1-*"
+    "Microsoft.CodeAnalysis.CSharp": "1.1.0"
   },
   "configurations": { 
     "release": {
