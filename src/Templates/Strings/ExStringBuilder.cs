@@ -217,7 +217,7 @@ namespace Templates.Strings {
             }
         }
 
-        internal static unsafe string BulkReplace(char** values, int* lengths, BlockPosition* positions, int count, string document)
+        internal static unsafe string BulkReplace(char** values, int* lengths, BlockPosition[] positions, string document)
         {
             if (values == null)
                 throw new ArgumentNullException(nameof(values));
@@ -225,7 +225,7 @@ namespace Templates.Strings {
                 throw new ArgumentNullException(nameof(document));
             if (positions == null)
                 throw new ArgumentNullException(nameof(positions));
-
+            var count = positions.Length;
             if (count == 0)
                 return document;
 
@@ -259,7 +259,7 @@ namespace Templates.Strings {
                 {
                     fixed (char* src = document)
                     {
-                        MoveData(values, lengths, positions, count, srcLen, capacity, dest, src);
+                        MoveData(values, lengths, positions, srcLen, capacity, dest, src);
                     }
                 }
                 return result;
@@ -360,10 +360,11 @@ namespace Templates.Strings {
             }
         }
 
-        private static unsafe void MoveData(char** values, int* lengths, BlockPosition* positions, int count, int srcLen, int capacity, char* dest, char* src)
+        private static unsafe void MoveData(char** values, int* lengths, BlockPosition[] positions, int srcLen, int capacity, char* dest, char* src)
         {
             int lastIndex = 0;
             int current = 0;
+            var count = positions.Length;
             for (int i = 0; i < count; i++)
             {
                 int chunkLength = lengths[i];

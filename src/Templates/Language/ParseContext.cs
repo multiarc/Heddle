@@ -143,18 +143,20 @@ namespace Templates.Language {
             if (simple != null) {
                 AddToken(simple.DEF_STARTNAME(), TtlTokenType.DefStartName);
                 var subTemplate = simple.subtemplate();
-                var ttl = subTemplate?.ttl();
-                if (ttl?.Start?.InputStream == null)
+                if (subTemplate == null)
                 {
                     chain = null;
                     return null;
                 }
+                var ttl = subTemplate?.ttl();
+                var parameterTemplate = ttl?.Start?.InputStream == null
+                    ? string.Empty
+                    : ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
                 var definition = simple.ID(0);
                 if (definition == null)
                     throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(simple)));
                 AddToken(definition, TtlTokenType.Id);
                 AddToken(simple.DEF_ENDNAME(), TtlTokenType.DefEndName);
-                string parameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
                 var definitionName = definition.GetText();
                 var defOutChain = simple.default_chain();
                 if (defOutChain != null)
@@ -297,11 +299,11 @@ namespace Templates.Language {
             return result;
         }
 
-        internal OutputChain CreateOutputChain(TtlParser.ChainContext context, string firstCallOverride)
+        internal OutputChain CreateOutputChain(TtlParser.ChainContext chain, string firstCallOverride)
         {
-            if (context == null)
+            if (chain == null)
                 return null;
-            var delims = context.DELIM();
+            var delims = chain.DELIM();
             if (delims != null)
             {
                 foreach (var delim in delims)
@@ -311,8 +313,8 @@ namespace Templates.Language {
             }
             var result = new OutputChain(this)
             {
-                Chain = CreateChain(context.call(), firstCallOverride),
-                BlockPosition = GetBlockPosition(context)
+                Chain = CreateChain(chain.call(), firstCallOverride),
+                BlockPosition = GetBlockPosition(chain)
             };
             return result;
         }
@@ -342,7 +344,7 @@ namespace Templates.Language {
 
         internal OutputChain CurrentChain { get; set; }
 
-        internal List<OutputChain> DefaultChains { get; set; }
+        public List<OutputChain> DefaultChains { get; }
 
         public List<TtlCompileError> Errors { get; }
 

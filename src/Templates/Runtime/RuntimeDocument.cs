@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Threading;
 using Templates.Data;
 using Templates.Strings;
 using Templates.Strings.Core;
@@ -9,7 +10,7 @@ namespace Templates.Runtime {
     internal class RuntimeDocument : IDataProcessor {
         private readonly string _document;
         private readonly IDataProcessor[] _optimizedElements;
-        private readonly BlockPosition[] _outputPositions;
+        //private readonly BlockPosition[] _outputPositions;
         private readonly IDataProcessor _singleProcessor;
         private bool _canDoFullOptimize;
         private readonly CompileScope _context;
@@ -26,11 +27,11 @@ namespace Templates.Runtime {
             {
                 _singleProcessor = _optimizedElements[0];
             }
-            _outputPositions = new BlockPosition[_optimizedElements.Length];
-            for (int i = 0; i < _optimizedElements.Length; i++)
-            {
-                _outputPositions[i] = _optimizedElements[i].Position;
-            }
+            //_outputPositions = new BlockPosition[_optimizedElements.Length];
+            //for (int i = 0; i < _optimizedElements.Length; i++)
+            //{
+            //    _outputPositions[i] = _optimizedElements[i].Position;
+            //}
         }
 
         private IDataProcessor[] OptimizeCallTree(DocumentElement[] items)
@@ -72,58 +73,37 @@ namespace Templates.Runtime {
 
         public object ProcessData(Scope data)
         {
-            if (_singleProcessor != null)
+            //if (_singleProcessor != null)
+            //{
+            //    string replacementValue = _singleProcessor.ProcessData(data) as string ?? string.Empty;
+            //    if (_canDoFullOptimize)
+            //        return replacementValue;
+            //    return ExStringBuilder.Replace(_singleProcessor.Position.StartIndex, _singleProcessor.Position.Length,
+            //        replacementValue, _document);
+            //}
+            //if (_canDoFullOptimize) {
+            //    ExStringBuilder builder = new ExStringBuilder();
+            //    foreach (IDataProcessor item in _optimizedElements) {
+            //        builder.Append(item.ProcessData(data) as string);
+            //    }
+            //    return builder.ToString();
+            //}
+            int count = _optimizedElements.Length;
+            if (count > 0)
             {
-                string replacementValue = _singleProcessor.ProcessData(data) as string ?? string.Empty;
-                if (_canDoFullOptimize)
-                    return replacementValue;
-                return ExStringBuilder.Replace(_singleProcessor.Position.StartIndex, _singleProcessor.Position.Length,
-                    replacementValue, _document);
-            }
-            if (_canDoFullOptimize) {
-                ExStringBuilder builder = new ExStringBuilder();
-                foreach (IDataProcessor item in _optimizedElements) {
-                    builder.Append(item.ProcessData(data) as string);
-                }
-                return builder.ToString();
-            }
-            unsafe
-            {
-                int count = _optimizedElements.Length;
-                if (count > 0)
+                var values = new Replacement[count];
+                for (int i = 0; i < count; i++)
                 {
-                    var values = stackalloc char*[count];
-                    var lengths = stackalloc int[count];
-                    var handles = stackalloc GCHandle[count];
-                    for (int i = 0; i < count; i++)
+                    var processor = _optimizedElements[i];
+                    values[i] = new Replacement
                     {
-                        var resultBlock = _optimizedElements[i].ProcessData(data) as string;
-                        if (resultBlock != null)
-                        {
-                            lengths[i] = resultBlock.Length;
-                            var handle = GCHandle.Alloc(resultBlock, GCHandleType.Pinned);
-                            handles[i] = handle;
-                            values[i] = (char*) handle.AddrOfPinnedObject().ToPointer();
-                        }
-                        else
-                        {
-                            lengths[i] = 0;
-                            values[i] = null;
-                        }
-                    }
-                    fixed (BlockPosition* positions = _outputPositions)
-                    {
-                        var result = ExStringBuilder.BulkReplace(values, lengths, positions, _outputPositions.Length, _document);
-                        for (int i = 0; i < count; i++)
-                        {
-                            if (handles[i].IsAllocated)
-                                handles[i].Free();
-                        }
-                        return result;
-                    }
+                        BlockPosition = processor.Position,
+                        ReplacementValue = processor.ProcessData(data) as string
+                    };
                 }
-                return _document;
+                return ExStringBuilder.BulkReplace(values, _document);
             }
+            return _document;
         }
 
         public BlockPosition Position { get; set; }

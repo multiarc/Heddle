@@ -34,7 +34,7 @@ namespace Templates.Runtime
             {
                 var element = new DocumentElement(extensions.BlockPosition);
                 ExType returnTypeChainedPrevious = chainedType;
-                foreach (var item in ((ICollection<OutputItem>)extensions.Chain).Reverse())
+                foreach (var item in ((ICollection<OutputItem>) extensions.Chain).Reverse())
                 {
                     var compiledItem = CompileItem(item, compileScope, extensions.Context,
                         ref returnTypeChainedPrevious);
@@ -49,6 +49,21 @@ namespace Templates.Runtime
                     documentElements.Add(element);
                 }
             }
+            foreach (var extensions in parseContext.DefaultChains)
+            {
+                var element = new DocumentElement(new BlockPosition(workingDocument.Length, 0));
+                ExType returnTypeChainedPrevious = chainedType;
+                foreach (var item in ((ICollection<OutputItem>) extensions.Chain).Reverse())
+                {
+                    var compiledItem = CompileItem(item, compileScope, extensions.Context,
+                        ref returnTypeChainedPrevious);
+                    element.CallChain.Add(compiledItem);
+                }
+                if (returnTypeChainedPrevious != null)
+                {
+                    documentElements.Add(element);
+                }
+            }
             return new RuntimeDocument(workingDocument, documentElements.ToArray(), compileScope);
         }
 
@@ -56,11 +71,12 @@ namespace Templates.Runtime
             ref string workingDocument)
         {
             int seed = ExStringBuilder.ApplyRemove(blockPosition, ref workingDocument);
-            foreach (var chain in ((ICollection<OutputChain>)context.OutputChains).Reverse())
+            foreach (var chain in ((ICollection<OutputChain>) context.OutputChains).Reverse())
             {
                 if (chain.BlockPosition.StartIndex > blockPosition.StartIndex)
-                    chain.BlockPosition = new BlockPosition(chain.BlockPosition.StartIndex - seed,
-                        chain.BlockPosition.Length);
+                {
+                    chain.BlockPosition = new BlockPosition(chain.BlockPosition.StartIndex - seed, chain.BlockPosition.Length);
+                }
                 else
                 {
                     break;

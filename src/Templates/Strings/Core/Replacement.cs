@@ -1,5 +1,7 @@
 ﻿#if !NETSTANDARD1_5
 using System;
+using System.Runtime.InteropServices;
+
 #endif
 
 namespace Templates.Strings.Core {

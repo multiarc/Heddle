@@ -185,17 +185,17 @@ namespace Templates.Language {
             }
         }
 
-        public override void ExitTtl(TtlParser.TtlContext context)
-        {
-            if (CurrentParseContext.DefaultChains.Count > 0)
-            {
-                foreach (var chain in CurrentParseContext.DefaultChains)
-                {
-                    chain.BlockPosition = new BlockPosition(context.Stop.StopIndex + 1, 0);
-                }
-                CurrentParseContext.OutputChains.AddRange(CurrentParseContext.DefaultChains);
-                CurrentParseContext.DefaultChains.Clear();
-            }
-        }
+        //public override void ExitTtl(TtlParser.TtlContext context)
+        //{
+        //    if (CurrentParseContext.DefaultChains.Count > 0)
+        //    {
+        //        foreach (var chain in CurrentParseContext.DefaultChains)
+        //        {
+        //            chain.BlockPosition = new BlockPosition(context.Stop.StopIndex + 1, 0);
+        //        }
+        //        CurrentParseContext.OutputChains.AddRange(CurrentParseContext.DefaultChains);
+        //        CurrentParseContext.DefaultChains.Clear();
+        //    }
+        //}
     }
 }
