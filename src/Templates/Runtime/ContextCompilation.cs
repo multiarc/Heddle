@@ -93,7 +93,7 @@ namespace Templates.Runtime
 #if !NETSTANDARD1_5
                 context.CSharpContext.CompiledAssembly = Assembly.Load(stream.GetBuffer());
 #else
-                    context.CSharpContext.CompiledAssembly = AssemblyHelper.GetAssemblyLoadContext().LoadStream(stream, null);
+                context.CSharpContext.CompiledAssembly = AssemblyHelper.GetAssemblyLoadContext().LoadStream(stream, null);
 #endif
                 GeneratedAssemblyCache.AddToCache(code, context.CSharpContext.CompiledAssembly);
                 var classType =

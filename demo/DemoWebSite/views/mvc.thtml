@@ -1,8 +1,0 @@
-﻿<%
-	<html.link>
-	[<a href="@(route())">@out()</a>] :: string
-	<html.link>
-	[<a href="@(route())">@out()</a>] :: string
-	<text>
-	[<input type="text"
-%>

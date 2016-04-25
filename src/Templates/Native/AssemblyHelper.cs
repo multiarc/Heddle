@@ -5,10 +5,10 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
-using Microsoft.Dnx.Compilation;
 using Microsoft.Extensions.PlatformAbstractions;
-using Microsoft.Dnx.Compilation.CSharp;
 using Microsoft.CodeAnalysis;
+using Microsoft.Dnx.Compilation.CSharp;
+using Microsoft.Extensions.CompilationAbstractions;
 
 namespace Templates.Native {
     internal static class AssemblyHelper {
@@ -17,39 +17,62 @@ namespace Templates.Native {
 
         private static List<MetadataReference> _metadataReferences;
 #if NETSTANDARD1_5
-        private static readonly IAssemblyLoadContextAccessor LoadContextAccessor = DnxPlatformServices.Default.AssemblyLoadContextAccessor;
+        private static readonly IAssemblyLoadContext LoadContextAccessor = DnxPlatformServices.Default.AssemblyLoadContextAccessor.Default;
 
         private static readonly Func<object> GetCurrentDomain;
+        private static readonly HashSet<Assembly> Assemblies;
         private static readonly Func<object, Assembly[]> AssembliesGetter;
-#else
 
-#endif
-
-        static AssemblyHelper() {
-#if NETSTANDARD1_5
-            var type = typeof(object).GetTypeInfo().Assembly.GetType("System.AppDomain");
-            if (type == null) {
-                throw new InvalidOperationException("Cannot find System.AppDomain class in system library, investigate to issue and rewrite assembly list acquire");
+        private static void WalkReferenceAssemblies(HashSet<Assembly> set, Assembly current)
+        {
+            if (!set.Contains(current))
+            {
+                set.Add(current);
+                foreach (var assemblyName in current.GetReferencedAssemblies())
+                {
+                    try
+                    { 
+                        var dependent = Assembly.Load(assemblyName);
+                        WalkReferenceAssemblies(set, dependent);
+                    }
+                    catch(FileNotFoundException)
+                    {
+                    }
+                }
             }
-            var method = type.GetProperty("CurrentDomain", BindingFlags.Public | BindingFlags.Static).GetGetMethod();
-            if (method == null) {
-                throw new InvalidOperationException("Cannot find System.AppDomain.CurrentDomain Property get method in Core Mode, investigate to issue and rewrite assembly list acquire");
-            }
-            GetCurrentDomain = method.CompileStaticAccessor<object>();
-            method = type.GetMethod("GetAssemblies", BindingFlags.Public | BindingFlags.Instance);
-            AssembliesGetter = method.CompileAccessor<object, Assembly[]>();
-#endif
         }
 
-#if NETSTANDARD1_5
-        internal static Assembly[] GetAssemblies() {
-            var domain = GetCurrentDomain();
-            return AssembliesGetter(domain);
+        static AssemblyHelper()
+        {
+            Assemblies = new HashSet<Assembly>();
+            var appAssembly = Assembly.Load(new AssemblyName(Environment.ApplicationName));
+            WalkReferenceAssemblies(Assemblies, appAssembly);
+            //var type = typeof(object).GetTypeInfo().Assembly.GetType("System.AppDomain");
+            //if (type == null) {
+            //    throw new InvalidOperationException("Cannot find System.AppDomain class in system library, investigate to issue and rewrite assembly list acquire");
+            //}
+            //var method = type.GetProperty("CurrentDomain", BindingFlags.Public | BindingFlags.Static).GetGetMethod();
+            //if (method == null) {
+            //    throw new InvalidOperationException("Cannot find System.AppDomain.CurrentDomain Property get method in Core Mode, investigate to issue and rewrite assembly list acquire");
+            //}
+            //GetCurrentDomain = method.CompileStaticAccessor<object>();
+            //method = type.GetMethod("GetAssemblies", BindingFlags.NonPublic | BindingFlags.Instance);
+            //if (method == null)
+            //{
+            //    throw new InvalidOperationException($"Cannot find {type.Name}.GetAssemblies() method in Core Mode, investigate to issue and rewrite assembly list acquire\r\n{string.Join("\r\n", type.GetTypeInfo().GetMethods(BindingFlags.Instance | BindingFlags.NonPublic).Select(m => $"{(m.IsPublic ? "public" : "hidebysig")} {(m.IsStatic ? "static":"instance")} {m.Name}:{m.ReturnType.Name}"))}\r\n{string.Join("\r\n", type.GetTypeInfo().GetProperties().Select(m => $"{m.Name}:{m.PropertyType.Name}"))}");
+            //}
+            //AssembliesGetter = method.CompileAccessor<object, Assembly[]>();
+        }
+
+        internal static ICollection<Assembly> GetAssemblies() {
+            //var domain = GetCurrentDomain();
+            //return AssembliesGetter(domain);
+            return Assemblies;
         }
 
         internal static IAssemblyLoadContext GetAssemblyLoadContext()
         {
-            return LoadContextAccessor.Default;
+            return LoadContextAccessor;
         }
 
 #else
@@ -61,6 +84,7 @@ namespace Templates.Native {
 
         internal static AssemblyName GetAssemblyName(string name)
         {
+            //DnxPlatformServices.Default.AssemblyLoadContextAccessor
             return
                 GetAssemblies()
                     .Select(assembly => assembly.GetName())

@@ -1,6 +1,7 @@
 ﻿using Templates.Performance.Runners;
 using System;
 using System.Collections.Generic;
+using Microsoft.Extensions.PlatformAbstractions;
 using Templates.Collections;
 
 namespace Templates.Performance
@@ -14,7 +15,7 @@ namespace Templates.Performance
             //Tests.Add(new TemplaterStrings());
             Tests.Add(new TemplaterTest());
         }
-        public void Main(string[] args)
+        public static void Main(string[] args)
         {
             SetUpTests();
             //Run all tests
