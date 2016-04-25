@@ -278,8 +278,8 @@ namespace Templates.Strings {
             if (count == 0)
                 return source;
 
-            if (source.Length == 0)
-                return string.Empty;
+            //if (source.Length == 0)
+            //    return string.Empty;
 
             int capacity = source.Length;
             int srcLen = capacity;
@@ -325,8 +325,8 @@ namespace Templates.Strings {
             if (count == 0)
                 return source;
 
-            if (source.Length == 0)
-                return string.Empty;
+            //if (source.Length == 0)
+            //    return string.Empty;
 
             int capacity = source.Length;
             int srcLen = capacity;
