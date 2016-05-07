@@ -27,9 +27,7 @@ namespace Templates.Runtime
             try
             {
                 CodeGenerator = new TtlTemplate();
-                IApplicationEnvironment env =
-                    (IApplicationEnvironment)
-                        CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IApplicationEnvironment));
+                IApplicationEnvironment env = PlatformServices.Default.Application;
                 var path = env.ApplicationBasePath + "/";
                 document = File.ReadAllText($"{path}CSharpClassTemplate.tcs");
                 InitErrors =

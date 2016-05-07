@@ -21,7 +21,7 @@ namespace Templates.Mvc
             string path = ".";
             try
             {
-                var env = (IApplicationEnvironment)CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(IApplicationEnvironment));
+                var env = PlatformServices.Default.Application;
                 path = env.ApplicationBasePath;
             }
             finally

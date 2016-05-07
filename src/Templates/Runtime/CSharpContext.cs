@@ -41,9 +41,7 @@ namespace Templates.Runtime
             try
             {
                 PreparseGenerator = new TtlTemplate();
-                IApplicationEnvironment env =
-                    (IApplicationEnvironment)
-                        CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(IApplicationEnvironment));
+                IApplicationEnvironment env = PlatformServices.Default.Application;
                 var path = env.ApplicationBasePath + "/";
                 document = File.ReadAllText($"{path}CSharpPreparseTemplate.tcs");
                 InitErrors = PreparseGenerator.Compile(document);

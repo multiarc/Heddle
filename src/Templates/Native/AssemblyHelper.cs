@@ -12,17 +12,12 @@ using Microsoft.CodeAnalysis;
 
 namespace Templates.Native {
     internal static class AssemblyHelper {
-        private static readonly ILibraryExporter LibraryManager =
-            (ILibraryExporter)CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(ILibraryExporter));
-        private static readonly IApplicationEnvironment Environment =
-            (IApplicationEnvironment)
-                CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof(IApplicationEnvironment));
-
+        private static readonly ILibraryExporter LibraryManager = CompilationServices.Default.LibraryExporter;
+        private static readonly IApplicationEnvironment Environment = PlatformServices.Default.Application;      
         private static List<MetadataReference> _metadataReferences;
+
 #if DOTNET5_4
-        private static readonly IAssemblyLoadContextAccessor LoadContextAccessor =
-            (IAssemblyLoadContextAccessor)
-                CallContextServiceLocator.Locator.ServiceProvider.GetService(typeof (IAssemblyLoadContextAccessor));
+        private static readonly IAssemblyLoadContextAccessor LoadContextAccessor = PlatformServices.Default.AssemblyLoadContextAccessor;
 
         private static readonly Func<object> GetCurrentDomain;
         private static readonly Func<object, Assembly[]> AssembliesGetter;
