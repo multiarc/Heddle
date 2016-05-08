@@ -2,6 +2,8 @@
 using System.IO;
 using System.Linq;
 using Antlr4.Runtime;
+using Antlr4.Runtime.Atn;
+using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Tree;
 using Templates.Data;
 using Templates.Exceptions;
@@ -36,9 +38,21 @@ namespace Templates.Language
             CommonTokenStream tokens = new CommonTokenStream(lexer);
             TtlParser parser = new TtlParser(tokens);
             var syntaxErrorListener = new TtlSyntaxErrorListener(context);
+            parser.Interpreter.PredictionMode = PredictionMode.Sll;
             parser.RemoveErrorListeners();
-            parser.AddErrorListener(syntaxErrorListener);
-            var tree = parser.ttl();
+            TtlParser.TtlContext tree;
+            try
+            {
+                tree = parser.ttl();
+            }
+            catch (ParseCanceledException)
+            {
+                stream.Reset();
+                parser.Reset();
+                parser.Interpreter.PredictionMode = PredictionMode.Ll;
+                parser.AddErrorListener(syntaxErrorListener);
+                tree = parser.ttl();
+            }
             if (context.Errors.Count > 0)
             {
                 compileContext.CompileErrors.AddRange(context.Errors);
@@ -53,6 +67,7 @@ namespace Templates.Language
                 tokens.GetTokens()
                     .Where(t => t.Channel == TtlLexer.COMMENT_CHANNEL)
                     .Select(t => new BlockPosition(t)));
+
         }
     }
 }

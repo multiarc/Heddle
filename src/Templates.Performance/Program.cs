@@ -11,7 +11,7 @@ namespace Templates.Performance
         private static readonly List<IRunner> Tests = new List<IRunner>();
 
         public static void SetUpTests() {
-            //Tests.Add(new TemplateCompilationTest());
+            Tests.Add(new TemplateCompilationTest());
             //Tests.Add(new TemplaterStrings());
             Tests.Add(new TemplaterTest());
         }

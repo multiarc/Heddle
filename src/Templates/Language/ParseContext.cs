@@ -108,6 +108,7 @@ namespace Templates.Language {
                 }
             }
             result.OutputChains.AddRange(OutputChains.Select(chain => new OutputChain(chain, result, definitionName)));
+            result.DefaultChains.AddRange(DefaultChains.Select(chain => new OutputChain(chain, result, definitionName)));
             return result;
         }
 

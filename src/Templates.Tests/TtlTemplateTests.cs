@@ -29,6 +29,30 @@ namespace Templates.Tests {
         }
 
         [Fact]
+        public void EmptyOptimizedDocumentTest()
+        {
+            var options = new TemplateOptions("optimized-document")
+            {
+                FileNamePostfix = ".thtml",
+                RootPath = @"TestTemplate",
+                AllowCSharp = true
+            };
+            var target = new TtlTemplate(new CompileContext(options));
+            Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
+            var actual = target.Generate(null);
+            using (var writer = File.CreateText(@"TestTemplate/test-optimized-document.html"))
+            {
+                writer.Write(actual);
+            }
+            string expected;
+            using (StreamReader reader = File.OpenText(@"TestTemplate/generated-optimized-document.html"))
+            {
+                expected = reader.ReadToEnd();
+            }
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
         public void EmptyOverrideTest()
         {
             var options = new TemplateOptions("empty-override")

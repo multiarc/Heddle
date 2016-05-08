@@ -1,5 +1,5 @@
 ﻿{
-  "version": "2.7.6-rc2",
+  "version": "2.7.8-rc2",
   "authors": [ "Aliaksandr Kukrash" ],
   "description": "Robust template engine with C# expressions (Roslyn) support, text template inheritance and override support",
   "exclude": [ "bin", "obj" ],

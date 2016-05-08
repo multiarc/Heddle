@@ -1,5 +1,5 @@
 ﻿{
-  "version": "1.0.16-rc2",
+  "version": "1.0.18-rc2",
   "authors": [ "Aliaksandr Kukrash" ],
   "description": "Template engine MVC extensions library, once referenced replace internal import with MVC based.",
   "exclude": [ "bin" ],

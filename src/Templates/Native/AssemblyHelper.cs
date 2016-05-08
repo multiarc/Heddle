@@ -14,10 +14,10 @@ namespace Templates.Native {
     internal static class AssemblyHelper {
         private static readonly ILibraryExporter LibraryManager = CompilationServices.Default.LibraryExporter;
         private static readonly IApplicationEnvironment Environment = PlatformServices.Default.Application;
-
         private static List<MetadataReference> _metadataReferences;
+
 #if NETSTANDARD1_5
-        private static readonly IAssemblyLoadContext LoadContextAccessor = DnxPlatformServices.Default.AssemblyLoadContextAccessor.Default;
+        private static readonly IAssemblyLoadContextAccessor LoadContextAccessor = PlatformServices.Default.AssemblyLoadContextAccessor;
 
         private static readonly Func<object> GetCurrentDomain;
         private static readonly HashSet<Assembly> Assemblies;
