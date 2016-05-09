@@ -9,7 +9,9 @@
     "Antlr4.Runtime": "4.5.1-rc2",
     "Microsoft.Extensions.PlatformAbstractions": "1.0.0-*",
     "Microsoft.CodeAnalysis.CSharp": "1.2.1",
-    "Microsoft.Extensions.DependencyModel": "1.0.0-*"
+    "Microsoft.Extensions.DependencyModel": "1.0.0-*",
+    "Microsoft.Extensions.Configuration": "1.0.0-*",
+    "Microsoft.AspNetCore.Hosting": "1.0.0-*" 
   },
   "configurations": { 
     "release": {
@@ -26,7 +28,8 @@
         },
         "System.Text.Encoding": "",
         "System.Threading.Tasks": "",
-        "System.IO": ""
+        "System.IO": "",
+        "System.ComponentModel": "" 
       }
     },
     "net461": {
@@ -36,7 +39,8 @@
         },
         "System.Text.Encoding": "",
         "System.Threading.Tasks": "",
-        "System.IO": ""
+        "System.IO": "",
+        "System.ComponentModel": ""
       }
     },
     "netstandard1.5": {

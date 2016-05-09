@@ -32,7 +32,7 @@ namespace Templates.Runtime
 
         private static readonly TtlTemplate PreparseGenerator;
 
-        private static readonly ConcurrentDictionary<string, Tuple<OptionalValue<object>, ExType>> _precompilationCache =
+        private static readonly ConcurrentDictionary<string, Tuple<OptionalValue<object>, ExType>> PrecompilationCache =
             new ConcurrentDictionary<string, Tuple<OptionalValue<object>, ExType>>();
 
         static CSharpContext()
@@ -138,7 +138,7 @@ namespace Templates.Runtime
                 throw new TemplateCompileException("Cannot compile base C# generation templates",
                     InitErrors.Errors);
             var generatedCode = PreparseGenerator.Generate(expressionOptions);
-            var result = _precompilationCache.GetOrAdd(generatedCode, code =>
+            var result = PrecompilationCache.GetOrAdd(generatedCode, code =>
             {
                 var tree = CSharpSyntaxTree.ParseText(code);
                 var assemblySet = AssemblyHelper.GetApplicationReferences();

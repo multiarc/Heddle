@@ -1,10 +1,10 @@
 ﻿using System;
 using Microsoft.Extensions.PlatformAbstractions;
+using Templates.Native;
 
 namespace Templates.Data {
     public class TemplateOptions: IEquatable<TemplateOptions>
     {
-        private static readonly ApplicationEnvironment Environment = PlatformServices.Default.Application;
         public string FileNamePostfix { get; set; }
         public string RootPath { get; set; }
         public string TemplateName { get; }
@@ -18,7 +18,7 @@ namespace Templates.Data {
         public TemplateOptions()
         {
             FileNamePostfix = string.Empty;
-            RootPath = Environment.ApplicationBasePath;
+            RootPath = PlatformServices.Default.Application.ApplicationBasePath;
             TemplateName = string.Empty;
             EnableFileChangeCheck = false;
             AllowCSharp = false;
@@ -27,7 +27,7 @@ namespace Templates.Data {
 
         public TemplateOptions(string templateName) {
             FileNamePostfix = string.Empty;
-            RootPath = Environment.ApplicationBasePath;
+            RootPath = PlatformServices.Default.Application.ApplicationBasePath;
             TemplateName = templateName ?? string.Empty;
             EnableFileChangeCheck = false;
             AllowCSharp = false;

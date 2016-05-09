@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewEngines;
 using Microsoft.Extensions.PlatformAbstractions;
@@ -13,15 +14,14 @@ namespace Templates.Mvc
 {
     public class TtlViewEngine : IViewEngine
     {
-        public static TemplateResolver Resolver { get; }
+        public TemplateResolver Resolver { get; }
 
-        static TtlViewEngine()
+        public TtlViewEngine(IHostingEnvironment hostingEnvironment)
         {
             string path = ".";
             try
             {
-                var env = PlatformServices.Default.Application;
-                path = env.ApplicationBasePath;
+                path = hostingEnvironment.WebRootPath;
             }
             finally
             {

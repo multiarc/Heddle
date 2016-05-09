@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Globalization;
 using System.IO;
+using System.Reflection;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Language;
+using Templates.Native;
 using Templates.Runtime;
 using Templates.Strings.Core;
 
@@ -275,6 +277,11 @@ namespace Templates
                     CompileResult.Errors.Add(ex.ToError(default(BlockPosition)));
                 }
             }
+        }
+
+        public static void Configure(Assembly startupAssembly)
+        {
+            AssemblyHelper.Configure(startupAssembly);
         }
     }
 }

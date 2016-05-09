@@ -104,33 +104,37 @@ namespace Templates.Helpers {
             return null;
         }
 
-        private static Type ResolveSimpleType (string typeName, IEnumerable<string> imports)
+        private static Type ResolveSimpleType (string typeName, ICollection<string> imports)
         {
+            List<string> searchedList = new List<string>();
             if (string.IsNullOrWhiteSpace(typeName))
                 throw new ArgumentException();
             typeName = WhitespaceChars.Replace(typeName, string.Empty);
-            Type modelType = ResolveCsharpType(typeName);
-            if (modelType != null)
-                return modelType;
-            modelType = Type.GetType(typeName, false);
-            if (modelType == null) {
+            Type result = ResolveCsharpType(typeName);
+            if (result != null)
+                return result;
+            result = Type.GetType(typeName, false);
+            if (result == null) {
                 var assemblies = AssemblyHelper.GetAssemblies();
                 foreach (Assembly assembly in assemblies) {
-                    modelType = assembly.GetType(typeName);
-                    if (modelType != null)
-                        return modelType;
+                    result = assembly.GetType(typeName);
+                    if (result != null)
+                        return result;
+                    searchedList.Add(assembly.GetName().Name);
                 }
                 string[] importsArray = imports.Select(namespc => namespc + "." + typeName).ToArray();
                 foreach (Assembly assembly in assemblies) {
                     foreach (string import in importsArray) {
-                        modelType = assembly.GetType(import);
-                        if (modelType != null)
-                            return modelType;
+                        result = assembly.GetType(import);
+                        if (result != null)
+                            return result;
+                        searchedList.Add(assembly.GetName().Name);
                     }
                 }
             } else
-                return modelType;
-            throw new InvalidOperationException($"Couldn't resolve type <{typeName}>");
+                return result;
+            throw new InvalidOperationException(
+                $"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)}) in [{string.Join(" | ", searchedList)}]");
         }
 
         /*public static PropertyInfo ResolveProperty(string propertyName, Type sourceType = null)
@@ -184,7 +188,7 @@ namespace Templates.Helpers {
                 modelType = modelType.MakeGenericType(genericParameters.Select(parameter => ResolveType(parameter, importsArray)).ToArray());
                 return modelType;
             }
-            return ResolveSimpleType(typeName, imports ?? Enumerable.Empty<string>());
+            return ResolveSimpleType(typeName, imports ?? new string[0]);
         }
 
         public static Type ResolveType(string typeName, ICollection<string> imports)
@@ -201,7 +205,7 @@ namespace Templates.Helpers {
                 modelType = modelType.MakeGenericType(genericParameters.Select(parameter => ResolveType(parameter, importsArray)).ToArray());
                 return modelType;
             }
-            return ResolveSimpleType(typeName, imports ?? Enumerable.Empty<string>());
+            return ResolveSimpleType(typeName, imports ?? new string[0]);
         }
     }
 }

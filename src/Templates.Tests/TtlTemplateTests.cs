@@ -1,36 +1,44 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using Templates.Data;
 using Templates.Runtime;
 using Templates.Tests.Data;
 using Xunit;
 
-namespace Templates.Tests {
-    public class TtlTemplateTests {
+namespace Templates.Tests
+{
+    public class TtlTemplateTests
+    {
         [Fact()]
-        public void TtlTemplateTest() {
-            
+        public void TtlTemplateTest()
+        {
+
         }
 
         [Fact()]
-        public void TtlTemplateTest1() {
-            
+        public void TtlTemplateTest1()
+        {
+
         }
 
         [Fact()]
-        public void TtlTemplateTest2() {
-            
+        public void TtlTemplateTest2()
+        {
+
         }
 
         [Fact()]
-        public void DisposeTest() {
-            
+        public void DisposeTest()
+        {
+
         }
 
         [Fact]
         public void EmptyOptimizedDocumentTest()
         {
+            TtlTemplate.Configure(typeof(TtlTemplateTests).GetTypeInfo().Assembly);
             var options = new TemplateOptions("optimized-document")
             {
                 FileNamePostfix = ".thtml",
@@ -55,6 +63,7 @@ namespace Templates.Tests {
         [Fact]
         public void EmptyOverrideTest()
         {
+            TtlTemplate.Configure(typeof(TtlTemplateTests).GetTypeInfo().Assembly);
             var options = new TemplateOptions("empty-override")
             {
                 FileNamePostfix = ".thtml",
@@ -145,6 +154,7 @@ namespace Templates.Tests {
         [Fact()]
         public void RecursionGenerateTest()
         {
+            TtlTemplate.Configure(typeof(TtlTemplateTests).GetTypeInfo().Assembly);
             var options = new TemplateOptions("recursion")
             {
                 FileNamePostfix = ".thtml",
@@ -235,6 +245,7 @@ namespace Templates.Tests {
         [Fact()]
         public void VcGenerateTest()
         {
+            TtlTemplate.Configure(typeof(TtlTemplateTests).GetTypeInfo().Assembly);
             var options = new TemplateOptions("vc-test")
             {
                 FileNamePostfix = ".thtml",
@@ -257,7 +268,9 @@ namespace Templates.Tests {
         }
 
         [Fact()]
-        public void GenerateTest() {
+        public void GenerateTest()
+        {
+            TtlTemplate.Configure(typeof(TtlTemplateTests).GetTypeInfo().Assembly);
             var options = new TemplateOptions("template")
             {
                 FileNamePostfix = ".thtml",
