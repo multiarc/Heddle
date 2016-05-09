@@ -10,12 +10,15 @@
   "dependencies": {
     "Microsoft.AspNetCore.Mvc.ViewFeatures": "1.0.0-*",
     "Microsoft.Extensions.DependencyModel": "1.0.0-*",
-    "Templates": ""
+    "Templates": "2.7.8-rc2"
   },
 
   "frameworks": {
     "net451": { },
     "netstandard1.5": {
+      "imports": [
+        "portable-net452+win81"
+      ],
       "dependencies": {
         "System.Collections": "4.0.11-*",
         "System.Linq": "4.1.0-*",

@@ -4,7 +4,7 @@
   "description": "Template engine language parsers support package, basing on ANTLR4.5 C# target",
   "exclude": [ "bin" ],
   "dependencies": {
-    "Antlr4.Runtime": ""
+    "Antlr4.Runtime": "4.5.1-rc2"
   },
   "scripts": {
     "prebuild": [
@@ -23,15 +23,22 @@
   "frameworks": {
     "net451": {
       "frameworkAssemblies": {
-        "System.Runtime": "4.0.10.0"
+        "System.Runtime": {
+          "type": "build"
+        }
       }
     },
     "net461": {
       "frameworkAssemblies": {
-        "System.Runtime": "4.0.20.0"
+        "System.Runtime": {
+          "type": "build"
+        }
       }
     },
     "netstandard1.5": {
+      "imports": [
+        "portable-net452+win81"
+      ],
       "dependencies": {
         "System.Runtime": "4.1.0-*",
         "System.Reflection": "4.1.0-*",

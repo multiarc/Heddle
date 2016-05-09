@@ -41,7 +41,7 @@ namespace Templates.Runtime
             try
             {
                 PreparseGenerator = new TtlTemplate();
-                IApplicationEnvironment env = PlatformServices.Default.Application;
+                ApplicationEnvironment env = PlatformServices.Default.Application;
                 var path = env.ApplicationBasePath + "/";
                 document = File.ReadAllText($"{path}CSharpPreparseTemplate.tcs");
                 InitErrors = PreparseGenerator.Compile(document);
@@ -141,7 +141,7 @@ namespace Templates.Runtime
             var result = _precompilationCache.GetOrAdd(generatedCode, code =>
             {
                 var tree = CSharpSyntaxTree.ParseText(code);
-                var assemblySet = AssemblyHelper.GetMetadataReferences();
+                var assemblySet = AssemblyHelper.GetApplicationReferences();
                 var compilation = CSharpCompilation.Create(null, new[] {tree}, assemblySet);
                 var diagnostics = compilation.GetDiagnostics();
                 if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))

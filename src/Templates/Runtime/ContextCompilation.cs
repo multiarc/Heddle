@@ -27,7 +27,7 @@ namespace Templates.Runtime
             try
             {
                 CodeGenerator = new TtlTemplate();
-                IApplicationEnvironment env = PlatformServices.Default.Application;
+                ApplicationEnvironment env = PlatformServices.Default.Application;
                 var path = env.ApplicationBasePath + "/";
                 document = File.ReadAllText($"{path}CSharpClassTemplate.tcs");
                 InitErrors =
@@ -76,7 +76,7 @@ namespace Templates.Runtime
                 var tree = CSharpSyntaxTree.ParseText(code);
                 var compilation = CSharpCompilation.Create(
                     context.CompileContext.ScopeType + "_" + context.CSharpContext.ClassGuid.ToString("N"), new[] {tree},
-                    AssemblyHelper.GetMetadataReferences(),
+                    AssemblyHelper.GetApplicationReferences(),
                     new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithCryptoPublicKey(
                         context.GetType().GetTypeInfo().Assembly.GetName().GetPublicKey().ToImmutableArray())
                         .WithDelaySign(false));
@@ -87,14 +87,16 @@ namespace Templates.Runtime
                         context.CSharpContext.Methods.First().Position));
                     return;
                 }
-                var stream = new MemoryStream();
-                compilation.Emit(stream);
-                stream.Seek(0, SeekOrigin.Begin);
+                using (var codeStream = new MemoryStream())
+                {
+                    compilation.Emit(codeStream);
+                    codeStream.Seek(0, SeekOrigin.Begin);
 #if !NETSTANDARD1_5
-                context.CSharpContext.CompiledAssembly = Assembly.Load(stream.GetBuffer());
+                    context.CSharpContext.CompiledAssembly = Assembly.Load(codeStream.GetBuffer());
 #else
-                context.CSharpContext.CompiledAssembly = AssemblyHelper.GetAssemblyLoadContext().LoadStream(stream, null);
+                    context.CSharpContext.CompiledAssembly = new AssemblyHelper.TemplateLoadContext().Load(codeStream, null);
 #endif
+                }
                 GeneratedAssemblyCache.AddToCache(code, context.CSharpContext.CompiledAssembly);
                 var classType =
                     context.CSharpContext.CompiledAssembly.GetType($"Templates.Runtime.CSE_{context.CSharpContext.ClassGuid.ToString("N")}");

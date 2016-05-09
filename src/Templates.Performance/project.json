@@ -5,7 +5,7 @@
   },
   "content": [ "CSharpClassTemplate.tcs", "CSharpPreparseTemplate.tcs" ],
   "dependencies": {
-    "Templates": ""
+    "Templates": "2.7.8-rc2"
   },
   "configurations": {
     "release": {
@@ -18,8 +18,16 @@
     "Templates.Performance": "run"
   },
   "frameworks": {
-    "dnxcore50": {
+    "net451": {
+
+    },
+    "netcoreapp1.0": {
+      "imports": "dnxcore50",
       "dependencies": {
+        "Microsoft.NETCore.App": {
+          "type": "platform",
+          "version": "1.0.0-*"
+        },
         "NETStandard.Library": "1.5.0-*",
         "System.Runtime": "4.1.0-*",
         "System.Console": "4.0.0-*",

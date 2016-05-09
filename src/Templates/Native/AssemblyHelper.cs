@@ -4,24 +4,39 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.PortableExecutable;
 using System.Threading;
 using Microsoft.Extensions.PlatformAbstractions;
 using Microsoft.CodeAnalysis;
-using Microsoft.Dnx.Compilation.CSharp;
-using Microsoft.Extensions.CompilationAbstractions;
+using Microsoft.Extensions.DependencyModel;
+#if NETSTANDARD1_5
+using System.Runtime.Loader;
+#endif
 
 namespace Templates.Native {
     internal static class AssemblyHelper {
-        private static readonly ILibraryExporter LibraryManager = CompilationServices.Default.LibraryExporter;
-        private static readonly IApplicationEnvironment Environment = PlatformServices.Default.Application;
-        private static List<MetadataReference> _metadataReferences;
+        private static readonly DependencyContext DependencyContext = DependencyContext.Default;
+        private static readonly ConcurrentDictionary<string, AssemblyMetadata> MetadataFileCache =
+            new ConcurrentDictionary<string, AssemblyMetadata>(StringComparer.OrdinalIgnoreCase);
 
 #if NETSTANDARD1_5
-        private static readonly IAssemblyLoadContextAccessor LoadContextAccessor = PlatformServices.Default.AssemblyLoadContextAccessor;
 
-        private static readonly Func<object> GetCurrentDomain;
+        private static readonly ApplicationEnvironment Environment = PlatformServices.Default.Application;
+
+        internal class TemplateLoadContext : AssemblyLoadContext
+        {
+            protected override Assembly Load(AssemblyName assemblyName)
+            {
+                return Default.LoadFromAssemblyName(assemblyName);
+            }
+
+            public Assembly Load(Stream assembly, Stream assemblySymbols)
+            {
+                return LoadFromStream(assembly, assemblySymbols);
+            }
+        }
+
         private static readonly HashSet<Assembly> Assemblies;
-        private static readonly Func<object, Assembly[]> AssembliesGetter;
 
         private static void WalkReferenceAssemblies(HashSet<Assembly> set, Assembly current)
         {
@@ -70,11 +85,6 @@ namespace Templates.Native {
             return Assemblies;
         }
 
-        internal static IAssemblyLoadContext GetAssemblyLoadContext()
-        {
-            return LoadContextAccessor;
-        }
-
 #else
 
         internal static Assembly[] GetAssemblies() {
@@ -84,71 +94,51 @@ namespace Templates.Native {
 
         internal static AssemblyName GetAssemblyName(string name)
         {
-            //DnxPlatformServices.Default.AssemblyLoadContextAccessor
             return
                 GetAssemblies()
                     .Select(assembly => assembly.GetName())
                     .FirstOrDefault(assemblyName => assemblyName.Name == name);
         }
 
-        private static MetadataReference ConvertMetadataReference(IMetadataReference metadataReference) {
-            // ReSharper disable once SuspiciousTypeConversion.Global
-            var roslynReference = metadataReference as IRoslynMetadataReference;
-
-            if (roslynReference != null) {
-                return roslynReference.MetadataReference;
-            }
-
-            var embeddedReference = metadataReference as IMetadataEmbeddedReference;
-
-            if (embeddedReference != null) {
-                return MetadataReference.CreateFromImage(embeddedReference.Contents);
-            }
-
-            var fileMetadataReference = metadataReference as IMetadataFileReference;
-
-            if (fileMetadataReference != null) {
-                return CreateMetadataFileReference(fileMetadataReference.Path);
-            }
-
-            var projectReference = metadataReference as IMetadataProjectReference;
-            if (projectReference != null) {
-                using (var ms = new MemoryStream()) {
-                    projectReference.EmitReferenceAssembly(ms);
-
-                    return MetadataReference.CreateFromImage(ms.ToArray());
-                }
-            }
-
-            throw new NotSupportedException();
-        }
-
-        private static MetadataReference CreateMetadataFileReference(string path) {
-            return MetadataReference.CreateFromFile(path);
-        }
-
-        internal static List<MetadataReference> GetMetadataReferences() {
-            if (_metadataReferences == null)
+        private static MetadataReference CreateMetadataFileReference(string path)
+        {
+            var metadata = MetadataFileCache.GetOrAdd(path, _ =>
             {
-                var references = new List<MetadataReference>();
-                var libraryExport = LibraryManager.GetExport(Environment.ApplicationName);
-                if (libraryExport?.MetadataReferences?.Count > 0)
+                using (var stream = File.OpenRead(path))
                 {
-                    var roslynReference = libraryExport.MetadataReferences[0] as IRoslynMetadataReference;
-                    var compilationReference = roslynReference?.MetadataReference as CompilationReference;
-                    if (compilationReference != null)
-                    {
-                        references.AddRange(compilationReference.Compilation.References);
-                        references.Add(roslynReference.MetadataReference);
-                        return references;
-                    }
+                    var moduleMetadata = ModuleMetadata.CreateFromStream(stream, PEStreamOptions.PrefetchMetadata);
+                    return AssemblyMetadata.Create(moduleMetadata);
                 }
-                var export = LibraryManager.GetAllExports(Environment.ApplicationName);
-                references.AddRange(export.MetadataReferences.Select(ConvertMetadataReference));
+            });
 
-                Interlocked.CompareExchange(ref _metadataReferences, references, null);
+            return metadata.GetReference(filePath: path);
+        }
+
+        public static List<MetadataReference> GetApplicationReferences()
+        {
+            var metadataReferences = new List<MetadataReference>();
+            if (DependencyContext == null)
+            {
+                // Avoid null ref if the entry point does not have DependencyContext specified.
+                return metadataReferences;
             }
-            return _metadataReferences;
+
+            foreach (var library in DependencyContext.CompileLibraries)
+            {
+                IEnumerable<string> referencePaths;
+                try
+                {
+                    referencePaths = library.ResolveReferencePaths();
+                }
+                catch (InvalidOperationException)
+                {
+                    continue;
+                }
+
+                metadataReferences.AddRange(referencePaths.Select(CreateMetadataFileReference));
+            }
+
+            return metadataReferences;
         }
 
     }
