@@ -38,8 +38,6 @@ using System.Runtime.InteropServices;
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
 
-[assembly:AssemblyVersion ("2.0.*")]
-[assembly:AssemblyFileVersion ("2.0.0.0")]
 [assembly: InternalsVisibleTo("Templates.Tests")]
 //[assembly: InternalsVisibleTo("Templates.Tests, PublicKey=00240000048000009400000006020000002400005253413100040000010001008f699cb432ad3dc770f9147de37911b49099706c36af5f14db7c2031dd216ffae283b63a2591814f371929ab231c4a82bcbfac9803c37b96ae90dc703f4159e8b6ac6e2e9f364f072d1ba2fc5b79f26acf3bd61637d2db47f409e2b07cf3f49e988bf2c5f6ddae6d8f804c770601cce3f3cea11f7d61a3583109d9ad3244f6c6")]
 //[assembly: InternalsVisibleTo("Templates.Explorables, PublicKey=00240000048000009400000006020000002400005253413100040000010001008f699cb432ad3dc770f9147de37911b49099706c36af5f14db7c2031dd216ffae283b63a2591814f371929ab231c4a82bcbfac9803c37b96ae90dc703f4159e8b6ac6e2e9f364f072d1ba2fc5b79f26acf3bd61637d2db47f409e2b07cf3f49e988bf2c5f6ddae6d8f804c770601cce3f3cea11f7d61a3583109d9ad3244f6c6")]

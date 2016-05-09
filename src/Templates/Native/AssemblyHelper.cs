@@ -12,6 +12,8 @@ using Microsoft.Extensions.PlatformAbstractions;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyModel;
+using CompilationOptions = Microsoft.Extensions.DependencyModel.CompilationOptions;
+
 #if NETSTANDARD1_5
 using System.Runtime.Loader;
 #endif
@@ -24,6 +26,8 @@ namespace Templates.Native
 
         private static readonly ConcurrentDictionary<string, Tuple<Assembly, MetadataReference>> AssemblyCache =
             new ConcurrentDictionary<string, Tuple<Assembly, MetadataReference>>(StringComparer.OrdinalIgnoreCase);
+
+        private static readonly List<MetadataReference> MetadataReferences;
 
 #if NETSTANDARD1_5
 
@@ -43,17 +47,19 @@ namespace Templates.Native
 
         private static void WalkReferenceAssemblies(Assembly current)
         {
-            if (AssemblyCache.TryAdd(current.FullName,
-                new Tuple<Assembly, MetadataReference>(current, CreateMetadataFileReference(current))))
+            var currentInfo = new Tuple<Assembly, MetadataReference>(current, CreateMetadataFileReference(current));
+            if (AssemblyCache.TryAdd(current.FullName, currentInfo))
             {
+                MetadataReferences.Add(currentInfo.Item2);
                 foreach (var assemblyName in current.GetReferencedAssemblies())
                 {
                     try
                     {
                         var dependent = Assembly.Load(assemblyName);
-                        if (AssemblyCache.TryAdd(dependent.FullName,
-                            new Tuple<Assembly, MetadataReference>(dependent, CreateMetadataFileReference(dependent))))
+                        var dependentInfo = new Tuple<Assembly, MetadataReference>(dependent, CreateMetadataFileReference(dependent));
+                        if (AssemblyCache.TryAdd(dependent.FullName, dependentInfo))
                         {
+                            MetadataReferences.Add(dependentInfo.Item2);
                             WalkReferenceAssemblies(dependent);
                         }
                     }
@@ -84,6 +90,7 @@ namespace Templates.Native
 
             _applicationAssembly = Assembly.Load(new AssemblyName(appEnvironment.ApplicationName));
             _dependencyContext = DependencyContext.Load(_applicationAssembly);
+            MetadataReferences = new List<MetadataReference>();
             WalkReferenceAssemblies(_applicationAssembly);
             GetApplicationReferences();
         }
@@ -94,11 +101,11 @@ namespace Templates.Native
         {
             if (!_configured)
             {
-                _configured = true;
                 _dependencyContext = DependencyContext.Load(startupAssembly);
                 _applicationAssembly = startupAssembly;
                 WalkReferenceAssemblies(startupAssembly);
                 GetApplicationReferences();
+                _configured = true;
             }
         }
 
@@ -122,13 +129,13 @@ namespace Templates.Native
             return metadata.GetReference(filePath: asm.FullName);
         }
 
-        private static MetadataReference CreateMetadataFileReference(AssemblyName assemblyName, out Assembly asm)
-        {
-            asm = Assembly.Load(assemblyName);
-            var moduleMetadata = ModuleMetadata.CreateFromFile(asm.Location);
-            var metadata = AssemblyMetadata.Create(moduleMetadata);
-            return metadata.GetReference(filePath: assemblyName.FullName);
-        }
+        //private static MetadataReference CreateMetadataFileReference(AssemblyName assemblyName, out Assembly asm)
+        //{
+        //    asm = Assembly.Load(assemblyName);
+        //    var moduleMetadata = ModuleMetadata.CreateFromFile(asm.Location);
+        //    var metadata = AssemblyMetadata.Create(moduleMetadata);
+        //    return metadata.GetReference(filePath: assemblyName.FullName);
+        //}
 
         private static string ResolveContentRootPath(string contentRootPath, string basePath)
         {
@@ -145,22 +152,18 @@ namespace Templates.Native
 
         public static List<MetadataReference> GetApplicationReferences()
         {
-            if (_dependencyContext != null)
+            if (_dependencyContext != null && !_configured)
             {
                 foreach (var name in _dependencyContext.GetDefaultAssemblyNames())
                 {
                     if (!AssemblyCache.ContainsKey(name.FullName))
                     {
-                        Assembly asm;
-                        var meta = CreateMetadataFileReference(name, out asm);
+                        var asm = Assembly.Load(name);
                         WalkReferenceAssemblies(asm);
-                        var value = new Tuple<Assembly, MetadataReference>(asm, meta);
-                        AssemblyCache.TryAdd(name.FullName, value);
                     }
                 }
             }
-
-            return AssemblyCache.Values.Select(t => t.Item2).ToList();
+            return MetadataReferences;
         }
 
     }

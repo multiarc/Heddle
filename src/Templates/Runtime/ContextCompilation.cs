@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Emit;
 using Microsoft.Extensions.PlatformAbstractions;
 using Templates.Data;
 using Templates.Exceptions;
@@ -77,9 +78,13 @@ namespace Templates.Runtime
                 var compilation = CSharpCompilation.Create(
                     context.CompileContext.ScopeType + "_" + context.CSharpContext.ClassGuid.ToString("N"), new[] {tree},
                     AssemblyHelper.GetApplicationReferences(),
-                    new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithCryptoPublicKey(
-                        context.GetType().GetTypeInfo().Assembly.GetName().GetPublicKey().ToImmutableArray())
-                        .WithDelaySign(false));
+                    new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithSpecificDiagnosticOptions(
+                        new Dictionary<string, ReportDiagnostic>
+                        {
+                            {"CS1701", ReportDiagnostic.Suppress}, // Binding redirects
+                            {"CS1702", ReportDiagnostic.Suppress},
+                            {"CS1705", ReportDiagnostic.Suppress}
+                        }).WithOptimizationLevel(OptimizationLevel.Release).WithGeneralDiagnosticOption(ReportDiagnostic.Default));
                 var diagnostics = compilation.GetDiagnostics();
                 if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
                 {
@@ -89,13 +94,26 @@ namespace Templates.Runtime
                 }
                 using (var codeStream = new MemoryStream())
                 {
-                    compilation.Emit(codeStream);
-                    codeStream.Seek(0, SeekOrigin.Begin);
+                    using (var symbolStream = new MemoryStream())
+                    {
+                        compilation.Emit(codeStream, symbolStream,
+                            options: new EmitOptions(debugInformationFormat: DebugInformationFormat.PortablePdb));
+                        codeStream.Seek(0, SeekOrigin.Begin);
+                        symbolStream.Seek(0, SeekOrigin.Begin);
+                        //try
+                        //{
 #if !NETSTANDARD1_5
-                    context.CSharpContext.CompiledAssembly = Assembly.Load(codeStream.GetBuffer());
+                            context.CSharpContext.CompiledAssembly = Assembly.Load(codeStream.ToArray(), symbolStream.ToArray());
 #else
-                    context.CSharpContext.CompiledAssembly = new AssemblyHelper.TemplateLoadContext().Load(codeStream, null);
+                            context.CSharpContext.CompiledAssembly = new AssemblyHelper.TemplateLoadContext().Load(codeStream, symbolStream);
 #endif
+                        //}
+                        //catch (BadImageFormatException)
+                        //{
+                        //    throw new InvalidOperationException(
+                        //        $"{string.Join("\n", AssemblyHelper.GetApplicationReferences().Select(r => r.Display))}");
+                        //}
+                    }
                 }
                 GeneratedAssemblyCache.AddToCache(code, context.CSharpContext.CompiledAssembly);
                 var classType =

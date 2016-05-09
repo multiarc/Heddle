@@ -16,6 +16,16 @@
   },
   "testRunner": "xunit",
   "frameworks": {
+    "net451": {
+      "frameworkAssemblies": {
+        "System.Collections": ""
+      }
+    },
+    "net461": {
+      "frameworkAssemblies": {
+        "System.Collections": ""
+      }
+    },
     "netcoreapp1.0": {
       "imports": [
         "dnxcore50",
@@ -27,17 +37,6 @@
           "type": "platform"
         }
       }
-    },
-    "net451": {
-      "frameworkAssemblies": {
-        "System.Collections": ""
-      }
-    },
-    "net461": {
-      "frameworkAssemblies": {
-        "System.Collections": ""
-      }
     }
-
   }
 }
