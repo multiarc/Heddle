@@ -21,7 +21,7 @@ namespace Templates.Extensions {
                 DocumentParser.Parse(document, initContext.ParseContext, initContext.CompileScope.CompileContext, true);
             }
             if (initContext.ParseContext.OutputChains.Count > outputCount)
-                initContext.CompileScope.CompileErrors.Add("The Defenitions template cannot contain output items".ToError(default(BlockPosition)));
+                initContext.CompileScope.CompileErrors.Add("The Defenitions template cannot contain output items".ToError(Position));
             return null;
         }
 

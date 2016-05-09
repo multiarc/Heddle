@@ -123,9 +123,9 @@ namespace Templates.Runtime {
                 resultExtension.Position = absoluteTextPosition;
                 return resultExtension;
             }
-            catch (KeyNotFoundException e)
+            catch (KeyNotFoundException)
             {
-                compileContext.CompileErrors.Add($"Cannot find extension <{templateName}> ({e.Message})".ToError(absoluteTextPosition));
+                compileContext.CompileErrors.Add($"Cannot find extension <{templateName}>".ToError(absoluteTextPosition));
                 return null;
             }
             catch (ArgumentException e)

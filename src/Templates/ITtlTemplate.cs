@@ -28,9 +28,9 @@ namespace Templates
 
         TtlCompileResult Compile(string document, ExType modelType = null);
 
-        TtlCompileResult Compile(CompileContext context);    
+        TtlCompileResult Compile(CompileContext context);
 
-        TtlCompileResult TryCompilation(string document, ExType modelType = null);
+        TtlCompileResult TryCompilation(string document, TemplateOptions options = null, ExType modelType = null);
 
         TtlCompileResult TryCompilation(CompileContext context);
 
