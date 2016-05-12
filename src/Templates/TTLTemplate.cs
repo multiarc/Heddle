@@ -192,11 +192,11 @@ namespace Templates
             return Compile(new CompileScope(context), document, true);
         }
 
-        public TtlCompileResult TryCompilation(string document, ExType modelType = null)
+        public TtlCompileResult TryCompilation(string document, TemplateOptions options = null, ExType modelType = null)
         {
             if (_runtimeDocument != null)
                 throw new TemplateInitException("Template already compiled.");
-            return Compile(new CompileScope(new CompileContext(modelType)), document, true);
+            return Compile(new CompileScope(new CompileContext(options ?? new TemplateOptions(), modelType)), document, true);
         }
 
         private TtlCompileResult Compile(CompileScope compileScope, string document, bool simulate = false)

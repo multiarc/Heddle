@@ -36,9 +36,21 @@ namespace Templates.Runtime
                 ExType returnTypeChainedPrevious = chainedType;
                 foreach (var item in ((ICollection<OutputItem>) extensions.Chain).Reverse())
                 {
-                    var compiledItem = CompileItem(item, compileScope, extensions.Context,
-                        ref returnTypeChainedPrevious);
-                    element.CallChain.Add(compiledItem);
+                    try
+                    {
+                        var compiledItem = CompileItem(item, compileScope, extensions.Context,
+                            ref returnTypeChainedPrevious);
+                        element.CallChain.Add(compiledItem);
+                    }
+                    catch (Exception e)
+                    {
+                        compileScope.CompileErrors.Add(new TtlCompileError
+                        {
+                            Exception = e,
+                            Position = item.Position,
+                            Error = $"Error while compiling {item.ExtensionName}"
+                        });
+                    }
                 }
                 if (returnTypeChainedPrevious == null)
                 {
@@ -55,9 +67,21 @@ namespace Templates.Runtime
                 ExType returnTypeChainedPrevious = chainedType;
                 foreach (var item in ((ICollection<OutputItem>) extensions.Chain).Reverse())
                 {
-                    var compiledItem = CompileItem(item, compileScope, extensions.Context,
-                        ref returnTypeChainedPrevious);
-                    element.CallChain.Add(compiledItem);
+                    try
+                    {
+                        var compiledItem = CompileItem(item, compileScope, extensions.Context,
+                            ref returnTypeChainedPrevious);
+                        element.CallChain.Add(compiledItem);
+                    }
+                    catch (Exception e)
+                    {
+                        compileScope.CompileErrors.Add(new TtlCompileError
+                        {
+                            Exception = e,
+                            Position = item.Position,
+                            Error = $"Error while compiling {item.ExtensionName}"
+                        });
+                    }
                 }
                 if (returnTypeChainedPrevious != null)
                 {

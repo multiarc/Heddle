@@ -139,7 +139,7 @@ namespace Templates.Runtime
         {
             return
                 diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
-                    .Select(d => new TtlCompileError {Error = d.GetMessage()})
+                    .Select(d => new TtlCompileError {Error = d.GetMessage(), Position = position })
                     .Union(
                         diagnostics.Where(d => d.Severity == DiagnosticSeverity.Warning)
                             .Select(d => new TtlCompileWarning {Error = d.GetMessage(), Position = position}));
