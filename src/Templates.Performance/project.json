@@ -1,25 +1,28 @@
 ﻿{
   "version": "1.0.0-*",
-  "compilationOptions": {
-    "emitEntryPoint": true
+  "buildOptions": {
+    "emitEntryPoint": true,
+    "copyToOutput": {
+      "include": [ "TestTemplates", "CSharpClassTemplate.tcs", "CSharpPreparseTemplate.tcs" ]
+    }
   },
-  "content": [ "CSharpClassTemplate.tcs", "CSharpPreparseTemplate.tcs" ],
   "dependencies": {
-    "Templates": "2.7.8-rc2"
+    "Templates": "2.7.11-rc2"
   },
   "configurations": {
     "release": {
-      "compilationOptions": { "define": [ "TRACE" ] },
+      "buildOptions": { "define": [ "TRACE" ] },
       "optimize": true
     },
-    "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } }
+    "debug": { "buildOptions": { "define": [ "TRACE", "DEBUG" ] } }
   },
   "commands": {
     "Templates.Performance": "run"
   },
   "frameworks": {
+    "net461": {
+    },
     "net451": {
-
     },
     "netcoreapp1.0": {
       "imports": "dnxcore50",

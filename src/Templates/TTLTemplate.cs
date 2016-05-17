@@ -216,6 +216,14 @@ namespace Templates
                 if (!simulate)
                 {
                     compileScope.Compile();
+                    if (compileScope.CompileErrors.Count > 0)
+                    {
+                        compileScope.Dispose();
+                        rtdoc?.Dispose();
+                        var result = new TtlCompileResult(false, document);
+                        result.Errors.AddRange(compileScope.CompileErrors);
+                        return result;
+                    }
                     _context = compileScope;
                     _document = document;
                     _runtimeDocument = rtdoc;

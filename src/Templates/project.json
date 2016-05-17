@@ -1,24 +1,37 @@
 ﻿{
-  "version": "2.7.8-rc2",
+  "version": "2.7.11-rc2",
   "authors": [ "Aliaksandr Kukrash" ],
   "description": "Robust template engine with C# expressions (Roslyn) support, text template inheritance and override support",
-  "exclude": [ "bin", "obj" ],
-  "compilationOptions": { "allowUnsafe": true },
+  "packOptions": {
+    "files": {
+      "includeFiles": [ "LanguageTemplates\\CSharpClassTemplate.tcs", "LanguageTemplates\\CSharpPreparseTemplate.tcs" ]
+    }
+  },
+  "buildOptions": {
+    "allowUnsafe": true,
+    "exclude": [ "bin", "obj" ]
+  },
   "dependencies": {
-    "Templates.Language": "1.4.8-rc2",
+    "Templates.Language": "1.4.11-rc2",
     "Antlr4.Runtime": "4.5.1-rc2",
     "Microsoft.Extensions.PlatformAbstractions": "1.0.0-*",
     "Microsoft.CodeAnalysis.CSharp": "1.3.0-*",
     "Microsoft.Extensions.DependencyModel": "1.0.0-*",
     "Microsoft.Extensions.Configuration": "1.0.0-*",
-    "Microsoft.AspNetCore.Hosting": "1.0.0-*" 
+    "Microsoft.AspNetCore.Hosting": "1.0.0-*"
   },
-  "configurations": { 
+  "configurations": {
     "release": {
-      "compilationOptions": { "define": [ "TRACE" ] },
+      "buildOptions": {
+        "define": [ "TRACE" ]
+      },
       "optimize": true
     },
-    "debug": { "compilationOptions": { "define": [ "TRACE", "DEBUG" ] } }
+    "debug": {
+      "buildOptions": {
+        "define": [ "TRACE", "DEBUG" ]
+      }
+    }
   },
   "frameworks": {
     "net451": {
@@ -27,7 +40,8 @@
         "System.Text.Encoding": "",
         "System.Threading.Tasks": "",
         "System.IO": "",
-        "System.ComponentModel": ""
+        "System.ComponentModel": "",
+        "Microsoft.CSharp": ""
       }
     },
     "net461": {
@@ -36,7 +50,8 @@
         "System.Text.Encoding": "",
         "System.Threading.Tasks": "",
         "System.IO": "",
-        "System.ComponentModel": ""
+        "System.ComponentModel": "",
+        "Microsoft.CSharp": ""
       }
     },
     "netstandard1.5": {

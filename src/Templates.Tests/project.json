@@ -7,23 +7,28 @@
     "Microsoft.NETCore.Platforms": "1.0.1-*",
     "Microsoft.Extensions.Configuration.FileExtensions": "1.0.0-*",
     "Microsoft.Extensions.Configuration.Json": "1.0.0-*",
-    "Templates": "2.7.8-rc2"
+    "Templates": "2.7.11-rc2"
   },
   "buildOptions": {
     "copyToOutput": {
       "include": [ "TestTemplate", "CSharpClassTemplate.tcs", "CSharpPreparseTemplate.tcs" ]
+    },
+    "compile": {
+      "exclude": "Code/**/*.*"
     }
   },
   "testRunner": "xunit",
   "frameworks": {
     "net451": {
       "frameworkAssemblies": {
-        "System.Collections": ""
+        "System.Collections": "",
+        "Microsoft.CSharp": ""
       }
     },
     "net461": {
       "frameworkAssemblies": {
-        "System.Collections": ""
+        "System.Collections": "",
+        "Microsoft.CSharp": ""
       }
     },
     "netcoreapp1.0": {

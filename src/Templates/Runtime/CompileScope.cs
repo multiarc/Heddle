@@ -9,8 +9,11 @@ namespace Templates.Runtime
 {
     public class CompileScope: IDisposable
     {
-        public CompileScope(CompileContext compileContext, CSharpContext cSharpContext = null)
+        public IServiceProvider ServiceProvider { get; }
+
+        public CompileScope(CompileContext compileContext, CSharpContext cSharpContext = null, IServiceProvider serviceProvider = null)
         {
+            ServiceProvider = serviceProvider;
             CompileContext = compileContext;
             CSharpContext = cSharpContext ?? new CSharpContext();
         }

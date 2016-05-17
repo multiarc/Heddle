@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Microsoft.Extensions.DependencyInjection;
 using Templates.Attributes;
 using Templates.Data;
 using Templates.Extensions;
@@ -15,7 +16,8 @@ namespace Templates.Mvc.Extensions
         public override void CompleteInit(CompileScope newContext, ParseContext parseContext)
         {
             IEnumerable<string> locations;
-            InnerTemplate = TtlViewEngine.Resolver.GetTemplate(newContext.Options.TemplateName,
+            var engine = newContext.ServiceProvider.GetRequiredService<TtlViewEngine>();
+            InnerTemplate = engine.Resolver.GetTemplate(newContext.Options.TemplateName,
                 newContext.CompileContext.ControllerName, out locations, newContext.CompileContext, TemplatePathType.PartialView);
             if (!InnerTemplate.CompileResult.Success)
             {

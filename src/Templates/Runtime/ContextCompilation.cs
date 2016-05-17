@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
@@ -13,6 +14,7 @@ using Templates.Exceptions;
 using Templates.Native;
 using Templates.Runtime.Parameters;
 using Templates.Strings.Core;
+using Platform = Microsoft.CodeAnalysis.Platform;
 
 namespace Templates.Runtime
 {
@@ -71,6 +73,10 @@ namespace Templates.Runtime
                     throw new TemplateCompileException("Cannot compile base C# generation templates",
                         InitErrors.Errors);
                 var code = CodeGenerator.Generate(context.CSharpContext);
+                //Directory.CreateDirectory("Code");
+                //var fileName = "Code\\" + (context.Options.TemplateName ?? string.Empty) + "_" +
+                //               context.CSharpContext.ClassGuid.ToString("N") + ".cs";
+                //File.WriteAllText(fileName, code, Encoding.UTF8);
                 context.CSharpContext.CompiledAssembly = GeneratedAssemblyCache.TryGetCached(code);
                 if (context.CSharpContext.CompiledAssembly != null)
                     return;
@@ -84,7 +90,7 @@ namespace Templates.Runtime
                             {"CS1701", ReportDiagnostic.Suppress}, // Binding redirects
                             {"CS1702", ReportDiagnostic.Suppress},
                             {"CS1705", ReportDiagnostic.Suppress}
-                        }).WithOptimizationLevel(OptimizationLevel.Release).WithGeneralDiagnosticOption(ReportDiagnostic.Default));
+                        }).WithOptimizationLevel(OptimizationLevel.Release).WithGeneralDiagnosticOption(ReportDiagnostic.Default).WithPlatform(Platform.AnyCpu));
                 var diagnostics = compilation.GetDiagnostics();
                 if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
                 {
@@ -96,8 +102,14 @@ namespace Templates.Runtime
                 {
                     using (var symbolStream = new MemoryStream())
                     {
-                        compilation.Emit(codeStream, symbolStream,
+                        var results = compilation.Emit(codeStream, symbolStream,
                             options: new EmitOptions(debugInformationFormat: DebugInformationFormat.PortablePdb));
+                        if (!results.Success)
+                        {
+                            context.CompileContext.CompileErrors.AddRange(FormatErrors(results.Diagnostics,
+                                context.CSharpContext.Methods.First().Position));
+                            return;
+                        }
                         codeStream.Seek(0, SeekOrigin.Begin);
                         symbolStream.Seek(0, SeekOrigin.Begin);
                         //try

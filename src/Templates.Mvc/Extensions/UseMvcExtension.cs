@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Templates.Attributes;
@@ -21,7 +22,8 @@ namespace Templates.Mvc.Extensions {
             TtlTemplate cached;
             base.InitStart(initContext, dataType, chainedType, parent);
             initContext.ParameterTemplate = GetInnerResult(Scope.Null);
-            var path = TtlViewEngine.Resolver.Search(initContext.ParameterTemplate, initContext.CompileScope.CompileContext.ControllerName, TemplatePathType.Master,
+            var engine = initContext.CompileScope.ServiceProvider.GetRequiredService<TtlViewEngine>();
+            var path = engine.Resolver.Search(initContext.ParameterTemplate, initContext.CompileScope.CompileContext.ControllerName, TemplatePathType.Master,
                 out searched, out cached);
             int outputCount = initContext.ParseContext.OutputChains.Count;
             using (var file = File.OpenText(path))

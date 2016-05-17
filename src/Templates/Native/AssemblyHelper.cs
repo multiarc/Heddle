@@ -92,6 +92,8 @@ namespace Templates.Native
             _dependencyContext = DependencyContext.Load(_applicationAssembly);
             MetadataReferences = new List<MetadataReference>();
             WalkReferenceAssemblies(_applicationAssembly);
+            WalkReferenceAssemblies(typeof(System.Runtime.CompilerServices.DynamicAttribute).GetTypeInfo().Assembly);
+            WalkReferenceAssemblies(typeof(Microsoft.CSharp.RuntimeBinder.CSharpArgumentInfo).GetTypeInfo().Assembly);
             GetApplicationReferences();
         }
 
@@ -137,18 +139,18 @@ namespace Templates.Native
         //    return metadata.GetReference(filePath: assemblyName.FullName);
         //}
 
-        private static string ResolveContentRootPath(string contentRootPath, string basePath)
-        {
-            if (string.IsNullOrEmpty(contentRootPath))
-            {
-                return basePath;
-            }
-            if (Path.IsPathRooted(contentRootPath))
-            {
-                return contentRootPath;
-            }
-            return Path.Combine(Path.GetFullPath(basePath), contentRootPath);
-        }
+        //private static string ResolveContentRootPath(string contentRootPath, string basePath)
+        //{
+        //    if (string.IsNullOrEmpty(contentRootPath))
+        //    {
+        //        return basePath;
+        //    }
+        //    if (Path.IsPathRooted(contentRootPath))
+        //    {
+        //        return contentRootPath;
+        //    }
+        //    return Path.Combine(Path.GetFullPath(basePath), contentRootPath);
+        //}
 
         public static List<MetadataReference> GetApplicationReferences()
         {

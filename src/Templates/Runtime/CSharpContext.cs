@@ -196,24 +196,24 @@ namespace Templates.Runtime
                 var currentAssemblyName = GetType().GetTypeInfo().Assembly.GetName();
                 yield return FormatAssemblyName(currentAssemblyName);
 #if NETSTANDARD1_5
-                var systemAssemblyName = AssemblyHelper.GetAssemblyName("System.Dynamic.Runtime");
-                if (systemAssemblyName != null)
-                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
-                systemAssemblyName = AssemblyHelper.GetAssemblyName("System.Core");
-                if (systemAssemblyName != null)
-                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
-                systemAssemblyName = AssemblyHelper.GetAssemblyName("System.Runtime");
-                if (systemAssemblyName != null)
-                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
-                systemAssemblyName = AssemblyHelper.GetAssemblyName("System");
-                if (systemAssemblyName != null)
-                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
-                systemAssemblyName = typeof(object).GetTypeInfo().Assembly.GetName();
-                if (systemAssemblyName != null)
-                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
-                systemAssemblyName = AssemblyHelper.GetAssemblyName("Microsoft.CSharp");
-                if (systemAssemblyName != null)
-                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
+                //var systemAssemblyName = AssemblyHelper.GetAssemblyName("System.Dynamic.Runtime");
+                //if (systemAssemblyName != null)
+                //    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
+                //systemAssemblyName = AssemblyHelper.GetAssemblyName("System.Core");
+                //if (systemAssemblyName != null)
+                //    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
+                //systemAssemblyName = AssemblyHelper.GetAssemblyName("System.Runtime");
+                //if (systemAssemblyName != null)
+                //    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
+                //systemAssemblyName = AssemblyHelper.GetAssemblyName("System");
+                //if (systemAssemblyName != null)
+                //    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
+                //systemAssemblyName = typeof(object).GetTypeInfo().Assembly.GetName();
+                //if (systemAssemblyName != null)
+                //    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
+                //systemAssemblyName = AssemblyHelper.GetAssemblyName("Microsoft.CSharp");
+                //if (systemAssemblyName != null)
+                //    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
 #endif
             }
         }
