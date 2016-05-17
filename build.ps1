@@ -1,22 +1,18 @@
 Push-Location src
-dnu restore --parallel
+dotnet restore
 Push-Location Templates.Tests
-dnu build --configuration Release
-dnx test
-dnvm use default -r coreclr -arch x64
-dnx test
-dnvm use default -r clr -arch x64
+dotnet test
 Pop-Location
 Push-Location Templates
-dnu pack --out ..\..\packages\Templates --configuration Release
+dotnet pack -o ..\..\packages\Templates --configuration Release
 Pop-Location
 Push-Location Templates.Language
-dnu pack --out ..\..\packages\Templates.Language --configuration Release
+dotnet pack -o ..\..\packages\Templates.Language --configuration Release
 Pop-Location
 Push-Location Antlr4.Runtime
-dnu pack --out ..\..\packages\Antlr4.Runtime --configuration Release
+dotnet pack -o ..\..\packages\Antlr4.Runtime --configuration Release
 Pop-Location
 Push-Location Templates.Mvc
-dnu pack --out ..\..\packages\Templates.Mvc --configuration Release
+dotnet pack -o ..\..\packages\Templates.Mvc --configuration Release
 Pop-Location
 Pop-Location
