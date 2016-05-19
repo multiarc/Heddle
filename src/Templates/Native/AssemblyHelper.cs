@@ -28,6 +28,7 @@ namespace Templates.Native
             new ConcurrentDictionary<string, Tuple<Assembly, MetadataReference>>(StringComparer.OrdinalIgnoreCase);
 
         private static readonly List<MetadataReference> MetadataReferences;
+        private static readonly List<Assembly> Assemblies;
 
 #if NETSTANDARD1_5
 
@@ -50,6 +51,7 @@ namespace Templates.Native
             var currentInfo = new Tuple<Assembly, MetadataReference>(current, CreateMetadataFileReference(current));
             if (AssemblyCache.TryAdd(current.FullName, currentInfo))
             {
+                Assemblies.Add(currentInfo.Item1);
                 MetadataReferences.Add(currentInfo.Item2);
                 foreach (var assemblyName in current.GetReferencedAssemblies())
                 {
@@ -60,6 +62,7 @@ namespace Templates.Native
                         if (AssemblyCache.TryAdd(dependent.FullName, dependentInfo))
                         {
                             MetadataReferences.Add(dependentInfo.Item2);
+                            Assemblies.Add(dependentInfo.Item1);
                             WalkReferenceAssemblies(dependent);
                         }
                     }
@@ -72,7 +75,7 @@ namespace Templates.Native
 
         internal static ICollection<Assembly> GetAssemblies()
         {
-            return AssemblyCache.Values.Select(a => a.Item1).ToArray();
+            return Assemblies;
         }
 
         private static Assembly _applicationAssembly;
@@ -85,12 +88,12 @@ namespace Templates.Native
                 Console.WriteLine(args.ExceptionObject.ToString());
             };
 #endif
-
             var appEnvironment = PlatformServices.Default.Application;
 
             _applicationAssembly = Assembly.Load(new AssemblyName(appEnvironment.ApplicationName));
             _dependencyContext = DependencyContext.Load(_applicationAssembly);
             MetadataReferences = new List<MetadataReference>();
+            Assemblies = new List<Assembly>();
             WalkReferenceAssemblies(_applicationAssembly);
             WalkReferenceAssemblies(typeof(System.Runtime.CompilerServices.DynamicAttribute).GetTypeInfo().Assembly);
             WalkReferenceAssemblies(typeof(Microsoft.CSharp.RuntimeBinder.CSharpArgumentInfo).GetTypeInfo().Assembly);
