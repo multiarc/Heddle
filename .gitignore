@@ -105,3 +105,4 @@ project.lock.json
 /src/Templates.Language/ace/build
 /src/Templates.Demo/node_modules
 *.opendb
+/packages

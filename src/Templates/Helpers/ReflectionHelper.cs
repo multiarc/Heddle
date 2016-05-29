@@ -5,49 +5,92 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Text.RegularExpressions;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Native;
 
-namespace Templates.Helpers {
+namespace Templates.Helpers
+{
     /// <summary>
     /// Extends AttributeSet to perform more helper methods for Type reflection
     /// </summary>
-    internal class ReflectionHelper {
+    internal class ReflectionHelper
+    {
         private static readonly Regex GenericExpression = new Regex
             (@"^(?<main_type>[_a-zA-Z@][a-zA-Z0-9\.]*)<(?<generic_parameters>[_a-zA-Z@][a-zA-Z0-9\.\+]*)>$",
-             RegexOptions.Compiled | RegexOptions.Singleline);
+                RegexOptions.Compiled | RegexOptions.Singleline);
+
         private static readonly Regex WhitespaceChars = new Regex(@"\s+", RegexOptions.Compiled | RegexOptions.Singleline);
 
         private readonly Type _innerType;
 
         private static readonly Dictionary<string, Type> CSharpTypes;
 
+        private static Dictionary<string, List<Type>> _shortNames;
+
+        private static Dictionary<string, List<Type>> _fullNames;
+
         static ReflectionHelper()
         {
             CSharpTypes = new Dictionary<string, Type>(StringComparer.Ordinal)
             {
-                {"bool", typeof (bool)},
-                {"byte", typeof (byte)},
-                {"sbyte", typeof (sbyte)},
-                {"char", typeof (char)},
-                {"decimal", typeof (decimal)},
-                {"double", typeof (double)},
-                {"float", typeof (float)},
-                {"int", typeof (int)},
-                {"uint", typeof (uint)},
-                {"long", typeof (long)},
-                {"ulong", typeof (ulong)},
-                {"object", typeof (object)},
-                {"short", typeof (short)},
-                {"ushort", typeof (ushort)},
-                {"string", typeof (string)},
-                {"dynamic", typeof (object)}
+                {"bool", typeof(bool)},
+                {"byte", typeof(byte)},
+                {"sbyte", typeof(sbyte)},
+                {"char", typeof(char)},
+                {"decimal", typeof(decimal)},
+                {"double", typeof(double)},
+                {"float", typeof(float)},
+                {"int", typeof(int)},
+                {"uint", typeof(uint)},
+                {"long", typeof(long)},
+                {"ulong", typeof(ulong)},
+                {"object", typeof(object)},
+                {"short", typeof(short)},
+                {"ushort", typeof(ushort)},
+                {"string", typeof(string)},
+                {"dynamic", typeof(object)}
             };
+
+            Reconfigure();
         }
 
-        public ReflectionHelper (Type innerType)
+        public static void Reconfigure()
+        {
+            var assemblies = AssemblyHelper.GetAssemblies();
+            lock (assemblies)
+            {
+                _shortNames = new Dictionary<string, List<Type>>();
+                _fullNames = new Dictionary<string, List<Type>>();
+
+                foreach (var type in assemblies.SelectMany(a => a.GetTypes()))
+                {
+                    string shortName;
+                    if (type.IsNested)
+                    {
+                        StringBuilder shortNameBuilder = new StringBuilder();
+                        shortNameBuilder.Append(type.Name);
+                        var parent = type.DeclaringType;
+                        while (parent != null)
+                        {
+                            shortNameBuilder.Insert(0, parent.Name + "+");
+                            parent = parent.IsNested ? parent.DeclaringType : null;
+                        }
+                        shortName = shortNameBuilder.ToString();
+                    }
+                    else
+                    {
+                        shortName = type.Name;
+                    }
+                    _shortNames.AddOrUpdate(shortName, () => new List<Type> {type}, l => l.Add(type));
+                    _fullNames.AddOrUpdate(type.Namespace + "." + shortName, () => new List<Type> {type}, l => l.Add(type));
+                }
+            }
+        }
+
+        public ReflectionHelper(Type innerType)
         {
             if (innerType == null)
                 throw new ArgumentNullException(nameof(innerType));
@@ -55,7 +98,7 @@ namespace Templates.Helpers {
             _innerType = innerType;
         }
 
-        public ReflectionHelper (object value)
+        public ReflectionHelper(object value)
         {
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
@@ -67,11 +110,11 @@ namespace Templates.Helpers {
 
         public bool IsInterface => _innerType.GetTypeInfo().IsInterface;
 
-        public bool IsObject => _innerType == typeof (object);
+        public bool IsObject => _innerType == typeof(object);
 
         public bool IsClass => _innerType.GetTypeInfo().IsClass;
 
-        public bool IsImplement (Type type)
+        public bool IsImplement(Type type)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
@@ -79,7 +122,7 @@ namespace Templates.Helpers {
             return _innerType.GetInterfaces().Any(i => i == type);
         }
 
-        public bool IsType (Type type)
+        public bool IsType(Type type)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
@@ -87,7 +130,7 @@ namespace Templates.Helpers {
             return _innerType.IsType(type);
         }
 
-        public bool IsType (object value)
+        public bool IsType(object value)
         {
             if (value == null)
                 return false;
@@ -104,37 +147,78 @@ namespace Templates.Helpers {
             return null;
         }
 
-        private static Type ResolveSimpleType (string typeName, ICollection<string> imports)
+        private static Type ResolveSimpleType(string typeName, ICollection<string> imports)
         {
-            List<string> searchedList = new List<string>();
-            if (string.IsNullOrWhiteSpace(typeName))
-                throw new ArgumentException();
-            typeName = WhitespaceChars.Replace(typeName, string.Empty);
-            Type result = ResolveCsharpType(typeName);
-            if (result != null)
-                return result;
-            result = Type.GetType(typeName, false);
-            if (result == null) {
-                var assemblies = AssemblyHelper.GetAssemblies();
-                foreach (Assembly assembly in assemblies) {
-                    result = assembly.GetType(typeName);
-                    if (result != null)
-                        return result;
-                    searchedList.Add(assembly.GetName().Name);
+            if (typeName.Contains(","))
+            {
+                var result = Type.GetType(typeName, false);
+                if (result == null)
+                {
+                    throw new InvalidOperationException($"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)})");
                 }
-                string[] importsArray = imports.Select(namespc => namespc + "." + typeName).ToArray();
-                foreach (Assembly assembly in assemblies) {
-                    foreach (string import in importsArray) {
-                        result = assembly.GetType(import);
-                        if (result != null)
-                            return result;
-                        searchedList.Add(assembly.GetName().Name);
+                return result;
+            }
+            if (typeName.Contains("."))
+            {
+                List<Type> types;
+                if (_fullNames.TryGetValue(typeName, out types))
+                {
+                    if (types.Count == 1)
+                    {
+                        return types[0];
+                    }
+                    foreach (var import in imports)
+                    {
+                        var fullName = import + "." + typeName;
+                        if (_fullNames.TryGetValue(fullName, out types))
+                        {
+                            if (types.Count == 1)
+                            {
+                                return types[0];
+                            }
+                            throw new InvalidOperationException(
+                                $"Couldn't resolve type <{fullName}> ({string.Join(", ", imports)}), the type name is ambigous");
+                        }
+                    }
+                    throw new InvalidOperationException(
+                        $"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)}), the type name is ambigous");
+                }
+                foreach (var import in imports)
+                {
+                    var fullName = import + "." + typeName;
+                    if (_fullNames.TryGetValue(fullName, out types))
+                    {
+                        if (types.Count == 1)
+                        {
+                            return types[0];
+                        }
+                        throw new InvalidOperationException(
+                            $"Couldn't resolve type <{fullName}> ({string.Join(", ", imports)}), the type name is ambigous");
                     }
                 }
-            } else
-                return result;
-            throw new InvalidOperationException(
-                $"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)}) in [{string.Join(" | ", searchedList)}]");
+                throw new InvalidOperationException($"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)})");
+            }
+            else
+            {
+                Type result = ResolveCsharpType(typeName);
+                if (result != null)
+                    return result;
+                List<Type> types;
+                if (_shortNames.TryGetValue(typeName, out types))
+                {
+                    if (types.Count == 1)
+                    {
+                        return types[0];
+                    }
+                    result = types.FirstOrDefault(t => imports.Contains(t.Namespace));
+                    if (result == null)
+                    {
+                        throw new InvalidOperationException($"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)})");
+                    }
+                    return result;
+                }
+                throw new InvalidOperationException($"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)})");
+            }
         }
 
         /*public static PropertyInfo ResolveProperty(string propertyName, Type sourceType = null)
@@ -174,7 +258,7 @@ namespace Templates.Helpers {
             }
         }*/
 
-        public static Type ResolveType (string typeName, params string[] imports)
+        public static Type ResolveType(string typeName, params string[] imports)
         {
             if (string.IsNullOrWhiteSpace(typeName))
                 throw new ArgumentException();

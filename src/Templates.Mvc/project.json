@@ -1,16 +1,15 @@
 ﻿{
-  "version": "1.0.21-rc2",
+  "version": "1.0.23-rc2",
   "authors": [ "Aliaksandr Kukrash" ],
   "description": "Template engine MVC extensions library, once referenced replace internal import with MVC based.",
   "buildOptions": {
     "exclude": [ "bin", "obj" ]
   },
-  "tags": [ "ttl" ],
 
   "dependencies": {
     "Microsoft.AspNetCore.Mvc.ViewFeatures": "1.0.0-*",
     "Microsoft.Extensions.DependencyModel": "1.0.0-*",
-    "Templates": "2.7.11-rc2"
+    "Templates": "2.7.13-rc2"
   },
 
   "frameworks": {

@@ -12,6 +12,7 @@ using Microsoft.Extensions.PlatformAbstractions;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyModel;
+using Templates.Helpers;
 using CompilationOptions = Microsoft.Extensions.DependencyModel.CompilationOptions;
 
 #if NETSTANDARD1_5
@@ -51,23 +52,26 @@ namespace Templates.Native
             var currentInfo = new Tuple<Assembly, MetadataReference>(current, CreateMetadataFileReference(current));
             if (AssemblyCache.TryAdd(current.FullName, currentInfo))
             {
-                Assemblies.Add(currentInfo.Item1);
-                MetadataReferences.Add(currentInfo.Item2);
-                foreach (var assemblyName in current.GetReferencedAssemblies())
+                lock (Assemblies)
                 {
-                    try
+                    Assemblies.Add(currentInfo.Item1);
+                    MetadataReferences.Add(currentInfo.Item2);
+                    foreach (var assemblyName in current.GetReferencedAssemblies())
                     {
-                        var dependent = Assembly.Load(assemblyName);
-                        var dependentInfo = new Tuple<Assembly, MetadataReference>(dependent, CreateMetadataFileReference(dependent));
-                        if (AssemblyCache.TryAdd(dependent.FullName, dependentInfo))
+                        try
                         {
-                            MetadataReferences.Add(dependentInfo.Item2);
-                            Assemblies.Add(dependentInfo.Item1);
-                            WalkReferenceAssemblies(dependent);
+                            var dependent = Assembly.Load(assemblyName);
+                            var dependentInfo = new Tuple<Assembly, MetadataReference>(dependent, CreateMetadataFileReference(dependent));
+                            if (AssemblyCache.TryAdd(dependent.FullName, dependentInfo))
+                            {
+                                MetadataReferences.Add(dependentInfo.Item2);
+                                Assemblies.Add(dependentInfo.Item1);
+                                WalkReferenceAssemblies(dependent);
+                            }
                         }
-                    }
-                    catch (FileNotFoundException)
-                    {
+                        catch (FileNotFoundException)
+                        {
+                        }
                     }
                 }
             }
@@ -111,6 +115,7 @@ namespace Templates.Native
                 WalkReferenceAssemblies(startupAssembly);
                 GetApplicationReferences();
                 _configured = true;
+                ReflectionHelper.Reconfigure();
             }
         }
 
