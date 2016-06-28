@@ -166,16 +166,14 @@ namespace Templates.Strings {
             return _data;
         }
 
-        public ExString BulkReplace (Replacement[] replacements)
+        public ExString BulkReplace (Replacement[] replacements, int takeLength)
         {
             if (_appendStrings.Length > 0)
                 CommitAppend();
             if (replacements == null)
                 throw new ArgumentNullException(nameof(replacements));
 
-            int count = replacements.Length;
-
-            if (count == 0)
+            if (takeLength == 0)
                 return _data;
 
             if (_data.Length == 0)
@@ -184,7 +182,7 @@ namespace Templates.Strings {
             int capacity = _data.Length;
             int srcLen = capacity;
             unchecked {
-                for (int i = 0; i < count; i++) {
+                for (int i = 0; i < takeLength; i++) {
                     Replacement replacement = replacements[i];
                     if (replacement.ReplacementValue == null)
                         replacement.ReplacementValue = string.Empty;
@@ -209,7 +207,7 @@ namespace Templates.Strings {
                 unsafe {
                     fixed (char* dest = result) {
                         fixed (char* src = _data) {
-                            MoveData(replacements, srcLen, capacity, dest, src);
+                            MoveData(replacements, takeLength, srcLen, capacity, dest, src);
                         }
                     }
                 }
@@ -266,16 +264,14 @@ namespace Templates.Strings {
             }
         }
 
-        public static string BulkReplace (Replacement[] replacements, string source)
+        public static string BulkReplace (Replacement[] replacements, int takeLength, string source)
         {
             if (replacements == null)
                 throw new ArgumentNullException(nameof(replacements));
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
 
-            int count = replacements.Length;
-
-            if (count == 0)
+            if (takeLength == 0)
                 return source;
 
             //if (source.Length == 0)
@@ -284,7 +280,7 @@ namespace Templates.Strings {
             int capacity = source.Length;
             int srcLen = capacity;
             unchecked {
-                for (int i = 0; i < count; i++) {
+                for (int i = 0; i < takeLength; i++) {
                     Replacement replacement = replacements[i];
 #if DEBUG
                     if (replacement.BlockPosition.Length < 0)
@@ -305,7 +301,7 @@ namespace Templates.Strings {
                 unsafe {
                     fixed (char* dest = result) {
                         fixed (char* src = source) {
-                            MoveData(replacements, srcLen, capacity, dest, src);
+                            MoveData(replacements, takeLength, srcLen, capacity, dest, src);
                         }
                     }
                 }
@@ -313,16 +309,14 @@ namespace Templates.Strings {
             }
         }
 
-        public static string BulkReplace (Replacement[] replacements, ExString source)
+        public static string BulkReplace (Replacement[] replacements, int takeLength, ExString source)
         {
             if (replacements == null)
                 throw new ArgumentNullException(nameof(replacements));
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
 
-            int count = replacements.Length;
-
-            if (count == 0)
+            if (takeLength == 0)
                 return source;
 
             //if (source.Length == 0)
@@ -331,7 +325,7 @@ namespace Templates.Strings {
             int capacity = source.Length;
             int srcLen = capacity;
             unchecked {
-                for (int i = 0; i < count; i++) {
+                for (int i = 0; i < takeLength; i++) {
                     Replacement replacement = replacements[i];
 #if DEBUG
                     if (replacement.BlockPosition.Length < 0)
@@ -352,7 +346,7 @@ namespace Templates.Strings {
                 unsafe {
                     fixed (char* dest = result) {
                         fixed (char* src = (char[]) source) {
-                            MoveData(replacements, srcLen, capacity, dest, src);
+                            MoveData(replacements, takeLength, srcLen, capacity, dest, src);
                         }
                     }
                 }
@@ -401,12 +395,11 @@ namespace Templates.Strings {
             MemCpy(dest + lastIndex, src + current, srcLen - current);
         }
 
-        private static unsafe void MoveData (Replacement[] replacements, int srcLen, int capacity, char* dest, char* src)
+        private static unsafe void MoveData (Replacement[] replacements, int takeLength, int srcLen, int capacity, char* dest, char* src)
         {
             int lastIndex = 0;
             int current = 0;
-            int count = replacements.Length;
-            for (int i = 0; i < count; i++) {
+            for (int i = 0; i < takeLength; i++) {
                 Replacement replacement = replacements[i];
                 string replacementString = replacement.ReplacementValue ?? string.Empty;
                 int chunkLength = replacementString.Length;

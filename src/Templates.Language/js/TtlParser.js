@@ -1,4 +1,4 @@
-// Generated from D:\Work\Templater\src\Templates.Language\TtlParser.g4 by ANTLR 4.5.1
+// Generated from D:\Work\Templater\src\Templates.Language\TtlParser.g4 by ANTLR 4.5.3
 // jshint ignore: start
 var antlr4 = require('antlr4/index');
 var TtlParserListener = require('./TtlParserListener').TtlParserListener;
@@ -143,7 +143,7 @@ var sharedContextCache = new antlr4.PredictionContextCache();
 
 var literalNames = [  ];
 
-var symbolicNames = [ 'null', "TEXT", "ID", "ROOT_REF", "MEMBER_P", "OUT", 
+var symbolicNames = [ null, "TEXT", "ID", "ROOT_REF", "MEMBER_P", "OUT", 
                       "SUB_START", "SUB_CLOSE", "CSHARP_END", "CSHARP_TOKEN", 
                       "CSHARP_START", "DEF_STARTNAME", "DEF_ENDNAME", "DEF_TYPE", 
                       "DELIM", "DEF_START", "DEF_CLOSE", "COMMENT", "RAW", 
@@ -615,6 +615,7 @@ TtlParser.prototype.def = function() {
     this.enterRule(localctx, 8, TtlParser.RULE_def);
     try {
         this.state = 54;
+        this._errHandler.sync(this);
         var la_ = this._interp.adaptivePredict(this._input,3,this._ctx);
         switch(la_) {
         case 1:
@@ -720,6 +721,7 @@ TtlParser.prototype.inherited_def = function() {
     var _la = 0; // Token type
     try {
         this.state = 77;
+        this._errHandler.sync(this);
         var la_ = this._interp.adaptivePredict(this._input,6,this._ctx);
         switch(la_) {
         case 1:
@@ -859,6 +861,7 @@ TtlParser.prototype.simple_def = function() {
     var _la = 0; // Token type
     try {
         this.state = 96;
+        this._errHandler.sync(this);
         var la_ = this._interp.adaptivePredict(this._input,9,this._ctx);
         switch(la_) {
         case 1:
@@ -1039,6 +1042,7 @@ TtlParser.prototype.outblock = function() {
     var _la = 0; // Token type
     try {
         this.state = 113;
+        this._errHandler.sync(this);
         var la_ = this._interp.adaptivePredict(this._input,12,this._ctx);
         switch(la_) {
         case 1:
@@ -1342,6 +1346,7 @@ TtlParser.prototype.named_call = function() {
     var _la = 0; // Token type
     try {
         this.state = 160;
+        this._errHandler.sync(this);
         var la_ = this._interp.adaptivePredict(this._input,19,this._ctx);
         switch(la_) {
         case 1:
@@ -1528,6 +1533,7 @@ TtlParser.prototype.unnamed_call = function() {
     var _la = 0; // Token type
     try {
         this.state = 191;
+        this._errHandler.sync(this);
         var la_ = this._interp.adaptivePredict(this._input,24,this._ctx);
         switch(la_) {
         case 1:

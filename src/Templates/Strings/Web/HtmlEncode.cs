@@ -40,7 +40,7 @@ namespace Templates.Strings.Web {
                                     });
                             }
                         }
-                        return replacements.Length > 0 ? ExStringBuilder.BulkReplace(replacements, input) : input;
+                        return replacements.Length > 0 ? ExStringBuilder.BulkReplace(replacements, replacements.Length, input) : input;
                     }
                 }
             }

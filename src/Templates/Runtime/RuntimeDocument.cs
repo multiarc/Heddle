@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
+using Newtonsoft.Json;
 using Templates.Data;
 using Templates.Strings;
 using Templates.Strings.Core;
@@ -101,7 +103,8 @@ namespace Templates.Runtime {
                         ReplacementValue = processor.ProcessData(data) as string
                     };
                 }
-                return ExStringBuilder.BulkReplace(values, _document);
+                var result = ExStringBuilder.BulkReplace(values, count, _document);
+                return result;
             }
             return _document;
         }

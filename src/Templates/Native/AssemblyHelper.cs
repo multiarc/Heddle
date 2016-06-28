@@ -4,16 +4,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.PortableExecutable;
-using System.Threading;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Hosting.Internal;
 using Microsoft.Extensions.PlatformAbstractions;
 using Microsoft.CodeAnalysis;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyModel;
 using Templates.Helpers;
-using CompilationOptions = Microsoft.Extensions.DependencyModel.CompilationOptions;
 
 #if NETSTANDARD1_5
 using System.Runtime.Loader;

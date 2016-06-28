@@ -1,4 +1,4 @@
-// Generated from D:\Work\Templater\src\Templates.Language\TtlLexer.g4 by ANTLR 4.5.1
+// Generated from D:\Work\Templater\src\Templates.Language\TtlLexer.g4 by ANTLR 4.5.3
 // jshint ignore: start
 var antlr4 = require('antlr4/index');
 
@@ -1046,14 +1046,14 @@ TtlLexer.modeNames = [ "DEFAULT_MODE", "DEF", "DEF_OUT", "SUB", "OUT_MODE",
 
 TtlLexer.literalNames = [  ];
 
-TtlLexer.symbolicNames = [ 'null', "TEXT", "ID", "ROOT_REF", "MEMBER_P", 
-                           "OUT", "SUB_START", "SUB_CLOSE", "CSHARP_END", 
-                           "CSHARP_TOKEN", "CSHARP_START", "DEF_STARTNAME", 
-                           "DEF_ENDNAME", "DEF_TYPE", "DELIM", "DEF_START", 
-                           "DEF_CLOSE", "COMMENT", "RAW", "OUT_PARAMSTART", 
-                           "OUT_PARAMEND", "LINE_TERMINATE", "DEF_OUTPUTONEND", 
-                           "START_COMMENT", "DEF_WS", "DEF_OUT_COMMENT", 
-                           "DEF_OUT_WS", "OUT_WS", "CALL_COMMENT", "CALL_OUT_WS" ];
+TtlLexer.symbolicNames = [ null, "TEXT", "ID", "ROOT_REF", "MEMBER_P", "OUT", 
+                           "SUB_START", "SUB_CLOSE", "CSHARP_END", "CSHARP_TOKEN", 
+                           "CSHARP_START", "DEF_STARTNAME", "DEF_ENDNAME", 
+                           "DEF_TYPE", "DELIM", "DEF_START", "DEF_CLOSE", 
+                           "COMMENT", "RAW", "OUT_PARAMSTART", "OUT_PARAMEND", 
+                           "LINE_TERMINATE", "DEF_OUTPUTONEND", "START_COMMENT", 
+                           "DEF_WS", "DEF_OUT_COMMENT", "DEF_OUT_WS", "OUT_WS", 
+                           "CALL_COMMENT", "CALL_OUT_WS" ];
 
 TtlLexer.ruleNames = [ "ID_TOKEN", "ID_TYPE", "WS", "MEMB_P", "SUB_ST", 
                        "SUB_CL", "PARA_ST", "PARA_CL", "DEF_ST", "DEF_CL", 

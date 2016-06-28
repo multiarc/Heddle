@@ -484,7 +484,7 @@ namespace Antlr4.Runtime.Misc
         {
         }
 
-#if PORTABLE || NETSTANDARD1_5
+#if PORTABLE
         public interface ICustomAttributeProvider
         {
             object[] GetCustomAttributes(Type attributeType, bool inherit);
@@ -589,9 +589,6 @@ using Antlr4.Runtime;
 using Antlr4.Runtime.Atn;
 using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Sharpen;
-#if NETSTANDARD1_5
-using System.Linq;
-#endif
 
 namespace Antlr4.Runtime.Misc
 {
@@ -833,7 +830,7 @@ namespace Antlr4.Runtime.Misc
 #endif
                             continue;
                         }
-                        RuleVersionAttribute ruleVersion = (RuleVersionAttribute)ruleMethod.GetCustomAttribute(typeof(RuleVersionAttribute));
+                        RuleVersionAttribute ruleVersion = (RuleVersionAttribute)Attribute.GetCustomAttribute(ruleMethod, typeof(RuleVersionAttribute));
                         int version = ruleVersion != null ? ruleVersion.Version : 0;
                         versions[index] = version;
                     }
@@ -863,7 +860,7 @@ namespace Antlr4.Runtime.Misc
             MethodInfo[] declaredMethods = recognizerClass.GetMethods();
             foreach (MethodInfo method in declaredMethods)
             {
-                if (method.Name.Equals(name) && method.IsDefined(typeof(RuleVersionAttribute)))
+                if (method.Name.Equals(name) && Attribute.IsDefined(method, typeof(RuleVersionAttribute)))
                 {
                     return method;
                 }
@@ -954,8 +951,8 @@ namespace Antlr4.Runtime.Misc
             if (serializedAtnField != null)
                 return (string)serializedAtnField.GetValue(null);
 
-            if (recognizerClass.GetTypeInfo().BaseType != null)
-                return GetSerializedATN(recognizerClass.GetTypeInfo().BaseType);
+            if (recognizerClass.BaseType != null)
+                return GetSerializedATN(recognizerClass.BaseType);
 
             return null;
         }
@@ -1042,7 +1039,7 @@ namespace Antlr4.Runtime.Misc
         {
         }
 
-#if PORTABLE || NETSTANDARD1_5
+#if PORTABLE
         public interface ICustomAttributeProvider
         {
             object[] GetCustomAttributes(Type attributeType, bool inherit);
@@ -1079,11 +1076,7 @@ namespace Antlr4.Runtime.Misc
 
             public object[] GetCustomAttributes(Type attributeType, bool inherit)
             {
-#if NETSTANDARD1_5
-                return _provider.GetTypeInfo().GetCustomAttributes(attributeType, inherit).ToArray();
-#else
                 return Attribute.GetCustomAttributes(_provider, attributeType, inherit);
-#endif
             }
         }
 
@@ -1098,11 +1091,7 @@ namespace Antlr4.Runtime.Misc
 
             public object[] GetCustomAttributes(Type attributeType, bool inherit)
             {
-#if NETSTANDARD1_5
-                return _provider.GetCustomAttributes(attributeType, inherit).ToArray();
-#else
                 return Attribute.GetCustomAttributes(_provider, attributeType, inherit);
-#endif
             }
         }
 
@@ -1117,11 +1106,7 @@ namespace Antlr4.Runtime.Misc
 
             public object[] GetCustomAttributes(Type attributeType, bool inherit)
             {
-#if NETSTANDARD1_5
-                return _provider.GetCustomAttributes(attributeType, inherit).ToArray();
-#else
                 return Attribute.GetCustomAttributes(_provider, attributeType, inherit);
-#endif
             }
         }
 
@@ -1136,11 +1121,7 @@ namespace Antlr4.Runtime.Misc
 
             public object[] GetCustomAttributes(Type attributeType, bool inherit)
             {
-#if NETSTANDARD1_5
-                return _provider.GetCustomAttributes(attributeType, inherit).ToArray();
-#else
                 return Attribute.GetCustomAttributes(_provider, attributeType, inherit);
-#endif
             }
         }
 #else
@@ -1149,7 +1130,7 @@ namespace Antlr4.Runtime.Misc
             return obj;
         }
 #endif
-            }
+    }
 }
 
 #endif

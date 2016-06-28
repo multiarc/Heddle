@@ -66,7 +66,7 @@ namespace Antlr4.Runtime.Dfa
         [return: NotNull]
         IEdgeMap<T> Clear();
 
-#if NET45PLUS && !NETSTANDARD1_5
+#if NET45PLUS
         [return: NotNull]
         IReadOnlyDictionary<int, T> ToMap();
 #else

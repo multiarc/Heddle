@@ -29,6 +29,7 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Sharpen;
@@ -278,7 +279,7 @@ namespace Antlr4.Runtime
         }
 
 #if NET45PLUS
-        public virtual IReadOnlyList<ITerminalNode> GetTokens(int ttype)
+        public virtual ITerminalNode[] GetTokens(int ttype)
 #else
         public virtual ITerminalNode[] GetTokens(int ttype)
 #endif
@@ -287,31 +288,26 @@ namespace Antlr4.Runtime
             {
                 return Collections.EmptyList<ITerminalNode>();
             }
-            List<ITerminalNode> tokens = null;
-            foreach (IParseTree o in children)
+            ITerminalNode[] tokens = new ITerminalNode[children.Count(o => o is ITerminalNode && ((ITerminalNode) o).Symbol.Type == ttype)];
+            int index = 0;
+            foreach (var o in children)
             {
-                if (o is ITerminalNode)
+                var node = o as ITerminalNode;
+                if (node != null)
                 {
-                    ITerminalNode tnode = (ITerminalNode)o;
+                    ITerminalNode tnode = node;
                     IToken symbol = tnode.Symbol;
                     if (symbol.Type == ttype)
                     {
-                        if (tokens == null)
-                        {
-                            tokens = new List<ITerminalNode>();
-                        }
-                        tokens.Add(tnode);
+                        tokens[index] = tnode;
+                        index++;
                     }
                 }
-            }
-            if (tokens == null)
-            {
-                return Collections.EmptyList<ITerminalNode>();
             }
 #if NET45PLUS
             return tokens;
 #else
-            return tokens.ToArray();
+            return tokens;
 #endif
         }
 
@@ -322,7 +318,7 @@ namespace Antlr4.Runtime
         }
 
 #if NET45PLUS
-        public virtual IReadOnlyList<T> GetRuleContexts<T>()
+        public virtual T[] GetRuleContexts<T>()
             where T : Antlr4.Runtime.ParserRuleContext
 #else
         public virtual T[] GetRuleContexts<T>()
@@ -333,26 +329,21 @@ namespace Antlr4.Runtime
             {
                 return Collections.EmptyList<T>();
             }
-            List<T> contexts = null;
-            foreach (IParseTree o in children)
+            T[] contexts = new T[children.Count(c => c is T)];
+            int index = 0;
+            foreach (var oo in children)
             {
-                if (o is T)
+                var o = oo as T;
+                if (o != null)
                 {
-                    if (contexts == null)
-                    {
-                        contexts = new List<T>();
-                    }
-                    contexts.Add((T)o);
+                    contexts[index] = o;
+                    index++;
                 }
-            }
-            if (contexts == null)
-            {
-                return Collections.EmptyList<T>();
             }
 #if NET45PLUS
             return contexts;
 #else
-            return contexts.ToArray();
+            return contexts;
 #endif
         }
 

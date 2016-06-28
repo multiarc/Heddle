@@ -229,7 +229,7 @@ namespace Antlr4.Runtime.Dfa
             edges = edges.Put(symbol, target);
         }
 
-#if NET45PLUS && !NETSTANDARD1_5
+#if NET45PLUS
         public virtual IReadOnlyDictionary<int, DFAState> EdgeMap
 #else
         public virtual IDictionary<int, DFAState> EdgeMap
@@ -269,7 +269,7 @@ namespace Antlr4.Runtime.Dfa
             }
         }
 
-#if NET45PLUS && !NETSTANDARD1_5
+#if NET45PLUS
         public virtual IReadOnlyDictionary<int, DFAState> ContextEdgeMap
 #else
         public virtual IDictionary<int, DFAState> ContextEdgeMap
@@ -293,7 +293,7 @@ namespace Antlr4.Runtime.Dfa
 #endif
                         result.Add(PredictionContext.EmptyFullStateKey, result[-1]);
                         result.Remove(-1);
-#if NET45PLUS && !NETSTANDARD1_5
+#if NET45PLUS
                         map = new ReadOnlyDictionary<int, DFAState>(new SortedDictionary<int, DFAState>(result));
 #elif COMPACT
                         map = new SortedList<int, DFAState>(result);

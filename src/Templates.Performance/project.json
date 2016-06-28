@@ -7,7 +7,7 @@
     }
   },
   "dependencies": {
-    "Templates": "2.7.13-rc2"
+    "Templates": "2.7.13"
   },
   "configurations": {
     "release": {
@@ -25,13 +25,13 @@
     "net451": {
     },
     "netcoreapp1.0": {
-      "imports": "dnxcore50",
+      "imports": [ "dnxcore50", "netstandard1.6" ],
       "dependencies": {
         "Microsoft.NETCore.App": {
           "type": "platform",
           "version": "1.0.0-*"
         },
-        "NETStandard.Library": "1.5.0-*",
+        "NETStandard.Library": "1.6.0",
         "System.Runtime": "4.1.0-*",
         "System.Console": "4.0.0-*",
         "System.Linq.Parallel": "4.0.1-*"
