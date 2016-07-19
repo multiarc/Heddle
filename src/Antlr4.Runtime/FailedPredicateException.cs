@@ -42,7 +42,7 @@ namespace Antlr4.Runtime
     /// Disambiguating predicate evaluation occurs when we test a predicate during
     /// prediction.
     /// </remarks>
-#if !NETSTANDARD1_5
+#if !NETSTANDARD1_6
     [System.Serializable]
 #endif
     public class FailedPredicateException : RecognitionException

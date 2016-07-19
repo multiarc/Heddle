@@ -114,7 +114,7 @@ namespace Templates.Runtime
                         symbolStream.Seek(0, SeekOrigin.Begin);
                         //try
                         //{
-#if !NETSTANDARD1_5
+#if !NETSTANDARD1_6
                             context.CSharpContext.CompiledAssembly = Assembly.Load(codeStream.ToArray(), symbolStream.ToArray());
 #else
                             context.CSharpContext.CompiledAssembly = new AssemblyHelper.TemplateLoadContext().Load(codeStream, symbolStream);

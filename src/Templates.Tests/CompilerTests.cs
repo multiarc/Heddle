@@ -55,7 +55,7 @@ namespace Templates.Tests
                     symbolStream.Seek(0, SeekOrigin.Begin);
                     //try
                     //{
-#if !NETSTANDARD1_5 && !NETCOREAPP1_0
+#if !NETSTANDARD1_6 && !NETCOREAPP1_0
                     Assembly.Load(codeStream.ToArray(), symbolStream.ToArray());
 #else
                     new AssemblyHelper.TemplateLoadContext().Load(codeStream, symbolStream);

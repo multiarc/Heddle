@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 
 namespace Templates.Collections {
-#if !NETSTANDARD1_5
+#if !NETSTANDARD1_6
     [Serializable]
 #endif
     internal partial class SmartList<T> {

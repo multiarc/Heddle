@@ -44,7 +44,7 @@ namespace Antlr4.Runtime.Atn
     /// utility methods for analyzing configuration sets for conflicts and/or
     /// ambiguities.
     /// </remarks>
-#if !NETSTANDARD1_5
+#if !NETSTANDARD1_6
     [System.Serializable]
 #endif
     public sealed class PredictionMode

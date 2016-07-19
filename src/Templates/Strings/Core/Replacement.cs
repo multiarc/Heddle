@@ -1,4 +1,4 @@
-﻿#if !NETSTANDARD1_5
+﻿#if !NETSTANDARD1_6
 using System;
 using System.Runtime.InteropServices;
 
@@ -8,7 +8,7 @@ namespace Templates.Strings.Core {
     /// <summary>
     /// Represents parsed result data to replace source template template
     /// </summary>
-#if !NETSTANDARD1_5
+#if !NETSTANDARD1_6
     [Serializable]
 #endif
     public struct Replacement {

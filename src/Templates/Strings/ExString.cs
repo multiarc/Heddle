@@ -5,7 +5,7 @@ using System.Text;
 using Templates.Collections;
 
 namespace Templates.Strings {
-#if !NETSTANDARD1_5
+#if !NETSTANDARD1_6
     [Serializable]
 #endif
     public sealed partial class ExString {

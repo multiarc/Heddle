@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.DependencyModel;
 using Templates.Helpers;
 
-#if NETSTANDARD1_5
+#if NETSTANDARD1_6
 using System.Runtime.Loader;
 #endif
 
@@ -25,7 +25,7 @@ namespace Templates.Native
         private static readonly List<MetadataReference> MetadataReferences;
         private static readonly List<Assembly> Assemblies;
 
-#if NETSTANDARD1_5
+#if NETSTANDARD1_6
 
         internal class TemplateLoadContext : AssemblyLoadContext
         {
@@ -80,7 +80,7 @@ namespace Templates.Native
 
         static AssemblyHelper()
         {
-#if !NETSTANDARD1_5
+#if !NETSTANDARD1_6
             AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
             {
                 Console.WriteLine(args.ExceptionObject.ToString());

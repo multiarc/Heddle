@@ -40,7 +40,7 @@ namespace Antlr4.Runtime
     /// This signifies any kind of mismatched input exceptions such as
     /// when the current input does not match the expected token.
     /// </remarks>
-#if !NETSTANDARD1_5
+#if !NETSTANDARD1_6
     [System.Serializable]
 #endif
     public class InputMismatchException : RecognitionException

@@ -1,10 +1,10 @@
 ﻿using System;
-#if !NETSTANDARD1_5
+#if !NETSTANDARD1_6
 using System.Runtime.Serialization;
 #endif
 
 namespace Templates.Exceptions {
-#if !NETSTANDARD1_5
+#if !NETSTANDARD1_6
     [Serializable]
 #endif
     public class TemplateProcessingException: Exception {
@@ -21,7 +21,7 @@ namespace Templates.Exceptions {
             : base(message, inner)
         {
         }
-#if !NETSTANDARD1_5
+#if !NETSTANDARD1_6
         protected TemplateProcessingException (SerializationInfo info, StreamingContext context)
             : base(info, context)
         {

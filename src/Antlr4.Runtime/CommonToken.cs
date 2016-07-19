@@ -34,7 +34,7 @@ using Antlr4.Runtime.Sharpen;
 
 namespace Antlr4.Runtime
 {
-#if !NETSTANDARD1_5
+#if !NETSTANDARD1_6
     [System.Serializable]
 #endif
     public class CommonToken : IWritableToken

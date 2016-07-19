@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-#if !NETSTANDARD1_5
+#if !NETSTANDARD1_6
 using System.Runtime.Serialization;
 #endif
 using Templates.Data;
 
 namespace Templates.Exceptions {
-#if !NETSTANDARD1_5
+#if !NETSTANDARD1_6
     [Serializable]
 #endif
     public class TemplateCompileException: Exception {
@@ -46,7 +46,7 @@ namespace Templates.Exceptions {
             return base.ToString();
         }
 
-#if !NETSTANDARD1_5
+#if !NETSTANDARD1_6
         protected TemplateCompileException (SerializationInfo info, StreamingContext context, IEnumerable<TtlCompileError> errors)
             : base(info, context)
         {

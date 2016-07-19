@@ -155,7 +155,7 @@ namespace Antlr4.Runtime.Tree.Pattern
     /// </summary>
     public class ParseTreePatternMatcher
     {
-#if !NETSTANDARD1_5
+#if !NETSTANDARD1_6
         [System.Serializable]
 #endif
         public class CannotInvokeStartRule : Exception
@@ -166,7 +166,7 @@ namespace Antlr4.Runtime.Tree.Pattern
             }
         }
 
-#if !NETSTANDARD1_5
+#if !NETSTANDARD1_6
         [System.Serializable]
 #endif
         public class StartRuleDoesNotConsumeFullPattern : Exception

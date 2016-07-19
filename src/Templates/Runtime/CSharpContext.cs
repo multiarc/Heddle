@@ -195,7 +195,7 @@ namespace Templates.Runtime
             {
                 var currentAssemblyName = GetType().GetTypeInfo().Assembly.GetName();
                 yield return FormatAssemblyName(currentAssemblyName);
-#if NETSTANDARD1_5
+#if NETSTANDARD1_6
                 //var systemAssemblyName = AssemblyHelper.GetAssemblyName("System.Dynamic.Runtime");
                 //if (systemAssemblyName != null)
                 //    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
