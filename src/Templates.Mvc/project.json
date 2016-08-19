@@ -1,5 +1,5 @@
 ﻿{
-  "version": "1.0.23",
+  "version": "1.0.25",
   "authors": [ "Aliaksandr Kukrash" ],
   "description": "Template engine MVC extensions library, once referenced replace internal import with MVC based.",
   "buildOptions": {
@@ -9,7 +9,7 @@
   "dependencies": {
     "Microsoft.AspNetCore.Mvc.ViewFeatures": "1.0.0",
     "Microsoft.Extensions.DependencyModel": "1.0.0",
-    "Templates": "2.7.13"
+    "Templates": "2.7.*"
   },
 
   "frameworks": {

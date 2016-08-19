@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.25123.0
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{DCB9F91C-846A-4B80-97CF-BF89023F8965}"
 EndProject
@@ -36,7 +36,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Templates.Mvc", "src\Templates.Mvc\Templates.Mvc.xproj", "{174A8663-103D-4FDA-BBEA-2B887E3FDB0D}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Antlr4.Runtime", "src\Antlr4.Runtime\Antlr4.Runtime.xproj", "{7A030098-562F-494B-B33B-8E62E421D145}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Antlr4Core.Runtime", "src\Antlr4Core.Runtime\Antlr4Core.Runtime.xproj", "{7A030098-562F-494B-B33B-8E62E421D145}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

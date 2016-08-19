@@ -9,7 +9,7 @@ Pop-Location
 Push-Location Templates.Language
 dotnet pack -o ..\..\packages --configuration Release
 Pop-Location
-Push-Location Antlr4.Runtime
+Push-Location Antlr4Core.Runtime
 dotnet pack -o ..\..\packages --configuration Release
 Pop-Location
 Push-Location Templates.Mvc

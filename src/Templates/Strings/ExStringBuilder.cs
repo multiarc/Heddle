@@ -1,7 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using Templates.Collections;
 using Templates.Native;
 using Templates.Strings.Core;
 
@@ -12,7 +12,7 @@ namespace Templates.Strings {
     public sealed class ExStringBuilder {
         private static readonly Allocate AllocateString;
 
-        private readonly SmartList<MutableString> _appendStrings = new SmartList<MutableString>();
+        private readonly List<string> _appendStrings = new List<string>();
         private int _appendlength;
         private string _data;
 
@@ -76,33 +76,22 @@ namespace Templates.Strings {
             {
                 int seed = _data.Length;
                 int newLength = _data.Length + _appendlength;
-                for (int i = 0; i < _appendStrings.Length; i++)
+                foreach (var appendString in _appendStrings)
                 {
                     if (_data.Length < newLength)
                         Capacity = newLength;
-                    int len = _appendStrings[i].Length;
+                    int len = appendString.Length;
                     unsafe
                     {
                         fixed (char* dest = _data)
                         {
-                            if (_appendStrings[i].IsExString)
+                            fixed (char* src = appendString)
                             {
-                                fixed (char* src = _appendStrings[i].ExStringValue.Data)
-                                {
-                                    MemCpy(dest + seed, src, len);
-                                }
-                            }
-                            else
-                            {
-                                fixed (char* src = _appendStrings[i].StringValue)
-                                {
-                                    MemCpy(dest + seed, src, len);
-                                }
+                                MemCpy(dest + seed, src, len);
                             }
                         }
                     }
                     seed += len;
-                    _appendStrings[i] = string.Empty;
                 }
                 _appendStrings.Clear();
                 _appendlength = 0;
@@ -168,7 +157,7 @@ namespace Templates.Strings {
 
         public ExString BulkReplace (Replacement[] replacements, int takeLength)
         {
-            if (_appendStrings.Length > 0)
+            if (_appendStrings.Count > 0)
                 CommitAppend();
             if (replacements == null)
                 throw new ArgumentNullException(nameof(replacements));
@@ -523,7 +512,7 @@ namespace Templates.Strings {
 
         public ExString Replace (int start, int length, string replacement)
         {
-            if (_appendStrings.Length > 0)
+            if (_appendStrings.Count > 0)
                 CommitAppend();
 
             if (replacement == null)
@@ -563,7 +552,7 @@ namespace Templates.Strings {
 
         public ExString Replace (int start, int length, ExString replacement)
         {
-            if (_appendStrings.Length > 0)
+            if (_appendStrings.Count > 0)
                 CommitAppend();
 
             if (replacement == null)

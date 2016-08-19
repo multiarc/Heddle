@@ -6,7 +6,9 @@ using Templates.Data;
 
 namespace Templates.Runtime {
     internal static class GatesCache {
-        private static readonly Dictionary<MethodInfo, DynamicMethodGateDelegate> Cache =
+        private static readonly object LockObject = new object();
+
+        private static Dictionary<MethodInfo, DynamicMethodGateDelegate> _cache =
             new Dictionary<MethodInfo, DynamicMethodGateDelegate>();
 
         public static DynamicMethodGateDelegate GetPropertyGate(PropertyInfo property)
@@ -15,10 +17,16 @@ namespace Templates.Runtime {
                 return null;
             MethodInfo methodInfo = property.GetGetMethod(true);
             DynamicMethodGateDelegate result;
-            if (Cache.TryGetValue(methodInfo, out result))
+            if (_cache.TryGetValue(methodInfo, out result))
                 return result;
-            result = CreateGenericGate(property);
-            Cache.Add(methodInfo, result);
+            lock (LockObject)
+            {
+                if (_cache.TryGetValue(methodInfo, out result))
+                    return result;
+
+                result = CreateGenericGate(property);
+                _cache = new Dictionary<MethodInfo, DynamicMethodGateDelegate>(_cache) {{methodInfo, result}};
+            }
             return result;
         }
 

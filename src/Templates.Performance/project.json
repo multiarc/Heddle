@@ -7,7 +7,7 @@
     }
   },
   "dependencies": {
-    "Templates": "2.7.13"
+    "Templates": "2.7.*"
   },
   "configurations": {
     "release": {
