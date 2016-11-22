@@ -11,11 +11,11 @@ namespace Templates.Data
         public readonly object ModelData;
         public readonly object ChainedData;
         public readonly object ParentModelData;
-        public readonly dynamic CallerData;
+        public readonly object CallerData;
 
         internal readonly object RootData;
 
-        internal Scope(object root, dynamic data, object model, object chained, object parent = null)
+        internal Scope(object root, object data, object model, object chained, object parent = null)
         {
             RootData = root;
             ModelData = model;

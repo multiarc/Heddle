@@ -31,6 +31,8 @@ namespace Templates.Extensions
     [DataType(typeof (IEnumerable))]
     public class ListExtension : AbstractExtension
     {
+        private ICountReader _iCountReader;
+
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
             if (dataType == null)
@@ -39,21 +41,51 @@ namespace Templates.Extensions
             {
                 return base.InitStart(initContext, dataType, chainedType, null);
             }
+            var elementType = dataType.Type.TryGetElementType(typeof(ICollection<>));
+            if (elementType != null)
+            {
+                _iCountReader = (ICountReader) Activator.CreateInstance(typeof(CountReader<>).MakeGenericType(elementType));
+            }
             ExType underliyingType = dataType.Type.TryGetElementType(typeof (IEnumerable<>)) ?? ExType.Dynamic;
             return base.InitStart(initContext, underliyingType, chainedType, parent);
         }
 
         public override object ProcessData(Scope scope)
         {
-            if (scope.ModelData == null)
-                return string.Empty;
-            var builder = new ExStringBuilder();
             if (!(scope.ModelData is IEnumerable))
                 return string.Empty;
             var enumerable = (IEnumerable) scope.ModelData;
-            foreach (object item in enumerable)
-                builder.Append(GetInnerResult(scope.Model(item)));
-            return builder.ToString();
+            var count = _iCountReader?.GetCount(scope.ModelData);
+            if (count.HasValue)
+            {
+                var itemResults = new string[count.Value];
+                var index = 0;
+
+                foreach (var item in enumerable)
+                {
+                    itemResults[index] = GetInnerResult(scope.Model(item));
+                    index++;
+                }
+                return string.Concat(itemResults);
+            }
+
+            var biulder = new ExStringBuilder();
+            foreach (var item in enumerable)
+                biulder.Append(GetInnerResult(scope.Model(item)));
+            return biulder.ToString();
+        }
+
+        private interface ICountReader
+        {
+            int? GetCount(object value);
+        }
+
+        private struct CountReader<T> : ICountReader
+        {
+            public int? GetCount(object value)
+            {
+                return (value as ICollection<T>)?.Count;
+            }
         }
     }
 }
