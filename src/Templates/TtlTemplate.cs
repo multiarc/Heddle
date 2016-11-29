@@ -115,7 +115,8 @@ namespace Templates
             string result = null;
             try
             {
-                result = _runtimeDocument.ProcessData(new Scope(data, callerData, data, chained)) as string ?? string.Empty;
+                var scope = new Scope(data, callerData, data, chained);
+                result = _runtimeDocument.ProcessData(ref scope) as string ?? string.Empty;
             }
             finally
             {

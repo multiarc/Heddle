@@ -50,7 +50,7 @@ namespace Templates.Extensions
             return base.InitStart(initContext, underliyingType, chainedType, parent);
         }
 
-        public override object ProcessData(Scope scope)
+        public override object ProcessData(ref Scope scope)
         {
             if (!(scope.ModelData is IEnumerable))
                 return string.Empty;
@@ -63,7 +63,8 @@ namespace Templates.Extensions
 
                 foreach (var item in enumerable)
                 {
-                    itemResults[index] = GetInnerResult(scope.Model(item));
+                    var itemScope = scope.Model(item);
+                    itemResults[index] = GetInnerResult(ref itemScope);
                     index++;
                 }
                 return string.Concat(itemResults);
@@ -71,7 +72,10 @@ namespace Templates.Extensions
 
             var biulder = new ExStringBuilder();
             foreach (var item in enumerable)
-                biulder.Append(GetInnerResult(scope.Model(item)));
+            {
+                var itemScope = scope.Model(item);
+                biulder.Append(GetInnerResult(ref itemScope));
+            }
             return biulder.ToString();
         }
 

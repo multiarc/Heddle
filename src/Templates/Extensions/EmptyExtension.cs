@@ -6,10 +6,10 @@ using Templates.Data;
 namespace Templates.Extensions {
     [ExtensionName("")]
     public class EmptyExtension: AbstractExtension {
-        public override object ProcessData(Scope scope)
+        public override object ProcessData(ref Scope scope)
         {
             if (InnerExist) {
-                return GetInnerResult(scope);
+                return GetInnerResult(ref scope);
             }
             if (scope.ModelData != null) {
                 var s = scope.ModelData as string;

@@ -5,9 +5,9 @@ using Templates.Data;
 namespace Templates.Core {
     public abstract class AbstractHtmlExtension: AbstractExtension {
         
-        public sealed override object ProcessData (Scope scope)
+        public sealed override object ProcessData (ref Scope scope)
         {
-            var obj = ProcessDataInternal(scope);
+            var obj = ProcessDataInternal(ref scope);
             if (DirectRender && obj != null)
             {
                 var dataToEncode = obj as string;
@@ -20,6 +20,6 @@ namespace Templates.Core {
             return obj;
         }
 
-        protected abstract object ProcessDataInternal(Scope scope);
+        protected abstract object ProcessDataInternal(ref Scope scope);
     }
 }

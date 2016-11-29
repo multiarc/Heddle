@@ -15,13 +15,14 @@ namespace Templates.Core {
             return base.InitStart(initContext, dataType, chainedType, parent);
         }
 
-        public override object ProcessData(Scope scope)
+        public override object ProcessData(ref Scope scope)
         {
             if (_recursionCount.Value >= _maxRecursionCount)
                 throw new TemplateProcessingException("Recursion hit it's maximum");
             _recursionCount.Value++;
-            var chained = GetInnerResult(scope);
-            var result = DefenitionParameterTemplate?.ProcessData(scope.Chain(chained)) ?? chained;
+            var chained = GetInnerResult(ref scope);
+            var chainedData = scope.Chain(chained);
+            var result = DefenitionParameterTemplate?.ProcessData(ref chainedData) ?? chained;
             _recursionCount.Value--;
             return result;
         }

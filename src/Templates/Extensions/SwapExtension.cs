@@ -13,9 +13,10 @@ namespace Templates.Extensions
             return base.InitStart(initContext, chainedType, dataType, parent);
         }
 
-        public override object ProcessData(Scope scope)
+        public override object ProcessData(ref Scope scope)
         {
-            return GetInnerResult(scope.Model(scope.ChainedData, scope.ModelData));
+            var innerScope = scope.Model(scope.ChainedData, scope.ModelData);
+            return GetInnerResult(ref innerScope);
         }
     }
 }

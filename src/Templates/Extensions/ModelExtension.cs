@@ -15,7 +15,8 @@ namespace Templates.Extensions
             if (initContext.CompileScope == null)
                 throw new ArgumentNullException(nameof(initContext.CompileScope));
             base.InitStart(initContext, dataType, chainedType, parent);
-            initContext.ParameterTemplate = GetInnerResult(Scope.Null);
+            var nullScope = Scope.Null;
+            initContext.ParameterTemplate = GetInnerResult(ref nullScope);
             if (!string.IsNullOrWhiteSpace(initContext.ParameterTemplate))
             {
                 try
@@ -32,7 +33,7 @@ namespace Templates.Extensions
             return null;
         }
 
-        public override object ProcessData(Scope scope)
+        public override object ProcessData(ref Scope scope)
         {
             return null;
         }

@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using Templates.Data;
 
 namespace Templates.Runtime.Parameters {
 
     internal interface IRuntimeParameter : IDisposable
     {
-        object GetParameter(Scope scope);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        object GetParameter(ref Scope scope);
     }
 }

@@ -72,7 +72,7 @@ namespace Templates.Runtime {
         }
 
 
-        public object ProcessData(Scope data)
+        public object ProcessData(ref Scope data)
         {
             //if (_singleProcessor != null)
             //{
@@ -99,7 +99,7 @@ namespace Templates.Runtime {
                     values[i] = new Replacement
                     {
                         BlockPosition = processor.Position,
-                        ReplacementValue = processor.ProcessData(data) as string
+                        ReplacementValue = processor.ProcessData(ref data) as string
                     };
                 }
                 var result = ExStringBuilder.BulkReplace(values, count, _document);

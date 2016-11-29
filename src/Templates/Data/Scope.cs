@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Templates.Data
 {
-    public class Scope
+    public struct Scope
     {
         public readonly object ModelData;
         public readonly object ChainedData;

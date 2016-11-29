@@ -21,7 +21,8 @@ namespace Templates.Mvc.Extensions {
             IEnumerable<string> searched;
             TtlTemplate cached;
             base.InitStart(initContext, dataType, chainedType, parent);
-            initContext.ParameterTemplate = GetInnerResult(Scope.Null);
+            var nullScope = Scope.Null;
+            initContext.ParameterTemplate = GetInnerResult(ref nullScope);
             var engine = initContext.CompileScope.ServiceProvider.GetRequiredService<TtlViewEngine>();
             var path = engine.Resolver.Search(initContext.ParameterTemplate, initContext.CompileScope.CompileContext.ControllerName, TemplatePathType.Master,
                 out searched, out cached);
@@ -36,7 +37,7 @@ namespace Templates.Mvc.Extensions {
             return null;
         }
 
-        public override object ProcessData(Scope scope)
+        public override object ProcessData(ref Scope scope)
         {
             return null;
         }

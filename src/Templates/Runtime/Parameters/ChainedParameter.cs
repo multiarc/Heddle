@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using Templates.Data;
 
 namespace Templates.Runtime.Parameters
@@ -27,9 +28,10 @@ namespace Templates.Runtime.Parameters
             _callParameterChain.Dispose();
         }
 
-        public object GetParameter(Scope scope)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public object GetParameter(ref Scope scope)
         {
-            return _callParameterChain?.ProcessData(scope);
+            return _callParameterChain?.ProcessData(ref scope);
         }
     }
 }

@@ -24,9 +24,10 @@ namespace Templates.Extensions {
             return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        protected override object ProcessDataInternal(Scope scope)
+        protected override object ProcessDataInternal(ref Scope scope)
         {
-            string dateFormat = GetInnerResult(scope.Parent());
+            var parentData = scope.Parent();
+            string dateFormat = GetInnerResult(ref parentData);
             if (string.IsNullOrEmpty(dateFormat))
                 dateFormat = "d";
             if (!(scope.ModelData is DateTime))

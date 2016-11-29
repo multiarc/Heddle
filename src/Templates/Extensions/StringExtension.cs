@@ -20,11 +20,14 @@ namespace Templates.Extensions
             return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        protected override object ProcessDataInternal(Scope scope)
+        protected override object ProcessDataInternal(ref Scope scope)
         {
             var model = scope.ModelData;
             if (model == null)
-                return GetInnerResult(scope.Parent());
+            {
+                var parentScope = scope.Parent();
+                return GetInnerResult(ref parentScope);
+            }
             if (!(model is string))
             {
                 try

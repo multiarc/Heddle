@@ -42,9 +42,9 @@ namespace Templates.Runtime {
             }
         }
 
-        public object ProcessData(Scope scope)
+        public object ProcessData(ref Scope scope)
         {
-            return CallChain.ProcessData(scope);
+            return CallChain.ProcessData(ref scope);
         }
     }
 }

@@ -106,3 +106,4 @@ project.lock.json
 /src/Templates.Demo/node_modules
 *.opendb
 /packages
+/.idea/.idea.Templating

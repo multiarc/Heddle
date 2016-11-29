@@ -32,9 +32,15 @@ namespace Templates.Runtime {
 
         public int Count => _itemsToExecute.Count;
 
-        public object ProcessData(Scope scope)
+        public object ProcessData(ref Scope scope)
         {
-            return _itemsToExecute.Aggregate(scope.ChainedData, (current, item) => item.ProcessData(scope.Chain(current)));
+            object result = scope.ChainedData;
+            foreach (var item in _itemsToExecute)
+            {
+                var chainedScope = scope.Chain(result);
+                result = item.ProcessData(ref chainedScope);
+            }
+            return result;
         }
 
         public BlockPosition Position { get; set; }

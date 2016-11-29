@@ -1,4 +1,5 @@
-﻿using Templates.Data;
+﻿using System.Runtime.CompilerServices;
+using Templates.Data;
 
 namespace Templates.Runtime.Parameters
 {
@@ -10,7 +11,8 @@ namespace Templates.Runtime.Parameters
         {
         }
 
-        public object GetParameter(Scope scope)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public object GetParameter(ref Scope scope)
         {
             return ParameterImplementation?.Invoke(scope.ModelData, scope.ChainedData, scope.RootData);
         }

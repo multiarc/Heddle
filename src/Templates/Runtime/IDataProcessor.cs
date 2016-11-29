@@ -10,7 +10,7 @@ namespace Templates.Runtime
         /// </summary>
         /// <param name="scope"></param>
         /// <returns>Generated string to be inserted in template instead of template</returns>
-        object ProcessData(Scope scope);
+        object ProcessData(ref Scope scope);
 
         BlockPosition Position { get; set; }
     }

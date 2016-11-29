@@ -16,7 +16,7 @@ namespace Templates.Extensions
             return base.InitStart(initContext, parent, typeof (int), null);
         }
 
-        public override object ProcessData(Scope scope)
+        public override object ProcessData(ref Scope scope)
         {
             if (!(scope.ModelData is ForModel))
             {
@@ -26,7 +26,8 @@ namespace Templates.Extensions
             ExStringBuilder builder = new ExStringBuilder();
             for (int i = model.Start ?? 0; i < model.Last; i += model.Step ?? 1)
             {
-                builder.Append(GetInnerResult(scope.Parent(i)));
+                var parentData = scope.Parent(i);
+                builder.Append(GetInnerResult(ref parentData));
             }
             return builder.ToString();
         }

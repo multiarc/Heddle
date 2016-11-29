@@ -7,11 +7,11 @@ namespace Templates.Extensions {
     [ExtensionName("html")]
     [EncodeOutput]
     public class EmptyHtmlExtension: AbstractHtmlExtension {
-        protected override object ProcessDataInternal(Scope scope)
+        protected override object ProcessDataInternal(ref Scope scope)
         {
             if (InnerExist)
             {
-                return GetInnerResult(scope);
+                return GetInnerResult(ref scope);
             }
             if (scope.ModelData != null) {
                 var s = scope.ModelData as string;

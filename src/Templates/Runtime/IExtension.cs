@@ -15,7 +15,7 @@ namespace Templates.Runtime {
 
         void CompleteInit(CompileScope newScope, ParseContext parseContext);
 
-        object ProcessData(Scope scope);
+        object ProcessData(ref Scope scope);
 
         BlockPosition Position { get; set; }
     }

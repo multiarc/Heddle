@@ -39,9 +39,10 @@ namespace Templates.Extensions
             return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        protected override object ProcessDataInternal(Scope scope)
+        protected override object ProcessDataInternal(ref Scope scope)
         {
-            string locale = GetInnerResult(scope.Parent());
+            var parentData = scope.Parent();
+            string locale = GetInnerResult(ref parentData);
             if (scope.ModelData == null)
                 return string.Empty;
             CultureInfo localeInfo = null;

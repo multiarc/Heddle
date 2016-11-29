@@ -1,34 +1,47 @@
 using System;
+using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using Microsoft.CSharp.RuntimeBinder;
 using Templates.Data;
 
 namespace Templates.Runtime.Parameters
 {
     internal class RootDynamicParameter : IRuntimeParameter
     {
-        private readonly CallSite<Func<CallSite, object, object>>[] _dynamicModelParameter;
+        private readonly Func<object, object> _compiledAccessor;
 
-        public RootDynamicParameter(CallSite<Func<CallSite, object, object>>[] dynamicModelParameter)
+        public RootDynamicParameter(string[] names)
         {
-            _dynamicModelParameter = dynamicModelParameter;
+            var inputParameter = Expression.Parameter(typeof(object));
+
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            Expression result = null;
+
+            for (var i = 0; i < names.Length; i++)
+            {
+                var binder = Binder.GetMember(CSharpBinderFlags.None, names[i], typeof(DynamicParameter), new[]
+                {
+                    CSharpArgumentInfo.Create(CSharpArgumentInfoFlags.None, null)
+                });
+                var input = result ?? inputParameter;
+                result = Expression.Condition(
+                    Expression.Equal(input,
+                        Expression.Constant(null, typeof(object))
+                    ), Expression.Constant(null, typeof(object)), DynamicExpression.Dynamic(binder, typeof(object), input));
+            }
+            _compiledAccessor =
+                Expression.Lambda<Func<object, object>>(result, inputParameter).Compile();
         }
 
         public void Dispose()
         {
         }
 
-        public object GetParameter(Scope scope)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public object GetParameter(ref Scope scope)
         {
-            var root = scope.RootData;
-            // ReSharper disable once ForCanBeConvertedToForeach
-            for (int i = 0; i < _dynamicModelParameter.Length; i++)
-            {
-                if (root == null)
-                    break;
-                var callSite = _dynamicModelParameter[i];
-                root = callSite.Target(callSite, root);
-            }
-            return root;
+            return _compiledAccessor(scope.RootData);
         }
     }
 }

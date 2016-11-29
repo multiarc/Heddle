@@ -26,9 +26,9 @@ namespace Templates.Core
             }
         }
 
-        public string GetInnerResult(Scope scope)
+        public string GetInnerResult(ref Scope scope)
         {
-            return (string) _subTemplate?.ProcessData(scope) ?? _innerResult;
+            return (string) _subTemplate?.ProcessData(ref scope) ?? _innerResult;
         }
 
         public bool InnerExist => _subTemplate != null;
@@ -93,7 +93,7 @@ namespace Templates.Core
         /// </summary>
         /// <param name="scope"></param>
         /// <returns></returns>
-        public abstract object ProcessData(Scope scope);
+        public abstract object ProcessData(ref Scope scope);
 
         public BlockPosition Position { get; set; }
     }

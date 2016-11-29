@@ -326,17 +326,13 @@ namespace Templates.Runtime
             if (scopeType.IsDynamic ||
                 definitionItem != null && definitionItem.ModelType == ExType.Dynamic.ToString())
             {
-                CSharpArgumentInfo[] csharpArgumentInfoArray = new CSharpArgumentInfo[1];
-                csharpArgumentInfoArray[0] = CSharpArgumentInfo.Create(CSharpArgumentInfoFlags.None, null);
-                var callSites =
-                    extensionItem.CallParameter.ModelParameter.Select(model => CreateBinder(model, csharpArgumentInfoArray)).ToArray();
                 if (extensionItem.CallParameter.RootReference)
                 {
-                    result.CompiledItem.Parameter = new RootDynamicParameter(callSites);
+                    result.CompiledItem.Parameter = new RootDynamicParameter(extensionItem.CallParameter.ModelParameter);
                 }
                 else
                 {
-                    result.CompiledItem.Parameter = new DynamicParameter(callSites);
+                    result.CompiledItem.Parameter = new DynamicParameter(extensionItem.CallParameter.ModelParameter);
                 }
                 return ExType.Dynamic;
             }
@@ -362,11 +358,11 @@ namespace Templates.Runtime
             inputType = dataProperties.Last().PropertyType;
             if (extensionItem.CallParameter.RootReference)
             {
-                result.CompiledItem.Parameter = new RootModelParameter(dataProperties.Select(prop => prop.ToPropertyGate()).ToArray());
+                result.CompiledItem.Parameter = new RootModelParameter(dataProperties);
             }
             else
             {
-                result.CompiledItem.Parameter = new ModelParameter(dataProperties.Select(prop => prop.ToPropertyGate()).ToArray());
+                result.CompiledItem.Parameter = new ModelParameter(dataProperties);
             }
             return inputType;
         }

@@ -14,7 +14,7 @@ namespace Templates.Extensions
             return dataType;
         }
 
-        public override object ProcessData(Scope scope)
+        public override object ProcessData(ref Scope scope)
         {
             return scope.ModelData;
         }

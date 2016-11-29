@@ -11,7 +11,8 @@ namespace Templates.Strings.Core {
 #if !NETSTANDARD1_6
     [Serializable]
 #endif
-    public struct Replacement {
+    public struct Replacement
+    {
         public BlockPosition BlockPosition;
 
         /// <summary>

@@ -21,9 +21,10 @@ namespace Templates.Extensions
         }
 
 
-        protected override object ProcessDataInternal(Scope scope)
+        protected override object ProcessDataInternal(ref Scope scope)
         {
-            string dateFormat = GetInnerResult(scope.Parent());
+            var parentScope = scope.Parent();
+            string dateFormat = GetInnerResult(ref parentScope);
             if (string.IsNullOrEmpty(dateFormat))
                 dateFormat = "t";
             if (!(scope.ModelData is DateTime))

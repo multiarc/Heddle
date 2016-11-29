@@ -16,14 +16,15 @@ namespace Templates.Extensions {
             return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        public override object ProcessData(Scope scope)
+        public override object ProcessData(ref Scope scope)
         {
             if (scope.ModelData == null)
                 return string.Empty;
 
             if (!(scope.ModelData is bool) || (bool)scope.ModelData)
             {
-                return GetInnerResult(scope.Parent());
+                var parentData = scope.Parent();
+                return GetInnerResult(ref parentData);
             }
 
             return string.Empty;

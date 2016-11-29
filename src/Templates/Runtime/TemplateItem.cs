@@ -14,10 +14,11 @@ namespace Templates.Runtime {
 
         public IExtension Extension { get; set; }
 
-        public object ProcessData(Scope scope)
+        public object ProcessData(ref Scope scope)
         {
-            var model = Parameter.GetParameter(scope);
-            var result = Extension.ProcessData(scope.Model(model));
+            var model = Parameter.GetParameter(ref scope);
+            var modelScope = scope.Model(model);
+            var result = Extension.ProcessData(ref modelScope);
 #if DEBUG
             if (result != null && ReturnType != null && !ReturnType.Type.IsType(result))
             {
