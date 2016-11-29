@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Threading;
-using Newtonsoft.Json;
 using Templates.Data;
 using Templates.Strings;
 using Templates.Strings.Core;
@@ -11,7 +8,6 @@ namespace Templates.Runtime {
     internal class RuntimeDocument : IDataProcessor {
         private readonly string _document;
         private readonly IDataProcessor[] _optimizedElements;
-        //private readonly BlockPosition[] _outputPositions;
         private readonly IDataProcessor _singleProcessor;
         private bool _canDoFullOptimize;
         private readonly CompileScope _context;
@@ -28,11 +24,6 @@ namespace Templates.Runtime {
             {
                 _singleProcessor = _optimizedElements[0];
             }
-            //_outputPositions = new BlockPosition[_optimizedElements.Length];
-            //for (int i = 0; i < _optimizedElements.Length; i++)
-            //{
-            //    _outputPositions[i] = _optimizedElements[i].Position;
-            //}
         }
 
         private IDataProcessor[] OptimizeCallTree(DocumentElement[] items)
@@ -71,24 +62,17 @@ namespace Templates.Runtime {
             return resultTree.ToArray();
         }
 
-
         public object ProcessData(ref Scope data)
         {
-            //if (_singleProcessor != null)
-            //{
-            //    string replacementValue = _singleProcessor.ProcessData(data) as string ?? string.Empty;
-            //    if (_canDoFullOptimize)
-            //        return replacementValue;
-            //    return ExStringBuilder.Replace(_singleProcessor.Position.StartIndex, _singleProcessor.Position.Length,
-            //        replacementValue, _document);
-            //}
-            //if (_canDoFullOptimize) {
-            //    ExStringBuilder builder = new ExStringBuilder();
-            //    foreach (IDataProcessor item in _optimizedElements) {
-            //        builder.Append(item.ProcessData(data) as string);
-            //    }
-            //    return builder.ToString();
-            //}
+            if (_canDoFullOptimize)
+            {
+                var results = new string[_optimizedElements.Length];
+                for (int index = 0; index < _optimizedElements.Length; index++)
+                {
+                    results[index] = _optimizedElements[index].ProcessData(ref data) as string;
+                }
+                return string.Concat(results);
+            }
             int count = _optimizedElements.Length;
             if (count > 0)
             {
@@ -115,13 +99,6 @@ namespace Templates.Runtime {
         public bool CanOptimizeSelf => _singleProcessor != null && _canDoFullOptimize;
 
         public IDataProcessor SingleProcessor => _singleProcessor;
-
-        //private Replacement[] MakeNewArray() {
-        //    var replacements = new Replacement[_optimizedElements.Length];
-        //    for (int i = 0; i < _optimizedElements.Length; i++)
-        //        replacements[i].BlockPosition = _optimizedElements[i].Position;
-        //    return replacements;
-        //}
 
         protected virtual void Dispose(bool disposing)
         {
