@@ -32,7 +32,7 @@ fragment LINE_TERM: ';';
 fragment COMMENT_BLOCK: '@*' .*? '*@';
 fragment RAW_BLOCK : '@{' .*? '}@';
 
-NON_SPEC_TEXT: ~[@\*\{<%]+ -> type(TEXT);
+NON_SPEC_TEXT: ~[@*{<%]+ -> type(TEXT);
 
 START_COMMENT:
 	COMMENT_BLOCK -> channel(COMMENT_CHANNEL);
@@ -52,7 +52,7 @@ mode DEF;
 
 
 DEF_COMMENT: 
-	COMMENT_BLOCK -> type(COMMENT), skip;
+	COMMENT_BLOCK -> skip;
 
 DEF_WS: WS+ -> skip;
 
@@ -94,7 +94,7 @@ DEF_OUT_ID: ID_TOKEN -> type(ID);
 
 mode SUB;
 
-SUB_TEXT: ~[@\*\{<%}]+ -> type(TEXT);
+SUB_TEXT: ~[@*{<%}]+ -> type(TEXT);
 
 SUB_COMMENT:
 	COMMENT_BLOCK -> type(COMMENT);

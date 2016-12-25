@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "Templates.Language": "1.5.*",
-    "Antlr4Core.Runtime": "4.5.3",
+    "Antlr4Core.Runtime": "4.6.0",
     "Microsoft.Extensions.PlatformAbstractions": "1.0.0",
     "Microsoft.CodeAnalysis.CSharp": "1.3.0",
     "Microsoft.Extensions.DependencyModel": "1.0.0",
@@ -41,7 +41,8 @@
         "System.Threading.Tasks": "",
         "System.IO": "",
         "System.ComponentModel": "",
-        "Microsoft.CSharp": ""
+        "Microsoft.CSharp": "",
+        "System": ""
       }
     },
     "net461": {
@@ -51,7 +52,8 @@
         "System.Threading.Tasks": "",
         "System.IO": "",
         "System.ComponentModel": "",
-        "Microsoft.CSharp": ""
+        "Microsoft.CSharp": "",
+        "System": ""
       }
     },
     "netstandard1.6": {

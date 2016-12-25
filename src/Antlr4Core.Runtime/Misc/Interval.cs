@@ -1,34 +1,9 @@
-/*
- * [The "BSD license"]
- *  Copyright (c) 2013 Terence Parr
- *  Copyright (c) 2013 Sam Harwell
- *  All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions
- *  are met:
- *
- *  1. Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright
- *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution.
- *  3. The name of the author may not be used to endorse or promote products
- *     derived from this software without specific prior written permission.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
- *  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- *  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- *  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
- *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- *  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- *  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+/* Copyright (c) 2012-2016 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
  */
+
 using System;
-using Antlr4.Runtime.Sharpen;
 
 namespace Antlr4.Runtime.Misc
 {
@@ -36,7 +11,7 @@ namespace Antlr4.Runtime.Misc
     /// <remarks>An immutable inclusive interval a..b.</remarks>
     public struct Interval
     {
-        public static readonly Antlr4.Runtime.Misc.Interval Invalid = new Antlr4.Runtime.Misc.Interval(-1, -2);
+        public static readonly Interval Invalid = new Interval(-1, -2);
 
         /// <summary>The start of the interval.</summary>
         /// <remarks>The start of the interval.</remarks>
@@ -63,9 +38,9 @@ namespace Antlr4.Runtime.Misc
         /// Interval object with a..a in it.  On Java.g4, 218623 IntervalSets
         /// have a..a (set with 1 element).
         /// </remarks>
-        public static Antlr4.Runtime.Misc.Interval Of(int a, int b)
+        public static Interval Of(int a, int b)
         {
-            return new Antlr4.Runtime.Misc.Interval(a, b);
+            return new Interval(a, b);
         }
 
         /// <summary>return number of elements between a and b inclusively.</summary>
@@ -87,12 +62,12 @@ namespace Antlr4.Runtime.Misc
 
         public override bool Equals(object o)
         {
-            if (!(o is Antlr4.Runtime.Misc.Interval))
+            if (!(o is Interval))
             {
                 return false;
             }
 
-            Antlr4.Runtime.Misc.Interval other = (Antlr4.Runtime.Misc.Interval)o;
+            Interval other = (Interval)o;
             return this.a == other.a && this.b == other.b;
         }
 
@@ -105,63 +80,63 @@ namespace Antlr4.Runtime.Misc
         }
 
         /// <summary>Does this start completely before other? Disjoint</summary>
-        public bool StartsBeforeDisjoint(Antlr4.Runtime.Misc.Interval other)
+        public bool StartsBeforeDisjoint(Interval other)
         {
             return this.a < other.a && this.b < other.a;
         }
 
         /// <summary>Does this start at or before other? Nondisjoint</summary>
-        public bool StartsBeforeNonDisjoint(Antlr4.Runtime.Misc.Interval other)
+        public bool StartsBeforeNonDisjoint(Interval other)
         {
             return this.a <= other.a && this.b >= other.a;
         }
 
         /// <summary>Does this.a start after other.b? May or may not be disjoint</summary>
-        public bool StartsAfter(Antlr4.Runtime.Misc.Interval other)
+        public bool StartsAfter(Interval other)
         {
             return this.a > other.a;
         }
 
         /// <summary>Does this start completely after other? Disjoint</summary>
-        public bool StartsAfterDisjoint(Antlr4.Runtime.Misc.Interval other)
+        public bool StartsAfterDisjoint(Interval other)
         {
             return this.a > other.b;
         }
 
         /// <summary>Does this start after other? NonDisjoint</summary>
-        public bool StartsAfterNonDisjoint(Antlr4.Runtime.Misc.Interval other)
+        public bool StartsAfterNonDisjoint(Interval other)
         {
             return this.a > other.a && this.a <= other.b;
         }
 
         // this.b>=other.b implied
         /// <summary>Are both ranges disjoint? I.e., no overlap?</summary>
-        public bool Disjoint(Antlr4.Runtime.Misc.Interval other)
+        public bool Disjoint(Interval other)
         {
             return StartsBeforeDisjoint(other) || StartsAfterDisjoint(other);
         }
 
         /// <summary>Are two intervals adjacent such as 0..41 and 42..42?</summary>
-        public bool Adjacent(Antlr4.Runtime.Misc.Interval other)
+        public bool Adjacent(Interval other)
         {
             return this.a == other.b + 1 || this.b == other.a - 1;
         }
 
-        public bool ProperlyContains(Antlr4.Runtime.Misc.Interval other)
+        public bool ProperlyContains(Interval other)
         {
             return other.a >= this.a && other.b <= this.b;
         }
 
         /// <summary>Return the interval computed from combining this and other</summary>
-        public Antlr4.Runtime.Misc.Interval Union(Antlr4.Runtime.Misc.Interval other)
+        public Interval Union(Interval other)
         {
-            return Antlr4.Runtime.Misc.Interval.Of(Math.Min(a, other.a), Math.Max(b, other.b));
+            return Interval.Of(Math.Min(a, other.a), Math.Max(b, other.b));
         }
 
         /// <summary>Return the interval in common between this and o</summary>
-        public Antlr4.Runtime.Misc.Interval Intersection(Antlr4.Runtime.Misc.Interval other)
+        public Interval Intersection(Interval other)
         {
-            return Antlr4.Runtime.Misc.Interval.Of(Math.Max(a, other.a), Math.Min(b, other.b));
+            return Interval.Of(Math.Max(a, other.a), Math.Min(b, other.b));
         }
 
         /// <summary>
@@ -177,20 +152,20 @@ namespace Antlr4.Runtime.Misc
         /// , which would result in two disjoint intervals
         /// instead of the single one returned by this method.
         /// </summary>
-        public Antlr4.Runtime.Misc.Interval? DifferenceNotProperlyContained(Antlr4.Runtime.Misc.Interval other)
+        public Interval? DifferenceNotProperlyContained(Interval other)
         {
-            Antlr4.Runtime.Misc.Interval? diff = null;
+            Interval? diff = null;
             // other.a to left of this.a (or same)
             if (other.StartsBeforeNonDisjoint(this))
             {
-                diff = Antlr4.Runtime.Misc.Interval.Of(Math.Max(this.a, other.b + 1), this.b);
+                diff = Interval.Of(Math.Max(this.a, other.b + 1), this.b);
             }
             else
             {
                 // other.a to right of this.a
                 if (other.StartsAfterNonDisjoint(this))
                 {
-                    diff = Antlr4.Runtime.Misc.Interval.Of(this.a, other.a - 1);
+                    diff = Interval.Of(this.a, other.a - 1);
                 }
             }
             return diff;

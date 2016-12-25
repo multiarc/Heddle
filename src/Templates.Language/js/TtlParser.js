@@ -1,16 +1,16 @@
-// Generated from D:\Work\Templater\src\Templates.Language\TtlParser.g4 by ANTLR 4.5.3
+// Generated from d:\Work\Templater\src\Templates.Language\TtlParser.g4 by ANTLR 4.6
 // jshint ignore: start
 var antlr4 = require('antlr4/index');
 var TtlParserListener = require('./TtlParserListener').TtlParserListener;
 var grammarFileName = "TtlParser.g4";
 
 var serializedATN = ["\u0003\u0430\ud6d1\u8206\uad2d\u4417\uaef1\u8d80\uaadd",
-    "\u0003\u001f\u00cd\u0004\u0002\t\u0002\u0004\u0003\t\u0003\u0004\u0004",
-    "\t\u0004\u0004\u0005\t\u0005\u0004\u0006\t\u0006\u0004\u0007\t\u0007",
-    "\u0004\b\t\b\u0004\t\t\t\u0004\n\t\n\u0004\u000b\t\u000b\u0004\f\t\f",
-    "\u0004\r\t\r\u0004\u000e\t\u000e\u0004\u000f\t\u000f\u0004\u0010\t\u0010",
-    "\u0003\u0002\u0003\u0002\u0003\u0002\u0003\u0002\u0003\u0002\u0007\u0002",
-    "&\n\u0002\f\u0002\u000e\u0002)\u000b\u0002\u0003\u0003\u0003\u0003\u0003",
+    "\u0003 \u00cd\u0004\u0002\t\u0002\u0004\u0003\t\u0003\u0004\u0004\t",
+    "\u0004\u0004\u0005\t\u0005\u0004\u0006\t\u0006\u0004\u0007\t\u0007\u0004",
+    "\b\t\b\u0004\t\t\t\u0004\n\t\n\u0004\u000b\t\u000b\u0004\f\t\f\u0004",
+    "\r\t\r\u0004\u000e\t\u000e\u0004\u000f\t\u000f\u0004\u0010\t\u0010\u0003",
+    "\u0002\u0003\u0002\u0003\u0002\u0003\u0002\u0003\u0002\u0007\u0002&",
+    "\n\u0002\f\u0002\u000e\u0002)\u000b\u0002\u0003\u0003\u0003\u0003\u0003",
     "\u0004\u0003\u0004\u0003\u0005\u0003\u0005\u0006\u00051\n\u0005\r\u0005",
     "\u000e\u00052\u0003\u0005\u0003\u0005\u0003\u0006\u0003\u0006\u0005",
     "\u00069\n\u0006\u0003\u0007\u0003\u0007\u0003\u0007\u0003\u0007\u0003",
@@ -148,8 +148,9 @@ var symbolicNames = [ null, "TEXT", "ID", "ROOT_REF", "MEMBER_P", "OUT",
                       "CSHARP_START", "DEF_STARTNAME", "DEF_ENDNAME", "DEF_TYPE", 
                       "DELIM", "DEF_START", "DEF_CLOSE", "COMMENT", "RAW", 
                       "OUT_PARAMSTART", "OUT_PARAMEND", "LINE_TERMINATE", 
-                      "DEF_OUTPUTONEND", "START_COMMENT", "DEF_WS", "DEF_OUT_COMMENT", 
-                      "DEF_OUT_WS", "OUT_WS", "CALL_COMMENT", "CALL_OUT_WS" ];
+                      "DEF_OUTPUTONEND", "START_COMMENT", "DEF_COMMENT", 
+                      "DEF_WS", "DEF_OUT_COMMENT", "DEF_OUT_WS", "OUT_WS", 
+                      "CALL_COMMENT", "CALL_OUT_WS" ];
 
 var ruleNames =  [ "ttl", "comment", "raw", "definition", "def", "inherited_def", 
                    "simple_def", "default_chain", "outblock", "chain", "call", 
@@ -197,12 +198,13 @@ TtlParser.OUT_PARAMEND = 20;
 TtlParser.LINE_TERMINATE = 21;
 TtlParser.DEF_OUTPUTONEND = 22;
 TtlParser.START_COMMENT = 23;
-TtlParser.DEF_WS = 24;
-TtlParser.DEF_OUT_COMMENT = 25;
-TtlParser.DEF_OUT_WS = 26;
-TtlParser.OUT_WS = 27;
-TtlParser.CALL_COMMENT = 28;
-TtlParser.CALL_OUT_WS = 29;
+TtlParser.DEF_COMMENT = 24;
+TtlParser.DEF_WS = 25;
+TtlParser.DEF_OUT_COMMENT = 26;
+TtlParser.DEF_OUT_WS = 27;
+TtlParser.OUT_WS = 28;
+TtlParser.CALL_COMMENT = 29;
+TtlParser.CALL_OUT_WS = 30;
 
 TtlParser.RULE_ttl = 0;
 TtlParser.RULE_comment = 1;
@@ -321,6 +323,7 @@ TtlParser.prototype.ttl = function() {
         _la = this._input.LA(1);
         while((((_la) & ~0x1f) == 0 && ((1 << _la) & ((1 << TtlParser.TEXT) | (1 << TtlParser.OUT) | (1 << TtlParser.DEF_START) | (1 << TtlParser.COMMENT) | (1 << TtlParser.RAW))) !== 0)) {
             this.state = 35;
+            this._errHandler.sync(this);
             switch(this._input.LA(1)) {
             case TtlParser.DEF_START:
                 this.state = 30;
@@ -737,6 +740,7 @@ TtlParser.prototype.inherited_def = function() {
             this.state = 60;
             this.match(TtlParser.DEF_ENDNAME);
             this.state = 62;
+            this._errHandler.sync(this);
             _la = this._input.LA(1);
             if(_la===TtlParser.DEF_OUTPUTONEND) {
                 this.state = 61;
@@ -764,6 +768,7 @@ TtlParser.prototype.inherited_def = function() {
             this.state = 72;
             this.match(TtlParser.DEF_ENDNAME);
             this.state = 74;
+            this._errHandler.sync(this);
             _la = this._input.LA(1);
             if(_la===TtlParser.DEF_OUTPUTONEND) {
                 this.state = 73;
@@ -873,6 +878,7 @@ TtlParser.prototype.simple_def = function() {
             this.state = 81;
             this.match(TtlParser.DEF_ENDNAME);
             this.state = 83;
+            this._errHandler.sync(this);
             _la = this._input.LA(1);
             if(_la===TtlParser.DEF_OUTPUTONEND) {
                 this.state = 82;
@@ -896,6 +902,7 @@ TtlParser.prototype.simple_def = function() {
             this.state = 91;
             this.match(TtlParser.DEF_ENDNAME);
             this.state = 93;
+            this._errHandler.sync(this);
             _la = this._input.LA(1);
             if(_la===TtlParser.DEF_OUTPUTONEND) {
                 this.state = 92;
@@ -1052,6 +1059,7 @@ TtlParser.prototype.outblock = function() {
             this.state = 102;
             this.chain();
             this.state = 104;
+            this._errHandler.sync(this);
             _la = this._input.LA(1);
             if(_la===TtlParser.SUB_START) {
                 this.state = 103;
@@ -1067,6 +1075,7 @@ TtlParser.prototype.outblock = function() {
             this.state = 107;
             this.chain();
             this.state = 109;
+            this._errHandler.sync(this);
             _la = this._input.LA(1);
             if(_la===TtlParser.SUB_START) {
                 this.state = 108;
@@ -1230,6 +1239,7 @@ TtlParser.prototype.call = function() {
     this.enterRule(localctx, 20, TtlParser.RULE_call);
     try {
         this.state = 125;
+        this._errHandler.sync(this);
         switch(this._input.LA(1)) {
         case TtlParser.ID:
             this.enterOuterAlt(localctx, 1);
@@ -1356,6 +1366,7 @@ TtlParser.prototype.named_call = function() {
             this.state = 128;
             this.match(TtlParser.OUT_PARAMSTART);
             this.state = 130;
+            this._errHandler.sync(this);
             _la = this._input.LA(1);
             if(_la===TtlParser.ROOT_REF) {
                 this.state = 129;
@@ -1363,6 +1374,7 @@ TtlParser.prototype.named_call = function() {
             }
 
             this.state = 133;
+            this._errHandler.sync(this);
             _la = this._input.LA(1);
             if(_la===TtlParser.ID) {
                 this.state = 132;
@@ -1380,6 +1392,7 @@ TtlParser.prototype.named_call = function() {
             this.state = 137;
             this.match(TtlParser.OUT_PARAMSTART);
             this.state = 139;
+            this._errHandler.sync(this);
             _la = this._input.LA(1);
             if(_la===TtlParser.ROOT_REF) {
                 this.state = 138;
@@ -1541,6 +1554,7 @@ TtlParser.prototype.unnamed_call = function() {
             this.state = 162;
             this.match(TtlParser.OUT_PARAMSTART);
             this.state = 164;
+            this._errHandler.sync(this);
             _la = this._input.LA(1);
             if(_la===TtlParser.ROOT_REF) {
                 this.state = 163;
@@ -1548,6 +1562,7 @@ TtlParser.prototype.unnamed_call = function() {
             }
 
             this.state = 167;
+            this._errHandler.sync(this);
             _la = this._input.LA(1);
             if(_la===TtlParser.ID) {
                 this.state = 166;
@@ -1563,6 +1578,7 @@ TtlParser.prototype.unnamed_call = function() {
             this.state = 170;
             this.match(TtlParser.OUT_PARAMSTART);
             this.state = 172;
+            this._errHandler.sync(this);
             _la = this._input.LA(1);
             if(_la===TtlParser.ROOT_REF) {
                 this.state = 171;

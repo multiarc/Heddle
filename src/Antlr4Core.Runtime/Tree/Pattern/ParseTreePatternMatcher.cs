@@ -1,46 +1,19 @@
-/*
- * [The "BSD license"]
- *  Copyright (c) 2013 Terence Parr
- *  Copyright (c) 2013 Sam Harwell
- *  All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions
- *  are met:
- *
- *  1. Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright
- *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution.
- *  3. The name of the author may not be used to endorse or promote products
- *     derived from this software without specific prior written permission.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
- *  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- *  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- *  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
- *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- *  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- *  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+/* Copyright (c) 2012-2016 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
  */
+
 using System;
 using System.Collections.Generic;
-using System.Text;
-using Antlr4.Runtime;
+using Antlr4.Runtime.Atn;
 using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Sharpen;
-using Antlr4.Runtime.Tree;
-using Antlr4.Runtime.Tree.Pattern;
 
 namespace Antlr4.Runtime.Tree.Pattern
 {
     /// <summary>
     /// A tree pattern matching mechanism for ANTLR
-    /// <see cref="Antlr4.Runtime.Tree.IParseTree"/>
+    /// <see cref="IParseTree"/>
     /// s.
     /// <p>Patterns are strings of source input text with special tags representing
     /// token or rule references such as:</p>
@@ -51,15 +24,15 @@ namespace Antlr4.Runtime.Tree.Pattern
     /// <c>statement</c>
     /// , this object constructs
     /// a
-    /// <see cref="Antlr4.Runtime.Tree.IParseTree"/>
+    /// <see cref="IParseTree"/>
     /// with placeholders for the
     /// <c>ID</c>
     /// and
     /// <c>expr</c>
     /// subtree. Then the
-    /// <see cref="Match(Antlr4.Runtime.Tree.IParseTree, ParseTreePattern)"/>
+    /// <see cref="Match(IParseTree,ParseTreePattern)"/>
     /// routines can compare an actual
-    /// <see cref="Antlr4.Runtime.Tree.IParseTree"/>
+    /// <see cref="IParseTree"/>
     /// from a parse with this pattern. Tag
     /// <c>&lt;ID&gt;</c>
     /// matches
@@ -82,14 +55,14 @@ namespace Antlr4.Runtime.Tree.Pattern
     /// <c>0</c>
     /// .</p>
     /// <p>The
-    /// <see cref="Matches(Antlr4.Runtime.Tree.IParseTree, ParseTreePattern)"/>
+    /// <see cref="Matches(IParseTree,ParseTreePattern)"/>
     /// routines return
     /// <see langword="true"/>
     /// or
     /// <see langword="false"/>
     /// based
     /// upon a match for the tree rooted at the parameter sent in. The
-    /// <see cref="Match(Antlr4.Runtime.Tree.IParseTree, ParseTreePattern)"/>
+    /// <see cref="Match(IParseTree,ParseTreePattern)"/>
     /// routines return a
     /// <see cref="ParseTreeMatch"/>
     /// object that
@@ -106,9 +79,9 @@ namespace Antlr4.Runtime.Tree.Pattern
     /// for lots of examples.
     /// <see cref="ParseTreePattern"/>
     /// has two static helper methods:
-    /// <see cref="ParseTreePattern.FindAll(Antlr4.Runtime.Tree.IParseTree, string)"/>
+    /// <see cref="ParseTreePattern.FindAll"/>
     /// and
-    /// <see cref="ParseTreePattern.Match(Antlr4.Runtime.Tree.IParseTree)"/>
+    /// <see cref="ParseTreePattern.Match"/>
     /// that
     /// are easy to use but not super efficient because they create new
     /// <see cref="ParseTreePatternMatcher"/>
@@ -122,7 +95,7 @@ namespace Antlr4.Runtime.Tree.Pattern
     /// into a sequence of four tokens (assuming lexer
     /// throws out whitespace or puts it on a hidden channel). Be aware that the
     /// input stream is reset for the lexer (but not the parser; a
-    /// <see cref="Antlr4.Runtime.ParserInterpreter"/>
+    /// <see cref="ParserInterpreter"/>
     /// is created to parse the input.). Any user-defined
     /// fields you have put into the lexer might get changed when this mechanism asks
     /// it to scan the pattern string.</p>
@@ -132,7 +105,7 @@ namespace Antlr4.Runtime.Tree.Pattern
     /// <c>expr</c>
     /// but, from the parser passed in, we create a special version of
     /// the underlying grammar representation (an
-    /// <see cref="Antlr4.Runtime.Atn.ATN"/>
+    /// <see cref="ATN"/>
     /// ) that allows imaginary
     /// tokens representing rules (
     /// <c>&lt;expr&gt;</c>
@@ -351,7 +324,7 @@ namespace Antlr4.Runtime.Tree.Pattern
                 throw new ParseTreePatternMatcher.CannotInvokeStartRule(e);
             }
             // Make sure tree pattern compilation checks for a complete parse
-            if (tokens.La(1) != TokenConstants.Eof)
+            if (tokens.LA(1) != TokenConstants.EOF)
             {
                 throw new ParseTreePatternMatcher.StartRuleDoesNotConsumeFullPattern();
             }
@@ -523,7 +496,7 @@ namespace Antlr4.Runtime.Tree.Pattern
         /// <summary>
         /// Is
         /// <paramref name="t"/>
-        /// 
+        ///
         /// <c>(expr &lt;expr&gt;)</c>
         /// subtree?
         /// </summary>
@@ -591,7 +564,7 @@ namespace Antlr4.Runtime.Tree.Pattern
                     AntlrInputStream @in = new AntlrInputStream(textChunk.Text);
                     lexer.SetInputStream(@in);
                     IToken t = lexer.NextToken();
-                    while (t.Type != TokenConstants.Eof)
+                    while (t.Type != TokenConstants.EOF)
                     {
                         tokens.Add(t);
                         t = lexer.NextToken();

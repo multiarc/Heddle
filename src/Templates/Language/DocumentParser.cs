@@ -38,7 +38,7 @@ namespace Templates.Language
             CommonTokenStream tokens = new CommonTokenStream(lexer);
             TtlParser parser = new TtlParser(tokens);
             var syntaxErrorListener = new TtlSyntaxErrorListener(context);
-            parser.Interpreter.PredictionMode = PredictionMode.Sll;
+            parser.Interpreter.PredictionMode = PredictionMode.SLL;
             parser.RemoveErrorListeners();
             TtlParser.TtlContext tree;
             try
@@ -49,7 +49,7 @@ namespace Templates.Language
             {
                 stream.Reset();
                 parser.Reset();
-                parser.Interpreter.PredictionMode = PredictionMode.Ll;
+                parser.Interpreter.PredictionMode = PredictionMode.LL;
                 parser.AddErrorListener(syntaxErrorListener);
                 tree = parser.ttl();
             }

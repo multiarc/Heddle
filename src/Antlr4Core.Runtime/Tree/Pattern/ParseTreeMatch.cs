@@ -1,44 +1,18 @@
-/*
- * [The "BSD license"]
- *  Copyright (c) 2013 Terence Parr
- *  Copyright (c) 2013 Sam Harwell
- *  All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions
- *  are met:
- *
- *  1. Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright
- *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution.
- *  3. The name of the author may not be used to endorse or promote products
- *     derived from this software without specific prior written permission.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
- *  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- *  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- *  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
- *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- *  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- *  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+/* Copyright (c) 2012-2016 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
  */
+
 using System;
 using System.Collections.Generic;
 using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Sharpen;
-using Antlr4.Runtime.Tree;
-using Antlr4.Runtime.Tree.Pattern;
 
 namespace Antlr4.Runtime.Tree.Pattern
 {
     /// <summary>
     /// Represents the result of matching a
-    /// <see cref="Antlr4.Runtime.Tree.IParseTree"/>
+    /// <see cref="IParseTree"/>
     /// against a tree pattern.
     /// </summary>
     public class ParseTreeMatch
@@ -81,7 +55,7 @@ namespace Antlr4.Runtime.Tree.Pattern
         /// <param name="pattern">The parse tree pattern.</param>
         /// <param name="labels">
         /// A mapping from label names to collections of
-        /// <see cref="Antlr4.Runtime.Tree.IParseTree"/>
+        /// <see cref="IParseTree"/>
         /// objects located by the tree pattern matching process.
         /// </param>
         /// <param name="mismatchedNode">
@@ -159,7 +133,7 @@ namespace Antlr4.Runtime.Tree.Pattern
         /// <param name="label">The label to check.</param>
         /// <returns>
         /// The last
-        /// <see cref="Antlr4.Runtime.Tree.IParseTree"/>
+        /// <see cref="IParseTree"/>
         /// to match a tag with the specified
         /// label, or
         /// <see langword="null"/>
@@ -209,7 +183,7 @@ namespace Antlr4.Runtime.Tree.Pattern
         /// <param name="label">The label.</param>
         /// <returns>
         /// A collection of all
-        /// <see cref="Antlr4.Runtime.Tree.IParseTree"/>
+        /// <see cref="IParseTree"/>
         /// nodes matching tags with
         /// the specified
         /// <paramref name="label"/>
@@ -268,7 +242,7 @@ namespace Antlr4.Runtime.Tree.Pattern
         /// <summary>Gets a value indicating whether the match operation succeeded.</summary>
         /// <remarks>Gets a value indicating whether the match operation succeeded.</remarks>
         /// <returns>
-        /// 
+        ///
         /// <see langword="true"/>
         /// if the match operation succeeded; otherwise,
         /// <see langword="false"/>
@@ -298,7 +272,7 @@ namespace Antlr4.Runtime.Tree.Pattern
         /// <remarks>Get the parse tree we are trying to match to a pattern.</remarks>
         /// <returns>
         /// The
-        /// <see cref="Antlr4.Runtime.Tree.IParseTree"/>
+        /// <see cref="IParseTree"/>
         /// we are trying to match to a pattern.
         /// </returns>
         [NotNull]

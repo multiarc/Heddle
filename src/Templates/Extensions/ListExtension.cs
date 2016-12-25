@@ -31,7 +31,7 @@ namespace Templates.Extensions
     [DataType(typeof (IEnumerable))]
     public class ListExtension : AbstractExtension
     {
-        private ICountReader _iCountReader;
+        private ICountReader _collectionCountReader;
 
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
@@ -44,7 +44,7 @@ namespace Templates.Extensions
             var elementType = dataType.Type.TryGetElementType(typeof(ICollection<>));
             if (elementType != null)
             {
-                _iCountReader = (ICountReader) Activator.CreateInstance(typeof(CountReader<>).MakeGenericType(elementType));
+                _collectionCountReader = (ICountReader) Activator.CreateInstance(typeof(CountReader<>).MakeGenericType(elementType));
             }
             ExType underliyingType = dataType.Type.TryGetElementType(typeof (IEnumerable<>)) ?? ExType.Dynamic;
             return base.InitStart(initContext, underliyingType, chainedType, parent);
@@ -55,19 +55,22 @@ namespace Templates.Extensions
             if (!(scope.ModelData is IEnumerable))
                 return string.Empty;
             var enumerable = (IEnumerable) scope.ModelData;
-            var count = _iCountReader?.GetCount(scope.ModelData);
+            var count = _collectionCountReader?.GetCount(scope.ModelData);
             if (count.HasValue)
             {
                 var itemResults = new string[count.Value];
                 var index = 0;
+                var totalLength = 0;
 
                 foreach (var item in enumerable)
                 {
                     var itemScope = scope.Model(item);
-                    itemResults[index] = GetInnerResult(ref itemScope);
+                    var result = GetInnerResult(ref itemScope);
+                    totalLength += result.Length;
+                    itemResults[index] = result;
                     index++;
                 }
-                return string.Concat(itemResults);
+                return ExStringBuilder.ConcatArray(itemResults, totalLength);
             }
 
             var biulder = new ExStringBuilder();

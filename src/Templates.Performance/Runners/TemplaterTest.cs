@@ -76,7 +76,8 @@ namespace Templates.Performance.Runners {
                 watcher.Start();
                 for (var i = 0; i < n; i++)
                 {
-                    length += target.Generate(data).Length;
+                    var result = target.Generate(data);
+                    length += result.Length;
                 }
                 watcher.Stop();
                 Console.WriteLine("Syncronous implementation:");

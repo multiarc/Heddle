@@ -1,36 +1,9 @@
-/*
- * [The "BSD license"]
- *  Copyright (c) 2013 Terence Parr
- *  Copyright (c) 2013 Sam Harwell
- *  All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions
- *  are met:
- *
- *  1. Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright
- *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution.
- *  3. The name of the author may not be used to endorse or promote products
- *     derived from this software without specific prior written permission.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
- *  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- *  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- *  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
- *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- *  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- *  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+/* Copyright (c) 2012-2016 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
  */
-using System;
+
 using System.Collections.Generic;
-using System.Linq;
-using Antlr4.Runtime;
 using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Sharpen;
 using Antlr4.Runtime.Tree;
@@ -60,7 +33,7 @@ namespace Antlr4.Runtime
     /// </remarks>
     public class ParserRuleContext : RuleContext
     {
-        private static readonly Antlr4.Runtime.ParserRuleContext Empty = new Antlr4.Runtime.ParserRuleContext();
+		public static readonly ParserRuleContext EMPTY = new ParserRuleContext();
 
         /// <summary>
         /// If we are debugging or building a parse tree for a visitor,
@@ -133,17 +106,17 @@ namespace Antlr4.Runtime
         {
         }
 
-        public static Antlr4.Runtime.ParserRuleContext EmptyContext
+        public static ParserRuleContext EmptyContext
         {
             get
             {
                 //	public List<Integer> states;
-                return Empty;
+                return EMPTY;
             }
         }
 
         /// <summary>COPY a ctx (I'm deliberately not using copy constructor)</summary>
-        public virtual void CopyFrom(Antlr4.Runtime.ParserRuleContext ctx)
+        public virtual void CopyFrom(ParserRuleContext ctx)
         {
             // from RuleContext
             this.Parent = ctx.Parent;
@@ -152,7 +125,7 @@ namespace Antlr4.Runtime
             this._stop = ctx._stop;
         }
 
-        public ParserRuleContext(Antlr4.Runtime.ParserRuleContext parent, int invokingStateNumber)
+        public ParserRuleContext(ParserRuleContext parent, int invokingStateNumber)
             : base(parent, invokingStateNumber)
         {
         }
@@ -279,7 +252,7 @@ namespace Antlr4.Runtime
         }
 
 #if NET45PLUS
-        public virtual ITerminalNode[] GetTokens(int ttype)
+        public virtual IReadOnlyList<ITerminalNode> GetTokens(int ttype)
 #else
         public virtual ITerminalNode[] GetTokens(int ttype)
 #endif
@@ -288,38 +261,43 @@ namespace Antlr4.Runtime
             {
                 return Collections.EmptyList<ITerminalNode>();
             }
-            ITerminalNode[] tokens = new ITerminalNode[children.Count(o => o is ITerminalNode && ((ITerminalNode) o).Symbol.Type == ttype)];
-            int index = 0;
-            foreach (var o in children)
+            List<ITerminalNode> tokens = null;
+            foreach (IParseTree o in children)
             {
-                var node = o as ITerminalNode;
-                if (node != null)
+                if (o is ITerminalNode)
                 {
-                    ITerminalNode tnode = node;
+                    ITerminalNode tnode = (ITerminalNode)o;
                     IToken symbol = tnode.Symbol;
                     if (symbol.Type == ttype)
                     {
-                        tokens[index] = tnode;
-                        index++;
+                        if (tokens == null)
+                        {
+                            tokens = new List<ITerminalNode>();
+                        }
+                        tokens.Add(tnode);
                     }
                 }
+            }
+            if (tokens == null)
+            {
+                return Collections.EmptyList<ITerminalNode>();
             }
 #if NET45PLUS
             return tokens;
 #else
-            return tokens;
+            return tokens.ToArray();
 #endif
         }
 
         public virtual T GetRuleContext<T>(int i)
-            where T : Antlr4.Runtime.ParserRuleContext
+            where T : ParserRuleContext
         {
             return GetChild<T>(i);
         }
 
 #if NET45PLUS
-        public virtual T[] GetRuleContexts<T>()
-            where T : Antlr4.Runtime.ParserRuleContext
+        public virtual IReadOnlyList<T> GetRuleContexts<T>()
+            where T : ParserRuleContext
 #else
         public virtual T[] GetRuleContexts<T>()
             where T : Antlr4.Runtime.ParserRuleContext
@@ -329,21 +307,26 @@ namespace Antlr4.Runtime
             {
                 return Collections.EmptyList<T>();
             }
-            T[] contexts = new T[children.Count(c => c is T)];
-            int index = 0;
-            foreach (var oo in children)
+            List<T> contexts = null;
+            foreach (IParseTree o in children)
             {
-                var o = oo as T;
-                if (o != null)
+                if (o is T)
                 {
-                    contexts[index] = o;
-                    index++;
+                    if (contexts == null)
+                    {
+                        contexts = new List<T>();
+                    }
+                    contexts.Add((T)o);
                 }
+            }
+            if (contexts == null)
+            {
+                return Collections.EmptyList<T>();
             }
 #if NET45PLUS
             return contexts;
 #else
-            return contexts;
+            return contexts.ToArray();
 #endif
         }
 
@@ -373,7 +356,7 @@ namespace Antlr4.Runtime
             {
                 return _start;
             }
-			set 
+			set
 			{
 				_start = value;
 			}
@@ -385,7 +368,7 @@ namespace Antlr4.Runtime
             {
                 return _stop;
             }
-			set 
+			set
 			{
 				_stop = value;
 			}

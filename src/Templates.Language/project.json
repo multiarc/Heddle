@@ -6,14 +6,14 @@
     "exclude": [ "bin", "obj" ]
   },
   "dependencies": {
-    "Antlr4Core.Runtime": "4.5.3"
+    "Antlr4Core.Runtime": "4.6.0"
   },
   "scripts": {
-    "postrestore": [
-      "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.5.3-complete.jar\" -Dlanguage=CSharp \"%project:Directory%\\TtlLexer.g4\" \"%project:Directory%\\TtlParser.g4\" -o \"%project:Directory%\\generated\" -lib \"%project:Directory%\\generated\" -package Templates.Language",
-      "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.5.3-complete.jar\" -Dlanguage=CSharp \"%project:Directory%\\TtlLexerNoWS.g4\" -o \"%project:Directory%\\generated\" -lib \"%project:Directory%\\generated\" -package Templates.Language"
+    "precompile": [
+      "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.6-complete.jar\" -Dlanguage=CSharp \"%project:Directory%\\TtlLexer.g4\" \"%project:Directory%\\TtlParser.g4\" -o \"%project:Directory%\\generated\" -lib \"%project:Directory%\\generated\" -package Templates.Language",
+      "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.6-complete.jar\" -Dlanguage=CSharp \"%project:Directory%\\TtlLexerNoWS.g4\" -o \"%project:Directory%\\generated\" -lib \"%project:Directory%\\generated\" -package Templates.Language"
     ],
-    "postpack": "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.5.3-complete.jar\" -Dlanguage=JavaScript \"%project:Directory%\\TtlLexer.g4\" \"%project:Directory%\\TtlParser.g4\" -o \"%project:Directory%\\js\" -lib \"%project:Directory%\\js\" "
+    "postcompile": "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.6-complete.jar\" -Dlanguage=JavaScript \"%project:Directory%\\TtlLexer.g4\" \"%project:Directory%\\TtlParser.g4\" -o \"%project:Directory%\\js\" -lib \"%project:Directory%\\js\" "
   },
   "configurations": {
     "release": {

@@ -1,8 +1,13 @@
-﻿namespace Antlr4.Runtime.Sharpen
-{
-    using System.Collections.Generic;
-    using System.Linq;
+﻿/* Copyright (c) 2012-2016 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
+ */
 
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Antlr4.Runtime.Sharpen
+{
     internal class SequenceEqualityComparer<T> : EqualityComparer<IEnumerable<T>>
     {
         private static readonly SequenceEqualityComparer<T> _default = new SequenceEqualityComparer<T>();

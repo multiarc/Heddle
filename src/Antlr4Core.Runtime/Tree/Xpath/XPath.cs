@@ -1,40 +1,13 @@
-/*
- * [The "BSD license"]
- *  Copyright (c) 2013 Terence Parr
- *  Copyright (c) 2013 Sam Harwell
- *  All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions
- *  are met:
- *
- *  1. Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright
- *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution.
- *  3. The name of the author may not be used to endorse or promote products
- *     derived from this software without specific prior written permission.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
- *  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- *  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- *  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
- *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- *  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- *  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+/* Copyright (c) 2012-2016 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
  */
+
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Antlr4.Runtime;
 using Antlr4.Runtime.Sharpen;
-using Antlr4.Runtime.Tree;
-using Antlr4.Runtime.Tree.Xpath;
 
 namespace Antlr4.Runtime.Tree.Xpath
 {
@@ -62,7 +35,7 @@ namespace Antlr4.Runtime.Tree.Xpath
     /// <pre>
     /// <see cref="XPath"/>
     /// p = new
-    /// <see cref="XPath(Antlr4.Runtime.Parser, string)">XPath</see>
+    /// <see cref="XPath">XPath</see>
     /// (parser, pathString);
     /// return p.
     /// <see cref="Evaluate(Antlr4.Runtime.Tree.IParseTree)">evaluate</see>
@@ -177,7 +150,7 @@ namespace Antlr4.Runtime.Tree.Xpath
                         break;
                     }
 
-                    case TokenConstants.Eof:
+                    case TokenConstants.EOF:
                     {
                         goto loop_break;
                     }
@@ -224,7 +197,7 @@ loop_break: ;
         /// </summary>
         protected internal virtual XPathElement GetXPathElement(IToken wordToken, bool anywhere)
         {
-            if (wordToken.Type == TokenConstants.Eof)
+            if (wordToken.Type == TokenConstants.EOF)
             {
                 throw new ArgumentException("Missing path element at end of path");
             }
@@ -261,7 +234,7 @@ loop_break: ;
 
         public static ICollection<IParseTree> FindAll(IParseTree tree, string xpath, Parser parser)
         {
-            Antlr4.Runtime.Tree.Xpath.XPath p = new Antlr4.Runtime.Tree.Xpath.XPath(parser, xpath);
+            XPath p = new XPath(parser, xpath);
             return p.Evaluate(tree);
         }
 
@@ -272,13 +245,13 @@ loop_break: ;
         /// path. The root
         /// <c>/</c>
         /// is relative to the node passed to
-        /// <see cref="Evaluate(Antlr4.Runtime.Tree.IParseTree)"/>
+        /// <see cref="Evaluate"/>
         /// .
         /// </summary>
         public virtual ICollection<IParseTree> Evaluate(IParseTree t)
         {
             ParserRuleContext dummyRoot = new ParserRuleContext();
-            dummyRoot.children = Antlr4.Runtime.Sharpen.Collections.SingletonList(t);
+            dummyRoot.children = Collections.SingletonList(t);
             // don't set t's parent.
             ICollection<IParseTree> work = new[] { dummyRoot };
             int i = 0;

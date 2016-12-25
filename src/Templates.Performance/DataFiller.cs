@@ -17,7 +17,7 @@ namespace Templates.Performance {
                 Text = "<%$>$>#$>#@^@>#%>@>%$@>#%>>>>$>#$>@$<@#%^<<^<@>#<>%<@>#%<>@^<>@#^<@>|&<>.,867.5,8.67,64",
                 Guid = Guid.NewGuid()
             };
-            for (int i = 0; i < 10000; i++) {
+            for (int i = 0; i < 100; i++) {
                 products.Add
                     (new TestListItem
                     {

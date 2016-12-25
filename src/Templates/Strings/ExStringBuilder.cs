@@ -11,6 +11,7 @@ namespace Templates.Strings {
 #endif
     public sealed class ExStringBuilder {
         private static readonly Allocate AllocateString;
+        private static readonly ConcatArray Concat;
 
         private readonly List<string> _appendStrings = new List<string>();
         private int _appendlength;
@@ -33,8 +34,11 @@ namespace Templates.Strings {
 
         static ExStringBuilder()
         {
-            var method = typeof(string).GetMethod("FastAllocateString", BindingFlags.Static | BindingFlags.NonPublic);
-            AllocateString = (Allocate)method.CreateDelegate(typeof(Allocate));
+            var fastAllocateMethod = typeof(string).GetMethod("FastAllocateString", BindingFlags.Static | BindingFlags.NonPublic);
+            AllocateString = (Allocate) fastAllocateMethod.CreateDelegate(typeof(Allocate));
+
+            var concatArrayMethod = typeof(string).GetMethod("ConcatArray", BindingFlags.Static | BindingFlags.NonPublic);
+            Concat = (ConcatArray) concatArrayMethod?.CreateDelegate(typeof(ConcatArray)) ?? ConcatDummy;
         }
 
         private int Capacity
@@ -68,6 +72,24 @@ namespace Templates.Strings {
             _appendlength = 0;
             _appendStrings.Clear();
             _data = ExString.Empty;
+        }
+
+        internal static string ConcatArray(string[] values)
+        {
+            var totalLength = 0;
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            foreach (var value in values)
+            {
+                totalLength += value.Length;
+            }
+            return Concat(values, totalLength);
+        }
+
+        internal static string ConcatArray(string[] values, int totalLength) => Concat(values, totalLength);
+
+        private static string ConcatDummy(string[] values, int totalLength)
+        {
+            return string.Concat(values);
         }
 
         private void CommitAppend()
@@ -253,14 +275,14 @@ namespace Templates.Strings {
             }
         }
 
-        public static string BulkReplace (Replacement[] replacements, int takeLength, string source)
+        public static string BulkReplace (Replacement[] replacements, string source)
         {
             if (replacements == null)
                 throw new ArgumentNullException(nameof(replacements));
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
 
-            if (takeLength == 0)
+            if (replacements.Length == 0)
                 return source;
 
             //if (source.Length == 0)
@@ -269,8 +291,8 @@ namespace Templates.Strings {
             int capacity = source.Length;
             int srcLen = capacity;
             unchecked {
-                for (int i = 0; i < takeLength; i++) {
-                    Replacement replacement = replacements[i];
+                foreach (Replacement replacement in replacements)
+                {
 #if DEBUG
                     if (replacement.BlockPosition.Length < 0)
                         throw new ArgumentException();
@@ -278,10 +300,6 @@ namespace Templates.Strings {
                         throw new ArgumentException();
 #endif
                     capacity += (replacement.ReplacementValue?.Length ?? 0) - replacement.BlockPosition.Length;
-#if DEBUG
-                    if (capacity < 0)
-                        throw new ArgumentException();
-#endif
                 }
 
                 if (capacity == 0)
@@ -289,8 +307,9 @@ namespace Templates.Strings {
                 string result = AllocateString(capacity);
                 unsafe {
                     fixed (char* dest = result) {
-                        fixed (char* src = source) {
-                            MoveData(replacements, takeLength, srcLen, capacity, dest, src);
+                        fixed (char* src = source)
+                        {
+                            MoveData(replacements, srcLen, dest, src);
                         }
                     }
                 }
@@ -411,6 +430,27 @@ namespace Templates.Strings {
             if (lastIndex + srcLen - current < 0 || lastIndex + srcLen - current > capacity || current > srcLen)
                 throw new ArgumentException();
 #endif
+            MemCpy(dest + lastIndex, src + current, srcLen - current);
+        }
+
+        private static unsafe void MoveData(Replacement[] replacements, int srcLen, char* dest, char* src)
+        {
+            int lastIndex = 0;
+            int current = 0;
+            foreach (Replacement replacement in replacements)
+            {
+                string replacementString = replacement.ReplacementValue ?? string.Empty;
+                int chunkLength = replacementString.Length;
+                fixed (char* middle = replacementString)
+                {
+                    MemCpy(dest + lastIndex, src + current, replacement.BlockPosition.StartIndex - current);
+                    lastIndex += replacement.BlockPosition.StartIndex - current;
+
+                    MemCpy(dest + lastIndex, middle, chunkLength);
+                    current = replacement.BlockPosition.StartIndex + replacement.BlockPosition.Length;
+                    lastIndex += chunkLength;
+                }
+            }
             MemCpy(dest + lastIndex, src + current, srcLen - current);
         }
 
@@ -568,7 +608,7 @@ namespace Templates.Strings {
                 int newLen = sourceLen - length + replacement.Length;
                 var destination = new char[newLen];
                 unsafe {
-                    fixed (char* dest = destination) {
+                    fixed (char* dest = &destination[0]) {
                         fixed (char* src = _data) {
                             fixed (char* repl = (char[]) replacement) {
                                 if (start > 0)
@@ -584,107 +624,116 @@ namespace Templates.Strings {
         }
 
 #if !NETSTANDARD1_6
-        internal static unsafe void MemCpy(char* dmem, char* smem, int len)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static unsafe void MemCpy(char* dmem, char* smem, int charCount)
         {
-            //len *= 2;
-            //if (len >= 16)
-            //{
-            //    do
-            //    {
-            //        ((long*)dmem)[0] = ((long*)smem)[0]; 
-            //        ((long*)dmem)[1] = ((long*)smem)[1];
-            //        dmem += 8;
-            //        smem += 8;
-            //    } while ((len -= 16) >= 16);
-            //}
-            //if (len > 0)
-            //{
-            //    if ((len & 8) != 0)
-            //    {
-            //        ((long*) dmem)[0] = ((long*) smem)[0];
-            //        dmem += 4;
-            //        smem += 4;
-            //    }
-            //    if ((len & 4) != 0)
-            //    {
-            //        ((int*) dmem)[0] = ((int*) smem)[0];
-            //        dmem += 2;
-            //        smem += 2;
-            //    }
-            //    if ((len & 2) != 0)
-            //    {
-            //        *dmem = *smem;
-            //    }
-            //}
-
-            if (len > 0)
+            for (var i = 0; i < charCount; i++)
             {
-                if ((((int)dmem | (int)smem) & 1) == 0)
-                {
-                    if (((int)dmem & 2) != 0)
-                    {
-                        dmem[0] = smem[0];
-                        dmem += 1;
-                        smem += 1;
-                        len -= 1;
-                    }
-                    if ((((int)dmem & 4) != 0) && (len >= 2))
-                    {
-                        {
-                            ((uint*)dmem)[0] = ((uint*)smem)[0];
-                        }
-                        dmem += 2;
-                        smem += 2;
-                        len -= 2;
-                    }
-                    while (len >= 16)
-                    {
-                        ((ulong*)dmem)[0] = ((ulong*)smem)[0];
-                        ((ulong*)dmem)[1] = ((ulong*)smem)[1];
-                        ((ulong*)dmem)[2] = ((ulong*)smem)[2];
-                        ((ulong*)dmem)[3] = ((ulong*)smem)[3];
-                        dmem += 16;
-                        smem += 16;
-                        len -= 16;
-                    }
-                    if ((len & 8) != 0)
-                    {
-                        ((ulong*)dmem)[0] = ((ulong*)smem)[0];
-                        ((ulong*)dmem)[1] = ((ulong*)smem)[1];
-                        dmem += 8;
-                        smem += 8;
-                    }
-                    if ((len & 4) != 0)
-                    {
-                        ((ulong*)dmem)[0] = ((ulong*)smem)[0];
-                        dmem += 4;
-                        smem += 4;
-                    }
-                    if ((len & 2) != 0)
-                    {
-                        ((uint*)dmem)[0] = ((uint*)smem)[0];
-                        dmem += 2;
-                        smem += 2;
-                    }
-                    if ((len & 1) != 0)
-                    {
-                        dmem[0] = smem[0];
-                    }
-                }
-                else
-                {
-                    // This is rare case where at least one of the pointers is only byte aligned. 
-                    do
-                    {
-                        ((byte*)dmem)[0] = ((byte*)smem)[0];
-                        ((byte*)dmem)[1] = ((byte*)smem)[1];
-                        len -= 1;
-                        dmem += 1;
-                        smem += 1;
-                    } while (len > 0);
-                }
+                dmem[i] = smem[i];
             }
         }
+
+        //internal static unsafe void MemCpy(char* dmem, char* smem, int len)
+        //{
+        //    //len *= 2;
+        //    //if (len >= 16)
+        //    //{
+        //    //    do
+        //    //    {
+        //    //        ((long*)dmem)[0] = ((long*)smem)[0]; 
+        //    //        ((long*)dmem)[1] = ((long*)smem)[1];
+        //    //        dmem += 8;
+        //    //        smem += 8;
+        //    //    } while ((len -= 16) >= 16);
+        //    //}
+        //    //if (len > 0)
+        //    //{
+        //    //    if ((len & 8) != 0)
+        //    //    {
+        //    //        ((long*) dmem)[0] = ((long*) smem)[0];
+        //    //        dmem += 4;
+        //    //        smem += 4;
+        //    //    }
+        //    //    if ((len & 4) != 0)
+        //    //    {
+        //    //        ((int*) dmem)[0] = ((int*) smem)[0];
+        //    //        dmem += 2;
+        //    //        smem += 2;
+        //    //    }
+        //    //    if ((len & 2) != 0)
+        //    //    {
+        //    //        *dmem = *smem;
+        //    //    }
+        //    //}
+
+        //    if (len > 0)
+        //    {
+        //        if ((((int)dmem | (int)smem) & 1) == 0)
+        //        {
+        //            if (((int)dmem & 2) != 0)
+        //            {
+        //                dmem[0] = smem[0];
+        //                dmem += 1;
+        //                smem += 1;
+        //                len -= 1;
+        //            }
+        //            if ((((int)dmem & 4) != 0) && (len >= 2))
+        //            {
+        //                {
+        //                    ((uint*)dmem)[0] = ((uint*)smem)[0];
+        //                }
+        //                dmem += 2;
+        //                smem += 2;
+        //                len -= 2;
+        //            }
+        //            while (len >= 16)
+        //            {
+        //                ((ulong*)dmem)[0] = ((ulong*)smem)[0];
+        //                ((ulong*)dmem)[1] = ((ulong*)smem)[1];
+        //                ((ulong*)dmem)[2] = ((ulong*)smem)[2];
+        //                ((ulong*)dmem)[3] = ((ulong*)smem)[3];
+        //                dmem += 16;
+        //                smem += 16;
+        //                len -= 16;
+        //            }
+        //            if ((len & 8) != 0)
+        //            {
+        //                ((ulong*)dmem)[0] = ((ulong*)smem)[0];
+        //                ((ulong*)dmem)[1] = ((ulong*)smem)[1];
+        //                dmem += 8;
+        //                smem += 8;
+        //            }
+        //            if ((len & 4) != 0)
+        //            {
+        //                ((ulong*)dmem)[0] = ((ulong*)smem)[0];
+        //                dmem += 4;
+        //                smem += 4;
+        //            }
+        //            if ((len & 2) != 0)
+        //            {
+        //                ((uint*)dmem)[0] = ((uint*)smem)[0];
+        //                dmem += 2;
+        //                smem += 2;
+        //            }
+        //            if ((len & 1) != 0)
+        //            {
+        //                dmem[0] = smem[0];
+        //            }
+        //        }
+        //        else
+        //        {
+        //            // This is rare case where at least one of the pointers is only byte aligned. 
+        //            do
+        //            {
+        //                ((byte*)dmem)[0] = ((byte*)smem)[0];
+        //                ((byte*)dmem)[1] = ((byte*)smem)[1];
+        //                len -= 1;
+        //                dmem += 1;
+        //                smem += 1;
+        //            } while (len > 0);
+        //        }
+        //    }
+        //}
 #else
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static unsafe void MemCpy(char* dmem, char* smem, int charCount)

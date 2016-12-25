@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Templates.Data;
 using Templates.Strings;
 using Templates.Strings.Core;
@@ -7,7 +8,8 @@ using Templates.Strings.Core;
 namespace Templates.Runtime {
     internal class RuntimeDocument : IDataProcessor {
         private readonly string _document;
-        private readonly IDataProcessor[] _optimizedElements;
+        private readonly DataProcessor[] _optimizedElements;
+        private readonly string[] _sourcePieces;
         private readonly IDataProcessor _singleProcessor;
         private bool _canDoFullOptimize;
         private readonly CompileScope _context;
@@ -19,14 +21,21 @@ namespace Templates.Runtime {
 
             _context = context;
             _document = document;
-            _optimizedElements = OptimizeCallTree(executeItems);
-            if (_optimizedElements.Length == 1)
+            var optimizedElements = OptimizeCallTree(executeItems);
+            if (optimizedElements.Count == 1)
             {
-                _singleProcessor = _optimizedElements[0];
+                _singleProcessor = optimizedElements.First();
             }
+            _sourcePieces = GetDocumentPieces(optimizedElements, out _optimizedElements);
         }
 
-        private IDataProcessor[] OptimizeCallTree(DocumentElement[] items)
+        private struct DataProcessor
+        {
+            public IDataProcessor Processor;
+            public bool NeedPieceWrite;
+        }
+
+        private ICollection<IDataProcessor> OptimizeCallTree(DocumentElement[] items)
         {
             if (items == null || items.Length == 0)
                 return new IDataProcessor[0];
@@ -36,7 +45,7 @@ namespace Templates.Runtime {
                 var singleProcessor = items[0].CallChain.ItemsToExecute[0];
                 singleProcessor.Position = items[0].Position;
                 if (_document.Length == items[0].Position.Length &&
-                    items[0].CallChain.ItemsToExecute[0].ReturnType == typeof (string))
+                    items[0].CallChain.ItemsToExecute[0].ReturnType == typeof(string))
                     _canDoFullOptimize = true;
                 return new IDataProcessor[] {singleProcessor};
             }
@@ -59,35 +68,92 @@ namespace Templates.Runtime {
             }
             if (totalLength == _document.Length)
                 _canDoFullOptimize = true;
-            return resultTree.ToArray();
+            return resultTree;
+        }
+
+        private string[] GetDocumentPieces(ICollection<IDataProcessor> processors, out DataProcessor[] optimizedElements)
+        {
+            List<DataProcessor> optimized = new List<DataProcessor>();
+            int offset = 0;
+            List<string> pieces = new List<string>(processors.Count + 1);
+            foreach (var element in processors)
+            {
+                if (element.Position.StartIndex > offset)
+                {
+                    pieces.Add(_document.Substring(offset, element.Position.StartIndex - offset));
+                    optimized.Add(new DataProcessor
+                    {
+                        NeedPieceWrite = true,
+                        Processor = element
+                    });
+                }
+                else
+                {
+                    optimized.Add(new DataProcessor
+                    {
+                        NeedPieceWrite = false,
+                        Processor = element
+                    });
+                }
+                offset = element.Position.StartIndex + element.Position.Length;
+            }
+            if (_document.Length > offset)
+            {
+                pieces.Add(_document.Substring(offset));
+            }
+            optimizedElements = optimized.ToArray();
+            return pieces.ToArray();
         }
 
         public object ProcessData(ref Scope data)
         {
-            if (_canDoFullOptimize)
-            {
-                var results = new string[_optimizedElements.Length];
-                for (int index = 0; index < _optimizedElements.Length; index++)
-                {
-                    results[index] = _optimizedElements[index].ProcessData(ref data) as string;
-                }
-                return string.Concat(results);
-            }
             int count = _optimizedElements.Length;
             if (count > 0)
             {
-                var values = new Replacement[count];
-                for (int i = 0; i < count; i++)
+                if (_canDoFullOptimize)
                 {
-                    var processor = _optimizedElements[i];
-                    values[i] = new Replacement
+                    var results = new string[_optimizedElements.Length];
+                    var totalLength = 0;
+                    for (int index = 0; index < _optimizedElements.Length; index++)
                     {
-                        BlockPosition = processor.Position,
-                        ReplacementValue = processor.ProcessData(ref data) as string
-                    };
+                        var result = _optimizedElements[index].Processor.ProcessData(ref data) as string ?? string.Empty;
+                        totalLength += result.Length;
+
+                        results[index] = result;
+                    }
+                    return ExStringBuilder.ConcatArray(results, totalLength);
                 }
-                var result = ExStringBuilder.BulkReplace(values, count, _document);
-                return result;
+                // ReSharper disable once RedundantIfElseBlock
+                else
+                {
+                    var results = new string[_optimizedElements.Length + _sourcePieces.Length];
+                    var finalIndex = 0;
+                    var pieceIndex = 0;
+                    var totalLength = 0;
+                    foreach (var element in _optimizedElements)
+                    {
+                        if (element.NeedPieceWrite)
+                        {
+                            results[finalIndex] = _sourcePieces[pieceIndex];
+                            totalLength += _sourcePieces[pieceIndex].Length;
+
+                            pieceIndex++;
+                            finalIndex++;
+                        }
+
+                        var result = element.Processor.ProcessData(ref data) as string ?? string.Empty;
+                        totalLength += result.Length;
+
+                        results[finalIndex] = result;
+                        finalIndex++;
+                    }
+                    if (finalIndex < results.Length)
+                    {
+                        results[finalIndex] = _sourcePieces[pieceIndex];
+                        totalLength += _sourcePieces[pieceIndex].Length;
+                    }
+                    return ExStringBuilder.ConcatArray(results, totalLength);
+                }
             }
             return _document;
         }
@@ -106,7 +172,7 @@ namespace Templates.Runtime {
             {
                 foreach (var processor in _optimizedElements)
                 {
-                    processor.Dispose();
+                    processor.Processor.Dispose();
                 }
                 _context.Dispose();
                 GC.SuppressFinalize(this);

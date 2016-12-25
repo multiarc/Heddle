@@ -1,41 +1,16 @@
-/*
- * [The "BSD license"]
- *  Copyright (c) 2013 Terence Parr
- *  Copyright (c) 2013 Sam Harwell
- *  All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions
- *  are met:
- *
- *  1. Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright
- *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution.
- *  3. The name of the author may not be used to endorse or promote products
- *     derived from this software without specific prior written permission.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
- *  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- *  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- *  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
- *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- *  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- *  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+/* Copyright (c) 2012-2016 The ANTLR Project. All rights reserved.
+ * Use of this file is governed by the BSD 3-clause license that
+ * can be found in the LICENSE.txt file in the project root.
  */
+
 using System;
 using System.Collections.Generic;
-using Antlr4.Runtime;
+using System.Runtime.CompilerServices;
 using Antlr4.Runtime.Atn;
 using Antlr4.Runtime.Misc;
-using Antlr4.Runtime.Sharpen;
 
 #if NET40PLUS
-using System.Runtime.CompilerServices;
+
 #endif
 
 namespace Antlr4.Runtime
@@ -112,7 +87,7 @@ namespace Antlr4.Runtime
         protected virtual IDictionary<string, int> CreateTokenTypeMap(IVocabulary vocabulary)
         {
             var result = new Dictionary<string, int>();
-            for (int i = 0; i < Atn.maxTokenType; i++)
+            for (int i = 0; i <= Atn.maxTokenType; i++)
             {
                 string literalName = vocabulary.GetLiteralName(i);
                 if (literalName != null)
@@ -125,7 +100,7 @@ namespace Antlr4.Runtime
                     result[symbolicName] = i;
                 }
             }
-            result["EOF"] = TokenConstants.Eof;
+            result["EOF"] = TokenConstants.EOF;
             return result;
         }
 
@@ -193,12 +168,12 @@ namespace Antlr4.Runtime
 
         /// <summary>
         /// Get the
-        /// <see cref="Antlr4.Runtime.Atn.ATN"/>
+        /// <see cref="ATN"/>
         /// used by the recognizer for prediction.
         /// </summary>
         /// <returns>
         /// The
-        /// <see cref="Antlr4.Runtime.Atn.ATN"/>
+        /// <see cref="ATN"/>
         /// used by the recognizer for prediction.
         /// </returns>
         public virtual ATN Atn
@@ -239,7 +214,7 @@ namespace Antlr4.Runtime
         /// for each decision in recognizer in a ParseInfo object.
         /// </remarks>
         /// <since>4.3</since>
-        public virtual Antlr4.Runtime.Atn.ParseInfo ParseInfo
+        public virtual ParseInfo ParseInfo
         {
             get
             {
@@ -270,7 +245,7 @@ namespace Antlr4.Runtime
         /// your token objects because you don't have to go modify your lexer
         /// so that it creates a new Java type.
         /// </remarks>
-        [ObsoleteAttribute(@"This method is not called by the ANTLR 4 Runtime. Specific implementations of IAntlrErrorStrategy may provide a similar feature when necessary. For example, see DefaultErrorStrategy.GetTokenErrorDisplay(IToken).")]
+        [Obsolete(@"This method is not called by the ANTLR 4 Runtime. Specific implementations of IAntlrErrorStrategy may provide a similar feature when necessary. For example, see DefaultErrorStrategy.GetTokenErrorDisplay(IToken).")]
         public virtual string GetTokenErrorDisplay(IToken t)
         {
             if (t == null)
@@ -280,7 +255,7 @@ namespace Antlr4.Runtime
             string s = t.Text;
             if (s == null)
             {
-                if (t.Type == TokenConstants.Eof)
+                if (t.Type == TokenConstants.EOF)
                 {
                     s = "<EOF>";
                 }

@@ -29,14 +29,14 @@ namespace Templates.Language
                     if (CurrentMode == OUT_MODE || CurrentMode == OUT_SUB || CurrentMode == DEF_OUT)
                     {
                         i = -1 - (token.StopIndex - token.StartIndex + 1);
-                        la = InputStream.La(i);
+                        la = InputStream.LA(i);
 
                         c = (char) la;
 
                         while (la != -1 && c != ':' && c != '@' && c != '(' && c != ')')
                         {
                             i--;
-                            la = InputStream.La(i);
+                            la = InputStream.LA(i);
                             c = (char) la;
                         }
                         if (c == ')')
@@ -56,12 +56,12 @@ namespace Templates.Language
                     if (PreviousMode != DEF_OUT && CurrentMode != CALL)
                     {
                         i = -1 - (token.StopIndex - token.StartIndex + 1);
-                        la = InputStream.La(i);
+                        la = InputStream.LA(i);
                         c = (char) la;
                         while (la != -1 && c != ':' && c != '@' && c != '(' && c != ')')
                         {
                             i--;
-                            la = InputStream.La(i);
+                            la = InputStream.LA(i);
                             c = (char) la;
                         }
                         if (c == ')')
@@ -79,19 +79,19 @@ namespace Templates.Language
                 //@ext(...)WS*...sometext handling to interpret "\s...sometext" as TEXT
                 case OUT_WS:
                     i = -1 - (token.StopIndex - token.StartIndex + 1);
-                    la = InputStream.La(i);
+                    la = InputStream.LA(i);
 
                     prev = (char) la;
                     while (la != -1 && prev != ':' && prev != '@' && prev != '(' && prev != ')')
                     {
                         i--;
-                        la = InputStream.La(i);
+                        la = InputStream.LA(i);
                         prev = (char) la;
                     }
                     i = 1;
-                    la = InputStream.La(i);
+                    la = InputStream.LA(i);
                     c = (char) la;
-                    nextLa = InputStream.La(i + 1);
+                    nextLa = InputStream.LA(i + 1);
                     nextC = (char) nextLa;
                     if (la == -1 || c != ':' && (c != '{' || nextLa != -1 && nextC != '{') && prev == ')')
                     {
@@ -111,19 +111,19 @@ namespace Templates.Language
                     if (CurrentMode == OUT_SUB || CurrentMode == OUT_MODE)
                     {
                         i = -1 - (token.StopIndex - token.StartIndex + 1);
-                        la = InputStream.La(i);
+                        la = InputStream.LA(i);
 
                         prev = (char) la;
                         while (la != -1 && prev != ':' && prev != '@' && prev != '(' && prev != ')')
                         {
                             i--;
-                            la = InputStream.La(i);
+                            la = InputStream.LA(i);
                             prev = (char) la;
                         }
                         i = 1;
-                        la = InputStream.La(i);
+                        la = InputStream.LA(i);
                         c = (char) la;
-                        nextLa = InputStream.La(i + 1);
+                        nextLa = InputStream.LA(i + 1);
                         nextC = (char) nextLa;
                         if (la == -1 || c != ':' && (c != '{' || nextLa == -1 || nextC != '{') && prev == ')')
                         {

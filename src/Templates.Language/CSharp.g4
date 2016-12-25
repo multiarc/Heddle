@@ -69,7 +69,7 @@ fragment IDENTIFIER_START:
 fragment IDENTIFIER_PART:
 	IDENTIFIER_START
 	| UNICODE_ESCAPE
-	| [\+0-9]
+	| [+0-9]
 	;
 
 /*
@@ -102,7 +102,7 @@ fragment DEC_DIGITS: DEC_DIGIT+;
 
 fragment DEC_DIGIT: '0'..'9';
 
-fragment INT_SUFFIX: [Uu] | [Ll] | [UuLl];
+fragment INT_SUFFIX: [UuLl];
 
 fragment HEX_INT_LITERAL: '0x' HEX_DIGITS INT_SUFFIX?;
 
@@ -144,7 +144,7 @@ fragment CHARACTER:
 	| UNICODE_ESCAPE
 	;
 
-fragment SINGLE_CHAR: ~(['\u0027\u005C] | [\r\n] | '\u0085' | '\u2028' | '\u2029');
+fragment SINGLE_CHAR: ~([\u0027\u005C] | [\r\n] | '\u0085' | '\u2028' | '\u2029');
 
 fragment SIMPLE_ESCAPE:
 	'\\\'' | '\\\"' | '\\\\' | '\\0' | '\\a' | '\\b' | '\\f' | '\\n' | '\\r' | '\\t' | '\\v';
@@ -175,7 +175,7 @@ fragment REGULAR_STRING_LITERAL:
 	| UNICODE_ESCAPE
 	;
 
-fragment SINGLE_REGULAR_STRING_LITERAL: ~(["\u0022\u005C] | [\r\n] | '\u0085' | '\u2028' | '\u2029');
+fragment SINGLE_REGULAR_STRING_LITERAL: ~([\u0022\u005C] | [\r\n] | '\u0085' | '\u2028' | '\u2029');
 
 fragment VARBATIM_STRING:
 	'@"' VERBATIM_STRING_LITERALS? '"';
