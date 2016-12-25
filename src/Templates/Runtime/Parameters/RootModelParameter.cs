@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -10,23 +11,9 @@ namespace Templates.Runtime.Parameters
     {
         private readonly Func<object, object> _compiledAccessor;
 
-        public RootModelParameter(PropertyInfo[] getModelParameter)
+        public RootModelParameter(KeyValuePair<Type, PropertyInfo>[] getModelParameter)
         {
-            var inputParameter = Expression.Parameter(typeof(object));
-
-            Expression result = null;
-            // ReSharper disable once ForCanBeConvertedToForeach
-            // ReSharper disable once LoopCanBeConvertedToQuery
-            for (var i = 0; i < getModelParameter.Length; i++)
-            {
-                var input = result ?? Expression.Convert(inputParameter, getModelParameter[i].DeclaringType);
-                result = Expression.Condition(
-                    Expression.Equal(input,
-                        Expression.Constant(null, getModelParameter[i].DeclaringType)
-                    ), Expression.Default(getModelParameter[i].PropertyType), Expression.MakeMemberAccess(input, getModelParameter[i]));
-            }
-            _compiledAccessor =
-                Expression.Lambda<Func<object, object>>(Expression.Convert(result, typeof(object)), inputParameter).Compile();
+            _compiledAccessor = ModelParameter.GetPropertyChainAccessor(getModelParameter).Compile();
         }
 
         public void Dispose()

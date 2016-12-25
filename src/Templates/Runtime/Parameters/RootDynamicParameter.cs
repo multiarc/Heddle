@@ -12,26 +12,7 @@ namespace Templates.Runtime.Parameters
 
         public RootDynamicParameter(string[] names)
         {
-            var inputParameter = Expression.Parameter(typeof(object));
-
-            // ReSharper disable once ForCanBeConvertedToForeach
-            // ReSharper disable once LoopCanBeConvertedToQuery
-            Expression result = null;
-
-            for (var i = 0; i < names.Length; i++)
-            {
-                var binder = Binder.GetMember(CSharpBinderFlags.None, names[i], typeof(DynamicParameter), new[]
-                {
-                    CSharpArgumentInfo.Create(CSharpArgumentInfoFlags.None, null)
-                });
-                var input = result ?? inputParameter;
-                result = Expression.Condition(
-                    Expression.Equal(input,
-                        Expression.Constant(null, typeof(object))
-                    ), Expression.Constant(null, typeof(object)), DynamicExpression.Dynamic(binder, typeof(object), input));
-            }
-            _compiledAccessor =
-                Expression.Lambda<Func<object, object>>(result, inputParameter).Compile();
+            _compiledAccessor = DynamicParameter.GetDynamicPropertyChainAccessor(names).Compile();
         }
 
         public void Dispose()

@@ -337,7 +337,7 @@ namespace Templates.Runtime
                 return ExType.Dynamic;
             }
             var modelParameters = extensionItem.CallParameter.ModelParameter;
-            PropertyInfo[] dataProperties = new PropertyInfo[modelParameters.Length];
+            var dataProperties = new KeyValuePair<Type, PropertyInfo>[modelParameters.Length];
             Type currentType = scopeType.Type;
             for (int i = 0; i < modelParameters.Length; i++)
             {
@@ -352,10 +352,10 @@ namespace Templates.Runtime
                             .ToError(extensionItem.Position));
                     return null;
                 }
-                dataProperties[i] = dataProperty;
+                dataProperties[i] = new KeyValuePair<Type, PropertyInfo>(currentType, dataProperty);
                 currentType = dataProperty.PropertyType;
             }
-            inputType = dataProperties.Last().PropertyType;
+            inputType = dataProperties.Last().Value.PropertyType;
             if (extensionItem.CallParameter.RootReference)
             {
                 result.CompiledItem.Parameter = new RootModelParameter(dataProperties);

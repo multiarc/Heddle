@@ -12,6 +12,11 @@ namespace Templates.Runtime.Parameters
 
         public DynamicParameter(string[] names)
         {
+            _compiledAccessor = GetDynamicPropertyChainAccessor(names).Compile();
+        }
+
+        internal static Expression<Func<object, object>> GetDynamicPropertyChainAccessor(string[] names)
+        {
             var inputParameter = Expression.Parameter(typeof(object));
 
             Expression result = null;
@@ -29,8 +34,11 @@ namespace Templates.Runtime.Parameters
                         Expression.Constant(null, typeof(object))
                     ), Expression.Constant(null, typeof(object)), DynamicExpression.Dynamic(binder, typeof(object), input));
             }
-            _compiledAccessor =
-                Expression.Lambda<Func<object, object>>(result, inputParameter).Compile();
+
+            if (result == null)
+                throw new ArgumentException();
+
+            return Expression.Lambda<Func<object, object>>(result, inputParameter);
         }
 
         public void Dispose()
