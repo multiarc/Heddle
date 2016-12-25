@@ -9,11 +9,11 @@
     "Antlr4Core.Runtime": "4.6.0"
   },
   "scripts": {
-    "precompile": [
-      "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.6-complete.jar\" -Dlanguage=CSharp \"%project:Directory%\\TtlLexer.g4\" \"%project:Directory%\\TtlParser.g4\" -o \"%project:Directory%\\generated\" -lib \"%project:Directory%\\generated\" -package Templates.Language",
-      "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.6-complete.jar\" -Dlanguage=CSharp \"%project:Directory%\\TtlLexerNoWS.g4\" -o \"%project:Directory%\\generated\" -lib \"%project:Directory%\\generated\" -package Templates.Language"
-    ],
-    "postcompile": "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.6-complete.jar\" -Dlanguage=JavaScript \"%project:Directory%\\TtlLexer.g4\" \"%project:Directory%\\TtlParser.g4\" -o \"%project:Directory%\\js\" -lib \"%project:Directory%\\js\" "
+    //"precompile": [
+    //  "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.6-complete.jar\" -Dlanguage=CSharp \"%project:Directory%\\TtlLexer.g4\" \"%project:Directory%\\TtlParser.g4\" -o \"%project:Directory%\\generated\" -lib \"%project:Directory%\\generated\" -package Templates.Language",
+    //  "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.6-complete.jar\" -Dlanguage=CSharp \"%project:Directory%\\TtlLexerNoWS.g4\" -o \"%project:Directory%\\generated\" -lib \"%project:Directory%\\generated\" -package Templates.Language"
+    //],
+    //"postcompile": "java -jar \"%project:Directory%\\..\\..\\lib\\antlr-4.6-complete.jar\" -Dlanguage=JavaScript \"%project:Directory%\\TtlLexer.g4\" \"%project:Directory%\\TtlParser.g4\" -o \"%project:Directory%\\js\" -lib \"%project:Directory%\\js\" "
   },
   "configurations": {
     "release": {

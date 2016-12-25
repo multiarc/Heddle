@@ -1,4 +1,4 @@
-// Generated from d:\Work\Templater\src\Templates.Language\TtlParser.g4 by ANTLR 4.6
+// Generated from D:\Work\Templater\src\Templates.Language\TtlParser.g4 by ANTLR 4.6
 // jshint ignore: start
 var antlr4 = require('antlr4/index');
 var TtlParserListener = require('./TtlParserListener').TtlParserListener;
