@@ -73,7 +73,7 @@
         @test_list();
     </table>
     <div>
-        Page Generated at@*Comment Test 11*@
+        Page Generated at@(@null){{}}@*Comment Test 11*@
         @time(Date)
         on
         @date(Date)<br />
