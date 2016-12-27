@@ -7,46 +7,67 @@ using Templates.Strings.Core;
 
 namespace Templates.Runtime {
     internal class RuntimeDocument : IDataProcessor {
-        private readonly string _document;
         private readonly DataProcessor[] _optimizedElements;
-        private readonly string[] _sourcePieces;
         private readonly IDataProcessor _singleProcessor;
-        private bool _canDoFullOptimize;
+        private readonly bool _canDoFullOptimize;
         private readonly CompileScope _context;
-
+        
         public RuntimeDocument(string document, DocumentElement[] executeItems, CompileScope context)
         {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
 
+            Document = document;
             _context = context;
-            _document = document;
-            var optimizedElements = OptimizeCallTree(executeItems);
+            var optimizedElements = OptimizeCallTree(executeItems, document, out _canDoFullOptimize);
             if (optimizedElements.Count == 1)
             {
                 _singleProcessor = optimizedElements.First();
             }
-            _sourcePieces = GetDocumentPieces(optimizedElements, out _optimizedElements);
+            _optimizedElements = GetDocumentPieces(optimizedElements, document);
+            if (_optimizedElements.Length == 1)
+            {
+                if (_optimizedElements[0].Piece != null)
+                    Strategy = new DocumentStrategy(_optimizedElements[0].Piece);
+                else
+                    Strategy = new SingleStrategy(_optimizedElements[0].Processor);
+            }
+            else
+            {
+                if (_canDoFullOptimize)
+                    Strategy = new OptimizedStrategy(_optimizedElements);
+                else
+                    Strategy = new NormalStrategy(_optimizedElements);
+            }
         }
 
         private struct DataProcessor
         {
             public IDataProcessor Processor;
-            public bool NeedPieceWrite;
+            public string Piece;
         }
 
-        private ICollection<IDataProcessor> OptimizeCallTree(DocumentElement[] items)
+        private static ICollection<IDataProcessor> OptimizeCallTree(DocumentElement[] items, string document, out bool canDoFullOptimize)
         {
             if (items == null || items.Length == 0)
+            {
+                canDoFullOptimize = false;
                 return new IDataProcessor[0];
+            }
             List<IDataProcessor> resultTree = new List<IDataProcessor>();
             if (items.Length == 1 && items[0].CallChain.Count == 1)
             {
                 var singleProcessor = items[0].CallChain.ItemsToExecute[0];
                 singleProcessor.Position = items[0].Position;
-                if (_document.Length == items[0].Position.Length &&
+                if (document.Length == items[0].Position.Length &&
                     items[0].CallChain.ItemsToExecute[0].ReturnType == typeof(string))
-                    _canDoFullOptimize = true;
+                {
+                    canDoFullOptimize = true;
+                }
+                else
+                {
+                    canDoFullOptimize = false;
+                }
                 return new IDataProcessor[] {singleProcessor};
             }
             int totalLength = 0;
@@ -66,24 +87,31 @@ namespace Templates.Runtime {
                     resultTree.Add(resultItem);
                 }
             }
-            if (totalLength == _document.Length)
-                _canDoFullOptimize = true;
+            if (totalLength == document.Length)
+            {
+                canDoFullOptimize = true;
+            }
+            else
+            {
+                canDoFullOptimize = false;
+            }
             return resultTree;
         }
 
-        private string[] GetDocumentPieces(ICollection<IDataProcessor> processors, out DataProcessor[] optimizedElements)
+        private static DataProcessor[] GetDocumentPieces(ICollection<IDataProcessor> processors, string document)
         {
             List<DataProcessor> optimized = new List<DataProcessor>();
             int offset = 0;
-            List<string> pieces = new List<string>(processors.Count + 1);
             foreach (var element in processors)
             {
                 if (element.Position.StartIndex > offset)
                 {
-                    pieces.Add(_document.Substring(offset, element.Position.StartIndex - offset));
                     optimized.Add(new DataProcessor
                     {
-                        NeedPieceWrite = true,
+                        Piece = document.Substring(offset, element.Position.StartIndex - offset),
+                    });
+                    optimized.Add(new DataProcessor
+                    {
                         Processor = element
                     });
                 }
@@ -91,76 +119,29 @@ namespace Templates.Runtime {
                 {
                     optimized.Add(new DataProcessor
                     {
-                        NeedPieceWrite = false,
                         Processor = element
                     });
                 }
                 offset = element.Position.StartIndex + element.Position.Length;
             }
-            if (_document.Length > offset)
+            if (document.Length > offset)
             {
-                pieces.Add(_document.Substring(offset));
+                optimized.Add(new DataProcessor
+                {
+                    Piece = document.Substring(offset),
+                    Processor = null
+                });
             }
-            optimizedElements = optimized.ToArray();
-            return pieces.ToArray();
+            return optimized.ToArray();
         }
 
-        public object ProcessData(ref Scope data)
-        {
-            int count = _optimizedElements.Length;
-            if (count > 0)
-            {
-                if (_canDoFullOptimize)
-                {
-                    var results = new string[_optimizedElements.Length];
-                    var totalLength = 0;
-                    for (int index = 0; index < _optimizedElements.Length; index++)
-                    {
-                        var result = _optimizedElements[index].Processor.ProcessData(ref data) as string ?? string.Empty;
-                        totalLength += result.Length;
+        public IProcessStrategy Strategy { get; }
 
-                        results[index] = result;
-                    }
-                    return ExStringBuilder.ConcatArray(results, totalLength);
-                }
-                // ReSharper disable once RedundantIfElseBlock
-                else
-                {
-                    var results = new string[_optimizedElements.Length + _sourcePieces.Length];
-                    var finalIndex = 0;
-                    var pieceIndex = 0;
-                    var totalLength = 0;
-                    foreach (var element in _optimizedElements)
-                    {
-                        if (element.NeedPieceWrite)
-                        {
-                            results[finalIndex] = _sourcePieces[pieceIndex];
-                            totalLength += _sourcePieces[pieceIndex].Length;
-
-                            pieceIndex++;
-                            finalIndex++;
-                        }
-
-                        var result = element.Processor.ProcessData(ref data) as string ?? string.Empty;
-                        totalLength += result.Length;
-
-                        results[finalIndex] = result;
-                        finalIndex++;
-                    }
-                    if (finalIndex < results.Length)
-                    {
-                        results[finalIndex] = _sourcePieces[pieceIndex];
-                        totalLength += _sourcePieces[pieceIndex].Length;
-                    }
-                    return ExStringBuilder.ConcatArray(results, totalLength);
-                }
-            }
-            return _document;
-        }
+        public object ProcessData(ref Scope scope) => Strategy.Execute(ref scope);
 
         public BlockPosition Position { get; set; }
 
-        public bool Empty => _optimizedElements.Length == 0;
+        public bool Empty => _optimizedElements.Count(e => e.Processor != null) == 0;
 
         public bool CanOptimizeSelf => _singleProcessor != null && _canDoFullOptimize;
 
@@ -172,14 +153,14 @@ namespace Templates.Runtime {
             {
                 foreach (var processor in _optimizedElements)
                 {
-                    processor.Processor.Dispose();
+                    processor.Processor?.Dispose();
                 }
                 _context.Dispose();
                 GC.SuppressFinalize(this);
             }
         }
 
-        public string Document => _document;
+        public string Document { get; }
 
         public void Dispose()
         {
@@ -189,6 +170,81 @@ namespace Templates.Runtime {
         ~RuntimeDocument()
         {
             Dispose(false);
+        }
+
+        private sealed class SingleStrategy : IProcessStrategy
+        {
+            private readonly IDataProcessor _processor;
+
+            public SingleStrategy(IDataProcessor processor)
+            {
+                _processor = processor;
+            }
+
+            public string Execute(ref Scope scope) => _processor.ProcessData(ref scope) as string ?? string.Empty;
+        }
+
+        private sealed class DocumentStrategy : IProcessStrategy
+        {
+            private readonly string _document;
+
+            public DocumentStrategy(string document)
+            {
+                _document = document;
+            }
+
+            public string Execute(ref Scope scope) => _document;
+        }
+
+        private sealed class OptimizedStrategy : IProcessStrategy
+        {
+            private readonly IDataProcessor[] _processors;
+
+            public OptimizedStrategy(DataProcessor[] processors)
+            {
+                _processors = processors.Select(p => p.Processor).ToArray();
+            }
+
+            public string Execute(ref Scope scope)
+            {
+                var results = new string[_processors.Length];
+                var index = 0;
+                var totalLength = 0;
+                foreach (var processor in _processors)
+                {
+                    var result = processor.ProcessData(ref scope) as string ?? string.Empty;
+                    totalLength += result.Length;
+                    results[index] = result;
+                    index++;
+                }
+                return ExStringBuilder.ConcatArray(results, totalLength);
+            }
+        }
+
+        private sealed class NormalStrategy : IProcessStrategy
+        {
+            private readonly DataProcessor[] _processors;
+
+            public NormalStrategy(DataProcessor[] processors)
+            {
+                _processors = processors;
+            }
+
+            public string Execute(ref Scope scope)
+            {
+                var results = new string[_processors.Length];
+                var finalIndex = 0;
+                var totalLength = 0;
+                foreach (var element in _processors)
+                {
+                    var result = element.Processor?.ProcessData(ref scope) as string ?? element.Piece ?? string.Empty;
+                    totalLength += result.Length;
+
+                    results[finalIndex] = result;
+                    finalIndex++;
+                }
+                return ExStringBuilder.ConcatArray(results, totalLength);
+            }
         }
 
     }

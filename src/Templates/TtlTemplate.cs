@@ -22,6 +22,7 @@ namespace Templates
         private FileReader _reader;
         private FileSystemWatcher _watcher;
         private volatile RuntimeDocument _runtimeDocument;
+        private volatile IProcessStrategy _processStrategy;
         private string _document;
         private volatile bool _disposeAfterComplete = false;
         private volatile int _runners = 0;
@@ -90,7 +91,7 @@ namespace Templates
         /// <returns>Generated string</returns>
         public string Generate(object data, object chained = null, dynamic callerData = null)
         {
-            if (_runtimeDocument == null)
+            if (_processStrategy == null)
             {
                 if (CompileResult == null)
                     throw new TemplateInitException("Compile first");
@@ -112,11 +113,11 @@ namespace Templates
                 throw new ObjectDisposedException($"{GetType()} Disposed");
             }
             _runners++;
-            string result = null;
+            string result;
             try
             {
                 var scope = new Scope(data, callerData, data, chained);
-                result = _runtimeDocument.ProcessData(ref scope) as string ?? string.Empty;
+                result = _processStrategy.Execute(ref scope);
             }
             finally
             {
@@ -156,17 +157,14 @@ namespace Templates
                 {
                     var fullPath = Path.Combine(context.Options.RootPath, context.Options.TemplateName);
                     var directory = Path.GetDirectoryName(fullPath);
-                    if (directory != null)
+                    _watcher = new FileSystemWatcher(directory)
                     {
-                        _watcher = new FileSystemWatcher(directory)
-                        {
-                            NotifyFilter = NotifyFilters.FileName | NotifyFilters.Size | NotifyFilters.LastWrite,
-                            Filter = Path.GetFileName(fullPath)
-                        };
-                        _watcher.Changed += FileChanged;
-                        _watcher.Deleted += FileDeleted;
-                        _watcher.Renamed += FileRenamed;
-                    }
+                        NotifyFilter = NotifyFilters.FileName | NotifyFilters.Size | NotifyFilters.LastWrite,
+                        Filter = Path.GetFileName(fullPath)
+                    };
+                    _watcher.Changed += FileChanged;
+                    _watcher.Deleted += FileDeleted;
+                    _watcher.Renamed += FileRenamed;
                 }
             }
             catch (Exception e)
@@ -228,6 +226,7 @@ namespace Templates
                     _context = compileScope;
                     _document = document;
                     _runtimeDocument = rtdoc;
+                    _processStrategy = rtdoc?.Strategy;
                 }
                 else
                 {

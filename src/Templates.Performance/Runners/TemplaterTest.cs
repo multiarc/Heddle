@@ -7,18 +7,21 @@ using Templates.Collections;
 using Templates.Data;
 using Templates.Runtime;
 
-namespace Templates.Performance.Runners {
-    public class TemplaterTest : IRunner {
+namespace Templates.Performance.Runners
+{
+    public class TemplaterTest : IRunner
+    {
         public TemplaterTest()
         {
             /*JIT*/
             var test = new TtlTemplate
-                (new CompileContext
-                     (new TemplateOptions("template") {
-                         FileNamePostfix = ".ttl",
-                         RootPath = @"TestTemplates",
-                         AllowCSharp = true
-                     }));
+            (new CompileContext
+            (new TemplateOptions("template")
+            {
+                FileNamePostfix = ".ttl",
+                RootPath = @"TestTemplates",
+                AllowCSharp = true
+            }));
             if (!test.CompileResult.Success)
             {
                 Console.Write(test.CompileResult.ToString());
@@ -47,13 +50,13 @@ namespace Templates.Performance.Runners {
             watcher.Start();
             using (var target = new TtlTemplate
 
-                (new CompileContext
-                    (new TemplateOptions("template")
-                    {
-                        FileNamePostfix = ".ttl",
-                        RootPath = @"TestTemplates",
-                        AllowCSharp = true
-                    })))
+            (new CompileContext
+            (new TemplateOptions("template")
+            {
+                FileNamePostfix = ".ttl",
+                RootPath = @"TestTemplates",
+                AllowCSharp = true
+            })))
             {
                 watcher.Stop();
                 Console.WriteLine("Compile time: {0}, ticks:{1}", watcher.Elapsed, watcher.ElapsedTicks);
@@ -63,28 +66,27 @@ namespace Templates.Performance.Runners {
                     return;
                 }
                 watcher.Reset();
-                //watcher.Start();
-                //long length = Enumerable.Repeat(data, n).AsParallel().Sum(item => (long) target.Generate(item).Length);
-                //watcher.Stop();
-                //Console.WriteLine("Parrallel implementation:");
-                //Console.WriteLine("{0} run times: {1}", n, watcher.Elapsed);
-                //Console.WriteLine("Out Speed: {0} Mb/s, ticks:{1}",
-                //    (length/watcher.Elapsed.TotalSeconds/1048576.0*sizeof(char)).ToString("F"), watcher.ElapsedTicks);
-                //Console.WriteLine("Total Size: {0} Mb", length/1048576.0*sizeof(char));
-                //watcher.Reset();
-                long length = 0;
+                long length = target.Generate(data).Length * n;
+                watcher.Start();
+                Enumerable.Repeat(data, n).AsParallel().ForAll(item => target.Generate(item));
+                watcher.Stop();
+                Console.WriteLine("Parrallel implementation:");
+                Console.WriteLine("{0} run times: {1}", n, watcher.Elapsed);
+                Console.WriteLine("Out Speed: {0:F} Mb/s, ticks:{1}", length / watcher.Elapsed.TotalSeconds / 1048576.0 * sizeof(char),
+                    watcher.ElapsedTicks);
+                Console.WriteLine("Total Size: {0} Mb", length / 1048576.0 * sizeof(char));
+                watcher.Reset();
                 watcher.Start();
                 for (var i = 0; i < n; i++)
                 {
-                    var result = target.Generate(data);
-                    length += result.Length;
+                    target.Generate(data);
                 }
                 watcher.Stop();
                 Console.WriteLine("Syncronous implementation:");
                 Console.WriteLine("{0} run times: {1}", n, watcher.Elapsed);
-                Console.WriteLine("Out Speed: {0} Mb/s, ticks:{1}",
-                    (length/watcher.Elapsed.TotalSeconds/1048576.0*sizeof(char)).ToString("F"), watcher.ElapsedTicks);
-                Console.WriteLine("Total Size: {0} Mb", length/1048576.0*sizeof(char));
+                Console.WriteLine("Out Speed: {0:F} Mb/s, ticks:{1}", length / watcher.Elapsed.TotalSeconds / 1048576.0 * sizeof(char),
+                    watcher.ElapsedTicks);
+                Console.WriteLine("Total Size: {0} Mb", length / 1048576.0 * sizeof(char));
             }
         }
     }

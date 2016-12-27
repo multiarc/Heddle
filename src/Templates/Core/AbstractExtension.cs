@@ -10,7 +10,8 @@ namespace Templates.Core
     {
         protected bool DirectRender;
         private string _innerResult = string.Empty;
-        private IDataProcessor _subTemplate;
+        private RuntimeDocument _subTemplate;
+        private IProcessStrategy _processStrategy;
 
         public void Dispose()
         {
@@ -26,10 +27,7 @@ namespace Templates.Core
             }
         }
 
-        public string GetInnerResult(ref Scope scope)
-        {
-            return (string) _subTemplate?.ProcessData(ref scope) ?? _innerResult;
-        }
+        public string GetInnerResult(ref Scope scope) => _processStrategy?.Execute(ref scope) ?? _innerResult;
 
         public bool InnerExist => _subTemplate != null;
 
@@ -40,7 +38,7 @@ namespace Templates.Core
 
         private static ExType InitSubTemplate(ref string parameterTemplate, ExType dataType, ExType chainedType,
             CompileScope compileScope,
-            ParseContext parseContext, out IDataProcessor result)
+            ParseContext parseContext, out RuntimeDocument result)
         {
             if (compileScope == null)
                 throw new ArgumentNullException(nameof(compileScope));
@@ -64,22 +62,23 @@ namespace Templates.Core
             }
             else
             {
-                result = subTemplate.CanOptimizeSelf ? subTemplate.SingleProcessor : subTemplate;
+                result = subTemplate;
             }
 
-            return typeof (string);
+            return typeof(string);
         }
 
         public virtual ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
             if (initContext.CompileScope == null)
                 throw new ArgumentNullException(nameof(initContext.CompileScope));
-            IDataProcessor subTemplate;
+            RuntimeDocument subTemplate;
             var type = InitSubTemplate(ref initContext.ParameterTemplate, dataType, chainedType, initContext.CompileScope,
                 initContext.ParseContext, out subTemplate);
             if (subTemplate == null)
                 _innerResult = initContext.ParameterTemplate;
             _subTemplate = subTemplate;
+            _processStrategy = subTemplate?.Strategy;
             return type;
         }
 
