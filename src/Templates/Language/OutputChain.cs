@@ -5,8 +5,9 @@ using Templates.Strings.Core;
 
 namespace Templates.Language {
     public class OutputChain {
-        internal OutputChain(OutputChain toIsolate, ParseContext newContext, string definitionName) {
-            Chain = toIsolate.Chain.Select(item => new OutputItem(item, definitionName)).ToList();
+        internal OutputChain(OutputChain toIsolate, ParseContext newContext, string definitionName)
+        {
+            Chain = toIsolate.Chain?.Select(item => new OutputItem(item, definitionName)).ToList() ?? new List<OutputItem>();
             BlockPosition = toIsolate.BlockPosition;
             Context = newContext;
         }

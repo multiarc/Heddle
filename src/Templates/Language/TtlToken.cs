@@ -8,7 +8,7 @@ namespace Templates.Language
 {
     public enum TtlTokenType
     {
-        Id,
+        Id = 0,
         RootReference,
         MemberSelector,
         Out,

@@ -39,7 +39,7 @@ namespace Templates.Runtime
             }
             catch (Exception e)
             {
-                InitErrors = new TtlCompileResult(false, document);
+                InitErrors = new TtlCompileResult(false, document, null);
                 InitErrors.Errors.Add(new TtlCompileError
                 {
                     Error = e.Message,

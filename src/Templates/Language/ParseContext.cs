@@ -20,7 +20,11 @@ namespace Templates.Language {
 
         private readonly List<TtlToken> _tokens = new List<TtlToken>();
 
+        private readonly List<ParseContext> _subContexts = new List<ParseContext>();
+
         public IEnumerable<TtlToken> Tokens => _tokens;
+        
+        public IEnumerable<ParseContext> SubContexts => _subContexts;
 
         internal ParseContext(ParseContext parentContext = null, int offset = 0, bool provideLanguageFeatures = false, bool forceRemoveWhitespace = false) {
             _inDefintionContext = (parentContext?.InDefinition ?? false) || (parentContext?._inDefintionContext ?? false);
@@ -136,6 +140,11 @@ namespace Templates.Language {
             return error;
         }
 
+        internal void AddSubContext(ParseContext context)
+        {
+            _subContexts.Add(context);
+        }
+
         internal DefinitionItem CreateDefinition(TtlParser.DefContext context, CompileContext compileContext, out OutputChain chain) {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
@@ -149,7 +158,7 @@ namespace Templates.Language {
                     chain = null;
                     return null;
                 }
-                var ttl = subTemplate?.ttl();
+                var ttl = subTemplate.ttl();
                 var parameterTemplate = ttl?.Start?.InputStream == null
                     ? string.Empty
                     : ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));

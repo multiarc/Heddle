@@ -65,11 +65,19 @@ namespace Templates.Editor.Classification {
         internal static ClassificationTypeDefinition DefinitionType = null;
 
         [Export(typeof(ClassificationTypeDefinition))]
-        [Name("Text")]
-        internal static ClassificationTypeDefinition Text = null;
-
-        [Export(typeof(ClassificationTypeDefinition))]
         [Name("OutStart")]
         internal static ClassificationTypeDefinition OutStart = null;
+
+        [Export(typeof(ClassificationTypeDefinition))]
+        [Name("LineTermination")]
+        internal static ClassificationTypeDefinition LineTermination = null;
+
+        [Export(typeof(ClassificationTypeDefinition))]
+        [Name("MemberSelector")]
+        internal static ClassificationTypeDefinition MemberSelector = null;
+
+        [Export(typeof(ClassificationTypeDefinition))]
+        [Name("RootReference")]
+        internal static ClassificationTypeDefinition RootReference = null;
     }
 }

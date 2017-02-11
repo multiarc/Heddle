@@ -87,8 +87,8 @@ namespace Templates.Native
             };
 #endif
             var appEnvironment = PlatformServices.Default.Application;
-
-            _applicationAssembly = Assembly.Load(new AssemblyName(appEnvironment.ApplicationName));
+            string applicationName = appEnvironment.ApplicationName ?? "Templates";
+            _applicationAssembly = Assembly.Load(new AssemblyName(applicationName));
             _dependencyContext = DependencyContext.Load(_applicationAssembly);
             MetadataReferences = new List<MetadataReference>();
             Assemblies = new List<Assembly>();

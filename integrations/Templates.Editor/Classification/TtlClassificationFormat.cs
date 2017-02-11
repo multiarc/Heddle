@@ -145,20 +145,6 @@ namespace Templates.Editor.Classification {
         }
     }
 
-    //[Export(typeof(EditorFormatDefinition))]
-    //[ClassificationType(ClassificationTypeNames = "Comment")]
-    //[Name("Comment")]
-    //[UserVisible(false)]
-    //[Order(After = Priority.Default)]
-    //internal sealed class Comment : ClassificationFormatDefinition
-    //{
-    //    public Comment()
-    //    {
-    //        DisplayName = "TTL Comment";
-    //        BackgroundColor = Colors.Blue;
-    //    }
-    //}
-
     [Export(typeof(EditorFormatDefinition))]
     [ClassificationType(ClassificationTypeNames = "ParseError")]
     [Name("ParseError")]
@@ -219,19 +205,6 @@ namespace Templates.Editor.Classification {
     }
 
     [Export(typeof(EditorFormatDefinition))]
-    [ClassificationType(ClassificationTypeNames = "Text")]
-    [Name("Text")]
-    [UserVisible(false)]
-    [Order(After = Priority.Default)]
-    internal sealed class Text : ClassificationFormatDefinition
-    {
-        public Text()
-        {
-            DisplayName = "TTL line termination symbol";
-        }
-    }
-
-    [Export(typeof(EditorFormatDefinition))]
     [ClassificationType(ClassificationTypeNames = "OutStart")]
     [Name("OutStart")]
     [UserVisible(false)]
@@ -239,6 +212,49 @@ namespace Templates.Editor.Classification {
     internal sealed class OutStart : ClassificationFormatDefinition
     {
         public OutStart()
+        {
+            DisplayName = "TTL output start";
+            ForegroundColor = Colors.CadetBlue;
+            IsBold = true;
+        }
+    }
+
+    [Export(typeof(EditorFormatDefinition))]
+    [ClassificationType(ClassificationTypeNames = "LineTermination")]
+    [Name("LineTermination")]
+    [UserVisible(false)]
+    [Order(After = Priority.Default)]
+    internal sealed class LineTermination : ClassificationFormatDefinition
+    {
+        public LineTermination()
+        {
+            DisplayName = "TTL line termination symbol";
+        }
+    }
+
+    [Export(typeof(EditorFormatDefinition))]
+    [ClassificationType(ClassificationTypeNames = "MemberSelector")]
+    [Name("MemberSelector")]
+    [UserVisible(false)]
+    [Order(After = Priority.Default)]
+    internal sealed class MemberSelector : ClassificationFormatDefinition
+    {
+        public MemberSelector()
+        {
+            DisplayName = "TTL type member";
+            ForegroundColor = Colors.DarkBlue;
+            IsBold = true;
+        }
+    }
+
+    [Export(typeof(EditorFormatDefinition))]
+    [ClassificationType(ClassificationTypeNames = "RootReference")]
+    [Name("RootReference")]
+    [UserVisible(false)]
+    [Order(After = Priority.Default)]
+    internal sealed class RootReference : ClassificationFormatDefinition
+    {
+        public RootReference()
         {
             DisplayName = "TTL output start";
             ForegroundColor = Colors.CadetBlue;

@@ -1,12 +1,12 @@
-﻿{
-  "version": "1.5.2",
+{
+  "version": "1.5.3",
   "authors": [ "Aliaksandr Kukrash" ],
   "description": "Template engine language parsers support package, basing on ANTLR4.5 C# target",
   "buildOptions": {
     "exclude": [ "bin", "obj" ]
   },
   "dependencies": {
-    "Antlr4Core.Runtime": "4.6.0"
+    "Antlr4Core.Runtime": "4.6.*"
   },
   "scripts": {
     //"precompile": [
@@ -28,18 +28,8 @@
   },
   "frameworks": {
     "net451": {
-      "frameworkAssemblies": {
-        "System.Runtime": {
-          "type": "build"
-        }
-      }
     },
     "net461": {
-      "frameworkAssemblies": {
-        "System.Runtime": {
-          "type": "build"
-        }
-      }
     },
     "netstandard1.6": {
       "imports": [

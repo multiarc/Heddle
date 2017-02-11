@@ -38,18 +38,28 @@ namespace Templates.Language
             CommonTokenStream tokens = new CommonTokenStream(lexer);
             TtlParser parser = new TtlParser(tokens);
             var syntaxErrorListener = new TtlSyntaxErrorListener(context);
-            parser.Interpreter.PredictionMode = PredictionMode.SLL;
-            parser.RemoveErrorListeners();
+            parser.Interpreter.PredictionMode = compileContext.Options.ProvideLanguageFeatures
+                ? PredictionMode.LL_EXACT_AMBIG_DETECTION
+                : PredictionMode.SLL;
             TtlParser.TtlContext tree;
-            try
+            parser.RemoveErrorListeners();
+            if (!compileContext.Options.ProvideLanguageFeatures)
             {
-                tree = parser.ttl();
+                try
+                {
+                    tree = parser.ttl();
+                }
+                catch (ParseCanceledException)
+                {
+                    stream.Reset();
+                    parser.Reset();
+                    parser.Interpreter.PredictionMode = PredictionMode.LL;
+                    parser.AddErrorListener(syntaxErrorListener);
+                    tree = parser.ttl();
+                }
             }
-            catch (ParseCanceledException)
+            else
             {
-                stream.Reset();
-                parser.Reset();
-                parser.Interpreter.PredictionMode = PredictionMode.LL;
                 parser.AddErrorListener(syntaxErrorListener);
                 tree = parser.ttl();
             }

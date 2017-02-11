@@ -11,7 +11,6 @@ namespace Templates.Editor.Classification {
     internal sealed class TtlClassifierProvider : ITaggerProvider {
         [Export]
         [Name("ttl")]
-        [BaseDefinition("htmlx")]
         [BaseDefinition("code")]
         [BaseDefinition("projection")]
         internal static ContentTypeDefinition TtlContentTypeDefinition = null;

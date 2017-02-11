@@ -45,6 +45,12 @@ namespace Templates.Language {
             if (context == null) throw new ArgumentNullException(nameof(context));
             OutputChain chain;
             CurrentParseContext.CurrentDefenition = CurrentParseContext.CreateDefinition(context, _compileContext, out chain);
+            if (CurrentParseContext.CurrentDefenition == null)
+            {
+                _compileContext.CompileErrors.Add(
+                    "Cannot create definition".ToError(CurrentParseContext.GetBlockPosition(context)));
+                return;
+            }
             if (CurrentParseContext.CurrentDefenition.BaseDefinition == null)
             {
                 if (CurrentParseContext.DefinitionsBlock.Definitions.ContainsKey(CurrentParseContext.CurrentDefenition.Name))
@@ -143,6 +149,7 @@ namespace Templates.Language {
             {
                 var currentContext = CurrentParseContext;
                 var newContext = new ParseContext(currentContext, ttl.Start.StartIndex);
+                currentContext.AddSubContext(newContext);
                 if (!currentContext.InDefintionContext && !currentContext.InDefinition)
                 {
                     newContext = newContext.IsolateContextWithTree();

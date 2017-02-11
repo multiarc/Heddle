@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Templates.Language;
 using Templates.Strings;
 
 namespace Templates.Data
@@ -24,11 +25,12 @@ namespace Templates.Data
         private readonly int[] _lineOffsetsSearch;
 
 
-        public TtlCompileResult(bool success, string document)
+        public TtlCompileResult(bool success, string document, ParseContext context)
         {
             Success = success;
             Errors = new List<TtlCompileError>();
             Document = document;
+            Context = context;
             if (document != null)
             {
                 var lines = document.Split('\n');
@@ -45,6 +47,8 @@ namespace Templates.Data
                 _lineOffsetsSearch = _positions.Select(p => p.Offset).ToArray();
             }
         }
+
+        public ParseContext Context { get; }
 
         public bool Success { get; }
 

@@ -169,7 +169,7 @@ namespace Templates
             }
             catch (Exception e)
             {
-                CompileResult = new TtlCompileResult(false, document);
+                CompileResult = new TtlCompileResult(false, document, null);
                 CompileResult.Errors.Add(e.ToError(default(BlockPosition)));
             }
             return CompileResult;
@@ -202,48 +202,64 @@ namespace Templates
         {
             try
             {
-                RuntimeDocument rtdoc = TtlCompiler.Compile(document, compileScope,
-                    DocumentParser.Parse(document, compileScope.CompileContext), null);
-                if (compileScope.CompileErrors.Count > 0)
+                var parseContext = DocumentParser.Parse(document, compileScope.CompileContext);
+                try
                 {
-                    compileScope.Dispose();
-                    rtdoc?.Dispose();
-                    var result = new TtlCompileResult(false, document);
-                    result.Errors.AddRange(compileScope.CompileErrors);
-                    return result;
-                }
-                if (!simulate)
-                {
-                    compileScope.Compile();
+                    RuntimeDocument rtdoc = TtlCompiler.Compile(document, compileScope,
+                        parseContext, null);
                     if (compileScope.CompileErrors.Count > 0)
                     {
                         compileScope.Dispose();
                         rtdoc?.Dispose();
-                        var result = new TtlCompileResult(false, document);
+                        var result = new TtlCompileResult(false, document, parseContext);
                         result.Errors.AddRange(compileScope.CompileErrors);
                         return result;
                     }
-                    _context = compileScope;
-                    _document = document;
-                    _runtimeDocument = rtdoc;
-                    _processStrategy = rtdoc?.Strategy;
+                    if (!simulate)
+                    {
+                        compileScope.Compile();
+                        if (compileScope.CompileErrors.Count > 0)
+                        {
+                            compileScope.Dispose();
+                            rtdoc?.Dispose();
+                            var result = new TtlCompileResult(false, document, parseContext);
+                            result.Errors.AddRange(compileScope.CompileErrors);
+                            return result;
+                        }
+                        _context = compileScope;
+                        _document = document;
+                        _runtimeDocument = rtdoc;
+                        _processStrategy = rtdoc?.Strategy;
+                    }
+                    else
+                    {
+                        compileScope.Dispose();
+                        rtdoc.Dispose();
+                    }
+                    return new TtlCompileResult(true, document, parseContext);
                 }
-                else
+                catch (TemplateCompileException e)
                 {
-                    compileScope.Dispose();
-                    rtdoc.Dispose();
+                    var result = new TtlCompileResult(false, document, parseContext);
+                    result.Errors.AddRange(e.Errors);
+                    return result;
                 }
-                return new TtlCompileResult(true, document);
+                catch (Exception e)
+                {
+                    var result = new TtlCompileResult(false, document, parseContext);
+                    result.Errors.Add(e.ToError(default(BlockPosition)));
+                    return result;
+                }
             }
-            catch (TemplateCompileException e)
+            catch (TemplateParseException e)
             {
-                var result = new TtlCompileResult(false, document);
-                result.Errors.AddRange(e.Errors);
+                var result = new TtlCompileResult(false, document, null);
+                result.Errors.Add(e.ToError(default(BlockPosition)));
                 return result;
             }
             catch (Exception e)
             {
-                var result = new TtlCompileResult(false, document);
+                var result = new TtlCompileResult(false, document, null);
                 result.Errors.Add(e.ToError(default(BlockPosition)));
                 return result;
             }
@@ -281,7 +297,7 @@ namespace Templates
                 }
                 catch (Exception ex)
                 {
-                    CompileResult = new TtlCompileResult(false, document);
+                    CompileResult = new TtlCompileResult(false, document, null);
                     CompileResult.Errors.Add(ex.ToError(default(BlockPosition)));
                 }
             }
