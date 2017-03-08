@@ -2,11 +2,11 @@
   "version": "1.0.0-*",
   "preserveCompilationContext": true,
   "dependencies": {
-    "xunit": "2.2.0-beta2-build3300",
+    "xunit": "2.2.0",
     "dotnet-test-xunit": "2.2.0-preview2-build1029",
-    "Microsoft.NETCore.Platforms": "1.0.1",
-    "Microsoft.Extensions.Configuration.FileExtensions": "1.0.0",
-    "Microsoft.Extensions.Configuration.Json": "1.0.0",
+    "Microsoft.NETCore.Platforms": "1.1.0",
+    "Microsoft.Extensions.Configuration.FileExtensions": "1.1.1",
+    "Microsoft.Extensions.Configuration.Json": "1.1.1",
     "Templates": "2.8.*"
   },
   "buildOptions": {
@@ -19,27 +19,25 @@
   },
   "testRunner": "xunit",
   "frameworks": {
-    "net451": {
-      "frameworkAssemblies": {
-        "System.Collections": "",
-        "Microsoft.CSharp": ""
-      }
-    },
     "net461": {
+      "dependencies": {
+        "Microsoft.DotNet.InternalAbstractions": "1.0.0"
+      },
       "frameworkAssemblies": {
         "System.Collections": "",
         "Microsoft.CSharp": ""
       }
     },
-    "netcoreapp1.0": {
+    "netcoreapp1.1": {
       "imports": [
         "dnxcore50",
         "portable-net452+win81",
         "netstandard1.6"
       ],
       "dependencies": {
+        "Microsoft.DotNet.InternalAbstractions": "1.0.0",
         "Microsoft.NETCore.App": {
-          "version": "1.0.0-*",
+          "version": "1.1.0-*",
           "type": "platform"
         }
       }
