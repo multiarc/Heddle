@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.26228.10
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{DCB9F91C-846A-4B80-97CF-BF89023F8965}"
 EndProject
@@ -11,32 +11,31 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "performance", "performance"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "demo", "demo", "{271330C1-ACEC-410F-897B-A65DB1A8AB23}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates.Editor", "integrations\Templates.Editor\Templates.Editor.csproj", "{4729444D-4629-43A7-9DB3-CB4E05D16F6A}"
-EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Templates", "src\Templates\Templates.xproj", "{F3F3EA3A-393B-4355-B476-B3C7C7CA8C5F}"
-	ProjectSection(ProjectDependencies) = postProject
-		{F408F08F-ABF8-43BF-971C-558B1CAAFA1C} = {F408F08F-ABF8-43BF-971C-558B1CAAFA1C}
-	EndProjectSection
-EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Templates.Language", "src\Templates.Language\Templates.Language.xproj", "{F408F08F-ABF8-43BF-971C-558B1CAAFA1C}"
-EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Templates.Tests", "src\Templates.Tests\Templates.Tests.xproj", "{E1F6FDB6-8FC3-4BF3-BB32-3869FAD49BF8}"
-EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Templates.Performance", "src\Templates.Performance\Templates.Performance.xproj", "{43114037-D664-4A46-92BC-DE60BBD2DBEE}"
-	ProjectSection(ProjectDependencies) = postProject
-		{F3F3EA3A-393B-4355-B476-B3C7C7CA8C5F} = {F3F3EA3A-393B-4355-B476-B3C7C7CA8C5F}
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{AF5D499D-0D2B-4F21-B083-EE5D45B86D99}"
 	ProjectSection(SolutionItems) = preProject
 		build.cmd = build.cmd
 		build.ps1 = build.ps1
-		global.json = global.json
 	EndProjectSection
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Templates.Mvc", "src\Templates.Mvc\Templates.Mvc.xproj", "{174A8663-103D-4FDA-BBEA-2B887E3FDB0D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates.Editor", "integrations\Templates.Editor\Templates.Editor.csproj", "{4729444D-4629-43A7-9DB3-CB4E05D16F6A}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Antlr4Core.Runtime", "src\Antlr4Core.Runtime\Antlr4Core.Runtime.xproj", "{7A030098-562F-494B-B33B-8E62E421D145}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Templates", "src\Templates\Templates.csproj", "{F3F3EA3A-393B-4355-B476-B3C7C7CA8C5F}"
+	ProjectSection(ProjectDependencies) = postProject
+		{F408F08F-ABF8-43BF-971C-558B1CAAFA1C} = {F408F08F-ABF8-43BF-971C-558B1CAAFA1C}
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Templates.Language", "src\Templates.Language\Templates.Language.csproj", "{F408F08F-ABF8-43BF-971C-558B1CAAFA1C}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Templates.Tests", "src\Templates.Tests\Templates.Tests.csproj", "{E1F6FDB6-8FC3-4BF3-BB32-3869FAD49BF8}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Templates.Performance", "src\Templates.Performance\Templates.Performance.csproj", "{43114037-D664-4A46-92BC-DE60BBD2DBEE}"
+	ProjectSection(ProjectDependencies) = postProject
+		{F3F3EA3A-393B-4355-B476-B3C7C7CA8C5F} = {F3F3EA3A-393B-4355-B476-B3C7C7CA8C5F}
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Templates.Mvc", "src\Templates.Mvc\Templates.Mvc.csproj", "{174A8663-103D-4FDA-BBEA-2B887E3FDB0D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Antlr4Core.Runtime", "src\Antlr4Core.Runtime\Antlr4Core.Runtime.csproj", "{7A030098-562F-494B-B33B-8E62E421D145}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
