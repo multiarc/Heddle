@@ -1,8 +1,9 @@
 ﻿using Templates.Performance.Runners;
 using System;
 using System.Collections.Generic;
-using Microsoft.Extensions.PlatformAbstractions;
-using Templates.Collections;
+using System.IO;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 
 namespace Templates.Performance
 {
@@ -10,14 +11,23 @@ namespace Templates.Performance
     {
         private static readonly List<IRunner> Tests = new List<IRunner>();
 
-        public static void SetUpTests() {
-            Tests.Add(new TemplateCompilationTest());
-            //Tests.Add(new TemplaterStrings());
-            Tests.Add(new TemplaterTest());
+        public static void SetUpTests(IServiceProvider serviceProvider) {
+            Tests.Add(new RazorTest(serviceProvider));
         }
         public static void Main(string[] args)
         {
-            SetUpTests();
+            var config = new ConfigurationBuilder()
+                .Build();
+
+            var builder = new WebHostBuilder()
+                .UseContentRoot(Directory.GetCurrentDirectory())
+                .UseConfiguration(config)
+                .UseStartup(typeof(Startup));
+
+            var host = builder.Build();
+            host.Start();
+
+            SetUpTests(host.Services);
             //Run all tests
             foreach (var test in Tests) {
                 test.Run();

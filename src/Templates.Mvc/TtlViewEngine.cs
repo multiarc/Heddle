@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -62,7 +63,7 @@ namespace Templates.Mvc
 
         public ViewEngineResult GetView(string executingFilePath, string viewPath, bool isMainPage)
         {
-            throw new NotImplementedException();
+            return ViewEngineResult.NotFound(viewPath, Enumerable.Empty<string>());
         }
 
         private ViewEngineResult FindPartialView(ActionContext context, string partialViewName)

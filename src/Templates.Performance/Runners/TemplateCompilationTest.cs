@@ -11,7 +11,7 @@ namespace Templates.Performance.Runners
 {
     public class TemplateCompilationTest : IRunner
     {
-        public TemplateCompilationTest()
+        public TemplateCompilationTest(IServiceProvider serviceProvider)
         {
             /*JIT*/
             var test = new TtlTemplate
