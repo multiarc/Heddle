@@ -35,7 +35,6 @@ namespace Templates.Runtime
                 document = File.ReadAllText($"{path}CSharpClassTemplate.tcs");
                 InitErrors =
                     CodeGenerator.Compile(document);
-
             }
             catch (Exception e)
             {

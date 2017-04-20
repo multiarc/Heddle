@@ -1,0 +1,250 @@
+﻿@using Microsoft.AspNetCore.Html
+@using Templates.Performance.TestSuite
+@using Templates.Performance.TestSuite.Extensions
+<!DOCTYPE html>
+<!--[if lt IE 9]>
+    <html class="no-js lt-ie9" lang="en">
+<![endif]-->
+<!--[if gte IE 9]>
+    <html class="no-js" lang="en">
+<![endif]-->
+<!--[if !IE]><!-->
+<html class="no-js" lang="en">
+<!--<![endif]-->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    @if (!IsSectionDefined("meta"))
+    {
+        <title>Wild Salmon | Omega-3 | Wild Seafood | Organic Foods | Vital Choice</title>
+    }
+    else
+    {
+        @RenderSection("meta", false)
+    }
+    @if (!IsSectionDefined("socialmeta"))
+    {
+        <meta property="og:image" content="/files/catalog/fbdefault2.jpg">
+        <meta itemprop="image" content="/files/catalog/googleplus.jpg"/>
+        <link rel="image_src" href="/files/catalog/googleplus.jpg"/>
+    }
+    else
+    {
+        @RenderSection("socialmeta", false)
+    }
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="msvalidate.01" content="4A9D524947EE62F01A1A9607511248C4" />
+    <link href="//fonts.googleapis.com/css?family=Francois+One" rel="stylesheet" type="text/css">
+    <link rel="apple-touch-icon" href="/assets/miscellaneous/apple-touch-icon.png">
+    <link rel="icon" type="img/ico" href="/assets/miscellaneous/favicon.ico">
+    @await Component.InvokeAsync(typeof(RazorAssetsComponent), new {name = "styles"})
+    <style>
+        @RenderSection("customstyles", false)
+    </style>
+    @await Component.InvokeAsync(typeof(RazorHeadScriptsComponent))
+</head>
+<body>
+    <!--[if lt IE 8]>
+        <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+    <![endif]-->
+    @await Component.InvokeAsync(typeof(RazorBodyScriptsComponent), null)
+    <div>
+        <div class="header-top main">
+            <div class="header-top-left">
+                @if ((User.Identity?.IsAuthenticated) ?? false && User.IsInRole(IdentityConstants.WholesaleCustomer))
+                {
+                    <img alt="Call Anytime" src="/assets/images/callanytime13.png"/>
+                }
+                else
+                {
+                    <a class="block-link" href="/content/shipping-information">
+                        <h4>Free shipping on orders over $99</h4>
+                    </a>
+                }
+            </div>
+            <div class="header-top-middle">
+                <div class="trustpilot-widget" data-locale="en-US" data-template-id="5418052cfbfb950d88702476" data-businessunit-id="51975a73000064000533c457" data-style-height="30px" data-style-width="100%" data-theme="light" data-stars="4,5,3"></div>
+            </div>
+            <div class="header-top-right">
+                <div class="actions-top-nav">
+                    <a href="/index/profile">Your Account</a>
+                    <a href="/Account/Register">Register</a>
+                    <a class="last-child" href="/content/contact-customer-service">Contact Us</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="separator-top"></div>
+<div class="alert-banner">
+    @await Component.InvokeAsync(typeof(RazorAreaComponent), new {name = "Alert Top Section Above Nav"})
+</div>
+    <div class="main">
+        <header>
+            <div class="header-main">
+                <div class="logo-holder">
+                    <a href="/">
+                        <img alt="Vital Choice" src="/Assets/images/VCwso.png" />
+                    </a>
+                </div>
+                <a class="block-link" href="javascript:function(){return false;}" data-video-class="youtube-dialog-size-home-popup" data-video-id="Zznd8BxKyx0" data-video-modal="true" data-video-autoplay="true" data-video-autoclose="true">
+                    <div class="middle-area">
+                        <p>"Few decisions have as great an impact on your life as the foods you choose to eat. Take a quick look at our new video to learn more."</p>
+                        <b>Randy Hartnell</b> <i>Founder/President</i>
+                    </div>
+                </a>
+                <div class="header-right-sidebar">
+                    <div class="search-area">
+                        <form id="search-area-form" action="/help/search" method="get">
+                            <input type="text" name="q" value="What can we help you find?" onclick="this.value = ( this.value == this.defaultValue ) ? '' : this.value;return true;" dir="ltr" autocomplete="off" spellcheck="false" style="outline: none;">
+                            <input type="image" class="active" style="display: none;" src="/Assets/images/mag.jpg" />
+                            <input type="image" class="not-active" src="/Assets/images/mag-off.png" />
+                        </form>
+                    </div>
+                    <div class="header-actions-holder">
+                        <div class="cart-work-area">
+                            <a class="view-cart" href="#">
+                                <div class="cart-icon"></div>
+                                <div class="item-total">
+                                    <span id="cart-lite-component"></span>
+                                    <span>Item(s)</span>
+                                </div>
+                            </a>
+                            <a class="checkout-button" href="#">
+                                <button>CHECKOUT</button>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="clear"></div>
+                    <div class="header-top-right">
+                        <div class="actions-top-nav">
+                            <a class="wholesale-home" href="/products/wholesale">Wholesale Home</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <nav class="hide top-nav secondary-nav">
+                @await Component.InvokeAsync(typeof(RazorAreaComponent), new {name = "Secondary Wholesale Menu"})
+                @await Component.InvokeAsync(typeof(RazorAreaComponent), new {name = "Secondary Retail Menu"})
+            </nav>
+            @await Component.InvokeAsync(typeof(RazorAreaComponent), new {name = "Wholesale Top Mega Menu"})
+            @await Component.InvokeAsync(typeof(RazorAreaComponent), new {name = "Retail Top Mega Menu"})
+        </header>
+        <div class="content">
+            <div class="alert-banner">
+                @await Component.InvokeAsync(typeof(RazorAreaComponent), new {name = "Alert Top Section Below Nav"})
+            </div>
+            <div class="content-dynamic">
+                @RenderBody()
+            </div>
+            <div class="content-bottom">
+                <div class="newsletter-container">
+                    <form id="cse-search-box" method="post" name="search" onsubmit="return brontoSignupValidateEmail(event)" action="https://app.bronto.com/public/webform/process/">
+                        <input type="hidden" value="98fbmg41k7lrzlevfi29oph85r7l8" name="fid" />
+                        <input type="hidden" value="09dcaffa5c9971f4be87813780496171" name="sid" />
+                        <input type="hidden" value="" name="delid" />
+                        <input type="hidden" value="" name="subid" />
+                        <input type="hidden" name="td" value="">
+                        <input type="hidden" name="formtype" value="addcontact">
+                        <input type="hidden" value="true" name="74699[291714]" />
+                        <input name="74686" type="text" id="email" value="Enter Email Here" class="newsletter-input bronto-email" onfocus="this.value = (this.value == this.defaultValue) ? '' : this.value;return true;" data-emailcapturepoint="Newsletter Sign Up Footer, Check Out Sign In, Guest Check Out" />
+                        <input type="image" border="0" align="absmiddle" alt="Submit" src="/Assets/images/arrow-submit.jpg" />
+                        <div class="sugnup-bubble">
+                            Please enter a valid email address
+                        </div>
+                    </form>
+                </div>
+                <div class="finding-fish-container">
+                    <a href="/content/what-are-people-saying-about-vital-choice">
+                        <img alt="Finding good fish" src="/Assets/images/findinggoodfish.jpg" />
+                    </a>
+                </div>
+                <div class="fish-advertising-container">
+                    <img alt="Randy Hartnell" src="/Assets/images/randyfooter-102413.jpg" />
+                </div>
+            </div>
+        </div>
+        <footer>
+            <div class="footer-main">
+                <nav class="footer-nav">
+                    @await Component.InvokeAsync(typeof(RazorAreaComponent), new {name = "Footer Links"})
+                </nav>
+                <div class="footer-market">
+                    <div class="market-left">
+                        <a href="/content/request-catalog">
+                            <img alt="See Our Catalog" src="/Assets/images/seeourcatalog.jpg" />
+                        </a>
+                        <a target="_blank" href="https://www.bcorporation.net/community/vital-choice">
+                            <img alt="Certified Corporation" src="/Assets/images/BCorplogo.jpg" />
+                        </a>
+                        <a href="/content/Vital-Green-Environmental-Stewardship-Program">
+                            <img alt="Vital Green" src="/Assets/images/vitalgreen.jpg" />
+                        </a>
+                    </div>
+                    <div class="market-right">
+                        <a href="/content/what-are-people-saying-about-vital-choice">
+                            <img alt="Watch Vital Choice Videos" src="/Assets/images/morevideos.jpg" />
+                        </a>
+                        <div class="ssl-area">
+                            <a target="_blank" class="accredited-businesses" href="https://www.bbb.org/western-washington/business-reviews/fish-and-seafood-retail/vital-choice-seafood-in-bellingham-wa-22009778#bbbseal" title="Vital Choice Seafood, Fish &amp; Seafood  Retail, Bellingham, WA">
+                                <img src="//seal-alaskaoregonwesternwashington.bbb.org/logo/ruhzbus/vital-choice-seafood-22009778.png" alt="Vital Choice Seafood, Fish &amp; Seafood  Retail, Bellingham, WA">
+                            </a>
+                            <a name="trustlink" class="security-logo" href="https://secure.trust-guard.com/certificates/5867" target="_blank"
+                               onclick="var nonwin=navigator.appName!='Microsoft Internet Explorer'?'yes':'no'; window.open(this.href.replace('http', 'https'),'welcome','location='+nonwin+',scrollbars=yes,width=517,height='+screen.availHeight+',menubar=no,toolbar=no'); return false;"
+                               oncontextmenu="var d = new Date(); alert('Copying Prohibited by Law - This image and all included logos are copyrighted by trust-guard \251 '+d.getFullYear()+'.'); return false;">
+                                <img name="trustseal" alt="Security Seal" style="border: 0;" src="//secure.trust-guard.com/seals/5867/scanned/mini/gray" />
+                            </a>
+                        </div>
+                        <div id="socialiconshome-102413">
+                            <img src="/Assets/images/socialicons5-home.jpg" usemap="#Social">
+                        </div>
+                        <map name="Social" id="Social">
+                            <area shape="rect" coords="209,0,236,25" href="https://www.youtube.com/user/VitalChoiceSeafood" alt="Youtube" target="_blank">
+                            <area shape="rect" coords="165,0,192,25" href="https://instagram.com/vitalchoice" alt="Instagram" target="_blank">
+                            <area shape="rect" coords="126,0,153,25" href="https://pinterest.com/vitalchoice/" alt="Pintrest" target="_blank">
+                            <area shape="rect" coords="83,0,109,25" href="https://plus.google.com/109701577970251794205/posts" alt="Google+" target="_blank">
+                            <area shape="rect" coords="41,0,67,25" href="https://twitter.com/vitalchoice" alt="Twitter" target="_blank">
+                            <area shape="rect" coords="0,0,26,25" href="https://www.facebook.com/vitalchoice" alt="Facebook" target="_blank">
+                        </map>
+                        <div class="clear"></div>
+                        <div class="vc-www-award">
+                            <a href="/content/vital-choice-recognized">
+                                <img src="/assets/images/vc-www-award-2016.jpg">
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-copyright">
+                <span>For orders, questions, or assistance call 800-608-4825 any day or time. © Vital Choice Wild Seafood & Organics, SPC. All Rights Reserved</span>
+            </div>
+        </footer>
+    </div>
+    @await Component.InvokeAsync(typeof(RazorAssetsComponent), new {name = "scripts"})
+    <script src="/app/modules/profile/gccheckform.js"></script>
+    @RenderSection("pagescripts", false)
+    @RenderSection("endpagescripts", false)
+    @await Component.InvokeAsync(typeof(RazorBodyEndScriptsComponent))
+    <script type="text/javascript" src="//widget.trustpilot.com/bootstrap/v5/tp.widget.sync.bootstrap.min.js" defer="defer" async="async"></script>
+    <script src="//www.google.com/jsapi?callback=googleLoadCallback" type="text/javascript" defer="defer" async="async"></script>
+    <!-- new live support code -->
+
+    <script>
+        (function (window, document, tag, url, name, wid, a, m) {
+            window[name] = window[name] || function () {
+                (window[name].q = window[name].q || []).push(arguments);
+                document.getElementById("dixa-widget-wrapper") !== null && document.getElementById("dixa-widget-wrapper").contentWindow.postMessage(JSON.stringify(arguments), "*");
+            },
+                window[name].l = 1 * new Date(),
+                window[name].wid = wid,
+                a = document.createElement(tag),
+                m = document.getElementsByTagName(tag)[0],
+                a.async = 1,
+                a.setAttribute("charset", "utf-8"),
+                a.src = url,
+                m.parentNode.insertBefore(a, m)
+        })(window, document, "script", "https://widget.dixa.io/assets/scripts/javascript/loader.js", "_dixa", "4e9a6404-de0d-4b2e-aaa3-9d04bdc0704b");
+    </script>
+    <script src="https://use.typekit.net/bdl6fja.js"></script>
+    <script>try { Typekit.load({ async: true }); } catch (e) { }</script>
+</body>
+</html>

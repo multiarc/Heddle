@@ -41,6 +41,8 @@
     <PackageReference Include="Microsoft.DotNet.InternalAbstractions" Version="1.0.0" />
     <Reference Include="System.Collections" />
     <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Linq" />
+    <Reference Include="System.Runtime" Version="4.0.20.0" />
     <Reference Include="System" />
   </ItemGroup>
 

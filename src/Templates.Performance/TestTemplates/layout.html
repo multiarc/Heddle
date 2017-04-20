@@ -1,4 +1,4 @@
-@using(){{Templates.Performance.TestSuite}}
+﻿@using(){{Templates.Performance.TestSuite}}
 @using(){{Templates.Performance}}
 
 <%
@@ -62,11 +62,11 @@
 <div>
     <div class="header-top main">
         <div class="header-top-left">
-            @if (@model.User.Identity.IsAuthenticated && model.User.IsInRole(IdentityConstants.WholesaleCustomer))
+            @if (@(model.User.Identity?.IsAuthenticated) ?? false && model.User.IsInRole(IdentityConstants.WholesaleCustomer))
             {{
             <img alt="Call Anytime" src="/assets/images/callanytime13.png" />
             }}
-            @ifnot(@model.User.Identity.IsAuthenticated && model.User.IsInRole(IdentityConstants.WholesaleCustomer))
+            @ifnot(@(model.User.Identity?.IsAuthenticated) ?? false && model.User.IsInRole(IdentityConstants.WholesaleCustomer))
             {{
             <a class="block-link" href="/content/shipping-information">
                 <h4>Free shipping on orders over $99</h4>
@@ -79,21 +79,7 @@
         <div class="header-top-right">
             <div class="actions-top-nav">
                 <a href="/index/profile">Your Account</a>
-                @if(@model.User.Identity.IsAuthenticated)
-                {{
-                @if(@model.User.HasClaim(IdentityConstants.AffiliateRole, "true"))
-                {{
-                <a href="/AffiliateAccount/Logout">Log Out</a>
-                }}
-                @ifnot(@model.User.HasClaim(IdentityConstants.AffiliateRole, "true"))
-                {{
-                <a href="/Account/Logout">Log Out</a>
-                }}
-                }}
-                @ifnot(@model.User.Identity.IsAuthenticated)
-                {{
                 <a href="/Account/Register">Register</a>
-                }}
                 <a class="last-child" href="/content/contact-customer-service">Contact Us</a>
             </div>
         </div>
@@ -142,32 +128,17 @@
                 <div class="clear"></div>
                 <div class="header-top-right">
                     <div class="actions-top-nav">
-                        @if (@model.User.Identity.IsAuthenticated && model.User.IsInRole(IdentityConstants.WholesaleCustomer))
-                        {{
                         <a class="wholesale-home" href="/products/wholesale">Wholesale Home</a>
-                        }}
                     </div>
                 </div>
             </div>
         </div>
         <nav class="hide top-nav secondary-nav">
-            @if (@model.User.Identity.IsAuthenticated && model.User.IsInRole(IdentityConstants.WholesaleCustomer))
-            {{
-            <text>@areacomponent(@"Secondary Wholesale Menu")</text>
-            }}
-            @ifnot(@model.User.Identity.IsAuthenticated && model.User.IsInRole(IdentityConstants.WholesaleCustomer))
-            {{
-            <text>@areacomponent(@"Secondary Retail Menu")</text>
-            }}
+            @areacomponent(@"Secondary Wholesale Menu")
+            @areacomponent(@"Secondary Retail Menu")
         </nav>
-        @if (@model.User.Identity.IsAuthenticated && model.User.IsInRole(IdentityConstants.WholesaleCustomer))
-        {{
-        <text>@areacomponent(@"Wholesale Top Mega Menu")</text>
-        }}
-        @ifnot (@model.User.Identity.IsAuthenticated && model.User.IsInRole(IdentityConstants.WholesaleCustomer))
-        {{
-        <text>@areacomponent(@"Retail Top Mega Menu")</text>
-        }}
+        @areacomponent(@"Wholesale Top Mega Menu")
+        @areacomponent(@"Retail Top Mega Menu")
     </header>
     <div class="content">
         <div class="alert-banner">
@@ -255,7 +226,7 @@
             </div>
         </div>
         <div class="footer-copyright">
-            <span>For orders, questions, or assistance call 800-608-4825 any day or time. © @(@DateTime.Now.Year) Vital Choice Wild Seafood & Organics, SPC. All Rights Reserved</span>
+            <span>For orders, questions, or assistance call 800-608-4825 any day or time. © Vital Choice Wild Seafood & Organics, SPC. All Rights Reserved</span>
         </div>
     </footer>
 </div>
@@ -288,5 +259,5 @@
 <script>try{Typekit.load({ async: true });}catch(e){}</script>
 </body>
 </html>
-}}
+}} :: TestViewContext
 %>

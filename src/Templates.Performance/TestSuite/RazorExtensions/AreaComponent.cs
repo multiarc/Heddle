@@ -1,18 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Html;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Templates.Attributes;
 using Templates.Core;
 using Templates.Data;
 using Templates.Performance.TestSuite.Extensions;
 
-[assembly: ExportExtensions(typeof(AreaComponent))]
-
 namespace Templates.Performance.TestSuite.Extensions
 {
-    [ExtensionName("areacomponent")]
-    public class AreaComponent : AbstractExtension
+    public class RazorAreaComponent : ViewComponent
     {
-        static AreaComponent()
+        static RazorAreaComponent()
         {
             // ReSharper disable once UseObjectOrCollectionInitializer
             Areas = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -1144,18 +1145,18 @@ namespace Templates.Performance.TestSuite.Extensions
 
         private static readonly Dictionary<string, string> Areas;
 
-        public override object ProcessData(ref Scope scope)
+        public async Task<IViewComponentResult> InvokeAsync(string name)
         {
-            var areaName = scope.ModelData as string;
-            if (!string.IsNullOrEmpty(areaName))
+            if (!string.IsNullOrEmpty(name))
             {
                 string areaContent;
-                if (Areas.TryGetValue(areaName, out areaContent))
+                if (Areas.TryGetValue(name, out areaContent))
                 {
-                    return areaContent;
+                    return new HtmlContentViewComponentResult(new HtmlString(areaContent));
                 }
             }
-            return string.Empty;
+            return new ContentViewComponentResult(string.Empty);
+
         }
     }
 }

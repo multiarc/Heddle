@@ -42,6 +42,7 @@
     <Reference Include="System.IO" />
     <Reference Include="System.ComponentModel" />
     <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Runtime" />
     <Reference Include="System" />
   </ItemGroup>
 

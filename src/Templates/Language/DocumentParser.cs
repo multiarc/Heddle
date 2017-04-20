@@ -29,7 +29,7 @@ namespace Templates.Language
             return context;
         }
 
-        public static void Parse(string document, ParseContext context, CompileContext compileContext, bool loadDefenitionsOnly = false)
+        public static void Parse(string document, ParseContext context, CompileContext compileContext/*, bool loadDefenitionsOnly = false*/)
         {
             if (document == null)
                 throw new ArgumentNullException(nameof(document));
@@ -69,10 +69,10 @@ namespace Templates.Language
                 return;
             }
             ParseTreeWalker walker = new ParseTreeWalker();
-            context.DefenitionsOnly = loadDefenitionsOnly;
+            //context.DefenitionsOnly = loadDefenitionsOnly;
             TtlMainListener listener = new TtlMainListener(context, compileContext);
             walker.Walk(listener, tree);
-            context.DefenitionsOnly = false;
+            //context.DefenitionsOnly = false;
             listener.CurrentParseContext.CommentTokens.AddRange(
                 tokens.GetTokens()
                     .Where(t => t.Channel == TtlLexer.COMMENT_CHANNEL)

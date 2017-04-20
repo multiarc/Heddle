@@ -15,7 +15,7 @@ using System.Runtime.Loader;
 
 namespace Templates.Native
 {
-    internal static class AssemblyHelper
+    public static class AssemblyHelper
     {
         private static volatile DependencyContext _dependencyContext;
 
@@ -39,6 +39,7 @@ namespace Templates.Native
                 return LoadFromStream(assembly, assemblySymbols);
             }
         }
+
 #endif
 
         private static void WalkReferenceAssemblies(Assembly current)
@@ -66,6 +67,9 @@ namespace Templates.Native
                         catch (FileNotFoundException)
                         {
                         }
+                        catch (ReflectionTypeLoadException)
+                        {
+                        }
                     }
                 }
             }
@@ -80,12 +84,6 @@ namespace Templates.Native
 
         static AssemblyHelper()
         {
-#if !NETSTANDARD1_6
-            AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
-            {
-                Console.WriteLine(args.ExceptionObject.ToString());
-            };
-#endif
             var appEnvironment = PlatformServices.Default.Application;
             string applicationName = appEnvironment.ApplicationName ?? "Templates";
             _applicationAssembly = Assembly.Load(new AssemblyName(applicationName));
@@ -94,6 +92,9 @@ namespace Templates.Native
             Assemblies = new List<Assembly>();
             WalkReferenceAssemblies(_applicationAssembly);
             WalkReferenceAssemblies(typeof(System.Runtime.CompilerServices.DynamicAttribute).GetTypeInfo().Assembly);
+#if NET461
+            WalkReferenceAssemblies(Assembly.Load(new AssemblyName("System.Runtime, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")));
+#endif
             WalkReferenceAssemblies(typeof(Microsoft.CSharp.RuntimeBinder.CSharpArgumentInfo).GetTypeInfo().Assembly);
             GetApplicationReferences();
         }

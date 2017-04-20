@@ -5,7 +5,7 @@ options { tokenVocab=TtlLexer; }
  * Parser Rules
  */
 
-ttl: (definition | outblock | raw | comment | TEXT)*;
+ttl: (definition | import_block | outblock | raw | comment | TEXT)*;
 
 comment: COMMENT;
 
@@ -28,6 +28,8 @@ simple_def:
 	;
 
 default_chain: DEF_OUTPUTONEND chain;
+
+import_block: IMPORT_TOKEN SUB_START TEXT SUB_CLOSE;
 
 outblock: OUT chain subtemplate?
 	| OUT chain subtemplate? LINE_TERMINATE

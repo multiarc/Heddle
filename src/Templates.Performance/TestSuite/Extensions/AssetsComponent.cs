@@ -1,8 +1,13 @@
-﻿using Templates.Core;
+﻿using Templates.Attributes;
+using Templates.Core;
 using Templates.Data;
+using Templates.Performance.TestSuite.Extensions;
+
+[assembly: ExportExtensions(typeof(AssetsComponent))]
 
 namespace Templates.Performance.TestSuite.Extensions
 {
+    [ExtensionName("assetscomponent")]
     public class AssetsComponent : AbstractExtension
     {
         public override object ProcessData(ref Scope scope)

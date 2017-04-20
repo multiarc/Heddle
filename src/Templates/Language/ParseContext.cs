@@ -14,7 +14,7 @@ namespace Templates.Language {
     public class ParseContext {
         private readonly int _offset;
 
-        internal bool DefenitionsOnly { get; set; }
+        //internal bool DefenitionsOnly { get; set; }
 
         private readonly bool _inDefintionContext;
 
@@ -40,8 +40,9 @@ namespace Templates.Language {
             Warnings = parentContext?.Warnings ?? new List<TtlCompileWarning>();
         }
 
-        private static ParseContext IsolateContextFrom(ParseContext context) {
-            var newContext = new ParseContext(context, context._offset) { DefenitionsOnly = context.DefenitionsOnly };
+        private static ParseContext IsolateContextFrom(ParseContext context)
+        {
+            var newContext = new ParseContext(context, context._offset);// { DefenitionsOnly = context.DefenitionsOnly };
             newContext.DefinitionsBlock.Positions.AddRange(context.DefinitionsBlock.Positions);
             newContext.RawOutputItems.AddRange(context.RawOutputItems);
             newContext.CommentTokens.AddRange(context.CommentTokens);

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Templates.Data;
 using Templates.Exceptions;
@@ -113,17 +114,17 @@ namespace Templates.Language {
         public override void EnterOutblock(TtlParser.OutblockContext context)
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
-            if (!CurrentParseContext.DefenitionsOnly)
+            //if (!CurrentParseContext.DefenitionsOnly)
                 CurrentParseContext.CurrentChain = CurrentParseContext.CreateOutputChain(context);
         }
 
         public override void ExitOutblock(TtlParser.OutblockContext context)
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
-            if (!CurrentParseContext.DefenitionsOnly) {
+            //if (!CurrentParseContext.DefenitionsOnly) {
                 CurrentParseContext.OutputChains.Add(CurrentParseContext.CurrentChain);
                 CurrentParseContext.CurrentChain = null;
-            }
+            //}
         }
 
         public override void EnterRaw(TtlParser.RawContext context)
@@ -183,26 +184,42 @@ namespace Templates.Language {
                 }
                 else
                 {
-                    if (!CurrentParseContext.DefenitionsOnly)
-                    {
+                    //if (!CurrentParseContext.DefenitionsOnly)
+                    //{
                         var chainItem = CurrentParseContext.CurrentChain.Chain.First();
                         chainItem.Context = parserContext;
-                    }
+                    //}
                 }
             }
         }
 
-        //public override void ExitTtl(TtlParser.TtlContext context)
-        //{
-        //    if (CurrentParseContext.DefaultChains.Count > 0)
-        //    {
-        //        foreach (var chain in CurrentParseContext.DefaultChains)
-        //        {
-        //            chain.BlockPosition = new BlockPosition(context.Stop.StopIndex + 1, 0);
-        //        }
-        //        CurrentParseContext.OutputChains.AddRange(CurrentParseContext.DefaultChains);
-        //        CurrentParseContext.DefaultChains.Clear();
-        //    }
-        //}
+        public override void ExitImport_block(TtlParser.Import_blockContext context)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+            var path = context.TEXT()?.GetText();
+            if (!string.IsNullOrWhiteSpace(path))
+            {
+                using (var file = File.OpenText(Path.Combine(_compileContext.Options.RootPath, path)))
+                {
+                    string document = file.ReadToEnd();
+                    var isolatedContext = CurrentParseContext.IsolateContextWithTree();
+                    isolatedContext.OutputChains.Clear();
+                    DocumentParser.Parse(document, isolatedContext, _compileContext/*, true*/);
+                    CurrentParseContext.DefaultChains.Clear();
+                    CurrentParseContext.DefaultChains.AddRange(isolatedContext.DefaultChains);
+                    CurrentParseContext.DefinitionsBlock.Definitions.Clear();
+                    foreach (var definition in isolatedContext.DefinitionsBlock.Definitions)
+                    {
+                        CurrentParseContext.DefinitionsBlock.Definitions.Add(definition.Key, definition.Value);
+                    }
+                    foreach (var isolatedChain in isolatedContext.OutputChains)
+                    {
+                        isolatedChain.BlockPosition = new BlockPosition(CurrentParseContext.GetBlockPosition(context).StartIndex, 0);
+                        CurrentParseContext.OutputChains.Add(isolatedChain);
+                    }
+                }
+            }
+            CurrentParseContext.DefinitionsBlock.AddNewBlockPosition(CurrentParseContext.GetBlockPosition(context));
+        }
     }
 }

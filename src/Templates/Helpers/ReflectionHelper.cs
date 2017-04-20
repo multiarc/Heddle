@@ -65,7 +65,17 @@ namespace Templates.Helpers
                 _shortNames = new Dictionary<string, List<Type>>();
                 _fullNames = new Dictionary<string, List<Type>>();
 
-                foreach (var type in assemblies.SelectMany(a => a.GetTypes()))
+                foreach (var type in assemblies.SelectMany(a =>
+                {
+                    try
+                    {
+                        return a.GetTypes();
+                    }
+                    catch
+                    {
+                        return Enumerable.Empty<Type>();
+                    }
+                }))
                 {
                     string shortName;
                     if (type.IsNested)

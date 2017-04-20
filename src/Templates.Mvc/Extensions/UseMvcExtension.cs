@@ -26,7 +26,7 @@ namespace Templates.Mvc.Extensions {
             using (var file = File.OpenText(path))
             {
                 string document = file.ReadToEnd();
-                DocumentParser.Parse(document, initContext.ParseContext, initContext.CompileScope.CompileContext, true);
+                DocumentParser.Parse(document, initContext.ParseContext, initContext.CompileScope.CompileContext/*, true*/);
             }
             if (initContext.ParseContext.OutputChains.Count > outputCount)
                 initContext.CompileScope.CompileErrors.Add("The Defenitions template cannot contain output items".ToError(Position));

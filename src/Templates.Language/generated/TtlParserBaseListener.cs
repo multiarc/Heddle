@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-// Generated from D:\Work\Templater\src\Templates.Language\TtlParser.g4 by ANTLR 4.6
+// Generated from TtlParser.g4 by ANTLR 4.6
 
 // Unreachable code detected
 #pragma warning disable 0162
@@ -131,6 +131,18 @@ public partial class TtlParserBaseListener : ITtlParserListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitDefault_chain([NotNull] TtlParser.Default_chainContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="TtlParser.import_block"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterImport_block([NotNull] TtlParser.Import_blockContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="TtlParser.import_block"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitImport_block([NotNull] TtlParser.Import_blockContext context) { }
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="TtlParser.outblock"/>.
 	/// <para>The default implementation does nothing.</para>
