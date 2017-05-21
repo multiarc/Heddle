@@ -94,7 +94,7 @@ namespace Templates.Language
                     c = (char) la;
                     nextLa = InputStream.LA(i + 1);
                     nextC = (char) nextLa;
-                    if (la == -1 || c != ':' && (c != '{' || nextLa != -1 && nextC != '{') && prev == ')')
+                    if (la == -1 || c != ':' && (c != '{' || nextLa != -1 && nextC != '{') && prev == ')') //-V3130
                     {
                         Type = TEXT;
                         PopMode();
@@ -126,7 +126,7 @@ namespace Templates.Language
                         c = (char) la;
                         nextLa = InputStream.LA(i + 1);
                         nextC = (char) nextLa;
-                        if (la == -1 || c != ':' && (c != '{' || nextLa == -1 || nextC != '{') && prev == ')')
+                        if (la == -1 || c != ':' && (c != '{' || nextLa == -1 || nextC != '{') && prev == ')') //-V3130
                         {
                             Type = COMMENT;
                             PopMode();

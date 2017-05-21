@@ -55,11 +55,7 @@ namespace Templates.Tests
                     symbolStream.Seek(0, SeekOrigin.Begin);
                     //try
                     //{
-#if !NETSTANDARD1_6 && !NETCOREAPP1_1
-                    Assembly.Load(codeStream.ToArray(), symbolStream.ToArray());
-#else
                     new AssemblyHelper.TemplateLoadContext().Load(codeStream, symbolStream);
-#endif
                     //}
                     //catch (BadImageFormatException)
                     //{

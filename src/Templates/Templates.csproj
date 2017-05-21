@@ -1,10 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <Description>Robust template engine with C# expressions (Roslyn) support, text template inheritance and override support</Description>
     <VersionPrefix>2.8.3.2</VersionPrefix>
     <Authors>Aliaksandr Kukrash</Authors>
-    <TargetFrameworks>net461;netstandard1.6</TargetFrameworks>
+    <TargetFrameworks>netstandard1.6</TargetFrameworks>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>Templates</AssemblyName>
     <PackageId>Templates</PackageId>
@@ -16,36 +15,24 @@
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
     <GenerateAssemblyCopyrightAttribute>false</GenerateAssemblyCopyrightAttribute>
   </PropertyGroup>
-
   <ItemGroup>
     <None Update="LanguageTemplates\CSharpClassTemplate.tcs;LanguageTemplates\CSharpPreparseTemplate.tcs">
       <Pack>true</Pack>
     </None>
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Templates.Language\Templates.Language.csproj" />
     <ProjectReference Include="..\Antlr4Core.Runtime\Antlr4Core.Runtime.csproj" />
   </ItemGroup>
-
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyModel">
+      <Version>1.1.2</Version>
+    </PackageReference>
     <PackageReference Include="Microsoft.Extensions.PlatformAbstractions" Version="1.1.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="2.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="1.1.1" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="1.1.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Hosting.Abstractions" Version="1.1.1" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="2.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="1.1.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Hosting.Abstractions" Version="1.1.2" />
   </ItemGroup>
-
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net461' ">
-    <Reference Include="System.Text.Encoding" />
-    <Reference Include="System.Threading.Tasks" />
-    <Reference Include="System.IO" />
-    <Reference Include="System.ComponentModel" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Runtime" />
-    <Reference Include="System" />
-  </ItemGroup>
-
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard1.6' ">
     <PackageReference Include="System.Runtime.Loader" Version="4.3.0" />
     <PackageReference Include="System.IO.Pipes" Version="4.3.0" />
@@ -68,5 +55,4 @@
     <PackageReference Include="System.Threading" Version="4.3.0" />
     <PackageReference Include="System.Dynamic.Runtime" Version="4.3.0" />
   </ItemGroup>
-
 </Project>

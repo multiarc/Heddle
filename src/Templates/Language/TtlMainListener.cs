@@ -146,7 +146,7 @@ namespace Templates.Language {
             var ttl = context.ttl();
             if (ttl?.Stop == null || ttl.Start == null)
                 throw new ArgumentException();
-            if (ttl.Stop?.StopIndex - ttl.Start?.StartIndex + 1 > 0)
+            if (ttl.Stop.StopIndex - ttl.Start.StartIndex + 1 > 0)
             {
                 var currentContext = CurrentParseContext;
                 var newContext = new ParseContext(currentContext, ttl.Start.StartIndex);

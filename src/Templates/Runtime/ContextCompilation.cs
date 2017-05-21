@@ -111,24 +111,12 @@ namespace Templates.Runtime
                         }
                         codeStream.Seek(0, SeekOrigin.Begin);
                         symbolStream.Seek(0, SeekOrigin.Begin);
-                        //try
-                        //{
-#if !NETSTANDARD1_6
-                            context.CSharpContext.CompiledAssembly = Assembly.Load(codeStream.ToArray(), symbolStream.ToArray());
-#else
-                            context.CSharpContext.CompiledAssembly = new AssemblyHelper.TemplateLoadContext().Load(codeStream, symbolStream);
-#endif
-                        //}
-                        //catch (BadImageFormatException)
-                        //{
-                        //    throw new InvalidOperationException(
-                        //        $"{string.Join("\n", AssemblyHelper.GetApplicationReferences().Select(r => r.Display))}");
-                        //}
+                        context.CSharpContext.CompiledAssembly = new AssemblyHelper.TemplateLoadContext().Load(codeStream, symbolStream);
                     }
                 }
                 GeneratedAssemblyCache.AddToCache(code, context.CSharpContext.CompiledAssembly);
                 var classType =
-                    context.CSharpContext.CompiledAssembly.GetType($"Templates.Runtime.CSE_{context.CSharpContext.ClassGuid.ToString("N")}");
+                    context.CSharpContext.CompiledAssembly.GetType($"Templates.Runtime.CSE_{context.CSharpContext.ClassGuid:N}");
                 int methodNumber = 0;
                 foreach (var expressionCompilation in context.CSharpContext.Methods)
                 {

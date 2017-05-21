@@ -6,9 +6,6 @@ using Templates.Native;
 using Templates.Strings.Core;
 
 namespace Templates.Strings {
-#if !NETSTANDARD1_6
-    [Serializable]
-#endif
     public sealed class ExStringBuilder {
         private static readonly Allocate AllocateString;
         private static readonly ConcatArray Concat;
@@ -623,124 +620,12 @@ namespace Templates.Strings {
             }
         }
 
-#if !NETSTANDARD1_6
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static unsafe void MemCpy(char* dmem, char* smem, int charCount)
-        {
-            for (var i = 0; i < charCount; i++)
-            {
-                dmem[i] = smem[i];
-            }
-        }
 
-        //internal static unsafe void MemCpy(char* dmem, char* smem, int len)
-        //{
-        //    //len *= 2;
-        //    //if (len >= 16)
-        //    //{
-        //    //    do
-        //    //    {
-        //    //        ((long*)dmem)[0] = ((long*)smem)[0]; 
-        //    //        ((long*)dmem)[1] = ((long*)smem)[1];
-        //    //        dmem += 8;
-        //    //        smem += 8;
-        //    //    } while ((len -= 16) >= 16);
-        //    //}
-        //    //if (len > 0)
-        //    //{
-        //    //    if ((len & 8) != 0)
-        //    //    {
-        //    //        ((long*) dmem)[0] = ((long*) smem)[0];
-        //    //        dmem += 4;
-        //    //        smem += 4;
-        //    //    }
-        //    //    if ((len & 4) != 0)
-        //    //    {
-        //    //        ((int*) dmem)[0] = ((int*) smem)[0];
-        //    //        dmem += 2;
-        //    //        smem += 2;
-        //    //    }
-        //    //    if ((len & 2) != 0)
-        //    //    {
-        //    //        *dmem = *smem;
-        //    //    }
-        //    //}
-
-        //    if (len > 0)
-        //    {
-        //        if ((((int)dmem | (int)smem) & 1) == 0)
-        //        {
-        //            if (((int)dmem & 2) != 0)
-        //            {
-        //                dmem[0] = smem[0];
-        //                dmem += 1;
-        //                smem += 1;
-        //                len -= 1;
-        //            }
-        //            if ((((int)dmem & 4) != 0) && (len >= 2))
-        //            {
-        //                {
-        //                    ((uint*)dmem)[0] = ((uint*)smem)[0];
-        //                }
-        //                dmem += 2;
-        //                smem += 2;
-        //                len -= 2;
-        //            }
-        //            while (len >= 16)
-        //            {
-        //                ((ulong*)dmem)[0] = ((ulong*)smem)[0];
-        //                ((ulong*)dmem)[1] = ((ulong*)smem)[1];
-        //                ((ulong*)dmem)[2] = ((ulong*)smem)[2];
-        //                ((ulong*)dmem)[3] = ((ulong*)smem)[3];
-        //                dmem += 16;
-        //                smem += 16;
-        //                len -= 16;
-        //            }
-        //            if ((len & 8) != 0)
-        //            {
-        //                ((ulong*)dmem)[0] = ((ulong*)smem)[0];
-        //                ((ulong*)dmem)[1] = ((ulong*)smem)[1];
-        //                dmem += 8;
-        //                smem += 8;
-        //            }
-        //            if ((len & 4) != 0)
-        //            {
-        //                ((ulong*)dmem)[0] = ((ulong*)smem)[0];
-        //                dmem += 4;
-        //                smem += 4;
-        //            }
-        //            if ((len & 2) != 0)
-        //            {
-        //                ((uint*)dmem)[0] = ((uint*)smem)[0];
-        //                dmem += 2;
-        //                smem += 2;
-        //            }
-        //            if ((len & 1) != 0)
-        //            {
-        //                dmem[0] = smem[0];
-        //            }
-        //        }
-        //        else
-        //        {
-        //            // This is rare case where at least one of the pointers is only byte aligned. 
-        //            do
-        //            {
-        //                ((byte*)dmem)[0] = ((byte*)smem)[0];
-        //                ((byte*)dmem)[1] = ((byte*)smem)[1];
-        //                len -= 1;
-        //                dmem += 1;
-        //                smem += 1;
-        //            } while (len > 0);
-        //        }
-        //    }
-        //}
-#else
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static unsafe void MemCpy(char* dmem, char* smem, int charCount)
         {
             Buffer.MemoryCopy(smem, dmem, charCount*2, charCount*2);
         }
-#endif
 
         internal static unsafe int Equals(char* one, char* two, int lenOne, int lenTwo)
         {

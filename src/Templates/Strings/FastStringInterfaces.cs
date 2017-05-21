@@ -4,10 +4,7 @@ using System.Globalization;
 using System.Reflection;
 
 namespace Templates.Strings {
-    public sealed partial class ExString: IComparable,
-#if !NETSTANDARD1_6
-        IConvertible, 
-#endif
+    public sealed partial class ExString: IComparable, IConvertible,
         IEnumerable, IEquatable<string>, IEquatable<ExString>, IEquatable<char[]> {
         #region IComparable Members
 
@@ -63,12 +60,10 @@ namespace Templates.Strings {
         #endregion
 
         #region IConvertible Members
-#if !NETSTANDARD1_6
         public TypeCode GetTypeCode ()
         {
             return TypeCode.Object;
         }
-#endif
 
         // ReSharper disable SpecifyACultureInStringConversionExplicitly
         public bool ToBoolean(IFormatProvider provider) {

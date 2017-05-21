@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using Templates.Attributes;
@@ -10,9 +9,7 @@ using Templates.Helpers;
 using Templates.Language;
 using Templates.Strings.Core;
 
-#if NETSTANDARD1_6
 using Templates.Native;
-#endif
 
 namespace Templates.Runtime {
     public struct ExtensionType
@@ -39,11 +36,7 @@ namespace Templates.Runtime {
         static TemplateFactory()
         {
             AddExtensions(LoadBaseExtensions());
-#if !NETSTANDARD1_6
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-#else
             foreach (var assembly in AssemblyHelper.GetAssemblies())
-#endif
             {
                 var exportAttributes = assembly.GetCustomAttributes<ExportExtensionsAttribute>();
                 foreach (var exportAttribute in exportAttributes)

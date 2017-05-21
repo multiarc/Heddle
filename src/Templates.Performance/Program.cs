@@ -38,11 +38,7 @@ namespace Templates.Performance
                 test.Run();
             }
             Console.WriteLine("Done all, press any key to exit...");
-#if !DNXCORE50
             Console.ReadKey();
-#else
-            Console.ReadLine();
-#endif
         }
 
         private static void ConfigureDefaultServices(IServiceCollection services)

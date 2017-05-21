@@ -208,7 +208,7 @@ namespace Templates.Language {
                 AddToken(inherited.ID(1), TtlTokenType.Id);
                 AddToken(inherited.DEF_ENDNAME(), TtlTokenType.DefEndName);
                 var chainContext = inherited.default_chain()?.chain();
-                var definitionName = definition?.GetText();
+                var definitionName = definition.GetText();
                 if (baseDefenition?.Name == definitionName && chainContext != null)
                 {
                     compileContext.CompileErrors.Add(

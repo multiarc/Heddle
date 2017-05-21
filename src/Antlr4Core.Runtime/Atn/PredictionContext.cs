@@ -267,7 +267,7 @@ namespace Antlr4.Runtime.Atn
 						mergedParents[k] = a_parent; // choose left
 						mergedReturnStates[k] = payload;
 					}
-				else { // ax+ay -> a'[x,y]
+				    else { // ax+ay -> a'[x,y]
 						PredictionContext mergedParent =
 							Merge(a_parent, b_parent, rootIsWildcard, mergeCache);
 						mergedParents[k] = mergedParent;

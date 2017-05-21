@@ -8,9 +8,6 @@ using System.Collections.Generic;
 
 namespace Antlr4.Runtime.Misc
 {
-#if !NETSTANDARD1_6
-    [System.Serializable]
-#endif
     public class MultiMap<K, V> : Dictionary<K, IList<V>>
     {
         private const long serialVersionUID = -4956746660057462312L;

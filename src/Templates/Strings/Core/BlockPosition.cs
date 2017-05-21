@@ -5,9 +5,6 @@ namespace Templates.Strings.Core {
     /// <summary>
     /// Represents posision of the template string to replace
     /// </summary>
-#if !NETSTANDARD1_6
-    [Serializable]
-#endif
     public struct BlockPosition {
         public readonly int Length;
         public readonly int StartIndex;

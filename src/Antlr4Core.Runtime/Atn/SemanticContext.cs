@@ -435,7 +435,7 @@ namespace Antlr4.Runtime.Atn
         private static IList<SemanticContext.PrecedencePredicate> FilterPrecedencePredicates(HashSet<SemanticContext> collection)
         {
             if (!collection.OfType<PrecedencePredicate>().Any())
-                Collections.EmptyList<PrecedencePredicate>();
+                return Collections.EmptyList<PrecedencePredicate>();
 
             List<PrecedencePredicate> result = collection.OfType<PrecedencePredicate>().ToList();
 #if NET40PLUS

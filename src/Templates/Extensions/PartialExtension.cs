@@ -48,5 +48,11 @@ namespace Templates.Extensions {
                 newScope.CompileErrors.AddRange(result.Errors);
             }
         }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            InnerTemplate?.Dispose();
+        }
     }
 }

@@ -8,10 +8,7 @@ using Microsoft.Extensions.PlatformAbstractions;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.DependencyModel;
 using Templates.Helpers;
-
-#if NETSTANDARD1_6
 using System.Runtime.Loader;
-#endif
 
 namespace Templates.Native
 {
@@ -25,8 +22,6 @@ namespace Templates.Native
         private static readonly List<MetadataReference> MetadataReferences;
         private static readonly List<Assembly> Assemblies;
 
-#if NETSTANDARD1_6
-
         internal class TemplateLoadContext : AssemblyLoadContext
         {
             protected override Assembly Load(AssemblyName assemblyName)
@@ -39,8 +34,6 @@ namespace Templates.Native
                 return LoadFromStream(assembly, assemblySymbols);
             }
         }
-
-#endif
 
         private static void WalkReferenceAssemblies(Assembly current)
         {
@@ -92,9 +85,6 @@ namespace Templates.Native
             Assemblies = new List<Assembly>();
             WalkReferenceAssemblies(_applicationAssembly);
             WalkReferenceAssemblies(typeof(System.Runtime.CompilerServices.DynamicAttribute).GetTypeInfo().Assembly);
-#if NET461
-            WalkReferenceAssemblies(Assembly.Load(new AssemblyName("System.Runtime, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")));
-#endif
             WalkReferenceAssemblies(typeof(Microsoft.CSharp.RuntimeBinder.CSharpArgumentInfo).GetTypeInfo().Assembly);
             GetApplicationReferences();
         }
@@ -134,28 +124,7 @@ namespace Templates.Native
             return metadata.GetReference(filePath: asm.FullName);
         }
 
-        //private static MetadataReference CreateMetadataFileReference(AssemblyName assemblyName, out Assembly asm)
-        //{
-        //    asm = Assembly.Load(assemblyName);
-        //    var moduleMetadata = ModuleMetadata.CreateFromFile(asm.Location);
-        //    var metadata = AssemblyMetadata.Create(moduleMetadata);
-        //    return metadata.GetReference(filePath: assemblyName.FullName);
-        //}
-
-        //private static string ResolveContentRootPath(string contentRootPath, string basePath)
-        //{
-        //    if (string.IsNullOrEmpty(contentRootPath))
-        //    {
-        //        return basePath;
-        //    }
-        //    if (Path.IsPathRooted(contentRootPath))
-        //    {
-        //        return contentRootPath;
-        //    }
-        //    return Path.Combine(Path.GetFullPath(basePath), contentRootPath);
-        //}
-
-        public static List<MetadataReference> GetApplicationReferences()
+        internal static List<MetadataReference> GetApplicationReferences()
         {
             if (_dependencyContext != null && !_configured)
             {

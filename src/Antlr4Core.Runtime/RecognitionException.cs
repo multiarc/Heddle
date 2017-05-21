@@ -17,9 +17,6 @@ namespace Antlr4.Runtime
     /// in the input, where it is in the ATN, the rule invocation stack,
     /// and what kind of problem occurred.
     /// </remarks>
-#if !NETSTANDARD1_6
-    [System.Serializable]
-#endif
     public class RecognitionException : Exception
     {
         private const long serialVersionUID = -3861826954750022374L;

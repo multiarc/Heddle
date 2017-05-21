@@ -4,7 +4,7 @@
     <Description>Template engine language parsers support package, basing on ANTLR4.5 C# target</Description>
     <VersionPrefix>1.5.3.1</VersionPrefix>
     <Authors>Aliaksandr Kukrash</Authors>
-    <TargetFrameworks>net461;netstandard1.6</TargetFrameworks>
+    <TargetFrameworks>netstandard1.6</TargetFrameworks>
     <AssemblyName>Templates.Language</AssemblyName>
     <PackageId>Templates.Language</PackageId>
     <PackageTargetFallback Condition=" '$(TargetFramework)' == 'netstandard1.6' ">$(PackageTargetFallback);portable-net452+win81</PackageTargetFallback>
@@ -19,11 +19,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Antlr4Core.Runtime\Antlr4Core.Runtime.csproj" />
-  </ItemGroup>
-
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net461' ">
-    <Reference Include="System" />
-    <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard1.6' ">

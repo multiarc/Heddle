@@ -226,12 +226,9 @@ namespace Templates.Native
                 return;
             int seed = method.IsStatic ? 0 : 1;
             var methodParameterTypes = method.GetParameters().Select(p => p.ParameterType).ToArray();
-            if (parameterTypes.Length > 0)
-            {
-                il.Emit(OpCodes.Ldarg_0);
-                if (seed == 0)
-                    il.EmitCastIfNeeded(parameterTypes[0], methodParameterTypes[0]);
-            }
+            il.Emit(OpCodes.Ldarg_0);
+            if (seed == 0)
+                il.EmitCastIfNeeded(parameterTypes[0], methodParameterTypes[0]);
             if (parameterTypes.Length > 1)
             {
                 il.Emit(OpCodes.Ldarg_1);

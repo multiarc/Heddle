@@ -5,9 +5,6 @@ using System.Text;
 using Templates.Collections;
 
 namespace Templates.Strings {
-#if !NETSTANDARD1_6
-    [Serializable]
-#endif
     public sealed partial class ExString {
         private static readonly ExString EmptyExString = new ExString(new char[0]);
         private readonly char[] _data;
@@ -561,7 +558,7 @@ namespace Templates.Strings {
 
         public static ExString operator + (char one, ExString two)
         {
-            return Concat(two, one);
+            return Concat(one, two);
         }
 
         public static ExString Add (ExString one, string two)
@@ -581,7 +578,7 @@ namespace Templates.Strings {
 
         public static ExString operator + (string one, ExString two)
         {
-            return Concat(two, one);
+            return Concat(one, two);
         }
 
         public static ExString Duplicate (ExString value)

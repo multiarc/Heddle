@@ -7,9 +7,6 @@ namespace Templates.Exceptions
     /// <summary>
     /// Parse Exception, at any stage can be raised
     /// </summary>
-#if !NETSTANDARD1_6
-    [Serializable]
-#endif
     public sealed class TemplateParseException : TemplateCompileException
     {
 

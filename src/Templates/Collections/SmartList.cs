@@ -2,9 +2,6 @@
 using System.Collections.Generic;
 
 namespace Templates.Collections {
-#if !NETSTANDARD1_6
-    [Serializable]
-#endif
     internal partial class SmartList<T> {
         private static readonly T[] Empty = new T[0];
         private T[] _array;

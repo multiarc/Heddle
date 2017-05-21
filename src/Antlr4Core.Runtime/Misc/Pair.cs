@@ -43,7 +43,7 @@ namespace Antlr4.Runtime.Misc
 
 	public override String ToString()
 	{
-		return String.Format("(%s, %s)", a, b);
+		return String.Format("({0}, {1})", a, b);
 	}
 }
 
