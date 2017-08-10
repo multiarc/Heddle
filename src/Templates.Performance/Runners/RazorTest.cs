@@ -148,6 +148,7 @@ namespace Templates.Performance.Runners
             Console.WriteLine("Compile time & first run: {0}", watcher.Elapsed);
 
             watcher.Reset();
+            long entireLength = 0;
             watcher.Start();
             for (var i = 0; i < n; i++)
             {
@@ -161,10 +162,11 @@ namespace Templates.Performance.Runners
 
                     view.RenderAsync(viewContext).Wait();
                     output.Flush();
-                    var text = output.ToString();
+                    entireLength += output.ToString().Length;
                 }
             }
             watcher.Stop();
+            Console.WriteLine(entireLength);
             Console.WriteLine("Single Thread:");
             Console.WriteLine("{0} run times: {1}", n, watcher.Elapsed);
             Console.WriteLine("Out Speed: {0:F0} Pages/s", n / watcher.Elapsed.TotalSeconds);

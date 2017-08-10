@@ -76,12 +76,14 @@ namespace Templates.Performance.Runners
                     watcher.ElapsedTicks);
                 Console.WriteLine("Total Size: {0} Mb", length / 1048576.0 * sizeof(char));
                 watcher.Reset();
+                long entireLength = 0;
                 watcher.Start();
                 for (var i = 0; i < n; i++)
                 {
-                    target.Generate(data);
+                    entireLength += target.Generate(data).Length;
                 }
                 watcher.Stop();
+                Console.WriteLine(entireLength);
                 Console.WriteLine("Syncronous implementation:");
                 Console.WriteLine("{0} run times: {1}", n, watcher.Elapsed);
                 Console.WriteLine("Out Speed: {0:F} Mb/s, ticks:{1}", length / watcher.Elapsed.TotalSeconds / 1048576.0 * sizeof(char),
