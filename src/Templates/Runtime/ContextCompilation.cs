@@ -4,17 +4,16 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
-using Microsoft.Extensions.PlatformAbstractions;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Native;
 using Templates.Runtime.Parameters;
 using Templates.Strings.Core;
 using Platform = Microsoft.CodeAnalysis.Platform;
+using Microsoft.DotNet.PlatformAbstractions;
 
 namespace Templates.Runtime
 {
@@ -30,8 +29,7 @@ namespace Templates.Runtime
             try
             {
                 CodeGenerator = new TtlTemplate();
-                ApplicationEnvironment env = PlatformServices.Default.Application;
-                var path = env.ApplicationBasePath + "/";
+                var path = ApplicationEnvironment.ApplicationBasePath + "/";
                 document = File.ReadAllText($"{path}CSharpClassTemplate.tcs");
                 InitErrors =
                     CodeGenerator.Compile(document);

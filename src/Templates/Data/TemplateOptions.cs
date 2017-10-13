@@ -1,6 +1,5 @@
-﻿using System;
-using Microsoft.Extensions.PlatformAbstractions;
-using Templates.Native;
+﻿using Microsoft.DotNet.PlatformAbstractions;
+using System;
 
 namespace Templates.Data {
     public class TemplateOptions: IEquatable<TemplateOptions>
@@ -18,7 +17,7 @@ namespace Templates.Data {
         public TemplateOptions()
         {
             FileNamePostfix = string.Empty;
-            RootPath = PlatformServices.Default.Application.ApplicationBasePath;
+            RootPath = ApplicationEnvironment.ApplicationBasePath;
             TemplateName = string.Empty;
             EnableFileChangeCheck = false;
             AllowCSharp = false;
@@ -27,7 +26,7 @@ namespace Templates.Data {
 
         public TemplateOptions(string templateName) {
             FileNamePostfix = string.Empty;
-            RootPath = PlatformServices.Default.Application.ApplicationBasePath;
+            RootPath = ApplicationEnvironment.ApplicationBasePath;
             TemplateName = templateName ?? string.Empty;
             EnableFileChangeCheck = false;
             AllowCSharp = false;

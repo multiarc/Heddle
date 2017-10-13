@@ -6,7 +6,6 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Microsoft.CSharp.RuntimeBinder;
 using Templates.Attributes;
-using Templates.Collections;
 using Templates.Core;
 using Templates.Data;
 using Templates.Exceptions;

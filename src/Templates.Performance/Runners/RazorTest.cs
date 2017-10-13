@@ -174,7 +174,7 @@ namespace Templates.Performance.Runners
             Console.WriteLine("Total Size: {0:F2} Mb", length / 1048576.0 * sizeof(char));
         }
 
-        private static void RunTemplateEngine()
+        private void RunTemplateEngine()
         {
 //var list = new List<TestDataStructure>();
             Console.WriteLine("Enter tries count (template generate):");

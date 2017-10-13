@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using Microsoft.Extensions.PlatformAbstractions;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.DependencyModel;
 using Templates.Helpers;
@@ -77,8 +76,7 @@ namespace Templates.Native
 
         static AssemblyHelper()
         {
-            var appEnvironment = PlatformServices.Default.Application;
-            string applicationName = appEnvironment.ApplicationName ?? "Templates";
+            string applicationName = Assembly.GetEntryAssembly().GetName().Name ?? "Templates";
             _applicationAssembly = Assembly.Load(new AssemblyName(applicationName));
             _dependencyContext = DependencyContext.Load(_applicationAssembly);
             MetadataReferences = new List<MetadataReference>();

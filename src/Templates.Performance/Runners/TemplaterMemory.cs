@@ -5,6 +5,7 @@ using Templates.Runtime;
 
 namespace Templates.Performance.Runners {
     public class TemplaterMemory : IRunner {
+
         public void Run()
         {
             Console.WriteLine("Memory Leaks Test");

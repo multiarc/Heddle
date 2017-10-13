@@ -1,5 +1,5 @@
-﻿using System.Net;
-using Templates.Collections;
+﻿using System.Collections.Generic;
+using System.Net;
 using Templates.Strings.Core;
 
 namespace Templates.Strings.Web {
@@ -29,7 +29,7 @@ namespace Templates.Strings.Web {
                 unsafe {
                     fixed (char* src = input) {
                         int len = input.Length;
-                        var replacements = new SmartList<Replacement>();
+                        var replacements = new List<Replacement>();
                         for (int i = 0; i < len; i++) {
                             string replacement = LookupTable[src[i]];
                             if (replacement != null) {
@@ -40,7 +40,9 @@ namespace Templates.Strings.Web {
                                     });
                             }
                         }
-                        return replacements.Length > 0 ? ExStringBuilder.BulkReplace(replacements, replacements.Length, input) : input;
+                        return replacements.Count > 0
+                            ? ExStringBuilder.BulkReplace(replacements, input)
+                            : input;
                     }
                 }
             }

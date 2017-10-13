@@ -19,12 +19,6 @@ namespace Templates.Tests {
             Assert.Null(another);
         }
 
-        [Fact]
-        public void GetAttributeTest ()
-        {
-            GetAttributeTestHelper<ComVisibleAttribute, string, SecuritySafeCriticalAttribute>();
-        }
-
         public void GetAttributesTestHelper<TAttribute, TType, TNotExists> ()
         {
             Type type = typeof (TType);
@@ -37,12 +31,6 @@ namespace Templates.Tests {
             Assert.True(another.Count == 0);
         }
 
-        [Fact]
-        public void GetAttributesTest ()
-        {
-            GetAttributesTestHelper<ComVisibleAttribute, string, SecuritySafeCriticalAttribute>();
-        }
-
         public void GetIsPresentAttributeHelper<TType> (Type attribute, Type notExisingAttribute)
         {
             Type type = typeof (TType);
@@ -50,12 +38,6 @@ namespace Templates.Tests {
             Assert.True(target.GetIsPresentAttribute(attribute));
 
             Assert.False(target.GetIsPresentAttribute(notExisingAttribute));
-        }
-
-        [Fact]
-        public void GetIsPresentAttributeTest ()
-        {
-            GetIsPresentAttributeHelper<string>(typeof (ComVisibleAttribute), typeof (SecuritySafeCriticalAttribute));
         }
     }
 }

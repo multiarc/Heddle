@@ -24,14 +24,16 @@ namespace Templates
         private volatile RuntimeDocument _runtimeDocument;
         private volatile IProcessStrategy _processStrategy;
         private string _document;
-        private volatile bool _disposeAfterComplete = false;
-        private volatile int _runners = 0;
+        private volatile bool _disposeAfterComplete;
+        private volatile int _runners;
 
         public TtlTemplate(TemplateOptions options) : this(new CompileContext(options))
         {
         }
 
-        public TtlTemplate(TemplateOptions options, ExType modelType) : this(new CompileContext(options, modelType))
+        public TtlTemplate(TemplateOptions options, ExType modelType) : this(
+            new CompileContext(options,
+                modelType))
         {
         }
 
@@ -39,12 +41,12 @@ namespace Templates
         {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
+            
             CompileResult = Compile(context);
         }
 
         public TtlTemplate()
         {
-
         }
 
         public TtlTemplate(string document, CompileContext context = null)
@@ -195,7 +197,8 @@ namespace Templates
         {
             if (_runtimeDocument != null)
                 throw new TemplateInitException("Template already compiled.");
-            return Compile(new CompileScope(new CompileContext(options ?? new TemplateOptions(), modelType)), document, true);
+            return Compile(new CompileScope(new CompileContext(options ?? new TemplateOptions(),
+                modelType)), document, true);
         }
 
         private TtlCompileResult Compile(CompileScope compileScope, string document, bool simulate = false)

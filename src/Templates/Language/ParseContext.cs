@@ -4,7 +4,6 @@ using System.Linq;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Tree;
-using Templates.Collections;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Runtime;
@@ -240,7 +239,7 @@ namespace Templates.Language {
         }
 
         public DefinitionItem GetDefenition(string baseName) {
-            if (baseName.IsNullOrEmpty())
+            if (string.IsNullOrEmpty(baseName))
                 return null;
             if (DefenitionExists(baseName))
                 return DefinitionsBlock.Definitions[baseName];

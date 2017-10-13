@@ -7,11 +7,9 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Internal;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc.Razor;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.ObjectPool;
-using Microsoft.Extensions.PlatformAbstractions;
 using Templates.Native;
 using Templates.Performance.TestSuite;
 using System.Reflection;
@@ -43,9 +41,6 @@ namespace Templates.Performance
 
         private static void ConfigureDefaultServices(IServiceCollection services)
         {
-            var applicationEnvironment = PlatformServices.Default.Application;
-            services.AddSingleton(applicationEnvironment);
-
             var appDirectory = Directory.GetCurrentDirectory() + "\\TestTemplates";
 
             var environment = new HostingEnvironment

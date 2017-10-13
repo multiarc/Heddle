@@ -15,14 +15,14 @@ namespace Templates.Mvc.Extensions
     {
         public override void CompleteInit(CompileScope newContext, ParseContext parseContext)
         {
-            IEnumerable<string> locations;
-            var engine = newContext.ServiceProvider.GetRequiredService<TtlViewEngine>();
-            InnerTemplate = engine.Resolver.GetTemplate(newContext.Options.TemplateName,
-                newContext.CompileContext.ControllerName, out locations, newContext.CompileContext, TemplatePathType.PartialView);
-            if (!InnerTemplate.CompileResult.Success)
-            {
-                newContext.CompileErrors.AddRange(InnerTemplate.CompileResult.ErrorList);
-            }
+            //IEnumerable<string> locations;
+            //var engine = newContext.CompileContext.ServiceProvider.GetRequiredService<TtlViewEngine>();
+            //InnerTemplate = engine.Resolver.GetTemplate(newContext.Options.TemplateName,
+            //    newContext.CompileContext.ControllerName, out locations, newContext.CompileContext, TemplatePathType.PartialView);
+            //if (!InnerTemplate.CompileResult.Success)
+            //{
+            //    newContext.CompileErrors.AddRange(InnerTemplate.CompileResult.ErrorList);
+            //}
         }
     }
 }

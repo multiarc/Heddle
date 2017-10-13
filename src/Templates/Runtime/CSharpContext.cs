@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -9,7 +8,7 @@ using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.Extensions.PlatformAbstractions;
+using Microsoft.DotNet.PlatformAbstractions;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
@@ -41,8 +40,7 @@ namespace Templates.Runtime
             try
             {
                 PreparseGenerator = new TtlTemplate();
-                ApplicationEnvironment env = PlatformServices.Default.Application;
-                var path = env.ApplicationBasePath + "/";
+                var path = ApplicationEnvironment.ApplicationBasePath + "/";
                 document = File.ReadAllText($"{path}CSharpPreparseTemplate.tcs");
                 InitErrors = PreparseGenerator.Compile(document);
             }

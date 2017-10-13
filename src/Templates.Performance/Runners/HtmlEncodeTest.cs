@@ -7,6 +7,7 @@ using Templates.Strings.Web;
 
 namespace Templates.Performance.Runners {
     public class HtmlEncodeTest : IRunner {
+
         public void Run()
         {
             var watcher = new ExecutionStopwatch();

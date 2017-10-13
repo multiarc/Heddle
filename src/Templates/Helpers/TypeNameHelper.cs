@@ -186,7 +186,7 @@ namespace Templates.Helpers
                             case '+':
                             case '.':
                                 sb.Append((string) CreateEscapedIdentifier(baseType.Substring(lastIndex, i - lastIndex)));
-                                sb.Append('.');
+                                sb.Append(".");
                                 i++;
                                 lastIndex = i;
                                 break;
@@ -208,7 +208,7 @@ namespace Templates.Helpers
                                 // Skip it if so. 
                                 if (i < baseType.Length && (baseType[i] == '+' || baseType[i] == '.'))
                                 {
-                                    sb.Append('.');
+                                    sb.Append(".");
                                     i++;
                                 }
 
@@ -252,7 +252,7 @@ namespace Templates.Helpers
 
         private static void GetTypeArgumentsOutput(Type[] typeArguments, int start, int length, ExStringBuilder sb)
         {
-            sb.Append('<');
+            sb.Append("<");
             bool first = true;
             for (int i = start; i < start + length; i++)
             {
@@ -270,7 +270,7 @@ namespace Templates.Helpers
                 if (i < typeArguments.Length)
                     sb.Append(typeArguments[i].GetTypeOutput());
             }
-            sb.Append('>');
+            sb.Append(">");
         }
     }
 }

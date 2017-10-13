@@ -15,103 +15,6 @@ namespace Templates.Tests {
             return result;
         }
 
-        private static ExString GenerateStringEx (int len)
-        {
-            string result = string.Empty;
-            for (int i = 0; i < len; i++)
-                result += (char) Rnd.Next(1, 0x10000);
-            return new ExString(result);
-        }
-
-        [Fact]
-        public void StringBuilderExConstructorTest ()
-        {
-            var target = new ExStringBuilder((ExString) null);
-            Assert.Equal(target.Length, 0);
-
-            ExString value = GenerateStringEx(50);
-            target = new ExStringBuilder(value);
-
-            Assert.Equal(target.Length, 50);
-            Assert.Equal(target.ToExString(), value);
-        }
-
-        [Fact]
-        public void StringBuilderExConstructorTest1 ()
-        {
-            var target = new ExStringBuilder();
-
-            Assert.Equal(target.Length, 0);
-            Assert.Equal(target.ToExString(), ExString.Empty);
-        }
-
-        [Fact]
-        public void StringBuilderExConstructorTest2 ()
-        {
-            var target = new ExStringBuilder((string) null);
-            Assert.Equal(target.Length, 0);
-
-            string value = GenerateString(50);
-            target = new ExStringBuilder(value);
-
-            Assert.Equal(50, target.Length);
-            Assert.Equal(value, target.ToString());
-            Assert.Equal(new ExString(value), target.ToExString());
-        }
-
-        [Fact]
-        public void ToStringExTest ()
-        {
-            ExString expected = GenerateStringEx(10);
-            var target = new ExStringBuilder(expected);
-            ExString append1 = GenerateStringEx(20);
-            ExString append2 = GenerateStringEx(20);
-            target.Append(append1);
-            target.Append(append2);
-            expected += append1 + append2;
-            ExString actual = target.ToExString();
-
-            Assert.Equal(expected, actual);
-            Assert.Equal(target.Length, 50);
-        }
-
-        [Fact]
-        public void ClearTest ()
-        {
-            var target = new ExStringBuilder(GenerateStringEx(20));
-            target.Append(GenerateStringEx(10));
-            target.Append(GenerateStringEx(20));
-            target.Clear();
-            Assert.Equal(target.ToExString(), ExString.Empty);
-            Assert.Equal(target.Length, 0);
-            target = new ExStringBuilder(GenerateStringEx(20));
-            target.Append(GenerateStringEx(10));
-            target.Append(GenerateStringEx(20));
-            target.ToExString();
-            target.Clear();
-
-            Assert.Equal(target.ToExString(), ExString.Empty);
-            Assert.Equal(target.Length, 0);
-        }
-
-        [Fact]
-        public void AppendTest ()
-        {
-            ExString expected = GenerateStringEx(10);
-            var target = new ExStringBuilder(expected);
-            ExString append1 = GenerateStringEx(20);
-            ExString append2 = GenerateStringEx(20);
-            target.Append(append1);
-            target.Append(append2);
-            expected += append1 + append2;
-
-            Assert.Equal(target.Length, 50);
-            ExString actual = target.ToExString();
-
-            Assert.Equal(expected, actual);
-            Assert.Equal(target.Length, 50);
-        }
-
         [Fact]
         public void AppendTest1 ()
         {
@@ -143,7 +46,7 @@ namespace Templates.Tests {
         [Fact]
         public void LengthTest ()
         {
-            var target = new ExStringBuilder(GenerateStringEx(20));
+            var target = new ExStringBuilder(GenerateString(20));
             int actual = target.Length;
 
             Assert.Equal(actual, 20);

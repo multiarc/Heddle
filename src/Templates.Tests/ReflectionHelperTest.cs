@@ -10,7 +10,7 @@ namespace Templates.Tests {
         [Fact]
         public void ReflectionHelperConstructorTest ()
         {
-            Type innerType = typeof (ExString);
+            Type innerType = typeof (string);
             var target = new ReflectionHelper(innerType);
             Assert.Equal(target.InnerType, innerType);
         }
@@ -18,7 +18,7 @@ namespace Templates.Tests {
         [Fact]
         public void ReflectionHelperConstructorTest1 ()
         {
-            object value = new ExString();
+            object value = new string('0', 1);
             var target = new ReflectionHelper(value);
             Assert.Equal(target.InnerType, value.GetType());
         }
@@ -91,7 +91,7 @@ namespace Templates.Tests {
             var value = new object();
             Assert.True(target.IsType(value));
 
-            value = new ExString();
+            value = new string('0', 1);
             Assert.True(target.IsType(value));
 
             innerType = typeof (IExtension);
@@ -123,7 +123,7 @@ namespace Templates.Tests {
             Type value = typeof (object);
             Assert.True(target.IsType(value));
 
-            value = typeof (ExString);
+            value = typeof (string);
             Assert.True(target.IsType(value));
 
             innerType = typeof (IExtension);

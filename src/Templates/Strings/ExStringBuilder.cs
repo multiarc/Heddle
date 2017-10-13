@@ -14,11 +14,6 @@ namespace Templates.Strings {
         private int _appendlength;
         private string _data;
 
-        public ExStringBuilder (ExString value)
-        {
-            _data = value ?? ExString.Empty;
-        }
-
         public ExStringBuilder (string value)
         {
             _data = value ?? string.Empty;
@@ -68,7 +63,6 @@ namespace Templates.Strings {
         {
             _appendlength = 0;
             _appendStrings.Clear();
-            _data = ExString.Empty;
         }
 
         internal static string ConcatArray(string[] values)
@@ -131,12 +125,6 @@ namespace Templates.Strings {
             return builder;
         }
 
-        public static ExStringBuilder operator +(ExStringBuilder builder, ExString value)
-        {
-            builder.Append(value);
-            return builder;
-        }
-
         public static ExStringBuilder operator +(ExStringBuilder builder, ExStringBuilder value)
         {
             builder.Append(value.ToString());
@@ -154,73 +142,10 @@ namespace Templates.Strings {
             }
         }
 
-        public void Append (ExString value)
-        {
-            if (!ExString.IsNullOrEmpty(value)) {
-                _appendStrings.Add(value);
-                _appendlength += value.Length;
-            }
-        }
-
         public override string ToString ()
         {
             CommitAppend();
             return _data;
-        }
-
-        public ExString ToExString ()
-        {
-            CommitAppend();
-            return _data;
-        }
-
-        public ExString BulkReplace (Replacement[] replacements, int takeLength)
-        {
-            if (_appendStrings.Count > 0)
-                CommitAppend();
-            if (replacements == null)
-                throw new ArgumentNullException(nameof(replacements));
-
-            if (takeLength == 0)
-                return _data;
-
-            if (_data.Length == 0)
-                return ExString.Empty;
-
-            int capacity = _data.Length;
-            int srcLen = capacity;
-            unchecked {
-                for (int i = 0; i < takeLength; i++) {
-                    Replacement replacement = replacements[i];
-                    if (replacement.ReplacementValue == null)
-                        replacement.ReplacementValue = string.Empty;
-#if DEBUG
-                    if (replacement.BlockPosition.Length < 0)
-                        throw new ArgumentException();
-                    if (replacement.BlockPosition.StartIndex < 0)
-                        throw new ArgumentException();
-#endif
-                    capacity += replacement.ReplacementValue.Length - replacement.BlockPosition.Length;
-#if DEBUG
-                    if (capacity < 0)
-                        throw new ArgumentException();
-#endif
-                }
-
-                if (capacity == 0)
-                    return ExString.Empty;
-
-                var result = new char[capacity];
-
-                unsafe {
-                    fixed (char* dest = result) {
-                        fixed (char* src = _data) {
-                            MoveData(replacements, takeLength, srcLen, capacity, dest, src);
-                        }
-                    }
-                }
-                return result;
-            }
         }
 
         internal static unsafe string BulkReplace(char** values, int* lengths, BlockPosition[] positions, string document)
@@ -314,14 +239,14 @@ namespace Templates.Strings {
             }
         }
 
-        public static string BulkReplace (Replacement[] replacements, int takeLength, ExString source)
+        public static string BulkReplace(IList<Replacement> replacements, string source)
         {
             if (replacements == null)
                 throw new ArgumentNullException(nameof(replacements));
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
 
-            if (takeLength == 0)
+            if (replacements.Count == 0)
                 return source;
 
             //if (source.Length == 0)
@@ -329,29 +254,29 @@ namespace Templates.Strings {
 
             int capacity = source.Length;
             int srcLen = capacity;
-            unchecked {
-                for (int i = 0; i < takeLength; i++) {
-                    Replacement replacement = replacements[i];
+            unchecked
+            {
+                foreach (Replacement replacement in replacements)
+                {
 #if DEBUG
                     if (replacement.BlockPosition.Length < 0)
                         throw new ArgumentException();
                     if (replacement.BlockPosition.StartIndex < 0)
                         throw new ArgumentException();
 #endif
-                    capacity += (replacement.ReplacementValue != null ? replacement.ReplacementValue.Length : 0) - replacement.BlockPosition.Length;
-#if DEBUG
-                    if (capacity < 0)
-                        throw new ArgumentException();
-#endif
+                    capacity += (replacement.ReplacementValue?.Length ?? 0) - replacement.BlockPosition.Length;
                 }
 
                 if (capacity == 0)
                     return string.Empty;
                 string result = AllocateString(capacity);
-                unsafe {
-                    fixed (char* dest = result) {
-                        fixed (char* src = (char[]) source) {
-                            MoveData(replacements, takeLength, srcLen, capacity, dest, src);
+                unsafe
+                {
+                    fixed (char* dest = result)
+                    {
+                        fixed (char* src = source)
+                        {
+                            MoveData(replacements, srcLen, dest, src);
                         }
                     }
                 }
@@ -430,7 +355,7 @@ namespace Templates.Strings {
             MemCpy(dest + lastIndex, src + current, srcLen - current);
         }
 
-        private static unsafe void MoveData(Replacement[] replacements, int srcLen, char* dest, char* src)
+        private static unsafe void MoveData(IList<Replacement> replacements, int srcLen, char* dest, char* src)
         {
             int lastIndex = 0;
             int current = 0;
@@ -483,143 +408,12 @@ namespace Templates.Strings {
             }
         }
 
-        public static ExString Replace (int start, int length, string replacement, ExString source)
-        {
-            if (replacement == null)
-                throw new ArgumentNullException(nameof(replacement));
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-
-            int sourceLen = source.Length;
-            int replacementLength = replacement.Length;
-            unchecked {
-#if DEBUG
-                if (start < 0 || start + length < 0 || start + length > sourceLen || sourceLen - length + replacement.Length < 0)
-                    throw new ArgumentException();
-#endif
-                int newLen = sourceLen - length + replacement.Length;
-                var destination = new char[newLen];
-                unsafe {
-                    fixed (char* dest = destination) {
-                        fixed (char* src = (char[]) source) {
-                            fixed (char* repl = replacement) {
-                                if (start > 0)
-                                    MemCpy(dest, src, start);
-                                MemCpy(dest + start, repl, replacementLength);
-                                MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
-                            }
-                        }
-                    }
-                }
-                return new ExString(destination);
-            }
-        }
-
-        public static ExString Replace (int start, int length, ExString replacement, ExString source)
-        {
-            if (replacement == null)
-                throw new ArgumentNullException(nameof(replacement));
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-
-            int sourceLen = source.Length;
-            int replacementLength = replacement.Length;
-            unchecked {
-#if DEBUG
-                if (start < 0 || start + length < 0 || start + length > sourceLen || sourceLen - length + replacement.Length < 0)
-                    throw new ArgumentException();
-#endif
-                int newLen = sourceLen - length + replacement.Length;
-                var destination = new char[newLen];
-                unsafe {
-                    fixed (char* dest = destination) {
-                        fixed (char* src = (char[]) source) {
-                            fixed (char* repl = (char[]) replacement) {
-                                if (start > 0)
-                                    MemCpy(dest, src, start);
-                                MemCpy(dest + start, repl, replacementLength);
-                                MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
-                            }
-                        }
-                    }
-                }
-                return new ExString(destination);
-            }
-        }
-
-        public ExString Replace (int start, int length, string replacement)
-        {
-            if (_appendStrings.Count > 0)
-                CommitAppend();
-
-            if (replacement == null)
-                throw new ArgumentNullException(nameof(replacement));
-
-            int sourceLen = _data.Length;
-            int replacementLength = replacement.Length;
-            unchecked {
-#if DEBUG
-                if (start < 0 || start + length < 0 || start + length > sourceLen || sourceLen - length + replacement.Length < 0)
-                    throw new ArgumentException();
-#endif
-                int newLen = sourceLen - length + replacement.Length;
-                var destination = new char[newLen];
-                unsafe {
-                    fixed (char* dest = destination) {
-                        fixed (char* src = _data) {
-                            fixed (char* repl = replacement) {
-                                if (start > 0)
-                                    MemCpy(dest, src, start);
-                                MemCpy(dest + start, repl, replacementLength);
-                                MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
-                            }
-                        }
-                    }
-                }
-                return new ExString(destination);
-            }
-        }
-
         public static int ApplyRemove(BlockPosition element, ref string source) {
             int removeStart = element.StartIndex;
             int removeLength = element.Length;
             source = Replace(removeStart, removeLength, string.Empty, source);
             return removeLength;
         }
-
-        public ExString Replace (int start, int length, ExString replacement)
-        {
-            if (_appendStrings.Count > 0)
-                CommitAppend();
-
-            if (replacement == null)
-                throw new ArgumentNullException(nameof(replacement));
-
-            int sourceLen = _data.Length;
-            int replacementLength = replacement.Length;
-            unchecked {
-#if DEBUG
-                if (start < 0 || start + length < 0 || start + length > sourceLen || sourceLen - length + replacement.Length < 0)
-                    throw new ArgumentException();
-#endif
-                int newLen = sourceLen - length + replacement.Length;
-                var destination = new char[newLen];
-                unsafe {
-                    fixed (char* dest = &destination[0]) {
-                        fixed (char* src = _data) {
-                            fixed (char* repl = (char[]) replacement) {
-                                if (start > 0)
-                                    MemCpy(dest, src, start);
-                                MemCpy(dest + start, repl, replacementLength);
-                                MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
-                            }
-                        }
-                    }
-                }
-                return new ExString(destination);
-            }
-        }
-
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static unsafe void MemCpy(char* dmem, char* smem, int charCount)

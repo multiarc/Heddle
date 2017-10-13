@@ -47,7 +47,10 @@ namespace Templates.Runtime {
                     };
                     if (context == null)
                     {
-                        context = new CompileContext(options) {ControllerName = controllerName};
+                        context = new CompileContext(options)
+                        {
+                            ControllerName = controllerName
+                        };
                         searchedLocations = null;
                         return Create(viewName, context);
                     }

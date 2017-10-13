@@ -112,7 +112,7 @@ namespace Templates.Runtime {
             CompiledItems = new Dictionary<OutputItem, CompiledElement>();
             _csharpContext = new CSharpContext();
         }
-        
+
         /// <summary>
         /// Create new untyped (<see cref="System.Object"/>) Context using old Context data with new template file name
         /// Enclosing template level = 0
@@ -175,8 +175,6 @@ namespace Templates.Runtime {
         }
 
         public ExType RootScopeType { get; internal set; }
-
-        
 
         public virtual void AddDelayedCompileTemplate(CompileScope compileScope, ParseContext parserContext, IExtension forExtension)
         {
