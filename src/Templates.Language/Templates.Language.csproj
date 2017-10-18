@@ -4,6 +4,12 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>language.snk</AssemblyOriginatorKeyFile>
+    <Version>3.0.0</Version>
+    <Authors>Aliaksandr Kukrash</Authors>
+    <Company />
+    <Product>Templates.Language</Product>
+    <PackageId>Templates.Language</PackageId>
+    <Description>Text Template Engine Language Parser</Description>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,5 +1,5 @@
-Push-Location src
 dotnet restore
+Push-Location src
 Push-Location Templates.Tests
 dotnet test
 Pop-Location
