@@ -14,4 +14,9 @@
     <DefineConstants>TRACE;RELEASE;NETSTANDARD2_0;NET35PLUS;NET40PLUS;NET45PLUS</DefineConstants>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="System.Reflection" Version="4.3.0" />
+    <PackageReference Include="System.Reflection.TypeExtensions" Version="4.4.0" />
+  </ItemGroup>
+
 </Project>
