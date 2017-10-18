@@ -15,21 +15,19 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		build.ps1 = build.ps1
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates.Editor", "integrations\Templates.Editor\Templates.Editor.csproj", "{4729444D-4629-43A7-9DB3-CB4E05D16F6A}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{7A42C497-6F07-4B5E-9B4A-807D444A5277}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Antlr4Core.Runtime", "src\Antlr4Core.Runtime\Antlr4Core.Runtime.csproj", "{7F4B4A90-675D-4684-969E-71D95AA1F159}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Antlr4Core.Runtime", "src\Antlr4Core.Runtime\Antlr4Core.Runtime.csproj", "{7F4B4A90-675D-4684-969E-71D95AA1F159}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates", "src\Templates\Templates.csproj", "{08216E41-F266-441F-ADB2-D8D7FB088B98}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Templates", "src\Templates\Templates.csproj", "{08216E41-F266-441F-ADB2-D8D7FB088B98}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates.Language", "src\Templates.Language\Templates.Language.csproj", "{CE96D768-CEF0-414C-8170-1834BC4DB44E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Templates.Language", "src\Templates.Language\Templates.Language.csproj", "{CE96D768-CEF0-414C-8170-1834BC4DB44E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates.Mvc", "src\Templates.Mvc\Templates.Mvc.csproj", "{B8EA8FB6-0BCE-4DD4-853A-72720E082DB9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Templates.Mvc", "src\Templates.Mvc\Templates.Mvc.csproj", "{B8EA8FB6-0BCE-4DD4-853A-72720E082DB9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates.Performance", "src\Templates.Performance\Templates.Performance.csproj", "{E7E2561E-7D5F-48A1-B5D0-DA4C95FDD7B8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Templates.Performance", "src\Templates.Performance\Templates.Performance.csproj", "{E7E2561E-7D5F-48A1-B5D0-DA4C95FDD7B8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Templates.Tests", "src\Templates.Tests\Templates.Tests.csproj", "{EDC55E94-74DF-43AC-A0F9-46B2AD5F0515}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Templates.Tests", "src\Templates.Tests\Templates.Tests.csproj", "{EDC55E94-74DF-43AC-A0F9-46B2AD5F0515}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -37,10 +35,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{4729444D-4629-43A7-9DB3-CB4E05D16F6A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4729444D-4629-43A7-9DB3-CB4E05D16F6A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4729444D-4629-43A7-9DB3-CB4E05D16F6A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4729444D-4629-43A7-9DB3-CB4E05D16F6A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{7F4B4A90-675D-4684-969E-71D95AA1F159}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{7F4B4A90-675D-4684-969E-71D95AA1F159}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7F4B4A90-675D-4684-969E-71D95AA1F159}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -70,7 +64,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{4729444D-4629-43A7-9DB3-CB4E05D16F6A} = {5A6E418F-99E7-4E1E-9062-08929C0D8E4B}
 		{7F4B4A90-675D-4684-969E-71D95AA1F159} = {7A42C497-6F07-4B5E-9B4A-807D444A5277}
 		{08216E41-F266-441F-ADB2-D8D7FB088B98} = {7A42C497-6F07-4B5E-9B4A-807D444A5277}
 		{CE96D768-CEF0-414C-8170-1834BC4DB44E} = {7A42C497-6F07-4B5E-9B4A-807D444A5277}
