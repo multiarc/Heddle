@@ -70,10 +70,6 @@ namespace Templates.Runtime
                     throw new TemplateCompileException("Cannot compile base C# generation templates",
                         InitErrors.Errors);
                 var code = CodeGenerator.Generate(context.CSharpContext);
-                //Directory.CreateDirectory("Code");
-                //var fileName = "Code\\" + (context.Options.TemplateName ?? string.Empty) + "_" +
-                //               context.CSharpContext.ClassGuid.ToString("N") + ".cs";
-                //File.WriteAllText(fileName, code, Encoding.UTF8);
                 context.CSharpContext.CompiledAssembly = GeneratedAssemblyCache.TryGetCached(code);
                 if (context.CSharpContext.CompiledAssembly != null)
                     return;

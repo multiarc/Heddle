@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.IO;
 using System.Reflection;
 using Templates.Data;
@@ -33,6 +34,33 @@ namespace Templates.Tests
         public void DisposeTest()
         {
 
+        }
+
+        public class OrderTest
+        {
+            public int Id { get; set; }
+        }
+
+        [Fact]
+        public void SubjectDynamicTest()
+        {
+            TtlTemplate.Configure(typeof(TtlTemplateTests).GetTypeInfo().Assembly);
+            var options = new TemplateOptions
+            {
+                AllowCSharp = true
+            };
+            var target = new TtlTemplate("<%" + Environment.NewLine + "<default> -> (Model)" + Environment.NewLine +
+                                         "{{ Order #@(Id)! }} :: dynamic" + Environment.NewLine + "%>",
+                new CompileContext(options));
+            Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
+            dynamic model = new ExpandoObject();
+            model.Model = new OrderTest
+            {
+                Id = 100
+            };
+            var actual = target.Generate(model);
+            var expected = " Order #100! ";
+            Assert.Equal(expected, actual);
         }
 
         [Fact]
@@ -138,7 +166,9 @@ namespace Templates.Tests
                     }
                 }
             };
-            var actual = target.Generate(testList);
+            dynamic model = new ExpandoObject();
+            model.Model = testList;
+            var actual = target.Generate(model);
             using (var writer = File.CreateText(@"TestTemplate/test-empty-override.html"))
             {
                 writer.Write(actual);

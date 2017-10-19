@@ -53,7 +53,7 @@
     }}
 }} :: Category
 
-<left> -> ()
+<left> -> (Model)
 {{
  <div class="left-content-pane">
      <strong>ARTICLES BY TOPIC</strong>
