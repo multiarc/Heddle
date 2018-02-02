@@ -16,8 +16,7 @@ namespace Templates.Runtime {
             if (property == null)
                 return null;
             MethodInfo methodInfo = property.GetGetMethod(true);
-            DynamicMethodGateDelegate result;
-            if (_cache.TryGetValue(methodInfo, out result))
+            if (_cache.TryGetValue(methodInfo, out var result))
                 return result;
             lock (LockObject)
             {
