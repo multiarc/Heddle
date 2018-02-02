@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
@@ -17,21 +18,13 @@ namespace Templates.Extensions
     [EncodeOutput]
     public class MoneyExtension : AbstractHtmlExtension
     {
-        private static volatile Dictionary<string, CultureInfo> _cultureCache = new Dictionary<string, CultureInfo>
-            (10, StringComparer.OrdinalIgnoreCase);
+        private static readonly ConcurrentDictionary<string, CultureInfo> CultureCache =
+            new ConcurrentDictionary<string, CultureInfo>
+                (StringComparer.OrdinalIgnoreCase);
 
         private static CultureInfo GetCultureInfo(string locale)
         {
-            CultureInfo result;
-            if (_cultureCache.TryGetValue(locale, out result))
-                return result;
-            var cultureInfo = new CultureInfo(locale);
-            lock (_cultureCache)
-            {
-                Dictionary<string, CultureInfo> newInfos = new Dictionary<string, CultureInfo>(_cultureCache) {{locale, cultureInfo}};
-                _cultureCache = newInfos;
-            }
-            return cultureInfo;
+            return CultureCache.GetOrAdd(locale, l => new CultureInfo(locale));
         }
 
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)

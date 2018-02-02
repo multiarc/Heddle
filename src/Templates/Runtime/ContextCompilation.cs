@@ -152,7 +152,7 @@ namespace Templates.Runtime
                     if (expressionCompilation.RuntimeCallParameter is CompiledParameter compiledParameter)
                     {
                         compiledParameter.ParameterImplementation =
-                            GatesCache.CreateCompiledDelegate(
+                            GatesCache.GetCompiledDelegate(
                                 classType.GetMethod(
                                     $"ProcessData_{expressionCompilation.ExtensionName}{methodNumber}",
                                     BindingFlags.Public | BindingFlags.Static),
