@@ -70,87 +70,99 @@ namespace Templates.Runtime
         public static void Compile(this CompileScope context)
         {
             Compile(context.CompileContext);
-            if (context.CompileContext.Options.AllowCSharp && context.CSharpContext.Methods.Count > 0 && !context.CSharpContext.Compiled)
+            if (context.CompileContext.Options.AllowCSharp && context.CSharpContext.Methods.Count > 0 &&
+                !context.CSharpContext.Compiled)
             {
                 if (!InitErrors.Success)
                     throw new TemplateCompileException("Cannot compile base C# generation templates",
                         InitErrors.Errors);
                 var code = CodeGenerator.Generate(context.CSharpContext);
-                
-                lock (LockObj)
+
+                // ReSharper disable once InconsistentlySynchronizedField
+                if (Cache.TryGetValue(code, out var asm))
                 {
-                    if (Cache.TryGetValue(code, out var asm))
-                    {
-                        context.CSharpContext.CompiledAssembly = asm;
-                    }
-                    else
-                    {
-                        var tree = CSharpSyntaxTree.ParseText(code);
-                        var compilation = CSharpCompilation.Create(
-                            context.CompileContext.ScopeType + "_" + context.CSharpContext.ClassGuid.ToString("N"),
-                            new[] {tree},
-                            AssemblyHelper.GetApplicationReferences(),
-                            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-                                .WithSpecificDiagnosticOptions(
-                                    new Dictionary<string, ReportDiagnostic>
-                                    {
-                                        {"CS1701", ReportDiagnostic.Suppress}, // Binding redirects
-                                        {"CS1702", ReportDiagnostic.Suppress},
-                                        {"CS1705", ReportDiagnostic.Suppress}
-                                    }).WithOptimizationLevel(OptimizationLevel.Release)
-                                .WithGeneralDiagnosticOption(ReportDiagnostic.Default).WithPlatform(Platform.AnyCpu));
-                        var diagnostics = compilation.GetDiagnostics();
-                        if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
-                        {
-                            context.CompileContext.CompileErrors.AddRange(FormatErrors(diagnostics,
-                                context.CSharpContext.Methods.First().Position));
-                            return;
-                        }
-
-                        using (var codeStream = new MemoryStream())
-                        {
-                            using (var symbolStream = new MemoryStream())
-                            {
-                                var results = compilation.Emit(codeStream, symbolStream,
-                                    options: new EmitOptions(
-                                        debugInformationFormat: DebugInformationFormat.PortablePdb));
-                                if (!results.Success)
-                                {
-                                    context.CompileContext.CompileErrors.AddRange(FormatErrors(results.Diagnostics,
-                                        context.CSharpContext.Methods.First().Position));
-                                    return;
-                                }
-
-                                codeStream.Seek(0, SeekOrigin.Begin);
-                                symbolStream.Seek(0, SeekOrigin.Begin);
-                                context.CSharpContext.CompiledAssembly =
-                                    new AssemblyHelper.TemplateLoadContext().Load(codeStream, symbolStream);
-                            }
-                        }
-                        Cache.TryAdd(code, context.CSharpContext.CompiledAssembly);
-                    }
-
-                    var classType =
-                        context.CSharpContext.CompiledAssembly.GetType(
-                            $"Templates.Runtime.CSE_{context.CSharpContext.ClassGuid:N}");
-                    var methodNumber = 0;
-                    foreach (var expressionCompilation in context.CSharpContext.Methods)
-                    {
-                        if (expressionCompilation.RuntimeCallParameter is CompiledParameter compiledParameter)
-                        {
-                            compiledParameter.ParameterImplementation =
-                                GatesCache.CreateCompiledDelegate(
-                                    classType.GetMethod(
-                                        $"ProcessData_{expressionCompilation.ExtensionName}{methodNumber}",
-                                        BindingFlags.Public | BindingFlags.Static),
-                                    expressionCompilation.ModelType.Type,
-                                    expressionCompilation.ChainedType.Type, expressionCompilation.RootModelType.Type);
-                            methodNumber++;
-                        }
-                    }
-
-                    context.CSharpContext.Compiled = true;
+                    context.CSharpContext.CompiledAssembly = asm;
                 }
+                else
+                {
+
+                    lock (LockObj)
+                    {
+                        if (Cache.TryGetValue(code, out asm))
+                        {
+                            context.CSharpContext.CompiledAssembly = asm;
+                        }
+                        else
+                        {
+                            var tree = CSharpSyntaxTree.ParseText(code);
+                            var compilation = CSharpCompilation.Create(
+                                context.CompileContext.ScopeType + "_" + context.CSharpContext.ClassGuid.ToString("N"),
+                                new[] {tree},
+                                AssemblyHelper.GetApplicationReferences(),
+                                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                                    .WithSpecificDiagnosticOptions(
+                                        new Dictionary<string, ReportDiagnostic>
+                                        {
+                                            {"CS1701", ReportDiagnostic.Suppress}, // Binding redirects
+                                            {"CS1702", ReportDiagnostic.Suppress},
+                                            {"CS1705", ReportDiagnostic.Suppress}
+                                        }).WithOptimizationLevel(OptimizationLevel.Release)
+                                    .WithGeneralDiagnosticOption(ReportDiagnostic.Default)
+                                    .WithPlatform(Platform.AnyCpu));
+                            var diagnostics = compilation.GetDiagnostics();
+                            if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
+                            {
+                                context.CompileContext.CompileErrors.AddRange(FormatErrors(diagnostics,
+                                    context.CSharpContext.Methods.First().Position));
+                                return;
+                            }
+
+                            using (var codeStream = new MemoryStream())
+                            {
+                                using (var symbolStream = new MemoryStream())
+                                {
+                                    var results = compilation.Emit(codeStream, symbolStream,
+                                        options: new EmitOptions(
+                                            debugInformationFormat: DebugInformationFormat.PortablePdb));
+                                    if (!results.Success)
+                                    {
+                                        context.CompileContext.CompileErrors.AddRange(FormatErrors(results.Diagnostics,
+                                            context.CSharpContext.Methods.First().Position));
+                                        return;
+                                    }
+
+                                    codeStream.Seek(0, SeekOrigin.Begin);
+                                    symbolStream.Seek(0, SeekOrigin.Begin);
+                                    context.CSharpContext.CompiledAssembly =
+                                        new AssemblyHelper.TemplateLoadContext().Load(codeStream, symbolStream);
+                                }
+                            }
+
+                            Cache.TryAdd(code, context.CSharpContext.CompiledAssembly);
+                        }
+                    }
+                }
+
+                var classType =
+                    context.CSharpContext.CompiledAssembly.GetType(
+                        $"Templates.Runtime.CSE_{context.CSharpContext.ClassGuid:N}");
+                var methodNumber = 0;
+                foreach (var expressionCompilation in context.CSharpContext.Methods)
+                {
+                    if (expressionCompilation.RuntimeCallParameter is CompiledParameter compiledParameter)
+                    {
+                        compiledParameter.ParameterImplementation =
+                            GatesCache.CreateCompiledDelegate(
+                                classType.GetMethod(
+                                    $"ProcessData_{expressionCompilation.ExtensionName}{methodNumber}",
+                                    BindingFlags.Public | BindingFlags.Static),
+                                expressionCompilation.ModelType.Type,
+                                expressionCompilation.ChainedType.Type, expressionCompilation.RootModelType.Type);
+                        methodNumber++;
+                    }
+                }
+
+                context.CSharpContext.Compiled = true;
             }
         }
 
