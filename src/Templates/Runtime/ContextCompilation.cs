@@ -77,81 +77,76 @@ namespace Templates.Runtime
                         InitErrors.Errors);
                 var code = CodeGenerator.Generate(context.CSharpContext);
                 
-                // ReSharper disable once InconsistentlySynchronizedField
-                if (Cache.TryGetValue(code, out var asm))
-                {
-                    context.CSharpContext.CompiledAssembly = asm;
-                    context.CSharpContext.Compiled = true;
-                    return;
-                }
-
                 lock (LockObj)
                 {
-                    if (Cache.TryGetValue(code, out asm))
+                    if (Cache.TryGetValue(code, out var asm))
                     {
                         context.CSharpContext.CompiledAssembly = asm;
-                        context.CSharpContext.Compiled = true;
-                        return;
                     }
-
-                    var tree = CSharpSyntaxTree.ParseText(code);
-                    var compilation = CSharpCompilation.Create(
-                        context.CompileContext.ScopeType + "_" + context.CSharpContext.ClassGuid.ToString("N"),
-                        new[] {tree},
-                        AssemblyHelper.GetApplicationReferences(),
-                        new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithSpecificDiagnosticOptions(
-                                new Dictionary<string, ReportDiagnostic>
-                                {
-                                    {"CS1701", ReportDiagnostic.Suppress}, // Binding redirects
-                                    {"CS1702", ReportDiagnostic.Suppress},
-                                    {"CS1705", ReportDiagnostic.Suppress}
-                                }).WithOptimizationLevel(OptimizationLevel.Release)
-                            .WithGeneralDiagnosticOption(ReportDiagnostic.Default).WithPlatform(Platform.AnyCpu));
-                    var diagnostics = compilation.GetDiagnostics();
-                    if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
+                    else
                     {
-                        context.CompileContext.CompileErrors.AddRange(FormatErrors(diagnostics,
-                            context.CSharpContext.Methods.First().Position));
-                        return;
-                    }
-
-                    using (var codeStream = new MemoryStream())
-                    {
-                        using (var symbolStream = new MemoryStream())
+                        var tree = CSharpSyntaxTree.ParseText(code);
+                        var compilation = CSharpCompilation.Create(
+                            context.CompileContext.ScopeType + "_" + context.CSharpContext.ClassGuid.ToString("N"),
+                            new[] {tree},
+                            AssemblyHelper.GetApplicationReferences(),
+                            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                                .WithSpecificDiagnosticOptions(
+                                    new Dictionary<string, ReportDiagnostic>
+                                    {
+                                        {"CS1701", ReportDiagnostic.Suppress}, // Binding redirects
+                                        {"CS1702", ReportDiagnostic.Suppress},
+                                        {"CS1705", ReportDiagnostic.Suppress}
+                                    }).WithOptimizationLevel(OptimizationLevel.Release)
+                                .WithGeneralDiagnosticOption(ReportDiagnostic.Default).WithPlatform(Platform.AnyCpu));
+                        var diagnostics = compilation.GetDiagnostics();
+                        if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
                         {
-                            var results = compilation.Emit(codeStream, symbolStream,
-                                options: new EmitOptions(debugInformationFormat: DebugInformationFormat.PortablePdb));
-                            if (!results.Success)
-                            {
-                                context.CompileContext.CompileErrors.AddRange(FormatErrors(results.Diagnostics,
-                                    context.CSharpContext.Methods.First().Position));
-                                return;
-                            }
-
-                            codeStream.Seek(0, SeekOrigin.Begin);
-                            symbolStream.Seek(0, SeekOrigin.Begin);
-                            context.CSharpContext.CompiledAssembly =
-                                new AssemblyHelper.TemplateLoadContext().Load(codeStream, symbolStream);
+                            context.CompileContext.CompileErrors.AddRange(FormatErrors(diagnostics,
+                                context.CSharpContext.Methods.First().Position));
+                            return;
                         }
-                    }
 
-                    Cache.TryAdd(code, context.CSharpContext.CompiledAssembly);
+                        using (var codeStream = new MemoryStream())
+                        {
+                            using (var symbolStream = new MemoryStream())
+                            {
+                                var results = compilation.Emit(codeStream, symbolStream,
+                                    options: new EmitOptions(
+                                        debugInformationFormat: DebugInformationFormat.PortablePdb));
+                                if (!results.Success)
+                                {
+                                    context.CompileContext.CompileErrors.AddRange(FormatErrors(results.Diagnostics,
+                                        context.CSharpContext.Methods.First().Position));
+                                    return;
+                                }
+
+                                codeStream.Seek(0, SeekOrigin.Begin);
+                                symbolStream.Seek(0, SeekOrigin.Begin);
+                                context.CSharpContext.CompiledAssembly =
+                                    new AssemblyHelper.TemplateLoadContext().Load(codeStream, symbolStream);
+                            }
+                        }
+                        Cache.TryAdd(code, context.CSharpContext.CompiledAssembly);
+                    }
 
                     var classType =
                         context.CSharpContext.CompiledAssembly.GetType(
                             $"Templates.Runtime.CSE_{context.CSharpContext.ClassGuid:N}");
-                    int methodNumber = 0;
+                    var methodNumber = 0;
                     foreach (var expressionCompilation in context.CSharpContext.Methods)
                     {
-                        var compiledParameter = expressionCompilation.RuntimeCallParameter as CompiledParameter;
-                        if (compiledParameter == null) continue;
-                        compiledParameter.ParameterImplementation =
-                            GatesCache.CreateCompiledDelegate(
-                                classType.GetMethod(
-                                    $"ProcessData_{expressionCompilation.ExtensionName}{methodNumber}",
-                                    BindingFlags.Public | BindingFlags.Static), expressionCompilation.ModelType.Type,
-                                expressionCompilation.ChainedType.Type, expressionCompilation.RootModelType.Type);
-                        methodNumber++;
+                        if (expressionCompilation.RuntimeCallParameter is CompiledParameter compiledParameter)
+                        {
+                            compiledParameter.ParameterImplementation =
+                                GatesCache.CreateCompiledDelegate(
+                                    classType.GetMethod(
+                                        $"ProcessData_{expressionCompilation.ExtensionName}{methodNumber}",
+                                        BindingFlags.Public | BindingFlags.Static),
+                                    expressionCompilation.ModelType.Type,
+                                    expressionCompilation.ChainedType.Type, expressionCompilation.RootModelType.Type);
+                            methodNumber++;
+                        }
                     }
 
                     context.CSharpContext.Compiled = true;
