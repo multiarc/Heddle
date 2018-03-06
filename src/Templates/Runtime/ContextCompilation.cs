@@ -131,10 +131,8 @@ namespace Templates.Runtime
                                         return;
                                     }
 
-                                    codeStream.Seek(0, SeekOrigin.Begin);
-                                    symbolStream.Seek(0, SeekOrigin.Begin);
                                     context.CSharpContext.CompiledAssembly =
-                                        new AssemblyHelper.TemplateLoadContext().Load(codeStream, symbolStream);
+                                        Assembly.Load(codeStream.ToArray(), symbolStream.ToArray());
                                 }
                             }
 

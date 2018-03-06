@@ -7,7 +7,6 @@ using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.DependencyModel;
 using Templates.Helpers;
-using System.Runtime.Loader;
 
 namespace Templates.Native
 {
@@ -20,19 +19,6 @@ namespace Templates.Native
 
         private static readonly List<MetadataReference> MetadataReferences;
         private static readonly List<Assembly> Assemblies;
-
-        internal class TemplateLoadContext : AssemblyLoadContext
-        {
-            protected override Assembly Load(AssemblyName assemblyName)
-            {
-                return Default.LoadFromAssemblyName(assemblyName);
-            }
-
-            public Assembly Load(Stream assembly, Stream assemblySymbols)
-            {
-                return LoadFromStream(assembly, assemblySymbols);
-            }
-        }
 
         private static void WalkReferenceAssemblies(Assembly current)
         {
@@ -48,7 +34,9 @@ namespace Templates.Native
                         try
                         {
                             var dependent = Assembly.Load(assemblyName);
-                            var dependentInfo = new Tuple<Assembly, MetadataReference>(dependent, CreateMetadataFileReference(dependent));
+                            var dependentInfo =
+                                new Tuple<Assembly, MetadataReference>(dependent,
+                                    CreateMetadataFileReference(dependent));
                             if (AssemblyCache.TryAdd(dependent.FullName, dependentInfo))
                             {
                                 MetadataReferences.Add(dependentInfo.Item2);
@@ -60,6 +48,9 @@ namespace Templates.Native
                         {
                         }
                         catch (ReflectionTypeLoadException)
+                        {
+                        }
+                        catch (FileLoadException)
                         {
                         }
                     }

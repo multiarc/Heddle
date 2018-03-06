@@ -33,7 +33,8 @@ namespace Templates.Tests
             var compilation = CSharpCompilation.Create(
                 Guid.NewGuid().ToString("N"), new[] {tree},
                 AssemblyHelper.GetApplicationReferences().Where(m => !m.Display.Contains("Templates")),
-                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithOptimizationLevel(OptimizationLevel.Release)
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                    .WithOptimizationLevel(OptimizationLevel.Release)
                     .WithGeneralDiagnosticOption(ReportDiagnostic.Default)
                     .WithPlatform(Platform.AnyCpu));
             var diagnostics = compilation.GetDiagnostics();
@@ -41,21 +42,23 @@ namespace Templates.Tests
             {
                 throw new Exception(string.Join("\n", diagnostics.Select(d => d.GetMessage())));
             }
+
             using (var codeStream = new MemoryStream())
             {
                 using (var symbolStream = new MemoryStream())
                 {
                     var results = compilation.Emit(codeStream, symbolStream,
-                            options: new EmitOptions(debugInformationFormat: DebugInformationFormat.PortablePdb));
+                        options: new EmitOptions(debugInformationFormat: DebugInformationFormat.PortablePdb));
                     if (!results.Success)
                     {
                         throw new Exception(string.Join("\n", diagnostics.Select(d => d.GetMessage())));
                     }
+
                     codeStream.Seek(0, SeekOrigin.Begin);
                     symbolStream.Seek(0, SeekOrigin.Begin);
                     //try
                     //{
-                    new AssemblyHelper.TemplateLoadContext().Load(codeStream, symbolStream);
+                    Assembly.Load(codeStream.ToArray(), symbolStream.ToArray());
                     //}
                     //catch (BadImageFormatException)
                     //{
