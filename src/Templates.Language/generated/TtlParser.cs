@@ -38,19 +38,19 @@ public partial class TtlParser : Parser {
 	public const int
 		TEXT=1, IMPORT_TOKEN=2, ID=3, ROOT_REF=4, MEMBER_P=5, OUT=6, SUB_START=7, 
 		SUB_CLOSE=8, CSHARP_END=9, CSHARP_TOKEN=10, CSHARP_START=11, DEF_STARTNAME=12, 
-		DEF_ENDNAME=13, DEF_TYPE=14, DELIM=15, DEF_START=16, DEF_CLOSE=17, COMMENT=18, 
-		RAW=19, OUT_PARAMSTART=20, OUT_PARAMEND=21, LINE_TERMINATE=22, DEF_OUTPUTONEND=23, 
-		START_COMMENT=24, DEF_COMMENT=25, DEF_WS=26, DEF_OUT_COMMENT=27, DEF_OUT_WS=28, 
-		IMPORT_WS=29, OUT_WS=30, CALL_COMMENT=31, CALL_OUT_WS=32;
+		DEF_ENDNAME=13, DELIM=14, DEF_START=15, DEF_CLOSE=16, COMMENT=17, RAW=18, 
+		OUT_PARAMSTART=19, OUT_PARAMEND=20, LINE_TERMINATE=21, DEF_OUT=22, DEF_TYPE=23, 
+		TEXT_WS=24, PRE_OUT_WS=25, IMPORT_WS=26, CALL_COMMENT=27, CALL_WS=28;
 	public const int
 		RULE_ttl = 0, RULE_comment = 1, RULE_raw = 2, RULE_definition = 3, RULE_def = 4, 
 		RULE_inherited_def = 5, RULE_simple_def = 6, RULE_default_chain = 7, RULE_import_block = 8, 
 		RULE_outblock = 9, RULE_chain = 10, RULE_call = 11, RULE_named_call = 12, 
-		RULE_unnamed_call = 13, RULE_csharp_expression = 14, RULE_subtemplate = 15;
+		RULE_unnamed_call = 13, RULE_csharp_expression = 14, RULE_subtemplate = 15, 
+		RULE_text = 16;
 	public static readonly string[] ruleNames = {
 		"ttl", "comment", "raw", "definition", "def", "inherited_def", "simple_def", 
 		"default_chain", "import_block", "outblock", "chain", "call", "named_call", 
-		"unnamed_call", "csharp_expression", "subtemplate"
+		"unnamed_call", "csharp_expression", "subtemplate", "text"
 	};
 
 	private static readonly string[] _LiteralNames = {
@@ -58,10 +58,9 @@ public partial class TtlParser : Parser {
 	private static readonly string[] _SymbolicNames = {
 		null, "TEXT", "IMPORT_TOKEN", "ID", "ROOT_REF", "MEMBER_P", "OUT", "SUB_START", 
 		"SUB_CLOSE", "CSHARP_END", "CSHARP_TOKEN", "CSHARP_START", "DEF_STARTNAME", 
-		"DEF_ENDNAME", "DEF_TYPE", "DELIM", "DEF_START", "DEF_CLOSE", "COMMENT", 
-		"RAW", "OUT_PARAMSTART", "OUT_PARAMEND", "LINE_TERMINATE", "DEF_OUTPUTONEND", 
-		"START_COMMENT", "DEF_COMMENT", "DEF_WS", "DEF_OUT_COMMENT", "DEF_OUT_WS", 
-		"IMPORT_WS", "OUT_WS", "CALL_COMMENT", "CALL_OUT_WS"
+		"DEF_ENDNAME", "DELIM", "DEF_START", "DEF_CLOSE", "COMMENT", "RAW", "OUT_PARAMSTART", 
+		"OUT_PARAMEND", "LINE_TERMINATE", "DEF_OUT", "DEF_TYPE", "TEXT_WS", "PRE_OUT_WS", 
+		"IMPORT_WS", "CALL_COMMENT", "CALL_WS"
 	};
 	public static readonly IVocabulary DefaultVocabulary = new Vocabulary(_LiteralNames, _SymbolicNames);
 
@@ -123,9 +122,11 @@ public partial class TtlParser : Parser {
 		public CommentContext comment(int i) {
 			return GetRuleContext<CommentContext>(i);
 		}
-		public IReadOnlyList<ITerminalNode> TEXT() { return GetTokens(TtlParser.TEXT); }
-		public ITerminalNode TEXT(int i) {
-			return GetToken(TtlParser.TEXT, i);
+		public IReadOnlyList<TextContext> text() {
+			return GetRuleContexts<TextContext>();
+		}
+		public TextContext text(int i) {
+			return GetRuleContext<TextContext>(i);
 		}
 		public TtlContext(ParserRuleContext parent, int invokingState)
 			: base(parent, invokingState)
@@ -146,55 +147,55 @@ public partial class TtlParser : Parser {
 	public TtlContext ttl() {
 		TtlContext _localctx = new TtlContext(Context, State);
 		EnterRule(_localctx, 0, RULE_ttl);
-		int _la;
 		try {
+			int _alt;
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 40;
+			State = 42;
 			ErrorHandler.Sync(this);
-			_la = TokenStream.LA(1);
-			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << TEXT) | (1L << IMPORT_TOKEN) | (1L << OUT) | (1L << DEF_START) | (1L << COMMENT) | (1L << RAW))) != 0)) {
-				{
-				State = 38;
-				ErrorHandler.Sync(this);
-				switch (TokenStream.LA(1)) {
-				case DEF_START:
+			_alt = Interpreter.AdaptivePredict(TokenStream,1,Context);
+			while ( _alt!=2 && _alt!=global::Antlr4.Runtime.Atn.ATN.INVALID_ALT_NUMBER ) {
+				if ( _alt==1 ) {
 					{
-					State = 32; definition();
+					State = 40;
+					ErrorHandler.Sync(this);
+					switch ( Interpreter.AdaptivePredict(TokenStream,0,Context) ) {
+					case 1:
+						{
+						State = 34; definition();
+						}
+						break;
+					case 2:
+						{
+						State = 35; import_block();
+						}
+						break;
+					case 3:
+						{
+						State = 36; outblock();
+						}
+						break;
+					case 4:
+						{
+						State = 37; raw();
+						}
+						break;
+					case 5:
+						{
+						State = 38; comment();
+						}
+						break;
+					case 6:
+						{
+						State = 39; text();
+						}
+						break;
 					}
-					break;
-				case IMPORT_TOKEN:
-					{
-					State = 33; import_block();
-					}
-					break;
-				case OUT:
-					{
-					State = 34; outblock();
-					}
-					break;
-				case RAW:
-					{
-					State = 35; raw();
-					}
-					break;
-				case COMMENT:
-					{
-					State = 36; comment();
-					}
-					break;
-				case TEXT:
-					{
-					State = 37; Match(TEXT);
-					}
-					break;
-				default:
-					throw new NoViableAltException(this);
+					} 
 				}
-				}
-				State = 42;
+				State = 44;
 				ErrorHandler.Sync(this);
-				_la = TokenStream.LA(1);
+				_alt = Interpreter.AdaptivePredict(TokenStream,1,Context);
 			}
 			}
 		}
@@ -233,7 +234,7 @@ public partial class TtlParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 43; Match(COMMENT);
+			State = 45; Match(COMMENT);
 			}
 		}
 		catch (RecognitionException re) {
@@ -271,7 +272,7 @@ public partial class TtlParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 45; Match(RAW);
+			State = 47; Match(RAW);
 			}
 		}
 		catch (RecognitionException re) {
@@ -317,21 +318,21 @@ public partial class TtlParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 47; Match(DEF_START);
-			State = 49;
+			State = 49; Match(DEF_START);
+			State = 51;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			do {
 				{
 				{
-				State = 48; def();
+				State = 50; def();
 				}
 				}
-				State = 51;
+				State = 53;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 			} while ( _la==DEF_STARTNAME );
-			State = 53; Match(DEF_CLOSE);
+			State = 55; Match(DEF_CLOSE);
 			}
 		}
 		catch (RecognitionException re) {
@@ -372,19 +373,19 @@ public partial class TtlParser : Parser {
 		DefContext _localctx = new DefContext(Context, State);
 		EnterRule(_localctx, 8, RULE_def);
 		try {
-			State = 57;
+			State = 59;
 			ErrorHandler.Sync(this);
 			switch ( Interpreter.AdaptivePredict(TokenStream,3,Context) ) {
 			case 1:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 55; simple_def();
+				State = 57; simple_def();
 				}
 				break;
 			case 2:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 56; inherited_def();
+				State = 58; inherited_def();
 				}
 				break;
 			}
@@ -436,49 +437,49 @@ public partial class TtlParser : Parser {
 		EnterRule(_localctx, 10, RULE_inherited_def);
 		int _la;
 		try {
-			State = 80;
+			State = 82;
 			ErrorHandler.Sync(this);
 			switch ( Interpreter.AdaptivePredict(TokenStream,6,Context) ) {
 			case 1:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 59; Match(DEF_STARTNAME);
-				State = 60; Match(ID);
-				State = 61; Match(DELIM);
+				State = 61; Match(DEF_STARTNAME);
 				State = 62; Match(ID);
-				State = 63; Match(DEF_ENDNAME);
-				State = 65;
+				State = 63; Match(DELIM);
+				State = 64; Match(ID);
+				State = 65; Match(DEF_ENDNAME);
+				State = 67;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
-				if (_la==DEF_OUTPUTONEND) {
+				if (_la==DEF_OUT) {
 					{
-					State = 64; default_chain();
+					State = 66; default_chain();
 					}
 				}
 
-				State = 67; subtemplate();
-				State = 68; Match(DEF_TYPE);
-				State = 69; Match(ID);
+				State = 69; subtemplate();
+				State = 70; Match(DEF_TYPE);
+				State = 71; Match(ID);
 				}
 				break;
 			case 2:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 71; Match(DEF_STARTNAME);
-				State = 72; Match(ID);
-				State = 73; Match(DELIM);
+				State = 73; Match(DEF_STARTNAME);
 				State = 74; Match(ID);
-				State = 75; Match(DEF_ENDNAME);
-				State = 77;
+				State = 75; Match(DELIM);
+				State = 76; Match(ID);
+				State = 77; Match(DEF_ENDNAME);
+				State = 79;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
-				if (_la==DEF_OUTPUTONEND) {
+				if (_la==DEF_OUT) {
 					{
-					State = 76; default_chain();
+					State = 78; default_chain();
 					}
 				}
 
-				State = 79; subtemplate();
+				State = 81; subtemplate();
 				}
 				break;
 			}
@@ -529,45 +530,45 @@ public partial class TtlParser : Parser {
 		EnterRule(_localctx, 12, RULE_simple_def);
 		int _la;
 		try {
-			State = 99;
+			State = 101;
 			ErrorHandler.Sync(this);
 			switch ( Interpreter.AdaptivePredict(TokenStream,9,Context) ) {
 			case 1:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 82; Match(DEF_STARTNAME);
-				State = 83; Match(ID);
-				State = 84; Match(DEF_ENDNAME);
-				State = 86;
+				State = 84; Match(DEF_STARTNAME);
+				State = 85; Match(ID);
+				State = 86; Match(DEF_ENDNAME);
+				State = 88;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
-				if (_la==DEF_OUTPUTONEND) {
+				if (_la==DEF_OUT) {
 					{
-					State = 85; default_chain();
+					State = 87; default_chain();
 					}
 				}
 
-				State = 88; subtemplate();
-				State = 89; Match(DEF_TYPE);
-				State = 90; Match(ID);
+				State = 90; subtemplate();
+				State = 91; Match(DEF_TYPE);
+				State = 92; Match(ID);
 				}
 				break;
 			case 2:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 92; Match(DEF_STARTNAME);
-				State = 93; Match(ID);
-				State = 94; Match(DEF_ENDNAME);
-				State = 96;
+				State = 94; Match(DEF_STARTNAME);
+				State = 95; Match(ID);
+				State = 96; Match(DEF_ENDNAME);
+				State = 98;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
-				if (_la==DEF_OUTPUTONEND) {
+				if (_la==DEF_OUT) {
 					{
-					State = 95; default_chain();
+					State = 97; default_chain();
 					}
 				}
 
-				State = 98; subtemplate();
+				State = 100; subtemplate();
 				}
 				break;
 			}
@@ -584,7 +585,7 @@ public partial class TtlParser : Parser {
 	}
 
 	public partial class Default_chainContext : ParserRuleContext {
-		public ITerminalNode DEF_OUTPUTONEND() { return GetToken(TtlParser.DEF_OUTPUTONEND, 0); }
+		public ITerminalNode DEF_OUT() { return GetToken(TtlParser.DEF_OUT, 0); }
 		public ChainContext chain() {
 			return GetRuleContext<ChainContext>(0);
 		}
@@ -610,8 +611,8 @@ public partial class TtlParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 101; Match(DEF_OUTPUTONEND);
-			State = 102; chain();
+			State = 103; Match(DEF_OUT);
+			State = 104; chain();
 			}
 		}
 		catch (RecognitionException re) {
@@ -652,10 +653,10 @@ public partial class TtlParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 104; Match(IMPORT_TOKEN);
-			State = 105; Match(SUB_START);
-			State = 106; Match(TEXT);
-			State = 107; Match(SUB_CLOSE);
+			State = 106; Match(IMPORT_TOKEN);
+			State = 107; Match(SUB_START);
+			State = 108; Match(TEXT);
+			State = 109; Match(SUB_CLOSE);
 			}
 		}
 		catch (RecognitionException re) {
@@ -699,40 +700,40 @@ public partial class TtlParser : Parser {
 		EnterRule(_localctx, 18, RULE_outblock);
 		int _la;
 		try {
-			State = 121;
+			State = 123;
 			ErrorHandler.Sync(this);
 			switch ( Interpreter.AdaptivePredict(TokenStream,12,Context) ) {
 			case 1:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 109; Match(OUT);
-				State = 110; chain();
-				State = 112;
+				State = 111; Match(OUT);
+				State = 112; chain();
+				State = 114;
 				ErrorHandler.Sync(this);
-				_la = TokenStream.LA(1);
-				if (_la==SUB_START) {
+				switch ( Interpreter.AdaptivePredict(TokenStream,10,Context) ) {
+				case 1:
 					{
-					State = 111; subtemplate();
+					State = 113; subtemplate();
 					}
+					break;
 				}
-
 				}
 				break;
 			case 2:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 114; Match(OUT);
-				State = 115; chain();
-				State = 117;
+				State = 116; Match(OUT);
+				State = 117; chain();
+				State = 119;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 				if (_la==SUB_START) {
 					{
-					State = 116; subtemplate();
+					State = 118; subtemplate();
 					}
 				}
 
-				State = 119; Match(LINE_TERMINATE);
+				State = 121; Match(LINE_TERMINATE);
 				}
 				break;
 			}
@@ -778,24 +779,26 @@ public partial class TtlParser : Parser {
 	public ChainContext chain() {
 		ChainContext _localctx = new ChainContext(Context, State);
 		EnterRule(_localctx, 20, RULE_chain);
-		int _la;
 		try {
+			int _alt;
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 123; call();
-			State = 128;
+			State = 125; call();
+			State = 130;
 			ErrorHandler.Sync(this);
-			_la = TokenStream.LA(1);
-			while (_la==DELIM) {
-				{
-				{
-				State = 124; Match(DELIM);
-				State = 125; call();
+			_alt = Interpreter.AdaptivePredict(TokenStream,13,Context);
+			while ( _alt!=2 && _alt!=global::Antlr4.Runtime.Atn.ATN.INVALID_ALT_NUMBER ) {
+				if ( _alt==1 ) {
+					{
+					{
+					State = 126; Match(DELIM);
+					State = 127; call();
+					}
+					} 
 				}
-				}
-				State = 130;
+				State = 132;
 				ErrorHandler.Sync(this);
-				_la = TokenStream.LA(1);
+				_alt = Interpreter.AdaptivePredict(TokenStream,13,Context);
 			}
 			}
 		}
@@ -837,19 +840,19 @@ public partial class TtlParser : Parser {
 		CallContext _localctx = new CallContext(Context, State);
 		EnterRule(_localctx, 22, RULE_call);
 		try {
-			State = 133;
+			State = 135;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case ID:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 131; named_call();
+				State = 133; named_call();
 				}
 				break;
 			case OUT_PARAMSTART:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 132; unnamed_call();
+				State = 134; unnamed_call();
 				}
 				break;
 			default:
@@ -907,84 +910,84 @@ public partial class TtlParser : Parser {
 		EnterRule(_localctx, 24, RULE_named_call);
 		int _la;
 		try {
-			State = 168;
+			State = 170;
 			ErrorHandler.Sync(this);
 			switch ( Interpreter.AdaptivePredict(TokenStream,19,Context) ) {
 			case 1:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 135; Match(ID);
-				State = 136; Match(OUT_PARAMSTART);
-				State = 138;
+				State = 137; Match(ID);
+				State = 138; Match(OUT_PARAMSTART);
+				State = 140;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 				if (_la==ROOT_REF) {
 					{
-					State = 137; Match(ROOT_REF);
+					State = 139; Match(ROOT_REF);
 					}
 				}
 
-				State = 141;
+				State = 143;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 				if (_la==ID) {
 					{
-					State = 140; Match(ID);
+					State = 142; Match(ID);
 					}
 				}
 
-				State = 143; Match(OUT_PARAMEND);
+				State = 145; Match(OUT_PARAMEND);
 				}
 				break;
 			case 2:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 144; Match(ID);
-				State = 145; Match(OUT_PARAMSTART);
-				State = 147;
+				State = 146; Match(ID);
+				State = 147; Match(OUT_PARAMSTART);
+				State = 149;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 				if (_la==ROOT_REF) {
 					{
-					State = 146; Match(ROOT_REF);
+					State = 148; Match(ROOT_REF);
 					}
 				}
 
-				State = 149; Match(ID);
-				State = 152;
+				State = 151; Match(ID);
+				State = 154;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 				do {
 					{
 					{
-					State = 150; Match(MEMBER_P);
-					State = 151; Match(ID);
+					State = 152; Match(MEMBER_P);
+					State = 153; Match(ID);
 					}
 					}
-					State = 154;
+					State = 156;
 					ErrorHandler.Sync(this);
 					_la = TokenStream.LA(1);
 				} while ( _la==MEMBER_P );
-				State = 156; Match(OUT_PARAMEND);
+				State = 158; Match(OUT_PARAMEND);
 				}
 				break;
 			case 3:
 				EnterOuterAlt(_localctx, 3);
 				{
-				State = 157; Match(ID);
-				State = 158; Match(OUT_PARAMSTART);
-				State = 159; chain();
-				State = 160; Match(OUT_PARAMEND);
+				State = 159; Match(ID);
+				State = 160; Match(OUT_PARAMSTART);
+				State = 161; chain();
+				State = 162; Match(OUT_PARAMEND);
 				}
 				break;
 			case 4:
 				EnterOuterAlt(_localctx, 4);
 				{
-				State = 162; Match(ID);
-				State = 163; Match(OUT_PARAMSTART);
-				State = 164; Match(CSHARP_START);
-				State = 165; csharp_expression();
-				State = 166; Match(OUT_PARAMEND);
+				State = 164; Match(ID);
+				State = 165; Match(OUT_PARAMSTART);
+				State = 166; Match(CSHARP_START);
+				State = 167; csharp_expression();
+				State = 168; Match(OUT_PARAMEND);
 				}
 				break;
 			}
@@ -1040,80 +1043,80 @@ public partial class TtlParser : Parser {
 		EnterRule(_localctx, 26, RULE_unnamed_call);
 		int _la;
 		try {
-			State = 199;
+			State = 201;
 			ErrorHandler.Sync(this);
 			switch ( Interpreter.AdaptivePredict(TokenStream,24,Context) ) {
 			case 1:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 170; Match(OUT_PARAMSTART);
-				State = 172;
+				State = 172; Match(OUT_PARAMSTART);
+				State = 174;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 				if (_la==ROOT_REF) {
 					{
-					State = 171; Match(ROOT_REF);
+					State = 173; Match(ROOT_REF);
 					}
 				}
 
-				State = 175;
+				State = 177;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 				if (_la==ID) {
 					{
-					State = 174; Match(ID);
+					State = 176; Match(ID);
 					}
 				}
 
-				State = 177; Match(OUT_PARAMEND);
+				State = 179; Match(OUT_PARAMEND);
 				}
 				break;
 			case 2:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 178; Match(OUT_PARAMSTART);
-				State = 180;
+				State = 180; Match(OUT_PARAMSTART);
+				State = 182;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 				if (_la==ROOT_REF) {
 					{
-					State = 179; Match(ROOT_REF);
+					State = 181; Match(ROOT_REF);
 					}
 				}
 
-				State = 182; Match(ID);
-				State = 185;
+				State = 184; Match(ID);
+				State = 187;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 				do {
 					{
 					{
-					State = 183; Match(MEMBER_P);
-					State = 184; Match(ID);
+					State = 185; Match(MEMBER_P);
+					State = 186; Match(ID);
 					}
 					}
-					State = 187;
+					State = 189;
 					ErrorHandler.Sync(this);
 					_la = TokenStream.LA(1);
 				} while ( _la==MEMBER_P );
-				State = 189; Match(OUT_PARAMEND);
+				State = 191; Match(OUT_PARAMEND);
 				}
 				break;
 			case 3:
 				EnterOuterAlt(_localctx, 3);
 				{
-				State = 190; Match(OUT_PARAMSTART);
-				State = 191; chain();
-				State = 192; Match(OUT_PARAMEND);
+				State = 192; Match(OUT_PARAMSTART);
+				State = 193; chain();
+				State = 194; Match(OUT_PARAMEND);
 				}
 				break;
 			case 4:
 				EnterOuterAlt(_localctx, 4);
 				{
-				State = 194; Match(OUT_PARAMSTART);
-				State = 195; Match(CSHARP_START);
-				State = 196; csharp_expression();
-				State = 197; Match(OUT_PARAMEND);
+				State = 196; Match(OUT_PARAMSTART);
+				State = 197; Match(CSHARP_START);
+				State = 198; csharp_expression();
+				State = 199; Match(OUT_PARAMEND);
 				}
 				break;
 			}
@@ -1157,16 +1160,16 @@ public partial class TtlParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 202;
+			State = 204;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			do {
 				{
 				{
-				State = 201; Match(CSHARP_TOKEN);
+				State = 203; Match(CSHARP_TOKEN);
 				}
 				}
-				State = 204;
+				State = 206;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 			} while ( _la==CSHARP_TOKEN );
@@ -1211,9 +1214,47 @@ public partial class TtlParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 206; Match(SUB_START);
-			State = 207; ttl();
-			State = 208; Match(SUB_CLOSE);
+			State = 208; Match(SUB_START);
+			State = 209; ttl();
+			State = 210; Match(SUB_CLOSE);
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			ErrorHandler.ReportError(this, re);
+			ErrorHandler.Recover(this, re);
+		}
+		finally {
+			ExitRule();
+		}
+		return _localctx;
+	}
+
+	public partial class TextContext : ParserRuleContext {
+		public TextContext(ParserRuleContext parent, int invokingState)
+			: base(parent, invokingState)
+		{
+		}
+		public override int RuleIndex { get { return RULE_text; } }
+		public override void EnterRule(IParseTreeListener listener) {
+			ITtlParserListener typedListener = listener as ITtlParserListener;
+			if (typedListener != null) typedListener.EnterText(this);
+		}
+		public override void ExitRule(IParseTreeListener listener) {
+			ITtlParserListener typedListener = listener as ITtlParserListener;
+			if (typedListener != null) typedListener.ExitText(this);
+		}
+	}
+
+	[RuleVersion(0)]
+	public TextContext text() {
+		TextContext _localctx = new TextContext(Context, State);
+		EnterRule(_localctx, 32, RULE_text);
+		try {
+			EnterOuterAlt(_localctx, 1);
+			{
+			State = 212;
+			MatchWildcard();
 			}
 		}
 		catch (RecognitionException re) {
@@ -1231,97 +1272,98 @@ public partial class TtlParser : Parser {
 	private static string _serializeATN()
 	{
 	    StringBuilder sb = new StringBuilder();
-	    sb.Append("\x3\x430\xD6D1\x8206\xAD2D\x4417\xAEF1\x8D80\xAADD\x3\"\xD5");
-		sb.Append("\x4\x2\t\x2\x4\x3\t\x3\x4\x4\t\x4\x4\x5\t\x5\x4\x6\t\x6\x4\a");
-		sb.Append("\t\a\x4\b\t\b\x4\t\t\t\x4\n\t\n\x4\v\t\v\x4\f\t\f\x4\r\t\r\x4");
-		sb.Append("\xE\t\xE\x4\xF\t\xF\x4\x10\t\x10\x4\x11\t\x11\x3\x2\x3\x2\x3");
-		sb.Append("\x2\x3\x2\x3\x2\x3\x2\a\x2)\n\x2\f\x2\xE\x2,\v\x2\x3\x3\x3\x3");
-		sb.Append("\x3\x4\x3\x4\x3\x5\x3\x5\x6\x5\x34\n\x5\r\x5\xE\x5\x35\x3\x5");
-		sb.Append("\x3\x5\x3\x6\x3\x6\x5\x6<\n\x6\x3\a\x3\a\x3\a\x3\a\x3\a\x3\a");
-		sb.Append("\x5\a\x44\n\a\x3\a\x3\a\x3\a\x3\a\x3\a\x3\a\x3\a\x3\a\x3\a\x3");
-		sb.Append("\a\x5\aP\n\a\x3\a\x5\aS\n\a\x3\b\x3\b\x3\b\x3\b\x5\bY\n\b\x3");
-		sb.Append("\b\x3\b\x3\b\x3\b\x3\b\x3\b\x3\b\x3\b\x5\b\x63\n\b\x3\b\x5\b");
-		sb.Append("\x66\n\b\x3\t\x3\t\x3\t\x3\n\x3\n\x3\n\x3\n\x3\n\x3\v\x3\v\x3");
-		sb.Append("\v\x5\vs\n\v\x3\v\x3\v\x3\v\x5\vx\n\v\x3\v\x3\v\x5\v|\n\v\x3");
-		sb.Append("\f\x3\f\x3\f\a\f\x81\n\f\f\f\xE\f\x84\v\f\x3\r\x3\r\x5\r\x88");
-		sb.Append("\n\r\x3\xE\x3\xE\x3\xE\x5\xE\x8D\n\xE\x3\xE\x5\xE\x90\n\xE\x3");
-		sb.Append("\xE\x3\xE\x3\xE\x3\xE\x5\xE\x96\n\xE\x3\xE\x3\xE\x3\xE\x6\xE");
-		sb.Append("\x9B\n\xE\r\xE\xE\xE\x9C\x3\xE\x3\xE\x3\xE\x3\xE\x3\xE\x3\xE");
-		sb.Append("\x3\xE\x3\xE\x3\xE\x3\xE\x3\xE\x3\xE\x5\xE\xAB\n\xE\x3\xF\x3");
-		sb.Append("\xF\x5\xF\xAF\n\xF\x3\xF\x5\xF\xB2\n\xF\x3\xF\x3\xF\x3\xF\x5");
-		sb.Append("\xF\xB7\n\xF\x3\xF\x3\xF\x3\xF\x6\xF\xBC\n\xF\r\xF\xE\xF\xBD");
-		sb.Append("\x3\xF\x3\xF\x3\xF\x3\xF\x3\xF\x3\xF\x3\xF\x3\xF\x3\xF\x3\xF");
-		sb.Append("\x5\xF\xCA\n\xF\x3\x10\x6\x10\xCD\n\x10\r\x10\xE\x10\xCE\x3");
-		sb.Append("\x11\x3\x11\x3\x11\x3\x11\x3\x11\x2\x2\x12\x2\x4\x6\b\n\f\xE");
-		sb.Append("\x10\x12\x14\x16\x18\x1A\x1C\x1E \x2\x2\xE6\x2*\x3\x2\x2\x2");
-		sb.Append("\x4-\x3\x2\x2\x2\x6/\x3\x2\x2\x2\b\x31\x3\x2\x2\x2\n;\x3\x2");
-		sb.Append("\x2\x2\fR\x3\x2\x2\x2\xE\x65\x3\x2\x2\x2\x10g\x3\x2\x2\x2\x12");
-		sb.Append("j\x3\x2\x2\x2\x14{\x3\x2\x2\x2\x16}\x3\x2\x2\x2\x18\x87\x3\x2");
-		sb.Append("\x2\x2\x1A\xAA\x3\x2\x2\x2\x1C\xC9\x3\x2\x2\x2\x1E\xCC\x3\x2");
-		sb.Append("\x2\x2 \xD0\x3\x2\x2\x2\")\x5\b\x5\x2#)\x5\x12\n\x2$)\x5\x14");
-		sb.Append("\v\x2%)\x5\x6\x4\x2&)\x5\x4\x3\x2\')\a\x3\x2\x2(\"\x3\x2\x2");
-		sb.Append("\x2(#\x3\x2\x2\x2($\x3\x2\x2\x2(%\x3\x2\x2\x2(&\x3\x2\x2\x2");
-		sb.Append("(\'\x3\x2\x2\x2),\x3\x2\x2\x2*(\x3\x2\x2\x2*+\x3\x2\x2\x2+\x3");
-		sb.Append("\x3\x2\x2\x2,*\x3\x2\x2\x2-.\a\x14\x2\x2.\x5\x3\x2\x2\x2/\x30");
-		sb.Append("\a\x15\x2\x2\x30\a\x3\x2\x2\x2\x31\x33\a\x12\x2\x2\x32\x34\x5");
-		sb.Append("\n\x6\x2\x33\x32\x3\x2\x2\x2\x34\x35\x3\x2\x2\x2\x35\x33\x3");
-		sb.Append("\x2\x2\x2\x35\x36\x3\x2\x2\x2\x36\x37\x3\x2\x2\x2\x37\x38\a");
-		sb.Append("\x13\x2\x2\x38\t\x3\x2\x2\x2\x39<\x5\xE\b\x2:<\x5\f\a\x2;\x39");
-		sb.Append("\x3\x2\x2\x2;:\x3\x2\x2\x2<\v\x3\x2\x2\x2=>\a\xE\x2\x2>?\a\x5");
-		sb.Append("\x2\x2?@\a\x11\x2\x2@\x41\a\x5\x2\x2\x41\x43\a\xF\x2\x2\x42");
-		sb.Append("\x44\x5\x10\t\x2\x43\x42\x3\x2\x2\x2\x43\x44\x3\x2\x2\x2\x44");
-		sb.Append("\x45\x3\x2\x2\x2\x45\x46\x5 \x11\x2\x46G\a\x10\x2\x2GH\a\x5");
-		sb.Append("\x2\x2HS\x3\x2\x2\x2IJ\a\xE\x2\x2JK\a\x5\x2\x2KL\a\x11\x2\x2");
-		sb.Append("LM\a\x5\x2\x2MO\a\xF\x2\x2NP\x5\x10\t\x2ON\x3\x2\x2\x2OP\x3");
-		sb.Append("\x2\x2\x2PQ\x3\x2\x2\x2QS\x5 \x11\x2R=\x3\x2\x2\x2RI\x3\x2\x2");
-		sb.Append("\x2S\r\x3\x2\x2\x2TU\a\xE\x2\x2UV\a\x5\x2\x2VX\a\xF\x2\x2WY");
-		sb.Append("\x5\x10\t\x2XW\x3\x2\x2\x2XY\x3\x2\x2\x2YZ\x3\x2\x2\x2Z[\x5");
-		sb.Append(" \x11\x2[\\\a\x10\x2\x2\\]\a\x5\x2\x2]\x66\x3\x2\x2\x2^_\a\xE");
-		sb.Append("\x2\x2_`\a\x5\x2\x2`\x62\a\xF\x2\x2\x61\x63\x5\x10\t\x2\x62");
-		sb.Append("\x61\x3\x2\x2\x2\x62\x63\x3\x2\x2\x2\x63\x64\x3\x2\x2\x2\x64");
-		sb.Append("\x66\x5 \x11\x2\x65T\x3\x2\x2\x2\x65^\x3\x2\x2\x2\x66\xF\x3");
-		sb.Append("\x2\x2\x2gh\a\x19\x2\x2hi\x5\x16\f\x2i\x11\x3\x2\x2\x2jk\a\x4");
-		sb.Append("\x2\x2kl\a\t\x2\x2lm\a\x3\x2\x2mn\a\n\x2\x2n\x13\x3\x2\x2\x2");
-		sb.Append("op\a\b\x2\x2pr\x5\x16\f\x2qs\x5 \x11\x2rq\x3\x2\x2\x2rs\x3\x2");
-		sb.Append("\x2\x2s|\x3\x2\x2\x2tu\a\b\x2\x2uw\x5\x16\f\x2vx\x5 \x11\x2");
-		sb.Append("wv\x3\x2\x2\x2wx\x3\x2\x2\x2xy\x3\x2\x2\x2yz\a\x18\x2\x2z|\x3");
-		sb.Append("\x2\x2\x2{o\x3\x2\x2\x2{t\x3\x2\x2\x2|\x15\x3\x2\x2\x2}\x82");
-		sb.Append("\x5\x18\r\x2~\x7F\a\x11\x2\x2\x7F\x81\x5\x18\r\x2\x80~\x3\x2");
-		sb.Append("\x2\x2\x81\x84\x3\x2\x2\x2\x82\x80\x3\x2\x2\x2\x82\x83\x3\x2");
-		sb.Append("\x2\x2\x83\x17\x3\x2\x2\x2\x84\x82\x3\x2\x2\x2\x85\x88\x5\x1A");
-		sb.Append("\xE\x2\x86\x88\x5\x1C\xF\x2\x87\x85\x3\x2\x2\x2\x87\x86\x3\x2");
-		sb.Append("\x2\x2\x88\x19\x3\x2\x2\x2\x89\x8A\a\x5\x2\x2\x8A\x8C\a\x16");
-		sb.Append("\x2\x2\x8B\x8D\a\x6\x2\x2\x8C\x8B\x3\x2\x2\x2\x8C\x8D\x3\x2");
-		sb.Append("\x2\x2\x8D\x8F\x3\x2\x2\x2\x8E\x90\a\x5\x2\x2\x8F\x8E\x3\x2");
-		sb.Append("\x2\x2\x8F\x90\x3\x2\x2\x2\x90\x91\x3\x2\x2\x2\x91\xAB\a\x17");
-		sb.Append("\x2\x2\x92\x93\a\x5\x2\x2\x93\x95\a\x16\x2\x2\x94\x96\a\x6\x2");
-		sb.Append("\x2\x95\x94\x3\x2\x2\x2\x95\x96\x3\x2\x2\x2\x96\x97\x3\x2\x2");
-		sb.Append("\x2\x97\x9A\a\x5\x2\x2\x98\x99\a\a\x2\x2\x99\x9B\a\x5\x2\x2");
-		sb.Append("\x9A\x98\x3\x2\x2\x2\x9B\x9C\x3\x2\x2\x2\x9C\x9A\x3\x2\x2\x2");
-		sb.Append("\x9C\x9D\x3\x2\x2\x2\x9D\x9E\x3\x2\x2\x2\x9E\xAB\a\x17\x2\x2");
-		sb.Append("\x9F\xA0\a\x5\x2\x2\xA0\xA1\a\x16\x2\x2\xA1\xA2\x5\x16\f\x2");
-		sb.Append("\xA2\xA3\a\x17\x2\x2\xA3\xAB\x3\x2\x2\x2\xA4\xA5\a\x5\x2\x2");
-		sb.Append("\xA5\xA6\a\x16\x2\x2\xA6\xA7\a\r\x2\x2\xA7\xA8\x5\x1E\x10\x2");
-		sb.Append("\xA8\xA9\a\x17\x2\x2\xA9\xAB\x3\x2\x2\x2\xAA\x89\x3\x2\x2\x2");
-		sb.Append("\xAA\x92\x3\x2\x2\x2\xAA\x9F\x3\x2\x2\x2\xAA\xA4\x3\x2\x2\x2");
-		sb.Append("\xAB\x1B\x3\x2\x2\x2\xAC\xAE\a\x16\x2\x2\xAD\xAF\a\x6\x2\x2");
-		sb.Append("\xAE\xAD\x3\x2\x2\x2\xAE\xAF\x3\x2\x2\x2\xAF\xB1\x3\x2\x2\x2");
-		sb.Append("\xB0\xB2\a\x5\x2\x2\xB1\xB0\x3\x2\x2\x2\xB1\xB2\x3\x2\x2\x2");
-		sb.Append("\xB2\xB3\x3\x2\x2\x2\xB3\xCA\a\x17\x2\x2\xB4\xB6\a\x16\x2\x2");
-		sb.Append("\xB5\xB7\a\x6\x2\x2\xB6\xB5\x3\x2\x2\x2\xB6\xB7\x3\x2\x2\x2");
-		sb.Append("\xB7\xB8\x3\x2\x2\x2\xB8\xBB\a\x5\x2\x2\xB9\xBA\a\a\x2\x2\xBA");
-		sb.Append("\xBC\a\x5\x2\x2\xBB\xB9\x3\x2\x2\x2\xBC\xBD\x3\x2\x2\x2\xBD");
-		sb.Append("\xBB\x3\x2\x2\x2\xBD\xBE\x3\x2\x2\x2\xBE\xBF\x3\x2\x2\x2\xBF");
-		sb.Append("\xCA\a\x17\x2\x2\xC0\xC1\a\x16\x2\x2\xC1\xC2\x5\x16\f\x2\xC2");
-		sb.Append("\xC3\a\x17\x2\x2\xC3\xCA\x3\x2\x2\x2\xC4\xC5\a\x16\x2\x2\xC5");
-		sb.Append("\xC6\a\r\x2\x2\xC6\xC7\x5\x1E\x10\x2\xC7\xC8\a\x17\x2\x2\xC8");
-		sb.Append("\xCA\x3\x2\x2\x2\xC9\xAC\x3\x2\x2\x2\xC9\xB4\x3\x2\x2\x2\xC9");
-		sb.Append("\xC0\x3\x2\x2\x2\xC9\xC4\x3\x2\x2\x2\xCA\x1D\x3\x2\x2\x2\xCB");
-		sb.Append("\xCD\a\f\x2\x2\xCC\xCB\x3\x2\x2\x2\xCD\xCE\x3\x2\x2\x2\xCE\xCC");
-		sb.Append("\x3\x2\x2\x2\xCE\xCF\x3\x2\x2\x2\xCF\x1F\x3\x2\x2\x2\xD0\xD1");
-		sb.Append("\a\t\x2\x2\xD1\xD2\x5\x2\x2\x2\xD2\xD3\a\n\x2\x2\xD3!\x3\x2");
-		sb.Append("\x2\x2\x1C(*\x35;\x43ORX\x62\x65rw{\x82\x87\x8C\x8F\x95\x9C");
-		sb.Append("\xAA\xAE\xB1\xB6\xBD\xC9\xCE");
+	    sb.Append("\x3\x430\xD6D1\x8206\xAD2D\x4417\xAEF1\x8D80\xAADD\x3\x1E");
+		sb.Append("\xD9\x4\x2\t\x2\x4\x3\t\x3\x4\x4\t\x4\x4\x5\t\x5\x4\x6\t\x6");
+		sb.Append("\x4\a\t\a\x4\b\t\b\x4\t\t\t\x4\n\t\n\x4\v\t\v\x4\f\t\f\x4\r");
+		sb.Append("\t\r\x4\xE\t\xE\x4\xF\t\xF\x4\x10\t\x10\x4\x11\t\x11\x4\x12");
+		sb.Append("\t\x12\x3\x2\x3\x2\x3\x2\x3\x2\x3\x2\x3\x2\a\x2+\n\x2\f\x2\xE");
+		sb.Append("\x2.\v\x2\x3\x3\x3\x3\x3\x4\x3\x4\x3\x5\x3\x5\x6\x5\x36\n\x5");
+		sb.Append("\r\x5\xE\x5\x37\x3\x5\x3\x5\x3\x6\x3\x6\x5\x6>\n\x6\x3\a\x3");
+		sb.Append("\a\x3\a\x3\a\x3\a\x3\a\x5\a\x46\n\a\x3\a\x3\a\x3\a\x3\a\x3\a");
+		sb.Append("\x3\a\x3\a\x3\a\x3\a\x3\a\x5\aR\n\a\x3\a\x5\aU\n\a\x3\b\x3\b");
+		sb.Append("\x3\b\x3\b\x5\b[\n\b\x3\b\x3\b\x3\b\x3\b\x3\b\x3\b\x3\b\x3\b");
+		sb.Append("\x5\b\x65\n\b\x3\b\x5\bh\n\b\x3\t\x3\t\x3\t\x3\n\x3\n\x3\n\x3");
+		sb.Append("\n\x3\n\x3\v\x3\v\x3\v\x5\vu\n\v\x3\v\x3\v\x3\v\x5\vz\n\v\x3");
+		sb.Append("\v\x3\v\x5\v~\n\v\x3\f\x3\f\x3\f\a\f\x83\n\f\f\f\xE\f\x86\v");
+		sb.Append("\f\x3\r\x3\r\x5\r\x8A\n\r\x3\xE\x3\xE\x3\xE\x5\xE\x8F\n\xE\x3");
+		sb.Append("\xE\x5\xE\x92\n\xE\x3\xE\x3\xE\x3\xE\x3\xE\x5\xE\x98\n\xE\x3");
+		sb.Append("\xE\x3\xE\x3\xE\x6\xE\x9D\n\xE\r\xE\xE\xE\x9E\x3\xE\x3\xE\x3");
+		sb.Append("\xE\x3\xE\x3\xE\x3\xE\x3\xE\x3\xE\x3\xE\x3\xE\x3\xE\x3\xE\x5");
+		sb.Append("\xE\xAD\n\xE\x3\xF\x3\xF\x5\xF\xB1\n\xF\x3\xF\x5\xF\xB4\n\xF");
+		sb.Append("\x3\xF\x3\xF\x3\xF\x5\xF\xB9\n\xF\x3\xF\x3\xF\x3\xF\x6\xF\xBE");
+		sb.Append("\n\xF\r\xF\xE\xF\xBF\x3\xF\x3\xF\x3\xF\x3\xF\x3\xF\x3\xF\x3");
+		sb.Append("\xF\x3\xF\x3\xF\x3\xF\x5\xF\xCC\n\xF\x3\x10\x6\x10\xCF\n\x10");
+		sb.Append("\r\x10\xE\x10\xD0\x3\x11\x3\x11\x3\x11\x3\x11\x3\x12\x3\x12");
+		sb.Append("\x3\x12\x2\x2\x13\x2\x4\x6\b\n\f\xE\x10\x12\x14\x16\x18\x1A");
+		sb.Append("\x1C\x1E \"\x2\x2\xE9\x2,\x3\x2\x2\x2\x4/\x3\x2\x2\x2\x6\x31");
+		sb.Append("\x3\x2\x2\x2\b\x33\x3\x2\x2\x2\n=\x3\x2\x2\x2\fT\x3\x2\x2\x2");
+		sb.Append("\xEg\x3\x2\x2\x2\x10i\x3\x2\x2\x2\x12l\x3\x2\x2\x2\x14}\x3\x2");
+		sb.Append("\x2\x2\x16\x7F\x3\x2\x2\x2\x18\x89\x3\x2\x2\x2\x1A\xAC\x3\x2");
+		sb.Append("\x2\x2\x1C\xCB\x3\x2\x2\x2\x1E\xCE\x3\x2\x2\x2 \xD2\x3\x2\x2");
+		sb.Append("\x2\"\xD6\x3\x2\x2\x2$+\x5\b\x5\x2%+\x5\x12\n\x2&+\x5\x14\v");
+		sb.Append("\x2\'+\x5\x6\x4\x2(+\x5\x4\x3\x2)+\x5\"\x12\x2*$\x3\x2\x2\x2");
+		sb.Append("*%\x3\x2\x2\x2*&\x3\x2\x2\x2*\'\x3\x2\x2\x2*(\x3\x2\x2\x2*)");
+		sb.Append("\x3\x2\x2\x2+.\x3\x2\x2\x2,*\x3\x2\x2\x2,-\x3\x2\x2\x2-\x3\x3");
+		sb.Append("\x2\x2\x2.,\x3\x2\x2\x2/\x30\a\x13\x2\x2\x30\x5\x3\x2\x2\x2");
+		sb.Append("\x31\x32\a\x14\x2\x2\x32\a\x3\x2\x2\x2\x33\x35\a\x11\x2\x2\x34");
+		sb.Append("\x36\x5\n\x6\x2\x35\x34\x3\x2\x2\x2\x36\x37\x3\x2\x2\x2\x37");
+		sb.Append("\x35\x3\x2\x2\x2\x37\x38\x3\x2\x2\x2\x38\x39\x3\x2\x2\x2\x39");
+		sb.Append(":\a\x12\x2\x2:\t\x3\x2\x2\x2;>\x5\xE\b\x2<>\x5\f\a\x2=;\x3\x2");
+		sb.Append("\x2\x2=<\x3\x2\x2\x2>\v\x3\x2\x2\x2?@\a\xE\x2\x2@\x41\a\x5\x2");
+		sb.Append("\x2\x41\x42\a\x10\x2\x2\x42\x43\a\x5\x2\x2\x43\x45\a\xF\x2\x2");
+		sb.Append("\x44\x46\x5\x10\t\x2\x45\x44\x3\x2\x2\x2\x45\x46\x3\x2\x2\x2");
+		sb.Append("\x46G\x3\x2\x2\x2GH\x5 \x11\x2HI\a\x19\x2\x2IJ\a\x5\x2\x2JU");
+		sb.Append("\x3\x2\x2\x2KL\a\xE\x2\x2LM\a\x5\x2\x2MN\a\x10\x2\x2NO\a\x5");
+		sb.Append("\x2\x2OQ\a\xF\x2\x2PR\x5\x10\t\x2QP\x3\x2\x2\x2QR\x3\x2\x2\x2");
+		sb.Append("RS\x3\x2\x2\x2SU\x5 \x11\x2T?\x3\x2\x2\x2TK\x3\x2\x2\x2U\r\x3");
+		sb.Append("\x2\x2\x2VW\a\xE\x2\x2WX\a\x5\x2\x2XZ\a\xF\x2\x2Y[\x5\x10\t");
+		sb.Append("\x2ZY\x3\x2\x2\x2Z[\x3\x2\x2\x2[\\\x3\x2\x2\x2\\]\x5 \x11\x2");
+		sb.Append("]^\a\x19\x2\x2^_\a\x5\x2\x2_h\x3\x2\x2\x2`\x61\a\xE\x2\x2\x61");
+		sb.Append("\x62\a\x5\x2\x2\x62\x64\a\xF\x2\x2\x63\x65\x5\x10\t\x2\x64\x63");
+		sb.Append("\x3\x2\x2\x2\x64\x65\x3\x2\x2\x2\x65\x66\x3\x2\x2\x2\x66h\x5");
+		sb.Append(" \x11\x2gV\x3\x2\x2\x2g`\x3\x2\x2\x2h\xF\x3\x2\x2\x2ij\a\x18");
+		sb.Append("\x2\x2jk\x5\x16\f\x2k\x11\x3\x2\x2\x2lm\a\x4\x2\x2mn\a\t\x2");
+		sb.Append("\x2no\a\x3\x2\x2op\a\n\x2\x2p\x13\x3\x2\x2\x2qr\a\b\x2\x2rt");
+		sb.Append("\x5\x16\f\x2su\x5 \x11\x2ts\x3\x2\x2\x2tu\x3\x2\x2\x2u~\x3\x2");
+		sb.Append("\x2\x2vw\a\b\x2\x2wy\x5\x16\f\x2xz\x5 \x11\x2yx\x3\x2\x2\x2");
+		sb.Append("yz\x3\x2\x2\x2z{\x3\x2\x2\x2{|\a\x17\x2\x2|~\x3\x2\x2\x2}q\x3");
+		sb.Append("\x2\x2\x2}v\x3\x2\x2\x2~\x15\x3\x2\x2\x2\x7F\x84\x5\x18\r\x2");
+		sb.Append("\x80\x81\a\x10\x2\x2\x81\x83\x5\x18\r\x2\x82\x80\x3\x2\x2\x2");
+		sb.Append("\x83\x86\x3\x2\x2\x2\x84\x82\x3\x2\x2\x2\x84\x85\x3\x2\x2\x2");
+		sb.Append("\x85\x17\x3\x2\x2\x2\x86\x84\x3\x2\x2\x2\x87\x8A\x5\x1A\xE\x2");
+		sb.Append("\x88\x8A\x5\x1C\xF\x2\x89\x87\x3\x2\x2\x2\x89\x88\x3\x2\x2\x2");
+		sb.Append("\x8A\x19\x3\x2\x2\x2\x8B\x8C\a\x5\x2\x2\x8C\x8E\a\x15\x2\x2");
+		sb.Append("\x8D\x8F\a\x6\x2\x2\x8E\x8D\x3\x2\x2\x2\x8E\x8F\x3\x2\x2\x2");
+		sb.Append("\x8F\x91\x3\x2\x2\x2\x90\x92\a\x5\x2\x2\x91\x90\x3\x2\x2\x2");
+		sb.Append("\x91\x92\x3\x2\x2\x2\x92\x93\x3\x2\x2\x2\x93\xAD\a\x16\x2\x2");
+		sb.Append("\x94\x95\a\x5\x2\x2\x95\x97\a\x15\x2\x2\x96\x98\a\x6\x2\x2\x97");
+		sb.Append("\x96\x3\x2\x2\x2\x97\x98\x3\x2\x2\x2\x98\x99\x3\x2\x2\x2\x99");
+		sb.Append("\x9C\a\x5\x2\x2\x9A\x9B\a\a\x2\x2\x9B\x9D\a\x5\x2\x2\x9C\x9A");
+		sb.Append("\x3\x2\x2\x2\x9D\x9E\x3\x2\x2\x2\x9E\x9C\x3\x2\x2\x2\x9E\x9F");
+		sb.Append("\x3\x2\x2\x2\x9F\xA0\x3\x2\x2\x2\xA0\xAD\a\x16\x2\x2\xA1\xA2");
+		sb.Append("\a\x5\x2\x2\xA2\xA3\a\x15\x2\x2\xA3\xA4\x5\x16\f\x2\xA4\xA5");
+		sb.Append("\a\x16\x2\x2\xA5\xAD\x3\x2\x2\x2\xA6\xA7\a\x5\x2\x2\xA7\xA8");
+		sb.Append("\a\x15\x2\x2\xA8\xA9\a\r\x2\x2\xA9\xAA\x5\x1E\x10\x2\xAA\xAB");
+		sb.Append("\a\x16\x2\x2\xAB\xAD\x3\x2\x2\x2\xAC\x8B\x3\x2\x2\x2\xAC\x94");
+		sb.Append("\x3\x2\x2\x2\xAC\xA1\x3\x2\x2\x2\xAC\xA6\x3\x2\x2\x2\xAD\x1B");
+		sb.Append("\x3\x2\x2\x2\xAE\xB0\a\x15\x2\x2\xAF\xB1\a\x6\x2\x2\xB0\xAF");
+		sb.Append("\x3\x2\x2\x2\xB0\xB1\x3\x2\x2\x2\xB1\xB3\x3\x2\x2\x2\xB2\xB4");
+		sb.Append("\a\x5\x2\x2\xB3\xB2\x3\x2\x2\x2\xB3\xB4\x3\x2\x2\x2\xB4\xB5");
+		sb.Append("\x3\x2\x2\x2\xB5\xCC\a\x16\x2\x2\xB6\xB8\a\x15\x2\x2\xB7\xB9");
+		sb.Append("\a\x6\x2\x2\xB8\xB7\x3\x2\x2\x2\xB8\xB9\x3\x2\x2\x2\xB9\xBA");
+		sb.Append("\x3\x2\x2\x2\xBA\xBD\a\x5\x2\x2\xBB\xBC\a\a\x2\x2\xBC\xBE\a");
+		sb.Append("\x5\x2\x2\xBD\xBB\x3\x2\x2\x2\xBE\xBF\x3\x2\x2\x2\xBF\xBD\x3");
+		sb.Append("\x2\x2\x2\xBF\xC0\x3\x2\x2\x2\xC0\xC1\x3\x2\x2\x2\xC1\xCC\a");
+		sb.Append("\x16\x2\x2\xC2\xC3\a\x15\x2\x2\xC3\xC4\x5\x16\f\x2\xC4\xC5\a");
+		sb.Append("\x16\x2\x2\xC5\xCC\x3\x2\x2\x2\xC6\xC7\a\x15\x2\x2\xC7\xC8\a");
+		sb.Append("\r\x2\x2\xC8\xC9\x5\x1E\x10\x2\xC9\xCA\a\x16\x2\x2\xCA\xCC\x3");
+		sb.Append("\x2\x2\x2\xCB\xAE\x3\x2\x2\x2\xCB\xB6\x3\x2\x2\x2\xCB\xC2\x3");
+		sb.Append("\x2\x2\x2\xCB\xC6\x3\x2\x2\x2\xCC\x1D\x3\x2\x2\x2\xCD\xCF\a");
+		sb.Append("\f\x2\x2\xCE\xCD\x3\x2\x2\x2\xCF\xD0\x3\x2\x2\x2\xD0\xCE\x3");
+		sb.Append("\x2\x2\x2\xD0\xD1\x3\x2\x2\x2\xD1\x1F\x3\x2\x2\x2\xD2\xD3\a");
+		sb.Append("\t\x2\x2\xD3\xD4\x5\x2\x2\x2\xD4\xD5\a\n\x2\x2\xD5!\x3\x2\x2");
+		sb.Append("\x2\xD6\xD7\v\x2\x2\x2\xD7#\x3\x2\x2\x2\x1C*,\x37=\x45QTZ\x64");
+		sb.Append("gty}\x84\x89\x8E\x91\x97\x9E\xAC\xB0\xB3\xB8\xBF\xCB\xD0");
 	    return sb.ToString();
 	}
 

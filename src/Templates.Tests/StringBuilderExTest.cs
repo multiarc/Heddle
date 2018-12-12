@@ -26,11 +26,11 @@ namespace Templates.Tests {
             target.Append(append2);
             expected += append1 + append2;
 
-            Assert.Equal(target.Length, 50);
+            Assert.Equal(50, target.Length);
             string actual = target.ToString();
 
             Assert.Equal(expected, actual);
-            Assert.Equal(target.Length, 50);
+            Assert.Equal(50, target.Length);
         }
 
         [Fact]
@@ -49,7 +49,7 @@ namespace Templates.Tests {
             var target = new ExStringBuilder(GenerateString(20));
             int actual = target.Length;
 
-            Assert.Equal(actual, 20);
+            Assert.Equal(20, actual);
         }
     }
 }

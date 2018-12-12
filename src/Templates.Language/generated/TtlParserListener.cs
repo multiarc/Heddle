@@ -191,5 +191,15 @@ public interface ITtlParserListener : IParseTreeListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	void ExitSubtemplate([NotNull] TtlParser.SubtemplateContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="TtlParser.text"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterText([NotNull] TtlParser.TextContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="TtlParser.text"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitText([NotNull] TtlParser.TextContext context);
 }
 } // namespace Templates.Language

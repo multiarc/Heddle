@@ -171,7 +171,7 @@ namespace Templates.Language {
                 var defOutChain = simple.default_chain();
                 if (defOutChain != null)
                 {
-                    AddToken(defOutChain.DEF_OUTPUTONEND(), TtlTokenType.DefOutputOnEnd);
+                    AddToken(defOutChain.DEF_OUT(), TtlTokenType.DefOutputOnEnd);
                 }
                 chain = CreateOutputChain(defOutChain?.chain(), definitionName);
                 AddToken(subTemplate.SUB_START(), TtlTokenType.SubStart);
@@ -217,7 +217,7 @@ namespace Templates.Language {
                 var defOutChain = inherited.default_chain();
                 if (defOutChain != null)
                 {
-                    AddToken(defOutChain.DEF_OUTPUTONEND(), TtlTokenType.DefOutputOnEnd);
+                    AddToken(defOutChain.DEF_OUT(), TtlTokenType.DefOutputOnEnd);
                 }
                 var modelType = inherited.ID(2);
                 AddToken(inherited.DEF_TYPE(), TtlTokenType.DefType);

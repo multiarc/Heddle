@@ -5,7 +5,7 @@ options { tokenVocab=TtlLexer; }
  * Parser Rules
  */
 
-ttl: (definition | import_block | outblock | raw | comment | TEXT)*;
+ttl: (definition | import_block | outblock | raw | comment | text)*;
 
 comment: COMMENT;
 
@@ -27,7 +27,7 @@ simple_def:
 	| DEF_STARTNAME ID DEF_ENDNAME default_chain? subtemplate
 	;
 
-default_chain: DEF_OUTPUTONEND chain;
+default_chain: DEF_OUT chain;
 
 import_block: IMPORT_TOKEN SUB_START TEXT SUB_CLOSE;
 
@@ -56,3 +56,5 @@ unnamed_call: OUT_PARAMSTART ROOT_REF? ID? OUT_PARAMEND
 csharp_expression: CSHARP_TOKEN+;
 
 subtemplate: SUB_START ttl SUB_CLOSE;
+
+text: .;
