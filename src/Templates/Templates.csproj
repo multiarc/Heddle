@@ -33,7 +33,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Antlr4Core.Runtime\Antlr4Core.Runtime.csproj" />
     <ProjectReference Include="..\Templates.Language\Templates.Language.csproj" />
   </ItemGroup>
 

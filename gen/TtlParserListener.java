@@ -17,16 +17,6 @@ public interface TtlParserListener extends ParseTreeListener {
 	 */
 	void exitTtl(TtlParser.TtlContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link TtlParser#comment}.
-	 * @param ctx the parse tree
-	 */
-	void enterComment(TtlParser.CommentContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link TtlParser#comment}.
-	 * @param ctx the parse tree
-	 */
-	void exitComment(TtlParser.CommentContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link TtlParser#raw}.
 	 * @param ctx the parse tree
 	 */

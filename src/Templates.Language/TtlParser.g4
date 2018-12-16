@@ -5,9 +5,7 @@ options { tokenVocab=TtlLexer; }
  * Parser Rules
  */
 
-ttl: (definition | import_block | outblock | raw | comment | text)*;
-
-comment: COMMENT;
+ttl: (definition | import_block | outblock | raw | text)*;
 
 raw: RAW;
 
@@ -18,22 +16,20 @@ def: simple_def
 	;
 
 inherited_def:
-	TEXT_WS* DEF_STARTNAME TEXT_WS* ID TEXT_WS* DELIM TEXT_WS* ID TEXT_WS* DEF_ENDNAME TEXT_WS* default_chain? TEXT_WS* subtemplate TEXT_WS* DEF_TYPE TEXT_WS* ID
-	| TEXT_WS* DEF_STARTNAME TEXT_WS* ID TEXT_WS* DELIM TEXT_WS* ID TEXT_WS* DEF_ENDNAME TEXT_WS* default_chain? TEXT_WS* subtemplate
+	TEXT_WS* DEF_STARTNAME TEXT_WS* ID TEXT_WS* DELIM TEXT_WS* ID TEXT_WS* DEF_ENDNAME TEXT_WS* default_chain? TEXT_WS* subtemplate TEXT_WS* DEF_TYPE TEXT_WS* ID TEXT_WS*
+	| TEXT_WS* DEF_STARTNAME TEXT_WS* ID TEXT_WS* DELIM TEXT_WS* ID TEXT_WS* DEF_ENDNAME TEXT_WS* default_chain? TEXT_WS* subtemplate TEXT_WS*
 	;
 
 simple_def:
-	TEXT_WS* DEF_STARTNAME TEXT_WS* ID TEXT_WS* DEF_ENDNAME TEXT_WS* default_chain? TEXT_WS* subtemplate TEXT_WS* DEF_TYPE TEXT_WS* ID
-	| TEXT_WS* DEF_STARTNAME TEXT_WS* ID TEXT_WS* DEF_ENDNAME TEXT_WS* default_chain? TEXT_WS* subtemplate
+	TEXT_WS* DEF_STARTNAME TEXT_WS* ID TEXT_WS* DEF_ENDNAME TEXT_WS* default_chain? TEXT_WS* subtemplate TEXT_WS* DEF_TYPE TEXT_WS* ID TEXT_WS*
+	| TEXT_WS* DEF_STARTNAME TEXT_WS* ID TEXT_WS* DEF_ENDNAME TEXT_WS* default_chain? TEXT_WS* subtemplate TEXT_WS*
 	;
 
 default_chain: DEF_OUT chain;
 
 import_block: IMPORT_TOKEN SUB_START TEXT SUB_CLOSE;
 
-outblock: OUT chain subtemplate?
-	| OUT chain subtemplate? LINE_TERMINATE
-	;
+outblock: OUT chain subtemplate? LINE_TERMINATE?;
 
 chain: call (DELIM call)*;
 
@@ -55,6 +51,8 @@ unnamed_call: OUT_PARAMSTART ROOT_REF? ID? OUT_PARAMEND
 
 csharp_expression: CSHARP_TOKEN+;
 
-subtemplate: SUB_START ttl SUB_CLOSE;
+subtemplate: SUB_START ttl SUB_CLOSE
+    | SUB_START TEXT_WS+ SUB_CLOSE
+    | SUB_START SUB_CLOSE;
 
-text: ~SUB_CLOSE;
+text: ~(SUB_CLOSE | SUB_START | DEF_START | DEF_CLOSE);

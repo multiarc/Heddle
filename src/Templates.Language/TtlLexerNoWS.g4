@@ -41,16 +41,16 @@ DEF_START: DEF_ST;
 DEF_STARTNAME: DEF_STNAME;
 DEF_CLOSE: DEF_CL;
 DEF_ENDNAME: DEF_CLNAME;
-ID: ID_TOKEN;
 TYPE_ID: ID_TYPE -> type(ID);
 
 START_IMPORT: IMP -> type(IMPORT_TOKEN), pushMode(IMPORT_MODE);
 
-START_OUT: OUT_ST -> type(OUT), pushMode(PRE_OUT_MODE);
-DEF_OUT: DEF_MAKEOUT -> type(DEF_OUT), pushMode(PRE_OUT_MODE);
+START_OUT: OUT_ST -> type(OUT), pushMode(OUT_MODE);
+DEF_OUT: DEF_MAKEOUT -> type(DEF_OUT), pushMode(OUT_MODE);
 
 SUB_START: SUB_ST;
-SUB_CLOSE: SUB_CL LINE_TERM? WS*;
+
+SUB_CLOSE: SUB_CL (LINE_TERM WS*)?;
 
 DEF_TYPE: DEF_T;
 DELIM: EXT_DELIM;
@@ -59,53 +59,47 @@ TEXT_WS: WS+;
 
 TEXT: .;
 
-mode PRE_OUT_MODE;
-
-PRE_OUT_WS: WS+ -> skip;
-
-PRE_OUT_ID: ID_TOKEN -> type(ID), pushMode(OUT_MODE);
-
-PRE_OUT_OUTPARAMSTART:
-	PARA_ST -> type(OUT_PARAMSTART), pushMode(OUT_MODE), pushMode(CALL);
-	
-PRE_OUT_OTHER: . -> channel(HIDDEN), popMode;
-
 mode IMPORT_MODE;
 
 IMPORT_COMMENT: 
-	COMMENT_BLOCK -> type(COMMENT);
+	COMMENT_BLOCK -> skip;
 
 IMPORT_SUBSTART:
 	SUB_ST -> type(SUB_START);
 
 IMPORT_PATH:
-	~[{}]+ -> channel(HIDDEN);
+	~[{}]+ -> type(TEXT);
 
 IMPORT_SUBEND:
 	SUB_CL -> type(SUB_CLOSE), popMode;
 
-IMPORT_WS: WS+ -> skip;
-
 IMPORT_PATH_REST:
-	. -> channel(HIDDEN);
+	. -> type(TEXT);
 	
 mode OUT_MODE;
 
 OUT_COMMENT: 
-	COMMENT_BLOCK -> type(COMMENT);
+	COMMENT_BLOCK -> skip;
+
+OUT_WS: WS+ -> skip;
+
+OUT_ID: ID_TOKEN -> type(ID);
 
 OUT_OUTPARAMSTART:
 	PARA_ST -> type(OUT_PARAMSTART), pushMode(CALL);
 
-OUT_LINE_TERMINATE:
-	LINE_TERM WS* -> type(LINE_TERMINATE), popMode, popMode;
+OUT_DELIM: EXT_DELIM -> type(DELIM);
 
-OUT_DELIM: WS* EXT_DELIM WS* -> type(DELIM), popMode;
-OUT_RAW: WS* RAW_BLOCK -> type(RAW), popMode, popMode;
-OUT_DEF_START: WS* DEF_ST -> type(DEF_START), popMode, popMode;
-OUT_OUT_START: WS* OUT_ST -> type(OUT), popMode;
-OUT_SUB_START: WS* SUB_ST -> type(SUB_START), popMode, popMode;
-OUT_OTHER: . -> channel(HIDDEN), popMode, popMode;
+OUT_LINE_TERMINATE:
+	LINE_TERM WS* -> type(LINE_TERMINATE), popMode;
+
+OUT_OUT_START: OUT_ST -> type(OUT);
+
+OUT_RAW: RAW_BLOCK -> type(RAW), popMode;
+OUT_DEF_START: DEF_ST -> type(DEF_START), popMode;
+OUT_SUB_START: SUB_ST -> type(SUB_START), popMode;
+OUT_SUB_CL: SUB_CL (LINE_TERM WS*)? -> type(SUB_CLOSE), popMode;
+OUT_OTHER: . -> type(TEXT), popMode;
 
 mode CALL;
 
@@ -129,9 +123,6 @@ CALL_ROOT_REF: DEF_T -> type(ROOT_REF);
 CALL_ID: ID_TOKEN -> type(ID);
 
 CALL_MEMB_P: MEMB_P -> type(MEMBER_P);
-
-CALL_LINE_TERMINATE: 
-	LINE_TERM WS* -> type(LINE_TERMINATE), popMode, popMode;
 
 CALL_WS: WS+ -> skip;
 

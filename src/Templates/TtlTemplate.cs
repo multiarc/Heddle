@@ -51,7 +51,7 @@ namespace Templates
 
         public TtlTemplate(string document, CompileContext context = null)
         {
-            CompileResult = Compile(new CompileScope(context ?? new CompileContext()), document);
+            CompileResult = Compile(new CompileScope(context ?? new CompileContext()), ref document);
         }
 
         public bool Empty => _runtimeDocument?.Empty ?? true;
@@ -134,13 +134,13 @@ namespace Templates
 
         public TtlCompileResult Recompile(ExType newModelType)
         {
-            CompileResult = Compile(new CompileScope(new CompileContext(newModelType)), _document);
+            CompileResult = Compile(new CompileScope(new CompileContext(newModelType)), ref _document);
             return CompileResult;
         }
 
         public TtlCompileResult Recompile(string newDocument, CompileContext context = null)
         {
-            CompileResult = Compile(new CompileScope(context ?? new CompileContext()), newDocument);
+            CompileResult = Compile(new CompileScope(context ?? new CompileContext()), ref newDocument);
             return CompileResult;
         }
 
@@ -154,7 +154,7 @@ namespace Templates
             {
                 _reader = new FileReader(context.Options);
                 document = _reader.ReadEntireFile();
-                CompileResult = Compile(new CompileScope(context), document);
+                CompileResult = Compile(new CompileScope(context), ref document);
                 if (context.Options.EnableFileChangeCheck)
                 {
                     var fullPath = Path.Combine(context.Options.RootPath, context.Options.TemplateName);
@@ -181,7 +181,7 @@ namespace Templates
         {
             if (_runtimeDocument != null)
                 throw new TemplateInitException("Template already compiled.");
-            return Compile(new CompileScope(new CompileContext(modelType)), document);
+            return Compile(new CompileScope(new CompileContext(modelType)), ref document);
         }
 
         public TtlCompileResult TryCompilation(CompileContext context)
@@ -190,7 +190,7 @@ namespace Templates
                 throw new TemplateInitException("Template already compiled.");
             var reader = new FileReader(context.Options);
             var document = reader.ReadEntireFile();
-            return Compile(new CompileScope(context), document, true);
+            return Compile(new CompileScope(context), ref document, true);
         }
 
         public TtlCompileResult TryCompilation(string document, TemplateOptions options = null, ExType modelType = null)
@@ -198,10 +198,10 @@ namespace Templates
             if (_runtimeDocument != null)
                 throw new TemplateInitException("Template already compiled.");
             return Compile(new CompileScope(new CompileContext(options ?? new TemplateOptions(),
-                modelType)), document, true);
+                modelType)), ref document, true);
         }
 
-        private TtlCompileResult Compile(CompileScope compileScope, string document, bool simulate = false)
+        private TtlCompileResult Compile(CompileScope compileScope, ref string document, bool simulate = false)
         {
             try
             {
@@ -295,7 +295,7 @@ namespace Templates
                     document = _reader.ReadEntireFile();
                     if (!string.IsNullOrWhiteSpace(document))
                     {
-                        CompileResult = Compile(_context, document);
+                        CompileResult = Compile(_context, ref document);
                     }
                 }
                 catch (Exception ex)

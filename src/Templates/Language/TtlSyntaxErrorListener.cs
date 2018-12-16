@@ -1,4 +1,5 @@
-﻿using Antlr4.Runtime;
+﻿using System.IO;
+using Antlr4.Runtime;
 
 namespace Templates.Language
 {
@@ -11,10 +12,10 @@ namespace Templates.Language
             Context = context ?? new ParseContext();
         }
 
-        public override void SyntaxError(IRecognizer recognizer, IToken offendingSymbol, int line,
-            int charPositionInLine, string msg,
-            RecognitionException e)
+        public override void SyntaxError(TextWriter output, IRecognizer recognizer, IToken offendingSymbol, int line, int charPositionInLine,
+            string msg, RecognitionException e)
         {
+            base.SyntaxError(output, recognizer, offendingSymbol, line, charPositionInLine, msg, e);
             Context.Errors.Add(Context.CreateError(e, msg, offendingSymbol));
         }
     }

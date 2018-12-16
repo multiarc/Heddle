@@ -16,12 +16,6 @@ public interface TtlParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitTtl(TtlParser.TtlContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link TtlParser#comment}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitComment(TtlParser.CommentContext ctx);
-	/**
 	 * Visit a parse tree produced by {@link TtlParser#raw}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

@@ -133,13 +133,6 @@ namespace Templates.Language {
             CurrentParseContext.RawOutputItems.Add(CurrentParseContext.CreateRawOutputItem(context));
         }
 
-        public override void EnterComment(TtlParser.CommentContext context)
-        {
-            if (context == null) throw new ArgumentNullException(nameof(context));
-            CurrentParseContext.AddToken(context.COMMENT(), TtlTokenType.Comment);
-            CurrentParseContext.CommentTokens.Add(CurrentParseContext.GetBlockPosition(context));
-        }
-
         public override void EnterSubtemplate(TtlParser.SubtemplateContext context)
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
