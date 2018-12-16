@@ -18,13 +18,13 @@ def: simple_def
 	;
 
 inherited_def:
-	DEF_STARTNAME ID DELIM ID DEF_ENDNAME default_chain? subtemplate DEF_TYPE ID
-	| DEF_STARTNAME ID DELIM ID DEF_ENDNAME default_chain? subtemplate
+	TEXT_WS* DEF_STARTNAME TEXT_WS* ID TEXT_WS* DELIM TEXT_WS* ID TEXT_WS* DEF_ENDNAME TEXT_WS* default_chain? TEXT_WS* subtemplate TEXT_WS* DEF_TYPE TEXT_WS* ID
+	| TEXT_WS* DEF_STARTNAME TEXT_WS* ID TEXT_WS* DELIM TEXT_WS* ID TEXT_WS* DEF_ENDNAME TEXT_WS* default_chain? TEXT_WS* subtemplate
 	;
 
 simple_def:
-	DEF_STARTNAME ID DEF_ENDNAME default_chain? subtemplate DEF_TYPE ID
-	| DEF_STARTNAME ID DEF_ENDNAME default_chain? subtemplate
+	TEXT_WS* DEF_STARTNAME TEXT_WS* ID TEXT_WS* DEF_ENDNAME TEXT_WS* default_chain? TEXT_WS* subtemplate TEXT_WS* DEF_TYPE TEXT_WS* ID
+	| TEXT_WS* DEF_STARTNAME TEXT_WS* ID TEXT_WS* DEF_ENDNAME TEXT_WS* default_chain? TEXT_WS* subtemplate
 	;
 
 default_chain: DEF_OUT chain;
@@ -57,4 +57,4 @@ csharp_expression: CSHARP_TOKEN+;
 
 subtemplate: SUB_START ttl SUB_CLOSE;
 
-text: ~(SUB_START | SUB_CLOSE | DEF_START | DEF_CLOSE);
+text: ~SUB_CLOSE;
