@@ -6,7 +6,7 @@ lexer grammar TtlLexer;
 
 import CSharp;
 
-tokens { TEXT, IMPORT_TOKEN, ID, ROOT_REF, MEMBER_P, OUT, SUB_START, SUB_CLOSE, CSHARP_END, CSHARP_TOKEN, CSHARP_START, DEF_STARTNAME, DEF_ENDNAME, DELIM, DEF_START, DEF_CLOSE, COMMENT, RAW, OUT_PARAMSTART, OUT_PARAMEND, LINE_TERMINATE, DEF_OUT }
+tokens { IMPORT_TOKEN, ID, ROOT_REF, MEMBER_P, OUT, SUB_START, SUB_CLOSE, CSHARP_END, CSHARP_TOKEN, CSHARP_START, DEF_STARTNAME, DEF_ENDNAME, DELIM, DEF_START, DEF_CLOSE, COMMENT, RAW, OUT_PARAMSTART, OUT_PARAMEND, LINE_TERMINATE, DEF_OUT }
 
 channels { COMMENT_CHANNEL }
 
@@ -33,8 +33,6 @@ fragment LINE_TERM: ';';
 fragment COMMENT_BLOCK: '@*' .*? '*@';
 fragment RAW_BLOCK : '@{' .*? '}@';
 
-NON_SPEC_TEXT: ~[@*{<%}]+ -> type(TEXT);
-
 COMMENT: COMMENT_BLOCK -> channel(COMMENT_CHANNEL);
 
 RAW: RAW_BLOCK;
@@ -43,23 +41,23 @@ DEF_START: DEF_ST;
 DEF_STARTNAME: DEF_STNAME;
 DEF_CLOSE: DEF_CL;
 DEF_ENDNAME: DEF_CLNAME;
+ID: ID_TOKEN;
+TYPE_ID: ID_TYPE -> type(ID);
 
 START_IMPORT: IMP -> type(IMPORT_TOKEN), pushMode(IMPORT_MODE);
 
 START_OUT: OUT_ST -> type(OUT), pushMode(PRE_OUT_MODE);
-DEF_OUT: DEF_MAKEOUT -> type(OUT), pushMode(PRE_OUT_MODE);
+DEF_OUT: DEF_MAKEOUT -> type(DEF_OUT), pushMode(PRE_OUT_MODE);
 
 SUB_START: SUB_ST;
 SUB_CLOSE: SUB_CL LINE_TERM? WS*;
 
-TYPE_ID: ID_TYPE -> type(ID);
-
 DEF_TYPE: DEF_T;
 DELIM: EXT_DELIM;
 
-TEXT_WS: WS+;
+TEXT_WS: WS+ -> channel(HIDDEN);
 
-TEXT: .;
+TEXT: . -> channel(HIDDEN);
 
 mode PRE_OUT_MODE;
 
@@ -70,7 +68,7 @@ PRE_OUT_ID: ID_TOKEN -> type(ID), pushMode(OUT_MODE);
 PRE_OUT_OUTPARAMSTART:
 	PARA_ST -> type(OUT_PARAMSTART), pushMode(OUT_MODE), pushMode(CALL);
 	
-PRE_OUT_OTHER: . -> type(TEXT), popMode;
+PRE_OUT_OTHER: . -> channel(HIDDEN), popMode;
 
 mode IMPORT_MODE;
 
@@ -81,15 +79,15 @@ IMPORT_SUBSTART:
 	SUB_ST -> type(SUB_START);
 
 IMPORT_PATH:
-	~[{}]+ -> type(TEXT);
+	~[{}]+ -> channel(HIDDEN);
 
 IMPORT_SUBEND:
 	SUB_CL -> type(SUB_CLOSE), popMode;
 
-IMPORT_WS: WS+;
+IMPORT_WS: WS+ -> skip;
 
 IMPORT_PATH_REST:
-	. -> type(TEXT);
+	. -> channel(HIDDEN);
 	
 mode OUT_MODE;
 
@@ -107,7 +105,7 @@ OUT_RAW: WS* RAW_BLOCK -> type(RAW), popMode, popMode;
 OUT_DEF_START: WS* DEF_ST -> type(DEF_START), popMode, popMode;
 OUT_OUT_START: WS* OUT_ST -> type(OUT), popMode;
 OUT_SUB_START: WS* SUB_ST -> type(SUB_START), popMode, popMode;
-OUT_OTHER: . -> type(TEXT), popMode, popMode;
+OUT_OTHER: . -> channel(HIDDEN), popMode, popMode;
 
 mode CALL;
 

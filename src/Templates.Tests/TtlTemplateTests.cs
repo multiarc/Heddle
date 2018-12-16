@@ -12,30 +12,6 @@ namespace Templates.Tests
 {
     public class TtlTemplateTests
     {
-        [Fact()]
-        public void TtlTemplateTest()
-        {
-
-        }
-
-        [Fact()]
-        public void TtlTemplateTest1()
-        {
-
-        }
-
-        [Fact()]
-        public void TtlTemplateTest2()
-        {
-
-        }
-
-        [Fact()]
-        public void DisposeTest()
-        {
-
-        }
-
         public class OrderTest
         {
             public int Id { get; set; }

@@ -57,4 +57,4 @@ csharp_expression: CSHARP_TOKEN+;
 
 subtemplate: SUB_START ttl SUB_CLOSE;
 
-text: .;
+text: ~(SUB_START | SUB_CLOSE | DEF_START | DEF_CLOSE);

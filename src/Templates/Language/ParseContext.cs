@@ -6,6 +6,7 @@ using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Tree;
 using Templates.Data;
 using Templates.Exceptions;
+using Templates.Language.ParserExtensions;
 using Templates.Runtime;
 using Templates.Strings.Core;
 
@@ -158,10 +159,8 @@ namespace Templates.Language {
                     chain = null;
                     return null;
                 }
-                var ttl = subTemplate.ttl();
-                var parameterTemplate = ttl?.Start?.InputStream == null
-                    ? string.Empty
-                    : ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
+
+                var parameterTemplate = subTemplate.GetInnerText();
                 var definition = simple.ID(0);
                 if (definition == null)
                     throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(simple)));
@@ -197,7 +196,7 @@ namespace Templates.Language {
                 if (definition == null)
                     throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(inherited)));
                 AddToken(definition, TtlTokenType.Id);
-                string parameterTemplate = ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
+                var parameterTemplate = subTemplate.GetInnerText();
                 var baseName = inherited.ID(1)?.GetText();
                 var baseDefenition = GetDefenition(baseName);
                 if (baseDefenition == null)
@@ -304,7 +303,7 @@ namespace Templates.Language {
             if (ttl != null)
             {
                 result.Chain.First().ParameterTemplate =
-                    ttl.Start.InputStream.GetText(new Interval(ttl.Start.StartIndex, ttl.Stop.StopIndex));
+                    subTemplate.GetInnerText();
             }
             return result;
         }
