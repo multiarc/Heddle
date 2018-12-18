@@ -2,11 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using Antlr4.Runtime;
-using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Tree;
 using Templates.Data;
 using Templates.Exceptions;
-using Templates.Language.ParserExtensions;
 using Templates.Runtime;
 using Templates.Strings.Core;
 
@@ -160,7 +158,7 @@ namespace Templates.Language {
                     return null;
                 }
 
-                var parameterTemplate = subTemplate.GetInnerText();
+                var parameterTemplate = subTemplate.ttl()?.GetText() ?? string.Join(string.Empty, subTemplate.TEXT_WS().Select(t => t.GetText()));
                 var definition = simple.ID(0);
                 if (definition == null)
                     throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(simple)));
@@ -196,7 +194,7 @@ namespace Templates.Language {
                 if (definition == null)
                     throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(inherited)));
                 AddToken(definition, TtlTokenType.Id);
-                var parameterTemplate = subTemplate.GetInnerText();
+                var parameterTemplate = subTemplate.ttl()?.GetText() ?? string.Join(string.Empty, subTemplate.TEXT_WS().Select(t => t.GetText()));
                 var baseName = inherited.ID(1)?.GetText();
                 var baseDefenition = GetDefenition(baseName);
                 if (baseDefenition == null)
@@ -277,7 +275,8 @@ namespace Templates.Language {
                 context.Stop.StopIndex - context.Start.StartIndex + 1);
         }
 
-        internal OutputChain CreateOutputChain(TtlParser.OutblockContext context) {
+        internal OutputChain CreateOutputChain(TtlParser.OutblockContext context)
+        {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
             AddToken(context.OUT(), TtlTokenType.Out);
@@ -289,6 +288,7 @@ namespace Templates.Language {
                     AddToken(delim, TtlTokenType.Delim);
                 }
             }
+
             var result = new OutputChain(InDefintionContext ? this : IsolateContextWithTree())
             {
                 Chain = CreateChain(context.chain()?.call()),
@@ -299,12 +299,9 @@ namespace Templates.Language {
             var subTemplate = context.subtemplate();
             AddToken(subTemplate?.SUB_START(), TtlTokenType.SubStart);
             AddToken(subTemplate?.SUB_CLOSE(), TtlTokenType.SubClose);
-            var ttl = subTemplate?.ttl();
-            if (ttl != null)
-            {
-                result.Chain.First().ParameterTemplate =
-                    subTemplate.GetInnerText();
-            }
+            result.Chain.First().ParameterTemplate =
+                subTemplate?.ttl()?.GetText() ?? string.Join(string.Empty, subTemplate?.TEXT_WS().Select(t => t.GetText()) ?? Enumerable.Empty<string>());
+
             return result;
         }
 
@@ -341,7 +338,7 @@ namespace Templates.Language {
             {
                 BlockPosition =
                     new BlockPosition(raw.Symbol.StartIndex - _offset, raw.Symbol.StopIndex - raw.Symbol.StartIndex + 1),
-                Text = text.Substring(2, text.Length - 4)
+                Text = text.Substring(2, text.Length - (text.StartsWith("@:") ? 2 : 4))
             };
         }
 

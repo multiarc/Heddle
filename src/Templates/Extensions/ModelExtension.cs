@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Linq;
 using Templates.Attributes;
 using Templates.Core;
 using Templates.Data;
-using Templates.Exceptions;
 
 namespace Templates.Extensions
 {

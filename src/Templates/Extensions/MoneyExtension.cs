@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Threading;
 using Templates.Attributes;
 using Templates.Core;
 using Templates.Data;

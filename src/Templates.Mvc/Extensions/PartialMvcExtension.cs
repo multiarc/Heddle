@@ -1,7 +1,4 @@
-﻿using System.Collections.Generic;
-using Microsoft.Extensions.DependencyInjection;
-using Templates.Attributes;
-using Templates.Data;
+﻿using Templates.Attributes;
 using Templates.Extensions;
 using Templates.Language;
 using Templates.Mvc.Extensions;

@@ -1,11 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reflection;
 using Templates.Data;
-using Templates.Helpers;
 using Templates.Language;
-using Templates.Native;
-using Templates.Runtime.Parameters;
 
 namespace Templates.Runtime {
     internal class DelayedTemplate
@@ -40,8 +36,8 @@ namespace Templates.Runtime {
     {
         public OptionalValue(T value, bool hasValue = true)
         {
-            HasValue = hasValue;
             Value = value;
+            HasValue = hasValue;
         }
 
         public T Value { get; }

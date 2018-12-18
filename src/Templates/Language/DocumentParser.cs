@@ -5,8 +5,6 @@ using Antlr4.Runtime;
 using Antlr4.Runtime.Atn;
 using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Tree;
-using Templates.Data;
-using Templates.Exceptions;
 using Templates.Runtime;
 using Templates.Strings.Core;
 
@@ -73,10 +71,6 @@ namespace Templates.Language
             TtlMainListener listener = new TtlMainListener(context, compileContext);
             walker.Walk(listener, tree);
             //context.DefenitionsOnly = false;
-            listener.CurrentParseContext.CommentTokens.AddRange(
-                tokens.GetTokens()
-                    .Where(t => t.Channel == TtlLexer.COMMENT_CHANNEL)
-                    .Select(t => new BlockPosition(t)));
 
         }
     }

@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-using Templates.Data;
-using Templates.Exceptions;
 using Templates.Native;
 
 namespace Templates.Helpers

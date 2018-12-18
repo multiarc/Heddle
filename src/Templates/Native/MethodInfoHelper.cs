@@ -1,10 +1,4 @@
-﻿using System;
-using System.Linq;
-using System.Reflection;
-using System.Reflection.Emit;
-using Templates.Helpers;
-
-namespace Templates.Native
+﻿namespace Templates.Native
 {
 //    internal static class MethodInfoHelper
 //    {

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Templates.Language;
-using Templates.Strings;
 
 namespace Templates.Data
 {

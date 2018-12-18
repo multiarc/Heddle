@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using Templates.Strings.Core;
 
 namespace Templates.Language
 {

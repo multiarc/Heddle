@@ -32,10 +32,13 @@ fragment DEF_MAKEOUT: '->';
 fragment LINE_TERM: ';';
 fragment COMMENT_BLOCK: '@*' .*? '*@';
 fragment RAW_BLOCK : '@{' .*? '}@';
+fragment RAW_LINE : '@:' .*? ('\r?\n' | EOF);
 
-COMMENT: COMMENT_BLOCK -> channel(COMMENT_CHANNEL);
+COMMENT: COMMENT_BLOCK -> skip;
 
 RAW: RAW_BLOCK;
+
+RW_LINE: RAW_LINE -> type(RAW);
 
 DEF_START: DEF_ST;
 DEF_STARTNAME: DEF_STNAME;
@@ -50,7 +53,7 @@ DEF_OUT: DEF_MAKEOUT -> type(DEF_OUT), pushMode(OUT_MODE);
 
 SUB_START: SUB_ST;
 
-SUB_CLOSE: SUB_CL (LINE_TERM WS*)?;
+SUB_CLOSE: SUB_CL;
 
 DEF_TYPE: DEF_T;
 DELIM: EXT_DELIM;
@@ -90,15 +93,13 @@ OUT_OUTPARAMSTART:
 
 OUT_DELIM: EXT_DELIM -> type(DELIM);
 
-OUT_LINE_TERMINATE:
-	LINE_TERM WS* -> type(LINE_TERMINATE), popMode;
-
 OUT_OUT_START: OUT_ST -> type(OUT);
 
 OUT_RAW: RAW_BLOCK -> type(RAW), popMode;
+OUT_RW_LINE: RAW_LINE -> type(RAW), popMode;
 OUT_DEF_START: DEF_ST -> type(DEF_START), popMode;
 OUT_SUB_START: SUB_ST -> type(SUB_START), popMode;
-OUT_SUB_CL: SUB_CL (LINE_TERM WS*)? -> type(SUB_CLOSE), popMode;
+OUT_SUB_CL: SUB_CL -> type(SUB_CLOSE), popMode;
 OUT_OTHER: . -> type(TEXT), popMode;
 
 mode CALL;
@@ -107,13 +108,13 @@ CALL_COMMENT:
 	COMMENT_BLOCK -> skip;
 
 CSHARP_START:
-	OUT_ST -> pushMode(CS);
-
-CALL_PARAMEND: 
-	PARA_CL -> type(OUT_PARAMEND), popMode;
+	OUT_ST -> popMode, pushMode(CS);
 
 CALL_PARAMSTART: 
 	PARA_ST -> type(OUT_PARAMSTART), pushMode(CALL);
+
+CALL_PARAMEND: 
+	PARA_CL -> type(OUT_PARAMEND), popMode;
 
 CALL_DELIM: 
 	EXT_DELIM -> type(DELIM);
@@ -133,6 +134,6 @@ CS_CSHARP_WS: WS+ -> type(CSHARP_TOKEN);
 CS_CSHARP_START:
 	PARA_ST -> type(CSHARP_TOKEN), pushMode(CS);
 
-CS_CSHARP_END: PARA_CL -> type(CSHARP_END), popMode;
+CS_CSHARP_END: PARA_CL -> type(CSHARP_TOKEN), popMode;
 
 CS_CSHARP_TOKEN: TOKEN -> type(CSHARP_TOKEN);

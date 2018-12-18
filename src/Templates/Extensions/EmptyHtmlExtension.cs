@@ -1,5 +1,4 @@
-﻿using System;
-using Templates.Attributes;
+﻿using Templates.Attributes;
 using Templates.Core;
 using Templates.Data;
 

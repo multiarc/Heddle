@@ -2,7 +2,6 @@
 using Templates.Extensions;
 using Templates.Helpers;
 using Templates.Runtime;
-using Templates.Strings;
 using Xunit;
 
 namespace Templates.Tests {
