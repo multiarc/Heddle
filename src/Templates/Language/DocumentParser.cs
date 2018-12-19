@@ -19,15 +19,15 @@ namespace Templates.Language
         /// Performs parse of document
         /// </summary>
         /// <returns>Full template context tree found in source template</returns>
-        public static ParseContext Parse(string document, CompileContext compileContext)
+        public static ParseContext Parse(string document, CompileContext compileContext, out string cleanDocument)
         {
             var context = new ParseContext(provideLanguageFeatures: compileContext.Options.ProvideLanguageFeatures,
                 forceRemoveWhitespace: compileContext.Options.ForceRemoveWhitespace);
-            Parse(document, context, compileContext);
+            cleanDocument = Parse(document, context, compileContext);
             return context;
         }
 
-        public static void Parse(string document, ParseContext context, CompileContext compileContext/*, bool loadDefenitionsOnly = false*/)
+        public static string Parse(string document, ParseContext context, CompileContext compileContext /*, bool loadDefenitionsOnly = false*/)
         {
             if (document == null)
                 throw new ArgumentNullException(nameof(document));
@@ -61,17 +61,25 @@ namespace Templates.Language
                 parser.AddErrorListener(syntaxErrorListener);
                 tree = parser.ttl();
             }
+
             if (context.Errors.Count > 0)
             {
                 compileContext.CompileErrors.AddRange(context.Errors);
-                return;
+                return tree.GetText();
             }
+
             ParseTreeWalker walker = new ParseTreeWalker();
             //context.DefenitionsOnly = loadDefenitionsOnly;
             TtlMainListener listener = new TtlMainListener(context, compileContext);
             walker.Walk(listener, tree);
-            //context.DefenitionsOnly = false;
 
+            listener.CurrentParseContext.CommentTokens.AddRange(
+                tokens.GetTokens()
+                    .Where(t => t.Channel == Lexer.Hidden)
+                    .Select(t => new BlockPosition(t)));
+
+            //context.DefenitionsOnly = false;
+            return tree.GetText();
         }
     }
 }

@@ -205,10 +205,10 @@ namespace Templates
         {
             try
             {
-                var parseContext = DocumentParser.Parse(document, compileScope.CompileContext);
+                var parseContext = DocumentParser.Parse(document, compileScope.CompileContext, out var optimizedDocument);
                 try
                 {
-                    RuntimeDocument rtdoc = TtlCompiler.Compile(document, compileScope,
+                    RuntimeDocument rtdoc = TtlCompiler.Compile(optimizedDocument, compileScope,
                         parseContext, null);
                     if (compileScope.CompileErrors.Count > 0)
                     {
@@ -230,7 +230,7 @@ namespace Templates
                             return result;
                         }
                         _context = compileScope;
-                        _document = document;
+                        _document = optimizedDocument;
                         _runtimeDocument = rtdoc;
                         _processStrategy = rtdoc?.Strategy;
                     }

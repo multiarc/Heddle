@@ -30,8 +30,11 @@ fragment DEF_MAKEOUT: '->';
 fragment COMMENT_BLOCK: '@*' .*? '*@';
 fragment RAW_BLOCK : '@{' .*? '}@';
 fragment RAW_LINE : '@:' .*? ('\r?\n' | EOF);
+fragment EAT_WS: '@\\' WS*;
 
-COMMENT: COMMENT_BLOCK -> skip;
+COMMENT: COMMENT_BLOCK -> channel(HIDDEN);
+
+SKIP_WS: EAT_WS -> channel(HIDDEN);
 
 RAW: RAW_BLOCK;
 
@@ -62,8 +65,8 @@ TEXT: .;
 mode IMPORT_MODE;
 
 IMPORT_COMMENT: 
-	COMMENT_BLOCK -> skip;
-
+	COMMENT_BLOCK -> channel(HIDDEN);
+	
 IMPORT_SUBSTART:
 	SUB_ST -> type(SUB_START);
 
@@ -76,17 +79,37 @@ IMPORT_SUBEND:
 IMPORT_PATH_REST:
 	. -> type(TEXT);
 	
+mode CALL_RETURNED;
+
+CALL_RETURN_COMMENT: 
+	COMMENT_BLOCK -> channel(HIDDEN);
+	
+CALL_RETURN_DELIM: WS* EXT_DELIM -> type(DELIM), mode(OUT_MODE);
+
+CALL_RETURN_START: OUT_ST -> type(OUT), mode(OUT_MODE);
+
+CALL_RETURN_RAW: RAW_BLOCK -> type(RAW), popMode;
+CALL_RETURN_RW_LINE: RAW_LINE -> type(RAW), popMode;
+CALL_RETURN_DEF_START: DEF_ST -> type(DEF_START), popMode;
+CALL_RETURN_SUB_START: WS* SUB_ST -> type(SUB_START), popMode;
+CALL_RETURN_SUB_CL: SUB_CL -> type(SUB_CLOSE), popMode;
+CALL_RETURN_START_IMPORT: IMP -> type(IMPORT_TOKEN), popMode, pushMode(IMPORT_MODE);
+
+CALL_SKIP_WS: EAT_WS -> channel(HIDDEN);
+
+CALL_RETURN_OTHER: . -> type(TEXT), popMode;
+	
 mode OUT_MODE;
 
 OUT_COMMENT: 
-	COMMENT_BLOCK -> skip;
+	COMMENT_BLOCK -> channel(HIDDEN);
 
-OUT_WS: WS+ -> skip;
+OUT_WS: WS+ -> channel(HIDDEN);
 
 OUT_ID: ID_TOKEN -> type(ID);
 
 OUT_OUTPARAMSTART:
-	PARA_ST -> type(OUT_PARAMSTART), pushMode(CALL);
+	PARA_ST -> type(OUT_PARAMSTART), mode(CALL_RETURNED), pushMode(CALL);
 
 OUT_DELIM: EXT_DELIM -> type(DELIM);
 
@@ -97,12 +120,16 @@ OUT_RW_LINE: RAW_LINE -> type(RAW), popMode;
 OUT_DEF_START: DEF_ST -> type(DEF_START), popMode;
 OUT_SUB_START: SUB_ST -> type(SUB_START), popMode;
 OUT_SUB_CL: SUB_CL -> type(SUB_CLOSE), popMode;
+OUT_START_IMPORT: IMP -> type(IMPORT_TOKEN), popMode, pushMode(IMPORT_MODE);
+
+OUT_SKIP_WS: EAT_WS -> channel(HIDDEN);
+
 OUT_OTHER: . -> type(TEXT), popMode;
 
 mode CALL;
 
 CALL_COMMENT:
-	COMMENT_BLOCK -> skip;
+	COMMENT_BLOCK -> channel(HIDDEN);
 
 CSHARP_START:
 	OUT_ST -> popMode, pushMode(CS);
@@ -122,7 +149,7 @@ CALL_ID: ID_TOKEN -> type(ID);
 
 CALL_MEMB_P: MEMB_P -> type(MEMBER_P);
 
-CALL_WS: WS+ -> skip;
+CALL_WS: WS+ -> channel(HIDDEN);
 
 mode CS;
 

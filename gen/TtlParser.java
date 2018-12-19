@@ -20,8 +20,8 @@ public class TtlParser extends Parser {
 		SUB_START=8, SUB_CLOSE=9, CSHARP_END=10, CSHARP_TOKEN=11, CSHARP_START=12, 
 		DEF_STARTNAME=13, DEF_ENDNAME=14, DELIM=15, DEF_START=16, DEF_CLOSE=17, 
 		RAW=18, OUT_PARAMSTART=19, OUT_PARAMEND=20, LINE_TERMINATE=21, DEF_OUT=22, 
-		COMMENT=23, DEF_TYPE=24, IMPORT_COMMENT=25, OUT_COMMENT=26, OUT_WS=27, 
-		CALL_COMMENT=28, CALL_WS=29;
+		COMMENT=23, DEF_TYPE=24, IMPORT_COMMENT=25, CALL_RETURN_COMMENT=26, OUT_COMMENT=27, 
+		OUT_WS=28, CALL_COMMENT=29, CALL_WS=30;
 	public static final int
 		RULE_ttl = 0, RULE_raw = 1, RULE_definition = 2, RULE_def = 3, RULE_inherited_def = 4, 
 		RULE_simple_def = 5, RULE_default_chain = 6, RULE_import_block = 7, RULE_outblock = 8, 
@@ -40,8 +40,8 @@ public class TtlParser extends Parser {
 		"OUT", "SUB_START", "SUB_CLOSE", "CSHARP_END", "CSHARP_TOKEN", "CSHARP_START", 
 		"DEF_STARTNAME", "DEF_ENDNAME", "DELIM", "DEF_START", "DEF_CLOSE", "RAW", 
 		"OUT_PARAMSTART", "OUT_PARAMEND", "LINE_TERMINATE", "DEF_OUT", "COMMENT", 
-		"DEF_TYPE", "IMPORT_COMMENT", "OUT_COMMENT", "OUT_WS", "CALL_COMMENT", 
-		"CALL_WS"
+		"DEF_TYPE", "IMPORT_COMMENT", "CALL_RETURN_COMMENT", "OUT_COMMENT", "OUT_WS", 
+		"CALL_COMMENT", "CALL_WS"
 	};
 	public static final Vocabulary VOCABULARY = new VocabularyImpl(_LITERAL_NAMES, _SYMBOLIC_NAMES);
 
@@ -152,7 +152,7 @@ public class TtlParser extends Parser {
 			setState(39);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << TEXT) | (1L << TEXT_WS) | (1L << IMPORT_TOKEN) | (1L << ID) | (1L << ROOT_REF) | (1L << MEMBER_P) | (1L << OUT) | (1L << CSHARP_END) | (1L << CSHARP_TOKEN) | (1L << CSHARP_START) | (1L << DEF_STARTNAME) | (1L << DEF_ENDNAME) | (1L << DELIM) | (1L << DEF_START) | (1L << RAW) | (1L << OUT_PARAMSTART) | (1L << OUT_PARAMEND) | (1L << LINE_TERMINATE) | (1L << DEF_OUT) | (1L << COMMENT) | (1L << DEF_TYPE) | (1L << IMPORT_COMMENT) | (1L << OUT_COMMENT) | (1L << OUT_WS) | (1L << CALL_COMMENT) | (1L << CALL_WS))) != 0)) {
+			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << TEXT) | (1L << TEXT_WS) | (1L << IMPORT_TOKEN) | (1L << ID) | (1L << ROOT_REF) | (1L << MEMBER_P) | (1L << OUT) | (1L << CSHARP_END) | (1L << CSHARP_TOKEN) | (1L << CSHARP_START) | (1L << DEF_STARTNAME) | (1L << DEF_ENDNAME) | (1L << DELIM) | (1L << DEF_START) | (1L << RAW) | (1L << OUT_PARAMSTART) | (1L << OUT_PARAMEND) | (1L << LINE_TERMINATE) | (1L << DEF_OUT) | (1L << COMMENT) | (1L << DEF_TYPE) | (1L << IMPORT_COMMENT) | (1L << CALL_RETURN_COMMENT) | (1L << OUT_COMMENT) | (1L << OUT_WS) | (1L << CALL_COMMENT) | (1L << CALL_WS))) != 0)) {
 				{
 				setState(37);
 				_errHandler.sync(this);
@@ -1887,13 +1887,13 @@ public class TtlParser extends Parser {
 	}
 
 	public static final String _serializedATN =
-		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3\37\u0197\4\2\t\2"+
-		"\4\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7\4\b\t\b\4\t\t\t\4\n\t\n\4\13"+
-		"\t\13\4\f\t\f\4\r\t\r\4\16\t\16\4\17\t\17\4\20\t\20\4\21\t\21\3\2\3\2"+
-		"\3\2\3\2\3\2\7\2(\n\2\f\2\16\2+\13\2\3\3\3\3\3\4\3\4\6\4\61\n\4\r\4\16"+
-		"\4\62\3\4\3\4\3\5\3\5\5\59\n\5\3\6\7\6<\n\6\f\6\16\6?\13\6\3\6\3\6\7\6"+
-		"C\n\6\f\6\16\6F\13\6\3\6\3\6\7\6J\n\6\f\6\16\6M\13\6\3\6\3\6\7\6Q\n\6"+
-		"\f\6\16\6T\13\6\3\6\3\6\7\6X\n\6\f\6\16\6[\13\6\3\6\3\6\7\6_\n\6\f\6\16"+
+		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3 \u0197\4\2\t\2\4"+
+		"\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7\4\b\t\b\4\t\t\t\4\n\t\n\4\13\t"+
+		"\13\4\f\t\f\4\r\t\r\4\16\t\16\4\17\t\17\4\20\t\20\4\21\t\21\3\2\3\2\3"+
+		"\2\3\2\3\2\7\2(\n\2\f\2\16\2+\13\2\3\3\3\3\3\4\3\4\6\4\61\n\4\r\4\16\4"+
+		"\62\3\4\3\4\3\5\3\5\5\59\n\5\3\6\7\6<\n\6\f\6\16\6?\13\6\3\6\3\6\7\6C"+
+		"\n\6\f\6\16\6F\13\6\3\6\3\6\7\6J\n\6\f\6\16\6M\13\6\3\6\3\6\7\6Q\n\6\f"+
+		"\6\16\6T\13\6\3\6\3\6\7\6X\n\6\f\6\16\6[\13\6\3\6\3\6\7\6_\n\6\f\6\16"+
 		"\6b\13\6\3\6\5\6e\n\6\3\6\7\6h\n\6\f\6\16\6k\13\6\3\6\3\6\7\6o\n\6\f\6"+
 		"\16\6r\13\6\3\6\3\6\7\6v\n\6\f\6\16\6y\13\6\3\6\3\6\7\6}\n\6\f\6\16\6"+
 		"\u0080\13\6\3\6\7\6\u0083\n\6\f\6\16\6\u0086\13\6\3\6\3\6\7\6\u008a\n"+

@@ -24,7 +24,7 @@ namespace Templates.Runtime
             if (compileScope == null)
                 throw new ArgumentNullException(nameof(compileScope));
             string workingDocument = document;
-            RemoveComments(parseContext, ref workingDocument);
+            ShiftBySkippedTokens(parseContext);
             RemoveDefinitions(parseContext, ref workingDocument);
             ReplaceRawOutput(parseContext, ref workingDocument);
             var documentElements = new List<DocumentElement>();
@@ -127,11 +127,11 @@ namespace Templates.Runtime
             }
         }
 
-        private static void RemoveComments(ParseContext context, ref string workingDocument)
+        private static void ShiftBySkippedTokens(ParseContext context)
         {
             foreach (var blockPosition in ((ICollection<BlockPosition>)context.CommentTokens).Reverse())
             {
-                int seed = ExStringBuilder.ApplyRemove(blockPosition, ref workingDocument);
+                int seed = blockPosition.Length;
                 foreach (var chain in ((ICollection<OutputChain>)context.OutputChains).Reverse())
                 {
                     if (chain.BlockPosition.StartIndex < blockPosition.StartIndex &&
