@@ -336,8 +336,7 @@ namespace Templates.Language {
                 throw new TemplateParseException("Raw block is wrongly formatted".ToError(GetAbsoluteBlockPosition(context)));
             return new RawOutputItem
             {
-                BlockPosition =
-                    new BlockPosition(raw.Symbol.StartIndex - _offset, raw.Symbol.StopIndex - raw.Symbol.StartIndex + 1),
+                BlockPosition = GetBlockPosition(context),
                 Text = text.Substring(2, text.Length - (text.StartsWith("@:") ? 2 : 4))
             };
         }
