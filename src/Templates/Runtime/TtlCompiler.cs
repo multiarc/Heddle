@@ -129,7 +129,7 @@ namespace Templates.Runtime
 
         private static void ShiftBySkippedTokens(ParseContext context)
         {
-            foreach (var blockPosition in ((ICollection<BlockPosition>)context.CommentTokens).Reverse())
+            foreach (var blockPosition in ((ICollection<BlockPosition>)context.SkippedTokens).Reverse())
             {
                 int seed = blockPosition.Length;
                 foreach (var chain in ((ICollection<OutputChain>)context.OutputChains).Reverse())

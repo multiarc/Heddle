@@ -72,7 +72,7 @@ namespace Templates.Language
             //context.DefenitionsOnly = loadDefenitionsOnly;
             TtlMainListener listener = new TtlMainListener(context, compileContext);
 
-            listener.CurrentParseContext.CommentTokens.AddRange(
+            listener.CurrentParseContext.SkippedTokens.AddRange(
                 tokens.GetTokens()
                     .Where(t => t.Channel == Lexer.Hidden)
                     .Select(t => new BlockPosition(t)));

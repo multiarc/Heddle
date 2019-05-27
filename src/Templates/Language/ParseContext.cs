@@ -32,7 +32,7 @@ namespace Templates.Language {
             DefinitionsBlock = new DefinitionBlock(parentContext?.DefinitionsBlock);
             OutputChains = new List<OutputChain>();
             RawOutputItems = new List<RawOutputItem>();
-            CommentTokens = new List<BlockPosition>();
+            SkippedTokens = new List<BlockPosition>();
             DefaultChains = new List<OutputChain>();
             Errors = parentContext?.Errors ?? new List<TtlCompileError>();
             Warnings = parentContext?.Warnings ?? new List<TtlCompileWarning>();
@@ -43,7 +43,7 @@ namespace Templates.Language {
             var newContext = new ParseContext(context, context._offset);// { DefenitionsOnly = context.DefenitionsOnly };
             newContext.DefinitionsBlock.Positions.AddRange(context.DefinitionsBlock.Positions);
             newContext.RawOutputItems.AddRange(context.RawOutputItems);
-            newContext.CommentTokens.AddRange(context.CommentTokens);
+            newContext.SkippedTokens.AddRange(context.SkippedTokens);
             return newContext;
         }
 
@@ -357,7 +357,7 @@ namespace Templates.Language {
 
         public List<RawOutputItem> RawOutputItems { get; }
 
-        public List<BlockPosition> CommentTokens { get; }
+        public List<BlockPosition> SkippedTokens { get; }
 
         internal bool InDefinition { get; set; }
         = false;
