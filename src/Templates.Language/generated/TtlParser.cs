@@ -41,8 +41,9 @@ public partial class TtlParser : Parser {
 		SUB_START=8, SUB_CLOSE=9, CSHARP_END=10, CSHARP_TOKEN=11, CSHARP_START=12, 
 		DEF_STARTNAME=13, DEF_ENDNAME=14, DELIM=15, DEF_START=16, DEF_CLOSE=17, 
 		RAW=18, OUT_PARAMSTART=19, OUT_PARAMEND=20, LINE_TERMINATE=21, DEF_OUT=22, 
-		COMMENT=23, DEF_TYPE=24, IMPORT_COMMENT=25, CALL_RETURN_COMMENT=26, CALL_SKIP_WS=27, 
-		OUT_COMMENT=28, OUT_WS=29, OUT_SKIP_WS=30, CALL_COMMENT=31, CALL_WS=32;
+		COMMENT=23, SKIP_WS=24, DEF_TYPE=25, IMPORT_COMMENT=26, CALL_RETURN_COMMENT=27, 
+		CALL_SKIP_WS=28, OUT_COMMENT=29, OUT_WS=30, OUT_SKIP_WS=31, CALL_COMMENT=32, 
+		CALL_WS=33;
 	public const int
 		RULE_ttl = 0, RULE_raw = 1, RULE_definition = 2, RULE_def = 3, RULE_inherited_def = 4, 
 		RULE_simple_def = 5, RULE_default_chain = 6, RULE_import_block = 7, RULE_outblock = 8, 
@@ -61,8 +62,8 @@ public partial class TtlParser : Parser {
 		"OUT", "SUB_START", "SUB_CLOSE", "CSHARP_END", "CSHARP_TOKEN", "CSHARP_START", 
 		"DEF_STARTNAME", "DEF_ENDNAME", "DELIM", "DEF_START", "DEF_CLOSE", "RAW", 
 		"OUT_PARAMSTART", "OUT_PARAMEND", "LINE_TERMINATE", "DEF_OUT", "COMMENT", 
-		"DEF_TYPE", "IMPORT_COMMENT", "CALL_RETURN_COMMENT", "CALL_SKIP_WS", "OUT_COMMENT", 
-		"OUT_WS", "OUT_SKIP_WS", "CALL_COMMENT", "CALL_WS"
+		"SKIP_WS", "DEF_TYPE", "IMPORT_COMMENT", "CALL_RETURN_COMMENT", "CALL_SKIP_WS", 
+		"OUT_COMMENT", "OUT_WS", "OUT_SKIP_WS", "CALL_COMMENT", "CALL_WS"
 	};
 	public static readonly IVocabulary DefaultVocabulary = new Vocabulary(_LiteralNames, _SymbolicNames);
 
@@ -152,7 +153,7 @@ public partial class TtlParser : Parser {
 			State = 39;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
-			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << TEXT) | (1L << TEXT_WS) | (1L << IMPORT_TOKEN) | (1L << ID) | (1L << ROOT_REF) | (1L << MEMBER_P) | (1L << OUT) | (1L << CSHARP_END) | (1L << CSHARP_TOKEN) | (1L << CSHARP_START) | (1L << DEF_STARTNAME) | (1L << DEF_ENDNAME) | (1L << DELIM) | (1L << DEF_START) | (1L << RAW) | (1L << OUT_PARAMSTART) | (1L << OUT_PARAMEND) | (1L << LINE_TERMINATE) | (1L << DEF_OUT) | (1L << COMMENT) | (1L << DEF_TYPE) | (1L << IMPORT_COMMENT) | (1L << CALL_RETURN_COMMENT) | (1L << CALL_SKIP_WS) | (1L << OUT_COMMENT) | (1L << OUT_WS) | (1L << OUT_SKIP_WS) | (1L << CALL_COMMENT) | (1L << CALL_WS))) != 0)) {
+			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << TEXT) | (1L << TEXT_WS) | (1L << IMPORT_TOKEN) | (1L << ID) | (1L << ROOT_REF) | (1L << MEMBER_P) | (1L << OUT) | (1L << CSHARP_END) | (1L << CSHARP_TOKEN) | (1L << CSHARP_START) | (1L << DEF_STARTNAME) | (1L << DEF_ENDNAME) | (1L << DELIM) | (1L << DEF_START) | (1L << RAW) | (1L << OUT_PARAMSTART) | (1L << OUT_PARAMEND) | (1L << LINE_TERMINATE) | (1L << DEF_OUT) | (1L << COMMENT) | (1L << SKIP_WS) | (1L << DEF_TYPE) | (1L << IMPORT_COMMENT) | (1L << CALL_RETURN_COMMENT) | (1L << CALL_SKIP_WS) | (1L << OUT_COMMENT) | (1L << OUT_WS) | (1L << OUT_SKIP_WS) | (1L << CALL_COMMENT) | (1L << CALL_WS))) != 0)) {
 				{
 				State = 37;
 				ErrorHandler.Sync(this);
@@ -1709,7 +1710,7 @@ public partial class TtlParser : Parser {
 
 	private static char[] _serializedATN = {
 		'\x3', '\x608B', '\xA72A', '\x8133', '\xB9ED', '\x417C', '\x3BE7', '\x7786', 
-		'\x5964', '\x3', '\"', '\x197', '\x4', '\x2', '\t', '\x2', '\x4', '\x3', 
+		'\x5964', '\x3', '#', '\x197', '\x4', '\x2', '\t', '\x2', '\x4', '\x3', 
 		'\t', '\x3', '\x4', '\x4', '\t', '\x4', '\x4', '\x5', '\t', '\x5', '\x4', 
 		'\x6', '\t', '\x6', '\x4', '\a', '\t', '\a', '\x4', '\b', '\t', '\b', 
 		'\x4', '\t', '\t', '\t', '\x4', '\n', '\t', '\n', '\x4', '\v', '\t', '\v', 
@@ -1857,7 +1858,7 @@ public partial class TtlParser : Parser {
 		'\x2', 'm', 'o', '\a', '\x4', '\x2', '\x2', 'n', 'm', '\x3', '\x2', '\x2', 
 		'\x2', 'o', 'r', '\x3', '\x2', '\x2', '\x2', 'p', 'n', '\x3', '\x2', '\x2', 
 		'\x2', 'p', 'q', '\x3', '\x2', '\x2', '\x2', 'q', 's', '\x3', '\x2', '\x2', 
-		'\x2', 'r', 'p', '\x3', '\x2', '\x2', '\x2', 's', 'w', '\a', '\x1A', '\x2', 
+		'\x2', 'r', 'p', '\x3', '\x2', '\x2', '\x2', 's', 'w', '\a', '\x1B', '\x2', 
 		'\x2', 't', 'v', '\a', '\x4', '\x2', '\x2', 'u', 't', '\x3', '\x2', '\x2', 
 		'\x2', 'v', 'y', '\x3', '\x2', '\x2', '\x2', 'w', 'u', '\x3', '\x2', '\x2', 
 		'\x2', 'w', 'x', '\x3', '\x2', '\x2', '\x2', 'x', 'z', '\x3', '\x2', '\x2', 
@@ -1937,7 +1938,7 @@ public partial class TtlParser : Parser {
 		'\x2', '\x2', '\x2', '\xE3', '\xE6', '\x3', '\x2', '\x2', '\x2', '\xE4', 
 		'\xE2', '\x3', '\x2', '\x2', '\x2', '\xE4', '\xE5', '\x3', '\x2', '\x2', 
 		'\x2', '\xE5', '\xE7', '\x3', '\x2', '\x2', '\x2', '\xE6', '\xE4', '\x3', 
-		'\x2', '\x2', '\x2', '\xE7', '\xEB', '\a', '\x1A', '\x2', '\x2', '\xE8', 
+		'\x2', '\x2', '\x2', '\xE7', '\xEB', '\a', '\x1B', '\x2', '\x2', '\xE8', 
 		'\xEA', '\a', '\x4', '\x2', '\x2', '\xE9', '\xE8', '\x3', '\x2', '\x2', 
 		'\x2', '\xEA', '\xED', '\x3', '\x2', '\x2', '\x2', '\xEB', '\xE9', '\x3', 
 		'\x2', '\x2', '\x2', '\xEB', '\xEC', '\x3', '\x2', '\x2', '\x2', '\xEC', 

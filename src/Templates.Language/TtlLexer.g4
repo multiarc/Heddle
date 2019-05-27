@@ -34,7 +34,7 @@ fragment EAT_WS: '@\\' WS*;
 
 COMMENT: COMMENT_BLOCK -> channel(HIDDEN);
 
-SKIP_WS: EAT_WS -> type(TEXT_WS);
+SKIP_WS: EAT_WS -> channel(HIDDEN);
 
 RAW: RAW_BLOCK;
 

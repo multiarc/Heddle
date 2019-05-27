@@ -8,18 +8,18 @@
 		{{
 		public static object ProcessData_@(ExtensionName)@(MethodNumber) (@(ModelType) model, @(ChainedType) chained, @(RootModelType) root)
 		{
-			return @(Expression);;
+			return @(Expression);
 		}
 		}}
 	}
 	}} :: CSharpContext
 %>
-@using(){{Templates.Runtime}};
-@model(){{CSharpContext}};
+@using(){{Templates.Runtime}}@\
+@model(){{CSharpContext}}@\
 using System.Runtime.CompilerServices;
 using System.Reflection;
 @list(Namespaces) {{
-	using @();;
+	using @();
 }}
 @list(InternalsVisibleTo) {{
 	[assembly: InternalsVisibleTo("@()")]

@@ -143,6 +143,11 @@ namespace Templates.Language {
             {
                 var currentContext = CurrentParseContext;
                 var newContext = new ParseContext(currentContext, ttl.Start.StartIndex);
+                
+                //transfer parent skipped tokens inside with offset
+                newContext.CommentTokens.AddRange(currentContext.CommentTokens.Where(t => t.StartIndex >= ttl.Start.StartIndex)
+                    .Select(t => new BlockPosition(t.StartIndex - ttl.Start.StartIndex, t.Length)));
+                
                 currentContext.AddSubContext(newContext);
                 if (!currentContext.InDefintionContext && !currentContext.InDefinition)
                 {

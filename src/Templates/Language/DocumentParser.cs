@@ -71,12 +71,13 @@ namespace Templates.Language
             ParseTreeWalker walker = new ParseTreeWalker();
             //context.DefenitionsOnly = loadDefenitionsOnly;
             TtlMainListener listener = new TtlMainListener(context, compileContext);
-            walker.Walk(listener, tree);
 
             listener.CurrentParseContext.CommentTokens.AddRange(
                 tokens.GetTokens()
                     .Where(t => t.Channel == Lexer.Hidden)
                     .Select(t => new BlockPosition(t)));
+            
+            walker.Walk(listener, tree);
 
             //context.DefenitionsOnly = false;
             return tree.GetText();

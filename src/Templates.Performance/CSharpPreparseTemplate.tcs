@@ -1,7 +1,7 @@
-﻿@using(){{Templates.Runtime}};
-@model(){{ExpressionOptions}};
+﻿@using(){{Templates.Runtime}}@\
+@model(){{ExpressionOptions}}@\
 @list(Namespaces) {{
-	using @();;
+	using @();
 }}
 
 namespace Templates.Runtime {
@@ -10,7 +10,7 @@ namespace Templates.Runtime {
 
 		public static object PreProcessData(@(ModelType) model, @(ChainedType) chained, @(RootModelType) root)
 		{
-			return @(Expression);;
+			return @(Expression);
 		}
 	}
 }
