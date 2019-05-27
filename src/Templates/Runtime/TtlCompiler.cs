@@ -136,7 +136,7 @@ namespace Templates.Runtime
                 {
                     if (chain.BlockPosition.StartIndex < blockPosition.StartIndex &&
                         chain.BlockPosition.StartIndex + chain.BlockPosition.Length >
-                        blockPosition.StartIndex + blockPosition.Length)
+                        blockPosition.StartIndex)
                     {
                         chain.BlockPosition =
                             new BlockPosition(chain.BlockPosition.StartIndex - seed + blockPosition.Length,
@@ -157,7 +157,7 @@ namespace Templates.Runtime
                     var position = context.DefinitionsBlock.Positions[index];
                     if (position.StartIndex < blockPosition.StartIndex &&
                         position.StartIndex + position.Length >
-                        blockPosition.StartIndex + blockPosition.Length)
+                        blockPosition.StartIndex)
                     {
                         context.DefinitionsBlock.Positions[index] =
                             new BlockPosition(position.StartIndex - seed + blockPosition.Length,
