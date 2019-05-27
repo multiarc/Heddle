@@ -136,10 +136,10 @@ namespace Templates.Runtime
                 {
                     if (chain.BlockPosition.StartIndex < blockPosition.StartIndex &&
                         chain.BlockPosition.StartIndex + chain.BlockPosition.Length >
-                        blockPosition.StartIndex)
+                        blockPosition.StartIndex + blockPosition.Length)
                     {
                         chain.BlockPosition =
-                            new BlockPosition(chain.BlockPosition.StartIndex - seed + blockPosition.Length,
+                            new BlockPosition(chain.BlockPosition.StartIndex,
                                 chain.BlockPosition.Length - blockPosition.Length);
                     }
                     else if (chain.BlockPosition.StartIndex + chain.BlockPosition.Length > blockPosition.StartIndex)
@@ -157,10 +157,10 @@ namespace Templates.Runtime
                     var position = context.DefinitionsBlock.Positions[index];
                     if (position.StartIndex < blockPosition.StartIndex &&
                         position.StartIndex + position.Length >
-                        blockPosition.StartIndex)
+                        blockPosition.StartIndex + blockPosition.Length)
                     {
                         context.DefinitionsBlock.Positions[index] =
-                            new BlockPosition(position.StartIndex - seed + blockPosition.Length,
+                            new BlockPosition(position.StartIndex,
                                 position.Length - blockPosition.Length);
                     }
                     else if (position.StartIndex + position.Length > blockPosition.StartIndex)
@@ -195,9 +195,11 @@ namespace Templates.Runtime
                 int seed = ExStringBuilder.ApplyRemove(blockPosition, ref workingDocument);
                 foreach (var chain in ((ICollection<OutputChain>)context.OutputChains).Reverse())
                 {
-                    if (chain.BlockPosition.StartIndex > blockPosition.StartIndex)
+                    if (chain.BlockPosition.StartIndex + chain.BlockPosition.Length > blockPosition.StartIndex)
+                    {
                         chain.BlockPosition = new BlockPosition(chain.BlockPosition.StartIndex - seed,
                             chain.BlockPosition.Length);
+                    }
                     else
                     {
                         break;

@@ -294,8 +294,6 @@ namespace Templates.Language {
                 Chain = CreateChain(context.chain()?.call()),
                 BlockPosition = GetBlockPosition(context)
             };
-            var lineTerminate = context.LINE_TERMINATE();
-            AddToken(lineTerminate, TtlTokenType.LineTerminate);
             var subTemplate = context.subtemplate();
             AddToken(subTemplate?.SUB_START(), TtlTokenType.SubStart);
             AddToken(subTemplate?.SUB_CLOSE(), TtlTokenType.SubClose);
