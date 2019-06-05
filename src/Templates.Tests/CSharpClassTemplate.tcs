@@ -1,4 +1,4 @@
-﻿<% <class>
+﻿@% <class>
 	{{
 	public static class CSE_@guid(ClassGuid){{N}} {
 		
@@ -13,7 +13,7 @@
 		}}
 	}
 	}} :: CSharpContext
-%>
+%@
 @using(){{Templates.Runtime}}@\
 @model(){{CSharpContext}}@\
 using System.Runtime.CompilerServices;

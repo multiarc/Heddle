@@ -19,18 +19,24 @@ fragment SUB_ST: WS* '{{';
 fragment SUB_CL: '}}' WS*;
 fragment PARA_ST: '(';
 fragment PARA_CL: ')';
-fragment DEF_ST: '<%';
-fragment DEF_CL: '%>';
+fragment DEF_ST: '@%';
+fragment DEF_CL: '%@';
 fragment OUT_ST: '@';
 fragment DEF_T: '::';
 fragment EXT_DELIM: ':';
 fragment DEF_STNAME: '<';
 fragment DEF_CLNAME: '>';
 fragment DEF_MAKEOUT: '->';
-fragment COMMENT_BLOCK: '@*' .*? '*@';
-fragment RAW_BLOCK : '@{' .*? '}@';
-fragment RAW_LINE : '@:' .*? ('\r?\n' | EOF);
-fragment EAT_WS: '@\\' WS*;
+fragment COMMENT_START: '@*';
+fragment COMMENT_END: '*@';
+fragment WS_START: '@\\';
+fragment COMMENT_BLOCK: COMMENT_START .*? COMMENT_END;
+fragment RAW_START: '@{';
+fragment RAW_END: '}@';
+fragment RAW_BLOCK : RAW_START .*? RAW_END;
+fragment RAW_START_LN: '@:';
+fragment RAW_LINE : RAW_START_LN .*? ('\r?\n' | EOF);
+fragment EAT_WS: WS_START WS*;
 
 COMMENT: COMMENT_BLOCK -> channel(HIDDEN);
 
@@ -40,27 +46,46 @@ RAW: RAW_BLOCK;
 
 RW_LINE: RAW_LINE -> type(RAW);
 
-DEF_START: DEF_ST;
-DEF_STARTNAME: DEF_STNAME;
-DEF_CLOSE: DEF_CL;
-DEF_ENDNAME: DEF_CLNAME;
-TYPE_ID: ID_TYPE -> type(ID);
+DEF_START: DEF_ST -> pushMode(DEF);
 
 START_IMPORT: IMP -> type(IMPORT_TOKEN), pushMode(IMPORT_MODE);
 
 START_OUT: OUT_ST -> type(OUT), pushMode(OUT_MODE);
+
+TEXT: (~[@]+ | .);
+
+mode SUB_BLOCK;
+
+SUB_COMMENT: COMMENT_BLOCK -> channel(HIDDEN);
+
+SUB_SKIP_WS: EAT_WS -> channel(HIDDEN);
+
+SUB_RAW: RAW_BLOCK -> type(RAW);
+
+SUB_RW_LINE: RAW_LINE -> type(RAW);
+
+SUB_DEF_START: DEF_ST -> type(DEF_START), pushMode(DEF);
+
+SUB_START_IMPORT: IMP -> type(IMPORT_TOKEN), pushMode(IMPORT_MODE);
+
+SUB_START_OUT: OUT_ST -> type(OUT), pushMode(OUT_MODE);
+
+SUB_SUB_CLOSE: SUB_CL -> type(SUB_CLOSE), popMode;
+
+SUB_TEXT: (~[@}]+ | .) -> type(TEXT);
+
+mode DEF;
+
+DEF_COMMENT: COMMENT_BLOCK -> channel(HIDDEN);
+DEF_STARTNAME: DEF_STNAME;
+TYPE_ID: ID_TYPE -> type(ID);
+DEF_ENDNAME: DEF_CLNAME;
+SUB_START: SUB_ST -> pushMode(SUB_BLOCK);
 DEF_OUT: DEF_MAKEOUT -> type(DEF_OUT), pushMode(OUT_MODE);
-
-SUB_START: SUB_ST;
-
-SUB_CLOSE: SUB_CL;
-
 DEF_TYPE: DEF_T;
 DELIM: EXT_DELIM;
-
+DEF_CLOSE: DEF_CL -> popMode;
 TEXT_WS: WS+;
-
-TEXT: .;
 
 mode IMPORT_MODE;
 
@@ -91,8 +116,8 @@ CALL_RETURN_START: OUT_ST -> type(OUT), mode(OUT_MODE);
 CALL_RETURN_RAW: RAW_BLOCK -> type(RAW), popMode;
 CALL_RETURN_RW_LINE: RAW_LINE -> type(RAW), popMode;
 CALL_RETURN_DEF_START: DEF_ST -> type(DEF_START), popMode;
-CALL_RETURN_SUB_START: WS* SUB_ST -> type(SUB_START), popMode;
-CALL_RETURN_SUB_CL: SUB_CL -> type(SUB_CLOSE), popMode;
+CALL_RETURN_SUB_START: WS* SUB_ST -> type(SUB_START), popMode, pushMode(SUB_BLOCK);
+CALL_RETURN_SUB_CL: SUB_CL -> type(SUB_CLOSE), popMode, popMode;
 CALL_RETURN_START_IMPORT: IMP -> type(IMPORT_TOKEN), popMode, pushMode(IMPORT_MODE);
 
 CALL_SKIP_WS: EAT_WS -> channel(HIDDEN);
@@ -118,8 +143,8 @@ OUT_OUT_START: OUT_ST -> type(OUT);
 OUT_RAW: RAW_BLOCK -> type(RAW), popMode;
 OUT_RW_LINE: RAW_LINE -> type(RAW), popMode;
 OUT_DEF_START: DEF_ST -> type(DEF_START), popMode;
-OUT_SUB_START: SUB_ST -> type(SUB_START), popMode;
-OUT_SUB_CL: SUB_CL -> type(SUB_CLOSE), popMode;
+OUT_SUB_START: SUB_ST -> type(SUB_START), popMode, pushMode(SUB_BLOCK);
+OUT_SUB_CL: SUB_CL -> type(SUB_CLOSE), popMode, popMode;
 OUT_START_IMPORT: IMP -> type(IMPORT_TOKEN), popMode, pushMode(IMPORT_MODE);
 
 OUT_SKIP_WS: EAT_WS -> channel(HIDDEN);

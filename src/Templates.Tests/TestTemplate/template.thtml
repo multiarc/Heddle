@@ -1,5 +1,5 @@
 ﻿@*Comment Test 1*@
-<%
+@%
 	@*text dynamic template for using it with *@
 	<text>@*Baseless definition test*@
 	{{
@@ -23,7 +23,7 @@
 			partial(){{partial}}@\
         }}@\
 	}} :: TestDataStructure
-%>
+%@
 @using(){{Templates@*Comment Test 2*@@{.}@Tests.Data}}@\
 @using(){{System.Linq}}@\
 @using(){{Templates.Models}}@\
@@ -91,20 +91,20 @@
 		@multi_text(@new NameValuePair { Name = "input3-name", Value="input3-value" })
 		{{
 			@text() {{ class="testcssclass3" }}
-			<%
+			@%
 				<multi_text:multi_text>
 				{{
 					<textarea>shit</textarea>
 				}}
-			%>
+			%@
 			@multi_text()
 		}}
-<%
+@%
 	<text:text>
 	{{
 		Full override
 	}}
-%>
+%@
 @text()
     </div>
 </body>

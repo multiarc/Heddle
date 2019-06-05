@@ -25,8 +25,8 @@ namespace Templates.Tests
             {
                 AllowCSharp = true
             };
-            var target = new TtlTemplate("<%" + Environment.NewLine + "<default> -> (Model)" + Environment.NewLine +
-                                         "{{ Order #@(Id)! }} :: dynamic" + Environment.NewLine + "%>",
+            var target = new TtlTemplate("@%" + Environment.NewLine + "<default> -> (Model)" + Environment.NewLine +
+                                         "{{ Order #@(Id)! }} :: dynamic" + Environment.NewLine + "%@",
                 new CompileContext(options));
             Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
             dynamic model = new ExpandoObject();

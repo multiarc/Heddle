@@ -1,7 +1,7 @@
 @*-------------------------------*@
 @*---------Start widgets---------*@
 @*-------------------------------*@
-<%
+@%
 
 
 
@@ -149,13 +149,13 @@
 <default> -> ()
 {{
 @*---------editable--------------*@
-	<%
+	@%
 		<center:center>
 		{{
 			@center() {{@out()}}
 			CENTER FOOTER
 		}}
-	%>
+	%@
 	@layout() {{
 		@left()
 		{{
@@ -171,23 +171,23 @@
 			@seafood_how_to()
 		}}
 	}}
-	<%
+	@%
 		<right:right>
 		{{
 			@right() {{@out()}}
 			@chef_videos()
 		}}
-	%>
+	%@
 @*---------editable--------------*@
 }}
-%>
+%@
 @*-------------------------------*@
 @*---------End Layout------------*@
 @*-------------------------------*@
 @*----Output top misc----*@
 <div style="width:1000px; margin:auto auto;"><img src="http://www.vitalchoice.com/shop/pc/catalog/kitchen_portal/in-the-kitchen-header-4-24-14a.png" width="955" height="90"></div>
 @default()
-<%
+@%
 	<body:body>
 	{{
 		This is individual body
@@ -202,7 +202,7 @@
 		@chef_videos()
 		Added new video
 	}}
-%>
+%@
 @default()
 @layout() {{
 		@left()

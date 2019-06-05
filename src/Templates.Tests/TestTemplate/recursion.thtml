@@ -1,7 +1,7 @@
 ﻿@using(){{Templates.Tests.Data}}
 @using(){{System.Collections.Generic}}
 @model(){{dynamic}}
-<%
+@%
 <category>
 {{
 	@(ComplexObject.Data.Text)
@@ -88,4 +88,4 @@
  </div>
 }} :: ICollection<Category>
 
-%>
+%@
