@@ -17,5 +17,9 @@ namespace Templates.Extensions
         {
             return scope.ModelData;
         }
+
+        public override void RenderData(ref Scope scope)
+        {
+        }
     }
 }

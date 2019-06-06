@@ -139,6 +139,11 @@ namespace Templates.Runtime {
 
         public object ProcessData(ref Scope scope) => Strategy.Execute(ref scope);
 
+        public void RenderData(ref Scope scope)
+        {
+            Strategy.Render(ref scope);
+        }
+
         public BlockPosition Position { get; set; }
 
         public bool Empty => _optimizedElements.Count(e => e.Processor != null) == 0;
@@ -182,6 +187,11 @@ namespace Templates.Runtime {
             }
 
             public string Execute(ref Scope scope) => _processor.ProcessData(ref scope) as string ?? string.Empty;
+
+            public void Render(ref Scope scope)
+            {
+                _processor.RenderData(ref scope);
+            }
         }
 
         private sealed class DocumentStrategy : IProcessStrategy
@@ -194,6 +204,11 @@ namespace Templates.Runtime {
             }
 
             public string Execute(ref Scope scope) => _document;
+
+            public void Render(ref Scope scope)
+            {
+                scope.Renderer.Render(_document);
+            }
         }
 
         private sealed class OptimizedStrategy : IProcessStrategy
@@ -217,7 +232,16 @@ namespace Templates.Runtime {
                     results[index] = result;
                     index++;
                 }
+
                 return ExStringBuilder.ConcatArray(results, totalLength);
+            }
+
+            public void Render(ref Scope scope)
+            {
+                foreach (var processor in _processors)
+                {
+                    processor.RenderData(ref scope);
+                }
             }
         }
 
@@ -244,6 +268,21 @@ namespace Templates.Runtime {
                     finalIndex++;
                 }
                 return ExStringBuilder.ConcatArray(results, totalLength);
+            }
+
+            public void Render(ref Scope scope)
+            {
+                foreach (var element in _processors)
+                {
+                    if (element.Piece != null)
+                    {
+                        scope.Renderer.Render(element.Piece);
+                    }
+                    else
+                    {
+                        element.Processor.RenderData(ref scope);
+                    }
+                }
             }
         }
 

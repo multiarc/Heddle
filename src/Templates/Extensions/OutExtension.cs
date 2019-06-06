@@ -15,12 +15,20 @@ namespace Templates.Extensions
 
         public override object ProcessData(ref Scope scope)
         {
-            if (InnerExist)
-            {
-                var innerScope = scope.Model(scope.ChainedData, scope.ParentModelData);
-                return GetInnerResult(ref innerScope);
-            }
-            return scope.ChainedData;
+            if (!InnerExist)
+                return scope.ChainedData;
+
+            var innerScope = scope.Model(scope.ChainedData, scope.ParentModelData);
+            return GetInnerResult(ref innerScope);
+        }
+
+        public override void RenderData(ref Scope scope)
+        {
+            if (!InnerExist)
+                return;
+
+            var innerScope = scope.Model(scope.ChainedData, scope.ParentModelData);
+            RenderInnerResult(ref innerScope);
         }
     }
 }

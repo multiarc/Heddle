@@ -1,35 +1,17 @@
-﻿using System.Collections.Generic;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 
 namespace Templates.Data
 {
-    public class ScopeRenderer
-    {
-        private readonly List<string> _items;
-
-        public ScopeRenderer(int elementCount = 0)
-        {
-            _items = new List<string>(0);
-        }
-
-        public int TotalCount => _items.Count;
-
-        public void RenderNext(string data)
-        {
-            _items.Add(data ?? string.Empty);
-        }
-    }
-
-    public struct Scope
+    public struct Scope : IScopeRenderer
     {
         public readonly object ModelData;
         public readonly object ChainedData;
         public readonly object ParentModelData;
         public readonly object CallerData;
-        public readonly ScopeRenderer Renderer;
+        public readonly IScopeRenderer Renderer;
         internal readonly object RootData;
 
-        internal Scope(object root, object data, object model, object chained, ScopeRenderer renderer,
+        internal Scope(object root, object data, object model, object chained, IScopeRenderer renderer,
             object parent = null)
         {
             RootData = root;
@@ -70,6 +52,16 @@ namespace Templates.Data
             return new Scope(RootData, CallerData, model, chained, Renderer, ModelData);
         }
 
+        public Scope RenderProxy(IScopeRenderer renderer)
+        {
+            return new Scope(RootData, CallerData, ModelData, ChainedData, renderer, ParentModelData);
+        }
+
         public static readonly Scope Null = new Scope(null, null, null, null, null);
+
+        public void Render(string data)
+        {
+            Renderer.Render(data);
+        }
     }
 }

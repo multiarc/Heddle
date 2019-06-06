@@ -2,8 +2,10 @@
 using Templates.Data;
 using Templates.Exceptions;
 
-namespace Templates.Core {
-    internal class DefenitionBaseExtension : AbstractExtension {
+namespace Templates.Core
+{
+    internal class DefenitionBaseExtension : AbstractExtension
+    {
         public DefenitionBaseExtension DefenitionParameterTemplate { get; set; }
         private readonly ThreadLocal<int> _recursionCount = new ThreadLocal<int>();
         private int _maxRecursionCount;
@@ -24,6 +26,24 @@ namespace Templates.Core {
             var result = DefenitionParameterTemplate?.ProcessData(ref chainedData) ?? chained;
             _recursionCount.Value--;
             return result;
+        }
+
+        public override void RenderData(ref Scope scope)
+        {
+            if (_recursionCount.Value >= _maxRecursionCount)
+                throw new TemplateProcessingException("Recursion hit it's maximum");
+            _recursionCount.Value++;
+            var chained = GetInnerResult(ref scope);
+            var chainedData = scope.Chain(chained);
+            if (DefenitionParameterTemplate != null)
+            {
+                DefenitionParameterTemplate.RenderData(ref chainedData);
+            }
+            else
+            {
+                scope.Render(chained);
+            }
+            _recursionCount.Value--;
         }
     }
 }

@@ -3,14 +3,16 @@ using Templates.Attributes;
 using Templates.Core;
 using Templates.Data;
 
-namespace Templates.Extensions {
+namespace Templates.Extensions
+{
     /// <summary>
     /// <para>Guid Template</para>
     /// <para>Optional string represents GUID formatting</para>
     /// </summary>
-    [ExtensionName ("guid")]
-    [DataType (typeof (Guid))]
-    public class GuidExtension: AbstractExtension {
+    [ExtensionName("guid")]
+    [DataType(typeof(Guid))]
+    public class GuidExtension : AbstractExtension
+    {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
             return base.InitStart(initContext, parent, chainedType, null);
@@ -22,6 +24,15 @@ namespace Templates.Extensions {
                 return string.Empty;
             var parentData = scope.Parent();
             return ((Guid) scope.ModelData).ToString(GetInnerResult(ref parentData));
+        }
+
+        public override void RenderData(ref Scope scope)
+        {
+            if (!(scope.ModelData is Guid guid))
+                return;
+
+            var parentData = scope.Parent();
+            scope.Render(guid.ToString(GetInnerResult(ref parentData)));
         }
     }
 }

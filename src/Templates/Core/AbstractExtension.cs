@@ -27,11 +27,21 @@ namespace Templates.Core
             }
         }
 
-        public string GetInnerResult(ref Scope scope) => _processStrategy?.Execute(ref scope) ?? _innerResult;
-        
-        public void RenderInnerResult(ref Scope scope) => _processStrategy?.Execute(ref scope) ?? _innerResult;
+        protected string GetInnerResult(ref Scope scope) => _processStrategy?.Execute(ref scope) ?? _innerResult;
 
-        public bool InnerExist => _subTemplate != null;
+        protected void RenderInnerResult(ref Scope scope)
+        {
+            if (_processStrategy != null)
+            {
+                _processStrategy.Render(ref scope);
+            }
+            else
+            {
+                scope.Render(_innerResult);
+            }
+        }
+
+        protected bool InnerExist => _subTemplate != null;
 
         public virtual void SetUpRenderType(RenderType renderType)
         {
@@ -54,10 +64,12 @@ namespace Templates.Core
                 subTemplate = TtlCompiler.Compile(parameterTemplate, newContext, parseContext, chainedType);
                 newContext.CompileContext.Compile();
             }
+
             if (subTemplate != null)
             {
                 parameterTemplate = subTemplate.Document;
             }
+
             if (subTemplate == null || subTemplate.Empty)
             {
                 result = null;
@@ -74,9 +86,8 @@ namespace Templates.Core
         {
             if (initContext.CompileScope == null)
                 throw new ArgumentNullException(nameof(initContext.CompileScope));
-            RuntimeDocument subTemplate;
             var type = InitSubTemplate(ref initContext.ParameterTemplate, dataType, chainedType, initContext.CompileScope,
-                initContext.ParseContext, out subTemplate);
+                initContext.ParseContext, out var subTemplate);
             if (subTemplate == null)
                 _innerResult = initContext.ParameterTemplate;
             _subTemplate = subTemplate;
@@ -95,6 +106,8 @@ namespace Templates.Core
         /// <param name="scope"></param>
         /// <returns></returns>
         public abstract object ProcessData(ref Scope scope);
+
+        public abstract void RenderData(ref Scope scope);
 
         public BlockPosition Position { get; set; }
     }

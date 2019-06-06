@@ -35,5 +35,9 @@ namespace Templates.Extensions
         {
             return null;
         }
+
+        public override void RenderData(ref Scope scope)
+        {
+        }
     }
 }

@@ -7,9 +7,9 @@ namespace Templates.Performance.TestSuite.Extensions
 {
     public class RazorCustomStyles : ViewComponent
     {
-        public async Task<IViewComponentResult> InvokeAsync()
+        public Task<IViewComponentResult> InvokeAsync()
         {
-            return new HtmlContentViewComponentResult(new HtmlString("/* CSS Comment Test */"));
+            return Task.FromResult<IViewComponentResult>(new HtmlContentViewComponentResult(new HtmlString("/* CSS Comment Test */")));
         }
     }
 }

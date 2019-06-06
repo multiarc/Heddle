@@ -2,11 +2,13 @@
 using Templates.Data;
 using Templates.Strings.Core;
 
-namespace Templates.Runtime {
+namespace Templates.Runtime
+{
     /// <summary>
     /// Recognized template in the source template
     /// </summary>
-    internal class DocumentElement : IDataProcessor {
+    internal class DocumentElement : IDataProcessor
+    {
         /// <summary>
         /// Template chain to execute
         /// </summary>
@@ -17,7 +19,7 @@ namespace Templates.Runtime {
         /// </summary>
         public BlockPosition Position { get; set; }
 
-        public DocumentElement (BlockPosition position)
+        public DocumentElement(BlockPosition position)
         {
             Position = position;
             _callChain = new TemplateChain();
@@ -45,6 +47,11 @@ namespace Templates.Runtime {
         public object ProcessData(ref Scope scope)
         {
             return CallChain.ProcessData(ref scope);
+        }
+
+        public void RenderData(ref Scope scope)
+        {
+            CallChain.RenderData(ref scope);
         }
     }
 }

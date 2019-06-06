@@ -11,7 +11,7 @@ namespace Templates.Extensions
     /// <para>Optional parameter represents default value if data name is not set in template or the object value is null</para>
     /// </summary>
     [ExtensionName("string")]
-    [DataType(typeof (string))]
+    [DataType(typeof(string))]
     [EncodeOutput]
     public class StringExtension : AbstractHtmlExtension
     {
@@ -28,18 +28,47 @@ namespace Templates.Extensions
                 var parentScope = scope.Parent();
                 return GetInnerResult(ref parentScope);
             }
-            if (!(model is string))
+
+            if (model is string)
+                return model;
+
+            try
             {
-                try
-                {
-                    model = Convert.ChangeType(model, typeof (string), CultureInfo.InvariantCulture);
-                }
-                catch (InvalidCastException)
-                {
-                    return model.ToString();
-                }
+                model = Convert.ChangeType(model, typeof(string), CultureInfo.InvariantCulture);
             }
+            catch (InvalidCastException)
+            {
+                return model.ToString();
+            }
+
             return model;
+        }
+
+        protected override void RenderDataInternal(ref Scope scope)
+        {
+            var model = scope.ModelData;
+            if (model == null)
+            {
+                var parentScope = scope.Parent();
+                RenderInnerResult(ref parentScope);
+                return;
+            }
+
+            if (model is string data)
+            {
+                scope.Render(data);
+                return;
+            }
+
+            try
+            {
+                var str = (string) Convert.ChangeType(model, typeof(string), CultureInfo.InvariantCulture);
+                scope.Render(str);
+            }
+            catch (InvalidCastException)
+            {
+                scope.Render(model.ToString());
+            }
         }
     }
 }

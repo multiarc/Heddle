@@ -1147,15 +1147,23 @@ namespace Templates.Performance.TestSuite.Extensions
         public override object ProcessData(ref Scope scope)
         {
             var areaName = scope.ModelData as string;
-            if (!string.IsNullOrEmpty(areaName))
+            if (string.IsNullOrEmpty(areaName))
+                return string.Empty;
+
+            return Areas.TryGetValue(areaName, out var areaContent) ? areaContent : string.Empty;
+        }
+
+        public override void RenderData(ref Scope scope)
+        {
+            var areaName = scope.ModelData as string;
+            
+            if (string.IsNullOrEmpty(areaName)) 
+                return;
+            
+            if (Areas.TryGetValue(areaName, out var areaContent))
             {
-                string areaContent;
-                if (Areas.TryGetValue(areaName, out areaContent))
-                {
-                    return areaContent;
-                }
+                scope.Render(areaContent);
             }
-            return string.Empty;
         }
     }
 }

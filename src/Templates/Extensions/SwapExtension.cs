@@ -17,5 +17,11 @@ namespace Templates.Extensions
             var innerScope = scope.Model(scope.ChainedData, scope.ModelData); //-V3066
             return GetInnerResult(ref innerScope);
         }
+
+        public override void RenderData(ref Scope scope)
+        {
+            var innerScope = scope.Model(scope.ChainedData, scope.ModelData); //-V3066
+            RenderInnerResult(ref innerScope);
+        }
     }
 }

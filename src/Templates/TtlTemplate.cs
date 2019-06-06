@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.IO;
 using System.Reflection;
+using System.Threading;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
@@ -26,6 +27,7 @@ namespace Templates
         private string _document;
         private volatile bool _disposeAfterComplete;
         private volatile int _runners;
+        private volatile int _maxElementCount;
 
         public TtlTemplate(TemplateOptions options) : this(new CompileContext(options))
         {
@@ -118,8 +120,13 @@ namespace Templates
             string result;
             try
             {
-                var scope = new Scope(data, callerData, data, chained);
-                result = _processStrategy.Execute(ref scope);
+                var renderer = new ScopeRenderer(_maxElementCount);
+                var scope = new Scope(data, callerData, data, chained, renderer);
+                _processStrategy.Render(ref scope);
+                var newMax = Math.Max(_maxElementCount, renderer.TotalCount);
+                newMax = newMax * 110 / 100;
+                _maxElementCount = newMax;
+                result = renderer.ToString();
             }
             finally
             {

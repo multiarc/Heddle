@@ -32,6 +32,13 @@ namespace Templates.Runtime {
             return result;
         }
 
+        public void RenderData(ref Scope scope)
+        {
+            var model = Parameter.GetParameter(ref scope);
+            var modelScope = scope.Model(model);
+            Extension.RenderData(ref modelScope);
+        }
+
         public BlockPosition Position
         {
             get; set;

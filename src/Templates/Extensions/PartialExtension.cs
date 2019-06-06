@@ -20,6 +20,11 @@ namespace Templates.Extensions {
             return InnerTemplate?.Generate(scope.ModelData, scope.ChainedData);
         }
 
+        public override void RenderData(ref Scope scope)
+        {
+            scope.Render(InnerTemplate?.Generate(scope.ModelData, scope.ChainedData));
+        }
+
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
             if (initContext.CompileScope == null)

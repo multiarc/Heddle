@@ -42,6 +42,27 @@ namespace Templates.Runtime {
             return result;
         }
 
+        public void RenderData(ref Scope scope)
+        {
+            var result = scope.ChainedData;
+
+            var lastItem = _itemsToExecute[_itemsToExecute.Count - 1];
+
+            foreach (var item in _itemsToExecute)
+            {
+                var chainedScope = scope.Chain(result);
+
+                if (ReferenceEquals(lastItem, item))
+                {
+                    item.RenderData(ref chainedScope);
+                }
+                else
+                {
+                    result = item.ProcessData(ref chainedScope);
+                }
+            }
+        }
+
         public BlockPosition Position { get; set; }
 
         public ReadOnlyCollection<TemplateItem> ItemsToExecute => new ReadOnlyCollection<TemplateItem>(_itemsToExecute);

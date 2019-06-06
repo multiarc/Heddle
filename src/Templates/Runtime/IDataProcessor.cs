@@ -12,6 +12,8 @@ namespace Templates.Runtime
         /// <returns>Generated string to be inserted in template instead of template</returns>
         object ProcessData(ref Scope scope);
 
+        void RenderData(ref Scope scope);
+
         BlockPosition Position { get; set; }
     }
 }

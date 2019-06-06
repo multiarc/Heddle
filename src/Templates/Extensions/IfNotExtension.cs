@@ -2,13 +2,15 @@
 using Templates.Core;
 using Templates.Data;
 
-namespace Templates.Extensions {
+namespace Templates.Extensions
+{
     /// <summary>
     /// <para>Condition template</para>
     /// <para>Optional parameter represents string to show if condition is false</para>
     /// </summary>
-    [ExtensionName ("ifnot")]
-    public class IfNotExtension: AbstractExtension {
+    [ExtensionName("ifnot")]
+    public class IfNotExtension : AbstractExtension
+    {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
             return base.InitStart(initContext, parent, chainedType, null);
@@ -34,6 +36,15 @@ namespace Templates.Extensions {
             }
 
             return string.Empty;
+        }
+
+        public override void RenderData(ref Scope scope)
+        {
+            if (scope.ModelData == null || scope.ModelData is bool data && !data)
+            {
+                var parentData = scope.Parent();
+                RenderInnerResult(ref parentData);
+            }
         }
     }
 }

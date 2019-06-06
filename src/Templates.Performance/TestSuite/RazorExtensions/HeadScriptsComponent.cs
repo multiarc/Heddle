@@ -7,9 +7,9 @@ namespace Templates.Performance.TestSuite.Extensions
 {
     public class RazorHeadScriptsComponent : ViewComponent
     {
-        public async Task<IViewComponentResult> InvokeAsync()
+        public Task<IViewComponentResult> InvokeAsync()
         {
-            return new HtmlContentViewComponentResult(new HtmlString("<script src=\"/head.js\"></script>"));
+            return Task.FromResult<IViewComponentResult>(new HtmlContentViewComponentResult(new HtmlString("<script src=\"/head.js\"></script>")));
         }
     }
 }

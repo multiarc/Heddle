@@ -28,7 +28,7 @@ namespace Templates.Extensions
     /// <para>...</para>
     /// </summary>
     [ExtensionName("list")]
-    [DataType(typeof (IEnumerable))]
+    [DataType(typeof(IEnumerable))]
     public class ListExtension : AbstractExtension
     {
         private ICountReader _collectionCountReader;
@@ -41,13 +41,15 @@ namespace Templates.Extensions
             {
                 return base.InitStart(initContext, dataType, chainedType, null);
             }
+
             var elementType = dataType.Type.TryGetElementType(typeof(ICollection<>));
             if (elementType != null)
             {
                 _collectionCountReader = (ICountReader) Activator.CreateInstance(typeof(CountReader<>).MakeGenericType(elementType));
             }
-            ExType underliyingType = dataType.Type.TryGetElementType(typeof (IEnumerable<>)) ?? ExType.Dynamic;
-            return base.InitStart(initContext, underliyingType, chainedType, parent);
+
+            ExType underlyingType = dataType.Type.TryGetElementType(typeof(IEnumerable<>)) ?? ExType.Dynamic;
+            return base.InitStart(initContext, underlyingType, chainedType, parent);
         }
 
         public override object ProcessData(ref Scope scope)
@@ -70,16 +72,31 @@ namespace Templates.Extensions
                     itemResults[index] = result;
                     index++;
                 }
+
                 return ExStringBuilder.ConcatArray(itemResults, totalLength);
             }
 
-            var biulder = new ExStringBuilder();
+            var stringBuilder = new ExStringBuilder();
             foreach (var item in enumerable)
             {
                 var itemScope = scope.Model(item);
-                biulder.Append(GetInnerResult(ref itemScope));
+                stringBuilder.Append(GetInnerResult(ref itemScope));
             }
-            return biulder.ToString();
+
+            return stringBuilder.ToString();
+        }
+
+        public override void RenderData(ref Scope scope)
+        {
+            if (!(scope.ModelData is IEnumerable))
+                return;
+
+            var enumerable = (IEnumerable) scope.ModelData;
+            foreach (var item in enumerable)
+            {
+                var itemScope = scope.Model(item);
+                RenderInnerResult(ref itemScope);
+            }
         }
 
         private interface ICountReader

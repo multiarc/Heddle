@@ -1141,17 +1141,17 @@ namespace Templates.Performance.TestSuite.Extensions
 
         private static readonly Dictionary<string, string> Areas;
 
-        public async Task<IViewComponentResult> InvokeAsync(string name)
+        public Task<IViewComponentResult> InvokeAsync(string name)
         {
             if (!string.IsNullOrEmpty(name))
             {
-                string areaContent;
-                if (Areas.TryGetValue(name, out areaContent))
+                if (Areas.TryGetValue(name, out var areaContent))
                 {
-                    return new HtmlContentViewComponentResult(new HtmlString(areaContent));
+                    return Task.FromResult<IViewComponentResult>(new HtmlContentViewComponentResult(new HtmlString(areaContent)));
                 }
             }
-            return new ContentViewComponentResult(string.Empty);
+
+            return Task.FromResult<IViewComponentResult>(new ContentViewComponentResult(string.Empty));
 
         }
     }

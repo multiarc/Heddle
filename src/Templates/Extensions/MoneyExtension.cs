@@ -12,7 +12,7 @@ namespace Templates.Extensions
     /// <para>Optional parameter contains culture string to format</para>
     /// </summary>
     [ExtensionName("money")]
-    [DataType(typeof (decimal))]
+    [DataType(typeof(decimal))]
     [EncodeOutput]
     public class MoneyExtension : AbstractHtmlExtension
     {
@@ -33,7 +33,7 @@ namespace Templates.Extensions
         protected override object ProcessDataInternal(ref Scope scope)
         {
             var parentData = scope.Parent();
-            string locale = GetInnerResult(ref parentData);
+            var locale = GetInnerResult(ref parentData);
             if (scope.ModelData == null)
                 return string.Empty;
             CultureInfo localeInfo = null;
@@ -41,19 +41,20 @@ namespace Templates.Extensions
             {
                 localeInfo = GetCultureInfo(locale);
             }
-            var decimalValue = scope.ModelData as decimal?;
-            if (decimalValue != null)
+
+            if (scope.ModelData is decimal decimalValue)
             {
                 if (localeInfo != null)
-                    return decimalValue.Value.ToString("c", localeInfo);
-                return decimalValue.Value.ToString("c");
+                    return decimalValue.ToString("c", localeInfo);
+                return decimalValue.ToString("c");
             }
+
             try
             {
-                decimalValue = (decimal) Convert.ChangeType(scope.ModelData, typeof (decimal), CultureInfo.InvariantCulture);
+                decimalValue = (decimal) Convert.ChangeType(scope.ModelData, typeof(decimal), CultureInfo.InvariantCulture);
                 if (localeInfo != null)
-                    return decimalValue.Value.ToString("c", localeInfo);
-                return decimalValue.Value.ToString("c");
+                    return decimalValue.ToString("c", localeInfo);
+                return decimalValue.ToString("c");
             }
             catch (InvalidCastException)
             {
@@ -62,6 +63,37 @@ namespace Templates.Extensions
             catch (FormatException)
             {
                 return string.Empty;
+            }
+        }
+
+        protected override void RenderDataInternal(ref Scope scope)
+        {
+            var parentData = scope.Parent();
+            var locale = GetInnerResult(ref parentData);
+            if (scope.ModelData == null)
+                return;
+            CultureInfo localeInfo = null;
+            if (!string.IsNullOrWhiteSpace(locale))
+            {
+                localeInfo = GetCultureInfo(locale);
+            }
+
+            if (scope.ModelData is decimal decimalValue)
+            {
+                scope.Render(localeInfo != null ? decimalValue.ToString("c", localeInfo) : decimalValue.ToString("c"));
+                return;
+            }
+
+            try
+            {
+                decimalValue = (decimal) Convert.ChangeType(scope.ModelData, typeof(decimal), CultureInfo.InvariantCulture);
+                scope.Render(localeInfo != null ? decimalValue.ToString("c", localeInfo) : decimalValue.ToString("c"));
+            }
+            catch (InvalidCastException)
+            {
+            }
+            catch (FormatException)
+            {
             }
         }
     }

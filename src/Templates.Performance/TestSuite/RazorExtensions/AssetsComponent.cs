@@ -7,7 +7,7 @@ namespace Templates.Performance.TestSuite.Extensions
 {
     public class RazorAssetsComponent : ViewComponent
     {
-        public async Task<IViewComponentResult> InvokeAsync(string name)
+        public Task<IViewComponentResult> InvokeAsync(string name)
         {
             var assetName = name;
             if (!string.IsNullOrEmpty(assetName))
@@ -15,12 +15,14 @@ namespace Templates.Performance.TestSuite.Extensions
                 switch (assetName)
                 {
                     case "scripts":
-                        return new HtmlContentViewComponentResult(new HtmlString("<script src=\"/main.js\"></script>"));
+                        return Task.FromResult<IViewComponentResult>(new HtmlContentViewComponentResult(new HtmlString("<script src=\"/main.js\"></script>")));
                     case "styles":
-                        return new HtmlContentViewComponentResult(new HtmlString("<link rel=\"stylesheet\" href=\"/main.css\" />"));
+                        return Task.FromResult<IViewComponentResult>(
+                            new HtmlContentViewComponentResult(new HtmlString("<link rel=\"stylesheet\" href=\"/main.css\" />")));
                 }
             }
-            return new ContentViewComponentResult(string.Empty);
+
+            return Task.FromResult<IViewComponentResult>(new ContentViewComponentResult(string.Empty));
         }
     }
 }

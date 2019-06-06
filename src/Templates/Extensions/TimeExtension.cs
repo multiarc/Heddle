@@ -11,7 +11,7 @@ namespace Templates.Extensions
     /// <para>Optional Parameter represents string to format</para>
     /// </summary>
     [ExtensionName("time")]
-    [DataType(typeof (DateTime))]
+    [DataType(typeof(DateTime))]
     [EncodeOutput]
     public class TimeExtension : AbstractHtmlExtension
     {
@@ -24,12 +24,29 @@ namespace Templates.Extensions
         protected override object ProcessDataInternal(ref Scope scope)
         {
             var parentScope = scope.Parent();
-            string dateFormat = GetInnerResult(ref parentScope);
+            var dateFormat = GetInnerResult(ref parentScope);
             if (string.IsNullOrEmpty(dateFormat))
                 dateFormat = "t";
-            if (!(scope.ModelData is DateTime))
-                return string.Empty;
-            return ((DateTime) scope.ModelData).ToString(dateFormat, CultureInfo.InvariantCulture);
+
+            if (scope.ModelData is DateTime date)
+            {
+                return date.ToString(dateFormat, CultureInfo.InvariantCulture);
+            }
+
+            return string.Empty;
+        }
+
+        protected override void RenderDataInternal(ref Scope scope)
+        {
+            var parentScope = scope.Parent();
+            var dateFormat = GetInnerResult(ref parentScope);
+            if (string.IsNullOrEmpty(dateFormat))
+                dateFormat = "t";
+
+            if (scope.ModelData is DateTime date)
+            {
+                scope.Render(date.ToString(dateFormat, CultureInfo.InvariantCulture));
+            }
         }
     }
 }

@@ -284,6 +284,46 @@ namespace Templates.Strings {
             }
         }
 
+        public static string ConcatList(IEnumerable<string> list, int fullLength)
+        {
+            return ConcatListInternal(list, fullLength);
+        }
+
+        public static string ConcatList(IList<string> list)
+        {
+            var fullLength = 0;
+
+            foreach (var item in list)
+            {
+                fullLength += item.Length;
+            }
+
+            return ConcatListInternal(list, fullLength);
+        }
+
+        private static unsafe string ConcatListInternal(IEnumerable<string> list, int fullLength)
+        {
+            int seed = 0;
+            string result = AllocateString(fullLength);
+
+            fixed (char* dest = result)
+            {
+                foreach (var item in list)
+                {
+                    var itemLength = item.Length;
+
+                    fixed (char* src = item)
+                    {
+                        MemCpy(dest + seed, src, itemLength);
+                    }
+
+                    seed += itemLength;
+                }
+            }
+
+            return result;
+        }
+
         private static unsafe void MoveData(char** values, int* lengths, BlockPosition[] positions, int srcLen, int capacity, char* dest, char* src)
         {
             int lastIndex = 0;

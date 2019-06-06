@@ -14,5 +14,10 @@ namespace Templates.Performance.TestSuite.Extensions
         {
             return "/* CSS Comment Test */";
         }
+
+        public override void RenderData(ref Scope scope)
+        {
+            scope.Render("/* CSS Comment Test */");
+        }
     }
 }

@@ -25,5 +25,22 @@ namespace Templates.Performance.TestSuite.Extensions
             }
             return string.Empty;
         }
+
+        public override void RenderData(ref Scope scope)
+        {
+            var assetName = scope.ModelData as string;
+            if (!string.IsNullOrEmpty(assetName))
+            {
+                switch (assetName)
+                {
+                    case "scripts":
+                        scope.Render("<script src=\"/main.js\"></script>");
+                        break;
+                    case "styles":
+                        scope.Render("<link rel=\"stylesheet\" href=\"/main.css\" />");
+                        break;
+                }
+            }
+        }
     }
 }
