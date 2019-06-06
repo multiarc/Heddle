@@ -62,18 +62,16 @@ namespace Templates.Extensions
             {
                 var itemResults = new string[count.Value];
                 var index = 0;
-                var totalLength = 0;
 
                 foreach (var item in enumerable)
                 {
                     var itemScope = scope.Model(item);
                     var result = GetInnerResult(ref itemScope);
-                    totalLength += result.Length;
                     itemResults[index] = result;
                     index++;
                 }
 
-                return ExStringBuilder.ConcatArray(itemResults, totalLength);
+                return ExStringBuilder.ConcatArray(itemResults);
             }
 
             var stringBuilder = new ExStringBuilder();

@@ -25,7 +25,6 @@ namespace Templates.Data
     public class ScopeRenderer : IScopeRenderer
     {
         private readonly List<string> _items;
-        private int _totalLength;
 
         public ScopeRenderer(int elementCount = 0)
         {
@@ -39,13 +38,12 @@ namespace Templates.Data
             if (!string.IsNullOrEmpty(data))
             {
                 _items.Add(data);
-                _totalLength += data.Length;
             }
         }
 
         public override string ToString()
         {
-            return ExStringBuilder.ConcatList(_items, _totalLength);
+            return ExStringBuilder.ConcatArray(_items.ToArray());
         }
     }
 }

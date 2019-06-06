@@ -8,7 +8,6 @@ using Templates.Strings.Core;
 namespace Templates.Strings {
     public sealed class ExStringBuilder {
         private static readonly Allocate AllocateString;
-        private static readonly ConcatArray Concat;
 
         private readonly List<string> _appendStrings = new List<string>();
         private int _appendlength;
@@ -28,9 +27,6 @@ namespace Templates.Strings {
         {
             var fastAllocateMethod = typeof(string).GetMethod("FastAllocateString", BindingFlags.Static | BindingFlags.NonPublic);
             AllocateString = (Allocate) fastAllocateMethod.CreateDelegate(typeof(Allocate));
-
-            var concatArrayMethod = typeof(string).GetMethod("ConcatArray", BindingFlags.Static | BindingFlags.NonPublic);
-            Concat = (ConcatArray) concatArrayMethod?.CreateDelegate(typeof(ConcatArray)) ?? ConcatDummy;
         }
 
         private int Capacity
@@ -65,23 +61,7 @@ namespace Templates.Strings {
             _appendStrings.Clear();
         }
 
-        internal static string ConcatArray(string[] values)
-        {
-            var totalLength = 0;
-            // ReSharper disable once LoopCanBeConvertedToQuery
-            foreach (var value in values)
-            {
-                totalLength += value.Length;
-            }
-            return Concat(values, totalLength);
-        }
-
-        internal static string ConcatArray(string[] values, int totalLength) => Concat(values, totalLength);
-
-        private static string ConcatDummy(string[] values, int totalLength)
-        {
-            return string.Concat(values);
-        }
+        internal static string ConcatArray(string[] values) => string.Concat(values);
 
         private void CommitAppend()
         {
