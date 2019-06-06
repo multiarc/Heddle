@@ -4,6 +4,6 @@ namespace Templates.Runtime
 {
     internal interface IProcessStrategy
     {
-        string Execute(ref Scope scope);
+        void Execute(ref Scope scope);
     }
 }

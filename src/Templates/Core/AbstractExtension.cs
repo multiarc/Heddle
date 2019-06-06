@@ -28,6 +28,8 @@ namespace Templates.Core
         }
 
         public string GetInnerResult(ref Scope scope) => _processStrategy?.Execute(ref scope) ?? _innerResult;
+        
+        public void RenderInnerResult(ref Scope scope) => _processStrategy?.Execute(ref scope) ?? _innerResult;
 
         public bool InnerExist => _subTemplate != null;
 
