@@ -25,7 +25,9 @@ namespace Templates.Extensions
         public override void RenderData(ref Scope scope)
         {
             if (!InnerExist)
-                return;
+            {
+                scope.Render(scope.ChainedData as string);
+            }
 
             var innerScope = scope.Model(scope.ChainedData, scope.ParentModelData);
             RenderInnerResult(ref innerScope);

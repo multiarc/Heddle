@@ -231,7 +231,7 @@ namespace Templates.Runtime {
                     index++;
                 }
 
-                return ExStringBuilder.ConcatArray(results);
+                return string.Concat(results);
             }
 
             public void Render(ref Scope scope)
@@ -263,7 +263,8 @@ namespace Templates.Runtime {
                     results[finalIndex] = result;
                     finalIndex++;
                 }
-                return ExStringBuilder.ConcatArray(results);
+
+                return string.Concat(results);
             }
 
             public void Render(ref Scope scope)
@@ -272,7 +273,7 @@ namespace Templates.Runtime {
                 {
                     if (element.Piece != null)
                     {
-                        scope.Renderer.Render(element.Piece);
+                        scope.Render(element.Piece);
                     }
                     else
                     {

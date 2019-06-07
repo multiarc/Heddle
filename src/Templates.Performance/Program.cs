@@ -21,7 +21,7 @@ namespace Templates.Performance
         private static readonly List<IRunner> Tests = new List<IRunner>();
 
         public static void SetUpTests(IServiceProvider serviceProvider) {
-            Tests.Add(new RazorTest(serviceProvider));
+            Tests.Add(new TemplaterTest());
         }
         public static void Main(string[] args)
         {

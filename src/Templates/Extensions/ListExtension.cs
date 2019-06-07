@@ -71,7 +71,7 @@ namespace Templates.Extensions
                     index++;
                 }
 
-                return ExStringBuilder.ConcatArray(itemResults);
+                return string.Concat(itemResults);
             }
 
             var stringBuilder = new ExStringBuilder();

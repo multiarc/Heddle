@@ -61,8 +61,6 @@ namespace Templates.Strings {
             _appendStrings.Clear();
         }
 
-        internal static string ConcatArray(string[] values) => string.Concat(values);
-
         private void CommitAppend()
         {
             if (_appendlength != 0)

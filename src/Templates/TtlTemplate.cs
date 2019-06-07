@@ -124,9 +124,15 @@ namespace Templates
                 var scope = new Scope(data, callerData, data, chained, renderer);
                 _processStrategy.Render(ref scope);
                 var newMax = Math.Max(_maxElementCount, renderer.TotalCount);
-                newMax = newMax * 110 / 100;
-                _maxElementCount = newMax;
+                if (newMax > _maxElementCount)
+                {
+                    newMax = newMax * 110 / 100;
+                    _maxElementCount = newMax;
+                }
+
                 result = renderer.ToString();
+//                var scope = new Scope(data, callerData, data, chained, null);
+//                result = _processStrategy.Execute(ref scope);
             }
             finally
             {
@@ -136,6 +142,7 @@ namespace Templates
                     Dispose();
                 }
             }
+
             return result;
         }
 

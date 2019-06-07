@@ -27,7 +27,10 @@ namespace Templates.Core
             }
         }
 
-        protected string GetInnerResult(ref Scope scope) => _processStrategy?.Execute(ref scope) ?? _innerResult;
+        protected string GetInnerResult(ref Scope scope)
+        {
+            return _processStrategy != null ? _processStrategy.Execute(ref scope) : _innerResult;
+        }
 
         protected void RenderInnerResult(ref Scope scope)
         {

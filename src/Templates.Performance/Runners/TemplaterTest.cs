@@ -64,7 +64,7 @@ namespace Templates.Performance.Runners
                     return;
                 }
                 watcher.Reset();
-                long length = target.Generate(data).Length * n;
+                long length = target.Generate(data).Length * (long)n;
                 watcher.Start();
                 Enumerable.Repeat(data, n).AsParallel().ForAll(item => target.Generate(item));
                 watcher.Stop();

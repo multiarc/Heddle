@@ -33,16 +33,19 @@ namespace Templates.Core
             if (_recursionCount.Value >= _maxRecursionCount)
                 throw new TemplateProcessingException("Recursion hit it's maximum");
             _recursionCount.Value++;
-            var chained = GetInnerResult(ref scope);
-            var chainedData = scope.Chain(chained);
             if (DefenitionParameterTemplate != null)
             {
+                var chained = GetInnerResult(ref scope);
+                var chainedData = scope.Chain(chained);
                 DefenitionParameterTemplate.RenderData(ref chainedData);
             }
             else
             {
-                scope.Render(chained);
+                //var chained = GetInnerResult(ref scope);
+                //scope.Render(chained);
+                RenderInnerResult(ref scope);
             }
+
             _recursionCount.Value--;
         }
     }
