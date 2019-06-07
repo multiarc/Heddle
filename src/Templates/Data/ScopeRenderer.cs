@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Templates.Strings;
 
 namespace Templates.Data
@@ -6,6 +5,7 @@ namespace Templates.Data
     public class ScopeRenderer : IScopeRenderer
     {
         private readonly SmartList<string> _items;
+        private int _length;
 
         public ScopeRenderer(int elementCount = 0)
         {
@@ -19,12 +19,13 @@ namespace Templates.Data
             if (!string.IsNullOrEmpty(data))
             {
                 _items.Add(data);
+                _length += data.Length;
             }
         }
 
         public override string ToString()
         {
-            return string.Concat(_items.Array);
+            return ExStringBuilder.Concat(_items.Array, _items.Count, _length);
         }
     }
 }

@@ -48,38 +48,38 @@ namespace Templates.Performance.Runners
                 target.Generate(DataFiller.FillData());
             }
 
-            var renderer = ServiceProviderServiceExtensions.GetRequiredService<RazorViewToStringRenderer>(_serviceProvider);
-
-            var view = renderer.CompileView("jit");
-            var viewData = new ViewDataDictionary(
-                metadataProvider: new EmptyModelMetadataProvider(),
-                modelState: new ModelStateDictionary())
-            {
-                Model = null
-            };
-
-            var htmlHelperOptions = new HtmlHelperOptions();
-
-            var actionContext = GetActionContext();
-            var tempDataProvider = ServiceProviderServiceExtensions.GetRequiredService<ITempDataProvider>(_serviceProvider);
-
-            var tempData = new TempDataDictionary(
-                actionContext.HttpContext,
-                tempDataProvider);
-
-            using (var output = new StringWriter())
-            {
-                var viewContext = new ViewContext(
-                    actionContext,
-                    view,
-                    viewData, tempData,
-                    output, htmlHelperOptions);
-
-                view.RenderAsync(viewContext).Wait();
-                output.Flush();
-                // ReSharper disable once ReturnValueOfPureMethodIsNotUsed
-                output.ToString();
-            }
+//            var renderer = ServiceProviderServiceExtensions.GetRequiredService<RazorViewToStringRenderer>(_serviceProvider);
+//
+//            var view = renderer.CompileView("jit");
+//            var viewData = new ViewDataDictionary(
+//                metadataProvider: new EmptyModelMetadataProvider(),
+//                modelState: new ModelStateDictionary())
+//            {
+//                Model = null
+//            };
+//
+//            var htmlHelperOptions = new HtmlHelperOptions();
+//
+//            var actionContext = GetActionContext();
+//            var tempDataProvider = ServiceProviderServiceExtensions.GetRequiredService<ITempDataProvider>(_serviceProvider);
+//
+//            var tempData = new TempDataDictionary(
+//                actionContext.HttpContext,
+//                tempDataProvider);
+//
+//            using (var output = new StringWriter())
+//            {
+//                var viewContext = new ViewContext(
+//                    actionContext,
+//                    view,
+//                    viewData, tempData,
+//                    output, htmlHelperOptions);
+//
+//                view.RenderAsync(viewContext).Wait();
+//                output.Flush();
+//                // ReSharper disable once ReturnValueOfPureMethodIsNotUsed
+//                output.ToString();
+//            }
         }
 
         public void Run()

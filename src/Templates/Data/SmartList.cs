@@ -68,13 +68,13 @@ namespace Templates.Data
             _length += items.Count;
             if (_array.Length < _length)
             {
-                if ((long) _length * 2 > int.MaxValue)
+                if ((long) _length * 15 / 10 > int.MaxValue)
                 {
                     System.Array.Resize(ref _array, int.MaxValue);
                 }
                 else
                 {
-                    System.Array.Resize(ref _array, _length * 2);
+                    System.Array.Resize(ref _array, (int) ((long) _length * 15 / 10));
                 }
             }
 

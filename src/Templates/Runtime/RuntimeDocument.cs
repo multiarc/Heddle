@@ -224,14 +224,16 @@ namespace Templates.Runtime {
             {
                 var results = new string[_processors.Length];
                 var index = 0;
+                var totalLength = 0;
                 foreach (var processor in _processors)
                 {
                     var result = processor.ProcessData(ref scope) as string ?? string.Empty;
                     results[index] = result;
+                    totalLength += result.Length;
                     index++;
                 }
 
-                return string.Concat(results);
+                return ExStringBuilder.Concat(results, _processors.Length, totalLength);
             }
 
             public void Render(ref Scope scope)
@@ -256,15 +258,17 @@ namespace Templates.Runtime {
             {
                 var results = new string[_processors.Length];
                 var finalIndex = 0;
+                var totalLength = 0;
                 foreach (var element in _processors)
                 {
                     var result = element.Processor?.ProcessData(ref scope) as string ?? element.Piece ?? string.Empty;
 
                     results[finalIndex] = result;
+                    totalLength += result.Length;
                     finalIndex++;
                 }
 
-                return string.Concat(results);
+                return ExStringBuilder.Concat(results, _processors.Length, totalLength);
             }
 
             public void Render(ref Scope scope)

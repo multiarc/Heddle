@@ -60,6 +60,7 @@ namespace Templates.Extensions
             var count = _collectionCountReader?.GetCount(scope.ModelData);
             if (count.HasValue)
             {
+                var totalLength = 0;
                 var itemResults = new string[count.Value];
                 var index = 0;
 
@@ -68,20 +69,28 @@ namespace Templates.Extensions
                     var itemScope = scope.Model(item);
                     var result = GetInnerResult(ref itemScope);
                     itemResults[index] = result;
+                    totalLength += result?.Length ?? 0;
                     index++;
                 }
 
-                return string.Concat(itemResults);
+                return ExStringBuilder.Concat(itemResults, count.Value, totalLength);
             }
-
-            var stringBuilder = new ExStringBuilder();
-            foreach (var item in enumerable)
+            else
             {
-                var itemScope = scope.Model(item);
-                stringBuilder.Append(GetInnerResult(ref itemScope));
+                var itemResults = new SmartList<string>();
+                var totalLength = 0;
+                foreach (var item in enumerable)
+                {
+                    var itemScope = scope.Model(item);
+                    var result = GetInnerResult(ref itemScope);
+                    if (!string.IsNullOrEmpty(result))
+                    {
+                        itemResults.Add(result);
+                        totalLength += result.Length;
+                    }
+                }
+                return ExStringBuilder.Concat(itemResults.Array, itemResults.Count, totalLength);
             }
-
-            return stringBuilder.ToString();
         }
 
         public override void RenderData(ref Scope scope)

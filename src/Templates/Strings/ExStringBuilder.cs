@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Templates.Native;
 using Templates.Strings.Core;
 
@@ -262,44 +263,63 @@ namespace Templates.Strings {
             }
         }
 
-        public static string ConcatList(IEnumerable<string> list, int fullLength)
+        public static string Concat(IList<string> list, int fullLength)
         {
-            return ConcatListInternal(list, fullLength);
-        }
+            var array = list;
 
-        public static string ConcatList(IList<string> list)
-        {
-            var fullLength = 0;
-
-            foreach (var item in list)
+            var result = AllocateString(fullLength);
+            unsafe
             {
-                fullLength += item.Length;
-            }
-
-            return ConcatListInternal(list, fullLength);
-        }
-
-        private static unsafe string ConcatListInternal(IEnumerable<string> list, int fullLength)
-        {
-            int seed = 0;
-            string result = AllocateString(fullLength);
-
-            fixed (char* dest = result)
-            {
-                foreach (var item in list)
+                fixed (char* buffer = result)
                 {
-                    var itemLength = item.Length;
+                    var span = new Span<char>(buffer, fullLength);
 
-                    fixed (char* src = item)
+                    var seed = 0;
+                    for (var i = 0; i < list.Count; i++)
                     {
-                        MemCpy(dest + seed, src, itemLength);
+                        var str = array[i];
+                        fixed (char* value = str)
+                        {
+                            var spanValue = new Span<char>(value, str.Length);
+                            spanValue.CopyTo(span.Slice(seed, str.Length));
+                            seed += str.Length;
+                        }
                     }
 
-                    seed += itemLength;
+                    return result;
                 }
             }
+        }
 
-            return result;
+        public static string Concat(string[] array, int fullLength)
+        {
+            return Concat(array, array.Length, fullLength);
+        }
+
+        public static string Concat(string[] array, int takeCount, int fullLength)
+        {
+            var result = AllocateString(fullLength);
+            unsafe
+            {
+                fixed (char* buffer = result)
+                {
+                    var span = new Span<char>(buffer, fullLength);
+
+                    var seed = 0;
+                    for (var i = 0; i < takeCount; i++)
+                    {
+                        var src = array[i];
+                        fixed (char* value = src)
+                        {
+                            var spanValue = new Span<char>(value, src.Length);
+                            spanValue.CopyTo(span.Slice(seed, src.Length));
+                            seed += src.Length;
+                        }
+                    }
+
+                    return result;
+                }
+            }
         }
 
         private static unsafe void MoveData(char** values, int* lengths, BlockPosition[] positions, int srcLen, int capacity, char* dest, char* src)
