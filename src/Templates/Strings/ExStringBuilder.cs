@@ -11,7 +11,7 @@ namespace Templates.Strings {
         private static readonly Allocate AllocateString;
 
         private readonly List<string> _appendStrings = new List<string>();
-        private int _appendlength;
+        private int _appendLength;
         private string _data;
 
         public ExStringBuilder (string value)
@@ -44,9 +44,11 @@ namespace Templates.Strings {
                         _data = AllocateString(newLen);
                         fixed (char* dest = _data)
                         {
+                            var destSpan = new Span<char>(dest, oldLen);
                             fixed (char* src = old)
                             {
-                                MemCpy(dest, src, oldLen);
+                                var srcSpan = new Span<char>(src, oldLen);
+                                srcSpan.CopyTo(destSpan);
                             }
                         }
                     }
@@ -54,39 +56,45 @@ namespace Templates.Strings {
             }
         }
 
-        public int Length => _data.Length + _appendlength;
+        public int Length => _data.Length + _appendLength;
 
         public void Clear ()
         {
-            _appendlength = 0;
+            _appendLength = 0;
             _appendStrings.Clear();
         }
 
         private void CommitAppend()
         {
-            if (_appendlength != 0)
+            if (_appendLength != 0)
             {
                 int seed = _data.Length;
-                int newLength = _data.Length + _appendlength;
-                foreach (var appendString in _appendStrings)
+                int newLength = _data.Length + _appendLength;
+                if (_data.Length < newLength)
+                    Capacity = newLength;
+
+                unsafe
                 {
-                    if (_data.Length < newLength)
-                        Capacity = newLength;
-                    int len = appendString.Length;
-                    unsafe
+                    fixed (char* dest = _data)
                     {
-                        fixed (char* dest = _data)
+                        var destSpan = new Span<char>(dest, _data.Length);
+                        foreach (var appendString in _appendStrings)
                         {
+                            int len = appendString.Length;
+
                             fixed (char* src = appendString)
                             {
-                                MemCpy(dest + seed, src, len);
+                                var srcSpan = new Span<char>(src, len);
+                                srcSpan.CopyTo(destSpan.Slice(seed));
                             }
+
+                            seed += len;
                         }
                     }
-                    seed += len;
                 }
+
                 _appendStrings.Clear();
-                _appendlength = 0;
+                _appendLength = 0;
             }
         }
 
@@ -94,7 +102,7 @@ namespace Templates.Strings {
         {
             if (!string.IsNullOrEmpty(value)) {
                 _appendStrings.Add(value);
-                _appendlength += value.Length;
+                _appendLength += value.Length;
             }
         }
 
@@ -117,7 +125,7 @@ namespace Templates.Strings {
             {
                 string formatted = string.Format(format, args);
                 _appendStrings.Add(formatted);
-                _appendlength += formatted.Length;
+                _appendLength += formatted.Length;
             }
         }
 
@@ -125,55 +133,6 @@ namespace Templates.Strings {
         {
             CommitAppend();
             return _data;
-        }
-
-        internal static unsafe string BulkReplace(char** values, int* lengths, BlockPosition[] positions, string document)
-        {
-            if (values == null)
-                throw new ArgumentNullException(nameof(values));
-            if (document == null)
-                throw new ArgumentNullException(nameof(document));
-            if (positions == null)
-                throw new ArgumentNullException(nameof(positions));
-            var count = positions.Length;
-            if (count == 0)
-                return document;
-
-            if (document.Length == 0)
-                return string.Empty;
-
-            int capacity = document.Length;
-            int srcLen = capacity;
-            unchecked
-            {
-                for (int i = 0; i < count; i++)
-                {
-                    BlockPosition block = positions[i];
-#if DEBUG
-                    if (block.Length < 0)
-                        throw new ArgumentException();
-                    if (block.StartIndex < 0)
-                        throw new ArgumentException();
-#endif
-                    capacity += (values[i] == null ? 0 : lengths[i]) - block.Length;
-#if DEBUG
-                    if (capacity < 0)
-                        throw new ArgumentException();
-#endif
-                }
-
-                if (capacity == 0)
-                    return string.Empty;
-                string result = AllocateString(capacity);
-                fixed (char* dest = result)
-                {
-                    fixed (char* src = document)
-                    {
-                        MoveData(values, lengths, positions, srcLen, capacity, dest, src);
-                    }
-                }
-                return result;
-            }
         }
 
         public static string BulkReplace (Replacement[] replacements, string source)
@@ -210,7 +169,9 @@ namespace Templates.Strings {
                     fixed (char* dest = result) {
                         fixed (char* src = source)
                         {
-                            MoveData(replacements, srcLen, dest, src);
+                            var destSpan = new Span<char>(dest, capacity);
+                            var srcSpan = new Span<char>(src, srcLen);
+                            MoveData(replacements, srcLen, destSpan, srcSpan);
                         }
                     }
                 }
@@ -253,12 +214,15 @@ namespace Templates.Strings {
                 {
                     fixed (char* dest = result)
                     {
+                        var destSpan = new Span<char>(dest, capacity);
                         fixed (char* src = source)
                         {
-                            MoveData(replacements, srcLen, dest, src);
+                            var srcSpan = new Span<char>(src, srcLen);
+                            MoveData(replacements, srcLen, destSpan, srcSpan);
                         }
                     }
                 }
+
                 return result;
             }
         }
@@ -281,7 +245,7 @@ namespace Templates.Strings {
                         fixed (char* value = str)
                         {
                             var spanValue = new Span<char>(value, str.Length);
-                            spanValue.CopyTo(span.Slice(seed, str.Length));
+                            spanValue.CopyTo(span.Slice(seed));
                             seed += str.Length;
                         }
                     }
@@ -312,7 +276,7 @@ namespace Templates.Strings {
                         fixed (char* value = src)
                         {
                             var spanValue = new Span<char>(value, src.Length);
-                            spanValue.CopyTo(span.Slice(seed, src.Length));
+                            spanValue.CopyTo(span.Slice(seed));
                             seed += src.Length;
                         }
                     }
@@ -322,78 +286,7 @@ namespace Templates.Strings {
             }
         }
 
-        private static unsafe void MoveData(char** values, int* lengths, BlockPosition[] positions, int srcLen, int capacity, char* dest, char* src)
-        {
-            int lastIndex = 0;
-            int current = 0;
-            var count = positions.Length;
-            for (int i = 0; i < count; i++)
-            {
-                int chunkLength = lengths[i];
-                BlockPosition block = positions[i];
-#if DEBUG
-                if (lastIndex + block.StartIndex - current + chunkLength < 0
-                    || lastIndex + block.StartIndex - current + chunkLength > capacity || block.StartIndex > srcLen
-                    || current > srcLen)
-                    throw new ArgumentException();
-#endif
-                char* middle = values[i];
-                MemCpy(dest + lastIndex, src + current, block.StartIndex - current);
-                lastIndex += block.StartIndex - current;
-                if (middle != null)
-                {
-                    MemCpy(dest + lastIndex, middle, chunkLength);
-                    current = block.StartIndex + block.Length;
-                    lastIndex += chunkLength;
-                }
-                else
-                {
-                    current = block.StartIndex + block.Length;
-#if DEBUG
-                    if (chunkLength > 0)
-                        throw new ArgumentException();
-
-#endif
-                }
-            }
-#if DEBUG
-            if (lastIndex + srcLen - current < 0 || lastIndex + srcLen - current > capacity || current > srcLen)
-                throw new ArgumentException();
-#endif
-            MemCpy(dest + lastIndex, src + current, srcLen - current);
-        }
-
-        private static unsafe void MoveData (Replacement[] replacements, int takeLength, int srcLen, int capacity, char* dest, char* src)
-        {
-            int lastIndex = 0;
-            int current = 0;
-            for (int i = 0; i < takeLength; i++) {
-                Replacement replacement = replacements[i];
-                string replacementString = replacement.ReplacementValue ?? string.Empty;
-                int chunkLength = replacementString.Length;
-#if DEBUG
-                if (lastIndex + replacement.BlockPosition.StartIndex - current + chunkLength < 0
-                    || lastIndex + replacement.BlockPosition.StartIndex - current + chunkLength > capacity || replacement.BlockPosition.StartIndex > srcLen
-                    || current > srcLen)
-                    throw new ArgumentException();
-#endif
-                fixed (char* middle = replacementString) {
-                    MemCpy(dest + lastIndex, src + current, replacement.BlockPosition.StartIndex - current);
-                    lastIndex += replacement.BlockPosition.StartIndex - current;
-
-                    MemCpy(dest + lastIndex, middle, chunkLength);
-                    current = replacement.BlockPosition.StartIndex + replacement.BlockPosition.Length;
-                    lastIndex += chunkLength;
-                }
-            }
-#if DEBUG
-            if (lastIndex + srcLen - current < 0 || lastIndex + srcLen - current > capacity || current > srcLen)
-                throw new ArgumentException();
-#endif
-            MemCpy(dest + lastIndex, src + current, srcLen - current);
-        }
-
-        private static unsafe void MoveData(IList<Replacement> replacements, int srcLen, char* dest, char* src)
+        private static unsafe void MoveData(IList<Replacement> replacements, int srcLen, in Span<char> dest, in Span<char> src)
         {
             int lastIndex = 0;
             int current = 0;
@@ -403,15 +296,18 @@ namespace Templates.Strings {
                 int chunkLength = replacementString.Length;
                 fixed (char* middle = replacementString)
                 {
-                    MemCpy(dest + lastIndex, src + current, replacement.BlockPosition.StartIndex - current);
+                    var middleSpan = new Span<char>(middle, chunkLength);
+                    var len = replacement.BlockPosition.StartIndex - current;
+                    src.Slice(current, len).CopyTo(dest.Slice(lastIndex));
                     lastIndex += replacement.BlockPosition.StartIndex - current;
 
-                    MemCpy(dest + lastIndex, middle, chunkLength);
+                    middleSpan.CopyTo(dest.Slice(lastIndex));
                     current = replacement.BlockPosition.StartIndex + replacement.BlockPosition.Length;
                     lastIndex += chunkLength;
                 }
             }
-            MemCpy(dest + lastIndex, src + current, srcLen - current);
+
+            src.Slice(current, srcLen - current).CopyTo(dest.Slice(lastIndex));
         }
 
         public static string Replace (int start, int length, string replacement, string source)
@@ -434,10 +330,13 @@ namespace Templates.Strings {
                     fixed (char* dest = destination) {
                         fixed (char* src = source) {
                             fixed (char* repl = replacement) {
+                                var destSpan = new Span<char>(dest, newLen);
+                                var srcSpan = new Span<char>(src, sourceLen);
+                                var replSpan = new Span<char>(repl, replacementLength);
                                 if (start > 0)
-                                    MemCpy(dest, src, start);
-                                MemCpy(dest + start, repl, replacementLength);
-                                MemCpy(dest + start + replacementLength, src + start + length, sourceLen - start - length);
+                                    srcSpan.Slice(0, start).CopyTo(destSpan);
+                                replSpan.CopyTo(destSpan.Slice(start));
+                                srcSpan.Slice(start + length, sourceLen - start - length).CopyTo(destSpan.Slice(start + replacementLength));
                             }
                         }
                     }
@@ -451,12 +350,6 @@ namespace Templates.Strings {
             int removeLength = element.Length;
             source = Replace(removeStart, removeLength, string.Empty, source);
             return removeLength;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static unsafe void MemCpy(char* dmem, char* smem, int charCount)
-        {
-            Buffer.MemoryCopy(smem, dmem, charCount*2, charCount*2);
         }
 
         internal static unsafe int Equals(char* one, char* two, int lenOne, int lenTwo)
