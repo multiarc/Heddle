@@ -28,7 +28,6 @@ namespace Templates
         private volatile bool _disposeAfterComplete;
         private volatile int _runners;
         private volatile int _maxElementCount;
-        private readonly ThreadLocal<ScopeRenderer> _scopeRenders;
 
         public TtlTemplate(TemplateOptions options) : this(new CompileContext(options))
         {
@@ -45,18 +44,15 @@ namespace Templates
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
 
-            _scopeRenders = new ThreadLocal<ScopeRenderer>(() => new ScopeRenderer(_maxElementCount));
             CompileResult = Compile(context);
         }
 
         public TtlTemplate()
         {
-            _scopeRenders = new ThreadLocal<ScopeRenderer>(() => new ScopeRenderer(_maxElementCount));
         }
 
         public TtlTemplate(string document, CompileContext context = null)
         {
-            _scopeRenders = new ThreadLocal<ScopeRenderer>(() => new ScopeRenderer(_maxElementCount));
             CompileResult = Compile(new CompileScope(context ?? new CompileContext()), document);
         }
 
@@ -73,7 +69,6 @@ namespace Templates
             {
                 _watcher?.Dispose();
                 _runtimeDocument?.Dispose();
-                _scopeRenders.Dispose();
                 GC.SuppressFinalize(this);
             }
             else
@@ -86,7 +81,6 @@ namespace Templates
         {
             _watcher?.Dispose();
             _runtimeDocument?.Dispose();
-            _scopeRenders.Dispose();
         }
 
 
@@ -126,7 +120,7 @@ namespace Templates
             string result;
             try
             {
-                var renderer = _scopeRenders.Value;
+                var renderer = new ScopeRenderer(_maxElementCount);
                 var scope = new Scope(data, callerData, data, chained, renderer);
                 _processStrategy.Render(scope);
                 var newMax = Math.Max(_maxElementCount, renderer.TotalCount);
