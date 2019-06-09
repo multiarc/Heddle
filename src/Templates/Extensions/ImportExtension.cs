@@ -11,7 +11,7 @@ namespace Templates.Extensions {
         {
             base.InitStart(initContext, dataType, chainedType, parent);
             var nullScope = Scope.Null;
-            initContext.ParameterTemplate = GetInnerResult(ref nullScope);
+            initContext.ParameterTemplate = GetInnerResult(nullScope);
             //int outputCount = initContext.ParseContext.OutputChains.Count;
             using (var file = File.OpenText(Path.Combine(initContext.CompileScope.Options.RootPath, initContext.ParameterTemplate)))
             {
@@ -21,12 +21,12 @@ namespace Templates.Extensions {
             return null;
         }
 
-        public override object ProcessData(ref Scope scope)
+        public override object ProcessData(in Scope scope)
         {
             return null;
         }
 
-        public override void RenderData(ref Scope scope)
+        public override void RenderData(in Scope scope)
         {
         }
     }

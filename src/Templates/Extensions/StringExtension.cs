@@ -20,13 +20,13 @@ namespace Templates.Extensions
             return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        protected override object ProcessDataInternal(ref Scope scope)
+        protected override object ProcessDataInternal(in Scope scope)
         {
             var model = scope.ModelData;
             if (model == null)
             {
                 var parentScope = scope.Parent();
-                return GetInnerResult(ref parentScope);
+                return GetInnerResult(parentScope);
             }
 
             if (model is string)
@@ -44,13 +44,13 @@ namespace Templates.Extensions
             return model;
         }
 
-        protected override void RenderDataInternal(ref Scope scope)
+        protected override void RenderDataInternal(in Scope scope)
         {
             var model = scope.ModelData;
             if (model == null)
             {
                 var parentScope = scope.Parent();
-                RenderInnerResult(ref parentScope);
+                RenderInnerResult(parentScope);
                 return;
             }
 

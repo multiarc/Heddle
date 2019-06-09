@@ -18,21 +18,21 @@ namespace Templates.Extensions
             return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        public override object ProcessData(ref Scope scope)
+        public override object ProcessData(in Scope scope)
         {
             if (!(scope.ModelData is Guid))
                 return string.Empty;
             var parentData = scope.Parent();
-            return ((Guid) scope.ModelData).ToString(GetInnerResult(ref parentData));
+            return ((Guid) scope.ModelData).ToString(GetInnerResult(parentData));
         }
 
-        public override void RenderData(ref Scope scope)
+        public override void RenderData(in Scope scope)
         {
             if (!(scope.ModelData is Guid guid))
                 return;
 
             var parentData = scope.Parent();
-            scope.Render(guid.ToString(GetInnerResult(ref parentData)));
+            scope.Render(guid.ToString(GetInnerResult(parentData)));
         }
     }
 }

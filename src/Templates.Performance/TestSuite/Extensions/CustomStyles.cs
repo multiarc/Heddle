@@ -10,12 +10,12 @@ namespace Templates.Performance.TestSuite.Extensions
     [ExtensionName("customstyles")]
     public class CustomStyles : AbstractExtension
     {
-        public override object ProcessData(ref Scope scope)
+        public override object ProcessData(in Scope scope)
         {
             return "/* CSS Comment Test */";
         }
 
-        public override void RenderData(ref Scope scope)
+        public override void RenderData(in Scope scope)
         {
             scope.Render("/* CSS Comment Test */");
         }

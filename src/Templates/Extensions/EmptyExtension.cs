@@ -7,11 +7,11 @@ namespace Templates.Extensions
     [ExtensionName("")]
     public class EmptyExtension : AbstractExtension
     {
-        public override object ProcessData(ref Scope scope)
+        public override object ProcessData(in Scope scope)
         {
             if (InnerExist)
             {
-                return GetInnerResult(ref scope);
+                return GetInnerResult(scope);
             }
 
             if (scope.ModelData != null)
@@ -24,11 +24,11 @@ namespace Templates.Extensions
             return string.Empty;
         }
 
-        public override void RenderData(ref Scope scope)
+        public override void RenderData(in Scope scope)
         {
             if (InnerExist)
             {
-                RenderInnerResult(ref scope);
+                RenderInnerResult(scope);
                 return;
             }
 

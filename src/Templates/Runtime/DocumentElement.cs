@@ -44,14 +44,14 @@ namespace Templates.Runtime
             }
         }
 
-        public object ProcessData(ref Scope scope)
+        public object ProcessData(in Scope scope)
         {
-            return CallChain.ProcessData(ref scope);
+            return CallChain.ProcessData(scope);
         }
 
-        public void RenderData(ref Scope scope)
+        public void RenderData(in Scope scope)
         {
-            CallChain.RenderData(ref scope);
+            CallChain.RenderData(scope);
         }
     }
 }

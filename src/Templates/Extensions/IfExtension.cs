@@ -16,7 +16,7 @@ namespace Templates.Extensions
             return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        public override object ProcessData(ref Scope scope)
+        public override object ProcessData(in Scope scope)
         {
             if (scope.ModelData == null)
                 return string.Empty;
@@ -24,13 +24,13 @@ namespace Templates.Extensions
             if (!(scope.ModelData is bool) || (bool) scope.ModelData)
             {
                 var parentData = scope.Parent();
-                return GetInnerResult(ref parentData);
+                return GetInnerResult(parentData);
             }
 
             return string.Empty;
         }
 
-        public override void RenderData(ref Scope scope)
+        public override void RenderData(in Scope scope)
         {
             if (scope.ModelData == null)
                 return;
@@ -39,7 +39,7 @@ namespace Templates.Extensions
                 return;
 
             var parentData = scope.Parent();
-            RenderInnerResult(ref parentData);
+            RenderInnerResult(parentData);
         }
     }
 }

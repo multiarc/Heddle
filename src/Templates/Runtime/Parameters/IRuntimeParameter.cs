@@ -7,6 +7,6 @@ namespace Templates.Runtime.Parameters {
     internal interface IRuntimeParameter : IDisposable
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        object GetParameter(ref Scope scope);
+        object GetParameter(in Scope scope);
     }
 }

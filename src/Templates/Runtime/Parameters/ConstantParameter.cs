@@ -17,7 +17,7 @@ namespace Templates.Runtime.Parameters
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public object GetParameter(ref Scope scope)
+        public object GetParameter(in Scope scope)
         {
             return _constantResult;
         }

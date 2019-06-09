@@ -13,12 +13,12 @@ namespace Templates.Extensions
             return dataType;
         }
 
-        public override object ProcessData(ref Scope scope)
+        public override object ProcessData(in Scope scope)
         {
             return scope.ModelData;
         }
 
-        public override void RenderData(ref Scope scope)
+        public override void RenderData(in Scope scope)
         {
         }
     }

@@ -137,11 +137,11 @@ namespace Templates.Runtime {
 
         public IProcessStrategy Strategy { get; }
 
-        public object ProcessData(ref Scope scope) => Strategy.Execute(ref scope);
+        public object ProcessData(in Scope scope) => Strategy.Execute(scope);
 
-        public void RenderData(ref Scope scope)
+        public void RenderData(in Scope scope)
         {
-            Strategy.Render(ref scope);
+            Strategy.Render(scope);
         }
 
         public BlockPosition Position { get; set; }
@@ -186,11 +186,11 @@ namespace Templates.Runtime {
                 _processor = processor;
             }
 
-            public string Execute(ref Scope scope) => _processor.ProcessData(ref scope) as string ?? string.Empty;
+            public string Execute(in Scope scope) => _processor.ProcessData(scope) as string ?? string.Empty;
 
-            public void Render(ref Scope scope)
+            public void Render(in Scope scope)
             {
-                _processor.RenderData(ref scope);
+                _processor.RenderData(scope);
             }
         }
 
@@ -203,9 +203,9 @@ namespace Templates.Runtime {
                 _document = document;
             }
 
-            public string Execute(ref Scope scope) => _document;
+            public string Execute(in Scope scope) => _document;
 
-            public void Render(ref Scope scope)
+            public void Render(in Scope scope)
             {
                 scope.Renderer.Render(_document);
             }
@@ -220,14 +220,14 @@ namespace Templates.Runtime {
                 _processors = processors.Select(p => p.Processor).ToArray();
             }
 
-            public string Execute(ref Scope scope)
+            public string Execute(in Scope scope)
             {
                 var results = new string[_processors.Length];
                 var index = 0;
                 var totalLength = 0;
                 foreach (var processor in _processors)
                 {
-                    var result = processor.ProcessData(ref scope) as string ?? string.Empty;
+                    var result = processor.ProcessData(scope) as string ?? string.Empty;
                     results[index] = result;
                     totalLength += result.Length;
                     index++;
@@ -236,11 +236,11 @@ namespace Templates.Runtime {
                 return ExStringBuilder.Concat(results, _processors.Length, totalLength);
             }
 
-            public void Render(ref Scope scope)
+            public void Render(in Scope scope)
             {
                 foreach (var processor in _processors)
                 {
-                    processor.RenderData(ref scope);
+                    processor.RenderData(scope);
                 }
             }
         }
@@ -254,14 +254,14 @@ namespace Templates.Runtime {
                 _processors = processors;
             }
 
-            public string Execute(ref Scope scope)
+            public string Execute(in Scope scope)
             {
                 var results = new string[_processors.Length];
                 var finalIndex = 0;
                 var totalLength = 0;
                 foreach (var element in _processors)
                 {
-                    var result = element.Processor?.ProcessData(ref scope) as string ?? element.Piece ?? string.Empty;
+                    var result = element.Processor?.ProcessData(scope) as string ?? element.Piece ?? string.Empty;
 
                     results[finalIndex] = result;
                     totalLength += result.Length;
@@ -271,7 +271,7 @@ namespace Templates.Runtime {
                 return ExStringBuilder.Concat(results, _processors.Length, totalLength);
             }
 
-            public void Render(ref Scope scope)
+            public void Render(in Scope scope)
             {
                 foreach (var element in _processors)
                 {
@@ -281,7 +281,7 @@ namespace Templates.Runtime {
                     }
                     else
                     {
-                        element.Processor.RenderData(ref scope);
+                        element.Processor.RenderData(scope);
                     }
                 }
             }

@@ -200,8 +200,7 @@ namespace Templates.Runtime
                 if (systemAssemblyName != null)
                     yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
                 systemAssemblyName = typeof(object).GetTypeInfo().Assembly.GetName();
-                if (systemAssemblyName != null)
-                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
+                yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
                 systemAssemblyName = AssemblyHelper.GetAssemblyName("Microsoft.CSharp");
                 if (systemAssemblyName != null)
                     yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";

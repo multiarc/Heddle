@@ -15,12 +15,12 @@ namespace Templates.Extensions {
     {
         protected TtlTemplate InnerTemplate;
 
-        public override object ProcessData (ref Scope scope)
+        public override object ProcessData (in Scope scope)
         {
             return InnerTemplate?.Generate(scope.ModelData, scope.ChainedData);
         }
 
-        public override void RenderData(ref Scope scope)
+        public override void RenderData(in Scope scope)
         {
             scope.Render(InnerTemplate?.Generate(scope.ModelData, scope.ChainedData));
         }
@@ -31,7 +31,7 @@ namespace Templates.Extensions {
                 throw new ArgumentNullException(nameof(initContext.CompileScope));
             base.InitStart(initContext, dataType, chainedType, parent);
             var nullScope = Scope.Null;
-            initContext.ParameterTemplate = GetInnerResult(ref nullScope);
+            initContext.ParameterTemplate = GetInnerResult(nullScope);
             if (!string.IsNullOrEmpty(initContext.ParameterTemplate)) {
                 string templateName = initContext.ParameterTemplate.Trim();
                 if (!string.IsNullOrEmpty(templateName))

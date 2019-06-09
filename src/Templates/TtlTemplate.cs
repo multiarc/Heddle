@@ -28,6 +28,7 @@ namespace Templates
         private volatile bool _disposeAfterComplete;
         private volatile int _runners;
         private volatile int _maxElementCount;
+        private readonly ThreadLocal<ScopeRenderer> _scopeRenders;
 
         public TtlTemplate(TemplateOptions options) : this(new CompileContext(options))
         {
@@ -43,16 +44,19 @@ namespace Templates
         {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
-            
+
+            _scopeRenders = new ThreadLocal<ScopeRenderer>(() => new ScopeRenderer(_maxElementCount));
             CompileResult = Compile(context);
         }
 
         public TtlTemplate()
         {
+            _scopeRenders = new ThreadLocal<ScopeRenderer>(() => new ScopeRenderer(_maxElementCount));
         }
 
         public TtlTemplate(string document, CompileContext context = null)
         {
+            _scopeRenders = new ThreadLocal<ScopeRenderer>(() => new ScopeRenderer(_maxElementCount));
             CompileResult = Compile(new CompileScope(context ?? new CompileContext()), document);
         }
 
@@ -69,6 +73,7 @@ namespace Templates
             {
                 _watcher?.Dispose();
                 _runtimeDocument?.Dispose();
+                _scopeRenders.Dispose();
                 GC.SuppressFinalize(this);
             }
             else
@@ -81,6 +86,7 @@ namespace Templates
         {
             _watcher?.Dispose();
             _runtimeDocument?.Dispose();
+            _scopeRenders.Dispose();
         }
 
 
@@ -93,7 +99,7 @@ namespace Templates
         /// <param name="callerData"></param>
         /// <param name="chained"></param>
         /// <returns>Generated string</returns>
-        public string Generate(object data, object chained = null, dynamic callerData = null)
+        public string Generate(object data, object chained = null, object callerData = null)
         {
             if (_processStrategy == null)
             {
@@ -120,9 +126,9 @@ namespace Templates
             string result;
             try
             {
-                var renderer = new ScopeRenderer(_maxElementCount);
+                var renderer = _scopeRenders.Value;
                 var scope = new Scope(data, callerData, data, chained, renderer);
-                _processStrategy.Render(ref scope);
+                _processStrategy.Render(scope);
                 var newMax = Math.Max(_maxElementCount, renderer.TotalCount);
                 if (newMax > _maxElementCount)
                 {
@@ -131,6 +137,7 @@ namespace Templates
                 }
 
                 result = renderer.ToString();
+                renderer.Clear();
 //                var scope = new Scope(data, callerData, data, chained, null);
 //                result = _processStrategy.Execute(ref scope);
             }

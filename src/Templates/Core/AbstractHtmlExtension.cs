@@ -6,9 +6,9 @@ namespace Templates.Core
     public abstract class AbstractHtmlExtension : AbstractExtension
     {
 
-        public sealed override object ProcessData(ref Scope scope)
+        public sealed override object ProcessData(in Scope scope)
         {
-            var obj = ProcessDataInternal(ref scope);
+            var obj = ProcessDataInternal(scope);
             if (DirectRender && obj != null)
             {
                 var dataToEncode = obj as string;
@@ -23,18 +23,21 @@ namespace Templates.Core
             return obj;
         }
 
-        public sealed override void RenderData(ref Scope scope)
+        public sealed override void RenderData(in Scope scope)
         {
             if (DirectRender)
             {
-                scope = scope.RenderProxy(new HtmlEncodedRenderer(scope.Renderer));
+                var newScope = scope.RenderProxy(new HtmlEncodedRenderer(scope.Renderer));
+                RenderDataInternal(newScope);
             }
-
-            RenderDataInternal(ref scope);
+            else
+            {
+                RenderDataInternal(scope);
+            }
         }
 
-        protected abstract object ProcessDataInternal(ref Scope scope);
+        protected abstract object ProcessDataInternal(in Scope scope);
 
-        protected abstract void RenderDataInternal(ref Scope scope);
+        protected abstract void RenderDataInternal(in Scope scope);
     }
 }

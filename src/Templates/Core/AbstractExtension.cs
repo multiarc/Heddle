@@ -27,16 +27,16 @@ namespace Templates.Core
             }
         }
 
-        protected string GetInnerResult(ref Scope scope)
+        protected string GetInnerResult(in Scope scope)
         {
-            return _processStrategy != null ? _processStrategy.Execute(ref scope) : _innerResult;
+            return _processStrategy != null ? _processStrategy.Execute(scope) : _innerResult;
         }
 
-        protected void RenderInnerResult(ref Scope scope)
+        protected void RenderInnerResult(in Scope scope)
         {
             if (_processStrategy != null)
             {
-                _processStrategy.Render(ref scope);
+                _processStrategy.Render(scope);
             }
             else
             {
@@ -108,9 +108,9 @@ namespace Templates.Core
         /// </summary>
         /// <param name="scope"></param>
         /// <returns></returns>
-        public abstract object ProcessData(ref Scope scope);
+        public abstract object ProcessData(in Scope scope);
 
-        public abstract void RenderData(ref Scope scope);
+        public abstract void RenderData(in Scope scope);
 
         public BlockPosition Position { get; set; }
     }

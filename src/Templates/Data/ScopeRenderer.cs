@@ -4,12 +4,12 @@ namespace Templates.Data
 {
     public class ScopeRenderer : IScopeRenderer
     {
-        private readonly SmartList<string> _items;
+        private readonly LinearList<string> _items;
         private int _length;
 
         public ScopeRenderer(int elementCount = 0)
         {
-            _items = new SmartList<string>(elementCount);
+            _items = new LinearList<string>(elementCount);
         }
 
         public int TotalCount => _items.Count;
@@ -26,6 +26,12 @@ namespace Templates.Data
         public override string ToString()
         {
             return ExStringBuilder.Concat(_items.Array, _items.Count, _length);
+        }
+
+        public void Clear()
+        {
+            _items.Clear();
+            _length = 0;
         }
     }
 }

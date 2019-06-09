@@ -1144,7 +1144,7 @@ namespace Templates.Performance.TestSuite.Extensions
 
         private static readonly Dictionary<string, string> Areas;
 
-        public override object ProcessData(ref Scope scope)
+        public override object ProcessData(in Scope scope)
         {
             var areaName = scope.ModelData as string;
             if (string.IsNullOrEmpty(areaName))
@@ -1153,7 +1153,7 @@ namespace Templates.Performance.TestSuite.Extensions
             return Areas.TryGetValue(areaName, out var areaContent) ? areaContent : string.Empty;
         }
 
-        public override void RenderData(ref Scope scope)
+        public override void RenderData(in Scope scope)
         {
             var areaName = scope.ModelData as string;
             

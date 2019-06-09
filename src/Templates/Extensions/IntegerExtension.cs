@@ -21,13 +21,13 @@ namespace Templates.Extensions
             return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        protected override object ProcessDataInternal(ref Scope scope)
+        protected override object ProcessDataInternal(in Scope scope)
         {
             var model = scope.ModelData;
             if (model == null)
                 return string.Empty;
             var parentScope = scope.Parent();
-            var format = GetInnerResult(ref parentScope);
+            var format = GetInnerResult(parentScope);
 
             if (model is int data)
             {
@@ -65,14 +65,14 @@ namespace Templates.Extensions
             return ((long) model).ToString(CultureInfo.InvariantCulture);
         }
 
-        protected override void RenderDataInternal(ref Scope scope)
+        protected override void RenderDataInternal(in Scope scope)
         {
             var model = scope.ModelData;
             if (model == null)
                 return;
 
             var parentScope = scope.Parent();
-            var format = GetInnerResult(ref parentScope);
+            var format = GetInnerResult(parentScope);
 
             if (model is int data)
             {

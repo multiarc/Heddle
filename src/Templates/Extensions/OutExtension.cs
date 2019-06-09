@@ -13,16 +13,16 @@ namespace Templates.Extensions
             return chainedType;
         }
 
-        public override object ProcessData(ref Scope scope)
+        public override object ProcessData(in Scope scope)
         {
             if (!InnerExist)
                 return scope.ChainedData;
 
             var innerScope = scope.Model(scope.ChainedData, scope.ParentModelData);
-            return GetInnerResult(ref innerScope);
+            return GetInnerResult(innerScope);
         }
 
-        public override void RenderData(ref Scope scope)
+        public override void RenderData(in Scope scope)
         {
             if (!InnerExist)
             {
@@ -30,7 +30,7 @@ namespace Templates.Extensions
             }
 
             var innerScope = scope.Model(scope.ChainedData, scope.ParentModelData);
-            RenderInnerResult(ref innerScope);
+            RenderInnerResult(innerScope);
         }
     }
 }

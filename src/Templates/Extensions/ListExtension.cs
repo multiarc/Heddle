@@ -52,7 +52,7 @@ namespace Templates.Extensions
             return base.InitStart(initContext, underlyingType, chainedType, parent);
         }
 
-        public override object ProcessData(ref Scope scope)
+        public override object ProcessData(in Scope scope)
         {
             if (!(scope.ModelData is IEnumerable))
                 return string.Empty;
@@ -67,7 +67,7 @@ namespace Templates.Extensions
                 foreach (var item in enumerable)
                 {
                     var itemScope = scope.Model(item);
-                    var result = GetInnerResult(ref itemScope);
+                    var result = GetInnerResult(itemScope);
                     itemResults[index] = result;
                     totalLength += result?.Length ?? 0;
                     index++;
@@ -77,12 +77,12 @@ namespace Templates.Extensions
             }
             else
             {
-                var itemResults = new SmartList<string>();
+                var itemResults = new LinearList<string>();
                 var totalLength = 0;
                 foreach (var item in enumerable)
                 {
                     var itemScope = scope.Model(item);
-                    var result = GetInnerResult(ref itemScope);
+                    var result = GetInnerResult(itemScope);
                     if (!string.IsNullOrEmpty(result))
                     {
                         itemResults.Add(result);
@@ -93,7 +93,7 @@ namespace Templates.Extensions
             }
         }
 
-        public override void RenderData(ref Scope scope)
+        public override void RenderData(in Scope scope)
         {
             if (!(scope.ModelData is IEnumerable))
                 return;
@@ -102,7 +102,7 @@ namespace Templates.Extensions
             foreach (var item in enumerable)
             {
                 var itemScope = scope.Model(item);
-                RenderInnerResult(ref itemScope);
+                RenderInnerResult(itemScope);
             }
         }
 

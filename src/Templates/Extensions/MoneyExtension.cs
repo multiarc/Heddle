@@ -30,10 +30,10 @@ namespace Templates.Extensions
             return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        protected override object ProcessDataInternal(ref Scope scope)
+        protected override object ProcessDataInternal(in Scope scope)
         {
             var parentData = scope.Parent();
-            var locale = GetInnerResult(ref parentData);
+            var locale = GetInnerResult(parentData);
             if (scope.ModelData == null)
                 return string.Empty;
             CultureInfo localeInfo = null;
@@ -66,10 +66,10 @@ namespace Templates.Extensions
             }
         }
 
-        protected override void RenderDataInternal(ref Scope scope)
+        protected override void RenderDataInternal(in Scope scope)
         {
             var parentData = scope.Parent();
-            var locale = GetInnerResult(ref parentData);
+            var locale = GetInnerResult(parentData);
             if (scope.ModelData == null)
                 return;
             CultureInfo localeInfo = null;

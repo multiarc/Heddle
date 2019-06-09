@@ -20,7 +20,7 @@ namespace Templates
         /// <param name="callerData"></param>
         /// <param name="chained"></param>
         /// <returns>Generated string</returns>
-        string Generate(object data, object chained = null, dynamic callerData = null);
+        string Generate(object data, object chained = null, object callerData = null);
 
         TtlCompileResult Recompile(ExType newModelType);
 

@@ -35,7 +35,7 @@ namespace Templates.Mvc.Extensions
             return null;
         }
 
-        public override object ProcessData(ref Scope scope)
+        public override object ProcessData(in Scope scope)
         {
             return null;
         }

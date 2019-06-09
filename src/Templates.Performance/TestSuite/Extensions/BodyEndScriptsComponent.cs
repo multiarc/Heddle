@@ -10,12 +10,12 @@ namespace Templates.Performance.TestSuite.Extensions
     [ExtensionName("bodyendscriptscomponent")]
     public class BodyEndScriptsComponent : AbstractExtension
     {
-        public override object ProcessData(ref Scope scope)
+        public override object ProcessData(in Scope scope)
         {
             return "<script src=\"/bodyend.js\"></script>";
         }
 
-        public override void RenderData(ref Scope scope)
+        public override void RenderData(in Scope scope)
         {
             scope.Render("<script src=\"/bodyend.js\"></script>");
         }

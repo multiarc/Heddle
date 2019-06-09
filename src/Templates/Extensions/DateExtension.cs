@@ -26,10 +26,10 @@ namespace Templates.Extensions
             return base.InitStart(initContext, parent, chainedType, null);
         }
 
-        protected override object ProcessDataInternal(ref Scope scope)
+        protected override object ProcessDataInternal(in Scope scope)
         {
             var parentData = scope.Parent();
-            var dateFormat = GetInnerResult(ref parentData);
+            var dateFormat = GetInnerResult(parentData);
             if (string.IsNullOrEmpty(dateFormat))
                 dateFormat = "d";
             if (!(scope.ModelData is DateTime))
@@ -37,10 +37,10 @@ namespace Templates.Extensions
             return ((DateTime) scope.ModelData).ToString(dateFormat, CultureInfo.InvariantCulture);
         }
 
-        protected override void RenderDataInternal(ref Scope scope)
+        protected override void RenderDataInternal(in Scope scope)
         {
             var parentData = scope.Parent();
-            var dateFormat = GetInnerResult(ref parentData);
+            var dateFormat = GetInnerResult(parentData);
             if (string.IsNullOrEmpty(dateFormat))
                 dateFormat = "d";
             if (scope.ModelData is DateTime date)

@@ -16,34 +16,34 @@ namespace Templates.Core
             return base.InitStart(initContext, dataType, chainedType, parent);
         }
 
-        public override object ProcessData(ref Scope scope)
+        public override object ProcessData(in Scope scope)
         {
             if (_recursionCount.Value >= _maxRecursionCount)
                 throw new TemplateProcessingException("Recursion hit it's maximum");
             _recursionCount.Value++;
-            var chained = GetInnerResult(ref scope);
+            var chained = GetInnerResult(scope);
             var chainedData = scope.Chain(chained);
-            var result = DefenitionParameterTemplate?.ProcessData(ref chainedData) ?? chained;
+            var result = DefenitionParameterTemplate?.ProcessData(chainedData) ?? chained;
             _recursionCount.Value--;
             return result;
         }
 
-        public override void RenderData(ref Scope scope)
+        public override void RenderData(in Scope scope)
         {
             if (_recursionCount.Value >= _maxRecursionCount)
                 throw new TemplateProcessingException("Recursion hit it's maximum");
             _recursionCount.Value++;
             if (DefenitionParameterTemplate != null)
             {
-                var chained = GetInnerResult(ref scope);
+                var chained = GetInnerResult(scope);
                 var chainedData = scope.Chain(chained);
-                DefenitionParameterTemplate.RenderData(ref chainedData);
+                DefenitionParameterTemplate.RenderData(chainedData);
             }
             else
             {
                 //var chained = GetInnerResult(ref scope);
                 //scope.Render(chained);
-                RenderInnerResult(ref scope);
+                RenderInnerResult(scope);
             }
 
             _recursionCount.Value--;

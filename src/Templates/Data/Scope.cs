@@ -2,7 +2,7 @@
 
 namespace Templates.Data
 {
-    public struct Scope : IScopeRenderer
+    public struct Scope
     {
         public readonly object ModelData;
         public readonly object ChainedData;

@@ -10,7 +10,7 @@ namespace Templates.Performance.TestSuite.Extensions
     [ExtensionName("assetscomponent")]
     public class AssetsComponent : AbstractExtension
     {
-        public override object ProcessData(ref Scope scope)
+        public override object ProcessData(in Scope scope)
         {
             var assetName = scope.ModelData as string;
             if (!string.IsNullOrEmpty(assetName))
@@ -26,7 +26,7 @@ namespace Templates.Performance.TestSuite.Extensions
             return string.Empty;
         }
 
-        public override void RenderData(ref Scope scope)
+        public override void RenderData(in Scope scope)
         {
             var assetName = scope.ModelData as string;
             if (!string.IsNullOrEmpty(assetName))

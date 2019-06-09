@@ -5,18 +5,17 @@ using System.Runtime.CompilerServices;
 
 namespace Templates.Data
 {
-    internal class SmartList<T> : IList<T>, IList
+    internal sealed class LinearList<T> : IList<T>, IList
     {
-        private static readonly T[] Empty = new T[0];
         private T[] _array;
         private int _length;
 
-        public SmartList()
+        public LinearList()
         {
-            _array = Empty;
+            _array = new T[4];
         }
 
-        public SmartList(T[] value)
+        public LinearList(T[] value)
         {
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
@@ -26,11 +25,11 @@ namespace Templates.Data
             _length = _array.Length;
         }
 
-        public SmartList(int capacity)
+        public LinearList(int capacity)
         {
             if (capacity < 0)
                 throw new ArgumentException();
-            _array = new T[capacity];
+            _array = new T[capacity < 4 ? 4 : capacity];
         }
 
         public int Length => _length;
@@ -41,25 +40,25 @@ namespace Templates.Data
 
         public T[] ToArray()
         {
-            if (_array.Length != _length)
-                System.Array.Resize(ref _array, _length);
-            return _array;
+            var result = new T[_length];
+            _array.CopyTo(result, _length);
+            return result;
         }
 
-        public static implicit operator T[](SmartList<T> value)
+        public static implicit operator T[](LinearList<T> value)
         {
             return value?.ToArray();
         }
 
-        public static implicit operator SmartList<T>(T[] value)
+        public static implicit operator LinearList<T>(T[] value)
         {
             if (value == null)
                 return null;
 
-            return new SmartList<T>(value);
+            return new LinearList<T>(value);
         }
 
-        public SmartList<T> AddRange(ICollection<T> items)
+        public LinearList<T> AddRange(ICollection<T> items)
         {
             if (items == null) throw new ArgumentNullException(nameof(items));
             if (_length == int.MaxValue || (long) _length + items.Count > int.MaxValue)
@@ -82,7 +81,7 @@ namespace Templates.Data
             return this;
         }
 
-        public SmartList<T> AddRange(IEnumerable<T> items)
+        public LinearList<T> AddRange(IEnumerable<T> items)
         {
             if (items == null) throw new ArgumentNullException(nameof(items));
             foreach (var item in items)
@@ -93,25 +92,30 @@ namespace Templates.Data
             return this;
         }
 
-        public SmartList<T> GetCrossThreadCopy()
+        public LinearList<T> GetCrossThreadCopy()
         {
-            var result = new SmartList<T>
+            var result = new LinearList<T>
             {
                 _array = new T[_length],
                 _length = _length
             };
-            System.Array.Copy(_array, result._array, _length);
+            _array.CopyTo(result._array, _length);
             return result;
         }
-        
-        #region IList Members
 
         public void Remove(object value)
         {
-            if (ReferenceEquals(null, value))
-                Remove(default(T));
-            if (value is T)
-                Remove((T) value);
+            throw new NotSupportedException();
+        }
+
+        void IList.RemoveAt(int index)
+        {
+            throw new NotSupportedException();
+        }
+
+        void IList<T>.RemoveAt(int index)
+        {
+            throw new NotSupportedException();
         }
 
         object IList.this[int index]
@@ -131,7 +135,7 @@ namespace Templates.Data
             }
         }
 
-        public virtual int Add(object value)
+        public int Add(object value)
         {
             if (value is T)
             {
@@ -166,10 +170,7 @@ namespace Templates.Data
 
         public void Insert(int index, object value)
         {
-            if (value is T)
-                Insert(index, (T) value);
-            if (ReferenceEquals(null, value))
-                Insert(index, default(T));
+            throw new NotSupportedException();
         }
 
         public void CopyTo(Array array, int index)
@@ -191,10 +192,6 @@ namespace Templates.Data
         public bool IsSynchronized => false;
 
         public bool IsFixedSize => false;
-
-        #endregion
-
-        #region IList<T> Members
 
         public int IndexOf(T item)
         {
@@ -222,26 +219,7 @@ namespace Templates.Data
 
         public void Insert(int index, T item)
         {
-            if (index > _length || index < 0)
-                throw new ArgumentException();
-            if (_length == int.MaxValue)
-                throw new OutOfMemoryException();
-            _length++;
-            if (_array.Length < _length)
-                System.Array.Resize(ref _array, _length * 2);
-            for (int i = _length - 1; i > index; i--)
-                _array[i] = _array[i - 1];
-            _array[index] = item;
-        }
-
-        public void RemoveAt(int index)
-        {
-            if (index >= _length || index < 0)
-                throw new ArgumentException();
-
-            for (int i = index; i < _length - 1; i++)
-                _array[i] = _array[i + 1];
-            _length--;
+            throw new NotSupportedException();
         }
 
         [IndexerName("Items")]
@@ -275,7 +253,7 @@ namespace Templates.Data
                 yield return _array[i];
         }
 
-        public virtual void Add(T value)
+        public void Add(T value)
         {
             if (((long) _length + 1) > int.MaxValue)
                 throw new OutOfMemoryException();
@@ -297,7 +275,6 @@ namespace Templates.Data
 
         public void Clear()
         {
-            _array = Empty;
             _length = 0;
         }
 
@@ -321,17 +298,11 @@ namespace Templates.Data
 
         public bool Remove(T item)
         {
-            int index = IndexOf(item);
-            if (index == -1)
-                return false;
-            RemoveAt(index);
-            return true;
+            throw new NotSupportedException();
         }
 
         public int Count => _length;
 
         public bool IsReadOnly => false;
-
-        #endregion
     }
 }

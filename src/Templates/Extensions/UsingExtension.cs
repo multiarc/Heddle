@@ -14,18 +14,18 @@ namespace Templates.Extensions
                 throw new ArgumentNullException(nameof(initContext.CompileScope));
             base.InitStart(initContext, dataType, chainedType, parent);
             var nullScope = Scope.Null;
-            initContext.ParameterTemplate = GetInnerResult(ref nullScope);
+            initContext.ParameterTemplate = GetInnerResult(nullScope);
             if (!string.IsNullOrWhiteSpace(initContext.ParameterTemplate))
                 initContext.CompileScope.CSharpContext.ImportNamespace(initContext.ParameterTemplate);
             return null;
         }
 
-        public override object ProcessData(ref Scope scope)
+        public override object ProcessData(in Scope scope)
         {
             return null;
         }
 
-        public override void RenderData(ref Scope scope)
+        public override void RenderData(in Scope scope)
         {
         }
     }

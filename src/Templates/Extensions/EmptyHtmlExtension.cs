@@ -8,11 +8,11 @@ namespace Templates.Extensions
     [EncodeOutput]
     public class EmptyHtmlExtension : AbstractHtmlExtension
     {
-        protected override object ProcessDataInternal(ref Scope scope)
+        protected override object ProcessDataInternal(in Scope scope)
         {
             if (InnerExist)
             {
-                return GetInnerResult(ref scope);
+                return GetInnerResult(scope);
             }
 
             if (scope.ModelData == null) 
@@ -25,11 +25,11 @@ namespace Templates.Extensions
 
         }
 
-        protected override void RenderDataInternal(ref Scope scope)
+        protected override void RenderDataInternal(in Scope scope)
         {
             if (InnerExist)
             {
-                RenderInnerResult(ref scope);
+                RenderInnerResult(scope);
                 return;
             }
 

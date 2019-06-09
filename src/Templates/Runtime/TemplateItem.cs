@@ -14,11 +14,11 @@ namespace Templates.Runtime {
 
         public IExtension Extension { get; set; }
 
-        public object ProcessData(ref Scope scope)
+        public object ProcessData(in Scope scope)
         {
-            var model = Parameter.GetParameter(ref scope);
+            var model = Parameter.GetParameter(scope);
             var modelScope = scope.Model(model);
-            var result = Extension.ProcessData(ref modelScope);
+            var result = Extension.ProcessData(modelScope);
 #if DEBUG
             if (result != null && ReturnType != null && !ReturnType.Type.IsType(result))
             {
@@ -32,11 +32,11 @@ namespace Templates.Runtime {
             return result;
         }
 
-        public void RenderData(ref Scope scope)
+        public void RenderData(in Scope scope)
         {
-            var model = Parameter.GetParameter(ref scope);
+            var model = Parameter.GetParameter(scope);
             var modelScope = scope.Model(model);
-            Extension.RenderData(ref modelScope);
+            Extension.RenderData(modelScope);
         }
 
         public BlockPosition Position

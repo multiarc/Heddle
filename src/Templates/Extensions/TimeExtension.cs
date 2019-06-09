@@ -21,10 +21,10 @@ namespace Templates.Extensions
         }
 
 
-        protected override object ProcessDataInternal(ref Scope scope)
+        protected override object ProcessDataInternal(in Scope scope)
         {
             var parentScope = scope.Parent();
-            var dateFormat = GetInnerResult(ref parentScope);
+            var dateFormat = GetInnerResult(parentScope);
             if (string.IsNullOrEmpty(dateFormat))
                 dateFormat = "t";
 
@@ -36,10 +36,10 @@ namespace Templates.Extensions
             return string.Empty;
         }
 
-        protected override void RenderDataInternal(ref Scope scope)
+        protected override void RenderDataInternal(in Scope scope)
         {
             var parentScope = scope.Parent();
-            var dateFormat = GetInnerResult(ref parentScope);
+            var dateFormat = GetInnerResult(parentScope);
             if (string.IsNullOrEmpty(dateFormat))
                 dateFormat = "t";
 

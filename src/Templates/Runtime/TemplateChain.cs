@@ -31,18 +31,18 @@ namespace Templates.Runtime {
 
         public int Count => _itemsToExecute.Count;
 
-        public object ProcessData(ref Scope scope)
+        public object ProcessData(in Scope scope)
         {
             object result = scope.ChainedData;
             foreach (var item in _itemsToExecute)
             {
                 var chainedScope = scope.Chain(result);
-                result = item.ProcessData(ref chainedScope);
+                result = item.ProcessData(chainedScope);
             }
             return result;
         }
 
-        public void RenderData(ref Scope scope)
+        public void RenderData(in Scope scope)
         {
             var result = scope.ChainedData;
 
@@ -54,11 +54,11 @@ namespace Templates.Runtime {
 
                 if (ReferenceEquals(lastItem, item))
                 {
-                    item.RenderData(ref chainedScope);
+                    item.RenderData(chainedScope);
                 }
                 else
                 {
-                    result = item.ProcessData(ref chainedScope);
+                    result = item.ProcessData(chainedScope);
                 }
             }
         }
