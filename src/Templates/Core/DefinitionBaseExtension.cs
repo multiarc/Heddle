@@ -4,9 +4,9 @@ using Templates.Exceptions;
 
 namespace Templates.Core
 {
-    internal class DefenitionBaseExtension : AbstractExtension
+    internal class DefinitionBaseExtension : AbstractExtension
     {
-        public DefenitionBaseExtension DefenitionParameterTemplate { get; set; }
+        public DefinitionBaseExtension DefinitionParameterTemplate { get; set; }
         private readonly ThreadLocal<int> _recursionCount = new ThreadLocal<int>();
         private int _maxRecursionCount;
 
@@ -23,7 +23,7 @@ namespace Templates.Core
             _recursionCount.Value++;
             var chained = GetInnerResult(scope);
             var chainedData = scope.Chain(chained);
-            var result = DefenitionParameterTemplate?.ProcessData(chainedData) ?? chained;
+            var result = DefinitionParameterTemplate?.ProcessData(chainedData) ?? chained;
             _recursionCount.Value--;
             return result;
         }
@@ -33,11 +33,11 @@ namespace Templates.Core
             if (_recursionCount.Value >= _maxRecursionCount)
                 throw new TemplateProcessingException("Recursion hit it's maximum");
             _recursionCount.Value++;
-            if (DefenitionParameterTemplate != null)
+            if (DefinitionParameterTemplate != null)
             {
                 var chained = GetInnerResult(scope);
                 var chainedData = scope.Chain(chained);
-                DefenitionParameterTemplate.RenderData(chainedData);
+                DefinitionParameterTemplate.RenderData(chainedData);
             }
             else
             {

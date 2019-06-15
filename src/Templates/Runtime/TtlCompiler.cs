@@ -398,8 +398,8 @@ namespace Templates.Runtime
                 returnTypeChainedPrevious = InitializeTemplate(extension, extensionItem.ParameterTemplate, dataType,
                     returnTypeChainedPrevious, compileScope, parseContext);
 
-                def.DefenitionParameterTemplate = CompileFromDefenition(definition, compileScope, out acceptType);
-                returnTypeChainedPrevious = InitializeTemplate(def.DefenitionParameterTemplate, definition.ParameterTemplate,
+                def.DefinitionParameterTemplate = CompileFromDefenition(definition, compileScope, out acceptType);
+                returnTypeChainedPrevious = InitializeTemplate(def.DefinitionParameterTemplate, definition.ParameterTemplate,
                     dataType,
                     returnTypeChainedPrevious, compileScope, definition.Context);
             }
@@ -431,11 +431,11 @@ namespace Templates.Runtime
             return extension;
         }
 
-        private static DefenitionBaseExtension CompileFromDefenition(DefinitionItem definition,
+        private static DefinitionBaseExtension CompileFromDefenition(DefinitionItem definition,
             CompileScope compileScope, out Type acceptType)
         {
             WalkValidateDefinitionType(definition, compileScope);
-            var result = new DefenitionBaseExtension {Position = definition.Position};
+            var result = new DefinitionBaseExtension {Position = definition.Position};
             try
             {
                 acceptType = ReflectionHelper.ResolveType(definition.ModelType, compileScope.CSharpContext.Namespaces) ??
