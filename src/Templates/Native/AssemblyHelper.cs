@@ -288,8 +288,15 @@ namespace Templates.Native
                 {
                     if (!AssemblyCache.ContainsKey(name))
                     {
-                        var asm = Assembly.Load(name);
-                        WalkReferenceAssemblies(asm);
+                        try
+                        {
+                            var asm = Assembly.Load(name);
+                            WalkReferenceAssemblies(asm);
+                        }
+                        catch
+                        {
+                            //skip load issues
+                        }
                     }
                 }
             }
