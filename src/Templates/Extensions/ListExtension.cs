@@ -39,7 +39,7 @@ namespace Templates.Extensions
                 throw new ArgumentNullException(nameof(dataType));
             if (dataType.IsDynamic)
             {
-                return base.InitStart(initContext, dataType, chainedType, null);
+                return base.InitStart(initContext, dataType, new ExType(typeof(int)), null);
             }
 
             var elementType = dataType.Type.TryGetElementType(typeof(ICollection<>));
@@ -49,7 +49,7 @@ namespace Templates.Extensions
             }
 
             ExType underlyingType = dataType.Type.TryGetElementType(typeof(IEnumerable<>)) ?? ExType.Dynamic;
-            return base.InitStart(initContext, underlyingType, chainedType, parent);
+            return base.InitStart(initContext, underlyingType, new ExType(typeof(int)), parent);
         }
 
         public override object ProcessData(in Scope scope)
@@ -66,7 +66,7 @@ namespace Templates.Extensions
 
                 foreach (var item in enumerable)
                 {
-                    var itemScope = scope.Model(item);
+                    var itemScope = scope.Model(item, index);
                     var result = GetInnerResult(itemScope);
                     itemResults[index] = result;
                     totalLength += result?.Length ?? 0;
@@ -79,15 +79,19 @@ namespace Templates.Extensions
             {
                 var itemResults = new LinearList<string>();
                 var totalLength = 0;
+                var index = 0;
+                
                 foreach (var item in enumerable)
                 {
-                    var itemScope = scope.Model(item);
+                    var itemScope = scope.Model(item, index);
                     var result = GetInnerResult(itemScope);
                     if (!string.IsNullOrEmpty(result))
                     {
                         itemResults.Add(result);
                         totalLength += result.Length;
                     }
+
+                    index++;
                 }
                 return ExStringBuilder.Concat(itemResults.Array, itemResults.Count, totalLength);
             }
@@ -99,10 +103,12 @@ namespace Templates.Extensions
                 return;
 
             var enumerable = (IEnumerable) scope.ModelData;
+            var index = 0;
             foreach (var item in enumerable)
             {
-                var itemScope = scope.Model(item);
+                var itemScope = scope.Model(item, index);
                 RenderInnerResult(itemScope);
+                index++;
             }
         }
 
