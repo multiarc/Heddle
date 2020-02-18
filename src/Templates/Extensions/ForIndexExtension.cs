@@ -7,7 +7,7 @@ using Templates.Strings;
 namespace Templates.Extensions
 {
     [ExtensionName("for")]
-    [ChainedType(typeof(ForModel))]
+    [DataType(typeof(ForModel))]
     public class ForIndexExtension : AbstractExtension
     {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
