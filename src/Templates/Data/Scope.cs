@@ -23,36 +23,36 @@ namespace Templates.Data
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Scope Parent()
+        public readonly Scope Parent()
         {
             return new Scope(RootData, CallerData, ParentModelData, ChainedData, Renderer);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Scope Parent(object chained)
+        public readonly Scope Parent(object chained)
         {
             return new Scope(RootData, CallerData, ParentModelData, chained, Renderer);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Scope Chain(object chained)
+        public readonly Scope Chain(object chained)
         {
             return new Scope(RootData, CallerData, ModelData, chained, Renderer, ModelData);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Scope Model(object model)
+        public readonly Scope Model(object model)
         {
             return new Scope(RootData, CallerData, model, ChainedData, Renderer, ModelData);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Scope Model(object model, object chained)
+        public readonly Scope Model(object model, object chained)
         {
             return new Scope(RootData, CallerData, model, chained, Renderer, ModelData);
         }
 
-        public Scope RenderProxy(IScopeRenderer renderer)
+        public readonly Scope RenderProxy(IScopeRenderer renderer)
         {
             return new Scope(RootData, CallerData, ModelData, ChainedData, renderer, ParentModelData);
         }

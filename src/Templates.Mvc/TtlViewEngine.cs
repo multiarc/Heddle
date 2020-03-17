@@ -30,9 +30,8 @@ namespace Templates.Mvc
         private static string GetControllerName(ActionContext context)
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
-            object controllerOption;
             string controllerName = string.Empty;
-            if (context.RouteData.Values.TryGetValue("controller", out controllerOption))
+            if (context.RouteData.Values.TryGetValue("controller", out var controllerOption))
             {
                 controllerName = controllerOption.ToString();
             }
@@ -47,8 +46,7 @@ namespace Templates.Mvc
                 if (string.IsNullOrWhiteSpace(viewName))
                     throw new ArgumentException("viewName");
                 var controllerName = GetControllerName(context);
-                IEnumerable<string> searchLocations;
-                var result = Resolver.GetTemplate(viewName, controllerName, out searchLocations, null, TemplatePathType.View);
+                var result = Resolver.GetTemplate(viewName, controllerName, out var searchLocations, null, TemplatePathType.View);
                 if (result != null)
                 {
                     return ViewEngineResult.Found(viewName, (TtlView) result);
@@ -68,8 +66,7 @@ namespace Templates.Mvc
             if (string.IsNullOrWhiteSpace(partialViewName))
                 throw new ArgumentException("viewName");
             var controllerName = GetControllerName(context);
-            IEnumerable<string> searchLocations;
-            var result = Resolver.GetTemplate(partialViewName, controllerName, out searchLocations, null, TemplatePathType.PartialView);
+            var result = Resolver.GetTemplate(partialViewName, controllerName, out var searchLocations, null, TemplatePathType.PartialView);
             if (result != null)
             {
                 return ViewEngineResult.Found(partialViewName, (TtlView)result);

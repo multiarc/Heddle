@@ -34,8 +34,7 @@ namespace Templates.Performance.Runners
             Console.WriteLine("Enter tries count (template compile):");
             // = 1000;
             string quantity = Console.ReadLine();
-            int n;
-            int.TryParse(quantity, out n);
+            int.TryParse(quantity, out var n);
             var watcher = new ExecutionStopwatch();
             ulong ticksElapsed = 0;
             TimeSpan timeElapsed = TimeSpan.Zero;

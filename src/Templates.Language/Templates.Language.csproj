@@ -10,6 +10,7 @@
     <Product>Templates.Language</Product>
     <PackageId>Templates.Language</PackageId>
     <Description>Text Template Engine Language Parser</Description>
+    <LangVersion>default</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>

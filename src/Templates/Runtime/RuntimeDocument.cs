@@ -14,11 +14,8 @@ namespace Templates.Runtime {
         
         public RuntimeDocument(string document, DocumentElement[] executeItems, CompileScope context)
         {
-            if (context == null)
-                throw new ArgumentNullException(nameof(context));
-
             Document = document;
-            _context = context;
+            _context = context ?? throw new ArgumentNullException(nameof(context));
             var optimizedElements = OptimizeCallTree(executeItems, document, out _canDoFullOptimize);
             if (optimizedElements.Count == 1)
             {
@@ -87,14 +84,7 @@ namespace Templates.Runtime {
                     resultTree.Add(resultItem);
                 }
             }
-            if (totalLength == document.Length)
-            {
-                canDoFullOptimize = true;
-            }
-            else
-            {
-                canDoFullOptimize = false;
-            }
+            canDoFullOptimize = totalLength == document.Length;
             return resultTree;
         }
 

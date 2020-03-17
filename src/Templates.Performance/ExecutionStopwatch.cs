@@ -63,9 +63,7 @@ namespace Templates.Performance
 	    {
 	        IntPtr threadHandle = GetCurrentThread();
 
-	        ulong result;
-
-	        long retcode = QueryThreadCycleTime(threadHandle, out result);
+	        long retcode = QueryThreadCycleTime(threadHandle, out var result);
 
 	        bool success = Convert.ToBoolean(retcode);
 	        if (!success)
@@ -78,11 +76,8 @@ namespace Templates.Performance
 		{
 			IntPtr threadHandle = GetCurrentThread();
 
-			long notIntersting;
-			long kernelTime, userTime;
-
-			long retcode = GetThreadTimes(threadHandle, out notIntersting,
-				out notIntersting, out kernelTime, out userTime);
+			long retcode = GetThreadTimes(threadHandle, out var _,
+				out var _, out var kernelTime, out var userTime);
 
 			bool success = Convert.ToBoolean(retcode);
 			if (!success)

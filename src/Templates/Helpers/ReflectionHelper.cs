@@ -144,8 +144,7 @@ namespace Templates.Helpers
 
         private static Type ResolveCsharpType(string typeName)
         {
-            Type result;
-            if (CSharpTypes.TryGetValue(typeName, out result))
+            if (CSharpTypes.TryGetValue(typeName, out var result))
             {
                 return result;
             }
@@ -165,8 +164,7 @@ namespace Templates.Helpers
             }
             if (typeName.Contains("."))
             {
-                List<Type> types;
-                if (_fullNames.TryGetValue(typeName, out types))
+                if (_fullNames.TryGetValue(typeName, out var types))
                 {
                     if (types.Count == 1)
                     {
@@ -208,8 +206,7 @@ namespace Templates.Helpers
                 Type result = ResolveCsharpType(typeName);
                 if (result != null)
                     return result;
-                List<Type> types;
-                if (_shortNames.TryGetValue(typeName, out types))
+                if (_shortNames.TryGetValue(typeName, out var types))
                 {
                     if (types.Count == 1)
                     {

@@ -41,30 +41,26 @@ namespace Templates.Tests
                 throw new Exception(string.Join("\n", diagnostics.Select(d => d.GetMessage())));
             }
 
-            using (var codeStream = new MemoryStream())
+            using var codeStream = new MemoryStream();
+            using var symbolStream = new MemoryStream();
+            var results = compilation.Emit(codeStream, symbolStream,
+                options: new EmitOptions(debugInformationFormat: DebugInformationFormat.PortablePdb));
+            if (!results.Success)
             {
-                using (var symbolStream = new MemoryStream())
-                {
-                    var results = compilation.Emit(codeStream, symbolStream,
-                        options: new EmitOptions(debugInformationFormat: DebugInformationFormat.PortablePdb));
-                    if (!results.Success)
-                    {
-                        throw new Exception(string.Join("\n", diagnostics.Select(d => d.GetMessage())));
-                    }
-
-                    codeStream.Seek(0, SeekOrigin.Begin);
-                    symbolStream.Seek(0, SeekOrigin.Begin);
-                    //try
-                    //{
-                    Assembly.Load(codeStream.ToArray(), symbolStream.ToArray());
-                    //}
-                    //catch (BadImageFormatException)
-                    //{
-                    //    throw new InvalidOperationException(
-                    //        $"{string.Join("\n", AssemblyHelper.GetApplicationReferences().Where(m => !m.Display.Contains("Templates")).Select(r => r.Display))}");
-                    //}
-                }
+                throw new Exception(string.Join("\n", diagnostics.Select(d => d.GetMessage())));
             }
+
+            codeStream.Seek(0, SeekOrigin.Begin);
+            symbolStream.Seek(0, SeekOrigin.Begin);
+            //try
+            //{
+            Assembly.Load(codeStream.ToArray(), symbolStream.ToArray());
+            //}
+            //catch (BadImageFormatException)
+            //{
+            //    throw new InvalidOperationException(
+            //        $"{string.Join("\n", AssemblyHelper.GetApplicationReferences().Where(m => !m.Display.Contains("Templates")).Select(r => r.Display))}");
+            //}
         }
     }
 }

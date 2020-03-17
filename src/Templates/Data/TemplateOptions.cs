@@ -17,7 +17,7 @@ namespace Templates.Data {
         public TemplateOptions()
         {
             FileNamePostfix = string.Empty;
-            RootPath = ApplicationEnvironment.ApplicationBasePath;
+            RootPath = AppContext.BaseDirectory;
             TemplateName = string.Empty;
             EnableFileChangeCheck = false;
             AllowCSharp = false;
@@ -26,7 +26,7 @@ namespace Templates.Data {
 
         public TemplateOptions(string templateName) {
             FileNamePostfix = string.Empty;
-            RootPath = ApplicationEnvironment.ApplicationBasePath;
+            RootPath = AppContext.BaseDirectory;
             TemplateName = templateName ?? string.Empty;
             EnableFileChangeCheck = false;
             AllowCSharp = false;
@@ -35,10 +35,8 @@ namespace Templates.Data {
         
         public TemplateOptions(TemplateOptions value, string templateName = null)
         {
-            if (value.RootPath == null)
-                throw new ArgumentException();
             FileNamePostfix = value.FileNamePostfix;
-            RootPath = value.RootPath;
+            RootPath = value.RootPath ?? throw new ArgumentException();
             TemplateName = templateName ?? value.TemplateName;
             EnableFileChangeCheck = value.EnableFileChangeCheck;
             AllowCSharp = value.AllowCSharp;

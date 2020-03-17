@@ -10,8 +10,7 @@ namespace Templates.Helpers
             if (src == null)
                 throw new ArgumentNullException(nameof(src));
 
-            T2 existValue;
-            if (src.TryGetValue(key, out existValue))
+            if (src.TryGetValue(key, out var existValue))
             {
                 updateAction(existValue);
                 return existValue;

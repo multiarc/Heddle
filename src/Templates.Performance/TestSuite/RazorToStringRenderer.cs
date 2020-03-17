@@ -33,7 +33,7 @@ namespace Templates.Performance.TestSuite
 
             if (!viewEngineResult.Success)
             {
-                throw new InvalidOperationException(string.Format("Couldn't find view '{0}'", name));
+                throw new InvalidOperationException($"Couldn't find view '{name}'");
             }
 
             return viewEngineResult.View;

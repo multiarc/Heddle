@@ -236,8 +236,7 @@ namespace Templates.Runtime
             (OutputItem extensionItem, CompileScope compileScope, ParseContext parseContext,
                 ref ExType returnTypeChainedPrevious)
         {
-            CompiledElement result;
-            if (compileScope.CompileContext.CompiledItems.TryGetValue(extensionItem, out result))
+            if (compileScope.CompileContext.CompiledItems.TryGetValue(extensionItem, out var result))
             {
                 returnTypeChainedPrevious = result.ReturnTypeChainedPrevious;
                 return result.CompiledItem;
@@ -382,8 +381,7 @@ namespace Templates.Runtime
             IExtension extension;
             if (definition != null)
             {
-                Type acceptType;
-                var def = CompileFromDefenition(definition, compileScope, out acceptType);
+                var def = CompileFromDefenition(definition, compileScope, out var acceptType);
                 extension = def;
                 if (inputModelType != null)
                 {
@@ -481,8 +479,8 @@ namespace Templates.Runtime
             (IExtension extension, string parameterFastString, ExType modelType, ExType chainedType,
                 CompileScope compileScope, ParseContext parseContext)
         {
-            modelType = modelType ?? typeof (object);
-            chainedType = chainedType ?? typeof (object);
+            modelType ??= typeof (object);
+            chainedType ??= typeof (object);
             RenderType directRender = extension.GetType().IsHaveAttribute<EncodeOutputAttribute>(true)
                 ? (extension.GetType().IsHaveAttribute<NotEncodeAttribute>(true) ? RenderType.Raw : RenderType.Encode)
                 : RenderType.Raw;
@@ -505,12 +503,12 @@ namespace Templates.Runtime
 
         private static void CheckTypes(ExType returnType, BlockPosition extensionPosition, CompileScope compileScope, params ExType[] dataTypes)
         {
-            returnType = returnType ?? typeof (object);
+            returnType ??= typeof (object);
             if (!returnType.IsDynamic)
                 returnType = returnType.Type.UnwrapNullable();
             if (dataTypes.Any() && dataTypes.All(dataType =>
             {
-                dataType = dataType ?? typeof (object);
+                dataType ??= typeof (object);
                 if (dataType.IsDynamic || returnType.IsDynamic)
                     return false;
                 return !dataType.Type.IsType(returnType.Type);

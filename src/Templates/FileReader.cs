@@ -24,10 +24,10 @@ namespace Templates {
         public string ReadEntireFile ()
         {
             string fileName = GetFileName();
-            try {
-                using (StreamReader reader = File.OpenText(fileName)) {
-                    return reader.ReadToEnd();
-                }
+            try
+            {
+                using StreamReader reader = File.OpenText(fileName);
+                return reader.ReadToEnd();
             }
             catch (Exception e) {
                 throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "File not found [{0}].", fileName), e);

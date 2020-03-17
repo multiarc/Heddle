@@ -35,7 +35,7 @@ namespace Templates.Runtime
             try
             {
                 CodeGenerator = new TtlTemplate();
-                var path = ApplicationEnvironment.ApplicationBasePath + "/";
+                var path = AppContext.BaseDirectory + "/";
                 document = File.ReadAllText($"{path}CSharpClassTemplate.tcs");
                 InitErrors =
                     CodeGenerator.Compile(document);
@@ -119,21 +119,19 @@ namespace Templates.Runtime
 
                             using (var codeStream = new MemoryStream())
                             {
-                                using (var symbolStream = new MemoryStream())
+                                using var symbolStream = new MemoryStream();
+                                var results = compilation.Emit(codeStream, symbolStream,
+                                    options: new EmitOptions(
+                                        debugInformationFormat: DebugInformationFormat.PortablePdb));
+                                if (!results.Success)
                                 {
-                                    var results = compilation.Emit(codeStream, symbolStream,
-                                        options: new EmitOptions(
-                                            debugInformationFormat: DebugInformationFormat.PortablePdb));
-                                    if (!results.Success)
-                                    {
-                                        context.CompileContext.CompileErrors.AddRange(FormatErrors(results.Diagnostics,
-                                            context.CSharpContext.Methods.First().Position));
-                                        return;
-                                    }
-
-                                    context.CSharpContext.CompiledAssembly =
-                                        Assembly.Load(codeStream.ToArray(), symbolStream.ToArray());
+                                    context.CompileContext.CompileErrors.AddRange(FormatErrors(results.Diagnostics,
+                                        context.CSharpContext.Methods.First().Position));
+                                    return;
                                 }
+
+                                context.CSharpContext.CompiledAssembly =
+                                    Assembly.Load(codeStream.ToArray(), symbolStream.ToArray());
                             }
 
                             Cache.TryAdd(code, context.CSharpContext.CompiledAssembly);

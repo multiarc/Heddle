@@ -3,16 +3,17 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Hosting.Internal;
 using Microsoft.AspNetCore.Html;
-using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.ObjectPool;
 using Templates.Native;
 using Templates.Performance.TestSuite;
 using System.Reflection;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Templates.Performance
 {
@@ -23,18 +24,21 @@ namespace Templates.Performance
         public static void SetUpTests(IServiceProvider serviceProvider) {
             Tests.Add(new RazorTest(serviceProvider));
         }
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
-            // Initialize the necessary services
-            var services = new ServiceCollection();
-            ConfigureDefaultServices(services);
-            var provider = services.BuildServiceProvider();
+            var host = Host.CreateDefaultBuilder(args)
+                .ConfigureServices(ConfigureDefaultServices)
+                .ConfigureLogging(logging => logging.AddConsole(co => co.LogToStandardErrorThreshold = LogLevel.Warning)).Build();
 
-            SetUpTests(provider);
+            await host.StartAsync();
+
+            SetUpTests(host.Services);
             //Run all tests
             foreach (var test in Tests) {
                 test.Run();
             }
+            await host.StopAsync();
+            
             Console.WriteLine("Done all, press any key to exit...");
             Console.ReadKey();
         }
@@ -43,19 +47,10 @@ namespace Templates.Performance
         {
             var appDirectory = Directory.GetCurrentDirectory() + "\\TestTemplates";
 
-            var environment = new HostingEnvironment
-            {
-                WebRootFileProvider = new PhysicalFileProvider(appDirectory),
-                ApplicationName = "Templates.Performance"
-            };
-            services.AddSingleton<IHostingEnvironment>(environment);
-
-            services.Configure<RazorViewEngineOptions>(options =>
+            services.Configure<MvcRazorRuntimeCompilationOptions>(options =>
             {
                 options.FileProviders.Clear();
                 options.FileProviders.Add(new PhysicalFileProvider(appDirectory));
-                options.CompilationCallback = ctx => ctx.Compilation =
-                    ctx.Compilation.AddReferences(AssemblyHelper.GetApplicationReferences());
             });
 
             services.AddSingleton<ObjectPoolProvider, DefaultObjectPoolProvider>();
@@ -64,7 +59,7 @@ namespace Templates.Performance
             services.AddSingleton<DiagnosticSource>(diagnosticSource);
 
             services.AddLogging();
-            services.AddMvc();
+            services.AddControllersWithViews();
             services.AddSingleton<RazorViewToStringRenderer>();
             AssemblyHelper.Configure(typeof(Program).GetTypeInfo().Assembly);
             AssemblyHelper.Configure(typeof(IHtmlContent).GetTypeInfo().Assembly);

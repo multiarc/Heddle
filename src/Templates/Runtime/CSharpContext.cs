@@ -40,7 +40,7 @@ namespace Templates.Runtime
             try
             {
                 PreparseGenerator = new TtlTemplate();
-                var path = ApplicationEnvironment.ApplicationBasePath + "/";
+                var path = AppContext.BaseDirectory + "/";
                 document = File.ReadAllText($"{path}CSharpPreparseTemplate.tcs");
                 InitErrors = PreparseGenerator.Compile(document);
             }

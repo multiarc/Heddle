@@ -32,7 +32,7 @@ namespace Templates.Performance.Runners
 
             //JIT precompilation
 
-            using (var target =
+            using var target =
                 new TtlTemplate(
                     new CompileContext(
                         new TemplateOptions("template")
@@ -42,13 +42,10 @@ namespace Templates.Performance.Runners
                             AllowCSharp = true
                         }
                     )
-                )
-            )
-            {
-                target.Generate(DataFiller.FillData());
-            }
+                );
+            target.Generate(DataFiller.FillData());
 
-//            var renderer = ServiceProviderServiceExtensions.GetRequiredService<RazorViewToStringRenderer>(_serviceProvider);
+            //            var renderer = ServiceProviderServiceExtensions.GetRequiredService<RazorViewToStringRenderer>(_serviceProvider);
 //
 //            var view = renderer.CompileView("jit");
 //            var viewData = new ViewDataDictionary(
@@ -95,15 +92,14 @@ namespace Templates.Performance.Runners
             Console.WriteLine("Enter tries count (template generate):");
             // = 1000;
             string quantity = Console.ReadLine();
-            int n;
-            int.TryParse(quantity, out n);
+            int.TryParse(quantity, out var n);
 
             var watcher = new Stopwatch();
 
             watcher.Start();
 
             var actionContext = GetActionContext();
-            var renderer = ServiceProviderServiceExtensions.GetRequiredService<RazorViewToStringRenderer>(_serviceProvider);
+            var renderer = _serviceProvider.GetRequiredService<RazorViewToStringRenderer>();
 
             var data = new TestViewContext
             {
@@ -112,7 +108,7 @@ namespace Templates.Performance.Runners
 
             var view = renderer.CompileView("home");
 
-            var tempDataProvider = ServiceProviderServiceExtensions.GetRequiredService<ITempDataProvider>(_serviceProvider);
+            var tempDataProvider = _serviceProvider.GetRequiredService<ITempDataProvider>();
 
             long length;
             var viewData = new ViewDataDictionary<TestViewContext>(
@@ -151,18 +147,16 @@ namespace Templates.Performance.Runners
             watcher.Start();
             for (var i = 0; i < n; i++)
             {
-                using (var output = new StringWriter())
-                {
-                    var viewContext = new ViewContext(
-                        actionContext,
-                        view,
-                        viewData, tempData,
-                        output, htmlHelperOptions);
+                using var output = new StringWriter();
+                var viewContext = new ViewContext(
+                    actionContext,
+                    view,
+                    viewData, tempData,
+                    output, htmlHelperOptions);
 
-                    view.RenderAsync(viewContext).Wait();
-                    output.Flush();
-                    entireLength += output.ToString().Length;
-                }
+                view.RenderAsync(viewContext).Wait();
+                output.Flush();
+                entireLength += output.ToString().Length;
             }
             watcher.Stop();
             Console.WriteLine(entireLength);
@@ -179,8 +173,7 @@ namespace Templates.Performance.Runners
             Console.WriteLine("Enter tries count (template generate):");
             // = 1000;
             string quantity = Console.ReadLine();
-            int n;
-            int.TryParse(quantity, out n);
+            int.TryParse(quantity, out var n);
             var data = new TestViewContext
             {
                 User = new ClaimsPrincipal()
@@ -189,7 +182,7 @@ namespace Templates.Performance.Runners
             //    list.Add(data);
             var watcher = new Stopwatch();
             watcher.Start();
-            using (var target = new TtlTemplate(
+            using var target = new TtlTemplate(
                 new CompileContext(
                     new TemplateOptions("home")
                     {
@@ -200,39 +193,37 @@ namespace Templates.Performance.Runners
                         ProvideLanguageFeatures = false
                     }
                 )
-            ))
+            );
+            long length = target.Generate(data).Length * (long)n;
+            watcher.Stop();
+            Console.WriteLine("Compile time & first run: {0}", watcher.Elapsed);
+            if (!target.CompileResult.Success)
             {
-                long length = target.Generate(data).Length * (long)n;
-                watcher.Stop();
-                Console.WriteLine("Compile time & first run: {0}", watcher.Elapsed);
-                if (!target.CompileResult.Success)
-                {
-                    Console.Write(target.CompileResult.ToString());
-                    return;
-                }
-                watcher.Reset();
-                //watcher.Start();
-
-                //Enumerable.Repeat(data, n).AsParallel().ForAll(item => target.Generate(item));
-                //watcher.Stop();
-                //Console.WriteLine("Parrallel implementation:");
-                //Console.WriteLine("{0} run times: {1}", n, watcher.Elapsed);
-                //Console.WriteLine("Out Speed: {0:F0} Pages/s", n / watcher.Elapsed.TotalSeconds);
-                //Console.WriteLine("{0:F2} Mb/s", length / watcher.Elapsed.TotalSeconds / 1048576.0 * sizeof(char));
-                //Console.WriteLine("Total Size: {0:F2} Mb", length / 1048576.0 * sizeof(char));
-                //watcher.Reset();
-                watcher.Start();
-                for (var i = 0; i < n; i++)
-                {
-                    target.Generate(data);
-                }
-                watcher.Stop();
-                Console.WriteLine("Single thread implementation:");
-                Console.WriteLine("{0} run times: {1}", n, watcher.Elapsed);
-                Console.WriteLine("Out Speed: {0:F0} Pages/s", n / watcher.Elapsed.TotalSeconds);
-                Console.WriteLine("{0:F2} Mb/s", length / watcher.Elapsed.TotalSeconds / 1048576.0 * sizeof(char));
-                Console.WriteLine("Total Size: {0:F2} Mb", length / 1048576.0 * sizeof(char));
+                Console.Write(target.CompileResult.ToString());
+                return;
             }
+            watcher.Reset();
+            //watcher.Start();
+
+            //Enumerable.Repeat(data, n).AsParallel().ForAll(item => target.Generate(item));
+            //watcher.Stop();
+            //Console.WriteLine("Parrallel implementation:");
+            //Console.WriteLine("{0} run times: {1}", n, watcher.Elapsed);
+            //Console.WriteLine("Out Speed: {0:F0} Pages/s", n / watcher.Elapsed.TotalSeconds);
+            //Console.WriteLine("{0:F2} Mb/s", length / watcher.Elapsed.TotalSeconds / 1048576.0 * sizeof(char));
+            //Console.WriteLine("Total Size: {0:F2} Mb", length / 1048576.0 * sizeof(char));
+            //watcher.Reset();
+            watcher.Start();
+            for (var i = 0; i < n; i++)
+            {
+                target.Generate(data);
+            }
+            watcher.Stop();
+            Console.WriteLine("Single thread implementation:");
+            Console.WriteLine("{0} run times: {1}", n, watcher.Elapsed);
+            Console.WriteLine("Out Speed: {0:F0} Pages/s", n / watcher.Elapsed.TotalSeconds);
+            Console.WriteLine("{0:F2} Mb/s", length / watcher.Elapsed.TotalSeconds / 1048576.0 * sizeof(char));
+            Console.WriteLine("Total Size: {0:F2} Mb", length / 1048576.0 * sizeof(char));
         }
     }
 }

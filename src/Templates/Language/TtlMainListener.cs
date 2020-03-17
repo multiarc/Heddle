@@ -44,8 +44,7 @@ namespace Templates.Language {
         public override void EnterDef(TtlParser.DefContext context)
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
-            OutputChain chain;
-            CurrentParseContext.CurrentDefenition = CurrentParseContext.CreateDefinition(context, _compileContext, out chain);
+            CurrentParseContext.CurrentDefenition = CurrentParseContext.CreateDefinition(context, _compileContext, out var chain);
             if (CurrentParseContext.CurrentDefenition == null)
             {
                 _compileContext.CompileErrors.Add(
@@ -198,24 +197,22 @@ namespace Templates.Language {
             var path = context.TEXT()?.GetText();
             if (!string.IsNullOrWhiteSpace(path))
             {
-                using (var file = File.OpenText(Path.Combine(_compileContext.Options.RootPath, path)))
+                using var file = File.OpenText(Path.Combine(_compileContext.Options.RootPath, path));
+                string document = file.ReadToEnd();
+                var isolatedContext = CurrentParseContext.IsolateContextWithTree();
+                isolatedContext.OutputChains.Clear();
+                DocumentParser.Parse(document, isolatedContext, _compileContext/*, true*/);
+                CurrentParseContext.DefaultChains.Clear();
+                CurrentParseContext.DefaultChains.AddRange(isolatedContext.DefaultChains);
+                CurrentParseContext.DefinitionsBlock.Definitions.Clear();
+                foreach (var definition in isolatedContext.DefinitionsBlock.Definitions)
                 {
-                    string document = file.ReadToEnd();
-                    var isolatedContext = CurrentParseContext.IsolateContextWithTree();
-                    isolatedContext.OutputChains.Clear();
-                    DocumentParser.Parse(document, isolatedContext, _compileContext/*, true*/);
-                    CurrentParseContext.DefaultChains.Clear();
-                    CurrentParseContext.DefaultChains.AddRange(isolatedContext.DefaultChains);
-                    CurrentParseContext.DefinitionsBlock.Definitions.Clear();
-                    foreach (var definition in isolatedContext.DefinitionsBlock.Definitions)
-                    {
-                        CurrentParseContext.DefinitionsBlock.Definitions.Add(definition.Key, definition.Value);
-                    }
-                    foreach (var isolatedChain in isolatedContext.OutputChains)
-                    {
-                        isolatedChain.BlockPosition = new BlockPosition(CurrentParseContext.GetBlockPosition(context).StartIndex, 0);
-                        CurrentParseContext.OutputChains.Add(isolatedChain);
-                    }
+                    CurrentParseContext.DefinitionsBlock.Definitions.Add(definition.Key, definition.Value);
+                }
+                foreach (var isolatedChain in isolatedContext.OutputChains)
+                {
+                    isolatedChain.BlockPosition = new BlockPosition(CurrentParseContext.GetBlockPosition(context).StartIndex, 0);
+                    CurrentParseContext.OutputChains.Add(isolatedChain);
                 }
             }
             CurrentParseContext.DefinitionsBlock.AddNewBlockPosition(CurrentParseContext.GetBlockPosition(context));

@@ -23,14 +23,14 @@ namespace Templates.Runtime.Parameters
             // ReSharper disable once ForCanBeConvertedToForeach
             // ReSharper disable once LoopCanBeConvertedToQuery
             Expression result = null;
-            for (var i = 0; i < getModelParameter.Length; i++)
+            foreach (var parameter in getModelParameter)
             {
-                var input = result ?? Expression.Convert(inputParameter, getModelParameter[i].Key);
+                var input = result ?? Expression.Convert(inputParameter, parameter.Key);
                 result = Expression.Condition(
                     Expression.Equal(input,
-                        Expression.Constant(null, getModelParameter[i].Key)
-                    ), Expression.Default(getModelParameter[i].Value.PropertyType),
-                    Expression.MakeMemberAccess(input, getModelParameter[i].Value));
+                        Expression.Constant(null, parameter.Key)
+                    ), Expression.Default(parameter.Value.PropertyType),
+                    Expression.MakeMemberAccess(input, parameter.Value));
             }
 
             if (result == null)

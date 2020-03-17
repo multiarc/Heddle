@@ -102,7 +102,7 @@ namespace Templates.Runtime {
             if (controllerName == null) throw new ArgumentNullException(nameof(controllerName));
             if (!Path.HasExtension(viewName))
             {
-                viewName = viewName + FileExtension;
+                viewName += FileExtension;
             }
             if (viewName.Contains(".."))
                 throw new ArgumentException("The view path cannot contain parent directory specifier ..");
