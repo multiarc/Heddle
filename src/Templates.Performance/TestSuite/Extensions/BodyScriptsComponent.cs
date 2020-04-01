@@ -17,7 +17,7 @@ namespace Templates.Performance.TestSuite.Extensions
 
         public override void RenderData(in Scope scope)
         {
-            scope.Render("<script src=\"/body.js\"></script>");
+            scope.Renderer.Render("<script src=\"/body.js\"></script>");
         }
     }
 }

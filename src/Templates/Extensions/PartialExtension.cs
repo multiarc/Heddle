@@ -22,7 +22,7 @@ namespace Templates.Extensions {
 
         public override void RenderData(in Scope scope)
         {
-            scope.Render(InnerTemplate?.Generate(scope.ModelData, scope.ChainedData));
+            scope.Renderer.Render(InnerTemplate?.Generate(scope.ModelData, scope.ChainedData));
         }
 
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)

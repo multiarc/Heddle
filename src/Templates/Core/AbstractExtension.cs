@@ -40,7 +40,7 @@ namespace Templates.Core
             }
             else
             {
-                scope.Render(_innerResult);
+                scope.Renderer.Render(_innerResult);
             }
         }
 

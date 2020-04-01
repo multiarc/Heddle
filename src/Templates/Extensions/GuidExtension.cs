@@ -32,7 +32,7 @@ namespace Templates.Extensions
                 return;
 
             var parentData = scope.Parent();
-            scope.Render(guid.ToString(GetInnerResult(parentData)));
+            scope.Renderer.Render(guid.ToString(GetInnerResult(parentData)));
         }
     }
 }

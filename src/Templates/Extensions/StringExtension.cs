@@ -56,18 +56,18 @@ namespace Templates.Extensions
 
             if (model is string data)
             {
-                scope.Render(data);
+                scope.Renderer.Render(data);
                 return;
             }
 
             try
             {
                 var str = (string) Convert.ChangeType(model, typeof(string), CultureInfo.InvariantCulture);
-                scope.Render(str);
+                scope.Renderer.Render(str);
             }
             catch (InvalidCastException)
             {
-                scope.Render(model.ToString());
+                scope.Renderer.Render(model.ToString());
             }
         }
     }

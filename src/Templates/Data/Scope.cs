@@ -58,10 +58,5 @@ namespace Templates.Data
         }
 
         public static readonly Scope Null = new Scope(null, null, null, null, null);
-
-        public void Render(string data)
-        {
-            Renderer.Render(data);
-        }
     }
 }

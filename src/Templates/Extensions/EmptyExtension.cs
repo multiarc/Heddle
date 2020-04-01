@@ -36,11 +36,11 @@ namespace Templates.Extensions
             {
                 if (scope.ModelData is string s)
                 {
-                    scope.Render(s);
+                    scope.Renderer.Render(s);
                 }
                 else
                 {
-                    scope.Render(scope.ModelData.ToString());
+                    scope.Renderer.Render(scope.ModelData.ToString());
                 }
             }
         }

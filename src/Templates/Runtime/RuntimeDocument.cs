@@ -267,7 +267,7 @@ namespace Templates.Runtime {
                 {
                     if (element.Piece != null)
                     {
-                        scope.Render(element.Piece);
+                        scope.Renderer.Render(element.Piece);
                     }
                     else
                     {

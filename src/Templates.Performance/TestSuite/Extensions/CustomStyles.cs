@@ -17,7 +17,7 @@ namespace Templates.Performance.TestSuite.Extensions
 
         public override void RenderData(in Scope scope)
         {
-            scope.Render("/* CSS Comment Test */");
+            scope.Renderer.Render("/* CSS Comment Test */");
         }
     }
 }

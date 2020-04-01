@@ -34,10 +34,10 @@ namespace Templates.Performance.TestSuite.Extensions
                 switch (assetName)
                 {
                     case "scripts":
-                        scope.Render("<script src=\"/main.js\"></script>");
+                        scope.Renderer.Render("<script src=\"/main.js\"></script>");
                         break;
                     case "styles":
-                        scope.Render("<link rel=\"stylesheet\" href=\"/main.css\" />");
+                        scope.Renderer.Render("<link rel=\"stylesheet\" href=\"/main.css\" />");
                         break;
                 }
             }

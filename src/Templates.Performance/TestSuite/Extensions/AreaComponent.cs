@@ -1162,7 +1162,7 @@ namespace Templates.Performance.TestSuite.Extensions
             
             if (Areas.TryGetValue(areaName, out var areaContent))
             {
-                scope.Render(areaContent);
+                scope.Renderer.Render(areaContent);
             }
         }
     }

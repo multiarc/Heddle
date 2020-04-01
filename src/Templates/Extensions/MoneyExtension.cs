@@ -80,14 +80,14 @@ namespace Templates.Extensions
 
             if (scope.ModelData is decimal decimalValue)
             {
-                scope.Render(localeInfo != null ? decimalValue.ToString("c", localeInfo) : decimalValue.ToString("c"));
+                scope.Renderer.Render(localeInfo != null ? decimalValue.ToString("c", localeInfo) : decimalValue.ToString("c"));
                 return;
             }
 
             try
             {
                 decimalValue = (decimal) Convert.ChangeType(scope.ModelData, typeof(decimal), CultureInfo.InvariantCulture);
-                scope.Render(localeInfo != null ? decimalValue.ToString("c", localeInfo) : decimalValue.ToString("c"));
+                scope.Renderer.Render(localeInfo != null ? decimalValue.ToString("c", localeInfo) : decimalValue.ToString("c"));
             }
             catch (InvalidCastException)
             {

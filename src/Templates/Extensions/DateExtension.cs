@@ -45,7 +45,7 @@ namespace Templates.Extensions
                 dateFormat = "d";
             if (scope.ModelData is DateTime date)
             {
-                scope.Render(date.ToString(dateFormat, CultureInfo.InvariantCulture));
+                scope.Renderer.Render(date.ToString(dateFormat, CultureInfo.InvariantCulture));
             }
         }
     }

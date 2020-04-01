@@ -26,7 +26,7 @@ namespace Templates.Extensions
         {
             if (!InnerExist)
             {
-                scope.Render(scope.ChainedData as string);
+                scope.Renderer.Render(scope.ChainedData as string);
             }
 
             var innerScope = scope.Model(scope.ChainedData, scope.ParentModelData);

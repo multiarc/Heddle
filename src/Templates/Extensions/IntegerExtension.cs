@@ -76,13 +76,13 @@ namespace Templates.Extensions
 
             if (model is int data)
             {
-                scope.Render(!string.IsNullOrEmpty(format) ? data.ToString(format, CultureInfo.InvariantCulture) : data.ToString(CultureInfo.InvariantCulture));
+                scope.Renderer.Render(!string.IsNullOrEmpty(format) ? data.ToString(format, CultureInfo.InvariantCulture) : data.ToString(CultureInfo.InvariantCulture));
                 return;
             }
 
             if (model is long longData)
             {
-                scope.Render(!string.IsNullOrEmpty(format)
+                scope.Renderer.Render(!string.IsNullOrEmpty(format)
                     ? longData.ToString(format, CultureInfo.InvariantCulture)
                     : longData.ToString(CultureInfo.InvariantCulture));
                 return;
@@ -105,7 +105,7 @@ namespace Templates.Extensions
                 return;
             }
 
-            scope.Render(!string.IsNullOrEmpty(format)
+            scope.Renderer.Render(!string.IsNullOrEmpty(format)
                 ? longData.ToString(format, CultureInfo.InvariantCulture)
                 : longData.ToString(CultureInfo.InvariantCulture));
         }
