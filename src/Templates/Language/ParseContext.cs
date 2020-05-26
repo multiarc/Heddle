@@ -120,7 +120,7 @@ namespace Templates.Language {
             return new TtlCompileWarning
             {
                 Error = message,
-                Position = new BlockPosition(startIndex, stopIndex - startIndex),
+                Position = new BlockPosition(startIndex, stopIndex - startIndex + 1),
                 Fix = fix
             };
         }
