@@ -16,6 +16,21 @@ namespace Templates.Tests
         {
             public int Id { get; set; }
         }
+        
+        [Fact]
+        public void WierdWhiteSpace()
+        {
+            TtlTemplate.Configure(typeof(TtlTemplateTests).GetTypeInfo().Assembly);
+            
+            using var ttlTemplate = new TtlTemplate();
+            var results = ttlTemplate.TryCompilation(File.ReadAllText("TestTemplate\\wierd-whitespace.thtml").Replace("\r\n", "\n"), new TemplateOptions
+            {
+                AllowCSharp = true,
+                ForceRemoveWhitespace = true
+            });
+            
+            Assert.True(results.Success, results.ToString());
+        }
 
         [Fact]
         public void SubjectDynamicTest()

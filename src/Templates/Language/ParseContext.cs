@@ -120,7 +120,7 @@ namespace Templates.Language {
             return new TtlCompileWarning
             {
                 Error = message,
-                Position = new BlockPosition(startIndex, stopIndex - startIndex + 1),
+                Position = new BlockPosition(startIndex, stopIndex - startIndex),
                 Fix = fix
             };
         }
@@ -253,7 +253,7 @@ namespace Templates.Language {
         internal BlockPosition GetBlockPosition(IToken token) {
             if (token == null)
                 throw new ArgumentNullException(nameof(token));
-            return new BlockPosition(token.StartIndex - _offset, token.StopIndex - token.StartIndex + 1);
+            return new BlockPosition(token.StartIndex - _offset, token.StopIndex - token.StartIndex);
         }
 
         internal BlockPosition GetBlockPosition(ParserRuleContext context) {
@@ -262,7 +262,7 @@ namespace Templates.Language {
             if (context.Start == null || context.Stop == null)
                 throw new ArgumentException();
             return new BlockPosition(context.Start.StartIndex - _offset,
-                context.Stop.StopIndex - context.Start.StartIndex + 1);
+                context.Stop.StopIndex - context.Start.StartIndex);
         }
 
         internal BlockPosition GetAbsoluteBlockPosition(ParserRuleContext context)
@@ -272,7 +272,7 @@ namespace Templates.Language {
             if (context.Start == null || context.Stop == null)
                 throw new ArgumentException();
             return new BlockPosition(context.Start.StartIndex,
-                context.Stop.StopIndex - context.Start.StartIndex + 1);
+                context.Stop.StopIndex - context.Start.StartIndex);
         }
 
         internal OutputChain CreateOutputChain(TtlParser.OutblockContext context)

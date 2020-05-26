@@ -1,0 +1,105 @@
+﻿@using() {{                             }}
+@using() {{System.Linq}}
+@using() {{System.Net}}
+@model() {{dynamic}}
+
+@%
+<review_rating>{{
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+   
+  
+  
+    
+}}
+
+<product_breadcrumb>
+{{
+}}
+
+<product_tabs>
+{{
+    
+    
+    
+        @(                             ) {{
+            @if ()
+            {{
+                @()
+                    <section class="comments">
+                        
+                        @list(@root.ProductPage.ReviewsTab.Reviews) {{
+							
+								<div class="comment-content">
+								    <div class="arrow-comment"></div>
+									<div class="comment-by">
+									    @(){{@(::ProductPage.DefaultCultureInfo.DateTimeFormat.ShortDatePattern)@(::ProductPage.DefaultCultureInfo.DateTimeFormat.ShortTimePattern)}}
+                        }}
+                
+                        @if(@root.ProductPage.ReviewsTab.ReviewsCount > 3){{
+                            <div class="form-group">
+    				        <a class="read-more-reviews" href="/reviews/@(@root.ProductPage.Url)">
+    					        
+    				        </a>
+    				        </div>
+				        }}
+				        <a href="#" class="button color write-review-link">Написать отзыв</a>
+                    </section>
+                </div>
+            }}
+        }}
+		@*11111111111111*@
+}}
+
+<layout> -> ()
+{{ 
+	@product_tabs()
+}} :: dynamic 
+%@

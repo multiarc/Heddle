@@ -131,20 +131,24 @@ namespace Templates.Runtime
         {
             foreach (var blockPosition in ((ICollection<BlockPosition>)context.SkippedTokens).Reverse())
             {
-                int seed = blockPosition.Length;
+                var seed = blockPosition.Length;
+                
+                var startToSkip = blockPosition.StartIndex;
+                var endToSkip = blockPosition.StartIndex + blockPosition.Length;
+                
                 foreach (var chain in ((ICollection<OutputChain>)context.OutputChains).Reverse())
                 {
-                    if (chain.BlockPosition.StartIndex < blockPosition.StartIndex &&
-                        chain.BlockPosition.StartIndex + chain.BlockPosition.Length >
-                        blockPosition.StartIndex + blockPosition.Length)
+                    var chainBlockStart = chain.BlockPosition.StartIndex;
+                    var chainBlockEnd = chain.BlockPosition.StartIndex + chain.BlockPosition.Length;
+
+                    if (chainBlockStart <= startToSkip && chainBlockEnd >= endToSkip)
                     {
-                        chain.BlockPosition =
-                            new BlockPosition(chain.BlockPosition.StartIndex,
-                                chain.BlockPosition.Length - blockPosition.Length);
+                        chain.BlockPosition = new BlockPosition(chainBlockStart,
+                            chain.BlockPosition.Length - seed);
                     }
-                    else if (chain.BlockPosition.StartIndex + chain.BlockPosition.Length > blockPosition.StartIndex)
+                    else if (chainBlockEnd >= startToSkip)
                     {
-                        chain.BlockPosition = new BlockPosition(chain.BlockPosition.StartIndex - seed,
+                        chain.BlockPosition = new BlockPosition(chainBlockStart - seed,
                             chain.BlockPosition.Length);
                     }
                     else
@@ -155,17 +159,19 @@ namespace Templates.Runtime
                 for (int index = context.DefinitionsBlock.Positions.Count - 1; index >= 0; index--)
                 {
                     var position = context.DefinitionsBlock.Positions[index];
-                    if (position.StartIndex < blockPosition.StartIndex &&
-                        position.StartIndex + position.Length >
-                        blockPosition.StartIndex + blockPosition.Length)
+                    
+                    var definitionBlockStart = position.StartIndex;
+                    var definitionBlockEnd = position.StartIndex + position.Length;
+                    
+                    if (definitionBlockStart <= startToSkip && definitionBlockEnd >= endToSkip)
                     {
                         context.DefinitionsBlock.Positions[index] =
-                            new BlockPosition(position.StartIndex,
-                                position.Length - blockPosition.Length);
+                            new BlockPosition(definitionBlockStart,
+                                position.Length - seed);
                     }
-                    else if (position.StartIndex + position.Length > blockPosition.StartIndex)
+                    else if (definitionBlockEnd >= startToSkip)
                     {
-                        context.DefinitionsBlock.Positions[index] = new BlockPosition(position.StartIndex - seed,
+                        context.DefinitionsBlock.Positions[index] = new BlockPosition(definitionBlockStart - seed,
                             position.Length);
                     }
                     else
@@ -175,9 +181,12 @@ namespace Templates.Runtime
                 }
                 foreach (var raw in ((ICollection<RawOutputItem>)context.RawOutputItems).Reverse())
                 {
-                    if (raw.BlockPosition.StartIndex + raw.BlockPosition.Length > blockPosition.StartIndex)
+                    var rawBlockStart = raw.BlockPosition.StartIndex;
+                    var rawBlockEnd = raw.BlockPosition.StartIndex + raw.BlockPosition.Length;
+                    
+                    if (rawBlockEnd >= blockPosition.StartIndex)
                     {
-                        raw.BlockPosition = new BlockPosition(raw.BlockPosition.StartIndex - seed,
+                        raw.BlockPosition = new BlockPosition(rawBlockStart - seed,
                             raw.BlockPosition.Length);
                     }
                     else
@@ -195,7 +204,7 @@ namespace Templates.Runtime
                 int seed = ExStringBuilder.ApplyRemove(blockPosition, ref workingDocument);
                 foreach (var chain in ((ICollection<OutputChain>)context.OutputChains).Reverse())
                 {
-                    if (chain.BlockPosition.StartIndex + chain.BlockPosition.Length > blockPosition.StartIndex)
+                    if (chain.BlockPosition.StartIndex + chain.BlockPosition.Length >= blockPosition.StartIndex)
                     {
                         chain.BlockPosition = new BlockPosition(chain.BlockPosition.StartIndex - seed,
                             chain.BlockPosition.Length);
@@ -207,7 +216,7 @@ namespace Templates.Runtime
                 }
                 foreach (var raw in ((ICollection<RawOutputItem>)context.RawOutputItems).Reverse())
                 {
-                    if (raw.BlockPosition.StartIndex + raw.BlockPosition.Length > blockPosition.StartIndex)
+                    if (raw.BlockPosition.StartIndex + raw.BlockPosition.Length >= blockPosition.StartIndex)
                     {
                         raw.BlockPosition = new BlockPosition(raw.BlockPosition.StartIndex - seed,
                             raw.BlockPosition.Length);
