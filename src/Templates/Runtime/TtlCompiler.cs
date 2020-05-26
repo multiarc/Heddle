@@ -134,19 +134,19 @@ namespace Templates.Runtime
                 var seed = blockPosition.Length;
                 
                 var startToSkip = blockPosition.StartIndex;
-                var endToSkip = blockPosition.StartIndex + blockPosition.Length;
+                var endToSkip = blockPosition.StartIndex + blockPosition.Length - 1;
                 
                 foreach (var chain in ((ICollection<OutputChain>)context.OutputChains).Reverse())
                 {
                     var chainBlockStart = chain.BlockPosition.StartIndex;
-                    var chainBlockEnd = chain.BlockPosition.StartIndex + chain.BlockPosition.Length;
+                    var chainBlockEnd = chain.BlockPosition.StartIndex + chain.BlockPosition.Length - 1;
 
                     if (chainBlockStart <= startToSkip && chainBlockEnd >= endToSkip)
                     {
                         chain.BlockPosition = new BlockPosition(chainBlockStart,
                             chain.BlockPosition.Length - seed);
                     }
-                    else if (chainBlockEnd >= startToSkip)
+                    else if (chainBlockEnd > startToSkip)
                     {
                         chain.BlockPosition = new BlockPosition(chainBlockStart - seed,
                             chain.BlockPosition.Length);
@@ -161,7 +161,7 @@ namespace Templates.Runtime
                     var position = context.DefinitionsBlock.Positions[index];
                     
                     var definitionBlockStart = position.StartIndex;
-                    var definitionBlockEnd = position.StartIndex + position.Length;
+                    var definitionBlockEnd = position.StartIndex + position.Length - 1;
                     
                     if (definitionBlockStart <= startToSkip && definitionBlockEnd >= endToSkip)
                     {
@@ -169,7 +169,7 @@ namespace Templates.Runtime
                             new BlockPosition(definitionBlockStart,
                                 position.Length - seed);
                     }
-                    else if (definitionBlockEnd >= startToSkip)
+                    else if (definitionBlockEnd > startToSkip)
                     {
                         context.DefinitionsBlock.Positions[index] = new BlockPosition(definitionBlockStart - seed,
                             position.Length);
@@ -182,9 +182,9 @@ namespace Templates.Runtime
                 foreach (var raw in ((ICollection<RawOutputItem>)context.RawOutputItems).Reverse())
                 {
                     var rawBlockStart = raw.BlockPosition.StartIndex;
-                    var rawBlockEnd = raw.BlockPosition.StartIndex + raw.BlockPosition.Length;
+                    var rawBlockEnd = raw.BlockPosition.StartIndex + raw.BlockPosition.Length - 1;
                     
-                    if (rawBlockEnd >= blockPosition.StartIndex)
+                    if (rawBlockEnd > blockPosition.StartIndex)
                     {
                         raw.BlockPosition = new BlockPosition(rawBlockStart - seed,
                             raw.BlockPosition.Length);
@@ -199,12 +199,12 @@ namespace Templates.Runtime
 
         private static void RemoveDefinitions(ParseContext context, ref string workingDocument)
         {
-            foreach (var blockPosition in ((ICollection<BlockPosition>)context.DefinitionsBlock.Positions).Reverse())
+            foreach (var definitionBlock in ((ICollection<BlockPosition>)context.DefinitionsBlock.Positions).Reverse())
             {
-                int seed = ExStringBuilder.ApplyRemove(blockPosition, ref workingDocument);
+                int seed = ExStringBuilder.ApplyRemove(definitionBlock, ref workingDocument);
                 foreach (var chain in ((ICollection<OutputChain>)context.OutputChains).Reverse())
                 {
-                    if (chain.BlockPosition.StartIndex + chain.BlockPosition.Length >= blockPosition.StartIndex)
+                    if (chain.BlockPosition.StartIndex >= definitionBlock.StartIndex + definitionBlock.Length)
                     {
                         chain.BlockPosition = new BlockPosition(chain.BlockPosition.StartIndex - seed,
                             chain.BlockPosition.Length);
@@ -216,7 +216,7 @@ namespace Templates.Runtime
                 }
                 foreach (var raw in ((ICollection<RawOutputItem>)context.RawOutputItems).Reverse())
                 {
-                    if (raw.BlockPosition.StartIndex + raw.BlockPosition.Length >= blockPosition.StartIndex)
+                    if (raw.BlockPosition.StartIndex >= definitionBlock.StartIndex + definitionBlock.Length)
                     {
                         raw.BlockPosition = new BlockPosition(raw.BlockPosition.StartIndex - seed,
                             raw.BlockPosition.Length);

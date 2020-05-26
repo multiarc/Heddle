@@ -142,11 +142,19 @@ namespace Templates.Language {
             {
                 var currentContext = CurrentParseContext;
                 var newContext = new ParseContext(currentContext, ttl.Start.StartIndex);
+
+                var currentOffset = currentContext.Offset;
                 
                 //transfer parent skipped tokens inside with offset
                 newContext.SkippedTokens.AddRange(currentContext.SkippedTokens
-                    .Where(t => t.StartIndex >= ttl.Start.StartIndex && t.StartIndex + t.Length <= ttl.Stop.StopIndex)
-                    .Select(t => new BlockPosition(t.StartIndex - ttl.Start.StartIndex, t.Length)));
+                    .Where(t =>
+                    {
+                        var startIndex = t.StartIndex + currentOffset;
+                        var stopIndex = startIndex + t.Length - 1;
+
+                        return startIndex >= ttl.Start.StartIndex && stopIndex <= ttl.Stop.StopIndex;
+                    })
+                    .Select(t => new BlockPosition(t.StartIndex + currentOffset - ttl.Start.StartIndex, t.Length)));
                 
                 currentContext.AddSubContext(newContext);
                 if (!currentContext.InDefintionContext && !currentContext.InDefinition)

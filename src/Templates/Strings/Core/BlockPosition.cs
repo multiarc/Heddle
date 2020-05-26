@@ -20,7 +20,7 @@ namespace Templates.Strings.Core {
         public BlockPosition(IToken token)
         {
             StartIndex = token.StartIndex;
-            Length = token.StopIndex - token.StartIndex;
+            Length = token.StopIndex - token.StartIndex + 1;
         }
 
         public override string ToString()
