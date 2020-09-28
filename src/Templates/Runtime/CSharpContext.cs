@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -40,8 +41,20 @@ namespace Templates.Runtime
             try
             {
                 PreparseGenerator = new TtlTemplate();
-                var path = AppContext.BaseDirectory + "/";
-                document = File.ReadAllText($"{path}CSharpPreparseTemplate.tcs");
+                var path = $"{AppContext.BaseDirectory}/CSharpPreparseTemplate.tcs";
+                if (File.Exists(path))
+                {
+                    document = File.ReadAllText(path);
+                }
+                else
+                {
+                    using var embeddedTemplate = typeof(ContextCompilation).Assembly.GetManifestResourceStream("Templates.LanguageTemplates.CSharpPreparseTemplate.tcs");
+                    if (embeddedTemplate != null)
+                    {
+                        var templateReader = new StreamReader(embeddedTemplate, Encoding.Unicode);
+                        document = templateReader.ReadToEnd();
+                    }
+                }
                 InitErrors = PreparseGenerator.Compile(document);
             }
             catch (Exception e)

@@ -32,4 +32,11 @@
     <ProjectReference Include="..\Templates.Language\Templates.Language.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Remove="LanguageTemplates\CSharpClassTemplate.tcs" />
+    <EmbeddedResource Include="LanguageTemplates\CSharpClassTemplate.tcs" />
+    <Content Remove="LanguageTemplates\CSharpPreparseTemplate.tcs" />
+    <EmbeddedResource Include="LanguageTemplates\CSharpPreparseTemplate.tcs" />
+  </ItemGroup>
+
 </Project>

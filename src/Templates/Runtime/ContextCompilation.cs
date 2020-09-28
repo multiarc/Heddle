@@ -5,6 +5,7 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
@@ -35,8 +36,22 @@ namespace Templates.Runtime
             try
             {
                 CodeGenerator = new TtlTemplate();
-                var path = AppContext.BaseDirectory + "/";
-                document = File.ReadAllText($"{path}CSharpClassTemplate.tcs");
+                var path = $"{AppContext.BaseDirectory}/CSharpClassTemplate.tcs";
+                
+                if (File.Exists(path))
+                {
+                    document = File.ReadAllText(path);
+                }
+                else
+                {
+                    using var embeddedTemplate = typeof(ContextCompilation).Assembly.GetManifestResourceStream("Templates.LanguageTemplates.CSharpClassTemplate.tcs");
+                    if (embeddedTemplate != null)
+                    {
+                        var templateReader = new StreamReader(embeddedTemplate, Encoding.Unicode);
+                        document = templateReader.ReadToEnd();
+                    }
+                }
+
                 InitErrors =
                     CodeGenerator.Compile(document);
             }
