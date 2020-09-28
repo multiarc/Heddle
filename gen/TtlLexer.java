@@ -1,4 +1,4 @@
-// Generated from C:/Docs/Work/Templater/src/Templates.Language\TtlLexer.g4 by ANTLR 4.8
+// Generated from D:/Docs/Work/Templater/src/Templates.Language\TtlLexer.g4 by ANTLR 4.8
 import org.antlr.v4.runtime.Lexer;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.Token;
@@ -242,8 +242,8 @@ public class TtlLexer extends Lexer {
 		"\"\u0100\2\u0102#\u0104\16\u0106\2\u0108\2\u010a\2\u010c\2\u010e\2\u0110"+
 		"\2\u0112$\u0114\2\u0116\2\u0118\2\u011a\2\n\2\3\4\5\6\7\b\t\22\3\2BB\6"+
 		"\2\f\f\17\17\u0087\u0087\u202a\u202b\13\2\13\13\r\16\"\"\u00a2\u00a2\u1682"+
-		"\u1682\u2002\u200c\u2031\u2031\u2061\u2061\u3002\u3002\6\2C\\aac|\u0412"+
-		"\u0451\4\2--\62;\6\2NNWWnnww\5\2\62;CHch\4\2GGgg\4\2--//\b\2FFHHOOffh"+
+		"\u1682\u2002\u200c\u2031\u2031\u2061\u2061\u3002\u3002\6\2C\\aac|\u00c2"+
+		"\u0101\4\2--\62;\6\2NNWWnnww\5\2\62;CHch\4\2GGgg\4\2--//\b\2FFHHOOffh"+
 		"hoo\b\2\f\f\17\17))^^\u0087\u0087\u202a\u202b\b\2\f\f\17\17$$^^\u0087"+
 		"\u0087\u202a\u202b\3\2$$\t\2##\'(*\61<A]]_`}\u0080\4\2BB\177\177\4\2}"+
 		"}\177\177\2\u0648\2@\3\2\2\2\2B\3\2\2\2\2D\3\2\2\2\2F\3\2\2\2\2H\3\2\2"+
