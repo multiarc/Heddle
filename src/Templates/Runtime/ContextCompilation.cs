@@ -16,6 +16,7 @@ using Templates.Runtime.Parameters;
 using Templates.Strings.Core;
 using Platform = Microsoft.CodeAnalysis.Platform;
 using Microsoft.DotNet.PlatformAbstractions;
+using Microsoft.Extensions.FileProviders;
 
 namespace Templates.Runtime
 {
@@ -44,7 +45,9 @@ namespace Templates.Runtime
                 }
                 else
                 {
-                    using var embeddedTemplate = typeof(ContextCompilation).Assembly.GetManifestResourceStream("Templates.LanguageTemplates.CSharpClassTemplate.tcs");
+                    var provider = new EmbeddedFileProvider(typeof(ContextCompilation).Assembly, "Templates.LanguageTemplates");
+                    var fileInfo = provider.GetFileInfo("CSharpClassTemplate.tcs");
+                    using var embeddedTemplate = fileInfo.CreateReadStream();
                     if (embeddedTemplate != null)
                     {
                         var templateReader = new StreamReader(embeddedTemplate, Encoding.Unicode);

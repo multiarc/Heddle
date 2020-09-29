@@ -10,6 +10,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.DotNet.PlatformAbstractions;
+using Microsoft.Extensions.FileProviders;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Helpers;
@@ -48,7 +49,9 @@ namespace Templates.Runtime
                 }
                 else
                 {
-                    using var embeddedTemplate = typeof(ContextCompilation).Assembly.GetManifestResourceStream("Templates.LanguageTemplates.CSharpPreparseTemplate.tcs");
+                    var provider = new EmbeddedFileProvider(typeof(ContextCompilation).Assembly, "Templates.LanguageTemplates");
+                    var fileInfo = provider.GetFileInfo("CSharpPreparseTemplate.tcs");
+                    using var embeddedTemplate = fileInfo.CreateReadStream();
                     if (embeddedTemplate != null)
                     {
                         var templateReader = new StreamReader(embeddedTemplate, Encoding.Unicode);

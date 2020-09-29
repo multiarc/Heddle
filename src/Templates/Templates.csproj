@@ -26,6 +26,7 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.7.0" />
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="3.1.6" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="3.1.8" />
   </ItemGroup>
 
   <ItemGroup>
@@ -33,9 +34,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Remove="LanguageTemplates\CSharpClassTemplate.tcs" />
+    <None Remove="LanguageTemplates\CSharpClassTemplate.tcs" />
     <EmbeddedResource Include="LanguageTemplates\CSharpClassTemplate.tcs" />
-    <Content Remove="LanguageTemplates\CSharpPreparseTemplate.tcs" />
+    <None Remove="LanguageTemplates\CSharpPreparseTemplate.tcs" />
     <EmbeddedResource Include="LanguageTemplates\CSharpPreparseTemplate.tcs" />
   </ItemGroup>
 

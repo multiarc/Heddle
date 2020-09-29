@@ -27,12 +27,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="CSharpClassTemplate.tcs">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="CSharpPreparseTemplate.tcs">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Update="TestTemplate\empty-override.thtml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
