@@ -20,17 +20,22 @@ namespace Templates.Runtime.Parameters
         {
             var inputParameter = Expression.Parameter(typeof(object));
 
-            // ReSharper disable once ForCanBeConvertedToForeach
-            // ReSharper disable once LoopCanBeConvertedToQuery
             Expression result = null;
             foreach (var parameter in getModelParameter)
             {
                 var input = result ?? Expression.Convert(inputParameter, parameter.Key);
-                result = Expression.Condition(
-                    Expression.Equal(input,
-                        Expression.Constant(null, parameter.Key)
-                    ), Expression.Default(parameter.Value.PropertyType),
-                    Expression.MakeMemberAccess(input, parameter.Value));
+                if (parameter.Key.IsValueType)
+                {
+                    result = Expression.MakeMemberAccess(input, parameter.Value);
+                }
+                else
+                {
+                    result = Expression.Condition(
+                        Expression.Equal(input,
+                            Expression.Constant(null, parameter.Key)
+                        ), Expression.Default(parameter.Value.PropertyType),
+                        Expression.MakeMemberAccess(input, parameter.Value));
+                }
             }
 
             if (result == null)
