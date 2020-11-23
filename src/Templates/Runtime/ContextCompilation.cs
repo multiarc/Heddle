@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -165,14 +166,28 @@ namespace Templates.Runtime
                 {
                     if (expressionCompilation.RuntimeCallParameter is CompiledParameter compiledParameter)
                     {
-                        compiledParameter.ParameterImplementation =
-                            GatesCache.GetCompiledDelegate(
-                                classType.GetMethod(
-                                    $"ProcessData_{expressionCompilation.ExtensionName}{methodNumber}",
-                                    BindingFlags.Public | BindingFlags.Static),
-                                expressionCompilation.ModelType.Type,
-                                expressionCompilation.ChainedType.Type, expressionCompilation.RootModelType.Type);
-                        methodNumber++;
+                        var method = classType.GetMethod(
+                            $"ProcessData_{expressionCompilation.ExtensionName}{methodNumber}",
+                            BindingFlags.Public | BindingFlags.Static);
+                        if (method != null)
+                        {
+                            var modelParameter = Expression.Parameter(typeof(object));
+                            var chainedParameter = Expression.Parameter(typeof(object));
+                            var rootParameter = Expression.Parameter(typeof(object));
+                            compiledParameter.ParameterImplementation = Expression
+                                .Lambda<Func<object, object, object, object>>(Expression.Convert(Expression.Call(null,
+                                            method,
+                                            Expression.Convert(modelParameter, expressionCompilation.ModelType.Type),
+                                            Expression.Convert(chainedParameter,
+                                                expressionCompilation.ChainedType.Type),
+                                            Expression.Convert(rootParameter,
+                                                expressionCompilation.RootModelType.Type)),
+                                        typeof(object)),
+                                    modelParameter,
+                                    chainedParameter,
+                                    rootParameter).Compile();
+                            methodNumber++;
+                        }
                     }
                 }
 

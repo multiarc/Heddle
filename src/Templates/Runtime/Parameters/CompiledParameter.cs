@@ -1,11 +1,12 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Runtime.CompilerServices;
 using Templates.Data;
 
 namespace Templates.Runtime.Parameters
 {
     internal class CompiledParameter : IRuntimeParameter
     {
-        public CompiledMethodDelegate ParameterImplementation { get; set; }
+        public Func<object, object, object, object> ParameterImplementation { get; set; }
 
         public void Dispose()
         {
