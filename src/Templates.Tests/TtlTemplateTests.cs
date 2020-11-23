@@ -78,6 +78,43 @@ namespace Templates.Tests
             }
             Assert.Equal(expected, actual);
         }
+        
+        [Fact]
+        public void TupleDocumentTest()
+        {
+            TtlTemplate.Configure(typeof(TtlTemplateTests).GetTypeInfo().Assembly);
+            var options = new TemplateOptions("tuple_array")
+            {
+                FileNamePostfix = ".thtml",
+                RootPath = @"TestTemplate",
+                AllowCSharp = true
+            };
+            var target = new TtlTemplate(new CompileContext(options));
+            Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
+            var actual = target.Generate(new[]
+            {
+                new NameValuePair
+                {
+                    Name = "Name_Test",
+                    Value = "Value_Test"
+                },
+                new NameValuePair
+                {
+                    Name = "Name_Test2",
+                    Value = "Value_Test2"
+                }
+            });
+            using (var writer = File.CreateText(@"TestTemplate/test-tuple_array.html"))
+            {
+                writer.Write(actual);
+            }
+            string expected;
+            using (StreamReader reader = File.OpenText(@"TestTemplate/generated-tuple_array.html"))
+            {
+                expected = reader.ReadToEnd();
+            }
+            Assert.Equal(expected, actual);
+        }
 
         [Fact]
         public void EmptyOverrideTest()

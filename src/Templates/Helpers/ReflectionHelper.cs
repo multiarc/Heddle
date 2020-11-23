@@ -14,8 +14,16 @@ namespace Templates.Helpers
     internal class ReflectionHelper
     {
         private static readonly Regex GenericExpression = new Regex
-            (@"^(?<main_type>[_a-zA-Z@][a-zA-Z0-9\.]*)<(?<generic_parameters>[_a-zA-Z@][a-zA-Z0-9\.\+]*)>$",
+            (@"^(?<main_type>[_a-zA-Z@][a-zA-Z0-9\.]*)<(?<generic_parameters>[_a-zA-Z@][a-zA-Z0-9\.\+\[\]]*)>$",
                 RegexOptions.Compiled | RegexOptions.Singleline);
+        
+        private static readonly Regex TupleExpression = new Regex
+        (@"^\((?<tuple_types>(?>\((?<c>)|[^()]+|\)(?<-c>))*(?(c)(?!)))\)$",
+            RegexOptions.Compiled | RegexOptions.Singleline);
+
+        private static readonly Regex ArrayExpression = new Regex
+        (@"^(?<main_type>[_a-zA-Z@][a-zA-Z0-9\.]*)(\[\])+$",
+            RegexOptions.Compiled | RegexOptions.Singleline);
 
         private static readonly Regex WhitespaceChars = new Regex(@"\s+", RegexOptions.Compiled | RegexOptions.Singleline);
 
@@ -262,19 +270,7 @@ namespace Templates.Helpers
 
         public static Type ResolveType(string typeName, params string[] imports)
         {
-            if (string.IsNullOrWhiteSpace(typeName))
-                throw new ArgumentException();
-
-            Match match = GenericExpression.Match(typeName);
-            if (match.Success)
-            {
-                string[] importsArray = imports ?? new string[0];
-                string[] genericParameters = match.Groups["generic_parameters"].Value.Split(',');
-                Type modelType = ResolveSimpleType(match.Groups["main_type"].Value + "`" + genericParameters.Length, importsArray);
-                modelType = modelType.MakeGenericType(genericParameters.Select(parameter => ResolveType(parameter, importsArray)).ToArray());
-                return modelType;
-            }
-            return ResolveSimpleType(typeName, imports ?? new string[0]);
+            return ResolveType(typeName, (ICollection<string>) imports);
         }
 
         public static Type ResolveType(string typeName, ICollection<string> imports)
@@ -282,16 +278,59 @@ namespace Templates.Helpers
             if (string.IsNullOrWhiteSpace(typeName))
                 throw new ArgumentException();
 
-            Match match = GenericExpression.Match(typeName);
+            if (typeName.StartsWith("("))
+            {
+                var match = TupleExpression.Match(typeName);
+                if (match.Success)
+                {
+                    typeName = $"System.ValueTuple<{match.Groups["tuple_types"]}>";
+                    return ResolveGenericType(typeName, imports);
+                }
+            }
+
+            if (typeName.EndsWith("]"))
+            {
+                return ResolveArrayType(typeName, imports);
+            }
+
+            if (typeName.Contains("<"))
+            {
+                return ResolveGenericType(typeName, imports);
+            }
+
+            return ResolveSimpleType(typeName, imports ?? new string[0]);
+        }
+
+        private static Type ResolveGenericType(string typeName, ICollection<string> imports)
+        {
+            var match = GenericExpression.Match(typeName);
             if (match.Success)
             {
                 var importsArray = imports ?? new string[0];
                 var genericParameters = match.Groups["generic_parameters"].Value.Split(',');
-                Type modelType = ResolveSimpleType(match.Groups["main_type"].Value + "`" + genericParameters.Length, importsArray);
-                modelType = modelType.MakeGenericType(genericParameters.Select(parameter => ResolveType(parameter, importsArray)).ToArray());
-                return modelType;
+                Type modelType = ResolveSimpleType(match.Groups["main_type"].Value + "`" + genericParameters.Length,
+                    importsArray);
+                modelType = modelType.MakeGenericType(genericParameters
+                    .Select(parameter => ResolveType(parameter, importsArray)).ToArray());
+                {
+                    return modelType;
+                }
             }
+
             return ResolveSimpleType(typeName, imports ?? new string[0]);
+        }
+
+        private static Type ResolveArrayType(string typeName, ICollection<string> imports)
+        {
+            var match = ArrayExpression.Match(typeName);
+            if (match.Success)
+            {
+                var importsArray = imports ?? new string[0];
+                var modelType = ResolveType(match.Groups["main_type"].Value, importsArray);
+                return modelType.MakeArrayType();
+            }
+            
+            return ResolveSimpleType(typeName, imports ?? new string[0]); 
         }
     }
 }

@@ -16,6 +16,7 @@ using Templates.Exceptions;
 using Templates.Helpers;
 using Templates.Native;
 using Templates.Runtime.Parameters;
+using TypeInfo = Microsoft.CodeAnalysis.TypeInfo;
 
 namespace Templates.Runtime
 {
@@ -171,26 +172,58 @@ namespace Templates.Runtime
                     return new Tuple<OptionalValue<object>, ExType>(constantValue.Value, constantValue.Value?.GetType() ?? typeof (object));
                 }
                 var typeInfo = model.GetTypeInfo(syntax);
-                if (typeInfo.Type.IsAnonymousType || typeInfo.Type.TypeKind == TypeKind.Dynamic)
+                if (typeInfo.Type?.IsAnonymousType == true || typeInfo.Type?.TypeKind == TypeKind.Dynamic)
                 {
                     return new Tuple<OptionalValue<object>, ExType>(new OptionalValue<object>(null, false), ExType.Dynamic);
                 }
-                string typeName = typeInfo.Type.ToDisplayString(DisplayFormat);
-                ExType objType;
-                try
-                {
-                    objType =
-                        ReflectionHelper.ResolveType(typeName, _namespaces.ToArray());
-                }
-                catch (InvalidOperationException e)
-                {
-                    context.CompileErrors.Add(e.ToError(expressionOptions.Position));
-                    objType = typeof (object);
-                }
+
+                var objType = ResolveTypeReference(context, expressionOptions, typeInfo.Type);
                 return new Tuple<OptionalValue<object>, ExType>(new OptionalValue<object>(null, false), objType);
             });
             objectType = result.Item2;
             return result.Item1;
+        }
+
+        private ExType ResolveTypeReference(CompileContext context,
+            ExpressionOptions expressionOptions, ITypeSymbol type)
+        {
+            ExType objType;
+            if (type?.IsTupleType == true && type is INamedTypeSymbol tupleType)
+            {
+                var types = tupleType.TupleUnderlyingType?.TypeArguments;
+                if (types.HasValue)
+                {
+                    var resolvedTypes = types.Value.Select(x => ResolveTypeReference(context, expressionOptions, x))
+                        .ToArray();
+
+                    try
+                    {
+                        objType = Type.GetType($"System.ValueTuple`{resolvedTypes.Length}", true)
+                            .MakeGenericType(resolvedTypes.Select(x => x.Type).ToArray());
+                    }
+                    catch (InvalidOperationException e)
+                    {
+                        context.CompileErrors.Add(e.ToError(expressionOptions.Position));
+                        objType = typeof(object);
+                    }
+
+                    return objType;
+                }
+            }
+
+            string typeName = type?.ToDisplayString(DisplayFormat);
+            try
+            {
+                objType =
+                    ReflectionHelper.ResolveType(typeName, _namespaces.ToArray());
+            }
+            catch (InvalidOperationException e)
+            {
+                context.CompileErrors.Add(e.ToError(expressionOptions.Position));
+                objType = typeof(object);
+            }
+
+            return objType;
         }
 
         private static string FormatAssemblyName(AssemblyName assemblyName, bool fullPublic = true)

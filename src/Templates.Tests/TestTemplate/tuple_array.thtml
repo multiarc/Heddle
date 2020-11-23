@@ -1,0 +1,32 @@
+@using(){{Templates.Tests.Data}}
+
+@%
+<default> -> ()
+{{
+    @list()
+    {{
+        @(@(model.Value, model.Name))
+        {{
+            @(@model.Item1)
+            @(@model.Item2)
+        }}
+    }}
+    
+    @list(@new [] 
+        {
+            new NameValuePair
+                {
+                    Name = "Name_Test3",
+                    Value = "Value_Test3"
+                }
+        }
+    )
+    {{
+        @(@(model.Value, model.Name))
+        {{
+            @(@model.Item1)
+            @(@model.Item2)
+        }}
+    }}
+}} :: NameValuePair[]
+%@
