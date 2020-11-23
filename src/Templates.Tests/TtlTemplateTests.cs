@@ -299,6 +299,97 @@ namespace Templates.Tests
             }
             Assert.Equal(expected, actual);
         }
+        
+        [Fact()]
+        public void DynamicRecursionGenerateTest()
+        {
+            TtlTemplate.Configure(typeof(TtlTemplateTests).GetTypeInfo().Assembly);
+            var options = new TemplateOptions("dynamic-recursion")
+            {
+                FileNamePostfix = ".thtml",
+                RootPath = @"TestTemplate",
+                AllowCSharp = true
+            };
+            var target = new TtlTemplate(new CompileContext(options));
+            Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
+            List<DynamicCategory> testList = new List<DynamicCategory>
+            {
+                new DynamicCategory
+                {
+                    ComplexObject = new DynamicComplexObject
+                    {
+                        Data = new DynamicTestDataStructure
+                        {
+                            Text = "TEST1"
+                        }
+                    },
+                    Name = "test1",
+                    SubCategories = new List<dynamic>
+                    {
+                        new DynamicCategory
+                        {
+                            ComplexObject = new DynamicComplexObject
+                            {
+                                Data = new DynamicTestDataStructure
+                                {
+                                    Text = "TEST2"
+                                }
+                            },
+                            Name = "test2",
+                            SubCategories = new List<dynamic>
+                            {
+                                new DynamicCategory
+                                {
+                                    Name = "test3"
+                                },
+                                new DynamicCategory
+                                {
+                                    Name = "test7"
+                                }
+                            }
+                        }
+                    }
+                },
+                new DynamicCategory
+                {
+                    Name = "test4",
+                    SubCategories = new List<dynamic>
+                    {
+                        new DynamicCategory
+                        {
+                            ComplexObject = new DynamicComplexObject
+                            {
+                                Data = new DynamicTestDataStructure()
+                            },
+                            Name = "test5",
+                            SubCategories = new List<dynamic>
+                            {
+                                new DynamicCategory
+                                {
+                                    ComplexObject = new DynamicComplexObject(),
+                                    Name = "test6"
+                                },
+                                new DynamicCategory
+                                {
+                                    Name = "test8"
+                                },
+                            }
+                        }
+                    }
+                }
+            };
+            var actual = target.Generate(testList);
+            using (var writer = File.CreateText(@"TestTemplate/test-dynamic-recursion.html"))
+            {
+                writer.Write(actual);
+            }
+            string expected;
+            using (StreamReader reader = File.OpenText(@"TestTemplate/generated-recursion.html"))
+            {
+                expected = reader.ReadToEnd();
+            }
+            Assert.Equal(expected, actual);
+        }
 
         [Fact()]
         public void VcGenerateTest()

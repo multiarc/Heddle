@@ -84,6 +84,9 @@
     <None Update="TestTemplate\generated-tuple_array.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="TestTemplate\dynamic-recursion.thtml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

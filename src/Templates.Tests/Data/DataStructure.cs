@@ -33,10 +33,29 @@ namespace Templates.Tests.Data {
 
         public ICollection<Category> SubCategories { get; set; }
     }
+    
+    public class DynamicCategory
+    {
+        public DynamicComplexObject ComplexObject { get; set; }
+
+        public DynamicCategory()
+        {
+            SubCategories = new List<dynamic>();
+        }
+
+        public string Name { get; set; }
+
+        public ICollection<dynamic> SubCategories { get; set; }
+    }
 
     public class ComplexObject
     {
         public TestDataStructure Data { get; set; }
+    }
+    
+    public class DynamicComplexObject
+    {
+        public DynamicTestDataStructure Data { get; set; }
     }
 
     #region Nested type: TestDataStructure
@@ -45,6 +64,40 @@ namespace Templates.Tests.Data {
         protected List<TestListItem> ProductsCollection;
 
         public virtual List<TestListItem> Products {
+            get { return ProductsCollection; }
+            set { ProductsCollection = value; }
+        }
+
+        public DateTime Date {
+            get;
+            set;
+        }
+
+        public bool IsShow {
+            get;
+            set;
+        }
+
+        public string Text {
+            get;
+            set;
+        }
+
+        public int FuckingInt {
+            get;
+            set;
+        }
+
+        public Guid Guid {
+            get;
+            set;
+        }
+    }
+    
+    public class DynamicTestDataStructure {
+        protected List<dynamic> ProductsCollection;
+
+        public virtual List<dynamic> Products {
             get { return ProductsCollection; }
             set { ProductsCollection = value; }
         }
