@@ -20,14 +20,14 @@ namespace Templates.Runtime
 
         public ExType ScopeType
         {
-            get { return CompileContext.ScopeType; }
-            set { CompileContext.ScopeType = value; }
+            get => CompileContext.ScopeType;
+            set => CompileContext.ScopeType = value;
         }
 
         public ExType RootScopeType
         {
-            get { return CompileContext.RootScopeType; }
-            set { CompileContext.RootScopeType = value; }
+            get => CompileContext.RootScopeType;
+            set => CompileContext.RootScopeType = value;
         }
 
         public TemplateOptions Options => CompileContext.Options;

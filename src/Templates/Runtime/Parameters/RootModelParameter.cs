@@ -10,7 +10,7 @@ namespace Templates.Runtime.Parameters
     {
         private readonly Func<object, object> _compiledAccessor;
 
-        public RootModelParameter(KeyValuePair<Type, PropertyInfo>[] getModelParameter)
+        public RootModelParameter(IEnumerable<(Type, PropertyInfo)> getModelParameter)
         {
             _compiledAccessor = ModelParameter.GetPropertyChainAccessor(getModelParameter).Compile();
         }

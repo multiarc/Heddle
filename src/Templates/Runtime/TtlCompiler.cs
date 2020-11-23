@@ -19,7 +19,8 @@ namespace Templates.Runtime
 {
     internal class TtlCompiler
     {
-        public static RuntimeDocument Compile(string document, CompileScope compileScope, ParseContext parseContext, ExType chainedType)
+        public static RuntimeDocument Compile(string document, CompileScope compileScope, ParseContext parseContext,
+            ExType chainedType)
         {
             if (compileScope == null)
                 throw new ArgumentNullException(nameof(compileScope));
@@ -50,6 +51,7 @@ namespace Templates.Runtime
                         });
                     }
                 }
+
                 if (returnTypeChainedPrevious == null)
                 {
                     RemoveEmptyItem(parseContext, extensions.BlockPosition, ref workingDocument);
@@ -59,6 +61,7 @@ namespace Templates.Runtime
                     documentElements.Add(element);
                 }
             }
+
             foreach (var extensions in parseContext.DefaultChains)
             {
                 var element = new DocumentElement(new BlockPosition(workingDocument.Length, 0));
@@ -81,11 +84,13 @@ namespace Templates.Runtime
                         });
                     }
                 }
+
                 if (returnTypeChainedPrevious != null)
                 {
                     documentElements.Add(element);
                 }
             }
+
             return new RuntimeDocument(workingDocument, documentElements.ToArray(), compileScope);
         }
 
@@ -97,7 +102,8 @@ namespace Templates.Runtime
             {
                 if (chain.BlockPosition.StartIndex > blockPosition.StartIndex)
                 {
-                    chain.BlockPosition = new BlockPosition(chain.BlockPosition.StartIndex - seed, chain.BlockPosition.Length);
+                    chain.BlockPosition =
+                        new BlockPosition(chain.BlockPosition.StartIndex - seed, chain.BlockPosition.Length);
                 }
                 else
                 {
@@ -108,13 +114,13 @@ namespace Templates.Runtime
 
         private static void ReplaceRawOutput(ParseContext context, ref string workingDocument)
         {
-            foreach (var rawOut in ((ICollection<RawOutputItem>)context.RawOutputItems).Reverse())
+            foreach (var rawOut in ((ICollection<RawOutputItem>) context.RawOutputItems).Reverse())
             {
                 workingDocument = ExStringBuilder.Replace(rawOut.BlockPosition.StartIndex, rawOut.BlockPosition.Length,
                     rawOut.Text, workingDocument);
                 int seed = rawOut.BlockPosition.Length - rawOut.Text.Length;
                 var outputItem = rawOut;
-                foreach (var chain in ((ICollection<OutputChain>)context.OutputChains).Reverse())
+                foreach (var chain in ((ICollection<OutputChain>) context.OutputChains).Reverse())
                 {
                     if (chain.BlockPosition.StartIndex > outputItem.BlockPosition.StartIndex)
                         chain.BlockPosition = new BlockPosition(chain.BlockPosition.StartIndex - seed,
@@ -129,14 +135,14 @@ namespace Templates.Runtime
 
         private static void ShiftBySkippedTokens(ParseContext context)
         {
-            foreach (var blockPosition in ((ICollection<BlockPosition>)context.SkippedTokens).Reverse())
+            foreach (var blockPosition in ((ICollection<BlockPosition>) context.SkippedTokens).Reverse())
             {
                 var seed = blockPosition.Length;
-                
+
                 var startToSkip = blockPosition.StartIndex;
                 var endToSkip = blockPosition.StartIndex + blockPosition.Length - 1;
-                
-                foreach (var chain in ((ICollection<OutputChain>)context.OutputChains).Reverse())
+
+                foreach (var chain in ((ICollection<OutputChain>) context.OutputChains).Reverse())
                 {
                     var chainBlockStart = chain.BlockPosition.StartIndex;
                     var chainBlockEnd = chain.BlockPosition.StartIndex + chain.BlockPosition.Length - 1;
@@ -156,13 +162,14 @@ namespace Templates.Runtime
                         break;
                     }
                 }
+
                 for (int index = context.DefinitionsBlock.Positions.Count - 1; index >= 0; index--)
                 {
                     var position = context.DefinitionsBlock.Positions[index];
-                    
+
                     var definitionBlockStart = position.StartIndex;
                     var definitionBlockEnd = position.StartIndex + position.Length - 1;
-                    
+
                     if (definitionBlockStart <= startToSkip && definitionBlockEnd >= endToSkip)
                     {
                         context.DefinitionsBlock.Positions[index] =
@@ -179,11 +186,12 @@ namespace Templates.Runtime
                         break;
                     }
                 }
-                foreach (var raw in ((ICollection<RawOutputItem>)context.RawOutputItems).Reverse())
+
+                foreach (var raw in ((ICollection<RawOutputItem>) context.RawOutputItems).Reverse())
                 {
                     var rawBlockStart = raw.BlockPosition.StartIndex;
                     var rawBlockEnd = raw.BlockPosition.StartIndex + raw.BlockPosition.Length - 1;
-                    
+
                     if (rawBlockEnd > blockPosition.StartIndex)
                     {
                         raw.BlockPosition = new BlockPosition(rawBlockStart - seed,
@@ -199,10 +207,10 @@ namespace Templates.Runtime
 
         private static void RemoveDefinitions(ParseContext context, ref string workingDocument)
         {
-            foreach (var definitionBlock in ((ICollection<BlockPosition>)context.DefinitionsBlock.Positions).Reverse())
+            foreach (var definitionBlock in ((ICollection<BlockPosition>) context.DefinitionsBlock.Positions).Reverse())
             {
                 int seed = ExStringBuilder.ApplyRemove(definitionBlock, ref workingDocument);
-                foreach (var chain in ((ICollection<OutputChain>)context.OutputChains).Reverse())
+                foreach (var chain in ((ICollection<OutputChain>) context.OutputChains).Reverse())
                 {
                     if (chain.BlockPosition.StartIndex >= definitionBlock.StartIndex + definitionBlock.Length)
                     {
@@ -214,7 +222,8 @@ namespace Templates.Runtime
                         break;
                     }
                 }
-                foreach (var raw in ((ICollection<RawOutputItem>)context.RawOutputItems).Reverse())
+
+                foreach (var raw in ((ICollection<RawOutputItem>) context.RawOutputItems).Reverse())
                 {
                     if (raw.BlockPosition.StartIndex >= definitionBlock.StartIndex + definitionBlock.Length)
                     {
@@ -238,19 +247,22 @@ namespace Templates.Runtime
                 var compiledItem = CompileItem(item, compileContext, parseContext, ref returnTypeChainedPrevious);
                 result.Add(compiledItem);
             }
+
             return result;
         }
 
         private static TemplateItem CompileItem
-            (OutputItem extensionItem, CompileScope compileScope, ParseContext parseContext,
-                ref ExType returnTypeChainedPrevious)
+        (OutputItem extensionItem, CompileScope compileScope, ParseContext parseContext,
+            ref ExType returnTypeChainedPrevious)
         {
             if (compileScope.CompileContext.CompiledItems.TryGetValue(extensionItem, out var result))
             {
                 returnTypeChainedPrevious = result.ReturnTypeChainedPrevious;
                 return result.CompiledItem;
             }
-            result = new CompiledElement {CompiledItem = new TemplateItem(), ReturnTypeChainedPrevious = returnTypeChainedPrevious};
+
+            result = new CompiledElement
+                {CompiledItem = new TemplateItem(), ReturnTypeChainedPrevious = returnTypeChainedPrevious};
             compileScope.CompileContext.CompiledItems.Add(extensionItem, result);
 
             ExType inputModelType = null;
@@ -261,12 +273,14 @@ namespace Templates.Runtime
             {
                 definitionItem = parseContext.GetDefenition(extensionItem.ExtensionName);
             }
+
             if (extensionItem.CallParameter.IsModelTypeParameter)
             {
                 if (extensionItem.CallParameter.ModelParameter.Any() &&
                     !string.IsNullOrEmpty(extensionItem.CallParameter.ModelParameter.First()))
                 {
-                    dataType = CompileModelAccessor(extensionItem, compileScope, definitionItem, result, ref inputModelType);
+                    dataType = CompileModelAccessor(extensionItem, compileScope, definitionItem, result,
+                        ref inputModelType);
                 }
                 else
                 {
@@ -278,6 +292,7 @@ namespace Templates.Runtime
                     {
                         dataType = compileScope.ScopeType;
                     }
+
                     result.CompiledItem.Parameter = new EmptyParameter();
                 }
             }
@@ -286,9 +301,11 @@ namespace Templates.Runtime
                 if (!compileScope.Options.AllowCSharp)
                 {
                     compileScope.CompileErrors.Add(
-                        "C# Code Not allowed here, see TemplateOptions.AllowCSharp Property".ToError(extensionItem.Position));
+                        "C# Code Not allowed here, see TemplateOptions.AllowCSharp Property".ToError(extensionItem
+                            .Position));
                     return null;
                 }
+
                 var chainedType = returnTypeChainedPrevious ?? ExType.Dynamic;
                 var expressionOptions = new ExpressionOptions
                 {
@@ -297,7 +314,9 @@ namespace Templates.Runtime
                     ExtensionName = extensionItem.ExtensionName,
                     Position = extensionItem.Position
                 };
-                OptionalValue<object> constantResult = compileScope.CSharpContext.ParseAndGetResultType(compileScope.CompileContext, expressionOptions, out dataType);
+                OptionalValue<object> constantResult =
+                    compileScope.CSharpContext.ParseAndGetResultType(compileScope.CompileContext, expressionOptions,
+                        out dataType);
                 extension = CreateExtension(extensionItem, compileScope, extensionItem.Context ?? parseContext,
                     ref result.ReturnTypeChainedPrevious, null, dataType, definitionItem);
 
@@ -306,9 +325,12 @@ namespace Templates.Runtime
                 result.CompiledItem.Extension = extension;
                 if (!constantResult.HasValue)
                 {
-                    result.CompiledItem.Parameter = compileScope.CSharpContext.PushCompileExpression(expressionOptions, compileScope.CompileContext);
+                    result.CompiledItem.Parameter =
+                        compileScope.CSharpContext.PushCompileExpression(expressionOptions,
+                            compileScope.CompileContext);
                     return result.CompiledItem;
                 }
+
                 result.CompiledItem.Parameter = new ConstantParameter(constantResult.Value);
                 return result.CompiledItem;
             }
@@ -319,6 +341,7 @@ namespace Templates.Runtime
                 dataType = callParameter.RenderType;
                 result.CompiledItem.Parameter = new ChainedParameter(callParameter);
             }
+
             extension = CreateExtension(extensionItem, compileScope, extensionItem.Context ?? parseContext,
                 ref result.ReturnTypeChainedPrevious, inputModelType, dataType, definitionItem);
             returnTypeChainedPrevious = result.ReturnTypeChainedPrevious;
@@ -327,32 +350,54 @@ namespace Templates.Runtime
             return result.CompiledItem;
         }
 
-        private static ExType CompileModelAccessor(OutputItem extensionItem, CompileScope compileContext, DefinitionItem definitionItem,
+        private static ExType CompileModelAccessor(OutputItem extensionItem, CompileScope compileContext,
+            DefinitionItem definitionItem,
             CompiledElement result, ref ExType inputType)
         {
-            ExType scopeType = extensionItem.CallParameter.RootReference ? compileContext.CompileContext.RootScopeType : compileContext.CompileContext.ScopeType;
-            if (scopeType.IsDynamic ||
-                definitionItem != null && definitionItem.ModelType == ExType.Dynamic.ToString())
+            var scopeType = extensionItem.CallParameter.RootReference
+                ? compileContext.CompileContext.RootScopeType
+                : compileContext.CompileContext.ScopeType;
+            if (scopeType.IsDynamic || definitionItem != null && definitionItem.ModelType == ExType.Dynamic.ToString())
             {
                 if (extensionItem.CallParameter.RootReference)
                 {
-                    result.CompiledItem.Parameter = new RootDynamicParameter(extensionItem.CallParameter.ModelParameter);
+                    result.CompiledItem.Parameter =
+                        new RootDynamicParameter(extensionItem.CallParameter.ModelParameter);
                 }
                 else
                 {
                     result.CompiledItem.Parameter = new DynamicParameter(extensionItem.CallParameter.ModelParameter);
                 }
+
                 return ExType.Dynamic;
             }
+
             var modelParameters = extensionItem.CallParameter.ModelParameter;
-            var dataProperties = new KeyValuePair<Type, PropertyInfo>[modelParameters.Length];
-            Type currentType = scopeType.Type;
+            var dataProperties = new List<(Type type, PropertyInfo property)>(modelParameters.Length);
+            var currentType = scopeType;
             for (int i = 0; i < modelParameters.Length; i++)
             {
-                var dataProperty = currentType.GetProperty(modelParameters[i],
+                if (currentType.IsDynamic)
+                {
+                    if (extensionItem.CallParameter.RootReference)
+                    {
+                        result.CompiledItem.Parameter = new DynamicParameter(modelParameters.Skip(i),
+                            new RootModelParameter(dataProperties));
+                    }
+                    else
+                    {
+                        result.CompiledItem.Parameter = new DynamicParameter(modelParameters.Skip(i),
+                            new ModelParameter(dataProperties));
+                    }
+
+                    return ExType.Dynamic;
+                }
+
+                var dataProperty = currentType.Type.GetProperty(modelParameters[i],
                     BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic |
                     BindingFlags.Public);
-                if (dataProperty == null || !dataProperty.CanRead || dataProperty.IsHaveAttribute<HiddenAttribute>() ||
+                if (dataProperty == null || !dataProperty.CanRead ||
+                    dataProperty.GetCustomAttribute<HiddenAttribute>(false) != null ||
                     (!dataProperty.GetGetMethod(true).IsAssembly && !dataProperty.GetGetMethod(true).IsPublic))
                 {
                     compileContext.CompileContext.CompileErrors.Add(
@@ -360,10 +405,13 @@ namespace Templates.Runtime
                             .ToError(extensionItem.Position));
                     return null;
                 }
-                dataProperties[i] = new KeyValuePair<Type, PropertyInfo>(currentType, dataProperty);
-                currentType = dataProperty.PropertyType;
+
+                dataProperties.Add((currentType.Type, dataProperty));
+                currentType = dataProperty.GetPropertyExType();
             }
-            inputType = dataProperties.Last().Value.PropertyType;
+
+            var lastProperty = dataProperties.Last().property;
+            inputType = lastProperty.GetPropertyExType();
             if (extensionItem.CallParameter.RootReference)
             {
                 result.CompiledItem.Parameter = new RootModelParameter(dataProperties);
@@ -372,19 +420,22 @@ namespace Templates.Runtime
             {
                 result.CompiledItem.Parameter = new ModelParameter(dataProperties);
             }
+
             return inputType;
         }
 
-        private static CallSite<Func<CallSite, object, object>> CreateBinder(string model, CSharpArgumentInfo[] csharpArgumentInfoArray)
+        private static CallSite<Func<CallSite, object, object>> CreateBinder(string model,
+            CSharpArgumentInfo[] csharpArgumentInfoArray)
         {
             return
-                CallSite<Func<CallSite, object, object>>.Create(Binder.GetMember(CSharpBinderFlags.None, model, typeof (IRuntimeParameter),
+                CallSite<Func<CallSite, object, object>>.Create(Binder.GetMember(CSharpBinderFlags.None, model,
+                    typeof(IRuntimeParameter),
                     csharpArgumentInfoArray));
         }
 
         private static IExtension CreateExtension(OutputItem extensionItem, CompileScope compileScope,
             ParseContext parseContext,
-            ref ExType returnTypeChainedPrevious, ExType inputModelType, ExType dataType, 
+            ref ExType returnTypeChainedPrevious, ExType inputModelType, ExType dataType,
             DefinitionItem definition)
         {
             IExtension extension;
@@ -398,21 +449,24 @@ namespace Templates.Runtime
                 }
                 else
                 {
-                    if (acceptType != typeof (object))
+                    if (acceptType != typeof(object))
                         dataType = acceptType;
                 }
+
                 CheckTypes(dataType, definition.Position, compileScope, acceptType);
                 returnTypeChainedPrevious = InitializeTemplate(extension, extensionItem.ParameterTemplate, dataType,
                     returnTypeChainedPrevious, compileScope, parseContext);
 
                 def.DefinitionParameterTemplate = CompileFromDefenition(definition, compileScope, out acceptType);
-                returnTypeChainedPrevious = InitializeTemplate(def.DefinitionParameterTemplate, definition.ParameterTemplate,
+                returnTypeChainedPrevious = InitializeTemplate(def.DefinitionParameterTemplate,
+                    definition.ParameterTemplate,
                     dataType,
                     returnTypeChainedPrevious, compileScope, definition.Context);
             }
             else
             {
-                extension = TemplateFactory.Create(extensionItem.ExtensionName, extensionItem.Position, parseContext, compileScope.CompileContext);
+                extension = TemplateFactory.Create(extensionItem.ExtensionName, extensionItem.Position, parseContext,
+                    compileScope.CompileContext);
                 if (extension == null)
                     return null;
                 Type templateType = extension.GetType();
@@ -421,7 +475,8 @@ namespace Templates.Runtime
 
                 if (returnTypeChainedPrevious != null)
                 {
-                    CheckTypes(returnTypeChainedPrevious, extensionItem.Position, compileScope, chainedTypeAttributes.Select(a => (ExType)a.DataType).ToArray());
+                    CheckTypes(returnTypeChainedPrevious, extensionItem.Position, compileScope,
+                        chainedTypeAttributes.Select(a => (ExType) a.DataType).ToArray());
                 }
 
                 var dataTypeAttributes =
@@ -430,11 +485,14 @@ namespace Templates.Runtime
                 {
                     dataType = inputModelType;
                 }
-                CheckTypes(dataType, extensionItem.Position, compileScope, dataTypeAttributes.Select(a => (ExType)a.DataType).ToArray());
+
+                CheckTypes(dataType, extensionItem.Position, compileScope,
+                    dataTypeAttributes.Select(a => (ExType) a.DataType).ToArray());
 
                 returnTypeChainedPrevious = InitializeTemplate(extension, extensionItem.ParameterTemplate, dataType,
                     returnTypeChainedPrevious, compileScope, parseContext);
             }
+
             return extension;
         }
 
@@ -445,14 +503,16 @@ namespace Templates.Runtime
             var result = new DefinitionBaseExtension {Position = definition.Position};
             try
             {
-                acceptType = ReflectionHelper.ResolveType(definition.ModelType, compileScope.CSharpContext.Namespaces) ??
-                             typeof (object);
+                acceptType =
+                    ReflectionHelper.ResolveType(definition.ModelType, compileScope.CSharpContext.Namespaces) ??
+                    typeof(object);
             }
             catch (InvalidOperationException e)
             {
                 compileScope.CompileContext.CompileErrors.Add(e.ToError(definition.Position));
                 acceptType = typeof(object);
             }
+
             return result;
         }
 
@@ -460,18 +520,21 @@ namespace Templates.Runtime
         {
             try
             {
-                var currentType = ReflectionHelper.ResolveType(definition.ModelType, context.CSharpContext.Namespaces) ??
-                                  typeof (object);
+                var currentType =
+                    ReflectionHelper.ResolveType(definition.ModelType, context.CSharpContext.Namespaces) ??
+                    typeof(object);
 
                 var definitionBase = definition.BaseDefinition;
                 while (definitionBase != null)
                 {
-                    var baseType = ReflectionHelper.ResolveType(definitionBase.ModelType, context.CSharpContext.Namespaces) ??
-                                   typeof (object);
+                    var baseType =
+                        ReflectionHelper.ResolveType(definitionBase.ModelType, context.CSharpContext.Namespaces) ??
+                        typeof(object);
                     if (!baseType.IsType(currentType))
                     {
                         context.CompileContext.CompileErrors.Add(
-                            $"The new definition type <{currentType}> isn't assignable to base <{baseType}>.".ToError(definition.Position));
+                            $"The new definition type <{currentType}> isn't assignable to base <{baseType}>.".ToError(
+                                definition.Position));
                     }
 
                     definitionBase = definitionBase.BaseDefinition;
@@ -485,16 +548,17 @@ namespace Templates.Runtime
 
 
         private static ExType InitializeTemplate
-            (IExtension extension, string parameterFastString, ExType modelType, ExType chainedType,
-                CompileScope compileScope, ParseContext parseContext)
+        (IExtension extension, string parameterFastString, ExType modelType, ExType chainedType,
+            CompileScope compileScope, ParseContext parseContext)
         {
-            modelType ??= typeof (object);
-            chainedType ??= typeof (object);
+            modelType ??= typeof(object);
+            chainedType ??= typeof(object);
             RenderType directRender = extension.GetType().IsHaveAttribute<EncodeOutputAttribute>(true)
                 ? (extension.GetType().IsHaveAttribute<NotEncodeAttribute>(true) ? RenderType.Raw : RenderType.Encode)
                 : RenderType.Raw;
             extension.SetUpRenderType(directRender);
-            return extension.InitStart(new InitContext(parameterFastString, compileScope, parseContext), modelType, chainedType, compileScope.ScopeType);
+            return extension.InitStart(new InitContext(parameterFastString, compileScope, parseContext), modelType,
+                chainedType, compileScope.ScopeType);
         }
 
         //private static void CheckTypes(PropertyInfo property, BlockPosition extensionPosition, CompileContext context, params Type[] dataTypes)
@@ -510,24 +574,25 @@ namespace Templates.Runtime
         //    }
         //}
 
-        private static void CheckTypes(ExType returnType, BlockPosition extensionPosition, CompileScope compileScope, params ExType[] dataTypes)
+        private static void CheckTypes(ExType returnType, BlockPosition extensionPosition, CompileScope compileScope,
+            params ExType[] dataTypes)
         {
-            returnType ??= typeof (object);
+            returnType ??= typeof(object);
             if (!returnType.IsDynamic)
                 returnType = returnType.Type.UnwrapNullable();
             if (dataTypes.Any() && dataTypes.All(dataType =>
             {
-                dataType ??= typeof (object);
+                dataType ??= typeof(object);
                 if (dataType.IsDynamic || returnType.IsDynamic)
                     return false;
                 return !dataType.Type.IsType(returnType.Type);
             }))
             {
                 compileScope.CompileContext.CompileErrors.Add
-                    (string.Format
-                        (CultureInfo.InvariantCulture, "Return Type is {0} but any of [{1}] expected.",
-                            returnType.Type.FullName,
-                            string.Join(", ", dataTypes.Select(t => t.Type.FullName))).ToError(extensionPosition));
+                (string.Format
+                (CultureInfo.InvariantCulture, "Return Type is {0} but any of [{1}] expected.",
+                    returnType.Type.FullName,
+                    string.Join(", ", dataTypes.Select(t => t.Type.FullName))).ToError(extensionPosition));
             }
         }
     }

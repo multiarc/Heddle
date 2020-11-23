@@ -11,30 +11,31 @@ namespace Templates.Runtime.Parameters
     {
         private readonly Func<object, object> _compiledAccessor;
 
-        public ModelParameter(KeyValuePair<Type, PropertyInfo>[] getModelParameter)
+        public ModelParameter(IEnumerable<(Type, PropertyInfo)> getModelParameter)
         {
             _compiledAccessor = GetPropertyChainAccessor(getModelParameter).Compile();
         }
 
-        internal static Expression<Func<object, object>> GetPropertyChainAccessor(KeyValuePair<Type, PropertyInfo>[] getModelParameter)
+        internal static Expression<Func<object, object>> GetPropertyChainAccessor(
+            IEnumerable<(Type type, PropertyInfo property)> getModelParameter)
         {
             var inputParameter = Expression.Parameter(typeof(object));
 
             Expression result = null;
             foreach (var parameter in getModelParameter)
             {
-                var input = result ?? Expression.Convert(inputParameter, parameter.Key);
-                if (parameter.Key.IsValueType)
+                var input = result ?? Expression.Convert(inputParameter, parameter.type);
+                if (parameter.type.IsValueType)
                 {
-                    result = Expression.MakeMemberAccess(input, parameter.Value);
+                    result = Expression.MakeMemberAccess(input, parameter.property);
                 }
                 else
                 {
                     result = Expression.Condition(
                         Expression.Equal(input,
-                            Expression.Constant(null, parameter.Key)
-                        ), Expression.Default(parameter.Value.PropertyType),
-                        Expression.MakeMemberAccess(input, parameter.Value));
+                            Expression.Constant(null, parameter.type)
+                        ), Expression.Default(parameter.property.PropertyType),
+                        Expression.MakeMemberAccess(input, parameter.property));
                 }
             }
 

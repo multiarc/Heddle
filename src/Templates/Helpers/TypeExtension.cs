@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using Templates.Data;
 using Templates.Strings;
 
 namespace Templates.Helpers {
-    internal static class TypeExtension {
+    internal static class TypeExtension
+    {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsType(this Type typeToCheck, Type type)
@@ -38,7 +40,7 @@ namespace Templates.Helpers {
             if (typeToCheck == null)
                 throw new ArgumentNullException(nameof(typeToCheck));
 
-            return typeToCheck.IsAssignableFrom(typeof (T));
+            return typeToCheck.IsAssignableFrom(typeof(T));
         }
 
         public static bool IsImplement(this Type type, Type interfaceType)
@@ -56,7 +58,7 @@ namespace Templates.Helpers {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
-            return type.GetInterfaces().Any(i => i == typeof (T));
+            return type.GetInterfaces().Any(i => i == typeof(T));
         }
 
         public static bool IsHaveAttribute(this Type type, Type attributeType, bool inherit = false)
@@ -104,6 +106,7 @@ namespace Templates.Helpers {
                         t => t.GetTypeInfo().IsGenericType && t.GetGenericTypeDefinition() == baseType);
                 return implementation?.GenericTypeArguments.FirstOrDefault();
             }
+
             var baseImplementation =
                 type.GetBaseTypes()
                     .FirstOrDefault(
@@ -124,6 +127,7 @@ namespace Templates.Helpers {
             {
                 return Enum.GetUnderlyingType(type);
             }
+
             return null;
         }
 
@@ -146,6 +150,7 @@ namespace Templates.Helpers {
                         t => t.GetTypeInfo().IsGenericType && t.GetGenericTypeDefinition() == baseType);
                 return implementation?.GenericTypeArguments;
             }
+
             var baseImplementation =
                 type.GetBaseTypes()
                     .FirstOrDefault(
@@ -167,7 +172,9 @@ namespace Templates.Helpers {
                 return typeInfo.ImplementedInterfaces.Any(
                     t => t.GetTypeInfo().IsGenericType && t.GetGenericTypeDefinition() == baseType);
             }
-            return type.GetBaseTypes().Any(t => t.GetTypeInfo().IsGenericType && t.GetGenericTypeDefinition() == baseType);
+
+            return type.GetBaseTypes()
+                .Any(t => t.GetTypeInfo().IsGenericType && t.GetGenericTypeDefinition() == baseType);
         }
 
         public static IEnumerable<Type> GetBaseTypes(this Type type)
@@ -191,6 +198,7 @@ namespace Templates.Helpers {
             {
                 baseTypeRef = baseTypeRef.GetElementType();
             }
+
             s += TypeNameHelper.GetBaseTypeOutput(baseTypeRef);
 
             while (typeRef != null && typeRef.IsArray)
@@ -202,11 +210,16 @@ namespace Templates.Helpers {
                 {
                     results[i] = ',';
                 }
+
                 s += new string(results);
                 typeRef = typeRef.GetElementType();
             }
 
             return s.ToString();
         }
+
+        public static ExType GetPropertyExType(this PropertyInfo property)
+            =>
+                property.GetCustomAttribute<DynamicAttribute>() != null ? ExType.Dynamic : property.PropertyType;
     }
 }

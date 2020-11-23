@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using Microsoft.CSharp.RuntimeBinder;
@@ -8,23 +9,23 @@ namespace Templates.Runtime.Parameters
 {
     internal class DynamicParameter : IRuntimeParameter
     {
+        private readonly IRuntimeParameter _source;
         private readonly Func<object, object> _compiledAccessor;
 
-        public DynamicParameter(string[] names)
+        public DynamicParameter(IEnumerable<string> names, IRuntimeParameter source = null)
         {
+            _source = source;
             _compiledAccessor = GetDynamicPropertyChainAccessor(names).Compile();
         }
 
-        internal static Expression<Func<object, object>> GetDynamicPropertyChainAccessor(string[] names)
+        internal static Expression<Func<object, object>> GetDynamicPropertyChainAccessor(IEnumerable<string> names)
         {
             var inputParameter = Expression.Parameter(typeof(object));
 
             Expression result = null;
-            // ReSharper disable once ForCanBeConvertedToForeach
-            // ReSharper disable once LoopCanBeConvertedToQuery
-            for (var i = 0; i < names.Length; i++)
+            foreach (var name in names)
             {
-                var binder = Binder.GetMember(CSharpBinderFlags.None, names[i], typeof(DynamicParameter), new[]
+                var binder = Binder.GetMember(CSharpBinderFlags.None, name, typeof(DynamicParameter), new[]
                 {
                     CSharpArgumentInfo.Create(CSharpArgumentInfoFlags.None, null)
                 });
@@ -32,7 +33,8 @@ namespace Templates.Runtime.Parameters
                 result = Expression.Condition(
                     Expression.Equal(input,
                         Expression.Constant(null, typeof(object))
-                    ), Expression.Constant(null, typeof(object)), DynamicExpression.Dynamic(binder, typeof(object), input));
+                    ), Expression.Constant(null, typeof(object)),
+                    DynamicExpression.Dynamic(binder, typeof(object), input));
             }
 
             if (result == null)
@@ -48,7 +50,7 @@ namespace Templates.Runtime.Parameters
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public object GetParameter(in Scope scope)
         {
-            return _compiledAccessor(scope.ModelData);
+            return _compiledAccessor(_source != null ? _source.GetParameter(scope) : scope.ModelData);
         }
     }
 }
