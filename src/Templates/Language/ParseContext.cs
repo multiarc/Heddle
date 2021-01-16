@@ -330,12 +330,15 @@ namespace Templates.Language {
             if (raw == null)
                 throw new TemplateParseException("Raw block is strangely null".ToError(GetAbsoluteBlockPosition(context)));
             var text = raw.GetText();
-            if (text.Length < 4)
+
+            var oneLineStyle = text.StartsWith("@:");
+            
+            if (oneLineStyle && text.Length < 2 || !oneLineStyle && text.Length < 4)
                 throw new TemplateParseException("Raw block is wrongly formatted".ToError(GetAbsoluteBlockPosition(context)));
             return new RawOutputItem
             {
                 BlockPosition = GetBlockPosition(context),
-                Text = text.Substring(2, text.Length - (text.StartsWith("@:") ? 2 : 4))
+                Text = text.Substring(2, text.Length - (oneLineStyle ? 2 : 4))
             };
         }
 

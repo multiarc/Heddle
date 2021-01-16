@@ -53,6 +53,31 @@ namespace Templates.Tests
             var expected = " Order #100! ";
             Assert.Equal(expected, actual);
         }
+        
+        [Fact]
+        public void RawDocumentTest()
+        {
+            TtlTemplate.Configure(typeof(TtlTemplateTests).GetTypeInfo().Assembly);
+            var options = new TemplateOptions("raw")
+            {
+                FileNamePostfix = ".thtml",
+                RootPath = @"TestTemplate",
+                AllowCSharp = true
+            };
+            var target = new TtlTemplate(new CompileContext(options));
+            Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
+            var actual = target.Generate(null);
+            using (var writer = File.CreateText(@"TestTemplate/test-raw-document.html"))
+            {
+                writer.Write(actual);
+            }
+            string expected;
+            using (StreamReader reader = File.OpenText(@"TestTemplate/generated-raw-document.html"))
+            {
+                expected = reader.ReadToEnd();
+            }
+            Assert.Equal(expected, actual);
+        }
 
         [Fact]
         public void EmptyOptimizedDocumentTest()

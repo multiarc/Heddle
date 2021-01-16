@@ -3,6 +3,28 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace Templates.Tests.Data {
+    
+    public class AppointmentConfirmationModel
+    {
+        public int OrderId { get; set; }
+        public string PublicHost { get; set; }
+        public string AppointmentToken { get; set; }
+        public string CompanyName { get; set; }
+        public string CompanyImage { get; set; }
+        public string CompanyFullAddress { get; set; }
+        public string CompanyPhone { get; set; }
+        public string ClientFullName { get; set; }
+        public List<AppointmentService> Services { get; set; }
+    }
+
+    public class AppointmentService
+    {
+        public string ServiceName { get; set; }
+        public decimal ServiceCost { get; set; }
+        public DateTime AppointmentDate { get; set; }
+        public string MasterName { get; set; }
+    }
+    
     #region Nested type: TestData
 
     public class NameValuePair
