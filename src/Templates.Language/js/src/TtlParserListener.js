@@ -1,151 +1,153 @@
-define(function (require, exports, module) {
-    // jshint ignore: start
-    var antlr4 = require('antlr4/index');
+// Generated from TtlParser.g4 by ANTLR 4.9.1
+// jshint ignore: start
+import antlr4 from 'antlr4';
 
-    // This class defines a complete listener for a parse tree produced by TtlParser.
-    function TtlParserListener() {
-        antlr4.tree.ParseTreeListener.call(this);
-        return this;
-    }
+// This class defines a complete listener for a parse tree produced by TtlParser.
+export default class TtlParserListener extends antlr4.tree.ParseTreeListener {
 
-    TtlParserListener.prototype = Object.create(antlr4.tree.ParseTreeListener.prototype);
-    TtlParserListener.prototype.constructor = TtlParserListener;
+	// Enter a parse tree produced by TtlParser#ttl.
+	enterTtl(ctx) {
+	}
 
-    // Enter a parse tree produced by TtlParser#ttl.
-    TtlParserListener.prototype.enterTtl = function (ctx) {
-    };
-
-    // Exit a parse tree produced by TtlParser#ttl.
-    TtlParserListener.prototype.exitTtl = function (ctx) {
-    };
+	// Exit a parse tree produced by TtlParser#ttl.
+	exitTtl(ctx) {
+	}
 
 
-    // Enter a parse tree produced by TtlParser#comment.
-    TtlParserListener.prototype.enterComment = function (ctx) {
-    };
+	// Enter a parse tree produced by TtlParser#raw.
+	enterRaw(ctx) {
+	}
 
-    // Exit a parse tree produced by TtlParser#comment.
-    TtlParserListener.prototype.exitComment = function (ctx) {
-    };
-
-
-    // Enter a parse tree produced by TtlParser#raw.
-    TtlParserListener.prototype.enterRaw = function (ctx) {
-    };
-
-    // Exit a parse tree produced by TtlParser#raw.
-    TtlParserListener.prototype.exitRaw = function (ctx) {
-    };
+	// Exit a parse tree produced by TtlParser#raw.
+	exitRaw(ctx) {
+	}
 
 
-    // Enter a parse tree produced by TtlParser#definition.
-    TtlParserListener.prototype.enterDefinition = function (ctx) {
-    };
+	// Enter a parse tree produced by TtlParser#definition.
+	enterDefinition(ctx) {
+	}
 
-    // Exit a parse tree produced by TtlParser#definition.
-    TtlParserListener.prototype.exitDefinition = function (ctx) {
-    };
-
-
-    // Enter a parse tree produced by TtlParser#def.
-    TtlParserListener.prototype.enterDef = function (ctx) {
-    };
-
-    // Exit a parse tree produced by TtlParser#def.
-    TtlParserListener.prototype.exitDef = function (ctx) {
-    };
+	// Exit a parse tree produced by TtlParser#definition.
+	exitDefinition(ctx) {
+	}
 
 
-    // Enter a parse tree produced by TtlParser#inherited_def.
-    TtlParserListener.prototype.enterInherited_def = function (ctx) {
-    };
+	// Enter a parse tree produced by TtlParser#def.
+	enterDef(ctx) {
+	}
 
-    // Exit a parse tree produced by TtlParser#inherited_def.
-    TtlParserListener.prototype.exitInherited_def = function (ctx) {
-    };
-
-
-    // Enter a parse tree produced by TtlParser#simple_def.
-    TtlParserListener.prototype.enterSimple_def = function (ctx) {
-    };
-
-    // Exit a parse tree produced by TtlParser#simple_def.
-    TtlParserListener.prototype.exitSimple_def = function (ctx) {
-    };
+	// Exit a parse tree produced by TtlParser#def.
+	exitDef(ctx) {
+	}
 
 
-    // Enter a parse tree produced by TtlParser#default_chain.
-    TtlParserListener.prototype.enterDefault_chain = function (ctx) {
-    };
+	// Enter a parse tree produced by TtlParser#inherited_def.
+	enterInherited_def(ctx) {
+	}
 
-    // Exit a parse tree produced by TtlParser#default_chain.
-    TtlParserListener.prototype.exitDefault_chain = function (ctx) {
-    };
-
-
-    // Enter a parse tree produced by TtlParser#outblock.
-    TtlParserListener.prototype.enterOutblock = function (ctx) {
-    };
-
-    // Exit a parse tree produced by TtlParser#outblock.
-    TtlParserListener.prototype.exitOutblock = function (ctx) {
-    };
+	// Exit a parse tree produced by TtlParser#inherited_def.
+	exitInherited_def(ctx) {
+	}
 
 
-    // Enter a parse tree produced by TtlParser#chain.
-    TtlParserListener.prototype.enterChain = function (ctx) {
-    };
+	// Enter a parse tree produced by TtlParser#simple_def.
+	enterSimple_def(ctx) {
+	}
 
-    // Exit a parse tree produced by TtlParser#chain.
-    TtlParserListener.prototype.exitChain = function (ctx) {
-    };
-
-
-    // Enter a parse tree produced by TtlParser#call.
-    TtlParserListener.prototype.enterCall = function (ctx) {
-    };
-
-    // Exit a parse tree produced by TtlParser#call.
-    TtlParserListener.prototype.exitCall = function (ctx) {
-    };
+	// Exit a parse tree produced by TtlParser#simple_def.
+	exitSimple_def(ctx) {
+	}
 
 
-    // Enter a parse tree produced by TtlParser#named_call.
-    TtlParserListener.prototype.enterNamed_call = function (ctx) {
-    };
+	// Enter a parse tree produced by TtlParser#default_chain.
+	enterDefault_chain(ctx) {
+	}
 
-    // Exit a parse tree produced by TtlParser#named_call.
-    TtlParserListener.prototype.exitNamed_call = function (ctx) {
-    };
-
-
-    // Enter a parse tree produced by TtlParser#unnamed_call.
-    TtlParserListener.prototype.enterUnnamed_call = function (ctx) {
-    };
-
-    // Exit a parse tree produced by TtlParser#unnamed_call.
-    TtlParserListener.prototype.exitUnnamed_call = function (ctx) {
-    };
+	// Exit a parse tree produced by TtlParser#default_chain.
+	exitDefault_chain(ctx) {
+	}
 
 
-    // Enter a parse tree produced by TtlParser#csharp_expression.
-    TtlParserListener.prototype.enterCsharp_expression = function (ctx) {
-    };
+	// Enter a parse tree produced by TtlParser#import_block.
+	enterImport_block(ctx) {
+	}
 
-    // Exit a parse tree produced by TtlParser#csharp_expression.
-    TtlParserListener.prototype.exitCsharp_expression = function (ctx) {
-    };
-
-
-    // Enter a parse tree produced by TtlParser#subtemplate.
-    TtlParserListener.prototype.enterSubtemplate = function (ctx) {
-    };
-
-    // Exit a parse tree produced by TtlParser#subtemplate.
-    TtlParserListener.prototype.exitSubtemplate = function (ctx) {
-    };
+	// Exit a parse tree produced by TtlParser#import_block.
+	exitImport_block(ctx) {
+	}
 
 
+	// Enter a parse tree produced by TtlParser#outblock.
+	enterOutblock(ctx) {
+	}
 
-    exports.TtlParserListener = TtlParserListener;
-});
+	// Exit a parse tree produced by TtlParser#outblock.
+	exitOutblock(ctx) {
+	}
+
+
+	// Enter a parse tree produced by TtlParser#chain.
+	enterChain(ctx) {
+	}
+
+	// Exit a parse tree produced by TtlParser#chain.
+	exitChain(ctx) {
+	}
+
+
+	// Enter a parse tree produced by TtlParser#call.
+	enterCall(ctx) {
+	}
+
+	// Exit a parse tree produced by TtlParser#call.
+	exitCall(ctx) {
+	}
+
+
+	// Enter a parse tree produced by TtlParser#named_call.
+	enterNamed_call(ctx) {
+	}
+
+	// Exit a parse tree produced by TtlParser#named_call.
+	exitNamed_call(ctx) {
+	}
+
+
+	// Enter a parse tree produced by TtlParser#unnamed_call.
+	enterUnnamed_call(ctx) {
+	}
+
+	// Exit a parse tree produced by TtlParser#unnamed_call.
+	exitUnnamed_call(ctx) {
+	}
+
+
+	// Enter a parse tree produced by TtlParser#csharp_expression.
+	enterCsharp_expression(ctx) {
+	}
+
+	// Exit a parse tree produced by TtlParser#csharp_expression.
+	exitCsharp_expression(ctx) {
+	}
+
+
+	// Enter a parse tree produced by TtlParser#subtemplate.
+	enterSubtemplate(ctx) {
+	}
+
+	// Exit a parse tree produced by TtlParser#subtemplate.
+	exitSubtemplate(ctx) {
+	}
+
+
+	// Enter a parse tree produced by TtlParser#text.
+	enterText(ctx) {
+	}
+
+	// Exit a parse tree produced by TtlParser#text.
+	exitText(ctx) {
+	}
+
+
+
+}
