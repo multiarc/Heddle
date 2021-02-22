@@ -1,7 +1,7 @@
 define(function(require, exports, module) {
     "use strict";
-    var InputStream = require("antlr4/InputStream").InputStream;
-    var CommonTokenStream = require("antlr4/CommonTokenStream").CommonTokenStream;
+    var InputStream = require('antlr4/InputStream').InputStream;
+    var CommonTokenStream = require('antlr4/CommonTokenStream').CommonTokenStream;
     var TtlLexerExtended = require("./TtlLexerExtended").TtlLexerExtended;
     var TtlParserExtended = require("./TtlParserExtended").TtlParserExtended;
     var ParseContext = require("./ParseContext").ParseContext;

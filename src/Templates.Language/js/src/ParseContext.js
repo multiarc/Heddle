@@ -1,7 +1,7 @@
 define(function(require, exports, module) {
     "use strict";
 
-    var LexerNoViableAltException = require("antlr4/error/Errors").LexerNoViableAltException;
+    var LexerNoViableAltException = require('antlr4/error/Errors').LexerNoViableAltException;
 
     function ParseContext() {
         this.errors = [];

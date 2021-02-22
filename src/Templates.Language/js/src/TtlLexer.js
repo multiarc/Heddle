@@ -1,8 +1,6 @@
 // Generated from TtlLexer.g4 by ANTLR 4.9.1
 // jshint ignore: start
-import antlr4 from 'antlr4';
-
-
+var antlr4 = require('antlr4/index');
 
 const serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786",
     "\u5964\u0002$\u05e7\b\u0001\b\u0001\b\u0001\b\u0001\b\u0001\b\u0001",

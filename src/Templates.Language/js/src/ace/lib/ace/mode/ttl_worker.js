@@ -1,7 +1,6 @@
 define(function (require, exports, module) {
     "use strict";
-
-    var DocumentParser = require("./ttl/DocumentParser").DocumentParser;
+    
     var oop = require("../lib/oop");
     var Mirror = require("../worker/mirror").Mirror;
 
@@ -12,6 +11,23 @@ define(function (require, exports, module) {
     };
 
     oop.inherits(TtlWorker, Mirror);
+
+    // load nodejs compatible require
+    var ace_require = require;
+    window.require = undefined; // prevent error: "Honey: 'require' already defined in global scope"
+    var Honey = { 'requirePath': ['..'] }; // walk up to js folder, see Honey docs
+    importScripts("./require.js");
+    var antlr4_require = window.require;
+    window.require = require = ace_require;
+
+    var DocumentParser;
+    try {
+        window.require = antlr4_require;
+        window.antlr4 = require('antlr4/index');
+        DocumentParser = require("./ttl/DocumentParser").DocumentParser;
+    } finally {
+        window.require = ace_require;
+    }
 
     (function() {
         this.setOptions = function(options) {
