@@ -13,20 +13,20 @@ define(function (require, exports, module) {
     oop.inherits(TtlWorker, Mirror);
 
     // load nodejs compatible require
-    var ace_require = require;
-    window.require = undefined; // prevent error: "Honey: 'require' already defined in global scope"
-    var Honey = { 'requirePath': ['..'] }; // walk up to js folder, see Honey docs
-    importScripts("./require.js");
-    var antlr4_require = window.require;
-    window.require = require = ace_require;
+    // var ace_require = require;
+    // window.require = undefined; // prevent error: "Honey: 'require' already defined in global scope"
+    // var Honey = { 'requirePath': ['..'] }; // walk up to js folder, see Honey docs
+    // importScripts(window.location.protocol + "://" + window.location.host + "/lib/require.js");
+    // var antlr4_require = window.require;
+    // window.require = require = ace_require;
 
     var DocumentParser;
     try {
-        window.require = antlr4_require;
-        window.antlr4 = require('antlr4/index');
+        //window.require = antlr4_require;
+        window.antlr4 = require("./ttl/antlr4/index");
         DocumentParser = require("./ttl/DocumentParser").DocumentParser;
     } finally {
-        window.require = ace_require;
+        //window.require = ace_require;
     }
 
     (function() {

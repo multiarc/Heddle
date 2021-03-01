@@ -115,12 +115,12 @@ CALL_RETURN_START: OUT_ST -> type(OUT), mode(OUT_MODE);
 
 CALL_RETURN_RAW: RAW_BLOCK -> type(RAW), popMode;
 CALL_RETURN_RW_LINE: RAW_LINE -> type(RAW), popMode;
-CALL_RETURN_DEF_START: DEF_ST -> type(DEF_START), popMode;
+CALL_RETURN_DEF_START: DEF_ST -> type(DEF_START), popMode, pushMode(DEF);
 CALL_RETURN_SUB_START: WS* SUB_ST -> type(SUB_START), popMode, pushMode(SUB_BLOCK);
 CALL_RETURN_SUB_CL: SUB_CL -> type(SUB_CLOSE), popMode, popMode;
 CALL_RETURN_START_IMPORT: IMP -> type(IMPORT_TOKEN), popMode, pushMode(IMPORT_MODE);
 
-CALL_SKIP_WS: EAT_WS -> channel(HIDDEN);
+CALL_SKIP_WS: EAT_WS -> channel(HIDDEN), popMode;
 
 CALL_RETURN_OTHER: . -> type(TEXT), popMode;
 	
@@ -142,12 +142,12 @@ OUT_OUT_START: OUT_ST -> type(OUT);
 
 OUT_RAW: RAW_BLOCK -> type(RAW), popMode;
 OUT_RW_LINE: RAW_LINE -> type(RAW), popMode;
-OUT_DEF_START: DEF_ST -> type(DEF_START), popMode;
+OUT_DEF_START: DEF_ST -> type(DEF_START), popMode, pushMode(DEF);
 OUT_SUB_START: SUB_ST -> type(SUB_START), popMode, pushMode(SUB_BLOCK);
 OUT_SUB_CL: SUB_CL -> type(SUB_CLOSE), popMode, popMode;
 OUT_START_IMPORT: IMP -> type(IMPORT_TOKEN), popMode, pushMode(IMPORT_MODE);
 
-OUT_SKIP_WS: EAT_WS -> channel(HIDDEN);
+OUT_SKIP_WS: EAT_WS -> channel(HIDDEN), popMode;
 
 OUT_OTHER: . -> type(TEXT), popMode;
 

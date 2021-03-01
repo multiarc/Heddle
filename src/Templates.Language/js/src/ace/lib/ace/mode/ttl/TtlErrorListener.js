@@ -1,6 +1,6 @@
 define(function(require, exports, module) {
     "use strict";
-    var ErrorListener = require('antlr4/error/ErrorListener').ErrorListener;
+    var ErrorListener = require('./antlr4/error/ErrorListener').ErrorListener;
     var ParseContext = require("./ParseContext").ParseContext;
 
     function TtlErrorListener(context) {

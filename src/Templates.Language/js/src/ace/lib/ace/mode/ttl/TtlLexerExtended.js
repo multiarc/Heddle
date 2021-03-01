@@ -6,7 +6,6 @@ define(function(require, exports, module) {
     function TtlLexerExtended(input, context) {
         TtlLexer.call(this, input);
         this.context = context;
-        this._previousMode = -1;
         this._listeners = [];
         this.addErrorListener(new TtlErrorListener(context));
         return this;
