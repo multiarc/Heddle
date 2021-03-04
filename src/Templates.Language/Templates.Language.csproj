@@ -18,15 +18,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="ace\build\**" />
+    <Compile Remove="js\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Remove="ace\build\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="ace\build\**" />
+    <EmbeddedResource Remove="js\**" />
   </ItemGroup>
 
 </Project>

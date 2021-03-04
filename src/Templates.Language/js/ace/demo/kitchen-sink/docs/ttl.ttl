@@ -1,0 +1,468 @@
+@using() {{LoLu.Business.Transfer.Ttl}}
+@using() {{System.Linq}}
+@using() {{System.Net}}
+@model() {{dynamic}}
+
+@%
+
+<product_breadcrumb>
+{{
+    <div class="breadcrumb-container">
+        <div class="container">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item" aria-current="page"><a href="/products" title="Каталог">Каталог</a></li>
+                    @list(@model.BreadcrumbOrderedItems.Take(model.BreadcrumbOrderedItems.Count - 1))
+                    {{
+                        <li class="breadcrumb-item active"><a href="@(Url)" title="@(Label)">@(Label)</a></li>
+                    }}
+                    @(@model.BreadcrumbOrderedItems.LastOrDefault())
+                    {{
+                        <li class="breadcrumb-item" aria-current="page">@(Label)</li>
+                    }}
+                </ol>
+            </nav>
+        </div>
+    </div>
+}}
+
+<product_tabs>
+{{
+    @%
+        <tab_id>
+        {{tab@int()}}
+        
+        <tab_content_id>
+        {{tab@int()-content}}
+    %@
+    
+    <ul class="product-nav nav" id="productTabs" role="tablist">
+        @list(@model.Tabs.OrderBy(t => t.Order)) {{
+            @if(Content){{
+            @ifnot(Hidden){{
+                <li class="product-tabs-item">
+                    <a class="product-tabs-link@if(@chained == 0){{ active}}" id="@tab_id(@chained)" data-toggle="tab" 
+                        href="#@tab_content_id(@chained)" aria-controls="@tab_content_id(@chained)" aria-selected="true">
+                        @(TitleOverride)
+                    </a>
+                </li>
+            }}
+            }}
+        }}
+	</ul>
+    <div class="tab-content" id="productTabsContent">
+        @list(@model.Tabs.OrderBy(t => t.Order)) {{
+            @if(Content){{
+            @ifnot(Hidden){{
+                <div class="tab-pane fade show@if(@chained == 0){{ active}}" id="@tab_content_id(@chained)" role="tabpanel" aria-labelledby="@tab_id(@chained)">
+                    <p>
+                        @(Content)
+                    </p>
+                </div>
+            }}
+            }}
+        }}
+		@**@
+    </div>
+}} 
+<product_tabs_mobile>
+{{
+    @%
+        <tab_id>
+        {{tab@int()}}
+        
+        <tab_content_id>
+        {{tab@int()-content}}
+    %@
+    
+    @list(@model.Tabs.OrderBy(t => t.Order)) {{
+        @if(Content){{
+        @ifnot(Hidden){{
+            <div class="spoiler">
+                <input type="checkbox" id="spoiler_@tab_id(@chained)" 
+                @if(IsChecked)
+                {{
+                     checked
+                }}
+                >
+                <label for="spoiler_@tab_id(@chained)">@(TitleOverride)
+                    <i class="label-down las la-angle-down"></i>
+                    <i class="label-up las la-angle-up"></i>
+                </label>
+                <div class="spoiler_body">
+                    @(Content)
+                </div>
+            </div>
+        }}
+        }}
+    }}
+}} 
+
+<related_products>
+{{
+    @if(@model.CrossSells.Count > 0)
+    {{
+    <div class="product-block">
+        <div class="container">
+            <div class="product-block-title">Мы рекомендуем</div>
+            <div class="related-products">
+                <div class="slider">
+                    <div id="relatedProductsSlider" class="swiper-container">
+                        <div class="swiper-wrapper">
+                            @list(CrossSells){{
+                                <div class="swiper-slide">
+                                    <div class="product-card">
+                                        <div class="stickers-container">
+                                            @if (@model.IsNewcomers) {{
+                                                <div class="sticker newcomers mb-2">NEW</div>
+                                            }}
+                                            @if (@model.Price > 0 && model.DiscountedPrice > 0) {{
+                                                <div class="sticker discount">@(@(1.0 - ((double?)model.DiscountedPrice ?? 0.0) / (double)model.Price).ToString("P0"))</div>
+                                            }}
+                                        </div>
+                                        <a name="@(@chained)"@if(@!string.IsNullOrEmpty(model.Url)){{ href="@(Url)"}}>
+                                            <div style="position:relative">
+                                                <div class="image-wrapper">
+                                                    <div class="image-container">
+                                                       <img class="img-fluid" src="@url_escape(MainProductImage)"@if(@!string.IsNullOrEmpty(model.Name)){{ alt="@(Name)"}}>
+                                                    </div> 
+                                                </div> 
+                                                <div class="item-hint">
+                                                    @if(@!string.IsNullOrEmpty(model.Url)){{
+                                                        <span class=""><b class="label">Посмотреть&nbsp;</b><i class="icon"></i></span>
+                                                    }}
+                                                </div>    
+                                            </div> 
+                                        </a>
+                                        <div class="item-container-description">
+                                            <div class="item-title mt-2 mb-2 pl-1 pr-1">
+                                                @if(@!string.IsNullOrEmpty(model.Name)){{@(Name)}}
+                                            </div>
+                                            <div class="item-prices">
+                                                @if(DiscountedPrice){{
+                                                    <span class="before-promo-price">@money(Price)</span>
+                                                    <span class="after-promo-price">@money(DiscountedPrice)</span>
+                                                }}
+                                                @ifnot(DiscountedPrice){{
+                                                    <span class="default-price">@money(Price)</span>
+                                                }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }}
+                        </div>
+                        
+                    </div>
+                    <div class="swiper-button-next swiper-button-next_relatedProducts"></div>
+                    <div class="swiper-button-prev swiper-button-prev_relatedProducts"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    }}
+    
+}} :: TtlProductPageModel
+
+
+
+<videos>
+{{
+    @if(@model.YoutubeVideos.Count > 0)
+    {{
+        <div class="product-block product-block-video">
+            <div class="container">
+        		@*@(@model.ProductVideosTab.Content)*@
+                    <div class="images-videos">
+                    <div class="slider">
+                        <div id="videoSlider" class="swiper-container">
+                            <div class="swiper-wrapper">
+                                @list(YoutubeVideos)
+                                {{
+                                    <div class="swiper-slide">
+                                        <div class="product-video-container">
+                                            <iframe src="https://www.youtube.com/embed/@(VideoId)" frameborder="0" class="video-frame"
+                            		            allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen>
+                        		            </iframe>
+                    		            </div>
+                                    </div>
+                                }}
+                            </div>
+                        </div>
+                        <!-- Add Pagination -->
+                        <div class="swiper-button-prev swiper-button-prev_videoSlider">
+                            <span class="sr-only">Предыдущий</span>
+                        </div>
+                        <div class="swiper-button-next swiper-button-next_videoSlider">
+                            <span class="sr-only">Следующий</span>
+                        </div>
+                    </div>
+            		@*@list(YoutubeVideos){{*@
+            		   @* <iframe width="560" height="315" src="https://www.youtube.com/embed/4GFLykCflp4" frameborder="0" 
+            		        allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen>
+        		        </iframe>*@
+            		        
+            		     @*<div class="four columns">*@
+                   @* 		<a href="@(Video)" class="img-caption popup-youtube" title="testprod123">*@
+                   @* 			<figure>*@
+                   @* 				<img src="@(Image)" alt="" />*@
+                   @* 				<figcaption>*@
+                   @* 					<h3>@(Text)</h3>*@
+                   @* 				</figcaption>*@
+                   @* 			</figure>*@
+                   @* 		</a>*@
+                   @* 	 </div>*@
+            		@*}}*@
+                    </div>
+            </div>
+        </div>
+    }}
+}}
+
+<product_reviews>
+{{
+   <div class="product-block product-block-comments">
+        <div class="container">
+            <section class="comments">
+                @if(@root.ProductPage.ReviewsTab.Reviews.Count > 0)
+                {{
+                    <div class="product-block-title">Отзывы</div>
+                }}
+                @if(@root.ProductPage.ReviewsTab.Reviews.Count == 0)
+                {{
+                    <div class="product-block-title">Отзывов нет</div>
+                }}
+                <ul class="comment-list">
+                @list(@root.ProductPage.ReviewsTab.Reviews) {{
+        			<li>
+        				<div class="comment-content">
+        				    <div class="d-flex justify-content-between">
+        				        <div class="comment-author"> @(CustomerName)</div>
+        					    <div class="comment-date">@date(DateCreated){{@(::ProductPage.DefaultCultureInfo.DateTimeFormat.ShortDatePattern) @(::ProductPage.DefaultCultureInfo.DateTimeFormat.ShortTimePattern)}}</div>
+    					    </div>
+        					<div class="comment-title">@(Title)</div>
+        					<div>@(Review)</div>
+        				</div>
+        			</li>
+                }}
+                </ul>
+                <div class="d-flex flex-column">
+                    @if(@root.ProductPage.ReviewsTab.ReviewsCount > 3){{
+            	        <button class="btn btn-read-more-reviews align-self-center" type="button" @*href="/reviews/@(@root.ProductPage.Url)"*@>
+            		        Читать больше отзывов
+            	        </button>
+            	        @*<a class="read-more-reviews" href="/reviews/@(@root.ProductPage.Url)">
+    					        Читать больше отзывов >
+    				        </a>*@
+                    }}
+                    <button type="button" class="btn btn-comment-add write-review-link align-self-center"><i class="fas fa-feather-alt"></i>Оставить отзыв о товаре</button>
+                    <div id="add-review" class="hidden-review mt-4">
+                        <div class="d-flex flex-row justify-content-between align-items-baseline">
+                            <h3>Оставить отзыв о товаре</h3>
+                            <button class="close-add-review btn btn-default" style="float: right;"><i class="fas fa-times"></i></button>
+                        </div>
+                        <div id="add-review-inner" class="mt-3"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+   </div>
+}}
+
+<product_introduction>
+{{
+    <div class="product-content">
+        <div class="product-head-mobile">
+		    <div class="product-title">
+				<h2>@(Name)</h2>	
+            </div>
+            <div class="product-short-description">@(ShortDescription)</div>
+            <button data-bind="click: wishlistAdd" type="button" class="btn-heart"><i data-bind="css: {'fas': options.product.InWishList(), 'far': !options.product.InWishList() }" class="fa-heart"></i></button>
+            @if (@model.ReviewsTab.ReviewsCount > 0)
+      		{{
+                <div><button class="btn reviews-link">@(ReviewsTab.ReviewsCount) отзыва</button></div>
+			}}
+		</div>
+        <div class="product-image" style="position: relative;">
+            <div class="productsCarousel swiper-container gallery-top">
+    			<div class="swiper-wrapper">
+    			    @list(Images){{
+    			        <div class="swiper-slide">
+    			            <div class="swiper-zoom-container">
+                                <img src="@url_escape(Image)" class="img-fluid can-zoom" data-img="@url_escape(DetailedImage)" alt="...">
+                           </div>
+                        </div>
+    			    }}
+    			</div>
+    		</div>
+    		<div class="slider">
+        		<div class="productsCarouselThumbs swiper-container gallery-thumbs">
+            		@if(@model.Images.Count > 1)
+    	            {{
+    	                <div class="swiper-wrapper">
+        			    @list(@model.Images) {{
+                            <div class="swiper-slide">
+                                <div class="swiper-slide-image-container">
+                                    <img src="@url_escape(Thumbnail)" class="img-fluid">
+                                </div>
+                            </div>
+                        }}
+                        </div>
+                       
+                    }}
+                </div>
+            
+                @if(@model.Images.Count > 1)
+	            {{
+                    <div class="swiper-button-next swiper-button-next_productsCarouselThumbs"></div>
+                    <div class="swiper-button-prev swiper-button-prev_productsCarouselThumbs"></div>
+                }}
+	        </div>
+        </div>
+        <div class="product-info">
+            <div class="product-head">
+    		    <div class="product-title">
+    				<h2>@(Name)</h2>
+    				<span><button data-bind="click: wishlistAdd" type="button" class="btn-heart"><i data-bind="css: {'fas': options.product.InWishList(), 'far': !options.product.InWishList() }" class="fa-heart"></i></button></span>
+                </div>
+        		
+                <div class="product-short-description">@(ShortDescription)</div>
+                @if (@model.ReviewsTab.ReviewsCount > 0)
+	      		{{
+                    <div><button class="btn reviews-link">@(ReviewsTab.ReviewsCount) отзыва</button></div>
+				}}
+			</div>
+			<div class="product-bottom">
+                <!--ko if: options.currentSku.BeforePromoPrice() -->
+    			<div class="mt-2 mb-3">
+    			    <h3 class="before-promo-price" data-bind="money: options.currentSku.BeforePromoPrice"></h3>
+    			    <h3 class="after-promo-price" data-bind="money: options.currentSku.Price()"></h3>
+    			</div>
+    		    @*Артикул: <span data-bind="text: options.currentSku.Code"></span>*@
+                <!--/ko-->
+                <!--ko ifnot: options.currentSku.BeforePromoPrice() -->
+                <div class="mt-2 mb-3">
+    			    <h3 class="product-price" data-bind="money: options.currentSku.Price()"></h3>
+    			</div>
+                <!--/ko-->
+                       
+    		    @if (@model.Skus.Count > 1)
+    	        {{
+    			<div class="form-group product-input">
+    				    @if(SubProductGroupName)
+    				    {{
+    					    <label for="@(SubProductGroupName)">@(SubProductGroupName)</label>
+    					}}
+    					@ifnot(SubProductGroupName)
+    				    {{
+    				        <label>&nbsp;</label>
+    				    }}
+    					
+    					<select  class="form-control" id="@(SubProductGroupName)" data-bind='options: options.skus, optionsText: "SalesText", 
+    					    optionsValue: "Id", value: options.currentSku.Id, event:{ change: $root.skuChanged }'>
+    					</select>
+    			</div>
+    			}}
+                <!--ko foreach: options.configurationGroups-->
+                <div class="form-group product-input mt-2">
+    				<label for="color" data-bind="text: Name, attr: { 'for': Name }"></label>
+     				<select class="form-control" data-bind='attr: { "id": Name }, options: UIOptions, optionsText: "Name", optionsValue: "Id", 
+                        value: SelectedOptionId, enable: Enabled, event:{ change: $root.configurationChanged }'>
+    				</select>
+    			</div>
+                <!--/ko-->
+    
+                <div class="d-flex flex-row flex-wrap align-items-end align-self-start mt-2 mb-2">
+    				<!-- ko if: options.currentSku.InStock()-->
+    				<div class="form-group product-input mb-0">
+        				<label for="quantity">Количество</label>
+        				<div class="input-group qty">
+                            <div class="input-group-prepend">
+                                <button class="btn btn-outline-secondary" type="button" data-bind="click: minusQty">
+                                    <i class="fas fa-minus"></i>
+                                    </button>
+                              </div>
+                            <input id="quantity" name="QTY" type="text" data-bind="value: options.currentSku.Quantity" 
+                                class="form-control" placeholder="Количество" min="1" max="999">
+                            <div class="input-group-append">
+                                <button class="btn btn-outline-secondary" type="button" data-bind="click: plusQty">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+        				
+                        @*<input id="quantity" name="QTY" type="number" data-bind="value: options.currentSku.Quantity" 
+                            class="form-control" placeholder="Количество" min="1" max="999">*@
+                    </div>    
+                    <div class="product-stock text-success"><i class="fas fa-check"></i>В наличии</div>
+                    <!-- /ko -->
+                </div>
+            	<!-- ko if: options.currentSku.InStock()-->  
+                <button data-bind="click: productAdd" type="button" class="btn btn-product-add">
+                    <i class="fas fa-cart-plus"></i>
+                    <span class="icon-space-text">Добавить в корзину</span>
+                </button>
+                <!-- /ko -->
+                <!-- ko ifnot: options.currentSku.InStock()-->
+                <div class="product-stock text-danger">Нет в наличии</div>
+                <button data-bind="click: addOutOfStockRequest" type="button" class="btn btn-add-out-of-stock">
+                    <i class="far fa-clock"></i><span class="icon-space-text">Зарезервировать</span>
+                </button>
+                <!-- /ko -->
+    		    
+    		    <div class="product-tabs">
+    	            @product_tabs()
+    		    </div> 
+    		    <div class="product-tabs-mobile">
+    	            @product_tabs_mobile()
+    		    </div> 
+		    </div>
+        </div>
+	</div>
+	 
+}} :: TtlProductPageModel 
+
+
+
+<layout> -> (ProductPage)
+{{
+    @socialmeta(){{
+        <link rel="canonical" href="https://@(::AppOptions.PublicHost)/product/@(Url)">
+    }}
+
+    @if(@model.Images.Count > 0){{
+        @socialmeta(@model.Images.First()){{
+            <meta property="og:image" content="https://@(::AppOptions.PublicHost)@url_escape(Image)">
+            <meta itemprop="image" content="https://@(::AppOptions.PublicHost)@url_escape(Image)" />
+            <link rel="image_src" href="https://@(::AppOptions.PublicHost)@url_escape(Image)" />
+        }}
+    }}
+    <div class="product-page">
+    	@product_breadcrumb() 
+    	<div class="container">
+        	@product_introduction()
+    	</div>
+    	<div class="product-block-gradient mt-5"></div>
+    	@related_products()
+    	@videos()
+    	@product_reviews()
+    </div>
+    @script(){{
+        <script>
+    		var productPublicId = "@(PublicId)";
+    		var inWishList = "@(InWishList)"
+    		var skus = @(SkusJson) ;
+    		var configurationGroups = @(ConfigurationGroupsJson) ;
+    		var accessories = @(AccessoriesJson) ;
+    		@if(@model.NotSelectFirstSku==true){{
+    		var notSelectFirstSku = true ;
+    		}}
+        </script>
+        @*<script src="/app/modules/product/addtocart.js?v=@(@root.AppOptions.Versioning.BuildNumber)"></script>*@
+        <script src="/app/modules/product/product-page.js?v=@(@root.AppOptions.Versioning.BuildNumber)"></script>
+    	<script src="/app/modules/product/product-review.js?v=@(@root.AppOptions.Versioning.BuildNumber)"></script>
+    	<script src="https://www.google.com/recaptcha/api.js?hl=ru" async="async"></script>
+    	
+    }}
+}} :: TtlProductPageModel 
+%@
