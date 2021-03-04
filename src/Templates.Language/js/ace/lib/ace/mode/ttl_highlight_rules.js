@@ -34,6 +34,7 @@ define(function (require, exports, module) {
             return function (val, state, stack) {
                 stack.unshift(next);
                 this.next = next;
+                this.merge = false;
                 return token;
             }
         }
@@ -42,6 +43,7 @@ define(function (require, exports, module) {
             return function (val, state, stack) {
                 stack.shift();
                 this.next = (stack.length ? stack[0] : "start") || "start";
+                this.merge = false;
                 return token;
             }
         }
@@ -55,6 +57,7 @@ define(function (require, exports, module) {
                     stack.unshift(next);
                 }
                 this.next = next;
+                this.merge = false;
                 return token;
             }
         }
@@ -121,6 +124,7 @@ define(function (require, exports, module) {
                         stack.unshift(startPrefix + "ttl-call-returned");
                         stack.unshift(startPrefix + "ttl-call");
                         this.next = startPrefix + "ttl-call";
+                        this.merge = false;
                         return "ttl-out.keyword.paren.lparen";
                     },
                 },
@@ -135,6 +139,7 @@ define(function (require, exports, module) {
                         stack.shift();
                         stack.unshift(startPrefix + "ttl-raw");
                         this.next = startPrefix + "ttl-raw";
+                        this.merge = false;
                         return "ttl-out.keyword.paren.lparen";
                     }
                 },
@@ -144,6 +149,7 @@ define(function (require, exports, module) {
                         stack.shift();
                         stack.unshift(startPrefix + "ttl-raw-ln");
                         this.next = startPrefix + "ttl-raw-ln";
+                        this.merge = false;
                         return "ttl-out.keyword";
                     }
                 },
@@ -153,6 +159,7 @@ define(function (require, exports, module) {
                         stack.shift();
                         stack.unshift(startPrefix + "ttl-def");
                         this.next = startPrefix + "ttl-def";
+                        this.merge = false;
                         return "ttl-out.keyword.operator.paren.lparen";
                     }
                 },
@@ -162,6 +169,7 @@ define(function (require, exports, module) {
                         stack.shift();
                         stack.unshift(startPrefix + "start");
                         this.next = startPrefix + "start";
+                        this.merge = false;
                         return "ttl-out.keyword.operator.paren.lparen";
                     }
                 },
@@ -171,6 +179,7 @@ define(function (require, exports, module) {
                         stack.shift();
                         stack.shift();
                         this.next = stack.length ? stack[0] : (startPrefix + "start");
+                        this.merge = false;
                         return "ttl-out.keyword.operator.paren.rparen";
                     }
                 },
@@ -180,6 +189,7 @@ define(function (require, exports, module) {
                         stack.shift();
                         stack.unshift(startPrefix + "ttl-import");
                         this.next = startPrefix + "ttl-import";
+                        this.merge = false;
                         return "ttl-out.keyword.operator";
                     }
                 },
@@ -217,6 +227,7 @@ define(function (require, exports, module) {
                         stack.shift();
                         stack.unshift(startPrefix + "ttl-raw");
                         this.next = startPrefix + "ttl-raw";
+                        this.merge = false;
                         return "ttl-call-returned.keyword.paren.lparen";
                     }
                 },
@@ -226,6 +237,7 @@ define(function (require, exports, module) {
                         stack.shift();
                         stack.unshift(startPrefix + "ttl-raw-ln");
                         this.next = startPrefix + "ttl-raw-ln";
+                        this.merge = false;
                         return "ttl-call-returned.keyword";
                     }
                 },
@@ -235,6 +247,7 @@ define(function (require, exports, module) {
                         stack.shift();
                         stack.unshift(startPrefix + "ttl-def");
                         this.next = startPrefix + "ttl-def";
+                        this.merge = false;
                         return "ttl-call-returned.keyword.operator.paren.lparen";
                     }
                 },
@@ -244,6 +257,7 @@ define(function (require, exports, module) {
                         stack.shift();
                         stack.unshift(startPrefix + "start");
                         this.next = startPrefix + "start";
+                        this.merge = false;
                         return "ttl-call-returned.keyword.operator.paren.lparen";
                     }
                 },
@@ -253,6 +267,7 @@ define(function (require, exports, module) {
                         stack.shift();
                         stack.shift();
                         this.next = stack.length ? stack[0] : (startPrefix + "start");
+                        this.merge = false;
                         return "ttl-call-returned.keyword.operator.paren.rparen";
                     }
                 },
@@ -262,6 +277,7 @@ define(function (require, exports, module) {
                         stack.shift();
                         stack.unshift(startPrefix + "ttl-import");
                         this.next = startPrefix + "ttl-import";
+                        this.merge = false;
                         return "ttl-call-returned.keyword.operator";
                     }
                 },
@@ -290,6 +306,7 @@ define(function (require, exports, module) {
                         stack.shift();
                         stack.unshift("cs-start");
                         this.next = "cs-start";
+                        this.merge = false;
                         return "ttl-call.keyword";
                     },
                 },
@@ -506,6 +523,8 @@ define(function (require, exports, module) {
         var ttlRules = new TtlLangHighlightRules().getRules();
         var jsTtlRules = new TtlLangHighlightRules().generateRules("js-");
         var cssTtlRules = new TtlLangHighlightRules().generateRules("css-");
+        
+        this.$embeds = [];
 
         for(var key in this.$rules) {
             if (key.indexOf("js-") === 0) {

@@ -13,6 +13,7 @@ define(function(require, exports, module) {
     var TTLMatchingBraceOutdent = require("./ttl_brace_outdent").TTLMatchingBraceOutdent;
     var TTLstyleBehaviour = require("./behaviour/ttl").TTLstyleBehaviour;
     var TtlCompletions = require("./ttl_completions").TtlCompletions;
+    var TtlTokenizer = require("./ttl/TtlTokenizer").TtlTokenizer;
     var WorkerClient = require("../worker/worker_client").WorkerClient;
     
     var TtlMode = function() {
@@ -34,6 +35,14 @@ define(function(require, exports, module) {
         var reverseTokenTable = {
             "%@": "@%",
             "}}": "{{"
+        };
+
+        this.getTokenizer = function() {
+            if (!this.$tokenizer) {
+                this.$highlightRules = this.$highlightRules || new this.HighlightRules(this.$highlightRuleConfig);
+                this.$tokenizer = new TtlTokenizer(this.$highlightRules.getRules());
+            }
+            return this.$tokenizer;
         };
 
         this.getNextLineIndent = function(state, line, tab) {
@@ -79,6 +88,8 @@ define(function(require, exports, module) {
 
     (function() {        
         this.getNextLineIndent = TtlMode.prototype.getNextLineIndent;
+        
+        this.getTokenizer = TtlMode.prototype.getTokenizer;
         
         this.createWorker = function(session) {
             var worker = new WorkerClient(["ace"], "ace/mode/ttl_worker", "TtlWorker");

@@ -64,11 +64,11 @@ oop.inherits(Worker, Mirror);
         var errors = [];
         var noop = function(){};
         parser.contentHandler = {
-           startDocument: noop,
-           endDocument: noop,
-           startElement: noop,
-           endElement: noop,
-           characters: noop
+            startDocument: noop,
+            endDocument: noop,
+            startElement: noop,
+            endElement: noop,
+            characters: noop
         };
         parser.errorHandler = {
             error: function(message, location, code) {
