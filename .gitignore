@@ -107,3 +107,4 @@ project.lock.json
 *.opendb
 /packages
 /.idea/.idea.Templating
+/src/Templates.Language/js/ace/build

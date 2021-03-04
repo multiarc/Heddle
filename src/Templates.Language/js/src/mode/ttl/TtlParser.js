@@ -1,9 +1,10 @@
 define(function (require, exports, module) {
-
-// Generated from TtlParser.g4 by ANTLR 4.9.1
-// jshint ignore: start
+    "use strict";
     var antlr4 = require('./antlr4/index');
     var TtlParserListener = require('./TtlParserListener').TtlParserListener;
+
+    // Generated from TtlParser.g4 by ANTLR 4.9.1
+    // jshint ignore: start
 
     const serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786",
         "\u5964\u0003$\u02bb\u0004\u0002\t\u0002\u0004\u0003\t\u0003\u0004\u0004",
@@ -118,7 +119,7 @@ define(function (require, exports, module) {
         "\u02b1\n\u0010\f\u0010\u000e\u0010\u02b4\u000b\u0010\u0003\u0010\u0005",
         "\u0010\u02b7\n\u0010\u0003\u0011\u0003\u0011\u0003\u0011\u0002\u0002",
         "\u0012\u0002\u0004\u0006\b\n\f\u000e\u0010\u0012\u0014\u0016\u0018\u001a",
-        "\u001c\u001e \u0002\u0003\u0004\u0002\n\u000b\u0012\u0013\u0002\u031d",
+        "\u001c\u001e \u0002\u0003\u0004\u0002\t\u000b\u0012\u0013\u0002\u031d",
         "\u0002)\u0003\u0002\u0002\u0002\u0004,\u0003\u0002\u0002\u0002\u0006",
         ".\u0003\u0002\u0002\u0002\b8\u0003\u0002\u0002\u0002\n\u00ba\u0003\u0002",
         "\u0002\u0002\f\u0120\u0003\u0002\u0002\u0002\u000e\u0122\u0003\u0002",
@@ -2223,7 +2224,7 @@ define(function (require, exports, module) {
                 this.enterOuterAlt(localctx, 1);
                 this.state = 694;
                 _la = this._input.LA(1);
-                if (_la <= 0 || (((_la) & ~0x1f) == 0 && ((1 << _la) & ((1 << TtlParser.SUB_START) | (1 << TtlParser.SUB_CLOSE) | (1 << TtlParser.DEF_START) | (1 << TtlParser.DEF_CLOSE))) !== 0)) {
+                if (_la <= 0 || (((_la) & ~0x1f) == 0 && ((1 << _la) & ((1 << TtlParser.OUT) | (1 << TtlParser.SUB_START) | (1 << TtlParser.SUB_CLOSE) | (1 << TtlParser.DEF_START) | (1 << TtlParser.DEF_CLOSE))) !== 0)) {
                     this._errHandler.recoverInline(this);
                 } else {
                     this._errHandler.reportMatch(this);
@@ -3222,6 +3223,10 @@ define(function (require, exports, module) {
 
         DEF_CLOSE() {
             return this.getToken(TtlParser.DEF_CLOSE, 0);
+        };
+
+        OUT() {
+            return this.getToken(TtlParser.OUT, 0);
         };
 
         enterRule(listener) {

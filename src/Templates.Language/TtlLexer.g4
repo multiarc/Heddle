@@ -52,6 +52,10 @@ START_IMPORT: IMP -> type(IMPORT_TOKEN), pushMode(IMPORT_MODE);
 
 START_OUT: OUT_ST -> type(OUT), pushMode(OUT_MODE);
 
+UNCONNECTED_SUB_ST: SUB_ST -> type(SUB_START);
+
+UNCONNECTED_SUB_CL: SUB_CL -> type(SUB_CLOSE);
+
 TEXT: (~[@]+ | .);
 
 mode SUB_BLOCK;

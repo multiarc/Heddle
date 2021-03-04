@@ -54,8 +54,11 @@ define(function(require, exports, module) {
             "cs-": CSharpMode,
             "ttl-": TtlMode
         });
-        this.foldingRules.subModes["ttl-"] = new TtlFoldMode();
-        this.foldingRules.subModes["start"] = this.foldingRules.subModes["ttl-"];
+        var ttlFoldMode = new TtlFoldMode();
+        this.foldingRules.subModes["ttl-"] = ttlFoldMode;
+        this.foldingRules.subModes["start"] = ttlFoldMode;
+        this.foldingRules.subModes["js-"] = ttlFoldMode;
+        this.foldingRules.subModes["css-"] = ttlFoldMode;
     };
     oop.inherits(Mode, HtmlMode);
 

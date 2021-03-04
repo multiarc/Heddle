@@ -2573,6 +2573,7 @@ public partial class TtlParser : Parser {
 		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode SUB_START() { return GetToken(TtlParser.SUB_START, 0); }
 		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode DEF_START() { return GetToken(TtlParser.DEF_START, 0); }
 		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode DEF_CLOSE() { return GetToken(TtlParser.DEF_CLOSE, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OUT() { return GetToken(TtlParser.OUT, 0); }
 		public TextContext(ParserRuleContext parent, int invokingState)
 			: base(parent, invokingState)
 		{
@@ -2600,7 +2601,7 @@ public partial class TtlParser : Parser {
 			{
 			State = 694;
 			_la = TokenStream.LA(1);
-			if ( _la <= 0 || ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << SUB_START) | (1L << SUB_CLOSE) | (1L << DEF_START) | (1L << DEF_CLOSE))) != 0)) ) {
+			if ( _la <= 0 || ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << OUT) | (1L << SUB_START) | (1L << SUB_CLOSE) | (1L << DEF_START) | (1L << DEF_CLOSE))) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
 			}
 			else {
@@ -2771,7 +2772,7 @@ public partial class TtlParser : Parser {
 		'\x10', '\x3', '\x10', '\x5', '\x10', '\x2B7', '\n', '\x10', '\x3', '\x11', 
 		'\x3', '\x11', '\x3', '\x11', '\x2', '\x2', '\x12', '\x2', '\x4', '\x6', 
 		'\b', '\n', '\f', '\xE', '\x10', '\x12', '\x14', '\x16', '\x18', '\x1A', 
-		'\x1C', '\x1E', ' ', '\x2', '\x3', '\x4', '\x2', '\n', '\v', '\x12', '\x13', 
+		'\x1C', '\x1E', ' ', '\x2', '\x3', '\x4', '\x2', '\t', '\v', '\x12', '\x13', 
 		'\x2', '\x31D', '\x2', ')', '\x3', '\x2', '\x2', '\x2', '\x4', ',', '\x3', 
 		'\x2', '\x2', '\x2', '\x6', '.', '\x3', '\x2', '\x2', '\x2', '\b', '\x38', 
 		'\x3', '\x2', '\x2', '\x2', '\n', '\xBA', '\x3', '\x2', '\x2', '\x2', 
