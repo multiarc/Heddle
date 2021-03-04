@@ -26,8 +26,23 @@ define(function(require, exports, module) {
     oop.inherits(TtlMode, TextMode);
 
     (function() {
+        var tokenTable = {
+            "@%": "%@",
+            "{{": "}}"
+        };
+
+        var reverseTokenTable = {
+            "%@": "@%",
+            "}}": "{{"
+        };
+
         this.getNextLineIndent = function(state, line, tab) {
-            return this.$getIndent(line);
+            var indent = this.$getIndent(line);
+            if (line.match(/^.*({{|@%)\s*$/))
+                indent += tab;
+            else if (line.match(/^.*(}}|%@)\s*$/))
+                indent.substring(0, indent.length - tab.length);
+            return indent;
         };
 
         this.checkOutdent = function(state, line, input) {
@@ -62,8 +77,9 @@ define(function(require, exports, module) {
     };
     oop.inherits(Mode, HtmlMode);
 
-    (function() {
-
+    (function() {        
+        this.getNextLineIndent = TtlMode.prototype.getNextLineIndent;
+        
         this.createWorker = function(session) {
             var worker = new WorkerClient(["ace"], "ace/mode/ttl_worker", "TtlWorker");
             worker.attachToDocument(session.getDocument());

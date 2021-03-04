@@ -45,6 +45,16 @@ exports.singletonTags = ["area", "base", "br", "col", "command", "embed", "hr", 
 exports.blockTags = ["article", "aside", "blockquote", "body", "div", "dl", "fieldset", "footer", "form", "head", "header", "html", "nav", "ol", "p", "script", "section", "style", "table", "tbody", "tfoot", "thead", "ul"];
 
 exports.beautify = function(session) {
+    var tokenTable = {
+        "@%": "%@",
+        "{{": "}}"
+    };
+
+    var reverseTokenTable = {
+        "%@": "@%",
+        "}}": "{{"
+    };
+    
     var iterator = new TokenIterator(session, 0, 0);
     var token = iterator.getCurrentToken();
     var tabString = session.getTabString();
@@ -158,6 +168,12 @@ exports.beautify = function(session) {
             }
 
             if (value) {
+                if (tokenTable[value] && token.type.indexOf("keyword.operator.paren.lparen") !== -1) {
+                    depth++;
+                } else if (reverseTokenTable[value] && token.type.indexOf("keyword.operator.paren.rparen") !== -1) {
+                    depth--;
+                }
+                
                 // whitespace
                 if (token.type === "keyword" && value.match(/^(if|else|elseif|for|foreach|while|switch)$/)) {
                     parents[depth] = value;
