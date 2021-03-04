@@ -168,11 +168,9 @@ exports.beautify = function(session) {
             }
 
             if (value) {
-                if (tokenTable[value] && token.type.indexOf("keyword.operator.paren.lparen") !== -1) {
-                    depth++;
-                } else if (reverseTokenTable[value] && token.type.indexOf("keyword.operator.paren.rparen") !== -1) {
+                if (reverseTokenTable[value] && token.type.indexOf("keyword.operator.paren.rparen") !== -1) {
                     depth--;
-                }
+                } 
                 
                 // whitespace
                 if (token.type === "keyword" && value.match(/^(if|else|elseif|for|foreach|while|switch)$/)) {
@@ -402,6 +400,10 @@ exports.beautify = function(session) {
                     tagName = value;
                 } else if (is(token, "tag-close") && value === "/>" && singletonTags.indexOf(tagName) === -1){
                     depth--;
+                }
+
+                if (tokenTable[value] && token.type.indexOf("keyword.operator.paren.lparen") !== -1) {
+                    depth++;
                 }
 
                 row = curRow;
