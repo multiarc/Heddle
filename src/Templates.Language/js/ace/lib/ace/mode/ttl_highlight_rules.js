@@ -23,13 +23,6 @@ define(function (require, exports, module) {
             }
         }
 
-        function createPopRule(regex, token) {
-            return {
-                regex: regex,
-                onMatch: getPopMode(token)
-            }
-        }
-
         function getPushMode(token, next) {
             return function (val, state, stack) {
                 stack.unshift(next);
@@ -39,20 +32,9 @@ define(function (require, exports, module) {
             }
         }
 
-        function getPopMode(token) {
-            return function (val, state, stack) {
-                stack.shift();
-                this.next = (stack.length ? stack[0] : "start") || "start";
-                this.merge = false;
-                return token;
-            }
-        }
-
         function getNextMode(token, next) {
             return function (val, state, stack) {
-                if (!stack.length) {
-                    stack.unshift(next);
-                } else if (stack[0] !== next) {
+                if (stack.length && stack[0] !== next) {
                     stack.shift();
                     stack.unshift(next);
                 }
@@ -63,6 +45,23 @@ define(function (require, exports, module) {
         }
         
         function _generateRules(startPrefix) {
+
+            function createPopRule(regex, token) {
+                return {
+                    regex: regex,
+                    onMatch: getPopMode(token)
+                }
+            }
+
+            function getPopMode(token) {
+                return function (val, state, stack) {
+                    stack.shift();
+                    this.next = (stack.length ? stack[0] : (startPrefix + "start")) || (startPrefix + "start");
+                    this.merge = false;
+                    return token;
+                }
+            }
+            
             var rules = {};
             rules[startPrefix + "start"] = [
                 createPushRule(
@@ -506,10 +505,15 @@ define(function (require, exports, module) {
                 "cs-start.paren.lparen",
                 "cs-start"
             ),
-            createPopRule(
-                /\)/,
-                "cs-start.paren.rparen"
-            )
+            {
+                regex: /\)/,
+                onMatch: function (val, state, stack) {
+                    stack.shift();
+                    this.next = stack.length ? stack[0] : "start";
+                    this.merge = false;
+                    return "cs-start.paren.rparen";
+                },
+            }
         ]);
     };
 
@@ -569,7 +573,8 @@ define(function (require, exports, module) {
                                 next: "js-start",
                                 onMatch: function (value, currentState, stack) {
                                     stackBackup = stack.splice(0);
-                                    stack.push("js-start");
+                                    // stack.push("js-start");
+                                    // stack.push("js-start");
                                     return this.token;
                                 }
                             }
@@ -584,7 +589,8 @@ define(function (require, exports, module) {
                                 next: "css-start",
                                 onMatch: function (value, currentState, stack) {
                                     stackBackup = stack.splice(0);
-                                    stack.push("css-start");
+                                    // stack.push("css-start");
+                                    // stack.push("css-start");
                                     return this.token;
                                 }
                             }
@@ -611,6 +617,8 @@ define(function (require, exports, module) {
                         stack.push(item);
                     });
 
+                    stackBackup.splice(0);
+
                     this.next = stack.length ? stack[0] : "start";
                     return this.token;
                 }
@@ -629,6 +637,8 @@ define(function (require, exports, module) {
                     stackBackup.forEach((item) => {
                         stack.push(item);
                     });
+
+                    stackBackup.splice(0);
 
                     this.next = stack.length ? stack[0] : "start";
                     return this.token;

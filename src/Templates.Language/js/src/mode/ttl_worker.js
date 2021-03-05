@@ -4,7 +4,7 @@ define(function (require, exports, module) {
     var oop = require("../lib/oop");
     var lang = require("../lib/lang");
     var Mirror = require("../worker/mirror").Mirror;
-    var TtlMode = require("../mode/ttl").Mode;
+    var TtlMode = require("../mode/ttl").WorkerMode;
     var DocumentParser = require("./ttl/DocumentParser").DocumentParser;
     var SAXParser = require("./html/saxparser").SAXParser;
     var CSSLint = require("./css/csslint").CSSLint;
@@ -333,8 +333,8 @@ define(function (require, exports, module) {
                 
                 var jsString = processEmbeddedLanguageLines(jsTokens);
                 jsString = jsString.replace(/^#!.*\n/, "\n");
-                
-                errors.push(this.validateJs(jsString));
+
+                this.validateJs(jsString).forEach(jsError => errors.push(jsError));
                 
                 this.sender.emit("annotate", errors);
             }
