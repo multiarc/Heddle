@@ -522,7 +522,10 @@ define(function (require, exports, module) {
     var TtlHighlightRules = function() {
         HtmlHighlightRules.call(this);
         
-        var stackBackup = [];
+        var stackBackup = {
+            lines: {},
+            lastStack: null
+        };
         
         var ttlRules = new TtlLangHighlightRules().getRules();
         var jsTtlRules = new TtlLangHighlightRules().generateRules("js-");
@@ -572,9 +575,9 @@ define(function (require, exports, module) {
                                 regex: "/?>",
                                 next: "js-start",
                                 onMatch: function (value, currentState, stack) {
-                                    stackBackup = stack.splice(0);
-                                    // stack.push("js-start");
-                                    // stack.push("js-start");
+                                    if (stack.length) {
+                                        stackBackup.lastStack = stack.splice(0);
+                                    }
                                     return this.token;
                                 }
                             }
@@ -588,9 +591,9 @@ define(function (require, exports, module) {
                                 regex: "/?>",
                                 next: "css-start",
                                 onMatch: function (value, currentState, stack) {
-                                    stackBackup = stack.splice(0);
-                                    // stack.push("css-start");
-                                    // stack.push("css-start");
+                                    if (stack.length) {
+                                        stackBackup.lastStack = stack.splice(0);
+                                    }
                                     return this.token;
                                 }
                             }
@@ -610,14 +613,21 @@ define(function (require, exports, module) {
             {
                 token: "meta.tag.punctuation.tag-close.xml",
                 regex: "/?>",
-                onMatch: function (value, currentState, stack) {
+                onMatch: function (value, currentState, stack, line, row) {
                     stack.splice(0);
 
-                    stackBackup.forEach((item) => {
-                        stack.push(item);
-                    });
+                    if (stackBackup.lastStack) {
+                        stackBackup.lines[row] = stackBackup.lastStack;
+                        stackBackup.lastStack = null;
+                    }
 
-                    stackBackup.splice(0);
+                    var backup = stackBackup.lines[row];
+
+                    if (backup) {
+                        backup.forEach((item) => {
+                            stack.push(item);
+                        });
+                    }
 
                     this.next = stack.length ? stack[0] : "start";
                     return this.token;
@@ -631,14 +641,21 @@ define(function (require, exports, module) {
             {
                 token: "meta.tag.punctuation.tag-close.xml",
                 regex: "/?>",
-                onMatch: function (value, currentState, stack) {
+                onMatch: function (value, currentState, stack, line, row) {
                     stack.splice(0);
 
-                    stackBackup.forEach((item) => {
-                        stack.push(item);
-                    });
+                    if (stackBackup.lastStack) {
+                        stackBackup.lines[row] = stackBackup.lastStack;
+                        stackBackup.lastStack = null;
+                    }
+                    
+                    var backup = stackBackup.lines[row];
 
-                    stackBackup.splice(0);
+                    if (backup) {
+                        backup.forEach((item) => {
+                            stack.push(item);
+                        });
+                    }
 
                     this.next = stack.length ? stack[0] : "start";
                     return this.token;

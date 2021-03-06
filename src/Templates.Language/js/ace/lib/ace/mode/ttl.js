@@ -3,17 +3,13 @@ define(function(require, exports, module) {
 
     var oop = require("../lib/oop");
     var HtmlMode = require("./html").Mode;
-    var TextMode = require("./text").Mode;
     var CSharpMode = require("./csharp").Mode;
     var JavaScriptMode = require("./javascript").Mode;
     var CssMode = require("./css").Mode;
     var TtlFoldMode = require("./folding/ttl").FoldMode;
     var TtlHighlightRules = require("./ttl_highlight_rules").TtlHighlightRules;
-    var TtlLangHighlightRules = require("./ttl_highlight_rules").TtlLangHighlightRules;
-    var TTLMatchingBraceOutdent = require("./ttl_brace_outdent").TTLMatchingBraceOutdent;
-    var TTLstyleBehaviour = require("./behaviour/ttl").TTLstyleBehaviour;
-    var TtlCompletions = require("./ttl_completions").TtlCompletions;
     var TtlTokenizer = require("./ttl/TtlTokenizer").TtlTokenizer;
+    var TtlWorkerTokenizer = require("./ttl/TtlTokenizer").TtlWorkerTokenizer;
     var WorkerClient = require("../worker/worker_client").WorkerClient;
 
     var Mode = function() {
@@ -33,6 +29,14 @@ define(function(require, exports, module) {
     oop.inherits(Mode, HtmlMode);
 
     (function() {
+        this.getTokenizer = function() {
+            if (!this.$tokenizer) {
+                this.$highlightRules = this.$highlightRules || new this.HighlightRules(this.$highlightRuleConfig);
+                this.$tokenizer = new TtlTokenizer(this.$highlightRules.getRules());
+            }
+            return this.$tokenizer;
+        };
+        
         this.getNextLineIndent = function(state, line, tab) {
             var indent = this.$getIndent(line);
             if (line.match(/^.*({{|@%)\s*$/))
@@ -67,17 +71,7 @@ define(function(require, exports, module) {
 
     var WorkerMode = function() {
         HtmlMode.call(this);
-        this.blockComment = { start: "@*", end: "*@" };
         this.HighlightRules = TtlHighlightRules;
-        this.createModeDelegates({
-            "js-": JavaScriptMode,
-            "css-": CssMode,
-            "cs-": CSharpMode
-        });
-        var ttlFoldMode = new TtlFoldMode();
-        this.foldingRules.subModes["start"] = ttlFoldMode;
-        this.foldingRules.subModes["js-"] = ttlFoldMode;
-        this.foldingRules.subModes["css-"] = ttlFoldMode;
     };
     oop.inherits(WorkerMode, HtmlMode);
 
@@ -85,13 +79,12 @@ define(function(require, exports, module) {
         this.getTokenizer = function() {
             if (!this.$tokenizer) {
                 this.$highlightRules = this.$highlightRules || new this.HighlightRules(this.$highlightRuleConfig);
-                this.$tokenizer = new TtlTokenizer(this.$highlightRules.getRules());
+                this.$tokenizer = new TtlWorkerTokenizer(this.$highlightRules.getRules());
             }
             return this.$tokenizer;
         };
 
-        this.$id = "ace/mode/ttl";
-        this.snippetFileId = "ace/snippets/ttl";
+        this.$id = "ace/mode/ttl_worker";
     }).call(WorkerMode.prototype);
 
     exports.Mode = Mode;

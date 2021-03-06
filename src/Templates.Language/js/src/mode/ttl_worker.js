@@ -245,42 +245,42 @@ define(function (require, exports, module) {
 
                 var state = ["start"];
 
-                for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-                    var lineTokens = tokenizer.getLineTokens(lines[lineIndex], state);
+                for (var row = 0; row < lines.length; row++) {
+                    var lineTokens = tokenizer.getLineTokens(lines[row], state, row);
                     for (var tokenIndex = 0; tokenIndex < lineTokens.tokens.length; tokenIndex++) {
                         var token = lineTokens.tokens[tokenIndex];
                         if (token.state) {
                             if (token.state.indexOf("js-") === 0) {
                                 if (token.type.indexOf("ttl-") !== 0) {
                                     if (token.type.indexOf("meta.tag") === 0) {
-                                        htmlTokens.push({token: token, row: lineIndex});
+                                        htmlTokens.push({token: token, row: row});
                                     } else {
-                                        jsTokens.push({token: token, row: lineIndex});
+                                        jsTokens.push({token: token, row: row});
                                     }
                                 }
                             } else if (token.state.indexOf("css-") === 0) {
                                 if (token.type.indexOf("ttl-") !== 0) {
                                     if (token.type.indexOf("meta.tag") === 0) {
-                                        htmlTokens.push({token: token, row: lineIndex});
+                                        htmlTokens.push({token: token, row: row});
                                     }
                                     else {
-                                        cssTokens.push({token: token, row: lineIndex});
+                                        cssTokens.push({token: token, row: row});
                                     }
                                 }
                             } else if (token.state.indexOf("cs-") === 0) {
-                                csTokens.push({token: token, row: lineIndex});
+                                csTokens.push({token: token, row: row});
                             } else if (token.state.indexOf("ttl-") !== 0) {
                                 if (token.type.indexOf("ttl-") !== 0) {
-                                    htmlTokens.push({token: token, row: lineIndex});
+                                    htmlTokens.push({token: token, row: row});
                                 }
                             }
                         } else {
                             if (token.type) {
                                 if (token.type.indexOf("ttl-") !== 0) {
-                                    htmlTokens.push({token: token, row: lineIndex});
+                                    htmlTokens.push({token: token, row: row});
                                 }
                             } else {
-                                htmlTokens.push({token: token, row: lineIndex});
+                                htmlTokens.push({token: token, row: row});
                             }
                         }
                     }
