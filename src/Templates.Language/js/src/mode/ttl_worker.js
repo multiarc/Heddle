@@ -235,6 +235,8 @@ define(function (require, exports, module) {
             this.sender.emit("annotate", errors);
             
             if (errors.length === 0) {
+                this.sender.emit("codeok", value);
+                
                 var tokenizer = new TtlMode().getTokenizer();
 
                 var lines = this.doc.getAllLines();
