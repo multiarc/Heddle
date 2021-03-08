@@ -34,7 +34,7 @@ define(function (require, exports, module) {
 
         function getNextMode(token, next) {
             return function (val, state, stack) {
-                if (stack.length && stack[0] !== next) {
+                if (stack.length && stack[0] != next) {
                     stack.shift();
                     stack.unshift(next);
                 }
@@ -523,8 +523,10 @@ define(function (require, exports, module) {
         HtmlHighlightRules.call(this);
         
         var stackBackup = {
-            lines: {},
-            lastStack: null
+            startLines: {},
+            endLines: {},
+            lastStack: null,
+            lastStartRow: null
         };
         
         var ttlRules = new TtlLangHighlightRules().getRules();
@@ -561,6 +563,81 @@ define(function (require, exports, module) {
             }
         }
         
+        function onMatchEmbeddedStart(stack, row) {
+            stackBackup.lastStartRow = row;
+            
+            if (stack.length) {
+                stackBackup.lastStack = stack.splice(0);
+                stackBackup.startLines[row] = stackBackup.lastStack;
+            }
+        }
+
+        function onMatchEmbeddedEnd(stack, row) {
+            stack.splice(0);
+
+            var startRows = Object.keys(stackBackup.startLines).map(x => parseInt(x)).sort((a, b) => {
+                if (a < b) 
+                    return -1;
+                if (a > b)
+                    return 1;
+                return 0;
+            });
+            var blockStart = -1;
+            
+            if (stackBackup.lastStack) {
+                stackBackup.endLines[row] = stackBackup.lastStack;
+                blockStart = stackBackup.lastStartRow; 
+                stackBackup.lastStack = null;
+                stackBackup.lastStartRow = null;
+            } else if (stackBackup.lastStartRow) {
+                stackBackup.endLines[row] = stackBackup.startLines[stackBackup.lastStartRow];
+                blockStart = stackBackup.lastStartRow;
+                stackBackup.lastStartRow = null;
+            } else if (!stackBackup.endLines[row]) {
+                for (i = 0; i < startRows.length; i++) {
+                    if (startRows[i] <= row) {
+                        blockStart = startRows[i];
+                    }
+                    if (startRows[i] > row) {
+                        break;
+                    }
+                }
+                if (blockStart !== -1) {
+                    stackBackup.endLines[row] = stackBackup.startLines[blockStart];
+                }
+            }
+            
+            var endRows = Object.keys(stackBackup.endLines).map(x => parseInt(x)).sort((a, b) => {
+                if (a < b)
+                    return -1;
+                if (a > b)
+                    return 1;
+                return 0;
+            });
+            
+            //clean up
+            if (blockStart !== -1) {
+                for (var i = 0; i < startRows.length; i++) {
+                    if (startRows[i] > blockStart && startRows[i] < row) {
+                        delete stackBackup.startLines[startRows[i]];
+                    }
+                }
+                for (var i = 0; i < endRows.length; i++) {
+                    if (endRows[i] > blockStart && endRows[i] < row) {
+                        delete stackBackup.endLines[endRows[i]];
+                    }
+                }
+            }
+
+            var backup = stackBackup.endLines[row];
+
+            if (backup) {
+                backup.forEach((item) => {
+                    stack.push(item);
+                });
+            }
+        }
+        
         //replace tag sub-processors start operations to save stack backup and clear initial stack state
         this.$rules["tag"].forEach(tag => {
             if (tag.next && Array.isArray(tag.next)) {
@@ -574,10 +651,8 @@ define(function (require, exports, module) {
                                 token: "meta.tag.punctuation.tag-close.xml",
                                 regex: "/?>",
                                 next: "js-start",
-                                onMatch: function (value, currentState, stack) {
-                                    if (stack.length) {
-                                        stackBackup.lastStack = stack.splice(0);
-                                    }
+                                onMatch: function (value, currentState, stack, line, row) {
+                                    onMatchEmbeddedStart(stack, row);
                                     return this.token;
                                 }
                             }
@@ -590,10 +665,8 @@ define(function (require, exports, module) {
                                 token: "meta.tag.punctuation.tag-close.xml",
                                 regex: "/?>",
                                 next: "css-start",
-                                onMatch: function (value, currentState, stack) {
-                                    if (stack.length) {
-                                        stackBackup.lastStack = stack.splice(0);
-                                    }
+                                onMatch: function (value, currentState, stack, line, row) {
+                                    onMatchEmbeddedStart(stack, row);
                                     return this.token;
                                 }
                             }
@@ -614,21 +687,7 @@ define(function (require, exports, module) {
                 token: "meta.tag.punctuation.tag-close.xml",
                 regex: "/?>",
                 onMatch: function (value, currentState, stack, line, row) {
-                    stack.splice(0);
-
-                    if (stackBackup.lastStack) {
-                        stackBackup.lines[row] = stackBackup.lastStack;
-                        stackBackup.lastStack = null;
-                    }
-
-                    var backup = stackBackup.lines[row];
-
-                    if (backup) {
-                        backup.forEach((item) => {
-                            stack.push(item);
-                        });
-                    }
-
+                    onMatchEmbeddedEnd(stack, row);
                     this.next = stack.length ? stack[0] : "start";
                     return this.token;
                 }
@@ -642,21 +701,7 @@ define(function (require, exports, module) {
                 token: "meta.tag.punctuation.tag-close.xml",
                 regex: "/?>",
                 onMatch: function (value, currentState, stack, line, row) {
-                    stack.splice(0);
-
-                    if (stackBackup.lastStack) {
-                        stackBackup.lines[row] = stackBackup.lastStack;
-                        stackBackup.lastStack = null;
-                    }
-                    
-                    var backup = stackBackup.lines[row];
-
-                    if (backup) {
-                        backup.forEach((item) => {
-                            stack.push(item);
-                        });
-                    }
-
+                    onMatchEmbeddedEnd(stack, row);
                     this.next = stack.length ? stack[0] : "start";
                     return this.token;
                 }
