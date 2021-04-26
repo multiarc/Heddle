@@ -31,34 +31,33 @@ namespace Templates.Language
         {
             if (document == null)
                 throw new ArgumentNullException(nameof(document));
-            AntlrInputStream stream = new AntlrInputStream(new StringReader(document));
+            var stream = new AntlrInputStream(new StringReader(document));
             var lexer = context.ForceRemoveWhitespace ? (ITokenSource) new TtlLexerNoWS(stream) : new TtlLexer(stream);
-            CommonTokenStream tokens = new CommonTokenStream(lexer);
-            TtlParser parser = new TtlParser(tokens);
+            var tokens = new CommonTokenStream(lexer);
+            var parser = new TtlParser(tokens);
             var syntaxErrorListener = new TtlSyntaxErrorListener(context);
-            parser.Interpreter.PredictionMode = compileContext.Options.ProvideLanguageFeatures
-                ? PredictionMode.LL_EXACT_AMBIG_DETECTION
-                : PredictionMode.SLL;
+            parser.Interpreter.PredictionMode = PredictionMode.SLL;
             TtlParser.TtlContext tree;
             parser.RemoveErrorListeners();
+            parser.AddErrorListener(syntaxErrorListener);
             if (!compileContext.Options.ProvideLanguageFeatures)
             {
                 try
                 {
                     tree = parser.ttl();
+                    if (context.Errors.Count > 0)
+                    {
+                        tree = ParseDiagnosticMode(stream, parser, syntaxErrorListener);
+                    }
                 }
                 catch (ParseCanceledException)
                 {
-                    stream.Reset();
-                    parser.Reset();
-                    parser.Interpreter.PredictionMode = PredictionMode.LL;
-                    parser.AddErrorListener(syntaxErrorListener);
-                    tree = parser.ttl();
+                    tree = ParseDiagnosticMode(stream, parser, syntaxErrorListener);
                 }
             }
             else
             {
-                parser.AddErrorListener(syntaxErrorListener);
+                parser.Interpreter.PredictionMode = PredictionMode.LL_EXACT_AMBIG_DETECTION;
                 tree = parser.ttl();
             }
 
@@ -68,9 +67,9 @@ namespace Templates.Language
                 return tree.GetText();
             }
 
-            ParseTreeWalker walker = new ParseTreeWalker();
+            var walker = new ParseTreeWalker();
             //context.DefenitionsOnly = loadDefenitionsOnly;
-            TtlMainListener listener = new TtlMainListener(context, compileContext);
+            var listener = new TtlMainListener(context, compileContext);
 
             listener.CurrentParseContext.SkippedTokens.AddRange(
                 tokens.GetTokens()
@@ -81,6 +80,16 @@ namespace Templates.Language
 
             //context.DefenitionsOnly = false;
             return tree.GetText();
+        }
+
+        private static TtlParser.TtlContext ParseDiagnosticMode(AntlrInputStream stream, TtlParser parser,
+            TtlSyntaxErrorListener syntaxErrorListener)
+        {
+            stream.Reset();
+            parser.Reset();
+            syntaxErrorListener.Clear();
+            parser.Interpreter.PredictionMode = PredictionMode.LL_EXACT_AMBIG_DETECTION;
+            return parser.ttl();
         }
     }
 }
