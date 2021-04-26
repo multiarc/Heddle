@@ -5,6 +5,7 @@ using Antlr4.Runtime;
 using Antlr4.Runtime.Atn;
 using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Tree;
+using Templates.Data;
 using Templates.Runtime;
 using Templates.Strings.Core;
 
@@ -42,15 +43,25 @@ namespace Templates.Language
             parser.AddErrorListener(syntaxErrorListener);
             if (!compileContext.Options.ProvideLanguageFeatures)
             {
+                bool needRetryIfFailed = false;
                 try
                 {
                     tree = parser.ttl();
-                    if (context.Errors.Count > 0)
-                    {
-                        tree = ParseDiagnosticMode(stream, parser, syntaxErrorListener);
-                    }
+                    needRetryIfFailed = true;
                 }
-                catch (ParseCanceledException)
+                catch (ParseCanceledException e)
+                {
+                    tree = ParseDiagnosticMode(stream, parser, syntaxErrorListener);
+                    syntaxErrorListener.Context.Warnings.Add(new TtlCompileWarning
+                    {
+                        Error = e.Message,
+                        Exception = e,
+                        Fix = "SLL Mode failed, fix template or investigate why SLL is failing",
+                        Position = new BlockPosition(0, 0)
+                    });
+                }
+
+                if (needRetryIfFailed && context.Errors.Count > 0)
                 {
                     tree = ParseDiagnosticMode(stream, parser, syntaxErrorListener);
                 }
