@@ -1,11 +1,11 @@
-define(function(require, exports, module) {
-	"use strict";/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+define(function (require, exports, module) {
+    "use strict";/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
  * Use of this file is governed by the BSD 3-clause license that
  * can be found in the LICENSE.txt file in the project root.
  */
 
 function arrayToString(a) {
-    return "[" + a.join(", ") + "]";
+    return Array.isArray(a) ? ("[" + a.join(", ") + "]") : "null";
 }
 
 String.prototype.seed = String.prototype.seed || Math.round(Math.random() * Math.pow(2, 32));
@@ -424,12 +424,12 @@ function titleCase(str) {
 function equalArrays(a, b) {
     if (!Array.isArray(a) || !Array.isArray(b))
         return false;
-    if (a == b)
+    if (a === b)
         return true;
-    if (a.length != b.length)
+    if (a.length !== b.length)
         return false;
     for (let i = 0; i < a.length; i++) {
-        if (a[i] == b[i])
+        if (a[i] === b[i])
             continue;
         if (!a[i].equals || !a[i].equals(b[i]))
             return false;

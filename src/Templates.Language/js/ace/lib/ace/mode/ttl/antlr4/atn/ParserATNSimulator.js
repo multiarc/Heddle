@@ -1,5 +1,5 @@
-define(function(require, exports, module) {
-	"use strict";/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+define(function (require, exports, module) {
+    "use strict";/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
  * Use of this file is governed by the BSD 3-clause license that
  * can be found in the LICENSE.txt file in the project root.
  */
@@ -590,7 +590,7 @@ class ParserATNSimulator extends ATNSimulator {
         }
         const fullCtx = true;
         let foundExactAmbig = false;
-        let reach = null;
+        let reach;
         let previous = s0;
         input.seek(startIndex);
         let t = input.LA(1);
@@ -713,7 +713,7 @@ class ParserATNSimulator extends ATNSimulator {
         // First figure out where we can reach on input t
         for (let i=0; i<closure.items.length;i++) {
             const c = closure.items[i];
-            if(this.debug_add) {
+            if(this.debug) {
                 console.log("testing " + this.getTokenName(t) + " at " + c);
             }
             if (c.state instanceof RuleStopState) {
@@ -1254,7 +1254,7 @@ class ParserATNSimulator extends ATNSimulator {
             // both epsilon transitions and non-epsilon transitions.
         }
         for(let i = 0;i<p.transitions.length; i++) {
-            if(i==0 && this.canDropLoopEntryEdgeInLeftRecursiveRule(config))
+            if(i === 0 && this.canDropLoopEntryEdgeInLeftRecursiveRule(config))
                 continue;
 
             const t = p.transitions[i];
@@ -1309,9 +1309,9 @@ class ParserATNSimulator extends ATNSimulator {
         // the context has an empty stack case. If so, it would mean
         // global FOLLOW so we can't perform optimization
         // Are we the special loop entry/exit state? or SLL wildcard
-        if(p.stateType != ATNState.STAR_LOOP_ENTRY)
+        if(p.stateType !== ATNState.STAR_LOOP_ENTRY)
             return false;
-        if(p.stateType != ATNState.STAR_LOOP_ENTRY || !p.isPrecedenceDecision ||
+        if(p.stateType !== ATNState.STAR_LOOP_ENTRY || !p.isPrecedenceDecision ||
                config.context.isEmpty() || config.context.hasEmptyPath())
             return false;
 
@@ -1319,7 +1319,7 @@ class ParserATNSimulator extends ATNSimulator {
         const numCtxs = config.context.length;
         for(let i=0; i<numCtxs; i++) { // for each stack context
             const returnState = this.atn.states[config.context.getReturnState(i)];
-            if (returnState.ruleIndex != p.ruleIndex)
+            if (returnState.ruleIndex !== p.ruleIndex)
                 return false;
         }
 
@@ -1333,29 +1333,29 @@ class ParserATNSimulator extends ATNSimulator {
             const returnStateNumber = config.context.getReturnState(i);
             const returnState = this.atn.states[returnStateNumber];
             // all states must have single outgoing epsilon edge
-            if (returnState.transitions.length != 1 || !returnState.transitions[0].isEpsilon)
+            if (returnState.transitions.length !== 1 || !returnState.transitions[0].isEpsilon)
                 return false;
 
             // Look for prefix op case like 'not expr', (' type ')' expr
             const returnStateTarget = returnState.transitions[0].target;
-            if ( returnState.stateType == ATNState.BLOCK_END && returnStateTarget == p )
+            if ( returnState.stateType === ATNState.BLOCK_END && returnStateTarget === p )
                 continue;
 
             // Look for 'expr op expr' or case where expr's return state is block end
             // of (...)* internal block; the block end points to loop back
             // which points to p but we don't need to check that
-            if ( returnState == blockEndState )
+            if ( returnState === blockEndState )
                 continue;
 
             // Look for ternary expr ? expr : expr. The return state points at block end,
             // which points at loop entry state
-            if ( returnStateTarget == blockEndState )
+            if ( returnStateTarget === blockEndState )
                 continue;
 
             // Look for complex prefix 'between expr and expr' case where 2nd expr's
             // return state points at block end state of (...)* internal block
-            if (returnStateTarget.stateType == ATNState.BLOCK_END && returnStateTarget.transitions.length == 1
-                    && returnStateTarget.transitions[0].isEpsilon && returnStateTarget.transitions[0].target == p)
+            if (returnStateTarget.stateType === ATNState.BLOCK_END && returnStateTarget.transitions.length === 1
+                    && returnStateTarget.transitions[0].isEpsilon && returnStateTarget.transitions[0].target === p)
                 continue;
 
             // anything else ain't conforming
@@ -1402,7 +1402,7 @@ class ParserATNSimulator extends ATNSimulator {
 
     actionTransition(config, t) {
         if (this.debug) {
-            const index = t.actionIndex==-1 ? 65535 : t.actionIndex;
+            const index = t.actionIndex === -1 ? 65535 : t.actionIndex;
             console.log("ACTION edge " + t.ruleIndex + ":" + index);
         }
         return new ATNConfig({state:t.target}, config);
@@ -1660,7 +1660,7 @@ class ParserATNSimulator extends ATNSimulator {
      * state was not already present
      */
     addDFAState(dfa, D) {
-        if (D == ATNSimulator.ERROR) {
+        if (D === ATNSimulator.ERROR) {
             return D;
         }
         const existing = dfa.states.get(D);

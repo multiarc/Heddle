@@ -1,10 +1,10 @@
-define(function(require, exports, module) {
+define(function (require, exports, module) {
 	"use strict";/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
  * Use of this file is governed by the BSD 3-clause license that
  * can be found in the LICENSE.txt file in the project root.
  */
 
-const {Set, Hash} = require('./../Utils');
+const { Set, Hash, equalArrays } = require('./../Utils');
 
 /**
  * A tree structure used to record the semantic context in which
@@ -15,6 +15,7 @@ const {Set, Hash} = require('./../Utils');
  * {@link SemanticContext} within the scope of this outer class.</p>
  */
 class SemanticContext {
+
 	hashCode() {
 		const hash = new Hash();
 		this.updateHashCode(hash);
@@ -94,6 +95,7 @@ class SemanticContext {
 
 
 class Predicate extends SemanticContext {
+
 	constructor(ruleIndex, predIndex, isCtxDependent) {
 		super();
 		this.ruleIndex = ruleIndex === undefined ? -1 : ruleIndex;
@@ -135,6 +137,7 @@ SemanticContext.NONE = new Predicate();
 
 
 class PrecedencePredicate extends SemanticContext {
+
 	constructor(precedence) {
 		super();
 		this.precedence = precedence === undefined ? 0 : precedence;
@@ -157,7 +160,7 @@ class PrecedencePredicate extends SemanticContext {
 	}
 
 	updateHashCode(hash) {
-		hash.update(31);
+		hash.update(this.precedence);
 	}
 
 	equals(other) {
@@ -171,7 +174,7 @@ class PrecedencePredicate extends SemanticContext {
 	}
 
 	toString() {
-		return "{"+this.precedence+">=prec}?";
+		return "{" + this.precedence + ">=prec}?";
 	}
 
 	static filterPrecedencePredicates(set) {
@@ -218,7 +221,7 @@ class AND extends SemanticContext {
 			});
 			operands.add(reduced);
 		}
-		this.opnds = operands.values();
+		this.opnds = Array.from(operands.values());
 	}
 
 	equals(other) {
@@ -227,7 +230,7 @@ class AND extends SemanticContext {
 		} else if (!(other instanceof AND)) {
 			return false;
 		} else {
-			return this.opnds === other.opnds;
+			return equalArrays(this.opnds, other.opnds);
 		}
 	}
 
@@ -281,11 +284,8 @@ class AND extends SemanticContext {
 	}
 
 	toString() {
-		let s = "";
-		this.opnds.map(function(o) {
-			s += "&& " + o.toString();
-		});
-		return s.length > 3 ? s.slice(3) : s;
+		const s = this.opnds.map(o => o.toString());
+		return (s.length > 3 ? s.slice(3) : s).join("&&");
 	}
 }
 
@@ -322,7 +322,7 @@ class OR extends SemanticContext {
 			const reduced = s[s.length-1];
 			operands.add(reduced);
 		}
-		this.opnds = operands.values();
+		this.opnds = Array.from(operands.values());
 	}
 
 	equals(other) {
@@ -331,7 +331,7 @@ class OR extends SemanticContext {
 		} else if (!(other instanceof OR)) {
 			return false;
 		} else {
-			return this.opnds === other.opnds;
+			return equalArrays(this.opnds, other.opnds);
 		}
 	}
 
@@ -383,11 +383,8 @@ class OR extends SemanticContext {
 	}
 
 	toString() {
-		let s = "";
-		this.opnds.map(function(o) {
-			s += "|| " + o.toString();
-		});
-		return s.length > 3 ? s.slice(3) : s;
+		const s = this.opnds.map(o => o.toString());
+		return (s.length > 3 ? s.slice(3) : s).join("||");
 	}
 }
 

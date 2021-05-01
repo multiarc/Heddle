@@ -1,5 +1,5 @@
-define(function(require, exports, module) {
-	"use strict";/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+define(function (require, exports, module) {
+    "use strict";/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
  * Use of this file is governed by the BSD 3-clause license that
  * can be found in the LICENSE.txt file in the project root.
  */
@@ -502,7 +502,7 @@ const PredictionMode = {
     getConflictingAltSubsets: function(configs) {
         const configToAlts = new Map();
         configToAlts.hashFunction = function(cfg) { hashStuff(cfg.state.stateNumber, cfg.context); };
-        configToAlts.equalsFunction = function(c1, c2) { return c1.state.stateNumber==c2.state.stateNumber && c1.context.equals(c2.context);}
+        configToAlts.equalsFunction = function(c1, c2) { return c1.state.stateNumber === c2.state.stateNumber && c1.context.equals(c2.context);};
         configs.items.map(function(cfg) {
             let alts = configToAlts.get(cfg);
             if (alts === null) {
@@ -558,7 +558,7 @@ const PredictionMode = {
         }
         return result;
     }
-}
+};
 
 module.exports = PredictionMode;
 

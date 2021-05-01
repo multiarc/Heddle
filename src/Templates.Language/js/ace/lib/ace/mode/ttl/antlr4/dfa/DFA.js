@@ -1,4 +1,4 @@
-define(function(require, exports, module) {
+define(function (require, exports, module) {
 	"use strict";/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
  * Use of this file is governed by the BSD 3-clause license that
  * can be found in the LICENSE.txt file in the project root.
@@ -112,7 +112,7 @@ class DFA {
 	 */
 	setPrecedenceDfa(precedenceDfa) {
 		if (this.precedenceDfa!==precedenceDfa) {
-			this._states = new DFAStatesSet();
+			this._states = new Set();
 			if (precedenceDfa) {
 				const precedenceState = new DFAState(null, new ATNConfigSet());
 				precedenceState.edges = [];

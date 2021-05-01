@@ -1,5 +1,5 @@
-define(function(require, exports, module) {
-	"use strict";/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+define(function (require, exports, module) {
+    "use strict";/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
  * Use of this file is governed by the BSD 3-clause license that
  * can be found in the LICENSE.txt file in the project root.
  */
@@ -157,7 +157,7 @@ class LexerATNConfig extends ATNConfig {
     equals(other) {
         return this === other ||
                 (other instanceof LexerATNConfig &&
-                this.passedThroughNonGreedyDecision == other.passedThroughNonGreedyDecision &&
+                this.passedThroughNonGreedyDecision === other.passedThroughNonGreedyDecision &&
                 (this.lexerActionExecutor ? this.lexerActionExecutor.equals(other.lexerActionExecutor) : !other.lexerActionExecutor) &&
                 super.equals(other));
     }

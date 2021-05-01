@@ -1,6 +1,6 @@
 define(function (require, exports, module) {
 
-// Generated from TtlParser.g4 by ANTLR 4.9.1
+// Generated from TtlParser.g4 by ANTLR 4.9.2
 // jshint ignore: start
     var antlr4 = require('./antlr4/index');
 

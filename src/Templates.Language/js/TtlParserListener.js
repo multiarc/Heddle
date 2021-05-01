@@ -1,4 +1,4 @@
-// Generated from TtlParser.g4 by ANTLR 4.9.1
+// Generated from TtlParser.g4 by ANTLR 4.9.2
 // jshint ignore: start
 import antlr4 from 'antlr4';
 

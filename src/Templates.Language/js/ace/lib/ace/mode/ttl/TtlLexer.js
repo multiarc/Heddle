@@ -2,7 +2,7 @@ define(function (require, exports, module) {
     "use strict";
     var antlr4 = require('./antlr4/index');
 
-    // Generated from TtlLexer.g4 by ANTLR 4.9.1
+    // Generated from TtlLexer.g4 by ANTLR 4.9.2
     // jshint ignore: start
 
     const serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786",
@@ -200,7 +200,7 @@ define(function (require, exports, module) {
         "\u0002,,\u0003\u0002\u007f\u007f\u0004\u0002\f\f\u000f\u000f\u0003\u0002",
         "BB\u0006\u0002\f\f\u000f\u000f\u0087\u0087\u202a\u202b\u000b\u0002\u000b",
         "\u000b\r\u000e\"\"\u00a2\u00a2\u1682\u1682\u2002\u200c\u2031\u2031\u2061",
-        "\u2061\u3002\u3002\u0006\u0002C\\aac|\u00c2\u0101\u0004\u0002--2;\u0006",
+        "\u2061\u3002\u3002\u0006\u0002C\\aac|\u0412\u0451\u0004\u0002--2;\u0006",
         "\u0002NNWWnnww\u0005\u00022;CHch\u0004\u0002GGgg\u0004\u0002--//\b\u0002",
         "FFHHOOffhhoo\b\u0002\f\f\u000f\u000f))^^\u0087\u0087\u202a\u202b\b\u0002",
         "\f\f\u000f\u000f$$^^\u0087\u0087\u202a\u202b\u0003\u0002$$\t\u0002#",
@@ -990,16 +990,16 @@ define(function (require, exports, module) {
 
     const atn = new antlr4.atn.ATNDeserializer().deserialize(serializedATN);
 
-    const decisionsToDFA = atn.decisionToState.map((ds, index) => new antlr4.dfa.DFA(ds, index));
+    const decisionsToDFA = atn.decisionToState.map( (ds, index) => new antlr4.dfa.DFA(ds, index) );
 
     class TtlLexer extends antlr4.Lexer {
 
         static grammarFileName = "TtlLexer.g4";
-        static channelNames = ["DEFAULT_TOKEN_CHANNEL", "HIDDEN"];
-        static modeNames = ["DEFAULT_MODE", "SUB_BLOCK", "DEF", "IMPORT_MODE",
-            "CALL_RETURNED", "OUT_MODE", "CALL", "CS"];
-        static literalNames = [];
-        static symbolicNames = [null, "TEXT", "TEXT_WS", "IMPORT_TOKEN", "ID",
+        static channelNames = [ "DEFAULT_TOKEN_CHANNEL", "HIDDEN" ];
+        static modeNames = [ "DEFAULT_MODE", "SUB_BLOCK", "DEF", "IMPORT_MODE",
+            "CALL_RETURNED", "OUT_MODE", "CALL", "CS" ];
+        static literalNames = [  ];
+        static symbolicNames = [ null, "TEXT", "TEXT_WS", "IMPORT_TOKEN", "ID",
             "ROOT_REF", "MEMBER_P", "OUT", "SUB_START", "SUB_CLOSE",
             "CSHARP_END", "CSHARP_TOKEN", "CSHARP_START",
             "DEF_STARTNAME", "DEF_ENDNAME", "DELIM", "DEF_START",
@@ -1007,8 +1007,8 @@ define(function (require, exports, module) {
             "DEF_OUT", "COMMENT", "SKIP_WS", "SUB_COMMENT",
             "SUB_SKIP_WS", "DEF_COMMENT", "DEF_TYPE", "IMPORT_COMMENT",
             "CALL_RETURN_COMMENT", "CALL_SKIP_WS", "OUT_COMMENT",
-            "OUT_SKIP_WS", "CALL_COMMENT", "CALL_WS"];
-        static ruleNames = ["ID_TOKEN", "ID_TYPE", "WS", "IMP", "MEMB_P", "SUB_ST",
+            "OUT_SKIP_WS", "CALL_COMMENT", "CALL_WS" ];
+        static ruleNames = [ "ID_TOKEN", "ID_TYPE", "WS", "IMP", "MEMB_P", "SUB_ST",
             "SUB_CL", "PARA_ST", "PARA_CL", "DEF_ST", "DEF_CL",
             "OUT_ST", "DEF_T", "EXT_DELIM", "DEF_STNAME", "DEF_CLNAME",
             "DEF_MAKEOUT", "COMMENT_START", "COMMENT_END", "WS_START",
@@ -1045,7 +1045,7 @@ define(function (require, exports, module) {
             "CALL_PARAMSTART", "CALL_PARAMEND", "CALL_DELIM",
             "CALL_ROOT_REF", "CALL_ID", "CALL_MEMB_P", "CALL_WS",
             "CS_CSHARP_WS", "CS_CSHARP_START", "CS_CSHARP_END",
-            "CS_CSHARP_TOKEN"];
+            "CS_CSHARP_TOKEN" ];
 
         constructor(input) {
             super(input)
@@ -1100,7 +1100,6 @@ define(function (require, exports, module) {
     TtlLexer.OUT_MODE = 5;
     TtlLexer.CALL = 6;
     TtlLexer.CS = 7;
-
 
     exports.TtlLexer = TtlLexer;
 

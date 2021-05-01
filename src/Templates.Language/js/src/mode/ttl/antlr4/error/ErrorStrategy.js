@@ -1,5 +1,5 @@
-define(function(require, exports, module) {
-	"use strict";/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+define(function (require, exports, module) {
+    "use strict";/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
  * Use of this file is governed by the BSD 3-clause license that
  * can be found in the LICENSE.txt file in the project root.
  */
@@ -56,6 +56,8 @@ class DefaultErrorStrategy extends ErrorStrategy {
          */
         this.lastErrorIndex = -1;
         this.lastErrorStates = null;
+        this.nextTokensContext = null;
+        this.nextTokenState = 0;
     }
 
     /**
@@ -217,11 +219,21 @@ class DefaultErrorStrategy extends ErrorStrategy {
         if (this.inErrorRecoveryMode(recognizer)) {
             return;
         }
-        const s = recognizer._interp.atn.states[recognizer.state]
-        const la = recognizer.getTokenStream().LA(1)
+        const s = recognizer._interp.atn.states[recognizer.state];
+        const la = recognizer.getTokenStream().LA(1);
         // try cheaper subset first; might get lucky. seems to shave a wee bit off
-        const nextTokens = recognizer.atn.nextTokens(s)
-        if (nextTokens.contains(Token.EPSILON) || nextTokens.contains(la)) {
+        const nextTokens = recognizer.atn.nextTokens(s);
+        if(nextTokens.contains(la)) {
+            this.nextTokensContext = null;
+            this.nextTokenState = ATNState.INVALID_STATE_NUMBER;
+            return;
+        } else if (nextTokens.contains(Token.EPSILON)) {
+            if(this.nextTokensContext === null) {
+                // It's possible the next token won't match information tracked
+                // by sync is restricted for performance.
+                this.nextTokensContext = recognizer._ctx;
+                this.nextTokensState = recognizer._stateNumber;
+            }
             return;
         }
         switch (s.stateType) {

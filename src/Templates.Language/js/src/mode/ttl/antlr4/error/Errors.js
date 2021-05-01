@@ -1,5 +1,5 @@
-define(function(require, exports, module) {
-	"use strict";/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
+define(function (require, exports, module) {
+    "use strict";/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
  * Use of this file is governed by the BSD 3-clause license that
  * can be found in the LICENSE.txt file in the project root.
  */
@@ -12,7 +12,8 @@ define(function(require, exports, module) {
  *  and what kind of problem occurred.
  */
 
-const {PredicateTransition} = require('./../atn/Transition')
+const {PredicateTransition} = require('./../atn/Transition');
+const {Interval} = require('../IntervalSet').Interval;
 
 class RecognitionException extends Error {
     constructor(params) {
@@ -77,9 +78,9 @@ class LexerNoViableAltException extends RecognitionException {
     }
 
     toString() {
-        let symbol = ""
+        let symbol = "";
         if (this.startIndex >= 0 && this.startIndex < this.input.size) {
-            symbol = this.input.getText((this.startIndex,this.startIndex));
+            symbol = this.input.getText(new Interval(this.startIndex,this.startIndex));
         }
         return "LexerNoViableAltException" + symbol;
     }
