@@ -3659,9 +3659,7 @@ var Properties = {
     //C
     "caption-side"                  : "top | bottom | inherit",
     "clear"                         : "none | right | left | both | inherit",
-    "clip"                          : 1,
     "color"                         : "<color> | inherit",
-    "color-profile"                 : 1,
     "column-count"                  : "<integer> | auto",                      //http://www.w3.org/TR/css3-multicol/
     "column-fill"                   : "auto | balance",
     "column-gap"                    : "<length> | normal",
@@ -3672,117 +3670,47 @@ var Properties = {
     "column-span"                   : "none | all",
     "column-width"                  : "<length> | auto",
     "columns"                       : 1,
-    "content"                       : 1,
-    "counter-increment"             : 1,
-    "counter-reset"                 : 1,
-    "crop"                          : "<shape> | auto",
-    "cue"                           : "cue-after | cue-before | inherit",
-    "cue-after"                     : 1,
-    "cue-before"                    : 1,
-    "cursor"                        : 1,
 
     //D
     "direction"                     : "ltr | rtl | inherit",
     "display"                       : "inline | block | list-item | inline-block | table | inline-table | table-row-group | table-header-group | table-footer-group | table-row | table-column-group | table-column | table-cell | table-caption | grid | inline-grid | none | inherit | -moz-box | -moz-inline-block | -moz-inline-box | -moz-inline-grid | -moz-inline-stack | -moz-inline-table | -moz-grid | -moz-grid-group | -moz-grid-line | -moz-groupbox | -moz-deck | -moz-popup | -moz-stack | -moz-marker | -webkit-box | -webkit-inline-box | -ms-flexbox | -ms-inline-flexbox | flex | -webkit-flex | inline-flex | -webkit-inline-flex",
-    "dominant-baseline"             : 1,
-    "drop-initial-after-adjust"     : "central | middle | after-edge | text-after-edge | ideographic | alphabetic | mathematical | <percentage> | <length>",
-    "drop-initial-after-align"      : "baseline | use-script | before-edge | text-before-edge | after-edge | text-after-edge | central | middle | ideographic | alphabetic | hanging | mathematical",
-    "drop-initial-before-adjust"    : "before-edge | text-before-edge | central | middle | hanging | mathematical | <percentage> | <length>",
-    "drop-initial-before-align"     : "caps-height | baseline | use-script | before-edge | text-before-edge | after-edge | text-after-edge | central | middle | ideographic | alphabetic | hanging | mathematical",
-    "drop-initial-size"             : "auto | line | <length> | <percentage>",
-    "drop-initial-value"            : "initial | <integer>",
 
     //E
     "elevation"                     : "<angle> | below | level | above | higher | lower | inherit",
     "empty-cells"                   : "show | hide | inherit",
 
     //F
-    "filter"                        : 1,
-    "fit"                           : "fill | hidden | meet | slice",
-    "fit-position"                  : 1,
-    "flex"                          : "<flex>",
-    "flex-basis"                    : "<width>",
-    "flex-direction"                : "row | row-reverse | column | column-reverse",
-    "flex-flow"                     : "<flex-direction> || <flex-wrap>",
-    "flex-grow"                     : "<number>",
-    "flex-shrink"                   : "<number>",
-    "flex-wrap"                     : "nowrap | wrap | wrap-reverse",
-    "-webkit-flex"                  : "<flex>",
-    "-webkit-flex-basis"            : "<width>",
-    "-webkit-flex-direction"        : "row | row-reverse | column | column-reverse",
-    "-webkit-flex-flow"             : "<flex-direction> || <flex-wrap>",
-    "-webkit-flex-grow"             : "<number>",
-    "-webkit-flex-shrink"           : "<number>",
-    "-webkit-flex-wrap"             : "nowrap | wrap | wrap-reverse",
-    "-ms-flex"                      : "<flex>",
-    "-ms-flex-align"                : "start | end | center | stretch | baseline",
-    "-ms-flex-direction"            : "row | row-reverse | column | column-reverse | inherit",
-    "-ms-flex-order"                : "<number>",
-    "-ms-flex-pack"                 : "start | end | center | justify",
-    "-ms-flex-wrap"                 : "nowrap | wrap | wrap-reverse",
     "float"                         : "left | right | none | inherit",
-    "float-offset"                  : 1,
     "font"                          : 1,
     "font-family"                   : 1,
+    "font-feature-settings"         : "normal | <feature-tag-value>",
+    "font-kerning"                  : "auto | normal | none",
     "font-size"                     : "<absolute-size> | <relative-size> | <length> | <percentage> | inherit",
     "font-size-adjust"              : "<number> | none | inherit",
     "font-stretch"                  : "normal | ultra-condensed | extra-condensed | condensed | semi-condensed | semi-expanded | expanded | extra-expanded | ultra-expanded | inherit",
     "font-style"                    : "normal | italic | oblique | inherit",
+    "font-synthesis"                : "none | <font-synthesis-value>",
     "font-variant"                  : "normal | small-caps | inherit",
+    "font-variant-caps"             : "normal | small-caps | all-small-caps | petite-caps | all-petite-caps | unicase | titling-caps",
+    "font-variant-east-asian"       : "normal | <font-variant-east-asian-def>",
+    "font-variant-ligatures"        : "normal | none | <font-variant-ligatures-def>",
+    "font-variant-numeric"          : "normal | <font-variant-numeric-def>",
     "font-weight"                   : "normal | bold | bolder | lighter | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 | inherit",
 
-    //G
-    "grid-cell-stacking"            : "columns | rows | layer",
-    "grid-column"                   : 1,
-    "grid-columns"                  : 1,
-    "grid-column-align"             : "start | end | center | stretch",
-    "grid-column-sizing"            : 1,
-    "grid-column-span"              : "<integer>",
-    "grid-flow"                     : "none | rows | columns",
-    "grid-layer"                    : "<integer>",
-    "grid-row"                      : 1,
-    "grid-rows"                     : 1,
-    "grid-row-align"                : "start | end | center | stretch",
-    "grid-row-gap"                  : 1,
-    "grid-row-span"                 : "<integer>",
-    "grid-row-sizing"               : 1,
-    "grid-template"                 : 1,
-    "grid-template-areas"           : 1,
-    "grid-template-columns"         : 1,
-    "grid-template-rows"            : 1,
-
     //H
-    "hanging-punctuation"           : 1,
     "height"                        : "<margin-width> | <content-sizing> | inherit",
-    "hyphenate-after"               : "<integer> | auto",
-    "hyphenate-before"              : "<integer> | auto",
-    "hyphenate-character"           : "<string> | auto",
-    "hyphenate-lines"               : "no-limit | <integer>",
-    "hyphenate-resource"            : 1,
-    "hyphens"                       : "none | manual | auto",
 
     //I
     "icon"                          : 1,
     "image-orientation"             : "angle | auto",
-    "image-rendering"               : 1,
     "image-resolution"              : 1,
-    "inline-box-align"              : "initial | last | <integer>",
-
-    //J
-    "justify-content"               : "flex-start | flex-end | center | space-between | space-around",
-    "-webkit-justify-content"       : "flex-start | flex-end | center | space-between | space-around",
+    "isolation"                     : "auto | isolate",
 
     //L
-    "left"                          : "<margin-width> | inherit",
     "letter-spacing"                : "<length> | normal | inherit",
     "line-height"                   : "<number> | <length> | <percentage> | normal | inherit",
     "line-break"                    : "auto | loose | normal | strict",
-    "line-stacking"                 : 1,
-    "line-stacking-ruby"            : "exclude-ruby | include-ruby",
-    "line-stacking-shift"           : "consider-shifts | disregard-shifts",
-    "line-stacking-strategy"        : "inline-line-height | block-line-height | max-height | grid-height",
     "list-style"                    : 1,
-    "list-style-image"              : "<uri> | none | inherit",
     "list-style-position"           : "inside | outside | inherit",
     "list-style-type"               : "disc | circle | square | decimal | decimal-leading-zero | lower-roman | upper-roman | lower-greek | lower-latin | upper-latin | armenian | georgian | lower-alpha | upper-alpha | none | inherit",
 
@@ -3792,42 +3720,23 @@ var Properties = {
     "margin-left"                   : "<margin-width> | inherit",
     "margin-right"                  : "<margin-width> | inherit",
     "margin-top"                    : "<margin-width> | inherit",
-    "mark"                          : 1,
-    "mark-after"                    : 1,
-    "mark-before"                   : 1,
-    "marks"                         : 1,
-    "marquee-direction"             : 1,
-    "marquee-play-count"            : 1,
-    "marquee-speed"                 : 1,
-    "marquee-style"                 : 1,
+    "marker-offset"                 : "<length> | auto | inherit",
     "max-height"                    : "<length> | <percentage> | <content-sizing> | none | inherit",
     "max-width"                     : "<length> | <percentage> | <content-sizing> | none | inherit",
-    "max-zoom"                      : "<number> | <percentage> | auto",
     "min-height"                    : "<length> | <percentage> | <content-sizing> | contain-floats | -moz-contain-floats | -webkit-contain-floats | inherit",
     "min-width"                     : "<length> | <percentage> | <content-sizing> | contain-floats | -moz-contain-floats | -webkit-contain-floats | inherit",
-    "min-zoom"                      : "<number> | <percentage> | auto",
-    "move-to"                       : 1,
-
-    //N
-    "nav-down"                      : 1,
-    "nav-index"                     : 1,
-    "nav-left"                      : 1,
-    "nav-right"                     : 1,
-    "nav-up"                        : 1,
+    "mix-blend-mode"                : "normal | multiply | screen | overlay | darken | lighten | color-dodge | color-burn | hard-light | soft-light | difference | exclusion | hue | saturation | color | luminosity",
 
     //O
+    "object-fit"                    : "fill | contain | cover | none | scale-down",
+    "object-position"               : "<position>",
     "opacity"                       : "<number> | inherit",
-    "order"                         : "<integer>",
-    "-webkit-order"                 : "<integer>",
-    "orphans"                       : "<integer> | inherit",
     "outline"                       : 1,
     "outline-color"                 : "<color> | invert | inherit",
     "outline-offset"                : 1,
     "outline-style"                 : "<border-style> | inherit",
     "outline-width"                 : "<border-width> | inherit",
     "overflow"                      : "visible | hidden | scroll | auto | inherit",
-    "overflow-style"                : 1,
-    "overflow-wrap"                 : "normal | break-word",
     "overflow-x"                    : 1,
     "overflow-y"                    : 1,
 
@@ -3837,108 +3746,56 @@ var Properties = {
     "padding-left"                  : "<padding-width> | inherit",
     "padding-right"                 : "<padding-width> | inherit",
     "padding-top"                   : "<padding-width> | inherit",
-    "page"                          : 1,
     "page-break-after"              : "auto | always | avoid | left | right | inherit",
     "page-break-before"             : "auto | always | avoid | left | right | inherit",
     "page-break-inside"             : "auto | avoid | inherit",
-    "page-policy"                   : 1,
     "pause"                         : 1,
     "pause-after"                   : 1,
     "pause-before"                  : 1,
-    "perspective"                   : 1,
-    "perspective-origin"            : 1,
-    "phonemes"                      : 1,
     "pitch"                         : 1,
     "pitch-range"                   : 1,
-    "play-during"                   : 1,
-    "pointer-events"                : "auto | none | visiblePainted | visibleFill | visibleStroke | visible | painted | fill | stroke | all | inherit",
-    "position"                      : "static | relative | absolute | fixed | inherit",
-    "presentation-level"            : 1,
-    "punctuation-trim"              : 1,
 
     //Q
     "quotes"                        : 1,
 
     //R
-    "rendering-intent"              : 1,
-    "resize"                        : 1,
-    "rest"                          : 1,
-    "rest-after"                    : 1,
-    "rest-before"                   : 1,
     "richness"                      : 1,
-    "right"                         : "<margin-width> | inherit",
-    "rotation"                      : 1,
-    "rotation-point"                : 1,
-    "ruby-align"                    : 1,
-    "ruby-overhang"                 : 1,
-    "ruby-position"                 : 1,
-    "ruby-span"                     : 1,
 
     //S
-    "size"                          : 1,
     "speak"                         : "normal | none | spell-out | inherit",
     "speak-header"                  : "once | always | inherit",
     "speak-numeral"                 : "digits | continuous | inherit",
     "speak-punctuation"             : "code | none | inherit",
     "speech-rate"                   : 1,
-    "src"                           : 1,
     "stress"                        : 1,
-    "string-set"                    : 1,
 
     "table-layout"                  : "auto | fixed | inherit",
-    "tab-size"                      : "<integer> | <length>",
-    "target"                        : 1,
-    "target-name"                   : 1,
-    "target-new"                    : 1,
-    "target-position"               : 1,
     "text-align"                    : "left | right | center | justify | inherit" ,
     "text-align-last"               : 1,
+    "text-combine-upright"          : "none | all",
     "text-decoration"               : 1,
+    "text-decoration-color"         : "<color>",
+    "text-decoration-line"          : "none | <text-decoration-line-value>",
+    "text-decoration-style"         : "solid | double | dotted | dashed | wavy",
     "text-emphasis"                 : 1,
-    "text-height"                   : 1,
+    "text-emphasis-color"           : "<color>",
+    "text-emphasis-style"           : "none | <text-emphasis-style-value> | <string>",
     "text-indent"                   : "<length> | <percentage> | inherit",
     "text-justify"                  : "auto | none | inter-word | inter-ideograph | inter-cluster | distribute | kashida",
-    "text-outline"                  : 1,
+    "text-orientation"              : "mixed | upright | sideways",
     "text-overflow"                 : 1,
-    "text-rendering"                : "auto | optimizeSpeed | optimizeLegibility | geometricPrecision | inherit",
-    "text-shadow"                   : 1,
     "text-transform"                : "capitalize | uppercase | lowercase | none | inherit",
-    "text-wrap"                     : "normal | none | avoid",
-    "top"                           : "<margin-width> | inherit",
-    "-ms-touch-action"              : "auto | none | pan-x | pan-y",
-    "touch-action"                  : "auto | none | pan-x | pan-y",
-    "transform"                     : 1,
-    "transform-origin"              : 1,
-    "transform-style"               : 1,
-    "transition"                    : 1,
-    "transition-delay"              : 1,
-    "transition-duration"           : 1,
-    "transition-property"           : 1,
-    "transition-timing-function"    : 1,
+    "text-underline-position"       : "auto | <text-underline-position-value>",
 
     //U
     "unicode-bidi"                  : "normal | embed | isolate | bidi-override | isolate-override | plaintext | inherit",
-    "user-modify"                   : "read-only | read-write | write-only | inherit",
-    "user-select"                   : "none | text | toggle | element | elements | all | inherit",
-    "user-zoom"                     : "zoom | fixed",
 
     //V
     "vertical-align"                : "auto | use-script | baseline | sub | super | top | text-top | central | middle | bottom | text-bottom | <percentage> | <length>",
-    "visibility"                    : "visible | hidden | collapse | inherit",
-    "voice-balance"                 : 1,
-    "voice-duration"                : 1,
     "voice-family"                  : 1,
-    "voice-pitch"                   : 1,
-    "voice-pitch-range"             : 1,
-    "voice-rate"                    : 1,
-    "voice-stress"                  : 1,
-    "voice-volume"                  : 1,
-    "volume"                        : 1,
 
     //W
     "white-space"                   : "normal | pre | nowrap | pre-wrap | pre-line | inherit | -pre-wrap | -o-pre-wrap | -moz-pre-wrap | -hp-pre-wrap", //http://perishablepress.com/wrapping-content/
-    "white-space-collapse"          : 1,
-    "widows"                        : "<integer> | inherit",
     "width"                         : "<length> | <percentage> | <content-sizing> | auto | inherit",
     "word-break"                    : "normal | keep-all | break-all",
     "word-spacing"                  : "<length> | normal | inherit",
@@ -3946,7 +3803,6 @@ var Properties = {
     "writing-mode"                  : "horizontal-tb | vertical-rl | vertical-lr | lr-tb | rl-tb | tb-rl | bt-rl | tb-lr | bt-lr | lr-bt | rl-bt | lr | rl | tb | inherit",
 
     //Z
-    "z-index"                       : "<integer> | auto | inherit",
     "zoom"                          : "<number> | <percentage> | normal"
 };
 /*global SyntaxUnit, Parser*/
@@ -6187,12 +6043,121 @@ var ValidationTypes = {
 
         "<flex-wrap>": function(part){
             return ValidationTypes.isLiteral(part, "nowrap | wrap | wrap-reverse");
+        },
+        
+        "<east-asian-variant-values>": function(part) {
+            return ValidationTypes.isLiteral(part, "jis78 | jis83 | jis90 | jis04 | simplified | traditional");
+        },
+
+        "<east-asian-width-values>": function(part) {
+            return ValidationTypes.isLiteral(part, "full-width | proportional-width");
+        },
+
+        "<common-lig-values>": function (part) {
+            return ValidationTypes.isLiteral(part, "common-ligatures | no-common-ligatures");
+        },
+        
+        "<discretionary-lig-values>": function (part) {
+            return ValidationTypes.isLiteral(part, "discretionary-ligatures | no-discretionary-ligatures");
+        },
+        
+        "<historical-lig-values>": function (part) {
+            return ValidationTypes.isLiteral(part, "historical-ligatures | no-historical-ligatures");
+        },
+        
+        "<contextual-alt-values>": function (part) {
+            return ValidationTypes.isLiteral(part, "contextual | no-contextual");
+        },
+        
+        "<numeric-figure-values>": function(part) {
+            return ValidationTypes.isLiteral(part, "lining-nums | oldstyle-nums");
+        },
+        
+        "<numeric-spacing-values>": function(part) {
+            return ValidationTypes.isLiteral(part, "proportional-nums | tabular-nums");
+        },
+        
+        "<numeric-fraction-values>": function(part) {
+            return ValidationTypes.isLiteral(part, "diagonal-fractions | stacked-fractions");
+        },
+        
+        "<position-lcr>": function(part) {
+            return ValidationTypes.isLiteral(part, "left | center | right");
+        },
+        
+        "<position-tcb>": function(part) {
+            return ValidationTypes.isLiteral(part, "top | center | bottom");
+        },
+        
+        "<text-emphasis-style-value-fo>": function(part) {
+            return ValidationTypes.isLiteral(part, "filled | open");
+        },
+        
+        "<text-emphasis-style-value-dcdcts>": function(part) {
+            return ValidationTypes.isLiteral(part, "dot | circle | double-circle | triangle | sesame");
+        },
+        
+        "<text-underline-position-value-lr>": function(part) {
+            return ValidationTypes.isLiteral(part, "left | right");
         }
     },
 
     complex: {
+/*
+<position> = [
+  [ left | center | right ] || [ top | center | bottom ]
+|
+  [ left | center | right | <length-percentage> ]
+  [ top | center | bottom | <length-percentage> ]?
+|
+  [ [ left | right ] <length-percentage> ] &&
+  [ [ top | bottom ] <length-percentage> ]
+]
+*/
+        "<length-percentage>": function(expression) {
+            return ValidationTypes.isAny(expression, "<length> | <percentage>");
+        },
+        "<position>": function(expression) {
+            var lcrtcb = "<position-lcr> || <position-tcb>",
+                lcrlp = "left | center | right | <length-percentage>",
+                tcblp = "top | center | bottom | <length-percentage>",
+                lr = "left | right",
+                tb = "top | bottom";
+            
+            if (ValidationTypes.isAnyOfGroup(expression, lcrtcb))
+                return true;
+            
+            if (ValidationTypes.isAny(expression, lcrlp) && (expression.peek() === null
+                || ValidationTypes.isAny(expression, tcblp))) {
+                return true;
+            }
+            return ValidationTypes.isAny(expression, lr)
+                && ValidationTypes.isType(expression, "<length-percentage>")
+                && ValidationTypes.isAny(expression, tb)
+                && ValidationTypes.isType(expression, "<length-percentage>")
+                || ValidationTypes.isAny(expression, tb)
+                && ValidationTypes.isType(expression, "<length-percentage>")
+                && ValidationTypes.isAny(expression, lr)
+                && ValidationTypes.isType(expression, "<length-percentage>");
+        },
+        "<text-decoration-line-value>": function(expression) {
+            var value = "underline || overline || line-through || blink";
+            
+            return ValidationTypes.isAnyOfGroup(expression, value);
+        },
+        "<text-emphasis-style-value>": function(expression) {
+            //<text-emphasis-style-value> = [ filled | open ] || [ dot | circle | double-circle | triangle | sesame ]
+            var value = "<text-emphasis-style-value-fo> || <text-emphasis-style-value-dcdcts>";
 
-        "<bg-position>": function(expression){
+            return ValidationTypes.isAnyOfGroup(expression, value);
+        },
+        "<text-underline-position-value>": function(expression) {
+            //<text-underline-position-value> = [ under || [ left | right ] ]
+            var value = "under || <text-underline-position-value-lr>";
+
+            return ValidationTypes.isAnyOfGroup(expression, value);
+        },
+        "<bg-position>": function(expression) {
             var types   = this,
                 result  = false,
                 numeric = "<percentage> | <length>",
@@ -6261,6 +6226,49 @@ var ValidationTypes = {
             }
 
             return result;
+        },
+
+        "<feature-tag-value>": function(expression) {
+            //<feature-tag-value> = <string> [ <integer> | on | off ]?
+            var result  = false,
+                value = "<integer> | on | off";
+            
+            if (ValidationTypes.isAny(expression, "<string>")) {
+                if (expression.peek() === null) {
+                    result = true;
+                } else {
+                    result = ValidationTypes.isAny(expression, value);
+                }
+            }
+            
+            return result;
+        },
+        
+        "<font-synthesis-value>": function(expression) {
+            //<font-synthesis-value> = weight || style
+            var value = "weight || style";
+
+            return ValidationTypes.isAnyOfGroup(expression, value);
+        },
+        
+        "<font-variant-east-asian-def>": function(expression) {
+            //<font-variant-east-asian-def> = <east-asian-variant-values> || <east-asian-width-values> || ruby
+            var value = "<east-asian-variant-values> || <east-asian-width-values> || ruby";
+
+            return ValidationTypes.isAnyOfGroup(expression, value);
+        },
+        
+        "<font-variant-ligatures-def>": function(expression) {
+            //<font-variant-ligatures-def> = <common-lig-values> || <discretionary-lig-values> || <historical-lig-values> || <contextual-alt-values>
+            var value = "<common-lig-values> || <discretionary-lig-values> || <historical-lig-values> || <contextual-alt-values>";
+            
+            return ValidationTypes.isAnyOfGroup(expression, value);
+        },
+        
+        "<font-variant-numeric-def>": function(expression) {
+            var value = "<numeric-figure-values> || <numeric-spacing-values> || <numeric-fraction-values> || ordinal || slashed-zero";
+
+            return ValidationTypes.isAnyOfGroup(expression, value);
         },
 
         "<bg-size>": function(expression){
