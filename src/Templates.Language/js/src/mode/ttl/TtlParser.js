@@ -1,5 +1,3 @@
-import TtlParserListener from "../../../TtlParserListener";
-
 define(function (require, exports, module) {
     "use strict";
     var antlr4 = require('./antlr4/index');

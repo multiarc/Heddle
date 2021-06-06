@@ -1,6 +1,6 @@
 define(function (require, exports, module) {
     "use strict";
-    
+
     var oop = require("../lib/oop");
     var lang = require("../lib/lang");
     var Mirror = require("../worker/mirror").Mirror;
@@ -8,6 +8,7 @@ define(function (require, exports, module) {
     var DocumentParser = require("./ttl/DocumentParser").DocumentParser;
     var SAXParser = require("./html/saxparser").SAXParser;
     var CSSLint = require("./css/csslint").CSSLint;
+    var CSSLintEmail = require("./css/csslint_email").CSSLint;
     var lint = require("./javascript/jshint").JSHINT;
 
     var htmlErrorTypes = {
@@ -47,21 +48,21 @@ define(function (require, exports, module) {
         "'{a}' used out of scope"
     ]);
 
-    var TtlWorker = exports.TtlWorker = function(sender) {
+    var TtlWorker = exports.TtlWorker = function (sender) {
         Mirror.call(this, sender);
         this.setTimeout(500);
         this.ruleset = null;
+        this.setOptions();
         this.setDisabledRules("ids|order-alphabetical");
         this.setInfoRules(
             "adjoining-classes|qualified-headings|zero-units|gradients|" +
             "import|outline-none|vendor-prefix"
         );
-        this.setOptions();
     };
 
     oop.inherits(TtlWorker, Mirror);
 
-    (function() {
+    (function () {
         function processEmbeddedLanguageLines(lineTokens) {
             var stringArray = [];
             var lastRow = 0;
@@ -75,8 +76,8 @@ define(function (require, exports, module) {
 
             return stringArray.join('');
         }
-        
-        this.setOptions = function(options) {
+
+        this.setOptions = function (options) {
             this.options = options || {
                 jsOptions: {
                     // undef: true,
@@ -94,20 +95,24 @@ define(function (require, exports, module) {
                     maxerr: 100,
                     expr: true,
                     multistr: true,
-                    globalstrict: true
+                    globalstrict: true,
+                    disabled: false
+                },
+                cssOptions: {
+                    limitedEmailSet: false
                 }
             };
             this.doc.getValue() && this.deferredUpdate.schedule(100);
         };
 
-        this.setInfoRules = function(ruleNames) {
+        this.setInfoRules = function (ruleNames) {
             if (typeof ruleNames == "string")
                 ruleNames = ruleNames.split("|");
             this.infoRules = lang.arrayToMap(ruleNames);
             this.doc.getValue() && this.deferredUpdate.schedule(100);
         };
 
-        this.setDisabledRules = function(ruleNames) {
+        this.setDisabledRules = function (ruleNames) {
             if (!ruleNames) {
                 this.ruleset = null;
             } else {
@@ -115,10 +120,16 @@ define(function (require, exports, module) {
                     ruleNames = ruleNames.split("|");
                 var all = {};
 
-                CSSLint.getRules().forEach(function(x){
-                    all[x.id] = true;
-                });
-                ruleNames.forEach(function(x) {
+                if (!this.options.cssOptions.limitedEmailSet) {
+                    CSSLint.getRules().forEach(function (x) {
+                        all[x.id] = true;
+                    });
+                } else {
+                    CSSLintEmail.getRules().forEach(function (x) {
+                        all[x.id] = true;
+                    });
+                }
+                ruleNames.forEach(function (x) {
                     delete all[x];
                 });
 
@@ -127,31 +138,43 @@ define(function (require, exports, module) {
             this.doc.getValue() && this.deferredUpdate.schedule(100);
         };
 
-        this.changeOptions = function(newOptions) {
+        this.changeOptions = function (newOptions) {
             oop.mixin(this.options, newOptions);
             this.doc.getValue() && this.deferredUpdate.schedule(100);
         };
 
-        this.isValidJS = function(str) {
+        this.isValidJS = function (str) {
             try {
                 // evaluated code can only create variables in this function
                 eval("throw 0;" + str);
-            } catch(e) {
+            } catch (e) {
                 if (e === 0)
                     return true;
             }
             return false;
         };
-        
-        this.validateJs = function(value) {
+
+        this.validateJs = function (value) {
             if (!value)
                 return [];
-            
+
             value = value.replace(/^#!.*\n/, "\n");
             if (!value)
                 return [];
 
             var errors = [];
+            
+            if (this.options.jsOptions.disabled) {
+                errors.push({
+                    row: 0,
+                    column: 0,
+                    text: "JavaScript is not supported",
+                    type: "warning",
+                    raw: "JavaScript is not supported"
+                });
+                return errors;
+            }
+            
             // jshint reports many false errors
             // report them as error only if code is actually invalid
             var maxErrorLevel = this.isValidJS(value) ? "warning" : "error";
@@ -177,27 +200,22 @@ define(function (require, exports, module) {
                     } else {
                         type = "info";
                     }
-                }
-                else if (disabledWarningsRe.test(raw)) {
+                } else if (disabledWarningsRe.test(raw)) {
                     continue;
-                }
-                else if (infoRe.test(raw)) {
+                } else if (infoRe.test(raw)) {
                     type = "info";
-                }
-                else if (errorsRe.test(raw)) {
-                    errorAdded  = true;
+                } else if (errorsRe.test(raw)) {
+                    errorAdded = true;
                     type = maxErrorLevel;
-                }
-                else if (raw == "'{a}' is not defined.") {
+                } else if (raw == "'{a}' is not defined.") {
                     type = "warning";
-                }
-                else if (raw == "'{a}' is defined but never used.") {
+                } else if (raw == "'{a}' is defined but never used.") {
                     type = "info";
                 }
 
                 errors.push({
-                    row: error.line-1,
-                    column: error.character-1,
+                    row: error.line - 1,
+                    column: error.character - 1,
                     text: error.reason,
                     type: type,
                     raw: raw
@@ -207,13 +225,14 @@ define(function (require, exports, module) {
                     // break;
                 }
             }
-            
+
             return errors;
         }
 
-        this.onUpdate = function() {
+        this.onUpdate = function () {
             var value = this.doc.getValue();
             if (!value) {
+                this.sender.emit("annotate", []);
                 return;
             }
 
@@ -233,10 +252,10 @@ define(function (require, exports, module) {
                 });
             }
             this.sender.emit("annotate", errors);
-            
+
             if (errors.length === 0) {
                 this.sender.emit("codeok", value);
-                
+
                 var tokenizer = new TtlMode().getTokenizer();
 
                 var lines = this.doc.getAllLines();
@@ -264,8 +283,7 @@ define(function (require, exports, module) {
                                 if (token.type.indexOf("ttl-") !== 0) {
                                     if (token.type.indexOf("meta.tag") === 0) {
                                         htmlTokens.push({token: token, row: row});
-                                    }
-                                    else {
+                                    } else {
                                         cssTokens.push({token: token, row: row});
                                     }
                                 }
@@ -289,9 +307,9 @@ define(function (require, exports, module) {
 
                     state = lineTokens.state;
                 }
-                
+
                 var htmlString = processEmbeddedLanguageLines(htmlTokens);
-                
+
                 if (htmlString) {
                     var saxParser = new SAXParser();
                     var noop = function () {
@@ -316,11 +334,16 @@ define(function (require, exports, module) {
                     saxParser.parse(htmlString);
                 }
                 var cssString = processEmbeddedLanguageLines(cssTokens);
-                
+
                 if (cssString) {
                     var infoRules = this.infoRules;
 
-                    var result = CSSLint.verify(cssString, this.ruleset);
+                    var result;
+                    if (!this.options.cssOptions.limitedEmailSet) {
+                        result = CSSLint.verify(cssString, this.ruleset);
+                    } else {
+                        result = CSSLintEmail.verify(cssString, this.ruleset);
+                    }
 
                     result.messages.forEach(function (msg) {
                         errors.push({
@@ -332,12 +355,12 @@ define(function (require, exports, module) {
                         });
                     });
                 }
-                
+
                 var jsString = processEmbeddedLanguageLines(jsTokens);
                 jsString = jsString.replace(/^#!.*\n/, "\n");
 
                 this.validateJs(jsString).forEach(jsError => errors.push(jsError));
-                
+
                 this.sender.emit("annotate", errors);
             }
         };
