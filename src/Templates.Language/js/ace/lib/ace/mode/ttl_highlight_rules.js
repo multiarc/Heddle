@@ -349,18 +349,13 @@ define(function (require, exports, module) {
                 createPopRule(
                     /}@/,
                     "ttl-raw.keyword.paren.rparen"
-                ),
-                createNextRule(
-                    /([^}]|}[^@])+/,
-                    "ttl-raw.constant.other",
-                    startPrefix + "ttl-raw"
                 )
             ];
 
             rules[startPrefix + "ttl-raw-ln"] = [
                 createPopRule(
-                    /.*/,
-                    "ttl-raw-ln.constant.other"
+                    /()?/, 
+                    "ttl-call-returned.empty"
                 )
             ];
 
@@ -528,10 +523,18 @@ define(function (require, exports, module) {
             lastStack: null,
             lastStartRow: null
         };
+
+        this.normalizeRules();
         
         var ttlRules = new TtlLangHighlightRules().getRules();
         var jsTtlRules = new TtlLangHighlightRules().generateRules("js-");
         var cssTtlRules = new TtlLangHighlightRules().generateRules("css-");
+        ttlRules["ttl-raw"].push.apply(ttlRules["ttl-raw"], this.$rules["start"]);
+        jsTtlRules["js-ttl-raw"].push.apply(jsTtlRules["js-ttl-raw"], this.$rules["js-start"]);
+        cssTtlRules["css-ttl-raw"].push.apply(cssTtlRules["css-ttl-raw"], this.$rules["css-start"]);
+        ttlRules["ttl-raw-ln"].unshift.apply(ttlRules["ttl-raw-ln"], this.$rules["start"]);
+        jsTtlRules["js-ttl-raw-ln"].unshift.apply(jsTtlRules["js-ttl-raw-ln"], this.$rules["js-start"]);
+        cssTtlRules["css-ttl-raw-ln"].unshift.apply(cssTtlRules["css-ttl-raw-ln"], this.$rules["css-start"]);
         
         this.$embeds = [];
 
