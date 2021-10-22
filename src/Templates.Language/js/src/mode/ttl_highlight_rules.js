@@ -683,6 +683,48 @@ define(function (require, exports, module) {
             }
         });
         
+        //TODO:
+        this.$rules["ttl-raw"].forEach(raw => {
+            if (tag.next && Array.isArray(tag.next)) {
+                var newOps = [];
+
+                tag.next.forEach((tagOp, idx) => {
+                    if (tagOp.token === "meta.tag.punctuation.tag-close.xml" && tagOp.next === "js-start") {
+                        newOps.push({
+                            index: idx,
+                            operation: {
+                                token: "meta.tag.punctuation.tag-close.xml",
+                                regex: "/?>",
+                                next: "js-start",
+                                onMatch: function (value, currentState, stack, line, row) {
+                                    onMatchEmbeddedStart(stack, row);
+                                    return this.token;
+                                }
+                            }
+                        });
+                    }
+                    if (tagOp.token === "meta.tag.punctuation.tag-close.xml" && tagOp.next === "css-start") {
+                        newOps.push({
+                            index: idx,
+                            operation: {
+                                token: "meta.tag.punctuation.tag-close.xml",
+                                regex: "/?>",
+                                next: "css-start",
+                                onMatch: function (value, currentState, stack, line, row) {
+                                    onMatchEmbeddedStart(stack, row);
+                                    return this.token;
+                                }
+                            }
+                        });
+                    }
+                });
+
+                newOps.forEach(newOp => {
+                    tag.next[newOp.index] = newOp.operation;
+                });
+            }
+        });
+        
         //restore stack from backup upon return
         this.$rules["script-end"] = [
             {include : "attributes"},

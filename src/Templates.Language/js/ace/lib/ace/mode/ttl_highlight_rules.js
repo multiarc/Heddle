@@ -529,9 +529,9 @@ define(function (require, exports, module) {
         var ttlRules = new TtlLangHighlightRules().getRules();
         var jsTtlRules = new TtlLangHighlightRules().generateRules("js-");
         var cssTtlRules = new TtlLangHighlightRules().generateRules("css-");
-        ttlRules["ttl-raw"].push.apply(ttlRules["ttl-raw"], this.$rules["start"]);
-        jsTtlRules["js-ttl-raw"].push.apply(jsTtlRules["js-ttl-raw"], this.$rules["js-start"]);
-        cssTtlRules["css-ttl-raw"].push.apply(cssTtlRules["css-ttl-raw"], this.$rules["css-start"]);
+        ttlRules["ttl-raw"].unshift.apply(ttlRules["ttl-raw"], this.$rules["start"]);
+        jsTtlRules["js-ttl-raw"].unshift.apply(jsTtlRules["js-ttl-raw"], this.$rules["js-start"]);
+        cssTtlRules["css-ttl-raw"].unshift.apply(cssTtlRules["css-ttl-raw"], this.$rules["css-start"]);
         ttlRules["ttl-raw-ln"].unshift.apply(ttlRules["ttl-raw-ln"], this.$rules["start"]);
         jsTtlRules["js-ttl-raw-ln"].unshift.apply(jsTtlRules["js-ttl-raw-ln"], this.$rules["js-start"]);
         cssTtlRules["css-ttl-raw-ln"].unshift.apply(cssTtlRules["css-ttl-raw-ln"], this.$rules["css-start"]);
