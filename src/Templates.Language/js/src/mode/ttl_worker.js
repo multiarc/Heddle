@@ -163,7 +163,7 @@ define(function (require, exports, module) {
                 return [];
 
             var errors = [];
-            
+
             if (this.options.jsOptions.disabled) {
                 errors.push({
                     row: 0,
@@ -174,7 +174,7 @@ define(function (require, exports, module) {
                 });
                 return errors;
             }
-            
+
             // jshint reports many false errors
             // report them as error only if code is actually invalid
             var maxErrorLevel = this.isValidJS(value) ? "warning" : "error";
@@ -271,7 +271,9 @@ define(function (require, exports, module) {
                     for (var tokenIndex = 0; tokenIndex < lineTokens.tokens.length; tokenIndex++) {
                         var token = lineTokens.tokens[tokenIndex];
                         if (token.state) {
-                            if (token.state.indexOf("js-") === 0) {
+                            if (token.state.indexOf("js-") === 0
+                                || token.state.indexOf("html-js-") === 0
+                                || token.state.indexOf("html-ln-js-") === 0) {
                                 if (token.type.indexOf("ttl-") !== 0) {
                                     if (token.type.indexOf("meta.tag") === 0) {
                                         htmlTokens.push({token: token, row: row});
@@ -279,7 +281,9 @@ define(function (require, exports, module) {
                                         jsTokens.push({token: token, row: row});
                                     }
                                 }
-                            } else if (token.state.indexOf("css-") === 0) {
+                            } else if (token.state.indexOf("css-") === 0
+                                || token.state.indexOf("html-css-") === 0
+                                || token.state.indexOf("html-ln-css-") === 0) {
                                 if (token.type.indexOf("ttl-") !== 0) {
                                     if (token.type.indexOf("meta.tag") === 0) {
                                         htmlTokens.push({token: token, row: row});
@@ -293,7 +297,8 @@ define(function (require, exports, module) {
                                 if (token.type.indexOf("ttl-") !== 0) {
                                     htmlTokens.push({token: token, row: row});
                                 }
-                            } else if (token.state.indexOf("ttl-") === 0 && token.type.indexOf("ttl-") !== 0) {
+                            } else if (token.state.indexOf("ttl-") === 0
+                                && token.type.indexOf("ttl-") !== 0) {
                                 htmlTokens.push({token: token, row: row});
                             }
                         } else {

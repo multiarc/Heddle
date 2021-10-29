@@ -27,15 +27,11 @@ fragment EXT_DELIM: ':';
 fragment DEF_STNAME: '<';
 fragment DEF_CLNAME: '>';
 fragment DEF_MAKEOUT: '->';
-fragment COMMENT_START: '@*';
-fragment COMMENT_END: '*@';
-fragment WS_START: '@\\';
-fragment COMMENT_BLOCK: COMMENT_START (~[*]* | .?) COMMENT_END;
-fragment RAW_START: '@{';
-fragment RAW_END: '}@';
-fragment RAW_BLOCK : RAW_START (~[}]* | .?) RAW_END;
+fragment COMMENT_BLOCK: '@*' ('@' | '*'* ~[*@])* '*'+ '@';
+fragment RAW_BLOCK : '@{' ('@' | '}'* ~[}@])* '}'+ '@';
 fragment RAW_START_LN: '@:';
 fragment RAW_LINE : RAW_START_LN ~[\r\n]*;
+fragment WS_START: '@\\';
 fragment EAT_WS: WS_START WS*;
 
 COMMENT: COMMENT_BLOCK -> channel(HIDDEN);

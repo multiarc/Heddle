@@ -19,12 +19,16 @@ define(function(require, exports, module) {
         this.createModeDelegates({
             "js-": JavaScriptMode,
             "css-": CssMode,
-            "cs-": CSharpMode
+            "cs-": CSharpMode,
+            "html-js-": JavaScriptMode,
+            "html-css-": CssMode
         });
         var ttlFoldMode = new TtlFoldMode();
         this.foldingRules.subModes["start"] = ttlFoldMode;
         this.foldingRules.subModes["js-"] = ttlFoldMode;
         this.foldingRules.subModes["css-"] = ttlFoldMode;
+        this.foldingRules.subModes["html-js-"] = ttlFoldMode;
+        this.foldingRules.subModes["html-css-"] = ttlFoldMode;
     };
     oop.inherits(Mode, HtmlMode);
 

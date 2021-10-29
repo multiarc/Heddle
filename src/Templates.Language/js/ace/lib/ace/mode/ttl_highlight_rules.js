@@ -5,9 +5,29 @@ define(function (require, exports, module) {
     var TextHighlightRules = require("./text_highlight_rules").TextHighlightRules;
     var HtmlHighlightRules = require("./html_highlight_rules").HtmlHighlightRules;
     var CSharpHighlightRules = require("./csharp_highlight_rules").CSharpHighlightRules;
+    
+    var CustomizableHtmlHighlightRules = function() {
+        HtmlHighlightRules.call(this);
+    }
 
-    var TtlLangHighlightRules = function () {
+    oop.inherits(CustomizableHtmlHighlightRules, HtmlHighlightRules);
+
+    var TtlLangHighlightRules = function (ttlMode) {
         TextHighlightRules.call(this);
+        var startPrefix;
+        
+        switch (ttlMode) {
+            case "css":
+                startPrefix = "css-";
+                break;
+            case "js":
+                startPrefix = "js-";
+                break;
+            case "html":
+            default:
+                startPrefix = "";
+                break;
+        }
         
         function createNextRule(regex, token, next) {
             return {
@@ -44,7 +64,7 @@ define(function (require, exports, module) {
             }
         }
         
-        function _generateRules(startPrefix) {
+        function _generateRules() {
 
             function createPopRule(regex, token) {
                 return {
@@ -351,13 +371,13 @@ define(function (require, exports, module) {
                     "ttl-raw.keyword.paren.rparen"
                 ),
                 {
-                    include: "html-start"
+                    include: "html-" + startPrefix + "start"
                 }
             ];
 
             rules[startPrefix + "ttl-raw-ln"] = [
                 {
-                    include: "html-ln-start"
+                    include: "html-ln-" + startPrefix + "start"
                 },
                 createPopRule(
                     /$|^/, 
@@ -510,7 +530,7 @@ define(function (require, exports, module) {
                 regex: /\)/,
                 onMatch: function (val, state, stack) {
                     stack.shift();
-                    this.next = stack.length ? stack[0] : "start";
+                    this.next = stack.length ? stack[0] : (startPrefix + "start");
                     this.merge = false;
                     return "cs-start.paren.rparen";
                 },
@@ -530,12 +550,10 @@ define(function (require, exports, module) {
             lastStartRow: null
         };
 
-        this.normalizeRules();
-        
-        var ttlRules = new TtlLangHighlightRules().getRules();
-        var jsTtlRules = new TtlLangHighlightRules().generateRules("js-");
-        var cssTtlRules = new TtlLangHighlightRules().generateRules("css-");
-        
+        var ttlRules = new TtlLangHighlightRules("html").getRules();
+        var jsTtlRules = new TtlLangHighlightRules("js").generateRules();
+        var cssTtlRules = new TtlLangHighlightRules("css").generateRules();
+
         this.$embeds = [];
 
         for(var key in this.$rules) {
@@ -683,9 +701,97 @@ define(function (require, exports, module) {
             }
         }
 
+        this.embedRules(CustomizableHtmlHighlightRules, "html-", [
+            {
+                regex: /}@/,
+                onMatch: function (val, state, stack) {
+                    stack.shift();
+
+                    //this part could run from any inner state (ttl-, css-ttl-, js-ttl-, html-css-, html-js-, start)
+                    var nextDefaultState = "start";
+                    if (state) {
+                        var cssState = state.indexOf("css-");
+                        var jsState = state.indexOf("js-");
+                        var ttlState = state.indexOf("ttl-");
+
+                        if (ttlState > 0) {
+                            if (cssState >= 0) {
+                                nextDefaultState = "css-start";
+                            } else if (jsState >= 0) {
+                                nextDefaultState = "js-start";
+                            }
+                        } else {
+                            if (cssState === 0) {
+                                nextDefaultState = cssState;
+                            } else if (cssState > 0) {
+                                nextDefaultState = state.substring(cssState);
+                            }
+                            if (jsState === 0) {
+                                nextDefaultState = cssState;
+                            } else if (jsState > 0) {
+                                nextDefaultState = state.substring(jsState);
+                            }
+                        }
+                    }
+                    this.next = stack.length ? stack[0] : nextDefaultState;
+
+                    this.merge = false;
+                    return "ttl-raw.keyword.paren.rparen";
+                },
+            }
+        ]);
+
+        this.embedRules(CustomizableHtmlHighlightRules, "html-ln-", [
+            {
+                regex: /$|^/,
+                onMatch: function (val, state, stack) {
+                    stack.shift();
+
+                    //this part could run from any inner state (ttl-, css-ttl-, js-ttl-, html-css-, html-js-, start)
+                    var nextDefaultState = "start";
+                    if (state) {
+                        var cssState = state.indexOf("css-");
+                        var jsState = state.indexOf("js-");
+                        var ttlState = state.indexOf("ttl-");
+
+                        if (ttlState > 0) {
+                            if (cssState >= 0) {
+                                nextDefaultState = "css-start";
+                            } else if (jsState >= 0) {
+                                nextDefaultState = "js-start";
+                            }
+                        } else {
+                            if (cssState === 0) {
+                                nextDefaultState = cssState;
+                            } else if (cssState > 0) {
+                                nextDefaultState = state.substring(cssState);
+                            }
+                            if (jsState === 0) {
+                                nextDefaultState = cssState;
+                            } else if (jsState > 0) {
+                                nextDefaultState = state.substring(jsState);
+                            }
+                        }
+                    }
+                    this.next = stack.length ? stack[0] : nextDefaultState;
+
+                    this.merge = false;
+                    return "ttl-call-returned.empty";
+                },
+            }
+        ]);
+
         //replace tag sub-processors start operations to save stack backup and clear initial stack state
         this.$rules["tag"].forEach(tag => {
             applyTagState(tag);
+        });
+
+        this.$rules["html-tag"].forEach(tag => {
+            applyTagState(tag, "html-");
+        });
+
+        this.$rules["html-ln-tag"].forEach(tag => {
+            applyTagState(tag, "html-ln-");
         });
         
         //restore stack from backup upon return
@@ -697,6 +803,32 @@ define(function (require, exports, module) {
                 onMatch: function (value, currentState, stack, line, row) {
                     onMatchEmbeddedEnd(stack, row);
                     this.next = stack.length ? stack[0] : "start";
+                    return this.token;
+                }
+            }
+        ];
+
+        this.$rules["html-script-end"] = [
+            {include : "html-attributes"},
+            {
+                token: "meta.tag.punctuation.tag-close.xml",
+                regex: "/?>",
+                onMatch: function (value, currentState, stack, line, row) {
+                    onMatchEmbeddedEnd(stack, row);
+                    this.next = stack.length ? stack[0] : "html-start";
+                    return this.token;
+                }
+            }
+        ];
+
+        this.$rules["html-ln-script-end"] = [
+            {include : "html-ln-attributes"},
+            {
+                token: "meta.tag.punctuation.tag-close.xml",
+                regex: "/?>",
+                onMatch: function (value, currentState, stack, line, row) {
+                    onMatchEmbeddedEnd(stack, row);
+                    this.next = stack.length ? stack[0] : "html-ln-start";
                     return this.token;
                 }
             }
@@ -716,37 +848,7 @@ define(function (require, exports, module) {
             }
         ];
 
-        this.embedRules(HtmlHighlightRules, "html-", [
-            {
-                regex: /}@/,
-                onMatch: function (val, state, stack) {
-                    stack.shift();
-                    this.next = stack.length ? stack[0] : "start";
-                    this.merge = false;
-                    return "ttl-raw.keyword.paren.rparen";
-                },
-            }
-        ]);
-
-        this.embedRules(HtmlHighlightRules, "html-ln-", [
-            {
-                regex: /$|^/,
-                onMatch: function (val, state, stack) {
-                    stack.shift();
-                    this.next = stack.length ? stack[0] : "start";
-                    this.merge = false;
-                    return "ttl-call-returned.empty";
-                },
-            }
-        ]);
-
-        //replace tag sub-processors start operations to save stack backup and clear initial stack state
-        this.$rules["html-tag"].forEach(tag => {
-            applyTagState(tag, "html-");
-        });
-
-        //restore stack from backup upon return
-        this.$rules["html-script-end"] = [
+        this.$rules["html-style-end"] = [
             {include : "html-attributes"},
             {
                 token: "meta.tag.punctuation.tag-close.xml",
@@ -759,15 +861,14 @@ define(function (require, exports, module) {
             }
         ];
 
-        //restore stack from backup upon return
-        this.$rules["html-style-end"] = [
-            {include : "html-attributes"},
+        this.$rules["html-ln-style-end"] = [
+            {include : "html-ln-attributes"},
             {
                 token: "meta.tag.punctuation.tag-close.xml",
                 regex: "/?>",
                 onMatch: function (value, currentState, stack, line, row) {
                     onMatchEmbeddedEnd(stack, row);
-                    this.next = stack.length ? stack[0] : "html-start";
+                    this.next = stack.length ? stack[0] : "html-ln-start";
                     return this.token;
                 }
             }
