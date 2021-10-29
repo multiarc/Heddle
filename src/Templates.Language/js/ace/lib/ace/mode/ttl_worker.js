@@ -293,6 +293,8 @@ define(function (require, exports, module) {
                                 if (token.type.indexOf("ttl-") !== 0) {
                                     htmlTokens.push({token: token, row: row});
                                 }
+                            } else if (token.state.indexOf("ttl-") === 0 && token.type.indexOf("ttl-") !== 0) {
+                                htmlTokens.push({token: token, row: row});
                             }
                         } else {
                             if (token.type) {

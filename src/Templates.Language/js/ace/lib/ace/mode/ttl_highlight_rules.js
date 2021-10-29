@@ -349,12 +349,18 @@ define(function (require, exports, module) {
                 createPopRule(
                     /}@/,
                     "ttl-raw.keyword.paren.rparen"
-                )
+                ),
+                {
+                    include: "html-start"
+                }
             ];
 
             rules[startPrefix + "ttl-raw-ln"] = [
+                {
+                    include: "html-ln-start"
+                },
                 createPopRule(
-                    /()?/, 
+                    /$|^/, 
                     "ttl-call-returned.empty"
                 )
             ];
@@ -529,12 +535,6 @@ define(function (require, exports, module) {
         var ttlRules = new TtlLangHighlightRules().getRules();
         var jsTtlRules = new TtlLangHighlightRules().generateRules("js-");
         var cssTtlRules = new TtlLangHighlightRules().generateRules("css-");
-        ttlRules["ttl-raw"].unshift.apply(ttlRules["ttl-raw"], this.$rules["start"]);
-        jsTtlRules["js-ttl-raw"].unshift.apply(jsTtlRules["js-ttl-raw"], this.$rules["js-start"]);
-        cssTtlRules["css-ttl-raw"].unshift.apply(cssTtlRules["css-ttl-raw"], this.$rules["css-start"]);
-        ttlRules["ttl-raw-ln"].unshift.apply(ttlRules["ttl-raw-ln"], this.$rules["start"]);
-        jsTtlRules["js-ttl-raw-ln"].unshift.apply(jsTtlRules["js-ttl-raw-ln"], this.$rules["js-start"]);
-        cssTtlRules["css-ttl-raw-ln"].unshift.apply(cssTtlRules["css-ttl-raw-ln"], this.$rules["css-start"]);
         
         this.$embeds = [];
 
@@ -640,20 +640,20 @@ define(function (require, exports, module) {
                 });
             }
         }
-        
-        //replace tag sub-processors start operations to save stack backup and clear initial stack state
-        this.$rules["tag"].forEach(tag => {
+
+        function applyTagState(tag, prefix) {
+            prefix = prefix ? prefix : '';
             if (tag.next && Array.isArray(tag.next)) {
                 var newOps = [];
 
                 tag.next.forEach((tagOp, idx) => {
-                    if (tagOp.token === "meta.tag.punctuation.tag-close.xml" && tagOp.next === "js-start") {
+                    if (tagOp.token === "meta.tag.punctuation.tag-close.xml" && tagOp.next === (prefix + "js-start")) {
                         newOps.push({
                             index: idx,
                             operation: {
                                 token: "meta.tag.punctuation.tag-close.xml",
                                 regex: "/?>",
-                                next: "js-start",
+                                next:  prefix + "js-start",
                                 onMatch: function (value, currentState, stack, line, row) {
                                     onMatchEmbeddedStart(stack, row);
                                     return this.token;
@@ -661,13 +661,13 @@ define(function (require, exports, module) {
                             }
                         });
                     }
-                    if (tagOp.token === "meta.tag.punctuation.tag-close.xml" && tagOp.next === "css-start") {
+                    if (tagOp.token === "meta.tag.punctuation.tag-close.xml" && tagOp.next === (prefix + "css-start")) {
                         newOps.push({
                             index: idx,
                             operation: {
                                 token: "meta.tag.punctuation.tag-close.xml",
                                 regex: "/?>",
-                                next: "css-start",
+                                next: prefix + "css-start",
                                 onMatch: function (value, currentState, stack, line, row) {
                                     onMatchEmbeddedStart(stack, row);
                                     return this.token;
@@ -678,9 +678,14 @@ define(function (require, exports, module) {
                 });
 
                 newOps.forEach(newOp => {
-                    tag.next[newOp.index] = newOp.operation; 
+                    tag.next[newOp.index] = newOp.operation;
                 });
             }
+        }
+
+        //replace tag sub-processors start operations to save stack backup and clear initial stack state
+        this.$rules["tag"].forEach(tag => {
+            applyTagState(tag);
         });
         
         //restore stack from backup upon return
@@ -706,6 +711,63 @@ define(function (require, exports, module) {
                 onMatch: function (value, currentState, stack, line, row) {
                     onMatchEmbeddedEnd(stack, row);
                     this.next = stack.length ? stack[0] : "start";
+                    return this.token;
+                }
+            }
+        ];
+
+        this.embedRules(HtmlHighlightRules, "html-", [
+            {
+                regex: /}@/,
+                onMatch: function (val, state, stack) {
+                    stack.shift();
+                    this.next = stack.length ? stack[0] : "start";
+                    this.merge = false;
+                    return "ttl-raw.keyword.paren.rparen";
+                },
+            }
+        ]);
+
+        this.embedRules(HtmlHighlightRules, "html-ln-", [
+            {
+                regex: /$|^/,
+                onMatch: function (val, state, stack) {
+                    stack.shift();
+                    this.next = stack.length ? stack[0] : "start";
+                    this.merge = false;
+                    return "ttl-call-returned.empty";
+                },
+            }
+        ]);
+
+        //replace tag sub-processors start operations to save stack backup and clear initial stack state
+        this.$rules["html-tag"].forEach(tag => {
+            applyTagState(tag, "html-");
+        });
+
+        //restore stack from backup upon return
+        this.$rules["html-script-end"] = [
+            {include : "html-attributes"},
+            {
+                token: "meta.tag.punctuation.tag-close.xml",
+                regex: "/?>",
+                onMatch: function (value, currentState, stack, line, row) {
+                    onMatchEmbeddedEnd(stack, row);
+                    this.next = stack.length ? stack[0] : "html-start";
+                    return this.token;
+                }
+            }
+        ];
+
+        //restore stack from backup upon return
+        this.$rules["html-style-end"] = [
+            {include : "html-attributes"},
+            {
+                token: "meta.tag.punctuation.tag-close.xml",
+                regex: "/?>",
+                onMatch: function (value, currentState, stack, line, row) {
+                    onMatchEmbeddedEnd(stack, row);
+                    this.next = stack.length ? stack[0] : "html-start";
                     return this.token;
                 }
             }
