@@ -351,13 +351,13 @@ define(function (require, exports, module) {
                     "ttl-raw.keyword.paren.rparen"
                 ),
                 {
-                    include: "html-start"
+                    include: "html-" + startPrefix + "start"
                 }
             ];
 
             rules[startPrefix + "ttl-raw-ln"] = [
                 {
-                    include: "html-ln-start"
+                    include: "html-ln-" + startPrefix + "start"
                 },
                 createPopRule(
                     /$|^/, 
