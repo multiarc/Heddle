@@ -228,6 +228,18 @@ define(function (require, exports, module) {
 
             return errors;
         }
+        
+        this.ttlMode = new TtlMode();
+
+        function noop () {}
+        this.saxParser = new SAXParser();
+        this.saxParser.contentHandler = {
+            startDocument: noop,
+            endDocument: noop,
+            startElement: noop,
+            endElement: noop,
+            characters: noop
+        };
 
         this.onUpdate = function () {
             var value = this.doc.getValue();
@@ -256,7 +268,7 @@ define(function (require, exports, module) {
             if (errors.length === 0) {
                 this.sender.emit("codeok", value);
 
-                var tokenizer = new TtlMode().getTokenizer();
+                var tokenizer = this.ttlMode.getTokenizer();
 
                 var lines = this.doc.getAllLines();
                 var htmlTokens = [];
@@ -318,17 +330,7 @@ define(function (require, exports, module) {
                 var htmlString = processEmbeddedLanguageLines(htmlTokens);
 
                 if (htmlString) {
-                    var saxParser = new SAXParser();
-                    var noop = function () {
-                    };
-                    saxParser.contentHandler = {
-                        startDocument: noop,
-                        endDocument: noop,
-                        startElement: noop,
-                        endElement: noop,
-                        characters: noop
-                    };
-                    saxParser.errorHandler = {
+                    this.saxParser.errorHandler = {
                         error: function (message, location, code) {
                             errors.push({
                                 row: location.line,
@@ -338,7 +340,7 @@ define(function (require, exports, module) {
                             });
                         }
                     };
-                    saxParser.parse(htmlString);
+                    this.saxParser.parse(htmlString);
                 }
                 var cssString = processEmbeddedLanguageLines(cssTokens);
 

@@ -94,16 +94,36 @@ define(function (require, exports, module) {
                     "ttl-sub.comment.block",
                     startPrefix + "start"
                 ),
-                createPushRule(
-                    /@{/,
-                    "ttl-sub.keyword.paren.lparen",
-                    startPrefix + "ttl-raw"
-                ),
-                createPushRule(
-                    /@:/,
-                    "ttl-sub.keyword",
-                    startPrefix + "ttl-raw-ln"
-                ),
+                {
+                    regex: /@{/,
+                    onMatch: function (val, state, stack) {
+                        var next;
+                        if (state) {
+                            next = "html-" + state;
+                        } else {
+                            next = "html-" + startPrefix + "start"
+                        }
+                        this.next = next;
+                        stack.unshift(next);
+                        this.merge = false;
+                        return "ttl-sub.keyword.paren.lparen";
+                    }
+                },
+                {
+                    regex: /@:/,
+                    onMatch: function (val, state, stack) {
+                        var next;
+                        if (state) {
+                            next = "html-ln-" + state;
+                        } else {
+                            next = "html-ln-" + startPrefix + "start"
+                        }
+                        this.next = next;
+                        stack.unshift(next);
+                        this.merge = false;
+                        return "ttl-sub.keyword";
+                    }
+                },
                 createPushRule(
                     /@%/,
                     "ttl-sub.keyword.operator.paren.lparen",
@@ -155,9 +175,15 @@ define(function (require, exports, module) {
                 {
                     regex: /@{/,
                     onMatch: function (val, state, stack) {
+                        var next;
+                        if (state) {
+                            next = "html-" + state;
+                        } else {
+                            next = "html-" + startPrefix + "start"
+                        }
+                        this.next = next;
                         stack.shift();
-                        stack.unshift(startPrefix + "ttl-raw");
-                        this.next = startPrefix + "ttl-raw";
+                        stack.unshift(next);
                         this.merge = false;
                         return "ttl-out.keyword.paren.lparen";
                     }
@@ -165,9 +191,15 @@ define(function (require, exports, module) {
                 {
                     regex: /@:/,
                     onMatch: function (val, state, stack) {
+                        var next;
+                        if (state) {
+                            next = "html-ln-" + state;
+                        } else {
+                            next = "html-ln-" + startPrefix + "start"
+                        }
+                        this.next = next;
                         stack.shift();
-                        stack.unshift(startPrefix + "ttl-raw-ln");
-                        this.next = startPrefix + "ttl-raw-ln";
+                        stack.unshift(next);
                         this.merge = false;
                         return "ttl-out.keyword";
                     }
@@ -243,9 +275,15 @@ define(function (require, exports, module) {
                 {
                     regex: /@{/,
                     onMatch: function (val, state, stack) {
+                        var next;
+                        if (state) {
+                            next = "html-" + state;
+                        } else {
+                            next = "html-" + startPrefix + "start"
+                        }
+                        this.next = next;
                         stack.shift();
-                        stack.unshift(startPrefix + "ttl-raw");
-                        this.next = startPrefix + "ttl-raw";
+                        stack.unshift(next);
                         this.merge = false;
                         return "ttl-call-returned.keyword.paren.lparen";
                     }
@@ -253,9 +291,15 @@ define(function (require, exports, module) {
                 {
                     regex: /@:/,
                     onMatch: function (val, state, stack) {
+                        var next;
+                        if (state) {
+                            next = "html-ln-" + state;
+                        } else {
+                            next = "html-ln-" + startPrefix + "start"
+                        }
+                        this.next = next;
                         stack.shift();
-                        stack.unshift(startPrefix + "ttl-raw-ln");
-                        this.next = startPrefix + "ttl-raw-ln";
+                        stack.unshift(next);
                         this.merge = false;
                         return "ttl-call-returned.keyword";
                     }
@@ -362,26 +406,6 @@ define(function (require, exports, module) {
                     /\s+/,
                     "ttl-call.constant.other",
                     startPrefix + "ttl-call"
-                )
-            ];
-
-            rules[startPrefix + "ttl-raw"] = [
-                createPopRule(
-                    /}@/,
-                    "ttl-raw.keyword.paren.rparen"
-                ),
-                {
-                    include: "html-" + startPrefix + "start"
-                }
-            ];
-
-            rules[startPrefix + "ttl-raw-ln"] = [
-                {
-                    include: "html-ln-" + startPrefix + "start"
-                },
-                createPopRule(
-                    /$|^/, 
-                    "ttl-call-returned.empty"
                 )
             ];
 
@@ -665,7 +689,7 @@ define(function (require, exports, module) {
                 var newOps = [];
 
                 tag.next.forEach((tagOp, idx) => {
-                    if (tagOp.token === "meta.tag.punctuation.tag-close.xml" && tagOp.next === (prefix + "js-start")) {
+                    if (tagOp.token === "meta.tag.punctuation.tag-close.xml" && tagOp.next === "js-start") {
                         newOps.push({
                             index: idx,
                             operation: {
@@ -674,12 +698,13 @@ define(function (require, exports, module) {
                                 next:  prefix + "js-start",
                                 onMatch: function (value, currentState, stack, line, row) {
                                     onMatchEmbeddedStart(stack, row);
+                                    this.merge = false;
                                     return this.token;
                                 }
                             }
                         });
                     }
-                    if (tagOp.token === "meta.tag.punctuation.tag-close.xml" && tagOp.next === (prefix + "css-start")) {
+                    if (tagOp.token === "meta.tag.punctuation.tag-close.xml" && tagOp.next === "css-start") {
                         newOps.push({
                             index: idx,
                             operation: {
@@ -688,6 +713,7 @@ define(function (require, exports, module) {
                                 next: prefix + "css-start",
                                 onMatch: function (value, currentState, stack, line, row) {
                                     onMatchEmbeddedStart(stack, row);
+                                    this.merge = false;
                                     return this.token;
                                 }
                             }
@@ -873,6 +899,8 @@ define(function (require, exports, module) {
                 }
             }
         ];
+        
+        this.$embeds = [];
 
         this.normalizeRules();
     }
