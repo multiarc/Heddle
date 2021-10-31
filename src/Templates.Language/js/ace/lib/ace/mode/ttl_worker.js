@@ -231,16 +231,6 @@ define(function (require, exports, module) {
         
         this.ttlMode = new TtlMode();
 
-        function noop () {}
-        this.saxParser = new SAXParser();
-        this.saxParser.contentHandler = {
-            startDocument: noop,
-            endDocument: noop,
-            startElement: noop,
-            endElement: noop,
-            characters: noop
-        };
-
         this.onUpdate = function () {
             var value = this.doc.getValue();
             if (!value) {
@@ -330,7 +320,18 @@ define(function (require, exports, module) {
                 var htmlString = processEmbeddedLanguageLines(htmlTokens);
 
                 if (htmlString) {
-                    this.saxParser.errorHandler = {
+
+                    function noop () {}
+                    var saxParser = new SAXParser();
+                    saxParser.contentHandler = {
+                        startDocument: noop,
+                        endDocument: noop,
+                        startElement: noop,
+                        endElement: noop,
+                        characters: noop
+                    };
+                    
+                    saxParser.errorHandler = {
                         error: function (message, location, code) {
                             errors.push({
                                 row: location.line,
@@ -340,7 +341,7 @@ define(function (require, exports, module) {
                             });
                         }
                     };
-                    this.saxParser.parse(htmlString);
+                    saxParser.parse(htmlString);
                 }
                 var cssString = processEmbeddedLanguageLines(cssTokens);
 

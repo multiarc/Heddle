@@ -191,13 +191,14 @@
             var lastIndex = 0;
             var matchAttempts = 0;
 
-            var token = {type: null, value: ""};
+            var token = {type: null, value: "", state: currentState};
 
             while (match = re.exec(line)) {
                 var type = mapping.defaultToken;
                 var rule = null;
                 var value = match[0];
                 var index = re.lastIndex;
+                var tokenState = currentState;
 
                 if (index - value.length > lastIndex) {
                     var skipped = line.substring(lastIndex, index - value.length);
@@ -206,7 +207,7 @@
                     } else {
                         if (token.type)
                             tokens.push(token);
-                        token = {type: type, value: skipped};
+                        token = {type: type, value: skipped, state: tokenState};
                     }
                 }
 
@@ -251,14 +252,14 @@
                         } else {
                             if (token.type)
                                 tokens.push(token);
-                            token = {type: type, value: value};
+                            token = {type: type, value: value, state: tokenState};
                         }
                     } else if (type) {
                         if (token.type)
                             tokens.push(token);
-                        token = {type: null, value: ""};
+                        token = {type: null, value: "", state: tokenState};
                         for (var i = 0; i < type.length; i++)
-                            tokens.push(type[i]);
+                            tokens.push({...type[i], state: tokenState});
                     }
                 }
 
@@ -280,7 +281,8 @@
                             tokens.push(token);
                         token = {
                             value: line.substring(lastIndex, lastIndex += 500),
-                            type: "overflow"
+                            type: "overflow",
+                            state: tokenState
                         };
                     }
                     currentState = "start";

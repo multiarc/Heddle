@@ -727,6 +727,57 @@ define(function (require, exports, module) {
             }
         }
 
+        function applyIncludePrefixing(stateItem, prefix) {
+            let newOps;
+            prefix = prefix ? prefix : '';
+            
+            if (stateItem.include) {
+                stateItem.include = prefix + stateItem.include;
+            }
+            
+            if (stateItem.next && Array.isArray(stateItem.next)) {
+                newOps = [];
+
+                stateItem.next.forEach((tagOp, idx) => {
+                    if (tagOp.include && typeof tagOp.include === 'string') {
+                        newOps.push({
+                            index: idx,
+                            operation: {
+                                include: prefix + tagOp.include
+                            }
+                        });
+                    }
+                });
+
+                newOps.forEach(newOp => {
+                    stateItem.next[newOp.index] = newOp.operation;
+                });
+            }
+
+            if (stateItem.push && stateItem.push.include) {
+                stateItem.push.include = prefix + stateItem.push.include;
+            }
+
+            if (stateItem.push && Array.isArray(stateItem.push)) {
+                newOps = [];
+
+                stateItem.push.forEach((tagOp, idx) => {
+                    if (tagOp.include && typeof tagOp.include === 'string') {
+                        newOps.push({
+                            index: idx,
+                            operation: {
+                                include: prefix + tagOp.include
+                            }
+                        });
+                    }
+                });
+
+                newOps.forEach(newOp => {
+                    stateItem.push[newOp.index] = newOp.operation;
+                });
+            }
+        }
+
         this.embedRules(CustomizableHtmlHighlightRules, "html-", [
             {
                 regex: /}@/,
@@ -819,6 +870,15 @@ define(function (require, exports, module) {
         this.$rules["html-ln-tag"].forEach(tag => {
             applyTagState(tag, "html-ln-");
         });
+
+        Object.keys(this.$rules).forEach(rule => {
+            if (rule.indexOf("html-ln-") === 0) {
+                this.$rules[rule].forEach(stateItem => applyIncludePrefixing(stateItem, "html-ln-"));
+            }
+            if (rule.indexOf("html-ln-") !== 0 && rule.indexOf("html-") === 0) {
+                this.$rules[rule].forEach(stateItem => applyIncludePrefixing(stateItem, "html-"));
+            }
+        });
         
         //restore stack from backup upon return
         this.$rules["script-end"] = [
@@ -903,7 +963,10 @@ define(function (require, exports, module) {
         this.$embeds = [];
 
         this.normalizeRules();
-    }
+    };
+
+    // (function() {
+    // }).call(HtmlHighlightRules.prototype);
 
     oop.inherits(TtlHighlightRules, HtmlHighlightRules);
 
