@@ -150,13 +150,17 @@
             if (token.type)
                 tokens.push(token);
 
-            if (stack.length > 1) {
+            //>= 1 ???
+            if (stack.length >= 1) {
                 if (stack[0] !== currentState)
                     stack.unshift("#tmp", currentState);
             }
+            // if (stack.length === 1 && stack[0] === startState && startState !== currentState) {
+            //     stack.unshift(currentState);
+            // }
             return {
-                tokens : tokens,
-                state : stack.length ? stack : currentState
+                tokens: tokens,
+                state: stack.length ? stack : currentState
             };
         };
     }).call(TtlWorkerTokenizer.prototype);
@@ -292,7 +296,7 @@
             if (token.type)
                 tokens.push(token);
 
-            if (stack.length > 1) {
+            if (stack.length >= 1) {
                 if (stack[0] !== currentState)
                     stack.unshift("#tmp", currentState);
             }
