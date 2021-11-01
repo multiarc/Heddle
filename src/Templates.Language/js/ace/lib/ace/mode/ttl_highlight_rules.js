@@ -45,6 +45,9 @@ define(function (require, exports, module) {
 
         function getPushMode(token, next) {
             return function (val, state, stack) {
+                if (state && stack[0] !== state && state.indexOf(startPrefix + "ttl-") !== 0) {
+                    stack.unshift("#tmp", state);
+                }
                 stack.unshift(next);
                 this.next = next;
                 this.merge = false;
@@ -54,7 +57,7 @@ define(function (require, exports, module) {
 
         function getNextMode(token, next) {
             return function (val, state, stack) {
-                if (stack.length && stack[0] != next) {
+                if (stack.length && stack[0] !== next) {
                     stack.shift();
                     stack.unshift(next);
                 }
@@ -76,7 +79,12 @@ define(function (require, exports, module) {
             function getPopMode(token) {
                 return function (val, state, stack) {
                     stack.shift();
-                    this.next = (stack.length ? stack[0] : (startPrefix + "start")) || (startPrefix + "start");
+                    if (stack[0] === "#tmp") {
+                        stack.shift();
+                        this.next = stack.shift();
+                    } else {
+                        this.next = (stack.length ? stack[0] : (startPrefix + "start")) || (startPrefix + "start");
+                    }
                     this.merge = false;
                     return token;
                 }
@@ -229,7 +237,12 @@ define(function (require, exports, module) {
                     onMatch: function (val, state, stack) {
                         stack.shift();
                         stack.shift();
-                        this.next = stack.length ? stack[0] : (startPrefix + "start");
+                        if (stack[0] === "#tmp") {
+                            stack.shift();
+                            this.next = stack.shift();
+                        } else {
+                            this.next = stack.length ? stack[0] : (startPrefix + "start");
+                        }
                         this.merge = false;
                         return "ttl-out.keyword.operator.paren.rparen";
                     }
@@ -329,7 +342,12 @@ define(function (require, exports, module) {
                     onMatch: function (val, state, stack) {
                         stack.shift();
                         stack.shift();
-                        this.next = stack.length ? stack[0] : (startPrefix + "start");
+                        if (stack[0] === "#tmp") {
+                            stack.shift();
+                            this.next = stack.shift();
+                        } else {
+                            this.next = stack.length ? stack[0] : (startPrefix + "start");
+                        }
                         this.merge = false;
                         return "ttl-call-returned.keyword.operator.paren.rparen";
                     }
@@ -554,7 +572,12 @@ define(function (require, exports, module) {
                 regex: /\)/,
                 onMatch: function (val, state, stack) {
                     stack.shift();
-                    this.next = stack.length ? stack[0] : (startPrefix + "start");
+                    if (stack[0] === "#tmp") {
+                        stack.shift();
+                        this.next = stack.shift();
+                    } else {
+                        this.next = stack.length ? stack[0] : (startPrefix + "start");
+                    }
                     this.merge = false;
                     return "cs-start.paren.rparen";
                 },
