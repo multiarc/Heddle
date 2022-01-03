@@ -35,7 +35,15 @@ namespace Templates.Runtime {
 
         static TemplateFactory()
         {
-            AddExtensions(LoadBaseExtensions());
+            AddExtensions(ObtainExtensions());
+        }
+
+        private static IEnumerable<ExtensionType> ObtainExtensions()
+        {
+            foreach (var baseExtension in LoadBaseExtensions())
+            {
+                yield return baseExtension;
+            }
             foreach (var assembly in AssemblyHelper.GetAssemblies())
             {
                 var exportAttributes = assembly.GetCustomAttributes<ExportExtensionsAttribute>();
@@ -45,10 +53,17 @@ namespace Templates.Runtime {
                     {
                         if (exportAttribute.All)
                         {
-                            LoadAddExtensionsFromAssembly(assembly);
+                            foreach (var extension in LoadAddExtensionsFromAssembly(assembly))
+                            {
+                                yield return extension;
+                            }
                             break;
                         }
-                        AddExtensions(LoadExtensions(exportAttribute.Extensions));
+
+                        foreach (var extension in LoadExtensions(exportAttribute.Extensions))
+                        {
+                            yield return extension;
+                        }
                     }
                 }
             }
@@ -58,19 +73,19 @@ namespace Templates.Runtime {
         /// Loads all templates are in assembly
         /// </summary>
         /// <param name="assembly"></param>
-        public static void LoadAddExtensionsFromAssembly(Assembly assembly)
+        public static IEnumerable<ExtensionType> LoadAddExtensionsFromAssembly(Assembly assembly)
         {
             if (assembly == null)
                 throw new ArgumentNullException(nameof(assembly));
 
-            var toAdd = LoadExtensions(assembly);
-            AddExtensions(toAdd);
+            return LoadExtensions(assembly);
         }
 
         public static void AddExtensions(IEnumerable<ExtensionType> toAdd)
         {
             if (toAdd == null) throw new ArgumentNullException(nameof(toAdd));
-            foreach (var type in toAdd)
+            //extensions marked as replacements comes last
+            foreach (var type in toAdd.OrderBy(ext => ext.Replace))
             {
                 if (type.Type == null || type.Name == null )
                     throw new ArgumentException();
@@ -111,8 +126,8 @@ namespace Templates.Runtime {
                 throw new ArgumentNullException(nameof(templateName));
             try
             {
-                Type extensionType = Templates[templateName];
-                IExtension resultExtension = CreateExtension(extensionType);
+                var extensionType = Templates[templateName];
+                var resultExtension = CreateExtension(extensionType);
                 resultExtension.Position = absoluteTextPosition;
                 return resultExtension;
             }
@@ -149,20 +164,24 @@ namespace Templates.Runtime {
             return LoadExtensions(assembly.GetTypes());
         }
 
-        internal static ICollection<ExtensionType> LoadExtensions(IEnumerable<Type> extensions)
+        internal static IEnumerable<ExtensionType> LoadExtensions(IEnumerable<Type> extensions)
         {
-            List<Type> types =
-                extensions.Where(t => t.IsImplement<IExtension>() && t.IsHaveAttribute<ExtensionNameAttribute>(true)).OrderBy
-                    (t => t.GetAttributes<DataTypeAttribute>(true).Any(p => p.DataType.GetTypeInfo().IsInterface)).ThenBy
-                    (t => t.GetAttributes<ChainedTypeAttribute>(true).Any(p => p.DataType.GetTypeInfo().IsInterface)).ToList();
-            var result = new List<ExtensionType>();
-            foreach (Type type in types)
+            var types =
+                extensions.Where(t => t.IsImplement<IExtension>() && t.IsHaveAttribute<ExtensionNameAttribute>(true))
+                    .OrderBy
+                        (t => t.GetAttributes<DataTypeAttribute>(true).Any(p => p.DataType.GetTypeInfo().IsInterface))
+                    .ThenBy
+                    (t => t.GetAttributes<ChainedTypeAttribute>(true)
+                        .Any(p => p.DataType.GetTypeInfo().IsInterface));
+            foreach (var type in types)
             {
-                ExtensionNameAttribute[] extensionNames = type.GetAttributes<ExtensionNameAttribute>(true);
-                bool replace = type.IsHaveAttribute<ExtensionReplaceAttribute>();
-                result.AddRange(extensionNames.Select(name => new ExtensionType(name.Name, type, replace)));
+                var extensionNames = type.GetAttributes<ExtensionNameAttribute>(true);
+                var replace = type.IsHaveAttribute<ExtensionReplaceAttribute>();
+                foreach (var result in extensionNames.Select(name => new ExtensionType(name.Name, type, replace)))
+                {
+                    yield return result;
+                }
             }
-            return result;
         }
 
         /// <summary>
