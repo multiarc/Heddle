@@ -23,6 +23,8 @@ stages:
               "$(Build.Repository.Name)" | "$(Build.SourceBranchName)"
               "$(Build.Repository.Name)"
         - task: QodanaScan@2023
+          env:
+            QODANA_TOKEN: $(QODANA_TOKEN)
       - job: Build
         pool:
           name: Default
