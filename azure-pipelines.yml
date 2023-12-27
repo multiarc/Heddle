@@ -44,7 +44,7 @@ stages:
               SonarQube: 'SonarQube'
               scannerMode: 'MSBuild'
               projectKey: 'BaseLibs_Templater_AYyrNrQoIK_nuPwRwoHC'
-              projectName: 'PollenStream'
+              projectName: 'Templater'
               extraProperties: |
                 sonar.cs.opencover.reportsPaths=$(Build.ArtifactStagingDirectory)/results/coverage/coverage.xml
                 sonar.cs.vstest.reportsPaths=$(Agent.TempDirectory)\**\*.trx
