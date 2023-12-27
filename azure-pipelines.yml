@@ -47,8 +47,8 @@ stages:
               projectKey: 'BaseLibs_Templater_AYyrNrQoIK_nuPwRwoHC'
               projectName: 'Templater'
               extraProperties: |
-                sonar.cs.opencover.reportsPaths=$(Build.ArtifactStagingDirectory)/results/coverage/coverage.xml
-                sonar.cs.vstest.reportsPaths=$(Agent.TempDirectory)\**\*.trx
+                sonar.cs.opencover.reportsPaths=$(Agent.BuildDirectory)/**/TestResults/**/*.opencover.xml
+                sonar.cs.vstest.reportsPaths=$(Agent.BuildDirectory)/**/TestResults/*.trx
           - task: DotNetCoreCLI@2
             displayName: 'Restore'
             inputs:
@@ -65,10 +65,28 @@ stages:
           - task: DotNetCoreCLI@2
             displayName: 'Test'
             inputs:
-              command: 'test'
-              configuration: $(buildConfiguration)
-              arguments: '--no-restore --no-build --collect "Code Coverage" /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:CoverletOutput="$(Build.ArtifactStagingDirectory)/results/coverage/coverage.xml" /p:ExcludeByFile="/Tests/**/*.cs"'
-              publishTestResults: true
+              command: 'custom'
+              custom: 'test'
+              arguments: '--no-restore -c Debug --logger trx --collect "XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura,opencover RunConfiguration.DisableAppDomain=true'
+          - task: reportgenerator@5
+            displayName: Merge Cobertura Coverage
+            inputs:
+              reporttypes: 'Cobertura'
+              reports: '$(Agent.BuildDirectory)/**/TestResults/**/*.cobertura.xml'
+              targetDir: '$(Agent.BuildDirectory)/TestResults/Coverage'
+          - task: PublishTestResults@2
+            displayName: 'Publish Test Results'
+            inputs:
+              testRunner: VSTest
+              testResultsFiles:
+                $(Agent.BuildDirectory)/**/TestResults/*.trx
+              failTaskOnFailedTests: true
+              testRunTitle: '$(Build.BuildID)'
+          - task: PublishCodeCoverageResults@1
+            displayName: 'PublishCodeCoverage'
+            inputs:
+              codeCoverageTool: Cobertura
+              summaryFileLocation: $(Agent.BuildDirectory)/TestResults/Coverage/cobertura.xml
           - task: SonarQubeAnalyze@5
             condition: eq(variables['Build.SourceBranch'], 'refs/heads/master')
           - task: SonarQubePublish@5
