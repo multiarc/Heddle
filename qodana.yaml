@@ -1,0 +1,16 @@
+version: 1.0
+failThreshold: 0
+profile:
+  name: qodana.recommended
+exclude:
+  - name: All
+    paths:
+      - src/Templates.Language/generated
+      - src/Templates.Language/js
+      - src/Templates.Performance
+      - src/Templates.TestingTool
+      - src/Templates.Tests
+      - lib
+      - integrations
+      - gen
+      - performance
