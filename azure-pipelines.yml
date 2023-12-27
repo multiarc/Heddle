@@ -12,6 +12,7 @@ stages:
   - stage: Build
     jobs:
       - job: Qodana
+        condition: eq(variables['Build.SourceBranch'], 'refs/heads/master')
         pool:
           vmImage: ubuntu-latest
         steps:
@@ -75,17 +76,17 @@ stages:
             inputs:
               pollingTimeoutSec: '300'
           - task: DotNetCoreCLI@2
-            displayName: 'Pack'
+            displayName: 'Pack Test'
             inputs:
               command: 'custom'
               custom: "pack"
               arguments: '-c $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)/results/packages/test --version-suffix -test$(revision)'
           - task: DotNetCoreCLI@2
-            displayName: 'Pack'
+            displayName: 'Pack Release'
             inputs:
               command: 'custom'
               custom: "pack"
-              arguments: '-c $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)/results/packages/release --version-suffix $(revision)'
+              arguments: '-c $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)/results/packages/release --version-suffix .$(revision)'
           - task: PublishPipelineArtifact@1
             inputs:
               targetPath: '$(Build.ArtifactStagingDirectory)/results/'
