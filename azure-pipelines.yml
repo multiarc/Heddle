@@ -43,7 +43,7 @@ stages:
             inputs:
               SonarQube: 'SonarQube'
               scannerMode: 'MSBuild'
-              projectKey: 'BaseLibs_TcpServiceBus_AYZCIKSr6nmkFq531OXD'
+              projectKey: 'BaseLibs_Templater_AYyrNrQoIK_nuPwRwoHC'
               projectName: 'PollenStream'
               extraProperties: |
                 sonar.cs.opencover.reportsPaths=$(Build.ArtifactStagingDirectory)/results/coverage/coverage.xml
