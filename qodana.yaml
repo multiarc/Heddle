@@ -14,3 +14,5 @@ exclude:
       - integrations
       - gen
       - performance
+include:
+  - name: CheckDependencyLicenses
