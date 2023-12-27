@@ -1,0 +1,178 @@
+trigger:
+  - master
+
+name: $(Build.DefinitionName)-$(date:yyyyMMdd)$(rev:.r)
+
+variables:
+  buildConfiguration: 'Release'
+  major: 2
+  revision: $[counter(variables['major'], 1)]
+
+stages:
+  - stage: Build
+    jobs:
+      - job: Qodana
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+        - task: Cache@2
+          inputs:
+            key: '"$(Build.Repository.Name)" | "$(Build.SourceBranchName)" | "$(Build.SourceVersion)"'
+            path: '$(Agent.TempDirectory)/qodana/cache'
+            restoreKeys: |
+              "$(Build.Repository.Name)" | "$(Build.SourceBranchName)"
+              "$(Build.Repository.Name)"
+        - task: QodanaScan@2023
+          env:
+            QODANA_TOKEN: $(QODANA_TOKEN)
+      - job: Build
+        pool:
+          name: Default
+        steps:
+          - task: UseDotNet@2
+            displayName: 'Update DotNet'
+            inputs:
+              packageType: 'sdk'
+              version: '6.0.x'
+          - task: NuGetToolInstaller@1
+            displayName: 'Update Nuget'
+            inputs:
+              versionSpec: 6.x
+          - task: SonarQubePrepare@5
+            condition: eq(variables['Build.SourceBranch'], 'refs/heads/master')
+            inputs:
+              SonarQube: 'SonarQube'
+              scannerMode: 'MSBuild'
+              projectKey: 'BaseLibs_Templater_AYyrNrQoIK_nuPwRwoHC'
+              projectName: 'PollenStream'
+              extraProperties: |
+                sonar.cs.opencover.reportsPaths=$(Build.ArtifactStagingDirectory)/results/coverage/coverage.xml
+                sonar.cs.vstest.reportsPaths=$(Agent.TempDirectory)\**\*.trx
+          - task: DotNetCoreCLI@2
+            displayName: 'Restore'
+            inputs:
+              command: 'restore'
+              feedsToUse: 'select'
+              vstsFeed: 'a69315dc-6eb6-45b1-b621-c2ea8aecd8e1'
+              verbosityRestore: Minimal
+          - task: DotNetCoreCLI@2
+            displayName: 'Build'
+            inputs:
+              command: 'build'
+              configuration: $(buildConfiguration)
+              arguments: '--no-restore --no-incremental'
+          - task: DotNetCoreCLI@2
+            displayName: 'Test'
+            inputs:
+              command: 'test'
+              configuration: $(buildConfiguration)
+              arguments: '--no-restore --no-build --collect "Code Coverage" /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:CoverletOutput="$(Build.ArtifactStagingDirectory)/results/coverage/coverage.xml" /p:ExcludeByFile="/Tests/**/*.cs"'
+              publishTestResults: true
+          - task: SonarQubeAnalyze@5
+            condition: eq(variables['Build.SourceBranch'], 'refs/heads/master')
+          - task: SonarQubePublish@5
+            condition: eq(variables['Build.SourceBranch'], 'refs/heads/master')
+            inputs:
+              pollingTimeoutSec: '300'
+          - task: DotNetCoreCLI@2
+            displayName: 'Pack'
+            inputs:
+              command: 'custom'
+              custom: "pack"
+              arguments: '-c $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)/results/packages/test --version-suffix -test$(revision)'
+          - task: DotNetCoreCLI@2
+            displayName: 'Pack'
+            inputs:
+              command: 'custom'
+              custom: "pack"
+              arguments: '-c $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)/results/packages/release --version-suffix $(revision)'
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(Build.ArtifactStagingDirectory)/results/'
+              artifact: 'results'
+              publishLocation: 'pipeline'
+  - stage: Test
+    dependsOn: Build
+    jobs:
+      - deployment: TestPackage
+        displayName: 'Deploy Test Package'
+        pool:
+          name: Default
+        workspace:
+          clean: all
+        environment: Test
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: NuGetToolInstaller@1
+                  displayName: 'Update Nuget'
+                  inputs:
+                    versionSpec: 6.x
+                - task: NuGetCommand@2
+                  displayName: 'Nuget Push'
+                  inputs:
+                    command: 'push'
+                    packagesToPush: '$(Pipeline.Workspace)/results/packages/test/*.nupkg'
+                    nuGetFeedType: 'internal'
+                    publishVstsFeed: 'a69315dc-6eb6-45b1-b621-c2ea8aecd8e1'
+                    verbosityPush: 'Normal'
+                    allowPackageConflicts: false
+  - stage: Release
+    dependsOn: Test
+    condition: eq(variables['Build.SourceBranch'], 'refs/heads/master')
+    jobs:
+      - deployment: ReleasePackage
+        displayName: 'Deploy Release Package'
+        pool:
+          name: Default
+        workspace:
+          clean: all
+        environment: Release
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: NuGetToolInstaller@1
+                  displayName: 'Update Nuget'
+                  inputs:
+                    versionSpec: 6.x
+                - task: NuGetCommand@2
+                  displayName: 'Nuget Push'
+                  inputs:
+                    command: 'push'
+                    packagesToPush: '$(Pipeline.Workspace)/results/packages/release/*.nupkg'
+                    nuGetFeedType: 'internal'
+                    publishVstsFeed: 'a69315dc-6eb6-45b1-b621-c2ea8aecd8e1'
+                    verbosityPush: 'Normal'
+                    allowPackageConflicts: false
+      - job: Retain
+        dependsOn: ReleasePackage
+        pool: server
+        steps:
+          - task: InvokeRESTAPI@1
+            inputs:
+              connectionType: 'connectedServiceName'
+              serviceConnection: 'PipelineRetention'
+              method: 'POST'
+              headers: |
+                {
+                "Content-Type":"application/json", 
+                "PlanUrl": "$(system.CollectionUri)", 
+                "ProjectId": "$(system.TeamProjectId)", 
+                "HubName": "$(system.HostType)", 
+                "PlanId": "$(system.PlanId)", 
+                "JobId": "$(system.JobId)", 
+                "TimelineId": "$(system.TimelineId)", 
+                "TaskInstanceId": "$(system.TaskInstanceId)", 
+                "AuthToken": "$(system.AccessToken)"
+                }
+              body: |
+                [{
+                  "daysValid": 36500,
+                  "definitionId": $(System.DefinitionId),
+                  "ownerId": "User:$(Build.RequestedForId)",
+                  "protectPipeline": true,
+                  "runId": $(Build.BuildId)
+                }]
+              urlSuffix: '/_apis/build/retention/leases?api-version=7.0'
