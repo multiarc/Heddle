@@ -47,7 +47,7 @@ jobs:
     - name: Authenticate Github Packages
       run: dotnet nuget add source --username multiarc --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/multiarc/index.json"
     - name: Push packages
-      run: dotnet nuget push "./package/test/!*symbols.nupkg|*.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "github"
+      run: dotnet nuget push "${{ github.workspace }}/package/test/*.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "github"
   publish-release:
     needs: build
     if: ${{ github.ref == 'refs/tags/main' }}
@@ -62,4 +62,4 @@ jobs:
     - name: Authenticate Github Packages
       run: dotnet nuget add source --username multiarc --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/multiarc/index.json"
     - name: Push packages
-      run: dotnet nuget push "./package/release/!*symbols.nupkg|*.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "github"
+      run: dotnet nuget push "${{ github.workspace }}/package/release/*.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "github"
