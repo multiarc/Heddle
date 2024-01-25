@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyOriginatorKeyFile>..\..\templater.snk</AssemblyOriginatorKeyFile>
-    <Version>4.0.1$(VersionSuffix)</Version>
+    <Version>4.0.2$(VersionSuffix)</Version>
     <Authors>Aliaksandr Kukrash</Authors>
     <Company />
     <Product>Templates.Language</Product>

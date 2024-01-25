@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <SignAssembly>true</SignAssembly>
-    <Version>4.0.1$(VersionSuffix)</Version>
+    <Version>4.0.2$(VersionSuffix)</Version>
     <LangVersion>default</LangVersion>
     <AssemblyOriginatorKeyFile>..\..\templater.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
