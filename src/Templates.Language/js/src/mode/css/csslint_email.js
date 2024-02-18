@@ -1,4 +1,3 @@
-define(function(require, exports, module) {
 /*!
 CSSLint
 Copyright (c) 2014 Nicole Sullivan and Nicholas C. Zakas. All rights reserved.
@@ -9510,5 +9509,3 @@ CSSLint.addFormatter({
 });
 
 module.exports.CSSLint = CSSLint;
-
-});
