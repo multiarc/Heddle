@@ -7,5 +7,7 @@ cd ace
 npm install
 npm install antlr4@4.13.1
 cp -R ../../js/src/ ./
+cp -R ./node_modules/antlr4/src/antlr4/ ./src/mode/tts/
+cp ../../js/fs.js ./src/mode/tts/antlr4/
+find ./src/mode/tts/antlr4/ -iname "*.js" -exec sed -i -r "s#import fs from 'fs'#import fs from \"\./fs\"#g" {} +
 node ./Makefile.dryice.js -nc
-cp -R ./build/src-noconflict/ ../

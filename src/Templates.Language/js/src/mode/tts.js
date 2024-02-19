@@ -8,6 +8,7 @@ var CssMode = require("./css").Mode;
 var TtlFoldMode = require("./folding/tts").FoldMode;
 var TtlHighlightRules = require("./tts_highlight_rules").TtlHighlightRules;
 var TtlTokenizer = require("./tts/TtlTokenizer").TtlTokenizer;
+var TtlWorkerTokenizer = require("./tts/TtlTokenizer").TtlWorkerTokenizer;
 var WorkerClient = require("../worker/worker_client").WorkerClient;
 
 var Mode = function () {
@@ -81,7 +82,7 @@ oop.inherits(WorkerMode, HtmlMode);
     this.getTokenizer = function () {
         if (!this.$tokenizer) {
             this.$highlightRules = this.$highlightRules || new this.HighlightRules(this.$highlightRuleConfig);
-            this.$tokenizer = new TtlTokenizer(this.$highlightRules.getRules());
+            this.$tokenizer = new TtlWorkerTokenizer(this.$highlightRules.getRules());
         }
         return this.$tokenizer;
     };
@@ -90,3 +91,4 @@ oop.inherits(WorkerMode, HtmlMode);
 }).call(WorkerMode.prototype);
 
 exports.Mode = Mode;
+exports.WorkerMode = WorkerMode;

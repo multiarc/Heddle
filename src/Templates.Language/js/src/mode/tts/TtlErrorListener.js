@@ -1,10 +1,9 @@
 "use strict";
-var ErrorListener = require('antlr4/error/ErrorListener').ErrorListener;
-var ParseContext = require("./ParseContext").ParseContext;
+import {ErrorListener} from "./antlr4/index.web";
 
-class TtlErrorListener extends ErrorListener {
+export class TtlErrorListener extends ErrorListener {
     constructor(context) {
-        super(new ParseContext());
+        super();
         this.context = context;
         this.INSTANCE = this;
     }
@@ -13,5 +12,3 @@ class TtlErrorListener extends ErrorListener {
         this.context.addError(msg, e, offendingSymbol);
     }
 }
-
-exports.TtlErrorListener = TtlErrorListener;

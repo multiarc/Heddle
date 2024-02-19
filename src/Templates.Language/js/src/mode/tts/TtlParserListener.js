@@ -1,6 +1,7 @@
-// Generated from TtlParser.g4 by ANTLR 4.13.1
+"use strict";
+// Generated from TtlLexer.g4 by ANTLR 4.13.1
 // jshint ignore: start
-import antlr4 from 'antlr4';
+import antlr4 from "./antlr4/index.web";
 
 // This class defines a complete listener for a parse tree produced by TtlParser.
 export default class TtlParserListener extends antlr4.tree.ParseTreeListener {

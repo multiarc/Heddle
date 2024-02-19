@@ -1,23 +1,25 @@
 "use strict";
-var InputStream = require('antlr4/InputStream').InputStream;
-var CommonTokenStream = require('antlr4/CommonTokenStream').CommonTokenStream;
-var TtlLexerExtended = require("./TtlLexerExtended").TtlLexerExtended;
-var TtlParserExtended = require("./TtlParserExtended").TtlParserExtended;
-var ParseContext = require("./ParseContext").ParseContext;
+import {CharStream} from "./antlr4/index.web";
+import {CommonTokenStream} from "./antlr4/index.web";
+import {ParseContext} from "./ParseContext";
+import {TtlLexerExtended} from "./TtlLexerExtended";
+import {TtlParserExtended} from "./TtlParserExtended";
 
-function DocumentParser(inputDocument) {
-    var input = new InputStream(inputDocument);
-    this.context = new ParseContext();
-    this.lexer = new TtlLexerExtended(input, this.context);
-    var tokenStream = new CommonTokenStream(this.lexer);
-    this.parser = new TtlParserExtended(tokenStream, this.context);
-    this.parser.buildParseTrees = false;
-    return this;
+export class DocumentParser {
+    constructor(inputDocument) {
+        const input = new CharStream(inputDocument);
+        this.context = new ParseContext();
+        this.lexer = new TtlLexerExtended(input, this.context);
+        const tokenStream = new CommonTokenStream(this.lexer);
+        this.parser = new TtlParserExtended(tokenStream, this.context);
+        this.parser.buildParseTrees = false;
+    }
+    parseGetErrors() {
+        try {
+            this.parser.ttl();
+        } catch {
+            //skip direct throws
+        }
+        return this.parser.context.errors;
+    };
 }
-
-DocumentParser.prototype.parseGetErrors = function () {
-    this.parser.ttl();
-    return this.parser.context.errors;
-};
-
-exports.DocumentParser = DocumentParser;

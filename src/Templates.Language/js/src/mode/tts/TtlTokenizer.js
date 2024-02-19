@@ -1,7 +1,6 @@
 ﻿"use strict";
 
-var oop = require("../../lib/oop");
-var Tokenizer = require("../../tokenizer").Tokenizer;
+import {Tokenizer} from "../../tokenizer";
 
 var MAX_TOKEN_COUNT = 2000;
 

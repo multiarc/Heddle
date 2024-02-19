@@ -1,6 +1,7 @@
+"use strict";
 // Generated from TtlLexer.g4 by ANTLR 4.13.1
 // jshint ignore: start
-import antlr4 from 'antlr4';
+import antlr4 from "./antlr4/index.web";
 
 
 const serializedATN = [4,0,34,1523,6,-1,6,-1,6,-1,6,-1,6,-1,6,-1,6,-1,6,
@@ -645,3 +646,7 @@ TtlLexer.CALL_RETURNED = 4;
 TtlLexer.OUT_MODE = 5;
 TtlLexer.CALL = 6;
 TtlLexer.CS = 7;
+
+
+
+

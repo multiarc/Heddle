@@ -19,16 +19,19 @@
 
   <ItemGroup>
     <Compile Remove="js\**" />
+    <Compile Remove="ace_build\**" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Remove="js\**" />
+    <EmbeddedResource Remove="ace_build\**" />
   </ItemGroup>
 
   <ItemGroup>
     <None Include="..\..\templater.snk">
       <Link>templater.snk</Link>
     </None>
+    <None Remove="ace_build\**" />
   </ItemGroup>
 
 </Project>
