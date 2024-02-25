@@ -9,6 +9,6 @@ export class TtlErrorListener extends ErrorListener {
     }
 
     syntaxError(recognizer, offendingSymbol, line, column, msg, e) {
-        this.context.addError(msg, e, offendingSymbol);
+        this.context.addError(msg, e, offendingSymbol, line, column);
     }
 }

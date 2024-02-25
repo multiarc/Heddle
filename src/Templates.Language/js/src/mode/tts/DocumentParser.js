@@ -1,5 +1,5 @@
 "use strict";
-import {CharStream} from "./antlr4/index.web";
+import {CharStreams} from "./antlr4/index.web";
 import {CommonTokenStream} from "./antlr4/index.web";
 import {ParseContext} from "./ParseContext";
 import {TtlLexerExtended} from "./TtlLexerExtended";
@@ -7,7 +7,7 @@ import {TtlParserExtended} from "./TtlParserExtended";
 
 export class DocumentParser {
     constructor(inputDocument) {
-        const input = new CharStream(inputDocument);
+        const input = new CharStreams.fromString(inputDocument);
         this.context = new ParseContext();
         this.lexer = new TtlLexerExtended(input, this.context);
         const tokenStream = new CommonTokenStream(this.lexer);
@@ -15,11 +15,7 @@ export class DocumentParser {
         this.parser.buildParseTrees = false;
     }
     parseGetErrors() {
-        try {
-            this.parser.ttl();
-        } catch {
-            //skip direct throws
-        }
+        this.parser.ttl();
         return this.parser.context.errors;
     };
 }

@@ -6,7 +6,7 @@ export class ParseContext {
         this.errors = [];
     }
 
-    addError(msg, e, token) {
+    addError(msg, e, token, line, column) {
         if (!e)
             return;
         if (e && (e instanceof NoViableAltException || e instanceof LexerNoViableAltException)) {
@@ -14,7 +14,9 @@ export class ParseContext {
                 message: msg || 'No viable alternative',
                 exception: e,
                 position: {
-                    startIndex: e.startIndex
+                    startIndex: e.startIndex,
+                    line: line,
+                    column: column
                 }
             });
         } else if (e && e.startToken) {
@@ -23,7 +25,9 @@ export class ParseContext {
                 exception: e,
                 position: {
                     startIndex: e.startToken.start,
-                    length: e.startToken.stop - e.startToken.start + 1
+                    length: e.startToken.stop - e.startToken.start + 1,
+                    line: line,
+                    column: column
                 }
             });
         } else if (token) {
@@ -32,7 +36,9 @@ export class ParseContext {
                 exception: e,
                 position: {
                     startIndex: token.start,
-                    length: token.stop - token.start + 1
+                    length: token.stop - token.start + 1,
+                    line: line,
+                    column: column
                 }
             });
         }

@@ -244,13 +244,22 @@ oop.inherits(TtlWorker, Mirror);
             var error = results[i];
             if (!error || error.position === null)
                 continue;
-            var position = this.doc.indexToPosition(error.position.startIndex);
-            errors.push({
-                row: position.row,
-                column: position.column,
-                text: error.message,
-                type: "error"
-            });
+            if (error.position.startIndex) {
+                var position = this.doc.indexToPosition(error.position.startIndex);
+                errors.push({
+                    row: position.row,
+                    column: position.column,
+                    text: error.message,
+                    type: "error"
+                });
+            } else {
+                errors.push({
+                    row: error.position.line - 1,
+                    column: error.position.column,
+                    text: error.message,
+                    type: "error"
+                });
+            }
         }
         this.sender.emit("annotate", errors);
 

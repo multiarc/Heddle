@@ -10,4 +10,5 @@ cp -R ../../js/src/ ./
 cp -R ./node_modules/antlr4/src/antlr4/ ./src/mode/tts/
 cp ../../js/fs.js ./src/mode/tts/antlr4/
 find ./src/mode/tts/antlr4/ -iname "*.js" -exec sed -i -r "s#import fs from 'fs'#import fs from \"\./fs\"#g" {} +
+sed -i -r "s#target:\s*\"ES5\"#target: \"ES2015\"#g" Makefile.dryice.js
 node ./Makefile.dryice.js -nc
