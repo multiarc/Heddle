@@ -32,10 +32,10 @@ jobs:
     - name: Test
       run: dotnet test -c Debug --no-restore --verbosity normal
     - name: Pack
-      if: ${{ github.ref != 'refs/heads/main' }}
+      if: ${{ github.ref != 'refs/heads/main' && matrix.os == 'windows-latest' }}
       run: dotnet pack -c Release --no-build --no-restore --include-source --include-symbols -o ${{runner.temp}}/results/packages/beta --version-suffix -beta${{github.run_number}}
     - name: Pack
-      if: ${{ github.ref == 'refs/heads/main' }}
+      if: ${{ github.ref == 'refs/heads/main' && matrix.os == 'windows-latest' }}
       run: dotnet pack -c Release --no-build --no-restore --include-source --include-symbols -o ${{runner.temp}}/results/packages/release --version-suffix .${{github.run_number}}
     - name: Publish Artifacts
       uses: actions/upload-artifact@v4.3.0
@@ -44,7 +44,7 @@ jobs:
         path: ${{runner.temp}}/results/packages
   publish-test:
     needs: build
-    if: ${{ github.ref != 'refs/heads/main' }}
+    if: ${{ github.ref != 'refs/heads/main' && matrix.os == 'windows-latest' }}
     runs-on: ubuntu-latest
     steps:
     - name: Download a Build Artifact
@@ -59,7 +59,7 @@ jobs:
       run: dotnet nuget push "${{ github.workspace }}/package/beta/*.symbols.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "github"
   publish-release:
     needs: build
-    if: ${{ github.ref == 'refs/heads/main' }}
+    if: ${{ github.ref == 'refs/heads/main' && matrix.os == 'windows-latest' }}
     runs-on: ubuntu-latest
     steps:
     - name: Download a Build Artifact
