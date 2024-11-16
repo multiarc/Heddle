@@ -14,7 +14,7 @@ namespace Templates.Mvc
     {
         public TemplateResolver Resolver { get; }
 
-        public TtlViewEngine(IHostingEnvironment hostingEnvironment)
+        public TtlViewEngine(IWebHostEnvironment hostingEnvironment)
         {
             string path = ".";
             try

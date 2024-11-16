@@ -22,6 +22,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="ace_build\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource Remove="js\**" />
   </ItemGroup>
 
