@@ -501,7 +501,16 @@ namespace Templates.Tests
                 Guid = Guid.Parse("{3E55A9AF-0031-4C54-B836-527EAB26867B}"),
                 Text = "SOME TEXT"
             };
-            StreamReader reader = File.OpenText(@"TestTemplate/generated.html");
+            StreamReader reader;
+            if (Type.GetType("Mono.Runtime") != null)
+            {
+                reader = File.OpenText(@"TestTemplate/generated_mono.html");
+            }
+            else
+            {
+                reader = File.OpenText(@"TestTemplate/generated.html");
+            }
+
             var expected = reader.ReadToEnd();
             reader.Dispose();
             var actual = target.Generate(data);

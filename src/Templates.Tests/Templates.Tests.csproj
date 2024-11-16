@@ -119,6 +119,9 @@
     <None Update="TestTemplate\generated-raw-document.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="TestTemplate\generated_mono.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
