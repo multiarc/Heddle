@@ -14,7 +14,11 @@ namespace Templates.Mvc
     {
         public TemplateResolver Resolver { get; }
 
+        #if NETSTANDARD2_0
+        public TtlViewEngine(IHostingEnvironment hostingEnvironment)
+        #else
         public TtlViewEngine(IWebHostEnvironment hostingEnvironment)
+        #endif
         {
             string path = ".";
             try

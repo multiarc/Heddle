@@ -14,6 +14,11 @@ namespace Templates.Native
 {
     internal static class AssemblyHelper
     {
+#if NETSTANDARD2_0
+        private static readonly string NetStandardAssemblyFullName =
+            "netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51";
+#endif
+        
         private static volatile DependencyContext _dependencyContext;
 
         private static readonly ConcurrentDictionary<AssemblyName, Tuple<Assembly, MetadataReference>> AssemblyCache =
@@ -33,9 +38,8 @@ namespace Templates.Native
                     MetadataReferences.Add(currentInfo.Item2);
                     foreach (var assemblyName in current.GetReferencedAssemblies())
                     {
-                        try
+                        AssemblyLoadSafe(assemblyName, (dependent) =>
                         {
-                            var dependent = Assembly.Load(assemblyName);
                             var dependentInfo =
                                 new Tuple<Assembly, MetadataReference>(dependent,
                                     CreateMetadataFileReference(dependent));
@@ -45,18 +49,27 @@ namespace Templates.Native
                                 Assemblies.Add(dependentInfo.Item1);
                                 WalkReferenceAssemblies(dependent);
                             }
-                        }
-                        catch (FileNotFoundException)
-                        {
-                        }
-                        catch (ReflectionTypeLoadException)
-                        {
-                        }
-                        catch (FileLoadException)
-                        {
-                        }
+                        });
                     }
                 }
+            }
+        }
+
+        private static void AssemblyLoadSafe(AssemblyName assemblyName, Action<Assembly> continuation)
+        {
+            try
+            {
+                var asm = Assembly.Load(assemblyName);
+                continuation?.Invoke(asm);
+            }
+            catch (FileNotFoundException)
+            {
+            }
+            catch (ReflectionTypeLoadException)
+            {
+            }
+            catch (FileLoadException)
+            {
             }
         }
 
@@ -254,6 +267,10 @@ namespace Templates.Native
             }
 
             WalkReferenceAssemblies(typeof(DynamicAttribute).GetTypeInfo().Assembly);
+#if NETSTANDARD2_0
+            //without this reference, net48 target doesn't work from CodeAnalysis context
+            AssemblyLoadSafe(new AssemblyName(NetStandardAssemblyFullName), WalkReferenceAssemblies);
+#endif
             WalkReferenceAssemblies(typeof(CSharpArgumentInfo).GetTypeInfo().Assembly);
             GetApplicationReferences();
         }
@@ -288,15 +305,7 @@ namespace Templates.Native
                 {
                     if (!AssemblyCache.ContainsKey(name))
                     {
-                        try
-                        {
-                            var asm = Assembly.Load(name);
-                            WalkReferenceAssemblies(asm);
-                        }
-                        catch
-                        {
-                            //skip load issues
-                        }
+                        AssemblyLoadSafe(name, WalkReferenceAssemblies);
                     }
                 }
             }
