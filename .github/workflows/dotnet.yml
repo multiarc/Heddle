@@ -38,9 +38,9 @@ jobs:
       if: ${{ github.ref != 'refs/heads/main' && matrix.os == 'windows-latest' }}
       run: | 
         dotnet pack -c Release --no-build --no-restore --include-source --include-symbols -o ${{runner.temp}}/results/packages/beta --version-suffix -beta${{github.run_number}}
-        dotnet nuget push "${{ github.workspace }}/package/beta/*.symbols.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "github"
+        dotnet nuget push "${{runner.temp}}/results/packages/beta/*.symbols.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "github"
     - name: Upload Release Packages
       if: ${{ github.ref == 'refs/heads/main' && matrix.os == 'windows-latest' }}
       run: |
         dotnet pack -c Release --no-build --no-restore --include-source --include-symbols -o ${{runner.temp}}/results/packages/release --version-suffix .${{github.run_number}}
-        dotnet nuget push "${{ github.workspace }}/package/release/*.symbols.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "github"
+        dotnet nuget push "${{runner.temp}}/results/packages/release/*.symbols.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "github"
