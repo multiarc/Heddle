@@ -11,57 +11,36 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
+    - name: Setup .NET 3.1.x
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 3.1.x
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 6.0.x
+        dotnet-version: 8.0.x
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore -c Release
     - name: Test
       run: dotnet test -c Debug --no-restore --verbosity normal
-    - name: Pack
-      if: ${{ github.ref != 'refs/heads/main' }}
-      run: dotnet pack -c Release --no-build --no-restore --include-source --include-symbols -o ${{runner.temp}}/results/packages/beta --version-suffix -beta${{github.run_number}}
-    - name: Pack
-      if: ${{ github.ref == 'refs/heads/main' }}
-      run: dotnet pack -c Release --no-build --no-restore --include-source --include-symbols -o ${{runner.temp}}/results/packages/release --version-suffix .${{github.run_number}}
-    - name: Publish Artifacts
-      uses: actions/upload-artifact@v4.3.0
-      with:
-        name: package
-        path: ${{runner.temp}}/results/packages
-  publish-test:
-    needs: build
-    if: ${{ github.ref != 'refs/heads/main' }}
-    runs-on: ubuntu-latest
-    steps:
-    - name: Download a Build Artifact
-      uses: actions/download-artifact@v4.1.1
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: 6.0.x
     - name: Authenticate Github Packages
+      if: ${{ matrix.os == 'windows-latest' }}
       run: dotnet nuget add source --username multiarc --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/multiarc/index.json"
-    - name: Push packages
-      run: dotnet nuget push "${{ github.workspace }}/package/beta/*.symbols.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "github"
-  publish-release:
-    needs: build
-    if: ${{ github.ref == 'refs/heads/main' }}
-    runs-on: ubuntu-latest
-    steps:
-    - name: Download a Build Artifact
-      uses: actions/download-artifact@v4.1.1
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: 6.0.x
-    - name: Authenticate Github Packages
-      run: dotnet nuget add source --username multiarc --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/multiarc/index.json"
-    - name: Push packages
-      run: dotnet nuget push "${{ github.workspace }}/package/release/*.symbols.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "github"
+    - name: Upload Beta Packages
+      if: ${{ github.ref != 'refs/heads/main' && matrix.os == 'windows-latest' }}
+      run: | 
+        dotnet pack -c Release --no-build --no-restore --include-source --include-symbols -o ${{runner.temp}}\results\packages\beta --version-suffix -beta${{github.run_number}}
+        dotnet nuget push "${{runner.temp}}\results\packages\beta\*.symbols.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "github"
+    - name: Upload Release Packages
+      if: ${{ github.ref == 'refs/heads/main' && matrix.os == 'windows-latest' }}
+      run: |
+        dotnet pack -c Release --no-build --no-restore --include-source --include-symbols -o ${{runner.temp}}\results\packages\release --version-suffix .${{github.run_number}}
+        dotnet nuget push "${{runner.temp}}\results\packages\release\*.symbols.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source "github"

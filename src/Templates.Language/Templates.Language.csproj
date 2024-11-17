@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
+    <TargetFrameworks>netstandard2.0;net6.0;net8.0</TargetFrameworks>
     <AssemblyOriginatorKeyFile>..\..\templater.snk</AssemblyOriginatorKeyFile>
     <Version>4.0.2$(VersionSuffix)</Version>
     <Authors>Aliaksandr Kukrash</Authors>
@@ -11,6 +11,7 @@
     <Description>Text Template Engine Language Parser</Description>
     <LangVersion>default</LangVersion>
     <SignAssembly>true</SignAssembly>
+    <NoWarn>CS3021</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,6 +20,10 @@
 
   <ItemGroup>
     <Compile Remove="js\**" />
+    <Compile Remove="ace_build\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Remove="ace_build\**" />
   </ItemGroup>
 

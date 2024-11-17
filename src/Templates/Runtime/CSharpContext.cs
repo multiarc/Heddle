@@ -50,7 +50,8 @@ namespace Templates.Runtime
                 }
                 else
                 {
-                    var provider = new EmbeddedFileProvider(typeof(ContextCompilation).Assembly, "Templates.LanguageTemplates");
+                    var provider = new EmbeddedFileProvider(typeof(ContextCompilation).Assembly,
+                        "Templates.LanguageTemplates");
                     var fileInfo = provider.GetFileInfo("CSharpPreparseTemplate.tcs");
                     using var embeddedTemplate = fileInfo.CreateReadStream();
                     if (embeddedTemplate != null)
@@ -59,6 +60,7 @@ namespace Templates.Runtime
                         document = templateReader.ReadToEnd();
                     }
                 }
+
                 InitErrors = PreparseGenerator.Compile(document);
             }
             catch (Exception e)
@@ -74,7 +76,7 @@ namespace Templates.Runtime
 
         public static TtlCompileResult InitErrors { get; }
 
-        public ICollection<string> Namespaces =>  _namespaces;
+        public ICollection<string> Namespaces => _namespaces;
 
         private readonly HashSet<string> _namespaces = new HashSet<string>();
 
@@ -84,26 +86,21 @@ namespace Templates.Runtime
         private int _lastMethodNumber;
         internal List<ExpressionCompilation> Methods { get; } = new List<ExpressionCompilation>();
 
-        public HashSet<Assembly> DependentAssemblies { get; }
-            =
-            new HashSet<Assembly>(new[]
-            {
-                typeof (object).GetTypeInfo().Assembly, typeof (Enumerable).GetTypeInfo().Assembly,
-                typeof (InternalsVisibleToAttribute).GetTypeInfo().Assembly
-            });
-
         public void ImportNamespace(string parameterTemplate)
         {
             if (!string.IsNullOrEmpty(parameterTemplate) && !_namespaces.Contains(parameterTemplate))
                 _namespaces.Add(parameterTemplate);
         }
 
-        internal IRuntimeParameter PushCompileExpression(ExpressionOptions expressionOptions, CompileContext compileContext)
+        internal IRuntimeParameter PushCompileExpression(ExpressionOptions expressionOptions,
+            CompileContext compileContext)
         {
             if (string.IsNullOrEmpty(expressionOptions.Expression))
             {
-                throw new ArgumentException($"[{expressionOptions.Position}]<{expressionOptions.ExtensionName}> Expression cannot be null or empty");
+                throw new ArgumentException(
+                    $"[{expressionOptions.Position}]<{expressionOptions.ExtensionName}> Expression cannot be null or empty");
             }
+
             IRuntimeParameter parameter = new CompiledParameter();
             Methods.Add(new ExpressionCompilation(expressionOptions)
             {
@@ -113,14 +110,11 @@ namespace Templates.Runtime
                 MethodNumber = _lastMethodNumber
             });
             _lastMethodNumber++;
-            DependentAssemblies.Add(compileContext.ScopeType.Type.GetTypeInfo().Assembly);
-            if (expressionOptions.ChainedType.IsDynamic)
-                DependentAssemblies.Add(typeof(CallSite<>).GetTypeInfo().Assembly);
-            DependentAssemblies.Add(expressionOptions.ChainedType.Type.GetTypeInfo().Assembly);
             return parameter;
         }
 
-        internal OptionalValue<object> ParseAndGetResultType(CompileContext context, ExpressionOptions expressionOptions,
+        internal OptionalValue<object> ParseAndGetResultType(CompileContext context,
+            ExpressionOptions expressionOptions,
             out ExType objectType)
         {
             if (string.IsNullOrEmpty(expressionOptions.Expression))
@@ -128,6 +122,7 @@ namespace Templates.Runtime
                 throw new ArgumentException(
                     $"[{expressionOptions.Position}]<{expressionOptions.ExtensionName}> Expression cannot be null or empty");
             }
+
             expressionOptions.ModelType = context.ScopeType;
             expressionOptions.RootModelType = context.RootScopeType;
             ImportNamespace(expressionOptions.ModelType.Type.Namespace);
@@ -140,6 +135,7 @@ namespace Templates.Runtime
                     ImportNamespace(type.Namespace);
                 }
             }
+
             var chainTypeInfo = expressionOptions.ChainedType.Type.GetTypeInfo();
             if (chainTypeInfo.IsGenericType)
             {
@@ -148,6 +144,7 @@ namespace Templates.Runtime
                     ImportNamespace(type.Namespace);
                 }
             }
+
             expressionOptions.Namespaces = Namespaces;
             if (!InitErrors.Success)
                 throw new TemplateCompileException("Cannot compile base C# generation templates",
@@ -161,20 +158,26 @@ namespace Templates.Runtime
                 var diagnostics = compilation.GetDiagnostics();
                 if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
                 {
-                    context.CompileErrors.AddRange(ContextCompilation.FormatErrors(diagnostics, expressionOptions.Position));
-                    return new Tuple<OptionalValue<object>, ExType>(new OptionalValue<object>(null, false), typeof (object));
+                    context.CompileErrors.AddRange(ContextCompilation.FormatErrors(diagnostics,
+                        expressionOptions.Position));
+                    return new Tuple<OptionalValue<object>, ExType>(new OptionalValue<object>(null, false),
+                        typeof(object));
                 }
+
                 var syntax = tree.GetRoot().DescendantNodes().OfType<ReturnStatementSyntax>().Single().Expression;
                 var model = compilation.GetSemanticModel(tree, false);
                 var constantValue = model.GetConstantValue(syntax);
                 if (constantValue.HasValue)
                 {
-                    return new Tuple<OptionalValue<object>, ExType>(constantValue.Value, constantValue.Value?.GetType() ?? typeof (object));
+                    return new Tuple<OptionalValue<object>, ExType>(constantValue.Value,
+                        constantValue.Value?.GetType() ?? typeof(object));
                 }
+
                 var typeInfo = model.GetTypeInfo(syntax);
                 if (typeInfo.Type?.IsAnonymousType == true || typeInfo.Type?.TypeKind == TypeKind.Dynamic)
                 {
-                    return new Tuple<OptionalValue<object>, ExType>(new OptionalValue<object>(null, false), ExType.Dynamic);
+                    return new Tuple<OptionalValue<object>, ExType>(new OptionalValue<object>(null, false),
+                        ExType.Dynamic);
                 }
 
                 var objType = ResolveTypeReference(context, expressionOptions, typeInfo.Type);
@@ -231,6 +234,11 @@ namespace Templates.Runtime
             if (!fullPublic)
                 return assemblyName.FullName;
             var publicKey = assemblyName.GetPublicKey();
+            if (publicKey == null)
+            {
+                return assemblyName.Name;
+            }
+
             return publicKey.Length > 0
                 ? $"{assemblyName.Name},PublicKey={assemblyName.GetPublicKey().ToHexString()}"
                 : assemblyName.Name;
@@ -244,18 +252,22 @@ namespace Templates.Runtime
                 yield return FormatAssemblyName(currentAssemblyName);
                 var systemAssemblyName = AssemblyHelper.GetAssemblyName("System.Runtime");
                 if (systemAssemblyName != null)
-                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
+                    yield return
+                        $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
                 systemAssemblyName = AssemblyHelper.GetAssemblyName("System");
                 if (systemAssemblyName != null)
-                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
+                    yield return
+                        $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
                 systemAssemblyName = typeof(object).GetTypeInfo().Assembly.GetName();
                 yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
                 systemAssemblyName = AssemblyHelper.GetAssemblyName("Microsoft.CSharp");
                 if (systemAssemblyName != null)
-                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
+                    yield return
+                        $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
                 systemAssemblyName = AssemblyHelper.GetAssemblyName("System.Core");
                 if (systemAssemblyName != null)
-                    yield return $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
+                    yield return
+                        $"{systemAssemblyName.Name},PublicKey={systemAssemblyName.GetPublicKey().ToHexString()}";
             }
         }
     }
