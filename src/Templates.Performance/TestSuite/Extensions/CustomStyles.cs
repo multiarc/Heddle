@@ -7,7 +7,7 @@ using Templates.Performance.TestSuite.Extensions;
 
 namespace Templates.Performance.TestSuite.Extensions
 {
-    [ExtensionName("customstyles")]
+    [ExtensionName("custom_styles")]
     public class CustomStyles : AbstractExtension
     {
         public override object ProcessData(in Scope scope)

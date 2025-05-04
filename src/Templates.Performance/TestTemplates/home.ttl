@@ -1,0 +1,17 @@
+@<<{{layout.ttl}}
+@%
+    <body:body>
+    {{
+        <div class="slider-wrapper theme-default">
+            <div id="slider" class="nivoSlider">
+            </div>
+            <div class="home-content">
+                <div>
+                    <a href="/products/gluten-free">
+                        <img src="/files/homepage/homebtmbanners/gluten-hp.jpg" width="984" border="0" />
+                    </a>
+                </div>
+            </div>
+        </div>
+    }}
+%@

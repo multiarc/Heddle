@@ -11,6 +11,8 @@
 			out()@\
 		</textarea>
 	}}
+	<text:text>@*this does nothing and simply passes override to the base*@
+	{{@text(){{@out()}}}}
 	<labeled_text:text@*Inheritance test*@>
 	{{
 		<label>

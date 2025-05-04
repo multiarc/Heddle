@@ -7,7 +7,7 @@ using Templates.Performance.TestSuite.Extensions;
 
 namespace Templates.Performance.TestSuite.Extensions
 {
-    [ExtensionName("bodyscriptscomponent")]
+    [ExtensionName("body_scripts")]
     public class BodyScriptsComponent : AbstractExtension
     {
         public override object ProcessData(in Scope scope)

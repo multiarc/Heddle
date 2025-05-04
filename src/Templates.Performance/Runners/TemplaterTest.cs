@@ -9,30 +9,6 @@ namespace Templates.Performance.Runners
 {
     public class TemplaterTest : IRunner
     {
-        public TemplaterTest()
-        {
-            /*JIT*/
-            var test = new TtlTemplate
-            (new CompileContext
-            (new TemplateOptions("template")
-            {
-                FileNamePostfix = ".ttl",
-                RootPath = @"TestTemplates",
-                AllowCSharp = true
-            }));
-            if (!test.CompileResult.Success)
-            {
-                Console.Write(test.CompileResult.ToString());
-            }
-            else
-            {
-                var testString = test.Generate(DataFiller.FillData());
-                File.WriteAllText("test.html", testString);
-                test.Dispose();
-            }
-            /*END JIT*/
-        }
-
         public void Run()
         {
             //var list = new List<TestDataStructure>();
@@ -48,7 +24,7 @@ namespace Templates.Performance.Runners
             using var target = new TtlTemplate
 
             (new CompileContext
-            (new TemplateOptions("template")
+            (new TemplateOptions("home")
             {
                 FileNamePostfix = ".ttl",
                 RootPath = @"TestTemplates",

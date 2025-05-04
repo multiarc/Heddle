@@ -29,54 +29,6 @@ namespace Templates.Performance.Runners
         public RazorTest(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
-
-            //JIT precompilation
-
-            using var target =
-                new TtlTemplate(
-                    new CompileContext(
-                        new TemplateOptions("template")
-                        {
-                            FileNamePostfix = ".ttl",
-                            RootPath = @"TestTemplates",
-                            AllowCSharp = true
-                        }
-                    )
-                );
-            target.Generate(DataFiller.FillData());
-
-            //            var renderer = ServiceProviderServiceExtensions.GetRequiredService<RazorViewToStringRenderer>(_serviceProvider);
-//
-//            var view = renderer.CompileView("jit");
-//            var viewData = new ViewDataDictionary(
-//                metadataProvider: new EmptyModelMetadataProvider(),
-//                modelState: new ModelStateDictionary())
-//            {
-//                Model = null
-//            };
-//
-//            var htmlHelperOptions = new HtmlHelperOptions();
-//
-//            var actionContext = GetActionContext();
-//            var tempDataProvider = ServiceProviderServiceExtensions.GetRequiredService<ITempDataProvider>(_serviceProvider);
-//
-//            var tempData = new TempDataDictionary(
-//                actionContext.HttpContext,
-//                tempDataProvider);
-//
-//            using (var output = new StringWriter())
-//            {
-//                var viewContext = new ViewContext(
-//                    actionContext,
-//                    view,
-//                    viewData, tempData,
-//                    output, htmlHelperOptions);
-//
-//                view.RenderAsync(viewContext).Wait();
-//                output.Flush();
-//                // ReSharper disable once ReturnValueOfPureMethodIsNotUsed
-//                output.ToString();
-//            }
         }
 
         public void Run()
@@ -132,11 +84,10 @@ namespace Templates.Performance.Runners
                     viewData, tempData,
                     output, htmlHelperOptions);
 
-                view.RenderAsync(viewContext).Wait();
+                view.RenderAsync(viewContext).GetAwaiter().GetResult();
                 output.Flush();
                 var text = output.ToString();
                 watcher.Stop();
-                File.WriteAllText("razor.html", text);
                 length = text.Length * (long)n;
             }
 
@@ -154,7 +105,7 @@ namespace Templates.Performance.Runners
                     viewData, tempData,
                     output, htmlHelperOptions);
 
-                view.RenderAsync(viewContext).Wait();
+                view.RenderAsync(viewContext).GetAwaiter().GetResult();
                 output.Flush();
                 entireLength += output.ToString().Length;
             }
@@ -186,7 +137,7 @@ namespace Templates.Performance.Runners
                 new CompileContext(
                     new TemplateOptions("home")
                     {
-                        FileNamePostfix = ".html",
+                        FileNamePostfix = ".ttl",
                         RootPath = @"TestTemplates",
                         AllowCSharp = true,
                         ForceRemoveWhitespace = true,

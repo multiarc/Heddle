@@ -11,6 +11,7 @@ using Templates.Native;
 using Templates.Performance.TestSuite;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -43,14 +44,14 @@ namespace Templates.Performance
             Console.ReadKey();
         }
 
-        private static void ConfigureDefaultServices(IServiceCollection services)
-        {
-            var appDirectory = Directory.GetCurrentDirectory() + "\\TestTemplates";
+        private static void ConfigureDefaultServices(IServiceCollection services) {
+            var appDirectory = Directory.GetCurrentDirectory();
 
+            var fileProvider = new PhysicalFileProvider(appDirectory);
             services.Configure<MvcRazorRuntimeCompilationOptions>(options =>
             {
                 options.FileProviders.Clear();
-                options.FileProviders.Add(new PhysicalFileProvider(appDirectory));
+                options.FileProviders.Add(fileProvider);
             });
 
             services.AddSingleton<ObjectPoolProvider, DefaultObjectPoolProvider>();
@@ -60,10 +61,31 @@ namespace Templates.Performance
 
             services.AddLogging();
             services.AddControllersWithViews();
+            services.AddRazorPages().AddRazorRuntimeCompilation().AddApplicationPart(typeof(Program).Assembly);
             services.AddSingleton<RazorViewToStringRenderer>();
+            services.AddSingleton<DiagnosticSource>(diagnosticSource);
+            services.AddSingleton<DiagnosticListener>(diagnosticSource);
+            services.AddSingleton<IWebHostEnvironment>(new HostingEnvironment(fileProvider, appDirectory));
             AssemblyHelper.Configure(typeof(Program).GetTypeInfo().Assembly);
             AssemblyHelper.Configure(typeof(IHtmlContent).GetTypeInfo().Assembly);
         }
 
+        
+        internal class HostingEnvironment : IWebHostEnvironment
+        {
+            public HostingEnvironment(IFileProvider contentRootFileProvider, string webRootPath) {
+                ContentRootFileProvider = contentRootFileProvider;
+                WebRootPath = webRootPath;
+                ContentRootPath = webRootPath;
+                WebRootFileProvider = contentRootFileProvider;
+            }
+            public string EnvironmentName { get; set; } = "Production";
+
+            public string ApplicationName { get; set; } = "Templates.Performance";
+            public string WebRootPath { get; set; }
+            public IFileProvider WebRootFileProvider { get; set; }
+            public string ContentRootPath { get; set; }
+            public IFileProvider ContentRootFileProvider { get; set; }
+        }
     }
 }

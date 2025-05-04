@@ -9,7 +9,7 @@ using Templates.Performance.TestSuite.Extensions;
 
 namespace Templates.Performance.TestSuite.Extensions
 {
-    [ExtensionName("areacomponent")]
+    [ExtensionName("area_component")]
     public class AreaComponent : AbstractExtension
     {
         static AreaComponent()

@@ -7,7 +7,7 @@ using Templates.Performance.TestSuite.Extensions;
 
 namespace Templates.Performance.TestSuite.Extensions
 {
-    [ExtensionName("assetscomponent")]
+    [ExtensionName("assets_component")]
     public class AssetsComponent : AbstractExtension
     {
         public override object ProcessData(in Scope scope)
