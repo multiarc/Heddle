@@ -1,0 +1,89 @@
+﻿using System.Diagnostics;
+using System.IO;
+using System.Reflection;
+using System.Threading.Tasks;
+using BenchmarkDotNet.Attributes;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Html;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.ObjectPool;
+using Templates.Native;
+using Templates.Performance.Runners;
+using Templates.Performance.TestSuite;
+
+namespace Templates.Performance;
+
+[MemoryDiagnoser]
+public class TextRenderBenchmarks
+{
+    private IHost _host;
+    private TemplaterTest _templaterTest;
+    private RazorTest _razorTest;
+
+    [GlobalSetup]
+    public async Task Setup() {
+        _host = Host.CreateDefaultBuilder()
+            .ConfigureServices(ConfigureDefaultServices)
+            .ConfigureLogging(logging => logging.AddConsole(co => co.LogToStandardErrorThreshold = LogLevel.Warning))
+            .Build();
+
+        await _host.StartAsync();
+        _templaterTest = new TemplaterTest();
+        _razorTest = new RazorTest(_host.Services);
+    }
+
+    [GlobalCleanup]
+    public async Task Teardown() {
+        await _host.StopAsync();
+    }
+
+    [Benchmark]
+    public async Task RenderTemplateEngine() {
+        await _templaterTest.Run();
+    }
+
+    [Benchmark]
+    public async Task RenderRazor() {
+        await _razorTest.Run();
+    }
+    
+    private static void ConfigureDefaultServices(IServiceCollection services) {
+        services.AddSingleton<ObjectPoolProvider, DefaultObjectPoolProvider>();
+
+        var diagnosticSource = new DiagnosticListener("Microsoft.AspNetCore");
+        services.AddSingleton<DiagnosticSource>(diagnosticSource);
+
+        services.AddLogging();
+        services.AddControllersWithViews();
+        services.AddRazorPages().AddRazorRuntimeCompilation().AddApplicationPart(typeof(Program).Assembly);
+        services.AddSingleton<RazorViewToStringRenderer>();
+        services.AddSingleton<DiagnosticSource>(diagnosticSource);
+        services.AddSingleton<DiagnosticListener>(diagnosticSource);
+        var appDirectory = Directory.GetCurrentDirectory();
+        var fileProvider = new PhysicalFileProvider(appDirectory);
+        services.AddSingleton<IWebHostEnvironment>(new HostingEnvironment(fileProvider, appDirectory));
+        AssemblyHelper.Configure(typeof(Program).GetTypeInfo().Assembly);
+        AssemblyHelper.Configure(typeof(IHtmlContent).GetTypeInfo().Assembly);
+    }
+
+    internal class HostingEnvironment : IWebHostEnvironment
+    {
+        public HostingEnvironment(IFileProvider contentRootFileProvider, string webRootPath) {
+            ContentRootFileProvider = contentRootFileProvider;
+            WebRootPath = webRootPath;
+            ContentRootPath = webRootPath;
+            WebRootFileProvider = contentRootFileProvider;
+        }
+
+        public string EnvironmentName { get; set; } = "Production";
+
+        public string ApplicationName { get; set; } = "Templates.Performance";
+        public string WebRootPath { get; set; }
+        public IFileProvider WebRootFileProvider { get; set; }
+        public string ContentRootPath { get; set; }
+        public IFileProvider ContentRootFileProvider { get; set; }
+    }
+}

@@ -45,6 +45,7 @@ namespace Templates.Strings {
                         fixed (char* dest = _data)
                         {
                             var destSpan = new Span<char>(dest, oldLen);
+                            
                             fixed (char* src = old)
                             {
                                 var srcSpan = new Span<char>(src, oldLen);
@@ -273,12 +274,8 @@ namespace Templates.Strings {
                     for (var i = 0; i < takeCount; i++)
                     {
                         var src = array[i];
-                        fixed (char* value = src)
-                        {
-                            var spanValue = new Span<char>(value, src.Length);
-                            spanValue.CopyTo(span.Slice(seed));
-                            seed += src.Length;
-                        }
+                        src.AsSpan().CopyTo(span.Slice(seed));
+                        seed += src.Length;
                     }
 
                     return result;

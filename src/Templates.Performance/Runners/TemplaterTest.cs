@@ -1,66 +1,33 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
+﻿using System.Threading.Tasks;
 using Templates.Data;
 using Templates.Runtime;
 
 namespace Templates.Performance.Runners
 {
-    public class TemplaterTest : IRunner
+    public class TemplaterTest
     {
-        public void Run()
-        {
-            //var list = new List<TestDataStructure>();
-            Console.WriteLine("Enter tries count (template generate):");
-            // = 1000;
-            string quantity = Console.ReadLine();
-            int.TryParse(quantity, out var n);
-            var data = DataFiller.FillData();
-            //for (int i = 0; i < n; i++)
-            //    list.Add(data);
-            var watcher = new Stopwatch();
-            watcher.Start();
-            using var target = new TtlTemplate
+        private long _length = 0;
+        private readonly object _model = new object();
+        private readonly TtlTemplate _target;
 
-            (new CompileContext
-            (new TemplateOptions("home")
-            {
-                FileNamePostfix = ".ttl",
-                RootPath = @"TestTemplates",
-                AllowCSharp = true
-            }));
-            watcher.Stop();
-            Console.WriteLine("Compile time: {0}, ticks:{1}", watcher.Elapsed, watcher.ElapsedTicks);
-            if (!target.CompileResult.Success)
-            {
-                Console.Write(target.CompileResult.ToString());
-                return;
-            }
-            watcher.Reset();
-            long length = target.Generate(data).Length * (long)n;
-            watcher.Start();
-            Enumerable.Repeat(data, n).AsParallel().ForAll(item => target.Generate(item));
-            watcher.Stop();
-            Console.WriteLine("Parrallel implementation:");
-            Console.WriteLine("{0} run times: {1}", n, watcher.Elapsed);
-            Console.WriteLine("Out Speed: {0:F} Mb/s, ticks:{1}", length / watcher.Elapsed.TotalSeconds / 1048576.0 * sizeof(char),
-                watcher.ElapsedTicks);
-            Console.WriteLine("Total Size: {0} Mb", length / 1048576.0 * sizeof(char));
-            watcher.Reset();
-            long entireLength = 0;
-            watcher.Start();
-            for (var i = 0; i < n; i++)
-            {
-                entireLength += target.Generate(data).Length;
-            }
-            watcher.Stop();
-            Console.WriteLine(entireLength);
-            Console.WriteLine("Syncronous implementation:");
-            Console.WriteLine("{0} run times: {1}", n, watcher.Elapsed);
-            Console.WriteLine("Out Speed: {0:F} Mb/s, ticks:{1}", length / watcher.Elapsed.TotalSeconds / 1048576.0 * sizeof(char),
-                watcher.ElapsedTicks);
-            Console.WriteLine("Total Size: {0} Mb", length / 1048576.0 * sizeof(char));
+        public TemplaterTest() {
+            _target = new TtlTemplate(
+                new CompileContext(
+                    new TemplateOptions("home") {
+                        FileNamePostfix = ".ttl",
+                        RootPath = @"TestTemplates",
+                        AllowCSharp = true,
+                        ForceRemoveWhitespace = true,
+                        ProvideLanguageFeatures = false
+                    }
+                )
+            );
+        }
+
+        public Task Run() {
+            var output = _target.Generate(_model);
+            _length += output.Length;
+            return Task.CompletedTask;
         }
     }
 }

@@ -30,5 +30,26 @@
     <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="TestSuite\Data\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="Views\home.cshtml" />
+    <Content Include="Views\home.cshtml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <None Remove="Views\layout.cshtml" />
+    <Content Include="Views\layout.cshtml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <None Remove="TestTemplates\home.ttl" />
+    <Content Include="TestTemplates\home.ttl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <None Remove="TestTemplates\layout.ttl" />
+    <Content Include="TestTemplates\layout.ttl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 
 </Project>

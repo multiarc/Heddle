@@ -4,7 +4,7 @@ using Templates.Data;
 using Templates.Runtime;
 
 namespace Templates.Performance.Runners {
-    public class TemplaterMemory : IRunner {
+    public class TemplaterMemory {
 
         public void Run()
         {
@@ -14,7 +14,7 @@ namespace Templates.Performance.Runners {
             reader.Dispose();
             var test = new TtlTemplate
                     (new CompileContext
-                         (new TemplateOptions("template") {
+                         (new TemplateOptions("home") {
                              FileNamePostfix = ".ttl",
                              RootPath = @"TestTemplates",
                              AllowCSharp = true
@@ -23,10 +23,9 @@ namespace Templates.Performance.Runners {
                 Console.Write(test.CompileResult.ToString());
                 return;
             }
-            var testItem = DataFiller.FillData();
             int i = 0;
             while (i < 1000000) {
-                test.Generate(testItem);
+                test.Generate(null);
                 var writer = File.CreateText(@"test.html");
                 writer.Write(document);
                 writer.Dispose();
