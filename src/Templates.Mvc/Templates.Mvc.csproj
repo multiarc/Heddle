@@ -4,7 +4,7 @@
     <TargetFrameworks>netstandard2.0;net6.0;net8.0</TargetFrameworks>
     <SignAssembly>true</SignAssembly>
     <Version>4.0.2$(VersionSuffix)</Version>
-    <LangVersion>default</LangVersion>
+    <LangVersion>latest</LangVersion>
     <AssemblyOriginatorKeyFile>..\..\templater.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 

@@ -9,7 +9,7 @@
     <Copyright>Aliaksandr Kukrash</Copyright>
     <Description>Text Template Engine</Description>
     <PackageId>Templates</PackageId>
-    <LangVersion>8</LangVersion>
+    <LangVersion>latest</LangVersion>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\templater.snk</AssemblyOriginatorKeyFile>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

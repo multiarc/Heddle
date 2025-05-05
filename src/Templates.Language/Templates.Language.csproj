@@ -9,7 +9,7 @@
     <Product>Templates.Language</Product>
     <PackageId>Templates.Language</PackageId>
     <Description>Text Template Engine Language Parser</Description>
-    <LangVersion>default</LangVersion>
+    <LangVersion>latest</LangVersion>
     <SignAssembly>true</SignAssembly>
     <NoWarn>CS3021</NoWarn>
   </PropertyGroup>

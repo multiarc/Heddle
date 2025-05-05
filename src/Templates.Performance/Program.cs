@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using BenchmarkDotNet.Running;
 
 namespace Templates.Performance
@@ -7,6 +8,13 @@ namespace Templates.Performance
     {
         public static void Main(string[] args) {
             BenchmarkRunner.Run<TextRenderBenchmarks>();
+            // var runner = new TextRenderBenchmarks();
+            // await runner.Setup();
+            // while (true) {
+            //     await runner.RenderTemplateEngine();
+            // }
+            //
+            // await runner.Teardown();
         }
     }
 }

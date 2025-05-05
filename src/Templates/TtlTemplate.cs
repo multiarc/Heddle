@@ -27,7 +27,11 @@ namespace Templates
         private string _document;
         private volatile bool _disposeAfterComplete;
         private volatile int _runners;
+#if NET8_0_OR_GREATER
+         private volatile int _maxLength;
+#else
         private volatile int _maxElementCount;
+#endif
 
         public TtlTemplate(TemplateOptions options) : this(new CompileContext(options))
         {
@@ -120,20 +124,30 @@ namespace Templates
             string result;
             try
             {
+#if NET8_0_OR_GREATER
+                var renderer = new ScopeRenderer(_maxLength);
+                var scope = new Scope(data, callerData, data, chained, renderer);
+                _processStrategy.Render(scope);
+                var newMax = Math.Max(_maxLength, renderer.TotalLength);
+                if (newMax > _maxLength)
+                {
+                    newMax = (int)Math.Min((long)newMax * 110 / 100, int.MaxValue / 2); //10% length extra margin
+                    _maxLength = newMax;
+                }
+#else
                 var renderer = new ScopeRenderer(_maxElementCount);
                 var scope = new Scope(data, callerData, data, chained, renderer);
                 _processStrategy.Render(scope);
                 var newMax = Math.Max(_maxElementCount, renderer.TotalCount);
                 if (newMax > _maxElementCount)
                 {
-                    newMax = newMax * 110 / 100;
+                    newMax = newMax * 110 / 100; //10% count extra margin
                     _maxElementCount = newMax;
                 }
+#endif
 
                 result = renderer.ToString();
                 renderer.Clear();
-//                var scope = new Scope(data, callerData, data, chained, null);
-//                result = _processStrategy.Execute(ref scope);
             }
             finally
             {

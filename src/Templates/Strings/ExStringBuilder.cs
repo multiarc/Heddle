@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using Templates.Native;
 using Templates.Strings.Core;
 
@@ -256,11 +255,6 @@ namespace Templates.Strings {
             }
         }
 
-        public static string Concat(string[] array, int fullLength)
-        {
-            return Concat(array, array.Length, fullLength);
-        }
-
         public static string Concat(string[] array, int takeCount, int fullLength)
         {
             var result = AllocateString(fullLength);
@@ -282,6 +276,7 @@ namespace Templates.Strings {
                 }
             }
         }
+        
 
         private static unsafe void MoveData(IList<Replacement> replacements, int srcLen, in Span<char> dest, in Span<char> src)
         {
