@@ -1,0 +1,24 @@
+{
+  "name": "@multiarc/ace_tts",
+  "version": "1.0.0",
+  "description": "Custom Ace build (https://github.com/ajaxorg/ace) to support Text Template Language (TTS)",
+  "keywords": [
+    "tts",
+    "templates"
+  ],
+  "homepage": "https://github.com/multiarc/Templater#readme",
+  "bugs": {
+    "url": "https://github.com/multiarc/Templater/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/multiarc/Templater.git"
+  },
+  "license": "UNLICENSED",
+  "author": "Aliaksandr Kukrash",
+  "type": "commonjs",
+  "main": "./src-nonconflict/ace.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}

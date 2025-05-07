@@ -110,3 +110,4 @@ project.lock.json
 /src/Templates.Language/js/ace/build
 /src/Templates.Performance/BenchmarkDotNet.Artifacts
 /src/Templates.Language/ace_build
+/build
