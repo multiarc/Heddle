@@ -147,25 +147,24 @@ namespace Templates.Language {
         internal DefinitionItem CreateDefinition(TtlParser.DefContext context, CompileContext compileContext, out OutputChain chain) {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
-            var inherited = context.inherited_def();
-            var simple = context.simple_def();
-            if (simple != null) {
-                AddToken(simple.DEF_STARTNAME(), TtlTokenType.DefStartName);
-                var subTemplate = simple.subtemplate();
+            var defBase = context.def_base();
+            if (defBase == null) {
+                AddToken(context.DEF_STARTNAME(), TtlTokenType.DefStartName);
+                var subTemplate = context.subtemplate();
                 if (subTemplate == null)
                 {
                     chain = null;
                     return null;
                 }
 
-                var parameterTemplate = subTemplate.ttl()?.GetText() ?? string.Join(string.Empty, subTemplate.TEXT_WS().Select(t => t.GetText()));
-                var definition = simple.ID(0);
+                var parameterTemplate = subTemplate.ttl()?.GetText();
+                var definition = context.ID(0);
                 if (definition == null)
-                    throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(simple)));
+                    throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(context)));
                 AddToken(definition, TtlTokenType.Id);
-                AddToken(simple.DEF_ENDNAME(), TtlTokenType.DefEndName);
+                AddToken(context.DEF_ENDNAME(), TtlTokenType.DefEndName);
                 var definitionName = definition.GetText();
-                var defOutChain = simple.default_chain();
+                var defOutChain = context.default_chain();
                 if (defOutChain != null)
                 {
                     AddToken(defOutChain.DEF_OUT(), TtlTokenType.DefOutputOnEnd);
@@ -176,34 +175,33 @@ namespace Templates.Language {
                 return new DefinitionItem(
                     definitionName, parameterTemplate,
                     null,
-                    modelType: simple.ID(1)?.GetText())
+                    modelType: context.ID(1)?.GetText())
                 {
                     Position = GetBlockPosition(context)
                 };
-            }
-            if (inherited != null) {
-                AddToken(inherited.DEF_STARTNAME(), TtlTokenType.DefStartName);
-                var subTemplate = inherited.subtemplate();
+            } else {
+                AddToken(context.DEF_STARTNAME(), TtlTokenType.DefStartName);
+                var subTemplate = context.subtemplate();
                 var ttl = subTemplate?.ttl();
                 if (ttl?.Start?.InputStream == null)
                 {
                     chain = null;
                     return null;
                 }
-                var definition = inherited.ID(0);
+                var definition = context.ID(0);
                 if (definition == null)
-                    throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(inherited)));
+                    throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(context)));
                 AddToken(definition, TtlTokenType.Id);
-                var parameterTemplate = subTemplate.ttl()?.GetText() ?? string.Join(string.Empty, subTemplate.TEXT_WS().Select(t => t.GetText()));
-                var baseName = inherited.ID(1)?.GetText();
+                var parameterTemplate = subTemplate.ttl().GetText();
+                var baseName = defBase.ID()?.GetText();
                 var baseDefenition = GetDefenition(baseName);
                 if (baseDefenition == null)
                 {
-                    compileContext.CompileErrors.Add($"Base definition {baseName} couldn't be found".ToError(GetAbsoluteBlockPosition(inherited)));
+                    compileContext.CompileErrors.Add($"Base definition {baseName} couldn't be found".ToError(GetAbsoluteBlockPosition(context)));
                 }
-                AddToken(inherited.ID(1), TtlTokenType.Id);
-                AddToken(inherited.DEF_ENDNAME(), TtlTokenType.DefEndName);
-                var chainContext = inherited.default_chain()?.chain();
+                AddToken(defBase.ID(), TtlTokenType.Id);
+                AddToken(context.DEF_ENDNAME(), TtlTokenType.DefEndName);
+                var chainContext = context.default_chain()?.chain();
                 var definitionName = definition.GetText();
                 if (baseDefenition?.Name == definitionName && chainContext != null)
                 {
@@ -211,15 +209,15 @@ namespace Templates.Language {
                         "Default output call chain can't be used in fully overriden definitions".ToError(
                             GetAbsoluteBlockPosition(chainContext)));
                 }
-                var defOutChain = inherited.default_chain();
+                var defOutChain = context.default_chain();
                 if (defOutChain != null)
                 {
                     AddToken(defOutChain.DEF_OUT(), TtlTokenType.DefOutputOnEnd);
                 }
-                var modelType = inherited.ID(2);
-                AddToken(inherited.DEF_TYPE(), TtlTokenType.DefType);
+                var modelType = context.ID(2);
+                AddToken(context.DEF_TYPE(), TtlTokenType.DefType);
                 AddToken(modelType, TtlTokenType.Id);
-                AddToken(inherited.DELIM(), TtlTokenType.Delim);
+                AddToken(defBase.DELIM(), TtlTokenType.Delim);
                 AddToken(subTemplate.SUB_START(), TtlTokenType.SubStart);
                 AddToken(subTemplate.SUB_CLOSE(), TtlTokenType.SubClose);
                 chain = CreateOutputChain(defOutChain?.chain(), definitionName);
@@ -231,8 +229,6 @@ namespace Templates.Language {
                     Position = GetBlockPosition(context)
                 };
             }
-            chain = null;
-            return null;
         }
 
         public DefinitionItem GetDefenition(string baseName) {
@@ -297,8 +293,7 @@ namespace Templates.Language {
             var subTemplate = context.subtemplate();
             AddToken(subTemplate?.SUB_START(), TtlTokenType.SubStart);
             AddToken(subTemplate?.SUB_CLOSE(), TtlTokenType.SubClose);
-            result.Chain.First().ParameterTemplate =
-                subTemplate?.ttl()?.GetText() ?? string.Join(string.Empty, subTemplate?.TEXT_WS().Select(t => t.GetText()) ?? Enumerable.Empty<string>());
+            result.Chain.First().ParameterTemplate = subTemplate?.ttl().GetText();
 
             return result;
         }
@@ -363,7 +358,6 @@ namespace Templates.Language {
         public List<BlockPosition> SkippedTokens { get; }
 
         internal bool InDefinition { get; set; }
-        = false;
 
         public DefinitionBlock DefinitionsBlock { get; set; }
 
@@ -407,28 +401,27 @@ namespace Templates.Language {
         private OutputItem CreateItem(TtlParser.CallContext context, string callNameOverride = null) {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
-            var namedCall = context.named_call();
-            var unnamedCall = context.unnamed_call();
-            if (namedCall != null) {
-                var idTemplate = namedCall.ID(0);
+            var extensionId = context.extension_id();
+            if (extensionId != null) {
+                var idTemplate = extensionId.ID();
                 AddToken(idTemplate, TtlTokenType.Id);
                 
                 string itemName = idTemplate?.GetText();
-                AddToken(namedCall.OUT_PARAMSTART(), TtlTokenType.OutParamStart);
+                AddToken(context.OUT_PARAMSTART(), TtlTokenType.OutParamStart);
                 
-                var members = namedCall.ID().Skip(1).ToArray();
+                var members = context.ID();
                 foreach (var member in members)
                 {
                     AddToken(member, TtlTokenType.Id);
                 }
-                var memberSelectors = namedCall.MEMBER_P();
+                var memberSelectors = context.MEMBER_P();
                 foreach (var selectors in memberSelectors)
                 {
                     AddToken(selectors, TtlTokenType.MemberSelector);
                 }
-                AddToken(namedCall.ROOT_REF(), TtlTokenType.RootReference);
-                AddToken(namedCall.OUT_PARAMEND(), TtlTokenType.OutParamEnd);
-                var delims = namedCall.chain()?.DELIM();
+                AddToken(context.ROOT_REF(), TtlTokenType.RootReference);
+                AddToken(context.OUT_PARAMEND(), TtlTokenType.OutParamEnd);
+                var delims = context.chain()?.DELIM();
                 if (delims != null)
                 {
                     foreach (var delim in delims)
@@ -436,10 +429,10 @@ namespace Templates.Language {
                         AddToken(delim, TtlTokenType.Delim);
                     }
                 }
-                var csharpExpression = namedCall.csharp_expression();
+                var csharpExpression = context.csharp_expression();
                 if (csharpExpression != null)
                 {
-                    AddToken(namedCall.CSHARP_START(), TtlTokenType.CSharpStart);
+                    AddToken(context.CSHARP_START(), TtlTokenType.CSharpStart);
                     foreach (var token in csharpExpression.CSHARP_TOKEN())
                     {
                         AddToken(token, TtlTokenType.CSharpToken);
@@ -450,29 +443,28 @@ namespace Templates.Language {
                     CallParameter =
                     {
                         ModelParameter = members.Select(n => n.GetText()).ToArray(),
-                        RootReference = namedCall.ROOT_REF() != null,
-                        ChainParameter = CreateChain(namedCall.chain()?.call()),
+                        RootReference = context.ROOT_REF() != null,
+                        ChainParameter = CreateChain(context.chain()?.call()),
                         CSharpExpression = csharpExpression?.GetText()
                     }
                 };
-            }
-            if (unnamedCall != null) {
-                AddToken(unnamedCall.OUT_PARAMSTART(), TtlTokenType.OutParamStart);
+            } else {
+                AddToken(context.OUT_PARAMSTART(), TtlTokenType.OutParamStart);
                 
-                var members = unnamedCall.ID();
+                var members = context.ID();
                 foreach (var member in members)
                 {
                     AddToken(member, TtlTokenType.Id);
                 }
-                var memberSelectors = unnamedCall.MEMBER_P();
+                var memberSelectors = context.MEMBER_P();
                 foreach (var selectors in memberSelectors)
                 {
                     AddToken(selectors, TtlTokenType.MemberSelector);
                 }
-                AddToken(unnamedCall.ROOT_REF(), TtlTokenType.RootReference);
-                AddToken(unnamedCall.OUT_PARAMEND(), TtlTokenType.OutParamEnd);
+                AddToken(context.ROOT_REF(), TtlTokenType.RootReference);
+                AddToken(context.OUT_PARAMEND(), TtlTokenType.OutParamEnd);
                 
-                var delims = unnamedCall.chain()?.DELIM();
+                var delims = context.chain()?.DELIM();
                 if (delims != null)
                 {
                     foreach (var delim in delims)
@@ -480,10 +472,10 @@ namespace Templates.Language {
                         AddToken(delim, TtlTokenType.Delim);
                     }
                 }
-                var csharpExpression = unnamedCall.csharp_expression();
+                var csharpExpression = context.csharp_expression();
                 if (csharpExpression != null)
                 {
-                    AddToken(unnamedCall.CSHARP_START(), TtlTokenType.CSharpStart);
+                    AddToken(context.CSHARP_START(), TtlTokenType.CSharpStart);
                     foreach (var token in csharpExpression.CSHARP_TOKEN())
                     {
                         AddToken(token, TtlTokenType.CSharpToken);
@@ -494,13 +486,12 @@ namespace Templates.Language {
                     CallParameter =
                     {
                         ModelParameter = members.Select(n => n.GetText()).ToArray(),
-                        RootReference = unnamedCall.ROOT_REF() != null,
-                        ChainParameter = CreateChain(unnamedCall.chain()?.call()),
+                        RootReference = context.ROOT_REF() != null,
+                        ChainParameter = CreateChain(context.chain()?.call()),
                         CSharpExpression = csharpExpression?.GetText()
                     }
                 };
             }
-            return null;
         }
 
         internal void AddToken(ITerminalNode token, TtlTokenType tokenType)

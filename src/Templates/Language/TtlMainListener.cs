@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Templates.Data;
 using Templates.Exceptions;
 using Templates.Runtime;
@@ -202,7 +203,7 @@ namespace Templates.Language {
         public override void ExitImport_block(TtlParser.Import_blockContext context)
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
-            var path = context.TEXT()?.GetText();
+            var path = string.Concat(context.text().Select(t => t.GetText()));
             if (!string.IsNullOrWhiteSpace(path))
             {
                 using var file = File.OpenText(Path.Combine(_compileContext.Options.RootPath, path));

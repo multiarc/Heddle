@@ -41,21 +41,12 @@ export default class TtlParserListener extends antlr4.tree.ParseTreeListener {
 	}
 
 
-	// Enter a parse tree produced by TtlParser#inherited_def.
-	enterInherited_def(ctx) {
+	// Enter a parse tree produced by TtlParser#def_base.
+	enterDef_base(ctx) {
 	}
 
-	// Exit a parse tree produced by TtlParser#inherited_def.
-	exitInherited_def(ctx) {
-	}
-
-
-	// Enter a parse tree produced by TtlParser#simple_def.
-	enterSimple_def(ctx) {
-	}
-
-	// Exit a parse tree produced by TtlParser#simple_def.
-	exitSimple_def(ctx) {
+	// Exit a parse tree produced by TtlParser#def_base.
+	exitDef_base(ctx) {
 	}
 
 
@@ -104,21 +95,12 @@ export default class TtlParserListener extends antlr4.tree.ParseTreeListener {
 	}
 
 
-	// Enter a parse tree produced by TtlParser#named_call.
-	enterNamed_call(ctx) {
+	// Enter a parse tree produced by TtlParser#extension_id.
+	enterExtension_id(ctx) {
 	}
 
-	// Exit a parse tree produced by TtlParser#named_call.
-	exitNamed_call(ctx) {
-	}
-
-
-	// Enter a parse tree produced by TtlParser#unnamed_call.
-	enterUnnamed_call(ctx) {
-	}
-
-	// Exit a parse tree produced by TtlParser#unnamed_call.
-	exitUnnamed_call(ctx) {
+	// Exit a parse tree produced by TtlParser#extension_id.
+	exitExtension_id(ctx) {
 	}
 
 
