@@ -1,4 +1,4 @@
-﻿@*Comment Test 1*@
+﻿@*Comment Test 1*@@\
 @%
 	@*text dynamic template for using it with *@
 	<text>@*Baseless definition test*@
@@ -25,7 +25,7 @@
 			partial(){{partial}}@\
         }}@\
 	}} :: TestDataStructure
-%@
+%@@\
 @using(){{Templates@*Comment Test 2*@@{.}@Tests.Data}}@\
 @using(){{System.Linq}}@\
 @using(){{Templates.Models}}@\
@@ -53,8 +53,8 @@
 		{{
 			<div>
 				@list(@model.Products.Skip(chained).Take(3))
-				{{@
-					@*Comment Test 8*@partial(@*Comment Test 9*@){{partial@*Comment Test 10*@}}@\
+				{{@\
+				    @@*Comment Test 8*@partial(@*Comment Test 9*@){{partial@*Comment Test 10*@}}@\
 				}}@\
 			</div>
 		}}
@@ -96,7 +96,7 @@
 			@%
 				<multi_text:multi_text>
 				{{
-					<textarea>shit</textarea>
+					<textarea>something</textarea>
 				}}
 			%@
 			@multi_text()

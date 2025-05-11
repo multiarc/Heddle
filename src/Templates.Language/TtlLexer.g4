@@ -52,7 +52,7 @@ UNCONNECTED_SUB_ST: SUB_ST -> type(SUB_START);
 
 UNCONNECTED_SUB_CL: SUB_CL -> type(SUB_CLOSE);
 
-TEXT: (~[@\\]+ | .);
+TEXT: (~[@]+ | .);
 
 mode SUB_BLOCK;
 
@@ -72,7 +72,7 @@ SUB_START_OUT: OUT_ST WS* -> type(OUT), pushMode(OUT_MODE);
 
 SUB_SUB_CLOSE: SUB_CL -> type(SUB_CLOSE), popMode;
 
-SUB_TEXT: (~[@}\\]+ | .) -> type(TEXT);
+SUB_TEXT: (~[@}]+ | .) -> type(TEXT);
 
 mode DEF;
 
