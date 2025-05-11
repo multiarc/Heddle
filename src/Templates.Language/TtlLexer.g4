@@ -11,6 +11,8 @@ tokens { TEXT, WS, IMPORT_TOKEN, ID, ROOT_REF, MEMBER_P, OUT, SUB_START, SUB_CLO
 fragment ID_TOKEN: IDENTIFIER;
 fragment ID_TYPE: IDENTIFIER ('.' IDENTIFIER)* SINGLE_LINE_WS* ('<' SINGLE_LINE_WS* ID_TYPE SINGLE_LINE_WS* (',' SINGLE_LINE_WS* ID_TYPE)* SINGLE_LINE_WS* '>')? '[]'*;
 
+fragment WS: WHITESPACE;
+
 fragment IMP: '@<<';
 fragment MEMB_P: '.';
 fragment SUB_ST: '{{';
@@ -30,7 +32,7 @@ fragment COMMENT_BLOCK: '@*' ('@' | '*'* ~[*@])* '*'+ '@';
 fragment RAW_BLOCK : '@{' ('@' | '}'* ~[}@])* '}'+ '@';
 fragment RAW_START_LN: '@:';
 fragment RAW_LINE : RAW_START_LN ~[\r\n]*;
-fragment EAT_WS: WS_START WHITESPACE*;
+fragment EAT_WS: WS_START WS*;
 
 COMMENT: COMMENT_BLOCK -> channel(HIDDEN);
 
@@ -42,68 +44,121 @@ RW_LINE: RAW_LINE -> type(RAW);
 
 DEF_START: DEF_ST -> pushMode(DEF);
 
-START_IMPORT: IMP -> type(IMPORT_TOKEN);
+START_IMPORT: IMP -> type(IMPORT_TOKEN), pushMode(IMPORT_MODE);
 
-START_OUT: OUT_ST WS* -> type(OUT), mode(CALL);
+START_OUT: OUT_ST WS* -> type(OUT), pushMode(OUT_MODE);
 
-OUT_ID: ID_TOKEN WS* -> type(ID);
+UNCONNECTED_SUB_ST: SUB_ST -> type(SUB_START);
 
-SUB_START: SUB_ST -> pushMode(DEFAULT_MODE);
+UNCONNECTED_SUB_CL: SUB_CL -> type(SUB_CLOSE);
 
-SUB_CLOSE: SUB_CL -> popMode;
+TEXT: (~[@\\]+ | .);
 
-DELIM: EXT_DELIM;
+mode SUB_BLOCK;
 
-WS: WHITESPACE+;
+SUB_COMMENT: COMMENT_BLOCK -> channel(HIDDEN);
 
-TEXT: (~[@:{}()\\%*]+ | .);
+SUB_SKIP_WS: EAT_WS -> channel(HIDDEN);
+
+SUB_RAW: RAW_BLOCK -> type(RAW);
+
+SUB_RW_LINE: RAW_LINE -> type(RAW);
+
+SUB_DEF_START: DEF_ST -> type(DEF_START), pushMode(DEF);
+
+SUB_START_IMPORT: IMP -> type(IMPORT_TOKEN), pushMode(IMPORT_MODE);
+
+SUB_START_OUT: OUT_ST WS* -> type(OUT), pushMode(OUT_MODE);
+
+SUB_SUB_CLOSE: SUB_CL -> type(SUB_CLOSE), popMode;
+
+SUB_TEXT: (~[@}\\]+ | .) -> type(TEXT);
 
 mode DEF;
 
-DEF_COMMENT:
+DEF_COMMENT: COMMENT_BLOCK -> channel(HIDDEN);
+DEF_STARTNAME: DEF_STNAME;
+TYPE_ID: ID_TYPE -> type(ID);
+DEF_ENDNAME: DEF_CLNAME;
+SUB_START: SUB_ST -> pushMode(SUB_BLOCK);
+DEF_OUT: DEF_MAKEOUT WS* -> type(DEF_OUT), pushMode(OUT_MODE);
+DEF_TYPE: DEF_T;
+DELIM: EXT_DELIM;
+DEF_CLOSE: DEF_CL -> popMode;
+DEF_WS: WS+ -> channel(HIDDEN);
+
+mode IMPORT_MODE;
+
+IMPORT_COMMENT: 
+	COMMENT_BLOCK -> channel(HIDDEN);
+	
+IMPORT_SUBSTART:
+	SUB_ST -> type(SUB_START);
+
+IMPORT_PATH:
+	~[{}]+ -> type(TEXT);
+
+IMPORT_SUBEND:
+	SUB_CL -> type(SUB_CLOSE), popMode;
+
+IMPORT_PATH_REST:
+	. -> type(TEXT);
+	
+mode CALL_RETURNED;
+
+CALL_RETURN_COMMENT: 
+	COMMENT_BLOCK -> channel(HIDDEN);
+	
+CALL_RETURN_DELIM: WS* EXT_DELIM -> type(DELIM), mode(OUT_MODE);
+
+CALL_RETURN_START: OUT_ST WS* -> type(OUT), mode(OUT_MODE);
+
+CALL_RETURN_RAW: RAW_BLOCK -> type(RAW), popMode;
+CALL_RETURN_RW_LINE: RAW_LINE -> type(RAW), popMode;
+CALL_RETURN_DEF_START: DEF_ST -> type(DEF_START), popMode, pushMode(DEF);
+CALL_RETURN_SUB_START: WS* SUB_ST -> type(SUB_START), popMode, pushMode(SUB_BLOCK);
+CALL_RETURN_SUB_CL: SUB_CL -> type(SUB_CLOSE), popMode, popMode;
+CALL_RETURN_START_IMPORT: IMP -> type(IMPORT_TOKEN), popMode, pushMode(IMPORT_MODE);
+
+CALL_SKIP_WS: EAT_WS -> channel(HIDDEN), popMode;
+
+CALL_RETURN_OTHER: . -> type(TEXT), popMode;
+	
+mode OUT_MODE;
+
+OUT_COMMENT: 
 	COMMENT_BLOCK -> channel(HIDDEN);
 
-DEF_STARTNAME: DEF_STNAME;
+OUT_WS: WS+ -> type(WS);
 
-DEF_ENDNAME: DEF_CLNAME;
+OUT_ID: ID_TOKEN WS* -> type(ID);
 
-DEF_ID: ID_TOKEN -> type(ID);
+OUT_OUTPARAMSTART:
+	PARA_ST -> type(OUT_PARAMSTART), mode(CALL_RETURNED), pushMode(CALL);
 
-DEF_DELIM: EXT_DELIM -> type(DELIM);
+OUT_DELIM: EXT_DELIM -> type(DELIM);
 
-DEF_SUB_START: SUB_ST -> type(SUB_START), pushMode(DEFAULT_MODE);
+OUT_OUT_START: OUT_ST WS* -> type(OUT);
 
-DEF_OUT: DEF_MAKEOUT;
+OUT_RAW: RAW_BLOCK -> type(RAW), popMode;
+OUT_RW_LINE: RAW_LINE -> type(RAW), popMode;
+OUT_DEF_START: DEF_ST -> type(DEF_START), popMode, pushMode(DEF);
+OUT_SUB_START: SUB_ST -> type(SUB_START), popMode, pushMode(SUB_BLOCK);
+OUT_SUB_CL: SUB_CL -> type(SUB_CLOSE), popMode, popMode;
+OUT_START_IMPORT: IMP -> type(IMPORT_TOKEN), popMode, pushMode(IMPORT_MODE);
 
-DEF_PARAMSTART: 
-	PARA_ST -> type(OUT_PARAMSTART), pushMode(CALL);
+OUT_SKIP_WS: EAT_WS -> channel(HIDDEN), popMode;
 
-DEF_CLOSE: DEF_CL -> popMode;
-
-DEF_TYPE: DEF_T -> mode(CS_TYPE);
-
-DEF_WS: WHITESPACE+ -> channel(HIDDEN);
-
-DEF_TEXT_RETURN: . -> type(TEXT), popMode; //fallback for invalid input
+OUT_OTHER: . -> type(TEXT), popMode;
 
 mode CALL;
 
 CALL_COMMENT:
 	COMMENT_BLOCK -> channel(HIDDEN);
-	
-CALL_SKIP_WS: EAT_WS -> channel(HIDDEN);
-
-CALL_RAW: RAW_BLOCK;
-
-CALL_RW_LINE: RAW_LINE -> type(RAW);
-
-CALL_DEF_START: DEF_ST -> pushMode(DEF);
-
-CALL_START_IMPORT: IMP -> type(IMPORT_TOKEN);
 
 CSHARP_START:
-	OUT_ST -> mode(CS);
-	
+	OUT_ST -> popMode, pushMode(CS);
+
 CALL_PARAMSTART: 
 	PARA_ST -> type(OUT_PARAMSTART), pushMode(CALL);
 
@@ -115,32 +170,15 @@ CALL_DELIM:
 
 CALL_ROOT_REF: DEF_T -> type(ROOT_REF);
 
-CALL_ID: ID_TOKEN -> type(ID);
+CALL_ID: ID_TOKEN WS* -> type(ID);
 
 CALL_MEMB_P: MEMB_P -> type(MEMBER_P);
 
-CALL_SUB_START: SUB_ST -> type(SUB_START), pushMode(DEFAULT_MODE);
-
-CALL_SUB_CLOSE: SUB_CL -> type(SUB_CLOSE), popMode;
-
-CALL_WS: WHITESPACE+ -> type(WS);
-
-CALL_TEXT_RETURN: . -> type(TEXT), popMode; //fallback for invalid input
-
-mode CS_TYPE;
-
-TYPE_COMMENT:
-	COMMENT_BLOCK -> channel(HIDDEN);
-	
-TYPE_WS: WHITESPACE+ -> channel(HIDDEN);
-
-TYPE_ID: ID_TYPE -> type(ID), mode(DEF);
-
-TYPE_TEXT_RETURN: . -> type(TEXT), popMode; //fallback for invalid input
+CALL_WS: WS+ -> channel(HIDDEN);
 
 mode CS;
 
-CS_CSHARP_WS: WHITESPACE+ -> type(CSHARP_TOKEN);
+CS_CSHARP_WS: WS+ -> type(CSHARP_TOKEN);
 
 CS_CSHARP_START:
 	PARA_ST -> type(CSHARP_TOKEN), pushMode(CS);
@@ -148,5 +186,3 @@ CS_CSHARP_START:
 CS_CSHARP_END: PARA_CL -> type(OUT_PARAMEND), popMode;
 
 CS_CSHARP_TOKEN: TOKEN -> type(CSHARP_TOKEN);
-
-CS_TEXT_RETURN: . -> type(TEXT), popMode; //fallback for invalid input

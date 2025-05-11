@@ -2,7 +2,7 @@
 // jshint ignore: start
 import antlr4 from 'antlr4';
 import TtlParserListener from './TtlParserListener.js';
-const serializedATN = [4,1,34,164,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,
+const serializedATN = [4,1,35,164,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,
 4,2,5,7,5,2,6,7,6,2,7,7,7,2,8,7,8,2,9,7,9,2,10,7,10,2,11,7,11,2,12,7,12,
 2,13,7,13,2,14,7,14,2,15,7,15,1,0,1,0,1,0,1,0,1,0,5,0,38,8,0,10,0,12,0,41,
 9,0,1,1,1,1,1,2,1,2,4,2,47,8,2,11,2,12,2,48,1,2,1,2,1,3,1,3,1,3,3,3,56,8,
@@ -27,7 +27,7 @@ const serializedATN = [4,1,34,164,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,
 3,8,4,0,55,54,1,0,0,0,55,56,1,0,0,0,56,57,1,0,0,0,57,59,5,14,0,0,58,60,3,
 12,6,0,59,58,1,0,0,0,59,60,1,0,0,0,60,61,1,0,0,0,61,63,3,28,14,0,62,64,3,
 10,5,0,63,62,1,0,0,0,63,64,1,0,0,0,64,7,1,0,0,0,65,66,5,15,0,0,66,67,5,4,
-0,0,67,9,1,0,0,0,68,69,5,25,0,0,69,70,5,4,0,0,70,11,1,0,0,0,71,72,5,21,0,
+0,0,67,9,1,0,0,0,68,69,5,27,0,0,69,70,5,4,0,0,70,11,1,0,0,0,71,72,5,21,0,
 0,72,73,3,18,9,0,73,13,1,0,0,0,74,78,5,3,0,0,75,77,5,2,0,0,76,75,1,0,0,0,
 77,80,1,0,0,0,78,76,1,0,0,0,78,79,1,0,0,0,79,81,1,0,0,0,80,78,1,0,0,0,81,
 83,5,8,0,0,82,84,3,30,15,0,83,82,1,0,0,0,84,85,1,0,0,0,85,83,1,0,0,0,85,
@@ -69,10 +69,11 @@ export default class TtlParser extends antlr4.Parser {
                              "CSHARP_END", "CSHARP_TOKEN", "CSHARP_START", 
                              "DEF_STARTNAME", "DEF_ENDNAME", "DELIM", "DEF_START", 
                              "DEF_CLOSE", "RAW", "OUT_PARAMSTART", "OUT_PARAMEND", 
-                             "DEF_OUT", "COMMENT", "SKIP_WS", "DEF_COMMENT", 
-                             "DEF_TYPE", "DEF_WS", "CALL_COMMENT", "CALL_SKIP_WS", 
-                             "CALL_RAW", "CALL_DEF_START", "CALL_SUB_START", 
-                             "CALL_SUB_CLOSE", "TYPE_COMMENT", "TYPE_WS" ];
+                             "DEF_OUT", "COMMENT", "SKIP_WS", "SUB_COMMENT", 
+                             "SUB_SKIP_WS", "DEF_COMMENT", "DEF_TYPE", "DEF_WS", 
+                             "IMPORT_COMMENT", "CALL_RETURN_COMMENT", "CALL_SKIP_WS", 
+                             "OUT_COMMENT", "OUT_SKIP_WS", "CALL_COMMENT", 
+                             "CALL_WS" ];
     static ruleNames = [ "ttl", "raw", "definition", "def", "def_base", 
                          "def_type", "default_chain", "import_block", "outblock", 
                          "chain", "call", "member_expression", "extension_id", 
@@ -97,7 +98,7 @@ export default class TtlParser extends antlr4.Parser {
 	        this.state = 39;
 	        this._errHandler.sync(this);
 	        _la = this._input.LA(1);
-	        while((((_la) & ~0x1f) === 0 && ((1 << _la) & 4294835454) !== 0) || ((((_la - 32)) & ~0x1f) === 0 && ((1 << (_la - 32)) & 7) !== 0)) {
+	        while((((_la) & ~0x1f) === 0 && ((1 << _la) & 4294835454) !== 0) || ((((_la - 32)) & ~0x1f) === 0 && ((1 << (_la - 32)) & 15) !== 0)) {
 	            this.state = 37;
 	            this._errHandler.sync(this);
 	            var la_ = this._interp.adaptivePredict(this._input,0,this._ctx);
@@ -240,7 +241,7 @@ export default class TtlParser extends antlr4.Parser {
 	        this.state = 63;
 	        this._errHandler.sync(this);
 	        _la = this._input.LA(1);
-	        if(_la===25) {
+	        if(_la===27) {
 	            this.state = 62;
 	            this.def_type();
 	        }
@@ -365,7 +366,7 @@ export default class TtlParser extends antlr4.Parser {
 	            this.state = 85; 
 	            this._errHandler.sync(this);
 	            _la = this._input.LA(1);
-	        } while((((_la) & ~0x1f) === 0 && ((1 << _la) & 4294507646) !== 0) || ((((_la - 32)) & ~0x1f) === 0 && ((1 << (_la - 32)) & 7) !== 0));
+	        } while((((_la) & ~0x1f) === 0 && ((1 << _la) & 4294507646) !== 0) || ((((_la - 32)) & ~0x1f) === 0 && ((1 << (_la - 32)) & 15) !== 0));
 	        this.state = 87;
 	        this.match(TtlParser.SUB_CLOSE);
 	    } catch (re) {
@@ -759,17 +760,18 @@ TtlParser.OUT_PARAMEND = 20;
 TtlParser.DEF_OUT = 21;
 TtlParser.COMMENT = 22;
 TtlParser.SKIP_WS = 23;
-TtlParser.DEF_COMMENT = 24;
-TtlParser.DEF_TYPE = 25;
-TtlParser.DEF_WS = 26;
-TtlParser.CALL_COMMENT = 27;
-TtlParser.CALL_SKIP_WS = 28;
-TtlParser.CALL_RAW = 29;
-TtlParser.CALL_DEF_START = 30;
-TtlParser.CALL_SUB_START = 31;
-TtlParser.CALL_SUB_CLOSE = 32;
-TtlParser.TYPE_COMMENT = 33;
-TtlParser.TYPE_WS = 34;
+TtlParser.SUB_COMMENT = 24;
+TtlParser.SUB_SKIP_WS = 25;
+TtlParser.DEF_COMMENT = 26;
+TtlParser.DEF_TYPE = 27;
+TtlParser.DEF_WS = 28;
+TtlParser.IMPORT_COMMENT = 29;
+TtlParser.CALL_RETURN_COMMENT = 30;
+TtlParser.CALL_SKIP_WS = 31;
+TtlParser.OUT_COMMENT = 32;
+TtlParser.OUT_SKIP_WS = 33;
+TtlParser.CALL_COMMENT = 34;
+TtlParser.CALL_WS = 35;
 
 TtlParser.RULE_ttl = 0;
 TtlParser.RULE_raw = 1;

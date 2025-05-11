@@ -40,9 +40,9 @@ public partial class TtlParser : Parser {
 		TEXT=1, WS=2, IMPORT_TOKEN=3, ID=4, ROOT_REF=5, MEMBER_P=6, OUT=7, SUB_START=8, 
 		SUB_CLOSE=9, CSHARP_END=10, CSHARP_TOKEN=11, CSHARP_START=12, DEF_STARTNAME=13, 
 		DEF_ENDNAME=14, DELIM=15, DEF_START=16, DEF_CLOSE=17, RAW=18, OUT_PARAMSTART=19, 
-		OUT_PARAMEND=20, DEF_OUT=21, COMMENT=22, SKIP_WS=23, DEF_COMMENT=24, DEF_TYPE=25, 
-		DEF_WS=26, CALL_COMMENT=27, CALL_SKIP_WS=28, CALL_RAW=29, CALL_DEF_START=30, 
-		CALL_SUB_START=31, CALL_SUB_CLOSE=32, TYPE_COMMENT=33, TYPE_WS=34;
+		OUT_PARAMEND=20, DEF_OUT=21, COMMENT=22, SKIP_WS=23, SUB_COMMENT=24, SUB_SKIP_WS=25, 
+		DEF_COMMENT=26, DEF_TYPE=27, DEF_WS=28, IMPORT_COMMENT=29, CALL_RETURN_COMMENT=30, 
+		CALL_SKIP_WS=31, OUT_COMMENT=32, OUT_SKIP_WS=33, CALL_COMMENT=34, CALL_WS=35;
 	public const int
 		RULE_ttl = 0, RULE_raw = 1, RULE_definition = 2, RULE_def = 3, RULE_def_base = 4, 
 		RULE_def_type = 5, RULE_default_chain = 6, RULE_import_block = 7, RULE_outblock = 8, 
@@ -60,9 +60,10 @@ public partial class TtlParser : Parser {
 		null, "TEXT", "WS", "IMPORT_TOKEN", "ID", "ROOT_REF", "MEMBER_P", "OUT", 
 		"SUB_START", "SUB_CLOSE", "CSHARP_END", "CSHARP_TOKEN", "CSHARP_START", 
 		"DEF_STARTNAME", "DEF_ENDNAME", "DELIM", "DEF_START", "DEF_CLOSE", "RAW", 
-		"OUT_PARAMSTART", "OUT_PARAMEND", "DEF_OUT", "COMMENT", "SKIP_WS", "DEF_COMMENT", 
-		"DEF_TYPE", "DEF_WS", "CALL_COMMENT", "CALL_SKIP_WS", "CALL_RAW", "CALL_DEF_START", 
-		"CALL_SUB_START", "CALL_SUB_CLOSE", "TYPE_COMMENT", "TYPE_WS"
+		"OUT_PARAMSTART", "OUT_PARAMEND", "DEF_OUT", "COMMENT", "SKIP_WS", "SUB_COMMENT", 
+		"SUB_SKIP_WS", "DEF_COMMENT", "DEF_TYPE", "DEF_WS", "IMPORT_COMMENT", 
+		"CALL_RETURN_COMMENT", "CALL_SKIP_WS", "OUT_COMMENT", "OUT_SKIP_WS", "CALL_COMMENT", 
+		"CALL_WS"
 	};
 	public static readonly IVocabulary DefaultVocabulary = new Vocabulary(_LiteralNames, _SymbolicNames);
 
@@ -155,7 +156,7 @@ public partial class TtlParser : Parser {
 			State = 39;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
-			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 34359606526L) != 0)) {
+			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 68719344894L) != 0)) {
 				{
 				State = 37;
 				ErrorHandler.Sync(this);
@@ -611,7 +612,7 @@ public partial class TtlParser : Parser {
 				State = 85;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
-			} while ( (((_la) & ~0x3f) == 0 && ((1L << _la) & 34359278718L) != 0) );
+			} while ( (((_la) & ~0x3f) == 0 && ((1L << _la) & 68719017086L) != 0) );
 			State = 87;
 			Match(SUB_CLOSE);
 			}
@@ -1216,7 +1217,7 @@ public partial class TtlParser : Parser {
 	}
 
 	private static int[] _serializedATN = {
-		4,1,34,164,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,7,
+		4,1,35,164,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,7,
 		7,7,2,8,7,8,2,9,7,9,2,10,7,10,2,11,7,11,2,12,7,12,2,13,7,13,2,14,7,14,
 		2,15,7,15,1,0,1,0,1,0,1,0,1,0,5,0,38,8,0,10,0,12,0,41,9,0,1,1,1,1,1,2,
 		1,2,4,2,47,8,2,11,2,12,2,48,1,2,1,2,1,3,1,3,1,3,3,3,56,8,3,1,3,1,3,3,3,
@@ -1241,7 +1242,7 @@ public partial class TtlParser : Parser {
 		55,5,4,0,0,54,56,3,8,4,0,55,54,1,0,0,0,55,56,1,0,0,0,56,57,1,0,0,0,57,
 		59,5,14,0,0,58,60,3,12,6,0,59,58,1,0,0,0,59,60,1,0,0,0,60,61,1,0,0,0,61,
 		63,3,28,14,0,62,64,3,10,5,0,63,62,1,0,0,0,63,64,1,0,0,0,64,7,1,0,0,0,65,
-		66,5,15,0,0,66,67,5,4,0,0,67,9,1,0,0,0,68,69,5,25,0,0,69,70,5,4,0,0,70,
+		66,5,15,0,0,66,67,5,4,0,0,67,9,1,0,0,0,68,69,5,27,0,0,69,70,5,4,0,0,70,
 		11,1,0,0,0,71,72,5,21,0,0,72,73,3,18,9,0,73,13,1,0,0,0,74,78,5,3,0,0,75,
 		77,5,2,0,0,76,75,1,0,0,0,77,80,1,0,0,0,78,76,1,0,0,0,78,79,1,0,0,0,79,
 		81,1,0,0,0,80,78,1,0,0,0,81,83,5,8,0,0,82,84,3,30,15,0,83,82,1,0,0,0,84,
