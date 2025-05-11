@@ -148,6 +148,7 @@ namespace Templates.Language {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
             var defBase = context.def_base();
+            var defType = context.def_type();
             if (defBase == null) {
                 AddToken(context.DEF_STARTNAME(), TtlTokenType.DefStartName);
                 var subTemplate = context.subtemplate();
@@ -158,7 +159,7 @@ namespace Templates.Language {
                 }
 
                 var parameterTemplate = subTemplate.ttl()?.GetText();
-                var definitionId = context.ID(0);
+                var definitionId = context.ID();
                 if (definitionId == null)
                     throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(context)));
                 AddToken(definitionId, TtlTokenType.Id);
@@ -175,7 +176,7 @@ namespace Templates.Language {
                 return new DefinitionItem(
                     definitionName, parameterTemplate,
                     null,
-                    modelType: context.ID(1)?.GetText().Trim())
+                    modelType: defType?.ID().GetText().Trim())
                 {
                     Position = GetBlockPosition(context)
                 };
@@ -188,7 +189,7 @@ namespace Templates.Language {
                     chain = null;
                     return null;
                 }
-                var definitionId = context.ID(0);
+                var definitionId = context.ID();
                 if (definitionId == null)
                     throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(context)));
                 AddToken(definitionId, TtlTokenType.Id);
@@ -214,8 +215,8 @@ namespace Templates.Language {
                 {
                     AddToken(defOutChain.DEF_OUT(), TtlTokenType.DefOutputOnEnd);
                 }
-                var modelType = context.ID(2);
-                AddToken(context.DEF_TYPE(), TtlTokenType.DefType);
+                var modelType = defType?.ID();
+                AddToken(context.def_type()?.DEF_TYPE(), TtlTokenType.DefType);
                 AddToken(modelType, TtlTokenType.Id);
                 AddToken(defBase.DELIM(), TtlTokenType.Delim);
                 AddToken(subTemplate.SUB_START(), TtlTokenType.SubStart);
@@ -402,6 +403,7 @@ namespace Templates.Language {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
             var extensionId = context.extension_id();
+            var memberExpr = context.member_expression();
             if (extensionId != null) {
                 var idTemplate = extensionId.ID();
                 AddToken(idTemplate, TtlTokenType.Id);
@@ -409,17 +411,17 @@ namespace Templates.Language {
                 string itemName = idTemplate?.GetText().Trim();
                 AddToken(context.OUT_PARAMSTART(), TtlTokenType.OutParamStart);
                 
-                var members = context.ID();
+                var members = memberExpr?.ID() ?? [];
                 foreach (var member in members)
                 {
                     AddToken(member, TtlTokenType.Id);
                 }
-                var memberSelectors = context.MEMBER_P();
+                var memberSelectors = memberExpr?.MEMBER_P() ?? [];
                 foreach (var selectors in memberSelectors)
                 {
                     AddToken(selectors, TtlTokenType.MemberSelector);
                 }
-                AddToken(context.ROOT_REF(), TtlTokenType.RootReference);
+                AddToken(memberExpr?.ROOT_REF(), TtlTokenType.RootReference);
                 AddToken(context.OUT_PARAMEND(), TtlTokenType.OutParamEnd);
                 var delims = context.chain()?.DELIM();
                 if (delims != null)
@@ -443,7 +445,7 @@ namespace Templates.Language {
                     CallParameter =
                     {
                         ModelParameter = members.Select(n => n.GetText().Trim()).ToArray(),
-                        RootReference = context.ROOT_REF() != null,
+                        RootReference = memberExpr?.ROOT_REF() != null,
                         ChainParameter = CreateChain(context.chain()?.call()),
                         CSharpExpression = csharpExpression?.GetText()
                     }
@@ -451,17 +453,17 @@ namespace Templates.Language {
             } else {
                 AddToken(context.OUT_PARAMSTART(), TtlTokenType.OutParamStart);
                 
-                var members = context.ID();
+                var members = memberExpr?.ID() ?? [];
                 foreach (var member in members)
                 {
                     AddToken(member, TtlTokenType.Id);
                 }
-                var memberSelectors = context.MEMBER_P();
+                var memberSelectors = memberExpr?.MEMBER_P() ?? [];
                 foreach (var selectors in memberSelectors)
                 {
                     AddToken(selectors, TtlTokenType.MemberSelector);
                 }
-                AddToken(context.ROOT_REF(), TtlTokenType.RootReference);
+                AddToken(memberExpr?.ROOT_REF(), TtlTokenType.RootReference);
                 AddToken(context.OUT_PARAMEND(), TtlTokenType.OutParamEnd);
                 
                 var delims = context.chain()?.DELIM();
@@ -480,13 +482,17 @@ namespace Templates.Language {
                     {
                         AddToken(token, TtlTokenType.CSharpToken);
                     }
+                    foreach (var token in csharpExpression.OUT_PARAMEND())
+                    {
+                        AddToken(token, TtlTokenType.CSharpToken);
+                    }
                 }
                 return new OutputItem(callNameOverride ?? string.Empty, GetAbsoluteBlockPosition(context))
                 {
                     CallParameter =
                     {
                         ModelParameter = members.Select(n => n.GetText().Trim()).ToArray(),
-                        RootReference = context.ROOT_REF() != null,
+                        RootReference = memberExpr?.ROOT_REF() != null,
                         ChainParameter = CreateChain(context.chain()?.call()),
                         CSharpExpression = csharpExpression?.GetText()
                     }

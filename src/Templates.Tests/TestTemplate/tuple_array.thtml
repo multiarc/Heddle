@@ -5,14 +5,14 @@
 {{
     @list()
     {{
-        @(@(model.Value, model.Name))
+        @(%(model.Value, model.Name))
         {{
-            @(@model.Item1)
-            @(@model.Item2)
+            @(%model.Item1)
+            @(%model.Item2)
         }}
     }}
     
-    @list(@new [] 
+    @list(%new [] 
         {
             new NameValuePair
                 {
@@ -22,10 +22,10 @@
         }
     )
     {{
-        @(@(model.Value, model.Name))
+        @(%(model.Value, model.Name))
         {{
-            @(@model.Item1)
-            @(@model.Item2)
+            @(%model.Item1)
+            @(%model.Item2)
         }}
     }}
 }} :: NameValuePair[]

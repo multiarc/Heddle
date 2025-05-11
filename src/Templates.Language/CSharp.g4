@@ -62,7 +62,7 @@ fragment KEYWORD:
 fragment IDENTIFIER: IDENTIFIER_START IDENTIFIER_PART*;
 
 fragment IDENTIFIER_START: 
-	[a-zA-Zà-ÿÀ-ß_]
+	[a-zA-Z_]
 	| UNICODE_ESCAPE
 	;
 

@@ -20,7 +20,7 @@
 		</label>
 	}}
 	<test_list>
-	{{@list(@model.Products.Where(p => p.Quantity < 95))
+	{{@list(%model.Products.Where(p => p.Quantity < 95))
         {{@
 			partial(){{partial}}@\
         }}@\
@@ -30,7 +30,7 @@
 @using(){{System.Linq}}@\
 @using(){{Templates.Models}}@\
 @model(@*Comment Test 3*@){{TestData@*Comment Test 4*@Structure}}@\
-<!DOCTYPE html><!--@(@"HTML ")@(@5)-->
+<!DOCTYPE html><!--@(%"HTML ")@(%5)-->
 <html>@*Comment Test 5*@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
@@ -49,10 +49,10 @@
                 Name of something
             </th>
         </tr>
-		@for(@new ForModel() { Last = model.Products.Count(), Step = 3 })
+		@for(%new ForModel() { Last = model.Products.Count(), Step = 3 })
 		{{
 			<div>
-				@list(@model.Products.Skip(chained).Take(3))
+				@list(%model.Products.Skip(chained).Take(3))
 				{{@
 					@*Comment Test 8*@partial(@*Comment Test 9*@){{partial@*Comment Test 10*@}}@\
 				}}@\
@@ -75,7 +75,7 @@
         @test_list()@\
     </table>
     <div>
-        Page Generated at@(@null){{}}@*Comment Test 11*@
+        Page Generated at@(%null){{}}@*Comment Test 11*@
         @time(Date)
         on
         @date(Date)<br />
@@ -88,9 +88,9 @@
         @string(Text)<br />
         &lt;%<br />
         %&gt;<br />
-		@text(@new NameValuePair { Name = "input1-name", Value="input1-value" }){{ class="testcssclass1" }}
-		@labeled_text(@new NameValuePair { Name = "input2-name", Value="input2-value" }){{ class="testcssclass2" }}
-		@multi_text(@new NameValuePair { Name = "input3-name", Value="input3-value" })
+		@text(%new NameValuePair { Name = "input1-name", Value="input1-value" }){{ class="testcssclass1" }}
+		@labeled_text(%new NameValuePair { Name = "input2-name", Value="input2-value" }){{ class="testcssclass2" }}
+		@multi_text(%new NameValuePair { Name = "input3-name", Value="input3-value" })
 		{{
 			@text() {{ class="testcssclass3" }}
 			@%

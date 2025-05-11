@@ -82,6 +82,16 @@ public interface ITtlParserListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitDef_base([NotNull] TtlParser.Def_baseContext context);
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="TtlParser.def_type"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterDef_type([NotNull] TtlParser.Def_typeContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="TtlParser.def_type"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitDef_type([NotNull] TtlParser.Def_typeContext context);
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="TtlParser.default_chain"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -131,6 +141,16 @@ public interface ITtlParserListener : IParseTreeListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	void ExitCall([NotNull] TtlParser.CallContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="TtlParser.member_expression"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterMember_expression([NotNull] TtlParser.Member_expressionContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="TtlParser.member_expression"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitMember_expression([NotNull] TtlParser.Member_expressionContext context);
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="TtlParser.extension_id"/>.
 	/// </summary>

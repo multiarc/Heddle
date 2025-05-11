@@ -20,7 +20,9 @@ fragment PARA_CL: ')';
 fragment DEF_ST: '@%';
 fragment DEF_CL: '%@';
 fragment OUT_ST: '@';
+fragment CS_ST: '%';
 fragment DEF_T: '::';
+fragment TYPE_REF: '::';
 fragment EXT_DELIM: ':';
 fragment DEF_STNAME: '<';
 fragment DEF_CLNAME: '>';
@@ -40,69 +42,80 @@ RAW: RAW_BLOCK;
 
 RW_LINE: RAW_LINE -> type(RAW);
 
-DEF_START: DEF_ST;
-DEF_CLOSE: DEF_CL;
+DEF_START: DEF_ST -> pushMode(DEF);
 
 START_IMPORT: IMP -> type(IMPORT_TOKEN);
 
 START_OUT: OUT_ST WS* -> type(OUT);
 
-OUT_PARAMSTART: 
-	PARA_ST -> type(OUT_PARAMSTART), pushMode(CALL);
+CALL_PARAMSTART:
+	PARA_ST -> type(OUT_PARAMSTART);
+
+CALL_PARAMEND: 
+	PARA_CL -> type(OUT_PARAMEND);
 
 OUT_ID: ID_TOKEN WS* -> type(ID);
 
-SUB_START: SUB_ST;
+CALL_MEMB_P: MEMB_P -> type(MEMBER_P);
 
-SUB_CLOSE: SUB_CL;
+SUB_START: SUB_ST -> pushMode(DEFAULT_MODE);
 
-DEF_OUT: WHITESPACE* DEF_MAKEOUT WHITESPACE*;
+SUB_CLOSE: SUB_CL -> popMode;
 
-DEF_STARTNAME: DEF_STNAME;
+ROOT_REF: TYPE_REF;
 
-DEF_ENDNAME: DEF_CLNAME;
-
-DEF_TYPE: DEF_T -> mode(CS_TYPE);
+CSHARP_START:
+	CS_ST -> pushMode(CS);
 
 DELIM: EXT_DELIM;
 
 WS: WHITESPACE+;
 
-TEXT: (~[@:{}()<>\\%*]+ | .);
+TEXT: (~[@:{}()\\%*.]+ | .);
 
-mode CALL;
+mode DEF;
 
-CALL_COMMENT:
+DEF_COMMENT:
 	COMMENT_BLOCK -> channel(HIDDEN);
 
-CSHARP_START:
-	OUT_ST -> mode(CS);
+DEF_STARTNAME: DEF_STNAME;
+
+DEF_ENDNAME: DEF_CLNAME;
+
+DEF_ID: ID_TOKEN -> type(ID);
+
+DEF_DELIM: EXT_DELIM -> type(DELIM);
+
+DEF_SUB_START: SUB_ST -> type(SUB_START), pushMode(DEFAULT_MODE);
+
+DEF_OUT: DEF_MAKEOUT;
+
+DEF_CLOSE: DEF_CL -> popMode;
+
+DEF_TYPE: DEF_T -> mode(CS_TYPE);
+
+DEF_PARAMSTART:
+	PARA_ST -> type(OUT_PARAMSTART);
+
+DEF_PARAMEND: 
+	PARA_CL -> type(OUT_PARAMEND);
 	
-CALL_PARAMSTART: 
-	PARA_ST -> type(OUT_PARAMSTART), pushMode(CALL);
+DEF_MEMB_P: MEMB_P -> type(MEMBER_P);
 
-CALL_PARAMEND: 
-	PARA_CL -> type(OUT_PARAMEND), popMode;
+DEF_WS: WHITESPACE+ -> channel(HIDDEN);
 
-CALL_DELIM: 
-	EXT_DELIM -> type(DELIM);
-
-CALL_ROOT_REF: DEF_T -> type(ROOT_REF);
-
-CALL_ID: ID_TOKEN -> type(ID);
-
-CALL_MEMB_P: MEMB_P -> type(MEMBER_P);
-
-CALL_WS: WHITESPACE+ -> channel(HIDDEN);
-
-CALL_TEXT_RETURN: . -> type(TEXT), popMode; //fallback for invalid input
+DEF_TEXT_RETURN: . -> type(TEXT), popMode; //fallback for invalid input
 
 mode CS_TYPE;
 
 TYPE_COMMENT:
 	COMMENT_BLOCK -> channel(HIDDEN);
+	
+TYPE_WS: WHITESPACE+ -> channel(HIDDEN);
 
-TYPE_ID: WHITESPACE* ID_TYPE WHITESPACE* -> type(ID), mode(DEFAULT_MODE);
+TYPE_ID: ID_TYPE -> type(ID), mode(DEF);
+
+TYPE_TEXT_RETURN: . -> type(TEXT), popMode; //fallback for invalid input
 
 mode CS;
 
@@ -111,6 +124,8 @@ CS_CSHARP_WS: WHITESPACE+ -> type(CSHARP_TOKEN);
 CS_CSHARP_START:
 	PARA_ST -> type(CSHARP_TOKEN), pushMode(CS);
 
-CS_CSHARP_END: PARA_CL -> type(CSHARP_TOKEN), popMode;
+CS_CSHARP_END: PARA_CL -> type(OUT_PARAMEND), popMode;
 
 CS_CSHARP_TOKEN: TOKEN -> type(CSHARP_TOKEN);
+
+CS_TEXT_RETURN: . -> type(TEXT), popMode; //fallback for invalid input

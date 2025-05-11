@@ -50,6 +50,15 @@ export default class TtlParserListener extends antlr4.tree.ParseTreeListener {
 	}
 
 
+	// Enter a parse tree produced by TtlParser#def_type.
+	enterDef_type(ctx) {
+	}
+
+	// Exit a parse tree produced by TtlParser#def_type.
+	exitDef_type(ctx) {
+	}
+
+
 	// Enter a parse tree produced by TtlParser#default_chain.
 	enterDefault_chain(ctx) {
 	}
@@ -92,6 +101,15 @@ export default class TtlParserListener extends antlr4.tree.ParseTreeListener {
 
 	// Exit a parse tree produced by TtlParser#call.
 	exitCall(ctx) {
+	}
+
+
+	// Enter a parse tree produced by TtlParser#member_expression.
+	enterMember_expression(ctx) {
+	}
+
+	// Exit a parse tree produced by TtlParser#member_expression.
+	exitMember_expression(ctx) {
 	}
 
 

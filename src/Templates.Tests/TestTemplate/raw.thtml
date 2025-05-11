@@ -1,7 +1,7 @@
 ﻿@%
 <default> -> ()
 {{
-    @(@"Test".Length)	
+    @(%"Test".Length)	
 }}
 %@
 @using(){{System@*Comment Test 1*@@:.
