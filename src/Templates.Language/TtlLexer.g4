@@ -50,7 +50,7 @@ START_OUT: OUT_ST WS* -> type(OUT);
 OUT_PARAMSTART: 
 	PARA_ST -> type(OUT_PARAMSTART), pushMode(CALL);
 
-OUT_ID: ID_TOKEN -> type(ID);
+OUT_ID: ID_TOKEN WS* -> type(ID);
 
 SUB_START: SUB_ST;
 

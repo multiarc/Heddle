@@ -33,7 +33,8 @@ namespace Templates.Language
             if (document == null)
                 throw new ArgumentNullException(nameof(document));
             var stream = new AntlrInputStream(new StringReader(document));
-            var lexer = context.ForceRemoveWhitespace ? (ITokenSource) new TtlLexerNoWS(stream) : new TtlLexer(stream);
+            var lexer = new TtlLexer(stream);
+            //BUG: ForceRemoveWhitespace is not currently used
             var tokens = new CommonTokenStream(lexer);
             var parser = new TtlParser(tokens);
             var syntaxErrorListener = new TtlSyntaxErrorListener(context);

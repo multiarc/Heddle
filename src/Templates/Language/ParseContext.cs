@@ -158,12 +158,12 @@ namespace Templates.Language {
                 }
 
                 var parameterTemplate = subTemplate.ttl()?.GetText();
-                var definition = context.ID(0);
-                if (definition == null)
+                var definitionId = context.ID(0);
+                if (definitionId == null)
                     throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(context)));
-                AddToken(definition, TtlTokenType.Id);
+                AddToken(definitionId, TtlTokenType.Id);
                 AddToken(context.DEF_ENDNAME(), TtlTokenType.DefEndName);
-                var definitionName = definition.GetText();
+                var definitionName = definitionId.GetText().Trim();
                 var defOutChain = context.default_chain();
                 if (defOutChain != null)
                 {
@@ -175,7 +175,7 @@ namespace Templates.Language {
                 return new DefinitionItem(
                     definitionName, parameterTemplate,
                     null,
-                    modelType: context.ID(1)?.GetText())
+                    modelType: context.ID(1)?.GetText().Trim())
                 {
                     Position = GetBlockPosition(context)
                 };
@@ -188,12 +188,12 @@ namespace Templates.Language {
                     chain = null;
                     return null;
                 }
-                var definition = context.ID(0);
-                if (definition == null)
+                var definitionId = context.ID(0);
+                if (definitionId == null)
                     throw new TemplateParseException("The Definition should have the Name".ToError(GetAbsoluteBlockPosition(context)));
-                AddToken(definition, TtlTokenType.Id);
+                AddToken(definitionId, TtlTokenType.Id);
                 var parameterTemplate = subTemplate.ttl().GetText();
-                var baseName = defBase.ID()?.GetText();
+                var baseName = defBase.ID()?.GetText().Trim();
                 var baseDefenition = GetDefenition(baseName);
                 if (baseDefenition == null)
                 {
@@ -202,7 +202,7 @@ namespace Templates.Language {
                 AddToken(defBase.ID(), TtlTokenType.Id);
                 AddToken(context.DEF_ENDNAME(), TtlTokenType.DefEndName);
                 var chainContext = context.default_chain()?.chain();
-                var definitionName = definition.GetText();
+                var definitionName = definitionId.GetText().Trim();
                 if (baseDefenition?.Name == definitionName && chainContext != null)
                 {
                     compileContext.CompileErrors.Add(
@@ -406,7 +406,7 @@ namespace Templates.Language {
                 var idTemplate = extensionId.ID();
                 AddToken(idTemplate, TtlTokenType.Id);
                 
-                string itemName = idTemplate?.GetText();
+                string itemName = idTemplate?.GetText().Trim();
                 AddToken(context.OUT_PARAMSTART(), TtlTokenType.OutParamStart);
                 
                 var members = context.ID();
@@ -442,7 +442,7 @@ namespace Templates.Language {
                 {
                     CallParameter =
                     {
-                        ModelParameter = members.Select(n => n.GetText()).ToArray(),
+                        ModelParameter = members.Select(n => n.GetText().Trim()).ToArray(),
                         RootReference = context.ROOT_REF() != null,
                         ChainParameter = CreateChain(context.chain()?.call()),
                         CSharpExpression = csharpExpression?.GetText()
@@ -485,7 +485,7 @@ namespace Templates.Language {
                 {
                     CallParameter =
                     {
-                        ModelParameter = members.Select(n => n.GetText()).ToArray(),
+                        ModelParameter = members.Select(n => n.GetText().Trim()).ToArray(),
                         RootReference = context.ROOT_REF() != null,
                         ChainParameter = CreateChain(context.chain()?.call()),
                         CSharpExpression = csharpExpression?.GetText()

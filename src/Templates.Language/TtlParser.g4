@@ -30,7 +30,7 @@ chain: call (DELIM WS* call)*;
 
 call: 
     extension_id? OUT_PARAMSTART ROOT_REF? ID? OUT_PARAMEND
-    | extension_id? OUT_PARAMSTART ROOT_REF? ID (MEMBER_P ID )+ OUT_PARAMEND
+    | extension_id? OUT_PARAMSTART ROOT_REF? ID (MEMBER_P ID)+ OUT_PARAMEND
     | extension_id? OUT_PARAMSTART chain OUT_PARAMEND
     | extension_id? OUT_PARAMSTART CSHARP_START csharp_expression CSHARP_TOKEN
     ;

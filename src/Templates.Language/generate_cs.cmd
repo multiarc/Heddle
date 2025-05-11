@@ -1,2 +1,2 @@
 java -jar "..\..\lib\antlr-4.13.1-complete.jar" -Dlanguage=CSharp "TtlLexer.g4" "TtlParser.g4" -o "generated" -lib "generated" -package Templates.Language
-java -jar "..\..\lib\antlr-4.13.1-complete.jar" -Dlanguage=CSharp "TtlLexerNoWS.g4" -o "generated" -lib "generated" -package Templates.Language
+rem java -jar "..\..\lib\antlr-4.13.1-complete.jar" -Dlanguage=CSharp "TtlLexerNoWS.g4" -o "generated" -lib "generated" -package Templates.Language
