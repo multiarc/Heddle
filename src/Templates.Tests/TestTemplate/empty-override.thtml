@@ -6,21 +6,21 @@
 <category1>
 {{
 	@(ComplexObject.Data.Text)
-    @if(%model.SubCategories.Count>0)
+    @if(@model.SubCategories.Count>0)
     {{
         <ul class="drop-menu sub-menu collapsed">
         @list(SubCategories)
         {{
             <li>
-                @if(%model.SubCategories.Count>0)
+                @if(@model.SubCategories.Count>0)
                 {{
                 <a class="trigger" href="#">@(Name)</a>
                 }}
-                @if(%model.SubCategories.Count==0)
+                @if(@model.SubCategories.Count==0)
                 {{
                 <a href="@(Name)">@(Name)</a>
                 }}
-				@(%root.Count) C# Test
+				@(@root.Count) C# Test
 				@(::Count) Model Access Test
             </li>
         }}
@@ -31,21 +31,21 @@
 <category>
 {{
 	@(ComplexObject.Data.Text)
-    @if(%model.SubCategories.Count>0)
+    @if(@model.SubCategories.Count>0)
     {{
         <ul class="drop-menu sub-menu collapsed">
         @list(SubCategories)
         {{
             <li>
-                @if(%model.SubCategories.Count>0)
+                @if(@model.SubCategories.Count>0)
                 {{
                 <a class="trigger" href="#">@(Name)</a>
                 }}
-                @if(%model.SubCategories.Count==0)
+                @if(@model.SubCategories.Count==0)
                 {{
                 <a href="@(Name)">@(Name)</a>
                 }}
-				@(%root.Count) C# Test
+				@(@root.Count) C# Test
 				@(::Count) Model Access Test
             </li>
         }}

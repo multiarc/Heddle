@@ -75,7 +75,7 @@
                 @()
                     <section class="comments">
                         
-                        @list(%root.ProductPage.ReviewsTab.Reviews) {{
+                        @list(@root.ProductPage.ReviewsTab.Reviews) {{
 							
 								<div class="comment-content">
 								    <div class="arrow-comment"></div>
@@ -83,9 +83,9 @@
 									    @(){{@(::ProductPage.DefaultCultureInfo.DateTimeFormat.ShortDatePattern)@(::ProductPage.DefaultCultureInfo.DateTimeFormat.ShortTimePattern)}}
                         }}
                 
-                        @if(%root.ProductPage.ReviewsTab.ReviewsCount > 3){{
+                        @if(@root.ProductPage.ReviewsTab.ReviewsCount > 3){{
                             <div class="form-group">
-    				        <a class="read-more-reviews" href="/reviews/@(%root.ProductPage.Url)">
+    				        <a class="read-more-reviews" href="/reviews/@(@root.ProductPage.Url)">
     					        
     				        </a>
     				        </div>

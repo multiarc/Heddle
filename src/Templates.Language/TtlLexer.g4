@@ -20,9 +20,7 @@ fragment PARA_CL: ')';
 fragment DEF_ST: '@%';
 fragment DEF_CL: '%@';
 fragment OUT_ST: '@';
-fragment CS_ST: '%';
 fragment DEF_T: '::';
-fragment TYPE_REF: '::';
 fragment EXT_DELIM: ':';
 fragment DEF_STNAME: '<';
 fragment DEF_CLNAME: '>';
@@ -46,32 +44,19 @@ DEF_START: DEF_ST -> pushMode(DEF);
 
 START_IMPORT: IMP -> type(IMPORT_TOKEN);
 
-START_OUT: OUT_ST WS* -> type(OUT);
-
-CALL_PARAMSTART:
-	PARA_ST -> type(OUT_PARAMSTART);
-
-CALL_PARAMEND: 
-	PARA_CL -> type(OUT_PARAMEND);
+START_OUT: OUT_ST WS* -> type(OUT), mode(CALL);
 
 OUT_ID: ID_TOKEN WS* -> type(ID);
-
-CALL_MEMB_P: MEMB_P -> type(MEMBER_P);
 
 SUB_START: SUB_ST -> pushMode(DEFAULT_MODE);
 
 SUB_CLOSE: SUB_CL -> popMode;
 
-ROOT_REF: TYPE_REF;
-
-CSHARP_START:
-	CS_ST -> pushMode(CS);
-
 DELIM: EXT_DELIM;
 
 WS: WHITESPACE+;
 
-TEXT: (~[@:{}()\\%*.]+ | .);
+TEXT: (~[@:{}()\\%*]+ | .);
 
 mode DEF;
 
@@ -90,21 +75,57 @@ DEF_SUB_START: SUB_ST -> type(SUB_START), pushMode(DEFAULT_MODE);
 
 DEF_OUT: DEF_MAKEOUT;
 
+DEF_PARAMSTART: 
+	PARA_ST -> type(OUT_PARAMSTART), pushMode(CALL);
+
 DEF_CLOSE: DEF_CL -> popMode;
 
 DEF_TYPE: DEF_T -> mode(CS_TYPE);
 
-DEF_PARAMSTART:
-	PARA_ST -> type(OUT_PARAMSTART);
-
-DEF_PARAMEND: 
-	PARA_CL -> type(OUT_PARAMEND);
-	
-DEF_MEMB_P: MEMB_P -> type(MEMBER_P);
-
 DEF_WS: WHITESPACE+ -> channel(HIDDEN);
 
 DEF_TEXT_RETURN: . -> type(TEXT), popMode; //fallback for invalid input
+
+mode CALL;
+
+CALL_COMMENT:
+	COMMENT_BLOCK -> channel(HIDDEN);
+	
+CALL_SKIP_WS: EAT_WS -> channel(HIDDEN);
+
+CALL_RAW: RAW_BLOCK;
+
+CALL_RW_LINE: RAW_LINE -> type(RAW);
+
+CALL_DEF_START: DEF_ST -> pushMode(DEF);
+
+CALL_START_IMPORT: IMP -> type(IMPORT_TOKEN);
+
+CSHARP_START:
+	OUT_ST -> mode(CS);
+	
+CALL_PARAMSTART: 
+	PARA_ST -> type(OUT_PARAMSTART), pushMode(CALL);
+
+CALL_PARAMEND: 
+	PARA_CL -> type(OUT_PARAMEND), popMode;
+
+CALL_DELIM: 
+	EXT_DELIM -> type(DELIM);
+
+CALL_ROOT_REF: DEF_T -> type(ROOT_REF);
+
+CALL_ID: ID_TOKEN -> type(ID);
+
+CALL_MEMB_P: MEMB_P -> type(MEMBER_P);
+
+CALL_SUB_START: SUB_ST -> type(SUB_START), pushMode(DEFAULT_MODE);
+
+CALL_SUB_CLOSE: SUB_CL -> type(SUB_CLOSE), popMode;
+
+CALL_WS: WHITESPACE+ -> type(WS);
+
+CALL_TEXT_RETURN: . -> type(TEXT), popMode; //fallback for invalid input
 
 mode CS_TYPE;
 

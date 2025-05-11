@@ -41,7 +41,8 @@ public partial class TtlParser : Parser {
 		SUB_CLOSE=9, CSHARP_END=10, CSHARP_TOKEN=11, CSHARP_START=12, DEF_STARTNAME=13, 
 		DEF_ENDNAME=14, DELIM=15, DEF_START=16, DEF_CLOSE=17, RAW=18, OUT_PARAMSTART=19, 
 		OUT_PARAMEND=20, DEF_OUT=21, COMMENT=22, SKIP_WS=23, DEF_COMMENT=24, DEF_TYPE=25, 
-		DEF_WS=26, TYPE_COMMENT=27, TYPE_WS=28;
+		DEF_WS=26, CALL_COMMENT=27, CALL_SKIP_WS=28, CALL_RAW=29, CALL_DEF_START=30, 
+		CALL_SUB_START=31, CALL_SUB_CLOSE=32, TYPE_COMMENT=33, TYPE_WS=34;
 	public const int
 		RULE_ttl = 0, RULE_raw = 1, RULE_definition = 2, RULE_def = 3, RULE_def_base = 4, 
 		RULE_def_type = 5, RULE_default_chain = 6, RULE_import_block = 7, RULE_outblock = 8, 
@@ -60,7 +61,8 @@ public partial class TtlParser : Parser {
 		"SUB_START", "SUB_CLOSE", "CSHARP_END", "CSHARP_TOKEN", "CSHARP_START", 
 		"DEF_STARTNAME", "DEF_ENDNAME", "DELIM", "DEF_START", "DEF_CLOSE", "RAW", 
 		"OUT_PARAMSTART", "OUT_PARAMEND", "DEF_OUT", "COMMENT", "SKIP_WS", "DEF_COMMENT", 
-		"DEF_TYPE", "DEF_WS", "TYPE_COMMENT", "TYPE_WS"
+		"DEF_TYPE", "DEF_WS", "CALL_COMMENT", "CALL_SKIP_WS", "CALL_RAW", "CALL_DEF_START", 
+		"CALL_SUB_START", "CALL_SUB_CLOSE", "TYPE_COMMENT", "TYPE_WS"
 	};
 	public static readonly IVocabulary DefaultVocabulary = new Vocabulary(_LiteralNames, _SymbolicNames);
 
@@ -153,7 +155,7 @@ public partial class TtlParser : Parser {
 			State = 39;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
-			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 536739070L) != 0)) {
+			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 34359606526L) != 0)) {
 				{
 				State = 37;
 				ErrorHandler.Sync(this);
@@ -609,7 +611,7 @@ public partial class TtlParser : Parser {
 				State = 85;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
-			} while ( (((_la) & ~0x3f) == 0 && ((1L << _la) & 536411262L) != 0) );
+			} while ( (((_la) & ~0x3f) == 0 && ((1L << _la) & 34359278718L) != 0) );
 			State = 87;
 			Match(SUB_CLOSE);
 			}
@@ -1214,7 +1216,7 @@ public partial class TtlParser : Parser {
 	}
 
 	private static int[] _serializedATN = {
-		4,1,28,164,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,7,
+		4,1,34,164,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,7,
 		7,7,2,8,7,8,2,9,7,9,2,10,7,10,2,11,7,11,2,12,7,12,2,13,7,13,2,14,7,14,
 		2,15,7,15,1,0,1,0,1,0,1,0,1,0,5,0,38,8,0,10,0,12,0,41,9,0,1,1,1,1,1,2,
 		1,2,4,2,47,8,2,11,2,12,2,48,1,2,1,2,1,3,1,3,1,3,3,3,56,8,3,1,3,1,3,3,3,

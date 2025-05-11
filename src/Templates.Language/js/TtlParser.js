@@ -2,7 +2,7 @@
 // jshint ignore: start
 import antlr4 from 'antlr4';
 import TtlParserListener from './TtlParserListener.js';
-const serializedATN = [4,1,28,164,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,
+const serializedATN = [4,1,34,164,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,
 4,2,5,7,5,2,6,7,6,2,7,7,7,2,8,7,8,2,9,7,9,2,10,7,10,2,11,7,11,2,12,7,12,
 2,13,7,13,2,14,7,14,2,15,7,15,1,0,1,0,1,0,1,0,1,0,5,0,38,8,0,10,0,12,0,41,
 9,0,1,1,1,1,1,2,1,2,4,2,47,8,2,11,2,12,2,48,1,2,1,2,1,3,1,3,1,3,3,3,56,8,
@@ -70,7 +70,9 @@ export default class TtlParser extends antlr4.Parser {
                              "DEF_STARTNAME", "DEF_ENDNAME", "DELIM", "DEF_START", 
                              "DEF_CLOSE", "RAW", "OUT_PARAMSTART", "OUT_PARAMEND", 
                              "DEF_OUT", "COMMENT", "SKIP_WS", "DEF_COMMENT", 
-                             "DEF_TYPE", "DEF_WS", "TYPE_COMMENT", "TYPE_WS" ];
+                             "DEF_TYPE", "DEF_WS", "CALL_COMMENT", "CALL_SKIP_WS", 
+                             "CALL_RAW", "CALL_DEF_START", "CALL_SUB_START", 
+                             "CALL_SUB_CLOSE", "TYPE_COMMENT", "TYPE_WS" ];
     static ruleNames = [ "ttl", "raw", "definition", "def", "def_base", 
                          "def_type", "default_chain", "import_block", "outblock", 
                          "chain", "call", "member_expression", "extension_id", 
@@ -95,7 +97,7 @@ export default class TtlParser extends antlr4.Parser {
 	        this.state = 39;
 	        this._errHandler.sync(this);
 	        _la = this._input.LA(1);
-	        while((((_la) & ~0x1f) === 0 && ((1 << _la) & 536739070) !== 0)) {
+	        while((((_la) & ~0x1f) === 0 && ((1 << _la) & 4294835454) !== 0) || ((((_la - 32)) & ~0x1f) === 0 && ((1 << (_la - 32)) & 7) !== 0)) {
 	            this.state = 37;
 	            this._errHandler.sync(this);
 	            var la_ = this._interp.adaptivePredict(this._input,0,this._ctx);
@@ -363,7 +365,7 @@ export default class TtlParser extends antlr4.Parser {
 	            this.state = 85; 
 	            this._errHandler.sync(this);
 	            _la = this._input.LA(1);
-	        } while((((_la) & ~0x1f) === 0 && ((1 << _la) & 536411262) !== 0));
+	        } while((((_la) & ~0x1f) === 0 && ((1 << _la) & 4294507646) !== 0) || ((((_la - 32)) & ~0x1f) === 0 && ((1 << (_la - 32)) & 7) !== 0));
 	        this.state = 87;
 	        this.match(TtlParser.SUB_CLOSE);
 	    } catch (re) {
@@ -760,8 +762,14 @@ TtlParser.SKIP_WS = 23;
 TtlParser.DEF_COMMENT = 24;
 TtlParser.DEF_TYPE = 25;
 TtlParser.DEF_WS = 26;
-TtlParser.TYPE_COMMENT = 27;
-TtlParser.TYPE_WS = 28;
+TtlParser.CALL_COMMENT = 27;
+TtlParser.CALL_SKIP_WS = 28;
+TtlParser.CALL_RAW = 29;
+TtlParser.CALL_DEF_START = 30;
+TtlParser.CALL_SUB_START = 31;
+TtlParser.CALL_SUB_CLOSE = 32;
+TtlParser.TYPE_COMMENT = 33;
+TtlParser.TYPE_WS = 34;
 
 TtlParser.RULE_ttl = 0;
 TtlParser.RULE_raw = 1;
