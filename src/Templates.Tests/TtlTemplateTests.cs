@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Dynamic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using Templates.Data;
+using Templates.Language;
 using Templates.Runtime;
 using Templates.Tests.Data;
 using Xunit;
@@ -25,11 +27,40 @@ namespace Templates.Tests
             using var ttlTemplate = new TtlTemplate();
             var results = ttlTemplate.TryCompilation(File.ReadAllText("TestTemplate/wierd-whitespace.thtml").Replace("\r\n", "\n"), new TemplateOptions
             {
-                AllowCSharp = true,
-                ForceRemoveWhitespace = true
+                AllowCSharp = true
             });
             
             Assert.True(results.Success, results.ToString());
+        }
+
+        /// <summary>
+        /// Regression for the named-call C# token branch: a C# expression containing nested parentheses lexes the
+        /// inner ')' as an OUT_PARAMEND token inside the expression. Both the named (e.g. <c>@x(@Foo(1))</c>) and the
+        /// unnamed (<c>@(@Foo(1))</c>) call forms must classify those tokens identically. The named branch previously
+        /// only iterated CSHARP_TOKEN() and dropped the inner OUT_PARAMEND, producing fewer highlighting tokens than
+        /// the unnamed branch.
+        /// </summary>
+        [Fact]
+        public void NamedAndUnnamedCSharpCallsClassifyParenTokensEqually()
+        {
+            int CSharpTokenCount(string template)
+            {
+                var context = DocumentParser.Parse(template, new CompileContext(new TemplateOptions
+                {
+                    ProvideLanguageFeatures = true
+                }), out _);
+                Assert.Empty(context.Errors);
+                return context.Tokens.Count(t => t.TtlTokenType == TtlTokenType.CSharpToken);
+            }
+
+            var named = CSharpTokenCount("@x(@Foo(1) + 2)tail");
+            var unnamed = CSharpTokenCount("@(@Foo(1) + 2)tail");
+            var namedNoNesting = CSharpTokenCount("@x(@Foo + 2)tail");
+
+            // The two call forms share the same C# expression, so they must yield the same C# token set.
+            Assert.Equal(unnamed, named);
+            // The nested '(' '1' ')' (including the inner OUT_PARAMEND) must contribute extra C# tokens.
+            Assert.True(named > namedNoNesting, $"expected nested parens to add C# tokens: {named} vs {namedNoNesting}");
         }
 
         [Fact]

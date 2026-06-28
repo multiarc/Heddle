@@ -17,7 +17,6 @@ namespace Templates.Performance.Runners
                         FileNamePostfix = ".ttl",
                         RootPath = @"TestTemplates",
                         AllowCSharp = true,
-                        ForceRemoveWhitespace = true,
                         ProvideLanguageFeatures = false
                     }
                 )

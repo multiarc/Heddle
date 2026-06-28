@@ -71,6 +71,10 @@ namespace Templates.Native
             catch (FileLoadException)
             {
             }
+            catch (BadImageFormatException)
+            {
+                //native or wrong-bitness assembly, skip load issues
+            }
         }
 
         public static IReadOnlyList<Assembly> GetAssemblies()

@@ -22,8 +22,7 @@ namespace Templates.Language
         /// <returns>Full template context tree found in source template</returns>
         public static ParseContext Parse(string document, CompileContext compileContext, out string cleanDocument)
         {
-            var context = new ParseContext(provideLanguageFeatures: compileContext.Options.ProvideLanguageFeatures,
-                forceRemoveWhitespace: compileContext.Options.ForceRemoveWhitespace);
+            var context = new ParseContext(provideLanguageFeatures: compileContext.Options.ProvideLanguageFeatures);
             cleanDocument = Parse(document, context, compileContext);
             return context;
         }
@@ -34,7 +33,6 @@ namespace Templates.Language
                 throw new ArgumentNullException(nameof(document));
             var stream = new AntlrInputStream(new StringReader(document));
             var lexer = new TtlLexer(stream);
-            //BUG: ForceRemoveWhitespace is not currently used
             var tokens = new CommonTokenStream(lexer);
             var parser = new TtlParser(tokens);
             var syntaxErrorListener = new TtlSyntaxErrorListener(context);

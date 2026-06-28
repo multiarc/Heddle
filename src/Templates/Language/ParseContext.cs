@@ -24,10 +24,9 @@ namespace Templates.Language {
         
         public IEnumerable<ParseContext> SubContexts => _subContexts;
 
-        internal ParseContext(ParseContext parentContext = null, int offset = 0, bool provideLanguageFeatures = false, bool forceRemoveWhitespace = false) {
+        internal ParseContext(ParseContext parentContext = null, int offset = 0, bool provideLanguageFeatures = false) {
             _inDefintionContext = (parentContext?.InDefinition ?? false) || (parentContext?._inDefintionContext ?? false);
             ProvideLanguageFeatures = provideLanguageFeatures || (parentContext?.ProvideLanguageFeatures ?? false);
-            ForceRemoveWhitespace = forceRemoveWhitespace || (parentContext?.ForceRemoveWhitespace ?? false);
             _offset = offset;
             DefinitionsBlock = new DefinitionBlock(parentContext?.DefinitionsBlock);
             OutputChains = new List<OutputChain>();
@@ -366,8 +365,6 @@ namespace Templates.Language {
 
         internal bool ProvideLanguageFeatures { get; }
 
-        internal bool ForceRemoveWhitespace { get; }
-
         public int Offset => _offset;
 
         private List<OutputItem> CreateChain(IEnumerable<TtlParser.CallContext> context,
@@ -436,6 +433,10 @@ namespace Templates.Language {
                 {
                     AddToken(context.CSHARP_START(), TtlTokenType.CSharpStart);
                     foreach (var token in csharpExpression.CSHARP_TOKEN())
+                    {
+                        AddToken(token, TtlTokenType.CSharpToken);
+                    }
+                    foreach (var token in csharpExpression.OUT_PARAMEND())
                     {
                         AddToken(token, TtlTokenType.CSharpToken);
                     }

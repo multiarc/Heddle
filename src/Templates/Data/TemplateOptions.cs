@@ -11,7 +11,6 @@ namespace Templates.Data {
         public bool AllowCSharp { get; set; }
         public int MaxRecursionCount { get; set; }
         public bool ProvideLanguageFeatures { get; set; }
-        public bool ForceRemoveWhitespace { get; set; }
         public object Data { get; set; }
 
         public TemplateOptions()
