@@ -1,2 +1,0 @@
-^([^\n]+\n*)+
-define(function(require, exports, module) {\n\t"use strict";$0\n});

@@ -1,0 +1,27 @@
+{
+  "name": "@multiarc/ace_heddle",
+  "version": "1.0.0",
+  "description": "Custom Ace build (https://github.com/ajaxorg/ace) to support Heddle template language",
+  "keywords": [
+    "heddle",
+    "templates"
+  ],
+  "homepage": "https://github.com/multiarc/Heddle#readme",
+  "bugs": {
+    "url": "https://github.com/multiarc/Heddle/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/multiarc/Heddle.git"
+  },
+  "license": "UNLICENSED",
+  "author": "Aliaksandr Kukrash",
+  "type": "commonjs",
+  "main": "./src-noconflict/ace.js",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}

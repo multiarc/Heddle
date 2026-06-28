@@ -1,7 +1,7 @@
 # This workflow will build a .NET project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
 
-name: Templater
+name: Heddle
 
 on:
   push:
@@ -16,21 +16,19 @@ jobs:
         os: [ ubuntu-latest, windows-latest ]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
-    - name: Setup .NET 3.1.x
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: 3.1.x
+    - uses: actions/checkout@v7
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: 8.0.x
+        dotnet-version: |
+          6.0.x
+          8.0.x
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore -c Release
     - name: Test
-      run: dotnet test -c Debug --no-restore --verbosity normal
+      run: dotnet test -c Debug --no-restore
     - name: Authenticate Github Packages
       if: ${{ matrix.os == 'windows-latest' }}
       run: dotnet nuget add source --username multiarc --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/multiarc/index.json"

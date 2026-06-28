@@ -1,0 +1,49 @@
+# Builds the custom Ace editor bundle (@multiarc/ace_heddle) and publishes it to
+# GitHub Packages, mirroring the NuGet beta/release flow in dotnet.yml:
+#   - pull requests  -> 1.0.0-beta.<run_number>  (npm dist-tag "beta")
+#   - push to main   -> 1.0.<run_number>         (npm dist-tag "latest")
+
+name: Heddle Ace (npm)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    - uses: actions/checkout@v7
+    - name: Setup Node
+      uses: actions/setup-node@v6
+      with:
+        node-version: 22
+        registry-url: https://npm.pkg.github.com
+        scope: '@multiarc'
+    - name: Build custom Ace bundle
+      working-directory: src/Heddle.Language
+      run: bash build_ace.sh
+    - name: Stage package manifest with built bundle
+      working-directory: src/Heddle.Language
+      run: cp package.json ace_build/ace/build/package.json
+    - name: Publish Beta Package
+      if: ${{ github.ref != 'refs/heads/main' }}
+      working-directory: src/Heddle.Language/ace_build/ace/build
+      run: |
+        npm version --no-git-tag-version 1.0.0-beta.${{ github.run_number }}
+        npm publish --tag beta
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Publish Release Package
+      if: ${{ github.ref == 'refs/heads/main' }}
+      working-directory: src/Heddle.Language/ace_build/ace/build
+      run: |
+        npm version --no-git-tag-version 1.0.${{ github.run_number }}
+        npm publish
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

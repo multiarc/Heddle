@@ -127,9 +127,9 @@
     <None Include="TestTemplates\template.cshtml" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Templates\Templates.csproj">
+    <ProjectReference Include="..\..\src\Heddle\Heddle.csproj">
       <Project>{FCCA75A7-9694-429F-9A41-FD1933464E85}</Project>
-      <Name>Templates</Name>
+      <Name>Heddle</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

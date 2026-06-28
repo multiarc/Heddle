@@ -1,0 +1,29 @@
+﻿@% <class>
+	{{
+	public static class CSE_@guid(ClassGuid){{N}} {
+		
+		private static void Main (string[] args) {}
+
+		@list(Methods)
+		{{
+		public static object ProcessData_@(ExtensionName)@(MethodNumber) (@(ModelType) model, @(ChainedType) chained, @(RootModelType) root)
+		{
+			return @(Expression);
+		}
+		}}
+	}
+	}} :: CSharpContext
+%@
+@using(){{Heddle.Runtime}}@\
+@model(){{CSharpContext}}@\
+using System.Runtime.CompilerServices;
+using System.Reflection;
+@list(Namespaces) {{
+	using @();
+}}
+@list(InternalsVisibleTo) {{
+	[assembly: InternalsVisibleTo("@()")]
+}}
+namespace Heddle.Runtime {
+	@class()
+}

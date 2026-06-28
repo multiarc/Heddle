@@ -100,12 +100,19 @@ UpgradeLog*.XML
 /src/StudExpress.Web/assets/
 project.lock.json
 /.vs
-/src/Templates.Language/project - Copy.json
-/src/Templates/project - Copy.json
-/src/Templates.Language/ace/build
-/src/Templates.Demo/node_modules
+/src/Heddle.Language/project - Copy.json
+/src/Heddle/project - Copy.json
+/src/Heddle.Language/ace/build
+/src/Heddle.Demo/node_modules
 *.opendb
 /packages
 /.idea/.idea.Templating
-/src/Templates.Language/js/ace/build
-/src/Templates.Performance/BenchmarkDotNet.Artifacts
+/src/Heddle.Language/js/ace/build
+/src/Heddle.Performance/BenchmarkDotNet.Artifacts
+/src/Heddle.Language/ace_build
+/build
+
+# VitePress documentation site
+/docs/node_modules
+/docs/.vitepress/dist
+/docs/.vitepress/cache

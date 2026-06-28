@@ -1,0 +1,16 @@
+﻿@using(){{Heddle.Runtime}}@\
+@model(){{ExpressionOptions}}@\
+@list(Namespaces) {{
+	using @();
+}}
+
+namespace Heddle.Runtime {
+	public static class CSharpExpression {
+		private static void Main (string[] args) {}
+
+		public static object PreProcessData(@(ModelType) model, @(ChainedType) chained, @(RootModelType) root)
+		{
+			return @(Expression);
+		}
+	}
+}

@@ -5,11 +5,11 @@ profile:
 exclude:
   - name: All
     paths:
-      - src/Templates.Language/generated
-      - src/Templates.Language/js
-      - src/Templates.Performance
-      - src/Templates.TestingTool
-      - src/Templates.Tests
+      - src/Heddle.Language/generated
+      - src/Heddle.Language/js
+      - src/Heddle.Performance
+      - src/Heddle.TestingTool
+      - src/Heddle.Tests
       - lib
       - integrations
       - gen
