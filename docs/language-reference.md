@@ -3,12 +3,14 @@
 This is the complete reference for the Templater template language. Every construct below is
 grounded in the ANTLR grammar — [TtlLexer.g4](../src/Templates.Language/TtlLexer.g4) (tokens)
 and [TtlParser.g4](../src/Templates.Language/TtlParser.g4) (rules) — and illustrated with
-real examples from the fixtures in
+clear, self‑contained examples built around one small model (see
+[below](#the-model-used-in-these-examples)). The examples are written to teach; for real,
+runnable templates that exercise edge cases, see the test fixtures in
 [src/Templates.Tests/TestTemplate](../src/Templates.Tests/TestTemplate).
 
-> The historical [develop.txt](../develop.txt) uses an obsolete syntax (`<% %>` and `[ ]`).
-> The current delimiters are `@% %@` (definitions) and `{{ }}` (blocks). Ignore `develop.txt`
-> as a syntax source.
+> Delimiters at a glance: `@% … %@` wraps definition blocks and `{{ … }}` wraps bodies /
+> subtemplates. For terse design notes in the same (current) syntax, see
+> [develop.txt](../develop.txt).
 
 ## Table of contents
 
@@ -18,20 +20,21 @@ real examples from the fixtures in
 4. [Output blocks](#output-blocks)
 5. [Member expressions `@(A.B.C)`](#member-expressions-abc)
 6. [Root reference `@(::Member)`](#root-reference-member)
-7. [Embedded C# expressions](#embedded-c-expressions)
-8. [Definitions `@% … %@`](#definitions---)
-9. [Default output `-> chain`](#default-output---chain)
-10. [Type annotation `:: Type`](#type-annotation--type)
-11. [Inheritance and override `<child:base>`](#inheritance-and-override-childbase)
-12. [Subtemplates `{{ … }}`](#subtemplates--)
-13. [Chaining with `:`](#chaining-with-)
-14. [Recursion](#recursion)
-15. [Imports `@<<{{ … }}`](#imports--)
-16. [Comments `@* … *@`](#comments---)
-17. [Raw blocks `@{ … }@` and `@:`](#raw-blocks----and-)
-18. [Whitespace trimming `@\`](#whitespace-trimming-)
-19. [How the lexer reads a template (modes)](#how-the-lexer-reads-a-template-modes)
-20. [Behavioral nuances summary](#behavioral-nuances-summary)
+7. [Context and data flow](#context-and-data-flow)
+8. [Embedded C# expressions](#embedded-c-expressions)
+9. [Definitions `@% … %@`](#definitions---)
+10. [Default output `-> chain`](#default-output---chain)
+11. [Type annotation `:: Type`](#type-annotation--type)
+12. [Inheritance and override `<child:base>`](#inheritance-and-override-childbase)
+13. [Subtemplates `{{ … }}`](#subtemplates--)
+14. [Chaining with `:`](#chaining-with-)
+15. [Recursion](#recursion)
+16. [Imports `@<<{{ … }}`](#imports--)
+17. [Comments `@* … *@`](#comments---)
+18. [Raw blocks `@{ … }@` and `@:`](#raw-blocks----and-)
+19. [Whitespace trimming `@\`](#whitespace-trimming-)
+20. [How the lexer reads a template (modes)](#how-the-lexer-reads-a-template-modes)
+21. [Behavioral nuances summary](#behavioral-nuances-summary)
 
 ---
 
@@ -45,11 +48,55 @@ A TTL document ([`ttl`](../src/Templates.Language/TtlParser.g4) rule) is a seque
 - **imports** — `@<<{{ path }}` that pull definitions in from another file;
 - **raw blocks** — verbatim regions that are not parsed.
 
-```antlr
-ttl: (definition | import_block | outblock | raw | text)*;
+```
+document = ( text | output | definition | import | raw )*
 ```
 
 Everything special starts with `@`. Plain text never needs escaping unless it contains `@`.
+
+> **Notation.** The "shape" boxes below use a simplified syntax, not the real grammar:
+> `[ x ]` = optional, `( x )*` = zero or more, `a | b` = either, and literal symbols
+> (`@`, `{{`, `:`, `::`, …) are written as you'd type them. For the exact rules see the
+> authoritative [TtlLexer.g4](../src/Templates.Language/TtlLexer.g4) /
+> [TtlParser.g4](../src/Templates.Language/TtlParser.g4).
+
+### The model used in these examples
+
+Every example in this reference renders the same little **blog** model. Keep it in mind as you
+read:
+
+```csharp
+class Blog    { string Title;  int Year;  ICollection<Article> Articles; }
+class Article { string Title;  Author Author;  DateTime PublishedOn;
+                bool IsFeatured;  IList<string> Tags;  ICollection<Comment> Comments; }
+class Author  { string Name;   string Email; }
+class Comment { string Author; string Text;  ICollection<Comment> Replies; }
+```
+
+So the root model is a `Blog`; inside `@list(Articles){{ … }}` the current model is an
+`Article`; and so on.
+
+### Two ideas to know up front
+
+If you are coming from Razor, two of TTL's design choices will surprise you. Both are
+deliberate, and both are what make templates compose:
+
+- **Context is relative, not absolute.** A member path `@(Title)` is resolved against the
+  *current* context, and that context **changes as you nest calls** (a call either descends
+  into its parameter or, for conditionals and formatters, keeps the caller's context). This is
+  the Go `text/template` (`.` / `$`) and Mustache model, not Razor's always‑absolute `Model.X`.
+  The escape hatch back to the original model is
+  [`::`](#root-reference-member); the full picture is in
+  [Context and data flow](#context-and-data-flow).
+
+- **Templates are abstract by default; types bind late.** A definition written **without**
+  `:: Type` has no fixed model type — it is a *polymorphic section*. Its real type is bound
+  when it's actually used (compiled against whatever concrete model reaches that call site) or
+  when an inheriting definition narrows it with `:: Type`. This is closer to a **C++ template**
+  than a C# generic: there are no type parameters or constraints — each use re‑substitutes the
+  concrete model and is type‑checked on its own. Write the section once; every call site is its
+  own specialization. See [Type annotation](#type-annotation--type) and
+  [Inheritance](#inheritance-and-override-childbase).
 
 ---
 
@@ -59,12 +106,12 @@ Everything special starts with `@`. Plain text never needs escaping unless it co
 | --- | --- | --- |
 | `@(expr)` | Output expression | Emit a member value or C# expression. |
 | `@name(param)` | Extension call | Invoke extension `name` (e.g. `@list`, `@if`). |
-| `a:b:c` | Chain | Pipe one call's output into the next. |
+| `a:b:c` | Chain | Compose calls right‑to‑left; the **leftmost** renders, each call feeds the one to its left. |
 | `{{ … }}` | Block / subtemplate | Body of a definition or the inline template for a call. |
 | `@% … %@` | Definition block | Declare one or more named templates. |
 | `<name>` | Definition name | Names a template inside `@% … %@`. |
 | `<child:base>` | Inheritance | Define `child` based on `base`. |
-| `-> chain` | Default output | What a definition emits when invoked with no body. |
+| `-> chain` | Default output | Marks a definition to render automatically; `chain` selects its data. |
 | `:: Type` | Type annotation | Strongly types a definition's model. |
 | `::Member` | Root reference | Read `Member` from the root model, not the current one. |
 | `@<<{{ path }}` | Import | Include definitions from another template file. |
@@ -77,15 +124,17 @@ Everything special starts with `@`. Plain text never needs escaping unless it co
 
 ## Text and the `@` escape
 
-Any character that is not part of a directive is literal text and is emitted unchanged
-(`TEXT` token, [TtlLexer.g4](../src/Templates.Language/TtlLexer.g4)). Unicode is fully
-supported — fixtures contain text such as `<title>Привет!</title>`.
+Any character that is not part of a directive is literal text and is emitted unchanged.
+Unicode is fully supported — `<h1>Café — Привет!</h1>` renders as written.
 
-The only special character is **`@`**. To emit a literal `@`, double it: **`@@`**. In
-[template.thtml](../src/Templates.Tests/TestTemplate/template.thtml) the sequence
-`@@*Comment Test 8*@partial(...)` emits a literal `@` immediately followed by a comment and
-then a `partial` call. To emit literal text that contains many `@`/braces, use a
-[raw block](#raw-blocks----and-).
+The only special character is **`@`**. To emit a literal `@`, double it: **`@@`**:
+
+```ttl
+<p>Reach us at support@@example.com</p>      @* outputs: support@example.com *@
+```
+
+To emit a block of literal text that contains many `@` or `{{ }}` characters, use a
+[raw block](#raw-blocks----and-) instead of escaping each one.
 
 ---
 
@@ -94,75 +143,261 @@ then a `partial` call. To emit literal text that contains many `@`/braces, use a
 An **output block** is `@` followed by a [chain](#chaining-with-) of one or more calls, with
 an optional [subtemplate](#subtemplates--):
 
-```antlr
-outblock: OUT chain subtemplate?;
-chain:    call (DELIM call)*;
-call:     extension_id? OUT_PARAMSTART CSHARP_START csharp_expression OUT_PARAMEND
-        | extension_id? OUT_PARAMSTART WS* member_expression? OUT_PARAMEND
-        | extension_id? OUT_PARAMSTART chain OUT_PARAMEND ;
+```
+output =  @ chain [ {{ body }} ]
+chain  =  call ( : call )*
+call   =  [name] ( parameter )
+parameter =  member-path  |  @ C#-expression  |  chain  |  (empty)
 ```
 
 A **call** has three parts: an optional extension name, a parenthesized parameter, and an
 optional `{{ … }}` body. The parameter is one of:
 
-- **a member expression** — `@(Name)`, `@list(Products)`;
-- **a C# expression** — introduced with an inner `@`, e.g. `@(@5)`, `@list(@model.Products.Where(p => p.Quantity < 95))`;
+- **a member expression** — `@(Title)`, `@list(Articles)`;
+- **a C# expression** — introduced with an inner `@`, e.g. `@(@2026)`, `@list(@model.Articles.Where(a => a.IsFeatured))`;
 - **another chain** — nested calls;
-- **empty** — `@out()`, `@(@null){{}}`, `@list(){{ … }}` — meaning "use the current context value".
+- **empty** — `@()`, `@out()`, `@list(){{ … }}` — meaning "use the current value as‑is".
 
 When the extension name is omitted, the call uses the **empty extension**
 (`@(...)` is `@` + an unnamed call). The empty/`html` extensions simply stringify the
-current value — see [Built‑in Extensions](built-in-extensions.md#empty--unnamed).
+current value — so `@(Title)` prints the title and `@()` prints the current value itself
+(handy inside a list of strings). See
+[Built‑in Extensions](built-in-extensions.md#empty--unnamed).
 
-Examples (from [template.thtml](../src/Templates.Tests/TestTemplate/template.thtml)):
+Examples:
 
 ```ttl
-@(Name)                       @* member value *@
-@(@"HTML ")                   @* C# string literal *@
-@(@5)                         @* C# integer literal *@
-@string(Text)                 @* call the "string" extension on member Text *@
-@if(IsShow){{ <span>…</span> }}   @* call with a subtemplate body *@
+<h1>@(Title)</h1>                       @* a member value (Blog.Title) *@
+<p>Est. @(@model.Year - 1) — present</p>  @* a C# expression *@
+<p>@string(Title)</p>                   @* the "string" extension: stringify + HTML-encode *@
+@list(Articles){{ <li>@(Title)</li> }}  @* a call with a body, once per article *@
 ```
+
+### `@(expr){{ … }}` — the inline "with" block
+
+Give the **unnamed** call both a parameter *and* a body, and it renders the body with the
+current model set to `expr` — an inline way to "zoom in" on a value without declaring a
+definition:
+
+```ttl
+@(Author)
+{{
+  <span class="byline">@(Name) &lt;@(Email)&gt;</span>   @* model here is the Author *@
+}}
+```
+
+Inside the block, `@(Name)`/`@(Email)` resolve against `Author`. It is the lightweight, inline
+counterpart to [passing a value into a definition](#passing-the-current-value-into-a-call), and
+it pairs well with a C# expression — e.g. render markup for just the last item of a list:
+
+```ttl
+@(@model.Articles.LastOrDefault())
+{{
+  <li class="last">@(Title)</li>
+}}
+```
+
+(Mechanically this is the [empty extension](built-in-extensions.md#empty--unnamed) with a body:
+with a body it renders the body against its model; with no body it just stringifies the value.)
 
 ---
 
 ## Member expressions `@(A.B.C)`
 
-```antlr
-member_expression: ROOT_REF? ID (MEMBER_P ID)*;
+```
+member-path = [::] name ( . name )*
 ```
 
 A member expression is a dotted path of identifiers resolved against the current model:
 
 ```ttl
-@(Name)                @* current model's Name *@
-@(ComplexObject.Data.Text)   @* nested property access (recursion.thtml) *@
+@(Title)                @* current model's Title *@
+@(Author.Name)          @* nested property access *@
+@(Author.Email)         @* …any depth *@
 ```
 
 Member access works on statically‑typed models (resolved by reflection) and on `dynamic`
 models (resolved with the C# runtime binder). The "current model" is whatever value the
-enclosing extension established — for example, inside `@list(Products){{ … }}` the current
-model of the body is *one product*.
+enclosing extension established — for example, inside `@list(Articles){{ … }}` the current
+model of the body is *one `Article`*, so `@(Author.Name)` there is that article's author.
 
 ---
 
 ## Root reference `@(::Member)`
 
 Prefix a member path with `::` to read from the **root** model — the value originally passed
-to `Generate` — regardless of how deeply nested the current scope is.
-
-From [recursion.thtml](../src/Templates.Tests/TestTemplate/recursion.thtml):
+to `Generate` — regardless of how deeply nested the current scope is. This is what lets you
+reach page‑level data (the site title, the current year, a culture) from inside a loop.
 
 ```ttl
-@(@root.Count) C# Test          @* via embedded C# using the @root keyword *@
-@(::Count) Model Access Test    @* via the :: root reference *@
+@list(Articles)
+{{
+  <article>
+    <h2>@(Title)</h2>                        @* the Article's title (current model) *@
+    <a href="/">← back to @(::Title)</a>     @* the Blog's title (root model) *@
+  </article>
+}}
 ```
 
-`@(::Count)` and the embedded‑C# form `@(@root.Count)` reach the same root value; the `::`
-form is pure template syntax and does not require `AllowCSharp`. Use it to reach top‑level
-data (totals, page context, culture info) from inside loops and nested definitions, e.g.
-`@(::ProductPage.DefaultCultureInfo.DateTimeFormat.ShortDatePattern)` in
-[wierd-whitespace.thtml](../src/Templates.Tests/TestTemplate/wierd-whitespace.thtml).
+Inside the loop the current model is an `Article`, so `@(Title)` is the article's title and
+`@(::Title)` reaches past it to the root `Blog`. The equivalent embedded‑C# form is
+`@(@root.Title)`; the `::` form is pure template syntax and does **not** require
+`AllowCSharp`.
+
+In real templates this is how you reach page‑ and app‑level context from anywhere — site host,
+build number for cache‑busting, the active culture — without threading it through every call.
+For instance, a date can be formatted with a pattern that itself comes from the root culture:
+`@date(PublishedOn){{ @(::Site.Culture.DateTimeFormat.ShortDatePattern) }}`. See
+[Patterns → root for app/page context](patterns.md#root-for-app-and-page-context).
+
+---
+
+## Context and data flow
+
+This section ties the previous two together. At every point while rendering, there is a
+**current context** — and the whole reason [`::` root](#root-reference-member) exists is that
+this context *moves* as you descend through calls. Understanding the flow is the key to
+threading data through a template.
+
+What keeps this tidy rather than ad‑hoc is that the model moves *predictably*: a call either
+**descends** into its parameter (iteration and component calls) or **keeps the caller's
+context** and treats its parameter as a value (conditionals and formatters — see
+[Stepping back](#stepping-back-the-parent-context)). Alongside the model, a single **chained**
+channel carries the loop index, the value piped through a chain, and the content projected by
+`@out()` — three things most engines handle with three separate features. And because the flow
+is tracked at compile time, the context stays **statically typed** throughout.
+
+Three data channels are in scope at any point:
+
+| Channel | Read in templates as | What it is |
+| --- | --- | --- |
+| **model** (current) | `@(X)`, or `@model` in C# | The data the current block renders against. **Changes on every descent.** |
+| **chained** | `@out()`, or `chained` in C# | A side value passed along, independent of the model (e.g. a loop index). |
+| **root** | `@(::X)`, or `@root` in C# | The original model passed to `Generate`. **Never changes.** |
+
+### The current model narrows as you descend
+
+Iteration and component calls re‑base the context for their body: the parameter is evaluated
+against the *current* model and becomes the *new* current model inside the body. (Conditionals
+and formatters are the exception — see [Stepping back](#stepping-back-the-parent-context).)
+Nesting these calls walks you down the object graph:
+
+```ttl
+@* current model = Blog *@
+@list(Articles)
+{{
+  @* current model = one Article *@
+  <h2>@(Title)</h2>                 @* Article.Title *@
+  <ul>
+    @list(Tags)
+    {{
+      @* current model = one Tag (a string) *@
+      <li>@()</li>                  @* the tag itself *@
+    }}
+  </ul>
+}}
+```
+
+`@(Title)` inside the first body is the *article's* title, not the blog's — the context shifted
+when you entered `@list(Articles)`. A dotted path (`@(Author.Name)`) still walks within the
+current model; it doesn't change which model is current.
+
+### Passing the current value into a call
+
+This is the everyday way data flows down: you **take a value from the current context and pass
+it in** as a call's parameter.
+
+```ttl
+@list(Articles)
+{{
+  @author_badge(Author)      @* hand this article's Author to a definition *@
+  @article_card()            @* empty parameter → forward the whole current Article *@
+}}
+```
+
+- `@author_badge(Author)` passes the current article's `Author` down; inside `author_badge`
+  (e.g. `:: Author`) the current model *is* that `Author`, so `@(Name)` there is the author's
+  name.
+- `@article_card()` with an **empty** parameter forwards the current model unchanged — the
+  whole `Article`.
+
+So you steer context explicitly: name a member to narrow into it, or pass nothing to forward
+what you already have.
+
+### Stepping back: the parent context
+
+A call's parameter is always evaluated in the current context, but **what the body sees depends
+on the kind of call**:
+
+- **Descending calls** — `@list` and definitions — rebind the body to the parameter (the
+  previous two subsections).
+- **Value calls** — the conditionals and formatters (`@if`, `@ifnot`, `@date`, `@time`,
+  `@int`, `@money`, `@guid`, `@string`) and `@for` — treat their parameter as a *value to test
+  or format*, not a new model, so their body **steps one level back to the caller's context**:
+
+```ttl
+@list(Articles)
+{{
+  @* current model = one Article *@
+  @if(IsFeatured)
+  {{
+    @* still the Article here — not the bool *@
+    <h2>@(Title)</h2>            @* Article.Title *@
+  }}
+}}
+```
+
+Without this step‑back, `@(Title)` inside the `@if` would try to resolve against the boolean
+`IsFeatured`. Because `@if` keeps the caller's context, the body still sees the surrounding
+`Article`. The same holds for `@date(PublishedOn){{ … }}`, `@money(Price){{ … }}`, and the
+rest: the parameter is the value being formatted, and the body renders against the model
+*around* the call. `@for` works the same way — its body runs against the caller's model, with
+the iteration index on the [chained](#the-second-channel-chained-data) channel.
+
+This step‑back is exactly **one level** (it is `scope.Parent()` under the hood — see
+[Writing Custom Extensions](custom-extensions.md)). There is no operator to climb further; for
+anything higher, use the [root](#reaching-back-out-root) or pass values down explicitly.
+
+### Reaching back out: `root`
+
+Because the current model keeps narrowing, a value you need may no longer be in reach — deep
+inside the article loop, the blog's own title is "above" you. There is **no parent *path*** you
+can write in a member expression (no `..`), and the automatic
+[step‑back](#stepping-back-the-parent-context) only climbs one level.
+[`::`](#root-reference-member) is the escape hatch that jumps straight back to the original
+model from any depth:
+
+```ttl
+@list(Articles){{ <a href="/">← @(::Title)</a> }}   @* Blog.Title, from inside the loop *@
+```
+
+For anything between current and root, [pass it down explicitly](#passing-the-current-value-into-a-call)
+— or, when you control the call site, seed it through the **chained** channel.
+
+### The second channel: chained data
+
+A **chained** value flows alongside the model, independently of it:
+
+- A [chain](#chaining-with-) `a():b()` runs `b` first and feeds its output to `a` (the
+  leftmost call renders) as `a`'s chained input.
+- [`@list`](built-in-extensions.md#list) and [`@for`](built-in-extensions.md#for) expose the
+  current **index** as the chained value.
+- [`@out()`](built-in-extensions.md#out) emits the chained value, and
+  [`@swap()`](built-in-extensions.md#swap) exchanges the model and chained values for its body.
+
+In [embedded C#](#embedded-c-expressions) the three channels are simply the identifiers
+`model`, `root`, and `chained`:
+
+```ttl
+@for(@new ForModel(){ Last = model.Articles.Count(), Step = 3 })
+{{
+  @* model = the Blog (the for body keeps the outer model); chained = the loop index *@
+  @list(@model.Articles.Skip(chained).Take(3)){{ @article_card() }}
+}}
+```
+
+(There is also `callerData`, a fourth value you may pass to `Generate` and read from custom
+extensions — see [`Scope`](csharp-api.md#scope-the-data-view-during-rendering).)
 
 ---
 
@@ -178,28 +413,25 @@ initializers. Nested parentheses are handled (the lexer balances `(`/`)` within 
 expression):
 
 ```ttl
-@(@"Test".Length)                                   @* string literal + member (raw.thtml) *@
-@(@5)                                               @* numeric literal *@
-@list(@model.Products.Where(p => p.Quantity < 95))  @* LINQ + lambda (template.thtml) *@
-@for(@new ForModel() { Last = model.Products.Count(), Step = 3 })   @* object initializer *@
-@text(@new NameValuePair { Name = "input1-name", Value="input1-value" })
-@if(@model.SubCategories.Count>0){{ … }}            @* boolean expression (recursion.thtml) *@
+@(@model.Title.ToUpper())                            @* method call *@
+@(@model.PublishedOn.Year)                           @* member of a member *@
+@list(@model.Articles.Where(a => a.IsFeatured))      @* LINQ + lambda *@
+@list(@model.Articles.OrderByDescending(a => a.PublishedOn).Take(5))
+@if(@model.Comments.Count > 0){{ <h3>Comments</h3> }}   @* a boolean expression *@
 ```
 
 Two well‑known identifiers are available in embedded C#:
 
-- **`model`** — the current model (e.g. `@model.Products`);
-- **`root`** — the root model (e.g. `@(@root.Count)`), equivalent to the `::` reference.
+- **`model`** — the current model (e.g. `@model.Articles`);
+- **`root`** — the root model (e.g. `@root.Title`), equivalent to the `::` reference.
 
 There is also a `chained` value available to extensions such as `@for` (the loop index);
 see [`Scope`](csharp-api.md#scope-the-data-view-during-rendering).
 
-> **Parser nuance.** A C# expression that contains nested parentheses lexes the inner `)` as
-> an `OUT_PARAMEND` token *inside* the expression (grammar rule
-> `csharp_expression: (CSHARP_TOKEN | OUT_PARAMEND)+`). The named call form `@x(@Foo(1))` and
-> the unnamed form `@(@Foo(1))` therefore classify those tokens identically — this is covered
-> by the `NamedAndUnnamedCSharpCallsClassifyParenTokensEqually` regression test in
-> [TtlTemplateTests.cs](../src/Templates.Tests/TtlTemplateTests.cs).
+> **Parser nuance.** A C# expression is just a run of C# tokens up to the matching `)`, so
+> nested parentheses inside it (as in `@Foo(1)`) are part of the expression. The named call
+> form `@x(@Foo(1))` and the unnamed form `@(@Foo(1))` therefore classify those tokens
+> identically.
 
 ---
 
@@ -208,62 +440,79 @@ see [`Scope`](csharp-api.md#scope-the-data-view-during-rendering).
 A **definition block** declares one or more reusable named templates. Once declared, a
 definition is invoked like any extension: `@name()`.
 
-```antlr
-definition: DEF_START def+ DEF_CLOSE;
-def:        DEF_STARTNAME ID def_base? DEF_ENDNAME default_chain? subtemplate def_type?;
-def_base:   DELIM ID;
-def_type:   DEF_TYPE ID;
+```
+definitions = @% def+ %@
+def         = < name [: base] >  [ -> chain ]  {{ body }}  [ :: Type ]
 ```
 
-Anatomy of one definition:
+Anatomy of one definition — an `article_card` component:
 
 ```ttl
 @%
-  <text>                @* name, wrapped in < > *@
-  {{                    @* body (subtemplate) *@
-    <input type="text" name="@(Name)" value="@(Value)" @out() />
-  }} :: dynamic         @* optional type annotation *@
+  <article_card>             @* name, wrapped in < > *@
+  {{                         @* body (subtemplate) *@
+    <article>
+      <h2>@(Title)</h2>
+      <p class="byline">by @(Author.Name)</p>
+      @out()                 @* the caller's content drops in here *@
+    </article>
+  }} :: Article              @* optional type annotation *@
 %@
 ```
 
-A single `@% … %@` block may declare many definitions back‑to‑back, as in
-[template.thtml](../src/Templates.Tests/TestTemplate/template.thtml) which defines `text`,
-`multi_text`, `labeled_text`, `test_list`, and more in one block. Definition blocks may
-appear at the top level **or nested inside a subtemplate** — a call's body can introduce
-local definitions before using them (see `multi_text` redefining itself inside its own body
-in `template.thtml`).
+A single `@% … %@` block may declare many definitions back‑to‑back (e.g. `article_card`,
+`comment`, `layout`, …). Definition blocks may appear at the top level **or nested inside a
+subtemplate**, so a call's body can introduce local definitions before using them.
 
-Invoking a definition:
+Invoking a definition — pass it a model, and optionally a `{{ … }}` body that it surfaces via
+`@out()`:
 
 ```ttl
-@text(@new NameValuePair { Name = "input1-name", Value="input1-value" }){{ class="testcssclass1" }}
+@list(Articles)
+{{
+  @article_card()           @* model = the current Article *@
+  {{
+    <a href="/read">Read more →</a>   @* this is what @out() renders *@
+  }}
+}}
 ```
 
-Here `@new NameValuePair {…}` is the model passed to `text`, and `{{ class="…" }}` is the
-subtemplate that `text` exposes through `@out()`.
+Here each `Article` in the list is passed to `article_card`, and the `<a>` link is the body
+that the card exposes through `@out()`.
 
 ---
 
 ## Default output `-> chain`
 
-A definition can specify a **default output chain** with `->`. This is the chain used to
-select/produce the definition's body data, and it lets a definition be invoked with no
-explicit parameter.
+Most definitions are inert: they render only when you call them by name (`@name()`). Adding a
+`->` turns a definition into an **output** — it renders automatically, in place, as part of
+the document, using the `chain` after `->` to select its data. (This is how a template made of
+nothing but definitions still produces output.)
 
-```antlr
-default_chain: DEF_OUT chain;
+```
+< name >  -> chain  {{ body }}
 ```
 
 ```ttl
-<default> -> (Model)
-{{ Order #@(Id)! }} :: dynamic
+@%
+  <article_list> -> (Articles)        @* the -> makes this render automatically *@
+  {{
+    <ul>
+      @list(){{ <li>@(Title)</li> }}
+    </ul>
+  }} :: Blog
+%@
 ```
 
-`-> (Model)` means: when this definition runs, take `Model` off the incoming object as the
-body's data. Several fixtures use the empty default chain `-> ()`, e.g. `<left> -> ()` in
-[recursion.thtml](../src/Templates.Tests/TestTemplate/recursion.thtml) and `<default> -> ()`
-in [vc-test.thtml](../src/Templates.Tests/TestTemplate/vc-test.thtml), meaning "use the
+`-> (Articles)` does two things: it selects the body's data (take `Articles` off the root
+`Blog`, so `@list()` with an empty parameter iterates them), and it marks the definition as an
+output that emits **here**, at its declaration. The empty form `-> ()` means "render using the
 current value as‑is".
+
+> **Don't also call it.** Because a `->` definition already renders at its declaration, writing
+> `@article_list()` as well would render the list a *second* time. Use `->` for the regions a
+> template should emit on its own; leave the `->` off for reusable definitions you invoke by
+> name (like `article_card` above).
 
 ---
 
@@ -274,23 +523,64 @@ the namespaces brought in by [`@using()`](built-in-extensions.md#using) (and the
 type’s own assembly).
 
 ```ttl
-<page>
-{{ … }} :: ICollection<Product>          @* generic types are allowed *@
+<article_card>
+{{ … }} :: Article                       @* a concrete type *@
 
-<text>
+<feed>
+{{ … }} :: ICollection<Article>          @* generic types are allowed *@
+
+<widget>
 {{ … }} :: dynamic                       @* opt into dynamic dispatch *@
-
-<list> -> ()
-{{ … }} :: ICollection<Category>         @* recursion.thtml *@
 ```
 
 `dynamic` makes member access late‑bound (resolved at render time via the C# runtime
-binder), which is how `@(Name)` works against `ExpandoObject`/anonymous models. Concrete
-types (e.g. `ICollection<Product>`) enable compile‑time member checking and faster access.
+binder), which is how `@(Title)` works against an `ExpandoObject` or anonymous model. Concrete
+types (e.g. `Article`, `ICollection<Article>`) enable compile‑time member checking and faster
+access.
 
 Generic and array type names are recognized by the lexer's type rule
 (`ID_TYPE`, [TtlLexer.g4](../src/Templates.Language/TtlLexer.g4)), which accepts
 `Namespace.Type<T1, T2>[]` forms.
+
+### Abstract definitions and late type binding
+
+The annotation is **optional**, and leaving it off is a feature, not a shortcut. A definition
+with **no `:: Type`** is *abstract* — it has no fixed model type. Its type is bound **late**:
+
+- **When it's used.** Each call compiles the definition's body against whatever concrete model
+  reaches that call site — the current model (`@panel()`), the type of a member parameter
+  (`@badge(Author)`), or the chained type. The *same* source is specialized per use site.
+- **When it's narrowed by inheritance.** An inheriting definition can pin the type with
+  `:: Type` (see [Inheritance](#inheritance-and-override-childbase)).
+
+```ttl
+@%
+  <panel>                                  @* no :: Type → abstract / polymorphic *@
+  {{ <section class="panel"><h3>@(Title)</h3>@out()</section> }}
+%@
+
+@panel()                       @* current model = Blog    → @(Title) binds to Blog.Title *@
+@list(Articles){{ @panel() }}  @* current model = Article → @(Title) binds to Article.Title *@
+```
+
+The same `panel` is reused against two different model types, and **each use is independently
+type‑checked** — point it at a model with no `Title` and *that* call site fails to compile.
+This is the **C++ template** model, not C# generics. There are no type parameters and no
+`where`‑style constraints to satisfy up front: the body is simply re‑substituted with the
+concrete model at each call site and checked there (compile‑time monomorphisation, or
+"duck typing"). A C# generic, by contrast, is compiled **once** behind its constraints and
+*abstracted away* — it is not late‑bound, and its body may only touch members the constraints
+guarantee.
+
+> This is **not** the same as `:: dynamic`. An abstract definition is still **statically**
+> typed — just typed *per use* at compile time. `:: dynamic` defers member resolution to the
+> runtime binder. Reach for abstract definitions to share structure (layouts, cards, wrappers)
+> across many model shapes; reach for `dynamic` when the shape genuinely isn't known until
+> render time.
+
+In practice this is common: a reusable section is left untyped and simply invoked from inside a
+typed page, where it binds to that page's model. See
+[Patterns → abstract section in a typed page](patterns.md#an-abstract-section-inside-a-typed-page).
 
 ---
 
@@ -298,40 +588,91 @@ Generic and array type names are recognized by the lexer's type rule
 
 A definition can inherit from another by name using `:`:
 
-```antlr
-def_base: DELIM ID;     @* the ':' before a base name *@
+```
+< child : base >
 ```
 
 ```ttl
-<labeled_text:text>      @* labeled_text inherits text *@
+<featured_card:article_card>     @* featured_card inherits article_card *@
 {{
-  <label>
-    @text()              @* call the base definition from within the child *@
-  </label>
+  <div class="featured">
+    @article_card()              @* call the base, then decorate it *@
+  </div>
 }}
 ```
 
+`@featured_card()` now renders the base `article_card` wrapped in a `<div class="featured">`.
+
 **Full override.** Re‑declaring an existing name as `<name:name>` replaces that definition
-from that point onward. In [template.thtml](../src/Templates.Tests/TestTemplate/template.thtml):
+from that point onward:
 
 ```ttl
-<text:text>
-{{ Full override }}
+<article_card:article_card>
+{{ <article class="compact">@(Title)</article> }}
 ```
 
-After this declaration, later `@text()` calls render "Full override". Overrides are layered
-in document order, which is what powers the multi‑pass layout output in
-[vc-test.thtml](../src/Templates.Tests/TestTemplate/vc-test.thtml) (where `body`, `left`,
-`center`, `right`, and `chef_videos` are progressively overridden between calls to
-`@default()` and `@layout()`).
+After this declaration, later `@article_card()` calls render the compact version. Overrides
+are layered in **document order**, so you can render a page, redefine a region, and render
+again with the new look — without touching the call sites.
 
-**Type compatibility rule.** If both a base and a child specify a type, the child's type
-must be **assignable to** the base's type; otherwise compilation fails with
-*"The {name} definition has incompatible type with base element. Should be assignable from
-{baseType}"* (see the inheritance logic quoted in [develop.txt](../develop.txt) and
-implemented in `DefinitionItem`). If only the base is typed, the child inherits that type;
-a type, once specified anywhere in a base chain, cannot be changed to an incompatible one in
-a child.
+**Type compatibility rule (narrowing).** Inheritance is where an
+[abstract definition](#abstract-definitions-and-late-type-binding) gets pinned down. A child's
+type must be **assignable to** its base's type; otherwise compilation fails with *"The new
+definition type &lt;X&gt; isn't assignable to base &lt;Y&gt;"*
+([TtlCompiler.WalkValidateDefinitionType](../src/Templates/Runtime/TtlCompiler.cs)). Two
+consequences:
+
+- If the base is **abstract** (no `:: Type`, i.e. `object`), a child may narrow it to **any**
+  concrete type — this is the normal way to turn a shared, typeless section into a typed one.
+- If the base **is** typed, children may only narrow to assignable (more‑derived) types; a type
+  fixed anywhere in the chain can't be widened or swapped for an incompatible one.
+
+**Composition without coupling (the standout feature).** Definitions are *declarative
+extension points*, not forward dependencies. A layout exposes named regions and any page
+supplies or overrides them. Put the layout in its own file:
+
+```ttl
+@* layout.ttl — a reusable shell *@
+@%
+  <sidebar>{{ <aside>Recent posts…</aside> }}
+  <layout>
+  {{
+    <html>
+      <head><title>@(Title)</title></head>
+      <body>
+        @sidebar()
+        <main>@out()</main>
+        <footer>© @(Year) @(Title)</footer>
+      </body>
+    </html>
+  }} :: Blog
+%@
+```
+
+Then a page imports it and overrides only what it needs:
+
+```ttl
+@* home.ttl *@
+@<<{{ layout.ttl }}            @* pull in the layout + sidebar definitions *@
+@%
+  <sidebar:sidebar>           @* this page wants a different sidebar *@
+  {{ <aside>Welcome, subscriber!</aside> }}
+%@
+@layout()
+{{
+  <h1>Latest articles</h1>
+  @list(Articles){{ @article_card() }}
+}}
+```
+
+This is the direct equivalent of Razor's `@RenderSection`/`@RenderBody`, but **without Razor's
+directionality**: in Razor a page *declares* sections that the layout consumes, so the
+rendered entry point must be the final page and a page can't easily become a base for another.
+In TTL the relationship is symmetric — `layout` knows nothing about `home`, any template that
+exposes regions can serve as a base for anything, and because it all compiles into a single
+execution‑ready document, **this composition costs nothing at render time**. (The
+[performance benchmark](../src/Templates.Performance) uses exactly this `home` + `layout`
+shape.) See [Architecture → Performance](architecture.md#performance-characteristics).
 
 ---
 
@@ -340,20 +681,20 @@ a child.
 A `{{ … }}` block is a full nested template. It appears as a definition body and as the
 inline body attached to a call.
 
-```antlr
-subtemplate: WS* SUB_START ttl SUB_CLOSE;
+```
+{{ ...any template content... }}
 ```
 
-Because the body is itself a `ttl` rule, subtemplates may contain text, output blocks,
-nested definitions, imports, and raw blocks — to any depth. A call exposes its subtemplate
-to its extension; for example `@out()` renders the surrounding subtemplate, and
-`@list(items){{ <li>@(Name)</li> }}` renders the `<li>` body once per element.
+Because the body is itself a full template, subtemplates may contain text, output blocks,
+nested definitions, imports, and raw blocks — to any depth. A call hands its subtemplate to
+its extension; `@list(Articles){{ … }}`, for instance, renders its body once per element with
+the element as the current model:
 
 ```ttl
-@list(SubCategories)
+@list(Articles)
 {{
   <li>
-    @(Name)
+    <a href="/post">@(Title)</a> — @(Author.Name)
   </li>
 }}
 ```
@@ -362,52 +703,62 @@ to its extension; for example `@out()` renders the surrounding subtemplate, and
 
 ## Chaining with `:`
 
-Calls are composed left‑to‑right with `:`; each call's output becomes the next call's
-**chained** input.
+Calls in a chain are evaluated **right to left**, and the **leftmost** call renders the final
+output. Each call receives the output of the call to its *right* as its **chained** value,
+which it can splice into its own result with `@out()`.
 
-```antlr
-chain: call (DELIM call)*;
 ```
+call : call : call ...
+```
+
+So a chain nests like function composition — `@a():b():c()` makes `a` the outer wrapper around
+`b` around `c`: `c` runs first, its output is handed to `b`, `b`'s output is handed to `a`, and
+`a` renders. For example:
 
 ```ttl
-@a(param):b():c(){{ … }}
+@%
+  <heading>  {{ <h2>@out()</h2> }}        @* wraps its chained content in <h2> *@
+  <emphasis> {{ <em>@(Title)</em> }}
+%@
+
+@heading():emphasis()
 ```
 
-The engine tracks the data type flowing through the chain, so each extension sees the
-correct input type and the final output type is known at compile time. The `@out()`
-extension is the usual consumer of the chained value: it emits whatever the previous call
-produced (or wraps it in its own subtemplate). `@swap()` exchanges the model and chained
-values for the duration of its body.
+`emphasis` runs first and produces `<em>…Title…</em>`; that becomes `heading`'s chained value,
+which `heading`'s `@out()` drops inside its `<h2>`. Result: `<h2><em>…Title…</em></h2>`.
+
+The engine tracks the data **type** flowing through the chain, so each call sees the correct
+chained‑input type and the final output type is known at compile time. Among the built‑ins,
+`@out()` is the usual consumer of a chained value (it emits whatever the call to its right
+produced), and `@swap()` exchanges the model and chained values for the duration of its body.
 
 ---
 
 ## Recursion
 
-Definitions may call themselves, enabling tree rendering. From
-[recursion.thtml](../src/Templates.Tests/TestTemplate/recursion.thtml), a `category`
-definition that recurses into its subcategories:
+Definitions may call themselves, which is the natural way to render trees — like a threaded
+comment list, where each `Comment` has `Replies` that are themselves `Comment`s:
 
 ```ttl
-<category>
-{{
-  @if(@model.SubCategories.Count>0)
+@%
+  <comment>
   {{
-    <ul>
-    @list(SubCategories)
-    {{
-      <li>
-        <a href="@(Name)">@(Name)</a>
-        @category()        @* recurse *@
-      </li>
-    }}
-    </ul>
-  }}
-}} :: Category
+    <li>
+      <strong>@(Author)</strong>: @(Text)
+      @if(@model.Replies.Count > 0)
+      {{
+        <ul>
+          @list(Replies){{ @comment() }}    @* recurse into each reply *@
+        </ul>
+      }}
+    </li>
+  }} :: Comment
+%@
 ```
 
-Recursion depth is bounded by `TemplateOptions.MaxRecursionCount` (default **100**); see the
-[C# API Reference](csharp-api.md#templateoptions). The expected output for this fixture is
-[test-recursion.html](../src/Templates.Tests/TestTemplate/test-recursion.html).
+Rendering `@list(Comments){{ @comment() }}` then walks the whole tree to any depth. Recursion
+is bounded by `TemplateOptions.MaxRecursionCount` (default **100**); see the
+[C# API Reference](csharp-api.md#templateoptions).
 
 ---
 
@@ -416,12 +767,12 @@ Recursion depth is bounded by `TemplateOptions.MaxRecursionCount` (default **100
 The `@<<` directive imports the **definitions** of another template file into the current
 parse, so you can share a library of definitions across templates.
 
-```antlr
-import_block: IMPORT_TOKEN WS* SUB_START text+ SUB_CLOSE;
+```
+@<< {{ path/to/file }}
 ```
 
 ```ttl
-@<<{{ shared/widgets.thtml }}
+@<<{{ layout.ttl }}
 ```
 
 The path between `{{ }}` is resolved relative to `TemplateOptions.RootPath`. Imports are
@@ -440,20 +791,19 @@ referenced file into the current parse context.
 
 Comments are removed during lexing (routed to a hidden channel) and never appear in output.
 
-```antlr
-COMMENT: '@*' ('@' | '*'* ~[*@])* '*'+ '@' -> channel(HIDDEN);
+```
+@* ...comment text... *@
 ```
 
-Comments may appear almost anywhere — including **inside other tokens**. This is heavily
-exercised by the fixtures:
+Comments may appear almost anywhere — including **inside other tokens**:
 
 ```ttl
-<title>Привет!</ti@*Comment Test 6*@tle>     @* comment splits a tag name (template.thtml) *@
-@model(@*Comment Test 3*@){{TestData@*…*@Structure}}   @* inside a call and its body *@
-<multi_text@*text area*@>                     @* inside a definition name *@
+<h2>@(Title)</h2>@* the article headline *@
+@if(@* featured only *@ @model.IsFeatured){{ <span class="badge">★</span> }}
+<a href="/po@* even mid-word *@sts">Posts</a>
 ```
 
-Comments are recognized in every lexer mode (DEFAULT, subtemplate, definition, import, call,
+Comments are recognized in every lexer mode (top level, subtemplate, definition, import, call,
 output), so they are safe to drop in anywhere.
 
 ---
@@ -462,19 +812,23 @@ output), so they are safe to drop in anywhere.
 
 Raw regions are emitted **verbatim** and are not parsed for directives.
 
-```antlr
-RAW:     '@{' ('@' | '}'* ~[}@])* '}'+ '@';     @* block form *@
-RW_LINE: '@:' ~[\r\n]* -> type(RAW);            @* line form: rest of line *@
+```
+@{ ...literal text... }@        block form
+@: ...literal to end of line    line form
 ```
 
-- **Block** `@{ … }@` — everything between the delimiters is literal. Useful for emitting
-  characters that would otherwise be parsed, e.g. a lone `.` between comments in
-  [raw.thtml](../src/Templates.Tests/TestTemplate/raw.thtml):
-  `@using(){{System@*Comment Test 2*@@{.}@Linq}}`.
-- **Line** `@: …` — everything to the end of the line is literal. In
-  [raw.thtml](../src/Templates.Tests/TestTemplate/raw.thtml),
-  `@using(){{System@*Comment Test 1*@@:.` emits the `.` and the newline literally as part of
-  the namespace text.
+- **Block** `@{ … }@` — everything between the delimiters is literal. Handy for emitting code
+  samples or text full of characters that would otherwise be parsed:
+
+  ```ttl
+  <pre>@{ Use @(Title) and {{ … }} in a template — none of this is evaluated. }@</pre>
+  ```
+
+- **Line** `@: …` — everything to the end of the line is literal:
+
+  ```ttl
+  @: Raw line: @(Title) and @if() are printed verbatim, exactly as typed.
+  ```
 
 Raw blocks are recognized at the top level, in subtemplates, in output mode, and after a
 call returns, so they compose with the rest of the syntax.
@@ -483,29 +837,30 @@ call returns, so they compose with the rest of the syntax.
 
 ## Whitespace trimming `@\`
 
-`@\` followed by any run of whitespace is consumed and produces no output (token `SKIP_WS`,
-routed to the hidden channel). Use it to keep templates readable while controlling the
-emitted whitespace — particularly at the end of a line, to suppress the trailing newline.
+`@\` followed by any run of whitespace is consumed and produces no output. Use it to keep
+templates readable while controlling the emitted whitespace — particularly at the end of a
+line, to suppress the trailing newline.
 
-```antlr
-fragment EAT_WS: '@\\' WS*;
-SKIP_WS: EAT_WS -> channel(HIDDEN);
+```
+@\ followed by whitespace  →  consumed (emits nothing)
 ```
 
-In [template.thtml](../src/Templates.Tests/TestTemplate/template.thtml), nearly every
-directive line ends with `@\` to collapse the formatting newlines:
+Declaration lines that should produce no output of their own are a common place for it — end
+them with `@\` so they don't leave a blank line behind:
 
 ```ttl
 @using(){{System.Linq}}@\
-@model(@*Comment Test 3*@){{TestData@*Comment Test 4*@Structure}}@\
+@model(){{Blog}}@\
+<h1>@(Title)</h1>
 ```
 
-Whitespace that is *not* trimmed is preserved exactly — TTL is whitespace‑significant, which
-is why the expected outputs (e.g.
-[test-vc.html](../src/Templates.Tests/TestTemplate/test-vc.html)) contain the blank lines and
-indentation that surround directives. The
-[wierd-whitespace.thtml](../src/Templates.Tests/TestTemplate/wierd-whitespace.thtml) fixture
-deliberately stress‑tests large runs of whitespace and `@using() {{   }}` with padding.
+Without the `@\`, each `@using`/`@model` line would emit its trailing newline. Whitespace that
+is *not* trimmed is preserved exactly — TTL is whitespace‑significant, so the spaces and
+newlines you write around directives appear in the output as written.
+
+> In practice, HTML templates rarely need `@\` — browsers collapse insignificant whitespace, so
+> the stray newlines around directives don't matter. Reach for `@\` mainly in the declaration
+> preamble and when emitting whitespace‑sensitive text (plain text, `<pre>`, JSON, etc.).
 
 ---
 

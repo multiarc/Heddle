@@ -15,6 +15,11 @@ All names and attributes below were read directly from
   doesn't match, most extensions render empty rather than throw.
 - **Body / parameter** — many extensions interpret their `{{ … }}` subtemplate as a *format
   string* or *item template* rather than literal output (e.g. `@date(d){{ yyyy-MM-dd }}`).
+- **Body context** — for the conditionals and formatters (`if`, `ifnot`, `date`, `time`,
+  `int`, `money`, `guid`, `string`) and `for`, the parameter is a value to test/format and the
+  body renders in the **caller's** context (one step back), so `@if(flag){{ @(Title) }}` still
+  sees the surrounding model. `list` and definitions instead render the body against the
+  parameter. See [Language Reference → stepping back](language-reference.md#stepping-back-the-parent-context).
 - **HTML‑encoded** — extensions marked `[EncodeOutput]` (and deriving from
   `AbstractHtmlExtension`) HTML‑encode their result by default. See
   [HTML encoding](#html-encoding) at the bottom.
@@ -31,19 +36,29 @@ Renders its subtemplate when the condition is truthy. A `null` model renders not
 present (renders the body).
 
 ```ttl
-@if(IsShow){{ <span style="color: aqua">Shown</span> }}
-@if(@model.SubCategories.Count>0){{ <ul> … </ul> }}
+@if(IsFeatured){{ <span class="badge">Featured</span> }}
+@if(@model.Comments.Count > 0){{ <h3>Comments</h3> }}
 ```
+
+Because a non‑null, non‑bool value counts as present, **`@if(member)` is the idiomatic
+"if present" check** for a nullable reference: `@if(Summary){{ <p>@(Summary)</p> }}` renders
+only when `Summary` is set. The body runs in the caller's context (see
+[stepping back](language-reference.md#stepping-back-the-parent-context)), so `@(Summary)` inside
+it still refers to the surrounding model.
 
 ### `ifnot`
 [IfNotExtension.cs](../src/Templates/Extensions/IfNotExtension.cs) · input: `bool` (or `null`)
 
 The inverse of `if`. Renders its body when the model is `null` or `false`. A non‑bool,
-non‑null model renders nothing.
+non‑null model renders nothing — so `@ifnot(member)` is the idiomatic "if absent" check.
 
 ```ttl
-@ifnot(IsShow){{ <span style="color: red">Hidden</span> }}
+@ifnot(IsFeatured){{ <span class="muted">Regular post</span> }}
+@ifnot(Summary){{ <p class="muted">No summary yet.</p> }}
 ```
+
+> There is no `else`/`elif`. Combine `@if`/`@ifnot` (often nested) for the branches you need —
+> see [Patterns → conditionals](patterns.md#presence-checks-and-and-conditions).
 
 ---
 
@@ -58,12 +73,11 @@ strongly‑typed `IEnumerable<T>` (the element type is inferred for typed member
 the source implements `ICollection<T>`, the count is used to pre‑size the output buffer.
 
 ```ttl
-@list(@model.Products.Where(p => p.Quantity < 95))
-{{
-  @partial(){{partial}}
-}}
+@list(Articles){{ @article_card() }}                @* each element is an Article *@
 
-@list(SubCategories){{ <li>@(Name)</li> }}
+@list(Tags){{ <span class="tag">@()</span> }}       @* @() is the current tag string *@
+
+@list(@model.Articles.Where(a => a.IsFeatured)){{ @article_card() }}   @* filtered *@
 ```
 
 ### `for`
@@ -75,13 +89,15 @@ A counted loop. The model is a `ForModel { Start?, Last, Step? }`
 chained value (referenceable as `chained` in embedded C#).
 
 ```ttl
-@for(@new ForModel() { Last = model.Products.Count(), Step = 3 })
+@for(@new ForModel() { Last = model.Articles.Count(), Step = 3 })
 {{
-  <div>
-    @list(@model.Products.Skip(chained).Take(3)){{ … }}
+  <div class="row">
+    @list(@model.Articles.Skip(chained).Take(3)){{ @article_card() }}
   </div>
 }}
 ```
+
+(`chained` is the loop index; here it pages the articles three at a time.)
 
 ---
 
@@ -97,8 +113,8 @@ Formats a `DateTime` using the body as a .NET date format string (default `"d"`)
 `CultureInfo.InvariantCulture`.
 
 ```ttl
-@date(BirthDate){{ yyyy-MM-dd }}
-@date(Date)
+@date(PublishedOn){{ MMMM d, yyyy }}     @* e.g. June 28, 2026 *@
+@date(PublishedOn)                       @* default short date *@
 ```
 
 ### `time`
@@ -107,7 +123,7 @@ Formats a `DateTime` using the body as a .NET date format string (default `"d"`)
 Like `date` but defaults to the `"t"` (short time) format.
 
 ```ttl
-@time(Date){{ HH:mm }}
+@time(PublishedOn){{ HH:mm }}
 ```
 
 ### `int`
@@ -117,8 +133,8 @@ Formats an integer; the body is an optional numeric format string. Other numeric
 converted to `long` when possible (invariant culture); non‑convertible values render empty.
 
 ```ttl
-@int(Count)
-@int(Count){{ 0:N0 }}
+@int(Year)                          @* 2026 *@
+@int(@model.Comments.Count){{ 0:N0 }}   @* 1,200 *@
 ```
 
 ### `money`
@@ -128,8 +144,8 @@ Formats a `decimal` as currency (`"c"`). The body is an optional **culture name*
 body the current culture is used. Cultures are cached.
 
 ```ttl
-@money(Cost){{@(Locale)}}    @* e.g. body resolves to "en-US" *@
-@money(Price)
+@money(@9.99m){{ en-US }}    @* $9.99 — body is the culture name *@
+@money(@1234.5m)             @* current culture *@
 ```
 
 ### `guid`
@@ -139,8 +155,8 @@ Formats a `Guid`; the body is an optional .NET GUID format specifier (`N`, `D`, 
 `X`).
 
 ```ttl
-@guid(Id){{X}}
-@guid(Id)
+@guid(@System.Guid.NewGuid()){{N}}   @* 32 digits, no dashes *@
+@guid(@System.Guid.NewGuid())        @* default format *@
 ```
 
 ### `string`
@@ -151,8 +167,8 @@ model is `null`. Non‑string models are converted with `Convert.ChangeType` (in
 culture), falling back to `ToString()`.
 
 ```ttl
-@string(Text)
-@string(MiddleName){{ (none) }}
+@string(Title)
+@string(Author.Name){{ Anonymous }}    @* fallback when Author.Name is null *@
 ```
 
 ---
@@ -164,7 +180,7 @@ culture), falling back to `ToString()`.
 
 The extension with the empty name backs the unnamed call form `@(...)`. If it has a body it
 renders the body; otherwise it stringifies the current model (or empty when `null`). This is
-the workhorse behind `@(Name)`, `@(@5)`, etc.
+the workhorse behind `@(Title)`, `@()`, etc.
 
 > The unnamed `@(...)` form is **not** HTML‑encoded. For encoded text output use
 > [`string`](#string) (or `html` below).
@@ -187,12 +203,13 @@ body it renders the chained value directly; with a body it renders that body aga
 chained data. This is how a definition surfaces the caller's inline content.
 
 ```ttl
-<text>
-{{ <input name="@(Name)" value="@(Value)" @out() /> }}    @* @out() drops in the caller's body *@
+<article_card>
+{{ <article><h2>@(Title)</h2>@out()</article> }}    @* @out() drops in the caller's body *@
 ```
 
-In [vc-test.thtml](../src/Templates.Tests/TestTemplate/vc-test.thtml), `@out()` threads the
-caller's content through nested layout definitions (`left`, `center`, `right`, `layout`).
+`@out()` is the mechanism behind layouts: a `layout` definition wraps the page chrome around a
+central `@out()`, and each page supplies the content. See
+[Language Reference → composition](language-reference.md#inheritance-and-override-childbase).
 
 ### `swap`
 [SwapExtension.cs](../src/Templates/Extensions/SwapExtension.cs) · name: `swap`
@@ -204,7 +221,7 @@ chain produced a value you now want to treat as the model.
 [ParamExtension.cs](../src/Templates/Extensions/ParamExtension.cs) · name: `param`
 
 Passes the model through unchanged as the chain value (a no‑op renderer that yields the
-current model to the next call in a chain).
+current model as the chained input of the call to its left).
 
 ---
 
@@ -219,7 +236,7 @@ Declares the document's model type from *within the template* (instead of in C# 
 body is a type name resolved against the imported namespaces; `dynamic` is allowed.
 
 ```ttl
-@model(){{TestDataStructure}}
+@model(){{Blog}}
 @model(){{dynamic}}
 ```
 
@@ -231,7 +248,7 @@ resolve unqualified identifiers.
 
 ```ttl
 @using(){{System.Linq}}
-@using(){{Templates.Models}}
+@using(){{MyBlog.Models}}
 ```
 
 ### `import`
@@ -253,13 +270,11 @@ template's output inline at run time, passing the current model and chained data
 `import`, a partial produces output.
 
 ```ttl
-@partial(){{partial}}        @* compiles & renders the "partial" template *@
+@partial(){{ sidebar }}      @* compiles & renders the "sidebar" template by name *@
 ```
 
-The fixture [partial.thtml](../src/Templates.Tests/TestTemplate/partial.thtml) is the body
-used by `@partial(){{partial}}` calls in
-[template.thtml](../src/Templates.Tests/TestTemplate/template.thtml). In ASP.NET Core MVC,
-partial resolution is specialized by
+The body (`sidebar`) names a separate template file the engine compiles and renders inline,
+passing the current model. In ASP.NET Core MVC, partial resolution is specialized by
 [`PartialMvcExtension`](../src/Templates.Mvc/Extensions/PartialMvcExtension.cs) — see
 [MVC Integration](mvc-integration.md).
 

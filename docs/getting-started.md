@@ -41,41 +41,44 @@ See [Writing Custom Extensions](custom-extensions.md) for how extensions are exp
 ### 2 & 3. Compile and generate an inline template
 
 ```csharp
-using System.Dynamic;
 using Templates;
 using Templates.Data;
 
 var options = new TemplateOptions
 {
-    AllowCSharp = true        // required for @(...) C# expressions and typed @model()
+    AllowCSharp = true        // required for @int(...) and any @(...) C# expressions
 };
 
-// A template that declares one definition named "default" with a default output chain,
-// typed as `dynamic`. The "-> (Model)" picks Model off the incoming object as the body data.
+// @model(){{dynamic}} declares the model type from inside the template, so member
+// access like @(Name) is resolved at render time against whatever object you pass.
 var source =
-    "@%\n" +
-    "<default> -> (Model)\n" +
-    "{{ Order #@(Id)! }} :: dynamic\n" +
-    "%@";
+    "@model(){{dynamic}}\n" +
+    "<p>Hi @(Name) — you have @int(Count) new comments.</p>";
 
 using var template = new TtlTemplate(source, new CompileContext(options));
 
 if (!template.CompileResult.Success)
     throw new Exception(template.CompileResult.ToString());   // human‑readable error list
 
-dynamic model = new ExpandoObject();
-model.Model = new { Id = 100 };
-
-string result = template.Generate(model);
-// result == " Order #100! "
+string result = template.Generate(new { Name = "Ada", Count = 3 });
+// <p>Hi Ada — you have 3 new comments.</p>
 ```
 
-This mirrors the `SubjectDynamicTest` integration test in
-[TtlTemplateTests.cs](../src/Templates.Tests/TtlTemplateTests.cs).
+Prefer compile‑time checking? Pass the model type instead of using `dynamic`, and member
+access is verified against it during compilation:
 
-> **`AllowCSharp`** — embedded C# (`@( ... )` expressions, `@new T{...}`, LINQ, typed
-> `@model()`) is only enabled when `TemplateOptions.AllowCSharp` is `true`. Leave it `false`
-> for untrusted templates that should not run arbitrary C#.
+```csharp
+class Greeting { public string Name { get; set; } public int Count { get; set; } }
+
+var source = "<p>Hi @(Name) — you have @int(Count) new comments.</p>";
+using var template = new TtlTemplate(source, new CompileContext(options, typeof(Greeting)));
+
+string result = template.Generate(new Greeting { Name = "Ada", Count = 3 });
+```
+
+> **`AllowCSharp`** — embedded C# (`@( @... )` expressions, `@new T{...}`, LINQ) is only
+> enabled when `TemplateOptions.AllowCSharp` is `true`. Leave it `false` for untrusted
+> templates that should not run arbitrary C#.
 
 ### Compile from a file
 
@@ -83,15 +86,15 @@ Point `TemplateOptions` at a directory and a template name; the engine reads
 `RootPath + TemplateName + FileNamePostfix`:
 
 ```csharp
-var options = new TemplateOptions("template")   // TemplateName = "template"
+var options = new TemplateOptions("home")       // TemplateName = "home"
 {
-    RootPath = "TestTemplate",
-    FileNamePostfix = ".thtml",                 // resolves TestTemplate/template.thtml
+    RootPath = "Templates",
+    FileNamePostfix = ".ttl",                   // resolves Templates/home.ttl
     AllowCSharp = true
 };
 
 using var template = new TtlTemplate(new CompileContext(options));
-string html = template.Generate(myModel);
+string html = template.Generate(myBlog);
 ```
 
 ### Validate without committing (dry‑run compile)
@@ -102,7 +105,7 @@ for linting/CI checks where you only care whether a template *would* compile:
 ```csharp
 using var probe = new TtlTemplate();
 TtlCompileResult result = probe.TryCompilation(
-    File.ReadAllText("TestTemplate/template.thtml"),
+    File.ReadAllText("Templates/home.ttl"),
     new TemplateOptions { AllowCSharp = true });
 
 Assert.True(result.Success, result.ToString());

@@ -7,16 +7,18 @@ and control HTML encoding per directive. An ASP.NET Core MVC view engine is incl
 `.thtml` files can be used as MVC views.
 
 ```ttl
-@%
-  <greeting> -> (Model)
-  {{ Hello, @(Name)! You have @int(Count) messages. }} :: dynamic
-%@
+@model(){{dynamic}}
+<p>Hi @(Name) — you have @int(Count) new comments.</p>
 ```
 
 ```csharp
 TtlTemplate.Configure(typeof(Program).Assembly);
+
+var source = "@model(){{dynamic}}\n<p>Hi @(Name) — you have @int(Count) new comments.</p>";
 using var template = new TtlTemplate(source, new CompileContext(new TemplateOptions { AllowCSharp = true }));
+
 string html = template.Generate(new { Name = "Ada", Count = 3 });
+// <p>Hi Ada — you have 3 new comments.</p>
 ```
 
 ## Packages
@@ -39,6 +41,78 @@ Full documentation lives in **[docs/](docs/README.md)**:
 - [MVC Integration](docs/mvc-integration.md) — use `.thtml` files as MVC views.
 - [Architecture](docs/architecture.md) — the lex → parse → compile → render pipeline.
 - [Building & Testing](docs/building.md) — SDK, scripts, tests, packaging, CI.
+
+## How TTL compares
+
+TTL sits in a small niche: a **compiled, statically‑typed** template language whose entire
+control‑flow vocabulary is *library*, not grammar. Here is where it lands against the engines
+people usually weigh it against.
+
+| | **TTL** | Razor | Liquid / Scriban | Handlebars / Mustache | Go `text/template` |
+| --- | --- | --- | --- | --- | --- |
+| Execution | Compiled to an exec‑ready document | Compiled | Interpreted | Interpreted | Interpreted |
+| Typing | **Static, per use site** | Static | Dynamic | Dynamic | Dynamic |
+| Logic in templates | Full C# (opt‑in) | Full C# | Sandboxed filters | Logic‑less + helpers | Limited + funcs |
+| Control flow | **Extensions (a library)** | Keywords | Tags | Block helpers | Keywords |
+| Context model | Relative: current / `::`root | Absolute (`Model.X`) | Mostly global | Relative stack | Relative (`.` / `$`) |
+| Composition | Definition inheritance + override | Layouts / sections / partials | Partials / includes | Partials | Templates / blocks |
+| Untrusted templates | No (or run in no‑C# mode) | No | **Yes (sandboxed)** | **Yes (logic‑less)** | Partial |
+| Reach / ecosystem | .NET only, small | .NET, excellent | Large | Large, polyglot | Large |
+
+**What's genuinely distinctive (the combination, more than any single trait):**
+
+- **Extension‑only core.** There are no `if`/`for`/`include` keywords — those are extensions, so
+  the language grows by adding a class, not by changing the grammar. The `:` chain composes them
+  right‑to‑left, with a single *chained* channel carrying the loop index, the piped value, and
+  `@out()` content.
+- **Abstract, late‑bound sections.** A definition with no `:: Type` is compiled against the
+  concrete model at *each call site* — closer to a **C++ template** (monomorphised, type‑checked
+  per use) than a C# generic (compiled once behind constraints). Reuse one section across many
+  model shapes, each statically checked.
+- **Composition without coupling.** Definition inheritance/override are *declarative extension
+  points*: unlike Razor sections (which bind "backwards" and pin the rendered page as the
+  layout's final consumer), a TTL page can be split into independent templates recombined by a
+  layout with **no runtime cost**, and any page can serve as a base for another.
+- **Compiled to an execution‑ready document.** A template becomes an in‑memory tree of
+  extension calls wired to **compiled** accessors — member paths to expression‑tree delegates,
+  embedded C# to Roslyn delegates — so nothing is reflected or re‑parsed per render. It renders
+  [faster than Razor with fewer allocations](#performance) on a like‑for‑like page.
+
+**Best fit:** performance‑sensitive, first‑party .NET rendering by a team that values typed
+templates and component‑style composition. **Poor fit:** untrusted user‑supplied templates
+(the security model is all‑or‑nothing on `AllowCSharp`, not a sandbox), polyglot stacks, or
+teams wanting a large ecosystem and batteries‑included tooling. The language also trades some
+ergonomics for its small core — dense sigils and no `else`/`elif` (compose `@if`/`@ifnot`
+instead). See the [Language Reference](docs/language-reference.md) for the full picture.
+
+## Performance
+
+Templater compiles each template into an **execution‑ready document** — an in‑memory tree of
+extension calls wired to compiled accessors (member paths to expression‑tree delegates,
+embedded C# to Roslyn delegates). Rendering walks that document, so it does not re‑parse, reflect,
+or pay per‑call activation, section, or dependency‑injection overhead at run time. The
+repository includes a [BenchmarkDotNet](https://benchmarkdotnet.org/) suite
+([src/Templates.Performance](src/Templates.Performance)) that renders a realistic home page —
+a layout plus several reusable templates and a dozen component/extension invocations — and
+compares it head‑to‑head against the equivalent ASP.NET Core **Razor** page
+([RenderTemplateEngine vs RenderRazor](src/Templates.Performance/TextRenderBenchmarks.cs)).
+
+On that like‑for‑like workload, TTL renders the page **faster than Razor and allocates less
+memory** (`[MemoryDiagnoser]` is enabled). The advantage comes from two places:
+
+- **Execution** — walking the pre‑compiled document avoids the partial/section/view‑component
+  machinery Razor invokes per component (see [Architecture → Performance](docs/architecture.md#performance-characteristics)).
+- **Composition** — TTL definitions are *declarative, decoupled* extension points. Unlike Razor
+  sections, which bind "backwards" and force the rendered page to be the layout's final
+  consumer, a TTL template can be split into independent reusable templates recombined by a
+  layout **with no runtime cost**, and any page can itself serve as a base for another. See
+  [Language Reference → inheritance](docs/language-reference.md#inheritance-and-override-childbase).
+
+Run it yourself:
+
+```
+dotnet run -c Release --project src/Templates.Performance
+```
 
 ## Building
 

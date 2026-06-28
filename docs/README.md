@@ -19,13 +19,34 @@ Current version: **4.0.2** (see [src/Templates/Templates.csproj](../src/Template
 
 ---
 
+## Why TTL?
+
+- **Compiled and strongly typed.** A template is compiled into an execution‑ready document —
+  extension calls wired to compiled accessors (member paths to expression‑tree delegates,
+  embedded C# to Roslyn delegates). Member access and embedded C# are checked at compile time,
+  not discovered at render time.
+- **Fast.** On a like‑for‑like home‑page benchmark in this repository, TTL renders faster than
+  ASP.NET Core Razor and allocates less memory. See
+  [Architecture → Performance](architecture.md#performance-characteristics) and the
+  [benchmark project](../src/Templates.Performance).
+- **Composable without coupling.** Reusable templates are declarative extension points, so a
+  page can be split into independent pieces recombined by a layout — at no runtime cost — and
+  any page can serve as a base for another. See
+  [Language Reference → inheritance](language-reference.md#inheritance-and-override-childbase).
+- **Extensible by design.** The language has essentially one primitive — the extension call —
+  so new directives are added as classes, not grammar. See
+  [Writing Custom Extensions](custom-extensions.md).
+
+---
+
 ## Pick your path
 
 ### I want to *write templates* (template authors)
 Start with **[Getting Started](getting-started.md)**, then read the
 **[Language Reference](language-reference.md)** for every construct and its behavioral
 nuances, and **[Built‑in Extensions](built-in-extensions.md)** for the bundled helpers
-(`list`, `if`, `date`, `money`, …).
+(`list`, `if`, `date`, `money`, …). For task‑oriented idioms, see
+**[Patterns & Recipes](patterns.md)**.
 
 ### I want to *use the engine from C#* (integrators)
 Read **[Getting Started](getting-started.md)** and the **[C# API Reference](csharp-api.md)**
@@ -49,6 +70,7 @@ Roslyn code generation, lexer modes) and **[Building & Testing](building.md)**.
 | [Getting Started](getting-started.md) | Install/build prerequisites and your first inline and file‑based templates. |
 | [Language Reference](language-reference.md) | Every TTL construct: output, expressions, embedded C#, definitions, inheritance, subtemplates, chaining, imports, comments, raw blocks, whitespace, and the lexer‑mode model. |
 | [Built‑in Extensions](built-in-extensions.md) | Reference for every bundled extension, its expected input type, and HTML‑encoding behavior. |
+| [Patterns & Recipes](patterns.md) | Task‑oriented idioms: with‑blocks, presence checks, first/last, local helper definitions, root context, JSON injection, and more. |
 | [C# API Reference](csharp-api.md) | `ITtlTemplate`/`TtlTemplate`, `TemplateOptions`, `CompileContext`, `TtlCompileResult`, registration, and error handling. |
 | [Writing Custom Extensions](custom-extensions.md) | The extension contract, `Scope`, attributes, and registration. |
 | [MVC Integration](mvc-integration.md) | Registering `TtlViewEngine`, view resolution, and MVC‑specific extensions. |
@@ -60,25 +82,23 @@ Roslyn code generation, lexer modes) and **[Building & Testing](building.md)**.
 ## A 30‑second taste
 
 ```ttl
-@%
-  <greeting> -> (Model)
-  {{ Hello, @(Name)! You have @int(Count) messages. }} :: dynamic
-%@
+@model(){{dynamic}}
+<p>Hi @(Name) — you have @int(Count) new comments.</p>
 ```
 
 ```csharp
 TtlTemplate.Configure(typeof(Program).Assembly);
-using var template = new TtlTemplate(
-    "@%\n<greeting> -> (Model)\n{{ Hello, @(Name)! You have @int(Count) messages. }} :: dynamic\n%@",
-    new CompileContext(new TemplateOptions { AllowCSharp = true }));
+
+var source = "@model(){{dynamic}}\n<p>Hi @(Name) — you have @int(Count) new comments.</p>";
+using var template = new TtlTemplate(source, new CompileContext(new TemplateOptions { AllowCSharp = true }));
 
 string html = template.Generate(new { Name = "Ada", Count = 3 });
-// => " Hello, Ada! You have 3 messages. "
+// => <p>Hi Ada — you have 3 new comments.</p>
 ```
 
 > **A note on accuracy.** Every construct documented here is derived from the authoritative
 > ANTLR grammar ([TtlLexer.g4](../src/Templates.Language/TtlLexer.g4),
-> [TtlParser.g4](../src/Templates.Language/TtlParser.g4)) and verified against the real
-> template fixtures in [src/Templates.Tests/TestTemplate](../src/Templates.Tests/TestTemplate).
-> The repository file [develop.txt](../develop.txt) is historical scratch notes and uses an
-> **obsolete** syntax (`<% %>` / `[ ]`); do not rely on it.
+> [TtlParser.g4](../src/Templates.Language/TtlParser.g4)). Example snippets are written to
+> teach; the repository's [test fixtures](../src/Templates.Tests/TestTemplate) hold real,
+> runnable templates, and [develop.txt](../develop.txt) holds terse design notes in current
+> syntax.

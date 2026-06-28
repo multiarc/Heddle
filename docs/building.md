@@ -78,14 +78,42 @@ authoritative examples used throughout this documentation.
 
 ## Performance benchmarks
 
-[src/Templates.Performance](../src/Templates.Performance) contains **BenchmarkDotNet**
-benchmarks (`TextRenderBenchmarks.cs`) comparing rendering throughput. Run them in Release:
+[src/Templates.Performance](../src/Templates.Performance) contains a **BenchmarkDotNet** suite
+that compares TTL against ASP.NET Core **Razor** on the *same* page, head‑to‑head. Run it in
+Release:
 
 ```bash
 dotnet run -c Release --project src/Templates.Performance
 ```
 
-There is also a Razor comparison under [performance/RazorTemplateTest](../performance/RazorTemplateTest).
+What it measures
+([TextRenderBenchmarks.cs](../src/Templates.Performance/TextRenderBenchmarks.cs),
+`[MemoryDiagnoser]` enabled):
+
+- **`RenderTemplateEngine`** renders the TTL home page
+  ([TestTemplates/home.ttl](../src/Templates.Performance/TestTemplates/home.ttl) +
+  [layout.ttl](../src/Templates.Performance/TestTemplates/layout.ttl)) through
+  [`TemplaterTest`](../src/Templates.Performance/Runners/TemplaterTest.cs).
+- **`RenderRazor`** renders the equivalent Razor page
+  ([Views/home.cshtml](../src/Templates.Performance/Views) + `layout.cshtml`) with runtime
+  compilation through [`RazorTest`](../src/Templates.Performance/Runners/RazorTest.cs).
+
+Both pages are deliberately equivalent: one layout, several reusable templates/sections, and a
+dozen component invocations — the TTL components live in
+[TestSuite/Extensions](../src/Templates.Performance/TestSuite/Extensions) and their Razor
+counterparts in [TestSuite/RazorExtensions](../src/Templates.Performance/TestSuite/RazorExtensions).
+On this workload **TTL renders faster than Razor and allocates less memory**; for *why*, see
+[Architecture → Performance characteristics](architecture.md#performance-characteristics).
+
+> Benchmark numbers are hardware‑ and workload‑specific — run the suite on your target machine
+> and with a page shaped like your real one to get figures you can quote. The repository
+> benchmark is a representative, component‑heavy page where the compiled document's advantage
+> is most visible.
+
+Additional comparison material lives under
+[performance/RazorTemplateTest](../performance/RazorTemplateTest), and there are extra runners
+(compilation cost, memory) in
+[src/Templates.Performance/Runners](../src/Templates.Performance/Runners).
 
 ## Packaging
 

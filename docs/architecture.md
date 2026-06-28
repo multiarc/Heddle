@@ -16,14 +16,15 @@ flowchart TD
     end
 
     subgraph compile["TtlCompiler.Compile (steps 4-5)"]
-        cmp["4. COMPILE<br/>resolve extensions and types<br/>InitStart / CompleteInit"] --> emit["5. EMIT<br/>CompileScope.Compile() via Roslyn"]
+        cmp["4. COMPILE (TtlCompiler)<br/>extensions + compiled accessors"] --> mem["member paths -> expression-tree delegates"]
+        cmp --> cs["@(...) C# -> Roslyn delegates"]
     end
 
     walk -->|"definitions, output chains"| cmp
-    emit --> rt["RuntimeDocument (+ IProcessStrategy)"]
+    cmp --> rt["RuntimeDocument (+ IProcessStrategy)"]
     rt --> render["6. RENDER<br/>TtlTemplate.Generate(data)<br/>ScopeRenderer -> string"]
     errs -.->|collected| result["TtlCompileResult"]
-    emit -.-> result
+    cmp -.-> result
 ```
 
 The orchestration entry points are
@@ -121,27 +122,39 @@ imports, and the raw/text spans. This is the structured representation the compi
 
 ---
 
-## 4–5. Compilation and code generation
+## 4–5. Compilation
 
-[`TtlCompiler`](../src/Templates/Runtime/TtlCompiler.cs) turns the parse context into a
-[`RuntimeDocument`](../src/Templates/Runtime/RuntimeDocument.cs):
+[`TtlCompiler`](../src/Templates/Runtime/TtlCompiler.cs) turns the parse context into an
+**execution‑ready document** ([`RuntimeDocument`](../src/Templates/Runtime/RuntimeDocument.cs)):
+a tree of extension instances, each wired to a **compiled** value accessor. The template itself
+is *not* transpiled to C# or to IL — its structure becomes an object graph; only the value
+accessors are compiled, and nothing is interpreted or reflected at render time.
 
 - It instantiates the right **extension** for each call (resolved by name from the registered
   set), and calls `InitStart` to thread types through the chain and compile nested
   subtemplates; extensions needing a second pass use `CompleteInit` (e.g.
   [`PartialExtension`](../src/Templates/Extensions/PartialExtension.cs)).
-- **Embedded C# expressions** (`@( … )`) are emitted into C# source using the templates in
+- **Member paths** (`@(A.B.C)`) compile to **expression‑tree delegates**:
+  [`ModelParameter`](../src/Templates/Runtime/Parameters/ModelParameter.cs) builds an
+  `Expression<Func<object,object>>` over the resolved property chain (null‑safe for reference
+  types) and `.Compile()`s it. Reflection is used **only here, at compile time**, to locate the
+  properties — never at render time.
+- **Embedded C# expressions** (`@( … )`) are emitted into C# source via the `.tcs` templates in
   [src/Templates/LanguageTemplates](../src/Templates/LanguageTemplates)
-  (`CSharpPreparseTemplate.tcs`, `CSharpClassTemplate.tcs`, embedded as resources) and compiled
-  by **Roslyn** (`Microsoft.CodeAnalysis.CSharp`). The
+  (`CSharpPreparseTemplate.tcs`, `CSharpClassTemplate.tcs`) and compiled by **Roslyn**
+  (`Microsoft.CodeAnalysis.CSharp`) into `(model, chained, root)` delegates
+  ([`CompiledParameter`](../src/Templates/Runtime/Parameters/CompiledParameter.cs)). This is
+  also where C# expressions are **bound to the model's types**; the
   [`CompileScope`](../src/Templates/Runtime)/`CSharpContext` track imported namespaces
-  (`@using`) and the model type (`@model`, `:: Type`).
-- `CompileScope.Compile()` performs the actual Roslyn compilation. Errors are collected as
-  `TtlCompileError`s rather than thrown, and surfaced through
-  [`TtlCompileResult`](../src/Templates/Data/TtlCompileResult.cs).
+  (`@using`) and the model type (`@model`, `:: Type`). `CompileScope.Compile()` runs that
+  Roslyn pass.
+- Errors from either path are collected as `TtlCompileError`s rather than thrown, and surfaced
+  through [`TtlCompileResult`](../src/Templates/Data/TtlCompileResult.cs).
 
-The result is a `RuntimeDocument` exposing an `IProcessStrategy` (`Strategy`) — the compiled
-render plan.
+The result is a `RuntimeDocument` exposing an `IProcessStrategy` (`Strategy`) — the
+execution‑ready render tree. So "compiling a template" means **two** kinds of code generation
+(expression‑tree delegates for member access, Roslyn delegates for embedded C#) wired into one
+document — not a single whole‑template Roslyn compile.
 
 ---
 
@@ -159,6 +172,43 @@ length‑based on net8+ and count‑based on older targets).
 `CallerData`, `RootData`, and the `Renderer`; its pure transforms (`Model`, `Parent`, `Chain`,
 …) construct the child scopes extensions hand to their subtemplates. See
 [Writing Custom Extensions](custom-extensions.md) for the author‑facing contract.
+
+---
+
+## Performance characteristics
+
+The repository's [BenchmarkDotNet suite](../src/Templates.Performance) renders a realistic,
+component‑heavy home page and compares it head‑to‑head with the equivalent ASP.NET Core Razor
+page ([RenderTemplateEngine vs RenderRazor](../src/Templates.Performance/TextRenderBenchmarks.cs),
+with `[MemoryDiagnoser]`). On that like‑for‑like workload TTL **renders faster than Razor and
+allocates less memory**. The reasons are structural, not incidental:
+
+- **Execution‑ready document, not per‑call activation.** Each template becomes a
+  `RuntimeDocument` / `IProcessStrategy` with extension instances already resolved and typed,
+  and every value accessor pre‑**compiled** (expression‑tree delegates for member paths, Roslyn
+  delegates for embedded C#) — no reflection or re‑parsing per render. Rendering a dozen
+  components is a dozen direct `RenderData` calls — it does not spin up partials, view
+  components, section buffers, or DI scopes per component the way Razor does. The benchmark
+  page exercises exactly this: many `@area_component(...)`, `@assets_component(...)`,
+  `@head_scripts()`, etc. calls.
+- **Streaming, low‑allocation output.** Extensions write directly to a single
+  `ScopeRenderer` whose buffer is **size‑adaptive across renders** (a per‑instance high‑water
+  mark), so a warmed‑up template stops reallocating its output buffer. `list` pre‑sizes from
+  `ICollection<T>.Count` when available.
+- **Struct `Scope`, aggressive inlining.** The per‑node data view is a readonly `struct` with
+  `[MethodImpl(AggressiveInlining)]` transforms, avoiding per‑scope heap allocation as the
+  renderer descends into elements and subtemplates.
+- **Composition is free at run time.** Splitting a page into independent reusable templates
+  recombined by a layout (see the benchmark's `@<<{{layout.ttl}}` import + `<body:body>`
+  override) compiles down to the same flat render document as an inline page. Decoupled
+  definitions cost nothing extra to render — unlike Razor sections, whose layout/section
+  binding adds indirection. See
+  [Language Reference → inheritance](language-reference.md#inheritance-and-override-childbase).
+
+The trade‑off is **up‑front compilation**: the first compile runs ANTLR (parse), expression‑tree
+compilation (member accessors), and Roslyn (embedded C#), so it is not cheap — the model is
+"compile once, render many." Compile cost is itself benchmarked via the runners in
+[src/Templates.Performance/Runners](../src/Templates.Performance/Runners).
 
 ---
 

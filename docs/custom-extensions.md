@@ -69,7 +69,7 @@ At render time you read data from [`Scope`](../src/Templates/Data/Scope.cs) and 
 | Field | Meaning |
 | --- | --- |
 | `ModelData` | The current model (your parameter value). |
-| `ChainedData` | The chained value from the previous call in a chain (and the loop index for iteration extensions). |
+| `ChainedData` | The chained value — the output of the call to your **right** in a chain (chains run right‑to‑left), and the loop index for iteration extensions. |
 | `ParentModelData` | The enclosing scope's model. |
 | `RootData` | The root model (what `::` / `@root` resolve to). |
 | `CallerData` | Caller context. |
@@ -77,7 +77,11 @@ At render time you read data from [`Scope`](../src/Templates/Data/Scope.cs) and 
 
 `Scope` is a readonly struct with pure transforms used to build the scope for your subtemplate:
 
-- `scope.Parent()` / `scope.Parent(chained)` — view the parent model (optionally setting a new chained value).
+- `scope.Parent()` / `scope.Parent(chained)` — step back to the **parent** (caller) model,
+  optionally setting a new chained value. This is the "one step back": rendering your body
+  against `scope.Parent()` makes the body see the surrounding model instead of your parameter —
+  exactly what the conditionals and formatters do (e.g. so `@if(flag){{ @(Title) }}` still sees
+  the caller's model). See [Language Reference → stepping back](language-reference.md#stepping-back-the-parent-context).
 - `scope.Model(model)` / `scope.Model(model, chained)` — descend into a child model.
 - `scope.Chain(chained)` — set the chained value while keeping the model.
 
@@ -192,6 +196,30 @@ Two steps:
 
 `Configure` walks the given assembly and its references, so exporting from any referenced
 assembly is sufficient as long as that assembly is reachable from the one you pass.
+
+---
+
+## Common categories in practice
+
+Production projects tend to add a handful of extensions for cross‑cutting concerns. Knowing the
+shapes helps you recognise where a custom extension is the right tool:
+
+- **Escapers / encoders** — value transforms used in attributes and URLs, e.g. `@quote(Name)`
+  (attribute‑safe text) or a stricter HTML encoder. These wrap a value and emit a string;
+  model the API on [`StringExtension`](../src/Templates/Extensions/StringExtension.cs).
+- **Asset / URL helpers** — e.g. `@asset_url(Image)` to map a path to a CDN URL (often combined
+  with a literal suffix in the template: `@asset_url(Image).webp`). A value‑in, string‑out
+  extension.
+- **Region collectors** — extensions like `@head(){{ … }}` or `@script(){{ … }}` that *capture*
+  their body and emit it elsewhere in the document (the `<head>`, end‑of‑body scripts). These
+  consume a subtemplate and defer its output; they pair naturally with a
+  [layout definition](language-reference.md#inheritance-and-override-childbase) that renders the
+  collected regions.
+- **Declarations** — extensions that configure compilation and emit nothing (like the built‑in
+  [`using`](built-in-extensions.md#using) / [`model`](built-in-extensions.md#model)).
+
+See [Patterns → custom extensions in practice](patterns.md#custom-extensions-in-practice) for
+how these read at the call site.
 
 ---
 

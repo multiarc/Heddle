@@ -134,10 +134,10 @@ Controls where templates are read from and which features are enabled
 The resolved file path is `RootPath + TemplateName + FileNamePostfix` (`FullPath`).
 
 ```csharp
-var options = new TemplateOptions("template")
+var options = new TemplateOptions("home")
 {
-    RootPath = "TestTemplate",
-    FileNamePostfix = ".thtml",
+    RootPath = "Templates",
+    FileNamePostfix = ".ttl",     // resolves Templates/home.ttl
     AllowCSharp = true
 };
 ```
@@ -165,7 +165,7 @@ Key members:
 | `TemplateOptions Options` | The options this context compiles with. |
 | `ExType ScopeType` | The current model type. May be changed by the `@model()` extension during compile. |
 | `ExType RootScopeType` | The root (level‑0) model type. |
-| `bool Compiled` | Whether the Roslyn compilation has run. |
+| `bool Compiled` | Whether the embedded‑C# (Roslyn) compilation step has run. |
 | `List<TtlCompileError> CompileErrors` | Accumulated errors. |
 | `List<TtlCompileWarning> CompileWarnings` | Accumulated warnings (e.g. SLL→LL fallback). |
 | `string ControllerName` | Used by the MVC integration to resolve views. |
@@ -246,10 +246,10 @@ using Templates.Data;
 
 TtlTemplate.Configure(typeof(Program).GetTypeInfo().Assembly);
 
-var options = new TemplateOptions("template")
+var options = new TemplateOptions("home")
 {
-    RootPath = "TestTemplate",
-    FileNamePostfix = ".thtml",
+    RootPath = "Templates",
+    FileNamePostfix = ".ttl",     // resolves Templates/home.ttl
     AllowCSharp = true
 };
 
@@ -257,7 +257,7 @@ using var template = new TtlTemplate(new CompileContext(options));
 if (!template.CompileResult.Success)
     throw new InvalidOperationException(template.CompileResult.ToString());
 
-string html = template.Generate(myModel);
+string html = template.Generate(myBlog);
 ```
 
 For ASP.NET Core MVC, you typically don't call `TtlTemplate` directly — register
