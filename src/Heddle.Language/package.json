@@ -6,13 +6,13 @@
     "heddle",
     "templates"
   ],
-  "homepage": "https://github.com/multiarc/Templater#readme",
+  "homepage": "https://github.com/multiarc/Heddle#readme",
   "bugs": {
-    "url": "https://github.com/multiarc/Templater/issues"
+    "url": "https://github.com/multiarc/Heddle/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/multiarc/Templater.git"
+    "url": "git+https://github.com/multiarc/Heddle.git"
   },
   "license": "UNLICENSED",
   "author": "Aliaksandr Kukrash",
