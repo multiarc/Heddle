@@ -1,15 +1,15 @@
 dotnet restore
 Push-Location src
-Push-Location Templates.Tests
+Push-Location Heddle.Tests
 dotnet test
 Pop-Location
-Push-Location Templates
+Push-Location Heddle
 dotnet pack -o ..\..\packages --configuration Release
 Pop-Location
-Push-Location Templates.Language
+Push-Location Heddle.Language
 dotnet pack -o ..\..\packages --configuration Release
 Pop-Location
-Push-Location Templates.Mvc
+Push-Location Heddle.Mvc
 dotnet pack -o ..\..\packages --configuration Release
 Pop-Location
 Pop-Location

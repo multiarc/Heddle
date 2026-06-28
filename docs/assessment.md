@@ -1,18 +1,15 @@
 # Language Assessment (candid)
 
-A frank engineering evaluation of the template language (currently **TTL**, the Templater
-engine) — strengths, weaknesses, and how it stacks up against the engines people usually weigh
-it against. This is opinion grounded in the source, not marketing; the user‑facing docs
+A frank engineering evaluation of the **Heddle** template language — strengths, weaknesses, and
+how it stacks up against the engines people usually weigh it against. This is opinion grounded in
+the source, not marketing; the user‑facing docs
 ([Language Reference](language-reference.md), [Architecture](architecture.md)) are the neutral
 reference.
 
 > **Confidence/caveats.** This is a read‑only assessment from the grammar, compiler, extensions,
 > and fixtures. Performance claims come from the repo's own benchmark
-> ([src/Templates.Performance](../src/Templates.Performance)); debuggability and source‑mapping
+> ([src/Heddle.Performance](../src/Heddle.Performance)); debuggability and source‑mapping
 > were reasoned about, not measured. Treat those two as informed inference.
->
-> **Naming note.** The project is slated to be renamed to **Heddle** (language, packages,
-> extension). This file uses the current names (TTL/Templater) and will be swept by that rename.
 
 ---
 
@@ -33,7 +30,7 @@ stacks, or teams wanting batteries‑included tooling.
 ## What it actually is (mechanics)
 
 - **Compiles to an execution‑ready document**, not to interpreted templates and not to a single
-  whole‑template assembly. `TtlCompiler` builds a `RuntimeDocument`/`IProcessStrategy` — a tree
+  whole‑template assembly. `HeddleCompiler` builds a `RuntimeDocument`/`IProcessStrategy` — a tree
   of extension instances wired to **compiled** value accessors.
 - **Member paths** (`@(A.B.C)`) compile to **expression‑tree delegates**
   (`System.Linq.Expressions`, `.Compile()`, null‑safe) — reflection only at compile time, never
@@ -75,7 +72,7 @@ own specialization, each checked. Uncommon and genuinely useful.
 ### 3. Composition without coupling
 Definition inheritance/override are *declarative extension points*, not forward dependencies.
 Unlike Razor sections — which bind "backwards," pinning the rendered page as the layout's final
-consumer — a TTL page can be split into independent templates recombined by a layout, any page
+consumer — a Heddle page can be split into independent templates recombined by a layout, any page
 can serve as a base for another, and (because it all compiles to one flat document)
 **composition costs nothing at render time**. This is the strongest practical differentiator.
 
@@ -91,7 +88,7 @@ Member access and embedded C# are checked at compile time, and rendering walks a
 document with no per‑call activation/section/DI overhead. On the repo's component‑heavy
 home‑page benchmark it renders **markedly faster than ASP.NET Core Razor (about double the
 throughput) with fewer allocations** — see [Architecture → Performance](architecture.md#performance-characteristics)
-and [src/Templates.Performance](../src/Templates.Performance). The win is structural (no
+and [src/Heddle.Performance](../src/Heddle.Performance). The win is structural (no
 per‑component partial/view‑component machinery), so it's largest on component‑dense pages and
 narrower on text‑heavy ones.
 
@@ -122,7 +119,7 @@ narrower on text‑heavy ones.
 - **Debuggability (inferred).** Embedded C# compiles via Roslyn and member access via
   expression trees; a broken expression likely won't map back to a template line as cleanly as
   an interpreted engine. Worth verifying before trusting in anger.
-- **Extension‑authoring floor.** Registering a Liquid/Scriban filter is a lambda; a TTL
+- **Extension‑authoring floor.** Registering a Liquid/Scriban filter is a lambda; a Heddle
   extension is a class with `InitStart` type negotiation (`ExType`), *both* `ProcessData` and
   `RenderData`, and `Scope` transforms. More powerful, but the simple case isn't simple.
 
@@ -130,27 +127,27 @@ narrower on text‑heavy ones.
 
 ## Versus competitors
 
-| | **TTL** | Razor | Liquid / Scriban | Handlebars / Mustache | Go `text/template` |
+| | **Heddle** | Razor | Liquid / Scriban | Handlebars / Mustache | Go `text/template` |
 | --- | --- | --- | --- | --- | --- |
 | Execution | Compiled to an exec‑ready document | Compiled | Interpreted | Interpreted | Interpreted |
 | Typing | **Static, per use site** | Static | Dynamic | Dynamic | Dynamic |
 | Logic in templates | Full C# (opt‑in) | Full C# | Sandboxed filters | Logic‑less + helpers | Limited + funcs |
 | Control flow | **Extensions (a library)** | Keywords | Tags | Block helpers | Keywords |
 | Context model | Relative: current / `::`root | Absolute (`Model.X`) | Mostly global | Relative stack | Relative (`.` / `$`) |
-| Composition | Definition inheritance + override | Layouts / sections / partials | Partials / includes | Partials | Templates / blocks |
+| Composition | Definition inheritance + override | Layouts / sections / partials | Partials / includes | Partials | Heddle / blocks |
 | Untrusted templates | No (or no‑C# mode) | No | **Yes (sandboxed)** | **Yes (logic‑less)** | Partial |
 | Reach / ecosystem | .NET only, small | .NET, excellent | Large | Large, polyglot | Large |
 
 Notes:
-- **vs Razor** — comparable expressive power (both compiled, full C#), but TTL's composition is
-  decoupled where Razor's sections are not, and TTL is faster on component‑heavy pages. Razor
+- **vs Razor** — comparable expressive power (both compiled, full C#), but Heddle's composition is
+  decoupled where Razor's sections are not, and Heddle is faster on component‑heavy pages. Razor
   wins decisively on tooling, debugging, and ecosystem.
-- **vs Liquid/Scriban** — those are sandboxed and safe for untrusted templates; TTL is not. TTL
+- **vs Liquid/Scriban** — those are sandboxed and safe for untrusted templates; Heddle is not. Heddle
   is compiled/typed where they are dynamic/interpreted.
-- **vs Handlebars/Mustache** — TTL's extensions ≈ helpers, but typed and compiled; those are
+- **vs Handlebars/Mustache** — Heddle's extensions ≈ helpers, but typed and compiled; those are
   dynamic, logic‑less, and polyglot.
 - **vs Go templates** — closest on the context model (`.`/`$` ≈ current/`::`), but Go is dynamic
-  and interpreted; TTL adds static typing and an inheritance/late‑binding composition model.
+  and interpreted; Heddle adds static typing and an inheritance/late‑binding composition model.
 - **vs T4** — same "compiled + full C#" idea, far cleaner composition.
 
 ---

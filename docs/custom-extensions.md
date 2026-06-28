@@ -4,19 +4,19 @@ Extensions are how you add new `@yourhelper(...)` directives to the language. Ev
 verb (`if`, `list`, `date`, …) is just an extension; yours work exactly the same way. This
 page covers the contract, the data flow, the attributes, and registration.
 
-The built‑ins in [src/Templates/Extensions](../src/Templates/Extensions) are the best worked
+The built‑ins in [src/Heddle/Extensions](../src/Heddle/Extensions) are the best worked
 examples — `IfExtension`, `ListExtension`, and `DateExtension` are referenced throughout.
 
 ---
 
 ## The contract
 
-An extension implements [`IExtension`](../src/Templates/Runtime/IExtension.cs), but you will
+An extension implements [`IExtension`](../src/Heddle/Runtime/IExtension.cs), but you will
 almost always derive from one of the base classes instead:
 
-- [`AbstractExtension`](../src/Templates/Core/AbstractExtension.cs) — the standard base. Emits
+- [`AbstractExtension`](../src/Heddle/Core/AbstractExtension.cs) — the standard base. Emits
   output as‑is.
-- [`AbstractHtmlExtension`](../src/Templates/Core/AbstractHtmlExtension.cs) — adds opt‑in HTML
+- [`AbstractHtmlExtension`](../src/Heddle/Core/AbstractHtmlExtension.cs) — adds opt‑in HTML
   encoding; override `ProcessDataInternal` / `RenderDataInternal` instead of the plain
   methods.
 
@@ -42,7 +42,7 @@ public interface IExtension : IDisposable
    types through a chain, so returning the right `ExType` matters. Call `base.InitStart(...)`
    to let the base compile your `{{ … }}` subtemplate (it stores it for later rendering).
 2. **`CompleteInit` (compile time, optional)** — for extensions that need a second pass
-   (e.g. [`PartialExtension`](../src/Templates/Extensions/PartialExtension.cs) compiles a
+   (e.g. [`PartialExtension`](../src/Heddle/Extensions/PartialExtension.cs) compiles a
    referenced template here, after the main pass).
 3. **`ProcessData` / `RenderData` (render time)** — called per render. Implement **both**:
    `RenderData` streams to `scope.Renderer` (the fast path), `ProcessData` returns a string
@@ -63,7 +63,7 @@ public interface IExtension : IDisposable
 
 ## The `Scope`
 
-At render time you read data from [`Scope`](../src/Templates/Data/Scope.cs) and write via its
+At render time you read data from [`Scope`](../src/Heddle/Data/Scope.cs) and write via its
 `Renderer`. The relevant fields:
 
 | Field | Meaning |
@@ -106,9 +106,9 @@ A `@upper(...)` extension that uppercases a string and HTML‑encodes the result
 
 ```csharp
 using System.Globalization;
-using Templates.Attributes;
-using Templates.Core;
-using Templates.Data;
+using Heddle.Attributes;
+using Heddle.Core;
+using Heddle.Data;
 
 namespace MyApp.Extensions
 {
@@ -141,14 +141,14 @@ namespace MyApp.Extensions
 
 Usage in a template: `@upper(Name)`.
 
-Compare with the real [`StringExtension`](../src/Templates/Extensions/StringExtension.cs) and
-[`DateExtension`](../src/Templates/Extensions/DateExtension.cs), which follow the same shape.
+Compare with the real [`StringExtension`](../src/Heddle/Extensions/StringExtension.cs) and
+[`DateExtension`](../src/Heddle/Extensions/DateExtension.cs), which follow the same shape.
 
 ---
 
 ## Attributes
 
-Declared in [src/Templates/Attributes](../src/Templates/Attributes):
+Declared in [src/Heddle/Attributes](../src/Heddle/Attributes):
 
 | Attribute | Target | Purpose |
 | --- | --- | --- |
@@ -172,10 +172,10 @@ in its own `import`/`partial` implementations.
 Two steps:
 
 1. **Export** the extension(s) from the assembly with the assembly‑level attribute
-   [`ExportExtensions`](../src/Templates/Attributes/ExportExtensionsAttribute.cs):
+   [`ExportExtensions`](../src/Heddle/Attributes/ExportExtensionsAttribute.cs):
 
    ```csharp
-   using Templates.Attributes;
+   using Heddle.Attributes;
 
    [assembly: ExportExtensions(typeof(MyApp.Extensions.UpperExtension))]
    // or export several:
@@ -185,13 +185,13 @@ Two steps:
    ```
 
    This is exactly how the MVC package registers its extensions — see the top of
-   [PartialMvcExtension.cs](../src/Templates.Mvc/Extensions/PartialMvcExtension.cs):
+   [PartialMvcExtension.cs](../src/Heddle.Mvc/Extensions/PartialMvcExtension.cs):
    `[assembly: ExportExtensions(typeof(PartialMvcExtension))]`.
 
 2. **Configure** the engine with your startup assembly so the export is discovered:
 
    ```csharp
-   TtlTemplate.Configure(typeof(Program).GetTypeInfo().Assembly);
+   HeddleTemplate.Configure(typeof(Program).GetTypeInfo().Assembly);
    ```
 
 `Configure` walks the given assembly and its references, so exporting from any referenced
@@ -206,7 +206,7 @@ shapes helps you recognise where a custom extension is the right tool:
 
 - **Escapers / encoders** — value transforms used in attributes and URLs, e.g. `@quote(Name)`
   (attribute‑safe text) or a stricter HTML encoder. These wrap a value and emit a string;
-  model the API on [`StringExtension`](../src/Templates/Extensions/StringExtension.cs).
+  model the API on [`StringExtension`](../src/Heddle/Extensions/StringExtension.cs).
 - **Asset / URL helpers** — e.g. `@asset_url(Image)` to map a path to a CDN URL (often combined
   with a literal suffix in the template: `@asset_url(Image).webp`). A value‑in, string‑out
   extension.

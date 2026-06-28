@@ -1,0 +1,1 @@
+java -jar "..\..\lib\antlr-4.13.1-complete.jar" -Dlanguage=JavaScript "HeddleLexer.g4" "HeddleParser.g4" -o "js" -lib "js" -package Heddle.Language

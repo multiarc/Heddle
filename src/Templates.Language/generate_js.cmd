@@ -1,1 +1,0 @@
-java -jar "..\..\lib\antlr-4.13.1-complete.jar" -Dlanguage=JavaScript "TtlLexer.g4" "TtlParser.g4" -o "js" -lib "js" -package Templates.Language

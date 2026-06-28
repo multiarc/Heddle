@@ -1,12 +1,12 @@
 # Built‑in Extensions
 
-Extensions are the verbs of TTL: every `@name(...)` directive invokes an extension. This page
-documents the extensions bundled with the `Templates` assembly. Each entry lists the name
+Extensions are the verbs of Heddle: every `@name(...)` directive invokes an extension. This page
+documents the extensions bundled with the `Heddle` assembly. Each entry lists the name
 (`[ExtensionName]`), the expected input type (`[DataType]`, when declared), whether the output
 is HTML‑encoded, and what the optional parameter / subtemplate mean.
 
 All names and attributes below were read directly from
-[src/Templates/Extensions](../src/Templates/Extensions). To write your own, see
+[src/Heddle/Extensions](../src/Heddle/Extensions). To write your own, see
 [Writing Custom Extensions](custom-extensions.md).
 
 ## How to read these entries
@@ -29,13 +29,13 @@ All names and attributes below were read directly from
 ## Conditionals
 
 ### `if`
-[IfExtension.cs](../src/Templates/Extensions/IfExtension.cs) · input: `bool` (or any object)
+[IfExtension.cs](../src/Heddle/Extensions/IfExtension.cs) · input: `bool` (or any object)
 
 Renders its subtemplate when the condition is truthy. A `null` model renders nothing; a
 `bool` model renders the body only when `true`; a non‑bool, non‑null model is treated as
 present (renders the body).
 
-```ttl
+```heddle
 @if(IsFeatured){{ <span class="badge">Featured</span> }}
 @if(@model.Comments.Count > 0){{ <h3>Comments</h3> }}
 ```
@@ -47,12 +47,12 @@ only when `Summary` is set. The body runs in the caller's context (see
 it still refers to the surrounding model.
 
 ### `ifnot`
-[IfNotExtension.cs](../src/Templates/Extensions/IfNotExtension.cs) · input: `bool` (or `null`)
+[IfNotExtension.cs](../src/Heddle/Extensions/IfNotExtension.cs) · input: `bool` (or `null`)
 
 The inverse of `if`. Renders its body when the model is `null` or `false`. A non‑bool,
 non‑null model renders nothing — so `@ifnot(member)` is the idiomatic "if absent" check.
 
-```ttl
+```heddle
 @ifnot(IsFeatured){{ <span class="muted">Regular post</span> }}
 @ifnot(Summary){{ <p class="muted">No summary yet.</p> }}
 ```
@@ -65,14 +65,14 @@ non‑null model renders nothing — so `@ifnot(member)` is the idiomatic "if ab
 ## Iteration
 
 ### `list`
-[ListExtension.cs](../src/Templates/Extensions/ListExtension.cs) · input: `IEnumerable`
+[ListExtension.cs](../src/Heddle/Extensions/ListExtension.cs) · input: `IEnumerable`
 
 Renders its subtemplate once per element; inside the body the current model is the element,
 and an `int` index is available as the chained value. Works with both `dynamic` sequences and
 strongly‑typed `IEnumerable<T>` (the element type is inferred for typed member access). When
 the source implements `ICollection<T>`, the count is used to pre‑size the output buffer.
 
-```ttl
+```heddle
 @list(Articles){{ @article_card() }}                @* each element is an Article *@
 
 @list(Tags){{ <span class="tag">@()</span> }}       @* @() is the current tag string *@
@@ -81,14 +81,14 @@ the source implements `ICollection<T>`, the count is used to pre‑size the outp
 ```
 
 ### `for`
-[ForIndexExtension.cs](../src/Templates/Extensions/ForIndexExtension.cs) · input: `ForModel`
+[ForIndexExtension.cs](../src/Heddle/Extensions/ForIndexExtension.cs) · input: `ForModel`
 
 A counted loop. The model is a `ForModel { Start?, Last, Step? }`
-([Templates.Models](../src/Templates/Models)); it iterates `i = Start (default 0)` while
+([Heddle.Models](../src/Heddle/Models)); it iterates `i = Start (default 0)` while
 `i < Last`, incrementing by `Step` (default 1). The loop index is exposed to the body as the
 chained value (referenceable as `chained` in embedded C#).
 
-```ttl
+```heddle
 @for(@new ForModel() { Last = model.Articles.Count(), Step = 3 })
 {{
   <div class="row">
@@ -107,66 +107,66 @@ These all derive from `AbstractHtmlExtension` and are `[EncodeOutput]` (except `
 optional body is the **format string**.
 
 ### `date`
-[DateExtension.cs](../src/Templates/Extensions/DateExtension.cs) · input: `DateTime` · HTML‑encoded
+[DateExtension.cs](../src/Heddle/Extensions/DateExtension.cs) · input: `DateTime` · HTML‑encoded
 
 Formats a `DateTime` using the body as a .NET date format string (default `"d"`), with
 `CultureInfo.InvariantCulture`.
 
-```ttl
+```heddle
 @date(PublishedOn){{ MMMM d, yyyy }}     @* e.g. June 28, 2026 *@
 @date(PublishedOn)                       @* default short date *@
 ```
 
 ### `time`
-[TimeExtension.cs](../src/Templates/Extensions/TimeExtension.cs) · input: `DateTime` · HTML‑encoded
+[TimeExtension.cs](../src/Heddle/Extensions/TimeExtension.cs) · input: `DateTime` · HTML‑encoded
 
 Like `date` but defaults to the `"t"` (short time) format.
 
-```ttl
+```heddle
 @time(PublishedOn){{ HH:mm }}
 ```
 
 ### `int`
-[IntegerExtension.cs](../src/Templates/Extensions/IntegerExtension.cs) · input: `int` / `long` · HTML‑encoded
+[IntegerExtension.cs](../src/Heddle/Extensions/IntegerExtension.cs) · input: `int` / `long` · HTML‑encoded
 
 Formats an integer; the body is an optional numeric format string. Other numeric types are
 converted to `long` when possible (invariant culture); non‑convertible values render empty.
 
-```ttl
+```heddle
 @int(Year)                          @* 2026 *@
 @int(@model.Comments.Count){{ 0:N0 }}   @* 1,200 *@
 ```
 
 ### `money`
-[MoneyExtension.cs](../src/Templates/Extensions/MoneyExtension.cs) · input: `decimal` · HTML‑encoded
+[MoneyExtension.cs](../src/Heddle/Extensions/MoneyExtension.cs) · input: `decimal` · HTML‑encoded
 
 Formats a `decimal` as currency (`"c"`). The body is an optional **culture name**; with no
 body the current culture is used. Cultures are cached.
 
-```ttl
+```heddle
 @money(@9.99m){{ en-US }}    @* $9.99 — body is the culture name *@
 @money(@1234.5m)             @* current culture *@
 ```
 
 ### `guid`
-[GuidExtension.cs](../src/Templates/Extensions/GuidExtension.cs) · input: `Guid` · *not* encoded
+[GuidExtension.cs](../src/Heddle/Extensions/GuidExtension.cs) · input: `Guid` · *not* encoded
 
 Formats a `Guid`; the body is an optional .NET GUID format specifier (`N`, `D`, `B`, `P`,
 `X`).
 
-```ttl
+```heddle
 @guid(@System.Guid.NewGuid()){{N}}   @* 32 digits, no dashes *@
 @guid(@System.Guid.NewGuid())        @* default format *@
 ```
 
 ### `string`
-[StringExtension.cs](../src/Templates/Extensions/StringExtension.cs) · input: `string` (or any) · HTML‑encoded
+[StringExtension.cs](../src/Heddle/Extensions/StringExtension.cs) · input: `string` (or any) · HTML‑encoded
 
 Converts the model to a string. The optional body is a **default/fallback** rendered when the
 model is `null`. Non‑string models are converted with `Convert.ChangeType` (invariant
 culture), falling back to `ToString()`.
 
-```ttl
+```heddle
 @string(Title)
 @string(Author.Name){{ Anonymous }}    @* fallback when Author.Name is null *@
 ```
@@ -176,7 +176,7 @@ culture), falling back to `ToString()`.
 ## Output and context
 
 ### Empty / unnamed
-[EmptyExtension.cs](../src/Templates/Extensions/EmptyExtension.cs) · name: `""`
+[EmptyExtension.cs](../src/Heddle/Extensions/EmptyExtension.cs) · name: `""`
 
 The extension with the empty name backs the unnamed call form `@(...)`. If it has a body it
 renders the body; otherwise it stringifies the current model (or empty when `null`). This is
@@ -186,23 +186,23 @@ the workhorse behind `@(Title)`, `@()`, etc.
 > [`string`](#string) (or `html` below).
 
 ### `html`
-[EmptyHtmlExtension.cs](../src/Templates/Extensions/EmptyHtmlExtension.cs) · name: `html` · HTML‑encoded
+[EmptyHtmlExtension.cs](../src/Heddle/Extensions/EmptyHtmlExtension.cs) · name: `html` · HTML‑encoded
 
 Same behavior as the empty extension, but HTML‑encodes its output (`[EncodeOutput]`). Use it
 when you want the "just stringify the value" behavior *with* encoding.
 
-```ttl
+```heddle
 @html(UserSuppliedText)
 ```
 
 ### `out`
-[OutExtension.cs](../src/Templates/Extensions/OutExtension.cs) · name: `out`
+[OutExtension.cs](../src/Heddle/Extensions/OutExtension.cs) · name: `out`
 
 Emits the **chained** value — i.e. the data handed to the current definition/call. With no
 body it renders the chained value directly; with a body it renders that body against the
 chained data. This is how a definition surfaces the caller's inline content.
 
-```ttl
+```heddle
 <article_card>
 {{ <article><h2>@(Title)</h2>@out()</article> }}    @* @out() drops in the caller's body *@
 ```
@@ -212,13 +212,13 @@ central `@out()`, and each page supplies the content. See
 [Language Reference → composition](language-reference.md#inheritance-and-override-childbase).
 
 ### `swap`
-[SwapExtension.cs](../src/Templates/Extensions/SwapExtension.cs) · name: `swap`
+[SwapExtension.cs](../src/Heddle/Extensions/SwapExtension.cs) · name: `swap`
 
 Swaps the model and chained values for the duration of its body — useful when an extension
 chain produced a value you now want to treat as the model.
 
 ### `param`
-[ParamExtension.cs](../src/Templates/Extensions/ParamExtension.cs) · name: `param`
+[ParamExtension.cs](../src/Heddle/Extensions/ParamExtension.cs) · name: `param`
 
 Passes the model through unchanged as the chain value (a no‑op renderer that yields the
 current model as the chained input of the call to its left).
@@ -230,29 +230,29 @@ current model as the chained input of the call to its left).
 These configure compilation; they emit nothing.
 
 ### `model`
-[ModelExtension.cs](../src/Templates/Extensions/ModelExtension.cs) · name: `model`
+[ModelExtension.cs](../src/Heddle/Extensions/ModelExtension.cs) · name: `model`
 
 Declares the document's model type from *within the template* (instead of in C# code). The
 body is a type name resolved against the imported namespaces; `dynamic` is allowed.
 
-```ttl
+```heddle
 @model(){{Blog}}
 @model(){{dynamic}}
 ```
 
 ### `using`
-[UsingExtension.cs](../src/Templates/Extensions/UsingExtension.cs) · name: `using`
+[UsingExtension.cs](../src/Heddle/Extensions/UsingExtension.cs) · name: `using`
 
 Imports a C# namespace so that type names (in `@model()`, `:: Type`) and embedded C# can
 resolve unqualified identifiers.
 
-```ttl
+```heddle
 @using(){{System.Linq}}
 @using(){{MyBlog.Models}}
 ```
 
 ### `import`
-[ImportExtension.cs](../src/Templates/Extensions/ImportExtension.cs) · name: `import`
+[ImportExtension.cs](../src/Heddle/Extensions/ImportExtension.cs) · name: `import`
 
 Compile‑time include: reads another template file (relative to `RootPath`) and parses its
 **definitions** into the current parse context. This is the extension behind the
@@ -263,19 +263,19 @@ Compile‑time include: reads another template file (relative to `RootPath`) and
 ## Embedding whole templates
 
 ### `partial`
-[PartialExtension.cs](../src/Templates/Extensions/PartialExtension.cs) · name: `partial`
+[PartialExtension.cs](../src/Heddle/Extensions/PartialExtension.cs) · name: `partial`
 
 Compiles a **separate** template by name (its body is the template name) and renders that
 template's output inline at run time, passing the current model and chained data. Unlike
 `import`, a partial produces output.
 
-```ttl
+```heddle
 @partial(){{ sidebar }}      @* compiles & renders the "sidebar" template by name *@
 ```
 
 The body (`sidebar`) names a separate template file the engine compiles and renders inline,
 passing the current model. In ASP.NET Core MVC, partial resolution is specialized by
-[`PartialMvcExtension`](../src/Templates.Mvc/Extensions/PartialMvcExtension.cs) — see
+[`PartialMvcExtension`](../src/Heddle.Mvc/Extensions/PartialMvcExtension.cs) — see
 [MVC Integration](mvc-integration.md).
 
 ---
@@ -305,8 +305,8 @@ passing the current model. In ASP.NET Core MVC, partial resolution is specialize
 | `partial` | PartialExtension | model | – | template name to render |
 
 > The MVC package overrides `import` with
-> [`ImportMvcExtension`](../src/Templates.Mvc/Extensions/UseMvcExtension.cs) and adds an MVC
-> partial. Whichever assembly you pass to `TtlTemplate.Configure` determines which set is
+> [`ImportMvcExtension`](../src/Heddle.Mvc/Extensions/UseMvcExtension.cs) and adds an MVC
+> partial. Whichever assembly you pass to `HeddleTemplate.Configure` determines which set is
 > active; a later `[ExtensionName(...)]` registration replaces an earlier one of the same name.
 
 ---
@@ -322,7 +322,7 @@ Encoding is decided **per extension**, not globally:
   their text **as‑is**.
 - The **`[NotEncode]`** attribute, applied to a *model property*, marks that property's value
   as pre‑trusted so it is not encoded even when flowing through an encoding extension. See
-  [src/Templates/Attributes/NotEncodeAttribute.cs](../src/Templates/Attributes/NotEncodeAttribute.cs).
+  [src/Heddle/Attributes/NotEncodeAttribute.cs](../src/Heddle/Attributes/NotEncodeAttribute.cs).
 
 To emit user‑controlled text safely, prefer `@string(...)` or `@html(...)` over the bare
 `@(...)` form.

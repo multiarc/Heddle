@@ -1,12 +1,12 @@
-# Language Reference (TTL)
+# Language Reference (Heddle)
 
-This is the complete reference for the Templater template language. Every construct below is
-grounded in the ANTLR grammar — [TtlLexer.g4](../src/Templates.Language/TtlLexer.g4) (tokens)
-and [TtlParser.g4](../src/Templates.Language/TtlParser.g4) (rules) — and illustrated with
+This is the complete reference for the Heddle template language. Every construct below is
+grounded in the ANTLR grammar — [HeddleLexer.g4](../src/Heddle.Language/HeddleLexer.g4) (tokens)
+and [HeddleParser.g4](../src/Heddle.Language/HeddleParser.g4) (rules) — and illustrated with
 clear, self‑contained examples built around one small model (see
 [below](#the-model-used-in-these-examples)). The examples are written to teach; for real,
 runnable templates that exercise edge cases, see the test fixtures in
-[src/Templates.Tests/TestTemplate](../src/Templates.Tests/TestTemplate).
+[src/Heddle.Tests/TestTemplate](../src/Heddle.Tests/TestTemplate).
 
 > Delimiters at a glance: `@% … %@` wraps definition blocks and `{{ … }}` wraps bodies /
 > subtemplates. For terse design notes in the same (current) syntax, see
@@ -40,7 +40,7 @@ runnable templates that exercise edge cases, see the test fixtures in
 
 ## Mental model
 
-A TTL document ([`ttl`](../src/Templates.Language/TtlParser.g4) rule) is a sequence of:
+A Heddle document ([`heddle`](../src/Heddle.Language/HeddleParser.g4) rule) is a sequence of:
 
 - **text** — literal output, copied verbatim;
 - **output blocks** — `@…` directives that call *extensions* and emit their results;
@@ -57,8 +57,8 @@ Everything special starts with `@`. Plain text never needs escaping unless it co
 > **Notation.** The "shape" boxes below use a simplified syntax, not the real grammar:
 > `[ x ]` = optional, `( x )*` = zero or more, `a | b` = either, and literal symbols
 > (`@`, `{{`, `:`, `::`, …) are written as you'd type them. For the exact rules see the
-> authoritative [TtlLexer.g4](../src/Templates.Language/TtlLexer.g4) /
-> [TtlParser.g4](../src/Templates.Language/TtlParser.g4).
+> authoritative [HeddleLexer.g4](../src/Heddle.Language/HeddleLexer.g4) /
+> [HeddleParser.g4](../src/Heddle.Language/HeddleParser.g4).
 
 ### The model used in these examples
 
@@ -78,7 +78,7 @@ So the root model is a `Blog`; inside `@list(Articles){{ … }}` the current mod
 
 ### Two ideas to know up front
 
-If you are coming from Razor, two of TTL's design choices will surprise you. Both are
+If you are coming from Razor, two of Heddle's design choices will surprise you. Both are
 deliberate, and both are what make templates compose:
 
 - **Context is relative, not absolute.** A member path `@(Title)` is resolved against the
@@ -89,7 +89,7 @@ deliberate, and both are what make templates compose:
   [`::`](#root-reference-member); the full picture is in
   [Context and data flow](#context-and-data-flow).
 
-- **Templates are abstract by default; types bind late.** A definition written **without**
+- **Heddle are abstract by default; types bind late.** A definition written **without**
   `:: Type` has no fixed model type — it is a *polymorphic section*. Its real type is bound
   when it's actually used (compiled against whatever concrete model reaches that call site) or
   when an inheriting definition narrows it with `:: Type`. This is closer to a **C++ template**
@@ -129,7 +129,7 @@ Unicode is fully supported — `<h1>Café — Привет!</h1>` renders as wri
 
 The only special character is **`@`**. To emit a literal `@`, double it: **`@@`**:
 
-```ttl
+```heddle
 <p>Reach us at support@@example.com</p>      @* outputs: support@example.com *@
 ```
 
@@ -166,7 +166,7 @@ current value — so `@(Title)` prints the title and `@()` prints the current va
 
 Examples:
 
-```ttl
+```heddle
 <h1>@(Title)</h1>                       @* a member value (Blog.Title) *@
 <p>Est. @(@model.Year - 1) — present</p>  @* a C# expression *@
 <p>@string(Title)</p>                   @* the "string" extension: stringify + HTML-encode *@
@@ -179,7 +179,7 @@ Give the **unnamed** call both a parameter *and* a body, and it renders the body
 current model set to `expr` — an inline way to "zoom in" on a value without declaring a
 definition:
 
-```ttl
+```heddle
 @(Author)
 {{
   <span class="byline">@(Name) &lt;@(Email)&gt;</span>   @* model here is the Author *@
@@ -190,7 +190,7 @@ Inside the block, `@(Name)`/`@(Email)` resolve against `Author`. It is the light
 counterpart to [passing a value into a definition](#passing-the-current-value-into-a-call), and
 it pairs well with a C# expression — e.g. render markup for just the last item of a list:
 
-```ttl
+```heddle
 @(@model.Articles.LastOrDefault())
 {{
   <li class="last">@(Title)</li>
@@ -210,7 +210,7 @@ member-path = [::] name ( . name )*
 
 A member expression is a dotted path of identifiers resolved against the current model:
 
-```ttl
+```heddle
 @(Title)                @* current model's Title *@
 @(Author.Name)          @* nested property access *@
 @(Author.Email)         @* …any depth *@
@@ -229,7 +229,7 @@ Prefix a member path with `::` to read from the **root** model — the value ori
 to `Generate` — regardless of how deeply nested the current scope is. This is what lets you
 reach page‑level data (the site title, the current year, a culture) from inside a loop.
 
-```ttl
+```heddle
 @list(Articles)
 {{
   <article>
@@ -282,7 +282,7 @@ against the *current* model and becomes the *new* current model inside the body.
 and formatters are the exception — see [Stepping back](#stepping-back-the-parent-context).)
 Nesting these calls walks you down the object graph:
 
-```ttl
+```heddle
 @* current model = Blog *@
 @list(Articles)
 {{
@@ -307,7 +307,7 @@ current model; it doesn't change which model is current.
 This is the everyday way data flows down: you **take a value from the current context and pass
 it in** as a call's parameter.
 
-```ttl
+```heddle
 @list(Articles)
 {{
   @author_badge(Author)      @* hand this article's Author to a definition *@
@@ -335,7 +335,7 @@ on the kind of call**:
   `@int`, `@money`, `@guid`, `@string`) and `@for` — treat their parameter as a *value to test
   or format*, not a new model, so their body **steps one level back to the caller's context**:
 
-```ttl
+```heddle
 @list(Articles)
 {{
   @* current model = one Article *@
@@ -367,7 +367,7 @@ can write in a member expression (no `..`), and the automatic
 [`::`](#root-reference-member) is the escape hatch that jumps straight back to the original
 model from any depth:
 
-```ttl
+```heddle
 @list(Articles){{ <a href="/">← @(::Title)</a> }}   @* Blog.Title, from inside the loop *@
 ```
 
@@ -388,7 +388,7 @@ A **chained** value flows alongside the model, independently of it:
 In [embedded C#](#embedded-c-expressions) the three channels are simply the identifiers
 `model`, `root`, and `chained`:
 
-```ttl
+```heddle
 @for(@new ForModel(){ Last = model.Articles.Count(), Step = 3 })
 {{
   @* model = the Blog (the for body keeps the outer model); chained = the loop index *@
@@ -404,7 +404,7 @@ extensions — see [`Scope`](csharp-api.md#scope-the-data-view-during-rendering)
 ## Embedded C# expressions
 
 Inside a call's parentheses, an inner **`@`** switches the lexer into C# mode (`CS` mode,
-[TtlLexer.g4](../src/Templates.Language/TtlLexer.g4)), so the rest of the parameter is parsed
+[HeddleLexer.g4](../src/Heddle.Language/HeddleLexer.g4)), so the rest of the parameter is parsed
 as a real C# expression and compiled by Roslyn. This requires
 `TemplateOptions.AllowCSharp = true`.
 
@@ -412,7 +412,7 @@ Supported forms include literals, member access, method calls, LINQ, lambdas, an
 initializers. Nested parentheses are handled (the lexer balances `(`/`)` within the
 expression):
 
-```ttl
+```heddle
 @(@model.Title.ToUpper())                            @* method call *@
 @(@model.PublishedOn.Year)                           @* member of a member *@
 @list(@model.Articles.Where(a => a.IsFeatured))      @* LINQ + lambda *@
@@ -447,7 +447,7 @@ def         = < name [: base] >  [ -> chain ]  {{ body }}  [ :: Type ]
 
 Anatomy of one definition — an `article_card` component:
 
-```ttl
+```heddle
 @%
   <article_card>             @* name, wrapped in < > *@
   {{                         @* body (subtemplate) *@
@@ -467,7 +467,7 @@ subtemplate**, so a call's body can introduce local definitions before using the
 Invoking a definition — pass it a model, and optionally a `{{ … }}` body that it surfaces via
 `@out()`:
 
-```ttl
+```heddle
 @list(Articles)
 {{
   @article_card()           @* model = the current Article *@
@@ -493,7 +493,7 @@ nothing but definitions still produces output.)
 < name >  -> chain  {{ body }}
 ```
 
-```ttl
+```heddle
 @%
   <article_list> -> (Articles)        @* the -> makes this render automatically *@
   {{
@@ -522,7 +522,7 @@ A trailing `:: Type` strongly types a definition's model. The type name is resol
 the namespaces brought in by [`@using()`](built-in-extensions.md#using) (and the model
 type’s own assembly).
 
-```ttl
+```heddle
 <article_card>
 {{ … }} :: Article                       @* a concrete type *@
 
@@ -539,7 +539,7 @@ types (e.g. `Article`, `ICollection<Article>`) enable compile‑time member chec
 access.
 
 Generic and array type names are recognized by the lexer's type rule
-(`ID_TYPE`, [TtlLexer.g4](../src/Templates.Language/TtlLexer.g4)), which accepts
+(`ID_TYPE`, [HeddleLexer.g4](../src/Heddle.Language/HeddleLexer.g4)), which accepts
 `Namespace.Type<T1, T2>[]` forms.
 
 ### Abstract definitions and late type binding
@@ -553,7 +553,7 @@ with **no `:: Type`** is *abstract* — it has no fixed model type. Its type is 
 - **When it's narrowed by inheritance.** An inheriting definition can pin the type with
   `:: Type` (see [Inheritance](#inheritance-and-override-childbase)).
 
-```ttl
+```heddle
 @%
   <panel>                                  @* no :: Type → abstract / polymorphic *@
   {{ <section class="panel"><h3>@(Title)</h3>@out()</section> }}
@@ -592,7 +592,7 @@ A definition can inherit from another by name using `:`:
 < child : base >
 ```
 
-```ttl
+```heddle
 <featured_card:article_card>     @* featured_card inherits article_card *@
 {{
   <div class="featured">
@@ -606,7 +606,7 @@ A definition can inherit from another by name using `:`:
 **Full override.** Re‑declaring an existing name as `<name:name>` replaces that definition
 from that point onward:
 
-```ttl
+```heddle
 <article_card:article_card>
 {{ <article class="compact">@(Title)</article> }}
 ```
@@ -619,7 +619,7 @@ again with the new look — without touching the call sites.
 [abstract definition](#abstract-definitions-and-late-type-binding) gets pinned down. A child's
 type must be **assignable to** its base's type; otherwise compilation fails with *"The new
 definition type &lt;X&gt; isn't assignable to base &lt;Y&gt;"*
-([TtlCompiler.WalkValidateDefinitionType](../src/Templates/Runtime/TtlCompiler.cs)). Two
+([HeddleCompiler.WalkValidateDefinitionType](../src/Heddle/Runtime/HeddleCompiler.cs)). Two
 consequences:
 
 - If the base is **abstract** (no `:: Type`, i.e. `object`), a child may narrow it to **any**
@@ -631,8 +631,8 @@ consequences:
 extension points*, not forward dependencies. A layout exposes named regions and any page
 supplies or overrides them. Put the layout in its own file:
 
-```ttl
-@* layout.ttl — a reusable shell *@
+```heddle
+@* layout.heddle — a reusable shell *@
 @%
   <sidebar>{{ <aside>Recent posts…</aside> }}
   <layout>
@@ -651,9 +651,9 @@ supplies or overrides them. Put the layout in its own file:
 
 Then a page imports it and overrides only what it needs:
 
-```ttl
-@* home.ttl *@
-@<<{{ layout.ttl }}            @* pull in the layout + sidebar definitions *@
+```heddle
+@* home.heddle *@
+@<<{{ layout.heddle }}            @* pull in the layout + sidebar definitions *@
 @%
   <sidebar:sidebar>           @* this page wants a different sidebar *@
   {{ <aside>Welcome, subscriber!</aside> }}
@@ -668,10 +668,10 @@ Then a page imports it and overrides only what it needs:
 This is the direct equivalent of Razor's `@RenderSection`/`@RenderBody`, but **without Razor's
 directionality**: in Razor a page *declares* sections that the layout consumes, so the
 rendered entry point must be the final page and a page can't easily become a base for another.
-In TTL the relationship is symmetric — `layout` knows nothing about `home`, any template that
+In Heddle the relationship is symmetric — `layout` knows nothing about `home`, any template that
 exposes regions can serve as a base for anything, and because it all compiles into a single
 execution‑ready document, **this composition costs nothing at render time**. (The
-[performance benchmark](../src/Templates.Performance) uses exactly this `home` + `layout`
+[performance benchmark](../src/Heddle.Performance) uses exactly this `home` + `layout`
 shape.) See [Architecture → Performance](architecture.md#performance-characteristics).
 
 ---
@@ -690,7 +690,7 @@ nested definitions, imports, and raw blocks — to any depth. A call hands its s
 its extension; `@list(Articles){{ … }}`, for instance, renders its body once per element with
 the element as the current model:
 
-```ttl
+```heddle
 @list(Articles)
 {{
   <li>
@@ -715,7 +715,7 @@ So a chain nests like function composition — `@a():b():c()` makes `a` the oute
 `b` around `c`: `c` runs first, its output is handed to `b`, `b`'s output is handed to `a`, and
 `a` renders. For example:
 
-```ttl
+```heddle
 @%
   <heading>  {{ <h2>@out()</h2> }}        @* wraps its chained content in <h2> *@
   <emphasis> {{ <em>@(Title)</em> }}
@@ -739,7 +739,7 @@ produced), and `@swap()` exchanges the model and chained values for the duration
 Definitions may call themselves, which is the natural way to render trees — like a threaded
 comment list, where each `Comment` has `Replies` that are themselves `Comment`s:
 
-```ttl
+```heddle
 @%
   <comment>
   {{
@@ -771,13 +771,13 @@ parse, so you can share a library of definitions across templates.
 @<< {{ path/to/file }}
 ```
 
-```ttl
-@<<{{ layout.ttl }}
+```heddle
+@<<{{ layout.heddle }}
 ```
 
 The path between `{{ }}` is resolved relative to `TemplateOptions.RootPath`. Imports are
 handled by the [`import` extension](built-in-extensions.md#import) machinery
-([ImportExtension.cs](../src/Templates/Extensions/ImportExtension.cs)), which re‑parses the
+([ImportExtension.cs](../src/Heddle/Extensions/ImportExtension.cs)), which re‑parses the
 referenced file into the current parse context.
 
 > **`@<<` vs `@partial()`.** `@<<` / `@import` pull in *definitions* at compile time (no
@@ -797,7 +797,7 @@ Comments are removed during lexing (routed to a hidden channel) and never appear
 
 Comments may appear almost anywhere — including **inside other tokens**:
 
-```ttl
+```heddle
 <h2>@(Title)</h2>@* the article headline *@
 @if(@* featured only *@ @model.IsFeatured){{ <span class="badge">★</span> }}
 <a href="/po@* even mid-word *@sts">Posts</a>
@@ -820,13 +820,13 @@ Raw regions are emitted **verbatim** and are not parsed for directives.
 - **Block** `@{ … }@` — everything between the delimiters is literal. Handy for emitting code
   samples or text full of characters that would otherwise be parsed:
 
-  ```ttl
+  ```heddle
   <pre>@{ Use @(Title) and {{ … }} in a template — none of this is evaluated. }@</pre>
   ```
 
 - **Line** `@: …` — everything to the end of the line is literal:
 
-  ```ttl
+  ```heddle
   @: Raw line: @(Title) and @if() are printed verbatim, exactly as typed.
   ```
 
@@ -848,14 +848,14 @@ line, to suppress the trailing newline.
 Declaration lines that should produce no output of their own are a common place for it — end
 them with `@\` so they don't leave a blank line behind:
 
-```ttl
+```heddle
 @using(){{System.Linq}}@\
 @model(){{Blog}}@\
 <h1>@(Title)</h1>
 ```
 
 Without the `@\`, each `@using`/`@model` line would emit its trailing newline. Whitespace that
-is *not* trimmed is preserved exactly — TTL is whitespace‑significant, so the spaces and
+is *not* trimmed is preserved exactly — Heddle is whitespace‑significant, so the spaces and
 newlines you write around directives appear in the output as written.
 
 > In practice, HTML templates rarely need `@\` — browsers collapse insignificant whitespace, so
@@ -866,9 +866,9 @@ newlines you write around directives appear in the output as written.
 
 ## How the lexer reads a template (modes)
 
-TTL is context‑sensitive: the same characters mean different things depending on where they
+Heddle is context‑sensitive: the same characters mean different things depending on where they
 appear. The ANTLR lexer implements this with a stack of **modes**
-([TtlLexer.g4](../src/Templates.Language/TtlLexer.g4)). Understanding the modes explains why,
+([HeddleLexer.g4](../src/Heddle.Language/HeddleLexer.g4)). Understanding the modes explains why,
 for example, `}}` ends a subtemplate but is plain text elsewhere.
 
 | Mode | Entered when | Role | Notable exits |

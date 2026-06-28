@@ -1,9 +1,9 @@
-Templater (TTL) — language working notes
+Heddle (Heddle) — language working notes
 =========================================
 
 Terse working notes on the *current* language. The full, worked reference lives under docs/
 (start at docs/README.md, then docs/language-reference.md). If anything here disagrees with the
-ANTLR grammar (src/Templates.Language/TtlLexer.g4 + TtlParser.g4), the grammar wins.
+ANTLR grammar (src/Heddle.Language/HeddleLexer.g4 + HeddleParser.g4), the grammar wins.
 
 
 Delimiters
@@ -65,7 +65,7 @@ Late type binding (abstract definitions)
     (re-substitute the concrete model per call site + check it there, no constraints), NOT C#
     generics (compiled once behind constraints, abstracted away, not late-bound). It is also
     not :: dynamic, which defers member resolution to the runtime binder.
-  - Type rule — see TtlCompiler.WalkValidateDefinitionType:
+  - Type rule — see HeddleCompiler.WalkValidateDefinitionType:
       a child type must be assignable to its base type.
       * abstract (object) base  -> may be narrowed to ANY concrete type;
       * typed base              -> children may only narrow to assignable types;
@@ -122,10 +122,10 @@ Layout via named regions + @out():
 
   @base(){{ ...page content; lands at @out()... }}
 
-Composition across files (base layout lives in base.ttl):
+Composition across files (base layout lives in base.heddle):
 
-  @* page.ttl *@
-  @<<{{ base.ttl }}            @* import the base layout + its regions *@
+  @* page.heddle *@
+  @<<{{ base.heddle }}            @* import the base layout + its regions *@
   @%
     <header:header>            @* override only what this page changes *@
     {{ ...custom header... }}

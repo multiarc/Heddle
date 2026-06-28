@@ -45,7 +45,7 @@ stages:
               SonarQube: 'SonarQube'
               scannerMode: 'MSBuild'
               projectKey: 'BaseLibs_Templater_AYyrNrQoIK_nuPwRwoHC'
-              projectName: 'Templater'
+              projectName: 'Heddle'
               extraProperties: |
                 sonar.cs.opencover.reportsPaths=$(Agent.BuildDirectory)/**/TestResults/**/*.opencover.xml
                 sonar.cs.vstest.reportsPaths=$(Agent.BuildDirectory)/**/TestResults/*.trx

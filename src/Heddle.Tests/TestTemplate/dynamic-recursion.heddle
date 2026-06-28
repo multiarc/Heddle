@@ -1,0 +1,91 @@
+﻿@using(){{Heddle.Tests.Data}}
+@using(){{System.Collections.Generic}}
+@model(){{dynamic}}
+@%
+<category>
+{{
+	@(ComplexObject.Data.Text)
+    @if(@model.SubCategories.Count>0)
+    {{
+        <ul class="drop-menu sub-menu collapsed">
+        @list(SubCategories)
+        {{
+            <li>
+                @if(@model.SubCategories.Count>0)
+                {{
+                <a class="trigger" href="#">@(Name)</a>
+                }}
+                @if(@model.SubCategories.Count==0)
+                {{
+                <a href="@(Name)">@(Name)</a>
+                }}
+				@(@root.Count) C# Test
+				@(::Count) Model Access Test
+                @category()
+            </li>
+        }}
+        </ul>
+    }}
+}} :: DynamicCategory
+
+<dynamic_category>
+{{
+	@(ComplexObject.Data.Text)
+    @if(@model.SubCategories.Count>0)
+    {{
+        <ul class="drop-menu sub-menu collapsed">
+        @list(SubCategories)
+        {{
+            <li>
+                @if(@model.SubCategories.Count>0)
+                {{
+                <a class="trigger" href="#">@(Name)</a>
+                }}
+                @if(@model.SubCategories.Count==0)
+                {{
+                <a href="@(Name)">@(Name)</a>
+                }}
+                @category()
+            </li>
+        }}
+        </ul>
+    }}
+}}
+
+<dynamic_left> -> ()
+{{
+ <div class="left-content-pane">
+     <strong>ARTICLES BY TOPIC</strong>
+        <br/>
+        <br/>
+        <ul class="drop-menu">
+            @list()
+            {{
+                <li>
+                    <a class="trigger" href="#">@(Name)</a>
+					@dynamic_category()
+                </li>
+            }}
+        </ul>
+ </div>
+}}
+
+<left> -> ()
+{{
+ <div class="left-content-pane">
+     <strong>ARTICLES BY TOPIC</strong>
+        <br/>
+        <br/>
+        <ul class="drop-menu">
+            @list()
+            {{
+                <li>
+                    <a class="trigger" href="#">@(Name)</a>
+                    @category()
+                </li>
+            }}
+        </ul>
+ </div>
+}} :: ICollection<DynamicCategory>
+
+%@

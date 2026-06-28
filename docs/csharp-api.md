@@ -1,22 +1,22 @@
 # C# API Reference
 
 This page documents the public surface used to compile and render templates from C#. The
-main types live in the `Templates` namespace:
+main types live in the `Heddle` namespace:
 
-- [`ITtlTemplate`](../src/Templates/ITtlTemplate.cs) / [`TtlTemplate`](../src/Templates/TtlTemplate.cs) — compile and render.
-- [`TemplateOptions`](../src/Templates/Data/TemplateOptions.cs) — where to read templates and which features are on.
-- [`CompileContext`](../src/Templates/Runtime/CompileContext.cs) — the model type and compilation state.
-- [`TtlCompileResult`](../src/Templates/Data/TtlCompileResult.cs) — success/errors with source positions.
-- [`Scope`](../src/Templates/Data/Scope.cs) — the data view extensions see while rendering.
+- [`IHeddleTemplate`](../src/Heddle/IHeddleTemplate.cs) / [`HeddleTemplate`](../src/Heddle/HeddleTemplate.cs) — compile and render.
+- [`TemplateOptions`](../src/Heddle/Data/TemplateOptions.cs) — where to read templates and which features are on.
+- [`CompileContext`](../src/Heddle/Runtime/CompileContext.cs) — the model type and compilation state.
+- [`HeddleCompileResult`](../src/Heddle/Data/HeddleCompileResult.cs) — success/errors with source positions.
+- [`Scope`](../src/Heddle/Data/Scope.cs) — the data view extensions see while rendering.
 
 The library targets `netstandard2.0;net6.0;net8.0`
-([Templates.csproj](../src/Templates/Templates.csproj)).
+([Heddle.csproj](../src/Heddle/Heddle.csproj)).
 
 ---
 
-## `TtlTemplate`
+## `HeddleTemplate`
 
-The concrete engine entry point ([TtlTemplate.cs](../src/Templates/TtlTemplate.cs)). It is
+The concrete engine entry point ([HeddleTemplate.cs](../src/Heddle/HeddleTemplate.cs)). It is
 `sealed` and implements `IDisposable`. A single instance is compiled once and can be rendered
 many times, including concurrently.
 
@@ -31,18 +31,18 @@ startup, passing your application's assembly so custom extensions are discovered
 extensions are registered automatically.
 
 ```csharp
-TtlTemplate.Configure(typeof(Program).GetTypeInfo().Assembly);
+HeddleTemplate.Configure(typeof(Program).GetTypeInfo().Assembly);
 ```
 
 ### Constructors
 
 | Constructor | Use |
 | --- | --- |
-| `TtlTemplate()` | Empty; compile later with `Compile`/`TryCompilation`/`Recompile`. |
-| `TtlTemplate(string document, CompileContext context = null)` | Compile an inline template string. |
-| `TtlTemplate(CompileContext context)` | Compile a **file** described by `context.Options` (`RootPath`+`TemplateName`+`FileNamePostfix`). |
-| `TtlTemplate(TemplateOptions options)` | Shorthand for `new TtlTemplate(new CompileContext(options))`. |
-| `TtlTemplate(TemplateOptions options, ExType modelType)` | As above, with an explicit model type. |
+| `HeddleTemplate()` | Empty; compile later with `Compile`/`TryCompilation`/`Recompile`. |
+| `HeddleTemplate(string document, CompileContext context = null)` | Compile an inline template string. |
+| `HeddleTemplate(CompileContext context)` | Compile a **file** described by `context.Options` (`RootPath`+`TemplateName`+`FileNamePostfix`). |
+| `HeddleTemplate(TemplateOptions options)` | Shorthand for `new HeddleTemplate(new CompileContext(options))`. |
+| `HeddleTemplate(TemplateOptions options, ExType modelType)` | As above, with an explicit model type. |
 
 Constructors that take a context compile immediately and set `CompileResult`. Always check
 `CompileResult.Success` before rendering.
@@ -76,12 +76,12 @@ string html = template.Generate(model);
 
 | Method | Description |
 | --- | --- |
-| `TtlCompileResult Compile(CompileContext context)` | Compile the file described by `context.Options`; optionally starts a file watcher (see below). |
-| `TtlCompileResult Compile(string document, ExType modelType = null)` | Compile an inline string. |
-| `TtlCompileResult Recompile(string newDocument, CompileContext context = null)` | Replace the current template with a new string. |
-| `TtlCompileResult Recompile(ExType newModelType)` | Recompile the current source against a new model type. |
-| `TtlCompileResult TryCompilation(CompileContext context)` | **Dry run**: parse + type‑check a file but discard the compiled output. |
-| `TtlCompileResult TryCompilation(string document, TemplateOptions options = null, ExType modelType = null)` | Dry run for an inline string. |
+| `HeddleCompileResult Compile(CompileContext context)` | Compile the file described by `context.Options`; optionally starts a file watcher (see below). |
+| `HeddleCompileResult Compile(string document, ExType modelType = null)` | Compile an inline string. |
+| `HeddleCompileResult Recompile(string newDocument, CompileContext context = null)` | Replace the current template with a new string. |
+| `HeddleCompileResult Recompile(ExType newModelType)` | Recompile the current source against a new model type. |
+| `HeddleCompileResult TryCompilation(CompileContext context)` | **Dry run**: parse + type‑check a file but discard the compiled output. |
+| `HeddleCompileResult TryCompilation(string document, TemplateOptions options = null, ExType modelType = null)` | Dry run for an inline string. |
 
 `TryCompilation` is ideal for CI/linting — it tells you whether a template *would* compile
 without producing a renderer. A template can only be compiled once per instance; compiling an
@@ -91,7 +91,7 @@ already‑compiled instance throws `TemplateInitException`.
 
 | Member | Meaning |
 | --- | --- |
-| `TtlCompileResult CompileResult` | Result of the most recent compile. |
+| `HeddleCompileResult CompileResult` | Result of the most recent compile. |
 | `bool Compiled` | True once a runtime document exists. |
 | `bool Empty` | True if the compiled template produces no output. |
 | `CompileContext Context` | The context the template was compiled with. |
@@ -109,7 +109,7 @@ template.OnFileRenamed += (s, e) => { /* … */ };
 
 ### Disposal
 
-`TtlTemplate` owns its compiled runtime document and any file watcher. Dispose it when done.
+`HeddleTemplate` owns its compiled runtime document and any file watcher. Dispose it when done.
 Disposal is deferred safely if a render is in progress (it disposes once the last concurrent
 `Generate` returns).
 
@@ -118,13 +118,13 @@ Disposal is deferred safely if a render is in progress (it disposes once the las
 ## `TemplateOptions`
 
 Controls where templates are read from and which features are enabled
-([TemplateOptions.cs](../src/Templates/Data/TemplateOptions.cs)).
+([TemplateOptions.cs](../src/Heddle/Data/TemplateOptions.cs)).
 
 | Property | Default | Purpose |
 | --- | --- | --- |
 | `RootPath` | `AppContext.BaseDirectory` | Base directory for template files and imports/partials. |
 | `TemplateName` | `""` (ctor arg) | The template's name (file stem). Set via `new TemplateOptions("name")`. |
-| `FileNamePostfix` | `""` | Suffix appended to the name, e.g. `".thtml"`. |
+| `FileNamePostfix` | `""` | Suffix appended to the name, e.g. `".heddle"`. |
 | `AllowCSharp` | `false` | Enables embedded C# (`@(...)` expressions, `@new`, LINQ, typed `@model()`). Required for most non‑trivial templates. |
 | `MaxRecursionCount` | `100` | Upper bound on definition recursion depth. |
 | `EnableFileChangeCheck` | `false` | Install a `FileSystemWatcher` and recompile on file change. |
@@ -136,8 +136,8 @@ The resolved file path is `RootPath + TemplateName + FileNamePostfix` (`FullPath
 ```csharp
 var options = new TemplateOptions("home")
 {
-    RootPath = "Templates",
-    FileNamePostfix = ".ttl",     // resolves Templates/home.ttl
+    RootPath = "Heddle",
+    FileNamePostfix = ".heddle",     // resolves Heddle/home.heddle
     AllowCSharp = true
 };
 ```
@@ -150,7 +150,7 @@ var options = new TemplateOptions("home")
 ## `CompileContext`
 
 Holds the model type and shared compilation state
-([CompileContext.cs](../src/Templates/Runtime/CompileContext.cs)). You usually create one from
+([CompileContext.cs](../src/Heddle/Runtime/CompileContext.cs)). You usually create one from
 `TemplateOptions`; the engine creates nested contexts internally for subtemplates and partials.
 
 ```csharp
@@ -166,8 +166,8 @@ Key members:
 | `ExType ScopeType` | The current model type. May be changed by the `@model()` extension during compile. |
 | `ExType RootScopeType` | The root (level‑0) model type. |
 | `bool Compiled` | Whether the embedded‑C# (Roslyn) compilation step has run. |
-| `List<TtlCompileError> CompileErrors` | Accumulated errors. |
-| `List<TtlCompileWarning> CompileWarnings` | Accumulated warnings (e.g. SLL→LL fallback). |
+| `List<HeddleCompileError> CompileErrors` | Accumulated errors. |
+| `List<HeddleCompileWarning> CompileWarnings` | Accumulated warnings (e.g. SLL→LL fallback). |
 | `string ControllerName` | Used by the MVC integration to resolve views. |
 
 `ExType` is the engine's type wrapper; it can be constructed from a `System.Type`
@@ -176,14 +176,14 @@ Key members:
 
 ---
 
-## `TtlCompileResult`
+## `HeddleCompileResult`
 
-The outcome of a compile ([TtlCompileResult.cs](../src/Templates/Data/TtlCompileResult.cs)).
+The outcome of a compile ([HeddleCompileResult.cs](../src/Heddle/Data/HeddleCompileResult.cs)).
 
 | Member | Meaning |
 | --- | --- |
 | `bool Success` | Whether compilation succeeded. |
-| `IReadOnlyCollection<TtlCompileError> ErrorList` | Errors, each with a resolved line/column position. |
+| `IReadOnlyCollection<HeddleCompileError> ErrorList` | Errors, each with a resolved line/column position. |
 | `string Document` | The (optimized) source that was compiled. |
 | `ParseContext Context` | The parse tree/context (tokens, definitions, output chains). |
 | `override string ToString()` | A newline‑joined, human‑readable error report. |
@@ -206,7 +206,7 @@ you can surface precise diagnostics in editors or logs.
 
 ## `Scope` (the data view during rendering)
 
-Extensions receive a [`Scope`](../src/Templates/Data/Scope.cs) — a small readonly struct that
+Extensions receive a [`Scope`](../src/Heddle/Data/Scope.cs) — a small readonly struct that
 carries the values visible at a point in the render. Template authors don't use it directly,
 but it explains the semantics of `@(Name)`, `::`, `@out()`, and the loop index.
 
@@ -241,24 +241,24 @@ to descend into elements or swap model/chained values. See
 
 ```csharp
 using System.Reflection;
-using Templates;
-using Templates.Data;
+using Heddle;
+using Heddle.Data;
 
-TtlTemplate.Configure(typeof(Program).GetTypeInfo().Assembly);
+HeddleTemplate.Configure(typeof(Program).GetTypeInfo().Assembly);
 
 var options = new TemplateOptions("home")
 {
-    RootPath = "Templates",
-    FileNamePostfix = ".ttl",     // resolves Templates/home.ttl
+    RootPath = "Heddle",
+    FileNamePostfix = ".heddle",     // resolves Heddle/home.heddle
     AllowCSharp = true
 };
 
-using var template = new TtlTemplate(new CompileContext(options));
+using var template = new HeddleTemplate(new CompileContext(options));
 if (!template.CompileResult.Success)
     throw new InvalidOperationException(template.CompileResult.ToString());
 
 string html = template.Generate(myBlog);
 ```
 
-For ASP.NET Core MVC, you typically don't call `TtlTemplate` directly — register
-[`TtlViewEngine`](mvc-integration.md) and return views from controllers instead.
+For ASP.NET Core MVC, you typically don't call `HeddleTemplate` directly — register
+[`HeddleViewEngine`](mvc-integration.md) and return views from controllers instead.

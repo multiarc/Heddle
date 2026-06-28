@@ -9,7 +9,7 @@ engine from C#. If you only want to learn the template syntax, jump to the
 - **.NET SDK 8.0** (the repository pins `8.0.0` with `rollForward: latestMinor` in
   [global.json](../global.json)). The core library itself targets
   `netstandard2.0;net6.0;net8.0`, so the compiled package runs on a wide range of hosts.
-- A reference to the **`Templates`** package (and **`Templates.Mvc`** if you use ASP.NET Core MVC).
+- A reference to the **`Heddle`** package (and **`Heddle.Mvc`** if you use ASP.NET Core MVC).
 
 To build the engine from source, see [Building & Testing](building.md).
 
@@ -18,21 +18,21 @@ To build the engine from source, see [Building & Testing](building.md).
 Using the engine always follows the same shape:
 
 1. **Configure** — register the extensions found in your assemblies (once per process).
-2. **Compile** — parse a template string or file into a `TtlTemplate`.
+2. **Compile** — parse a template string or file into a `HeddleTemplate`.
 3. **Generate** — render the compiled template against a data object, as many times as you like.
 
 ### 1. Configure (register extensions)
 
-`TtlTemplate.Configure` scans the given assembly (and assemblies it references) for exported
-extensions. The built‑in extensions in the `Templates` assembly are picked up automatically;
+`HeddleTemplate.Configure` scans the given assembly (and assemblies it references) for exported
+extensions. The built‑in extensions in the `Heddle` assembly are picked up automatically;
 call `Configure` with *your* startup assembly so any custom extensions you wrote are
 discovered too.
 
 ```csharp
 using System.Reflection;
-using Templates;
+using Heddle;
 
-TtlTemplate.Configure(typeof(Program).GetTypeInfo().Assembly);
+HeddleTemplate.Configure(typeof(Program).GetTypeInfo().Assembly);
 ```
 
 See [Writing Custom Extensions](custom-extensions.md) for how extensions are exported with
@@ -41,8 +41,8 @@ See [Writing Custom Extensions](custom-extensions.md) for how extensions are exp
 ### 2 & 3. Compile and generate an inline template
 
 ```csharp
-using Templates;
-using Templates.Data;
+using Heddle;
+using Heddle.Data;
 
 var options = new TemplateOptions
 {
@@ -55,7 +55,7 @@ var source =
     "@model(){{dynamic}}\n" +
     "<p>Hi @(Name) — you have @int(Count) new comments.</p>";
 
-using var template = new TtlTemplate(source, new CompileContext(options));
+using var template = new HeddleTemplate(source, new CompileContext(options));
 
 if (!template.CompileResult.Success)
     throw new Exception(template.CompileResult.ToString());   // human‑readable error list
@@ -71,7 +71,7 @@ access is verified against it during compilation:
 class Greeting { public string Name { get; set; } public int Count { get; set; } }
 
 var source = "<p>Hi @(Name) — you have @int(Count) new comments.</p>";
-using var template = new TtlTemplate(source, new CompileContext(options, typeof(Greeting)));
+using var template = new HeddleTemplate(source, new CompileContext(options, typeof(Greeting)));
 
 string result = template.Generate(new Greeting { Name = "Ada", Count = 3 });
 ```
@@ -88,12 +88,12 @@ Point `TemplateOptions` at a directory and a template name; the engine reads
 ```csharp
 var options = new TemplateOptions("home")       // TemplateName = "home"
 {
-    RootPath = "Templates",
-    FileNamePostfix = ".ttl",                   // resolves Templates/home.ttl
+    RootPath = "Heddle",
+    FileNamePostfix = ".heddle",                   // resolves Heddle/home.heddle
     AllowCSharp = true
 };
 
-using var template = new TtlTemplate(new CompileContext(options));
+using var template = new HeddleTemplate(new CompileContext(options));
 string html = template.Generate(myBlog);
 ```
 
@@ -103,9 +103,9 @@ string html = template.Generate(myBlog);
 for linting/CI checks where you only care whether a template *would* compile:
 
 ```csharp
-using var probe = new TtlTemplate();
-TtlCompileResult result = probe.TryCompilation(
-    File.ReadAllText("Templates/home.ttl"),
+using var probe = new HeddleTemplate();
+HeddleCompileResult result = probe.TryCompilation(
+    File.ReadAllText("Heddle/home.heddle"),
     new TemplateOptions { AllowCSharp = true });
 
 Assert.True(result.Success, result.ToString());
@@ -121,7 +121,7 @@ these flow through extensions.
 
 ## Reusing a compiled template
 
-A `TtlTemplate` is compiled once and can be rendered concurrently many times — `Generate`
+A `HeddleTemplate` is compiled once and can be rendered concurrently many times — `Generate`
 is safe to call repeatedly and tracks an adaptive output buffer size across calls. Dispose
 it when you are done (it owns the compiled runtime document and any file watcher).
 
@@ -130,4 +130,4 @@ it when you are done (it owns the compiled runtime document and any file watcher
 - **[Language Reference](language-reference.md)** — learn the full template syntax.
 - **[Built‑in Extensions](built-in-extensions.md)** — the helpers you can call.
 - **[C# API Reference](csharp-api.md)** — every option and method in detail.
-- **[MVC Integration](mvc-integration.md)** — use `.thtml` files as MVC views.
+- **[MVC Integration](mvc-integration.md)** — use `.heddle` files as MVC views.

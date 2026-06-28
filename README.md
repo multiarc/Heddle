@@ -1,21 +1,21 @@
-# Templater
+# Heddle
 
-A text template engine for .NET. Templater compiles templates written in a small, purpose‑built
-language (**TTL**) into reusable, strongly‑typed renderers. Templates can embed real C#
+A text template engine for .NET. Heddle compiles templates written in its small, purpose‑built
+language into reusable, strongly‑typed renderers. Templates can embed real C#
 expressions, define and inherit reusable named blocks, compose output through extension chains,
 and control HTML encoding per directive. An ASP.NET Core MVC view engine is included so
-`.thtml` files can be used as MVC views.
+`.heddle` files can be used as MVC views.
 
-```ttl
+```heddle
 @model(){{dynamic}}
 <p>Hi @(Name) — you have @int(Count) new comments.</p>
 ```
 
 ```csharp
-TtlTemplate.Configure(typeof(Program).Assembly);
+HeddleTemplate.Configure(typeof(Program).Assembly);
 
 var source = "@model(){{dynamic}}\n<p>Hi @(Name) — you have @int(Count) new comments.</p>";
-using var template = new TtlTemplate(source, new CompileContext(new TemplateOptions { AllowCSharp = true }));
+using var template = new HeddleTemplate(source, new CompileContext(new TemplateOptions { AllowCSharp = true }));
 
 string html = template.Generate(new { Name = "Ada", Count = 3 });
 // <p>Hi Ada — you have 3 new comments.</p>
@@ -25,37 +25,37 @@ string html = template.Generate(new { Name = "Ada", Count = 3 });
 
 | Package | Purpose |
 | --- | --- |
-| `Templates` | Core engine: parser host, compiler, runtime, built‑in extensions. |
-| `Templates.Language` | ANTLR grammar + generated lexer/parser and editor assets. |
-| `Templates.Mvc` | ASP.NET Core MVC view engine. |
+| `Heddle` | Core engine: parser host, compiler, runtime, built‑in extensions. |
+| `Heddle.Language` | ANTLR grammar + generated lexer/parser and editor assets. |
+| `Heddle.Mvc` | ASP.NET Core MVC view engine. |
 
 ## Documentation
 
 Full documentation lives in **[docs/](docs/README.md)**:
 
 - [Getting Started](docs/getting-started.md) — build and render your first template.
-- [Language Reference](docs/language-reference.md) — every TTL construct and its nuances.
+- [Language Reference](docs/language-reference.md) — every Heddle construct and its nuances.
 - [Built‑in Extensions](docs/built-in-extensions.md) — `list`, `if`, `date`, `money`, and more.
-- [C# API Reference](docs/csharp-api.md) — `TtlTemplate`, options, contexts, results.
+- [C# API Reference](docs/csharp-api.md) — `HeddleTemplate`, options, contexts, results.
 - [Writing Custom Extensions](docs/custom-extensions.md) — add your own directives.
-- [MVC Integration](docs/mvc-integration.md) — use `.thtml` files as MVC views.
+- [MVC Integration](docs/mvc-integration.md) — use `.heddle` files as MVC views.
 - [Architecture](docs/architecture.md) — the lex → parse → compile → render pipeline.
 - [Building & Testing](docs/building.md) — SDK, scripts, tests, packaging, CI.
 
-## How TTL compares
+## How Heddle compares
 
-TTL sits in a small niche: a **compiled, statically‑typed** template language whose entire
+Heddle sits in a small niche: a **compiled, statically‑typed** template language whose entire
 control‑flow vocabulary is *library*, not grammar. Here is where it lands against the engines
 people usually weigh it against.
 
-| | **TTL** | Razor | Liquid / Scriban | Handlebars / Mustache | Go `text/template` |
+| | **Heddle** | Razor | Liquid / Scriban | Handlebars / Mustache | Go `text/template` |
 | --- | --- | --- | --- | --- | --- |
 | Execution | Compiled to an exec‑ready document | Compiled | Interpreted | Interpreted | Interpreted |
 | Typing | **Static, per use site** | Static | Dynamic | Dynamic | Dynamic |
 | Logic in templates | Full C# (opt‑in) | Full C# | Sandboxed filters | Logic‑less + helpers | Limited + funcs |
 | Control flow | **Extensions (a library)** | Keywords | Tags | Block helpers | Keywords |
 | Context model | Relative: current / `::`root | Absolute (`Model.X`) | Mostly global | Relative stack | Relative (`.` / `$`) |
-| Composition | Definition inheritance + override | Layouts / sections / partials | Partials / includes | Partials | Templates / blocks |
+| Composition | Definition inheritance + override | Layouts / sections / partials | Partials / includes | Partials | Heddle / blocks |
 | Untrusted templates | No (or run in no‑C# mode) | No | **Yes (sandboxed)** | **Yes (logic‑less)** | Partial |
 | Reach / ecosystem | .NET only, small | .NET, excellent | Large | Large, polyglot | Large |
 
@@ -71,7 +71,7 @@ people usually weigh it against.
   model shapes, each statically checked.
 - **Composition without coupling.** Definition inheritance/override are *declarative extension
   points*: unlike Razor sections (which bind "backwards" and pin the rendered page as the
-  layout's final consumer), a TTL page can be split into independent templates recombined by a
+  layout's final consumer), a Heddle page can be split into independent templates recombined by a
   layout with **no runtime cost**, and any page can serve as a base for another.
 - **Compiled to an execution‑ready document.** A template becomes an in‑memory tree of
   extension calls wired to **compiled** accessors — member paths to expression‑tree delegates,
@@ -87,31 +87,31 @@ instead). See the [Language Reference](docs/language-reference.md) for the full 
 
 ## Performance
 
-Templater compiles each template into an **execution‑ready document** — an in‑memory tree of
+Heddle compiles each template into an **execution‑ready document** — an in‑memory tree of
 extension calls wired to compiled accessors (member paths to expression‑tree delegates,
 embedded C# to Roslyn delegates). Rendering walks that document, so it does not re‑parse, reflect,
 or pay per‑call activation, section, or dependency‑injection overhead at run time. The
 repository includes a [BenchmarkDotNet](https://benchmarkdotnet.org/) suite
-([src/Templates.Performance](src/Templates.Performance)) that renders a realistic home page —
+([src/Heddle.Performance](src/Heddle.Performance)) that renders a realistic home page —
 a layout plus several reusable templates and a dozen component/extension invocations — and
 compares it head‑to‑head against the equivalent ASP.NET Core **Razor** page
-([RenderTemplateEngine vs RenderRazor](src/Templates.Performance/TextRenderBenchmarks.cs)).
+([RenderTemplateEngine vs RenderRazor](src/Heddle.Performance/TextRenderBenchmarks.cs)).
 
-On that like‑for‑like workload, TTL renders the page **faster than Razor and allocates less
+On that like‑for‑like workload, Heddle renders the page **faster than Razor and allocates less
 memory** (`[MemoryDiagnoser]` is enabled). The advantage comes from two places:
 
 - **Execution** — walking the pre‑compiled document avoids the partial/section/view‑component
   machinery Razor invokes per component (see [Architecture → Performance](docs/architecture.md#performance-characteristics)).
-- **Composition** — TTL definitions are *declarative, decoupled* extension points. Unlike Razor
+- **Composition** — Heddle definitions are *declarative, decoupled* extension points. Unlike Razor
   sections, which bind "backwards" and force the rendered page to be the layout's final
-  consumer, a TTL template can be split into independent reusable templates recombined by a
+  consumer, a Heddle template can be split into independent reusable templates recombined by a
   layout **with no runtime cost**, and any page can itself serve as a base for another. See
   [Language Reference → inheritance](docs/language-reference.md#inheritance-and-override-childbase).
 
 Run it yourself:
 
 ```
-dotnet run -c Release --project src/Templates.Performance
+dotnet run -c Release --project src/Heddle.Performance
 ```
 
 ## Building

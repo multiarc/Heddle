@@ -1,11 +1,11 @@
 # MVC Integration
 
-The `Templates.Mvc` package lets you use TTL templates as ASP.NET Core MVC views. It provides
+The `Heddle.Mvc` package lets you use Heddle templates as ASP.NET Core MVC views. It provides
 an [`IViewEngine`](https://learn.microsoft.com/aspnet/core/mvc/views/view-components)
-implementation that resolves `.thtml` files by controller and view name and renders them with
+implementation that resolves `.heddle` files by controller and view name and renders them with
 the model supplied by MVC.
 
-Source: [src/Templates.Mvc](../src/Templates.Mvc).
+Source: [src/Heddle.Mvc](../src/Heddle.Mvc).
 
 ---
 
@@ -13,13 +13,13 @@ Source: [src/Templates.Mvc](../src/Templates.Mvc).
 
 | Type | Source | Role |
 | --- | --- | --- |
-| `TtlViewEngine` | [TtlViewEngine.cs](../src/Templates.Mvc/TtlViewEngine.cs) | `IViewEngine`; finds views/partials by name and controller. |
-| `TtlView` | [TtlView.cs](../src/Templates.Mvc/TtlView.cs) | `IView` wrapper around a compiled `TtlTemplate`; renders to the response writer. |
-| `PartialMvcExtension` | [PartialMvcExtension.cs](../src/Templates.Mvc/Extensions/PartialMvcExtension.cs) | MVC‑aware `@partial()` resolution. |
-| `ImportMvcExtension` | [UseMvcExtension.cs](../src/Templates.Mvc/Extensions/UseMvcExtension.cs) | MVC‑aware `@import` (named `import`). |
+| `HeddleViewEngine` | [HeddleViewEngine.cs](../src/Heddle.Mvc/HeddleViewEngine.cs) | `IViewEngine`; finds views/partials by name and controller. |
+| `HeddleView` | [HeddleView.cs](../src/Heddle.Mvc/HeddleView.cs) | `IView` wrapper around a compiled `HeddleTemplate`; renders to the response writer. |
+| `PartialMvcExtension` | [PartialMvcExtension.cs](../src/Heddle.Mvc/Extensions/PartialMvcExtension.cs) | MVC‑aware `@partial()` resolution. |
+| `ImportMvcExtension` | [UseMvcExtension.cs](../src/Heddle.Mvc/Extensions/UseMvcExtension.cs) | MVC‑aware `@import` (named `import`). |
 
-`TtlViewEngine` holds a `TemplateResolver` rooted at the web root's parent directory and uses
-it to locate templates. `TtlView.RenderAsync` simply writes `template.Generate(model)` to the
+`HeddleViewEngine` holds a `TemplateResolver` rooted at the web root's parent directory and uses
+it to locate templates. `HeddleView.RenderAsync` simply writes `template.Generate(model)` to the
 response:
 
 ```csharp
@@ -33,24 +33,24 @@ public async Task RenderAsync(ViewContext context)
 
 ## Registering the view engine
 
-Register `TtlViewEngine` with MVC's view‑engine collection and make sure extensions are
+Register `HeddleViewEngine` with MVC's view‑engine collection and make sure extensions are
 configured at startup. In a typical ASP.NET Core app:
 
 ```csharp
-using Templates;            // TtlTemplate.Configure
-using Templates.Mvc;        // TtlViewEngine
+using Heddle;            // HeddleTemplate.Configure
+using Heddle.Mvc;        // HeddleViewEngine
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Register the engine's extensions (built‑ins + the MVC package's overrides).
-TtlTemplate.Configure(typeof(TtlViewEngine).Assembly);
+HeddleTemplate.Configure(typeof(HeddleViewEngine).Assembly);
 
 builder.Services.AddControllersWithViews()
     .AddViewOptions(options =>
     {
-        // TtlViewEngine needs IWebHostEnvironment (resolved from DI).
+        // HeddleViewEngine needs IWebHostEnvironment (resolved from DI).
         var env = builder.Services.BuildServiceProvider().GetRequiredService<IWebHostEnvironment>();
-        options.ViewEngines.Insert(0, new TtlViewEngine(env));
+        options.ViewEngines.Insert(0, new HeddleViewEngine(env));
     });
 
 var app = builder.Build();
@@ -58,7 +58,7 @@ app.MapControllers();
 app.Run();
 ```
 
-> `TtlViewEngine`'s constructor takes the host environment
+> `HeddleViewEngine`'s constructor takes the host environment
 > (`IWebHostEnvironment`; `IHostingEnvironment` on `netstandard2.0`) and roots its resolver at
 > `Path.GetDirectoryName(WebRootPath)`. Adapt the registration to however you obtain that
 > environment in your composition root. Inserting it at index 0 makes it take precedence over
@@ -68,12 +68,12 @@ app.Run();
 
 ## View resolution
 
-When MVC asks the engine for a view, `TtlViewEngine`:
+When MVC asks the engine for a view, `HeddleViewEngine`:
 
 1. Reads the **controller** name from route data (`RouteData.Values["controller"]`).
 2. Asks its `TemplateResolver` for the template by **view name** + controller, as a `View` or
-   `PartialView` ([`TemplatePathType`](../src/Templates/Runtime)).
-3. Returns `ViewEngineResult.Found(viewName, (TtlView)result)` when a matching compiled
+   `PartialView` ([`TemplatePathType`](../src/Heddle/Runtime)).
+3. Returns `ViewEngineResult.Found(viewName, (HeddleView)result)` when a matching compiled
    template exists, otherwise `ViewEngineResult.NotFound(viewName, searchedLocations)`.
 
 `FindView` handles main pages and delegates partials to `FindPartialView`; `GetView`
@@ -85,12 +85,12 @@ Controllers return views as usual:
 ```csharp
 public class HomeController : Controller
 {
-    public IActionResult Index() => View(model);   // resolves Home/Index.thtml
+    public IActionResult Index() => View(model);   // resolves Home/Index.heddle
 }
 ```
 
-The `.thtml` convention is the project's standard template extension (see the test fixtures in
-[src/Templates.Tests/TestTemplate](../src/Templates.Tests/TestTemplate)); ensure your
+The `.heddle` convention is the project's standard template extension (see the test fixtures in
+[src/Heddle.Tests/TestTemplate](../src/Heddle.Tests/TestTemplate)); ensure your
 `TemplateResolver`/options use that postfix.
 
 ---
@@ -98,14 +98,14 @@ The `.thtml` convention is the project's standard template extension (see the te
 ## MVC‑specific extensions
 
 The MVC assembly exports two extensions via `[assembly: ExportExtensions(...)]`, so they are
-registered whenever you `Configure` with the `Templates.Mvc` assembly:
+registered whenever you `Configure` with the `Heddle.Mvc` assembly:
 
 - **`PartialMvcExtension`** — derives from
-  [`PartialExtension`](../src/Templates/Extensions/PartialExtension.cs) and is intended to
+  [`PartialExtension`](../src/Heddle/Extensions/PartialExtension.cs) and is intended to
   resolve `@partial()` targets through the MVC `TemplateResolver` (by controller/view), rather
   than as plain files relative to `RootPath`.
 - **`ImportMvcExtension`** — registered under the name `import`, replacing the core
-  [`ImportExtension`](../src/Templates/Extensions/ImportExtension.cs) so imports resolve
+  [`ImportExtension`](../src/Heddle/Extensions/ImportExtension.cs) so imports resolve
   through MVC view locations.
 
 > Note: in the current source both MVC extensions contain commented‑out resolver wiring (the
@@ -119,6 +119,6 @@ registered whenever you `Configure` with the `Templates.Mvc` assembly:
 
 ## Targets
 
-`Templates.Mvc` targets `net6.0;net8.0` (with `netstandard2.0`/`2.1` build outputs present)
+`Heddle.Mvc` targets `net6.0;net8.0` (with `netstandard2.0`/`2.1` build outputs present)
 and references the ASP.NET Core shared framework. See [Building & Testing](building.md) for
 framework details.

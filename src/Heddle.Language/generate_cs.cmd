@@ -1,0 +1,2 @@
+java -jar "..\..\lib\antlr-4.13.1-complete.jar" -Dlanguage=CSharp "HeddleLexer.g4" "HeddleParser.g4" -o "generated" -lib "generated" -package Heddle.Language
+rem java -jar "..\..\lib\antlr-4.13.1-complete.jar" -Dlanguage=CSharp "HeddleLexerNoWS.g4" -o "generated" -lib "generated" -package Heddle.Language

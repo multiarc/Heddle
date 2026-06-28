@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using Templates.Collections;
+using Heddle.Collections;
 using Westwind.RazorHosting;
 
 namespace RazorTemplateTest {
@@ -26,8 +26,8 @@ namespace RazorTemplateTest {
                     
             //    }
             //};
-            hostContainer.TemplatePath = @"g:\Work\Templater\RazorTemplateTest\TestTemplates\";
-            var template = File.ReadAllText(@"G:\Work\Templater\RazorTemplateTest\TestTemplates\template.cshtml");
+            hostContainer.TemplatePath = @"g:\Work\Heddle\RazorTemplateTest\TestTemplates\";
+            var template = File.ReadAllText(@"G:\Work\Heddle\RazorTemplateTest\TestTemplates\template.cshtml");
             var list = new SmartList<TestDataStructure>();
             Console.WriteLine("Enter tries count:");
             string quantity = Console.ReadLine();

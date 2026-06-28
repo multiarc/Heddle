@@ -37,7 +37,7 @@ class Site        { string Name;  string Host;  string BuildNumber;  CultureInfo
 
 **Problem:** zoom into a sub‑object for a few lines without declaring a definition.
 
-```ttl
+```heddle
 @(Author)
 {{
   <span class="byline">@(Name) &lt;@(Email)&gt;</span>
@@ -56,7 +56,7 @@ counterpart to passing a value into a definition. See
 **Problem:** render markup only when a nullable field is set; combine conditions (there is no
 `else`/`elif`).
 
-```ttl
+```heddle
 @if(Summary){{ <p class="summary">@(Summary)</p> }}
 @ifnot(Summary){{ <p class="muted">No summary yet.</p> }}
 
@@ -78,14 +78,14 @@ bodies render in the caller's context, so `@(Summary)` inside still refers to th
 
 **Problem:** mark the first item active; render the last item differently from the rest.
 
-```ttl
+```heddle
 @list(Tags)
 {{
   <a class="tag@if(@chained == 0){{ active}}">@()</a>
 }}
 ```
 
-```ttl
+```heddle
 @* all but the last tag, then the last on its own *@
 @list(@model.Tags.Take(model.Tags.Count - 1))
 {{
@@ -108,7 +108,7 @@ item with its own markup.
 
 **Problem:** add an attribute only when a value is present.
 
-```ttl
+```heddle
 <a@if(@!string.IsNullOrEmpty(model.Url)){{ href="@(Url)"}}>@(Title)</a>
 ```
 
@@ -122,7 +122,7 @@ The same shape toggles a class: `class="card@if(IsFeatured){{ card-featured}}"`.
 
 **Problem:** build repeated strings (ids, slugs) from a value, in one place.
 
-```ttl
+```heddle
 @%
   <slug>{{post-@int()}}        @* an int in → "post-N" out *@
 %@
@@ -136,7 +136,7 @@ The same shape toggles a class: `class="card@if(IsFeatured){{ card-featured}}"`.
 Definitions can also be declared **inside** another definition's body, scoping the helper to
 where it's used:
 
-```ttl
+```heddle
 @%
   <gallery>
   {{
@@ -157,7 +157,7 @@ the current (integer) model. See [Definitions](language-reference.md#definitions
 
 **Problem:** reach site/app data and the active culture from deep inside any section.
 
-```ttl
+```heddle
 <link rel="canonical" href="https://@(::Site.Host)/articles/@(Title)">
 <script src="/app/main.js?v=@(@root.Site.BuildNumber)"></script>
 
@@ -177,7 +177,7 @@ so the `@date` **format string itself** can be pulled from `::Site.Culture`. See
 **Problem:** one top‑level layout that renders automatically, works on a sub‑model, and still
 reaches the whole root.
 
-```ttl
+```heddle
 @%
   <layout> -> (Article)
   {{
@@ -200,7 +200,7 @@ Because `layout` renders on its own, you do **not** call `@layout()`.
 
 **Problem:** write a reusable section once and use it against whatever page renders it.
 
-```ttl
+```heddle
 @%
   <tag_list>                       @* no :: Type → abstract *@
   {{
@@ -226,7 +226,7 @@ statically type‑checked. See
 
 **Problem:** emit a pre‑serialized JSON payload or JSON‑LD into a `<script>` verbatim.
 
-```ttl
+```heddle
 <script>
   var article = @(ArticleJson);          @* emitted raw — NOT HTML-encoded *@
 </script>
@@ -244,13 +244,13 @@ as‑is. Only do this with values **you** produced — never with untrusted text
 
 **Problem:** decide where whitespace trimming actually matters.
 
-```ttl
+```heddle
 @using(){{System.Linq}}@\        @* trim: keeps the preamble from emitting blank lines *@
 @model(){{PageContext}}@\
 <article>@(Title)</article>      @* HTML: no @\ needed — the browser ignores the whitespace *@
 ```
 
-**Why:** TTL is whitespace‑significant, but HTML collapses insignificant whitespace, so most
+**Why:** Heddle is whitespace‑significant, but HTML collapses insignificant whitespace, so most
 markup doesn't need `@\`. Reserve it for the declaration preamble and for whitespace‑sensitive
 output (plain text, `<pre>`, JSON). See
 [Whitespace trimming](language-reference.md#whitespace-trimming-).
@@ -261,7 +261,7 @@ output (plain text, `<pre>`, JSON). See
 
 **Problem:** handle cross‑cutting concerns (escaping, asset URLs, head/script regions) cleanly.
 
-```ttl
+```heddle
 <img src="@asset_url(CoverImage).webp" alt="@quote(Title)">
 
 @head(){{ <meta name="description" content="@quote(Summary)"> }}
