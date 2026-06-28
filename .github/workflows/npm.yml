@@ -20,9 +20,9 @@ jobs:
     steps:
     - uses: actions/checkout@v7
     - name: Setup Node
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
-        node-version: 20
+        node-version: 22
         registry-url: https://npm.pkg.github.com
         scope: '@multiarc'
     - name: Build custom Ace bundle
