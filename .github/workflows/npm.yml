@@ -27,7 +27,7 @@ jobs:
         scope: '@multiarc'
     - name: Build custom Ace bundle
       working-directory: src/Heddle.Language
-      run: ./build_ace.sh
+      run: bash build_ace.sh
     - name: Stage package manifest with built bundle
       working-directory: src/Heddle.Language
       run: cp package.json ace_build/ace/build/package.json
