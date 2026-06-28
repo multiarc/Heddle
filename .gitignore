@@ -111,3 +111,8 @@ project.lock.json
 /src/Heddle.Performance/BenchmarkDotNet.Artifacts
 /src/Heddle.Language/ace_build
 /build
+
+# VitePress documentation site
+/docs/node_modules
+/docs/.vitepress/dist
+/docs/.vitepress/cache
