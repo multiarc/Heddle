@@ -6,9 +6,9 @@ engine from C#. If you only want to learn the template syntax, jump to the
 
 ## Prerequisites
 
-- **.NET SDK 8.0** (the repository pins `8.0.0` with `rollForward: latestMinor` in
+- **.NET SDK 10.0** (the repository pins `10.0.100` with `rollForward: latestMinor` in
   [global.json](../global.json)). The core library itself targets
-  `netstandard2.0;net6.0;net8.0`, so the compiled package runs on a wide range of hosts.
+  `netstandard2.0;net6.0;net8.0;net10.0`, so the compiled package runs on a wide range of hosts.
 - A reference to the **`Heddle`** package.
 
 To build the engine from source, see [Building & Testing](building.md).
