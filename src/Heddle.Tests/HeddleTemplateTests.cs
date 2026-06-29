@@ -122,6 +122,27 @@ namespace Heddle.Tests
             Assert.Equal("20", nested.Generate(null));
         }
 
+        /// <summary>
+        /// Verbatim identifiers ('@' prefix) inside a C# expression must lex without mangling the leading '@'
+        /// and round-trip to Roslyn. '@System' is the verbatim form of 'System', so it resolves identically.
+        /// </summary>
+        [Fact]
+        public void VerbatimIdentifierExpressions()
+        {
+            HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
+            var options = new TemplateOptions { AllowCSharp = true };
+
+            // '@(' opens the call, the first '@' switches to C#, '@System' is a verbatim identifier.
+            var plain = new HeddleTemplate("@(@@System.Int32.MaxValue)", new CompileContext(options));
+            Assert.True(plain.CompileResult.Success, plain.CompileResult.ToString());
+            Assert.Equal("2147483647", plain.Generate(null));
+
+            // Verbatim identifier followed by a parenthesised call (also exercises nested parens).
+            var withCall = new HeddleTemplate("@(@@System.Math.Max(2, 3))", new CompileContext(options));
+            Assert.True(withCall.CompileResult.Success, withCall.CompileResult.ToString());
+            Assert.Equal("3", withCall.Generate(null));
+        }
+
         [Fact]
         public void SubjectDynamicTest()
         {

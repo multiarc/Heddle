@@ -11,6 +11,7 @@ fragment TOKEN:
 	| CHAR
 	| INT
 	| REAL
+	| VERBATIM_IDENTIFIER
 	| IDENTIFIER
 	;
 
@@ -60,6 +61,10 @@ fragment KEYWORD:
 */
 
 fragment IDENTIFIER: IDENTIFIER_START IDENTIFIER_PART*;
+
+// Verbatim identifier: '@' prefix lets a keyword be used as an identifier (e.g. @class, @new).
+// Defined only for the C# TOKEN set so it does not affect Heddle's own '@'-based syntax.
+fragment VERBATIM_IDENTIFIER: '@' IDENTIFIER;
 
 fragment IDENTIFIER_START: 
 	[a-zA-Z_]
