@@ -120,3 +120,5 @@ project.lock.json
 /docs/.vitepress/dist
 /docs/.vitepress/cache
 /.idea
+/src/Heddle.Language/gen
+/src/Heddle.Language/.antlr

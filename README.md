@@ -120,6 +120,16 @@ dotnet build -c Release
 Requires the .NET SDK 8.0 (see [global.json](global.json)). See
 [docs/building.md](docs/building.md) for details.
 
+## Contributing
+
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first — it
+covers the development setup, the pull-request flow, the required
+[DCO](https://developercertificate.org/) sign-off (`git commit -s`), and the policy on
+AI-assisted contributions. By contributing you agree your work is licensed under Apache-2.0.
+
 ## License / authorship
 
-Author: Aliaksandr Kukrash. Version 4.0.2.
+Copyright © Aliaksandr Kukrash and the Heddle contributors.
+
+Licensed under the **Apache License, Version 2.0** — see [LICENSE](LICENSE),
+[NOTICE](NOTICE), and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

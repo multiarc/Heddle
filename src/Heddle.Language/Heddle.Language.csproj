@@ -1,11 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net6.0;net8.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net6.0;net8.0;net10.0</TargetFrameworks>
     <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
     <Version>1.0.0$(VersionSuffix)</Version>
-    <Authors>Aliaksandr Kukrash</Authors>
-    <Company />
     <Product>Heddle.Language</Product>
     <PackageId>Heddle.Language</PackageId>
     <Description>Text Template Engine Language Parser</Description>
@@ -36,6 +34,7 @@
     <None Include="..\..\heddle.snk">
       <Link>heddle.snk</Link>
     </None>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
     <None Remove="ace_build\**" />
   </ItemGroup>
 

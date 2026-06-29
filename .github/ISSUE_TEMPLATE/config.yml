@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://multiarc.github.io/Heddle/
+    about: Language reference, API, architecture, and guides.
+  - name: Questions & discussion
+    url: https://github.com/multiarc/Heddle/discussions
+    about: Ask questions and discuss ideas (enable Discussions in repo settings).
+  - name: Report a security vulnerability
+    url: https://github.com/multiarc/Heddle/security/advisories/new
+    about: Please report vulnerabilities privately — do not open a public issue.

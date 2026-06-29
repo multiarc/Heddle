@@ -114,14 +114,18 @@ NuGet feed configuration is in [NuGet.Config](../NuGet.Config).
 
 ## Continuous integration
 
-CI runs on **GitHub Actions**:
+CI runs on **GitHub Actions**. All publishing uses Trusted Publishing (OIDC, no stored
+tokens) and is skipped on fork pull requests.
 
 - **[.NET build](../.github/workflows/dotnet.yml)** — on every push and pull request to `main`,
-  restores, builds, and runs the test suite on Linux and Windows, then publishes the NuGet
-  packages to GitHub Packages (a `-beta` prerelease for pull requests, a release version on
-  `main`).
-- **[Ace npm package](../.github/workflows/npm.yml)** — builds the custom Ace highlighter bundle
-  and publishes `@multiarc/ace_heddle` to GitHub Packages with the same beta/release scheme.
+  restores, builds, and runs the test suite on Linux and Windows. Internal pull requests also
+  publish a `-beta.<run>` prerelease to **nuget.org**.
+- **[Ace npm package](../.github/workflows/npm.yml)** — builds the custom Ace highlighter bundle;
+  internal pull requests **stage** a `@multiarc/ace_heddle` pre-release on **npmjs.org** for
+  maintainer review (`npm stage publish`).
+- **Production releases are tag-driven.** Pushing a `vX.Y.Z` tag publishes that exact version
+  to nuget.org and npmjs.org (as `latest`, with npm provenance) and creates a matching GitHub
+  Release. Merging to `main` only builds and tests — it does not publish.
 - **[Documentation](../.github/workflows/docs.yml)** — builds this site and deploys it to
   GitHub Pages.
 

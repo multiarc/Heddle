@@ -14,12 +14,14 @@
     "type": "git",
     "url": "git+https://github.com/multiarc/Heddle.git"
   },
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "author": "Aliaksandr Kukrash",
   "type": "commonjs",
   "main": "./src-noconflict/ace.js",
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://registry.npmjs.org",
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

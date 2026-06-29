@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Heddle.Native;
@@ -23,9 +24,9 @@ namespace Heddle.Strings {
             _data = string.Empty;
         }
 
-        static ExStringBuilder()
-        {
-            var fastAllocateMethod = typeof(string).GetMethod("FastAllocateString", BindingFlags.Static | BindingFlags.NonPublic);
+        static ExStringBuilder() {
+            var fastAllocateMethod = typeof(string).GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
+                .Single(m => m.Name == "FastAllocateString" && m.GetParameters().Length == 1);
             AllocateString = (Allocate) fastAllocateMethod.CreateDelegate(typeof(Allocate));
         }
 
@@ -44,7 +45,7 @@ namespace Heddle.Strings {
                         fixed (char* dest = _data)
                         {
                             var destSpan = new Span<char>(dest, oldLen);
-                            
+
                             fixed (char* src = old)
                             {
                                 var srcSpan = new Span<char>(src, oldLen);
@@ -276,7 +277,7 @@ namespace Heddle.Strings {
                 }
             }
         }
-        
+
 
         private static unsafe void MoveData(IList<Replacement> replacements, int srcLen, in Span<char> dest, in Span<char> src)
         {

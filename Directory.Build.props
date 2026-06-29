@@ -1,0 +1,21 @@
+<Project>
+
+  <!--
+    Shared metadata for all projects in the repository. Per-project values
+    (PackageId, Product, Description, Version) live in the individual .csproj
+    files. Packaging-only properties are harmless on non-packable projects.
+  -->
+  <PropertyGroup>
+    <Authors>Aliaksandr Kukrash</Authors>
+    <Company />
+    <Copyright>Copyright 2026 Aliaksandr Kukrash</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/multiarc/Heddle</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/multiarc/Heddle</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>template;template-engine;text;codegen;razor-alternative</PackageTags>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+  </PropertyGroup>
+
+</Project>
