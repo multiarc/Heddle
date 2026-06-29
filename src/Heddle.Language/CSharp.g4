@@ -92,27 +92,43 @@ fragment BOOL:
 * INT
 */
 
-fragment INT: 
-	DEC_INT_LITERAL | HEX_INT_LITERAL;
+fragment INT:
+	DEC_INT_LITERAL | HEX_INT_LITERAL | BIN_INT_LITERAL;
 
-fragment DEC_INT_LITERAL: 
+fragment DEC_INT_LITERAL:
 	DEC_DIGITS INT_SUFFIX?;
 
-fragment DEC_DIGITS: DEC_DIGIT+;
+// Digit separators ('_') are allowed between digits (C# 7+).
+fragment DEC_DIGITS: DEC_DIGIT DECORATED_DEC_DIGIT*;
+
+fragment DECORATED_DEC_DIGIT: '_'* DEC_DIGIT;
 
 fragment DEC_DIGIT: '0'..'9';
 
-fragment INT_SUFFIX: [UuLl];
+fragment INT_SUFFIX:
+	'UL' | 'Ul' | 'uL' | 'ul' | 'LU' | 'Lu' | 'lU' | 'lu'
+	| 'U' | 'u' | 'L' | 'l'
+	;
 
-fragment HEX_INT_LITERAL: '0x' HEX_DIGITS INT_SUFFIX?;
+fragment HEX_INT_LITERAL: ('0x' | '0X') HEX_DIGITS INT_SUFFIX?;
 
-fragment HEX_DIGITS: HEX_DIGIT+;
+fragment HEX_DIGITS: HEX_DIGIT DECORATED_HEX_DIGIT*;
+
+fragment DECORATED_HEX_DIGIT: '_'* HEX_DIGIT;
 
 fragment HEX_DIGIT:
 	'0'..'9'
 	| 'a'..'f'
 	| 'A'..'F'
 	;
+
+fragment BIN_INT_LITERAL: ('0b' | '0B') BIN_DIGITS INT_SUFFIX?;
+
+fragment BIN_DIGITS: BIN_DIGIT DECORATED_BIN_DIGIT*;
+
+fragment DECORATED_BIN_DIGIT: '_'* BIN_DIGIT;
+
+fragment BIN_DIGIT: '0' | '1';
 
 /*
 * REAL
@@ -210,9 +226,9 @@ fragment UNICODE_ESCAPE:
 	;
 
 fragment OPERATOR_OR_PUNCTUATOR:
-		'>>='|	'<<='|	'>>'|	'=>'|	'<<'|	'^='|	'|='|	'&='|	'%='
-	|	'->' |	'==' |	'!='|	'<='|	'>='|	'+='|	'-='|	'*='|	'/='|	'??'
-	|	'::' |	'++' |	'--'|	'&&'|	'||'|	'{'	|	'}'	|	'['	|	']'	|	'('	
-	|	')'	 |	'.'	 |	','	|	':'	|	';' |	'+'	|	'-'	|	'*'	|	'/'	|	'%'	
+		'>>>='|	'>>>'|	'>>='|	'<<='|	'>>'|	'=>'|	'<<'|	'^='|	'|='|	'&='|	'%='
+	|	'->' |	'==' |	'!='|	'<='|	'>='|	'+='|	'-='|	'*='|	'/='|	'??='|	'??'
+	|	'::' |	'++' |	'--'|	'&&'|	'||'|	'{'	|	'}'	|	'['	|	']'	|	'('
+	|	')'	 |	'..' |	'.'	 |	','	|	':'	|	';' |	'+'	|	'-'	|	'*'	|	'/'	|	'%'
 	|	'&'	 |	'|'	 |	'^'	|	'!'	|	'~' |	'='	|	'<'	|	'>'	|	'?'
 	;

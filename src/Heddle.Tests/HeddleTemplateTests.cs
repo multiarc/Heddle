@@ -63,6 +63,47 @@ namespace Heddle.Tests
             Assert.True(named > namedNoNesting, $"expected nested parens to add C# tokens: {named} vs {namedNoNesting}");
         }
 
+        /// <summary>
+        /// Tier 1 lexer additions: digit separators (1_000), binary literals (0b1010) and hex with separators
+        /// (0xFF_FF) must tokenize without a lexer error and compile/evaluate through Roslyn.
+        /// </summary>
+        [Fact]
+        public void ModernNumericLiteralsCompile()
+        {
+            HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
+            // Trailing text after ')' is required: csharp_expression greedily consumes OUT_PARAMEND tokens, so a
+            // bare '@(...)' at end-of-input is ambiguous (matches the existing template/test convention).
+            var target = new HeddleTemplate("@(@ 1_000 + 0b1010 + 0xFF_FF )!",
+                new CompileContext(new TemplateOptions { AllowCSharp = true }));
+            Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
+            // 1000 + 0b1010 (10) + 0xFFFF (65535) = 66545
+            Assert.Equal("66545!", target.Generate(null));
+        }
+
+        /// <summary>
+        /// Tier 2: string interpolation. A simple hole, a hole containing parentheses, and a hole containing a
+        /// nested string literal must all lex (no error) and render correctly. The nested-string case is the one
+        /// the lexer-mode approach handles that a naive opaque scan would not.
+        /// </summary>
+        [Fact]
+        public void InterpolatedStringExpressions()
+        {
+            HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
+            var options = new TemplateOptions
+            {
+                AllowCSharp = true
+            };
+            // Self-contained C# interpolation: a simple hole ({1 + 2}), a hole containing parentheses and a
+            // nested string literal ({(1 < 2 ? "a" : "b")}), and a hole wrapped in parentheses with parens
+            // inside ((p{(3 * 4)})). The nested-string case is the one the lexer-mode handling makes work.
+            var target = new HeddleTemplate(
+                "@(@$\"x{1 + 2}y z{(1 < 2 ? \"a\" : \"b\")} (p{(3 * 4)})\")|END",
+                new CompileContext(options));
+            Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
+            var actual = target.Generate(null);
+            Assert.Equal("x3y za (p12)|END", actual);
+        }
+
         [Fact]
         public void SubjectDynamicTest()
         {

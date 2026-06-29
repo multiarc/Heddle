@@ -185,4 +185,42 @@ CS_CSHARP_START:
 
 CS_CSHARP_END: PARA_CL -> type(OUT_PARAMEND), popMode;
 
+// Interpolated string starts. Verbatim variants ($@" / @$") must be tried before the
+// regular ($") and before TOKEN so the '@' isn't mistaken for a verbatim string ('@"').
+CS_INTERP_VERBATIM_1: '$@"' -> type(CSHARP_TOKEN), pushMode(INTERP_VERBATIM_STR);
+CS_INTERP_VERBATIM_2: '@$"' -> type(CSHARP_TOKEN), pushMode(INTERP_VERBATIM_STR);
+CS_INTERP_REGULAR:    '$"'  -> type(CSHARP_TOKEN), pushMode(INTERP_STR);
+
 CS_CSHARP_TOKEN: TOKEN -> type(CSHARP_TOKEN);
+
+// Regular interpolated string body: $"...{ hole }...". Everything is emitted as a CSHARP_TOKEN
+// so the expression text round-trips verbatim to Roslyn; the modes only exist to balance the
+// '{'/'}' holes (so a '"' or '(' ')' inside a hole can't terminate the string early).
+mode INTERP_STR;
+
+ISTR_DBL_OPEN:  '{{' -> type(CSHARP_TOKEN);
+ISTR_HOLE_OPEN: '{'  -> type(CSHARP_TOKEN), pushMode(INTERP_HOLE);
+ISTR_END:       '"'  -> type(CSHARP_TOKEN), popMode;
+ISTR_ESCAPE:    '\\' . -> type(CSHARP_TOKEN);
+ISTR_CHAR:      ~["{\\] -> type(CSHARP_TOKEN);
+
+// Verbatim interpolated string body: $@"..." / @$"...". No backslash escapes; '""' escapes a quote.
+mode INTERP_VERBATIM_STR;
+
+IVSTR_DBL_OPEN:  '{{' -> type(CSHARP_TOKEN);
+IVSTR_HOLE_OPEN: '{'  -> type(CSHARP_TOKEN), pushMode(INTERP_HOLE);
+IVSTR_QUOTE_ESC: '""' -> type(CSHARP_TOKEN);
+IVSTR_END:       '"'  -> type(CSHARP_TOKEN), popMode;
+IVSTR_CHAR:      ~["{] -> type(CSHARP_TOKEN);
+
+// Interpolation hole: the C# expression between '{' and '}'. Braces are balanced here; parens and
+// nested (interpolated) strings are consumed wholesale by TOKEN so their contents can't leak out.
+mode INTERP_HOLE;
+
+HOLE_WS:                WS+   -> type(CSHARP_TOKEN);
+HOLE_OPEN:              '{'   -> type(CSHARP_TOKEN), pushMode(INTERP_HOLE);
+HOLE_CLOSE:             '}'   -> type(CSHARP_TOKEN), popMode;
+HOLE_INTERP_VERBATIM_1: '$@"' -> type(CSHARP_TOKEN), pushMode(INTERP_VERBATIM_STR);
+HOLE_INTERP_VERBATIM_2: '@$"' -> type(CSHARP_TOKEN), pushMode(INTERP_VERBATIM_STR);
+HOLE_INTERP_REGULAR:    '$"'  -> type(CSHARP_TOKEN), pushMode(INTERP_STR);
+HOLE_TOKEN:             TOKEN -> type(CSHARP_TOKEN);

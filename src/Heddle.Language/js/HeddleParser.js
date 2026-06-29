@@ -2,7 +2,7 @@
 // jshint ignore: start
 import antlr4 from 'antlr4';
 import HeddleParserListener from './HeddleParserListener.js';
-const serializedATN = [4,1,35,164,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,
+const serializedATN = [4,1,39,164,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,
 4,2,5,7,5,2,6,7,6,2,7,7,7,2,8,7,8,2,9,7,9,2,10,7,10,2,11,7,11,2,12,7,12,
 2,13,7,13,2,14,7,14,2,15,7,15,1,0,1,0,1,0,1,0,1,0,5,0,38,8,0,10,0,12,0,41,
 9,0,1,1,1,1,1,2,1,2,4,2,47,8,2,11,2,12,2,48,1,2,1,2,1,3,1,3,1,3,3,3,56,8,
@@ -63,7 +63,12 @@ const sharedContextCache = new antlr4.atn.PredictionContextCache();
 export default class HeddleParser extends antlr4.Parser {
 
     static grammarFileName = "HeddleParser.g4";
-    static literalNames = [  ];
+    static literalNames = [ null, null, null, null, null, null, null, null, 
+                            null, null, null, null, null, null, null, null, 
+                            null, null, null, null, null, null, null, null, 
+                            null, null, null, null, null, null, null, null, 
+                            null, null, null, null, null, null, "'\"\"'", 
+                            "'}'" ];
     static symbolicNames = [ null, "TEXT", "WS", "IMPORT_TOKEN", "ID", "ROOT_REF", 
                              "MEMBER_P", "OUT", "SUB_START", "SUB_CLOSE", 
                              "CSHARP_END", "CSHARP_TOKEN", "CSHARP_START", 
@@ -73,7 +78,8 @@ export default class HeddleParser extends antlr4.Parser {
                              "SUB_SKIP_WS", "DEF_COMMENT", "DEF_TYPE", "DEF_WS", 
                              "IMPORT_COMMENT", "CALL_RETURN_COMMENT", "CALL_SKIP_WS", 
                              "OUT_COMMENT", "OUT_SKIP_WS", "CALL_COMMENT", 
-                             "CALL_WS" ];
+                             "CALL_WS", "ISTR_DBL_OPEN", "ISTR_END", "IVSTR_QUOTE_ESC", 
+                             "HOLE_CLOSE" ];
     static ruleNames = [ "heddle", "raw", "definition", "def", "def_base", 
                          "def_type", "default_chain", "import_block", "outblock", 
                          "chain", "call", "member_expression", "extension_id", 
@@ -98,7 +104,7 @@ export default class HeddleParser extends antlr4.Parser {
 	        this.state = 39;
 	        this._errHandler.sync(this);
 	        _la = this._input.LA(1);
-	        while((((_la) & ~0x1f) === 0 && ((1 << _la) & 4294835454) !== 0) || ((((_la - 32)) & ~0x1f) === 0 && ((1 << (_la - 32)) & 15) !== 0)) {
+	        while((((_la) & ~0x1f) === 0 && ((1 << _la) & 4294835454) !== 0) || ((((_la - 32)) & ~0x1f) === 0 && ((1 << (_la - 32)) & 255) !== 0)) {
 	            this.state = 37;
 	            this._errHandler.sync(this);
 	            var la_ = this._interp.adaptivePredict(this._input,0,this._ctx);
@@ -366,7 +372,7 @@ export default class HeddleParser extends antlr4.Parser {
 	            this.state = 85; 
 	            this._errHandler.sync(this);
 	            _la = this._input.LA(1);
-	        } while((((_la) & ~0x1f) === 0 && ((1 << _la) & 4294507646) !== 0) || ((((_la - 32)) & ~0x1f) === 0 && ((1 << (_la - 32)) & 15) !== 0));
+	        } while((((_la) & ~0x1f) === 0 && ((1 << _la) & 4294507646) !== 0) || ((((_la - 32)) & ~0x1f) === 0 && ((1 << (_la - 32)) & 255) !== 0));
 	        this.state = 87;
 	        this.match(HeddleParser.SUB_CLOSE);
 	    } catch (re) {
@@ -772,6 +778,10 @@ HeddleParser.OUT_COMMENT = 32;
 HeddleParser.OUT_SKIP_WS = 33;
 HeddleParser.CALL_COMMENT = 34;
 HeddleParser.CALL_WS = 35;
+HeddleParser.ISTR_DBL_OPEN = 36;
+HeddleParser.ISTR_END = 37;
+HeddleParser.IVSTR_QUOTE_ESC = 38;
+HeddleParser.HOLE_CLOSE = 39;
 
 HeddleParser.RULE_heddle = 0;
 HeddleParser.RULE_raw = 1;
