@@ -35,7 +35,8 @@ dotnet test src/Heddle.Tests
 
 All shipping projects use `LangVersion=latest` and are **strong‑name signed** with
 `heddle.snk` (`SignAssembly=true`, `AssemblyOriginatorKeyFile=..\..\heddle.snk`).
-Current package version is **4.0.2** (with an optional `$(VersionSuffix)`).
+The initial public release is **1.0.0**; the published version is set from the release tag
+(`vX.Y.Z`) at publish time, so the version in the source tree is just a placeholder.
 
 ### Key dependencies
 
