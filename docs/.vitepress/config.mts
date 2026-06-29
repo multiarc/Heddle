@@ -30,6 +30,14 @@ export default withMermaid(
     base: '/Heddle/',
     lastUpdated: true,
 
+    // Windows fix: VitePress's resolvePageImports() canonicalizes the page path with
+    // fs.realpathSync(), which "fixes" a lowercase drive letter (e:\) — as used by the
+    // VS Code integrated terminal — to the real casing (E:\), while Rollup's
+    // facadeModuleId keeps the lowercase form. The mismatch makes pageChunk undefined and
+    // the build crashes with "Cannot read properties of undefined (reading 'imports')".
+    // preserveSymlinks skips that realpathSync call, so both stay consistently cased.
+    vite: { resolve: { preserveSymlinks: true } },
+
     // Serve docs/README.md as the site home (/) without renaming the file, so the
     // existing README stays the single source and links to it still resolve.
     rewrites: { 'README.md': 'index.md' },
@@ -84,6 +92,9 @@ export default withMermaid(
         { text: 'Getting Started', link: '/getting-started' },
         { text: 'Language', link: '/language-reference' },
         { text: 'C# API', link: '/csharp-api' },
+        // Static page under docs/public/. `target` forces a real navigation so the
+        // VitePress SPA router doesn't try to resolve it as an internal route.
+        { text: 'Demo', link: '/demo.html', target: '_blank', rel: 'noreferrer' },
         { text: 'GitHub', link: 'https://github.com/multiarc/Heddle' }
       ],
       sidebar: [
