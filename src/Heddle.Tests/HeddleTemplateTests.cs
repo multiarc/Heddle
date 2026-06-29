@@ -267,6 +267,12 @@ namespace Heddle.Tests
                 new CompileContext(new TemplateOptions { AllowCSharp = true }));
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             Assert.Equal("2", t.Generate(null));
+
+            // Contextual keyword used in an expression still works (now matched as CONTEXTUAL_KEYWORD).
+            var nameofT = new HeddleTemplate("@(@nameof(System.String))",
+                new CompileContext(new TemplateOptions { AllowCSharp = true }));
+            Assert.True(nameofT.CompileResult.Success, nameofT.CompileResult.ToString());
+            Assert.Equal("String", nameofT.Generate(null));
         }
 
         /// <summary>

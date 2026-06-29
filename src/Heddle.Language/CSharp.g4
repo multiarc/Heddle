@@ -6,6 +6,7 @@ lexer grammar CSharp;
 
 fragment TOKEN:
 	KEYWORD
+	| CONTEXTUAL_KEYWORD
 	| OPERATOR_OR_PUNCTUATOR
 	| STRING
 	| CHAR
@@ -42,7 +43,7 @@ fragment KEYWORD:
 	| 'byte' | 'case' | 'catch' | 'char' | 'checked'
 	| 'class' | 'const' | 'continue' | 'decimal' | 'default'
 	| 'delegate' | 'do' | 'double' | 'else' | 'enum'
-	| 'event' | 'explicit' | 'extern' | 'false' | 'finally'
+	| 'event' | 'explicit' | 'extern' | 'false' | 'file' | 'finally'
 	| 'fixed' | 'float' | 'for' | 'foreach' | 'goto'
 	| 'if' | 'implicit' | 'in' | 'int' | 'interface'
 	| 'internal' | 'is' | 'lock' | 'long' | 'namespace'
@@ -54,6 +55,25 @@ fragment KEYWORD:
 	| 'try' | 'typeof' | 'uint' | 'ulong' | 'unchecked'
 	| 'unsafe' | 'ushort' | 'using' | 'virtual' | 'void'
 	| 'volatile' | 'while'
+	;
+
+/*
+* C# Contextual Keywords (§6.4.4)
+*
+* These are not reserved - they are identifiers in most contexts - so for token round-tripping it is
+* immaterial whether they are matched here or as IDENTIFIER. They are listed for completeness against the
+* spec; maximal munch still lets longer identifiers (e.g. 'varies', 'records') win over the keyword.
+*/
+fragment CONTEXTUAL_KEYWORD:
+	'add' | 'alias' | 'allows' | 'and' | 'ascending' | 'async'
+	| 'await' | 'by' | 'Cdecl' | 'descending' | 'dynamic'
+	| 'equals' | 'extension' | 'Fastcall' | 'field' | 'from' | 'get' | 'global'
+	| 'group' | 'init' | 'into' | 'join' | 'let'
+	| 'managed' | 'nameof' | 'nint' | 'not' | 'notnull'
+	| 'nuint' | 'on' | 'or' | 'orderby' | 'partial'
+	| 'record' | 'remove' | 'required' | 'scoped' | 'select' | 'set' | 'Stdcall'
+	| 'Thiscall' | 'unmanaged' | 'value' | 'var' | 'when'
+	| 'where' | 'yield'
 	;
 
 /*
