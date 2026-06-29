@@ -164,7 +164,17 @@ namespace Heddle.Runtime
                         typeof(object));
                 }
 
-                var syntax = tree.GetRoot().DescendantNodes().OfType<ReturnStatementSyntax>().Single().Expression;
+                // The expression we evaluate is the body of the generated PreProcessData wrapper:
+                //   return <Expression>;
+                // A statement-bodied lambda (or any nested 'return') in <Expression> adds further
+                // ReturnStatementSyntax nodes, so we must select the wrapper's own return - the one whose
+                // immediate parent is the method body block - rather than assuming a single return exists.
+                var syntax = tree.GetRoot().DescendantNodes()
+                    .OfType<ReturnStatementSyntax>()
+                    .First(r => r.Parent is BlockSyntax block
+                                && block.Parent is MethodDeclarationSyntax method
+                                && method.Identifier.Text == "PreProcessData")
+                    .Expression;
                 var model = compilation.GetSemanticModel(tree, false);
                 var constantValue = model.GetConstantValue(syntax);
                 if (constantValue.HasValue)

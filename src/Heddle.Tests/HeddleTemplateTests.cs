@@ -143,6 +143,31 @@ namespace Heddle.Tests
             Assert.Equal("3", withCall.Generate(null));
         }
 
+        /// <summary>
+        /// Statement-bodied lambdas (and any other nested 'return') must compile. The generated wrapper is
+        /// 'return &lt;Expression&gt;;', so a lambda body like '() => { return 7; }' adds a second return
+        /// statement; result-type detection must pick the wrapper's return, not fail on the extra one.
+        /// </summary>
+        [Fact]
+        public void StatementLambdaExpressions()
+        {
+            HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
+            var options = new TemplateOptions { AllowCSharp = true };
+
+            var blockLambda = new HeddleTemplate(
+                "@(@new System.Func<int>(() => { return 7; })())",
+                new CompileContext(options));
+            Assert.True(blockLambda.CompileResult.Success, blockLambda.CompileResult.ToString());
+            Assert.Equal("7", blockLambda.Generate(null));
+
+            // Multiple nested returns (two statement lambdas) must also resolve.
+            var twoLambdas = new HeddleTemplate(
+                "@(@new System.Func<int>(() => { if (true) return 2; return 0; })() + new System.Func<int>(() => { return 3; })())",
+                new CompileContext(options));
+            Assert.True(twoLambdas.CompileResult.Success, twoLambdas.CompileResult.ToString());
+            Assert.Equal("5", twoLambdas.Generate(null));
+        }
+
         [Fact]
         public void SubjectDynamicTest()
         {
