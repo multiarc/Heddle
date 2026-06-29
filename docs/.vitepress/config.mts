@@ -38,17 +38,6 @@ export default withMermaid(
     // develop.txt is not Markdown.
     srcExclude: ['assessment.md', 'develop.txt'],
 
-    // Heddle templates use `{{ }}` pervasively, which Vue would otherwise parse as
-    // mustache interpolation in prose/inline code. The docs use no intentional Vue
-    // interpolation, so disable it by setting delimiters that never appear in text.
-    vue: {
-      template: {
-        compilerOptions: {
-          delimiters: ['__VP_NO_INTERP_OPEN__', '__VP_NO_INTERP_CLOSE__']
-        }
-      }
-    },
-
     markdown: {
       languages: [
         ...(csharpLangs as any[]),
@@ -75,6 +64,19 @@ export default withMermaid(
           }
           return defaultRender(tokens, idx, options, env, self)
         }
+
+        // Heddle uses `{{ }}` pervasively. In Markdown prose and inline code Vue would
+        // otherwise treat them as interpolation, so entity-encode the braces here.
+        // This is scoped to rendered content only and never touches the VitePress
+        // theme's own templates; fenced code blocks are already v-pre safe.
+        const escapeMustache = (html: string) =>
+          html.replace(/\{\{/g, '&#123;&#123;').replace(/\}\}/g, '&#125;&#125;')
+        const defaultText = md.renderer.rules.text!
+        md.renderer.rules.text = (tokens, idx, options, env, self) =>
+          escapeMustache(defaultText(tokens, idx, options, env, self))
+        const defaultCodeInline = md.renderer.rules.code_inline!
+        md.renderer.rules.code_inline = (tokens, idx, options, env, self) =>
+          escapeMustache(defaultCodeInline(tokens, idx, options, env, self))
       }
     },
 
