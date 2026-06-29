@@ -1,0 +1,60 @@
+# Verifies that every commit in a pull request carries a matching
+# "Signed-off-by" trailer (Developer Certificate of Origin). This produces a
+# required status check ("DCO / dco") that branch protection can enforce.
+#
+# Alternative: install the DCO GitHub App (https://github.com/apps/dco) which
+# provides the same check with zero maintenance. If you do, you can delete this
+# workflow and require the app's "DCO" check instead.
+
+name: DCO
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  dco:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Check DCO sign-off
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          fail=0
+          commits=$(git rev-list "$BASE_SHA..$HEAD_SHA")
+          if [ -z "$commits" ]; then
+            echo "No commits to check."
+            exit 0
+          fi
+          for sha in $commits; do
+            # Skip merge commits (more than one parent).
+            parents=$(git rev-list --parents -n 1 "$sha" | wc -w)
+            if [ "$parents" -gt 2 ]; then
+              echo "skip  ${sha:0:8} (merge commit)"
+              continue
+            fi
+            name=$(git show -s --format='%an' "$sha")
+            email=$(git show -s --format='%ae' "$sha")
+            expected="Signed-off-by: ${name} <${email}>"
+            if git show -s --format='%B' "$sha" | grep -qiF "$expected"; then
+              echo "ok    ${sha:0:8} signed off by ${name}"
+            else
+              echo "FAIL  ${sha:0:8} missing '${expected}'"
+              fail=1
+            fi
+          done
+          if [ "$fail" -ne 0 ]; then
+            echo ""
+            echo "One or more commits are missing a matching Signed-off-by line."
+            echo "Fix with: git commit -s   (or rebase: git rebase --signoff ${BASE_SHA}..HEAD)"
+            exit 1
+          fi

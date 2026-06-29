@@ -1,49 +1,56 @@
-# Builds the custom Ace editor bundle (@multiarc/ace_heddle) and publishes it to
-# GitHub Packages, mirroring the NuGet beta/release flow in dotnet.yml:
-#   - pull requests  -> 1.0.0-beta.<run_number>  (npm dist-tag "beta")
-#   - push to main   -> 1.0.<run_number>         (npm dist-tag "latest")
+# Builds the custom Ace editor bundle (@multiarc/ace_heddle) and publishes it to the
+# public npm registry (npmjs.org) using npm Trusted Publishing (OIDC) — no NPM_TOKEN.
+#   - internal PRs   -> `npm stage publish` 1.0.0-beta.<run_number> (staged for review,
+#                       NOT publicly installable until a maintainer approves it)
+#   - tag vX.Y.Z     -> `npm publish` X.Y.Z (live release, dist-tag "latest")
+#
+# Production is TAG-DRIVEN; merging to main does not publish. Fork PRs are skipped
+# (OIDC tokens aren't issued for forks).
 
 name: Heddle Ace (npm)
 
 on:
   push:
-    branches: [ "main" ]
+    tags: [ "v*.*.*" ]
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+
 jobs:
   publish:
+    # Run for tag pushes and same-repo PRs; skip (not fail) for fork PRs.
+    if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      id-token: write   # OIDC token for npm Trusted Publishing
     steps:
     - uses: actions/checkout@v7
     - name: Setup Node
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@v4
       with:
-        node-version: 22
-        registry-url: https://npm.pkg.github.com
+        node-version: 24
+        registry-url: https://registry.npmjs.org
         scope: '@multiarc'
+    - name: Ensure npm supports staged/trusted publishing
+      run: npm install -g npm@latest   # staged publishing requires npm >= 11.15.0
     - name: Build custom Ace bundle
       working-directory: src/Heddle.Language
       run: bash build_ace.sh
     - name: Stage package manifest with built bundle
       working-directory: src/Heddle.Language
       run: cp package.json ace_build/ace/build/package.json
-    - name: Publish Beta Package
-      if: ${{ github.ref != 'refs/heads/main' }}
+    - name: Stage pre-release package (PR)
+      if: ${{ github.event_name == 'pull_request' }}
       working-directory: src/Heddle.Language/ace_build/ace/build
       run: |
         npm version --no-git-tag-version 1.0.0-beta.${{ github.run_number }}
-        npm publish --tag beta
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Publish Release Package
-      if: ${{ github.ref == 'refs/heads/main' }}
+        npm stage publish --tag beta
+    - name: Publish release package (tag)
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       working-directory: src/Heddle.Language/ace_build/ace/build
       run: |
-        npm version --no-git-tag-version 1.0.${{ github.run_number }}
+        npm version --no-git-tag-version "${GITHUB_REF_NAME#v}"
         npm publish
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

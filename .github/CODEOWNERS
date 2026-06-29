@@ -1,0 +1,8 @@
+# Code owners for Heddle.
+#
+# Every pull request requires review from a code owner before it can be merged
+# (enforced by branch protection: "Require review from Code Owners"). This is the
+# guardrail that ensures no change — including AI-generated or drive-by PRs —
+# reaches `main` without a maintainer's review.
+
+*       @multiarc
