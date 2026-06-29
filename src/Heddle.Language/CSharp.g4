@@ -66,15 +66,18 @@ fragment IDENTIFIER: IDENTIFIER_START IDENTIFIER_PART*;
 // Defined only for the C# TOKEN set so it does not affect Heddle's own '@'-based syntax.
 fragment VERBATIM_IDENTIFIER: '@' IDENTIFIER;
 
-fragment IDENTIFIER_START: 
-	[a-zA-Z_]
+// Identifier characters follow the Unicode categories from the C# spec (§6.4.3): a letter
+// (Letter, subcat letter-number) or '_' to start; letters, decimal digits, connecting,
+// combining and formatting characters to continue. (The previous rules were ASCII-only and
+// wrongly allowed '+' in identifier-part, which mis-lexed e.g. 'a+b' as one identifier.)
+fragment IDENTIFIER_START:
+	[\p{L}\p{Nl}_]
 	| UNICODE_ESCAPE
 	;
 
 fragment IDENTIFIER_PART:
-	IDENTIFIER_START
+	[\p{L}\p{Nl}\p{Nd}\p{Pc}\p{Mn}\p{Mc}\p{Cf}]
 	| UNICODE_ESCAPE
-	| [+0-9]
 	;
 
 /*
@@ -216,6 +219,29 @@ fragment VERBATIM_STRING_LITERAL:
 fragment SINGLE_VERBATIM_STRING_LITERAL: ~'"';
 
 fragment QUOTE_ESCAPE: '""';
+
+/*
+* RAW STRING (C# 11)
+*
+* The opening and closing delimiters must have the SAME number of quotes, which is context-sensitive and
+* therefore cannot be expressed exactly in a context-free lexer. Each fixed width is enumerated instead so
+* that interior runs of quotes shorter than the delimiter do not close the literal early. Widths 3..9 are
+* covered (a width-N delimiter is only needed when the content holds N-1 consecutive quotes, so >9 never
+* occurs in practice). The optional '$' prefix covers the interpolated raw forms ($"""...""", $$"""...""").
+* The whole literal is consumed as ONE token via a non-greedy body, so its exact text round-trips to Roslyn
+* and any interior quotes/parens/braces cannot disturb Heddle's token balancing.
+*/
+fragment RAW_STRING_BODY:
+	'$'* (
+		  '"""""""""' .*? '"""""""""'   // 9
+		| '""""""""'  .*? '""""""""'    // 8
+		| '"""""""'   .*? '"""""""'     // 7
+		| '""""""'    .*? '""""""'      // 6
+		| '"""""'     .*? '"""""'       // 5
+		| '""""'      .*? '""""'        // 4
+		| '"""'       .*? '"""'         // 3
+	) UTF8_SUFFIX?
+	;
 
 /*
 * NULL

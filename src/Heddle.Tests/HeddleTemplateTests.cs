@@ -212,6 +212,9 @@ namespace Heddle.Tests
             NoErrors("@(@\"\"\"(\"\"\".Length)");            // interior paren must not break balance
             NoErrors("@(@\"\"\"\"a\"\"\"b\"\"\"\".Length)"); // 4-quote raw, interior """
             NoErrors("@(@$\"\"\"x{1 + 2}y\"\"\")");          // interpolated raw
+            // High delimiter widths (7 and 9 quotes) up to the supported bound.
+            NoErrors("@(@" + new string('"', 7) + "x" + new string('"', 7) + ".Length)");
+            NoErrors("@(@" + new string('"', 9) + "x" + new string('"', 9) + ".Length)");
 
 #if NET6_0_OR_GREATER
             // End-to-end evaluation additionally needs a Roslyn that supports C# 11. The netstandard2.0 build
@@ -231,7 +234,35 @@ namespace Heddle.Tests
             Assert.Equal("5", Render("@(@\"\"\"\"a\"\"\"b\"\"\"\".Length)"));  // 4-quote raw, interior """
             Assert.Equal("x3y", Render("@(@$\"\"\"x{1 + 2}y\"\"\")"));         // interpolated raw
             Assert.Equal("3", Render("@(@\"\"\"\nabc\n\"\"\".Length)"));       // multi-line raw
+            Assert.Equal("3", Render("@(@" + new string('"', 7) + "abc" + new string('"', 7) + ".Length)")); // 7-quote
 #endif
+        }
+
+        /// <summary>
+        /// Identifier coverage per the C# spec (§6.4.3): Unicode letters are valid identifier characters, and
+        /// identifier-part must NOT absorb '+', so 'a+b' with no spaces is three tokens ('a', '+', 'b').
+        /// </summary>
+        [Fact]
+        public void IdentifierAndOperatorCoverage()
+        {
+            HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
+
+            // Unicode identifiers tokenize without a lexer error.
+            void NoErrors(string template)
+            {
+                var ctx = DocumentParser.Parse(template,
+                    new CompileContext(new TemplateOptions { ProvideLanguageFeatures = true }), out _);
+                Assert.Empty(ctx.Errors);
+            }
+            NoErrors("@(@café.ToString())");
+            NoErrors("@(@Δλ + naïve)");
+
+            // '+' directly between identifiers is its own operator: "x".Length+1 == 2 (was mis-lexed as the
+            // single identifier 'Length+1' when identifier-part wrongly included '+').
+            var t = new HeddleTemplate("@(@\"x\".Length+1)",
+                new CompileContext(new TemplateOptions { AllowCSharp = true }));
+            Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
+            Assert.Equal("2", t.Generate(null));
         }
 
         /// <summary>

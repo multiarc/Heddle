@@ -189,16 +189,10 @@ CS_CSHARP_START:
 
 CS_CSHARP_END: PARA_CL -> type(OUT_PARAMEND), popMode;
 
-// Raw string literals ("""..."""), incl. the $-prefixed interpolated forms. Matching open/close quote
-// counts is context-sensitive, so realistic widths (3..6 quotes) are matched non-greedily as ONE token;
-// the exact text round-trips to Roslyn and interior quotes/parens/braces can't disturb token balancing.
-// The non-greedy '.*?' must live in a top-level rule (it does not compose when buried in a fragment).
-CS_RAW_STRING:
-	'$'* ( '""""""' .*? '""""""'
-	     | '"""""'  .*? '"""""'
-	     | '""""'   .*? '""""'
-	     | '"""'    .*? '"""' ) UTF8_SUFFIX?
-	-> type(CSHARP_TOKEN);
+// Raw string literals ("""..."""), incl. the $-prefixed interpolated forms - see RAW_STRING_BODY in
+// CSharp.g4. The non-greedy body must live in a top-level rule (it does not compose when the rule also
+// alternates with the other string rules under maximal munch, as inside the TOKEN fragment).
+CS_RAW_STRING: RAW_STRING_BODY -> type(CSHARP_TOKEN);
 
 // Interpolated string starts. Verbatim variants ($@" / @$") must be tried before the
 // regular ($") and before TOKEN so the '@' isn't mistaken for a verbatim string ('@"').
@@ -219,12 +213,7 @@ CSN_CSHARP_START:
 
 CSN_CSHARP_END: PARA_CL -> type(CSHARP_TOKEN), popMode;
 
-CSN_RAW_STRING:
-	'$'* ( '""""""' .*? '""""""'
-	     | '"""""'  .*? '"""""'
-	     | '""""'   .*? '""""'
-	     | '"""'    .*? '"""' ) UTF8_SUFFIX?
-	-> type(CSHARP_TOKEN);
+CSN_RAW_STRING: RAW_STRING_BODY -> type(CSHARP_TOKEN);
 
 CSN_INTERP_VERBATIM_1: '$@"' -> type(CSHARP_TOKEN), pushMode(INTERP_VERBATIM_STR);
 CSN_INTERP_VERBATIM_2: '@$"' -> type(CSHARP_TOKEN), pushMode(INTERP_VERBATIM_STR);
@@ -264,12 +253,7 @@ mode INTERP_HOLE;
 HOLE_WS:                WS+   -> type(CSHARP_TOKEN);
 HOLE_OPEN:              '{'   -> type(CSHARP_TOKEN), pushMode(INTERP_HOLE);
 HOLE_CLOSE:             '}'   -> type(CSHARP_TOKEN), popMode;
-HOLE_RAW_STRING:
-	'$'* ( '""""""' .*? '""""""'
-	     | '"""""'  .*? '"""""'
-	     | '""""'   .*? '""""'
-	     | '"""'    .*? '"""' ) UTF8_SUFFIX?
-	-> type(CSHARP_TOKEN);
+HOLE_RAW_STRING: RAW_STRING_BODY -> type(CSHARP_TOKEN);
 HOLE_INTERP_VERBATIM_1: '$@"' -> type(CSHARP_TOKEN), pushMode(INTERP_VERBATIM_STR);
 HOLE_INTERP_VERBATIM_2: '@$"' -> type(CSHARP_TOKEN), pushMode(INTERP_VERBATIM_STR);
 HOLE_INTERP_REGULAR:    '$"'  -> type(CSHARP_TOKEN), pushMode(INTERP_STR);
