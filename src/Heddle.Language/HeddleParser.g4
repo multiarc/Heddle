@@ -46,7 +46,7 @@ extension_id:
     ID
     ;
 
-csharp_expression: (CSHARP_TOKEN | OUT_PARAMEND)+;
+csharp_expression: CSHARP_TOKEN+;
 
 subtemplate: 
     WS* SUB_START heddle SUB_CLOSE;

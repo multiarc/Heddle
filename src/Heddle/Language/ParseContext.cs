@@ -436,10 +436,6 @@ namespace Heddle.Language {
                     {
                         AddToken(token, HeddleTokenType.CSharpToken);
                     }
-                    foreach (var token in csharpExpression.OUT_PARAMEND())
-                    {
-                        AddToken(token, HeddleTokenType.CSharpToken);
-                    }
                 }
                 return new OutputItem(itemName, GetAbsoluteBlockPosition(context))
                 {
@@ -480,10 +476,6 @@ namespace Heddle.Language {
                 {
                     AddToken(context.CSHARP_START(), HeddleTokenType.CSharpStart);
                     foreach (var token in csharpExpression.CSHARP_TOKEN())
-                    {
-                        AddToken(token, HeddleTokenType.CSharpToken);
-                    }
-                    foreach (var token in csharpExpression.OUT_PARAMEND())
                     {
                         AddToken(token, HeddleTokenType.CSharpToken);
                     }

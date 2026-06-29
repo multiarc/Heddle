@@ -176,13 +176,85 @@ CALL_MEMB_P: MEMB_P -> type(MEMBER_P);
 
 CALL_WS: WS+ -> channel(HIDDEN);
 
+// Top level of a C# expression. The ONLY ')' that closes the call lives here, so it is the only
+// one typed OUT_PARAMEND. A nested '(' opens CS_NESTED, whose ')' is an ordinary CSHARP_TOKEN.
+// This keeps the call terminator unambiguous: csharp_expression never contains an OUT_PARAMEND,
+// so a trailing token after ')' is no longer needed to end the expression.
 mode CS;
 
 CS_CSHARP_WS: WS+ -> type(CSHARP_TOKEN);
 
 CS_CSHARP_START:
-	PARA_ST -> type(CSHARP_TOKEN), pushMode(CS);
+	PARA_ST -> type(CSHARP_TOKEN), pushMode(CS_NESTED);
 
 CS_CSHARP_END: PARA_CL -> type(OUT_PARAMEND), popMode;
 
+// Raw string literals ("""..."""), incl. the $-prefixed interpolated forms - see RAW_STRING_BODY in
+// CSharp.g4. The non-greedy body must live in a top-level rule (it does not compose when the rule also
+// alternates with the other string rules under maximal munch, as inside the TOKEN fragment).
+CS_RAW_STRING: RAW_STRING_BODY -> type(CSHARP_TOKEN);
+
+// Interpolated string starts. Verbatim variants ($@" / @$") must be tried before the
+// regular ($") and before TOKEN so the '@' isn't mistaken for a verbatim string ('@"').
+CS_INTERP_VERBATIM_1: '$@"' -> type(CSHARP_TOKEN), pushMode(INTERP_VERBATIM_STR);
+CS_INTERP_VERBATIM_2: '@$"' -> type(CSHARP_TOKEN), pushMode(INTERP_VERBATIM_STR);
+CS_INTERP_REGULAR:    '$"'  -> type(CSHARP_TOKEN), pushMode(INTERP_STR);
+
 CS_CSHARP_TOKEN: TOKEN -> type(CSHARP_TOKEN);
+
+// Parenthesised sub-expression inside a C# expression. Identical to CS except the closing ')'
+// is a plain CSHARP_TOKEN (it balances an inner '(' rather than terminating the call).
+mode CS_NESTED;
+
+CSN_CSHARP_WS: WS+ -> type(CSHARP_TOKEN);
+
+CSN_CSHARP_START:
+	PARA_ST -> type(CSHARP_TOKEN), pushMode(CS_NESTED);
+
+CSN_CSHARP_END: PARA_CL -> type(CSHARP_TOKEN), popMode;
+
+CSN_RAW_STRING: RAW_STRING_BODY -> type(CSHARP_TOKEN);
+
+CSN_INTERP_VERBATIM_1: '$@"' -> type(CSHARP_TOKEN), pushMode(INTERP_VERBATIM_STR);
+CSN_INTERP_VERBATIM_2: '@$"' -> type(CSHARP_TOKEN), pushMode(INTERP_VERBATIM_STR);
+CSN_INTERP_REGULAR:    '$"'  -> type(CSHARP_TOKEN), pushMode(INTERP_STR);
+
+CSN_CSHARP_TOKEN: TOKEN -> type(CSHARP_TOKEN);
+
+// Regular interpolated string body: $"...{ hole }...". Everything is emitted as a CSHARP_TOKEN
+// so the expression text round-trips verbatim to Roslyn; the modes only exist to balance the
+// '{'/'}' holes (so a '"' or '(' ')' inside a hole can't terminate the string early).
+// Character classes mirror the C# spec (§12.8.3): a bare '}' is not a string character - it is only
+// legal as the Close_Brace_Escape_Sequence '}}'. A single '}' closing a hole is consumed in
+// INTERP_HOLE, so any '}' reaching this mode must be part of '}}'.
+mode INTERP_STR;
+
+ISTR_OPEN_BRACE_ESC:  '{{' -> type(CSHARP_TOKEN);   // Open_Brace_Escape_Sequence
+ISTR_CLOSE_BRACE_ESC: '}}' -> type(CSHARP_TOKEN);   // Close_Brace_Escape_Sequence
+ISTR_HOLE_OPEN:       '{'  -> type(CSHARP_TOKEN), pushMode(INTERP_HOLE);
+ISTR_END:             '"'  -> type(CSHARP_TOKEN), popMode;
+ISTR_ESCAPE:          '\\' . -> type(CSHARP_TOKEN);
+ISTR_CHAR:            ~["\\{}] -> type(CSHARP_TOKEN);   // Interpolated_Regular_String_Character
+
+// Verbatim interpolated string body: $@"..." / @$"...". No backslash escapes; '""' escapes a quote.
+mode INTERP_VERBATIM_STR;
+
+IVSTR_OPEN_BRACE_ESC:  '{{' -> type(CSHARP_TOKEN);   // Open_Brace_Escape_Sequence
+IVSTR_CLOSE_BRACE_ESC: '}}' -> type(CSHARP_TOKEN);   // Close_Brace_Escape_Sequence
+IVSTR_HOLE_OPEN:       '{'  -> type(CSHARP_TOKEN), pushMode(INTERP_HOLE);
+IVSTR_QUOTE_ESC:       '""' -> type(CSHARP_TOKEN);   // Quote_Escape_Sequence
+IVSTR_END:             '"'  -> type(CSHARP_TOKEN), popMode;
+IVSTR_CHAR:            ~["{}] -> type(CSHARP_TOKEN);   // Interpolated_Verbatim_String_Character
+
+// Interpolation hole: the C# expression between '{' and '}'. Braces are balanced here; parens and
+// nested (interpolated) strings are consumed wholesale by TOKEN so their contents can't leak out.
+mode INTERP_HOLE;
+
+HOLE_WS:                WS+   -> type(CSHARP_TOKEN);
+HOLE_OPEN:              '{'   -> type(CSHARP_TOKEN), pushMode(INTERP_HOLE);
+HOLE_CLOSE:             '}'   -> type(CSHARP_TOKEN), popMode;
+HOLE_RAW_STRING: RAW_STRING_BODY -> type(CSHARP_TOKEN);
+HOLE_INTERP_VERBATIM_1: '$@"' -> type(CSHARP_TOKEN), pushMode(INTERP_VERBATIM_STR);
+HOLE_INTERP_VERBATIM_2: '@$"' -> type(CSHARP_TOKEN), pushMode(INTERP_VERBATIM_STR);
+HOLE_INTERP_REGULAR:    '$"'  -> type(CSHARP_TOKEN), pushMode(INTERP_STR);
+HOLE_TOKEN:             TOKEN -> type(CSHARP_TOKEN);

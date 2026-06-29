@@ -407,17 +407,25 @@ Inside a call's parentheses, an inner **`@`** switches the lexer into C# mode (`
 as a real C# expression and compiled by Roslyn. This requires
 `TemplateOptions.AllowCSharp = true`.
 
-Supported forms include literals, member access, method calls, LINQ, lambdas, and object
-initializers. Nested parentheses are handled (the lexer balances `(`/`)` within the
-expression):
+The lexer covers the C# **expression** grammar through C# 14, so supported forms include numeric
+literals (digit separators, binary, hex — `1_000`, `0b1010`, `0xFF`), all string forms (regular,
+verbatim `@"…"`, interpolated `$"…{x}…"`, and raw `"""…"""` including the `$`‑prefixed interpolated
+raw forms), Unicode and verbatim (`@class`) identifiers, member access, method calls, LINQ, lambdas
+(both expression‑ and block‑bodied `x => { … }`), and object/collection initializers. Nested
+parentheses are handled (the lexer balances `(`/`)` within the expression):
 
 ```heddle
 @(@model.Title.ToUpper())                            @* method call *@
 @(@model.PublishedOn.Year)                           @* member of a member *@
+@(@$"{model.Title} ({model.PublishedOn.Year})")      @* string interpolation *@
 @list(@model.Articles.Where(a => a.IsFeatured))      @* LINQ + lambda *@
 @list(@model.Articles.OrderByDescending(a => a.PublishedOn).Take(5))
 @if(@model.Comments.Count > 0){{ <h3>Comments</h3> }}   @* a boolean expression *@
 ```
+
+> The grammar tokenizes the full C# 14 expression syntax, but a given feature only *compiles* if the
+> Roslyn version bundled for your target framework supports it (e.g. raw strings and `u8` need C# 11+;
+> the `netstandard2.0` build used on .NET Framework ships an older Roslyn).
 
 Two well‑known identifiers are available in embedded C#:
 

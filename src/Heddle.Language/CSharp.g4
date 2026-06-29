@@ -6,11 +6,13 @@ lexer grammar CSharp;
 
 fragment TOKEN:
 	KEYWORD
+	| CONTEXTUAL_KEYWORD
 	| OPERATOR_OR_PUNCTUATOR
 	| STRING
 	| CHAR
 	| INT
 	| REAL
+	| VERBATIM_IDENTIFIER
 	| IDENTIFIER
 	;
 
@@ -41,7 +43,7 @@ fragment KEYWORD:
 	| 'byte' | 'case' | 'catch' | 'char' | 'checked'
 	| 'class' | 'const' | 'continue' | 'decimal' | 'default'
 	| 'delegate' | 'do' | 'double' | 'else' | 'enum'
-	| 'event' | 'explicit' | 'extern' | 'false' | 'finally'
+	| 'event' | 'explicit' | 'extern' | 'false' | 'file' | 'finally'
 	| 'fixed' | 'float' | 'for' | 'foreach' | 'goto'
 	| 'if' | 'implicit' | 'in' | 'int' | 'interface'
 	| 'internal' | 'is' | 'lock' | 'long' | 'namespace'
@@ -56,20 +58,46 @@ fragment KEYWORD:
 	;
 
 /*
+* C# Contextual Keywords (§6.4.4)
+*
+* These are not reserved - they are identifiers in most contexts - so for token round-tripping it is
+* immaterial whether they are matched here or as IDENTIFIER. They are listed for completeness against the
+* spec; maximal munch still lets longer identifiers (e.g. 'varies', 'records') win over the keyword.
+*/
+fragment CONTEXTUAL_KEYWORD:
+	'add' | 'alias' | 'allows' | 'and' | 'ascending' | 'async'
+	| 'await' | 'by' | 'Cdecl' | 'descending' | 'dynamic'
+	| 'equals' | 'extension' | 'Fastcall' | 'field' | 'from' | 'get' | 'global'
+	| 'group' | 'init' | 'into' | 'join' | 'let'
+	| 'managed' | 'nameof' | 'nint' | 'not' | 'notnull'
+	| 'nuint' | 'on' | 'or' | 'orderby' | 'partial'
+	| 'record' | 'remove' | 'required' | 'scoped' | 'select' | 'set' | 'Stdcall'
+	| 'Thiscall' | 'unmanaged' | 'value' | 'var' | 'when'
+	| 'where' | 'yield'
+	;
+
+/*
 * C# Identifier
 */
 
 fragment IDENTIFIER: IDENTIFIER_START IDENTIFIER_PART*;
 
-fragment IDENTIFIER_START: 
-	[a-zA-Z_]
+// Verbatim identifier: '@' prefix lets a keyword be used as an identifier (e.g. @class, @new).
+// Defined only for the C# TOKEN set so it does not affect Heddle's own '@'-based syntax.
+fragment VERBATIM_IDENTIFIER: '@' IDENTIFIER;
+
+// Identifier characters follow the Unicode categories from the C# spec (§6.4.3): a letter
+// (Letter, subcat letter-number) or '_' to start; letters, decimal digits, connecting,
+// combining and formatting characters to continue. (The previous rules were ASCII-only and
+// wrongly allowed '+' in identifier-part, which mis-lexed e.g. 'a+b' as one identifier.)
+fragment IDENTIFIER_START:
+	[\p{L}\p{Nl}_]
 	| UNICODE_ESCAPE
 	;
 
 fragment IDENTIFIER_PART:
-	IDENTIFIER_START
+	[\p{L}\p{Nl}\p{Nd}\p{Pc}\p{Mn}\p{Mc}\p{Cf}]
 	| UNICODE_ESCAPE
-	| [+0-9]
 	;
 
 /*
@@ -92,27 +120,43 @@ fragment BOOL:
 * INT
 */
 
-fragment INT: 
-	DEC_INT_LITERAL | HEX_INT_LITERAL;
+fragment INT:
+	DEC_INT_LITERAL | HEX_INT_LITERAL | BIN_INT_LITERAL;
 
-fragment DEC_INT_LITERAL: 
+fragment DEC_INT_LITERAL:
 	DEC_DIGITS INT_SUFFIX?;
 
-fragment DEC_DIGITS: DEC_DIGIT+;
+// Digit separators ('_') are allowed between digits (C# 7+).
+fragment DEC_DIGITS: DEC_DIGIT DECORATED_DEC_DIGIT*;
+
+fragment DECORATED_DEC_DIGIT: '_'* DEC_DIGIT;
 
 fragment DEC_DIGIT: '0'..'9';
 
-fragment INT_SUFFIX: [UuLl];
+fragment INT_SUFFIX:
+	'UL' | 'Ul' | 'uL' | 'ul' | 'LU' | 'Lu' | 'lU' | 'lu'
+	| 'U' | 'u' | 'L' | 'l'
+	;
 
-fragment HEX_INT_LITERAL: '0x' HEX_DIGITS INT_SUFFIX?;
+fragment HEX_INT_LITERAL: ('0x' | '0X') HEX_DIGITS INT_SUFFIX?;
 
-fragment HEX_DIGITS: HEX_DIGIT+;
+fragment HEX_DIGITS: HEX_DIGIT DECORATED_HEX_DIGIT*;
+
+fragment DECORATED_HEX_DIGIT: '_'* HEX_DIGIT;
 
 fragment HEX_DIGIT:
 	'0'..'9'
 	| 'a'..'f'
 	| 'A'..'F'
 	;
+
+fragment BIN_INT_LITERAL: ('0b' | '0B') BIN_DIGITS INT_SUFFIX?;
+
+fragment BIN_DIGITS: BIN_DIGIT DECORATED_BIN_DIGIT*;
+
+fragment DECORATED_BIN_DIGIT: '_'* BIN_DIGIT;
+
+fragment BIN_DIGIT: '0' | '1';
 
 /*
 * REAL
@@ -147,7 +191,7 @@ fragment CHARACTER:
 fragment SINGLE_CHAR: ~([\u0027\u005C] | [\r\n] | '\u0085' | '\u2028' | '\u2029');
 
 fragment SIMPLE_ESCAPE:
-	'\\\'' | '\\"' | '\\\\' | '\\0' | '\\a' | '\\b' | '\\f' | '\\n' | '\\r' | '\\t' | '\\v';
+	'\\\'' | '\\"' | '\\\\' | '\\0' | '\\a' | '\\b' | '\\e' | '\\f' | '\\n' | '\\r' | '\\t' | '\\v';
 
 fragment HEX_ESCAPE:
 	'\\x' HEX_DIGIT HEX_DIGIT? HEX_DIGIT? HEX_DIGIT?;
@@ -161,7 +205,9 @@ fragment STRING:
 	| VARBATIM_STRING
 	;
 
-fragment REGULAR_STRING: '"' REGULAR_STRING_LITERALS? '"';
+fragment UTF8_SUFFIX: 'u8' | 'U8';
+
+fragment REGULAR_STRING: '"' REGULAR_STRING_LITERALS? '"' UTF8_SUFFIX?;
 
 fragment REGULAR_STRING_LITERALS:
 	REGULAR_STRING_LITERAL+
@@ -178,7 +224,7 @@ fragment REGULAR_STRING_LITERAL:
 fragment SINGLE_REGULAR_STRING_LITERAL: ~([\u0022\u005C] | [\r\n] | '\u0085' | '\u2028' | '\u2029');
 
 fragment VARBATIM_STRING:
-	'@"' VERBATIM_STRING_LITERALS? '"';
+	'@"' VERBATIM_STRING_LITERALS? '"' UTF8_SUFFIX?;
 
 fragment VERBATIM_STRING_LITERALS:
 	VERBATIM_STRING_LITERAL+
@@ -193,6 +239,19 @@ fragment VERBATIM_STRING_LITERAL:
 fragment SINGLE_VERBATIM_STRING_LITERAL: ~'"';
 
 fragment QUOTE_ESCAPE: '""';
+
+/*
+* RAW STRING (C# 11)
+*
+* A raw string is delimited by 3 or more quotes, with the closing run equal in length to the opening run.
+* The recursion below adds one quote to each side per step, so the open/close delimiters are always matched
+* for ANY width without enumerating widths. The non-greedy body consumes the literal as ONE token, so its
+* exact text round-trips to Roslyn and interior quotes/parens/braces cannot disturb Heddle's token balancing.
+* The optional '$' prefix covers the interpolated raw forms ($"""...""", $$"""...""").
+*/
+fragment RAW_STRING_BODY: '$'* RAW_DELIMITED UTF8_SUFFIX?;
+
+fragment RAW_DELIMITED: '"' RAW_DELIMITED '"' | '"""' .*? '"""';
 
 /*
 * NULL
@@ -210,9 +269,9 @@ fragment UNICODE_ESCAPE:
 	;
 
 fragment OPERATOR_OR_PUNCTUATOR:
-		'>>='|	'<<='|	'>>'|	'=>'|	'<<'|	'^='|	'|='|	'&='|	'%='
-	|	'->' |	'==' |	'!='|	'<='|	'>='|	'+='|	'-='|	'*='|	'/='|	'??'
-	|	'::' |	'++' |	'--'|	'&&'|	'||'|	'{'	|	'}'	|	'['	|	']'	|	'('	
-	|	')'	 |	'.'	 |	','	|	':'	|	';' |	'+'	|	'-'	|	'*'	|	'/'	|	'%'	
+		'>>>='|	'>>>'|	'>>='|	'<<='|	'>>'|	'=>'|	'<<'|	'^='|	'|='|	'&='|	'%='
+	|	'->' |	'==' |	'!='|	'<='|	'>='|	'+='|	'-='|	'*='|	'/='|	'??='|	'??'
+	|	'::' |	'++' |	'--'|	'&&'|	'||'|	'{'	|	'}'	|	'['	|	']'	|	'('
+	|	')'	 |	'..' |	'.'	 |	','	|	':'	|	';' |	'+'	|	'-'	|	'*'	|	'/'	|	'%'
 	|	'&'	 |	'|'	 |	'^'	|	'!'	|	'~' |	'='	|	'<'	|	'>'	|	'?'
 	;
