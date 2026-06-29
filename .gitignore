@@ -119,6 +119,8 @@ project.lock.json
 /docs/node_modules
 /docs/.vitepress/dist
 /docs/.vitepress/cache
+# Ace editor bundle staged into the site by the docs workflow (generated)
+/docs/public/ace/
 /.idea
 /src/Heddle.Language/gen
 /src/Heddle.Language/.antlr

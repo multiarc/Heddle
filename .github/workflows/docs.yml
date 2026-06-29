@@ -9,6 +9,9 @@ on:
     paths:
       - 'docs/**'
       - '.github/workflows/docs.yml'
+      # The live demo embeds the Ace editor bundle, built from these sources.
+      - 'src/Heddle.Language/js/**'
+      - 'src/Heddle.Language/build_ace.sh'
   workflow_dispatch:
 
 permissions:
@@ -35,6 +38,17 @@ jobs:
         node-version: 22
         cache: npm
         cache-dependency-path: docs/package-lock.json
+    # Build the custom Ace editor bundle (Ace + Heddle mode + ANTLR JS parser) and stage it
+    # into docs/public so VitePress copies it to the site root. Serves the demo at
+    # /Heddle/demo.html with the worker loaded same-origin from /Heddle/ace/. No Java needed
+    # (the JS parser under js/ is already generated; the script only assembles the bundle).
+    - name: Build Ace editor bundle
+      working-directory: src/Heddle.Language
+      run: bash build_ace.sh
+    - name: Stage Ace bundle into docs/public
+      run: |
+        mkdir -p docs/public/ace
+        cp -R src/Heddle.Language/ace_build/ace/build/src-noconflict/. docs/public/ace/
     - name: Install dependencies
       working-directory: docs
       run: npm ci

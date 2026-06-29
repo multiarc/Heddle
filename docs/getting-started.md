@@ -4,6 +4,13 @@ This page gets you from zero to a rendered template. It assumes you are integrat
 engine from C#. If you only want to learn the template syntax, jump to the
 [Language Reference](language-reference.md).
 
+::: tip Try it live
+Want to play before integrating? Open the
+<a href="demo.html" target="_blank" rel="noreferrer">live editor demo</a> — write Heddle in
+your browser with syntax highlighting and real-time parse-error checking (it checks syntax;
+it does not render output).
+:::
+
 ## Prerequisites
 
 - **.NET SDK 10.0** (the repository pins `10.0.100` with `rollForward: latestMinor` in
