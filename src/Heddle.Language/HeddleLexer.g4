@@ -217,22 +217,27 @@ CSN_CSHARP_TOKEN: TOKEN -> type(CSHARP_TOKEN);
 // Regular interpolated string body: $"...{ hole }...". Everything is emitted as a CSHARP_TOKEN
 // so the expression text round-trips verbatim to Roslyn; the modes only exist to balance the
 // '{'/'}' holes (so a '"' or '(' ')' inside a hole can't terminate the string early).
+// Character classes mirror the C# spec (§12.8.3): a bare '}' is not a string character - it is only
+// legal as the Close_Brace_Escape_Sequence '}}'. A single '}' closing a hole is consumed in
+// INTERP_HOLE, so any '}' reaching this mode must be part of '}}'.
 mode INTERP_STR;
 
-ISTR_DBL_OPEN:  '{{' -> type(CSHARP_TOKEN);
-ISTR_HOLE_OPEN: '{'  -> type(CSHARP_TOKEN), pushMode(INTERP_HOLE);
-ISTR_END:       '"'  -> type(CSHARP_TOKEN), popMode;
-ISTR_ESCAPE:    '\\' . -> type(CSHARP_TOKEN);
-ISTR_CHAR:      ~["{\\] -> type(CSHARP_TOKEN);
+ISTR_OPEN_BRACE_ESC:  '{{' -> type(CSHARP_TOKEN);   // Open_Brace_Escape_Sequence
+ISTR_CLOSE_BRACE_ESC: '}}' -> type(CSHARP_TOKEN);   // Close_Brace_Escape_Sequence
+ISTR_HOLE_OPEN:       '{'  -> type(CSHARP_TOKEN), pushMode(INTERP_HOLE);
+ISTR_END:             '"'  -> type(CSHARP_TOKEN), popMode;
+ISTR_ESCAPE:          '\\' . -> type(CSHARP_TOKEN);
+ISTR_CHAR:            ~["\\{}] -> type(CSHARP_TOKEN);   // Interpolated_Regular_String_Character
 
 // Verbatim interpolated string body: $@"..." / @$"...". No backslash escapes; '""' escapes a quote.
 mode INTERP_VERBATIM_STR;
 
-IVSTR_DBL_OPEN:  '{{' -> type(CSHARP_TOKEN);
-IVSTR_HOLE_OPEN: '{'  -> type(CSHARP_TOKEN), pushMode(INTERP_HOLE);
-IVSTR_QUOTE_ESC: '""' -> type(CSHARP_TOKEN);
-IVSTR_END:       '"'  -> type(CSHARP_TOKEN), popMode;
-IVSTR_CHAR:      ~["{] -> type(CSHARP_TOKEN);
+IVSTR_OPEN_BRACE_ESC:  '{{' -> type(CSHARP_TOKEN);   // Open_Brace_Escape_Sequence
+IVSTR_CLOSE_BRACE_ESC: '}}' -> type(CSHARP_TOKEN);   // Close_Brace_Escape_Sequence
+IVSTR_HOLE_OPEN:       '{'  -> type(CSHARP_TOKEN), pushMode(INTERP_HOLE);
+IVSTR_QUOTE_ESC:       '""' -> type(CSHARP_TOKEN);   // Quote_Escape_Sequence
+IVSTR_END:             '"'  -> type(CSHARP_TOKEN), popMode;
+IVSTR_CHAR:            ~["{}] -> type(CSHARP_TOKEN);   // Interpolated_Verbatim_String_Character
 
 // Interpolation hole: the C# expression between '{' and '}'. Braces are balanced here; parens and
 // nested (interpolated) strings are consumed wholesale by TOKEN so their contents can't leak out.

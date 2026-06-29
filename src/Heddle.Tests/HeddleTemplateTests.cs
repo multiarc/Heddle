@@ -102,6 +102,27 @@ namespace Heddle.Tests
         }
 
         /// <summary>
+        /// Brace escapes per the C# spec (§12.8.3): '{{' and '}}' are literal '{' and '}' in the string body,
+        /// not hole delimiters. Covers both regular and verbatim interpolated strings.
+        /// </summary>
+        [Fact]
+        public void InterpolatedStringBraceEscapes()
+        {
+            HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
+            var options = new TemplateOptions { AllowCSharp = true };
+
+            // Regular: a{b}c around a real hole -> a{b}c5
+            var regular = new HeddleTemplate("@(@$\"a{{b}}c{2 + 3}\")", new CompileContext(options));
+            Assert.True(regular.CompileResult.Success, regular.CompileResult.ToString());
+            Assert.Equal("a{b}c5", regular.Generate(null));
+
+            // Verbatim: same escapes, '\' is literal.
+            var verbatim = new HeddleTemplate("@(@$@\"p{{q}}r{4 * 2}\")", new CompileContext(options));
+            Assert.True(verbatim.CompileResult.Success, verbatim.CompileResult.ToString());
+            Assert.Equal("p{q}r8", verbatim.Generate(null));
+        }
+
+        /// <summary>
         /// A C# expression call that is the very last thing in the document (no trailing token) must parse.
         /// Nested parentheses now close with an ordinary CSHARP_TOKEN, so the single terminating OUT_PARAMEND
         /// is unambiguous and 'csharp_expression' no longer greedily swallows it at end-of-input.

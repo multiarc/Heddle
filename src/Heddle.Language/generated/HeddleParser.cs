@@ -43,7 +43,8 @@ public partial class HeddleParser : Parser {
 		OUT_PARAMEND=20, DEF_OUT=21, COMMENT=22, SKIP_WS=23, SUB_COMMENT=24, SUB_SKIP_WS=25, 
 		DEF_COMMENT=26, DEF_TYPE=27, DEF_WS=28, IMPORT_COMMENT=29, CALL_RETURN_COMMENT=30, 
 		CALL_SKIP_WS=31, OUT_COMMENT=32, OUT_SKIP_WS=33, CALL_COMMENT=34, CALL_WS=35, 
-		ISTR_DBL_OPEN=36, ISTR_END=37, IVSTR_QUOTE_ESC=38, HOLE_CLOSE=39;
+		ISTR_OPEN_BRACE_ESC=36, ISTR_CLOSE_BRACE_ESC=37, ISTR_END=38, IVSTR_QUOTE_ESC=39, 
+		HOLE_CLOSE=40;
 	public const int
 		RULE_heddle = 0, RULE_raw = 1, RULE_definition = 2, RULE_def = 3, RULE_def_base = 4, 
 		RULE_def_type = 5, RULE_default_chain = 6, RULE_import_block = 7, RULE_outblock = 8, 
@@ -59,7 +60,7 @@ public partial class HeddleParser : Parser {
 		null, null, null, null, null, null, null, null, null, null, null, null, 
 		null, null, null, null, null, null, null, null, null, null, null, null, 
 		null, null, null, null, null, null, null, null, null, null, null, null, 
-		null, null, "'\"\"'", "'}'"
+		null, null, null, "'\"\"'", "'}'"
 	};
 	private static readonly string[] _SymbolicNames = {
 		null, "TEXT", "WS", "IMPORT_TOKEN", "ID", "ROOT_REF", "MEMBER_P", "OUT", 
@@ -68,7 +69,8 @@ public partial class HeddleParser : Parser {
 		"OUT_PARAMSTART", "OUT_PARAMEND", "DEF_OUT", "COMMENT", "SKIP_WS", "SUB_COMMENT", 
 		"SUB_SKIP_WS", "DEF_COMMENT", "DEF_TYPE", "DEF_WS", "IMPORT_COMMENT", 
 		"CALL_RETURN_COMMENT", "CALL_SKIP_WS", "OUT_COMMENT", "OUT_SKIP_WS", "CALL_COMMENT", 
-		"CALL_WS", "ISTR_DBL_OPEN", "ISTR_END", "IVSTR_QUOTE_ESC", "HOLE_CLOSE"
+		"CALL_WS", "ISTR_OPEN_BRACE_ESC", "ISTR_CLOSE_BRACE_ESC", "ISTR_END", 
+		"IVSTR_QUOTE_ESC", "HOLE_CLOSE"
 	};
 	public static readonly IVocabulary DefaultVocabulary = new Vocabulary(_LiteralNames, _SymbolicNames);
 
@@ -161,7 +163,7 @@ public partial class HeddleParser : Parser {
 			State = 39;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
-			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 1099511495934L) != 0)) {
+			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 2199023123710L) != 0)) {
 				{
 				State = 37;
 				ErrorHandler.Sync(this);
@@ -617,7 +619,7 @@ public partial class HeddleParser : Parser {
 				State = 85;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
-			} while ( (((_la) & ~0x3f) == 0 && ((1L << _la) & 1099511168126L) != 0) );
+			} while ( (((_la) & ~0x3f) == 0 && ((1L << _la) & 2199022795902L) != 0) );
 			State = 87;
 			Match(SUB_CLOSE);
 			}
@@ -1204,7 +1206,7 @@ public partial class HeddleParser : Parser {
 	}
 
 	private static int[] _serializedATN = {
-		4,1,39,164,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,7,
+		4,1,40,164,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,7,
 		7,7,2,8,7,8,2,9,7,9,2,10,7,10,2,11,7,11,2,12,7,12,2,13,7,13,2,14,7,14,
 		2,15,7,15,1,0,1,0,1,0,1,0,1,0,5,0,38,8,0,10,0,12,0,41,9,0,1,1,1,1,1,2,
 		1,2,4,2,47,8,2,11,2,12,2,48,1,2,1,2,1,3,1,3,1,3,3,3,56,8,3,1,3,1,3,3,3,
