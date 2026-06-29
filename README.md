@@ -3,8 +3,7 @@
 A text template engine for .NET. Heddle compiles templates written in its small, purpose‑built
 language into reusable, strongly‑typed renderers. Templates can embed real C#
 expressions, define and inherit reusable named blocks, compose output through extension chains,
-and control HTML encoding per directive. An ASP.NET Core MVC view engine is included so
-`.heddle` files can be used as MVC views.
+and control HTML encoding per directive.
 
 ```heddle
 @model(){{dynamic}}
@@ -27,7 +26,6 @@ string html = template.Generate(new { Name = "Ada", Count = 3 });
 | --- | --- |
 | `Heddle` | Core engine: parser host, compiler, runtime, built‑in extensions. |
 | `Heddle.Language` | ANTLR grammar + generated lexer/parser and editor assets. |
-| `Heddle.Mvc` | ASP.NET Core MVC view engine. |
 
 ## Documentation
 
@@ -38,7 +36,6 @@ Full documentation lives in **[docs/](docs/README.md)**:
 - [Built‑in Extensions](docs/built-in-extensions.md) — `list`, `if`, `date`, `money`, and more.
 - [C# API Reference](docs/csharp-api.md) — `HeddleTemplate`, options, contexts, results.
 - [Writing Custom Extensions](docs/custom-extensions.md) — add your own directives.
-- [MVC Integration](docs/mvc-integration.md) — use `.heddle` files as MVC views.
 - [Architecture](docs/architecture.md) — the lex → parse → compile → render pipeline.
 - [Building & Testing](docs/building.md) — SDK, scripts, tests, packaging, CI.
 
@@ -116,8 +113,8 @@ dotnet run -c Release --project src/Heddle.Performance
 
 ## Building
 
-```
-build.cmd
+```bash
+dotnet build -c Release
 ```
 
 Requires the .NET SDK 8.0 (see [global.json](global.json)). See

@@ -9,7 +9,7 @@ engine from C#. If you only want to learn the template syntax, jump to the
 - **.NET SDK 8.0** (the repository pins `8.0.0` with `rollForward: latestMinor` in
   [global.json](../global.json)). The core library itself targets
   `netstandard2.0;net6.0;net8.0`, so the compiled package runs on a wide range of hosts.
-- A reference to the **`Heddle`** package (and **`Heddle.Mvc`** if you use ASP.NET Core MVC).
+- A reference to the **`Heddle`** package.
 
 To build the engine from source, see [Building & Testing](building.md).
 
@@ -130,4 +130,3 @@ it when you are done (it owns the compiled runtime document and any file watcher
 - **[Language Reference](language-reference.md)** — learn the full template syntax.
 - **[Built‑in Extensions](built-in-extensions.md)** — the helpers you can call.
 - **[C# API Reference](csharp-api.md)** — every option and method in detail.
-- **[MVC Integration](mvc-integration.md)** — use `.heddle` files as MVC views.

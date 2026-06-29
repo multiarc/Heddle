@@ -10,30 +10,18 @@ How to build the engine, run the tests, and produce the NuGet packages.
   { "sdk": { "version": "8.0.0", "rollForward": "latestMinor" } }
   ```
 
-- **Java + the ANTLR jar** (`lib/antlr-4.13.1-complete.jar`) — only needed if you regenerate
-  the parser from the `.g4` grammar. See [Architecture → grammar](architecture.md#the-grammar-and-generated-code).
+- **Java** — only needed if you regenerate the parser from the `.g4` grammar; the generation
+  scripts download the ANTLR 4.13.1 jar from antlr.org on first run. See
+  [Architecture → grammar](architecture.md#the-grammar-and-generated-code).
   The generated parser is checked in, so a normal build does not need Java.
 
-## One‑shot build
+## Building
 
-From the repository root:
-
-```
-build.cmd
-```
-
-[build.cmd](../build.cmd) just invokes [build.ps1](../build.ps1) under PowerShell. The script:
-
-1. `dotnet restore`
-2. `dotnet test` in `src/Heddle.Tests`
-3. `dotnet pack` (Release) for `Heddle`, `Heddle.Language`, and `Heddle.Mvc` into
-   `packages/`.
-
-You can also drive the steps manually:
+From the repository root (the commands pick up [Heddle.sln](../Heddle.sln)):
 
 ```bash
-dotnet restore Templating.sln
-dotnet build Templating.sln -c Release
+dotnet restore
+dotnet build -c Release
 dotnet test src/Heddle.Tests
 ```
 
@@ -43,7 +31,6 @@ dotnet test src/Heddle.Tests
 | --- | --- |
 | `Heddle` ([csproj](../src/Heddle/Heddle.csproj)) | `netstandard2.0; net6.0; net8.0` |
 | `Heddle.Language` ([csproj](../src/Heddle.Language/Heddle.Language.csproj)) | `netstandard2.0; net6.0; net8.0` |
-| `Heddle.Mvc` ([csproj](../src/Heddle.Mvc/Heddle.Mvc.csproj)) | `net6.0; net8.0` (ASP.NET Core shared framework) |
 | `Heddle.Tests` | `net48; net6.0; net8.0` |
 
 All shipping projects use `LangVersion=latest` and are **strong‑name signed** with
@@ -57,7 +44,6 @@ Current package version is **4.0.2** (with an optional `$(VersionSuffix)`).
   pinned per target framework (4.1.0 on netstandard2.0, 4.9.2 on net6.0, 4.11.0 on net8.0).
 - `Microsoft.Extensions.DependencyModel` / `Microsoft.Extensions.FileProviders.Embedded` —
   assembly discovery and embedded resources.
-- `Newtonsoft.Json` (MVC project).
 
 ## Testing
 
@@ -117,29 +103,27 @@ Additional comparison material lives under
 
 ## Packaging
 
-`build.ps1` packs the three shipping projects. To pack a single project:
+Pack the shipping projects with `dotnet pack`:
 
 ```bash
 dotnet pack src/Heddle -c Release -o packages
+dotnet pack src/Heddle.Language -c Release -o packages
 ```
 
 NuGet feed configuration is in [NuGet.Config](../NuGet.Config).
 
 ## Continuous integration
 
-CI runs on **Azure Pipelines** ([azure-pipelines.yml](../azure-pipelines.yml)), triggered on
-`master`. The pipeline:
+CI runs on **GitHub Actions**:
 
-- **Qodana** static analysis (JetBrains) on `master`.
-- **Build** job: install .NET/NuGet, **SonarQube** prepare/analyze/publish, restore, build,
-  `dotnet test` with coverage (`XPlat Code Coverage` → Cobertura + OpenCover), publish test
-  results (trx) and coverage, then `dotnet pack` for both a `-test` and a release version, and
-  publish the packages as pipeline artifacts.
-- **Test** stage: push the test packages to an internal NuGet feed.
-- **Release** stage (on `master`): push release packages to the internal feed and apply a long
-  pipeline‑retention lease.
-
-Coverage is collected with **coverlet** and reported to SonarQube/Azure DevOps.
+- **[.NET build](../.github/workflows/dotnet.yml)** — on every push and pull request to `main`,
+  restores, builds, and runs the test suite on Linux and Windows, then publishes the NuGet
+  packages to GitHub Packages (a `-beta` prerelease for pull requests, a release version on
+  `main`).
+- **[Ace npm package](../.github/workflows/npm.yml)** — builds the custom Ace highlighter bundle
+  and publishes `@multiarc/ace_heddle` to GitHub Packages with the same beta/release scheme.
+- **[Documentation](../.github/workflows/docs.yml)** — builds this site and deploys it to
+  GitHub Pages.
 
 ## Regenerating the parser
 

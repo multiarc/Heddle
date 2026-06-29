@@ -6,11 +6,6 @@ the source, not marketing; the user‑facing docs
 ([Language Reference](language-reference.md), [Architecture](architecture.md)) are the neutral
 reference.
 
-> **Confidence/caveats.** This is a read‑only assessment from the grammar, compiler, extensions,
-> and fixtures. Performance claims come from the repo's own benchmark
-> ([src/Heddle.Performance](../src/Heddle.Performance)); debuggability and source‑mapping
-> were reasoned about, not measured. Treat those two as informed inference.
-
 ---
 
 ## TL;DR
@@ -111,10 +106,9 @@ narrower on text‑heavy ones.
   unsuitable for **untrusted, user‑supplied** templates. Fine for trusted first‑party templates
   (the intended use).
 - **Supportability / ecosystem.** Sophisticated implementation (8‑mode ANTLR lexer, Roslyn
-  codegen, expression‑tree accessors, custom string builders, bespoke VS extension + Ace mode)
+  codegen, expression‑tree accessors, custom string builders, bespoke Ace editor mode)
   for what looks like a single‑author project — real **bus‑factor** and a thin ecosystem.
-  .NET‑only; no Stack Overflow corpus; the MVC `import`/`partial` resolvers are currently
-  commented‑out stubs; docs were near‑absent before this pass (now addressed). The novelty cuts
+  .NET‑only; no Stack Overflow corpus; docs were near‑absent before this pass (now addressed). The novelty cuts
   both ways: elegant but unfamiliar, so the pool who can maintain/extend it is small.
 - **Debuggability (inferred).** Embedded C# compiles via Roslyn and member access via
   expression trees; a broken expression likely won't map back to a template line as cleanly as
@@ -168,5 +162,5 @@ the **ecosystem**, not the engine.
 1. `if/else`/`elif` (a syntax or extension) — the most felt gap.
 2. Named extension arguments.
 3. Reduce sigil overload / a friendlier surface.
-4. A real "first 10 minutes" doc + an LSP/editor story beyond the bespoke VS extension.
+4. A real "first 10 minutes" doc + an LSP/editor story.
 5. Decide and document the security posture (keep all‑or‑nothing, or add a restricted mode).

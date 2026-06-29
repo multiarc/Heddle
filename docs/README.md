@@ -3,16 +3,14 @@
 **Heddle** is a text template engine for .NET, written in C#. It compiles templates
 written in its small, purpose‑built language into reusable, strongly‑typed renderers. Heddle can embed real C#
 expressions, define and inherit reusable named blocks, compose output through extension
-chains, and render with full HTML‑encoding control. The engine also ships an ASP.NET Core
-MVC view engine so `.heddle` files can be used as MVC views.
+chains, and render with full HTML‑encoding control.
 
-The engine is published as three NuGet packages:
+The engine is published as two NuGet packages:
 
 | Package | Project | Purpose |
 | --- | --- | --- |
 | `Heddle` | [src/Heddle](../src/Heddle) | Core engine: parser host, compiler, runtime, built‑in extensions. |
 | `Heddle.Language` | [src/Heddle.Language](../src/Heddle.Language) | ANTLR grammar + generated lexer/parser, plus editor (Ace) assets. |
-| `Heddle.Mvc` | [src/Heddle.Mvc](../src/Heddle.Mvc) | ASP.NET Core MVC `IViewEngine` integration. |
 
 Current version: **4.0.2** (see [src/Heddle/Heddle.csproj](../src/Heddle/Heddle.csproj)).
 
@@ -50,7 +48,6 @@ nuances, and **[Built‑in Extensions](built-in-extensions.md)** for the bundled
 ### I want to *use the engine from C#* (integrators)
 Read **[Getting Started](getting-started.md)** and the **[C# API Reference](csharp-api.md)**
 (`HeddleTemplate`, `TemplateOptions`, `CompileContext`, compile results, file watching).
-For MVC apps, see **[MVC Integration](mvc-integration.md)**.
 
 ### I want to *extend the engine* (advanced)
 Read **[Writing Custom Extensions](custom-extensions.md)** to add your own `@yourhelper(...)`
@@ -72,7 +69,6 @@ Roslyn code generation, lexer modes) and **[Building & Testing](building.md)**.
 | [Patterns & Recipes](patterns.md) | Task‑oriented idioms: with‑blocks, presence checks, first/last, local helper definitions, root context, JSON injection, and more. |
 | [C# API Reference](csharp-api.md) | `IHeddleTemplate`/`HeddleTemplate`, `TemplateOptions`, `CompileContext`, `HeddleCompileResult`, registration, and error handling. |
 | [Writing Custom Extensions](custom-extensions.md) | The extension contract, `Scope`, attributes, and registration. |
-| [MVC Integration](mvc-integration.md) | Registering `HeddleViewEngine`, view resolution, and MVC‑specific extensions. |
 | [Architecture](architecture.md) | Internal pipeline, ANTLR grammar, compilation, and editor tooling. |
 | [Syntax Highlighting](syntax-highlighting.md) | The portable TextMate grammar, its token→scope mapping, and how editors/sites consume it. |
 | [Building & Testing](building.md) | SDK, build scripts, target frameworks, tests, packaging, and CI. |
@@ -95,10 +91,3 @@ using var template = new HeddleTemplate(source, new CompileContext(new TemplateO
 string html = template.Generate(new { Name = "Ada", Count = 3 });
 // => <p>Hi Ada — you have 3 new comments.</p>
 ```
-
-> **A note on accuracy.** Every construct documented here is derived from the authoritative
-> ANTLR grammar ([HeddleLexer.g4](../src/Heddle.Language/HeddleLexer.g4),
-> [HeddleParser.g4](../src/Heddle.Language/HeddleParser.g4)). Example snippets are written to
-> teach; the repository's [test fixtures](../src/Heddle.Tests/TestTemplate) hold real,
-> runnable templates, and [develop.txt](../develop.txt) holds terse design notes in current
-> syntax.

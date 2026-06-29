@@ -112,7 +112,11 @@ project.lock.json
 /src/Heddle.Language/ace_build
 /build
 
+# ANTLR tool jar, downloaded on demand by the generate_*.cmd scripts
+/src/Heddle.Language/antlr-4.13.1-complete.jar
+
 # VitePress documentation site
 /docs/node_modules
 /docs/.vitepress/dist
 /docs/.vitepress/cache
+/.idea

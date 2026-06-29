@@ -162,8 +162,7 @@ Declared in [src/Heddle/Attributes](../src/Heddle/Attributes):
 | `[Options("fieldName")]` | member | Override the name a property is addressed by in templates. |
 
 `[ExtensionName]` is `AllowMultiple = true`, so one class can answer to several names. A later
-registration of the same name **replaces** an earlier one — this is how the MVC package swaps
-in its own `import`/`partial` implementations.
+registration of the same name **replaces** an earlier one.
 
 ---
 
@@ -183,10 +182,6 @@ Two steps:
    // or export everything discoverable in the assembly:
    // [assembly: ExportExtensions]
    ```
-
-   This is exactly how the MVC package registers its extensions — see the top of
-   [PartialMvcExtension.cs](../src/Heddle.Mvc/Extensions/PartialMvcExtension.cs):
-   `[assembly: ExportExtensions(typeof(PartialMvcExtension))]`.
 
 2. **Configure** the engine with your startup assembly so the export is discovered:
 
