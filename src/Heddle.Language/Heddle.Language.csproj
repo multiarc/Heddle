@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net6.0;net8.0</TargetFrameworks>
     <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
-    <Version>4.0.2$(VersionSuffix)</Version>
+    <Version>1.0.0$(VersionSuffix)</Version>
     <Authors>Aliaksandr Kukrash</Authors>
     <Company />
     <Product>Heddle.Language</Product>

@@ -116,3 +116,4 @@ project.lock.json
 /docs/node_modules
 /docs/.vitepress/dist
 /docs/.vitepress/cache
+/.idea
