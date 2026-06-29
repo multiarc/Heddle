@@ -189,6 +189,63 @@ namespace Heddle.Tests
             Assert.Equal("5", twoLambdas.Generate(null));
         }
 
+        /// <summary>
+        /// Raw string literals (C# 11) and the UTF-8 string suffix. Each literal - including the interpolated
+        /// raw form and its holes - is consumed as one token, so interior quotes/parens can't disturb token
+        /// balancing and the exact text round-trips to Roslyn.
+        /// </summary>
+        [Fact]
+        public void RawStringAndUtf8Literals()
+        {
+            HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
+
+            // Grammar level (all targets): each literal - raw string (incl. interior quotes/parens, 4-quote
+            // delimiters, interpolated raw) and the u8 suffix - tokenizes as ONE token, so there are no parse
+            // errors and interior parens can't break the call's paren balance.
+            void NoErrors(string template)
+            {
+                var ctx = DocumentParser.Parse(template,
+                    new CompileContext(new TemplateOptions { ProvideLanguageFeatures = true }), out _);
+                Assert.Empty(ctx.Errors);
+            }
+            NoErrors("@(@\"abc\"u8.Length)");
+            NoErrors("@(@\"\"\"(\"\"\".Length)");            // interior paren must not break balance
+            NoErrors("@(@\"\"\"\"a\"\"\"b\"\"\"\".Length)"); // 4-quote raw, interior """
+            NoErrors("@(@$\"\"\"x{1 + 2}y\"\"\")");          // interpolated raw
+
+#if NET6_0_OR_GREATER
+            // End-to-end evaluation additionally needs a Roslyn that supports C# 11. The netstandard2.0 build
+            // used on .NET Framework ships C# 10 Roslyn, so these render assertions run on net6.0+ only.
+            var options = new TemplateOptions { AllowCSharp = true };
+            string Render(string template)
+            {
+                var t = new HeddleTemplate(template, new CompileContext(options));
+                Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
+                return t.Generate(null);
+            }
+
+            Assert.Equal("3", Render("@(@\"abc\"u8.Length)"));                 // UTF-8 suffix
+            Assert.Equal("3", Render("@(@\"\"\"abc\"\"\".Length)"));           // raw, basic
+            Assert.Equal("3", Render("@(@\"\"\"a\"b\"\"\".Length)"));          // raw, interior quote
+            Assert.Equal("1", Render("@(@\"\"\"(\"\"\".Length)"));             // raw, interior paren (balance)
+            Assert.Equal("5", Render("@(@\"\"\"\"a\"\"\"b\"\"\"\".Length)"));  // 4-quote raw, interior """
+            Assert.Equal("x3y", Render("@(@$\"\"\"x{1 + 2}y\"\"\")"));         // interpolated raw
+            Assert.Equal("3", Render("@(@\"\"\"\nabc\n\"\"\".Length)"));       // multi-line raw
+#endif
+        }
+
+        /// <summary>
+        /// The C# 13 '\e' escape must tokenize without a lexer error. (End-to-end compilation additionally
+        /// requires a Roslyn language version that finalizes C# 13; the lexer itself no longer rejects it.)
+        /// </summary>
+        [Fact]
+        public void EscapeSequenceLexes()
+        {
+            var ctx = DocumentParser.Parse("@(@\"\\e\".Length)X",
+                new CompileContext(new TemplateOptions { ProvideLanguageFeatures = true }), out _);
+            Assert.Empty(ctx.Errors);
+        }
+
         [Fact]
         public void SubjectDynamicTest()
         {

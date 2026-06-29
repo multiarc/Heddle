@@ -168,7 +168,7 @@ fragment CHARACTER:
 fragment SINGLE_CHAR: ~([\u0027\u005C] | [\r\n] | '\u0085' | '\u2028' | '\u2029');
 
 fragment SIMPLE_ESCAPE:
-	'\\\'' | '\\"' | '\\\\' | '\\0' | '\\a' | '\\b' | '\\f' | '\\n' | '\\r' | '\\t' | '\\v';
+	'\\\'' | '\\"' | '\\\\' | '\\0' | '\\a' | '\\b' | '\\e' | '\\f' | '\\n' | '\\r' | '\\t' | '\\v';
 
 fragment HEX_ESCAPE:
 	'\\x' HEX_DIGIT HEX_DIGIT? HEX_DIGIT? HEX_DIGIT?;
@@ -182,7 +182,9 @@ fragment STRING:
 	| VARBATIM_STRING
 	;
 
-fragment REGULAR_STRING: '"' REGULAR_STRING_LITERALS? '"';
+fragment UTF8_SUFFIX: 'u8' | 'U8';
+
+fragment REGULAR_STRING: '"' REGULAR_STRING_LITERALS? '"' UTF8_SUFFIX?;
 
 fragment REGULAR_STRING_LITERALS:
 	REGULAR_STRING_LITERAL+
@@ -199,7 +201,7 @@ fragment REGULAR_STRING_LITERAL:
 fragment SINGLE_REGULAR_STRING_LITERAL: ~([\u0022\u005C] | [\r\n] | '\u0085' | '\u2028' | '\u2029');
 
 fragment VARBATIM_STRING:
-	'@"' VERBATIM_STRING_LITERALS? '"';
+	'@"' VERBATIM_STRING_LITERALS? '"' UTF8_SUFFIX?;
 
 fragment VERBATIM_STRING_LITERALS:
 	VERBATIM_STRING_LITERAL+
