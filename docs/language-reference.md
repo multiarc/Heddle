@@ -9,8 +9,7 @@ runnable templates that exercise edge cases, see the test fixtures in
 [src/Heddle.Tests/TestTemplate](../src/Heddle.Tests/TestTemplate).
 
 > Delimiters at a glance: `@% … %@` wraps definition blocks and `{{ … }}` wraps bodies /
-> subtemplates. For terse design notes in the same (current) syntax, see
-> [develop.txt](../develop.txt).
+> subtemplates.
 
 ## Table of contents
 

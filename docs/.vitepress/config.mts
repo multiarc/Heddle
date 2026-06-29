@@ -35,8 +35,7 @@ export default withMermaid(
     rewrites: { 'README.md': 'index.md' },
 
     // assessment.md stays in the repo for contributors but is not published.
-    // develop.txt is not Markdown.
-    srcExclude: ['assessment.md', 'develop.txt'],
+    srcExclude: ['assessment.md'],
 
     markdown: {
       languages: [
@@ -48,9 +47,9 @@ export default withMermaid(
           embeddedLangs: ['csharp', 'html']
         } as any
       ],
-      // Rewrite repo-relative source links (../src/..., ../build.ps1,
-      // ../develop.txt, ...) to GitHub blob URLs opened in a new tab. Same-folder .md
-      // links and absolute URLs are untouched and resolved natively by VitePress.
+      // Rewrite repo-relative source links (../src/..., ../lib/..., ...) to GitHub blob
+      // URLs opened in a new tab. Same-folder .md links and absolute URLs are untouched
+      // and resolved natively by VitePress.
       config(md) {
         const defaultRender =
           md.renderer.rules.link_open ||

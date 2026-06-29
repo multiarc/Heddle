@@ -106,7 +106,7 @@ narrower on text‑heavy ones.
   unsuitable for **untrusted, user‑supplied** templates. Fine for trusted first‑party templates
   (the intended use).
 - **Supportability / ecosystem.** Sophisticated implementation (8‑mode ANTLR lexer, Roslyn
-  codegen, expression‑tree accessors, custom string builders, bespoke VS extension + Ace mode)
+  codegen, expression‑tree accessors, custom string builders, bespoke Ace editor mode)
   for what looks like a single‑author project — real **bus‑factor** and a thin ecosystem.
   .NET‑only; no Stack Overflow corpus; docs were near‑absent before this pass (now addressed). The novelty cuts
   both ways: elegant but unfamiliar, so the pool who can maintain/extend it is small.
@@ -162,5 +162,5 @@ the **ecosystem**, not the engine.
 1. `if/else`/`elif` (a syntax or extension) — the most felt gap.
 2. Named extension arguments.
 3. Reduce sigil overload / a friendlier surface.
-4. A real "first 10 minutes" doc + an LSP/editor story beyond the bespoke VS extension.
+4. A real "first 10 minutes" doc + an LSP/editor story.
 5. Decide and document the security posture (keep all‑or‑nothing, or add a restricted mode).

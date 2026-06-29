@@ -12,7 +12,6 @@ which is the reference implementation of how Heddle tokens are classified.
 | --- | --- | --- |
 | TextMate grammar | [coloring-scheme/heddle.tmLanguage.json](https://github.com/multiarc/Heddle/blob/main/docs/coloring-scheme/heddle.tmLanguage.json) | Any TextMate/Shiki/Monaco/VS Code consumer |
 | Ace highlighter (reference) | [src/Heddle.Language/js/src/mode/heddle_highlight_rules.js](../src/Heddle.Language/js/src/mode/heddle_highlight_rules.js) | The Ace‑based web editor |
-| Visual Studio classifier | [integrations/Heddle.Editor](../integrations/Heddle.Editor) | The Visual Studio extension |
 
 The grammar is **HTML‑hosted**: it embeds `text.html.basic` for markup and `source.cs` for
 inline C# (`@( @ … )`), then overlays the Heddle directives on top. Because it uses **standard

@@ -241,10 +241,10 @@ The grammar lives in [src/Heddle.Language](../src/Heddle.Language):
 
 Generated C# (checked in under `generated/`) is produced by ANTLR 4.13.1. To regenerate after
 editing the `.g4` files, run [generate_cs.cmd](../src/Heddle.Language/generate_cs.cmd)
-(requires Java and the ANTLR jar at `lib/antlr-4.13.1-complete.jar`):
+(requires Java; the script downloads the ANTLR 4.13.1 jar from antlr.org on first run):
 
 ```
-java -jar "..\..\lib\antlr-4.13.1-complete.jar" -Dlanguage=CSharp "HeddleLexer.g4" "HeddleParser.g4" -o "generated" -lib "generated" -package Heddle.Language
+java -jar "antlr-4.13.1-complete.jar" -Dlanguage=CSharp "HeddleLexer.g4" "HeddleParser.g4" -o "generated" -lib "generated" -package Heddle.Language
 ```
 
 The project references `Antlr4.Runtime.Standard` 4.13.1 at run time. The `js/` and
@@ -259,10 +259,9 @@ The project references `Antlr4.Runtime.Standard` 4.13.1 at run time. The `js/` a
   same grammar (for in‑browser editing).
 - **Ace editor** — `ace_build/` and `build_ace.sh` build an
   [Ace](https://ace.c9.io/) mode using the JS parser for syntax highlighting on the web.
-- **Visual Studio extension** — [integrations/Heddle.Editor](../integrations/Heddle.Editor)
-  provides classification (highlighting), error tagging, and IntelliSense (completion / quick
-  info) for `.heddle` files. The tooling path is enabled by
-  `TemplateOptions.ProvideLanguageFeatures`, which makes `DocumentParser` emit a token list.
+- **Language features (tooling)** — setting `TemplateOptions.ProvideLanguageFeatures` makes
+  `DocumentParser` emit a token list — the basis for editor classification (highlighting), error
+  tagging, and completion / quick info for `.heddle` files.
 - **TextMate grammar** — [coloring-scheme/heddle.tmLanguage.json](https://github.com/multiarc/Heddle/blob/main/docs/coloring-scheme/heddle.tmLanguage.json)
   is a portable highlighter (HTML + inline C# embedded) whose scopes mirror the Ace mode, for
   VS Code/Monaco/Shiki and documentation sites. See [Syntax Highlighting](syntax-highlighting.md).

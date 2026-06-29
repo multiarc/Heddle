@@ -113,8 +113,8 @@ dotnet run -c Release --project src/Heddle.Performance
 
 ## Building
 
-```
-build.cmd
+```bash
+dotnet build -c Release
 ```
 
 Requires the .NET SDK 8.0 (see [global.json](global.json)). See
