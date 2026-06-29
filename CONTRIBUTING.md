@@ -16,7 +16,7 @@ By contributing you agree that your work is licensed under the project's
 
 ## Development setup
 
-Prerequisites: the **.NET SDK 8.0** (pinned in [global.json](global.json)). Java is only
+Prerequisites: the **.NET SDK 10.0** (pinned in [global.json](global.json)). Java is only
 needed if you regenerate the ANTLR parser from the `.g4` grammar — the generated parser is
 checked in, so a normal build does not need it. See [docs/building.md](docs/building.md).
 

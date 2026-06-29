@@ -4,10 +4,10 @@ How to build the engine, run the tests, and produce the NuGet packages.
 
 ## Prerequisites
 
-- **.NET SDK 8.0.** The repository pins the SDK in [global.json](../global.json):
+- **.NET SDK 10.0.** The repository pins the SDK in [global.json](../global.json):
 
   ```json
-  { "sdk": { "version": "8.0.0", "rollForward": "latestMinor" } }
+  { "sdk": { "version": "10.0.100", "rollForward": "latestMinor" } }
   ```
 
 - **Java** — only needed if you regenerate the parser from the `.g4` grammar; the generation
@@ -29,9 +29,9 @@ dotnet test src/Heddle.Tests
 
 | Project | Targets |
 | --- | --- |
-| `Heddle` ([csproj](../src/Heddle/Heddle.csproj)) | `netstandard2.0; net6.0; net8.0` |
-| `Heddle.Language` ([csproj](../src/Heddle.Language/Heddle.Language.csproj)) | `netstandard2.0; net6.0; net8.0` |
-| `Heddle.Tests` | `net48; net6.0; net8.0` |
+| `Heddle` ([csproj](../src/Heddle/Heddle.csproj)) | `netstandard2.0; net6.0; net8.0; net10.0` |
+| `Heddle.Language` ([csproj](../src/Heddle.Language/Heddle.Language.csproj)) | `netstandard2.0; net6.0; net8.0; net10.0` |
+| `Heddle.Tests` | `net48; net6.0; net8.0; net10.0` |
 
 All shipping projects use `LangVersion=latest` and are **strong‑name signed** with
 `heddle.snk` (`SignAssembly=true`, `AssemblyOriginatorKeyFile=..\..\heddle.snk`).
@@ -42,7 +42,8 @@ The initial public release is **1.0.0**; the published version is set from the r
 
 - `Antlr4.Runtime.Standard` 4.13.1 — runtime for the generated parser.
 - `Microsoft.CodeAnalysis.CSharp` (Roslyn) — compiles embedded C# expressions; the version is
-  pinned per target framework (4.1.0 on netstandard2.0, 4.9.2 on net6.0, 4.11.0 on net8.0).
+  pinned per target framework (4.1.0 on netstandard2.0, 4.9.2 on net6.0, 4.11.0 on net8.0,
+  5.3.0 on net10.0).
 - `Microsoft.Extensions.DependencyModel` / `Microsoft.Extensions.FileProviders.Embedded` —
   assembly discovery and embedded resources.
 

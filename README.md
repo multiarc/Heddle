@@ -117,7 +117,7 @@ dotnet run -c Release --project src/Heddle.Performance
 dotnet build -c Release
 ```
 
-Requires the .NET SDK 8.0 (see [global.json](global.json)). See
+Requires the .NET SDK 10.0 (see [global.json](global.json)). See
 [docs/building.md](docs/building.md) for details.
 
 ## Contributing
