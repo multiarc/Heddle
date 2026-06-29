@@ -6,11 +6,6 @@ the source, not marketing; the user‑facing docs
 ([Language Reference](language-reference.md), [Architecture](architecture.md)) are the neutral
 reference.
 
-> **Confidence/caveats.** This is a read‑only assessment from the grammar, compiler, extensions,
-> and fixtures. Performance claims come from the repo's own benchmark
-> ([src/Heddle.Performance](../src/Heddle.Performance)); debuggability and source‑mapping
-> were reasoned about, not measured. Treat those two as informed inference.
-
 ---
 
 ## TL;DR

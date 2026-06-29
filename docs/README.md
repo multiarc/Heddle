@@ -95,10 +95,3 @@ using var template = new HeddleTemplate(source, new CompileContext(new TemplateO
 string html = template.Generate(new { Name = "Ada", Count = 3 });
 // => <p>Hi Ada — you have 3 new comments.</p>
 ```
-
-> **A note on accuracy.** Every construct documented here is derived from the authoritative
-> ANTLR grammar ([HeddleLexer.g4](../src/Heddle.Language/HeddleLexer.g4),
-> [HeddleParser.g4](../src/Heddle.Language/HeddleParser.g4)). Example snippets are written to
-> teach; the repository's [test fixtures](../src/Heddle.Tests/TestTemplate) hold real,
-> runnable templates, and [develop.txt](../develop.txt) holds terse design notes in current
-> syntax.
