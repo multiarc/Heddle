@@ -168,7 +168,6 @@ Key members:
 | `bool Compiled` | Whether the embedded‑C# (Roslyn) compilation step has run. |
 | `List<HeddleCompileError> CompileErrors` | Accumulated errors. |
 | `List<HeddleCompileWarning> CompileWarnings` | Accumulated warnings (e.g. SLL→LL fallback). |
-| `string ControllerName` | Used by the MVC integration to resolve views. |
 
 `ExType` is the engine's type wrapper; it can be constructed from a `System.Type`
 (implicitly), or from a type *name* plus a set of imported namespaces (this is how
@@ -259,6 +258,3 @@ if (!template.CompileResult.Success)
 
 string html = template.Generate(myBlog);
 ```
-
-For ASP.NET Core MVC, you typically don't call `HeddleTemplate` directly — register
-[`HeddleViewEngine`](mvc-integration.md) and return views from controllers instead.

@@ -274,9 +274,7 @@ template's output inline at run time, passing the current model and chained data
 ```
 
 The body (`sidebar`) names a separate template file the engine compiles and renders inline,
-passing the current model. In ASP.NET Core MVC, partial resolution is specialized by
-[`PartialMvcExtension`](../src/Heddle.Mvc/Extensions/PartialMvcExtension.cs) — see
-[MVC Integration](mvc-integration.md).
+passing the current model.
 
 ---
 
@@ -303,11 +301,6 @@ passing the current model. In ASP.NET Core MVC, partial resolution is specialize
 | `using` | UsingExtension | – | – | namespace to import |
 | `import` | ImportExtension | – | – | file to include (definitions) |
 | `partial` | PartialExtension | model | – | template name to render |
-
-> The MVC package overrides `import` with
-> [`ImportMvcExtension`](../src/Heddle.Mvc/Extensions/UseMvcExtension.cs) and adds an MVC
-> partial. Whichever assembly you pass to `HeddleTemplate.Configure` determines which set is
-> active; a later `[ExtensionName(...)]` registration replaces an earlier one of the same name.
 
 ---
 

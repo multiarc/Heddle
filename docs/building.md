@@ -26,7 +26,7 @@ build.cmd
 
 1. `dotnet restore`
 2. `dotnet test` in `src/Heddle.Tests`
-3. `dotnet pack` (Release) for `Heddle`, `Heddle.Language`, and `Heddle.Mvc` into
+3. `dotnet pack` (Release) for `Heddle` and `Heddle.Language` into
    `packages/`.
 
 You can also drive the steps manually:
@@ -43,7 +43,6 @@ dotnet test src/Heddle.Tests
 | --- | --- |
 | `Heddle` ([csproj](../src/Heddle/Heddle.csproj)) | `netstandard2.0; net6.0; net8.0` |
 | `Heddle.Language` ([csproj](../src/Heddle.Language/Heddle.Language.csproj)) | `netstandard2.0; net6.0; net8.0` |
-| `Heddle.Mvc` ([csproj](../src/Heddle.Mvc/Heddle.Mvc.csproj)) | `net6.0; net8.0` (ASP.NET Core shared framework) |
 | `Heddle.Tests` | `net48; net6.0; net8.0` |
 
 All shipping projects use `LangVersion=latest` and are **strong‑name signed** with
@@ -57,7 +56,6 @@ Current package version is **4.0.2** (with an optional `$(VersionSuffix)`).
   pinned per target framework (4.1.0 on netstandard2.0, 4.9.2 on net6.0, 4.11.0 on net8.0).
 - `Microsoft.Extensions.DependencyModel` / `Microsoft.Extensions.FileProviders.Embedded` —
   assembly discovery and embedded resources.
-- `Newtonsoft.Json` (MVC project).
 
 ## Testing
 

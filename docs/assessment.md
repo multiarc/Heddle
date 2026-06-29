@@ -108,8 +108,7 @@ narrower on text‑heavy ones.
 - **Supportability / ecosystem.** Sophisticated implementation (8‑mode ANTLR lexer, Roslyn
   codegen, expression‑tree accessors, custom string builders, bespoke VS extension + Ace mode)
   for what looks like a single‑author project — real **bus‑factor** and a thin ecosystem.
-  .NET‑only; no Stack Overflow corpus; the MVC `import`/`partial` resolvers are currently
-  commented‑out stubs; docs were near‑absent before this pass (now addressed). The novelty cuts
+  .NET‑only; no Stack Overflow corpus; docs were near‑absent before this pass (now addressed). The novelty cuts
   both ways: elegant but unfamiliar, so the pool who can maintain/extend it is small.
 - **Debuggability (inferred).** Embedded C# compiles via Roslyn and member access via
   expression trees; a broken expression likely won't map back to a template line as cleanly as

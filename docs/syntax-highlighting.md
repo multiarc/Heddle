@@ -10,7 +10,7 @@ which is the reference implementation of how Heddle tokens are classified.
 
 | Asset | Path | Used by |
 | --- | --- | --- |
-| TextMate grammar | [syntaxes/heddle.tmLanguage.json](../syntaxes/heddle.tmLanguage.json) | Any TextMate/Shiki/Monaco/VS Code consumer |
+| TextMate grammar | [coloring-scheme/heddle.tmLanguage.json](https://github.com/multiarc/Heddle/blob/main/docs/coloring-scheme/heddle.tmLanguage.json) | Any TextMate/Shiki/Monaco/VS Code consumer |
 | Ace highlighter (reference) | [src/Heddle.Language/js/src/mode/heddle_highlight_rules.js](../src/Heddle.Language/js/src/mode/heddle_highlight_rules.js) | The Ace‑based web editor |
 | Visual Studio classifier | [integrations/Heddle.Editor](../integrations/Heddle.Editor) | The Visual Studio extension |
 
@@ -55,7 +55,7 @@ each family sensibly.
 
 ## Using the grammar
 
-- **VS Code / Monaco / Shiki:** register `syntaxes/heddle.tmLanguage.json` with `scopeName`
+- **VS Code / Monaco / Shiki:** register `coloring-scheme/heddle.tmLanguage.json` with `scopeName`
   `text.html.heddle` and associate the `.heddle` file extension.
 - **Documentation sites:** Shiki‑based tools (e.g. VitePress, Docusaurus) can load the grammar
   as a custom language with `html` and `c-sharp` as embedded languages, so ` ```heddle ` fenced

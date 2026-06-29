@@ -226,7 +226,6 @@ compilation (member accessors), and Roslyn (embedded C#), so it is not cheap —
 | `Heddle/Strings` | Fast string building (`ExStringBuilder`, `LinearList`). |
 | `Heddle/LanguageTemplates` | `.tcs` resources used to emit C# for Roslyn. |
 | [src/Heddle.Language](../src/Heddle.Language) | ANTLR grammar + generated lexer/parser + editor assets. |
-| [src/Heddle.Mvc](../src/Heddle.Mvc) | ASP.NET Core MVC view engine. |
 | [src/Heddle.Tests](../src/Heddle.Tests) | xUnit tests + `.heddle` fixtures. |
 | [src/Heddle.Performance](../src/Heddle.Performance) | BenchmarkDotNet benchmarks. |
 
@@ -264,7 +263,7 @@ The project references `Antlr4.Runtime.Standard` 4.13.1 at run time. The `js/` a
   provides classification (highlighting), error tagging, and IntelliSense (completion / quick
   info) for `.heddle` files. The tooling path is enabled by
   `TemplateOptions.ProvideLanguageFeatures`, which makes `DocumentParser` emit a token list.
-- **TextMate grammar** — [syntaxes/heddle.tmLanguage.json](../syntaxes/heddle.tmLanguage.json)
+- **TextMate grammar** — [coloring-scheme/heddle.tmLanguage.json](https://github.com/multiarc/Heddle/blob/main/docs/coloring-scheme/heddle.tmLanguage.json)
   is a portable highlighter (HTML + inline C# embedded) whose scopes mirror the Ace mode, for
   VS Code/Monaco/Shiki and documentation sites. See [Syntax Highlighting](syntax-highlighting.md).
 
