@@ -176,12 +176,16 @@ CALL_MEMB_P: MEMB_P -> type(MEMBER_P);
 
 CALL_WS: WS+ -> channel(HIDDEN);
 
+// Top level of a C# expression. The ONLY ')' that closes the call lives here, so it is the only
+// one typed OUT_PARAMEND. A nested '(' opens CS_NESTED, whose ')' is an ordinary CSHARP_TOKEN.
+// This keeps the call terminator unambiguous: csharp_expression never contains an OUT_PARAMEND,
+// so a trailing token after ')' is no longer needed to end the expression.
 mode CS;
 
 CS_CSHARP_WS: WS+ -> type(CSHARP_TOKEN);
 
 CS_CSHARP_START:
-	PARA_ST -> type(CSHARP_TOKEN), pushMode(CS);
+	PARA_ST -> type(CSHARP_TOKEN), pushMode(CS_NESTED);
 
 CS_CSHARP_END: PARA_CL -> type(OUT_PARAMEND), popMode;
 
@@ -192,6 +196,23 @@ CS_INTERP_VERBATIM_2: '@$"' -> type(CSHARP_TOKEN), pushMode(INTERP_VERBATIM_STR)
 CS_INTERP_REGULAR:    '$"'  -> type(CSHARP_TOKEN), pushMode(INTERP_STR);
 
 CS_CSHARP_TOKEN: TOKEN -> type(CSHARP_TOKEN);
+
+// Parenthesised sub-expression inside a C# expression. Identical to CS except the closing ')'
+// is a plain CSHARP_TOKEN (it balances an inner '(' rather than terminating the call).
+mode CS_NESTED;
+
+CSN_CSHARP_WS: WS+ -> type(CSHARP_TOKEN);
+
+CSN_CSHARP_START:
+	PARA_ST -> type(CSHARP_TOKEN), pushMode(CS_NESTED);
+
+CSN_CSHARP_END: PARA_CL -> type(CSHARP_TOKEN), popMode;
+
+CSN_INTERP_VERBATIM_1: '$@"' -> type(CSHARP_TOKEN), pushMode(INTERP_VERBATIM_STR);
+CSN_INTERP_VERBATIM_2: '@$"' -> type(CSHARP_TOKEN), pushMode(INTERP_VERBATIM_STR);
+CSN_INTERP_REGULAR:    '$"'  -> type(CSHARP_TOKEN), pushMode(INTERP_STR);
+
+CSN_CSHARP_TOKEN: TOKEN -> type(CSHARP_TOKEN);
 
 // Regular interpolated string body: $"...{ hole }...". Everything is emitted as a CSHARP_TOKEN
 // so the expression text round-trips verbatim to Roslyn; the modes only exist to balance the

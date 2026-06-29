@@ -34,11 +34,10 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// Regression for the named-call C# token branch: a C# expression containing nested parentheses lexes the
-        /// inner ')' as an OUT_PARAMEND token inside the expression. Both the named (e.g. <c>@x(@Foo(1))</c>) and the
-        /// unnamed (<c>@(@Foo(1))</c>) call forms must classify those tokens identically. The named branch previously
-        /// only iterated CSHARP_TOKEN() and dropped the inner OUT_PARAMEND, producing fewer highlighting tokens than
-        /// the unnamed branch.
+        /// Regression for the named-call C# token branch: a C# expression containing nested parentheses must
+        /// classify the inner tokens (including the nested '(' and ')') identically for both the named
+        /// (e.g. <c>@x(@Foo(1))</c>) and unnamed (<c>@(@Foo(1))</c>) call forms. Nested parens are lexed as
+        /// ordinary CSHARP_TOKENs, so the two forms must yield the same C# token set.
         /// </summary>
         [Fact]
         public void NamedAndUnnamedCSharpCallsClassifyParenTokensEqually()
@@ -71,13 +70,11 @@ namespace Heddle.Tests
         public void ModernNumericLiteralsCompile()
         {
             HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
-            // Trailing text after ')' is required: csharp_expression greedily consumes OUT_PARAMEND tokens, so a
-            // bare '@(...)' at end-of-input is ambiguous (matches the existing template/test convention).
-            var target = new HeddleTemplate("@(@ 1_000 + 0b1010 + 0xFF_FF )!",
+            var target = new HeddleTemplate("@(@ 1_000 + 0b1010 + 0xFF_FF )",
                 new CompileContext(new TemplateOptions { AllowCSharp = true }));
             Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
             // 1000 + 0b1010 (10) + 0xFFFF (65535) = 66545
-            Assert.Equal("66545!", target.Generate(null));
+            Assert.Equal("66545", target.Generate(null));
         }
 
         /// <summary>
@@ -97,11 +94,32 @@ namespace Heddle.Tests
             // nested string literal ({(1 < 2 ? "a" : "b")}), and a hole wrapped in parentheses with parens
             // inside ((p{(3 * 4)})). The nested-string case is the one the lexer-mode handling makes work.
             var target = new HeddleTemplate(
-                "@(@$\"x{1 + 2}y z{(1 < 2 ? \"a\" : \"b\")} (p{(3 * 4)})\")|END",
+                "@(@$\"x{1 + 2}y z{(1 < 2 ? \"a\" : \"b\")} (p{(3 * 4)})\")",
                 new CompileContext(options));
             Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
             var actual = target.Generate(null);
-            Assert.Equal("x3y za (p12)|END", actual);
+            Assert.Equal("x3y za (p12)", actual);
+        }
+
+        /// <summary>
+        /// A C# expression call that is the very last thing in the document (no trailing token) must parse.
+        /// Nested parentheses now close with an ordinary CSHARP_TOKEN, so the single terminating OUT_PARAMEND
+        /// is unambiguous and 'csharp_expression' no longer greedily swallows it at end-of-input.
+        /// </summary>
+        [Fact]
+        public void CSharpCallAtEndOfInput()
+        {
+            HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
+            var options = new TemplateOptions { AllowCSharp = true };
+
+            var simple = new HeddleTemplate("@(@5)", new CompileContext(options));
+            Assert.True(simple.CompileResult.Success, simple.CompileResult.ToString());
+            Assert.Equal("5", simple.Generate(null));
+
+            // Nested parens as the final characters: (2 + 3) closes inside the expression, then the call closes.
+            var nested = new HeddleTemplate("@(@(2 + 3) * 4)", new CompileContext(options));
+            Assert.True(nested.CompileResult.Success, nested.CompileResult.ToString());
+            Assert.Equal("20", nested.Generate(null));
         }
 
         [Fact]
