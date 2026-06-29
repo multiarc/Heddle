@@ -223,25 +223,15 @@ fragment QUOTE_ESCAPE: '""';
 /*
 * RAW STRING (C# 11)
 *
-* The opening and closing delimiters must have the SAME number of quotes, which is context-sensitive and
-* therefore cannot be expressed exactly in a context-free lexer. Each fixed width is enumerated instead so
-* that interior runs of quotes shorter than the delimiter do not close the literal early. Widths 3..9 are
-* covered (a width-N delimiter is only needed when the content holds N-1 consecutive quotes, so >9 never
-* occurs in practice). The optional '$' prefix covers the interpolated raw forms ($"""...""", $$"""...""").
-* The whole literal is consumed as ONE token via a non-greedy body, so its exact text round-trips to Roslyn
-* and any interior quotes/parens/braces cannot disturb Heddle's token balancing.
+* A raw string is delimited by 3 or more quotes, with the closing run equal in length to the opening run.
+* The recursion below adds one quote to each side per step, so the open/close delimiters are always matched
+* for ANY width without enumerating widths. The non-greedy body consumes the literal as ONE token, so its
+* exact text round-trips to Roslyn and interior quotes/parens/braces cannot disturb Heddle's token balancing.
+* The optional '$' prefix covers the interpolated raw forms ($"""...""", $$"""...""").
 */
-fragment RAW_STRING_BODY:
-	'$'* (
-		  '"""""""""' .*? '"""""""""'   // 9
-		| '""""""""'  .*? '""""""""'    // 8
-		| '"""""""'   .*? '"""""""'     // 7
-		| '""""""'    .*? '""""""'      // 6
-		| '"""""'     .*? '"""""'       // 5
-		| '""""'      .*? '""""'        // 4
-		| '"""'       .*? '"""'         // 3
-	) UTF8_SUFFIX?
-	;
+fragment RAW_STRING_BODY: '$'* RAW_DELIMITED UTF8_SUFFIX?;
+
+fragment RAW_DELIMITED: '"' RAW_DELIMITED '"' | '"""' .*? '"""';
 
 /*
 * NULL
