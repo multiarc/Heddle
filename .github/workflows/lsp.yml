@@ -17,7 +17,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           # The multi-targeted test suite runs net6.0/net8.0/net10.0/net48; the runner image
           # no longer ships the EOL .NET 6 (and may drop 8) runtime, so install them explicitly
@@ -37,12 +37,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
-      # Framework-dependent + R2R per-RID packs cross-pack from one runner (phase 6 D19).
-      # -p:EnableToolR2R=true makes PublishReadyToRun visible at the RID-less outer restore so
-      # the crossgen2 runtime packs for every RuntimeIdentifier are restored (else NETSDK1094).
+        # Framework-dependent + R2R per-RID packs cross-pack from one runner (phase 6 D19).
+        # -p:EnableToolR2R=true makes PublishReadyToRun visible at the RID-less outer restore so
+        # the crossgen2 runtime packs for every RuntimeIdentifier are restored (else NETSDK1094).
       - name: Pack heddle-lsp (manifest + per-RID + any)
         run: dotnet pack src/Heddle.LanguageServer/Heddle.LanguageServer.csproj -c Release -o ./nupkg -p:EnableToolR2R=true
       - name: Smoke — install and run --version
@@ -51,7 +51,7 @@ jobs:
           dotnet tool install --global Heddle.LanguageServer --add-source ./nupkg --version 1.0.0 || true
           export PATH="$PATH:$HOME/.dotnet/tools"
           heddle-lsp --version
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: heddle-lsp-nupkg
           path: ./nupkg/*.nupkg
@@ -66,9 +66,9 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: 24
       - name: Map VS Code target to .NET RID
         id: rid
         run: |
@@ -89,7 +89,7 @@ jobs:
           npm ci
           npm run copy-grammar
           npx @vscode/vsce package --target ${{ matrix.target }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: heddle-vsix-${{ matrix.target }}
           path: editors/vscode/*.vsix

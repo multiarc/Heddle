@@ -50,7 +50,7 @@ jobs:
     - name: Setup Node
       uses: actions/setup-node@v6
       with:
-        node-version: 22
+        node-version: 24
         cache: npm
         cache-dependency-path: docs/package-lock.json
     # Build the custom Ace editor bundle (Ace + Heddle mode + ANTLR JS parser) and stage it
