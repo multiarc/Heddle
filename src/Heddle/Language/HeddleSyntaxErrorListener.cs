@@ -1,5 +1,6 @@
-﻿using System.IO;
+using System.IO;
 using Antlr4.Runtime;
+using Heddle.Data;
 
 namespace Heddle.Language
 {
@@ -16,7 +17,9 @@ namespace Heddle.Language
             int charPositionInLine,
             string msg, RecognitionException e)
         {
-            Context.Errors.Add(Context.CreateError(e, msg, offendingSymbol));
+            var error = Context.CreateError(e, msg, offendingSymbol);
+            error.DiagnosticId = HeddleDiagnosticIds.SyntaxError;
+            Context.Errors.Add(error);
         }
 
         public void Clear()

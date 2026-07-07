@@ -60,6 +60,26 @@ namespace Heddle
             CompileResult = Compile(new CompileScope(context ?? new CompileContext()), document);
         }
 
+        // Phase 7 D7 — precompiled adapter mode: a resolver hit binds the entry's generated root strategy directly,
+        // with no parse and no Roslyn compile. CompileResult reports success so host code cannot tell the difference;
+        // the strategy self-manages any ScopeLocals frame (WithLocalsFrame is baked into the root, D5).
+#if DEBUG
+        // Read only by the DEBUG-only model-type guard in Render (a precompiled strategy carries no CompileContext
+        // ScopeType to check against, so that guard is skipped). Scoped to DEBUG so Release builds don't warn CS0414.
+        private readonly bool _precompiled;
+#endif
+
+        internal HeddleTemplate(IProcessStrategy precompiledStrategy)
+        {
+            if (precompiledStrategy == null)
+                throw new ArgumentNullException(nameof(precompiledStrategy));
+            _processStrategy = precompiledStrategy;
+#if DEBUG
+            _precompiled = true;
+#endif
+            CompileResult = new HeddleCompileResult(true, null, null);
+        }
+
         public bool Empty => _runtimeDocument?.Empty ?? true;
         public bool Compiled => _runtimeDocument != null;
 
@@ -99,6 +119,70 @@ namespace Heddle
         /// <returns>Generated string</returns>
         public string Generate(object data, object chained = null, object callerData = null)
         {
+            // The string path wraps the shared render core (phase 8 D11/WI3) with what only it needs: a seeded
+            // ScopeRenderer, the adaptive high-water read/update, and ToString/Clear. The core is bit-identical to the
+            // pre-phase inline body; sink renders never read or update the high-water state (D4).
+#if NET8_0_OR_GREATER
+            var renderer = new ScopeRenderer(_maxLength);
+#else
+            var renderer = new ScopeRenderer(_maxElementCount);
+#endif
+            Render(data, chained, callerData, renderer);
+#if NET8_0_OR_GREATER
+            var newMax = Math.Max(_maxLength, renderer.TotalLength);
+            if (newMax > _maxLength)
+            {
+                newMax = (int)Math.Min((long)newMax * 110 / 100, int.MaxValue / 2); //10% length extra margin
+                _maxLength = newMax;
+            }
+#else
+            var newMax = Math.Max(_maxElementCount, renderer.TotalCount);
+            if (newMax > _maxElementCount)
+            {
+                newMax = newMax * 110 / 100; //10% count extra margin
+                _maxElementCount = newMax;
+            }
+#endif
+            var result = renderer.ToString();
+            renderer.Clear();
+            return result;
+        }
+
+        /// <summary>
+        /// Renders into a <see cref="TextWriter"/> with no full-output string materialization (phase 8 D3). The caller
+        /// owns the writer: nothing is flushed or disposed. Same compile-guard exceptions as the string path;
+        /// <see cref="ArgumentNullException"/> when <paramref name="writer"/> is null; a null model remains legal.
+        /// </summary>
+        public void Generate(object data, TextWriter writer, object chained = null, object callerData = null)
+        {
+            if (writer == null)
+                throw new ArgumentNullException(nameof(writer));
+            Render(data, chained, callerData, new TextWriterScopeRenderer(writer));
+        }
+
+        /// <summary>
+        /// Renders UTF-8 into an <see cref="System.Buffers.IBufferWriter{T}"/> of <see cref="byte"/> (e.g. a
+        /// <c>PipeWriter</c>) with no full-output materialization (phase 8 D3). The caller owns the writer and any
+        /// <c>FlushAsync</c>: nothing is flushed, completed, or disposed. Same compile-guard exceptions as the string
+        /// path; <see cref="ArgumentNullException"/> when <paramref name="writer"/> is null; a null model remains legal.
+        /// </summary>
+        public void Generate(object data, System.Buffers.IBufferWriter<byte> writer, object chained = null,
+            object callerData = null)
+        {
+            if (writer == null)
+                throw new ArgumentNullException(nameof(writer));
+            Render(data, chained, callerData, new Utf8ScopeRenderer(writer));
+        }
+
+        /// <summary>
+        /// The shared render core (phase 8 D11): compile guards, the DEBUG model-type check, the dispose guard, the
+        /// runner/dispose bookkeeping, root <see cref="Scope"/> construction over the supplied renderer (including
+        /// phase 3's root-frame provisioning), and <c>_processStrategy.Render</c>. Three callers: the string
+        /// <see cref="Generate(object,object,object)"/>, the two sink overloads, and <c>PartialExtension.RenderData</c>
+        /// (streaming partials, D11).
+        /// </summary>
+        internal void Render(object data, object chained, object callerData, IScopeRenderer renderer)
+        {
             if (_processStrategy == null)
             {
                 if (CompileResult == null)
@@ -107,7 +191,7 @@ namespace Heddle
             }
 
 #if DEBUG
-            if (data != null && !_context.ScopeType.Type.IsType(data))
+            if (!_precompiled && data != null && !_context.ScopeType.Type.IsType(data))
             {
                 throw new TemplateProcessingException
                     (string.Format
@@ -121,33 +205,11 @@ namespace Heddle
                 throw new ObjectDisposedException($"{GetType()} Disposed");
             }
             _runners++;
-            string result;
             try
             {
-#if NET8_0_OR_GREATER
-                var renderer = new ScopeRenderer(_maxLength);
-                var scope = new Scope(data, callerData, data, chained, renderer);
+                var scope = new Scope(data, callerData, data, chained, renderer, null,
+                    (_runtimeDocument?.NeedsLocals ?? false) ? new ScopeLocals() : null);
                 _processStrategy.Render(scope);
-                var newMax = Math.Max(_maxLength, renderer.TotalLength);
-                if (newMax > _maxLength)
-                {
-                    newMax = (int)Math.Min((long)newMax * 110 / 100, int.MaxValue / 2); //10% length extra margin
-                    _maxLength = newMax;
-                }
-#else
-                var renderer = new ScopeRenderer(_maxElementCount);
-                var scope = new Scope(data, callerData, data, chained, renderer);
-                _processStrategy.Render(scope);
-                var newMax = Math.Max(_maxElementCount, renderer.TotalCount);
-                if (newMax > _maxElementCount)
-                {
-                    newMax = newMax * 110 / 100; //10% count extra margin
-                    _maxElementCount = newMax;
-                }
-#endif
-
-                result = renderer.ToString();
-                renderer.Clear();
             }
             finally
             {
@@ -157,8 +219,6 @@ namespace Heddle
                     Dispose();
                 }
             }
-
-            return result;
         }
 
         public HeddleCompileResult Recompile(ExType newModelType)

@@ -7,6 +7,7 @@
     <Product>Heddle.Language</Product>
     <PackageId>Heddle.Language</PackageId>
     <Description>Text Template Engine Language Parser</Description>
+    <IncludeSymbols>true</IncludeSymbols>
     <LangVersion>latest</LangVersion>
     <SignAssembly>true</SignAssembly>
     <NoWarn>CS3021</NoWarn>

@@ -1,0 +1,1 @@
+@model(){{dynamic}}@%<card>{{@if(A){{X}}@out()@else(){{Z}}}}%@@card(){{@if(B){{CIN}}@else(){{COUT}}}}

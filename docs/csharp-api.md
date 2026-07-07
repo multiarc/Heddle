@@ -72,6 +72,53 @@ Behavior notes:
 string html = template.Generate(model);
 ```
 
+### Streaming: `Generate` into a sink
+
+Alongside the string overload, `HeddleTemplate` renders into a sink with **no full‑output
+string materialization** — the structural allocation high‑throughput server‑side rendering
+wants to remove:
+
+```csharp
+public void Generate(object data, TextWriter writer, object chained = null, object callerData = null);
+public void Generate(object data, IBufferWriter<byte> writer, object chained = null, object callerData = null);
+```
+
+- The `TextWriter` overload writes characters through to whatever buffering the writer already
+  has (a `StreamWriter`, ASP.NET Core's `HttpResponseStreamWriter`, a `StringWriter`).
+- The `IBufferWriter<byte>` overload writes **UTF‑8** directly into the writer's own spans — a
+  `PipeWriter` qualifies (`PipeWriter : IBufferWriter<byte>`), which is the ASP.NET Core
+  `Response.BodyWriter` shape.
+
+Both overloads are **write‑through**: the engine adds no buffering of its own, and it never
+flushes, completes, or disposes the sink — **the caller owns the sink's lifecycle.** They share
+every compile‑guard exception with the string path, treat a null model the same way, and throw
+`ArgumentNullException` when `writer` is null. The string path is unchanged and byte‑identical.
+
+There are **no async render methods** by design. The sanctioned backpressure pattern is the
+ecosystem's own — render synchronously, then let the *host* flush asynchronously:
+
+```csharp
+// ASP.NET Core minimal API — render straight into the response, host flushes.
+app.MapGet("/page", async (HttpContext ctx) =>
+{
+    ctx.Response.ContentType = "text/html; charset=utf-8";
+    template.Generate(model, ctx.Response.BodyWriter);   // synchronous, no intermediate string
+    await ctx.Response.BodyWriter.FlushAsync();           // the host owns the flush
+});
+```
+
+For very large pages, flush periodically using `PipeWriter.UnflushedBytes` to bound the buffer
+window. The sink is **single‑owner for the duration of the call**: don't touch it from another
+thread until `Generate` returns, and never pass one sink to two simultaneous renders. Different
+sinks on different threads against the same template are fully supported.
+
+> **Source‑compatibility note.** A call written as the positional literal
+> `template.Generate(data, null)` is now **CS0121** (ambiguous between the `TextWriter` and
+> `IBufferWriter<byte>` overloads — `null` is equally convertible to both). This is a
+> compile‑time‑only, self‑announcing change; fix it with `Generate(data)` or
+> `Generate(data, chained: null)`. Binary compatibility is unaffected — existing assemblies keep
+> binding the string overload — and any argument statically typed `object` still exact‑matches it.
+
 ### Compilation methods
 
 | Method | Description |
@@ -125,7 +172,11 @@ Controls where templates are read from and which features are enabled
 | `RootPath` | `AppContext.BaseDirectory` | Base directory for template files and imports/partials. |
 | `TemplateName` | `""` (ctor arg) | The template's name (file stem). Set via `new TemplateOptions("name")`. |
 | `FileNamePostfix` | `""` | Suffix appended to the name, e.g. `".heddle"`. |
-| `AllowCSharp` | `false` | Enables embedded C# (`@(...)` expressions, `@new`, LINQ, typed `@model()`). Required for most non‑trivial templates. |
+| `ExpressionMode` | `Native` | Selects the expression tier: `MemberPathsOnly`, `Native` (sandbox‑safe operators/functions — see [Native Expressions](native-expressions.md)), or `FullCSharp` (adds the inner‑`@` Roslyn tier). |
+| `Functions` | `null` (= `FunctionRegistry.Default`) | Functions callable from native expressions; see [Native Expressions](native-expressions.md#registered-functions). |
+| `OutputProfile` | `Text` | Selects whether the unnamed `@(...)` output HTML‑encodes by default: `Text` (raw, the 1.x default) or `Html` (bodiless `@(value)` encodes; `@raw` opts out). Inherited by bodies/partials/imports; also settable per template with [`@profile()`](built-in-extensions.md#profile). See [Output profiles](language-reference.md#output-profiles). Participates in `Equals`/`GetHashCode`. |
+| `TrimDirectiveLines` | `false` | When `true`, a whole‑line directive that produces no output (`@using`, `@model`, `@profile(){{…}}`, `@import`, `@% … %@` definitions, `@<<` imports, whole‑line comments, and any extension whose `InitStart` returns `null`) swallows its line — leading indentation, trailing spaces, and one line terminator. Inherited by child compiles. `false` keeps 1.x whitespace byte‑exact; flips to `true` in the 2.0 window. Participates in `Equals`/`GetHashCode` (it changes rendered bytes, so it keys template caches). Compile‑time only. See [Whitespace trimming](language-reference.md#whitespace-trimming-). |
+| `AllowCSharp` | `false` | Bridge over `ExpressionMode`: `true` == `FullCSharp`. Enables embedded C# (`@( @expr )`, `@new`, LINQ, typed `@model()`). Setting `false` leaves `MemberPathsOnly` untouched, otherwise selects `Native`. |
 | `MaxRecursionCount` | `100` | Upper bound on definition recursion depth. |
 | `EnableFileChangeCheck` | `false` | Install a `FileSystemWatcher` and recompile on file change. |
 | `ProvideLanguageFeatures` | `false` | Parse in a tooling mode that emits a token list for editors/highlighters (used by the IDE integrations). |
@@ -143,7 +194,36 @@ var options = new TemplateOptions("home")
 ```
 
 `TemplateOptions` implements value equality over (`TemplateName`, `RootPath`,
-`FileNamePostfix`), so it can be used as a cache key.
+`FileNamePostfix`, `OutputProfile`, `TrimDirectiveLines`), so it can be used as a cache key —
+two option sets that differ only by profile *or* by trimming are distinct keys (they render
+different bytes).
+
+### Choosing the output profile per template
+
+The profile is selected programmatically — there is **no** file‑extension inference. A host
+that wants extension‑driven profiles maps extensions to options in its own resolver wiring:
+
+```csharp
+OutputProfile ProfileFor(string path) =>
+    Path.GetExtension(path) is ".html" or ".htm" or ".xml"
+        ? OutputProfile.Html
+        : OutputProfile.Text;
+
+var options = new TemplateOptions(Path.GetFileNameWithoutExtension(path))
+{
+    RootPath = root,
+    FileNamePostfix = Path.GetExtension(path),
+    OutputProfile = ProfileFor(path)
+};
+```
+
+`TemplateResolver` also accepts a default profile and trimming setting:
+`new TemplateResolver(rootPath, checkFileChange, OutputProfile.Html)` and the four‑parameter
+`new TemplateResolver(rootPath, checkFileChange, OutputProfile.Html, trimDirectiveLines: true)`.
+The existing two‑parameter constructor is unchanged and keeps `(Text, false)`; a per‑call
+`CompileContext`'s options override both resolver defaults, and the resolver caches each
+template under a key suffixed by profile **and** trimming so one resolver can serve every
+combination without a collision.
 
 ---
 
@@ -163,6 +243,7 @@ Key members:
 | Member | Meaning |
 | --- | --- |
 | `TemplateOptions Options` | The options this context compiles with. |
+| `OutputProfile OutputProfile` | The effective output profile for items compiled from here on. Initialized from `Options.OutputProfile`; flipped by `@profile()`; snapshotted by child contexts. Compile‑time only. |
 | `ExType ScopeType` | The current model type. May be changed by the `@model()` extension during compile. |
 | `ExType RootScopeType` | The root (level‑0) model type. |
 | `bool Compiled` | Whether the embedded‑C# (Roslyn) compilation step has run. |
@@ -258,3 +339,42 @@ if (!template.CompileResult.Success)
 
 string html = template.Generate(myBlog);
 ```
+
+---
+
+## Build‑time pre‑compilation
+
+Templates can be pre‑compiled into your assembly at build time so they are **looked up, not
+parsed and compiled** at run time — the Razor compiled‑views shape. The runtime types above are
+unchanged and remain the semantic reference; the precompiled backend produces byte‑identical
+output. The additions live in the `Heddle.Precompiled` namespace:
+
+- `PrecompiledTemplates` — the process‑wide registry: `Register(assembly)` (repeatable,
+  idempotent), `Entries` (host‑visible discovery), `TryGet(key, out …)`, the `OnFallback`
+  diagnostic callback, and the `BindingResolver` hook.
+- `PrecompiledMismatchPolicy` on `TemplateOptions` — `Fallback` (default: recompile + warn) or
+  `Strict` (throw when a precompiled entry exists but cannot be plugged).
+- Typed entry points — `{RootNamespace}.HeddleTemplates.{Name}.Generate(model)` — the
+  recommended host API for templates known at compile time (compile‑checked model, no lookup).
+  Each typed entry also gains the two **sink overloads** — `Generate(model, TextWriter)` and
+  `Generate(model, IBufferWriter<byte>)` — mirroring `HeddleTemplate` (same no‑materialization
+  contract, same `Generate(model, null)` CS0121 corner). Building with `HeddleEmitUtf8Pieces=true`
+  emits pre‑encoded `"…"u8` static pieces that flow to the byte sink with zero transcoding.
+
+See [Build‑Time Pre‑compilation](precompilation.md) for the generator package, the MSBuild
+options, the validation gauntlet, `[ExportFunctions]` binding, and the `heddle` codegen CLI.
+
+## Advanced: disabling the C# tier for trimmed hosts
+
+Hosts that never use the Roslyn C# expression tier (`ExpressionMode.FullCSharp` / `AllowCSharp`) — for
+example a trimmed WebAssembly bundle — can drop the entire `Microsoft.CodeAnalysis` dependency graph with the
+`Heddle.CSharpTierEnabled` **feature switch**:
+
+- **Runtime:** `AppContext.SetSwitch("Heddle.CSharpTierEnabled", false)` at startup. Templates that require the
+  C# tier then fail compilation with **HED9001** (collected on the compile result, never thrown); native
+  expressions, member paths, functions, and every other feature are unaffected. Unset (the default) reads as
+  `true`, so ordinary hosts see identical behavior.
+- **Trimmed publish:** add
+  `<RuntimeHostConfigurationOption Include="Heddle.CSharpTierEnabled" Value="false" Trim="true" />`. The
+  linker then substitutes the switch to a constant, drops the guarded Roslyn branches, and removes
+  `Microsoft.CodeAnalysis.*` from the output entirely. This is exactly how the in-browser demo ships Roslyn-free.

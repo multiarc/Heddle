@@ -143,6 +143,34 @@ namespace Heddle.Runtime {
             }
         }
 
+        /// <summary>True when an extension with this exact name is registered.</summary>
+        internal static bool Exists(string name)
+        {
+            return name != null && Heddle.ContainsKey(name);
+        }
+
+        /// <summary>
+        /// Snapshot of the registered extension names — one entry per <c>[ExtensionName]</c> alias (phase 6 D3;
+        /// feeds LSP extension-name completion). Ordinal, case-sensitive; includes the unnamed
+        /// <see cref="Heddle.Extensions.EmptyExtension"/> alias (<c>""</c>), which completion filters out.
+        /// </summary>
+        internal static IReadOnlyCollection<string> RegisteredNames()
+        {
+            lock (Heddle)
+            {
+                return new List<string>(Heddle.Keys);
+            }
+        }
+
+        /// <summary>Ordinal registry lookup for the branch-set scan's participant classification (compile-time only).</summary>
+        internal static bool TryGetExtensionType(string name, out Type type)
+        {
+            if (name != null)
+                return Heddle.TryGetValue(name, out type);
+            type = null;
+            return false;
+        }
+
         #region Helper Methods
 
         /// <summary>

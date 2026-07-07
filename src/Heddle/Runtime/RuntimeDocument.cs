@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Heddle.Attributes;
 using Heddle.Data;
+using Heddle.Helpers;
+using Heddle.Runtime.Parameters;
 using Heddle.Strings;
 using Heddle.Strings.Core;
 
@@ -11,11 +14,12 @@ namespace Heddle.Runtime {
         private readonly IDataProcessor _singleProcessor;
         private readonly bool _canDoFullOptimize;
         private readonly CompileScope _context;
-        
+
         public RuntimeDocument(string document, DocumentElement[] executeItems, CompileScope context)
         {
             Document = document;
             _context = context ?? throw new ArgumentNullException(nameof(context));
+            NeedsLocals = ComputeNeedsLocals(executeItems);
             var optimizedElements = OptimizeCallTree(executeItems, document, out _canDoFullOptimize);
             if (optimizedElements.Count == 1)
             {
@@ -123,6 +127,63 @@ namespace Heddle.Runtime {
                 });
             }
             return optimized.ToArray();
+        }
+
+        /// <summary>
+        /// <para>Whether a body execution of this document must be provisioned with a
+        /// <see cref="ScopeLocals"/> frame: <c>true</c> iff the compiled document statically contains a
+        /// <c>[ScopeChannel]</c> participant (phase 3 D2). Nested bodies are separate documents and do not
+        /// contribute — the flag is strictly per body level.</para>
+        /// <para>Computed once in the constructor over the pre-optimization element tree (recursing nested
+        /// chain parameters); immutable afterwards — safe to read from concurrent renders.</para>
+        /// </summary>
+        internal bool NeedsLocals { get; }
+
+        private static bool ComputeNeedsLocals(DocumentElement[] items)
+        {
+            if (items == null)
+                return false;
+            foreach (var item in items)
+            {
+                if (ChainNeedsLocals(item.CallChain))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool ChainNeedsLocals(TemplateChain chain)
+        {
+            if (chain == null)
+                return false;
+            foreach (var item in chain.ItemsToExecute)
+            {
+                if (ItemNeedsLocals(item))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool ItemNeedsLocals(TemplateItem item)
+        {
+            if (item == null)
+                return false;
+            if (item.Extension != null &&
+                item.Extension.GetType().IsHaveAttribute<ScopeChannelAttribute>(true))
+                return true;
+            if (item.Parameter is ChainedParameter chained)
+            {
+                switch (chained.Processor)
+                {
+                    case TemplateItem nestedItem:
+                        return ItemNeedsLocals(nestedItem);
+                    case TemplateChain nestedChain:
+                        return ChainNeedsLocals(nestedChain);
+                }
+            }
+
+            return false;
         }
 
         public IProcessStrategy Strategy { get; }

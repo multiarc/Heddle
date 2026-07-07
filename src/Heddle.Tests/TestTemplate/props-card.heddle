@@ -1,0 +1,6 @@
+@%
+<card(style: string = "plain", compact: bool = false)>{{<article class="card @(style)"><h2>@(Title)</h2>@ifnot(compact){{<p>@(Summary)</p>}}@out()</article>}} :: PropArticle
+%@
+@card(Article, style: "wide", compact: true){{ EXTRA}}
+@card(Article)
+@card(Article, style: ::Site.DefaultCardStyle)

@@ -1,37 +1,50 @@
-﻿using System;
-using System.IO;
+using System;
 using System.Linq;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Atn;
 using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Tree;
 using Heddle.Data;
-using Heddle.Runtime;
 using Heddle.Strings.Core;
 
 namespace Heddle.Language
 {
     /// <summary>
-    /// Parses document and creates template cache that can be used multiple times as source template representation, also used to replace templates with data multiple times (template source preserved)
+    /// Parses document and creates template cache that can be used multiple times as source template representation, also used to replace templates with data multiple times (template source preserved).
     /// </summary>
-    public static class DocumentParser
+    /// <remarks>
+    /// The <see cref="ParserSettings"/>-based methods here are the shared front-end core (phase 7 D4): they carry no
+    /// dependency on the runtime <c>CompileContext</c>, so this file compiles into the <c>Heddle.Generator</c>
+    /// analyzer as a linked shared source. The runtime <c>CompileContext</c> adapters live in the sibling partial
+    /// <c>DocumentParser.Runtime.cs</c>, which the generator does not compile.
+    /// </remarks>
+    public static partial class DocumentParser
     {
         /// <summary>
-        /// Performs parse of document
+        /// Performs parse of document against a <see cref="ParserSettings"/> seam (the build-time / import-neutral
+        /// entry). Front-end diagnostics accumulate on the returned <see cref="ParseContext"/>; no
+        /// <c>CompileContext</c> is involved.
         /// </summary>
-        /// <returns>Full template context tree found in source template</returns>
-        public static ParseContext Parse(string document, CompileContext compileContext, out string cleanDocument)
+        public static ParseContext Parse(string document, ParserSettings settings, out string cleanDocument)
         {
-            var context = new ParseContext(provideLanguageFeatures: compileContext.Options.ProvideLanguageFeatures);
-            cleanDocument = Parse(document, context, compileContext);
+            if (settings == null)
+                throw new ArgumentNullException(nameof(settings));
+            var context = new ParseContext(provideLanguageFeatures: settings.ProvideLanguageFeatures);
+            cleanDocument = Parse(document, context, settings);
             return context;
         }
 
-        public static string Parse(string document, ParseContext context, CompileContext compileContext /*, bool loadDefenitionsOnly = false*/)
+        public static string Parse(string document, ParseContext context, ParserSettings settings)
         {
             if (document == null)
                 throw new ArgumentNullException(nameof(document));
-            var stream = new AntlrInputStream(new StringReader(document));
+            if (context == null)
+                throw new ArgumentNullException(nameof(context));
+            if (settings == null)
+                throw new ArgumentNullException(nameof(settings));
+
+            var errorFrom = context.Errors.Count;
+            var stream = new AntlrInputStream(new System.IO.StringReader(document));
             var lexer = new HeddleLexer(stream);
             var tokens = new CommonTokenStream(lexer);
             var parser = new HeddleParser(tokens);
@@ -40,7 +53,7 @@ namespace Heddle.Language
             HeddleParser.HeddleContext tree;
             parser.RemoveErrorListeners();
             parser.AddErrorListener(syntaxErrorListener);
-            if (!compileContext.Options.ProvideLanguageFeatures)
+            if (!settings.ProvideLanguageFeatures)
             {
                 bool needRetryIfFailed = false;
                 try
@@ -60,7 +73,7 @@ namespace Heddle.Language
                     });
                 }
 
-                if (needRetryIfFailed && context.Errors.Count > 0)
+                if (needRetryIfFailed && context.Errors.Count > errorFrom)
                 {
                     tree = ParseDiagnosticMode(stream, parser, syntaxErrorListener);
                 }
@@ -71,24 +84,21 @@ namespace Heddle.Language
                 tree = parser.heddle();
             }
 
-            if (context.Errors.Count > 0)
+            if (context.Errors.Count > errorFrom)
             {
-                compileContext.CompileErrors.AddRange(context.Errors);
                 return tree.GetText();
             }
 
             var walker = new ParseTreeWalker();
-            //context.DefenitionsOnly = loadDefenitionsOnly;
-            var listener = new HeddleMainListener(context, compileContext);
+            var listener = new HeddleMainListener(context, settings);
 
             listener.CurrentParseContext.SkippedTokens.AddRange(
                 tokens.GetTokens()
                     .Where(t => t.Channel == Lexer.Hidden)
                     .Select(t => new BlockPosition(t)));
-            
+
             walker.Walk(listener, tree);
 
-            //context.DefenitionsOnly = false;
             return tree.GetText();
         }
 

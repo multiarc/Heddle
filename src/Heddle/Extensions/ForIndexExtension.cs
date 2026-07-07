@@ -8,6 +8,7 @@ namespace Heddle.Extensions
 {
     [ExtensionName("for")]
     [DataType(typeof(ForModel))]
+    [DataType(typeof(int))]   // @for(5) / @for(Count): iterate 0…n−1
     public class ForIndexExtension : AbstractExtension
     {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
@@ -17,14 +18,26 @@ namespace Heddle.Extensions
 
         public override object ProcessData(in Scope scope)
         {
-            if (!(scope.ModelData is ForModel))
+            int start, last, step;
+            if (scope.ModelData is ForModel model)
+            {
+                start = model.Start ?? 0;
+                last = model.Last;
+                step = model.Step ?? 1;
+            }
+            else if (scope.ModelData is int count)
+            {
+                start = 0;
+                last = count;
+                step = 1;
+            }
+            else
             {
                 return string.Empty;
             }
 
-            var model = (ForModel) scope.ModelData;
             var builder = new ExStringBuilder();
-            for (int i = model.Start ?? 0; i < model.Last; i += model.Step ?? 1)
+            for (int i = start; i < last; i += step)
             {
                 var parentData = scope.Parent(i);
                 builder.Append(GetInnerResult(parentData));
@@ -35,11 +48,25 @@ namespace Heddle.Extensions
 
         public override void RenderData(in Scope scope)
         {
-            if (!(scope.ModelData is ForModel model)) 
+            int start, last, step;
+            if (scope.ModelData is ForModel model)
+            {
+                start = model.Start ?? 0;
+                last = model.Last;
+                step = model.Step ?? 1;
+            }
+            else if (scope.ModelData is int count)
+            {
+                start = 0;
+                last = count;
+                step = 1;
+            }
+            else
+            {
                 return;
-            
-            
-            for (var i = model.Start ?? 0; i < model.Last; i += model.Step ?? 1)
+            }
+
+            for (int i = start; i < last; i += step)
             {
                 var parentData = scope.Parent(i);
                 RenderInnerResult(parentData);

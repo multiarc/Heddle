@@ -1,6 +1,17 @@
 # Auto detect text files and perform LF normalization
 * text=auto
 
+# Template fixtures are byte-significant for golden comparisons: their raw newlines flow
+# into rendered output. Pin them to LF on every platform so Windows checkouts don't smudge
+# them to CRLF and break fixture-derived golden tests (goldens are read with \r\n -> \n).
+*.heddle text eol=lf
+
+# Golden output fixtures are compared verbatim (raw Assert.Equal, no \r\n normalization) against
+# rendered output, which is LF because the .heddle templates above are pinned LF. Pin the goldens
+# to LF too so a Windows checkout doesn't smudge them to CRLF while the templates stay LF —
+# otherwise expected(CRLF) != actual(LF) fails on Windows CI while Linux (LF everywhere) passes.
+src/Heddle.Tests/TestTemplate/*.html text eol=lf
+
 # Custom for Visual Studio
 *.cs     diff=csharp
 *.sln    merge=union

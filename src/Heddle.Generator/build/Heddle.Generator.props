@@ -1,0 +1,31 @@
+<Project>
+
+  <!-- Phase 7 D12/D14: compilation-wide options surfaced to the generator as build_property.* -->
+  <ItemGroup>
+    <CompilerVisibleProperty Include="HeddleOutputProfile" />
+    <CompilerVisibleProperty Include="HeddleExpressionMode" />
+    <CompilerVisibleProperty Include="HeddleTrimDirectiveLines" />
+    <CompilerVisibleProperty Include="HeddleMaxRecursionCount" />
+    <CompilerVisibleProperty Include="HeddleTemplateRoot" />
+    <CompilerVisibleProperty Include="HeddleGeneratedNamespace" />
+    <CompilerVisibleProperty Include="HeddleEmitUtf8Pieces" />
+  </ItemGroup>
+
+  <!-- Per-item metadata surfaced as build_metadata.AdditionalFiles.* -->
+  <ItemGroup>
+    <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Key" />
+    <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Name" />
+    <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Precompile" />
+  </ItemGroup>
+
+  <!-- Defaults (stated explicitly; flip together with the engine defaults in the 2.0 window). -->
+  <PropertyGroup>
+    <HeddleOutputProfile Condition="'$(HeddleOutputProfile)' == ''">Text</HeddleOutputProfile>
+    <HeddleExpressionMode Condition="'$(HeddleExpressionMode)' == ''">Native</HeddleExpressionMode>
+    <HeddleTrimDirectiveLines Condition="'$(HeddleTrimDirectiveLines)' == ''">false</HeddleTrimDirectiveLines>
+    <HeddleMaxRecursionCount Condition="'$(HeddleMaxRecursionCount)' == ''">100</HeddleMaxRecursionCount>
+    <HeddleTemplateRoot Condition="'$(HeddleTemplateRoot)' == ''">$(MSBuildProjectDirectory)</HeddleTemplateRoot>
+    <HeddleEmitUtf8Pieces Condition="'$(HeddleEmitUtf8Pieces)' == ''">false</HeddleEmitUtf8Pieces>
+  </PropertyGroup>
+
+</Project>

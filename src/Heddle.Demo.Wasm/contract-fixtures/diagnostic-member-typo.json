@@ -1,0 +1,15 @@
+{
+  "name": "diagnostic-member-typo",
+  "description": "A misspelled member produces the engine's own positioned HED0001 at the exact offset/length — the facade projects the compile diagnostic unchanged (no invented codes).",
+  "type": "diagnostic",
+  "text": "@using(){{Heddle.Demo.Models}}\n@model(){{Blog}}\n@(Titlle)\n",
+  "version": 1,
+  "expectDiagnostic": {
+    "id": "HED0001",
+    "severity": "error",
+    "offset": 49,
+    "length": 8,
+    "messageContains": "Titlle"
+  },
+  "expectCsharpTierUsed": false
+}

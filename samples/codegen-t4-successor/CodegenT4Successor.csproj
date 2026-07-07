@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\..\src\Heddle.Generator\build\Heddle.Generator.props" />
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Heddle.Samples.Codegen</RootNamespace>
+    <!-- Emit generated sources for inspection; the disk copy is excluded from the compile below so it is not
+         double-compiled. Capture reads it and writes a .txt golden (never a .cs, which would be re-globbed). -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>generated</CompilerGeneratedFilesOutputPath>
+    <EnableDefaultHeddleTemplates>false</EnableDefaultHeddleTemplates>
+    <!-- The emitted generated/*.g.cs would otherwise be re-globbed as source (duplicate definitions). Take full
+         control of the compile set instead: only our own sources, never the inspection copy of generated code. -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="..\tools\SampleCapture.cs" Link="SampleCapture.cs" />
+    <ProjectReference Include="..\..\src\Heddle\Heddle.csproj" />
+    <ProjectReference Include="..\..\src\Heddle.Generator\Heddle.Generator.csproj" ReferenceOutputAssembly="false" />
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reference the build-time code generator + its generation-time deps as analyzers (the NuGet package
+         normally bundles these into analyzers/dotnet/cs; a ProjectReference wires them by hand). -->
+    <Analyzer Include="..\..\src\Heddle.Generator\bin\$(Configuration)\netstandard2.0\Heddle.Generator.dll" />
+    <Analyzer Include="..\..\src\Heddle.Generator\bin\$(Configuration)\netstandard2.0\Heddle.Language.dll" />
+    <Analyzer Include="$(PkgAntlr4_Runtime_Standard)\lib\netstandard2.0\Antlr4.Runtime.Standard.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <HeddleTemplate Include="templates\report.heddle" Name="BuildReport" />
+  </ItemGroup>
+
+  <Import Project="..\..\src\Heddle.Generator\build\Heddle.Generator.targets" />
+
+</Project>

@@ -42,8 +42,10 @@ export default withMermaid(
     // existing README stays the single source and links to it still resolve.
     rewrites: { 'README.md': 'index.md' },
 
-    // assessment.md stays in the repo for contributors but is not published.
-    srcExclude: ['assessment.md'],
+    // Contributor material that stays in the repo but is not published to the docs
+    // site: the assessment, and the evolution roadmap + implementation specs (D9). The
+    // spec/roadmap set going live is the integration trigger for this exclusion.
+    srcExclude: ['assessment.md', 'roadmap/**', 'spec/**'],
 
     markdown: {
       languages: [

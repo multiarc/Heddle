@@ -1,0 +1,5 @@
+@using(){{Heddle.Tests.Data}}
+@model(){{ErgoForData}}
+@for(3){{<li>@out()</li>}}
+@for(Count){{<i>@out()</i>}}
+@for(range(2, 8, 3)){{[@out()]}}

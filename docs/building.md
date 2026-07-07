@@ -128,8 +128,31 @@ tokens) and is skipped on fork pull requests.
 - **Production releases are tag-driven.** Pushing a `vX.Y.Z` tag publishes that exact version
   to nuget.org and npmjs.org (as `latest`, with npm provenance) and creates a matching GitHub
   Release. Merging to `main` only builds and tests — it does not publish.
-- **[Documentation](../.github/workflows/docs.yml)** — builds this site and deploys it to
-  GitHub Pages.
+- **[Documentation](../.github/workflows/docs.yml)** — builds this site (including the WebAssembly
+  demo bundle) and deploys it to GitHub Pages. Pull requests build and run the demo smoke suite but
+  do not deploy.
+- **[Integration samples](../.github/workflows/samples.yml)** — a `fail-fast: false` matrix, one job
+  per `samples/` project, running each in capture mode and comparing against its golden.
+
+## The integration sample gallery
+
+The repo-root [`samples/`](../samples/README.md) folder holds ten small, complete, runnable projects —
+one per supported way to integrate Heddle (SSR, definition libraries, dynamic models, sandboxed user
+templates, safe output, custom extensions, component libraries, build-time codegen, precompilation, and
+streaming). They double as the engine's end-to-end test suite: each captures deterministic output that CI
+compares against a committed golden, so a broken sample *is* a failed integration test.
+
+Run one interactively, or in the CI capture mode:
+
+```bash
+dotnet run --project samples/dynamic-models                       # human mode
+dotnet run --project samples/dynamic-models -c Release -- --capture out
+bash samples/tools/compare-golden.sh samples/dynamic-models       # byte-compare vs golden/
+```
+
+`UPDATE_GOLDEN=1 bash samples/tools/compare-golden.sh samples/<name>` regenerates a golden (a review event,
+never a silent fix). Adding a sample is one folder + one `samples.yml` matrix entry + one index row — see the
+[gallery README](../samples/README.md#adding-a-sample).
 
 ## Regenerating the parser
 

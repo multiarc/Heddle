@@ -72,6 +72,66 @@ public interface IHeddleParserListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitDef([NotNull] HeddleParser.DefContext context);
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="HeddleParser.def_props"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterDef_props([NotNull] HeddleParser.Def_propsContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="HeddleParser.def_props"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitDef_props([NotNull] HeddleParser.Def_propsContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="HeddleParser.def_prop_item"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterDef_prop_item([NotNull] HeddleParser.Def_prop_itemContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="HeddleParser.def_prop_item"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitDef_prop_item([NotNull] HeddleParser.Def_prop_itemContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="HeddleParser.def_prop"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterDef_prop([NotNull] HeddleParser.Def_propContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="HeddleParser.def_prop"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitDef_prop([NotNull] HeddleParser.Def_propContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="HeddleParser.def_slot"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterDef_slot([NotNull] HeddleParser.Def_slotContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="HeddleParser.def_slot"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitDef_slot([NotNull] HeddleParser.Def_slotContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="HeddleParser.def_prop_default"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterDef_prop_default([NotNull] HeddleParser.Def_prop_defaultContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="HeddleParser.def_prop_default"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitDef_prop_default([NotNull] HeddleParser.Def_prop_defaultContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="HeddleParser.def_literal"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterDef_literal([NotNull] HeddleParser.Def_literalContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="HeddleParser.def_literal"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitDef_literal([NotNull] HeddleParser.Def_literalContext context);
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="HeddleParser.def_base"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -142,6 +202,16 @@ public interface IHeddleParserListener : IParseTreeListener {
 	/// <param name="context">The parse tree.</param>
 	void ExitCall([NotNull] HeddleParser.CallContext context);
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="HeddleParser.named_argument"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterNamed_argument([NotNull] HeddleParser.Named_argumentContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="HeddleParser.named_argument"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitNamed_argument([NotNull] HeddleParser.Named_argumentContext context);
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="HeddleParser.member_expression"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -171,6 +241,288 @@ public interface IHeddleParserListener : IParseTreeListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	void ExitCsharp_expression([NotNull] HeddleParser.Csharp_expressionContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="HeddleParser.native_expression"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterNative_expression([NotNull] HeddleParser.Native_expressionContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="HeddleParser.native_expression"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitNative_expression([NotNull] HeddleParser.Native_expressionContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>CoalesceExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterCoalesceExpr([NotNull] HeddleParser.CoalesceExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>CoalesceExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitCoalesceExpr([NotNull] HeddleParser.CoalesceExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>BitAndExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterBitAndExpr([NotNull] HeddleParser.BitAndExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>BitAndExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitBitAndExpr([NotNull] HeddleParser.BitAndExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>RelationalExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterRelationalExpr([NotNull] HeddleParser.RelationalExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>RelationalExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitRelationalExpr([NotNull] HeddleParser.RelationalExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>BitOrExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterBitOrExpr([NotNull] HeddleParser.BitOrExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>BitOrExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitBitOrExpr([NotNull] HeddleParser.BitOrExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>UnaryExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterUnaryExpr([NotNull] HeddleParser.UnaryExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>UnaryExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitUnaryExpr([NotNull] HeddleParser.UnaryExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>IndexExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterIndexExpr([NotNull] HeddleParser.IndexExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>IndexExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitIndexExpr([NotNull] HeddleParser.IndexExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>AndAlsoExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterAndAlsoExpr([NotNull] HeddleParser.AndAlsoExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>AndAlsoExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitAndAlsoExpr([NotNull] HeddleParser.AndAlsoExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>MultiplicativeExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterMultiplicativeExpr([NotNull] HeddleParser.MultiplicativeExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>MultiplicativeExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitMultiplicativeExpr([NotNull] HeddleParser.MultiplicativeExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>GroupExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterGroupExpr([NotNull] HeddleParser.GroupExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>GroupExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitGroupExpr([NotNull] HeddleParser.GroupExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>OrElseExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterOrElseExpr([NotNull] HeddleParser.OrElseExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>OrElseExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitOrElseExpr([NotNull] HeddleParser.OrElseExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>FunctionCallExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterFunctionCallExpr([NotNull] HeddleParser.FunctionCallExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>FunctionCallExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitFunctionCallExpr([NotNull] HeddleParser.FunctionCallExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>EqualityExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterEqualityExpr([NotNull] HeddleParser.EqualityExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>EqualityExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitEqualityExpr([NotNull] HeddleParser.EqualityExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>AdditiveExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterAdditiveExpr([NotNull] HeddleParser.AdditiveExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>AdditiveExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitAdditiveExpr([NotNull] HeddleParser.AdditiveExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>LiteralExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterLiteralExpr([NotNull] HeddleParser.LiteralExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>LiteralExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitLiteralExpr([NotNull] HeddleParser.LiteralExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>MemberHopExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterMemberHopExpr([NotNull] HeddleParser.MemberHopExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>MemberHopExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitMemberHopExpr([NotNull] HeddleParser.MemberHopExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>PathRootExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterPathRootExpr([NotNull] HeddleParser.PathRootExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>PathRootExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitPathRootExpr([NotNull] HeddleParser.PathRootExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>ShiftExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterShiftExpr([NotNull] HeddleParser.ShiftExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>ShiftExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitShiftExpr([NotNull] HeddleParser.ShiftExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>BitXorExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterBitXorExpr([NotNull] HeddleParser.BitXorExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>BitXorExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitBitXorExpr([NotNull] HeddleParser.BitXorExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>ThisExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterThisExpr([NotNull] HeddleParser.ThisExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>ThisExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitThisExpr([NotNull] HeddleParser.ThisExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>TernaryExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterTernaryExpr([NotNull] HeddleParser.TernaryExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>TernaryExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitTernaryExpr([NotNull] HeddleParser.TernaryExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by the <c>MethodCallExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterMethodCallExpr([NotNull] HeddleParser.MethodCallExprContext context);
+	/// <summary>
+	/// Exit a parse tree produced by the <c>MethodCallExpr</c>
+	/// labeled alternative in <see cref="HeddleParser.expr"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitMethodCallExpr([NotNull] HeddleParser.MethodCallExprContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="HeddleParser.arg_list"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterArg_list([NotNull] HeddleParser.Arg_listContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="HeddleParser.arg_list"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitArg_list([NotNull] HeddleParser.Arg_listContext context);
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="HeddleParser.literal"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void EnterLiteral([NotNull] HeddleParser.LiteralContext context);
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="HeddleParser.literal"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	void ExitLiteral([NotNull] HeddleParser.LiteralContext context);
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="HeddleParser.subtemplate"/>.
 	/// </summary>

@@ -37,8 +37,11 @@ present (renders the body).
 
 ```heddle
 @if(IsFeatured){{ <span class="badge">Featured</span> }}
-@if(@model.Comments.Count > 0){{ <h3>Comments</h3> }}
+@if(Comments.Count > 0){{ <h3>Comments</h3> }}
 ```
+
+> The parameter of `@if`/`@for` is any [native expression](native-expressions.md), so
+> `@if(Count > 0)` and `@if(Price * Quantity > 100)` work without the `@` C# tier.
 
 Because a non‑null, non‑bool value counts as present, **`@if(member)` is the idiomatic
 "if present" check** for a nullable reference: `@if(Summary){{ <p>@(Summary)</p> }}` renders
@@ -57,8 +60,61 @@ non‑null model renders nothing — so `@ifnot(member)` is the idiomatic "if ab
 @ifnot(Summary){{ <p class="muted">No summary yet.</p> }}
 ```
 
-> There is no `else`/`elif`. Combine `@if`/`@ifnot` (often nested) for the branches you need —
-> see [Patterns → conditionals](patterns.md#presence-checks-and-and-conditions).
+### `elif` (alias `elseif`)
+[ElifExtension.cs](../src/Heddle/Extensions/ElifExtension.cs) · input: `bool` (or any object)
+
+Continues a branch set opened by a preceding `@if`/`@ifnot`. It renders its body only when no
+earlier branch of the set fired **and** its own condition is truthy. Once a branch has fired,
+every later `@elif`/`@else` in the set renders nothing (its condition is still evaluated, only
+its body is skipped). `elseif` is an exact alias.
+
+```heddle
+@if(IsFeatured){{ <b>Featured</b> }}
+@elif(IsArchived){{ <i>Archived</i> }}
+```
+
+With no preceding `@if`/`@ifnot` at the same level, `@elif` behaves exactly like `@if` (it
+starts a new set) and the compiler emits a `HED3002` warning.
+
+### `else`
+[ElseExtension.cs](../src/Heddle/Extensions/ElseExtension.cs) · no condition
+
+The terminal branch of a set: it renders its body when no earlier branch fired, then closes the
+set. `@else` takes no parameter — a supplied one is evaluated and ignored (`HED3004`). An
+`@else` with no open set at the same level (an orphan, or a second `@else` after the set was
+already closed) is a **compile error** `HED3003` ("`@else` has no matching `@if`").
+
+```heddle
+@if(IsFeatured){{ <b>Featured</b> }}
+@elif(IsArchived){{ <i>Archived</i> }}
+@else(){{ Regular }}
+```
+
+#### Branch sets
+
+`@if`/`@ifnot`, `@elif`/`@elseif` and `@else` are ordinary standalone extensions; there is no
+new syntax and no `{{endif}}`. A **branch set** is recognized at compile time by document order
+at one body level: an opener (`@if`/`@ifnot`) followed by any run of `@elif` blocks and at most
+one `@else`. Only the winning branch's body renders.
+
+- **`@else` binds to the set state, not to a specific `@if`.** A set is "satisfied" once any
+  branch's condition was true (an `@if` whose body renders empty still satisfies it). `@else`
+  fires only when the set is unsatisfied.
+- **Text between the blocks of one set is never rendered.** It is stripped at compile time;
+  a stripped gap that holds anything beyond whitespace draws a `HED3001` warning. Text *before*
+  the opener and *after* the last branch renders normally. Comments (`@* … *@`) between blocks
+  live on the hidden channel and never affect the set.
+- **A new `@if` starts a new set**, and a **non‑branch block between branches ends the set for
+  the purposes of text stripping** but leaves the set state intact — so `@if(A){{…}} @date(D){{…}} @else(){{…}}`
+  keeps `@else` bound to the open set while the text around `@date` still renders.
+- **Imports.** Blocks spliced in by `@<<{{ … }}` are siblings of the importing body: they join
+  its branch sets and its compile‑time scan. Blocks parsed in by the `@import()` extension arrive
+  after that scan, so they coordinate at runtime only.
+- **Isolation.** Each `@list`/`@for` iteration, each nested body, and each `@partial` gets its
+  own set state — an inner set can never satisfy or clear an outer one.
+
+Custom extensions can read or drive a set's state through the public `BranchState` channel — see
+[Writing Custom Extensions → the local context channel](custom-extensions.md#the-local-context-channel).
 
 ---
 
@@ -81,12 +137,36 @@ the source implements `ICollection<T>`, the count is used to pre‑size the outp
 ```
 
 ### `for`
-[ForIndexExtension.cs](../src/Heddle/Extensions/ForIndexExtension.cs) · input: `ForModel`
+[ForIndexExtension.cs](../src/Heddle/Extensions/ForIndexExtension.cs) · input: `ForModel` or `int`
 
 A counted loop. The model is a `ForModel { Start?, Last, Step? }`
 ([Heddle.Models](../src/Heddle/Models)); it iterates `i = Start (default 0)` while
 `i < Last`, incrementing by `Step` (default 1). The loop index is exposed to the body as the
-chained value (referenceable as `chained` in embedded C#).
+chained value (referenceable as `chained` in embedded C#, or output directly with `@out()`).
+
+**Counted loops without C#.** `@for` also accepts a plain `int`, iterating `0…n−1`, so the
+common cases need no embedded C# at all:
+
+```heddle
+@for(3){{ <li>@out()</li> }}        @* renders <li>0</li><li>1</li><li>2</li> *@
+@for(Count){{ ... }}                @* Count is an int member of the model *@
+```
+
+A negative or zero count renders empty (the loop condition is false immediately), matching a
+data‑driven `Count = 0`.
+
+**`range(start, last[, step])`.** The default [function registry](native-expressions.md)
+includes `range`, which builds a `ForModel` — so `@for(range(...))` gives start/step control
+with no new syntax:
+
+```heddle
+@for(range(2, 8, 3)){{ [@out()] }}  @* [2][5] — start 2, step 3, last-exclusive *@
+```
+
+`step` must be positive: a zero or negative literal step is a compile error (**HED4001**), and a
+non‑positive step known only at render throws. See [native expressions](native-expressions.md#range).
+
+The C# tier still works for computed models:
 
 ```heddle
 @for(@new ForModel() { Last = model.Articles.Count(), Step = 3 })
@@ -176,24 +256,48 @@ culture), falling back to `ToString()`.
 ## Output and context
 
 ### Empty / unnamed
-[EmptyExtension.cs](../src/Heddle/Extensions/EmptyExtension.cs) · name: `""`
+[EmptyExtension.cs](../src/Heddle/Extensions/EmptyExtension.cs) · names: `""`, `raw`
 
 The extension with the empty name backs the unnamed call form `@(...)`. If it has a body it
 renders the body; otherwise it stringifies the current model (or empty when `null`). This is
 the workhorse behind `@(Title)`, `@()`, etc.
 
-> The unnamed `@(...)` form is **not** HTML‑encoded. For encoded text output use
-> [`string`](#string) (or `html` below).
+Its output depends on the effective [output profile](#output-profiles):
+
+- Under **`OutputProfile.Text`** (the 1.x default) the unnamed `@(...)` form is **not**
+  HTML‑encoded — raw text/JSON/code output, exactly as before.
+- Under **`OutputProfile.Html`** a *bodiless* unnamed `@(value)` is HTML‑encoded by default
+  (the compiler resolves it to `html` below). A *bodied* `@(value){{…}}` is unchanged — it is a
+  raw rescoping container, so its literal body markup is never encoded; only value leaves inside
+  it encode. Use [`raw`](#raw) to opt a trusted value out.
+
+### `raw`
+[EmptyExtension.cs](../src/Heddle/Extensions/EmptyExtension.cs) · name: `raw`
+
+A second name on the empty extension: `@raw(value)` always emits the value verbatim, under
+**both** profiles. Under `Html` it is the trusted‑value opt‑out (the analogue of Razor's
+`Html.Raw`, Handlebars' `{{{ }}}`, Jinja's `|safe`); under `Text` it is a harmless alias.
+
+```heddle
+@raw(TrustedHtmlFragment)
+```
+
+> Never pass untrusted input through `@raw(...)` under `Html` — that reopens the XSS hole the
+> profile closes.
 
 ### `html`
 [EmptyHtmlExtension.cs](../src/Heddle/Extensions/EmptyHtmlExtension.cs) · name: `html` · HTML‑encoded
 
-Same behavior as the empty extension, but HTML‑encodes its output (`[EncodeOutput]`). Use it
-when you want the "just stringify the value" behavior *with* encoding.
+Same behavior as the empty extension, but always HTML‑encodes its output (`[EncodeOutput]`),
+under both profiles. Use it when you want the "just stringify the value" behavior *with*
+encoding, independent of the profile.
 
 ```heddle
 @html(UserSuppliedText)
 ```
+
+> Under `Html`, wrapping a value in `@html(...)` inside the unnamed sink (`@(html(X))`) encodes
+> twice and raises the [`HED2003`](#html-encoding) warning — drop the `html()` or use `@raw`.
 
 ### `out`
 [OutExtension.cs](../src/Heddle/Extensions/OutExtension.cs) · name: `out`
@@ -210,6 +314,16 @@ chained data. This is how a definition surfaces the caller's inline content.
 `@out()` is the mechanism behind layouts: a `layout` definition wraps the page chrome around a
 central `@out()`, and each page supplies the content. See
 [Language Reference → composition](language-reference.md#inheritance-and-override-childbase).
+
+**Two modes.** `@out` has a second, *slot* mode. When the enclosing definition declares a
+[slot parameter](language-reference.md#parameterized-slots-out-type) (`out:: Type`), `@out(expr)`
+renders the caller's body **once per execution** with `expr` (typed as the slot type) as its model
+— the picker pattern, `@list(Options){{ @out(this) }}`. In slot mode every `@out` must pass a value
+(a bare `@out()` is **HED5013**) and is bodiless (**HED5018**).
+
+**`@out` with a value needs a slot.** Outside a slot‑declaring body, `@out` takes **no** argument —
+`@out(X)` (formerly accepted and silently ignored) is now the compile error **HED5012**. The fix is
+to drop the argument (`@out()`) or to declare `out:: Type` and mean it.
 
 ### `swap`
 [SwapExtension.cs](../src/Heddle/Extensions/SwapExtension.cs) · name: `swap`
@@ -254,9 +368,29 @@ resolve unqualified identifiers.
 ### `import`
 [ImportExtension.cs](../src/Heddle/Extensions/ImportExtension.cs) · name: `import`
 
-Compile‑time include: reads another template file (relative to `RootPath`) and parses its
-**definitions** into the current parse context. This is the extension behind the
-[`@<<{{ path }}`](language-reference.md#imports--) sugar. Emits no output of its own.
+Compile‑time include that re‑parses another template file (relative to `RootPath`) into the
+extension body's own isolated context. It is **not** the machinery behind `@<<` — the two are
+[independent import implementations](language-reference.md#imports--) with different
+behavior. `@import()` merges nothing into the importing document (its parsed definitions are not
+callable afterwards); its practical effect is to validate the target file (its errors surface).
+Emits no output of its own. **Prefer [`@<<{{ path }}`](language-reference.md#imports--)
+for sharing definitions** — it merges definitions, re‑bases the imported chains, and carries
+default outputs.
+
+### `profile`
+[ProfileExtension.cs](../src/Heddle/Extensions/ProfileExtension.cs) · name: `profile`
+
+Compile‑time directive that sets the effective [output profile](#output-profiles) for output
+compiled **after** it in document order (bodies, partials, and imports created afterwards
+inherit it). The value is read from the body and must be `text` or `html`
+(case‑insensitive); any other value is the [`HED2001`](#html-encoding) error. Emits no output.
+
+```heddle
+@profile(){{ html }}     @* everything below now HTML‑encodes the unnamed @(...) form *@
+```
+
+Placing `@profile()` after some unnamed output has already been compiled still applies the
+flip but raises the [`HED2002`](#html-encoding) warning — keep it at the top of the template.
 
 ---
 
@@ -284,15 +418,18 @@ passing the current model.
 | --- | --- | --- | --- | --- |
 | `if` | IfExtension | `bool`/any | – | content shown when true |
 | `ifnot` | IfNotExtension | `bool`/`null` | – | content shown when false/null |
+| `elif` / `elseif` | ElifExtension | `bool`/any | – | next branch of a set (else‑if) |
+| `else` | ElseExtension | – | – | terminal branch of a set |
 | `list` | ListExtension | `IEnumerable` | – | per‑element template |
-| `for` | ForIndexExtension | `ForModel` | – | per‑iteration template |
+| `for` | ForIndexExtension | `ForModel` / `int` | – | per‑iteration template |
 | `date` | DateExtension | `DateTime` | ✔ | date format string (def. `d`) |
 | `time` | TimeExtension | `DateTime` | ✔ | time format string (def. `t`) |
 | `int` | IntegerExtension | `int`/`long` | ✔ | numeric format string |
 | `money` | MoneyExtension | `decimal` | ✔ | culture name |
 | `guid` | GuidExtension | `Guid` | – | GUID format specifier |
 | `string` | StringExtension | `string`/any | ✔ | fallback when null |
-| *(empty)* | EmptyExtension | any | – | optional body, else stringify model |
+| *(empty)* | EmptyExtension | any | profile¹ | optional body, else stringify model |
+| `raw` | EmptyExtension | any | – | trusted‑value opt‑out (never encodes) |
 | `html` | EmptyHtmlExtension | any | ✔ | optional body, else stringify model |
 | `out` | OutExtension | chained | – | template over chained data |
 | `swap` | SwapExtension | – | – | body with model/chained swapped |
@@ -300,22 +437,59 @@ passing the current model.
 | `model` | ModelExtension | – | – | model type name |
 | `using` | UsingExtension | – | – | namespace to import |
 | `import` | ImportExtension | – | – | file to include (definitions) |
+| `profile` | ProfileExtension | – | – | output profile (`text`/`html`) |
 | `partial` | PartialExtension | model | – | template name to render |
+
+¹ The bodiless unnamed `@(...)` form encodes under `OutputProfile.Html` and is raw under
+`OutputProfile.Text` — see [Output profiles](#output-profiles).
 
 ---
 
+## Output profiles
+
+The **output profile** decides whether the bodiless unnamed `@(...)` form HTML‑encodes by
+default. It is selected programmatically — there is no file‑extension inference:
+
+- **`OutputProfile.Text`** (the 1.x default) — `@(value)` emits raw text. This is the profile
+  for text, JSON, and code generation and keeps every existing template byte‑identical.
+- **`OutputProfile.Html`** — a bodiless `@(value)` HTML‑encodes by default (XSS‑safe output);
+  `@raw(value)` opts a trusted value out; a bodied `@(value){{…}}` stays a raw rescoping
+  container (only value leaves inside it encode).
+
+Set it two ways (both feed the same effective profile; the directive wins for output after it):
+
+- Host: [`TemplateOptions.OutputProfile`](csharp-api.md#templateoptions) (and the
+  `TemplateResolver` default‑profile constructor).
+- Template: the [`@profile()`](#profile) directive.
+
+Encoding always happens at the **emitting leaf** and exactly once: a value flowing through a
+container (`list`, `if`, `out`, …) or a nested producer (`@(upper(X))`) is encoded a single
+time by the leaf that writes it. Wrapping a value in an already‑encoding extension under the
+unnamed sink (`@(html(X))`) encodes twice and raises the `HED2003` warning.
+
+> **1.x → 2.0:** the default profile stays `Text` in 1.x. In the 2.0 window it flips to `Html`
+> and the encoder moves from `WebUtility.HtmlEncode` to a pluggable
+> `HtmlEncoder.Create(UnicodeRanges.All)`. Hosts that need today's behavior set
+> `OutputProfile.Text` explicitly (or mark trusted spots with `@raw`).
+
 ## HTML encoding
 
-Encoding is decided **per extension**, not globally:
+Encoding is decided **per extension** plus the profile:
 
 - Extensions marked **`[EncodeOutput]`** (and deriving from `AbstractHtmlExtension`)
   HTML‑encode their output with `WebUtility.HtmlEncode`. These are `date`, `time`, `int`,
-  `money`, `string`, and `html`.
-- The unnamed `@(...)` output and non‑HTML extensions (`guid`, `out`, `list`, `if`, …) emit
-  their text **as‑is**.
-- The **`[NotEncode]`** attribute, applied to a *model property*, marks that property's value
-  as pre‑trusted so it is not encoded even when flowing through an encoding extension. See
-  [src/Heddle/Attributes/NotEncodeAttribute.cs](../src/Heddle/Attributes/NotEncodeAttribute.cs).
+  `money`, `string`, and `html` — under **both** profiles.
+- The unnamed `@(...)` output encodes only under `OutputProfile.Html` (see
+  [Output profiles](#output-profiles)); `@raw(...)` and non‑HTML extensions (`guid`, `out`,
+  `list`, `if`, …) emit their text **as‑is** under both profiles.
 
-To emit user‑controlled text safely, prefer `@string(...)` or `@html(...)` over the bare
-`@(...)` form.
+Profile diagnostics:
+
+- **`HED2001`** (error) — `@profile()` names a value other than `text`/`html` (or is empty).
+- **`HED2002`** (warning) — `@profile()` appears after output has already been compiled in the
+  same scope; the flip still applies, but earlier output kept the previous profile.
+- **`HED2003`** (warning) — an `[EncodeOutput]` producer feeds the auto‑encoding unnamed sink
+  under `Html` (`@(html(X))`), encoding twice. Remove the inner call or use `@raw(...)`.
+
+To emit user‑controlled text safely, run under `OutputProfile.Html` (or prefer `@string(...)`
+/ `@html(...)`) rather than the bare `@(...)` form under `Text`.

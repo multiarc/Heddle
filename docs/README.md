@@ -49,7 +49,10 @@ nuances, and **[Built‑in Extensions](built-in-extensions.md)** for the bundled
 
 ### I want to *use the engine from C#* (integrators)
 Read **[Getting Started](getting-started.md)** and the **[C# API Reference](csharp-api.md)**
-(`HeddleTemplate`, `TemplateOptions`, `CompileContext`, compile results, file watching).
+(`HeddleTemplate`, `TemplateOptions`, `CompileContext`, compile results, file watching). For complete,
+runnable integration examples — SSR, definition libraries, dynamic models, sandboxing, safe output,
+custom extensions, component libraries, codegen, precompilation, streaming — see the
+**[integration sample gallery](../samples/README.md)**.
 
 ### I want to *extend the engine* (advanced)
 Read **[Writing Custom Extensions](custom-extensions.md)** to add your own `@yourhelper(...)`

@@ -23,7 +23,11 @@ namespace Heddle.Language
         OutParamEnd,
         LineTerminate,
         DefOutputOnEnd,
-        ParseError
+        ParseError,
+        // Appended by phase 1 (native expressions) — values stay stable because they are appended.
+        Operator,
+        Literal,
+        FunctionName
     }
 
     public class HeddleToken

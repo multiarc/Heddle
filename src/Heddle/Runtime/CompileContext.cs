@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Heddle.Data;
 using Heddle.Language;
+using Heddle.Runtime.Expressions;
 
 namespace Heddle.Runtime {
     internal class DelayedTemplate
@@ -64,6 +65,37 @@ namespace Heddle.Runtime {
 
         internal Dictionary<OutputItem, CompiledElement> CompiledItems { get; }
 
+        /// <summary>
+        /// The phase 6 D2 position-indexed scope map: non-null only when
+        /// <see cref="Data.TemplateOptions.ProvideLanguageFeatures"/> is true (created in the two root ctors,
+        /// reference-copied through the private copy ctor so all child compiles share one). Recorded at the single
+        /// body-compile funnel <c>HeddleCompiler.Compile</c>; null on production compiles (one null check per body,
+        /// zero allocation).
+        /// </summary>
+        internal ScopeMap ScopeMap { get; }
+
+        /// <summary>
+        /// The once-per-definition-per-compile prop-layout cache (D6). Shared through the private copy ctor
+        /// exactly like <see cref="CompiledItems"/> — one compile, one cache. Keyed by a stable definition
+        /// identity (name + declaration position) rather than the <see cref="DefinitionItem"/> instance, because
+        /// context isolation copies definitions per body: two call sites of one definition therefore share the
+        /// same resolved <see cref="PropLayout"/> instance (the D6 two-site invariant).
+        /// </summary>
+        internal Dictionary<string, PropLayout> ResolvedPropLayouts { get; }
+
+        /// <summary>
+        /// The active prop layout while compiling a definition body (D12). <c>null</c> outside a props-declaring
+        /// definition body. Copied by the child-context copy ctor so nested bodies keep the layout;
+        /// save/set/restore around each definition-body compile in <c>CreateExtension</c>.
+        /// </summary>
+        internal PropLayout ActivePropLayout { get; set; }
+
+        /// <summary>
+        /// The active slot parameter type while compiling a slot-declaring definition body (D12). <c>null</c>
+        /// otherwise. Same threading rules as <see cref="ActivePropLayout"/>.
+        /// </summary>
+        internal ExType SlotParameterType { get; set; }
+
         public string ControllerName { get; set; }
 
         internal List<DelayedTemplate> DelayedTemplates { get; } = new List<DelayedTemplate>();
@@ -76,20 +108,28 @@ namespace Heddle.Runtime {
                 throw new ArgumentNullException(nameof(context));
             RootScopeType = context.RootScopeType;
             CompiledItems = context.CompiledItems;
+            ResolvedPropLayouts = context.ResolvedPropLayouts;
             CompileErrors = context.CompileErrors;
             CompileWarnings = context.CompileWarnings;
             ControllerName = context.ControllerName;
             Options = new TemplateOptions(context.Options, fileName);
             ScopeType = modelType ?? context.ScopeType ?? typeof(object);
+            OutputProfile = context.OutputProfile;
+            ActivePropLayout = context.ActivePropLayout;
+            SlotParameterType = context.SlotParameterType;
+            ScopeMap = context.ScopeMap;
             _csharpContext = context._csharpContext;
         }
 
         public CompileContext(ExType modelType = null) {
             RootScopeType = ScopeType = modelType ?? (ExType)typeof(object);
             Options = new TemplateOptions();
+            OutputProfile = Options.OutputProfile;
             CompileErrors = new List<HeddleCompileError>();
             CompileWarnings = new List<HeddleCompileWarning>();
             CompiledItems = new Dictionary<OutputItem, CompiledElement>();
+            ResolvedPropLayouts = new Dictionary<string, PropLayout>();
+            ScopeMap = Options.ProvideLanguageFeatures ? new ScopeMap() : null;
             _csharpContext = new CSharpContext();
         }
 
@@ -103,9 +143,12 @@ namespace Heddle.Runtime {
         {
             RootScopeType = ScopeType = modelType ?? typeof (object);
             Options = options;
+            OutputProfile = Options.OutputProfile;
             CompileErrors = new List<HeddleCompileError>();
             CompileWarnings = new List<HeddleCompileWarning>();
             CompiledItems = new Dictionary<OutputItem, CompiledElement>();
+            ResolvedPropLayouts = new Dictionary<string, PropLayout>();
+            ScopeMap = Options.ProvideLanguageFeatures ? new ScopeMap() : null;
             _csharpContext = new CSharpContext();
         }
 
@@ -150,6 +193,21 @@ namespace Heddle.Runtime {
         }
 
         public TemplateOptions Options { get; }
+
+        /// <summary>
+        /// <para>The effective output profile for items compiled from this context onward. Initialized from
+        /// <see cref="TemplateOptions.OutputProfile"/>; flipped by the <c>@profile()</c> directive;
+        /// snapshotted by child contexts (bodies, partials, imports) at creation.</para>
+        /// <para>Compile-time state on a single-threaded compile — never read at render time.</para>
+        /// </summary>
+        public OutputProfile OutputProfile { get; set; }
+
+        /// <summary>
+        /// Set when a bodiless unnamed <c>@(...)</c> / standalone-function carrier is resolved in this
+        /// context (both profiles). Drives the <c>HED2002</c> "profile directive after output" warning.
+        /// Per-context and deliberately not copied to child contexts.
+        /// </summary>
+        internal bool UnnamedOutputCompiled { get; set; }
 
         /// <summary>
         /// Model Type can be changed at any time you running your template extension.

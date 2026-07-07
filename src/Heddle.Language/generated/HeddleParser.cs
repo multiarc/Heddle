@@ -40,37 +40,70 @@ public partial class HeddleParser : Parser {
 		TEXT=1, WS=2, IMPORT_TOKEN=3, ID=4, ROOT_REF=5, MEMBER_P=6, OUT=7, SUB_START=8, 
 		SUB_CLOSE=9, CSHARP_END=10, CSHARP_TOKEN=11, CSHARP_START=12, DEF_STARTNAME=13, 
 		DEF_ENDNAME=14, DELIM=15, DEF_START=16, DEF_CLOSE=17, RAW=18, OUT_PARAMSTART=19, 
-		OUT_PARAMEND=20, DEF_OUT=21, COMMENT=22, SKIP_WS=23, SUB_COMMENT=24, SUB_SKIP_WS=25, 
-		DEF_COMMENT=26, DEF_TYPE=27, DEF_WS=28, IMPORT_COMMENT=29, CALL_RETURN_COMMENT=30, 
-		CALL_SKIP_WS=31, OUT_COMMENT=32, OUT_SKIP_WS=33, CALL_COMMENT=34, CALL_WS=35, 
-		ISTR_OPEN_BRACE_ESC=36, ISTR_CLOSE_BRACE_ESC=37, ISTR_END=38, IVSTR_QUOTE_ESC=39, 
-		HOLE_CLOSE=40;
+		OUT_PARAMEND=20, DEF_OUT=21, TRUE=22, FALSE=23, NULL=24, INT_LIT=25, REAL_LIT=26, 
+		STRING_LIT=27, CHAR_LIT=28, OP_QQ=29, OP_QUESTION=30, OP_AND=31, OP_OR=32, 
+		OP_EQ=33, OP_NEQ=34, OP_LSHIFT=35, OP_RSHIFT=36, OP_LE=37, OP_GE=38, OP_LT=39, 
+		OP_GT=40, OP_PLUS=41, OP_MINUS=42, OP_STAR=43, OP_SLASH=44, OP_PERCENT=45, 
+		OP_AMP=46, OP_PIPE=47, OP_CARET=48, OP_NOT=49, OP_TILDE=50, LBRACKET=51, 
+		RBRACKET=52, COMMA=53, THIS=54, ASSIGN=55, COMMENT=56, SKIP_WS=57, SUB_COMMENT=58, 
+		SUB_SKIP_WS=59, DEF_COMMENT=60, DEF_TYPE=61, DEF_WS=62, DEFP_COMMENT=63, 
+		DEFP_WS=64, IMPORT_COMMENT=65, CALL_RETURN_COMMENT=66, CALL_SKIP_WS=67, 
+		OUT_COMMENT=68, OUT_SKIP_WS=69, CALL_COMMENT=70, CALL_WS=71, CALL_UNKNOWN=72, 
+		DEFP_ASSIGN=73, DEFP_COMMA=74, DEFP_MINUS=75, CALL_OP_QQ=76, CALL_OP_QUESTION=77, 
+		CALL_OP_AND=78, CALL_OP_OR=79, CALL_OP_EQ=80, CALL_OP_NEQ=81, CALL_OP_LSHIFT=82, 
+		CALL_OP_RSHIFT=83, CALL_OP_LE=84, CALL_OP_GE=85, CALL_OP_LT=86, CALL_OP_GT=87, 
+		CALL_OP_PLUS=88, CALL_OP_STAR=89, CALL_OP_SLASH=90, CALL_OP_PERCENT=91, 
+		CALL_OP_AMP=92, CALL_OP_PIPE=93, CALL_OP_CARET=94, CALL_OP_NOT=95, CALL_OP_TILDE=96, 
+		CALL_LBRACKET=97, CALL_RBRACKET=98, ISTR_OPEN_BRACE_ESC=99, ISTR_CLOSE_BRACE_ESC=100, 
+		ISTR_END=101, IVSTR_QUOTE_ESC=102, HOLE_CLOSE=103;
 	public const int
-		RULE_heddle = 0, RULE_raw = 1, RULE_definition = 2, RULE_def = 3, RULE_def_base = 4, 
-		RULE_def_type = 5, RULE_default_chain = 6, RULE_import_block = 7, RULE_outblock = 8, 
-		RULE_chain = 9, RULE_call = 10, RULE_member_expression = 11, RULE_extension_id = 12, 
-		RULE_csharp_expression = 13, RULE_subtemplate = 14, RULE_text = 15;
+		RULE_heddle = 0, RULE_raw = 1, RULE_definition = 2, RULE_def = 3, RULE_def_props = 4, 
+		RULE_def_prop_item = 5, RULE_def_prop = 6, RULE_def_slot = 7, RULE_def_prop_default = 8, 
+		RULE_def_literal = 9, RULE_def_base = 10, RULE_def_type = 11, RULE_default_chain = 12, 
+		RULE_import_block = 13, RULE_outblock = 14, RULE_chain = 15, RULE_call = 16, 
+		RULE_named_argument = 17, RULE_member_expression = 18, RULE_extension_id = 19, 
+		RULE_csharp_expression = 20, RULE_native_expression = 21, RULE_expr = 22, 
+		RULE_arg_list = 23, RULE_literal = 24, RULE_subtemplate = 25, RULE_text = 26;
 	public static readonly string[] ruleNames = {
-		"heddle", "raw", "definition", "def", "def_base", "def_type", "default_chain", 
-		"import_block", "outblock", "chain", "call", "member_expression", "extension_id", 
-		"csharp_expression", "subtemplate", "text"
+		"heddle", "raw", "definition", "def", "def_props", "def_prop_item", "def_prop", 
+		"def_slot", "def_prop_default", "def_literal", "def_base", "def_type", 
+		"default_chain", "import_block", "outblock", "chain", "call", "named_argument", 
+		"member_expression", "extension_id", "csharp_expression", "native_expression", 
+		"expr", "arg_list", "literal", "subtemplate", "text"
 	};
 
 	private static readonly string[] _LiteralNames = {
 		null, null, null, null, null, null, null, null, null, null, null, null, 
 		null, null, null, null, null, null, null, null, null, null, null, null, 
 		null, null, null, null, null, null, null, null, null, null, null, null, 
-		null, null, null, "'\"\"'", "'}'"
+		null, null, null, null, null, null, null, null, null, null, null, null, 
+		null, null, null, null, null, null, null, null, null, null, null, null, 
+		null, null, null, null, null, null, null, null, null, null, null, null, 
+		null, "'='", null, null, "'??'", "'?'", "'&&'", "'||'", "'=='", "'!='", 
+		"'<<'", "'>>'", "'<='", "'>='", "'<'", "'>'", "'+'", "'*'", "'/'", "'%'", 
+		"'&'", "'|'", "'^'", "'!'", "'~'", "'['", "']'", null, null, null, "'\"\"'", 
+		"'}'"
 	};
 	private static readonly string[] _SymbolicNames = {
 		null, "TEXT", "WS", "IMPORT_TOKEN", "ID", "ROOT_REF", "MEMBER_P", "OUT", 
 		"SUB_START", "SUB_CLOSE", "CSHARP_END", "CSHARP_TOKEN", "CSHARP_START", 
 		"DEF_STARTNAME", "DEF_ENDNAME", "DELIM", "DEF_START", "DEF_CLOSE", "RAW", 
-		"OUT_PARAMSTART", "OUT_PARAMEND", "DEF_OUT", "COMMENT", "SKIP_WS", "SUB_COMMENT", 
-		"SUB_SKIP_WS", "DEF_COMMENT", "DEF_TYPE", "DEF_WS", "IMPORT_COMMENT", 
-		"CALL_RETURN_COMMENT", "CALL_SKIP_WS", "OUT_COMMENT", "OUT_SKIP_WS", "CALL_COMMENT", 
-		"CALL_WS", "ISTR_OPEN_BRACE_ESC", "ISTR_CLOSE_BRACE_ESC", "ISTR_END", 
-		"IVSTR_QUOTE_ESC", "HOLE_CLOSE"
+		"OUT_PARAMSTART", "OUT_PARAMEND", "DEF_OUT", "TRUE", "FALSE", "NULL", 
+		"INT_LIT", "REAL_LIT", "STRING_LIT", "CHAR_LIT", "OP_QQ", "OP_QUESTION", 
+		"OP_AND", "OP_OR", "OP_EQ", "OP_NEQ", "OP_LSHIFT", "OP_RSHIFT", "OP_LE", 
+		"OP_GE", "OP_LT", "OP_GT", "OP_PLUS", "OP_MINUS", "OP_STAR", "OP_SLASH", 
+		"OP_PERCENT", "OP_AMP", "OP_PIPE", "OP_CARET", "OP_NOT", "OP_TILDE", "LBRACKET", 
+		"RBRACKET", "COMMA", "THIS", "ASSIGN", "COMMENT", "SKIP_WS", "SUB_COMMENT", 
+		"SUB_SKIP_WS", "DEF_COMMENT", "DEF_TYPE", "DEF_WS", "DEFP_COMMENT", "DEFP_WS", 
+		"IMPORT_COMMENT", "CALL_RETURN_COMMENT", "CALL_SKIP_WS", "OUT_COMMENT", 
+		"OUT_SKIP_WS", "CALL_COMMENT", "CALL_WS", "CALL_UNKNOWN", "DEFP_ASSIGN", 
+		"DEFP_COMMA", "DEFP_MINUS", "CALL_OP_QQ", "CALL_OP_QUESTION", "CALL_OP_AND", 
+		"CALL_OP_OR", "CALL_OP_EQ", "CALL_OP_NEQ", "CALL_OP_LSHIFT", "CALL_OP_RSHIFT", 
+		"CALL_OP_LE", "CALL_OP_GE", "CALL_OP_LT", "CALL_OP_GT", "CALL_OP_PLUS", 
+		"CALL_OP_STAR", "CALL_OP_SLASH", "CALL_OP_PERCENT", "CALL_OP_AMP", "CALL_OP_PIPE", 
+		"CALL_OP_CARET", "CALL_OP_NOT", "CALL_OP_TILDE", "CALL_LBRACKET", "CALL_RBRACKET", 
+		"ISTR_OPEN_BRACE_ESC", "ISTR_CLOSE_BRACE_ESC", "ISTR_END", "IVSTR_QUOTE_ESC", 
+		"HOLE_CLOSE"
 	};
 	public static readonly IVocabulary DefaultVocabulary = new Vocabulary(_LiteralNames, _SymbolicNames);
 
@@ -160,47 +193,47 @@ public partial class HeddleParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 39;
+			State = 61;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
-			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 2199023123710L) != 0)) {
+			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & -131842L) != 0) || ((((_la - 64)) & ~0x3f) == 0 && ((1L << (_la - 64)) & 1099511627775L) != 0)) {
 				{
-				State = 37;
+				State = 59;
 				ErrorHandler.Sync(this);
 				switch ( Interpreter.AdaptivePredict(TokenStream,0,Context) ) {
 				case 1:
 					{
-					State = 32;
+					State = 54;
 					definition();
 					}
 					break;
 				case 2:
 					{
-					State = 33;
+					State = 55;
 					import_block();
 					}
 					break;
 				case 3:
 					{
-					State = 34;
+					State = 56;
 					outblock();
 					}
 					break;
 				case 4:
 					{
-					State = 35;
+					State = 57;
 					raw();
 					}
 					break;
 				case 5:
 					{
-					State = 36;
+					State = 58;
 					text();
 					}
 					break;
 				}
 				}
-				State = 41;
+				State = 63;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 			}
@@ -243,7 +276,7 @@ public partial class HeddleParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 42;
+			State = 64;
 			Match(RAW);
 			}
 		}
@@ -292,23 +325,23 @@ public partial class HeddleParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 44;
+			State = 66;
 			Match(DEF_START);
-			State = 46;
+			State = 68;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			do {
 				{
 				{
-				State = 45;
+				State = 67;
 				def();
 				}
 				}
-				State = 48;
+				State = 70;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 			} while ( _la==DEF_STARTNAME );
-			State = 50;
+			State = 72;
 			Match(DEF_CLOSE);
 			}
 		}
@@ -329,6 +362,9 @@ public partial class HeddleParser : Parser {
 		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode DEF_ENDNAME() { return GetToken(HeddleParser.DEF_ENDNAME, 0); }
 		[System.Diagnostics.DebuggerNonUserCode] public SubtemplateContext subtemplate() {
 			return GetRuleContext<SubtemplateContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public Def_propsContext def_props() {
+			return GetRuleContext<Def_propsContext>(0);
 		}
 		[System.Diagnostics.DebuggerNonUserCode] public Def_baseContext def_base() {
 			return GetRuleContext<Def_baseContext>(0);
@@ -364,44 +400,463 @@ public partial class HeddleParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 52;
+			State = 74;
 			Match(DEF_STARTNAME);
-			State = 53;
+			State = 75;
 			Match(ID);
-			State = 55;
+			State = 77;
+			ErrorHandler.Sync(this);
+			_la = TokenStream.LA(1);
+			if (_la==OUT_PARAMSTART) {
+				{
+				State = 76;
+				def_props();
+				}
+			}
+
+			State = 80;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			if (_la==DELIM) {
 				{
-				State = 54;
+				State = 79;
 				def_base();
 				}
 			}
 
-			State = 57;
+			State = 82;
 			Match(DEF_ENDNAME);
-			State = 59;
+			State = 84;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			if (_la==DEF_OUT) {
 				{
-				State = 58;
+				State = 83;
 				default_chain();
 				}
 			}
 
-			State = 61;
+			State = 86;
 			subtemplate();
-			State = 63;
+			State = 88;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			if (_la==DEF_TYPE) {
 				{
-				State = 62;
+				State = 87;
 				def_type();
 				}
 			}
 
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			ErrorHandler.ReportError(this, re);
+			ErrorHandler.Recover(this, re);
+		}
+		finally {
+			ExitRule();
+		}
+		return _localctx;
+	}
+
+	public partial class Def_propsContext : ParserRuleContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OUT_PARAMSTART() { return GetToken(HeddleParser.OUT_PARAMSTART, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OUT_PARAMEND() { return GetToken(HeddleParser.OUT_PARAMEND, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public Def_prop_itemContext[] def_prop_item() {
+			return GetRuleContexts<Def_prop_itemContext>();
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public Def_prop_itemContext def_prop_item(int i) {
+			return GetRuleContext<Def_prop_itemContext>(i);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] COMMA() { return GetTokens(HeddleParser.COMMA); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode COMMA(int i) {
+			return GetToken(HeddleParser.COMMA, i);
+		}
+		public Def_propsContext(ParserRuleContext parent, int invokingState)
+			: base(parent, invokingState)
+		{
+		}
+		public override int RuleIndex { get { return RULE_def_props; } }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterDef_props(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitDef_props(this);
+		}
+	}
+
+	[RuleVersion(0)]
+	public Def_propsContext def_props() {
+		Def_propsContext _localctx = new Def_propsContext(Context, State);
+		EnterRule(_localctx, 8, RULE_def_props);
+		int _la;
+		try {
+			EnterOuterAlt(_localctx, 1);
+			{
+			State = 90;
+			Match(OUT_PARAMSTART);
+			State = 99;
+			ErrorHandler.Sync(this);
+			_la = TokenStream.LA(1);
+			if (_la==ID) {
+				{
+				State = 91;
+				def_prop_item();
+				State = 96;
+				ErrorHandler.Sync(this);
+				_la = TokenStream.LA(1);
+				while (_la==COMMA) {
+					{
+					{
+					State = 92;
+					Match(COMMA);
+					State = 93;
+					def_prop_item();
+					}
+					}
+					State = 98;
+					ErrorHandler.Sync(this);
+					_la = TokenStream.LA(1);
+				}
+				}
+			}
+
+			State = 101;
+			Match(OUT_PARAMEND);
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			ErrorHandler.ReportError(this, re);
+			ErrorHandler.Recover(this, re);
+		}
+		finally {
+			ExitRule();
+		}
+		return _localctx;
+	}
+
+	public partial class Def_prop_itemContext : ParserRuleContext {
+		[System.Diagnostics.DebuggerNonUserCode] public Def_propContext def_prop() {
+			return GetRuleContext<Def_propContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public Def_slotContext def_slot() {
+			return GetRuleContext<Def_slotContext>(0);
+		}
+		public Def_prop_itemContext(ParserRuleContext parent, int invokingState)
+			: base(parent, invokingState)
+		{
+		}
+		public override int RuleIndex { get { return RULE_def_prop_item; } }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterDef_prop_item(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitDef_prop_item(this);
+		}
+	}
+
+	[RuleVersion(0)]
+	public Def_prop_itemContext def_prop_item() {
+		Def_prop_itemContext _localctx = new Def_prop_itemContext(Context, State);
+		EnterRule(_localctx, 10, RULE_def_prop_item);
+		try {
+			State = 105;
+			ErrorHandler.Sync(this);
+			switch ( Interpreter.AdaptivePredict(TokenStream,9,Context) ) {
+			case 1:
+				EnterOuterAlt(_localctx, 1);
+				{
+				State = 103;
+				def_prop();
+				}
+				break;
+			case 2:
+				EnterOuterAlt(_localctx, 2);
+				{
+				State = 104;
+				def_slot();
+				}
+				break;
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			ErrorHandler.ReportError(this, re);
+			ErrorHandler.Recover(this, re);
+		}
+		finally {
+			ExitRule();
+		}
+		return _localctx;
+	}
+
+	public partial class Def_propContext : ParserRuleContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] ID() { return GetTokens(HeddleParser.ID); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode ID(int i) {
+			return GetToken(HeddleParser.ID, i);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode DELIM() { return GetToken(HeddleParser.DELIM, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public Def_prop_defaultContext def_prop_default() {
+			return GetRuleContext<Def_prop_defaultContext>(0);
+		}
+		public Def_propContext(ParserRuleContext parent, int invokingState)
+			: base(parent, invokingState)
+		{
+		}
+		public override int RuleIndex { get { return RULE_def_prop; } }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterDef_prop(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitDef_prop(this);
+		}
+	}
+
+	[RuleVersion(0)]
+	public Def_propContext def_prop() {
+		Def_propContext _localctx = new Def_propContext(Context, State);
+		EnterRule(_localctx, 12, RULE_def_prop);
+		int _la;
+		try {
+			EnterOuterAlt(_localctx, 1);
+			{
+			State = 107;
+			Match(ID);
+			State = 108;
+			Match(DELIM);
+			State = 109;
+			Match(ID);
+			State = 111;
+			ErrorHandler.Sync(this);
+			_la = TokenStream.LA(1);
+			if (_la==ASSIGN) {
+				{
+				State = 110;
+				def_prop_default();
+				}
+			}
+
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			ErrorHandler.ReportError(this, re);
+			ErrorHandler.Recover(this, re);
+		}
+		finally {
+			ExitRule();
+		}
+		return _localctx;
+	}
+
+	public partial class Def_slotContext : ParserRuleContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] ID() { return GetTokens(HeddleParser.ID); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode ID(int i) {
+			return GetToken(HeddleParser.ID, i);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode DEF_TYPE() { return GetToken(HeddleParser.DEF_TYPE, 0); }
+		public Def_slotContext(ParserRuleContext parent, int invokingState)
+			: base(parent, invokingState)
+		{
+		}
+		public override int RuleIndex { get { return RULE_def_slot; } }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterDef_slot(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitDef_slot(this);
+		}
+	}
+
+	[RuleVersion(0)]
+	public Def_slotContext def_slot() {
+		Def_slotContext _localctx = new Def_slotContext(Context, State);
+		EnterRule(_localctx, 14, RULE_def_slot);
+		try {
+			EnterOuterAlt(_localctx, 1);
+			{
+			State = 113;
+			Match(ID);
+			State = 114;
+			Match(DEF_TYPE);
+			State = 115;
+			Match(ID);
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			ErrorHandler.ReportError(this, re);
+			ErrorHandler.Recover(this, re);
+		}
+		finally {
+			ExitRule();
+		}
+		return _localctx;
+	}
+
+	public partial class Def_prop_defaultContext : ParserRuleContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode ASSIGN() { return GetToken(HeddleParser.ASSIGN, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public Def_literalContext def_literal() {
+			return GetRuleContext<Def_literalContext>(0);
+		}
+		public Def_prop_defaultContext(ParserRuleContext parent, int invokingState)
+			: base(parent, invokingState)
+		{
+		}
+		public override int RuleIndex { get { return RULE_def_prop_default; } }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterDef_prop_default(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitDef_prop_default(this);
+		}
+	}
+
+	[RuleVersion(0)]
+	public Def_prop_defaultContext def_prop_default() {
+		Def_prop_defaultContext _localctx = new Def_prop_defaultContext(Context, State);
+		EnterRule(_localctx, 16, RULE_def_prop_default);
+		try {
+			EnterOuterAlt(_localctx, 1);
+			{
+			State = 117;
+			Match(ASSIGN);
+			State = 118;
+			def_literal();
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			ErrorHandler.ReportError(this, re);
+			ErrorHandler.Recover(this, re);
+		}
+		finally {
+			ExitRule();
+		}
+		return _localctx;
+	}
+
+	public partial class Def_literalContext : ParserRuleContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode INT_LIT() { return GetToken(HeddleParser.INT_LIT, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode REAL_LIT() { return GetToken(HeddleParser.REAL_LIT, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_MINUS() { return GetToken(HeddleParser.OP_MINUS, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode STRING_LIT() { return GetToken(HeddleParser.STRING_LIT, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode CHAR_LIT() { return GetToken(HeddleParser.CHAR_LIT, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode TRUE() { return GetToken(HeddleParser.TRUE, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode FALSE() { return GetToken(HeddleParser.FALSE, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode NULL() { return GetToken(HeddleParser.NULL, 0); }
+		public Def_literalContext(ParserRuleContext parent, int invokingState)
+			: base(parent, invokingState)
+		{
+		}
+		public override int RuleIndex { get { return RULE_def_literal; } }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterDef_literal(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitDef_literal(this);
+		}
+	}
+
+	[RuleVersion(0)]
+	public Def_literalContext def_literal() {
+		Def_literalContext _localctx = new Def_literalContext(Context, State);
+		EnterRule(_localctx, 18, RULE_def_literal);
+		int _la;
+		try {
+			State = 129;
+			ErrorHandler.Sync(this);
+			switch (TokenStream.LA(1)) {
+			case INT_LIT:
+			case REAL_LIT:
+			case OP_MINUS:
+				EnterOuterAlt(_localctx, 1);
+				{
+				State = 121;
+				ErrorHandler.Sync(this);
+				_la = TokenStream.LA(1);
+				if (_la==OP_MINUS) {
+					{
+					State = 120;
+					Match(OP_MINUS);
+					}
+				}
+
+				State = 123;
+				_la = TokenStream.LA(1);
+				if ( !(_la==INT_LIT || _la==REAL_LIT) ) {
+				ErrorHandler.RecoverInline(this);
+				}
+				else {
+					ErrorHandler.ReportMatch(this);
+				    Consume();
+				}
+				}
+				break;
+			case STRING_LIT:
+				EnterOuterAlt(_localctx, 2);
+				{
+				State = 124;
+				Match(STRING_LIT);
+				}
+				break;
+			case CHAR_LIT:
+				EnterOuterAlt(_localctx, 3);
+				{
+				State = 125;
+				Match(CHAR_LIT);
+				}
+				break;
+			case TRUE:
+				EnterOuterAlt(_localctx, 4);
+				{
+				State = 126;
+				Match(TRUE);
+				}
+				break;
+			case FALSE:
+				EnterOuterAlt(_localctx, 5);
+				{
+				State = 127;
+				Match(FALSE);
+				}
+				break;
+			case NULL:
+				EnterOuterAlt(_localctx, 6);
+				{
+				State = 128;
+				Match(NULL);
+				}
+				break;
+			default:
+				throw new NoViableAltException(this);
 			}
 		}
 		catch (RecognitionException re) {
@@ -438,13 +893,13 @@ public partial class HeddleParser : Parser {
 	[RuleVersion(0)]
 	public Def_baseContext def_base() {
 		Def_baseContext _localctx = new Def_baseContext(Context, State);
-		EnterRule(_localctx, 8, RULE_def_base);
+		EnterRule(_localctx, 20, RULE_def_base);
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 65;
+			State = 131;
 			Match(DELIM);
-			State = 66;
+			State = 132;
 			Match(ID);
 			}
 		}
@@ -482,13 +937,13 @@ public partial class HeddleParser : Parser {
 	[RuleVersion(0)]
 	public Def_typeContext def_type() {
 		Def_typeContext _localctx = new Def_typeContext(Context, State);
-		EnterRule(_localctx, 10, RULE_def_type);
+		EnterRule(_localctx, 22, RULE_def_type);
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 68;
+			State = 134;
 			Match(DEF_TYPE);
-			State = 69;
+			State = 135;
 			Match(ID);
 			}
 		}
@@ -528,13 +983,13 @@ public partial class HeddleParser : Parser {
 	[RuleVersion(0)]
 	public Default_chainContext default_chain() {
 		Default_chainContext _localctx = new Default_chainContext(Context, State);
-		EnterRule(_localctx, 12, RULE_default_chain);
+		EnterRule(_localctx, 24, RULE_default_chain);
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 71;
+			State = 137;
 			Match(DEF_OUT);
-			State = 72;
+			State = 138;
 			chain();
 			}
 		}
@@ -583,44 +1038,44 @@ public partial class HeddleParser : Parser {
 	[RuleVersion(0)]
 	public Import_blockContext import_block() {
 		Import_blockContext _localctx = new Import_blockContext(Context, State);
-		EnterRule(_localctx, 14, RULE_import_block);
+		EnterRule(_localctx, 26, RULE_import_block);
 		int _la;
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 74;
+			State = 140;
 			Match(IMPORT_TOKEN);
-			State = 78;
+			State = 144;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			while (_la==WS) {
 				{
 				{
-				State = 75;
+				State = 141;
 				Match(WS);
 				}
 				}
-				State = 80;
+				State = 146;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 			}
-			State = 81;
+			State = 147;
 			Match(SUB_START);
-			State = 83;
+			State = 149;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			do {
 				{
 				{
-				State = 82;
+				State = 148;
 				text();
 				}
 				}
-				State = 85;
+				State = 151;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
-			} while ( (((_la) & ~0x3f) == 0 && ((1L << _la) & 2199022795902L) != 0) );
-			State = 87;
+			} while ( (((_la) & ~0x3f) == 0 && ((1L << _la) & -459650L) != 0) || ((((_la - 64)) & ~0x3f) == 0 && ((1L << (_la - 64)) & 1099511627775L) != 0) );
+			State = 153;
 			Match(SUB_CLOSE);
 			}
 		}
@@ -663,20 +1118,20 @@ public partial class HeddleParser : Parser {
 	[RuleVersion(0)]
 	public OutblockContext outblock() {
 		OutblockContext _localctx = new OutblockContext(Context, State);
-		EnterRule(_localctx, 16, RULE_outblock);
+		EnterRule(_localctx, 28, RULE_outblock);
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 89;
+			State = 155;
 			Match(OUT);
-			State = 90;
+			State = 156;
 			chain();
-			State = 92;
+			State = 158;
 			ErrorHandler.Sync(this);
-			switch ( Interpreter.AdaptivePredict(TokenStream,8,Context) ) {
+			switch ( Interpreter.AdaptivePredict(TokenStream,15,Context) ) {
 			case 1:
 				{
-				State = 91;
+				State = 157;
 				subtemplate();
 				}
 				break;
@@ -725,30 +1180,30 @@ public partial class HeddleParser : Parser {
 	[RuleVersion(0)]
 	public ChainContext chain() {
 		ChainContext _localctx = new ChainContext(Context, State);
-		EnterRule(_localctx, 18, RULE_chain);
+		EnterRule(_localctx, 30, RULE_chain);
 		try {
 			int _alt;
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 94;
+			State = 160;
 			call();
-			State = 99;
+			State = 165;
 			ErrorHandler.Sync(this);
-			_alt = Interpreter.AdaptivePredict(TokenStream,9,Context);
+			_alt = Interpreter.AdaptivePredict(TokenStream,16,Context);
 			while ( _alt!=2 && _alt!=global::Antlr4.Runtime.Atn.ATN.INVALID_ALT_NUMBER ) {
 				if ( _alt==1 ) {
 					{
 					{
-					State = 95;
+					State = 161;
 					Match(DELIM);
-					State = 96;
+					State = 162;
 					call();
 					}
 					} 
 				}
-				State = 101;
+				State = 167;
 				ErrorHandler.Sync(this);
-				_alt = Interpreter.AdaptivePredict(TokenStream,9,Context);
+				_alt = Interpreter.AdaptivePredict(TokenStream,16,Context);
 			}
 			}
 		}
@@ -783,6 +1238,22 @@ public partial class HeddleParser : Parser {
 		[System.Diagnostics.DebuggerNonUserCode] public ChainContext chain() {
 			return GetRuleContext<ChainContext>(0);
 		}
+		[System.Diagnostics.DebuggerNonUserCode] public Native_expressionContext native_expression() {
+			return GetRuleContext<Native_expressionContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public Named_argumentContext[] named_argument() {
+			return GetRuleContexts<Named_argumentContext>();
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public Named_argumentContext named_argument(int i) {
+			return GetRuleContext<Named_argumentContext>(i);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr() {
+			return GetRuleContext<ExprContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] COMMA() { return GetTokens(HeddleParser.COMMA); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode COMMA(int i) {
+			return GetToken(HeddleParser.COMMA, i);
+		}
 		public CallContext(ParserRuleContext parent, int invokingState)
 			: base(parent, invokingState)
 		{
@@ -803,99 +1274,218 @@ public partial class HeddleParser : Parser {
 	[RuleVersion(0)]
 	public CallContext call() {
 		CallContext _localctx = new CallContext(Context, State);
-		EnterRule(_localctx, 20, RULE_call);
+		EnterRule(_localctx, 32, RULE_call);
 		int _la;
 		try {
-			State = 131;
+			State = 223;
 			ErrorHandler.Sync(this);
-			switch ( Interpreter.AdaptivePredict(TokenStream,15,Context) ) {
+			switch ( Interpreter.AdaptivePredict(TokenStream,26,Context) ) {
 			case 1:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 103;
+				State = 169;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 				if (_la==ID) {
 					{
-					State = 102;
+					State = 168;
 					extension_id();
 					}
 				}
 
-				State = 105;
+				State = 171;
 				Match(OUT_PARAMSTART);
-				State = 106;
+				State = 172;
 				Match(CSHARP_START);
-				State = 107;
+				State = 173;
 				csharp_expression();
-				State = 108;
+				State = 174;
 				Match(OUT_PARAMEND);
 				}
 				break;
 			case 2:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 111;
+				State = 177;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 				if (_la==ID) {
 					{
-					State = 110;
+					State = 176;
 					extension_id();
 					}
 				}
 
-				State = 113;
+				State = 179;
 				Match(OUT_PARAMSTART);
-				State = 117;
+				State = 183;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 				while (_la==WS) {
 					{
 					{
-					State = 114;
+					State = 180;
 					Match(WS);
 					}
 					}
-					State = 119;
+					State = 185;
 					ErrorHandler.Sync(this);
 					_la = TokenStream.LA(1);
 				}
-				State = 121;
+				State = 187;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 				if (_la==ID || _la==ROOT_REF) {
 					{
-					State = 120;
+					State = 186;
 					member_expression();
 					}
 				}
 
-				State = 123;
+				State = 189;
 				Match(OUT_PARAMEND);
 				}
 				break;
 			case 3:
 				EnterOuterAlt(_localctx, 3);
 				{
-				State = 125;
+				State = 191;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 				if (_la==ID) {
 					{
-					State = 124;
+					State = 190;
 					extension_id();
 					}
 				}
 
-				State = 127;
+				State = 193;
 				Match(OUT_PARAMSTART);
-				State = 128;
+				State = 194;
 				chain();
-				State = 129;
+				State = 195;
 				Match(OUT_PARAMEND);
 				}
 				break;
+			case 4:
+				EnterOuterAlt(_localctx, 4);
+				{
+				State = 198;
+				ErrorHandler.Sync(this);
+				_la = TokenStream.LA(1);
+				if (_la==ID) {
+					{
+					State = 197;
+					extension_id();
+					}
+				}
+
+				State = 200;
+				Match(OUT_PARAMSTART);
+				State = 201;
+				native_expression();
+				State = 202;
+				Match(OUT_PARAMEND);
+				}
+				break;
+			case 5:
+				EnterOuterAlt(_localctx, 5);
+				{
+				State = 205;
+				ErrorHandler.Sync(this);
+				_la = TokenStream.LA(1);
+				if (_la==ID) {
+					{
+					State = 204;
+					extension_id();
+					}
+				}
+
+				State = 207;
+				Match(OUT_PARAMSTART);
+				State = 211;
+				ErrorHandler.Sync(this);
+				switch ( Interpreter.AdaptivePredict(TokenStream,24,Context) ) {
+				case 1:
+					{
+					State = 208;
+					expr(0);
+					State = 209;
+					Match(COMMA);
+					}
+					break;
+				}
+				State = 213;
+				named_argument();
+				State = 218;
+				ErrorHandler.Sync(this);
+				_la = TokenStream.LA(1);
+				while (_la==COMMA) {
+					{
+					{
+					State = 214;
+					Match(COMMA);
+					State = 215;
+					named_argument();
+					}
+					}
+					State = 220;
+					ErrorHandler.Sync(this);
+					_la = TokenStream.LA(1);
+				}
+				State = 221;
+				Match(OUT_PARAMEND);
+				}
+				break;
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			ErrorHandler.ReportError(this, re);
+			ErrorHandler.Recover(this, re);
+		}
+		finally {
+			ExitRule();
+		}
+		return _localctx;
+	}
+
+	public partial class Named_argumentContext : ParserRuleContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode ID() { return GetToken(HeddleParser.ID, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode DELIM() { return GetToken(HeddleParser.DELIM, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr() {
+			return GetRuleContext<ExprContext>(0);
+		}
+		public Named_argumentContext(ParserRuleContext parent, int invokingState)
+			: base(parent, invokingState)
+		{
+		}
+		public override int RuleIndex { get { return RULE_named_argument; } }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterNamed_argument(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitNamed_argument(this);
+		}
+	}
+
+	[RuleVersion(0)]
+	public Named_argumentContext named_argument() {
+		Named_argumentContext _localctx = new Named_argumentContext(Context, State);
+		EnterRule(_localctx, 34, RULE_named_argument);
+		try {
+			EnterOuterAlt(_localctx, 1);
+			{
+			State = 225;
+			Match(ID);
+			State = 226;
+			Match(DELIM);
+			State = 227;
+			expr(0);
 			}
 		}
 		catch (RecognitionException re) {
@@ -939,36 +1529,36 @@ public partial class HeddleParser : Parser {
 	[RuleVersion(0)]
 	public Member_expressionContext member_expression() {
 		Member_expressionContext _localctx = new Member_expressionContext(Context, State);
-		EnterRule(_localctx, 22, RULE_member_expression);
+		EnterRule(_localctx, 36, RULE_member_expression);
 		int _la;
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 134;
+			State = 230;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			if (_la==ROOT_REF) {
 				{
-				State = 133;
+				State = 229;
 				Match(ROOT_REF);
 				}
 			}
 
-			State = 136;
+			State = 232;
 			Match(ID);
-			State = 141;
+			State = 237;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			while (_la==MEMBER_P) {
 				{
 				{
-				State = 137;
+				State = 233;
 				Match(MEMBER_P);
-				State = 138;
+				State = 234;
 				Match(ID);
 				}
 				}
-				State = 143;
+				State = 239;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 			}
@@ -1007,11 +1597,11 @@ public partial class HeddleParser : Parser {
 	[RuleVersion(0)]
 	public Extension_idContext extension_id() {
 		Extension_idContext _localctx = new Extension_idContext(Context, State);
-		EnterRule(_localctx, 24, RULE_extension_id);
+		EnterRule(_localctx, 38, RULE_extension_id);
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 144;
+			State = 240;
 			Match(ID);
 			}
 		}
@@ -1051,25 +1641,1015 @@ public partial class HeddleParser : Parser {
 	[RuleVersion(0)]
 	public Csharp_expressionContext csharp_expression() {
 		Csharp_expressionContext _localctx = new Csharp_expressionContext(Context, State);
-		EnterRule(_localctx, 26, RULE_csharp_expression);
+		EnterRule(_localctx, 40, RULE_csharp_expression);
 		int _la;
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 147;
+			State = 243;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			do {
 				{
 				{
-				State = 146;
+				State = 242;
 				Match(CSHARP_TOKEN);
 				}
 				}
-				State = 149;
+				State = 245;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 			} while ( _la==CSHARP_TOKEN );
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			ErrorHandler.ReportError(this, re);
+			ErrorHandler.Recover(this, re);
+		}
+		finally {
+			ExitRule();
+		}
+		return _localctx;
+	}
+
+	public partial class Native_expressionContext : ParserRuleContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr() {
+			return GetRuleContext<ExprContext>(0);
+		}
+		public Native_expressionContext(ParserRuleContext parent, int invokingState)
+			: base(parent, invokingState)
+		{
+		}
+		public override int RuleIndex { get { return RULE_native_expression; } }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterNative_expression(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitNative_expression(this);
+		}
+	}
+
+	[RuleVersion(0)]
+	public Native_expressionContext native_expression() {
+		Native_expressionContext _localctx = new Native_expressionContext(Context, State);
+		EnterRule(_localctx, 42, RULE_native_expression);
+		try {
+			EnterOuterAlt(_localctx, 1);
+			{
+			State = 247;
+			expr(0);
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			ErrorHandler.ReportError(this, re);
+			ErrorHandler.Recover(this, re);
+		}
+		finally {
+			ExitRule();
+		}
+		return _localctx;
+	}
+
+	public partial class ExprContext : ParserRuleContext {
+		public ExprContext(ParserRuleContext parent, int invokingState)
+			: base(parent, invokingState)
+		{
+		}
+		public override int RuleIndex { get { return RULE_expr; } }
+	 
+		public ExprContext() { }
+		public virtual void CopyFrom(ExprContext context) {
+			base.CopyFrom(context);
+		}
+	}
+	public partial class CoalesceExprContext : ExprContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext[] expr() {
+			return GetRuleContexts<ExprContext>();
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr(int i) {
+			return GetRuleContext<ExprContext>(i);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_QQ() { return GetToken(HeddleParser.OP_QQ, 0); }
+		public CoalesceExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterCoalesceExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitCoalesceExpr(this);
+		}
+	}
+	public partial class BitAndExprContext : ExprContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext[] expr() {
+			return GetRuleContexts<ExprContext>();
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr(int i) {
+			return GetRuleContext<ExprContext>(i);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_AMP() { return GetToken(HeddleParser.OP_AMP, 0); }
+		public BitAndExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterBitAndExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitBitAndExpr(this);
+		}
+	}
+	public partial class RelationalExprContext : ExprContext {
+		public IToken op;
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext[] expr() {
+			return GetRuleContexts<ExprContext>();
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr(int i) {
+			return GetRuleContext<ExprContext>(i);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_LT() { return GetToken(HeddleParser.OP_LT, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_GT() { return GetToken(HeddleParser.OP_GT, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_LE() { return GetToken(HeddleParser.OP_LE, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_GE() { return GetToken(HeddleParser.OP_GE, 0); }
+		public RelationalExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterRelationalExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitRelationalExpr(this);
+		}
+	}
+	public partial class BitOrExprContext : ExprContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext[] expr() {
+			return GetRuleContexts<ExprContext>();
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr(int i) {
+			return GetRuleContext<ExprContext>(i);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_PIPE() { return GetToken(HeddleParser.OP_PIPE, 0); }
+		public BitOrExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterBitOrExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitBitOrExpr(this);
+		}
+	}
+	public partial class UnaryExprContext : ExprContext {
+		public IToken op;
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr() {
+			return GetRuleContext<ExprContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_NOT() { return GetToken(HeddleParser.OP_NOT, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_MINUS() { return GetToken(HeddleParser.OP_MINUS, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_PLUS() { return GetToken(HeddleParser.OP_PLUS, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_TILDE() { return GetToken(HeddleParser.OP_TILDE, 0); }
+		public UnaryExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterUnaryExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitUnaryExpr(this);
+		}
+	}
+	public partial class IndexExprContext : ExprContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext[] expr() {
+			return GetRuleContexts<ExprContext>();
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr(int i) {
+			return GetRuleContext<ExprContext>(i);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LBRACKET() { return GetToken(HeddleParser.LBRACKET, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode RBRACKET() { return GetToken(HeddleParser.RBRACKET, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] COMMA() { return GetTokens(HeddleParser.COMMA); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode COMMA(int i) {
+			return GetToken(HeddleParser.COMMA, i);
+		}
+		public IndexExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterIndexExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitIndexExpr(this);
+		}
+	}
+	public partial class AndAlsoExprContext : ExprContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext[] expr() {
+			return GetRuleContexts<ExprContext>();
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr(int i) {
+			return GetRuleContext<ExprContext>(i);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_AND() { return GetToken(HeddleParser.OP_AND, 0); }
+		public AndAlsoExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterAndAlsoExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitAndAlsoExpr(this);
+		}
+	}
+	public partial class MultiplicativeExprContext : ExprContext {
+		public IToken op;
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext[] expr() {
+			return GetRuleContexts<ExprContext>();
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr(int i) {
+			return GetRuleContext<ExprContext>(i);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_STAR() { return GetToken(HeddleParser.OP_STAR, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_SLASH() { return GetToken(HeddleParser.OP_SLASH, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_PERCENT() { return GetToken(HeddleParser.OP_PERCENT, 0); }
+		public MultiplicativeExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterMultiplicativeExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitMultiplicativeExpr(this);
+		}
+	}
+	public partial class GroupExprContext : ExprContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OUT_PARAMSTART() { return GetToken(HeddleParser.OUT_PARAMSTART, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr() {
+			return GetRuleContext<ExprContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OUT_PARAMEND() { return GetToken(HeddleParser.OUT_PARAMEND, 0); }
+		public GroupExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterGroupExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitGroupExpr(this);
+		}
+	}
+	public partial class OrElseExprContext : ExprContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext[] expr() {
+			return GetRuleContexts<ExprContext>();
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr(int i) {
+			return GetRuleContext<ExprContext>(i);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_OR() { return GetToken(HeddleParser.OP_OR, 0); }
+		public OrElseExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterOrElseExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitOrElseExpr(this);
+		}
+	}
+	public partial class FunctionCallExprContext : ExprContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode ID() { return GetToken(HeddleParser.ID, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public Arg_listContext arg_list() {
+			return GetRuleContext<Arg_listContext>(0);
+		}
+		public FunctionCallExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterFunctionCallExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitFunctionCallExpr(this);
+		}
+	}
+	public partial class EqualityExprContext : ExprContext {
+		public IToken op;
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext[] expr() {
+			return GetRuleContexts<ExprContext>();
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr(int i) {
+			return GetRuleContext<ExprContext>(i);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_EQ() { return GetToken(HeddleParser.OP_EQ, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_NEQ() { return GetToken(HeddleParser.OP_NEQ, 0); }
+		public EqualityExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterEqualityExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitEqualityExpr(this);
+		}
+	}
+	public partial class AdditiveExprContext : ExprContext {
+		public IToken op;
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext[] expr() {
+			return GetRuleContexts<ExprContext>();
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr(int i) {
+			return GetRuleContext<ExprContext>(i);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_PLUS() { return GetToken(HeddleParser.OP_PLUS, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_MINUS() { return GetToken(HeddleParser.OP_MINUS, 0); }
+		public AdditiveExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterAdditiveExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitAdditiveExpr(this);
+		}
+	}
+	public partial class LiteralExprContext : ExprContext {
+		[System.Diagnostics.DebuggerNonUserCode] public LiteralContext literal() {
+			return GetRuleContext<LiteralContext>(0);
+		}
+		public LiteralExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterLiteralExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitLiteralExpr(this);
+		}
+	}
+	public partial class MemberHopExprContext : ExprContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr() {
+			return GetRuleContext<ExprContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode MEMBER_P() { return GetToken(HeddleParser.MEMBER_P, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode ID() { return GetToken(HeddleParser.ID, 0); }
+		public MemberHopExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterMemberHopExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitMemberHopExpr(this);
+		}
+	}
+	public partial class PathRootExprContext : ExprContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode ID() { return GetToken(HeddleParser.ID, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode ROOT_REF() { return GetToken(HeddleParser.ROOT_REF, 0); }
+		public PathRootExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterPathRootExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitPathRootExpr(this);
+		}
+	}
+	public partial class ShiftExprContext : ExprContext {
+		public IToken op;
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext[] expr() {
+			return GetRuleContexts<ExprContext>();
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr(int i) {
+			return GetRuleContext<ExprContext>(i);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_LSHIFT() { return GetToken(HeddleParser.OP_LSHIFT, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_RSHIFT() { return GetToken(HeddleParser.OP_RSHIFT, 0); }
+		public ShiftExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterShiftExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitShiftExpr(this);
+		}
+	}
+	public partial class BitXorExprContext : ExprContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext[] expr() {
+			return GetRuleContexts<ExprContext>();
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr(int i) {
+			return GetRuleContext<ExprContext>(i);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_CARET() { return GetToken(HeddleParser.OP_CARET, 0); }
+		public BitXorExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterBitXorExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitBitXorExpr(this);
+		}
+	}
+	public partial class ThisExprContext : ExprContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode THIS() { return GetToken(HeddleParser.THIS, 0); }
+		public ThisExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterThisExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitThisExpr(this);
+		}
+	}
+	public partial class TernaryExprContext : ExprContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext[] expr() {
+			return GetRuleContexts<ExprContext>();
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr(int i) {
+			return GetRuleContext<ExprContext>(i);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OP_QUESTION() { return GetToken(HeddleParser.OP_QUESTION, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode DELIM() { return GetToken(HeddleParser.DELIM, 0); }
+		public TernaryExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterTernaryExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitTernaryExpr(this);
+		}
+	}
+	public partial class MethodCallExprContext : ExprContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr() {
+			return GetRuleContext<ExprContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode MEMBER_P() { return GetToken(HeddleParser.MEMBER_P, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode ID() { return GetToken(HeddleParser.ID, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public Arg_listContext arg_list() {
+			return GetRuleContext<Arg_listContext>(0);
+		}
+		public MethodCallExprContext(ExprContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterMethodCallExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitMethodCallExpr(this);
+		}
+	}
+
+	[RuleVersion(0)]
+	public ExprContext expr() {
+		return expr(0);
+	}
+
+	private ExprContext expr(int _p) {
+		ParserRuleContext _parentctx = Context;
+		int _parentState = State;
+		ExprContext _localctx = new ExprContext(Context, _parentState);
+		ExprContext _prevctx = _localctx;
+		int _startState = 44;
+		EnterRecursionRule(_localctx, 44, RULE_expr, _p);
+		int _la;
+		try {
+			int _alt;
+			EnterOuterAlt(_localctx, 1);
+			{
+			State = 264;
+			ErrorHandler.Sync(this);
+			switch ( Interpreter.AdaptivePredict(TokenStream,31,Context) ) {
+			case 1:
+				{
+				_localctx = new UnaryExprContext(_localctx);
+				Context = _localctx;
+				_prevctx = _localctx;
+
+				State = 250;
+				((UnaryExprContext)_localctx).op = TokenStream.LT(1);
+				_la = TokenStream.LA(1);
+				if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 1695446930030592L) != 0)) ) {
+					((UnaryExprContext)_localctx).op = ErrorHandler.RecoverInline(this);
+				}
+				else {
+					ErrorHandler.ReportMatch(this);
+				    Consume();
+				}
+				State = 251;
+				expr(18);
+				}
+				break;
+			case 2:
+				{
+				_localctx = new FunctionCallExprContext(_localctx);
+				Context = _localctx;
+				_prevctx = _localctx;
+				State = 252;
+				Match(ID);
+				State = 253;
+				arg_list();
+				}
+				break;
+			case 3:
+				{
+				_localctx = new GroupExprContext(_localctx);
+				Context = _localctx;
+				_prevctx = _localctx;
+				State = 254;
+				Match(OUT_PARAMSTART);
+				State = 255;
+				expr(0);
+				State = 256;
+				Match(OUT_PARAMEND);
+				}
+				break;
+			case 4:
+				{
+				_localctx = new LiteralExprContext(_localctx);
+				Context = _localctx;
+				_prevctx = _localctx;
+				State = 258;
+				literal();
+				}
+				break;
+			case 5:
+				{
+				_localctx = new ThisExprContext(_localctx);
+				Context = _localctx;
+				_prevctx = _localctx;
+				State = 259;
+				Match(THIS);
+				}
+				break;
+			case 6:
+				{
+				_localctx = new PathRootExprContext(_localctx);
+				Context = _localctx;
+				_prevctx = _localctx;
+				State = 261;
+				ErrorHandler.Sync(this);
+				_la = TokenStream.LA(1);
+				if (_la==ROOT_REF) {
+					{
+					State = 260;
+					Match(ROOT_REF);
+					}
+				}
+
+				State = 263;
+				Match(ID);
+				}
+				break;
+			}
+			Context.Stop = TokenStream.LT(-1);
+			State = 326;
+			ErrorHandler.Sync(this);
+			_alt = Interpreter.AdaptivePredict(TokenStream,34,Context);
+			while ( _alt!=2 && _alt!=global::Antlr4.Runtime.Atn.ATN.INVALID_ALT_NUMBER ) {
+				if ( _alt==1 ) {
+					if ( ParseListeners!=null )
+						TriggerExitRuleEvent();
+					_prevctx = _localctx;
+					{
+					State = 324;
+					ErrorHandler.Sync(this);
+					switch ( Interpreter.AdaptivePredict(TokenStream,33,Context) ) {
+					case 1:
+						{
+						_localctx = new MultiplicativeExprContext(new ExprContext(_parentctx, _parentState));
+						PushNewRecursionContext(_localctx, _startState, RULE_expr);
+						State = 266;
+						if (!(Precpred(Context, 17))) throw new FailedPredicateException(this, "Precpred(Context, 17)");
+						State = 267;
+						((MultiplicativeExprContext)_localctx).op = TokenStream.LT(1);
+						_la = TokenStream.LA(1);
+						if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 61572651155456L) != 0)) ) {
+							((MultiplicativeExprContext)_localctx).op = ErrorHandler.RecoverInline(this);
+						}
+						else {
+							ErrorHandler.ReportMatch(this);
+						    Consume();
+						}
+						State = 268;
+						expr(18);
+						}
+						break;
+					case 2:
+						{
+						_localctx = new AdditiveExprContext(new ExprContext(_parentctx, _parentState));
+						PushNewRecursionContext(_localctx, _startState, RULE_expr);
+						State = 269;
+						if (!(Precpred(Context, 16))) throw new FailedPredicateException(this, "Precpred(Context, 16)");
+						State = 270;
+						((AdditiveExprContext)_localctx).op = TokenStream.LT(1);
+						_la = TokenStream.LA(1);
+						if ( !(_la==OP_PLUS || _la==OP_MINUS) ) {
+							((AdditiveExprContext)_localctx).op = ErrorHandler.RecoverInline(this);
+						}
+						else {
+							ErrorHandler.ReportMatch(this);
+						    Consume();
+						}
+						State = 271;
+						expr(17);
+						}
+						break;
+					case 3:
+						{
+						_localctx = new ShiftExprContext(new ExprContext(_parentctx, _parentState));
+						PushNewRecursionContext(_localctx, _startState, RULE_expr);
+						State = 272;
+						if (!(Precpred(Context, 15))) throw new FailedPredicateException(this, "Precpred(Context, 15)");
+						State = 273;
+						((ShiftExprContext)_localctx).op = TokenStream.LT(1);
+						_la = TokenStream.LA(1);
+						if ( !(_la==OP_LSHIFT || _la==OP_RSHIFT) ) {
+							((ShiftExprContext)_localctx).op = ErrorHandler.RecoverInline(this);
+						}
+						else {
+							ErrorHandler.ReportMatch(this);
+						    Consume();
+						}
+						State = 274;
+						expr(16);
+						}
+						break;
+					case 4:
+						{
+						_localctx = new RelationalExprContext(new ExprContext(_parentctx, _parentState));
+						PushNewRecursionContext(_localctx, _startState, RULE_expr);
+						State = 275;
+						if (!(Precpred(Context, 14))) throw new FailedPredicateException(this, "Precpred(Context, 14)");
+						State = 276;
+						((RelationalExprContext)_localctx).op = TokenStream.LT(1);
+						_la = TokenStream.LA(1);
+						if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 2061584302080L) != 0)) ) {
+							((RelationalExprContext)_localctx).op = ErrorHandler.RecoverInline(this);
+						}
+						else {
+							ErrorHandler.ReportMatch(this);
+						    Consume();
+						}
+						State = 277;
+						expr(15);
+						}
+						break;
+					case 5:
+						{
+						_localctx = new EqualityExprContext(new ExprContext(_parentctx, _parentState));
+						PushNewRecursionContext(_localctx, _startState, RULE_expr);
+						State = 278;
+						if (!(Precpred(Context, 13))) throw new FailedPredicateException(this, "Precpred(Context, 13)");
+						State = 279;
+						((EqualityExprContext)_localctx).op = TokenStream.LT(1);
+						_la = TokenStream.LA(1);
+						if ( !(_la==OP_EQ || _la==OP_NEQ) ) {
+							((EqualityExprContext)_localctx).op = ErrorHandler.RecoverInline(this);
+						}
+						else {
+							ErrorHandler.ReportMatch(this);
+						    Consume();
+						}
+						State = 280;
+						expr(14);
+						}
+						break;
+					case 6:
+						{
+						_localctx = new BitAndExprContext(new ExprContext(_parentctx, _parentState));
+						PushNewRecursionContext(_localctx, _startState, RULE_expr);
+						State = 281;
+						if (!(Precpred(Context, 12))) throw new FailedPredicateException(this, "Precpred(Context, 12)");
+						State = 282;
+						Match(OP_AMP);
+						State = 283;
+						expr(13);
+						}
+						break;
+					case 7:
+						{
+						_localctx = new BitXorExprContext(new ExprContext(_parentctx, _parentState));
+						PushNewRecursionContext(_localctx, _startState, RULE_expr);
+						State = 284;
+						if (!(Precpred(Context, 11))) throw new FailedPredicateException(this, "Precpred(Context, 11)");
+						State = 285;
+						Match(OP_CARET);
+						State = 286;
+						expr(12);
+						}
+						break;
+					case 8:
+						{
+						_localctx = new BitOrExprContext(new ExprContext(_parentctx, _parentState));
+						PushNewRecursionContext(_localctx, _startState, RULE_expr);
+						State = 287;
+						if (!(Precpred(Context, 10))) throw new FailedPredicateException(this, "Precpred(Context, 10)");
+						State = 288;
+						Match(OP_PIPE);
+						State = 289;
+						expr(11);
+						}
+						break;
+					case 9:
+						{
+						_localctx = new AndAlsoExprContext(new ExprContext(_parentctx, _parentState));
+						PushNewRecursionContext(_localctx, _startState, RULE_expr);
+						State = 290;
+						if (!(Precpred(Context, 9))) throw new FailedPredicateException(this, "Precpred(Context, 9)");
+						State = 291;
+						Match(OP_AND);
+						State = 292;
+						expr(10);
+						}
+						break;
+					case 10:
+						{
+						_localctx = new OrElseExprContext(new ExprContext(_parentctx, _parentState));
+						PushNewRecursionContext(_localctx, _startState, RULE_expr);
+						State = 293;
+						if (!(Precpred(Context, 8))) throw new FailedPredicateException(this, "Precpred(Context, 8)");
+						State = 294;
+						Match(OP_OR);
+						State = 295;
+						expr(9);
+						}
+						break;
+					case 11:
+						{
+						_localctx = new CoalesceExprContext(new ExprContext(_parentctx, _parentState));
+						PushNewRecursionContext(_localctx, _startState, RULE_expr);
+						State = 296;
+						if (!(Precpred(Context, 7))) throw new FailedPredicateException(this, "Precpred(Context, 7)");
+						State = 297;
+						Match(OP_QQ);
+						State = 298;
+						expr(7);
+						}
+						break;
+					case 12:
+						{
+						_localctx = new TernaryExprContext(new ExprContext(_parentctx, _parentState));
+						PushNewRecursionContext(_localctx, _startState, RULE_expr);
+						State = 299;
+						if (!(Precpred(Context, 6))) throw new FailedPredicateException(this, "Precpred(Context, 6)");
+						State = 300;
+						Match(OP_QUESTION);
+						State = 301;
+						expr(0);
+						State = 302;
+						Match(DELIM);
+						State = 303;
+						expr(6);
+						}
+						break;
+					case 13:
+						{
+						_localctx = new MethodCallExprContext(new ExprContext(_parentctx, _parentState));
+						PushNewRecursionContext(_localctx, _startState, RULE_expr);
+						State = 305;
+						if (!(Precpred(Context, 21))) throw new FailedPredicateException(this, "Precpred(Context, 21)");
+						State = 306;
+						Match(MEMBER_P);
+						State = 307;
+						Match(ID);
+						State = 308;
+						arg_list();
+						}
+						break;
+					case 14:
+						{
+						_localctx = new MemberHopExprContext(new ExprContext(_parentctx, _parentState));
+						PushNewRecursionContext(_localctx, _startState, RULE_expr);
+						State = 309;
+						if (!(Precpred(Context, 20))) throw new FailedPredicateException(this, "Precpred(Context, 20)");
+						State = 310;
+						Match(MEMBER_P);
+						State = 311;
+						Match(ID);
+						}
+						break;
+					case 15:
+						{
+						_localctx = new IndexExprContext(new ExprContext(_parentctx, _parentState));
+						PushNewRecursionContext(_localctx, _startState, RULE_expr);
+						State = 312;
+						if (!(Precpred(Context, 19))) throw new FailedPredicateException(this, "Precpred(Context, 19)");
+						State = 313;
+						Match(LBRACKET);
+						State = 314;
+						expr(0);
+						State = 319;
+						ErrorHandler.Sync(this);
+						_la = TokenStream.LA(1);
+						while (_la==COMMA) {
+							{
+							{
+							State = 315;
+							Match(COMMA);
+							State = 316;
+							expr(0);
+							}
+							}
+							State = 321;
+							ErrorHandler.Sync(this);
+							_la = TokenStream.LA(1);
+						}
+						State = 322;
+						Match(RBRACKET);
+						}
+						break;
+					}
+					} 
+				}
+				State = 328;
+				ErrorHandler.Sync(this);
+				_alt = Interpreter.AdaptivePredict(TokenStream,34,Context);
+			}
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			ErrorHandler.ReportError(this, re);
+			ErrorHandler.Recover(this, re);
+		}
+		finally {
+			UnrollRecursionContexts(_parentctx);
+		}
+		return _localctx;
+	}
+
+	public partial class Arg_listContext : ParserRuleContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OUT_PARAMSTART() { return GetToken(HeddleParser.OUT_PARAMSTART, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode OUT_PARAMEND() { return GetToken(HeddleParser.OUT_PARAMEND, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext[] expr() {
+			return GetRuleContexts<ExprContext>();
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ExprContext expr(int i) {
+			return GetRuleContext<ExprContext>(i);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] COMMA() { return GetTokens(HeddleParser.COMMA); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode COMMA(int i) {
+			return GetToken(HeddleParser.COMMA, i);
+		}
+		public Arg_listContext(ParserRuleContext parent, int invokingState)
+			: base(parent, invokingState)
+		{
+		}
+		public override int RuleIndex { get { return RULE_arg_list; } }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterArg_list(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitArg_list(this);
+		}
+	}
+
+	[RuleVersion(0)]
+	public Arg_listContext arg_list() {
+		Arg_listContext _localctx = new Arg_listContext(Context, State);
+		EnterRule(_localctx, 46, RULE_arg_list);
+		int _la;
+		try {
+			EnterOuterAlt(_localctx, 1);
+			{
+			State = 329;
+			Match(OUT_PARAMSTART);
+			State = 338;
+			ErrorHandler.Sync(this);
+			_la = TokenStream.LA(1);
+			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & 19709845972713520L) != 0)) {
+				{
+				State = 330;
+				expr(0);
+				State = 335;
+				ErrorHandler.Sync(this);
+				_la = TokenStream.LA(1);
+				while (_la==COMMA) {
+					{
+					{
+					State = 331;
+					Match(COMMA);
+					State = 332;
+					expr(0);
+					}
+					}
+					State = 337;
+					ErrorHandler.Sync(this);
+					_la = TokenStream.LA(1);
+				}
+				}
+			}
+
+			State = 340;
+			Match(OUT_PARAMEND);
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			ErrorHandler.ReportError(this, re);
+			ErrorHandler.Recover(this, re);
+		}
+		finally {
+			ExitRule();
+		}
+		return _localctx;
+	}
+
+	public partial class LiteralContext : ParserRuleContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode INT_LIT() { return GetToken(HeddleParser.INT_LIT, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode REAL_LIT() { return GetToken(HeddleParser.REAL_LIT, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode STRING_LIT() { return GetToken(HeddleParser.STRING_LIT, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode CHAR_LIT() { return GetToken(HeddleParser.CHAR_LIT, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode TRUE() { return GetToken(HeddleParser.TRUE, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode FALSE() { return GetToken(HeddleParser.FALSE, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode NULL() { return GetToken(HeddleParser.NULL, 0); }
+		public LiteralContext(ParserRuleContext parent, int invokingState)
+			: base(parent, invokingState)
+		{
+		}
+		public override int RuleIndex { get { return RULE_literal; } }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void EnterRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.EnterLiteral(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override void ExitRule(IParseTreeListener listener) {
+			IHeddleParserListener typedListener = listener as IHeddleParserListener;
+			if (typedListener != null) typedListener.ExitLiteral(this);
+		}
+	}
+
+	[RuleVersion(0)]
+	public LiteralContext literal() {
+		LiteralContext _localctx = new LiteralContext(Context, State);
+		EnterRule(_localctx, 48, RULE_literal);
+		int _la;
+		try {
+			EnterOuterAlt(_localctx, 1);
+			{
+			State = 342;
+			_la = TokenStream.LA(1);
+			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 532676608L) != 0)) ) {
+			ErrorHandler.RecoverInline(this);
+			}
+			else {
+				ErrorHandler.ReportMatch(this);
+			    Consume();
+			}
 			}
 		}
 		catch (RecognitionException re) {
@@ -1113,30 +2693,30 @@ public partial class HeddleParser : Parser {
 	[RuleVersion(0)]
 	public SubtemplateContext subtemplate() {
 		SubtemplateContext _localctx = new SubtemplateContext(Context, State);
-		EnterRule(_localctx, 28, RULE_subtemplate);
+		EnterRule(_localctx, 50, RULE_subtemplate);
 		int _la;
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 154;
+			State = 347;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			while (_la==WS) {
 				{
 				{
-				State = 151;
+				State = 344;
 				Match(WS);
 				}
 				}
-				State = 156;
+				State = 349;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 			}
-			State = 157;
+			State = 350;
 			Match(SUB_START);
-			State = 158;
+			State = 351;
 			heddle();
-			State = 159;
+			State = 352;
 			Match(SUB_CLOSE);
 			}
 		}
@@ -1178,12 +2758,12 @@ public partial class HeddleParser : Parser {
 	[RuleVersion(0)]
 	public TextContext text() {
 		TextContext _localctx = new TextContext(Context, State);
-		EnterRule(_localctx, 30, RULE_text);
+		EnterRule(_localctx, 52, RULE_text);
 		int _la;
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 161;
+			State = 354;
 			_la = TokenStream.LA(1);
 			if ( _la <= 0 || ((((_la) & ~0x3f) == 0 && ((1L << _la) & 459648L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
@@ -1205,58 +2785,155 @@ public partial class HeddleParser : Parser {
 		return _localctx;
 	}
 
+	public override bool Sempred(RuleContext _localctx, int ruleIndex, int predIndex) {
+		switch (ruleIndex) {
+		case 22: return expr_sempred((ExprContext)_localctx, predIndex);
+		}
+		return true;
+	}
+	private bool expr_sempred(ExprContext _localctx, int predIndex) {
+		switch (predIndex) {
+		case 0: return Precpred(Context, 17);
+		case 1: return Precpred(Context, 16);
+		case 2: return Precpred(Context, 15);
+		case 3: return Precpred(Context, 14);
+		case 4: return Precpred(Context, 13);
+		case 5: return Precpred(Context, 12);
+		case 6: return Precpred(Context, 11);
+		case 7: return Precpred(Context, 10);
+		case 8: return Precpred(Context, 9);
+		case 9: return Precpred(Context, 8);
+		case 10: return Precpred(Context, 7);
+		case 11: return Precpred(Context, 6);
+		case 12: return Precpred(Context, 21);
+		case 13: return Precpred(Context, 20);
+		case 14: return Precpred(Context, 19);
+		}
+		return true;
+	}
+
 	private static int[] _serializedATN = {
-		4,1,40,164,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,7,
-		7,7,2,8,7,8,2,9,7,9,2,10,7,10,2,11,7,11,2,12,7,12,2,13,7,13,2,14,7,14,
-		2,15,7,15,1,0,1,0,1,0,1,0,1,0,5,0,38,8,0,10,0,12,0,41,9,0,1,1,1,1,1,2,
-		1,2,4,2,47,8,2,11,2,12,2,48,1,2,1,2,1,3,1,3,1,3,3,3,56,8,3,1,3,1,3,3,3,
-		60,8,3,1,3,1,3,3,3,64,8,3,1,4,1,4,1,4,1,5,1,5,1,5,1,6,1,6,1,6,1,7,1,7,
-		5,7,77,8,7,10,7,12,7,80,9,7,1,7,1,7,4,7,84,8,7,11,7,12,7,85,1,7,1,7,1,
-		8,1,8,1,8,3,8,93,8,8,1,9,1,9,1,9,5,9,98,8,9,10,9,12,9,101,9,9,1,10,3,10,
-		104,8,10,1,10,1,10,1,10,1,10,1,10,1,10,3,10,112,8,10,1,10,1,10,5,10,116,
-		8,10,10,10,12,10,119,9,10,1,10,3,10,122,8,10,1,10,1,10,3,10,126,8,10,1,
-		10,1,10,1,10,1,10,3,10,132,8,10,1,11,3,11,135,8,11,1,11,1,11,1,11,5,11,
-		140,8,11,10,11,12,11,143,9,11,1,12,1,12,1,13,4,13,148,8,13,11,13,12,13,
-		149,1,14,5,14,153,8,14,10,14,12,14,156,9,14,1,14,1,14,1,14,1,14,1,15,1,
-		15,1,15,0,0,16,0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,0,1,2,0,7,9,
-		16,18,171,0,39,1,0,0,0,2,42,1,0,0,0,4,44,1,0,0,0,6,52,1,0,0,0,8,65,1,0,
-		0,0,10,68,1,0,0,0,12,71,1,0,0,0,14,74,1,0,0,0,16,89,1,0,0,0,18,94,1,0,
-		0,0,20,131,1,0,0,0,22,134,1,0,0,0,24,144,1,0,0,0,26,147,1,0,0,0,28,154,
-		1,0,0,0,30,161,1,0,0,0,32,38,3,4,2,0,33,38,3,14,7,0,34,38,3,16,8,0,35,
-		38,3,2,1,0,36,38,3,30,15,0,37,32,1,0,0,0,37,33,1,0,0,0,37,34,1,0,0,0,37,
-		35,1,0,0,0,37,36,1,0,0,0,38,41,1,0,0,0,39,37,1,0,0,0,39,40,1,0,0,0,40,
-		1,1,0,0,0,41,39,1,0,0,0,42,43,5,18,0,0,43,3,1,0,0,0,44,46,5,16,0,0,45,
-		47,3,6,3,0,46,45,1,0,0,0,47,48,1,0,0,0,48,46,1,0,0,0,48,49,1,0,0,0,49,
-		50,1,0,0,0,50,51,5,17,0,0,51,5,1,0,0,0,52,53,5,13,0,0,53,55,5,4,0,0,54,
-		56,3,8,4,0,55,54,1,0,0,0,55,56,1,0,0,0,56,57,1,0,0,0,57,59,5,14,0,0,58,
-		60,3,12,6,0,59,58,1,0,0,0,59,60,1,0,0,0,60,61,1,0,0,0,61,63,3,28,14,0,
-		62,64,3,10,5,0,63,62,1,0,0,0,63,64,1,0,0,0,64,7,1,0,0,0,65,66,5,15,0,0,
-		66,67,5,4,0,0,67,9,1,0,0,0,68,69,5,27,0,0,69,70,5,4,0,0,70,11,1,0,0,0,
-		71,72,5,21,0,0,72,73,3,18,9,0,73,13,1,0,0,0,74,78,5,3,0,0,75,77,5,2,0,
-		0,76,75,1,0,0,0,77,80,1,0,0,0,78,76,1,0,0,0,78,79,1,0,0,0,79,81,1,0,0,
-		0,80,78,1,0,0,0,81,83,5,8,0,0,82,84,3,30,15,0,83,82,1,0,0,0,84,85,1,0,
-		0,0,85,83,1,0,0,0,85,86,1,0,0,0,86,87,1,0,0,0,87,88,5,9,0,0,88,15,1,0,
-		0,0,89,90,5,7,0,0,90,92,3,18,9,0,91,93,3,28,14,0,92,91,1,0,0,0,92,93,1,
-		0,0,0,93,17,1,0,0,0,94,99,3,20,10,0,95,96,5,15,0,0,96,98,3,20,10,0,97,
-		95,1,0,0,0,98,101,1,0,0,0,99,97,1,0,0,0,99,100,1,0,0,0,100,19,1,0,0,0,
-		101,99,1,0,0,0,102,104,3,24,12,0,103,102,1,0,0,0,103,104,1,0,0,0,104,105,
-		1,0,0,0,105,106,5,19,0,0,106,107,5,12,0,0,107,108,3,26,13,0,108,109,5,
-		20,0,0,109,132,1,0,0,0,110,112,3,24,12,0,111,110,1,0,0,0,111,112,1,0,0,
-		0,112,113,1,0,0,0,113,117,5,19,0,0,114,116,5,2,0,0,115,114,1,0,0,0,116,
-		119,1,0,0,0,117,115,1,0,0,0,117,118,1,0,0,0,118,121,1,0,0,0,119,117,1,
-		0,0,0,120,122,3,22,11,0,121,120,1,0,0,0,121,122,1,0,0,0,122,123,1,0,0,
-		0,123,132,5,20,0,0,124,126,3,24,12,0,125,124,1,0,0,0,125,126,1,0,0,0,126,
-		127,1,0,0,0,127,128,5,19,0,0,128,129,3,18,9,0,129,130,5,20,0,0,130,132,
-		1,0,0,0,131,103,1,0,0,0,131,111,1,0,0,0,131,125,1,0,0,0,132,21,1,0,0,0,
-		133,135,5,5,0,0,134,133,1,0,0,0,134,135,1,0,0,0,135,136,1,0,0,0,136,141,
-		5,4,0,0,137,138,5,6,0,0,138,140,5,4,0,0,139,137,1,0,0,0,140,143,1,0,0,
-		0,141,139,1,0,0,0,141,142,1,0,0,0,142,23,1,0,0,0,143,141,1,0,0,0,144,145,
-		5,4,0,0,145,25,1,0,0,0,146,148,5,11,0,0,147,146,1,0,0,0,148,149,1,0,0,
-		0,149,147,1,0,0,0,149,150,1,0,0,0,150,27,1,0,0,0,151,153,5,2,0,0,152,151,
-		1,0,0,0,153,156,1,0,0,0,154,152,1,0,0,0,154,155,1,0,0,0,155,157,1,0,0,
-		0,156,154,1,0,0,0,157,158,5,8,0,0,158,159,3,0,0,0,159,160,5,9,0,0,160,
-		29,1,0,0,0,161,162,8,0,0,0,162,31,1,0,0,0,20,37,39,48,55,59,63,78,85,92,
-		99,103,111,117,121,125,131,134,141,149,154
+		4,1,103,357,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,
+		7,7,7,2,8,7,8,2,9,7,9,2,10,7,10,2,11,7,11,2,12,7,12,2,13,7,13,2,14,7,14,
+		2,15,7,15,2,16,7,16,2,17,7,17,2,18,7,18,2,19,7,19,2,20,7,20,2,21,7,21,
+		2,22,7,22,2,23,7,23,2,24,7,24,2,25,7,25,2,26,7,26,1,0,1,0,1,0,1,0,1,0,
+		5,0,60,8,0,10,0,12,0,63,9,0,1,1,1,1,1,2,1,2,4,2,69,8,2,11,2,12,2,70,1,
+		2,1,2,1,3,1,3,1,3,3,3,78,8,3,1,3,3,3,81,8,3,1,3,1,3,3,3,85,8,3,1,3,1,3,
+		3,3,89,8,3,1,4,1,4,1,4,1,4,5,4,95,8,4,10,4,12,4,98,9,4,3,4,100,8,4,1,4,
+		1,4,1,5,1,5,3,5,106,8,5,1,6,1,6,1,6,1,6,3,6,112,8,6,1,7,1,7,1,7,1,7,1,
+		8,1,8,1,8,1,9,3,9,122,8,9,1,9,1,9,1,9,1,9,1,9,1,9,3,9,130,8,9,1,10,1,10,
+		1,10,1,11,1,11,1,11,1,12,1,12,1,12,1,13,1,13,5,13,143,8,13,10,13,12,13,
+		146,9,13,1,13,1,13,4,13,150,8,13,11,13,12,13,151,1,13,1,13,1,14,1,14,1,
+		14,3,14,159,8,14,1,15,1,15,1,15,5,15,164,8,15,10,15,12,15,167,9,15,1,16,
+		3,16,170,8,16,1,16,1,16,1,16,1,16,1,16,1,16,3,16,178,8,16,1,16,1,16,5,
+		16,182,8,16,10,16,12,16,185,9,16,1,16,3,16,188,8,16,1,16,1,16,3,16,192,
+		8,16,1,16,1,16,1,16,1,16,1,16,3,16,199,8,16,1,16,1,16,1,16,1,16,1,16,3,
+		16,206,8,16,1,16,1,16,1,16,1,16,3,16,212,8,16,1,16,1,16,1,16,5,16,217,
+		8,16,10,16,12,16,220,9,16,1,16,1,16,3,16,224,8,16,1,17,1,17,1,17,1,17,
+		1,18,3,18,231,8,18,1,18,1,18,1,18,5,18,236,8,18,10,18,12,18,239,9,18,1,
+		19,1,19,1,20,4,20,244,8,20,11,20,12,20,245,1,21,1,21,1,22,1,22,1,22,1,
+		22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,3,22,262,8,22,1,22,3,22,265,
+		8,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,
+		1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,
+		1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,
+		1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,1,22,5,22,318,8,22,10,22,
+		12,22,321,9,22,1,22,1,22,5,22,325,8,22,10,22,12,22,328,9,22,1,23,1,23,
+		1,23,1,23,5,23,334,8,23,10,23,12,23,337,9,23,3,23,339,8,23,1,23,1,23,1,
+		24,1,24,1,25,5,25,346,8,25,10,25,12,25,349,9,25,1,25,1,25,1,25,1,25,1,
+		26,1,26,1,26,0,1,44,27,0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,
+		36,38,40,42,44,46,48,50,52,0,9,1,0,25,26,2,0,41,42,49,50,1,0,43,45,1,0,
+		41,42,1,0,35,36,1,0,37,40,1,0,33,34,1,0,22,28,2,0,7,9,16,18,394,0,61,1,
+		0,0,0,2,64,1,0,0,0,4,66,1,0,0,0,6,74,1,0,0,0,8,90,1,0,0,0,10,105,1,0,0,
+		0,12,107,1,0,0,0,14,113,1,0,0,0,16,117,1,0,0,0,18,129,1,0,0,0,20,131,1,
+		0,0,0,22,134,1,0,0,0,24,137,1,0,0,0,26,140,1,0,0,0,28,155,1,0,0,0,30,160,
+		1,0,0,0,32,223,1,0,0,0,34,225,1,0,0,0,36,230,1,0,0,0,38,240,1,0,0,0,40,
+		243,1,0,0,0,42,247,1,0,0,0,44,264,1,0,0,0,46,329,1,0,0,0,48,342,1,0,0,
+		0,50,347,1,0,0,0,52,354,1,0,0,0,54,60,3,4,2,0,55,60,3,26,13,0,56,60,3,
+		28,14,0,57,60,3,2,1,0,58,60,3,52,26,0,59,54,1,0,0,0,59,55,1,0,0,0,59,56,
+		1,0,0,0,59,57,1,0,0,0,59,58,1,0,0,0,60,63,1,0,0,0,61,59,1,0,0,0,61,62,
+		1,0,0,0,62,1,1,0,0,0,63,61,1,0,0,0,64,65,5,18,0,0,65,3,1,0,0,0,66,68,5,
+		16,0,0,67,69,3,6,3,0,68,67,1,0,0,0,69,70,1,0,0,0,70,68,1,0,0,0,70,71,1,
+		0,0,0,71,72,1,0,0,0,72,73,5,17,0,0,73,5,1,0,0,0,74,75,5,13,0,0,75,77,5,
+		4,0,0,76,78,3,8,4,0,77,76,1,0,0,0,77,78,1,0,0,0,78,80,1,0,0,0,79,81,3,
+		20,10,0,80,79,1,0,0,0,80,81,1,0,0,0,81,82,1,0,0,0,82,84,5,14,0,0,83,85,
+		3,24,12,0,84,83,1,0,0,0,84,85,1,0,0,0,85,86,1,0,0,0,86,88,3,50,25,0,87,
+		89,3,22,11,0,88,87,1,0,0,0,88,89,1,0,0,0,89,7,1,0,0,0,90,99,5,19,0,0,91,
+		96,3,10,5,0,92,93,5,53,0,0,93,95,3,10,5,0,94,92,1,0,0,0,95,98,1,0,0,0,
+		96,94,1,0,0,0,96,97,1,0,0,0,97,100,1,0,0,0,98,96,1,0,0,0,99,91,1,0,0,0,
+		99,100,1,0,0,0,100,101,1,0,0,0,101,102,5,20,0,0,102,9,1,0,0,0,103,106,
+		3,12,6,0,104,106,3,14,7,0,105,103,1,0,0,0,105,104,1,0,0,0,106,11,1,0,0,
+		0,107,108,5,4,0,0,108,109,5,15,0,0,109,111,5,4,0,0,110,112,3,16,8,0,111,
+		110,1,0,0,0,111,112,1,0,0,0,112,13,1,0,0,0,113,114,5,4,0,0,114,115,5,61,
+		0,0,115,116,5,4,0,0,116,15,1,0,0,0,117,118,5,55,0,0,118,119,3,18,9,0,119,
+		17,1,0,0,0,120,122,5,42,0,0,121,120,1,0,0,0,121,122,1,0,0,0,122,123,1,
+		0,0,0,123,130,7,0,0,0,124,130,5,27,0,0,125,130,5,28,0,0,126,130,5,22,0,
+		0,127,130,5,23,0,0,128,130,5,24,0,0,129,121,1,0,0,0,129,124,1,0,0,0,129,
+		125,1,0,0,0,129,126,1,0,0,0,129,127,1,0,0,0,129,128,1,0,0,0,130,19,1,0,
+		0,0,131,132,5,15,0,0,132,133,5,4,0,0,133,21,1,0,0,0,134,135,5,61,0,0,135,
+		136,5,4,0,0,136,23,1,0,0,0,137,138,5,21,0,0,138,139,3,30,15,0,139,25,1,
+		0,0,0,140,144,5,3,0,0,141,143,5,2,0,0,142,141,1,0,0,0,143,146,1,0,0,0,
+		144,142,1,0,0,0,144,145,1,0,0,0,145,147,1,0,0,0,146,144,1,0,0,0,147,149,
+		5,8,0,0,148,150,3,52,26,0,149,148,1,0,0,0,150,151,1,0,0,0,151,149,1,0,
+		0,0,151,152,1,0,0,0,152,153,1,0,0,0,153,154,5,9,0,0,154,27,1,0,0,0,155,
+		156,5,7,0,0,156,158,3,30,15,0,157,159,3,50,25,0,158,157,1,0,0,0,158,159,
+		1,0,0,0,159,29,1,0,0,0,160,165,3,32,16,0,161,162,5,15,0,0,162,164,3,32,
+		16,0,163,161,1,0,0,0,164,167,1,0,0,0,165,163,1,0,0,0,165,166,1,0,0,0,166,
+		31,1,0,0,0,167,165,1,0,0,0,168,170,3,38,19,0,169,168,1,0,0,0,169,170,1,
+		0,0,0,170,171,1,0,0,0,171,172,5,19,0,0,172,173,5,12,0,0,173,174,3,40,20,
+		0,174,175,5,20,0,0,175,224,1,0,0,0,176,178,3,38,19,0,177,176,1,0,0,0,177,
+		178,1,0,0,0,178,179,1,0,0,0,179,183,5,19,0,0,180,182,5,2,0,0,181,180,1,
+		0,0,0,182,185,1,0,0,0,183,181,1,0,0,0,183,184,1,0,0,0,184,187,1,0,0,0,
+		185,183,1,0,0,0,186,188,3,36,18,0,187,186,1,0,0,0,187,188,1,0,0,0,188,
+		189,1,0,0,0,189,224,5,20,0,0,190,192,3,38,19,0,191,190,1,0,0,0,191,192,
+		1,0,0,0,192,193,1,0,0,0,193,194,5,19,0,0,194,195,3,30,15,0,195,196,5,20,
+		0,0,196,224,1,0,0,0,197,199,3,38,19,0,198,197,1,0,0,0,198,199,1,0,0,0,
+		199,200,1,0,0,0,200,201,5,19,0,0,201,202,3,42,21,0,202,203,5,20,0,0,203,
+		224,1,0,0,0,204,206,3,38,19,0,205,204,1,0,0,0,205,206,1,0,0,0,206,207,
+		1,0,0,0,207,211,5,19,0,0,208,209,3,44,22,0,209,210,5,53,0,0,210,212,1,
+		0,0,0,211,208,1,0,0,0,211,212,1,0,0,0,212,213,1,0,0,0,213,218,3,34,17,
+		0,214,215,5,53,0,0,215,217,3,34,17,0,216,214,1,0,0,0,217,220,1,0,0,0,218,
+		216,1,0,0,0,218,219,1,0,0,0,219,221,1,0,0,0,220,218,1,0,0,0,221,222,5,
+		20,0,0,222,224,1,0,0,0,223,169,1,0,0,0,223,177,1,0,0,0,223,191,1,0,0,0,
+		223,198,1,0,0,0,223,205,1,0,0,0,224,33,1,0,0,0,225,226,5,4,0,0,226,227,
+		5,15,0,0,227,228,3,44,22,0,228,35,1,0,0,0,229,231,5,5,0,0,230,229,1,0,
+		0,0,230,231,1,0,0,0,231,232,1,0,0,0,232,237,5,4,0,0,233,234,5,6,0,0,234,
+		236,5,4,0,0,235,233,1,0,0,0,236,239,1,0,0,0,237,235,1,0,0,0,237,238,1,
+		0,0,0,238,37,1,0,0,0,239,237,1,0,0,0,240,241,5,4,0,0,241,39,1,0,0,0,242,
+		244,5,11,0,0,243,242,1,0,0,0,244,245,1,0,0,0,245,243,1,0,0,0,245,246,1,
+		0,0,0,246,41,1,0,0,0,247,248,3,44,22,0,248,43,1,0,0,0,249,250,6,22,-1,
+		0,250,251,7,1,0,0,251,265,3,44,22,18,252,253,5,4,0,0,253,265,3,46,23,0,
+		254,255,5,19,0,0,255,256,3,44,22,0,256,257,5,20,0,0,257,265,1,0,0,0,258,
+		265,3,48,24,0,259,265,5,54,0,0,260,262,5,5,0,0,261,260,1,0,0,0,261,262,
+		1,0,0,0,262,263,1,0,0,0,263,265,5,4,0,0,264,249,1,0,0,0,264,252,1,0,0,
+		0,264,254,1,0,0,0,264,258,1,0,0,0,264,259,1,0,0,0,264,261,1,0,0,0,265,
+		326,1,0,0,0,266,267,10,17,0,0,267,268,7,2,0,0,268,325,3,44,22,18,269,270,
+		10,16,0,0,270,271,7,3,0,0,271,325,3,44,22,17,272,273,10,15,0,0,273,274,
+		7,4,0,0,274,325,3,44,22,16,275,276,10,14,0,0,276,277,7,5,0,0,277,325,3,
+		44,22,15,278,279,10,13,0,0,279,280,7,6,0,0,280,325,3,44,22,14,281,282,
+		10,12,0,0,282,283,5,46,0,0,283,325,3,44,22,13,284,285,10,11,0,0,285,286,
+		5,48,0,0,286,325,3,44,22,12,287,288,10,10,0,0,288,289,5,47,0,0,289,325,
+		3,44,22,11,290,291,10,9,0,0,291,292,5,31,0,0,292,325,3,44,22,10,293,294,
+		10,8,0,0,294,295,5,32,0,0,295,325,3,44,22,9,296,297,10,7,0,0,297,298,5,
+		29,0,0,298,325,3,44,22,7,299,300,10,6,0,0,300,301,5,30,0,0,301,302,3,44,
+		22,0,302,303,5,15,0,0,303,304,3,44,22,6,304,325,1,0,0,0,305,306,10,21,
+		0,0,306,307,5,6,0,0,307,308,5,4,0,0,308,325,3,46,23,0,309,310,10,20,0,
+		0,310,311,5,6,0,0,311,325,5,4,0,0,312,313,10,19,0,0,313,314,5,51,0,0,314,
+		319,3,44,22,0,315,316,5,53,0,0,316,318,3,44,22,0,317,315,1,0,0,0,318,321,
+		1,0,0,0,319,317,1,0,0,0,319,320,1,0,0,0,320,322,1,0,0,0,321,319,1,0,0,
+		0,322,323,5,52,0,0,323,325,1,0,0,0,324,266,1,0,0,0,324,269,1,0,0,0,324,
+		272,1,0,0,0,324,275,1,0,0,0,324,278,1,0,0,0,324,281,1,0,0,0,324,284,1,
+		0,0,0,324,287,1,0,0,0,324,290,1,0,0,0,324,293,1,0,0,0,324,296,1,0,0,0,
+		324,299,1,0,0,0,324,305,1,0,0,0,324,309,1,0,0,0,324,312,1,0,0,0,325,328,
+		1,0,0,0,326,324,1,0,0,0,326,327,1,0,0,0,327,45,1,0,0,0,328,326,1,0,0,0,
+		329,338,5,19,0,0,330,335,3,44,22,0,331,332,5,53,0,0,332,334,3,44,22,0,
+		333,331,1,0,0,0,334,337,1,0,0,0,335,333,1,0,0,0,335,336,1,0,0,0,336,339,
+		1,0,0,0,337,335,1,0,0,0,338,330,1,0,0,0,338,339,1,0,0,0,339,340,1,0,0,
+		0,340,341,5,20,0,0,341,47,1,0,0,0,342,343,7,7,0,0,343,49,1,0,0,0,344,346,
+		5,2,0,0,345,344,1,0,0,0,346,349,1,0,0,0,347,345,1,0,0,0,347,348,1,0,0,
+		0,348,350,1,0,0,0,349,347,1,0,0,0,350,351,5,8,0,0,351,352,3,0,0,0,352,
+		353,5,9,0,0,353,51,1,0,0,0,354,355,8,8,0,0,355,53,1,0,0,0,38,59,61,70,
+		77,80,84,88,96,99,105,111,121,129,144,151,158,165,169,177,183,187,191,
+		198,205,211,218,223,230,237,245,261,264,319,324,326,335,338,347
 	};
 
 	public static readonly ATN _ATN =

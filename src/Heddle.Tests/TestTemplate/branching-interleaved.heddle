@@ -1,0 +1,1 @@
+<div class="badge">@if(IsFeatured){{<b>Featured</b>}} MUST-NOT-RENDER-1 @elif(IsArchived){{<i>Archived</i>}} MUST-NOT-RENDER-2 @else(){{Regular}}</div>

@@ -12,6 +12,8 @@ namespace Heddle.Core
         private string _innerResult = string.Empty;
         private RuntimeDocument _subTemplate;
         private IProcessStrategy _processStrategy;
+        private bool _needsLocals;
+        private bool _hasPrecompiledBody;
 
         public void Dispose()
         {
@@ -29,26 +31,61 @@ namespace Heddle.Core
 
         protected string GetInnerResult(in Scope scope)
         {
-            return _processStrategy != null ? _processStrategy.Execute(scope) : _innerResult;
+            if (_processStrategy == null)
+                return _innerResult;
+            // Phase 3 D2/D5: install the body's local-context frame. A participating body gets a fresh
+            // frame; a non-participating body under a provisioned parent gets a cleared (null) frame so it
+            // never sees the parent's; otherwise the incoming scope passes through unchanged (fast path).
+            if (_needsLocals)
+                return _processStrategy.Execute(scope.WithLocals(new ScopeLocals()));
+            if (scope.Locals != null)
+                return _processStrategy.Execute(scope.WithLocals(null));
+            return _processStrategy.Execute(scope);
         }
 
         protected void RenderInnerResult(in Scope scope)
         {
-            if (_processStrategy != null)
+            if (_processStrategy == null)
             {
-                _processStrategy.Render(scope);
+                scope.Renderer.Render(_innerResult);
+                return;
+            }
+            if (_needsLocals)
+            {
+                _processStrategy.Render(scope.WithLocals(new ScopeLocals()));
+            }
+            else if (scope.Locals != null)
+            {
+                _processStrategy.Render(scope.WithLocals(null));
             }
             else
             {
-                scope.Renderer.Render(_innerResult);
+                _processStrategy.Render(scope);
             }
         }
 
-        protected bool InnerExist => _subTemplate != null;
+        protected bool InnerExist => _subTemplate != null || _hasPrecompiledBody;
 
         public virtual void SetUpRenderType(RenderType renderType)
         {
             DirectRender = renderType == RenderType.Encode;
+        }
+
+        /// <summary>
+        /// Phase 7 D5 (<c>PrecompiledRuntime.Bind</c>): installs a generated body on this pre-constructed extension,
+        /// reproducing what <see cref="InitStart"/> does for a subtemplate — store the body strategy, apply the
+        /// render type, record the frame-provisioning flag, and set the source position — without a
+        /// <c>RuntimeDocument</c>. Called once, from a generated static initializer (thread-safe via CLR type-init);
+        /// the extension is never mutated after it returns.
+        /// </summary>
+        internal void BindPrecompiled(IProcessStrategy body, RenderType renderType, bool needsLocals,
+            BlockPosition position)
+        {
+            _processStrategy = body;
+            _needsLocals = needsLocals;
+            _hasPrecompiledBody = body != null;
+            SetUpRenderType(renderType);
+            Position = position;
         }
 
         private static ExType InitSubTemplate(ref string parameterTemplate, ExType dataType, ExType chainedType,
@@ -95,6 +132,7 @@ namespace Heddle.Core
                 _innerResult = initContext.ParameterTemplate;
             _subTemplate = subTemplate;
             _processStrategy = subTemplate?.Strategy;
+            _needsLocals = subTemplate?.NeedsLocals ?? false;
             return type;
         }
 

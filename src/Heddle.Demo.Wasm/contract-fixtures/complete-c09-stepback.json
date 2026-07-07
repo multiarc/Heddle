@@ -1,0 +1,15 @@
+{
+  "name": "complete-c09-stepback",
+  "description": "Completion inside an @if body steps back to the enclosing model scope (Blog here): Blog members, then the keyword items, then the registered functions.",
+  "type": "completion",
+  "text": "@using(){{Heddle.Demo.Models}}\n@model(){{Blog}}\n@if(Year){{ @( }}\n",
+  "version": 1,
+  "caretAfter": "@(",
+  "expectProperties": [
+    { "label": "Articles", "detail": "ICollection<Article>", "insertText": "Articles" },
+    { "label": "Title", "detail": "String", "insertText": "Title" },
+    { "label": "Year", "detail": "Int32", "insertText": "Year" }
+  ],
+  "expectKeywords": [ "this", "true", "false", "null" ],
+  "expectFunctions": [ "upper", "range" ]
+}

@@ -1,0 +1,3 @@
+csharp-escape: — @ 1:43 C# Code Not allowed here, see TemplateOptions.AllowCSharp Property
+unregistered-call: HED1001 @ 2:12 Cannot find extension or registered function 'danger'. Register it with TemplateOptions.Functions, or check the name.
+method-call: HED1003 @ 2:14 Method calls are not available in native expressions — register a function with TemplateOptions.Functions or use the @ C# tier.

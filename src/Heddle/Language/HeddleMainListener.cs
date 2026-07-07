@@ -1,22 +1,19 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using Heddle.Data;
 using Heddle.Exceptions;
-using Heddle.Runtime;
 using Heddle.Strings.Core;
 
 namespace Heddle.Language {
     internal sealed class HeddleMainListener: HeddleParserBaseListener {
-        private readonly CompileContext _compileContext;
+        private readonly ParserSettings _settings;
         private readonly Stack<ParseContext> _parserContextStack;
 
         public ParseContext CurrentParseContext => _parserContextStack.Peek();
 
-        public HeddleMainListener(ParseContext context, CompileContext compileContext) {
-            _compileContext = compileContext;
+        public HeddleMainListener(ParseContext context, ParserSettings settings) {
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             if (context == null) throw new ArgumentNullException(nameof(context));
             _parserContextStack = new Stack<ParseContext>();
             _parserContextStack.Push(context);
@@ -45,10 +42,10 @@ namespace Heddle.Language {
         public override void EnterDef(HeddleParser.DefContext context)
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
-            CurrentParseContext.CurrentDefenition = CurrentParseContext.CreateDefinition(context, _compileContext, out var chain);
+            CurrentParseContext.CurrentDefenition = CurrentParseContext.CreateDefinition(context, out var chain);
             if (CurrentParseContext.CurrentDefenition == null)
             {
-                _compileContext.CompileErrors.Add(
+                CurrentParseContext.Errors.Add(
                     "Cannot create definition".ToError(CurrentParseContext.GetBlockPosition(context)));
                 return;
             }
@@ -56,7 +53,7 @@ namespace Heddle.Language {
             {
                 if (CurrentParseContext.DefinitionsBlock.Definitions.ContainsKey(CurrentParseContext.CurrentDefenition.Name))
                 {
-                    _compileContext.CompileErrors.Add(
+                    CurrentParseContext.Errors.Add(
                         $"The definition <{CurrentParseContext.CurrentDefenition.Name}> with the same name already exists".ToError(CurrentParseContext.GetBlockPosition(context)));
                     return;
                 }
@@ -86,7 +83,7 @@ namespace Heddle.Language {
                     {
                         if (definition != CurrentParseContext.CurrentDefenition.BaseDefinition)
                         {
-                            _compileContext.CompileErrors.Add(
+                            CurrentParseContext.Errors.Add(
                                 $"The definition <{CurrentParseContext.CurrentDefenition.Name}> with the same name already exists".ToError(
                                     CurrentParseContext.GetBlockPosition(context)));
                             return;
@@ -98,7 +95,7 @@ namespace Heddle.Language {
                     {
                         if (definition != CurrentParseContext.CurrentDefenition.BaseDefinition)
                         {
-                            _compileContext.CompileErrors.Add(
+                            CurrentParseContext.Errors.Add(
                                 $"The definition <{CurrentParseContext.CurrentDefenition.Name}> with the same name already exists".ToError(
                                     CurrentParseContext.GetBlockPosition(context)));
                             return;
@@ -114,17 +111,14 @@ namespace Heddle.Language {
         public override void EnterOutblock(HeddleParser.OutblockContext context)
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
-            //if (!CurrentParseContext.DefenitionsOnly)
-                CurrentParseContext.CurrentChain = CurrentParseContext.CreateOutputChain(context);
+            CurrentParseContext.CurrentChain = CurrentParseContext.CreateOutputChain(context);
         }
 
         public override void ExitOutblock(HeddleParser.OutblockContext context)
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
-            //if (!CurrentParseContext.DefenitionsOnly) {
-                CurrentParseContext.OutputChains.Add(CurrentParseContext.CurrentChain);
-                CurrentParseContext.CurrentChain = null;
-            //}
+            CurrentParseContext.OutputChains.Add(CurrentParseContext.CurrentChain);
+            CurrentParseContext.CurrentChain = null;
         }
 
         public override void EnterRaw(HeddleParser.RawContext context)
@@ -145,7 +139,7 @@ namespace Heddle.Language {
                 var newContext = new ParseContext(currentContext, heddleCtx.Start.StartIndex);
 
                 var currentOffset = currentContext.Offset;
-                
+
                 //transfer parent skipped tokens inside with offset
                 newContext.SkippedTokens.AddRange(currentContext.SkippedTokens
                     .Where(t =>
@@ -156,7 +150,7 @@ namespace Heddle.Language {
                         return startIndex >= heddleCtx.Start.StartIndex && stopIndex <= heddleCtx.Stop.StopIndex;
                     })
                     .Select(t => new BlockPosition(t.StartIndex + currentOffset - heddleCtx.Start.StartIndex, t.Length)));
-                
+
                 currentContext.AddSubContext(newContext);
                 if (!currentContext.InDefintionContext && !currentContext.InDefinition)
                 {
@@ -191,11 +185,8 @@ namespace Heddle.Language {
                 }
                 else
                 {
-                    //if (!CurrentParseContext.DefenitionsOnly)
-                    //{
-                        var chainItem = CurrentParseContext.CurrentChain.Chain.First();
-                        chainItem.Context = parserContext;
-                    //}
+                    var chainItem = CurrentParseContext.CurrentChain.Chain.First();
+                    chainItem.Context = parserContext;
                 }
             }
         }
@@ -206,11 +197,31 @@ namespace Heddle.Language {
             var path = string.Concat(context.text().Select(t => t.GetText()));
             if (!string.IsNullOrWhiteSpace(path))
             {
-                using var file = File.OpenText(Path.Combine(_compileContext.Options.RootPath, path));
-                string document = file.ReadToEnd();
+                string document = _settings.ReadImport(path);
+
+                // Phase 6 D25 (stamp site 1): mark the imported parse's diagnostics with a shared ImportOrigin so
+                // the LSP facade re-anchors them to this @<< site. Flag-gated — production compiles take one bool
+                // check and allocate nothing. Post-D4 seam: all front-end diagnostics live on the ParseContext,
+                // so the two ParseContext ranges are the only ones stamped (the runtime adapter copies them into
+                // the compile context after the whole parse completes).
+                bool markProvenance = CurrentParseContext.ProvideLanguageFeatures;
+                ImportOrigin origin = null;
+                int peMark = 0, pwMark = 0;
+                if (markProvenance)
+                {
+                    origin = new ImportOrigin(_settings.ResolveImportPath(path), CurrentParseContext.GetAbsoluteBlockPosition(context));
+                    peMark = CurrentParseContext.Errors.Count;
+                    pwMark = CurrentParseContext.Warnings.Count;
+                }
+
                 var isolatedContext = CurrentParseContext.IsolateContextWithTree();
+                var preImportNames = markProvenance
+                    ? new HashSet<string>(isolatedContext.DefinitionsBlock.Definitions.Keys)
+                    : null;
+                if (markProvenance)
+                    isolatedContext.ImportOrigin = origin;
                 isolatedContext.OutputChains.Clear();
-                DocumentParser.Parse(document, isolatedContext, _compileContext/*, true*/);
+                DocumentParser.Parse(document, isolatedContext, _settings/*, true*/);
                 CurrentParseContext.DefaultChains.Clear();
                 CurrentParseContext.DefaultChains.AddRange(isolatedContext.DefaultChains);
                 CurrentParseContext.DefinitionsBlock.Definitions.Clear();
@@ -223,8 +234,52 @@ namespace Heddle.Language {
                     isolatedChain.BlockPosition = new BlockPosition(CurrentParseContext.GetBlockPosition(context).StartIndex, 0);
                     CurrentParseContext.OutputChains.Add(isolatedChain);
                 }
+
+                if (markProvenance)
+                {
+                    StampImportedRange(CurrentParseContext.Errors, peMark, origin);
+                    StampImportedRange(CurrentParseContext.Warnings, pwMark, origin);
+                    // Attach the origin to purely-imported definitions so their call-site-compiled bodies
+                    // re-anchor via the D2/D25 funnel bracket (stamp site 4). Definitions copied from the
+                    // pre-import local set keep their own (null) provenance.
+                    foreach (var pair in CurrentParseContext.DefinitionsBlock.Definitions)
+                    {
+                        if (!preImportNames.Contains(pair.Key))
+                            AttachImportOrigin(pair.Value, origin);
+                    }
+                }
             }
             CurrentParseContext.DefinitionsBlock.AddNewBlockPosition(CurrentParseContext.GetBlockPosition(context));
+        }
+
+        /// <summary>
+        /// Phase 6 D25: stamps every entry appended after <paramref name="mark"/> with <paramref name="origin"/>.
+        /// A null-marker entry (a diagnostic of the imported document itself) takes the shared instance; an entry
+        /// already carrying a marker (a nested import's) has only its <see cref="ImportOrigin.Site"/> re-anchored
+        /// to this site — the shared instance keeps the deepest <see cref="ImportOrigin.Path"/>.
+        /// </summary>
+        private static void StampImportedRange<T>(List<T> list, int mark, ImportOrigin origin)
+            where T : HeddleCompileError
+        {
+            for (int i = mark; i < list.Count; i++)
+            {
+                var existing = list[i].ImportOrigin;
+                if (existing == null)
+                    list[i].ImportOrigin = origin;
+                else if (!ReferenceEquals(existing, origin))
+                    existing.Site = origin.Site;
+            }
+        }
+
+        /// <summary>Phase 6 D25: attaches an import origin to a purely-imported definition's context lineage so
+        /// its call-site-compiled body re-anchors (idempotent; recurses base layers).</summary>
+        private static void AttachImportOrigin(DefinitionItem definition, ImportOrigin origin)
+        {
+            for (var d = definition; d != null; d = d.BaseDefinition)
+            {
+                if (d.Context != null && d.Context.ImportOrigin == null)
+                    d.Context.ImportOrigin = origin;
+            }
         }
     }
 }

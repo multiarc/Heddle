@@ -1,11 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using Microsoft.CodeAnalysis;
 using Microsoft.CSharp.RuntimeBinder;
 using Microsoft.Extensions.DependencyModel;
 using Heddle.Helpers;
@@ -18,35 +17,31 @@ namespace Heddle.Native
         private static readonly string NetStandardAssemblyFullName =
             "netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51";
 #endif
-        
+
         private static volatile DependencyContext _dependencyContext;
 
-        private static readonly ConcurrentDictionary<AssemblyName, Tuple<Assembly, MetadataReference>> AssemblyCache =
-            new ConcurrentDictionary<AssemblyName, Tuple<Assembly, MetadataReference>>(AssemblyNameEqualityComparer.Instance);
+        // Phase 9 D4: the assembly registry carries no Microsoft.CodeAnalysis type — the metadata-reference concern
+        // moved to RoslynReferenceProvider (reached only past the C#-tier feature switch), so the trimmer can drop
+        // the whole Roslyn graph. The cache value is simply the deduped assembly.
+        private static readonly ConcurrentDictionary<AssemblyName, Assembly> AssemblyCache =
+            new ConcurrentDictionary<AssemblyName, Assembly>(AssemblyNameEqualityComparer.Instance);
 
-        private static readonly List<MetadataReference> MetadataReferences;
         private static readonly List<Assembly> Assemblies;
 
         private static void WalkReferenceAssemblies(Assembly current)
         {
-            var currentInfo = new Tuple<Assembly, MetadataReference>(current, CreateMetadataFileReference(current));
-            if (AssemblyCache.TryAdd(current.GetName(), currentInfo))
+            if (AssemblyCache.TryAdd(current.GetName(), current))
             {
                 lock (Assemblies)
                 {
-                    Assemblies.Add(currentInfo.Item1);
-                    MetadataReferences.Add(currentInfo.Item2);
+                    Assemblies.Add(current);
                     foreach (var assemblyName in current.GetReferencedAssemblies())
                     {
                         AssemblyLoadSafe(assemblyName, (dependent) =>
                         {
-                            var dependentInfo =
-                                new Tuple<Assembly, MetadataReference>(dependent,
-                                    CreateMetadataFileReference(dependent));
-                            if (AssemblyCache.TryAdd(dependent.GetName(), dependentInfo))
+                            if (AssemblyCache.TryAdd(dependent.GetName(), dependent))
                             {
-                                MetadataReferences.Add(dependentInfo.Item2);
-                                Assemblies.Add(dependentInfo.Item1);
+                                Assemblies.Add(dependent);
                                 WalkReferenceAssemblies(dependent);
                             }
                         });
@@ -80,6 +75,72 @@ namespace Heddle.Native
         public static IReadOnlyList<Assembly> GetAssemblies()
         {
             return Assemblies;
+        }
+
+        private static readonly List<Assembly> ModelAssemblies = new List<Assembly>();
+        private static readonly List<AssemblyName> ModelNames = new List<AssemblyName>();
+
+        /// <summary>
+        /// Phase 6 D14/D3: adds the workspace model assemblies to the static assembly list so engine
+        /// type resolution (<see cref="ReflectionHelper.ResolveType(string, ICollection{string})"/>) can see their
+        /// types, invalidates the type caches and reconfigures the name maps. The registration is tracked so
+        /// <see cref="UnregisterModelAssemblies"/> can remove exactly these entries on reload — otherwise the
+        /// static caches would pin a collectible model <c>AssemblyLoadContext</c> forever (the reload-leak root).
+        /// </summary>
+        public static void RegisterModelAssemblies(IReadOnlyList<Assembly> assemblies)
+        {
+            if (assemblies == null)
+                throw new ArgumentNullException(nameof(assemblies));
+
+            lock (Assemblies)
+            {
+                foreach (var assembly in assemblies)
+                {
+                    if (assembly == null)
+                        continue;
+                    var name = assembly.GetName();
+                    if (!AssemblyCache.TryAdd(name, assembly))
+                        continue;
+                    Assemblies.Add(assembly);
+                    ModelAssemblies.Add(assembly);
+                    ModelNames.Add(name);
+                }
+
+                InvalidateTypeCaches();
+            }
+
+            ReflectionHelper.Reconfigure();
+        }
+
+        /// <summary>
+        /// Phase 6 D14/D3: removes every assembly registered by <see cref="RegisterModelAssemblies"/> from the
+        /// static lists and cache, invalidates the type caches and reconfigures — clearing the engine-side
+        /// references so a collectible model context can actually collect after <c>Unload()</c>. C#-tier metadata
+        /// references are held only in a weak per-assembly cache (RoslynReferenceProvider) and need no eviction here.
+        /// </summary>
+        public static void UnregisterModelAssemblies()
+        {
+            lock (Assemblies)
+            {
+                foreach (var assembly in ModelAssemblies)
+                    Assemblies.Remove(assembly);
+                foreach (var name in ModelNames)
+                    AssemblyCache.TryRemove(name, out _);
+                ModelAssemblies.Clear();
+                ModelNames.Clear();
+
+                InvalidateTypeCaches();
+            }
+
+            ReflectionHelper.Reconfigure();
+        }
+
+        private static void InvalidateTypeCaches()
+        {
+            _allTypes = null;
+            _allTypesByCustomAttribute = null;
+            _exportedTypesByCustomAttribute = null;
+            AssemblyExportedTypes.Clear();
         }
 
         private static readonly object LockObj = new object();
@@ -260,7 +321,6 @@ namespace Heddle.Native
         {
             var mainAppAssembly = Assembly.GetEntryAssembly();
 
-            MetadataReferences = new List<MetadataReference>();
             Assemblies = new List<Assembly>();
 
             if (mainAppAssembly != null)
@@ -276,7 +336,7 @@ namespace Heddle.Native
             AssemblyLoadSafe(new AssemblyName(NetStandardAssemblyFullName), WalkReferenceAssemblies);
 #endif
             WalkReferenceAssemblies(typeof(CSharpArgumentInfo).GetTypeInfo().Assembly);
-            GetApplicationReferences();
+            EnsureApplicationAssembliesWalked();
         }
 
         private static bool _configured;
@@ -288,20 +348,15 @@ namespace Heddle.Native
                 _dependencyContext = DependencyContext.Load(startupAssembly);
                 _applicationAssembly = startupAssembly;
                 WalkReferenceAssemblies(startupAssembly);
-                GetApplicationReferences();
+                EnsureApplicationAssembliesWalked();
                 _configured = true;
                 ReflectionHelper.Reconfigure();
             }
         }
 
-        private static MetadataReference CreateMetadataFileReference(Assembly asm)
-        {
-            var moduleMetadata = ModuleMetadata.CreateFromFile(asm.Location);
-            var metadata = AssemblyMetadata.Create(moduleMetadata);
-            return metadata.GetReference(filePath: asm.FullName);
-        }
-
-        internal static List<MetadataReference> GetApplicationReferences()
+        /// <summary>Walks the app's dependency-context default assemblies into the registry (the non-Roslyn half of
+        /// the former <c>GetApplicationReferences</c> warm-up). Roslyn-free, so it stays on the reachable path.</summary>
+        private static void EnsureApplicationAssembliesWalked()
         {
             if (_dependencyContext != null && !_configured)
             {
@@ -313,8 +368,16 @@ namespace Heddle.Native
                     }
                 }
             }
+        }
 
-            return MetadataReferences;
+        /// <summary>Phase 9 D4: the sole Roslyn-typed member of the assembly-helper surface. Called only from the
+        /// C#-tier compile paths behind the <c>Heddle.CSharpTierEnabled</c> switch, so a trimmed publish that turns
+        /// the switch off makes this (and <see cref="RoslynReferenceProvider"/>) dead — the whole
+        /// <c>Microsoft.CodeAnalysis</c> graph drops out of the bundle.</summary>
+        internal static List<Microsoft.CodeAnalysis.MetadataReference> GetApplicationReferences()
+        {
+            EnsureApplicationAssembliesWalked();
+            return RoslynReferenceProvider.Build(Assemblies);
         }
 
         private static readonly ConcurrentDictionary<string, AssemblyName> AssemblyNameCache = new ConcurrentDictionary<string, AssemblyName>();

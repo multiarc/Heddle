@@ -1,0 +1,829 @@
+TYPE Heddle.Attributes.ChainedTypeAttribute : System.Attribute
+  CTOR(System.Type)
+  PROP System.Type DataType {get;}
+TYPE Heddle.Attributes.DataTypeAttribute : System.Attribute
+  CTOR(System.Type)
+  PROP System.Type DataType {get;}
+TYPE Heddle.Attributes.EncodeOutputAttribute : System.Attribute
+  CTOR()
+TYPE Heddle.Attributes.ExportExtensionsAttribute : System.Attribute
+  CTOR()
+  CTOR(System.Type)
+  CTOR(System.Type[])
+  PROP System.Boolean All {get;}
+  PROP System.Collections.Generic.IReadOnlyCollection<System.Type> Extensions {get;}
+TYPE Heddle.Attributes.ExportFunctionsAttribute : System.Attribute
+  CTOR(System.Type)
+  CTOR(System.Type[])
+  PROP System.Collections.Generic.IReadOnlyCollection<System.Type> Containers {get;}
+TYPE Heddle.Attributes.ExtensionNameAttribute : System.Attribute
+  CTOR(System.String)
+  PROP System.String Name {get;}
+TYPE Heddle.Attributes.ExtensionReplaceAttribute : System.Attribute
+  CTOR()
+TYPE Heddle.Attributes.HiddenAttribute : System.Attribute
+  CTOR()
+TYPE Heddle.Attributes.NotEncodeAttribute : System.Attribute
+  CTOR()
+TYPE Heddle.Attributes.OptionsAttribute : System.Attribute
+  CTOR(System.String)
+  PROP System.String FieldName {get;}
+TYPE Heddle.Attributes.ScopeChannelAttribute : System.Attribute
+  CTOR()
+TYPE Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void CompleteInit(Heddle.Runtime.CompileScope, Heddle.Language.ParseContext)
+  METHOD System.Void Dispose()
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+  METHOD System.Void SetUpRenderType(Heddle.Data.RenderType)
+  PROP Heddle.Strings.Core.BlockPosition Position {get;set;}
+TYPE Heddle.Core.AbstractHtmlExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+TYPE Heddle.Core.InitContext : System.ValueType
+  CTOR(System.String, Heddle.Runtime.CompileScope, Heddle.Language.ParseContext)
+  FIELD Heddle.Language.ParseContext ParseContext
+  FIELD Heddle.Runtime.CompileScope CompileScope
+  FIELD System.String ParameterTemplate
+TYPE Heddle.Data.BranchState : System.ValueType
+  CTOR(System.Boolean)
+  FIELD System.String ReservedKey
+  PROP System.Boolean Satisfied {get;}
+TYPE Heddle.Data.CompileError
+  METHOD Heddle.Data.HeddleCompileError ToError(System.Exception, Heddle.Strings.Core.BlockPosition)
+  METHOD Heddle.Data.HeddleCompileError ToError(System.Exception, Heddle.Strings.Core.BlockPosition, System.String)
+  METHOD Heddle.Data.HeddleCompileError ToError(System.String, Heddle.Strings.Core.BlockPosition)
+  METHOD Heddle.Data.HeddleCompileError ToError(System.String, Heddle.Strings.Core.BlockPosition, System.String)
+TYPE Heddle.Data.ExType
+  CTOR(System.String, System.Collections.Generic.ICollection<System.String>)
+  CTOR(System.String, System.String[])
+  CTOR(System.Type)
+  CTOR(System.Type, System.String)
+  METHOD System.Boolean Equals(Heddle.Data.ExType)
+  METHOD System.Boolean Equals(Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Boolean Equals(System.Object)
+  METHOD System.Int32 GetHashCode()
+  METHOD System.String ToString()
+  PROP Heddle.Data.ExType Dynamic {get;}
+  PROP System.Boolean IsDynamic {get;}
+  PROP System.Type Type {get;}
+TYPE Heddle.Data.ExpressionMode : System.Enum
+  FIELD Heddle.Data.ExpressionMode FullCSharp
+  FIELD Heddle.Data.ExpressionMode MemberPathsOnly
+  FIELD Heddle.Data.ExpressionMode Native
+  FIELD System.Int32 value__
+TYPE Heddle.Data.HeddleCompileError
+  CTOR()
+  METHOD System.String ToString()
+  METHOD System.String ToString(System.Int32, System.Int32, System.Int32)
+  PROP Heddle.Data.LinePosition LinePosition {get;}
+  PROP Heddle.Strings.Core.BlockPosition Position {get;set;}
+  PROP System.Exception Exception {get;set;}
+  PROP System.String DiagnosticId {get;set;}
+  PROP System.String Error {get;set;}
+TYPE Heddle.Data.HeddleCompileResult
+  CTOR(System.Boolean, System.String, Heddle.Language.ParseContext)
+  METHOD System.String ToString()
+  PROP Heddle.Language.ParseContext Context {get;}
+  PROP System.Boolean Success {get;}
+  PROP System.Collections.Generic.IReadOnlyCollection<Heddle.Data.HeddleCompileError> ErrorList {get;}
+  PROP System.String Document {get;}
+TYPE Heddle.Data.HeddleCompileWarning : Heddle.Data.HeddleCompileError
+  CTOR()
+  PROP System.String Fix {get;set;}
+TYPE Heddle.Data.HeddleDiagnosticIds
+  FIELD System.String AmbiguousFunctionCall
+  FIELD System.String BinaryOperatorNotDefined
+  FIELD System.String BranchTextStripped
+  FIELD System.String CoalesceLeftNotNullable
+  FIELD System.String DefinitionHasNoProps
+  FIELD System.String DefinitionRendersTwice
+  FIELD System.String DuplicatePropArgument
+  FIELD System.String DuplicatePropDeclaration
+  FIELD System.String ElifWithoutIf
+  FIELD System.String ElseConditionIgnored
+  FIELD System.String ElseWithoutIf
+  FIELD System.String ExtensionCalledAsFunction
+  FIELD System.String ExtensionNotFound
+  FIELD System.String FormatArgumentCountMismatch
+  FIELD System.String FunctionRequiresExpressionArguments
+  FIELD System.String FunctionShadowedByExtension
+  FIELD System.String IndexerNotFound
+  FIELD System.String InvalidSlotDeclaration
+  FIELD System.String LogicalOperatorRequiresBool
+  FIELD System.String MethodCallNotAvailable
+  FIELD System.String MissingRequiredProp
+  FIELD System.String MultipleSlotDeclarations
+  FIELD System.String NamedArgumentsNotSupported
+  FIELD System.String NativeExpressionsDisabled
+  FIELD System.String NoFunctionOverload
+  FIELD System.String ProfileDirectiveAfterOutput
+  FIELD System.String PropDefaultNotConvertible
+  FIELD System.String PropRedeclarationMismatch
+  FIELD System.String PropShadowsModelMember
+  FIELD System.String PropTypeMismatch
+  FIELD System.String PropertyNotFound
+  FIELD System.String RangeStepNotPositive
+  FIELD System.String RedundantEncodingExtension
+  FIELD System.String ReservedPropName
+  FIELD System.String ReturnTypeMismatch
+  FIELD System.String SlotValueRequired
+  FIELD System.String SlotValueTypeMismatch
+  FIELD System.String SlotValueWithBody
+  FIELD System.String SlotValueWithoutSlot
+  FIELD System.String SyntaxError
+  FIELD System.String TernaryArmsNoCommonType
+  FIELD System.String TernaryConditionNotBool
+  FIELD System.String TypedModelRequired
+  FIELD System.String UnaryOperatorNotDefined
+  FIELD System.String UnknownFunction
+  FIELD System.String UnknownOutputProfile
+  FIELD System.String UnknownProp
+  FIELD System.String UnresolvedPropType
+TYPE Heddle.Data.HtmlEncodedRenderer impl Heddle.Data.IScopeRenderer, Heddle.Data.ISpanScopeRenderer
+  CTOR(Heddle.Data.IScopeRenderer)
+  METHOD System.Void Render(System.ReadOnlySpan<System.Char>)
+  METHOD System.Void Render(System.String)
+TYPE Heddle.Data.IScopeRenderer
+  METHOD System.String ToString()
+  METHOD System.Void Render(System.String)
+TYPE Heddle.Data.ISpanScopeRenderer impl Heddle.Data.IScopeRenderer
+  METHOD System.Void Render(System.ReadOnlySpan<System.Char>)
+TYPE Heddle.Data.IUtf8ScopeRenderer impl Heddle.Data.IScopeRenderer, Heddle.Data.ISpanScopeRenderer
+  METHOD System.Void RenderUtf8(System.ReadOnlySpan<System.Byte>)
+TYPE Heddle.Data.LinePosition
+  CTOR()
+  METHOD System.String ToString()
+  PROP System.Int32 Line {get;set;}
+  PROP System.Int32 LineLength {get;set;}
+  PROP System.Int32 Offset {get;set;}
+TYPE Heddle.Data.OutputProfile : System.Enum
+  FIELD Heddle.Data.OutputProfile Html
+  FIELD Heddle.Data.OutputProfile Text
+  FIELD System.Int32 value__
+TYPE Heddle.Data.PrecompiledMismatchPolicy : System.Enum
+  FIELD Heddle.Data.PrecompiledMismatchPolicy Fallback
+  FIELD Heddle.Data.PrecompiledMismatchPolicy Strict
+  FIELD System.Int32 value__
+TYPE Heddle.Data.RenderType : System.Enum
+  FIELD Heddle.Data.RenderType Encode
+  FIELD Heddle.Data.RenderType Raw
+  FIELD System.Int32 value__
+TYPE Heddle.Data.Scope : System.ValueType
+  FIELD Heddle.Data.IScopeRenderer Renderer
+  FIELD Heddle.Data.Scope Null
+  FIELD System.Object CallerData
+  FIELD System.Object ChainedData
+  FIELD System.Object ModelData
+  FIELD System.Object ParentModelData
+  METHOD Heddle.Data.Scope Chain(System.Object)
+  METHOD Heddle.Data.Scope Model(System.Object)
+  METHOD Heddle.Data.Scope Model(System.Object, System.Object)
+  METHOD Heddle.Data.Scope Parent()
+  METHOD Heddle.Data.Scope Parent(System.Object)
+  METHOD Heddle.Data.Scope RenderProxy(Heddle.Data.IScopeRenderer)
+  METHOD System.Boolean TryRead(System.String, out System.Object)
+  METHOD System.Void Publish(System.String, System.Object)
+TYPE Heddle.Data.ScopeRenderer impl Heddle.Data.IScopeRenderer
+  CTOR(System.Int32)
+  METHOD System.String ToString()
+  METHOD System.Void Clear()
+  METHOD System.Void Render(System.String)
+  PROP System.Int32 TotalLength {get;}
+TYPE Heddle.Data.ScopeRendererExtensions
+  METHOD System.Void Render(Heddle.Data.IScopeRenderer, System.ReadOnlySpan<System.Char>)
+  METHOD System.Void Render(Heddle.Data.IScopeRenderer, T, System.String, System.IFormatProvider)
+TYPE Heddle.Data.TemplateOptions
+  CTOR()
+  CTOR(Heddle.Data.TemplateOptions, System.String)
+  CTOR(System.String)
+  METHOD System.Boolean Equals(Heddle.Data.TemplateOptions)
+  METHOD System.Boolean Equals(System.Object)
+  METHOD System.Int32 GetHashCode()
+  PROP Heddle.Data.ExpressionMode ExpressionMode {get;set;}
+  PROP Heddle.Data.OutputProfile OutputProfile {get;set;}
+  PROP Heddle.Data.PrecompiledMismatchPolicy PrecompiledMismatchPolicy {get;set;}
+  PROP Heddle.Runtime.Expressions.FunctionRegistry Functions {get;set;}
+  PROP System.Boolean AllowCSharp {get;set;}
+  PROP System.Boolean EnableFileChangeCheck {get;set;}
+  PROP System.Boolean ProvideLanguageFeatures {get;set;}
+  PROP System.Boolean TrimDirectiveLines {get;set;}
+  PROP System.Int32 MaxRecursionCount {get;set;}
+  PROP System.Object Data {get;set;}
+  PROP System.String FileNamePostfix {get;set;}
+  PROP System.String FullPath {get;}
+  PROP System.String RootPath {get;set;}
+  PROP System.String TemplateName {get;}
+TYPE Heddle.Data.TemplatePathType : System.Enum
+  FIELD Heddle.Data.TemplatePathType Master
+  FIELD Heddle.Data.TemplatePathType None
+  FIELD Heddle.Data.TemplatePathType PartialView
+  FIELD Heddle.Data.TemplatePathType View
+  FIELD System.Int32 value__
+TYPE Heddle.Data.TextWriterScopeRenderer impl Heddle.Data.IScopeRenderer, Heddle.Data.ISpanScopeRenderer
+  CTOR(System.IO.TextWriter)
+  METHOD System.Void Render(System.ReadOnlySpan<System.Char>)
+  METHOD System.Void Render(System.String)
+TYPE Heddle.Data.Utf8ScopeRenderer impl Heddle.Data.IScopeRenderer, Heddle.Data.ISpanScopeRenderer, Heddle.Data.IUtf8ScopeRenderer
+  CTOR(System.Buffers.IBufferWriter<System.Byte>)
+  METHOD System.Void Render(System.ReadOnlySpan<System.Char>)
+  METHOD System.Void Render(System.String)
+  METHOD System.Void RenderUtf8(System.ReadOnlySpan<System.Byte>)
+TYPE Heddle.Exceptions.TemplateCompileException : System.Exception
+  CTOR(Heddle.Data.HeddleCompileError)
+  CTOR(System.Collections.Generic.IEnumerable<Heddle.Data.HeddleCompileError>)
+  CTOR(System.String, System.Collections.Generic.IEnumerable<Heddle.Data.HeddleCompileError>)
+  CTOR(System.String, System.Exception, Heddle.Data.HeddleCompileError)
+  METHOD System.String ToString()
+  PROP System.Collections.Generic.List<Heddle.Data.HeddleCompileError> Errors {get;}
+TYPE Heddle.Exceptions.TemplateCreateException : System.Exception
+  CTOR()
+  CTOR(System.String)
+  CTOR(System.String, System.Exception)
+TYPE Heddle.Exceptions.TemplateFileException : System.Exception
+  CTOR()
+  CTOR(System.String)
+  CTOR(System.String, System.Exception)
+TYPE Heddle.Exceptions.TemplateInitException : System.Exception
+  CTOR()
+  CTOR(System.String)
+  CTOR(System.String, System.Exception)
+  CTOR(System.String, System.Exception, Heddle.Strings.Core.BlockPosition)
+  PROP Heddle.Strings.Core.BlockPosition BlockPosition {get;}
+TYPE Heddle.Exceptions.TemplateOverrideException : System.Exception
+  CTOR()
+  CTOR(System.String)
+  CTOR(System.String, System.Exception)
+TYPE Heddle.Exceptions.TemplateParseException : Heddle.Exceptions.TemplateCompileException
+  CTOR(Heddle.Data.HeddleCompileError)
+  CTOR(System.Collections.Generic.IEnumerable<Heddle.Data.HeddleCompileError>)
+  CTOR(System.String, System.Collections.Generic.IEnumerable<Heddle.Data.HeddleCompileError>)
+  CTOR(System.String, System.Exception, Heddle.Data.HeddleCompileError)
+TYPE Heddle.Exceptions.TemplateProcessingException : System.Exception
+  CTOR()
+  CTOR(System.String)
+  CTOR(System.String, System.Exception)
+TYPE Heddle.Extensions.DateExtension : Heddle.Core.AbstractHtmlExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+TYPE Heddle.Extensions.ElifExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+TYPE Heddle.Extensions.ElseExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+TYPE Heddle.Extensions.EmptyExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+TYPE Heddle.Extensions.EmptyHtmlExtension : Heddle.Core.AbstractHtmlExtension impl Heddle.Runtime.IExtension
+  CTOR()
+TYPE Heddle.Extensions.ForIndexExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+TYPE Heddle.Extensions.GuidExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+TYPE Heddle.Extensions.IfExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+TYPE Heddle.Extensions.IfNotExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+TYPE Heddle.Extensions.ImportExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+TYPE Heddle.Extensions.IntegerExtension : Heddle.Core.AbstractHtmlExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+TYPE Heddle.Extensions.ListExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+TYPE Heddle.Extensions.ModelExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+TYPE Heddle.Extensions.MoneyExtension : Heddle.Core.AbstractHtmlExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+TYPE Heddle.Extensions.OutExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+TYPE Heddle.Extensions.ParamExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+TYPE Heddle.Extensions.PartialExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void CompleteInit(Heddle.Runtime.CompileScope, Heddle.Language.ParseContext)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+TYPE Heddle.Extensions.ProfileExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+TYPE Heddle.Extensions.StringExtension : Heddle.Core.AbstractHtmlExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+TYPE Heddle.Extensions.SwapExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+TYPE Heddle.Extensions.TimeExtension : Heddle.Core.AbstractHtmlExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+TYPE Heddle.Extensions.UsingExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+TYPE Heddle.FileReader
+  CTOR(Heddle.Data.TemplateOptions)
+  METHOD System.String GetFileName()
+  METHOD System.String ReadEntireFile()
+TYPE Heddle.HeddleTemplate impl Heddle.IHeddleTemplate
+  CTOR()
+  CTOR(Heddle.Data.TemplateOptions)
+  CTOR(Heddle.Data.TemplateOptions, Heddle.Data.ExType)
+  CTOR(Heddle.Runtime.CompileContext)
+  CTOR(System.String, Heddle.Runtime.CompileContext)
+  EVENT System.IO.FileSystemEventHandler OnFileChanged
+  EVENT System.IO.FileSystemEventHandler OnFileDeleted
+  EVENT System.IO.RenamedEventHandler OnFileRenamed
+  METHOD Heddle.Data.HeddleCompileResult Compile(Heddle.Runtime.CompileContext)
+  METHOD Heddle.Data.HeddleCompileResult Compile(System.String, Heddle.Data.ExType)
+  METHOD Heddle.Data.HeddleCompileResult Recompile(Heddle.Data.ExType)
+  METHOD Heddle.Data.HeddleCompileResult Recompile(System.String, Heddle.Runtime.CompileContext)
+  METHOD Heddle.Data.HeddleCompileResult TryCompilation(Heddle.Runtime.CompileContext)
+  METHOD Heddle.Data.HeddleCompileResult TryCompilation(System.String, Heddle.Data.TemplateOptions, Heddle.Data.ExType)
+  METHOD System.String Generate(System.Object, System.Object, System.Object)
+  METHOD System.Void Configure(System.Reflection.Assembly)
+  METHOD System.Void Dispose()
+  METHOD System.Void Generate(System.Object, System.Buffers.IBufferWriter<System.Byte>, System.Object, System.Object)
+  METHOD System.Void Generate(System.Object, System.IO.TextWriter, System.Object, System.Object)
+  PROP Heddle.Data.HeddleCompileResult CompileResult {get;}
+  PROP Heddle.Runtime.CompileContext Context {get;}
+  PROP System.Boolean Compiled {get;}
+  PROP System.Boolean Empty {get;}
+TYPE Heddle.IHeddleTemplate
+  EVENT System.IO.FileSystemEventHandler OnFileChanged
+  EVENT System.IO.FileSystemEventHandler OnFileDeleted
+  EVENT System.IO.RenamedEventHandler OnFileRenamed
+  METHOD Heddle.Data.HeddleCompileResult Compile(Heddle.Runtime.CompileContext)
+  METHOD Heddle.Data.HeddleCompileResult Compile(System.String, Heddle.Data.ExType)
+  METHOD Heddle.Data.HeddleCompileResult Recompile(Heddle.Data.ExType)
+  METHOD Heddle.Data.HeddleCompileResult Recompile(System.String, Heddle.Runtime.CompileContext)
+  METHOD Heddle.Data.HeddleCompileResult TryCompilation(Heddle.Runtime.CompileContext)
+  METHOD Heddle.Data.HeddleCompileResult TryCompilation(System.String, Heddle.Data.TemplateOptions, Heddle.Data.ExType)
+  METHOD System.String Generate(System.Object, System.Object, System.Object)
+  PROP Heddle.Data.HeddleCompileResult CompileResult {get;}
+  PROP Heddle.Runtime.CompileContext Context {get;}
+  PROP System.Boolean Compiled {get;}
+  PROP System.Boolean Empty {get;}
+TYPE Heddle.Language.CallParameter
+  CTOR()
+  PROP Heddle.Language.Expressions.ExprNode NativeExpression {get;set;}
+  PROP System.Boolean IsModelTypeParameter {get;}
+  PROP System.Boolean RootReference {get;set;}
+  PROP System.Collections.Generic.IReadOnlyList<Heddle.Language.NamedArgument> PropArguments {get;set;}
+  PROP System.Collections.Generic.List<Heddle.Language.OutputItem> ChainParameter {get;set;}
+  PROP System.String CSharpExpression {get;set;}
+  PROP System.String[] ModelParameter {get;set;}
+TYPE Heddle.Language.DefinitionBlock
+  CTOR(Heddle.Language.DefinitionBlock)
+  METHOD System.Void AddNewBlockPosition(Heddle.Strings.Core.BlockPosition)
+  PROP System.Collections.Generic.Dictionary<System.String, Heddle.Language.DefinitionItem> Definitions {get;}
+  PROP System.Collections.Generic.List<Heddle.Strings.Core.BlockPosition> Positions {get;}
+TYPE Heddle.Language.DefinitionItem
+  CTOR(System.String, System.String, Heddle.Language.DefinitionItem, System.String)
+  METHOD System.Void OverrideWith(Heddle.Language.DefinitionItem)
+  PROP Heddle.Language.DefinitionItem BaseDefinition {get;}
+  PROP Heddle.Language.ParseContext Context {get;set;}
+  PROP Heddle.Strings.Core.BlockPosition Position {get;set;}
+  PROP System.Boolean FullOverride {get;set;}
+  PROP System.Boolean HasDefaultOutput {get;}
+  PROP System.Collections.Generic.IReadOnlyList<Heddle.Language.PropDeclaration> PropDeclarations {get;}
+  PROP System.String ModelType {get;}
+  PROP System.String Name {get;}
+  PROP System.String ParameterTemplate {get;}
+  PROP System.String SlotTypeName {get;}
+TYPE Heddle.Language.DocumentParser
+  METHOD Heddle.Language.ParseContext Parse(System.String, Heddle.Language.ParserSettings, out System.String)
+  METHOD Heddle.Language.ParseContext Parse(System.String, Heddle.Runtime.CompileContext, out System.String)
+  METHOD System.String Parse(System.String, Heddle.Language.ParseContext, Heddle.Language.ParserSettings)
+  METHOD System.String Parse(System.String, Heddle.Language.ParseContext, Heddle.Runtime.CompileContext)
+TYPE Heddle.Language.Expressions.BinaryNode : Heddle.Language.Expressions.ExprNode
+  CTOR(Heddle.Language.Expressions.ExprOperator, Heddle.Language.Expressions.ExprNode, Heddle.Language.Expressions.ExprNode, Heddle.Strings.Core.BlockPosition)
+  PROP Heddle.Language.Expressions.ExprNode Left {get;}
+  PROP Heddle.Language.Expressions.ExprNode Right {get;}
+  PROP Heddle.Language.Expressions.ExprOperator Operator {get;}
+TYPE Heddle.Language.Expressions.CallNode : Heddle.Language.Expressions.ExprNode
+  CTOR(System.String, System.Collections.Generic.IReadOnlyList<Heddle.Language.Expressions.ExprNode>, Heddle.Strings.Core.BlockPosition)
+  PROP System.Collections.Generic.IReadOnlyList<Heddle.Language.Expressions.ExprNode> Arguments {get;}
+  PROP System.String Name {get;}
+TYPE Heddle.Language.Expressions.ExprNode
+  PROP Heddle.Strings.Core.BlockPosition Position {get;}
+TYPE Heddle.Language.Expressions.ExprOperator : System.Enum
+  FIELD Heddle.Language.Expressions.ExprOperator Add
+  FIELD Heddle.Language.Expressions.ExprOperator And
+  FIELD Heddle.Language.Expressions.ExprOperator AndAlso
+  FIELD Heddle.Language.Expressions.ExprOperator Coalesce
+  FIELD Heddle.Language.Expressions.ExprOperator Divide
+  FIELD Heddle.Language.Expressions.ExprOperator Equal
+  FIELD Heddle.Language.Expressions.ExprOperator ExclusiveOr
+  FIELD Heddle.Language.Expressions.ExprOperator GreaterThan
+  FIELD Heddle.Language.Expressions.ExprOperator GreaterThanOrEqual
+  FIELD Heddle.Language.Expressions.ExprOperator LeftShift
+  FIELD Heddle.Language.Expressions.ExprOperator LessThan
+  FIELD Heddle.Language.Expressions.ExprOperator LessThanOrEqual
+  FIELD Heddle.Language.Expressions.ExprOperator Modulo
+  FIELD Heddle.Language.Expressions.ExprOperator Multiply
+  FIELD Heddle.Language.Expressions.ExprOperator Negate
+  FIELD Heddle.Language.Expressions.ExprOperator Not
+  FIELD Heddle.Language.Expressions.ExprOperator NotEqual
+  FIELD Heddle.Language.Expressions.ExprOperator OnesComplement
+  FIELD Heddle.Language.Expressions.ExprOperator Or
+  FIELD Heddle.Language.Expressions.ExprOperator OrElse
+  FIELD Heddle.Language.Expressions.ExprOperator RightShift
+  FIELD Heddle.Language.Expressions.ExprOperator Subtract
+  FIELD Heddle.Language.Expressions.ExprOperator UnaryPlus
+  FIELD System.Int32 value__
+TYPE Heddle.Language.Expressions.IndexNode : Heddle.Language.Expressions.ExprNode
+  CTOR(Heddle.Language.Expressions.ExprNode, System.Collections.Generic.IReadOnlyList<Heddle.Language.Expressions.ExprNode>, Heddle.Strings.Core.BlockPosition)
+  PROP Heddle.Language.Expressions.ExprNode Target {get;}
+  PROP System.Collections.Generic.IReadOnlyList<Heddle.Language.Expressions.ExprNode> Arguments {get;}
+TYPE Heddle.Language.Expressions.LiteralNode : Heddle.Language.Expressions.ExprNode
+  CTOR(System.Object, Heddle.Strings.Core.BlockPosition)
+  PROP System.Object Value {get;}
+TYPE Heddle.Language.Expressions.MethodCallNode : Heddle.Language.Expressions.ExprNode
+  CTOR(Heddle.Language.Expressions.ExprNode, System.String, System.Collections.Generic.IReadOnlyList<Heddle.Language.Expressions.ExprNode>, Heddle.Strings.Core.BlockPosition)
+  PROP Heddle.Language.Expressions.ExprNode Target {get;}
+  PROP System.Collections.Generic.IReadOnlyList<Heddle.Language.Expressions.ExprNode> Arguments {get;}
+  PROP System.String Name {get;}
+TYPE Heddle.Language.Expressions.PathNode : Heddle.Language.Expressions.ExprNode
+  CTOR(System.Boolean, System.Collections.Generic.IReadOnlyList<System.String>, Heddle.Language.Expressions.ExprNode, Heddle.Strings.Core.BlockPosition)
+  PROP Heddle.Language.Expressions.ExprNode Target {get;}
+  PROP System.Boolean RootRef {get;}
+  PROP System.Collections.Generic.IReadOnlyList<System.String> Segments {get;}
+TYPE Heddle.Language.Expressions.TernaryNode : Heddle.Language.Expressions.ExprNode
+  CTOR(Heddle.Language.Expressions.ExprNode, Heddle.Language.Expressions.ExprNode, Heddle.Language.Expressions.ExprNode, Heddle.Strings.Core.BlockPosition)
+  PROP Heddle.Language.Expressions.ExprNode Condition {get;}
+  PROP Heddle.Language.Expressions.ExprNode WhenFalse {get;}
+  PROP Heddle.Language.Expressions.ExprNode WhenTrue {get;}
+TYPE Heddle.Language.Expressions.ThisNode : Heddle.Language.Expressions.ExprNode
+  CTOR(Heddle.Strings.Core.BlockPosition)
+TYPE Heddle.Language.Expressions.UnaryNode : Heddle.Language.Expressions.ExprNode
+  CTOR(Heddle.Language.Expressions.ExprOperator, Heddle.Language.Expressions.ExprNode, Heddle.Strings.Core.BlockPosition)
+  PROP Heddle.Language.Expressions.ExprNode Operand {get;}
+  PROP Heddle.Language.Expressions.ExprOperator Operator {get;}
+TYPE Heddle.Language.HeddleToken
+  CTOR()
+  PROP Heddle.Language.HeddleTokenType HeddleTokenType {get;set;}
+  PROP Heddle.Strings.Core.BlockPosition Position {get;set;}
+TYPE Heddle.Language.HeddleTokenType : System.Enum
+  FIELD Heddle.Language.HeddleTokenType CSharpStart
+  FIELD Heddle.Language.HeddleTokenType CSharpToken
+  FIELD Heddle.Language.HeddleTokenType Comment
+  FIELD Heddle.Language.HeddleTokenType DefClose
+  FIELD Heddle.Language.HeddleTokenType DefEndName
+  FIELD Heddle.Language.HeddleTokenType DefOutputOnEnd
+  FIELD Heddle.Language.HeddleTokenType DefStart
+  FIELD Heddle.Language.HeddleTokenType DefStartName
+  FIELD Heddle.Language.HeddleTokenType DefType
+  FIELD Heddle.Language.HeddleTokenType Delim
+  FIELD Heddle.Language.HeddleTokenType FunctionName
+  FIELD Heddle.Language.HeddleTokenType Id
+  FIELD Heddle.Language.HeddleTokenType LineTerminate
+  FIELD Heddle.Language.HeddleTokenType Literal
+  FIELD Heddle.Language.HeddleTokenType MemberSelector
+  FIELD Heddle.Language.HeddleTokenType Operator
+  FIELD Heddle.Language.HeddleTokenType Out
+  FIELD Heddle.Language.HeddleTokenType OutParamEnd
+  FIELD Heddle.Language.HeddleTokenType OutParamStart
+  FIELD Heddle.Language.HeddleTokenType ParseError
+  FIELD Heddle.Language.HeddleTokenType RootReference
+  FIELD Heddle.Language.HeddleTokenType SubClose
+  FIELD Heddle.Language.HeddleTokenType SubStart
+  FIELD System.Int32 value__
+TYPE Heddle.Language.NamedArgument
+  CTOR(System.String, Heddle.Language.Expressions.ExprNode, Heddle.Strings.Core.BlockPosition)
+  PROP Heddle.Language.Expressions.ExprNode Value {get;}
+  PROP Heddle.Strings.Core.BlockPosition Position {get;}
+  PROP System.String Name {get;}
+TYPE Heddle.Language.OutputChain
+  CTOR(Heddle.Language.ParseContext)
+  PROP Heddle.Language.ParseContext Context {get;set;}
+  PROP Heddle.Strings.Core.BlockPosition BlockPosition {get;set;}
+  PROP System.Collections.Generic.List<Heddle.Language.OutputItem> Chain {get;set;}
+TYPE Heddle.Language.OutputItem
+  CTOR(System.String, Heddle.Strings.Core.BlockPosition, System.String)
+  PROP Heddle.Language.CallParameter CallParameter {get;}
+  PROP Heddle.Language.ParseContext Context {get;set;}
+  PROP Heddle.Strings.Core.BlockPosition Position {get;set;}
+  PROP System.String ExtensionName {get;}
+  PROP System.String ParameterTemplate {get;set;}
+TYPE Heddle.Language.ParseContext
+  METHOD Heddle.Language.DefinitionItem GetDefenition(System.String)
+  METHOD Heddle.Language.ParseContext IsolateContextWithTree(System.String)
+  METHOD System.Boolean DefenitionExists(System.String)
+  PROP Heddle.Language.DefinitionBlock DefinitionsBlock {get;set;}
+  PROP System.Collections.Generic.IEnumerable<Heddle.Language.HeddleToken> Tokens {get;}
+  PROP System.Collections.Generic.IEnumerable<Heddle.Language.ParseContext> SubContexts {get;}
+  PROP System.Collections.Generic.List<Heddle.Data.HeddleCompileError> Errors {get;}
+  PROP System.Collections.Generic.List<Heddle.Data.HeddleCompileWarning> Warnings {get;}
+  PROP System.Collections.Generic.List<Heddle.Language.OutputChain> DefaultChains {get;}
+  PROP System.Collections.Generic.List<Heddle.Language.OutputChain> OutputChains {get;}
+  PROP System.Collections.Generic.List<Heddle.Language.RawOutputItem> RawOutputItems {get;}
+  PROP System.Collections.Generic.List<Heddle.Strings.Core.BlockPosition> SkippedTokens {get;}
+  PROP System.Int32 Offset {get;}
+TYPE Heddle.Language.ParserSettings
+  CTOR()
+  PROP System.Boolean ProvideLanguageFeatures {get;set;}
+  PROP System.Func<System.String, System.String> ImportReader {get;set;}
+  PROP System.String RootPath {get;set;}
+TYPE Heddle.Language.PropDeclaration
+  CTOR(System.String, System.String, System.Boolean, System.Object, Heddle.Strings.Core.BlockPosition)
+  PROP Heddle.Strings.Core.BlockPosition Position {get;}
+  PROP System.Boolean HasDefault {get;}
+  PROP System.Object DefaultValue {get;}
+  PROP System.String Name {get;}
+  PROP System.String TypeName {get;}
+TYPE Heddle.Language.RawOutputItem
+  CTOR()
+  PROP Heddle.Strings.Core.BlockPosition BlockPosition {get;set;}
+  PROP System.String Text {get;set;}
+TYPE Heddle.Models.ForModel
+  CTOR()
+  PROP System.Int32 Last {get;set;}
+  PROP System.Nullable<System.Int32> Start {get;set;}
+  PROP System.Nullable<System.Int32> Step {get;set;}
+TYPE Heddle.Precompiled.HeddleCompiledTemplatesAttribute : System.Attribute
+  CTOR(System.Type, System.Int32, System.String)
+  PROP System.Int32 SchemaVersion {get;}
+  PROP System.String EngineVersion {get;}
+  PROP System.Type ManifestType {get;}
+TYPE Heddle.Precompiled.IHeddleTemplateManifest
+  METHOD System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledTemplateInfo> GetTemplates()
+TYPE Heddle.Precompiled.PrecompiledCapabilities : System.Enum
+  FIELD Heddle.Precompiled.PrecompiledCapabilities None
+  FIELD Heddle.Precompiled.PrecompiledCapabilities StringOutput
+  FIELD Heddle.Precompiled.PrecompiledCapabilities Utf8Pieces
+  FIELD System.Int32 value__
+TYPE Heddle.Precompiled.PrecompiledExtensionBinding : System.ValueType
+  CTOR(System.String, System.String)
+  PROP System.String ExtensionTypeName {get;}
+  PROP System.String Name {get;}
+TYPE Heddle.Precompiled.PrecompiledFallbackEvent : System.ValueType
+  CTOR(System.String, Heddle.Precompiled.PrecompiledFallbackReason, System.String, System.String)
+  PROP Heddle.Precompiled.PrecompiledFallbackReason Reason {get;}
+  PROP System.String Detail {get;}
+  PROP System.String DiagnosticId {get;}
+  PROP System.String Key {get;}
+TYPE Heddle.Precompiled.PrecompiledFallbackReason : System.Enum
+  FIELD Heddle.Precompiled.PrecompiledFallbackReason CaseMismatch
+  FIELD Heddle.Precompiled.PrecompiledFallbackReason EngineVersionIncompatible
+  FIELD Heddle.Precompiled.PrecompiledFallbackReason ExtensionBindingMismatch
+  FIELD Heddle.Precompiled.PrecompiledFallbackReason FunctionBindingMismatch
+  FIELD Heddle.Precompiled.PrecompiledFallbackReason OptionsMismatch
+  FIELD Heddle.Precompiled.PrecompiledFallbackReason SchemaVersionUnsupported
+  FIELD Heddle.Precompiled.PrecompiledFallbackReason StaleContent
+  FIELD Heddle.Precompiled.PrecompiledFallbackReason StaleImport
+  FIELD Heddle.Precompiled.PrecompiledFallbackReason UnsupportedFunction
+  FIELD System.Int32 value__
+TYPE Heddle.Precompiled.PrecompiledFunctionBinding : System.ValueType
+  CTOR(System.String, System.String, System.Int32)
+  PROP System.Int32 OverloadCount {get;}
+  PROP System.String Name {get;}
+  PROP System.String TargetTypeName {get;}
+TYPE Heddle.Precompiled.PrecompiledFunctions
+  METHOD Heddle.Models.ForModel Range(System.Int32, System.Int32)
+  METHOD Heddle.Models.ForModel Range(System.Int32, System.Int32, System.Int32)
+  METHOD System.Boolean Contains(System.String, System.String)
+  METHOD System.Boolean EndsWith(System.String, System.String)
+  METHOD System.Boolean StartsWith(System.String, System.String)
+  METHOD System.Decimal Abs(System.Decimal)
+  METHOD System.Decimal Ceil(System.Decimal)
+  METHOD System.Decimal Floor(System.Decimal)
+  METHOD System.Decimal Max(System.Decimal, System.Decimal)
+  METHOD System.Decimal Min(System.Decimal, System.Decimal)
+  METHOD System.Decimal Round(System.Decimal)
+  METHOD System.Decimal Round(System.Decimal, System.Int32)
+  METHOD System.Double Abs(System.Double)
+  METHOD System.Double Ceil(System.Double)
+  METHOD System.Double Floor(System.Double)
+  METHOD System.Double Max(System.Double, System.Double)
+  METHOD System.Double Min(System.Double, System.Double)
+  METHOD System.Double Round(System.Double)
+  METHOD System.Double Round(System.Double, System.Int32)
+  METHOD System.Int32 Abs(System.Int32)
+  METHOD System.Int32 Len(System.String)
+  METHOD System.Int32 Max(System.Int32, System.Int32)
+  METHOD System.Int32 Min(System.Int32, System.Int32)
+  METHOD System.Int64 Abs(System.Int64)
+  METHOD System.Int64 Max(System.Int64, System.Int64)
+  METHOD System.Int64 Min(System.Int64, System.Int64)
+  METHOD System.String Format(System.Object, System.String)
+  METHOD System.String Format(System.String, System.Object[])
+  METHOD System.String Lower(System.String)
+  METHOD System.String Replace(System.String, System.String, System.String)
+  METHOD System.String Str(System.Object)
+  METHOD System.String Substr(System.String, System.Int32)
+  METHOD System.String Substr(System.String, System.Int32, System.Int32)
+  METHOD System.String Trim(System.String)
+  METHOD System.String Upper(System.String)
+TYPE Heddle.Precompiled.PrecompiledImport : System.ValueType
+  CTOR(System.String, System.String)
+  PROP System.String ContentHash {get;}
+  PROP System.String Key {get;}
+TYPE Heddle.Precompiled.PrecompiledMismatchException : System.Exception
+  CTOR(System.String, Heddle.Precompiled.PrecompiledFallbackReason, System.String)
+  PROP Heddle.Precompiled.PrecompiledFallbackReason Reason {get;}
+  PROP System.String Detail {get;}
+  PROP System.String Key {get;}
+TYPE Heddle.Precompiled.PrecompiledOptionsFingerprint : System.ValueType
+  CTOR(Heddle.Data.OutputProfile, Heddle.Data.ExpressionMode, System.Boolean)
+  PROP Heddle.Data.ExpressionMode ExpressionMode {get;}
+  PROP Heddle.Data.OutputProfile Profile {get;}
+  PROP System.Boolean TrimDirectiveLines {get;}
+TYPE Heddle.Precompiled.PrecompiledPropEvaluator : System.MulticastDelegate
+  CTOR(System.Object, System.IntPtr)
+  METHOD System.IAsyncResult BeginInvoke(ref Heddle.Data.Scope, System.AsyncCallback, System.Object)
+  METHOD System.Object EndInvoke(ref Heddle.Data.Scope, System.IAsyncResult)
+  METHOD System.Object Invoke(ref Heddle.Data.Scope)
+TYPE Heddle.Precompiled.PrecompiledPropSetter : System.ValueType
+  CTOR(System.Int32, Heddle.Precompiled.PrecompiledPropEvaluator)
+  PROP Heddle.Precompiled.PrecompiledPropEvaluator Evaluate {get;}
+  PROP System.Int32 Index {get;}
+TYPE Heddle.Precompiled.PrecompiledRegistrationException : System.Exception
+  CTOR(System.String, System.String, System.String)
+  PROP System.String ExistingAssemblyName {get;}
+  PROP System.String Key {get;}
+  PROP System.String NewAssemblyName {get;}
+TYPE Heddle.Precompiled.PrecompiledRuntime
+  METHOD Heddle.Core.AbstractExtension BindDefinition(Heddle.Runtime.IProcessStrategy, Heddle.Runtime.IProcessStrategy, System.Object[], Heddle.Precompiled.PrecompiledPropSetter[], Heddle.Data.RenderType, System.Boolean, System.Boolean, System.Int32, System.Int32, System.Int32)
+  METHOD Heddle.Core.AbstractExtension BindDefinition(Heddle.Runtime.IProcessStrategy, Heddle.Runtime.IProcessStrategy, System.Object[], Heddle.Precompiled.PrecompiledPropSetter[], Heddle.Data.RenderType, System.Boolean, System.Int32, System.Int32, System.Int32)
+  METHOD Heddle.Extensions.OutExtension BindOut(Heddle.Extensions.OutExtension, System.Boolean, System.Int32, System.Int32)
+  METHOD Heddle.Runtime.IProcessStrategy ResolvePartial(System.String)
+  METHOD Heddle.Runtime.IProcessStrategy ResolvePartial(System.String, Heddle.Data.TemplateOptions)
+  METHOD Heddle.Runtime.IProcessStrategy ResolvePartial(System.String, System.Type)
+  METHOD Heddle.Runtime.IProcessStrategy WithLocalsFrame(Heddle.Runtime.IProcessStrategy)
+  METHOD System.Object Prop(ref Heddle.Data.Scope, System.Int32)
+  METHOD System.Object RootModel(ref Heddle.Data.Scope)
+  METHOD System.String GenerateString(Heddle.Runtime.IProcessStrategy, System.Object, System.Object, System.Object)
+  METHOD System.String GenerateString(Heddle.Runtime.IProcessStrategy, System.Object, System.Object, System.Object, Heddle.Data.TemplateOptions)
+  METHOD System.Void GenerateToWriter(Heddle.Runtime.IProcessStrategy, System.Object, System.Object, System.Object, System.IO.TextWriter)
+  METHOD System.Void GenerateUtf8(Heddle.Runtime.IProcessStrategy, System.Object, System.Object, System.Object, System.Buffers.IBufferWriter<System.Byte>)
+  METHOD System.Void WritePiece(ref Heddle.Data.Scope, System.String, System.ReadOnlySpan<System.Byte>)
+  METHOD TExtension Bind(TExtension, Heddle.Runtime.IProcessStrategy, Heddle.Data.RenderType, System.Boolean, System.Int32, System.Int32)
+TYPE Heddle.Precompiled.PrecompiledTemplateInfo
+  CTOR(System.String, System.Type, System.Type, System.Boolean, System.String, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledImport>, Heddle.Precompiled.PrecompiledOptionsFingerprint, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledExtensionBinding>, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledFunctionBinding>, Heddle.Precompiled.PrecompiledCapabilities, Heddle.Runtime.IProcessStrategy)
+  PROP Heddle.Precompiled.PrecompiledCapabilities Capabilities {get;}
+  PROP Heddle.Precompiled.PrecompiledOptionsFingerprint OptionsFingerprint {get;}
+  PROP Heddle.Runtime.IProcessStrategy Strategy {get;}
+  PROP System.Boolean IsDynamic {get;}
+  PROP System.Boolean IsPrecompiled {get;}
+  PROP System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledExtensionBinding> ExtensionBindings {get;}
+  PROP System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledFunctionBinding> FunctionBindings {get;}
+  PROP System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledImport> Imports {get;}
+  PROP System.String ContentHash {get;}
+  PROP System.String Key {get;}
+  PROP System.Type EntryPointType {get;}
+  PROP System.Type ModelType {get;}
+TYPE Heddle.Precompiled.PrecompiledTemplates
+  METHOD System.Boolean TryGet(System.String, out Heddle.Precompiled.PrecompiledTemplateInfo)
+  METHOD System.Boolean TryResolve(System.String, Heddle.Data.TemplateOptions, out Heddle.Precompiled.PrecompiledTemplateInfo)
+  METHOD System.Nullable<Heddle.Precompiled.PrecompiledFallbackEvent> Validate(Heddle.Precompiled.PrecompiledTemplateInfo, Heddle.Data.TemplateOptions)
+  METHOD System.Void Register(System.Reflection.Assembly)
+  PROP System.Action<Heddle.Precompiled.PrecompiledFallbackEvent> OnFallback {get;set;}
+  PROP System.Collections.Generic.IReadOnlyCollection<Heddle.Precompiled.PrecompiledTemplateInfo> Entries {get;}
+  PROP System.Func<Heddle.Precompiled.PrecompiledExtensionBinding, System.Type, System.Boolean> BindingResolver {get;set;}
+TYPE Heddle.Precompiled.TemplateKey
+  METHOD System.Boolean TryNormalize(System.String, out System.String)
+  METHOD System.String Normalize(System.String)
+TYPE Heddle.Runtime.CSharpContext
+  CTOR()
+  METHOD System.Void ImportNamespace(System.String)
+  PROP Heddle.Data.HeddleCompileResult InitErrors {get;}
+  PROP System.Boolean Compiled {get;}
+  PROP System.Collections.Generic.ICollection<System.String> Namespaces {get;}
+  PROP System.Collections.Generic.IEnumerable<System.String> InternalsVisibleTo {get;}
+  PROP System.Guid ClassGuid {get;}
+  PROP System.Reflection.Assembly CompiledAssembly {get;set;}
+TYPE Heddle.Runtime.CompileContext
+  CTOR(Heddle.Data.ExType)
+  CTOR(Heddle.Data.TemplateOptions, Heddle.Data.ExType)
+  CTOR(Heddle.Runtime.CompileContext, Heddle.Data.ExType)
+  CTOR(Heddle.Runtime.CompileContext, Heddle.Data.ExType, System.String)
+  CTOR(Heddle.Runtime.CompileContext, System.String)
+  METHOD System.Void AddDelayedCompileTemplate(Heddle.Runtime.CompileScope, Heddle.Language.ParseContext, Heddle.Runtime.IExtension)
+  METHOD System.Void Dispose()
+  PROP Heddle.Data.ExType RootScopeType {get;}
+  PROP Heddle.Data.ExType ScopeType {get;set;}
+  PROP Heddle.Data.OutputProfile OutputProfile {get;set;}
+  PROP Heddle.Data.TemplateOptions Options {get;}
+  PROP System.Boolean Compiled {get;}
+  PROP System.Collections.Generic.List<Heddle.Data.HeddleCompileError> CompileErrors {get;}
+  PROP System.Collections.Generic.List<Heddle.Data.HeddleCompileWarning> CompileWarnings {get;}
+  PROP System.String ControllerName {get;set;}
+TYPE Heddle.Runtime.CompileScope
+  CTOR(Heddle.Runtime.CompileContext, Heddle.Runtime.CSharpContext)
+  METHOD System.Void Dispose()
+  PROP Heddle.Data.ExType RootScopeType {get;set;}
+  PROP Heddle.Data.ExType ScopeType {get;set;}
+  PROP Heddle.Data.TemplateOptions Options {get;}
+  PROP Heddle.Runtime.CSharpContext CSharpContext {get;}
+  PROP Heddle.Runtime.CompileContext CompileContext {get;}
+  PROP System.Collections.Generic.ICollection<System.String> Namespaces {get;}
+  PROP System.Collections.Generic.List<Heddle.Data.HeddleCompileError> CompileErrors {get;}
+  PROP System.Collections.Generic.List<Heddle.Data.HeddleCompileWarning> CompileWarnings {get;}
+TYPE Heddle.Runtime.Expressions.FunctionRegistry
+  CTOR()
+  METHOD System.Boolean Contains(System.String)
+  METHOD System.Void Register(System.String, System.Delegate)
+  METHOD System.Void Register(System.String, System.Reflection.MethodInfo)
+  METHOD System.Void RegisterFrom(System.Reflection.Assembly)
+  PROP Heddle.Runtime.Expressions.FunctionRegistry Default {get;}
+  PROP System.Boolean IsFrozen {get;}
+TYPE Heddle.Runtime.ExtensionType : System.ValueType
+  CTOR(System.String, System.Type, System.Boolean)
+  PROP System.Boolean Replace {get;set;}
+  PROP System.String Name {get;set;}
+  PROP System.Type Type {get;set;}
+TYPE Heddle.Runtime.IDataProcessor
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+  PROP Heddle.Strings.Core.BlockPosition Position {get;set;}
+TYPE Heddle.Runtime.IExtension
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void CompleteInit(Heddle.Runtime.CompileScope, Heddle.Language.ParseContext)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
+  METHOD System.Void SetUpRenderType(Heddle.Data.RenderType)
+  PROP Heddle.Strings.Core.BlockPosition Position {get;set;}
+TYPE Heddle.Runtime.IProcessStrategy
+  METHOD System.String Execute(ref Heddle.Data.Scope)
+  METHOD System.Void Render(ref Heddle.Data.Scope)
+TYPE Heddle.Runtime.ITemplateResolver
+  METHOD Heddle.HeddleTemplate Create(System.String, Heddle.Runtime.CompileContext)
+  METHOD Heddle.HeddleTemplate GetTemplate(System.String, System.String, out System.Collections.Generic.IEnumerable<System.String>, Heddle.Runtime.CompileContext, Heddle.Data.TemplatePathType)
+  METHOD System.String Search(System.String, System.String, Heddle.Data.TemplatePathType, out System.Collections.Generic.IEnumerable<System.String>, out Heddle.HeddleTemplate)
+  METHOD System.Void RemoveFromCache(Heddle.HeddleTemplate)
+TYPE Heddle.Runtime.TemplateFactory
+  METHOD Heddle.Runtime.IExtension Create(System.String, Heddle.Strings.Core.BlockPosition, Heddle.Language.ParseContext, Heddle.Runtime.CompileContext)
+  METHOD System.Collections.Generic.IEnumerable<Heddle.Runtime.ExtensionType> LoadAddExtensionsFromAssembly(System.Reflection.Assembly)
+  METHOD System.Void AddExtensions(System.Collections.Generic.IEnumerable<Heddle.Runtime.ExtensionType>)
+TYPE Heddle.Runtime.TemplateResolver impl Heddle.Runtime.ITemplateResolver
+  CTOR(System.String, System.Boolean)
+  CTOR(System.String, System.Boolean, Heddle.Data.OutputProfile)
+  CTOR(System.String, System.Boolean, Heddle.Data.OutputProfile, System.Boolean)
+  METHOD Heddle.HeddleTemplate Create(System.String, Heddle.Runtime.CompileContext)
+  METHOD Heddle.HeddleTemplate GetTemplate(System.String, System.String, out System.Collections.Generic.IEnumerable<System.String>, Heddle.Runtime.CompileContext, Heddle.Data.TemplatePathType)
+  METHOD System.String Search(System.String, System.String, Heddle.Data.TemplatePathType, out System.Collections.Generic.IEnumerable<System.String>, out Heddle.HeddleTemplate)
+  METHOD System.Void RemoveFromCache(Heddle.HeddleTemplate)
+TYPE Heddle.Strings.Core.BlockPosition : System.ValueType
+  CTOR(Antlr4.Runtime.IToken)
+  CTOR(System.Int32, System.Int32)
+  FIELD System.Int32 Length
+  FIELD System.Int32 StartIndex
+  METHOD System.String ToString()
+TYPE Heddle.Strings.Core.Replacement : System.ValueType
+  FIELD Heddle.Strings.Core.BlockPosition BlockPosition
+  FIELD System.String ReplacementValue
+TYPE Heddle.Strings.ExStringBuilder
+  CTOR()
+  CTOR(System.String)
+  METHOD System.Int32 ApplyRemove(Heddle.Strings.Core.BlockPosition, ref System.String)
+  METHOD System.String BulkReplace(Heddle.Strings.Core.Replacement[], System.String)
+  METHOD System.String BulkReplace(System.Collections.Generic.IList<Heddle.Strings.Core.Replacement>, System.String)
+  METHOD System.String Concat(System.Collections.Generic.IList<System.String>, System.Int32)
+  METHOD System.String Concat(System.String[], System.Int32, System.Int32)
+  METHOD System.String Replace(System.Int32, System.Int32, System.String, System.String)
+  METHOD System.String ToString()
+  METHOD System.Void Append(System.String)
+  METHOD System.Void Append(System.String, System.Object[])
+  METHOD System.Void Clear()
+  PROP System.Int32 Length {get;}

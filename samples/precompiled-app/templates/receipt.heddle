@@ -1,0 +1,3 @@
+@using(){{Heddle.Samples.Precompiled}}
+@model(){{Invoice}}
+Receipt for #@(Number): @(Customer) paid @(Amount).

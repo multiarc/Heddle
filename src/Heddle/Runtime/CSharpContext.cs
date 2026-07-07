@@ -22,15 +22,21 @@ namespace Heddle.Runtime
 {
     public class CSharpContext
     {
-        internal static readonly SymbolDisplayFormat DisplayFormat =
-            new SymbolDisplayFormat(SymbolDisplayGlobalNamespaceStyle.OmittedAsContaining,
-                genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-                kindOptions: SymbolDisplayKindOptions.None,
-                delegateStyle: SymbolDisplayDelegateStyle.NameOnly,
-                extensionMethodStyle: SymbolDisplayExtensionMethodStyle.Default,
-                localOptions: SymbolDisplayLocalOptions.None, memberOptions: SymbolDisplayMemberOptions.None,
-                typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-                miscellaneousOptions: SymbolDisplayMiscellaneousOptions.ExpandNullable);
+        // Phase 9 D4: the only Microsoft.CodeAnalysis-typed static of this class lives in a nested holder so it is
+        // reached (and its type-initializer run) only from the C#-tier body behind the feature switch — a trimmed
+        // publish with the switch off drops the holder with the rest of the Roslyn graph.
+        private static class RoslynDisplay
+        {
+            internal static readonly SymbolDisplayFormat Format =
+                new SymbolDisplayFormat(SymbolDisplayGlobalNamespaceStyle.OmittedAsContaining,
+                    genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+                    kindOptions: SymbolDisplayKindOptions.None,
+                    delegateStyle: SymbolDisplayDelegateStyle.NameOnly,
+                    extensionMethodStyle: SymbolDisplayExtensionMethodStyle.Default,
+                    localOptions: SymbolDisplayLocalOptions.None, memberOptions: SymbolDisplayMemberOptions.None,
+                    typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+                    miscellaneousOptions: SymbolDisplayMiscellaneousOptions.ExpandNullable);
+        }
 
         private static readonly HeddleTemplate PreparseGenerator;
 
@@ -121,6 +127,16 @@ namespace Heddle.Runtime
             {
                 throw new ArgumentException(
                     $"[{expressionOptions.Position}]<{expressionOptions.ExtensionName}> Expression cannot be null or empty");
+            }
+
+            // Phase 9 D4 — the parse-time Roslyn entry. When the C#-tier feature switch is trimmed off, this is a
+            // constant-true early return, so the Roslyn body below (and the ITypeSymbol-typed ResolveTypeReference)
+            // become dead code the linker removes. The method still records the C# expression; the single HED9001 is
+            // surfaced later by ContextCompilation.Compile. Behavior is identical when the switch is left on (default).
+            if (!HeddleFeatures.CSharpTierEnabled)
+            {
+                objectType = ExType.Dynamic;
+                return new OptionalValue<object>(null, false);
             }
 
             expressionOptions.ModelType = context.ScopeType;
@@ -224,7 +240,7 @@ namespace Heddle.Runtime
                 }
             }
 
-            string typeName = type?.ToDisplayString(DisplayFormat);
+            string typeName = type?.ToDisplayString(RoslynDisplay.Format);
             try
             {
                 objType =

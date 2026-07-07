@@ -1,4 +1,6 @@
-﻿using Heddle.Strings.Core;
+﻿using System;
+using System.Collections.Generic;
+using Heddle.Strings.Core;
 
 namespace Heddle.Language {
     /// <summary>
@@ -14,6 +16,9 @@ namespace Heddle.Language {
             ModelType = definition.ModelType;
             Name = definition.Name;
             ParameterTemplate = definition.ParameterTemplate;
+            HasDefaultOutput = definition.HasDefaultOutput;
+            PropDeclarations = definition.PropDeclarations;
+            SlotTypeName = definition.SlotTypeName;
         }
 
         public DefinitionItem(string name, string parameterTemplate, DefinitionItem baseDefinition, string modelType = null)
@@ -34,7 +39,28 @@ namespace Heddle.Language {
             Name = item.Name;
             ParameterTemplate = item.ParameterTemplate;
             ModelType = item.ModelType;
+            PropDeclarations = item.PropDeclarations;
+            SlotTypeName = item.SlotTypeName;
         }
+
+        /// <summary>
+        /// Declared props of this declaration layer, inheritance not flattened (base props live on
+        /// <see cref="BaseDefinition"/>). Empty for a header without a prop list. Set by the parser.
+        /// </summary>
+        public IReadOnlyList<PropDeclaration> PropDeclarations { get; internal set; } = Array.Empty<PropDeclaration>();
+
+        /// <summary>
+        /// The declared slot parameter type name (<c>out:: Type</c>), or <c>null</c> when the definition does
+        /// not parameterize its slot. Set by the parser.
+        /// </summary>
+        public string SlotTypeName { get; internal set; }
+
+        /// <summary>
+        /// True when this declaration layer carried a default output (<c>-&gt; chain</c>). Preserved across
+        /// full overrides — the default chain declared by an earlier layer keeps rendering at document end, so
+        /// the double-render warning (HED4002) stays accurate. Set by the parser; read-only for hosts.
+        /// </summary>
+        public bool HasDefaultOutput { get; internal set; }
 
         public bool FullOverride { get; set; }
         public DefinitionItem BaseDefinition { get; private set; }

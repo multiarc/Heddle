@@ -1,0 +1,8 @@
+@%
+<greeting>
+{{Hello from the LIBRARY greeting.}}
+<footer>
+{{-- shared library footer --}}
+<region>
+{{[abstract region wraps: @out()]}}
+%@

@@ -683,6 +683,15 @@ namespace Heddle.Tests
             };
             var target = new HeddleTemplate(new CompileContext(options));
             Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
+            // Phase 4 D5: vc-test deliberately combines '<default> -> ()' with two '@default()' by-name calls
+            // to pin override layering across three renders — exactly two HED4002 double-render warnings, both
+            // naming 'default', and nothing else. The warning does not alter output (the golden below proves it).
+            var doubleRenderWarnings = target.Context.CompileWarnings
+                .Where(w => w.DiagnosticId == HeddleDiagnosticIds.DefinitionRendersTwice)
+                .ToList();
+            Assert.Equal(2, doubleRenderWarnings.Count);
+            Assert.All(doubleRenderWarnings, w => Assert.StartsWith("Definition 'default' (declared at ", w.Error));
+            Assert.Equal(2, doubleRenderWarnings.Select(w => w.Position.StartIndex).Distinct().Count());
             string expected;
             using (StreamReader reader = File.OpenText(@"TestTemplate/generated-vc.html"))
             {

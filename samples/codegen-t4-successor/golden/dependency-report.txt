@@ -1,0 +1,2 @@
+Heddle.Generator.dll (build-time code generator) present at runtime: False
+Heddle.dll (precompiled render runtime) present at runtime: True

@@ -27,6 +27,7 @@ class Site        { string Name;  string Host;  string BuildNumber;  CultureInfo
 - [Root for app and page context](#root-for-app-and-page-context)
 - [An entry layout that renders itself](#an-entry-layout-that-renders-itself)
 - [An abstract section inside a typed page](#an-abstract-section-inside-a-typed-page)
+- [A component library: typed props and a parameterized slot](#a-component-library-typed-props-and-a-parameterized-slot)
 - [Inject JSON and inline scripts](#inject-json-and-inline-scripts)
 - [Whitespace: when to bother with `@\`](#whitespace-when-to-bother-with-)
 - [Custom extensions in practice](#custom-extensions-in-practice)
@@ -151,6 +152,28 @@ where it's used:
 **Why:** a definition is a reusable function — pass it a value, get a result. `@int()` formats
 the current (integer) model. See [Definitions](language-reference.md#definitions---).
 
+**Sharing a helper library across templates.** When several templates need the same helpers,
+put them in a definitions‑only file and pull it in with `@<<` — the composition import merges the
+definitions into each template that includes it:
+
+```heddle
+@* helpers.heddle — a shared library *@
+@%
+  <slug>{{post-@int()}}
+  <thumb_id>{{thumb-@int()}}
+%@
+```
+
+```heddle
+@* any template *@
+@<<{{ helpers.heddle }}          @* slug/thumb_id are now callable below *@
+<section id="@slug(@chained)">…</section>
+```
+
+`@<<` is the right tool here (not `@import()`): it actually merges the definitions. A name already
+defined before the import is an error, so libraries compose rather than silently override. See
+[Imports](language-reference.md#imports--).
+
 ---
 
 ## Root for app and page context
@@ -192,7 +215,8 @@ reaches the whole root.
 **Why:** `-> (Article)` makes `layout` an [auto‑rendering output](language-reference.md#default-output---chain)
 whose working model is `root.Article` (so `@(Title)` is the article's), while `::Site…` still
 reaches the root `PageContext`. `@article_body()` is one of the page's section definitions.
-Because `layout` renders on its own, you do **not** call `@layout()`.
+Because `layout` renders on its own, you do **not** call `@layout()` — doing so renders it twice,
+which the compiler flags as **HED4002** (see [Default output](language-reference.md#default-output---chain)).
 
 ---
 
@@ -222,21 +246,66 @@ statically type‑checked. See
 
 ---
 
+## A component library: typed props and a parameterized slot
+
+**Problem:** build small, reusable components that take **typed options** and let the caller
+supply **typed content** — a card that varies by style, and a picker that renders the caller's
+markup once per option.
+
+```heddle
+@%
+  @* A card component: two typed props with defaults, plus the caller's body via @out(). *@
+  <card(style: string = "plain", compact: bool = false)>
+  {{
+    <article class="card @(style)">
+      <h2>@(Title)</h2>
+      @ifnot(compact){{ <p>@(Summary)</p> }}
+      @out()
+    </article>
+  }} :: Article
+
+  @* A picker component: a typed slot hands each option back to the caller's body. *@
+  <picker(out:: MenuOption)>
+  {{ <ul>@list(Options){{ <li>@out(this)</li> }}</ul> }} :: Menu
+%@
+
+@card(Article, style: "wide", compact: true){{ <a href="/read">Read more →</a> }}
+@card(Article)                                  @* both props take their defaults *@
+
+@picker(Menu){{ <a href="/go?id=@(Id)">@(Label)</a> }}
+```
+
+**Why:**
+
+- **Props** (`style`, `compact`) are declared with types and literal defaults, passed by name,
+  and read in the body as bare names (`@(style)`, `@if(compact)`). Missing/unknown/mistyped
+  props are compile errors — a component's contract is enforced at every call site.
+- **The slot** (`out:: MenuOption`) types the value the picker hands back; the caller's
+  `{{ <a …>@(Label)</a> }}` is compiled against `MenuOption` and rendered once per option with
+  `@out(this)`.
+
+See [Props](language-reference.md#props-nameprop-type--default) and
+[Parameterized slots](language-reference.md#parameterized-slots-out-type).
+
+---
+
 ## Inject JSON and inline scripts
 
 **Problem:** emit a pre‑serialized JSON payload or JSON‑LD into a `<script>` verbatim.
 
 ```heddle
 <script>
-  var article = @(ArticleJson);          @* emitted raw — NOT HTML-encoded *@
+  var article = @raw(ArticleJson);       @* emitted verbatim under either profile *@
 </script>
 
-<script type="application/ld+json">@(ArticleJson)</script>
+<script type="application/ld+json">@raw(ArticleJson)</script>
 ```
 
-**Why:** the unnamed `@(...)` does not HTML‑encode, so a serialized JSON string is written
-as‑is. Only do this with values **you** produced — never with untrusted text. See
-[HTML encoding](built-in-extensions.md#html-encoding).
+**Why:** a serialized JSON string must be written as‑is. Under `OutputProfile.Text` the bare
+`@(ArticleJson)` already emits raw, but under an `OutputProfile.Html` host the bare form
+HTML‑encodes — so use `@raw(...)` (or run this template under `Text`) to guarantee verbatim
+output regardless of the host's profile. Only do this with values **you** produced — never
+with untrusted text. See [Output profiles](built-in-extensions.md#output-profiles).
 
 ---
 
@@ -244,15 +313,31 @@ as‑is. Only do this with values **you** produced — never with untrusted text
 
 **Problem:** decide where whitespace trimming actually matters.
 
+**Best option — turn on `TrimDirectiveLines` and drop the `@\` boilerplate.** When a whole line
+is nothing but a no‑output directive, the option swallows the line for you:
+
+```csharp
+var options = new TemplateOptions { TrimDirectiveLines = true };
+```
+
 ```heddle
-@using(){{System.Linq}}@\        @* trim: keeps the preamble from emitting blank lines *@
+@using(){{System.Linq}}          @* whole line swallowed — no @\ needed *@
+@model(){{PageContext}}
+@* preamble comment — its line goes too *@
+<article>@(Title)</article>
+```
+
+If you can't enable the option (or need **mid‑line** control), `@\` still works exactly as before:
+
+```heddle
+@using(){{System.Linq}}@\        @* @\: trims the following whitespace including the newline *@
 @model(){{PageContext}}@\
 <article>@(Title)</article>      @* HTML: no @\ needed — the browser ignores the whitespace *@
 ```
 
 **Why:** Heddle is whitespace‑significant, but HTML collapses insignificant whitespace, so most
-markup doesn't need `@\`. Reserve it for the declaration preamble and for whitespace‑sensitive
-output (plain text, `<pre>`, JSON). See
+markup doesn't need `@\`. Reserve `@\` for mid‑line control; use `TrimDirectiveLines` for the
+whole‑line preamble noise. See
 [Whitespace trimming](language-reference.md#whitespace-trimming-).
 
 ---

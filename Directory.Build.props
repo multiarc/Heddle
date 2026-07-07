@@ -16,6 +16,11 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>template;template-engine;text;codegen;razor-alternative</PackageTags>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <!-- Symbol package format for the library packages that opt in with IncludeSymbols (below).
+         Kept out of the CI `dotnet pack` command line: a global -p:IncludeSymbols=true also forces
+         a symbol package for the RID-specific-tool wrapper packages, which have no assembly, so NuGet
+         fails with NU5017. Setting IncludeSymbols per-project lets the tools/generator opt out. -->
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
 </Project>

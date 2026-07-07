@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Facade + server target CoreCLR only; the facade cannot satisfy net48, so this suite is net10.0 only
+         (phase 6 D21). It is the additional test home CI runs alongside Heddle.Tests. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <Version>1.0.0</Version>
+    <IsPackable>false</IsPackable>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <!-- Signed with the shared key so the facade's InternalsVisibleTo grant applies (white-box tests). -->
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Nerdbank.Streams" Version="2.13.16" />
+    <PackageReference Include="StreamJsonRpc" Version="2.25.29" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Heddle\Heddle.csproj" />
+    <ProjectReference Include="..\Heddle.LanguageServices\Heddle.LanguageServices.csproj" />
+    <ProjectReference Include="..\Heddle.LanguageServer\Heddle.LanguageServer.csproj" />
+    <!-- Phase 9 D14: the cross-host contract test runs the shared fixtures against DemoHost on ordinary CoreCLR
+         (the [JSExport]/worker shell is browser-only and untested here — DemoHost carries all the logic). -->
+    <ProjectReference Include="..\Heddle.Demo.Wasm\Heddle.Demo.Wasm.csproj" />
+    <ProjectReference Include="..\Heddle.Demo.Models\Heddle.Demo.Models.csproj" />
+    <!-- The corpus is built and copied but NOT referenced as an assembly, so it is loaded fresh by the facade's
+         ALC / one-shot scan (not present in the default context). -->
+    <ProjectReference Include="..\Heddle.LanguageServices.Tests.Corpus\Heddle.LanguageServices.Tests.Corpus.csproj"
+                      ReferenceOutputAssembly="false" OutputItemType="Content" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Phase 9 D14: the shared cross-host contract fixtures, copied so DemoContractTests can load them. -->
+    <None Include="..\Heddle.Demo.Wasm\contract-fixtures\*.json"
+          Link="contract-fixtures\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Corpus\broken-lib.heddle"><CopyToOutputDirectory>Always</CopyToOutputDirectory></None>
+    <None Update="Corpus\typo-lib.heddle"><CopyToOutputDirectory>Always</CopyToOutputDirectory></None>
+    <None Update="Corpus\layout.heddle"><CopyToOutputDirectory>Always</CopyToOutputDirectory></None>
+  </ItemGroup>
+
+</Project>

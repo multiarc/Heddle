@@ -1,0 +1,109 @@
+{
+  "name": "heddle",
+  "displayName": "Heddle Template Language",
+  "description": "Language support for Heddle templates: completion, diagnostics, hover, and go-to-definition.",
+  "version": "1.0.0",
+  "publisher": "heddle",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.91.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:heddle"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "heddle",
+        "aliases": [
+          "Heddle",
+          "heddle"
+        ],
+        "extensions": [
+          ".heddle"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "heddle",
+        "scopeName": "text.html.heddle",
+        "path": "./syntaxes/heddle.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Heddle",
+      "properties": {
+        "heddle.model.assemblies": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Model/extension/function assembly paths for typed completion and the export scan."
+        },
+        "heddle.workspace.rootPath": {
+          "type": "string",
+          "default": "",
+          "description": "Template root for @<< import and @partial resolution (TemplateOptions.RootPath)."
+        },
+        "heddle.compile.outputProfile": {
+          "type": "string",
+          "enum": [ "text", "html" ],
+          "default": "text",
+          "description": "Output profile the diagnostics compile against."
+        },
+        "heddle.compile.expressionMode": {
+          "type": "string",
+          "enum": [ "memberPathsOnly", "native", "fullCSharp" ],
+          "default": "native",
+          "description": "Expression tier the diagnostics compile against."
+        },
+        "heddle.compile.fileNamePostfix": {
+          "type": "string",
+          "default": "",
+          "description": "Template file name postfix (TemplateOptions.FileNamePostfix)."
+        },
+        "heddle.server.path": {
+          "type": "string",
+          "default": "",
+          "description": "Explicit path to the heddle-lsp server (.dll or executable). Overrides discovery."
+        },
+        "heddle.trace.server": {
+          "type": "string",
+          "enum": [ "off", "messages", "verbose" ],
+          "default": "off",
+          "description": "Trace the communication between VS Code and the language server."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "heddle.restartServer",
+        "title": "Heddle: Restart Language Server"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run copy-grammar && npm run compile",
+    "copy-grammar": "node build/copy-grammar.js",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "node ./dist/test/runTest.js"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^10.1.0"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.91.0",
+    "@vscode/test-electron": "^2.4.0",
+    "@vscode/vsce": "3.9.2",
+    "typescript": "^5.5.0"
+  }
+}
