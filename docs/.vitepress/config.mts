@@ -45,7 +45,7 @@ export default withMermaid(
     // Contributor material that stays in the repo but is not published to the docs
     // site: the assessment, and the evolution roadmap + implementation specs (D9). The
     // spec/roadmap set going live is the integration trigger for this exclusion.
-    srcExclude: ['assessment.md', 'roadmap/**', 'spec/**'],
+    srcExclude: ['archive/**'],
 
     markdown: {
       languages: [
