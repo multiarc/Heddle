@@ -12,7 +12,7 @@ The engine is published as two NuGet packages:
 | `Heddle` | [src/Heddle](../src/Heddle) | Core engine: parser host, compiler, runtime, built‑in extensions. |
 | `Heddle.Language` | [src/Heddle.Language](../src/Heddle.Language) | ANTLR grammar + generated lexer/parser, plus editor (Ace) assets. |
 
-Current version: **1.0.0**. The published version always follows the latest
+Current version: **2.0.0**. The published version always follows the latest
 [release tag](https://github.com/multiarc/Heddle/releases) /
 [nuget.org](https://www.nuget.org/packages/Heddle).
 

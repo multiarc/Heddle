@@ -1688,7 +1688,11 @@ namespace Heddle.Generator.Emit
                 .Append("(), body: null, ").Append(renderType)
                 .Append(", needsLocals: false, line: ").Append(line).Append(", column: ").Append(col).Append(");\n");
             _extensionFields.Add(field);
-            RecordExtensionBinding("", html ? "Heddle.Extensions.EmptyHtmlExtension" : "Heddle.Extensions.EmptyExtension");
+            // The manifest binding name must resolve (via TemplateFactory) to the bound type in the gauntlet:
+            // under Html the bodiless carrier redirects to the "html" extension (EmptyHtmlExtension); under Text
+            // it is the empty-named EmptyExtension. Recording "" with the Html type would resolve "" -> EmptyExtension
+            // and mismatch.
+            RecordExtensionBinding(html ? "html" : "", html ? "Heddle.Extensions.EmptyHtmlExtension" : "Heddle.Extensions.EmptyExtension");
             return field;
         }
 

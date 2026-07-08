@@ -4,7 +4,7 @@
     <!-- net48 is Windows-only: .NET Framework under mono on Linux has no practical value and is unstable. -->
     <TargetFrameworks>net6.0;net8.0;net10.0</TargetFrameworks>
     <TargetFrameworks Condition="'$(OS)' == 'Windows_NT'">net48;net6.0;net8.0;net10.0</TargetFrameworks>
-    <Version>1.0.0</Version>
+    <Version>2.0.0</Version>
     <IsPackable>false</IsPackable>
     <!-- `dotnet test` runs the per-TFM test containers in parallel by default; Heddle's process-global
          singletons (see AssemblyInfo.cs — TemplateFactory / AssemblyHelper / CSharpContext caches) race

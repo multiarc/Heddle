@@ -23,24 +23,24 @@ namespace Heddle.Runtime {
         private readonly bool _trimDirectiveLines;
 
         public TemplateResolver(string rootPath, bool checkFileChange = false)
-            : this(rootPath, checkFileChange, OutputProfile.Text)
+            : this(rootPath, checkFileChange, OutputProfile.Html)
         {
         }
 
         /// <summary>
         /// Creates a resolver whose templates compile under the given default output profile; a per-call
-        /// <see cref="CompileContext"/>'s options override it. The existing two-parameter constructor keeps
-        /// <see cref="OutputProfile.Text"/>.
+        /// <see cref="CompileContext"/>'s options override it. The two-parameter constructor uses the 2.0
+        /// default <see cref="OutputProfile.Html"/>.
         /// </summary>
         public TemplateResolver(string rootPath, bool checkFileChange, OutputProfile defaultProfile)
-            : this(rootPath, checkFileChange, defaultProfile, false)
+            : this(rootPath, checkFileChange, defaultProfile, true)
         {
         }
 
         /// <summary>
         /// Creates a resolver whose resolver-built templates compile under the given default profile and
         /// directive-line trimming setting; a per-call <see cref="CompileContext"/>'s options override both.
-        /// The existing constructors keep <c>(Text, false)</c>.
+        /// The shorter constructors use the 2.0 defaults <c>(Html, true)</c>.
         /// </summary>
         public TemplateResolver(string rootPath, bool checkFileChange, OutputProfile defaultProfile,
             bool trimDirectiveLines) {

@@ -48,7 +48,7 @@ jobs:
       - name: Smoke — install and run --version
         run: |
           set -euo pipefail
-          dotnet tool install --global Heddle.LanguageServer --add-source ./nupkg --version 1.0.0 || true
+          dotnet tool install --global Heddle.LanguageServer --add-source ./nupkg --version 2.0.0 || true
           export PATH="$PATH:$HOME/.dotnet/tools"
           heddle-lsp --version
       - uses: actions/upload-artifact@v7

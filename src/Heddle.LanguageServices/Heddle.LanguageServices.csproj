@@ -5,7 +5,7 @@
          own TFMs (netstandard2.0;net6.0;net8.0;net10.0) are untouched — this narrowing is a property of the new
          package (phase 6 D21). -->
     <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
-    <Version>1.0.0$(VersionSuffix)</Version>
+    <Version>2.0.0$(VersionSuffix)</Version>
     <Product>Heddle.LanguageServices</Product>
     <Description>Editor language-service facade for the Heddle template engine (completion, diagnostics, hover, go-to-definition).</Description>
     <PackageId>Heddle.LanguageServices</PackageId>

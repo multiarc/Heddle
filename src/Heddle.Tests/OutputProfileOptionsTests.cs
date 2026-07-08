@@ -19,10 +19,10 @@ namespace Heddle.Tests
         }
 
         [Fact]
-        public void DefaultProfileIsTextOnBothConstructors()
+        public void DefaultProfileIsHtmlOnBothConstructors()
         {
-            Assert.Equal(OutputProfile.Text, new TemplateOptions().OutputProfile);
-            Assert.Equal(OutputProfile.Text, new TemplateOptions("named").OutputProfile);
+            Assert.Equal(OutputProfile.Html, new TemplateOptions().OutputProfile);
+            Assert.Equal(OutputProfile.Html, new TemplateOptions("named").OutputProfile);
         }
 
         [Fact]
@@ -61,9 +61,9 @@ namespace Heddle.Tests
         }
 
         [Fact]
-        public void ParameterlessCompileContextIsText()
+        public void ParameterlessCompileContextIsHtml()
         {
-            Assert.Equal(OutputProfile.Text, new CompileContext().OutputProfile);
+            Assert.Equal(OutputProfile.Html, new CompileContext().OutputProfile);
         }
 
         [Fact]

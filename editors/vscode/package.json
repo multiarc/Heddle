@@ -2,7 +2,7 @@
   "name": "heddle",
   "displayName": "Heddle Template Language",
   "description": "Language support for Heddle templates: completion, diagnostics, hover, and go-to-definition.",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "publisher": "heddle",
   "license": "MIT",
   "engines": {

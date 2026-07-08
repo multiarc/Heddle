@@ -24,11 +24,11 @@ namespace Heddle.Generator.Pipeline
 
         public static GlobalConfig Read(AnalyzerConfigOptions options, List<OptionError> errors)
         {
-            var profile = ReadEnum(options, "HeddleOutputProfile", "Text",
+            var profile = ReadEnum(options, "HeddleOutputProfile", "Html",
                 new[] { "Text", "Html" }, errors);
             var mode = ReadEnum(options, "HeddleExpressionMode", "Native",
                 new[] { "MemberPathsOnly", "Native", "FullCSharp" }, errors);
-            var trim = ReadBool(options, "HeddleTrimDirectiveLines", false, errors);
+            var trim = ReadBool(options, "HeddleTrimDirectiveLines", true, errors);
             var maxRecursion = ReadPositiveInt(options, "HeddleMaxRecursionCount", 100, errors);
             var root = ReadString(options, "HeddleTemplateRoot", "");
             var ns = ReadString(options, "HeddleGeneratedNamespace", "");

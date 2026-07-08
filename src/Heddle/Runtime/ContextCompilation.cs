@@ -57,7 +57,12 @@ namespace Heddle.Runtime
                 }
 
                 InitErrors =
-                    CodeGenerator.Compile(document);
+                    CodeGenerator.Compile(document,
+                        new CompileContext(new TemplateOptions
+                        {
+                            OutputProfile = OutputProfile.Text,
+                            TrimDirectiveLines = false
+                        }));
             }
             catch (Exception e)
             {

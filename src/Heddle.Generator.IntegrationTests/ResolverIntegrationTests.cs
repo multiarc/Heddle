@@ -64,8 +64,8 @@ namespace Heddle.Generator.IntegrationTests
             PrecompiledTemplates.OnFallback = e => captured = e;
             try
             {
-                // Manifest fingerprint is (Text, Native, false); request Html → OptionsMismatch.
-                var options = new TemplateOptions { OutputProfile = OutputProfile.Html };
+                // Manifest fingerprint is (Html, Native, true) under the 2.0 defaults; request Text → OptionsMismatch.
+                var options = new TemplateOptions { OutputProfile = OutputProfile.Text };
                 Assert.False(PrecompiledTemplates.TryResolve(key, options, out var entry));
                 Assert.Null(entry);
                 Assert.NotNull(captured);
@@ -83,7 +83,7 @@ namespace Heddle.Generator.IntegrationTests
             var (_, key, _) = BuildAndRegister("strict");
             var options = new TemplateOptions
             {
-                OutputProfile = OutputProfile.Html,
+                OutputProfile = OutputProfile.Text,
                 PrecompiledMismatchPolicy = PrecompiledMismatchPolicy.Strict
             };
             var ex = Assert.Throws<PrecompiledMismatchException>(() =>

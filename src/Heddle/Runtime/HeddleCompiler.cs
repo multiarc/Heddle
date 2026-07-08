@@ -388,16 +388,24 @@ namespace Heddle.Runtime
         /// </summary>
         private static BlockPosition WidenToWholeLine(BlockPosition block, string document)
         {
-            int left = block.StartIndex;                       // will become the widened start
+            // Defensive clamp: an earlier widened removal on the same line can leave a later block's stored
+            // position overshooting the (now shorter) working document. Never dereference past its end.
+            int startIndex = block.StartIndex < 0 ? 0
+                : (block.StartIndex > document.Length ? document.Length : block.StartIndex);
+            int endIndex = block.StartIndex + block.Length;
+            if (endIndex > document.Length) endIndex = document.Length;
+            if (endIndex < startIndex) endIndex = startIndex;
+
+            int left = startIndex;                             // will become the widened start
             while (left > 0 && (document[left - 1] == ' ' || document[left - 1] == '\t'))
                 left--;
             if (left != 0 && document[left - 1] != '\n' && document[left - 1] != '\r')
-                return block;                                  // content on the left — unchanged
+                return new BlockPosition(startIndex, endIndex - startIndex); // content on the left — unchanged
 
-            int right = block.StartIndex + block.Length;       // first index after the block
+            int right = endIndex;                              // first index after the block
             while (right < document.Length && (document[right] == ' ' || document[right] == '\t'))
                 right++;
-            if (right == document.Length)
+            if (right >= document.Length)
                 return new BlockPosition(left, right - left);  // EOF is a valid terminator
             if (document[right] == '\r')
             {
@@ -406,7 +414,7 @@ namespace Heddle.Runtime
             }
             if (document[right] == '\n')
                 return new BlockPosition(left, right + 1 - left);
-            return block;                                      // content on the right — unchanged
+            return new BlockPosition(startIndex, endIndex - startIndex); // content on the right — unchanged
         }
 
         /// <summary>

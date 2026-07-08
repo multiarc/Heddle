@@ -18,11 +18,11 @@
     <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Precompile" />
   </ItemGroup>
 
-  <!-- Defaults (stated explicitly; flip together with the engine defaults in the 2.0 window). -->
+  <!-- Defaults (stated explicitly; flipped together with the engine defaults in the 2.0 window). -->
   <PropertyGroup>
-    <HeddleOutputProfile Condition="'$(HeddleOutputProfile)' == ''">Text</HeddleOutputProfile>
+    <HeddleOutputProfile Condition="'$(HeddleOutputProfile)' == ''">Html</HeddleOutputProfile>
     <HeddleExpressionMode Condition="'$(HeddleExpressionMode)' == ''">Native</HeddleExpressionMode>
-    <HeddleTrimDirectiveLines Condition="'$(HeddleTrimDirectiveLines)' == ''">false</HeddleTrimDirectiveLines>
+    <HeddleTrimDirectiveLines Condition="'$(HeddleTrimDirectiveLines)' == ''">true</HeddleTrimDirectiveLines>
     <HeddleMaxRecursionCount Condition="'$(HeddleMaxRecursionCount)' == ''">100</HeddleMaxRecursionCount>
     <HeddleTemplateRoot Condition="'$(HeddleTemplateRoot)' == ''">$(MSBuildProjectDirectory)</HeddleTemplateRoot>
     <HeddleEmitUtf8Pieces Condition="'$(HeddleEmitUtf8Pieces)' == ''">false</HeddleEmitUtf8Pieces>

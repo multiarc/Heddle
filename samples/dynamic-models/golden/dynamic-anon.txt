@@ -1,4 +1,3 @@
-
 Order #42 for Ada Lovelace
 Items:
  - quill

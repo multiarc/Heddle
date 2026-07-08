@@ -18,6 +18,11 @@
     <!-- The emitted generated/*.g.cs would otherwise be re-globbed as source (duplicate definitions). Take full
          control of the compile set instead: only our own sources, never the inspection copy of generated code. -->
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <!-- A code generator emits raw source, not HTML: pin the Text profile and keep directive lines. The 2.0
+         engine/generator defaults are Html + directive-line trimming, which would encode the generated code
+         and drop whitespace-only lines — wrong for code generation. -->
+    <HeddleOutputProfile>Text</HeddleOutputProfile>
+    <HeddleTrimDirectiveLines>false</HeddleTrimDirectiveLines>
   </PropertyGroup>
 
   <ItemGroup>

@@ -47,12 +47,18 @@ namespace Heddle.Tests
         private static readonly PrecompiledOptionsFingerprint TextNative =
             new PrecompiledOptionsFingerprint(OutputProfile.Text, ExpressionMode.Native, false);
 
+        // The gauntlet fixtures are fingerprinted Text/Native/false; a request must match on the dimensions
+        // not under test, or the options check (which precedes the extension/function/staleness checks) masks
+        // the reason being asserted. The 2.0 engine defaults (Html/true) no longer match, so pin explicitly.
+        private static TemplateOptions Match() =>
+            new TemplateOptions { OutputProfile = OutputProfile.Text, TrimDirectiveLines = false };
+
         [Fact]
         public void AllPassReturnsNull()
         {
             var entry = Entry(TextNative,
                 new[] { new PrecompiledExtensionBinding("if", IfBindingType) });
-            Assert.Null(Run(entry, new TemplateOptions()));
+            Assert.Null(Run(entry, Match()));
         }
 
         [Fact]
@@ -83,7 +89,7 @@ namespace Heddle.Tests
         public void OptionsExpressionModeMismatch()
         {
             var entry = Entry(TextNative);
-            var evt = Run(entry, new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp });
+            var evt = Run(entry, new TemplateOptions { OutputProfile = OutputProfile.Text, ExpressionMode = ExpressionMode.FullCSharp });
             Assert.Equal("ExpressionMode: manifest=Native request=FullCSharp", evt.Value.Detail);
         }
 
@@ -91,7 +97,7 @@ namespace Heddle.Tests
         public void OptionsTrimMismatch()
         {
             var entry = Entry(TextNative);
-            var evt = Run(entry, new TemplateOptions { TrimDirectiveLines = true });
+            var evt = Run(entry, new TemplateOptions { OutputProfile = OutputProfile.Text, TrimDirectiveLines = true });
             Assert.Equal("TrimDirectiveLines: manifest=false request=true", evt.Value.Detail);
         }
 
@@ -100,7 +106,7 @@ namespace Heddle.Tests
         {
             var entry = Entry(TextNative,
                 new[] { new PrecompiledExtensionBinding("no-such-ext-xyz", "Foo.Bar, Baz") });
-            var evt = Run(entry, new TemplateOptions());
+            var evt = Run(entry, Match());
             Assert.Equal(PrecompiledFallbackReason.ExtensionBindingMismatch, evt.Value.Reason);
             Assert.Equal("Extension 'no-such-ext-xyz': manifest=Foo.Bar, Baz live=<unresolved>", evt.Value.Detail);
         }
@@ -110,7 +116,7 @@ namespace Heddle.Tests
         {
             var entry = Entry(TextNative,
                 new[] { new PrecompiledExtensionBinding("if", "Wrong.Type, Heddle") });
-            var evt = Run(entry, new TemplateOptions());
+            var evt = Run(entry, Match());
             Assert.Equal(PrecompiledFallbackReason.ExtensionBindingMismatch, evt.Value.Reason);
             Assert.Equal($"Extension 'if': manifest=Wrong.Type, Heddle live={IfBindingType}", evt.Value.Detail);
         }
@@ -122,7 +128,7 @@ namespace Heddle.Tests
             {
                 new PrecompiledFunctionBinding("upper", DefaultFunctionTable.ShimTargetTypeName, 1)
             });
-            Assert.Null(Run(entry, new TemplateOptions())); // options.Functions == null, all built-in
+            Assert.Null(Run(entry, Match())); // options.Functions == null, all built-in
         }
 
         [Fact]
@@ -132,7 +138,7 @@ namespace Heddle.Tests
             {
                 new PrecompiledFunctionBinding("titlecase", "Acme.Web.TemplateFunctions, Acme.Web", 1)
             });
-            var evt = Run(entry, new TemplateOptions());
+            var evt = Run(entry, Match());
             Assert.Equal(PrecompiledFallbackReason.FunctionBindingMismatch, evt.Value.Reason);
             Assert.Equal("Function 'titlecase': manifest=Acme.Web.TemplateFunctions, Acme.Web live=<missing>",
                 evt.Value.Detail);
@@ -147,7 +153,7 @@ namespace Heddle.Tests
             {
                 new PrecompiledFunctionBinding("titlecase", "Acme.Web.TemplateFunctions, Acme.Web", 1)
             });
-            var evt = Run(entry, new TemplateOptions { Functions = registry });
+            var evt = Run(entry, new TemplateOptions { OutputProfile = OutputProfile.Text, TrimDirectiveLines = false, Functions = registry });
             Assert.Equal(PrecompiledFallbackReason.FunctionBindingMismatch, evt.Value.Reason);
             Assert.Equal("Function 'titlecase': manifest=Acme.Web.TemplateFunctions, Acme.Web live=<delegate>",
                 evt.Value.Detail);
@@ -162,7 +168,7 @@ namespace Heddle.Tests
             {
                 File.WriteAllText(Path.Combine(root, "x.heddle"), "hello");
                 var entry = Entry(TextNative, key: "x.heddle", contentHash: "deadbeef");
-                var evt = Run(entry, new TemplateOptions { RootPath = root, EnableFileChangeCheck = true });
+                var evt = Run(entry, new TemplateOptions { OutputProfile = OutputProfile.Text, TrimDirectiveLines = false, RootPath = root, EnableFileChangeCheck = true });
                 Assert.Equal(PrecompiledFallbackReason.StaleContent, evt.Value.Reason);
                 Assert.Equal("Content: 'x.heddle' hash mismatch", evt.Value.Detail);
             }
@@ -177,7 +183,7 @@ namespace Heddle.Tests
             try
             {
                 var entry = Entry(TextNative, key: "gone.heddle", contentHash: "deadbeef");
-                var evt = Run(entry, new TemplateOptions { RootPath = root, EnableFileChangeCheck = true });
+                var evt = Run(entry, new TemplateOptions { OutputProfile = OutputProfile.Text, TrimDirectiveLines = false, RootPath = root, EnableFileChangeCheck = true });
                 Assert.Equal(PrecompiledFallbackReason.StaleContent, evt.Value.Reason);
                 Assert.Equal("Content: 'gone.heddle' missing", evt.Value.Detail);
             }
@@ -195,7 +201,7 @@ namespace Heddle.Tests
                 File.WriteAllText(file, "hello world");
                 var hash = PrecompiledGauntlet.HashFile(file);
                 var entry = Entry(TextNative, key: "x.heddle", contentHash: hash);
-                Assert.Null(Run(entry, new TemplateOptions { RootPath = root, EnableFileChangeCheck = true }));
+                Assert.Null(Run(entry, new TemplateOptions { OutputProfile = OutputProfile.Text, TrimDirectiveLines = false, RootPath = root, EnableFileChangeCheck = true }));
             }
             finally { try { Directory.Delete(root, true); } catch { } }
         }
@@ -205,7 +211,7 @@ namespace Heddle.Tests
         {
             // A wrong hash must NOT fail when EnableFileChangeCheck is off.
             var entry = Entry(TextNative, key: "nowhere/x.heddle", contentHash: "deadbeef");
-            Assert.Null(Run(entry, new TemplateOptions { RootPath = "/nonexistent" }));
+            Assert.Null(Run(entry, new TemplateOptions { OutputProfile = OutputProfile.Text, TrimDirectiveLines = false, RootPath = "/nonexistent" }));
         }
     }
 }

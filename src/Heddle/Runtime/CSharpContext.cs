@@ -67,7 +67,12 @@ namespace Heddle.Runtime
                     }
                 }
 
-                InitErrors = PreparseGenerator.Compile(document);
+                InitErrors = PreparseGenerator.Compile(document,
+                    new CompileContext(new TemplateOptions
+                    {
+                        OutputProfile = OutputProfile.Text,
+                        TrimDirectiveLines = false
+                    }));
             }
             catch (Exception e)
             {

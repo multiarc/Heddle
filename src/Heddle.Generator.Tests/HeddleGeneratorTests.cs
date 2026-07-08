@@ -27,7 +27,7 @@ namespace Heddle.Generator.Tests
             var manifest = run.GeneratedSourceTexts.FirstOrDefault(s => s.Contains("__HeddleManifest"));
             Assert.NotNull(manifest);
             Assert.Contains("HeddleCompiledTemplates(", manifest);
-            Assert.Contains("engineVersion: \"1.0.0\"", manifest);
+            Assert.Contains("engineVersion: \"2.0.0\"", manifest);
             Assert.Contains("namespace SampleApp.HeddleTemplates", manifest);
 
             // No generator errors, and the generated manifest compiles cleanly against the runtime types.

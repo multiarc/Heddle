@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net6.0;net8.0;net10.0</TargetFrameworks>
     <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
-    <Version>1.0.0$(VersionSuffix)</Version>
+    <Version>2.0.0$(VersionSuffix)</Version>
     <Product>Heddle.Language</Product>
     <PackageId>Heddle.Language</PackageId>
     <Description>Text Template Engine Language Parser</Description>

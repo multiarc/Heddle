@@ -10,7 +10,7 @@ import {
 } from 'vscode-languageclient/node';
 
 let client: LanguageClient | undefined;
-const PINNED_VERSION = '1.0.0';
+const PINNED_VERSION = '2.0.0';
 const INSTALL_HINT =
   `Heddle language server not found. Install it with: dotnet tool install --global Heddle.LanguageServer --version ${PINNED_VERSION} — or install the .NET 10 runtime.`;
 

@@ -273,6 +273,16 @@ namespace Heddle
             return Compile(new CompileScope(new CompileContext(modelType)), document);
         }
 
+        // Engine-internal compile with an explicit context. Used by the C# code-generation meta-templates,
+        // which emit raw C# source and must render under OutputProfile.Text with directive-line trimming off,
+        // independent of the engine's public output defaults.
+        internal HeddleCompileResult Compile(string document, CompileContext context)
+        {
+            if (_runtimeDocument != null)
+                throw new TemplateInitException("Template already compiled.");
+            return Compile(new CompileScope(context), document);
+        }
+
         public HeddleCompileResult TryCompilation(CompileContext context)
         {
             if (_runtimeDocument != null)

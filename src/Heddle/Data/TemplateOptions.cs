@@ -52,10 +52,10 @@ namespace Heddle.Data {
 
         /// <summary>
         /// <para>Output profile for this template and its child compiles (bodies, partials, imports).
-        /// Default: <see cref="Data.OutputProfile.Text"/> (1.x).</para>
+        /// Default: <see cref="Data.OutputProfile.Html"/> (2.0) — the unnamed <c>@(...)</c> encodes by
+        /// default; opt out per output with <c>@raw</c> or per template with <see cref="Data.OutputProfile.Text"/>.</para>
         /// <para>Participates in <see cref="Equals(TemplateOptions)"/>/<see cref="GetHashCode"/> — the
-        /// profile keys template caches. Becomes <see cref="Data.OutputProfile.Html"/> by default in the
-        /// 2.0 window.</para>
+        /// profile keys template caches.</para>
         /// </summary>
         public OutputProfile OutputProfile { get; set; }
 
@@ -64,7 +64,7 @@ namespace Heddle.Data {
         /// <c>@import</c>, definitions, <c>@&lt;&lt;</c> imports, whole-line comments, and any extension block
         /// removed at compile time) swallow their line — leading indentation, trailing spaces, and one line
         /// terminator.</para>
-        /// <para>Default: <c>false</c> in 1.x; flips to <c>true</c> in the 2.0 window. Participates in
+        /// <para>Default: <c>true</c> (2.0) — set <c>false</c> to keep whole-line directives' lines. Participates in
         /// <see cref="Equals(TemplateOptions)"/>/<see cref="GetHashCode"/> — trimming changes output bytes, so
         /// it keys template caches. Compile-time only; never read at render.</para>
         /// </summary>
@@ -78,8 +78,8 @@ namespace Heddle.Data {
             EnableFileChangeCheck = false;
             ExpressionMode = ExpressionMode.Native;
             MaxRecursionCount = 100;
-            OutputProfile = OutputProfile.Text;
-            TrimDirectiveLines = false;
+            OutputProfile = OutputProfile.Html;
+            TrimDirectiveLines = true;
         }
 
         public TemplateOptions(string templateName) {
@@ -89,8 +89,8 @@ namespace Heddle.Data {
             EnableFileChangeCheck = false;
             ExpressionMode = ExpressionMode.Native;
             MaxRecursionCount = 100;
-            OutputProfile = OutputProfile.Text;
-            TrimDirectiveLines = false;
+            OutputProfile = OutputProfile.Html;
+            TrimDirectiveLines = true;
         }
 
         public TemplateOptions(TemplateOptions value, string templateName = null)

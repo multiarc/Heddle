@@ -1,2 +1,2 @@
 identical
-bytes=47
+bytes=45
