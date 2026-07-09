@@ -26,6 +26,15 @@ test.describe('Heddle demo', () => {
     // Delete a ')' from the starter template to provoke a parse-error annotation (base-layer behavior).
     const editor = page.locator('#editor');
     await editor.click();
+    // Move the caret to the end of the document before typing. The starter template now spans enough
+    // rows that a center-of-editor click can land mid-document, where ANTLR error recovery splits an
+    // unclosed call into several annotations; appending at the end yields the single parse-error the
+    // assertion below checks for (base-layer behavior is unchanged — this only fixes caret placement).
+    await page.evaluate(() => {
+      const ed = (window as any).ace.edit('editor');
+      ed.navigateFileEnd();
+      ed.focus();
+    });
     await page.keyboard.type('@(Name');   // an unclosed call -> the mode worker flags it
     // The Ace gutter shows an error annotation.
     await expect(page.locator('.ace_gutter-cell.ace_error, .ace_error')).toHaveCount(1, { timeout: 15_000 });

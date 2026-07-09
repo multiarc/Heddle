@@ -1,10 +1,5 @@
 // written based on ace v1.32.6, adjust as you upgrade
 "use strict";
-var TokenIterator = require("../token_iterator").TokenIterator;
-
-function is(token, type) {
-    return token.type.lastIndexOf(type + ".xml") > -1;
-}
 
 // do not indent after singleton tags or <html>
 exports.singletonTags = ["area", "base", "br", "col", "command", "embed", "hr", "html", "img", "input", "keygen", "link", "meta", "param", "source", "track", "wbr"];
@@ -13,403 +8,388 @@ exports.singletonTags = ["area", "base", "br", "col", "command", "embed", "hr", 
 exports.blockTags = ["article", "aside", "blockquote", "body", "div", "dl", "fieldset", "footer", "form", "head", "header", "html", "nav", "ol", "p", "script", "section", "style", "table", "tbody", "tfoot", "thead", "ul"];
 
 /**
- * 
- * @type {{lineBreaksAfterCommasInCurlyBlock?: boolean}}
+ * Heddle-specific formatter options.
+ *
+ * This object is the single source of truth for the beautifier's tunables and
+ * is read *fresh* on every `beautify()` invocation (see `readOptions` below),
+ * so callers can mutate it between formats and get deterministic results.
+ *
+ * @type {{
+ *   lineBreaksAfterCommasInCurlyBlock?: boolean,
+ *   maxLineLength?: number,
+ *   breakLongPropLists?: boolean
+ * }}
  */
 exports.formatOptions = {
-    lineBreaksAfterCommasInCurlyBlock: true
+    // When a prop/named-arg list is broken across lines, break points are placed
+    // after commas (one item per line). When false, long lists are never broken.
+    lineBreaksAfterCommasInCurlyBlock: true,
+    // A prop/named-arg list is only broken when its single-line form would push
+    // the current line past this width.
+    maxLineLength: 100,
+    // Master switch for breaking long prop-declaration / named-argument lists.
+    breakLongPropLists: true
 };
 
+// Default option values, cloned fresh each call so external mutation of
+// `exports.formatOptions` is always honored without leaking state between runs.
+var DEFAULT_FORMAT_OPTIONS = {
+    lineBreaksAfterCommasInCurlyBlock: true,
+    maxLineLength: 100,
+    breakLongPropLists: true
+};
+
+function readOptions() {
+    var opts = exports.formatOptions || {};
+    return {
+        lineBreaksAfterCommasInCurlyBlock: opts.lineBreaksAfterCommasInCurlyBlock !== undefined
+            ? opts.lineBreaksAfterCommasInCurlyBlock
+            : DEFAULT_FORMAT_OPTIONS.lineBreaksAfterCommasInCurlyBlock,
+        maxLineLength: typeof opts.maxLineLength === "number"
+            ? opts.maxLineLength
+            : DEFAULT_FORMAT_OPTIONS.maxLineLength,
+        breakLongPropLists: opts.breakLongPropLists !== undefined
+            ? opts.breakLongPropLists
+            : DEFAULT_FORMAT_OPTIONS.breakLongPropLists
+    };
+}
+
+// -- Heddle expression atom model -------------------------------------------
+//
+// The Ace Heddle tokenizer folds whitespace into token values inconsistently
+// (e.g. `"c "`) and also emits standalone whitespace tokens. To format an
+// expression / prop-list region idempotently we throw that whitespace away,
+// reduce each significant token to a trimmed "atom" tagged with a kind, and
+// re-emit spacing purely from the atom kinds. Because the emitted spacing is a
+// pure function of the kinds, re-tokenizing the output yields the same atoms
+// and therefore the same text (a fixed point => idempotent).
+
+var ATOM = {
+    OPEN: "open",       // ( or [
+    CLOSE: "close",     // ) or ]
+    COMMA: "comma",     // ,
+    COLON: "colon",     // : (named-arg / prop / ternary tail)
+    DBLCOLON: "dblcolon", // :: (slot type)
+    ASSIGN: "assign",   // = (prop default)
+    DOT: "dot",         // . (member access)
+    PREFIX: "prefix",   // ! ~ (unary prefix)
+    MINUS: "minus",     // - (resolved to unary/binary at emit time)
+    BINOP: "binop",     // + * / && || == etc.
+    OPERAND: "operand"  // identifier, literal, string, type, slot name
+};
+
+function classifyAtom(tok) {
+    var v = tok.value.trim();
+    if (v === "") {
+        return null; // pure whitespace - dropped
+    }
+    var type = tok.type;
+    var kind;
+    if (v === "(" || v === "[") {
+        kind = ATOM.OPEN;
+    } else if (v === ")" || v === "]") {
+        kind = ATOM.CLOSE;
+    } else if (v === ",") {
+        kind = ATOM.COMMA;
+    } else if (v === ":") {
+        kind = ATOM.COLON;
+    } else if (v === "::") {
+        kind = ATOM.DBLCOLON;
+    } else if (v === "=") {
+        kind = ATOM.ASSIGN;
+    } else if (v === ".") {
+        kind = ATOM.DOT;
+    } else if (v === "!" || v === "~") {
+        kind = ATOM.PREFIX;
+    } else if (v === "-") {
+        kind = ATOM.MINUS;
+    } else if (type.indexOf("keyword.operator") !== -1 && type.indexOf("paren") === -1) {
+        kind = ATOM.BINOP;
+    } else {
+        kind = ATOM.OPERAND;
+    }
+    return { v: v, kind: kind };
+}
+
+// Resolve a MINUS atom to unary vs binary based on the previous atom.
+function isUnary(atoms, i) {
+    var prev = i > 0 ? atoms[i - 1] : null;
+    if (!prev) {
+        return true;
+    }
+    switch (prev.kind) {
+        case ATOM.OPEN:
+        case ATOM.COMMA:
+        case ATOM.COLON:
+        case ATOM.DBLCOLON:
+        case ATOM.ASSIGN:
+        case ATOM.BINOP:
+        case ATOM.PREFIX:
+            return true;
+        case ATOM.MINUS:
+            return isUnary(atoms, i - 1); // a leading unary chain stays unary
+        default:
+            return false;
+    }
+}
+
+// Decide whether a single space separates atoms[i-1] and atoms[i].
+function spaceBefore(atoms, i) {
+    if (i === 0) {
+        return false;
+    }
+    var prev = atoms[i - 1];
+    var cur = atoms[i];
+    var prevUnaryMinus = prev.kind === ATOM.MINUS && isUnary(atoms, i - 1);
+    var curUnaryMinus = cur.kind === ATOM.MINUS && isUnary(atoms, i);
+
+    // Current-atom driven rules first.
+    if (cur.kind === ATOM.CLOSE) return false;
+    if (cur.kind === ATOM.COMMA) return false;
+    if (cur.kind === ATOM.COLON) return false;
+    if (cur.kind === ATOM.DBLCOLON) return false;
+    if (cur.kind === ATOM.DOT) return false;
+
+    if (cur.kind === ATOM.OPEN) {
+        if (cur.v === "[") return false; // indexer binds tight
+        // '(' : no space when it forms a call/grouping right after an operand,
+        // closing bracket, another opener, or a prefix; space after operators.
+        if (prev.kind === ATOM.OPERAND || prev.kind === ATOM.CLOSE) return false;
+        if (prev.kind === ATOM.OPEN) return false;
+        if (prev.kind === ATOM.PREFIX || prevUnaryMinus) return false;
+        return true;
+    }
+
+    if (cur.kind === ATOM.PREFIX || curUnaryMinus) {
+        if (prev.kind === ATOM.OPEN) return false;
+        if (prev.kind === ATOM.PREFIX || prevUnaryMinus) return false;
+        return true;
+    }
+
+    if (cur.kind === ATOM.BINOP || cur.kind === ATOM.ASSIGN) {
+        if (prev.kind === ATOM.OPEN) return false;
+        return true;
+    }
+
+    // OPERAND
+    if (prev.kind === ATOM.OPEN) return false;
+    if (prev.kind === ATOM.PREFIX || prevUnaryMinus) return false;
+    if (prev.kind === ATOM.DOT) return false;
+    return true;
+}
+
+// Emit a flat atom list to a single normalized line.
+function emitAtoms(atoms) {
+    var res = "";
+    for (var i = 0; i < atoms.length; i++) {
+        if (spaceBefore(atoms, i) && res !== "") {
+            res += " ";
+        }
+        res += atoms[i].v;
+    }
+    return res;
+}
+
+function hasTopLevelComma(atoms) {
+    var depth = 0;
+    for (var i = 0; i < atoms.length; i++) {
+        if (atoms[i].kind === ATOM.OPEN) depth++;
+        else if (atoms[i].kind === ATOM.CLOSE) depth--;
+        else if (atoms[i].kind === ATOM.COMMA && depth === 0) return true;
+    }
+    return false;
+}
+
+// Split interior atoms into top-level comma-separated items.
+function splitTopLevel(atoms) {
+    var items = [];
+    var current = [];
+    var depth = 0;
+    for (var i = 0; i < atoms.length; i++) {
+        var a = atoms[i];
+        if (a.kind === ATOM.OPEN) depth++;
+        else if (a.kind === ATOM.CLOSE) depth--;
+        if (a.kind === ATOM.COMMA && depth === 0) {
+            items.push(current);
+            current = [];
+        } else {
+            current.push(a);
+        }
+    }
+    items.push(current);
+    return items;
+}
+
 /**
- * 
+ * Format a Heddle document held in an Ace EditSession.
+ *
+ * The formatter is deliberately conservative: HTML, text, `@*…*@` comments and
+ * string/char literals outside directives are reproduced **verbatim** (WS4 task
+ * 4 - no text/HTML reflow). Only three things are rewritten, and each is a pure
+ * function of the token stream so the whole pass is idempotent:
+ *   1. `@elif`/`@elseif`/`@else` get exactly one space after a closing `}}`.
+ *   2. Native-expression regions inside `@(…)` / `@out(…)` get normalized
+ *      operator / comma / bracket spacing.
+ *   3. Prop-declaration and named-argument lists get `name: type = default`
+ *      spacing, with optional line breaks for long lists via `formatOptions`.
+ *
  * @param {import("../edit_session").EditSession} session
  */
 exports.beautify = function(session) {
-    var iterator = new TokenIterator(session, 0, 0);
-    var token = iterator.getCurrentToken();
+    var options = readOptions();
     var tabString = session.getTabString();
-    var singletonTags = exports.singletonTags;
-    var blockTags = exports.blockTags;
-    var formatOptions = exports.formatOptions || {};
-    var nextToken;
-    var breakBefore = false;
-    var spaceBefore = false;
-    var spaceAfter = false;
-    var code = "";
-    var value = "";
-    var tagName = "";
-    var depth = 0;
-    var lastDepth = 0;
-    var lastIndent = 0;
-    var indent = 0;
-    var unindent = 0;
-    var roundDepth = 0;
-    var curlyDepth = 0;
-    var row;
-    var curRow = 0;
-    var rowsToAdd = 0;
-    var rowTokens = [];
-    var abort = false;
-    var i;
-    var indentNextLine = false;
-    var inTag = false;
-    var inCSS = false;
-    var inBlock = false;
-    var levels = {0: 0};
-    var parents = [];
-    var caseBody = false;
-    var ttlTokenTable = {
-        "@%": "%@",
-        "{{": "}}"
-    };
-    var ttlReverseTokenTable = {
-        "%@": "@%",
-        "}}": "{{"
-    };
 
-    var trimNext = function() {
-        if (nextToken && nextToken.value && nextToken.type !== 'string.regexp')
-            nextToken.value = nextToken.value.replace(/^\s*/, "");
-    };
-    
-    var trimLine = function() {
-        var end = code.length - 1;
-
-        while (true) {
-            if (end == 0)
-                break;
-            if (code[end] !== " ")
-                break;
-            
-            end = end - 1;
+    // Flatten the tokenized document, tagging each token with its row so we can
+    // reproduce blank lines and non-directive content verbatim.
+    var toks = [];
+    var rows = session.getLength();
+    for (var r = 0; r < rows; r++) {
+        var rowToks = session.getTokens(r);
+        for (var t = 0; t < rowToks.length; t++) {
+            toks.push({ type: rowToks[t].type, value: rowToks[t].value, row: r });
         }
-
-        code = code.slice(0, end + 1);
-    };
-    
-    var trimCode = function() {
-        code = code.trimRight();
-        breakBefore = false;
-    };
-
-    while (token !== null) {
-        curRow = iterator.getCurrentTokenRow();
-        rowTokens = iterator.$rowTokens;
-        nextToken = iterator.stepForward();
-
-        if (typeof token !== "undefined") {
-            value = token.value;
-            unindent = 0;
-
-            // mode
-            inCSS = (tagName === "style" || session.$modeId === "ace/mode/css");
-
-            // in tag
-            if (is(token, "tag-open")) {
-                inTag = true;
-
-                // are we in a block tag
-                if (nextToken)
-                    inBlock = (blockTags.indexOf(nextToken.value) !== -1);
-
-                // html indentation
-                if (value === "</") {
-                    // line break before closing tag unless we just had one
-                    if (inBlock && !breakBefore && rowsToAdd < 1)
-                        rowsToAdd++;
-
-                    if (inCSS)
-                        rowsToAdd = 1;
-
-                    unindent = 1;
-                    inBlock = false;
-                }
-            } else if (is(token, "tag-close")) {
-                inTag = false;
-            // comments
-            } else if (is(token, "comment.start")) {
-                inBlock = true;
-            } else if (is(token, "comment.end")) {
-                inBlock = false;
-            }
-
-            // line break before }
-            if (!inTag && !rowsToAdd && token.type === "paren.rparen" && token.value.substr(0, 1) === "}") {
-                rowsToAdd++;
-            }
-
-            // add rows
-            if (curRow !== row) {
-                rowsToAdd = curRow;
-
-                if (row)
-                    rowsToAdd -= row;
-            }
-
-            if (rowsToAdd) {
-                trimCode();
-                for (; rowsToAdd > 0; rowsToAdd--)
-                    code += "\n";
-
-                breakBefore = true;
-
-                // trim value if not in a comment or string
-                if (!is(token, "comment") && !token.type.match(/^(comment|string)$/))
-                   value = value.trimLeft();
-            }
-
-            if (value) {
-                if (ttlReverseTokenTable[value] && token.type.indexOf("keyword.operator.paren.rparen") !== -1) {
-                    depth--;
-                }
-
-                // whitespace
-                if (token.type === "keyword" && value.match(/^(if|else|elseif|for|foreach|while|switch)$/)) {
-                    parents[depth] = value;
-
-                    trimNext();
-                    spaceAfter = true;
-
-                    // space before else, elseif
-                    if (value.match(/^(else|elseif)$/)) {
-                        if (code.match(/\}[\s]*$/)) {
-                            trimCode();
-                            spaceBefore = true;
-                        }
-                    }
-                // trim value after opening paren
-                } else if (token.type === "paren.lparen") {
-                    trimNext();
-
-                    // whitespace after {
-                    if (value.substr(-1) === "{") {
-                        spaceAfter = true;
-                        indentNextLine = false;
-
-                        if(!inTag)
-                            rowsToAdd = 1;
-                    }
-
-                    // ensure curly brace is preceeded by whitespace
-                    if (value.substr(0, 1) === "{") {
-                        spaceBefore = true;
-
-                        // collapse square and curly brackets together
-                        if (code.substr(-1) !== '[' && code.trimRight().substr(-1) === '[') {
-                            trimCode();
-                            spaceBefore = false;
-                        } else if (code.trimRight().substr(-1) === ')') {
-                            trimCode();
-                        } else {
-                            trimLine();
-                        }
-                    }
-                // remove space before closing paren
-                } else if (token.type === "paren.rparen") {
-                    unindent = 1;
-
-                    // ensure curly brace is preceeded by whitespace
-                    if (value.substr(0, 1) === "}") {
-                        if (parents[depth-1] === 'case')
-                            unindent++;
-
-                        if (code.trimRight().substr(-1) === '{') {
-                            trimCode();
-                        } else {
-                            spaceBefore = true;
-
-                            if (inCSS)
-                                rowsToAdd+=2;
-                        }
-                    }
-
-                    // collapse square and curly brackets together
-                    if (value.substr(0, 1) === "]") {
-                        if (code.substr(-1) !== '}' && code.trimRight().substr(-1) === '}') {
-                            spaceBefore = false;
-                            indent++;
-                            trimCode();
-                        }
-                    }
-
-                    // collapse round brackets together
-                    if (value.substr(0, 1) === ")") {
-                        if (code.substr(-1) !== '(' && code.trimRight().substr(-1) === '(') {
-                            spaceBefore = false;
-                            indent++;
-                            trimCode();
-                        }
-                    }
-
-                    trimLine();
-                // add spaces around conditional operators
-                } else if ((token.type === "keyword.operator" || token.type === "keyword") && value.match(/^(=|==|===|!=|!==|&&|\|\||and|or|xor|\+=|.=|>|>=|<|<=|=>)$/)) {
-                    trimCode();
-                    trimNext();
-                    spaceBefore = true;
-                    spaceAfter = true;
-                // remove space before semicolon
-                } else if (token.type === "punctuation.operator" && value === ';') {
-                    trimCode();
-                    trimNext();
-                    spaceAfter = true;
-
-                    if (inCSS)
-                        rowsToAdd++;
-                // space after colon or comma
-                } else if (token.type === "punctuation.operator" && value.match(/^(:|,)$/)) {
-                    trimCode();
-                    trimNext();
-
-                    // line break after commas in curly block
-                    if (value.match(/^(,)$/) && curlyDepth>0 && roundDepth===0 && formatOptions.lineBreaksAfterCommasInCurlyBlock) {
-                        rowsToAdd++;
-                    } else {
-                        spaceAfter = true;
-                        breakBefore = false;
-                    }
-                // ensure space before php closing tag
-                } else if (token.type === "support.php_tag" && value === "?>" && !breakBefore) {
-                    trimCode();
-                    spaceBefore = true;
-                // remove excess space before HTML attribute
-                } else if (is(token, "attribute-name") && code.substr(-1).match(/^\s$/)) {
-                    spaceBefore = true;
-                // remove space around attribute equals
-                } else if (is(token, "attribute-equals")) {
-                    trimLine();
-                    trimNext();
-                // remove space before HTML closing tag
-                } else if (is(token, "tag-close")) {
-                    trimLine();
-                    if(value === "/>")
-                        spaceBefore = true;
-                } else if (token.type === "keyword" && value.match(/^(case|default)$/)) {
-                    if (caseBody)
-                        unindent = 1;
-                }
-
-                // add indent to code unless multiline string or comment
-                if (breakBefore && !(token.type.match(/^(comment)$/) && !value.substr(0, 1).match(/^[/#]$/)) && !(token.type.match(/^(string)$/) && !value.substr(0, 1).match(/^['"@]$/))) {
-
-                    indent = lastIndent;
-
-                    if(depth > lastDepth) {
-                        indent++;
-
-                        for (i=depth; i > lastDepth; i--)
-                            levels[i] = indent;
-                    } else if(depth < lastDepth)
-                        indent = levels[depth];
-
-                    lastDepth = depth;
-                    lastIndent = indent;
-
-                    if(unindent)
-                        indent -= unindent;
-
-                    if (indentNextLine && !roundDepth) {
-                        indent++;
-                        indentNextLine = false;
-                    }
-
-                    for (i = 0; i < indent; i++)
-                        code += tabString;
-                }
-
-                if (token.type === "keyword" && value.match(/^(case|default)$/)) {
-                    if (caseBody === false) {
-                        parents[depth] = value;
-                        depth++;
-                        caseBody = true;
-                    }
-                } else if (token.type === "keyword" && value.match(/^(break)$/)) {
-                    if(parents[depth-1] && parents[depth-1].match(/^(case|default)$/)) {
-                        depth--;
-                        caseBody = false;
-                    }
-                }
-
-                // indent one line after if or else
-                if (token.type === "paren.lparen") {
-                    roundDepth += (value.match(/\(/g) || []).length;
-                    curlyDepth += (value.match(/\{/g) || []).length;
-                    depth += value.length;
-                }
-
-                if (token.type === "keyword" && value.match(/^(if|else|elseif|for|while)$/)) {
-                    indentNextLine = true;
-                    roundDepth = 0;
-                } else if (!roundDepth && value.trim() && token.type !== "comment")
-                    indentNextLine = false;
-
-                if (token.type === "paren.rparen") {
-                    roundDepth -= (value.match(/\)/g) || []).length;
-                    curlyDepth -= (value.match(/\}/g) || []).length;
-
-                    for (i = 0; i < value.length; i++) {
-                        depth--;
-                        if(value.substr(i, 1)==='}' && parents[depth]==='case') {
-                            depth--;
-                        }
-                    }
-                }
-                
-                if (token.type == "text")
-                    value = value.replace(/\s+$/, " ");
-
-                // add to code
-                if (spaceBefore && !breakBefore) {
-                    trimLine();
-                    if (code.substr(-1) !== "\n")
-                        code += " ";
-                }
-
-                code += value;
-
-                if (spaceAfter)
-                    code += " ";
-
-                breakBefore = false;
-                spaceBefore = false;
-                spaceAfter = false;
-
-                // line break after block tag or doctype
-                if ((is(token, "tag-close") && (inBlock || blockTags.indexOf(tagName) !== -1)) || (is(token, "doctype") && value === ">")) {
-                    // undo linebreak if tag is immediately closed
-                    if (inBlock && nextToken && nextToken.value === "</")
-                        rowsToAdd = -1;
-                    else
-                        rowsToAdd = 1;
-                }
-
-                // html indentation
-                if (nextToken && singletonTags.indexOf(nextToken.value) === -1) {
-                    if (is(token, "tag-open") && value === "</") {
-                        depth--;
-                    } else if (is(token, "tag-open") && value === "<") {
-                        depth++;
-                    } else if (is(token, "tag-close") && value === "/>"){
-                        depth--;
-                    }
-                }
-                
-                if (is(token, "tag-name")) {
-                    tagName = value;
-                }
-                if (ttlTokenTable[value] && token.type.indexOf("keyword.operator.paren.lparen") !== -1) {
-                    depth++;
-                }
-
-                row = curRow;
-            }
-        }
-
-        token = nextToken;
     }
 
-    code = code.trim();
-    session.doc.setValue(code);
+    var out = "";
+    var lastRow = 0;
+
+    function newlinesTo(row) {
+        while (lastRow < row) {
+            out += "\n";
+            lastRow++;
+        }
+    }
+
+    function currentLineText() {
+        var nl = out.lastIndexOf("\n");
+        return nl === -1 ? out : out.slice(nl + 1);
+    }
+
+    function currentBaseIndent() {
+        var line = currentLineText();
+        var m = /^[ \t]*/.exec(line);
+        return m ? m[0] : "";
+    }
+
+    // Emit an interior atom list wrapped by an already-emitted open paren and a
+    // trailing close string, breaking across lines when the list is long.
+    function emitParenList(interior, closeStr) {
+        var single = emitAtoms(interior);
+        var breakable = options.breakLongPropLists
+            && options.lineBreaksAfterCommasInCurlyBlock
+            && hasTopLevelComma(interior);
+        if (breakable && (currentLineText().length + single.length + closeStr.length) > options.maxLineLength) {
+            var baseIndent = currentBaseIndent();
+            var items = splitTopLevel(interior);
+            for (var j = 0; j < items.length; j++) {
+                out += "\n" + baseIndent + tabString + emitAtoms(items[j]);
+                if (j < items.length - 1) {
+                    out += ",";
+                }
+            }
+            out += "\n" + baseIndent + closeStr;
+        } else {
+            out += single + closeStr;
+        }
+    }
+
+    function isDefPropOpen(tk) {
+        return tk.type.indexOf("heddle-def") === 0
+            && /keyword\.operator\.paren$/.test(tk.type)
+            && tk.value === "(";
+    }
+
+    function isDefPropClose(tk) {
+        return tk.type.indexOf("heddle-def") === 0
+            && /keyword\.operator\.paren$/.test(tk.type)
+            && tk.value === ")";
+    }
+
+    function isElifElse(tk) {
+        return tk.type.indexOf("heddle-sub") === 0
+            && tk.type.indexOf("keyword") !== -1
+            && /^@(elif|elseif|else)$/.test(tk.value);
+    }
+
+    var i = 0;
+    while (i < toks.length) {
+        var tk = toks[i];
+
+        // (1) @elif / @elseif / @else spacing after a closing }} on the same line.
+        if (isElifElse(tk)) {
+            newlinesTo(tk.row);
+            // Trim trailing spaces/tabs (never a newline) so we control the gap.
+            out = out.replace(/[ \t]+$/, "");
+            if (/\}$/.test(out)) {
+                out += " ";
+            }
+            out += tk.value;
+            lastRow = tk.row;
+            i++;
+            continue;
+        }
+
+        // (2) Prop-declaration list: `<name(… )>` inside `@% … %@`.
+        if (isDefPropOpen(tk)) {
+            newlinesTo(tk.row);
+            out += "(";
+            var depthD = 1;
+            var interiorD = [];
+            var k = i + 1;
+            for (; k < toks.length; k++) {
+                var dk = toks[k];
+                if (isDefPropOpen(dk)) {
+                    depthD++;
+                    var a1 = classifyAtom(dk);
+                    if (a1) interiorD.push(a1);
+                    continue;
+                }
+                if (isDefPropClose(dk)) {
+                    depthD--;
+                    if (depthD === 0) break;
+                    var a2 = classifyAtom(dk);
+                    if (a2) interiorD.push(a2);
+                    continue;
+                }
+                var a3 = classifyAtom(dk);
+                if (a3) interiorD.push(a3);
+            }
+            emitParenList(interiorD, k < toks.length ? ")" : "");
+            lastRow = (k < toks.length ? toks[k] : toks[toks.length - 1]).row;
+            i = (k < toks.length ? k + 1 : toks.length);
+            continue;
+        }
+
+        // (3) Native-expression / named-argument region inside @(…) / @out(…).
+        // The opening `(` is a heddle-out token already emitted verbatim; the
+        // run's trailing `)` is a heddle-call token and closes the region.
+        if (tk.type.indexOf("heddle-call.") === 0) {
+            var runAtoms = [];
+            var j2 = i;
+            for (; j2 < toks.length && toks[j2].type.indexOf("heddle-call.") === 0; j2++) {
+                var ca = classifyAtom(toks[j2]);
+                if (ca) runAtoms.push(ca);
+            }
+            var runEndRow = toks[j2 - 1].row;
+            var closeStr = "";
+            if (runAtoms.length && runAtoms[runAtoms.length - 1].kind === ATOM.CLOSE
+                && runAtoms[runAtoms.length - 1].v === ")") {
+                closeStr = ")";
+                runAtoms.pop();
+            }
+            emitParenList(runAtoms, closeStr);
+            lastRow = runEndRow;
+            i = j2;
+            continue;
+        }
+
+        // Everything else: reproduce verbatim (no HTML/text reflow).
+        newlinesTo(tk.row);
+        out += tk.value;
+        i++;
+    }
+
+    session.doc.setValue(out);
 };
 
 exports.commands = [{

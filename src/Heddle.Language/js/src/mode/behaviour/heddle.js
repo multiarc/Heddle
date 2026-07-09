@@ -173,6 +173,55 @@ var TTLstyleBehaviour = function() {
         }
     });
 
+    // Square brackets `[` `]` for indexers / collection expressions inside
+    // native expressions and prop lists (v2). `<`/`>` in generic types are
+    // deliberately NOT auto-paired - the multi-mode tokenizer (D-A) keeps them
+    // classified as generic-type punctuation, so no bracket behaviour applies.
+    this.add("square", "insertion", function(state, action, editor, session, text) {
+        if (text == '[') {
+            initContext(editor);
+            var selection = editor.getSelectionRange();
+            var selected = session.doc.getTextRange(selection);
+            if (selected !== "" && editor.getWrapBehavioursEnabled()) {
+                return getWrapped(selection, selected, '[', ']');
+            } else if (TTLstyleBehaviour.isSaneInsertion(editor, session)) {
+                TTLstyleBehaviour.recordAutoInsert(editor, session, "]");
+                return {
+                    text: '[]',
+                    selection: [1, 1]
+                };
+            }
+        } else if (text == ']') {
+            initContext(editor);
+            var cursor = editor.getCursorPosition();
+            var line = session.doc.getLine(cursor.row);
+            var rightChar = line.substring(cursor.column, cursor.column + 1);
+            if (rightChar == ']') {
+                var matching = session.$findOpeningBracket(']', {column: cursor.column + 1, row: cursor.row});
+                if (matching !== null && TTLstyleBehaviour.isAutoInsertedClosing(cursor, line, text)) {
+                    TTLstyleBehaviour.popAutoInsertedClosing();
+                    return {
+                        text: '',
+                        selection: [1, 1]
+                    };
+                }
+            }
+        }
+    });
+
+    this.add("square", "deletion", function(state, action, editor, session, range) {
+        var selected = session.doc.getTextRange(range);
+        if (!range.isMultiLine() && selected == '[') {
+            initContext(editor);
+            var line = session.doc.getLine(range.start.row);
+            var rightChar = line.substring(range.start.column + 1, range.start.column + 2);
+            if (rightChar == ']') {
+                range.end.column++;
+                return range;
+            }
+        }
+    });
+
     this.add("brackets", "insertion", function(state, action, editor, session, text) {
         if (text == '@%') {
             initContext(editor);

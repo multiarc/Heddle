@@ -115,6 +115,9 @@ project.lock.json
 # ANTLR tool jar, downloaded on demand by the generate_*.cmd scripts
 /src/Heddle.Language/antlr-4.13.1-complete.jar
 
+# JS test harness dependencies (ace-code) - restored via `npm ci`/`npm install`
+/src/Heddle.Language/node_modules
+
 # VitePress documentation site
 /docs/node_modules
 /docs/.vitepress/dist

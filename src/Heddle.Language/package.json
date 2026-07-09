@@ -24,6 +24,12 @@
     "provenance": true
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "generate": "java -jar antlr-4.13.1-complete.jar -Dlanguage=JavaScript HeddleLexer.g4 HeddleParser.g4 -o js -lib js -package Heddle.Language && node propagate_js.js",
+    "propagate": "node propagate_js.js",
+    "test": "node --test \"js/test/**/*.test.js\""
+  },
+  "devDependencies": {
+    "ace-code": "1.32.6",
+    "antlr4": "^4.13.1"
   }
 }

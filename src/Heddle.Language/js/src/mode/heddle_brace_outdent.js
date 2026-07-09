@@ -13,7 +13,7 @@ var TTLMatchingBraceOutdent = function () {
         var charBeforeCursor = chr || doc.getLine(position.row).charAt(position.column - 1);
         if (charBeforeCursor == "") return null;
 
-        var match = charBeforeCursor.match(/({{|@%|\()|(}}|%@|\))/);
+        var match = charBeforeCursor.match(/({{|@%|\(|\[)|(}}|%@|\)|\])/);
         if (!match)
             return null;
 
@@ -27,12 +27,12 @@ var TTLMatchingBraceOutdent = function () {
         if (!/^\s+$/.test(line))
             return false;
 
-        return /^(\s*}})|(\s*%@)|(\s*\))/.test(input);
+        return /^(\s*}})|(\s*%@)|(\s*\))|(\s*\])/.test(input);
     };
 
     this.autoOutdent = function (doc, row) {
         var line = doc.getLine(row);
-        var match = line.match(/^(\s*}}|\s*%@|\s*\))/);
+        var match = line.match(/^(\s*}}|\s*%@|\s*\)|\s*\])/);
 
         if (!match) return 0;
 

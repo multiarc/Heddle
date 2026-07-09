@@ -110,15 +110,39 @@
   <script>
     (function () {
       // ---- Base layer: Ace editor + the existing mode worker (unchanged behavior) --------------------------
+      // The starter template showcases v2 constructs so the new coloring is demonstrable even in the
+      // syntax-only fallback: native expressions (operators / ternary / null-coalescing), an
+      // @if/@elif/@else chain, and a prop-based component (typed props + defaults + an @out() slot).
       var FALLBACK_SAMPLE = [
-        "@* Welcome to the Heddle live editor.",
+        "@* Welcome to the Heddle live editor — now showing v2 constructs.",
         "   Syntax highlighting and error checking update as you type.",
         "   This demo checks syntax only and does not render output. *@",
         "",
         "@model(){{dynamic}}",
         "",
-        "<p>Hi @(Name) — you have @int(Count) new",
-        "   @if(Count){{comments}}@ifnot(Count){{messages}}.</p>",
+        "@* A prop-based component: typed props with defaults, and an @out() slot. *@",
+        "@%",
+        "<badge(label: string = \"new\", featured: bool = false)>{{",
+        "  <span class=\"badge @(featured ? \"hot\" : \"\")\">@(label)</span>",
+        "  <div class=\"slot\">@out()</div>",
+        "}}",
+        "%@",
+        "",
+        "<article>",
+        "  <h1>@(Title)</h1>",
+        "",
+        "  @* Native expressions: operators, a ternary, a null-coalescing fallback. *@",
+        "  <p>Score: @(Likes + Comments * 2), @(Likes > 0 ? \"popular\" : \"quiet\")</p>",
+        "  <p>By @(Author ?? \"anonymous\")</p>",
+        "",
+        "  @* An @if / @elif / @else chain. *@",
+        "  @if(Featured){{ <em>Featured</em> }}",
+        "  @elif(Archived){{ <i>Archived</i> }}",
+        "  @else(){{ Regular }}",
+        "",
+        "  @* Call the component with named arguments and a slot body. *@",
+        "  @badge(featured: true, label: \"top\"){{ <a href=\"#\">read more</a> }}",
+        "</article>",
         "",
         "@* Tip: break the markup above to see live error reporting. *@"
       ].join("\n");

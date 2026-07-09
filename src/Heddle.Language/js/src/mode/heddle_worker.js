@@ -5,6 +5,7 @@ var lang = require("../lib/lang");
 var Mirror = require("../worker/mirror").Mirror;
 var HeddleMode = require("../mode/heddle").WorkerMode;
 var DocumentParser = require("./heddle/DocumentParser").DocumentParser;
+var errorsToAnnotations = require("./heddle/toAnnotations").errorsToAnnotations;
 var SAXParser = require("./html/saxparser").SAXParser;
 var CSSLint = require("./css/csslint").CSSLint;
 var CSSLintEmail = require("./css/csslint_email").CSSLint;
@@ -239,28 +240,13 @@ oop.inherits(HeddleWorker, Mirror);
 
         var parser = new DocumentParser(value);
         var results = parser.parseGetErrors();
-        var errors = [];
-        for (var i = 0; i < results.length; i++) {
-            var error = results[i];
-            if (!error || error.position === null)
-                continue;
-            if (error.position.startIndex) {
-                var position = this.doc.indexToPosition(error.position.startIndex);
-                errors.push({
-                    row: position.row,
-                    column: position.column,
-                    text: error.message,
-                    type: "error"
-                });
-            } else {
-                errors.push({
-                    row: error.position.line - 1,
-                    column: error.position.column,
-                    text: error.message,
-                    type: "error"
-                });
-            }
-        }
+        var doc = this.doc;
+        // Shared mapping (mode/heddle/toAnnotations.js) also drives the WS5 test
+        // harness, and aligns the annotation text with the engine's HED0003
+        // syntax-error phrasing.
+        var errors = errorsToAnnotations(results, function (index) {
+            return doc.indexToPosition(index);
+        });
         this.sender.emit("annotate", errors);
 
         if (errors.length === 0) {

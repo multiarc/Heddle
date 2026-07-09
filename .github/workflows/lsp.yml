@@ -32,6 +32,14 @@ jobs:
         run: dotnet test src/Heddle.Tests/Heddle.Tests.csproj -c Release --no-build
       - name: Test language services
         run: dotnet test src/Heddle.LanguageServices.Tests/Heddle.LanguageServices.Tests.csproj -c Release --no-build
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: JS editor-artifact harness (highlight / beautify / completions)
+        working-directory: src/Heddle.Language
+        run: |
+          npm ci
+          npm test
 
   pack-tool:
     runs-on: ubuntu-latest
