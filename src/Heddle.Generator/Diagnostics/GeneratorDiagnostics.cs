@@ -117,5 +117,14 @@ namespace Heddle.Generator.Diagnostics
             "[ExportFunctions] on a public static container to precompile it; otherwise this template renders through " +
             "the dynamic path at run time.",
             Category, DiagnosticSeverity.Warning, isEnabledByDefault: true);
+
+        /// <summary>D-ROLE-5 drift (§6.5): a branch <c>Continuation</c>/<c>Terminal</c> extension (<c>[BranchRole]</c>)
+        /// does not carry <c>[ScopeChannel]</c>, so its <c>TryRead</c> of the branch state always misses at render
+        /// (R11). Additive and never fired by the built-ins, which all comply.</summary>
+        public static readonly DiagnosticDescriptor BranchRoleMissingScopeChannel = new DiagnosticDescriptor(
+            "HED7016", "Branch role without scope channel",
+            "Branch continuation/terminal '{0}' does not carry [ScopeChannel]. It cannot read the branch state at " +
+            "render time.",
+            Category, DiagnosticSeverity.Warning, isEnabledByDefault: true);
     }
 }

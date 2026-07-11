@@ -10,7 +10,9 @@ namespace Heddle.Generator.Emit
     /// <c>HeddleCompiler.CompileBody</c> — skipped-token alignment, remnant-line trimming, definition/import removal,
     /// raw-output splice, and zero-output-chain removal — reproduced against the parsed <see cref="ParseContext"/>
     /// so the emitter derives the exact same static-piece boundaries the runtime <c>RuntimeDocument</c> derives.
-    /// The strip/orphan branch machine (<c>ProcessBranchSets</c>) is layered in by <see cref="BranchSetScanner"/>.
+    /// Only the byte-affecting half of <c>HeddleCompiler.ProcessBranchSets</c> — the adjacency strip of whitespace
+    /// between the blocks of one branch set — runs here (<see cref="StripBranchSets"/>); the HED300x branch-set
+    /// diagnostics live in the runtime compiler, not in the generator.
     /// </summary>
     internal static class DocumentShaper
     {
@@ -45,7 +47,8 @@ namespace Heddle.Generator.Emit
         /// <param name="isDefinition">Names that resolve to a definition in this scope — such a leftmost call is
         /// never a branch keyword (matches <c>HeddleCompiler.Classify</c>'s definition-shadowing check).</param>
         public static Result Shape(string cleanDocument, ParseContext parseContext, bool trimDirectiveLines,
-            System.Func<OutputChain, bool> isZeroOutput, System.Func<string, bool> isDefinition = null)
+            System.Func<OutputChain, bool> isZeroOutput, System.Func<string, bool> isDefinition = null,
+            System.Func<string, BranchRole?> roleOf = null)
         {
             var workingDocument = cleanDocument;
 
@@ -54,7 +57,7 @@ namespace Heddle.Generator.Emit
                 TrimHiddenRemnantLines(parseContext, ref workingDocument);
             RemoveDefinitions(parseContext, ref workingDocument, trimDirectiveLines);
             ReplaceRawOutput(parseContext, ref workingDocument);
-            StripBranchSets(parseContext, ref workingDocument, isDefinition ?? (_ => false));
+            StripBranchSets(parseContext, ref workingDocument, isDefinition ?? (_ => false), roleOf ?? (_ => null));
 
             var elements = new List<Element>();
             foreach (var chain in parseContext.OutputChains)
@@ -83,31 +86,26 @@ namespace Heddle.Generator.Emit
 
         private enum BranchKind { Other, Opener, Continuation, Terminal }
 
-        private static BranchKind ClassifyBranch(OutputChain chain, System.Func<string, bool> isDefinition)
+        private static BranchKind ClassifyBranch(OutputChain chain, System.Func<string, bool> isDefinition,
+            System.Func<string, BranchRole?> roleOf)
         {
             var leftmost = chain.Chain != null && chain.Chain.Count > 0 ? chain.Chain[0] : null;
             if (leftmost == null)
                 return BranchKind.Other;
             var name = leftmost.ExtensionName;
             if (isDefinition(name))
-                return BranchKind.Other;
-            switch (name)
+                return BranchKind.Other;         // definition-first guard kept (R8)
+            switch (roleOf(name))
             {
-                case "if":
-                case "ifnot":
-                    return BranchKind.Opener;
-                case "elif":
-                case "elseif":
-                    return BranchKind.Continuation;
-                case "else":
-                    return BranchKind.Terminal;
+                case BranchRole.Opener:       return BranchKind.Opener;
+                case BranchRole.Continuation: return BranchKind.Continuation;
+                case BranchRole.Terminal:     return BranchKind.Terminal;
+                default:                      return BranchKind.Other;
             }
-
-            return BranchKind.Other;
         }
 
         private static void StripBranchSets(ParseContext parseContext, ref string workingDocument,
-            System.Func<string, bool> isDefinition)
+            System.Func<string, bool> isDefinition, System.Func<string, BranchRole?> roleOf)
         {
             var chains = parseContext.OutputChains;
             if (chains == null || chains.Count == 0)
@@ -118,7 +116,7 @@ namespace Heddle.Generator.Emit
 
             foreach (var chain in chains)
             {
-                var kind = ClassifyBranch(chain, isDefinition);
+                var kind = ClassifyBranch(chain, isDefinition, roleOf);
                 switch (kind)
                 {
                     case BranchKind.Opener:

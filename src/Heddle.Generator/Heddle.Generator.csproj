@@ -25,6 +25,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- White-box binder unit tests (ExtensionBinder / Info are internal). Signed with the shared key. -->
+    <InternalsVisibleTo Include="Heddle.Generator.Tests, PublicKey=00240000048000009400000006020000002400005253413100040000010001008F699CB432AD3DC770F9147DE37911B49099706C36AF5F14DB7C2031DD216FFAE283B63A2591814F371929AB231C4A82BCBFAC9803C37B96AE90DC703F4159E8B6AC6E2E9F364F072D1BA2FC5B79F26ACF3BD61637D2DB47F409E2B07CF3F49E988BF2C5F6DDAE6D8F804C770601CCE3F3CEA11F7D61A3583109D9AD3244F6C6" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- The host compiler provides Microsoft.CodeAnalysis; never shipped (D12). -->
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.4.0" PrivateAssets="all" />
     <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" GeneratePathProperty="true" />

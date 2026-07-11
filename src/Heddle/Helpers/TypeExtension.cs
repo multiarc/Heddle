@@ -87,6 +87,19 @@ namespace Heddle.Helpers {
             return type.GetTypeInfo().GetCustomAttributes(inherit).Where(a => a is T).Cast<T>().ToArray();
         }
 
+        /// <summary>
+        /// Reads the branch-set role declared by a <see cref="Attributes.BranchRoleAttribute"/> on
+        /// <paramref name="type"/> (or an inherited one). Returns <c>null</c> when the type carries no role —
+        /// i.e. it is not a branch-set opener/continuation/terminal.
+        /// </summary>
+        public static Attributes.BranchRole? GetBranchRole(this Type type)
+        {
+            if (type == null)
+                throw new ArgumentNullException(nameof(type));
+
+            return type.GetAttributes<Attributes.BranchRoleAttribute>(true).FirstOrDefault()?.Role;
+        }
+
         public static Type TryGetElementType(this Type type, Type baseType)
         {
             if (type == null)

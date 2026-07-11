@@ -1,3 +1,11 @@
+TYPE Heddle.Attributes.BranchRole : System.Enum
+  FIELD Heddle.Attributes.BranchRole Continuation
+  FIELD Heddle.Attributes.BranchRole Opener
+  FIELD Heddle.Attributes.BranchRole Terminal
+  FIELD System.Int32 value__
+TYPE Heddle.Attributes.BranchRoleAttribute : System.Attribute
+  CTOR(Heddle.Attributes.BranchRole)
+  PROP Heddle.Attributes.BranchRole Role {get;}
 TYPE Heddle.Attributes.ChainedTypeAttribute : System.Attribute
   CTOR(System.Type)
   PROP System.Type DataType {get;}
@@ -95,6 +103,7 @@ TYPE Heddle.Data.HeddleCompileWarning : Heddle.Data.HeddleCompileError
 TYPE Heddle.Data.HeddleDiagnosticIds
   FIELD System.String AmbiguousFunctionCall
   FIELD System.String BinaryOperatorNotDefined
+  FIELD System.String BranchRoleMissingScopeChannel
   FIELD System.String BranchTextStripped
   FIELD System.String CoalesceLeftNotNullable
   FIELD System.String DefinitionHasNoProps

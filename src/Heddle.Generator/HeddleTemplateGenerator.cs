@@ -145,6 +145,12 @@ namespace Heddle.Generator
             // D21 discovery: [ExportFunctions] over the compilation's own + referenced assemblies, computed once.
             var exports = Heddle.Generator.Binding.FunctionExportResolver.Build(compilation);
 
+            // D-ROLE-5 drift (§6.5): report HED7016 once per compilation for any branch Continuation/Terminal that
+            // lacks [ScopeChannel]. Additive — empty for engine-only compilations (no built-in violates R11).
+            foreach (var driftType in ExtensionBinder.Build(compilation).DriftTypes)
+                spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.BranchRoleMissingScopeChannel,
+                    Location.None, driftType));
+
             foreach (var template in templates)
             {
                 // HED7001: an AdditionalFiles .heddle source the compiler could not read/decode.

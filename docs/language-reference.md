@@ -410,12 +410,19 @@ anything higher, use the [root](#reaching-back-out-root) or pass values down exp
 @else(){{ Regular }}
 ```
 
-These are ordinary extensions, not keywords — there is no `{{endif}}`. A set is the run of
-adjacent branch blocks at one body level; text between them is stripped at compile time (a
-non‑whitespace gap warns `HED3001`), while text before the opener and after the last branch
-renders normally. `@else` binds to the **set state** (satisfied once any branch fired), not to a
-specific `@if`; an orphan `@else` is a compile error (`HED3003`). Each `@list`/`@for` iteration
-and nested body gets its own set state. Full rules, the orphan diagnostics, and the public
+These are ordinary extensions, not keywords — there is no `{{endif}}`. What structures a set is not
+a fixed list of names but a **role** each block plays, declared with `[BranchRole]`: an **opener**
+starts the set (`@if`/`@ifnot`), a **continuation** extends it (`@elif`/`@elseif`), and an optional
+**terminal** closes it (`@else`). The built‑ins are simply the engine's own role‑carrying
+extensions; any custom extension with the same roles joins a set on equal footing (see
+[Building your own branch set](custom-extensions.md#building-your-own-branch-set)), and roles even
+interoperate across families in one set.
+
+A set is the run of adjacent branch blocks at one body level; text between them is stripped at
+compile time (a non‑whitespace gap warns `HED3001`), while text before the opener and after the last
+branch renders normally. A terminal binds to the **set state** (satisfied once any branch fired), not
+to a specific opener; an orphan terminal is a compile error (`HED3003`). Each `@list`/`@for`
+iteration and nested body gets its own set state. Full rules, the orphan diagnostics, and the public
 `BranchState` channel are in [Built‑in extensions → Branch sets](built-in-extensions.md#branch-sets)
 and [Writing Custom Extensions → the local context channel](custom-extensions.md#the-local-context-channel).
 

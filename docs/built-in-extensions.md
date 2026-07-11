@@ -74,15 +74,17 @@ its body is skipped). `elseif` is an exact alias.
 ```
 
 With no preceding `@if`/`@ifnot` at the same level, `@elif` behaves exactly like `@if` (it
-starts a new set) and the compiler emits a `HED3002` warning.
+starts a new set) and the compiler emits a `HED3002` warning ("`'@elif' is a branch continuation
+with no preceding opener in this scope — it starts a new set.`").
 
 ### `else`
 [ElseExtension.cs](../src/Heddle/Extensions/ElseExtension.cs) · no condition
 
 The terminal branch of a set: it renders its body when no earlier branch fired, then closes the
-set. `@else` takes no parameter — a supplied one is evaluated and ignored (`HED3004`). An
-`@else` with no open set at the same level (an orphan, or a second `@else` after the set was
-already closed) is a **compile error** `HED3003` ("`@else` has no matching `@if`").
+set. `@else` takes no parameter — a supplied one is evaluated and ignored (`HED3004`, "`A branch
+terminal takes no condition — its parameter is ignored.`"). An `@else` with no open set at the same
+level (an orphan, or a second `@else` after the set was already closed) is a **compile error**
+`HED3003` ("`'@else' is a branch terminal with no matching opener in this scope.`").
 
 ```heddle
 @if(IsFeatured){{ <b>Featured</b> }}
@@ -113,7 +115,12 @@ one `@else`. Only the winning branch's body renders.
 - **Isolation.** Each `@list`/`@for` iteration, each nested body, and each `@partial` gets its
   own set state — an inner set can never satisfy or clear an outer one.
 
-Custom extensions can read or drive a set's state through the public `BranchState` channel — see
+These four are the engine's own **role‑carrying** extensions: each declares its position in a set
+with `[BranchRole]` (opener / continuation / terminal). Nothing about the classification is
+name‑specific, so a custom extension with the same roles gets the same set semantics and can even
+share a set with the built‑ins — see
+[Writing Custom Extensions → Building your own branch set](custom-extensions.md#building-your-own-branch-set).
+Custom extensions can also read or drive a set's state through the public `BranchState` channel — see
 [Writing Custom Extensions → the local context channel](custom-extensions.md#the-local-context-channel).
 
 ---

@@ -2,10 +2,9 @@ using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
 
-// Registers YellExtension for the dynamic backend so a @yell(...) template resolves the same [ExtensionName] type
-// both backends bind — the differential parity gate for custom (non-engine) extension binding (D9 / WI6). Only the
-// plain extension is exported; HookedExtension exists solely for the build-time HED7015 refusal (never registered).
-[assembly: ExportExtensions(typeof(Heddle.Generator.IntegrationTests.Fixtures.YellExtension))]
+// YellExtension is exported to the dynamic backend via the combined [assembly: ExportExtensions(...)] in
+// BranchRoleExtensions.cs (ExportExtensions is AllowMultiple=false, so a single assembly-level list carries every
+// exported fixture type). HookedExtension exists solely for the build-time HED7015 refusal (never registered).
 
 namespace Heddle.Generator.IntegrationTests.Fixtures
 {

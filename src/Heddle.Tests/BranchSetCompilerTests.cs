@@ -190,7 +190,7 @@ namespace Heddle.Tests
             var t = Build(template);
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             var w = Assert.Single(Warnings(t, HeddleDiagnosticIds.ElseConditionIgnored));
-            Assert.Equal("'@else' takes no condition — its parameter is ignored.", w.Error);
+            Assert.Equal("A branch terminal takes no condition — its parameter is ignored.", w.Error);
             AssertPositionedAtBlock(w, template, "@else");
             Assert.Equal("1", t.Generate(new Model { A = true }));
             Assert.Equal("2", t.Generate(new Model { A = false, B = true }));
@@ -204,7 +204,7 @@ namespace Heddle.Tests
             var t = Build(template);
             Assert.False(t.CompileResult.Success);
             var e = Assert.Single(t.CompileResult.ErrorList, x => x.DiagnosticId == HeddleDiagnosticIds.ElseWithoutIf);
-            Assert.Equal("'@else' has no matching '@if' in this scope.", e.Error);
+            Assert.Equal("'@else' is a branch terminal with no matching opener in this scope.", e.Error);
             AssertPositionedAtBlock(e, template, "@else");
         }
 

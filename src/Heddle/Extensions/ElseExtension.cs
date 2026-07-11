@@ -14,9 +14,10 @@ namespace Heddle.Extensions
     /// </summary>
     [ExtensionName("else")]
     [ScopeChannel]
+    [BranchRole(BranchRole.Terminal)]
     public class ElseExtension : AbstractExtension
     {
-        internal const string NoMatchingIfMessage = "'@else' has no matching '@if' in this scope.";
+        internal const string NoMatchingIfMessage = "'@else' is a branch terminal with no matching opener in this scope.";
 
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {

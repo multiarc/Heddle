@@ -167,7 +167,8 @@ Custom `[ExtensionName]` extensions bind **from the referenced assembly, never i
 security or logic patch reaches precompiled templates by updating the package. See
 [custom‑extensions.md](custom-extensions.md#precompiled-mode) for the requirements
 (parameterless ctor; no reliance on runtime registry mutation; a `InitStart`/`CompleteInit`
-override is refused as `HED7015`).
+override is refused as `HED7015` — **except** for a `[BranchRole]` custom branch extension, whose
+`InitStart` override is its canonical shape and instead degrades quietly to the dynamic tier).
 
 ---
 
@@ -191,6 +192,7 @@ Every build‑time condition reports at its `.heddle` position with an `HED7xxx`
 | `HED7012`/`HED7013` | A forwarded front‑end error/warning carrying no id. |
 | `HED7014` | A called function is delegate‑only (not precompilable) — the template falls back (warning). |
 | `HED7015` | A bound extension overrides a compile‑time hook — unevaluable at build. |
+| `HED7016` | A branch continuation/terminal (`[BranchRole]`) omits `[ScopeChannel]`, so it can never read the branch state at run time (warning). |
 
 Member/type errors in milestone 1 arrive as C# errors remapped to the template span via
 `#line`; milestone 2 replaces the covered ones with native `HED7007`/`HED7008`.

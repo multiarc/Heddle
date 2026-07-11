@@ -87,14 +87,19 @@ namespace Heddle.Data
         /// <summary>Non-whitespace text between the blocks of a branch set is stripped and never rendered.</summary>
         public const string BranchTextStripped = "HED3001";
 
-        /// <summary>An <c>@elif</c>/<c>@elseif</c> has no preceding <c>@if</c>/<c>@ifnot</c> in scope — it acts as <c>@if</c>.</summary>
+        /// <summary>A branch continuation (such as <c>@elif</c>/<c>@elseif</c>) has no preceding opener in scope — it starts a new set, acting as an opener.</summary>
         public const string ElifWithoutIf = "HED3002";
 
-        /// <summary>An <c>@else</c> has no matching <c>@if</c> in scope (orphan, or a set already closed by an earlier <c>@else</c>).</summary>
+        /// <summary>A branch terminal (such as <c>@else</c>) has no matching opener in scope (orphan, or a set already closed by an earlier terminal).</summary>
         public const string ElseWithoutIf = "HED3003";
 
-        /// <summary>An <c>@else</c> was given a condition parameter, which is ignored.</summary>
+        /// <summary>A branch terminal (such as <c>@else</c>) was given a condition parameter, which is ignored.</summary>
         public const string ElseConditionIgnored = "HED3004";
+
+        /// <summary>A branch continuation/terminal extension (<c>[BranchRole]</c>) does not carry
+        /// <c>[ScopeChannel]</c>, so its read of the branch state always misses at render time (R11 drift). Never
+        /// raised by the built-ins, which all comply; additive to existing behavior.</summary>
+        public const string BranchRoleMissingScopeChannel = "HED3005";
 
         /// <summary>The literal step argument of the built-in three-argument <c>range</c> is zero or negative
         /// (a non-terminating loop). The identical condition reached only at render throws

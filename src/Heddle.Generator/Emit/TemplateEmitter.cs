@@ -321,7 +321,7 @@ namespace Heddle.Generator.Emit
             var profileByChain = MapProfilePerChain(ctx);
 
             var shape = DocumentShaper.Shape(doc, ctx, _config.TrimDirectiveLines,
-                chain => IsZeroOutput(chain), ctx.DefenitionExists);
+                chain => IsZeroOutput(chain), ctx.DefenitionExists, RoleOf);
             int offset = 0;
             var working = shape.WorkingDocument;
 
@@ -335,7 +335,9 @@ namespace Heddle.Generator.Emit
                     _profileHtml = elementProfile;
 
                 var leftmostName = element.Chain.Chain.Count > 0 ? element.Chain.Chain[0].ExtensionName : string.Empty;
-                if (TryGetBranchExt(leftmostName, out var be) && be.IsParticipant)
+                // Keyed on [ScopeChannel] presence (not the branch role) so bodiless custom channel extensions also
+                // provision a locals frame; deliberately runs before definition resolution (harmless over-provision).
+                if (_extensionBinder.TryResolve(leftmostName, out var lmInfo) && lmInfo.HasScopeChannel)
                     body.HostsParticipant = true;
 
                 var seg = BuildCall(element.Chain, bctx, out reason);
@@ -433,37 +435,17 @@ namespace Heddle.Generator.Emit
             return -1;
         }
 
-        private struct BranchExt
-        {
-            public string Fqn;
-            public bool IsParticipant;
-        }
+        /// <summary>The shared branch-role source: strip machine and emitter both read roles through the single
+        /// <see cref="ExtensionBinder"/>, so classification can never drift between them.</summary>
+        private BranchRole? RoleOf(string name)
+            => _extensionBinder.TryResolve(name, out var i) ? i.Role : null;
 
-        private static bool TryGetBranchExt(string name, out BranchExt ext)
-        {
-            ext = default;
-            switch (name)
-            {
-                case "if": ext = new BranchExt { Fqn = "global::Heddle.Extensions.IfExtension", IsParticipant = false }; return true;
-                case "ifnot": ext = new BranchExt { Fqn = "global::Heddle.Extensions.IfNotExtension", IsParticipant = false }; return true;
-                case "elif":
-                case "elseif": ext = new BranchExt { Fqn = "global::Heddle.Extensions.ElifExtension", IsParticipant = true }; return true;
-                case "else": ext = new BranchExt { Fqn = "global::Heddle.Extensions.ElseExtension", IsParticipant = true }; return true;
-                default: return false;
-            }
-        }
-
-        private static string BranchTypeName(string name)
-        {
-            switch (name)
-            {
-                case "if": return "Heddle.Extensions.IfExtension";
-                case "ifnot": return "Heddle.Extensions.IfNotExtension";
-                case "elif":
-                case "elseif": return "Heddle.Extensions.ElifExtension";
-                default: return "Heddle.Extensions.ElseExtension";
-            }
-        }
+        /// <summary>Removes the <c>global::</c> prefix from a fully-qualified name (the binder's <c>GlobalName</c>),
+        /// yielding the bare <c>Ns.Type</c> the manifest binding row and body-extension type name expect.</summary>
+        private static string StripGlobal(string globalName)
+            => globalName != null && globalName.StartsWith("global::", System.StringComparison.Ordinal)
+                ? globalName.Substring("global::".Length)
+                : globalName;
 
         private sealed class Partial
         {
@@ -517,7 +499,11 @@ namespace Heddle.Generator.Emit
             if (name == "partial")
                 return BuildPartialCall(item, cp, bctx, out reason);
 
-            if (TryGetBranchExt(name, out var branch))
+            // Engine-assembly branch-role extensions (@if/@ifnot/@elif/@elseif/@else) → pinned branch emission (§6.3.1):
+            // the emitter's parent-model body typing is the built-ins' verified contract, so bytes are unchanged.
+            // Non-engine role extensions deliberately fall through to the generic custom path (§6.3.2).
+            if (_extensionBinder.TryResolve(name, out var branchInfo) && branchInfo.Role.HasValue &&
+                branchInfo.IsEngineAssembly)
             {
                 // Branch bodies execute under scope.Parent(): the model stays the enclosing body's model
                 // (phase 3; generated-code body-model-typing rule). The condition evaluates against that model.
@@ -533,8 +519,8 @@ namespace Heddle.Generator.Emit
                 }
 
                 bool needsLocals = branchBody != null && branchBody.HostsParticipant;
-                var field = AllocateBodyExtension(name, branch.Fqn, BranchTypeName(name), branchBody?.Name,
-                    needsLocals, item.Position);
+                var field = AllocateBodyExtension(name, branchInfo.GlobalName, StripGlobal(branchInfo.GlobalName),
+                    branchBody?.Name, needsLocals, item.Position);
                 var call = MakeCall(field, bParam, bUses, item.Position, bCs);
                 return call;
             }
@@ -635,9 +621,11 @@ namespace Heddle.Generator.Emit
         {
             reason = null;
 
-            if (info.OverridesHook && !info.IsEngineAssembly)
+            if (info.OverridesHook && !info.IsEngineAssembly && !info.Role.HasValue)
             {
                 // HED7015: resolvable but unevaluable — a build error, not a silent degrade (contrast HED7014).
+                // Suppressed for role extensions: a custom branch trio's InitStart override is the canonical shape
+                // (R12), not an authoring error — it degrades quietly to the dynamic tier instead (§6.3.3).
                 _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.ExtensionOverridesHook,
                     item.Position, name, info.AqnSansVersion, "InitStart/CompleteInit"));
                 reason = "extension <" + name + "> overrides a compile-time hook";
@@ -646,7 +634,9 @@ namespace Heddle.Generator.Emit
 
             if (info.OverridesHook)
             {
-                reason = "engine extension <" + name + "> with a compile-time hook (no pinned knowledge)";
+                reason = info.Role.HasValue
+                    ? "custom branch extension <" + name + ">"
+                    : "engine extension <" + name + "> with a compile-time hook (no pinned knowledge)";
                 return null;
             }
 
@@ -896,14 +886,14 @@ namespace Heddle.Generator.Emit
             return new BodyContext("(" + fq + ")", sym, false);
         }
 
-        private static bool ScanHostsParticipant(ParseContext ctx)
+        private bool ScanHostsParticipant(ParseContext ctx)
         {
             if (ctx?.OutputChains == null)
                 return false;
             foreach (var chain in ctx.OutputChains)
             {
                 var lm = chain.Chain != null && chain.Chain.Count > 0 ? chain.Chain[0].ExtensionName : null;
-                if (lm == "elif" || lm == "elseif" || lm == "else")
+                if (lm != null && _extensionBinder.TryResolve(lm, out var i) && i.HasScopeChannel)
                     return true;
             }
 

@@ -9,6 +9,7 @@ namespace Heddle.Extensions
     /// <para>Optional parameter represents string to show if condition is true</para>
     /// </summary>
     [ExtensionName("if")]
+    [BranchRole(BranchRole.Opener)]
     public class IfExtension : AbstractExtension
     {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)

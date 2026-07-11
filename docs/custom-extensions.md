@@ -233,6 +233,172 @@ public class SatisfyExtension : AbstractExtension
 just as well read the state with `scope.TryRead(BranchState.ReservedKey, out var v)` to render
 alongside a set.
 
+### Building your own branch set
+
+The built‑in `@if`/`@ifnot`/`@elif`/`@else` family is not special‑cased in the engine — each is an
+ordinary extension that declares its **position in a branch set** with `[BranchRole]`. Attach the
+same attribute to your own extensions and a complete `@begin`/`@between`/`@finish` set gets identical
+set semantics: adjacency stripping, orphan diagnostics, the terminal‑optional rule, and locals‑frame
+provisioning — with no engine changes.
+
+There are three roles:
+
+| Role | Built‑ins | Position in the set |
+| --- | --- | --- |
+| `BranchRole.Opener` | `@if`, `@ifnot` | **First.** Opens a fresh set and publishes the initial `BranchState`. Needs no predecessor; never diagnosed. |
+| `BranchRole.Continuation` | `@elif`/`@elseif` | **Middle.** Requires a preceding opener or continuation in the same scope; may re‑publish an updated `BranchState`. Never first, never last. |
+| `BranchRole.Terminal` | `@else` | **Last (optional).** Closes the set and clears its state. Takes no condition. |
+
+**The contract the roles enforce** (the same rules the built‑ins already obey):
+
+- **Opener** starts a fresh set and is never diagnosed (R1). It publishes *opportunistically* — see
+  the `[ScopeChannel]` note below.
+- **Continuation** requires a preceding opener/continuation. An orphaned continuation warns
+  (**HED3002**) and then behaves as an opener (R2). It may change the published value entirely inside
+  its own body (R3).
+- **Terminal** closes the set (R4). An orphaned terminal is a compile **error** (**HED3003**) where
+  statically visible, and the extension's own render‑time exception otherwise. A terminal is
+  **optional** — a set may validly end on an opener or continuation (R5) — and takes **no condition**;
+  a non‑empty parameter warns (**HED3004**) and is evaluated then ignored (R6).
+- Whitespace‑only text between the blocks of one set is stripped silently; non‑whitespace draws
+  **HED3001** (R7).
+- A definition may **shadow** a branch name — a shadowed leftmost call is never a branch (R8). A
+  non‑branch block between siblings ends stripping adjacency but leaves the open set intact, so a
+  following terminal still binds (R9). A roleless `[ScopeChannel]` participant (like `@satisfy`
+  above) suppresses orphan diagnostics for the rest of the set (R10).
+- Roles interoperate **across families** — the machine is role‑based, not name‑based — so
+  `@if(...)…@between(...)…@else(...)` is one valid set.
+
+**`[ScopeChannel]` goes on Continuation and Terminal, not on the Opener** (R11). Continuation and
+terminal extensions *read* the channel (`TryRead`), and locals‑frame provisioning keys off
+`[ScopeChannel]`; omit it and their read always misses at render time (the engine warns —
+**HED3005** at runtime, **HED7016** at build time — but cannot fix it for you). An opener publishes
+*opportunistically*: it carries no `[ScopeChannel]`, so a set with no continuation/terminal sibling
+provisions no frame and the publish is a harmless no‑op — this is exactly what keeps templates that
+use no branch allocation‑identical.
+
+**Type the body against the parent model** (R12). A branch body renders under the *enclosing* model,
+not the condition value, so override `InitStart` with the canonical form all four built‑ins use:
+
+```csharp
+public override ExType InitStart(InitContext init, ExType dataType, ExType chainedType, ExType parent)
+{
+    return base.InitStart(init, parent, chainedType, null);
+}
+```
+
+**Worked example — `@begin`/`@between`/`@finish`** (mirrors the trio kept honest by
+`BranchRoleUniversalityTests`). All three drive the set through the *public* `Scope` channel
+(`Publish`/`TryRead` with `BranchState.ReservedKey`) — never the engine's internal branch
+conveniences:
+
+```csharp
+using System;
+using Heddle.Attributes;
+using Heddle.Core;
+using Heddle.Data;
+using Heddle.Exceptions;
+
+// Opener — canonical InitStart; publishes the initial BranchState. No [ScopeChannel].
+[ExtensionName("begin")]
+[BranchRole(BranchRole.Opener)]
+public class BeginExtension : AbstractExtension
+{
+    public override ExType InitStart(InitContext init, ExType dataType, ExType chainedType, ExType parent)
+        => base.InitStart(init, parent, chainedType, null);
+
+    public override object ProcessData(in Scope scope)
+    {
+        bool satisfied = Truthy(scope.ModelData);
+        TryPublish(scope, satisfied);                      // opportunistic (see R11)
+        return satisfied ? GetInnerResult(scope.Parent()) : string.Empty;
+    }
+
+    public override void RenderData(in Scope scope)
+    {
+        bool satisfied = Truthy(scope.ModelData);
+        TryPublish(scope, satisfied);
+        if (satisfied) RenderInnerResult(scope.Parent());
+    }
+
+    private static bool Truthy(object v) => v != null && (!(v is bool b) || b);
+
+    private static void TryPublish(in Scope scope, bool satisfied)
+    {
+        try { scope.Publish(BranchState.ReservedKey, new BranchState(satisfied)); }
+        catch (InvalidOperationException) { /* no frame => no reader; nothing to publish */ }
+    }
+}
+
+// Continuation — reads the channel, republishes, may render. Carries [ScopeChannel].
+[ExtensionName("between")]
+[ScopeChannel]
+[BranchRole(BranchRole.Continuation)]
+public class BetweenExtension : AbstractExtension
+{
+    public override ExType InitStart(InitContext init, ExType dataType, ExType chainedType, ExType parent)
+        => base.InitStart(init, parent, chainedType, null);
+
+    public override object ProcessData(in Scope scope)
+    {
+        if (AlreadySatisfied(scope)) return string.Empty; // an earlier branch fired — leave it unchanged
+        bool truthy = scope.ModelData is bool b ? b : scope.ModelData != null;
+        scope.Publish(BranchState.ReservedKey, new BranchState(truthy));
+        return truthy ? GetInnerResult(scope.Parent()) : string.Empty;
+    }
+
+    public override void RenderData(in Scope scope)
+    {
+        if (AlreadySatisfied(scope)) return;
+        bool truthy = scope.ModelData is bool b ? b : scope.ModelData != null;
+        scope.Publish(BranchState.ReservedKey, new BranchState(truthy));
+        if (truthy) RenderInnerResult(scope.Parent());
+    }
+
+    private static bool AlreadySatisfied(in Scope scope)
+        => scope.TryRead(BranchState.ReservedKey, out var v) && v is BranchState s && s.Satisfied;
+}
+
+// Terminal — reads the channel, renders when unsatisfied, throws when no set is open. Carries [ScopeChannel].
+[ExtensionName("finish")]
+[ScopeChannel]
+[BranchRole(BranchRole.Terminal)]
+public class FinishExtension : AbstractExtension
+{
+    public override ExType InitStart(InitContext init, ExType dataType, ExType chainedType, ExType parent)
+        => base.InitStart(init, parent, chainedType, null);
+
+    public override object ProcessData(in Scope scope)
+    {
+        if (!scope.TryRead(BranchState.ReservedKey, out var v) || !(v is BranchState s))
+            throw new TemplateProcessingException("'@finish' is a branch terminal with no matching opener in this scope.");
+        return s.Satisfied ? string.Empty : GetInnerResult(scope.Parent());
+    }
+
+    public override void RenderData(in Scope scope)
+    {
+        if (!scope.TryRead(BranchState.ReservedKey, out var v) || !(v is BranchState s))
+            throw new TemplateProcessingException("'@finish' is a branch terminal with no matching opener in this scope.");
+        if (!s.Satisfied) RenderInnerResult(scope.Parent());
+    }
+}
+```
+
+`@begin(A){{a}}@between(B){{b}}@finish(){{c}}` now behaves exactly like
+`@if(A){{a}}@elif(B){{b}}@else(){{c}}`. The role is `Inherited = true`: a subclass of `BeginExtension`
+with a new `[ExtensionName]` and no re‑attribution is still an Opener.
+
+Because a custom terminal's render‑time orphan message is yours to phrase, throw a
+`TemplateProcessingException` when the read misses (as `@finish` does) — the engine's HED3003 covers
+only the statically visible case.
+
+**Precompilation.** Custom branch sets are fully functional on the runtime (dynamic) tier — the
+set‑*structuring* rules above apply on both tiers because classification is role‑based everywhere.
+Only the pinned branch *emission* is reserved for the engine's own built‑ins; a bodied call to a
+custom branch extension simply falls back quietly to the dynamic tier (no `HED7015` error — the
+`InitStart` override is the canonical shape here, not a mistake), and renders identically with full
+role semantics.
+
 ---
 
 ## A minimal example
@@ -292,6 +458,7 @@ Declared in [src/Heddle/Attributes](../src/Heddle/Attributes):
 | `[ChainedType(typeof(T))]` | class | The expected chained‑input type. |
 | `[EncodeOutput]` | class | HTML‑encode the output (pairs with `AbstractHtmlExtension`). This encodes under **both** output profiles — it is independent of `OutputProfile`, which only governs the unnamed `@(...)` carrier. Keep `[EncodeOutput]` on value formatters that emit user text; leave it off for containers that merely forward a body (so encoding stays at the emitting leaf). |
 | `[ExtensionReplace]` | class | Marks an extension intended to replace another of the same name. |
+| `[BranchRole(BranchRole.Opener\|Continuation\|Terminal)]` | class | Declares the extension's position in a branch set (opener/continuation/terminal), giving it the same set semantics as the built‑in `@if`/`@elif`/`@else` family. Compile‑time only; inherited by subclasses. See [Building your own branch set](#building-your-own-branch-set). |
 | `[NotEncode]` | model property | Reserved, currently **inert** — the attribute type ships but has no effect (its only check runs against extension classes, never properties). Do not rely on it; its per‑property meaning is revisited with typed props. |
 | `[Hidden]` | model property | Hide a model property from template resolution. |
 | `[Options("fieldName")]` | member | Override the name a property is addressed by in templates. |
@@ -343,7 +510,10 @@ reproduces:
 - **No `InitStart`/`CompleteInit` override** *(outside the engine assembly)*. Those are
   compile‑time hooks the build‑time backend runs the *base* behavior of; an override could run
   arbitrary compile‑time logic the generator cannot evaluate, so a template binding such an
-  extension is a build error (`HED7015`). Keep custom logic in `ProcessData`/`RenderData` — the
+  extension is a build error (`HED7015`). **Exception:** a `[BranchRole]` custom branch extension
+  is expected to override `InitStart` (its canonical parent‑model shape), so it is *not* a
+  `HED7015` error — a bodied call to it degrades quietly to the dynamic tier instead (see
+  [Building your own branch set](#building-your-own-branch-set)). Keep custom logic in `ProcessData`/`RenderData` — the
   render‑time methods both backends share. A plain extension (the common case) needs no changes.
 
 An extension name that resolves to no `[ExtensionName]` type in any referenced assembly is a

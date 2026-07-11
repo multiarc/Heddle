@@ -203,6 +203,7 @@ namespace Heddle.Runtime
                         break;
 
                     case BranchBlockKind.Continuation:
+                        WarnIfMissingScopeChannel(leftmost, compileScope);
                         if (stripPrev != null)
                             CollectGap(stripPrev, chain, leftmost, compileScope, workingDocument, ref gaps);
                         stripPrev = chain;
@@ -211,9 +212,9 @@ namespace Heddle.Runtime
                             compileScope.CompileWarnings.Add(new HeddleCompileWarning
                             {
                                 Error =
-                                    $"'@{leftmost.ExtensionName}' has no preceding '@if' or '@ifnot' in this scope — it starts a new branch set, behaving like '@if'.",
+                                    $"'@{leftmost.ExtensionName}' is a branch continuation with no preceding opener in this scope — it starts a new set.",
                                 Fix =
-                                    "Open the set with '@if(...)' or '@ifnot(...)', or use '@if' directly if a standalone condition is intended.",
+                                    "Open the set with a branch opener (such as '@if(...)'), or use a standalone opener if an independent condition is intended.",
                                 Position = leftmost.Position,
                                 DiagnosticId = HeddleDiagnosticIds.ElifWithoutIf
                             });
@@ -223,6 +224,7 @@ namespace Heddle.Runtime
                         break;
 
                     case BranchBlockKind.Terminal:
+                        WarnIfMissingScopeChannel(leftmost, compileScope);
                         if (stripPrev != null)
                             CollectGap(stripPrev, chain, leftmost, compileScope, workingDocument, ref gaps);
                         stripPrev = null;
@@ -230,8 +232,8 @@ namespace Heddle.Runtime
                         {
                             compileScope.CompileWarnings.Add(new HeddleCompileWarning
                             {
-                                Error = "'@else' takes no condition — its parameter is ignored.",
-                                Fix = "Use '@elif(...)' for a conditional branch, or remove the parameter.",
+                                Error = "A branch terminal takes no condition — its parameter is ignored.",
+                                Fix = "Use a branch continuation (such as '@elif(...)') for a conditional branch, or remove the parameter.",
                                 Position = leftmost.Position,
                                 DiagnosticId = HeddleDiagnosticIds.ElseConditionIgnored
                             });
@@ -240,8 +242,9 @@ namespace Heddle.Runtime
                         if (state == OrphanState.None || state == OrphanState.Closed)
                         {
                             compileScope.CompileErrors.Add(
-                                ElseExtension.NoMatchingIfMessage.ToError(
-                                    leftmost?.Position ?? chain.BlockPosition, HeddleDiagnosticIds.ElseWithoutIf));
+                                $"'@{leftmost?.ExtensionName}' is a branch terminal with no matching opener in this scope."
+                                    .ToError(leftmost?.Position ?? chain.BlockPosition,
+                                        HeddleDiagnosticIds.ElseWithoutIf));
                             // state unchanged — a further orphan @else errors again.
                         }
                         else
@@ -273,26 +276,49 @@ namespace Heddle.Runtime
                 return BranchBlockKind.Other;
             var name = leftmost.ExtensionName;
             if (chain.Context != null && chain.Context.DefenitionExists(name))
+                return BranchBlockKind.Other;                          // R8 — unchanged
+
+            if (string.IsNullOrEmpty(name) ||
+                !TemplateFactory.TryGetExtensionType(name, out var extensionType))
                 return BranchBlockKind.Other;
 
-            switch (name)
-            {
-                case "if":
-                case "ifnot":
-                    return BranchBlockKind.Opener;
-                case "elif":
-                case "elseif":
-                    return BranchBlockKind.Continuation;
-                case "else":
-                    return BranchBlockKind.Terminal;
-            }
+            var role = extensionType.GetBranchRole();                  // inherit: true
+            if (role.HasValue)
+                switch (role.Value)
+                {
+                    case BranchRole.Opener:       return BranchBlockKind.Opener;
+                    case BranchRole.Continuation: return BranchBlockKind.Continuation;
+                    case BranchRole.Terminal:     return BranchBlockKind.Terminal;
+                }
 
-            if (!string.IsNullOrEmpty(name) &&
-                TemplateFactory.TryGetExtensionType(name, out var extensionType) &&
-                extensionType.IsHaveAttribute<ScopeChannelAttribute>(true))
-                return BranchBlockKind.Participant;
+            if (extensionType.IsHaveAttribute<ScopeChannelAttribute>(true))
+                return BranchBlockKind.Participant;                    // R10 — role wins over Participant
 
             return BranchBlockKind.Other;
+        }
+
+        /// <summary>D-ROLE-5 drift (§6.5): a branch continuation/terminal that does not carry
+        /// <c>[ScopeChannel]</c> cannot read the branch state at render time (R11). Emitted as a warning-severity
+        /// <c>HED3005</c> at the block confirmed a Continuation/Terminal — additive, never raised by the built-ins
+        /// (they all comply), so existing HED300x diagnostics are unperturbed.</summary>
+        private static void WarnIfMissingScopeChannel(OutputItem leftmost, CompileScope compileScope)
+        {
+            if (leftmost == null)
+                return;
+            var name = leftmost.ExtensionName;
+            if (string.IsNullOrEmpty(name) || !TemplateFactory.TryGetExtensionType(name, out var extensionType))
+                return;
+            if (extensionType.IsHaveAttribute<ScopeChannelAttribute>(true))
+                return;
+
+            compileScope.CompileWarnings.Add(new HeddleCompileWarning
+            {
+                Error =
+                    $"A branch continuation/terminal '@{name}' does not carry [ScopeChannel]; it cannot read the branch state at render time.",
+                Fix = "Add [ScopeChannel] to the extension so it can read the branch state.",
+                Position = leftmost.Position,
+                DiagnosticId = HeddleDiagnosticIds.BranchRoleMissingScopeChannel
+            });
         }
 
         private static bool IsEmptyParameter(OutputItem item)

@@ -14,6 +14,7 @@ namespace Heddle.Extensions
     [ExtensionName("elif")]
     [ExtensionName("elseif")]
     [ScopeChannel]
+    [BranchRole(BranchRole.Continuation)]
     public class ElifExtension : AbstractExtension
     {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)

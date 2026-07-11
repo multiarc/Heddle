@@ -206,7 +206,7 @@ namespace Heddle.Tests
             var t = new HeddleTemplate("@out():else(){{E}}", new CompileContext(typeof(M)));
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             var ex = Assert.Throws<TemplateProcessingException>(() => t.Generate(new M { S = "x" }));
-            Assert.Equal("'@else' has no matching '@if' in this scope.", ex.Message);
+            Assert.Equal("'@else' is a branch terminal with no matching opener in this scope.", ex.Message);
         }
     }
 }

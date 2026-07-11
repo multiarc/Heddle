@@ -1,6 +1,13 @@
 # Phase 3 specification — branching via declarative local context flow
 
 Status: **Specified — ready for implementation.**
+
+> **Addendum (post-2.0 language work).** Branch-set classification is now `[BranchRole]`-driven
+> (opener / continuation / terminal) rather than keyed on the fixed `@if`/`@elif`/`@else` name set —
+> the D6 rationale anticipated this. Any extension carrying `[BranchRole]` gets identical set
+> semantics; see [branch-role-universalization-spec.md](../../../../improvements/branch-role-universalization-spec.md).
+> Archive content below is otherwise frozen.
+
 Roadmap source: [phase 3 — branching via declarative local context flow](../../roadmap/phase-3-branching.md).
 Prior phases assumed merged
 ([D5, sequential order](../common/cross-cutting-decisions.md#d5--sequential-implementation-order)):
