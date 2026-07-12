@@ -34,7 +34,7 @@ namespace Heddle.Performance
             {
                 FileNamePostfix = ".heddle",
                 RootPath = "TestTemplates",
-                AllowCSharp = true,
+                ExpressionMode = ExpressionMode.FullCSharp,
                 ProvideLanguageFeatures = false
             }));
 

@@ -50,6 +50,12 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("profile-partial-parent.heddle")]
         [InlineData("profile-flagship.heddle")]
         [InlineData("profile-directive.heddle")]
+        // Hidden-token offset regression: a single-file multi-line definition body with an inner comment must
+        // render byte-identically across the precompiled and runtime backends (the enclosing-block trim fix lives
+        // in both backends' DocumentShaper/HeddleCompiler). The cross-file override page layers an imported
+        // definition and falls back to the dynamic path, so it carries no precompiled entry to compare — its
+        // correctness is pinned by the runtime golden (Heddle.Tests MultilineOverrideOffsetRegressionTests).
+        [InlineData("regr-def-inner-comment.heddle")]
         public void ModelLessCorpusTemplateRendersIdentically(string name)
         {
             var dir = CorpusDir();

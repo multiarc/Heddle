@@ -191,9 +191,56 @@ namespace Heddle.Language {
             }
         }
 
+        public override void ExitExtension_id(HeddleParser.Extension_idContext context)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+            if (context.GetText() != "import")
+                return;
+
+            // '@import' is removed. Raise the positioned HED4003 removal error at the shared parse layer so the
+            // dynamic and precompiled tiers carry the identical diagnostic for every call shape (top-level,
+            // chained/consuming, and nested in any subtemplate) — the ParseContext.Errors list is shared by
+            // reference down the whole context tree, exactly as the @<< HED4004 detection relies on.
+            var call = context.Parent as HeddleParser.CallContext;
+            if (call == null)
+                return;
+
+            CurrentParseContext.Errors.Add(
+                ("'@import' has been removed. Use '@<<{{ path }}' to share definitions and layouts across " +
+                 "files, or '@partial(){{ name }}' to embed another template's rendered output inline. " +
+                 "See docs/language-reference.md#imports--.")
+                .ToError(CurrentParseContext.GetAbsoluteBlockPosition(call),
+                    HeddleDiagnosticIds.LegacyImportDirective));
+        }
+
         public override void ExitImport_block(HeddleParser.Import_blockContext context)
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
+
+            // A @<< composition import is only well-defined at document scope: it merges the imported file's
+            // definitions into the current document and re-bases the imported file's own output chains to the
+            // import position. It re-parses the imported file in its own 0-based coordinate space, so every
+            // ParseContext.GetBlockPosition in that parse subtracts the *current* context's offset; when that
+            // offset is non-zero the result goes negative and BlockPosition's ctor throws a raw ArgumentException.
+            // The load-bearing hazard is therefore CurrentParseContext.Offset != 0, not stack depth:
+            //   - in-file nesting (@if/@for body, output block, definition body) pushes a sub-context whose offset
+            //     is the body's document position (> 0) — caught by the offset test, and by Count > 1.
+            // Chained @<< composition re-parses into a context whose offset is inherited from its parent (0 at the
+            // document root, staying 0 all the way down the @<< chain), so a legitimate chained compose has
+            // Offset == 0 and is left to compose. Collect a positioned diagnostic and skip the import rather than
+            // letting the offset defect throw out of the compile. The Count > 1 disjunct is kept as a belt-and-
+            // suspenders guard for any nested scope that might present a zero offset.
+            if (CurrentParseContext.Offset != 0 || _parserContextStack.Count > 1)
+            {
+                CurrentParseContext.Errors.Add(
+                    ("A '@<<' composition import must appear at the top level of a document; it cannot be nested " +
+                     "inside a subtemplate such as an @if/@for body, an output block, or a definition body. Move the " +
+                     "import to the top level.")
+                    .ToError(CurrentParseContext.GetAbsoluteBlockPosition(context),
+                        HeddleDiagnosticIds.ComposeImportNotTopLevel));
+                return;
+            }
+
             var path = string.Concat(context.text().Select(t => t.GetText()));
             if (!string.IsNullOrWhiteSpace(path))
             {
@@ -221,6 +268,15 @@ namespace Heddle.Language {
                 if (markProvenance)
                     isolatedContext.ImportOrigin = origin;
                 isolatedContext.OutputChains.Clear();
+                // The imported document is parsed in its own coordinate space. The importing document's hidden-token
+                // positions (inherited here by IsolateContextWithTree) are in the importing file's coordinates and
+                // must not seed the import parse: EnterSubtemplate transfers a context's SkippedTokens into each
+                // definition-body sub-context by filtering on the body's span, and an importing-file token whose
+                // offset happens to fall inside an imported body's span would be injected into that body, shifting
+                // its output chains and corrupting the render. Clear them so only the imported file's own hidden
+                // tokens (recorded fresh by the parse below) reach the imported bodies — symmetric to the
+                // OutputChains reset above.
+                isolatedContext.SkippedTokens.Clear();
                 DocumentParser.Parse(document, isolatedContext, _settings/*, true*/);
                 CurrentParseContext.DefaultChains.Clear();
                 CurrentParseContext.DefaultChains.AddRange(isolatedContext.DefaultChains);

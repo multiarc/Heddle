@@ -178,6 +178,67 @@ namespace Heddle.Generator.IntegrationTests
             return (precompiled, dyn);
         }
 
+        /// <summary>Renders one template through both backends under an explicit <see cref="TemplateOptions"/> —
+        /// threaded into the precompiled backend via the options-carrying <c>GenerateString</c> overload so a
+        /// <c>TemplateOptions.Encoder</c> (B2) reaches the precompiled sink exactly as it reaches the dynamic engine.
+        /// Used by the B2-R7 marker-encoder differential fixture.</summary>
+        public static (string precompiled, string dynamic) RenderWithOptions(string key, string content,
+            Type modelType, object model, TemplateOptions options, Dictionary<string, string> globalOptions = null)
+        {
+            var gen = Generate(new[] { (key, content) }, globalOptions);
+            var errors = gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
+            if (errors.Count != 0)
+                throw new InvalidOperationException("Generator errors: " + string.Join("\n", errors.Select(e => e.ToString())));
+            if (gen.Assembly == null)
+                throw new InvalidOperationException("No assembly produced (template was not precompiled).");
+
+            var entryType = FindEntryTypeByKey(gen.Assembly, key)
+                            ?? throw new InvalidOperationException("Generated entry class not found for key: " + key);
+            var root = (IProcessStrategy) entryType
+                .GetField("Root", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static).GetValue(null);
+            var precompiled = Heddle.Precompiled.PrecompiledRuntime.GenerateString(root, model, null, null, options);
+
+            var modelExType = modelType == null || modelType == typeof(object)
+                ? Heddle.Data.ExType.Dynamic
+                : new Heddle.Data.ExType(modelType);
+            var dynamicTemplate = new HeddleTemplate(content, new CompileContext(options, modelExType));
+            if (!dynamicTemplate.CompileResult.Success)
+                throw new InvalidOperationException("Dynamic compile failed: " + dynamicTemplate.CompileResult);
+            var dyn = dynamicTemplate.Generate(model);
+            return (precompiled, dyn);
+        }
+
+        /// <summary>Like <see cref="RenderWithOptions"/> but returns each backend as a separately-invokable delegate,
+        /// so a test can assert each throws independently — the byte-identical tuple form short-circuits on the first
+        /// backend's exception, which hides whether the second backend behaves the same. Used by the C1 budget-breach
+        /// differential fixture (G-R3: identical exception kind on both backends).</summary>
+        public static (Func<string> precompiled, Func<string> dynamic) DeferredWithOptions(string key, string content,
+            Type modelType, object model, TemplateOptions options, Dictionary<string, string> globalOptions = null)
+        {
+            var gen = Generate(new[] { (key, content) }, globalOptions);
+            var errors = gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
+            if (errors.Count != 0)
+                throw new InvalidOperationException("Generator errors: " + string.Join("\n", errors.Select(e => e.ToString())));
+            if (gen.Assembly == null)
+                throw new InvalidOperationException("No assembly produced (template was not precompiled).");
+
+            var entryType = FindEntryTypeByKey(gen.Assembly, key)
+                            ?? throw new InvalidOperationException("Generated entry class not found for key: " + key);
+            var root = (IProcessStrategy) entryType
+                .GetField("Root", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static).GetValue(null);
+
+            var modelExType = modelType == null || modelType == typeof(object)
+                ? Heddle.Data.ExType.Dynamic
+                : new Heddle.Data.ExType(modelType);
+            var dynamicTemplate = new HeddleTemplate(content, new CompileContext(options, modelExType));
+            if (!dynamicTemplate.CompileResult.Success)
+                throw new InvalidOperationException("Dynamic compile failed: " + dynamicTemplate.CompileResult);
+
+            Func<string> precompiled = () => Heddle.Precompiled.PrecompiledRuntime.GenerateString(root, model, null, null, options);
+            Func<string> dynamic = () => dynamicTemplate.Generate(model);
+            return (precompiled, dynamic);
+        }
+
         /// <summary>Renders one target template (identified by <paramref name="targetKey"/>) through both backends
         /// when the corpus carries <c>@&lt;&lt;</c> imports: the generator sees every template as an
         /// <c>AdditionalFiles</c> input (imports resolve), and the dynamic engine reads imports from

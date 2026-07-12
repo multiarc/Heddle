@@ -67,8 +67,9 @@ authoritative examples used throughout this documentation.
 ## Performance benchmarks
 
 [src/Heddle.Performance](../src/Heddle.Performance) contains a **BenchmarkDotNet** suite
-that compares Heddle against ASP.NET Core **Razor** on the *same* page, head‑to‑head. Run it in
-Release:
+that compares Heddle against four other .NET template engines (Fluid, Scriban, DotLiquid,
+Handlebars.Net) on byte‑identical parity‑checked output, plus ASP.NET Core **Razor** on a
+comparable — but larger and not parity‑checked — page. Run it in Release:
 
 ```bash
 dotnet run -c Release --project src/Heddle.Performance
@@ -82,15 +83,20 @@ What it measures
   ([TestTemplates/home.heddle](../src/Heddle.Performance/TestTemplates/home.heddle) +
   [layout.heddle](../src/Heddle.Performance/TestTemplates/layout.heddle)) through
   [`HeddleTest`](../src/Heddle.Performance/Runners/HeddleTest.cs).
-- **`RenderRazor`** renders the equivalent Razor page
+- **`RenderRazor`** renders a comparable Razor page
   ([Views/home.cshtml](../src/Heddle.Performance/Views) + `layout.cshtml`) with runtime
-  compilation through [`RazorTest`](../src/Heddle.Performance/Runners/RazorTest.cs).
+  compilation through [`RazorTest`](../src/Heddle.Performance/Runners/RazorTest.cs). Razor's page is
+  larger and renders different bytes, so — unlike the four Liquid/Handlebars twins — it is **not**
+  held to the byte‑identical parity assertion; treat its row as indicative rather than
+  apples‑to‑apples.
 
-Both pages are deliberately equivalent: one layout, several reusable templates/sections, and a
-dozen component invocations — the Heddle components live in
+Both pages are shaped alike: one layout, several reusable templates/sections, and a dozen
+component invocations — the Heddle components live in
 [TestSuite/Extensions](../src/Heddle.Performance/TestSuite/Extensions) and their Razor
 counterparts in [TestSuite/RazorExtensions](../src/Heddle.Performance/TestSuite/RazorExtensions).
-On this workload **Heddle renders faster than Razor and allocates less memory**; for *why*, see
+In the published run of 2026‑07‑11 **Heddle rendered faster than Razor and allocated less memory**
+(and led the four parity‑checked engines too); for the numbers see the
+[README Performance section](../README.md#performance), and for *why*, see
 [Architecture → Performance characteristics](architecture.md#performance-characteristics).
 
 > Benchmark numbers are hardware‑ and workload‑specific — run the suite on your target machine

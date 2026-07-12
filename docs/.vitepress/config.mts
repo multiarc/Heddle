@@ -44,8 +44,18 @@ export default withMermaid(
 
     // Contributor material that stays in the repo but is not published to the docs
     // site: the assessment, and the evolution roadmap + implementation specs (D9). The
-    // spec/roadmap set going live is the integration trigger for this exclusion.
-    srcExclude: ['archive/**'],
+    // spec/roadmap set went live in-tree under docs/spec/** and the docs-root
+    // improvement-*/assessment pages, so they are excluded here (the archive/** glob
+    // is retained for any legacy contributor material that may return).
+    srcExclude: [
+      'archive/**',
+      'spec/**',
+      'improvement-spec.md',
+      'improvement-plan.md',
+      'import-removal-spec.md',
+      'import-removal-plan.md',
+      'language-assessment.md'
+    ],
 
     markdown: {
       languages: [
@@ -110,15 +120,20 @@ export default withMermaid(
         {
           text: 'Authoring Templates',
           items: [
+            { text: 'Coming from Liquid', link: '/coming-from-liquid' },
+            { text: 'Coming from Razor', link: '/coming-from-razor' },
             { text: 'Language Reference', link: '/language-reference' },
+            { text: 'Native Expressions', link: '/native-expressions' },
             { text: 'Built-in Extensions', link: '/built-in-extensions' },
-            { text: 'Patterns & Recipes', link: '/patterns' }
+            { text: 'Patterns & Recipes', link: '/patterns' },
+            { text: 'Editor Support', link: '/editor-support' }
           ]
         },
         {
           text: 'Using from C#',
           items: [
-            { text: 'C# API Reference', link: '/csharp-api' }
+            { text: 'C# API Reference', link: '/csharp-api' },
+            { text: 'Build-Time Pre-compilation', link: '/precompilation' }
           ]
         },
         {

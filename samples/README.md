@@ -24,14 +24,14 @@ bash samples/tools/compare-golden.sh samples/dynamic-models
 | 1 | [`ssr-aspnetcore`](ssr-aspnetcore) | Roadmap (current engine); phase 4 upgrade | Minimal-API SSR, resolver + layout/page composition, caching, `@for` + `TrimDirectiveLines` |
 | 2 | [`definition-library`](definition-library) | Roadmap (current engine); phase 4 upgrade | `@<<` composition import, definition overrides, `<name:name>` narrowing |
 | 3 | [`dynamic-models`](dynamic-models) | Roadmap (current engine) | `:: dynamic`, runtime-loaded template strings |
-| 4 | [`sandboxed-user-templates`](sandboxed-user-templates) | [Phase 1](../docs/spec/phase-1-native-expressions/README.md) | `ExpressionMode.Native`, `FunctionRegistry` as the trust boundary, rejected constructs with positioned `HED1xxx` |
-| 5 | [`html-safe-output`](html-safe-output) | [Phase 2](../docs/spec/phase-2-safe-output/README.md) | `OutputProfile.Html`, `@raw`, encoder pluggability; runs under both defaults (the 2.0 rehearsal) |
-| 6 | [`custom-extensions`](custom-extensions) | [Phase 3](../docs/spec/phase-3-branching/README.md) | The public `Scope.Publish`/`TryRead` channel + a branch-protocol participant |
-| 7 | [`component-props-slots`](component-props-slots) | [Phase 5](../docs/spec/phase-5-props-and-slots/README.md) | The card/layout/picker component library: typed props with defaults, parameterized slots |
-| 8 | [`codegen-t4-successor`](codegen-t4-successor) | [Phase 7](../docs/spec/phase-7-build-time-compilation/README.md) | Build-time text/code generation, no runtime Heddle dependency (asserted structurally) |
-| 9 | [`precompiled-app`](precompiled-app) | Phase 7 | Pre-compilation + mixed mode + discovery enumeration; the differential rule (precompiled == dynamic twin) |
-| 10 | [`streaming-ssr`](streaming-ssr) | [Phase 8](../docs/spec/phase-8-streaming-async/README.md) | `Generate(data, IBufferWriter<byte>)` into `Response.BodyWriter` + `FlushAsync`; string-parity asserted in capture |
-| — | `editors/vscode` walkthrough | [Phase 6](../docs/spec/phase-6-tooling-lsp/README.md) | LSP setup + typed completion tour — see [docs/editor-support.md](../docs/editor-support.md) and [editors/vscode](../editors/vscode). Documentation + the phase 6 extension smoke test, not a runnable golden project. |
+| 4 | [`sandboxed-user-templates`](sandboxed-user-templates) | [Native expressions](../docs/native-expressions.md) | `ExpressionMode.Native`, `FunctionRegistry` as the trust boundary, rejected constructs with positioned `HED1xxx` |
+| 5 | [`html-safe-output`](html-safe-output) | [HTML encoding](../docs/built-in-extensions.md#html-encoding) | `OutputProfile.Html`, `@raw`, encoder pluggability; runs under both defaults (the 2.0 rehearsal) |
+| 6 | [`custom-extensions`](custom-extensions) | [Branch sets](../docs/built-in-extensions.md#branch-sets) | The public `Scope.Publish`/`TryRead` channel + a branch-protocol participant |
+| 7 | [`component-props-slots`](component-props-slots) | [Props](../docs/language-reference.md#props-name-prop-type-default) | The card/layout/picker component library: typed props with defaults, parameterized slots |
+| 8 | [`codegen-t4-successor`](codegen-t4-successor) | [Pre-compilation](../docs/precompilation.md) | Build-time text/code generation, no runtime Heddle dependency (asserted structurally) |
+| 9 | [`precompiled-app`](precompiled-app) | [Pre-compilation](../docs/precompilation.md) | Pre-compilation + mixed mode + discovery enumeration; the differential rule (precompiled == dynamic twin) |
+| 10 | [`streaming-ssr`](streaming-ssr) | [Streaming](../docs/csharp-api.md#streaming-generate-into-a-sink) | `Generate(data, IBufferWriter<byte>)` into `Response.BodyWriter` + `FlushAsync`; string-parity asserted in capture |
+| — | `editors/vscode` walkthrough | [Editor support](../docs/editor-support.md) | LSP setup + typed completion tour — see [docs/editor-support.md](../docs/editor-support.md) and [editors/vscode](../editors/vscode). Documentation + the extension smoke test, not a runnable golden project. |
 
 ## Adding a sample
 

@@ -27,6 +27,12 @@ namespace Heddle
         private string _document;
         private volatile bool _disposeAfterComplete;
         private volatile int _runners;
+        // B2: the effective output encoder (TemplateOptions.Encoder). Resolved once at compile (dynamic tier) or from
+        // the precompiled-adapter ctor, then stamped on each render's sink. null = the legacy WebUtility path.
+        private System.Text.Encodings.Web.TextEncoder _encoder;
+        // C1: the effective render budget (TemplateOptions.RenderBudget). Resolved once at compile (dynamic tier) or
+        // carried on the precompiled-adapter ctor. null = unlimited: the budget wrapper is never created (zero cost).
+        private RenderBudget _renderBudget;
 #if NET8_0_OR_GREATER
          private volatile int _maxLength;
 #else
@@ -69,11 +75,14 @@ namespace Heddle
         private readonly bool _precompiled;
 #endif
 
-        internal HeddleTemplate(IProcessStrategy precompiledStrategy)
+        internal HeddleTemplate(IProcessStrategy precompiledStrategy,
+            System.Text.Encodings.Web.TextEncoder encoder = null, RenderBudget renderBudget = null)
         {
             if (precompiledStrategy == null)
                 throw new ArgumentNullException(nameof(precompiledStrategy));
             _processStrategy = precompiledStrategy;
+            _encoder = encoder;   // B2: carry the request's encoder onto the precompiled-adapter render (resolver path)
+            _renderBudget = renderBudget;   // C1: carry the request's budget onto the precompiled-adapter render
 #if DEBUG
             _precompiled = true;
 #endif
@@ -127,7 +136,10 @@ namespace Heddle
 #else
             var renderer = new ScopeRenderer(_maxElementCount);
 #endif
-            Render(data, chained, callerData, renderer);
+            renderer.SetOutputEncoder(_encoder);   // B2: stamp the effective encoder on the sink
+            // C1: wrap in the budget seam only when a budget is configured — the null path keeps the bare sink (no
+            // wrapper, no allocation). ToString/Clear/high-water still read the underlying ScopeRenderer directly.
+            Render(data, chained, callerData, _renderBudget == null ? (IScopeRenderer)renderer : new BudgetedRenderer(renderer, _renderBudget));
 #if NET8_0_OR_GREATER
             var newMax = Math.Max(_maxLength, renderer.TotalLength);
             if (newMax > _maxLength)
@@ -157,7 +169,9 @@ namespace Heddle
         {
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
-            Render(data, chained, callerData, new TextWriterScopeRenderer(writer));
+            var renderer = new TextWriterScopeRenderer(writer);
+            renderer.SetOutputEncoder(_encoder);   // B2: stamp the effective encoder on the sink
+            Render(data, chained, callerData, _renderBudget == null ? (IScopeRenderer)renderer : new BudgetedRenderer(renderer, _renderBudget));
         }
 
         /// <summary>
@@ -171,7 +185,9 @@ namespace Heddle
         {
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
-            Render(data, chained, callerData, new Utf8ScopeRenderer(writer));
+            var renderer = new Utf8ScopeRenderer(writer);
+            renderer.SetOutputEncoder(_encoder);   // B2: stamp the effective encoder on the sink
+            Render(data, chained, callerData, _renderBudget == null ? (IScopeRenderer)renderer : new BudgetedRenderer(renderer, _renderBudget));
         }
 
         /// <summary>
@@ -332,6 +348,8 @@ namespace Heddle
                         _document = optimizedDocument;
                         _runtimeDocument = rtdoc;
                         _processStrategy = rtdoc?.Strategy;
+                        _encoder = compileScope.CompileContext.Options.Encoder;   // B2: resolve the effective encoder once
+                        _renderBudget = compileScope.CompileContext.Options.RenderBudget;   // C1: resolve the budget once
                     }
                     else
                     {

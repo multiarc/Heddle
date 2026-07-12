@@ -20,8 +20,11 @@
     <Description>Build-time template pre-compilation for Heddle (phase 7 incremental source generator).</Description>
 
     <!-- Analyzer projects that ProjectReference another project trigger this warning; the DLLs are packed
-         into analyzers/dotnet/cs by the targets below. -->
-    <NoWarn>$(NoWarn);RS1038;NU5128</NoWarn>
+         into analyzers/dotnet/cs by the targets below.
+         RS2008: this incremental source generator reports build diagnostics but is not distributed as a
+         versioned analyzer package with AnalyzerReleases.{Shipped,Unreleased}.md tracking; the HED7xxx IDs
+         are governed by the diagnostic-ID registry in docs/spec instead. -->
+    <NoWarn>$(NoWarn);RS1038;NU5128;RS2008</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

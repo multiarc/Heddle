@@ -27,7 +27,7 @@ namespace Heddle.Tests
             using var ttlTemplate = new HeddleTemplate();
             var results = ttlTemplate.TryCompilation(File.ReadAllText("TestTemplate/wierd-whitespace.heddle").Replace("\r\n", "\n"), new TemplateOptions
             {
-                AllowCSharp = true
+                ExpressionMode = ExpressionMode.FullCSharp
             });
             
             Assert.True(results.Success, results.ToString());
@@ -71,7 +71,7 @@ namespace Heddle.Tests
         {
             HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
             var target = new HeddleTemplate("@(@ 1_000 + 0b1010 + 0xFF_FF )",
-                new CompileContext(new TemplateOptions { AllowCSharp = true }));
+                new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp }));
             Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
             // 1000 + 0b1010 (10) + 0xFFFF (65535) = 66545
             Assert.Equal("66545", target.Generate(null));
@@ -88,7 +88,7 @@ namespace Heddle.Tests
             HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
             var options = new TemplateOptions
             {
-                AllowCSharp = true
+                ExpressionMode = ExpressionMode.FullCSharp
             };
             // Self-contained C# interpolation: a simple hole ({1 + 2}), a hole containing parentheses and a
             // nested string literal ({(1 < 2 ? "a" : "b")}), and a hole wrapped in parentheses with parens
@@ -109,7 +109,7 @@ namespace Heddle.Tests
         public void InterpolatedStringBraceEscapes()
         {
             HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
-            var options = new TemplateOptions { AllowCSharp = true };
+            var options = new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp };
 
             // Regular: a{b}c around a real hole -> a{b}c5
             var regular = new HeddleTemplate("@(@$\"a{{b}}c{2 + 3}\")", new CompileContext(options));
@@ -131,7 +131,7 @@ namespace Heddle.Tests
         public void CSharpCallAtEndOfInput()
         {
             HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
-            var options = new TemplateOptions { AllowCSharp = true };
+            var options = new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp };
 
             var simple = new HeddleTemplate("@(@5)", new CompileContext(options));
             Assert.True(simple.CompileResult.Success, simple.CompileResult.ToString());
@@ -151,7 +151,7 @@ namespace Heddle.Tests
         public void VerbatimIdentifierExpressions()
         {
             HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
-            var options = new TemplateOptions { AllowCSharp = true };
+            var options = new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp };
 
             // '@(' opens the call, the first '@' switches to C#, '@System' is a verbatim identifier.
             var plain = new HeddleTemplate("@(@@System.Int32.MaxValue)", new CompileContext(options));
@@ -173,7 +173,7 @@ namespace Heddle.Tests
         public void StatementLambdaExpressions()
         {
             HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
-            var options = new TemplateOptions { AllowCSharp = true };
+            var options = new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp };
 
             var blockLambda = new HeddleTemplate(
                 "@(@new System.Func<int>(() => { return 7; })())",
@@ -221,7 +221,7 @@ namespace Heddle.Tests
 #if NET6_0_OR_GREATER
             // End-to-end evaluation additionally needs a Roslyn that supports C# 11. The netstandard2.0 build
             // used on .NET Framework ships C# 10 Roslyn, so these render assertions run on net6.0+ only.
-            var options = new TemplateOptions { AllowCSharp = true };
+            var options = new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp };
             string Render(string template)
             {
                 var t = new HeddleTemplate(template, new CompileContext(options));
@@ -264,13 +264,13 @@ namespace Heddle.Tests
             // '+' directly between identifiers is its own operator: "x".Length+1 == 2 (was mis-lexed as the
             // single identifier 'Length+1' when identifier-part wrongly included '+').
             var t = new HeddleTemplate("@(@\"x\".Length+1)",
-                new CompileContext(new TemplateOptions { AllowCSharp = true }));
+                new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp }));
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             Assert.Equal("2", t.Generate(null));
 
             // Contextual keyword used in an expression still works (now matched as CONTEXTUAL_KEYWORD).
             var nameofT = new HeddleTemplate("@(@nameof(System.String))",
-                new CompileContext(new TemplateOptions { AllowCSharp = true }));
+                new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp }));
             Assert.True(nameofT.CompileResult.Success, nameofT.CompileResult.ToString());
             Assert.Equal("String", nameofT.Generate(null));
         }
@@ -293,7 +293,7 @@ namespace Heddle.Tests
             HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
             var options = new TemplateOptions
             {
-                AllowCSharp = true
+                ExpressionMode = ExpressionMode.FullCSharp
             };
             var target = new HeddleTemplate("@%" + Environment.NewLine + "<default> -> (Model)" + Environment.NewLine +
                                          "{{ Order #@(Id)! }} :: dynamic" + Environment.NewLine + "%@",
@@ -317,7 +317,7 @@ namespace Heddle.Tests
             {
                 FileNamePostfix = ".heddle",
                 RootPath = @"TestTemplate",
-                AllowCSharp = true
+                ExpressionMode = ExpressionMode.FullCSharp
             };
             var target = new HeddleTemplate(new CompileContext(options));
             Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
@@ -342,7 +342,7 @@ namespace Heddle.Tests
             {
                 FileNamePostfix = ".heddle",
                 RootPath = @"TestTemplate",
-                AllowCSharp = true
+                ExpressionMode = ExpressionMode.FullCSharp
             };
             var target = new HeddleTemplate(new CompileContext(options));
             Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
@@ -367,7 +367,7 @@ namespace Heddle.Tests
             {
                 FileNamePostfix = ".heddle",
                 RootPath = @"TestTemplate",
-                AllowCSharp = true
+                ExpressionMode = ExpressionMode.FullCSharp
             };
             var target = new HeddleTemplate(new CompileContext(options));
             Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
@@ -404,7 +404,7 @@ namespace Heddle.Tests
             {
                 FileNamePostfix = ".heddle",
                 RootPath = @"TestTemplate",
-                AllowCSharp = true
+                ExpressionMode = ExpressionMode.FullCSharp
             };
             var target = new HeddleTemplate(new CompileContext(options));
             Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
@@ -497,7 +497,7 @@ namespace Heddle.Tests
             {
                 FileNamePostfix = ".heddle",
                 RootPath = @"TestTemplate",
-                AllowCSharp = true
+                ExpressionMode = ExpressionMode.FullCSharp
             };
             var target = new HeddleTemplate(new CompileContext(options));
             Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
@@ -588,7 +588,7 @@ namespace Heddle.Tests
             {
                 FileNamePostfix = ".heddle",
                 RootPath = @"TestTemplate",
-                AllowCSharp = true
+                ExpressionMode = ExpressionMode.FullCSharp
             };
             var target = new HeddleTemplate(new CompileContext(options));
             Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
@@ -679,7 +679,7 @@ namespace Heddle.Tests
             {
                 FileNamePostfix = ".heddle",
                 RootPath = @"TestTemplate",
-                AllowCSharp = true
+                ExpressionMode = ExpressionMode.FullCSharp
             };
             var target = new HeddleTemplate(new CompileContext(options));
             Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
@@ -713,7 +713,7 @@ namespace Heddle.Tests
             {
                 FileNamePostfix = ".heddle",
                 RootPath = @"TestTemplate",
-                AllowCSharp = true
+                ExpressionMode = ExpressionMode.FullCSharp
             };
             var target = new HeddleTemplate(new CompileContext(options));
             Assert.True(target.CompileResult.Success, target.CompileResult.ToString());

@@ -142,10 +142,22 @@ namespace Heddle.Core
         }
 
         /// <summary>
-        /// Implementation with parameter redirection in function
+        /// <para>Computes this extension's chained/output value for <paramref name="scope"/>. Return a
+        /// <see cref="string"/> when the extension has a textual value to contribute; return
+        /// <see cref="string.Empty"/> when it has no textual value here (e.g. a render-only extension,
+        /// or a directive that produces no output).</para>
+        /// <para>The value/string rail coerces any non-<see cref="string"/> result to empty output
+        /// (<c>as string ?? string.Empty</c>). This is a deliberate guard — it keeps a stray object's
+        /// default <c>ToString()</c> from leaking into concatenated output — but it also silently drops
+        /// an otherwise-meaningful boxed scalar (e.g. an <see cref="int"/> or a <see cref="System.Guid"/>)
+        /// returned here instead of a string. Built-in formatters (<c>@int</c>, <c>@string</c>,
+        /// <c>@guid</c>, …) already stringify at their own boundary before returning, so they are safe.
+        /// Stringify at your own boundary too: do not rely on the rail to convert a non-string value for
+        /// you.</para>
         /// </summary>
-        /// <param name="scope"></param>
-        /// <returns></returns>
+        /// <param name="scope">The current render scope.</param>
+        /// <returns>A <see cref="string"/> textual value, or <see cref="string.Empty"/> when this
+        /// extension has no textual value to contribute.</returns>
         public abstract object ProcessData(in Scope scope);
 
         public abstract void RenderData(in Scope scope);

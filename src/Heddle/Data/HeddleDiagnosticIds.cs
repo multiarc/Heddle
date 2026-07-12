@@ -110,6 +110,20 @@ namespace Heddle.Data
         /// and is therefore rendered twice — once at document end, once at the call.</summary>
         public const string DefinitionRendersTwice = "HED4002";
 
+        /// <summary>The legacy <c>@import()</c> include has been removed. Any <c>@import()</c> call site now
+        /// produces this error (no longer a warning), positioned at the call, and the template no longer compiles.
+        /// The message names the replacements: <c>@&lt;&lt;{{ path }}</c> to share definitions and layouts across
+        /// files, or <c>@partial(){{ name }}</c> to embed another template's rendered output inline. Raised once
+        /// per call site; <c>@&lt;&lt;</c> never raises it.</summary>
+        public const string LegacyImportDirective = "HED4003";
+
+        /// <summary>A <c>@&lt;&lt;{{ path }}</c> composition import appears nested inside a subtemplate (an
+        /// <c>@if</c>/<c>@for</c> body, an output block, or a definition body) rather than at the top level of a
+        /// document. Composition merges definitions and re-bases the imported file's output chains into the
+        /// current document, which is only well-defined at document scope; the import is skipped and this error
+        /// is raised, positioned at the <c>@&lt;&lt;</c> directive.</summary>
+        public const string ComposeImportNotTopLevel = "HED4004";
+
         // Phase 5 — props & slots.
 
         /// <summary>A named argument's name is not declared by the target definition's prop layout.</summary>

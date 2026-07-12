@@ -106,6 +106,7 @@ TYPE Heddle.Data.HeddleDiagnosticIds
   FIELD System.String BranchRoleMissingScopeChannel
   FIELD System.String BranchTextStripped
   FIELD System.String CoalesceLeftNotNullable
+  FIELD System.String ComposeImportNotTopLevel
   FIELD System.String DefinitionHasNoProps
   FIELD System.String DefinitionRendersTwice
   FIELD System.String DuplicatePropArgument
@@ -120,6 +121,7 @@ TYPE Heddle.Data.HeddleDiagnosticIds
   FIELD System.String FunctionShadowedByExtension
   FIELD System.String IndexerNotFound
   FIELD System.String InvalidSlotDeclaration
+  FIELD System.String LegacyImportDirective
   FIELD System.String LogicalOperatorRequiresBool
   FIELD System.String MethodCallNotAvailable
   FIELD System.String MissingRequiredProp
@@ -175,6 +177,11 @@ TYPE Heddle.Data.PrecompiledMismatchPolicy : System.Enum
   FIELD Heddle.Data.PrecompiledMismatchPolicy Fallback
   FIELD Heddle.Data.PrecompiledMismatchPolicy Strict
   FIELD System.Int32 value__
+TYPE Heddle.Data.RenderBudget
+  CTOR()
+  PROP System.Nullable<System.Int64> MaxOutputChars {get;set;}
+  PROP System.Nullable<System.Int64> MaxRenderOps {get;set;}
+  PROP System.Nullable<System.TimeSpan> MaxRenderTime {get;set;}
 TYPE Heddle.Data.RenderType : System.Enum
   FIELD Heddle.Data.RenderType Encode
   FIELD Heddle.Data.RenderType Raw
@@ -213,6 +220,7 @@ TYPE Heddle.Data.TemplateOptions
   PROP Heddle.Data.ExpressionMode ExpressionMode {get;set;}
   PROP Heddle.Data.OutputProfile OutputProfile {get;set;}
   PROP Heddle.Data.PrecompiledMismatchPolicy PrecompiledMismatchPolicy {get;set;}
+  PROP Heddle.Data.RenderBudget RenderBudget {get;set;}
   PROP Heddle.Runtime.Expressions.FunctionRegistry Functions {get;set;}
   PROP System.Boolean AllowCSharp {get;set;}
   PROP System.Boolean EnableFileChangeCheck {get;set;}
@@ -224,6 +232,7 @@ TYPE Heddle.Data.TemplateOptions
   PROP System.String FullPath {get;}
   PROP System.String RootPath {get;set;}
   PROP System.String TemplateName {get;}
+  PROP System.Text.Encodings.Web.TextEncoder Encoder {get;set;}
 TYPE Heddle.Data.TemplatePathType : System.Enum
   FIELD Heddle.Data.TemplatePathType Master
   FIELD Heddle.Data.TemplatePathType None
@@ -239,6 +248,11 @@ TYPE Heddle.Data.Utf8ScopeRenderer impl Heddle.Data.IScopeRenderer, Heddle.Data.
   METHOD System.Void Render(System.ReadOnlySpan<System.Char>)
   METHOD System.Void Render(System.String)
   METHOD System.Void RenderUtf8(System.ReadOnlySpan<System.Byte>)
+TYPE Heddle.Exceptions.RenderBudgetKind : System.Enum
+  FIELD Heddle.Exceptions.RenderBudgetKind OutputChars
+  FIELD Heddle.Exceptions.RenderBudgetKind RenderOps
+  FIELD Heddle.Exceptions.RenderBudgetKind RenderTime
+  FIELD System.Int32 value__
 TYPE Heddle.Exceptions.TemplateCompileException : System.Exception
   CTOR(Heddle.Data.HeddleCompileError)
   CTOR(System.Collections.Generic.IEnumerable<Heddle.Data.HeddleCompileError>)
@@ -273,6 +287,16 @@ TYPE Heddle.Exceptions.TemplateProcessingException : System.Exception
   CTOR()
   CTOR(System.String)
   CTOR(System.String, System.Exception)
+TYPE Heddle.Exceptions.TemplateRenderBudgetException : Heddle.Exceptions.TemplateProcessingException
+  CTOR(Heddle.Exceptions.RenderBudgetKind, System.Int64, System.Int64)
+  PROP Heddle.Exceptions.RenderBudgetKind Kind {get;}
+  PROP System.Int64 Limit {get;}
+  PROP System.Int64 Observed {get;}
+TYPE Heddle.Extensions.AttrExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
 TYPE Heddle.Extensions.DateExtension : Heddle.Core.AbstractHtmlExtension impl Heddle.Runtime.IExtension
   CTOR()
   METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
@@ -320,6 +344,11 @@ TYPE Heddle.Extensions.ImportExtension : Heddle.Core.AbstractExtension impl Hedd
 TYPE Heddle.Extensions.IntegerExtension : Heddle.Core.AbstractHtmlExtension impl Heddle.Runtime.IExtension
   CTOR()
   METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+TYPE Heddle.Extensions.JsExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
 TYPE Heddle.Extensions.ListExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
   CTOR()
   METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
@@ -365,6 +394,11 @@ TYPE Heddle.Extensions.SwapExtension : Heddle.Core.AbstractExtension impl Heddle
 TYPE Heddle.Extensions.TimeExtension : Heddle.Core.AbstractHtmlExtension impl Heddle.Runtime.IExtension
   CTOR()
   METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+TYPE Heddle.Extensions.UrlExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
+  CTOR()
+  METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
+  METHOD System.Object ProcessData(ref Heddle.Data.Scope)
+  METHOD System.Void RenderData(ref Heddle.Data.Scope)
 TYPE Heddle.Extensions.UsingExtension : Heddle.Core.AbstractExtension impl Heddle.Runtime.IExtension
   CTOR()
   METHOD Heddle.Data.ExType InitStart(Heddle.Core.InitContext, Heddle.Data.ExType, Heddle.Data.ExType, Heddle.Data.ExType)
@@ -444,7 +478,6 @@ TYPE Heddle.Language.DocumentParser
   METHOD Heddle.Language.ParseContext Parse(System.String, Heddle.Language.ParserSettings, out System.String)
   METHOD Heddle.Language.ParseContext Parse(System.String, Heddle.Runtime.CompileContext, out System.String)
   METHOD System.String Parse(System.String, Heddle.Language.ParseContext, Heddle.Language.ParserSettings)
-  METHOD System.String Parse(System.String, Heddle.Language.ParseContext, Heddle.Runtime.CompileContext)
 TYPE Heddle.Language.Expressions.BinaryNode : Heddle.Language.Expressions.ExprNode
   CTOR(Heddle.Language.Expressions.ExprOperator, Heddle.Language.Expressions.ExprNode, Heddle.Language.Expressions.ExprNode, Heddle.Strings.Core.BlockPosition)
   PROP Heddle.Language.Expressions.ExprNode Left {get;}

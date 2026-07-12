@@ -88,6 +88,7 @@ namespace Heddle.Runtime
             {
                 var element = new DocumentElement(extensions.BlockPosition);
                 ExType returnTypeChainedPrevious = chainedType;
+                bool hasProducerToRight = false;
                 foreach (var item in ((ICollection<OutputItem>) extensions.Chain).Reverse())
                 {
                     try
@@ -95,7 +96,10 @@ namespace Heddle.Runtime
                         var compiledItem = CompileItem(item, compileScope, extensions.Context,
                             ref returnTypeChainedPrevious);
                         if (compiledItem != null)
+                        {
+                            MarkChainConsumer(compiledItem, item, hasProducerToRight);
                             element.CallChain.Add(compiledItem);
+                        }
                     }
                     catch (Exception e)
                     {
@@ -106,6 +110,8 @@ namespace Heddle.Runtime
                             Error = $"Error while compiling {item.ExtensionName}"
                         });
                     }
+
+                    hasProducerToRight = true;
                 }
 
                 if (returnTypeChainedPrevious == null)
@@ -122,6 +128,7 @@ namespace Heddle.Runtime
             {
                 var element = new DocumentElement(new BlockPosition(workingDocument.Length, 0));
                 ExType returnTypeChainedPrevious = chainedType;
+                bool hasProducerToRight = false;
                 foreach (var item in ((ICollection<OutputItem>) extensions.Chain).Reverse())
                 {
                     try
@@ -129,7 +136,10 @@ namespace Heddle.Runtime
                         var compiledItem = CompileItem(item, compileScope, extensions.Context,
                             ref returnTypeChainedPrevious);
                         if (compiledItem != null)
+                        {
+                            MarkChainConsumer(compiledItem, item, hasProducerToRight);
                             element.CallChain.Add(compiledItem);
+                        }
                     }
                     catch (Exception e)
                     {
@@ -140,6 +150,8 @@ namespace Heddle.Runtime
                             Error = $"Error while compiling {item.ExtensionName}"
                         });
                     }
+
+                    hasProducerToRight = true;
                 }
 
                 if (returnTypeChainedPrevious != null)
@@ -490,18 +502,26 @@ namespace Heddle.Runtime
 
         /// <summary>
         /// Shifts <see cref="ParseContext.OutputChains"/>, <see cref="DefinitionBlock.Positions"/>, and
-        /// <see cref="ParseContext.RawOutputItems"/> back by <paramref name="seed"/> for every entry after the
-        /// removed span — the same reverse-loop pattern <see cref="ShiftBySkippedTokens"/> applies to the three
-        /// lists, used by <see cref="TrimHiddenRemnantLines"/>.
+        /// <see cref="ParseContext.RawOutputItems"/> to account for the removed span, using the same three-way
+        /// classification <see cref="ShiftBySkippedTokens"/> applies: a block that <em>encloses</em> the removed
+        /// span keeps its start but loses <paramref name="seed"/> from its length; a block wholly after the span
+        /// moves back by <paramref name="seed"/>; a block wholly before is untouched. Used by
+        /// <see cref="TrimHiddenRemnantLines"/>. Missing the enclosing case let a whole-line comment removed from
+        /// inside a definition block leave that block's length overstated, so <see cref="RemoveDefinitions"/> then
+        /// over-removed into the following text (cross-file/imported bodies made this visible as offset drift).
         /// </summary>
         private static void ShiftListsAfter(ParseContext context, BlockPosition removed, int seed)
         {
-            int boundary = removed.StartIndex + removed.Length;
+            int startToSkip = removed.StartIndex;
+            int endToSkip = removed.StartIndex + removed.Length - 1;
             foreach (var chain in ((ICollection<OutputChain>) context.OutputChains).Reverse())
             {
-                if (chain.BlockPosition.StartIndex >= boundary)
-                    chain.BlockPosition =
-                        new BlockPosition(chain.BlockPosition.StartIndex - seed, chain.BlockPosition.Length);
+                var start = chain.BlockPosition.StartIndex;
+                var end = start + chain.BlockPosition.Length - 1;
+                if (start <= startToSkip && end >= endToSkip)
+                    chain.BlockPosition = new BlockPosition(start, chain.BlockPosition.Length - seed);
+                else if (end > startToSkip)
+                    chain.BlockPosition = new BlockPosition(start - seed, chain.BlockPosition.Length);
                 else
                     break;
             }
@@ -509,17 +529,22 @@ namespace Heddle.Runtime
             for (int index = context.DefinitionsBlock.Positions.Count - 1; index >= 0; index--)
             {
                 var position = context.DefinitionsBlock.Positions[index];
-                if (position.StartIndex >= boundary)
-                    context.DefinitionsBlock.Positions[index] =
-                        new BlockPosition(position.StartIndex - seed, position.Length);
+                var start = position.StartIndex;
+                var end = start + position.Length - 1;
+                if (start <= startToSkip && end >= endToSkip)
+                    context.DefinitionsBlock.Positions[index] = new BlockPosition(start, position.Length - seed);
+                else if (end > startToSkip)
+                    context.DefinitionsBlock.Positions[index] = new BlockPosition(start - seed, position.Length);
                 else
                     break;
             }
 
             foreach (var raw in ((ICollection<RawOutputItem>) context.RawOutputItems).Reverse())
             {
-                if (raw.BlockPosition.StartIndex >= boundary)
-                    raw.BlockPosition = new BlockPosition(raw.BlockPosition.StartIndex - seed, raw.BlockPosition.Length);
+                var start = raw.BlockPosition.StartIndex;
+                var end = start + raw.BlockPosition.Length - 1;
+                if (end > startToSkip)
+                    raw.BlockPosition = new BlockPosition(start - seed, raw.BlockPosition.Length);
                 else
                     break;
             }
@@ -661,15 +686,36 @@ namespace Heddle.Runtime
             ParseContext parseContext, ExType returnTypeChainedPrevious)
         {
             TemplateChain result = new TemplateChain();
+            bool hasProducerToRight = false;
             foreach (var item in items.Reverse())
             {
                 var compiledItem = CompileItem(item, compileContext, parseContext, ref returnTypeChainedPrevious,
                     chainParameter: true);
                 if (compiledItem != null)
+                {
+                    MarkChainConsumer(compiledItem, item, hasProducerToRight);
                     result.Add(compiledItem);
+                }
+
+                hasProducerToRight = true;
             }
 
             return result;
+        }
+
+        // A chain item that has a producer to its right (i.e. is not the tail of its own chain) receives that
+        // producer's output on the chained channel. For a definition call this is its caller content — but only when
+        // the call site carries no caller body: a body (static OR dynamic, even an explicit empty {{}}) always wins.
+        // So the flag is gated on the compile-time fact "this call has no {{...}} body" (ParameterTemplate == null;
+        // a present-but-empty body is "" and still wins), never on a runtime subtemplate flag — a pure-static body
+        // leaves InnerExist false yet must still win. Then the definition body's @out() emits the chained value only
+        // for a genuine bodiless chain consumer (the documented @heading():emphasis() pattern). Flagged structurally,
+        // per chain position, so ambient chained data never leaks into a lone call.
+        private static void MarkChainConsumer(TemplateItem compiledItem, OutputItem item, bool hasProducerToRight)
+        {
+            if (hasProducerToRight && item.ParameterTemplate == null &&
+                compiledItem.Extension is DefinitionBaseExtension definition)
+                definition.ReceivesChainedValue = true;
         }
 
         // chainParameter is true when this item is a *nested* producer inside another item's parenthesized
@@ -827,10 +873,10 @@ namespace Heddle.Runtime
             }
             else if (!string.IsNullOrEmpty(extensionItem.CallParameter.CSharpExpression))
             {
-                if (!compileScope.Options.AllowCSharp)
+                if (compileScope.Options.ExpressionMode != ExpressionMode.FullCSharp)
                 {
                     compileScope.CompileErrors.Add(
-                        "C# Code Not allowed here, see TemplateOptions.AllowCSharp Property".ToError(extensionItem
+                        "C# Code Not allowed here, see TemplateOptions.ExpressionMode Property".ToError(extensionItem
                             .Position));
                     return null;
                 }

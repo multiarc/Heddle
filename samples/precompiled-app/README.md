@@ -2,7 +2,7 @@
 
 **Shows:** build-time precompilation, the differential rule (precompiled output equals its dynamically-compiled
 twin), and public discovery enumeration. **Source of record:**
-[phase 7](../../docs/spec/phase-7-build-time-compilation/README.md) (phase 9 D13 row 9).
+[Pre-compilation](../../docs/precompilation.md) (phase 9 D13 row 9).
 
 ## Run it
 

@@ -24,6 +24,52 @@ All names and attributes below were read directly from
   `AbstractHtmlExtension`) HTML‑encode their result by default. See
   [HTML encoding](#html-encoding) at the bottom.
 
+### Body context at a glance
+
+This is the **authoritative enumeration** of what each built‑in does to its `{{ … }}` body — the
+`@list`/definitions *descend* into the parameter while the value calls *step back* to the caller
+([Language Reference → stepping back](language-reference.md#stepping-back-the-parent-context)). The
+**Body context** column is read from each extension's `InitStart` in
+[`src/Heddle/Extensions`](../src/Heddle/Extensions); the **`@out()` sees** column is the value on the
+[chained channel](language-reference.md#the-second-channel-chained-data) inside that body.
+
+| Extension | Body context | `@out()` inside the body sees |
+| --- | --- | --- |
+| `if` | steps back to caller | caller's chained (passed through) |
+| `ifnot` | steps back to caller | caller's chained (passed through) |
+| `elif` / `elseif` | steps back to caller | caller's chained (passed through) |
+| `else` | steps back to caller | caller's chained (passed through) |
+| `list` | descends into parameter (the element) | element index (`int`) |
+| `for` | steps back to caller | loop index (`int`) |
+| `date` | steps back to caller | caller's chained (passed through) |
+| `time` | steps back to caller | caller's chained (passed through) |
+| `int` | steps back to caller | caller's chained (passed through) |
+| `money` | steps back to caller | caller's chained (passed through) |
+| `guid` | steps back to caller | caller's chained (passed through) |
+| `string` | steps back to caller | caller's chained (passed through) |
+| `attr` | steps back to caller | caller's chained (passed through) |
+| `js` | steps back to caller | caller's chained (passed through) |
+| `url` | steps back to caller | caller's chained (passed through) |
+| *(empty)* `@(v){{…}}` | descends into parameter | caller's chained (passed through) |
+| `raw` | descends into parameter | caller's chained (passed through) |
+| `html` | descends into parameter | caller's chained (passed through) |
+| `out` | rescopes to the chained value | parent model |
+| `swap` | rescopes to the chained value | the pre‑swap model |
+| `param` | no body | — |
+| `model` | directive (compile‑time body) | — |
+| `using` | directive (compile‑time body) | — |
+| `profile` | directive (compile‑time body) | — |
+| `partial` | directive (compile‑time body)¹ | — |
+
+- **steps back to caller** — the parameter is a value to test/format; the body renders against the
+  caller's model (`scope.Parent()`), one level back.
+- **descends into parameter** — the body's model *is* the parameter (a rescoping container).
+- **rescopes to the chained value** — `@out`/`@swap` rebind the body's model to the chained data
+  (and thread a different value onto the chained channel, shown in the last column).
+- **no body** — the `{{ … }}` body is not rendered.
+- **directive (compile‑time body)** — the body is consumed at compile time (a type/namespace/profile
+  literal, or ¹the template *name* for `@partial`), not rendered as a runtime subtemplate.
+
 ---
 
 ## Conditionals
@@ -110,8 +156,7 @@ one `@else`. Only the winning branch's body renders.
   the purposes of text stripping** but leaves the set state intact — so `@if(A){{…}} @date(D){{…}} @else(){{…}}`
   keeps `@else` bound to the open set while the text around `@date` still renders.
 - **Imports.** Blocks spliced in by `@<<{{ … }}` are siblings of the importing body: they join
-  its branch sets and its compile‑time scan. Blocks parsed in by the `@import()` extension arrive
-  after that scan, so they coordinate at runtime only.
+  its branch sets and its compile‑time scan.
 - **Isolation.** Each `@list`/`@for` iteration, each nested body, and each `@partial` gets its
   own set state — an inner set can never satisfy or clear an outer one.
 
@@ -260,6 +305,78 @@ culture), falling back to `ToString()`.
 
 ---
 
+## Encoding contexts
+
+`@string` (and the Html profile) encode a value for **element text** — the space between tags.
+Other output positions need different escaping, and using element‑text encoding there is either
+insufficient or actively wrong. These three extensions cover the remaining contexts.
+
+All three are **value calls** like the formatters: the parameter is the value, and the optional
+body is a **default** rendered (in the [caller's context](language-reference.md#stepping-back-the-parent-context))
+when the value is `null`. They take a **string**, exactly like [`@string`](#string): on the typed
+tier a statically non‑string parameter is a compile‑time type error (`HED0004`). Only on the
+**dynamic tier** (a `dynamic`/`object` model) is a non‑string value accepted at run time and
+stringified with `Convert.ToString(value, CultureInfo.InvariantCulture)` before escaping.
+
+### `attr`
+[AttrExtension.cs](../src/Heddle/Extensions/AttrExtension.cs) · input: `string` (non‑string on the dynamic tier) · encoding leaf
+
+Escapes a value for an **HTML attribute**: `&`→`&amp;`, `<`→`&lt;`, `>`→`&gt;`, `"`→`&quot;`,
+`'`→`&#39;`. It escapes the attribute‑significant characters including **both** quote styles, so the
+result is safe in single‑ and double‑quoted attributes alike. Marked `[EncodeOutput]`, so under the
+Html profile it is an encoding leaf — its output is never re‑encoded.
+
+> The default HTML encoder already escapes `'`→`&#39;` (and the Latin‑1 160–255 range, which
+> `@attr` leaves alone), so `@attr` is **not** a strict superset of it — it is the encoder tuned for
+> the attribute context. If the value is `null` and you supply a default body, that body renders in
+> the parent context and is **not** attribute‑escaped (it mirrors `@string`'s author‑controlled
+> default) — route any untrusted value through `@attr` explicitly rather than relying on the body.
+
+```heddle
+<a title="@attr(Tooltip)">…</a>
+<input value='@attr(UserName)'>
+```
+
+### `js`
+[JsExtension.cs](../src/Heddle/Extensions/JsExtension.cs) · input: `string` (non‑string on the dynamic tier) · raw leaf
+
+Escapes the **contents of a JavaScript string literal** — you write the surrounding quotes.
+Escapes `\`→`\\`, `"`→`\"`, `'`→`\'`, `` ` ``→`` \` ``, U+000A→`\n`, U+000D→`\r`, U+2028→`\u2028`, U+2029→`\u2029`, `<`→`\u003C` (so a `</script>` can't close the block), `&`→`\u0026`, and every
+other C0 control (U+0000–U+001F) as `\u00XX` (uppercase hex). `>` and `/` are intentionally left
+alone. It is a **raw leaf**: like `@raw`, it is never HTML‑entity‑encoded under the Html profile
+(entity encoding would corrupt a `<script>`/handler value).
+
+```heddle
+<script>const name = "@js(UserName)";</script>
+```
+
+### `url`
+[UrlExtension.cs](../src/Heddle/Extensions/UrlExtension.cs) · input: `string` (non‑string on the dynamic tier) · encoding leaf
+
+Percent‑encodes a single **URL component** — a query value or one path segment, *not* a whole URL —
+with `Uri.EscapeDataString` (RFC 3986): the unreserved set `A‑Z a‑z 0‑9 - . _ ~` is kept, everything
+else is UTF‑8 percent‑encoded. Marked `[EncodeOutput]` for uniformity (its output has no HTML‑special
+characters by construction, so it is never re‑encoded).
+
+```heddle
+<a href="/search?q=@url(Query)">…</a>
+```
+
+### Choosing an encoder by context
+
+The Html profile / `@string` covers the **element‑text context only**. Every other context needs the
+matching extension below — the default HTML encoding is not sufficient (or is wrong) there.
+
+| Output context | Encode with |
+| --- | --- |
+| Element text (between tags) | Html profile / `@string` |
+| Attribute value | `@attr` |
+| Inside a JS string literal | `@js` |
+| URL component (query value / path segment) | `@url` |
+| Trusted, pre‑sanitized markup | `@raw` |
+
+---
+
 ## Output and context
 
 ### Empty / unnamed
@@ -271,12 +388,12 @@ the workhorse behind `@(Title)`, `@()`, etc.
 
 Its output depends on the effective [output profile](#output-profiles):
 
-- Under **`OutputProfile.Text`** (the 1.x default) the unnamed `@(...)` form is **not**
-  HTML‑encoded — raw text/JSON/code output, exactly as before.
-- Under **`OutputProfile.Html`** a *bodiless* unnamed `@(value)` is HTML‑encoded by default
-  (the compiler resolves it to `html` below). A *bodied* `@(value){{…}}` is unchanged — it is a
-  raw rescoping container, so its literal body markup is never encoded; only value leaves inside
-  it encode. Use [`raw`](#raw) to opt a trusted value out.
+- Under **`OutputProfile.Html`** (the default) a *bodiless* unnamed `@(value)` is HTML‑encoded
+  by default (the compiler resolves it to `html` below). A *bodied* `@(value){{…}}` is unchanged
+  — it is a raw rescoping container, so its literal body markup is never encoded; only value
+  leaves inside it encode. Use [`raw`](#raw) to opt a trusted value out.
+- Under **`OutputProfile.Text`** (the 1.x‑compatibility setting) the unnamed `@(...)` form is
+  **not** HTML‑encoded — raw text/JSON/code output.
 
 ### `raw`
 [EmptyExtension.cs](../src/Heddle/Extensions/EmptyExtension.cs) · name: `raw`
@@ -312,6 +429,12 @@ encoding, independent of the profile.
 Emits the **chained** value — i.e. the data handed to the current definition/call. With no
 body it renders the chained value directly; with a body it renders that body against the
 chained data. This is how a definition surfaces the caller's inline content.
+
+> A body counts only when it contains dynamic (`@`) content. A body of pure literal text has no
+> effect on `@out()` — it is treated as absent, and `@out()` emits just the chained value — the
+> same rule the value emitters `@()`/`@raw`/`@html` follow for their bodies (a static-only body is
+> inert; it is **not** a null-default the way `@string`/`@attr` bodies are). Only a body with an
+> `@`-construct is a real transform of the chained value, e.g. `@out(){{<@(this)>}}`.
 
 ```heddle
 <article_card>
@@ -372,17 +495,14 @@ resolve unqualified identifiers.
 @using(){{MyBlog.Models}}
 ```
 
-### `import`
+### `import` — removed
 [ImportExtension.cs](../src/Heddle/Extensions/ImportExtension.cs) · name: `import`
 
-Compile‑time include that re‑parses another template file (relative to `RootPath`) into the
-extension body's own isolated context. It is **not** the machinery behind `@<<` — the two are
-[independent import implementations](language-reference.md#imports--) with different
-behavior. `@import()` merges nothing into the importing document (its parsed definitions are not
-callable afterwards); its practical effect is to validate the target file (its errors surface).
-Emits no output of its own. **Prefer [`@<<{{ path }}`](language-reference.md#imports--)
-for sharing definitions** — it merges definitions, re‑bases the imported chains, and carries
-default outputs.
+`@import()` has been **removed**. The name is kept registered only as a tombstone so that any
+call site fails with a single positioned [`HED4003`](language-reference.md#imports--) error
+naming its replacements, instead of a generic "unknown extension" error. Use
+[`@<<{{ path }}`](language-reference.md#imports--) to share definitions and layouts across
+files, or [`@partial()`](#partial) to embed another template's rendered output inline.
 
 ### `profile`
 [ProfileExtension.cs](../src/Heddle/Extensions/ProfileExtension.cs) · name: `profile`
@@ -407,8 +527,7 @@ flip but raises the [`HED2002`](#html-encoding) warning — keep it at the top o
 [PartialExtension.cs](../src/Heddle/Extensions/PartialExtension.cs) · name: `partial`
 
 Compiles a **separate** template by name (its body is the template name) and renders that
-template's output inline at run time, passing the current model and chained data. Unlike
-`import`, a partial produces output.
+template's output inline at run time, passing the current model and chained data.
 
 ```heddle
 @partial(){{ sidebar }}      @* compiles & renders the "sidebar" template by name *@
@@ -435,6 +554,9 @@ passing the current model.
 | `money` | MoneyExtension | `decimal` | ✔ | culture name |
 | `guid` | GuidExtension | `Guid` | – | GUID format specifier |
 | `string` | StringExtension | `string`/any | ✔ | fallback when null |
+| `attr` | AttrExtension | `string`/any | ✔ | fallback when null (HTML‑attribute escape) |
+| `js` | JsExtension | `string`/any | –² | fallback when null (JS‑string escape) |
+| `url` | UrlExtension | `string`/any | ✔ | fallback when null (URL‑component escape) |
 | *(empty)* | EmptyExtension | any | profile¹ | optional body, else stringify model |
 | `raw` | EmptyExtension | any | – | trusted‑value opt‑out (never encodes) |
 | `html` | EmptyHtmlExtension | any | ✔ | optional body, else stringify model |
@@ -443,12 +565,15 @@ passing the current model.
 | `param` | ParamExtension | any | – | pass model through chain |
 | `model` | ModelExtension | – | – | model type name |
 | `using` | UsingExtension | – | – | namespace to import |
-| `import` | ImportExtension | – | – | file to include (definitions) |
 | `profile` | ProfileExtension | – | – | output profile (`text`/`html`) |
 | `partial` | PartialExtension | model | – | template name to render |
 
 ¹ The bodiless unnamed `@(...)` form encodes under `OutputProfile.Html` and is raw under
 `OutputProfile.Text` — see [Output profiles](#output-profiles).
+
+² `attr`/`url` are `[EncodeOutput]` **encoding leaves** — the Html profile never re‑encodes them.
+`js` is a **raw leaf** (like `@raw`): it escapes for a JS string literal but is never HTML‑entity
+encoded. See [Encoding contexts](#encoding-contexts).
 
 ---
 
@@ -457,11 +582,11 @@ passing the current model.
 The **output profile** decides whether the bodiless unnamed `@(...)` form HTML‑encodes by
 default. It is selected programmatically — there is no file‑extension inference:
 
-- **`OutputProfile.Text`** (the 1.x default) — `@(value)` emits raw text. This is the profile
-  for text, JSON, and code generation and keeps every existing template byte‑identical.
-- **`OutputProfile.Html`** — a bodiless `@(value)` HTML‑encodes by default (XSS‑safe output);
-  `@raw(value)` opts a trusted value out; a bodied `@(value){{…}}` stays a raw rescoping
-  container (only value leaves inside it encode).
+- **`OutputProfile.Html`** (the default) — a bodiless `@(value)` HTML‑encodes by default
+  (XSS‑safe output); `@raw(value)` opts a trusted value out; a bodied `@(value){{…}}` stays a
+  raw rescoping container (only value leaves inside it encode).
+- **`OutputProfile.Text`** (the 1.x‑compatibility setting) — `@(value)` emits raw text. This is
+  the profile for text, JSON, and code generation and keeps 1.x templates byte‑identical.
 
 Set it two ways (both feed the same effective profile; the directive wins for output after it):
 
@@ -474,9 +599,8 @@ container (`list`, `if`, `out`, …) or a nested producer (`@(upper(X))`) is enc
 time by the leaf that writes it. Wrapping a value in an already‑encoding extension under the
 unnamed sink (`@(html(X))`) encodes twice and raises the `HED2003` warning.
 
-> **1.x → 2.0:** the default profile stays `Text` in 1.x. In the 2.0 window it flips to `Html`
-> and the encoder moves from `WebUtility.HtmlEncode` to a pluggable
-> `HtmlEncoder.Create(UnicodeRanges.All)`. Hosts that need today's behavior set
+> **Since 2.0:** the default profile is `Html` — a bodiless `@(value)` HTML‑encodes via
+> `WebUtility.HtmlEncode`. `Text` was the 1.x default; hosts that need the 1.x behavior set
 > `OutputProfile.Text` explicitly (or mark trusted spots with `@raw`).
 
 ## HTML encoding
@@ -500,3 +624,23 @@ Profile diagnostics:
 
 To emit user‑controlled text safely, run under `OutputProfile.Html` (or prefer `@string(...)`
 / `@html(...)`) rather than the bare `@(...)` form under `Text`.
+
+### The encoder is pluggable
+
+Which encoder runs at those encoding sites is set by
+[`TemplateOptions.Encoder`](csharp-api.md#templateoptions), a
+`System.Text.Encodings.Web.TextEncoder`:
+
+- **`null` (the default)** selects the legacy built‑in path — the current
+  `WebUtility.HtmlEncode` behavior, **byte‑identical to 2.0.0** (including its Latin‑1 160–255
+  quirk). Leaving it unset changes nothing.
+- **Any `TextEncoder`** customizes encoding; the recommended modern opt‑in is
+  `HtmlEncoder.Create(UnicodeRanges.All)`, which uses the span/UTF‑8 paths.
+
+The encoder applies to **encoding sites only** — the `Html`‑profile unnamed sink and
+`[EncodeOutput]` extensions. It never touches `@raw`, raw blocks, `OutputProfile.Text` output, or
+literal text. It participates in `TemplateOptions` `Equals`/`GetHashCode` **by reference**, so it is
+part of the template‑cache identity: a different encoder *instance* is a different cache key.
+
+This encoder — the Html profile — covers the **element‑text context only**. For attribute,
+JavaScript, or URL output use [`@attr`/`@js`/`@url`](#encoding-contexts) instead.

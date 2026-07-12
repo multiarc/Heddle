@@ -327,14 +327,23 @@ namespace Heddle.Generator.Emit
             }
         }
 
+        // Mirror of the runtime ShiftListsAfter (Heddle.Runtime.HeddleCompiler): a block that ENCLOSES the removed
+        // span keeps its start but loses seed from its length; a block wholly after moves back by seed; a block
+        // wholly before is untouched — the same three-way classification ShiftBySkippedTokens uses. Missing the
+        // enclosing case let a whole-line comment removed from inside a definition block leave that block's length
+        // overstated, so RemoveDefinitions over-removed into the following static text.
         private static void ShiftListsAfter(ParseContext context, BlockPosition removed, int seed)
         {
-            int boundary = removed.StartIndex + removed.Length;
+            int startToSkip = removed.StartIndex;
+            int endToSkip = removed.StartIndex + removed.Length - 1;
             foreach (var chain in ((ICollection<OutputChain>) context.OutputChains).Reverse())
             {
-                if (chain.BlockPosition.StartIndex >= boundary)
-                    chain.BlockPosition =
-                        new BlockPosition(chain.BlockPosition.StartIndex - seed, chain.BlockPosition.Length);
+                var start = chain.BlockPosition.StartIndex;
+                var end = start + chain.BlockPosition.Length - 1;
+                if (start <= startToSkip && end >= endToSkip)
+                    chain.BlockPosition = new BlockPosition(start, chain.BlockPosition.Length - seed);
+                else if (end > startToSkip)
+                    chain.BlockPosition = new BlockPosition(start - seed, chain.BlockPosition.Length);
                 else
                     break;
             }
@@ -342,17 +351,22 @@ namespace Heddle.Generator.Emit
             for (int index = context.DefinitionsBlock.Positions.Count - 1; index >= 0; index--)
             {
                 var position = context.DefinitionsBlock.Positions[index];
-                if (position.StartIndex >= boundary)
-                    context.DefinitionsBlock.Positions[index] =
-                        new BlockPosition(position.StartIndex - seed, position.Length);
+                var start = position.StartIndex;
+                var end = start + position.Length - 1;
+                if (start <= startToSkip && end >= endToSkip)
+                    context.DefinitionsBlock.Positions[index] = new BlockPosition(start, position.Length - seed);
+                else if (end > startToSkip)
+                    context.DefinitionsBlock.Positions[index] = new BlockPosition(start - seed, position.Length);
                 else
                     break;
             }
 
             foreach (var raw in ((ICollection<RawOutputItem>) context.RawOutputItems).Reverse())
             {
-                if (raw.BlockPosition.StartIndex >= boundary)
-                    raw.BlockPosition = new BlockPosition(raw.BlockPosition.StartIndex - seed, raw.BlockPosition.Length);
+                var start = raw.BlockPosition.StartIndex;
+                var end = start + raw.BlockPosition.Length - 1;
+                if (end > startToSkip)
+                    raw.BlockPosition = new BlockPosition(start - seed, raw.BlockPosition.Length);
                 else
                     break;
             }

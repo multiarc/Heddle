@@ -58,7 +58,7 @@ jobs:
     # guard: it regenerates js/*.js from the v2 .g4 (needs Java) and re-runs the
     # deterministic propagation into js/src/mode/heddle/, then git diff --exit-code.
     - name: Setup Java (ANTLR)
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: temurin
         java-version: '23'

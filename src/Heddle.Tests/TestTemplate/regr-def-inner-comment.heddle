@@ -1,0 +1,9 @@
+PREFIX-TEXT
+@%
+  <regr_widget>
+  {{
+    @* editable region *@
+    <span>WIDGET</span>
+  }}
+%@
+MIDDLE-@regr_widget()-SUFFIX

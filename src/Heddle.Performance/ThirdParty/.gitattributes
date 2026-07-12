@@ -1,0 +1,5 @@
+# The vendored upstream scenario (product.liquid, product.mustache, blogpost.liquid) and the Heddle
+# entry's template (product.heddle) are byte-significant: their raw newlines flow into rendered
+# output and into the parity comparison. Pin everything under this fallback to LF so a Windows
+# checkout cannot smudge it to CRLF and diverge from the LF bytes vendored/rendered on CI.
+* text eol=lf

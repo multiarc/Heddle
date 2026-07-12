@@ -1,0 +1,11 @@
+@using(){{Fluid.Benchmarks}}
+@%
+<product_row>
+{{    <li>
+      <h2>@(Name)</h2>
+           Only @(Price)
+           @(truncate(Description, 15))
+    </li>
+}} :: Fluid.Benchmarks.Product
+%@<ul id='products'>
+@list(Products){{@product_row(this)}}</ul>

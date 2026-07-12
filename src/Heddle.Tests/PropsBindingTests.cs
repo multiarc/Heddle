@@ -195,7 +195,7 @@ namespace Heddle.Tests
         public void PropsCompileWithoutRoslyn()
         {
             using var scope = new CompileScope(new CompileContext(
-                new TemplateOptions { AllowCSharp = false }, typeof(PropRoot)));
+                new TemplateOptions { ExpressionMode = ExpressionMode.Native }, typeof(PropRoot)));
             var document = (Card + "@card(Article, style: \"wide\", compact: true)").Replace("\r\n", "\n");
             var parseContext = DocumentParser.Parse(document, scope.CompileContext, out var clean);
             HeddleCompiler.Compile(clean, scope, parseContext, null);

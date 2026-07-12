@@ -14,6 +14,15 @@
   <ItemGroup>
     <ProjectReference Include="..\Heddle\Heddle.csproj" />
   </ItemGroup>
+  <!-- ThirdParty/ is a self-contained nested project (the D3-R3 fallback harness) with its own
+       .csproj. Exclude its subtree from this project's default globs so its sources/obj are not
+       swept into this assembly. -->
+  <ItemGroup>
+    <Compile Remove="ThirdParty\**" />
+    <EmbeddedResource Remove="ThirdParty\**" />
+    <None Remove="ThirdParty\**" />
+    <Content Remove="ThirdParty\**" />
+  </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' ">
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="6.0.36" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.Extensions" Version="6.0.36" />
@@ -33,6 +42,13 @@
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+  </ItemGroup>
+  <!-- D1 competitor benchmark twins (bench project only; engine gains no dependencies). Versions pinned. -->
+  <ItemGroup>
+    <PackageReference Include="Fluid.Core" Version="2.31.0" />
+    <PackageReference Include="Scriban" Version="7.2.5" />
+    <PackageReference Include="DotLiquid" Version="2.3.197" />
+    <PackageReference Include="Handlebars.Net" Version="2.1.6" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="TestSuite\Data\" />

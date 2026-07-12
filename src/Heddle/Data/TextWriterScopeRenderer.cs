@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.IO;
+using System.Text.Encodings.Web;
 
 namespace Heddle.Data
 {
@@ -10,14 +11,19 @@ namespace Heddle.Data
     /// <c>Response.BodyWriter</c> contract). Single render ownership: not thread-safe; a new instance is constructed
     /// per render.
     /// </summary>
-    public sealed class TextWriterScopeRenderer : ISpanScopeRenderer
+    public sealed class TextWriterScopeRenderer : ISpanScopeRenderer, IEncoderCarrier
     {
         private readonly TextWriter _writer;
+        private TextEncoder _outputEncoder;
 
         public TextWriterScopeRenderer(TextWriter writer)
         {
             _writer = writer ?? throw new ArgumentNullException(nameof(writer));
         }
+
+        // B2: the effective output encoder for this render, set by the render entry point (null = legacy path).
+        internal void SetOutputEncoder(TextEncoder encoder) => _outputEncoder = encoder;
+        TextEncoder IEncoderCarrier.Encoder => _outputEncoder;
 
         public void Render(string data)
         {

@@ -60,6 +60,15 @@ namespace Heddle.Core
         /// definition body's <c>@out(expr)</c> renders the caller content lazily per projection.</summary>
         internal bool SlotMode { get; set; }
 
+        /// <summary>True when this definition call is a chain consumer — it has a producer to its right in its own
+        /// chain (<c>@box():producer()</c>), so its caller content arrives on the chained channel rather than as a
+        /// caller body <c>{{...}}</c>. Set structurally by the compiler for every non-tail chain item. When set and
+        /// the call carries no caller body, the definition body's <c>@out()</c> must emit the chained value (the
+        /// documented <c>@heading():emphasis()</c> pattern); a plain caller body still wins when present. Gated
+        /// structurally so ambient chained data (e.g. the <c>@for</c> loop index) never leaks into a lone
+        /// <c>@box()</c>.</summary>
+        internal bool ReceivesChainedValue { get; set; }
+
         /// <summary>Renders the invocation-site caller content (the outer extension's own body) to a string.
         /// The slot-projection entry point for <c>OutExtension</c> (D11, phase 3 funnel entry E4).</summary>
         internal string RenderCallerContent(in Scope scope) => GetInnerResult(scope);
@@ -89,7 +98,10 @@ namespace Heddle.Core
             }
             else
             {
-                chained = GetInnerResult(scope);
+                // A chained-into definition with no caller body takes its content from the chained channel — the
+                // producer to its right (@heading():emphasis()). Otherwise (a caller body, or no producer) the
+                // caller body is the content, exactly as @box(){{...}} threads it.
+                chained = ReceivesChainedValue && !InnerExist ? scope.ChainedData : GetInnerResult(scope);
                 chainedData = scope.Chain(chained);
             }
 
@@ -115,7 +127,9 @@ namespace Heddle.Core
                 }
                 else
                 {
-                    var chained = GetInnerResult(scope);
+                    // Chained-into definition with no caller body: content is the chained producer's output;
+                    // otherwise the caller body. Mirrors ProcessData.
+                    var chained = ReceivesChainedValue && !InnerExist ? scope.ChainedData : GetInnerResult(scope);
                     chainedData = scope.Chain(chained);
                 }
 

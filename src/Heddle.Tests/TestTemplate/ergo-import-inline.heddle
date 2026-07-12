@@ -1,3 +1,0 @@
-BEFORE
-@import(){{ergo-import-library.heddle}}
-AFTER

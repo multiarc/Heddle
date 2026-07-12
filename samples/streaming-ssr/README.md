@@ -2,7 +2,7 @@
 
 **Shows:** streaming SSR — rendering directly into `Response.BodyWriter` (an `IBufferWriter<byte>`) then
 `FlushAsync`, with no intermediate output string; plus a `TextWriter` sink for contrast, and byte/string parity.
-**Source of record:** [phase 8](../../docs/spec/phase-8-streaming-async/README.md) (phase 9 D13 row 10).
+**Source of record:** [Streaming](../../docs/csharp-api.md#streaming) (phase 9 D13 row 10).
 
 ## Run it
 

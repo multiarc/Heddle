@@ -177,11 +177,17 @@ length‑based on net8+ and count‑based on older targets).
 
 ## Performance characteristics
 
-The repository's [BenchmarkDotNet suite](../src/Heddle.Performance) renders a realistic,
-component‑heavy home page and compares it head‑to‑head with the equivalent ASP.NET Core Razor
-page ([RenderTemplateEngine vs RenderRazor](../src/Heddle.Performance/TextRenderBenchmarks.cs),
-with `[MemoryDiagnoser]`). On that like‑for‑like workload Heddle **renders faster than Razor and
-allocates less memory**. The reasons are structural, not incidental:
+The repository's [BenchmarkDotNet suite](../src/Heddle.Performance) measures Heddle against four
+other .NET template engines (Fluid, Scriban, DotLiquid, Handlebars.Net) — all four rendering
+byte‑identical parity‑checked output over a component‑heavy composition workload — plus ASP.NET Core
+Razor, which renders a larger, different page and is **not** under the parity assertion
+(`[MemoryDiagnoser]` enabled). In the run of **2026‑07‑11** (commit `8341bb67`; AMD Ryzen 9 9950X,
+.NET 10.0.9, BenchmarkDotNet 0.15.8) Heddle rendered that page in **32.50 μs / 227.86 KB** — the
+fastest of the six and least‑or‑tied on allocation; the next engine (Fluid) took 2.0× as long and
+Scriban 11.7× with 5.07× the allocation. The full render and compile‑cost tables, environment
+header, and raw artifacts live in the [README Performance section](../README.md#performance) and
+[docs/benchmarks/2026-07-11](benchmarks/2026-07-11/). The reasons Heddle leads on the render path are
+structural, not incidental:
 
 - **Execution‑ready document, not per‑call activation.** Each template becomes a
   `RuntimeDocument` / `IProcessStrategy` with extension instances already resolved and typed,
@@ -207,8 +213,13 @@ allocates less memory**. The reasons are structural, not incidental:
 
 The trade‑off is **up‑front compilation**: the first compile runs ANTLR (parse), expression‑tree
 compilation (member accessors), and Roslyn (embedded C#), so it is not cheap — the model is
-"compile once, render many." Compile cost is itself benchmarked via the runners in
-[src/Heddle.Performance/Runners](../src/Heddle.Performance/Runners).
+"compile once, render many." In the same 2026‑07‑11 run, cold‑compiling the layout + home
+templates took **264.99 μs / 1,339.67 KB** for Heddle versus single‑digit microseconds for the
+Liquid engines (Fluid 3.65 μs, Scriban 4.68 μs, DotLiquid 7.21 μs) — a cost amortized across every
+cached render. Compile cost is benchmarked via
+[TemplateParseBenchmarks](../src/Heddle.Performance/TemplateParseBenchmarks.cs) and the runners in
+[src/Heddle.Performance/Runners](../src/Heddle.Performance/Runners/README.md); full table in the
+[README](../README.md#performance).
 
 ---
 

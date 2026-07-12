@@ -38,7 +38,6 @@ namespace Heddle.Generator.IntegrationTests
             "ergo-for.heddle",
             "ergo-import-composition.heddle",
             "ergo-import-empty.heddle",
-            "ergo-import-inline.heddle",
             "ergo-import-library.heddle",
             "ergo-trim-preamble.heddle",
             "import-origin-badmember-lib.heddle",
@@ -49,6 +48,15 @@ namespace Heddle.Generator.IntegrationTests
             "profile-partial-parent.heddle",
             "profile-resolver-default.heddle",
             "props-abstract-panel.heddle",
+            // Compose-nesting regression shim: a standalone top-level @<< compose fixture whose top-level @<<
+            // composes the import library. As its own top-level document it precompiles (offset 0).
+            "regr-compose-shim.heddle",
+            // Hidden-token offset regression fixtures: a single-file definition with an inner-comment body and the
+            // import library it is paired with both precompile (no definition layering). The cross-file override
+            // page (regr-import-multiline-override) layers an imported definition and so falls back to the dynamic
+            // path — pinned by its runtime golden, not here.
+            "regr-def-inner-comment.heddle",
+            "regr-import-shell.heddle",
             "streaming-large.heddle",     // phase 8 fixture: pure static → precompiles (dynamic tier)
             "streaming-unicode.heddle",   // phase 8 fixture: static + dynamic @(Name)/@(City) → precompiles
         };

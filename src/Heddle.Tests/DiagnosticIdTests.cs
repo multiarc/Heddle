@@ -53,7 +53,7 @@ namespace Heddle.Tests
                 "HED1015", "HED1016", "HED1017",
                 "HED2001", "HED2002", "HED2003",
                 "HED3001", "HED3002", "HED3003", "HED3004", "HED3005",
-                "HED4001", "HED4002",
+                "HED4001", "HED4002", "HED4003", "HED4004",
                 "HED5001", "HED5002", "HED5003", "HED5004", "HED5005", "HED5006",
                 "HED5007", "HED5008", "HED5009", "HED5010", "HED5011", "HED5012",
                 "HED5013", "HED5014", "HED5015", "HED5016", "HED5017", "HED5018"

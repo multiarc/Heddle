@@ -46,10 +46,18 @@ public interface IExtension : IDisposable
    referenced template here, after the main pass).
 3. **`ProcessData` / `RenderData` (render time)** — called per render. Implement **both**:
    `RenderData` streams to `scope.Renderer` (the fast path), `ProcessData` returns a string
-   (used when a parent needs your result as a value, e.g. inside a chain).
+   (used when a parent needs your result as a value, e.g. inside a chain). `ProcessData`'s
+   contract is a `string`: return the textual value, or `string.Empty` when there is no textual
+   value here (e.g. a render‑only extension). The value/string rail coerces any non‑string
+   result to empty output (`as string ?? string.Empty`) — a deliberate guard against a stray
+   object's default `ToString()` leaking into concatenated output, but it also silently drops an
+   otherwise‑meaningful boxed scalar returned instead of a string. Stringify at your own boundary
+   (as `@int`/`@string`/`@guid` do) — do not rely on the rail to convert a non‑string value for you.
 
 > Implement both `ProcessData` and `RenderData` with equivalent behavior. The engine chooses
-> between them depending on context (direct rendering vs. value composition).
+> between them depending on context (direct rendering vs. value composition). `ProcessData` must
+> return a `string` (or `string.Empty`) — a non‑string result is silently coerced to empty output,
+> not stringified for you.
 
 > **Directive‑style extensions and `TrimDirectiveLines`.** An extension whose `InitStart`
 > returns `null` produces no output element and the compiler removes its block from the

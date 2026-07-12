@@ -24,22 +24,28 @@ namespace Heddle.Tests
         {
             var options = new TemplateOptions();
             Assert.Equal(ExpressionMode.Native, options.ExpressionMode);
+#pragma warning disable CS0618 // intentionally exercises the AllowCSharp bridge
             Assert.False(options.AllowCSharp);
+#pragma warning restore CS0618
         }
 
         [Fact]
         public void SetAllowCSharpTrueSelectsFullCSharp()
         {
+#pragma warning disable CS0618 // intentionally exercises the AllowCSharp bridge
             var options = new TemplateOptions { AllowCSharp = true };
             Assert.Equal(ExpressionMode.FullCSharp, options.ExpressionMode);
             Assert.True(options.AllowCSharp);
+#pragma warning restore CS0618
         }
 
         [Fact]
         public void SetAllowCSharpFalseFromFullCSharpSelectsNative()
         {
             var options = new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp };
+#pragma warning disable CS0618 // intentionally exercises the AllowCSharp bridge
             options.AllowCSharp = false;
+#pragma warning restore CS0618
             Assert.Equal(ExpressionMode.Native, options.ExpressionMode);
         }
 
@@ -47,7 +53,9 @@ namespace Heddle.Tests
         public void SetAllowCSharpFalseDoesNotUpgradeMemberPathsOnly()
         {
             var options = new TemplateOptions { ExpressionMode = ExpressionMode.MemberPathsOnly };
+#pragma warning disable CS0618 // intentionally exercises the AllowCSharp bridge
             options.AllowCSharp = false;
+#pragma warning restore CS0618
             Assert.Equal(ExpressionMode.MemberPathsOnly, options.ExpressionMode);
         }
 
@@ -55,7 +63,9 @@ namespace Heddle.Tests
         public void SetAllowCSharpFalseLeavesNativeUntouched()
         {
             var options = new TemplateOptions { ExpressionMode = ExpressionMode.Native };
+#pragma warning disable CS0618 // intentionally exercises the AllowCSharp bridge
             options.AllowCSharp = false;
+#pragma warning restore CS0618
             Assert.Equal(ExpressionMode.Native, options.ExpressionMode);
         }
 

@@ -2,7 +2,7 @@
 
 **Shows:** a small component library — typed **props** (defaults, overrides, required) and parameterized
 **slots** — composed from a page template with named arguments. **Source of record:**
-[phase 5](../../docs/spec/phase-5-props-and-slots/README.md) (phase 9 D13 row 7).
+[Props](../../docs/language-reference.md#props) (phase 9 D13 row 7).
 
 ## Run it
 

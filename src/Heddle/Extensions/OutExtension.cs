@@ -117,11 +117,23 @@ namespace Heddle.Extensions
 
             if (!InnerExist)
             {
-                // Render the chained value's string form. A boxed non-string (e.g. the int index a counted
-                // @for(...) threads on the chained channel) must stringify, matching ProcessData which returns
-                // the raw object for the process path to stringify — a plain 'as string' silently dropped it.
+                // Value-emitter convention, shared with @()/@raw/@html (EmptyExtension/EmptyHtmlExtension) since
+                // inception: a body counts only when it holds dynamic (@) content (InnerExist). A static-only
+                // body is inert, so a non-slot @out emits ONLY the chained value — exactly as this extension's own
+                // ProcessData has always done (`if (!InnerExist) return scope.ChainedData;`). Without the return we
+                // fall through to RenderInnerResult and ALSO emit the inert static body (_innerResult), double-
+                // rendering the chained value AND the body on the render path — an anomaly no value-emitter has,
+                // and the RenderData branch was the lone place that did it.
+                //
+                // Stringify a boxed non-string (e.g. the int index a counted @for(...) threads on the chained
+                // channel); a plain 'as string' would silently drop it. This matches ProcessData returning the
+                // raw object for the STRING case. For a non-string, the process/concat path currently drops the
+                // value (`ProcessData(...) as string ?? ""` in RuntimeDocument) — a separate, pre-existing issue
+                // not addressed here; the value-emitter convention above, NOT full Render/Process parity (which
+                // that drop breaks for non-strings), is what justifies suppressing the inert body.
                 var chained = scope.ChainedData;
                 scope.Renderer.Render(chained is string chainedString ? chainedString : chained?.ToString());
+                return;
             }
 
             var innerScope = scope.Model(scope.ChainedData, scope.ParentModelData);

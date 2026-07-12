@@ -1,8 +1,8 @@
 # html-safe-output
 
-**Shows:** the `OutputProfile.Html` auto-encoding sink, the `@raw` opt-out island, and encoder pluggability —
-and doubles as the standing **2.0 migration rehearsal** (the default flips `Text` → `Html` in 2.0).
-**Source of record:** [phase 2](../../docs/spec/phase-2-safe-output/README.md) (phase 9 D13 row 5).
+**Shows:** the `OutputProfile.Html` auto-encoding sink, the `@raw` opt-out island, and the two ways to plug a
+custom output encoder — the per-extension `@tagged` seam (1.x) and `TemplateOptions.Encoder` (the modern seam).
+**Source of record:** [HTML encoding](../../docs/built-in-extensions.md#html-encoding).
 
 ## Run it
 
@@ -10,18 +10,25 @@ and doubles as the standing **2.0 migration rehearsal** (the default flips `Text
 dotnet run --project samples/html-safe-output
 ```
 
-One template carrying a hostile model string (`<script>alert("xss") & 'grüße' © 2026</script>`) is rendered
-under both profile defaults, plus a third render through a custom encoder:
+One template carrying a hostile model string (`<script>alert("xss") & 'grüße' © 2026</script>`) is rendered four ways:
 
-| Render | Profile | `@(Payload)` | `@raw(Payload)` |
+| Render | Profile / seam | `@(Payload)` | `@raw(Payload)` |
 | --- | --- | --- | --- |
-| `profile-text.html` | `Text` (1.x default) | raw | raw |
-| `profile-html.html` | `Html` (2.0 default) | HTML-encoded (`&lt;`, `&quot;`, `&#252;`, …) | raw (opt-out island) |
+| `profile-text.html` | `Text` (1.x compatibility) | raw | raw |
+| `profile-html.html` | `Html` (default) — built-in `WebUtility` path | HTML-encoded (`&lt;`, `&quot;`, `&#252;`, …) | raw (opt-out island) |
 | `custom-encoder.html` | `Text` + `@tagged` | tagging stub (`[lt]`, `[quot]`, …) | — |
+| `options-encoder.html` | `Html` + `TemplateOptions.Encoder` | `HtmlEncoder.Create(UnicodeRanges.All)` (`&lt;`, `&#x27;`, `ü`/`©` kept literal) | raw (opt-out island) |
 
-The `@tagged` encoder is a custom `[ExtensionName]` extension (`TaggingExtension.cs`) exported to the engine via
-`[assembly: ExportExtensions]` — the 1.x seam for plugging a custom encoder. (A dedicated `TemplateOptions.Encoder`
-is a 2.0-window feature; the extension mechanism is how you plug an encoder today.)
+Two encoder seams, contrasted:
+
+- **`TemplateOptions.Encoder`** (`options-encoder.html`) is a `System.Text.Encodings.Web.TextEncoder` applied at
+  *every* HTML-encode site — the `Html`-profile unnamed sink and every `[EncodeOutput]` extension — with no
+  per-template wiring. `null` (the default) keeps the built-in `WebUtility.HtmlEncode` behavior; supply an encoder
+  (e.g. `HtmlEncoder.Create(UnicodeRanges.All)`) to opt into the modern contract. `@raw` still opts out, and a
+  different encoder instance is part of the template cache key.
+- **`@tagged`** (`custom-encoder.html`) is the 1.x seam: a custom `[ExtensionName]` extension
+  (`TaggingExtension.cs`) exported via `[assembly: ExportExtensions]`. It transforms one output at its call site
+  rather than the whole render — useful when only a specific region needs a bespoke transform.
 
 ## Capture mode (what CI runs)
 
@@ -32,5 +39,5 @@ bash samples/tools/compare-golden.sh samples/html-safe-output
 
 ## What the golden pins
 
-All three rendered files. The `profile-text.html` / `profile-html.html` pair **is** the before/after of the 2.0
-default flip — when the window opens, this sample's goldens are updated as a reviewed migration event.
+All four rendered files. `profile-text.html` / `profile-html.html` pin the `Text` vs `Html` profile contrast;
+`custom-encoder.html` / `options-encoder.html` pin the two custom-encoder seams against the same hostile input.

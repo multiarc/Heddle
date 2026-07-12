@@ -20,7 +20,7 @@ namespace Heddle.Tests
         private static HeddleTemplate Compile(string template, ExType modelType, bool allowCSharp)
         {
             HeddleTemplate.Configure(typeof(ForSugarAllocationTests).GetTypeInfo().Assembly);
-            var t = new HeddleTemplate(template, new CompileContext(new TemplateOptions { AllowCSharp = allowCSharp }, modelType));
+            var t = new HeddleTemplate(template, new CompileContext(new TemplateOptions { ExpressionMode = allowCSharp ? ExpressionMode.FullCSharp : ExpressionMode.Native }, modelType));
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             return t;
         }

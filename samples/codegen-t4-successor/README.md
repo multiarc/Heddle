@@ -2,7 +2,7 @@
 
 **Shows:** Heddle as a build-time code/text generator — a T4 successor. `templates/report.heddle` is compiled at
 **build time** by `Heddle.Generator` into a typed entry point; the program calls it with zero runtime parse or
-compile. **Source of record:** [phase 7](../../docs/spec/phase-7-build-time-compilation/README.md) (phase 9 D13 row 8).
+compile. **Source of record:** [Pre-compilation](../../docs/precompilation.md) (phase 9 D13 row 8).
 
 ## Run it
 

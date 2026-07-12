@@ -2,7 +2,9 @@
 
 This page gets you from zero to a rendered template. It assumes you are integrating the
 engine from C#. If you only want to learn the template syntax, jump to the
-[Language Reference](language-reference.md).
+[Language Reference](language-reference.md). Arriving from another template engine? The
+[Coming from Razor](coming-from-razor.md) and [Coming from Liquid](coming-from-liquid.md)
+(also Jinja/Twig) guides map the concepts across.
 
 ::: tip Try it live
 Want to play before integrating? Open the
@@ -50,11 +52,11 @@ See [Writing Custom Extensions](custom-extensions.md) for how extensions are exp
 ```csharp
 using Heddle;
 using Heddle.Data;
+using Heddle.Runtime;
 
-var options = new TemplateOptions
-{
-    AllowCSharp = true        // required for @int(...) and any @(...) C# expressions
-};
+// The default ExpressionMode.Native tier resolves member access like @(Name) and calls
+// built-in extensions like @int(...) — no option needed. Inner-@ C# would need FullCSharp.
+var options = new TemplateOptions();
 
 // @model(){{dynamic}} declares the model type from inside the template, so member
 // access like @(Name) is resolved at render time against whatever object you pass.
@@ -67,25 +69,32 @@ using var template = new HeddleTemplate(source, new CompileContext(options));
 if (!template.CompileResult.Success)
     throw new Exception(template.CompileResult.ToString());   // human‑readable error list
 
-string result = template.Generate(new { Name = "Ada", Count = 3 });
+string result = template.Generate(new Greeting { Name = "Ada", Count = 3 });
 // <p>Hi Ada — you have 3 new comments.</p>
+
+// A named type, not an anonymous one: the runtime binder behind @(Name)/@int(Count) can't
+// see another assembly's anonymous types.
+public class Greeting { public string Name { get; set; } public int Count { get; set; } }
 ```
 
-Prefer compile‑time checking? Pass the model type instead of using `dynamic`, and member
-access is verified against it during compilation:
+Prefer compile‑time checking? Reuse the same `Greeting` type from above, but pass it to the
+compiler instead of declaring the model with `@model(){{dynamic}}` — member access is then
+verified against `Greeting` during compilation rather than late‑bound at render time:
 
 ```csharp
-class Greeting { public string Name { get; set; } public int Count { get; set; } }
-
+// Reuses the public Greeting class declared above — drop @model(){{dynamic}} and pass the type.
 var source = "<p>Hi @(Name) — you have @int(Count) new comments.</p>";
 using var template = new HeddleTemplate(source, new CompileContext(options, typeof(Greeting)));
 
 string result = template.Generate(new Greeting { Name = "Ada", Count = 3 });
+// <p>Hi Ada — you have 3 new comments.</p>
 ```
 
-> **`AllowCSharp`** — embedded C# (`@( @... )` expressions, `@new T{...}`, LINQ) is only
-> enabled when `TemplateOptions.AllowCSharp` is `true`. Leave it `false` for untrusted
-> templates that should not run arbitrary C#.
+> **Embedded C#** — inner‑`@` C# (`@( @... )` expressions, `@new T{...}`, LINQ) is enabled only
+> under `ExpressionMode.FullCSharp` (`TemplateOptions.ExpressionMode = ExpressionMode.FullCSharp`).
+> The default `ExpressionMode.Native` tier — member paths, operators, and registered functions —
+> is sandbox‑safe and never runs arbitrary C#, which is why the examples above set no option.
+> (`AllowCSharp = true` is the obsolete bridge for `FullCSharp`; new code sets `ExpressionMode`.)
 
 ### Compile from a file
 
@@ -97,7 +106,6 @@ var options = new TemplateOptions("home")       // TemplateName = "home"
 {
     RootPath = "Heddle",
     FileNamePostfix = ".heddle",                   // resolves Heddle/home.heddle
-    AllowCSharp = true
 };
 
 using var template = new HeddleTemplate(new CompileContext(options));
@@ -113,7 +121,7 @@ for linting/CI checks where you only care whether a template *would* compile:
 using var probe = new HeddleTemplate();
 HeddleCompileResult result = probe.TryCompilation(
     File.ReadAllText("Heddle/home.heddle"),
-    new TemplateOptions { AllowCSharp = true });
+    new TemplateOptions());
 
 Assert.True(result.Success, result.ToString());
 ```

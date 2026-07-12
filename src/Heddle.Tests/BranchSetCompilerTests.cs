@@ -262,21 +262,16 @@ namespace Heddle.Tests
             Assert.Equal("", t.Generate(new Model()));
         }
 
-        // C19 — @import() runs AFTER the scan, and the branch scan classifies it as an Other block: a set
-        // spanning it stays open and draws NO branch diagnostic (no HED3003 for the following @else).
-        // Amendment (see the phase-3 ledger entry): importing position-bearing content (an @else output block,
-        // or a definition) through @import() from an inline document hits a pre-existing GetBlockPosition
-        // limitation independent of phase 3, so the overall compile fails on that unrelated error — but the
-        // branch scan itself is clean. The ratified, realizable import splice for branch blocks is @<<
-        // (parse-time), covered by C11/N4; the N5 guarantee (import-parsed blocks are not statically scanned)
-        // holds by construction because @import().InitStart runs after ProcessBranchSets.
+        // C19 — a non-branch "Other" block between @if and @else does not orphan the @else. An @date(D){{yyyy}}
+        // block (an ordinary output-producing extension with a subtemplate body) sits between the opener and the
+        // terminal: the branch scan classifies it as Other, so the set spanning it stays open and the following
+        // @else binds cleanly — no HED3003 (nor any other HED3xxx). Because @date is a well-behaved block, the
+        // whole template also compiles successfully.
         [Fact]
-        public void C19_ImportExtensionIsANonBranchBlockScanTreatsAsOther()
+        public void C19_NonBranchOtherBlockBetweenIfAndElseDoesNotOrphanTheElse()
         {
-            var options = new TemplateOptions { RootPath = "TestTemplate" };
-            var t = Build("@if(A){{1}}@import(){{branch-import-else.heddle}}@else(){{2}}", options);
-            // The branch scan does not misfire: @import is Other, so the @else after the open set is valid and
-            // draws no HED3003 (nor any other HED3xxx). The compile fails only on the unrelated @import limitation.
+            var t = Build("@if(A){{1}}@date(D){{yyyy}}@else(){{2}}");
+            Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             Assert.DoesNotContain(t.CompileResult.ErrorList,
                 e => e.DiagnosticId != null && e.DiagnosticId.StartsWith("HED3", StringComparison.Ordinal));
         }

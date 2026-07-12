@@ -36,9 +36,13 @@ namespace Heddle.Extensions
                 return string.Empty;
             }
 
+            // C1-R4: one-time probe type-test, then a per-iteration deadline check (the value path accumulates before
+            // it reaches the sink, so the deadline is its only bound).
+            var probe = scope.Renderer as IBudgetProbe;
             var builder = new ExStringBuilder();
             for (int i = start; i < last; i += step)
             {
+                probe?.TickDeadline();
                 var parentData = scope.Parent(i);
                 builder.Append(GetInnerResult(parentData));
             }
@@ -66,8 +70,12 @@ namespace Heddle.Extensions
                 return;
             }
 
+            // C1-R4: type-test the held renderer for the budget probe once, before the loop, then enforce the
+            // wall-clock deadline per iteration so a zero-output loop (no render op) still terminates.
+            var probe = scope.Renderer as IBudgetProbe;
             for (int i = start; i < last; i += step)
             {
+                probe?.TickDeadline();
                 var parentData = scope.Parent(i);
                 RenderInnerResult(parentData);
             }

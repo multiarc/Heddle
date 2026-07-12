@@ -6,11 +6,21 @@
 # them to CRLF and break fixture-derived golden tests (goldens are read with \r\n -> \n).
 *.heddle text eol=lf
 
-# Golden output fixtures are compared verbatim (raw Assert.Equal, no \r\n normalization) against
-# rendered output, which is LF because the .heddle templates above are pinned LF. Pin the goldens
-# to LF too so a Windows checkout doesn't smudge them to CRLF while the templates stay LF —
-# otherwise expected(CRLF) != actual(LF) fails on Windows CI while Linux (LF everywhere) passes.
-src/Heddle.Tests/TestTemplate/*.html text eol=lf
+# Checked-in golden / fixture / snapshot data is byte-compared against LF engine output on BOTH
+# ubuntu-latest and windows-latest CI. Some comparisons are verbatim (raw Assert.Equal, no \r\n
+# normalization); rendered output is LF because the .heddle templates above are LF-pinned. With
+# core.autocrlf=true a Windows checkout would smudge these to CRLF and diverge from the LF actual
+# output — failing on Windows while Linux (LF everywhere) passes. Pin every such root to LF so the
+# byte comparison holds identically on both platforms regardless of the developer's autocrlf setting.
+# All files under these roots are text (verified: no binaries). New golden/fixture roots MUST be
+# added here in the same change that introduces them — see docs/spec/common/testing-standards.md.
+samples/**/golden/**                              text eol=lf
+src/Heddle.Tests/TestTemplate/**                  text eol=lf
+src/Heddle.Tests/Streaming/**                     text eol=lf
+src/Heddle.Generator.Tests/Snapshots/**           text eol=lf
+src/Heddle.Generator.IntegrationTests/Fixtures/** text eol=lf
+src/Heddle.LanguageServices.Tests/Corpus/**       text eol=lf
+src/Heddle.Demo.Wasm/contract-fixtures/**         text eol=lf
 
 # Custom for Visual Studio
 *.cs     diff=csharp

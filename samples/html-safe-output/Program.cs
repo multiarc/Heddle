@@ -1,15 +1,17 @@
 using System;
 using System.Globalization;
+using System.Text.Encodings.Web;
+using System.Text.Unicode;
 using Heddle;
 using Heddle.Data;
 using Heddle.Runtime;
 
 namespace Heddle.Samples.HtmlSafeOutput
 {
-    // Sample 5 — the Html output profile and the 2.0 migration rehearsal. One template carrying a hostile model
-    // string renders under BOTH profile defaults (Text = raw, Html = auto-encoded, with a @raw opt-out island),
-    // and a third render swaps in a custom encoder through the extension seam. When the 2.0 window flips the
-    // default to Html, this sample's before/after IS the migration.
+    // Sample 5 — the Html output profile and pluggable output encoding. One template carrying a hostile model
+    // string renders under BOTH profile defaults (Text = raw, Html = auto-encoded via the built-in WebUtility path,
+    // with a @raw opt-out island). Two more renders swap the encoder: the @tagged extension (the 1.x seam) and
+    // TemplateOptions.Encoder (the modern seam — a System.Text.Encodings.Web.TextEncoder applied at every encode site).
     internal sealed class PageModel
     {
         public string Payload { get; set; }
@@ -36,6 +38,10 @@ namespace Heddle.Samples.HtmlSafeOutput
             var text = Render(profileTemplate, model, OutputProfile.Text);
             var html = Render(profileTemplate, model, OutputProfile.Html);
             var custom = Render(customTemplate, model, OutputProfile.Text);
+            // The modern seam: a pluggable TextEncoder applied at every encode site under the Html profile. Unlike the
+            // built-in WebUtility path (profile-html.html), HtmlEncoder.Create(UnicodeRanges.All) leaves ü/ß/© as
+            // literal Unicode and encodes the apostrophe — no per-extension wiring, and @raw still opts out.
+            var optionsEncoder = Render(profileTemplate, model, OutputProfile.Html, HtmlEncoder.Create(UnicodeRanges.All));
 
             var capture = SampleCapture.Resolve(args);
             if (capture != null)
@@ -43,19 +49,21 @@ namespace Heddle.Samples.HtmlSafeOutput
                 SampleCapture.Write(capture, "profile-text.html", text);
                 SampleCapture.Write(capture, "profile-html.html", html);
                 SampleCapture.Write(capture, "custom-encoder.html", custom);
-                Console.WriteLine("captured profile-text.html, profile-html.html, custom-encoder.html");
+                SampleCapture.Write(capture, "options-encoder.html", optionsEncoder);
+                Console.WriteLine("captured profile-text.html, profile-html.html, custom-encoder.html, options-encoder.html");
                 return 0;
             }
 
-            Console.WriteLine("=== OutputProfile.Text (1.x default) — no encoding ===\n" + text);
-            Console.WriteLine("=== OutputProfile.Html (2.0 default) — auto-encoded, @raw opts out ===\n" + html);
-            Console.WriteLine("=== custom encoder (tagging stub via the extension seam) ===\n" + custom);
+            Console.WriteLine("=== OutputProfile.Text (1.x compatibility) — no encoding ===\n" + text);
+            Console.WriteLine("=== OutputProfile.Html (default) — auto-encoded (WebUtility), @raw opts out ===\n" + html);
+            Console.WriteLine("=== @tagged extension (the 1.x custom-encoder seam) ===\n" + custom);
+            Console.WriteLine("=== TemplateOptions.Encoder (the modern seam — HtmlEncoder.Create(UnicodeRanges.All)) ===\n" + optionsEncoder);
             return 0;
         }
 
-        private static string Render(string template, PageModel model, OutputProfile profile)
+        private static string Render(string template, PageModel model, OutputProfile profile, TextEncoder encoder = null)
         {
-            var options = new TemplateOptions { OutputProfile = profile };
+            var options = new TemplateOptions { OutputProfile = profile, Encoder = encoder };
             using var t = new HeddleTemplate(template, new CompileContext(options, typeof(PageModel)));
             if (!t.CompileResult.Success)
                 throw new InvalidOperationException("compile failed: " + t.CompileResult);

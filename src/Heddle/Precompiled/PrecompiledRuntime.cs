@@ -137,7 +137,8 @@ namespace Heddle.Precompiled
             try
             {
                 var renderer = new ScopeRenderer(DefaultBufferCapacity);
-                var scope = new Scope(model, callerData, model, chained, renderer, null, null);
+                renderer.SetOutputEncoder(_ambientOptions?.Encoder);   // B2: stamp the effective encoder on the sink
+                var scope = new Scope(model, callerData, model, chained, WithBudget(renderer), null, null);
                 root.Render(scope);
                 var result = renderer.ToString();
                 renderer.Clear();
@@ -172,7 +173,8 @@ namespace Heddle.Precompiled
             try
             {
                 var renderer = new TextWriterScopeRenderer(writer);
-                var scope = new Scope(model, callerData, model, chained, renderer, null, null);
+                renderer.SetOutputEncoder(_ambientOptions?.Encoder);   // B2: stamp the effective encoder on the sink
+                var scope = new Scope(model, callerData, model, chained, WithBudget(renderer), null, null);
                 root.Render(scope);
             }
             finally
@@ -203,13 +205,23 @@ namespace Heddle.Precompiled
             try
             {
                 var renderer = new Utf8ScopeRenderer(writer);
-                var scope = new Scope(model, callerData, model, chained, renderer, null, null);
+                renderer.SetOutputEncoder(_ambientOptions?.Encoder);   // B2: stamp the effective encoder on the sink
+                var scope = new Scope(model, callerData, model, chained, WithBudget(renderer), null, null);
                 root.Render(scope);
             }
             finally
             {
                 _ambientOptions = previous;
             }
+        }
+
+        // C1: wrap the sink in the budget seam when the ambient options carry a RenderBudget; otherwise return the
+        // bare sink unchanged (null path = no wrapper, no allocation). The wrapper enforces the same limits the
+        // dynamic engine's HeddleTemplate.Generate does, so both backends throw identically (G-R3).
+        private static IScopeRenderer WithBudget(IScopeRenderer sink)
+        {
+            var budget = _ambientOptions?.RenderBudget;
+            return budget == null ? sink : new BudgetedRenderer(sink, budget);
         }
 
         /// <summary>The single piece-write hook for generated bodies (phase 8 D7): writes the pre-encoded u8 twin when

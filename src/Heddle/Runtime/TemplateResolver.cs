@@ -115,7 +115,7 @@ namespace Heddle.Runtime {
                     EnableFileChangeCheck = _checkFileChange,
                     FileNamePostfix = Path.GetExtension(path),
                     RootPath = _rootPath,
-                    AllowCSharp = true,
+                    ExpressionMode = ExpressionMode.FullCSharp,
                     OutputProfile = profile,
                     TrimDirectiveLines = trim
                 };
@@ -129,7 +129,7 @@ namespace Heddle.Runtime {
                     EnableFileChangeCheck = _checkFileChange,
                     FileNamePostfix = Path.GetExtension(path),
                     RootPath = _rootPath,
-                    AllowCSharp = true,
+                    ExpressionMode = ExpressionMode.FullCSharp,
                     OutputProfile = profile,
                     TrimDirectiveLines = trim
                 };
@@ -227,7 +227,9 @@ namespace Heddle.Runtime {
             if (!PrecompiledTemplates.TryResolve(viewName, options, out var entry))
                 return false;
 
-            result = new HeddleTemplate(entry.Strategy);
+            // B2/C1: carry the request's output encoder and render budget onto the precompiled-adapter render (the
+            // adapter has no CompileContext to read options from at render time).
+            result = new HeddleTemplate(entry.Strategy, options.Encoder, options.RenderBudget);
             return true;
         }
 

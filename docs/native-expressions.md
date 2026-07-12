@@ -185,8 +185,8 @@ invoke the function inside an expression (`@( fn(x) )`) to disambiguate. Inside 
 | `FullCSharp` | implies `Native`; additionally enables the inner‑`@` Roslyn C# tier |
 
 `AllowCSharp` is a bridge over this enum: `AllowCSharp = true` selects `FullCSharp`; reading it
-returns whether the mode is `FullCSharp`. It is retained for compatibility and will be marked
-obsolete in the 2.0 release.
+returns whether the mode is `FullCSharp`. It is retained for compatibility and marked
+`[Obsolete]` since 2.x — reads and writes keep working; new code uses `ExpressionMode`.
 
 ## Deviations from C#
 
@@ -213,3 +213,7 @@ user‑defined operator methods declared by the operand types themselves. Method
 `is`/`as` are all rejected at **compile time** with a positioned error — never executed. See the
 [built‑in extension parameter docs](built-in-extensions.md) for how `@if`/`@for` consume these
 expressions, and [csharp-api.md](csharp-api.md) for when to escalate to the `@` C# tier.
+
+For host‑side guidance on exposing models safely — DTOs, `[Hidden]`, the registry freeze, render
+budgets, and encoding contexts — see
+[Exposing models to untrusted templates](patterns.md#exposing-models-to-untrusted-templates).

@@ -21,6 +21,9 @@
     <!-- Phase 8 WI2: pin the (currently transitive) System.Memory dependency explicitly for
          IBufferWriter<byte>, BuffersExtensions.Write, and the span/Encoder APIs the sink adapters use. -->
     <PackageReference Include="System.Memory" Version="4.6.3" />
+    <!-- B2: TemplateOptions.Encoder is System.Text.Encodings.Web.TextEncoder — in-box on net6.0+, but a package
+         reference on netstandard2.0 (and its net48 consumers, who resolve it transitively from this nupkg). -->
+    <PackageReference Include="System.Text.Encodings.Web" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' ">
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.9.2" />

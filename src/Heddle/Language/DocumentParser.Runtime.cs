@@ -25,24 +25,6 @@ namespace Heddle.Language
             return context;
         }
 
-        /// <summary>
-        /// Runtime adapter over an existing <see cref="ParseContext"/> (used by the compile-time <c>@import()</c>
-        /// path). Copies the diagnostics this call adds to the context into the compile context, preserving the
-        /// pre-seam behavior where those errors landed directly in <see cref="CompileContext.CompileErrors"/>.
-        /// </summary>
-        public static string Parse(string document, ParseContext context, CompileContext compileContext)
-        {
-            if (context == null)
-                throw new System.ArgumentNullException(nameof(context));
-            if (compileContext == null)
-                throw new System.ArgumentNullException(nameof(compileContext));
-            var settings = SettingsFrom(compileContext.Options);
-            var errorFrom = context.Errors.Count;
-            var cleanDocument = Parse(document, context, settings);
-            CopyErrorsTo(context, compileContext, errorFrom);
-            return cleanDocument;
-        }
-
         private static ParserSettings SettingsFrom(TemplateOptions options)
         {
             return new ParserSettings

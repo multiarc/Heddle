@@ -89,7 +89,7 @@ namespace Heddle.Tests
                 var name = Path.GetFileName(path);
                 int hits = 0;
                 using (var scope = new CompileScope(
-                    new CompileContext(new TemplateOptions { AllowCSharp = true, RootPath = root }, typeof(object))))
+                    new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp, RootPath = root }, typeof(object))))
                 {
                     try
                     {

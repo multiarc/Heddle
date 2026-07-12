@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Text;
+using System.Text.Encodings.Web;
 
 namespace Heddle.Data
 {
@@ -11,7 +12,7 @@ namespace Heddle.Data
     /// <c>FlushAsync</c>es). Single render ownership: not thread-safe; a new instance is constructed per render, so the
     /// lazy <see cref="Encoder"/> is per-render.
     /// </summary>
-    public sealed class Utf8ScopeRenderer : IUtf8ScopeRenderer
+    public sealed class Utf8ScopeRenderer : IUtf8ScopeRenderer, IEncoderCarrier
     {
         // 16 KB (D5): keeps GetSpan requests comfortably inside default pool segment sizes while making the chunked
         // tier rare. Char values up to 5 461 UTF-16 units take the single-call tier (5 461 × 3 = 16 383 ≤ 16 384).
@@ -19,11 +20,17 @@ namespace Heddle.Data
 
         private readonly IBufferWriter<byte> _writer;
         private Encoder _encoder;   // lazily created, per-render (D5/D15); carries a trailing high surrogate between chunks
+        private TextEncoder _outputEncoder;   // B2: the effective HTML output encoder (null = legacy path)
 
         public Utf8ScopeRenderer(IBufferWriter<byte> writer)
         {
             _writer = writer ?? throw new ArgumentNullException(nameof(writer));
         }
+
+        // B2: set by the render entry point. Under an encode proxy the chars are encoded before they reach this sink
+        // (encode → transcode, D9), so this carrier value only surfaces the configured encoder to the proxy.
+        internal void SetOutputEncoder(TextEncoder encoder) => _outputEncoder = encoder;
+        TextEncoder IEncoderCarrier.Encoder => _outputEncoder;
 
         public void Render(string data)
         {

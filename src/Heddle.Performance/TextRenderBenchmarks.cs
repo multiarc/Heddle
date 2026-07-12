@@ -22,6 +22,10 @@ public class TextRenderBenchmarks
     private IHost _host;
     private HeddleTest _heddleTest;
     private RazorTest _razorTest;
+    private FluidTest _fluidTest;
+    private ScribanTest _scribanTest;
+    private DotLiquidTest _dotLiquidTest;
+    private HandlebarsTest _handlebarsTest;
 
     [GlobalSetup]
     public async Task Setup() {
@@ -33,6 +37,15 @@ public class TextRenderBenchmarks
         await _host.StartAsync();
         _heddleTest = new HeddleTest();
         _razorTest = new RazorTest(_host.Services);
+        _fluidTest = new FluidTest();
+        _scribanTest = new ScribanTest();
+        _dotLiquidTest = new DotLiquidTest();
+        _handlebarsTest = new HandlebarsTest();
+
+        // D1-R3: every competitor twin must render output identical to Heddle (after the single
+        // documented normalization) before we time anything, so a drifted twin fails loudly rather
+        // than benchmarking different work.
+        ParityCheck.Assert();
     }
 
     [GlobalCleanup]
@@ -40,7 +53,8 @@ public class TextRenderBenchmarks
         await _host.StopAsync();
     }
 
-    [Benchmark]
+    // D1-R5: Heddle is the ratio baseline for the render suite.
+    [Benchmark(Baseline = true)]
     public async Task RenderTemplateEngine() {
         await _heddleTest.Run();
     }
@@ -48,6 +62,26 @@ public class TextRenderBenchmarks
     [Benchmark]
     public async Task RenderRazor() {
         await _razorTest.Run();
+    }
+
+    [Benchmark]
+    public async Task RenderFluid() {
+        await _fluidTest.Run();
+    }
+
+    [Benchmark]
+    public async Task RenderScriban() {
+        await _scribanTest.Run();
+    }
+
+    [Benchmark]
+    public async Task RenderDotLiquid() {
+        await _dotLiquidTest.Run();
+    }
+
+    [Benchmark]
+    public async Task RenderHandlebars() {
+        await _handlebarsTest.Run();
     }
     
     private static void ConfigureDefaultServices(IServiceCollection services) {

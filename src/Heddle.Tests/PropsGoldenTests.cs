@@ -34,7 +34,7 @@ namespace Heddle.Tests
             HeddleTemplate.Configure(typeof(PropsGoldenTests).GetTypeInfo().Assembly);
             var document = File.ReadAllText($"TestTemplate/{name}.heddle").Replace("\r\n", "\n");
             var t = new HeddleTemplate(document,
-                new CompileContext(new TemplateOptions { AllowCSharp = false }, model.GetType()));
+                new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.Native }, model.GetType()));
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             return t.Generate(model);
         }

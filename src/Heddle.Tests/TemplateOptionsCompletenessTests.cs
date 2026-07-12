@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using System.Text.Encodings.Web;
+using System.Text.Unicode;
 using Heddle.Data;
 using Heddle.Runtime.Expressions;
 using Xunit;
@@ -39,6 +41,10 @@ namespace Heddle.Tests
             }
             if (type == typeof(FunctionRegistry))
                 return new FunctionRegistry();
+            if (type == typeof(TextEncoder))
+                return HtmlEncoder.Create(UnicodeRanges.All);   // B2: a distinct, non-default encoder reference
+            if (type == typeof(RenderBudget))
+                return new RenderBudget { MaxRenderOps = 123 };   // C1: a distinct, non-default budget reference
             if (type == typeof(object))
                 return new object();
 

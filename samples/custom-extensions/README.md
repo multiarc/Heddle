@@ -1,7 +1,7 @@
 # custom-extensions
 
 **Shows:** the public `Scope.Publish`/`TryRead` coordination channel and the branch protocol as third-party
-extension APIs. **Source of record:** [phase 3](../../docs/spec/phase-3-branching/README.md) (phase 9 D13 row 6).
+extension APIs. **Source of record:** [Branch sets](../../docs/built-in-extensions.md#branch-sets) (phase 9 D13 row 6).
 
 ## Run it
 

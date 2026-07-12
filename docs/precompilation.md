@@ -51,13 +51,15 @@ template. Opt individual files out, or add extra ones, with the `HeddleTemplate`
 
 These mirror `TemplateOptions` and are baked into the generated artifact; a mismatch against
 the runtime request is caught by the validation gauntlet (below). An unparsable value is a
-build error (`HED7009`).
+build error (`HED7009`). The generator defaults track the engine defaults (both flipped in 2.0),
+so an unset property produces the same options fingerprint as a default‑options runtime request
+— an unset property never causes a gauntlet mismatch.
 
 | Property | Values / default | Effect |
 | --- | --- | --- |
-| `HeddleOutputProfile` | `Text` (default) \| `Html` | Output encoding profile (part of the options fingerprint). |
+| `HeddleOutputProfile` | `Html` (default) \| `Text` | Output encoding profile (part of the options fingerprint). |
 | `HeddleExpressionMode` | `MemberPathsOnly` \| `Native` (default) \| `FullCSharp` | Expression tier. `FullCSharp` is the build‑time equivalent of `AllowCSharp`. |
-| `HeddleTrimDirectiveLines` | `false` (default) \| `true` | Trim directive‑only lines (part of the fingerprint). |
+| `HeddleTrimDirectiveLines` | `true` (default) \| `false` | Trim directive‑only lines (part of the fingerprint). |
 | `HeddleMaxRecursionCount` | positive int, default `100` | Definition‑carrier recursion limit, baked at build. |
 | `HeddleTemplateRoot` | dir, default `$(MSBuildProjectDirectory)` | Root the template key is made relative to. |
 | `HeddleGeneratedNamespace` | default `$(RootNamespace).HeddleTemplates` | Namespace of the generated entry classes. |

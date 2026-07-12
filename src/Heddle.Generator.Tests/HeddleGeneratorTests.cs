@@ -75,6 +75,50 @@ namespace Heddle.Generator.Tests
             Assert.DoesNotContain(run.GeneratorDiagnostics, d => d.Severity == DiagnosticSeverity.Error);
         }
 
+        [Fact] // Both-tier parity (import-removal-spec G1): an @import() template surfaces the HED4003 removal ERROR
+               // at build time, forwarded from the shared parse layer (HeddleMainListener.ExitExtension_id), so the
+               // precompiled tier carries the identical id/severity/message/position as the dynamic tier.
+        public void LegacyImportEmitsHed4003AtTheCallSite()
+        {
+            var run = GeneratorHarness.Run(new[]
+            {
+                ("Views/Home.heddle", "@import(){{lib.heddle}}\nHello\n")
+            });
+
+            var single = Assert.Single(run.GeneratorDiagnostics.Where(d => d.Id == "HED4003"));
+            Assert.Equal(DiagnosticSeverity.Error, single.Severity);
+            Assert.Contains("has been removed", single.GetMessage());
+            Assert.Contains("docs/language-reference.md#imports--", single.GetMessage());
+            Assert.Contains("Views/Home.heddle", single.Location.GetLineSpan().Path);
+            // Positioned at the @import call on the first line, not the default document start of a forwarded miss.
+            Assert.Equal(0, single.Location.GetLineSpan().StartLinePosition.Line);
+        }
+
+        [Fact] // Nested-shape parity: an @import() nested in an @if body still emits a single HED4003 Error — pins the
+               // call shape the old generator's leftmost/top-level OutputChains scan structurally missed.
+        public void LegacyImportNestedInIfEmitsHed4003()
+        {
+            var run = GeneratorHarness.Run(new[]
+            {
+                ("Views/Home.heddle", "@if(true){{ @import(){{lib.heddle}} }}\n")
+            });
+
+            var single = Assert.Single(run.GeneratorDiagnostics.Where(d => d.Id == "HED4003"));
+            Assert.Equal(DiagnosticSeverity.Error, single.Severity);
+            Assert.Contains("has been removed", single.GetMessage());
+        }
+
+        [Fact] // B3-R3: @<< composition import is spliced by the ImportReader and never raises HED4003.
+        public void ComposeImportEmitsNoHed4003InGenerator()
+        {
+            var run = GeneratorHarness.Run(new[]
+            {
+                ("views/lib.heddle", "@%<footer>{{(c) Heddle}} :: dynamic%@"),
+                ("views/home.heddle", "@<<{{lib.heddle}}@\\\n@footer(this)\n")
+            });
+            Assert.DoesNotContain(run.GeneratorDiagnostics, d => d.Id == "HED4003");
+        }
+
         [Fact]
         public void UnparsableOptionReportsHed7009()
         {

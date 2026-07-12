@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Text.Encodings.Web;
 using Heddle.Data;
 
 namespace Heddle.Core
@@ -11,13 +12,17 @@ namespace Heddle.Core
             var obj = ProcessDataInternal(scope);
             if (DirectRender && obj != null)
             {
+                // Route through the effective encoder (B2): the configured TemplateOptions.Encoder carried by the
+                // render's sink, or null for the legacy WebUtility.HtmlEncode path.
+                var encoder = (scope.Renderer as IEncoderCarrier)?.Encoder;
                 var dataToEncode = obj as string;
                 if (!string.IsNullOrEmpty(dataToEncode))
                 {
-                    return WebUtility.HtmlEncode(dataToEncode);
+                    return encoder == null ? WebUtility.HtmlEncode(dataToEncode) : encoder.Encode(dataToEncode);
                 }
 
-                return WebUtility.HtmlEncode(obj.ToString());
+                var text = obj.ToString();
+                return encoder == null ? WebUtility.HtmlEncode(text) : encoder.Encode(text);
             }
 
             return obj;

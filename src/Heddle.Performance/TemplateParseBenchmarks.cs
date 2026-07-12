@@ -3,6 +3,7 @@ using System.IO;
 using BenchmarkDotNet.Attributes;
 using Heddle.Data;
 using Heddle.Language;
+using Heddle.Performance.Runners;
 using Heddle.Runtime;
 
 namespace Heddle.Performance
@@ -45,11 +46,26 @@ namespace Heddle.Performance
             return Path.Combine("TestTemplates", fileName);
         }
 
-        [Benchmark]
-        public void ParseCorpus()
+        // D1-R4: cold parse/compile cost, one benchmark per engine over the same two composed
+        // templates (layout + home). The render suite (TextRenderBenchmarks) already measures the
+        // cached-render path where each engine reuses its parsed/compiled template.
+        [Benchmark(Baseline = true)]
+        public void ParseHeddle()
         {
             DocumentParser.Parse(_home, new CompileContext(new TemplateOptions { RootPath = _rootPath }), out _);
             DocumentParser.Parse(_layout, new CompileContext(new TemplateOptions { RootPath = _rootPath }), out _);
         }
+
+        [Benchmark]
+        public void ParseFluid() => FluidTest.ColdParse();
+
+        [Benchmark]
+        public void ParseScriban() => ScribanTest.ColdParse();
+
+        [Benchmark]
+        public void ParseDotLiquid() => DotLiquidTest.ColdParse();
+
+        [Benchmark]
+        public void ParseHandlebars() => HandlebarsTest.ColdParse();
     }
 }

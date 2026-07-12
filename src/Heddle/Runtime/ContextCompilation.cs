@@ -94,7 +94,7 @@ namespace Heddle.Runtime
         public static void Compile(this CompileScope context)
         {
             Compile(context.CompileContext);
-            if (context.CompileContext.Options.AllowCSharp && context.CSharpContext.Methods.Count > 0 &&
+            if (context.CompileContext.Options.ExpressionMode == ExpressionMode.FullCSharp && context.CSharpContext.Methods.Count > 0 &&
                 !context.CSharpContext.Compiled)
             {
                 // Phase 9 D4 — the single Roslyn entry. When the trim-time feature switch is off, the

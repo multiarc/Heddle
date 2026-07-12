@@ -112,6 +112,11 @@ window. The sink is **single‑owner for the duration of the call**: don't touch
 thread until `Generate` returns, and never pass one sink to two simultaneous renders. Different
 sinks on different threads against the same template are fully supported.
 
+If you cap untrusted renders with a [`RenderBudget`](#render-budgets), note that a breach on a
+streaming sink throws `TemplateRenderBudgetException` **after** some output has already been written
+through — the engine buffers nothing. Treat the exception as "abort the response": stop writing and
+don't flush the partial output as if it were complete.
+
 > **Source‑compatibility note.** A call written as the positional literal
 > `template.Generate(data, null)` is now **CS0121** (ambiguous between the `TextWriter` and
 > `IBufferWriter<byte>` overloads — `null` is equally convertible to both). This is a
@@ -174,10 +179,12 @@ Controls where templates are read from and which features are enabled
 | `FileNamePostfix` | `""` | Suffix appended to the name, e.g. `".heddle"`. |
 | `ExpressionMode` | `Native` | Selects the expression tier: `MemberPathsOnly`, `Native` (sandbox‑safe operators/functions — see [Native Expressions](native-expressions.md)), or `FullCSharp` (adds the inner‑`@` Roslyn tier). |
 | `Functions` | `null` (= `FunctionRegistry.Default`) | Functions callable from native expressions; see [Native Expressions](native-expressions.md#registered-functions). |
-| `OutputProfile` | `Text` | Selects whether the unnamed `@(...)` output HTML‑encodes by default: `Text` (raw, the 1.x default) or `Html` (bodiless `@(value)` encodes; `@raw` opts out). Inherited by bodies/partials/imports; also settable per template with [`@profile()`](built-in-extensions.md#profile). See [Output profiles](language-reference.md#output-profiles). Participates in `Equals`/`GetHashCode`. |
-| `TrimDirectiveLines` | `false` | When `true`, a whole‑line directive that produces no output (`@using`, `@model`, `@profile(){{…}}`, `@import`, `@% … %@` definitions, `@<<` imports, whole‑line comments, and any extension whose `InitStart` returns `null`) swallows its line — leading indentation, trailing spaces, and one line terminator. Inherited by child compiles. `false` keeps 1.x whitespace byte‑exact; flips to `true` in the 2.0 window. Participates in `Equals`/`GetHashCode` (it changes rendered bytes, so it keys template caches). Compile‑time only. See [Whitespace trimming](language-reference.md#whitespace-trimming-). |
-| `AllowCSharp` | `false` | Bridge over `ExpressionMode`: `true` == `FullCSharp`. Enables embedded C# (`@( @expr )`, `@new`, LINQ, typed `@model()`). Setting `false` leaves `MemberPathsOnly` untouched, otherwise selects `Native`. |
+| `OutputProfile` | `Html` | Selects whether the unnamed `@(...)` output HTML‑encodes by default: `Html` (bodiless `@(value)` encodes; `@raw` opts out) — the default since 2.0 — or `Text` (raw output; the 1.x‑compatibility setting). Inherited by bodies/partials/imports; also settable per template with [`@profile()`](built-in-extensions.md#profile). See [Output profiles](language-reference.md#output-profiles). Participates in `Equals`/`GetHashCode`. |
+| `TrimDirectiveLines` | `true` | When `true` (the default since 2.0), a whole‑line directive that produces no output (`@using`, `@model`, `@profile(){{…}}`, `@% … %@` definitions, `@<<` imports, whole‑line comments, and any extension whose `InitStart` returns `null`) swallows its line — leading indentation, trailing spaces, and one line terminator. Inherited by child compiles. Set `false` to keep 1.x whitespace byte‑exact. Participates in `Equals`/`GetHashCode` (it changes rendered bytes, so it keys template caches). Compile‑time only. See [Whitespace trimming](language-reference.md#whitespace-trimming-). |
+| `Encoder` | `null` (legacy `WebUtility.HtmlEncode`) | The output encoder used at HTML‑encoding sites — bare `@(value)` under `OutputProfile.Html` and `[EncodeOutput]` extensions. A `System.Text.Encodings.Web.TextEncoder`; `null` (the default) keeps the built‑in legacy path (`WebUtility.HtmlEncode`, byte‑identical to 2.0.0). Set `HtmlEncoder.Create(UnicodeRanges.All)` for a modern Unicode‑aware encoder, or supply a `JavaScriptEncoder`/`UrlEncoder`/custom `TextEncoder`. Not applied to `@raw`, raw blocks, literal text, or `OutputProfile.Text`. Participates in `Equals`/`GetHashCode` **by reference** (a different encoder instance renders different bytes, so it keys template caches). See [encoding contexts](built-in-extensions.md#encoding-contexts). |
+| `AllowCSharp` | `false` | **Obsolete** bridge over `ExpressionMode` (use `ExpressionMode` directly): `true` == `FullCSharp`. Enables embedded C# (`@( @expr )`, `@new`, LINQ, typed `@model()`). Setting `false` leaves `MemberPathsOnly` untouched, otherwise selects `Native`. Reads and writes keep working; new code sets `ExpressionMode`. |
 | `MaxRecursionCount` | `100` | Upper bound on definition recursion depth. |
+| `RenderBudget` | `null` (unlimited) | Per‑render resource caps for untrusted templates: `RenderBudget.MaxOutputChars`, `MaxRenderOps`, and `MaxRenderTime` (each nullable — a null limit is unbounded). `null` (the default) is today's unlimited behavior with **zero render‑path cost** (no wrapper is created). A breach throws `TemplateRenderBudgetException`. Does **not** participate in `Equals`/`GetHashCode` (it changes no bytes of a successful render — same rule as `MaxRecursionCount`). See [Render budgets](#render-budgets). |
 | `EnableFileChangeCheck` | `false` | Install a `FileSystemWatcher` and recompile on file change. |
 | `ProvideLanguageFeatures` | `false` | Parse in a tooling mode that emits a token list for editors/highlighters (used by the IDE integrations). |
 | `Data` | `null` | Optional ambient data carried on the options. |
@@ -189,14 +196,76 @@ var options = new TemplateOptions("home")
 {
     RootPath = "Heddle",
     FileNamePostfix = ".heddle",     // resolves Heddle/home.heddle
-    AllowCSharp = true
 };
 ```
 
 `TemplateOptions` implements value equality over (`TemplateName`, `RootPath`,
-`FileNamePostfix`, `OutputProfile`, `TrimDirectiveLines`), so it can be used as a cache key —
-two option sets that differ only by profile *or* by trimming are distinct keys (they render
-different bytes).
+`FileNamePostfix`, `OutputProfile`, `TrimDirectiveLines`, `Encoder`), so it can be used as a
+cache key — two option sets that differ only by profile, by trimming, *or* by encoder instance
+(compared by reference) are distinct keys (they render different bytes).
+
+**Running untrusted templates?** `ExpressionMode.Native`, a curated `FunctionRegistry`,
+purpose‑built DTO models, `OutputProfile.Html`, and a `RenderBudget` together form the sandbox; see
+[Exposing models to untrusted templates](patterns.md#exposing-models-to-untrusted-templates)
+for the full host‑side checklist.
+
+### Render budgets
+
+The compile‑time sandbox (`ExpressionMode.Native` + a frozen `FunctionRegistry`) stops an untrusted
+template from *reading* or *calling* what it shouldn't, but a well‑formed template can still exhaust
+CPU or memory — `@for(1000000000){{x}}` compiles cleanly. A `RenderBudget` is the **availability**
+leg: attach one to `TemplateOptions.RenderBudget` and every `Generate` call for that template is
+bounded.
+
+```csharp
+var options = new TemplateOptions
+{
+    ExpressionMode = ExpressionMode.Native,
+    RenderBudget = new RenderBudget
+    {
+        MaxOutputChars = 1_000_000,           // cumulative UTF‑16 chars accepted by the sink
+        MaxRenderOps   = 5_000_000,           // cumulative render‑write operations
+        MaxRenderTime  = TimeSpan.FromMilliseconds(250),   // wall‑clock from Generate entry
+    },
+};
+```
+
+**Semantics.** All three limits are nullable; a null limit is unbounded, and a `null` budget (the
+default) imposes no cap and adds **no render‑path cost** — the enforcement wrapper is only created
+when a budget is present. Enforcement lives at the renderer seam (not the language level), so the
+counts are uniform across the string, `TextWriter`, and `IBufferWriter` sinks and identical on the
+dynamic and precompiled backends:
+
+- **`MaxOutputChars`** — cumulative UTF‑16 characters accepted by the sink across the whole
+  `Generate` call, counted *before* any UTF‑8 transcode (chars, not bytes).
+- **`MaxRenderOps`** — cumulative render‑write operations (each write that reaches the sink counts
+  as one).
+- **`MaxRenderTime`** — wall‑clock from `Generate` entry, measured via `Stopwatch.GetTimestamp()`
+  deltas (no timer thread) on every render op **and at least once per `@list`/`@for` iteration`**.
+
+A breach throws `TemplateRenderBudgetException` (in `Heddle.Exceptions`) carrying `Kind`
+(`OutputChars` / `RenderOps` / `RenderTime`), `Limit`, and `Observed`. The exception carries **no
+template position** — the renderer seam has none, and recording positions per op would tax the hot
+path (an accepted deviation).
+
+**Evasion analysis.** Because enforcement is at the seam, the budget counts *render operations*, not
+*loop iterations*: a loop iteration that writes nothing is invisible to the ops and chars counters.
+Two cases escape `MaxOutputChars`/`MaxRenderOps` entirely and are bounded **only** by
+`MaxRenderTime`: (1) a *zero‑output loop* (`@for(1000000000){{@if(false){{…}}}}`) never reaches the
+sink, so no op or char is ever counted; and (2) *value‑context accumulation* — a `@for`/`@list`
+evaluated in value context (its result feeds another extension rather than the sink) builds the whole
+string in memory and reaches the sink as a **single** write op, so the char/op counters only see the
+finished result, never the unbounded work and memory spent building it. For both, the loop extensions
+check the deadline once per iteration (in the value path too), so the render still terminates on the
+deadline even though the ops counter never moves. `MaxRenderTime` is therefore the **only universal
+backstop**; `MaxOutputChars`/`MaxRenderOps` cap *delivered* response size and write count but do not
+bound zero‑output loops or in‑memory value accumulation. For a hard bound against runaway templates,
+`MaxRenderTime` is mandatory — set it for every untrusted render.
+
+**Streaming caveat.** On the `TextWriter`/`IBufferWriter` sinks, whatever was written before the
+breach **stays written** — the engine is write‑through and the caller owns the sink. Treat
+`TemplateRenderBudgetException` as *abort the response*: stop, and do not treat the partial output as
+complete. (See also [Streaming](#streaming-generate-into-a-sink).)
 
 ### Choosing the output profile per template
 
@@ -330,7 +399,6 @@ var options = new TemplateOptions("home")
 {
     RootPath = "Heddle",
     FileNamePostfix = ".heddle",     // resolves Heddle/home.heddle
-    AllowCSharp = true
 };
 
 using var template = new HeddleTemplate(new CompileContext(options));

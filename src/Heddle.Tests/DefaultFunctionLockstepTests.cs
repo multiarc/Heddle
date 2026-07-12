@@ -76,8 +76,8 @@ namespace Heddle.Tests
         [Fact]
         public void ShimTargetTypeNameMatchesBuiltInFunctions()
         {
-            var expected = typeof(BuiltInFunctions).FullName + ", " + typeof(BuiltInFunctions).Assembly.GetName().Name;
-            Assert.Equal(expected, DefaultFunctionTable.ShimTargetTypeName);
+            var builtInTypeName = typeof(BuiltInFunctions).FullName + ", " + typeof(BuiltInFunctions).Assembly.GetName().Name;
+            Assert.Equal(DefaultFunctionTable.ShimTargetTypeName, builtInTypeName);
         }
     }
 }

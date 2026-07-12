@@ -14,6 +14,8 @@
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
     <LangVersion>latest</LangVersion>
+    <!-- B2-R10: the marker TextEncoder in EncoderOptionTests overrides the unsafe char* members. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' OR '$(TargetFramework)' == 'net48' ">
@@ -47,6 +49,27 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="TestTemplate\regr-import-shell.heddle">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestTemplate\regr-import-multiline-override.heddle">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestTemplate\regr-def-inner-comment.heddle">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestTemplate\generated-regr-import-multiline-override.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestTemplate\generated-regr-def-inner-comment.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestTemplate\ctx-encoding.heddle">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestTemplate\generated-ctx-encoding.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="TestTemplate\empty-override.heddle">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -242,7 +265,7 @@
     <None Update="TestTemplate\generated-ergo-import-composition.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="TestTemplate\ergo-import-inline.heddle">
+    <None Update="TestTemplate\regr-compose-shim.heddle">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="TestTemplate\props-card.heddle">

@@ -12,7 +12,7 @@ namespace Heddle.Generator.Diagnostics
         /// <summary>An <c>AdditionalFiles</c> <c>.heddle</c> source could not be read at generation time.</summary>
         public static readonly DiagnosticDescriptor UnreadableFile = new DiagnosticDescriptor(
             "HED7001", "Unreadable Heddle template",
-            "Heddle template '{0}' could not be read: {1}.",
+            "Heddle template '{0}' could not be read: {1}",
             Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
 
         /// <summary>Two templates in one compilation normalize to the same key (position: the second file).</summary>
@@ -27,7 +27,7 @@ namespace Heddle.Generator.Diagnostics
         public static readonly DiagnosticDescriptor InvalidKeyMetadata = new DiagnosticDescriptor(
             "HED7004", "Invalid Heddle template Key metadata",
             "Invalid Key metadata '{0}' on Heddle template '{1}': keys must be non-empty relative paths without " +
-            "'.' or '..' segments.",
+            "'.' or '..' segments",
             Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
 
         /// <summary>A static piece contains an unpaired surrogate; the u8 twin is suppressed for the template
@@ -63,7 +63,7 @@ namespace Heddle.Generator.Diagnostics
         /// generated code (position: the directive).</summary>
         public static readonly DiagnosticDescriptor UnresolvableModelType = new DiagnosticDescriptor(
             "HED7007", "Unresolvable model type",
-            "Model type '{0}' is not defined in this compilation or its references.",
+            "Model type '{0}' is not defined in this compilation or its references",
             Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
 
         /// <summary>Milestone 2 (D3): a member path does not resolve on the model type, mirroring the runtime member
@@ -71,7 +71,7 @@ namespace Heddle.Generator.Diagnostics
         /// model — the same failure the runtime raises as HED0001, surfaced natively at the template span.</summary>
         public static readonly DiagnosticDescriptor UnresolvableMember = new DiagnosticDescriptor(
             "HED7008", "Unresolvable member path",
-            "'{0}' does not contain an accessible member '{1}' (member path '{2}').",
+            "'{0}' does not contain an accessible member '{1}' (member path '{2}')",
             Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
 
         public static readonly DiagnosticDescriptor OptionParseError = new DiagnosticDescriptor(

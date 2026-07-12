@@ -43,7 +43,7 @@ namespace Heddle.Tests
             HeddleTemplate.Configure(typeof(FeatureSwitchTests).GetTypeInfo().Assembly);
             // Default host: switch left as the suite baseline (enabled).
             using var template = new HeddleTemplate(CSharpTierTemplate,
-                new CompileContext(new TemplateOptions { AllowCSharp = true }));
+                new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp }));
             Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
             Assert.Equal("3", template.Generate(null));
         }
@@ -55,7 +55,7 @@ namespace Heddle.Tests
             WithSwitch(true, () =>
             {
                 using var template = new HeddleTemplate(CSharpTierTemplate,
-                    new CompileContext(new TemplateOptions { AllowCSharp = true }));
+                    new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp }));
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
                 Assert.Equal("3", template.Generate(null));
             });
@@ -71,7 +71,7 @@ namespace Heddle.Tests
                 var ex = Record.Exception(() =>
                 {
                     using var template = new HeddleTemplate(CSharpTierTemplate,
-                        new CompileContext(new TemplateOptions { AllowCSharp = true }));
+                        new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp }));
                     result = template.CompileResult;
                 });
 
@@ -111,13 +111,13 @@ namespace Heddle.Tests
             WithSwitch(false, () =>
             {
                 using var off = new HeddleTemplate(CSharpTierTemplate,
-                    new CompileContext(new TemplateOptions { AllowCSharp = true }));
+                    new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp }));
                 Assert.False(off.CompileResult.Success);
             });
 
             // After restore, the tier is available again with byte-identical output.
             using var on = new HeddleTemplate(CSharpTierTemplate,
-                new CompileContext(new TemplateOptions { AllowCSharp = true }));
+                new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp }));
             Assert.True(on.CompileResult.Success, on.CompileResult.ToString());
             Assert.Equal("3", on.Generate(null));
         }

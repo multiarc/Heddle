@@ -212,11 +212,12 @@ with a body it renders the body against its model; with no body it just stringif
 Whether the bare `@(value)` output HTML‑encodes is governed by the **output profile**, not by
 the syntax. There are two:
 
-- **`OutputProfile.Text`** — the 1.x default. `@(value)` emits raw text (text/JSON/code
-  generation). Every existing template renders byte‑identically.
-- **`OutputProfile.Html`** — a bodiless `@(value)` HTML‑encodes by default, closing the
-  XSS‑by‑default gap. `@raw(value)` opts a trusted value out; a bodied `@(value){{…}}` remains a
-  raw rescoping container (its literal body markup is never encoded — only value leaves inside).
+- **`OutputProfile.Html`** — the default since 2.0. A bodiless `@(value)` HTML‑encodes by
+  default, closing the XSS‑by‑default gap. `@raw(value)` opts a trusted value out; a bodied
+  `@(value){{…}}` remains a raw rescoping container (its literal body markup is never encoded —
+  only value leaves inside).
+- **`OutputProfile.Text`** — the 1.x‑compatibility setting. `@(value)` emits raw text
+  (text/JSON/code generation), rendering 1.x templates byte‑identically.
 
 ```heddle
 @profile(){{ html }}
@@ -283,7 +284,7 @@ reach page‑level data (the site title, the current year, a culture) from insid
 Inside the loop the current model is an `Article`, so `@(Title)` is the article's title and
 `@(::Title)` reaches past it to the root `Blog`. The equivalent embedded‑C# form is
 `@(@root.Title)`; the `::` form is pure template syntax and does **not** require
-`AllowCSharp`.
+the C# tier (`ExpressionMode.FullCSharp`).
 
 In real templates this is how you reach page‑ and app‑level context from anywhere — site host,
 build number for cache‑busting, the active culture — without threading it through every call.
@@ -399,6 +400,10 @@ This step‑back is exactly **one level** (it is `scope.Parent()` under the hood
 [Writing Custom Extensions](custom-extensions.md)). There is no operator to climb further; for
 anything higher, use the [root](#reaching-back-out-root) or pass values down explicitly.
 
+For the descend‑vs‑step‑back classification of **every** built‑in (and what a nested `@out()` sees
+in each body), see the authoritative table
+[Built‑in Extensions → Body context at a glance](built-in-extensions.md#body-context-at-a-glance).
+
 ### Branching: `@elif` and `@else`
 
 `@if`/`@ifnot` can be followed by `@elif` (alias `@elseif`) and a terminal `@else` to form a
@@ -474,7 +479,7 @@ extensions — see [`Scope`](csharp-api.md#scope-the-data-view-during-rendering)
 Inside a call's parentheses, an inner **`@`** switches the lexer into C# mode (`CS` mode,
 [HeddleLexer.g4](../src/Heddle.Language/HeddleLexer.g4)), so the rest of the parameter is parsed
 as a real C# expression and compiled by Roslyn. This requires
-`TemplateOptions.AllowCSharp = true`.
+`ExpressionMode.FullCSharp` (`TemplateOptions.ExpressionMode = ExpressionMode.FullCSharp`).
 
 The lexer covers the C# **expression** grammar through C# 14, so supported forms include numeric
 literals (digit separators, binary, hex — `1_000`, `0b1010`, `0xFF`), all string forms (regular,
@@ -616,9 +621,12 @@ type’s own assembly).
 ```
 
 `dynamic` makes member access late‑bound (resolved at render time via the C# runtime
-binder), which is how `@(Title)` works against an `ExpandoObject` or anonymous model. Concrete
-types (e.g. `Article`, `ICollection<Article>`) enable compile‑time member checking and faster
-access.
+binder), which is how `@(Title)` works against an `ExpandoObject`, a dictionary shape, or a
+**public named type**. One shape it does *not* work against is an **anonymous type from
+another assembly**: anonymous types are internal to the assembly that declares them, so the
+runtime binder inside the Heddle assembly can't see their members and throws at render time —
+pass a public named type (or an `ExpandoObject`) instead. Concrete types (e.g. `Article`,
+`ICollection<Article>`) enable compile‑time member checking and faster access.
 
 Generic and array type names are recognized by the lexer's type rule
 (`ID_TYPE`, [HeddleLexer.g4](../src/Heddle.Language/HeddleLexer.g4)), which accepts
@@ -951,9 +959,10 @@ is bounded by `TemplateOptions.MaxRecursionCount` (default **100**); see the
 
 ## Imports `@<<{{ … }}`
 
-Heddle has **two independent import spellings** — `@<<{{ path }}` and `@import(){{ path }}`.
-They are not aliases; they are separate implementations with different behavior. For sharing
-definition libraries, always use `@<<`.
+Heddle has one import spelling — `@<<{{ path }}`. The legacy `@import()` extension has been
+**removed**: any `@import` call site now fails to compile with a positioned **`HED4003`** error
+naming its replacements. For sharing definition libraries, use `@<<`; to embed another template's
+rendered output inline, use `@partial()`.
 
 ```
 @<< {{ path/to/file }}
@@ -973,17 +982,19 @@ import line — a name already defined *before* the import is a compile error, s
 rather than silently override), **re‑bases the imported file's own output chains** to render at
 the import position, and **carries its default (`-> `) chains** into the document. Imported
 *static text* never transfers — only definitions and chains. This is the canonical way to share
-a library of definitions or a layout across templates.
+a library of definitions or a layout across templates. A `@<<` import must appear at the **top
+level** of a document — nesting it inside a subtemplate (an `@if`/`@for` body, an output block, or
+a definition body) is a compile error (**`HED4004`**), because composition merges definitions and
+re‑bases chains into the document as a whole and has no well‑defined meaning at a nested scope.
 
-**`@import(){{ path }}` — a compile‑time include, kept for compatibility.** An ordinary
-extension call ([ImportExtension.cs](../src/Heddle/Extensions/ImportExtension.cs)) whose
-`InitStart` re‑parses the file into the extension body's own already‑isolated context. Nothing
-it parses is merged into the importing document — a subsequent call to an imported definition
-fails with *"Cannot find extension or registered function …"*. Its one observable effect is
-that errors in the target file surface on the importing compile (it validates the file). Because
-it re‑parses at the body's document offset, importing a file that contains a definition or an
-output block from anywhere but the very start of a document fails with *"Error while compiling
-import"*. **New templates should always use `@<<`.**
+**`@import(){{ path }}` — removed.** The old compile‑time include
+([ImportExtension.cs](../src/Heddle/Extensions/ImportExtension.cs)) merged nothing into the
+importing document and had surprising, offset-dependent isolation semantics. It no longer
+compiles: every `@import()` call site now produces a single positioned **`HED4003`** error at
+the call, naming both replacements — `@<<{{ path }}` to share definitions and layouts across
+files, or `@partial(){{ name }}` to embed another template's rendered output inline. The name
+`import` is kept registered only as a tombstone so the diagnostic is a targeted migration
+signpost, not a generic "unknown extension" error.
 
 > **Imports vs `@partial()`.** `@<<` pulls in *definitions* at compile time (no output of its
 > own beyond the imported chains). [`@partial()`](built-in-extensions.md#partial) compiles a
@@ -1084,14 +1095,14 @@ that whole line: its leading indentation, its trailing spaces, and **one** line 
 ```
 
 The eligible blocks are exactly the ones the compiler removes from the document anyway:
-zero‑output directives (`@using`, `@model`, `@profile(){{…}}`, `@import(){{…}}`, and any custom
+zero‑output directives (`@using`, `@model`, `@profile(){{…}}`, and any custom
 extension whose `InitStart` returns `null`), definition blocks (`@% … %@`), `@<<` imports, and
 whole‑line comments. Blocks that *do* produce output (raw blocks, branch blocks, `@param(...)`
 — which stays in the document and renders nothing by itself), text that shares its line with
 other content, and author‑written blank lines are all left untouched.
 
-- **Default:** `false` in 1.x (existing whitespace is byte‑for‑byte preserved). It flips to
-  `true` in the 2.0 window — set it back to `false` to keep 1.x whitespace exactly.
+- **Default:** `true` since 2.0 — whole‑line directives swallow their line. Set it back to
+  `false` to keep 1.x whitespace byte‑for‑byte (the 1.x default).
 - `@\` keeps working unchanged and is still the tool for **mid‑line** whitespace control; the
   option only removes the boilerplate `@\` at the end of whole‑line directives.
 - The setting participates in template‑cache identity (`Equals`/`GetHashCode`) because it changes
@@ -1130,14 +1141,15 @@ slightly between a definition header and a body. For the full picture see
 - **Whitespace is significant.** Use `@\` to trim; otherwise spaces and newlines are emitted
   as written.
 - **Comments can appear mid‑token** and are always stripped.
-- **Embedded C# requires `AllowCSharp = true`**; `model`, `root`, and `chained` are the
+- **Embedded C# requires `ExpressionMode.FullCSharp`**; `model`, `root`, and `chained` are the
   available identifiers.
 - **`::Member` reads the root model**; plain `Member` reads the current model.
 - **Definitions are invoked like extensions** (`@name()`), can be nested, typed, inherited,
   and fully overridden in document order.
-- **HTML encoding follows the output profile** — under `OutputProfile.Text` (the 1.x default)
-  the unnamed `@(...)` output is raw; under `OutputProfile.Html` a bodiless `@(value)`
-  HTML‑encodes by default and `@raw(value)` opts out. `[EncodeOutput]` extensions
+- **HTML encoding follows the output profile** — under `OutputProfile.Html` (the default since
+  2.0) a bodiless `@(value)` HTML‑encodes by default and `@raw(value)` opts out; under
+  `OutputProfile.Text` (the 1.x‑compatibility setting) the unnamed `@(...)` output is raw.
+  `[EncodeOutput]` extensions
   (`@string`, `@html`, …) always encode under both profiles. Select the profile with
   [`TemplateOptions.OutputProfile`](csharp-api.md#templateoptions) or the
   [`@profile()`](built-in-extensions.md#profile) directive — see

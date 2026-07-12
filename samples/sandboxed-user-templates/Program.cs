@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using Heddle;
 using Heddle.Data;
+using Heddle.Exceptions;
 using Heddle.Runtime;
 using Heddle.Runtime.Expressions;
 
@@ -63,8 +64,21 @@ namespace Heddle.Samples.Sandboxed
                 ("method-call", "@(Name.ToUpper())")
             };
 
+            // Well-formed but hostile: each compiles (no C#-tier escape, no unregistered call), so the compile-time
+            // trust boundary lets it through — but a runaway loop would burn CPU/memory unbounded. A RenderBudget is
+            // the availability leg: it stops the render at the seam and throws TemplateRenderBudgetException. One
+            // scenario per budget kind proves each dimension independently caps a runaway template.
+            const string runaway = "@for(1000000000){{x}}";
+            var budgetRuns = new (string Name, RenderBudget Budget)[]
+            {
+                ("output-chars", new RenderBudget { MaxOutputChars = 1000 }),
+                ("render-ops",   new RenderBudget { MaxRenderOps = 1000 }),
+                ("render-time",  new RenderBudget { MaxRenderTime = TimeSpan.FromMilliseconds(50) }),
+            };
+
             var rendered = new List<(string Name, string Output)>();
             var rejected = new List<string>();
+            var budgeted = new List<string>();
 
             foreach (var (name, template) in benign)
             {
@@ -82,6 +96,14 @@ namespace Heddle.Samples.Sandboxed
                 rejected.Add($"{name}: {Describe(error)}");
             }
 
+            foreach (var (name, budget) in budgetRuns)
+            {
+                var kind = RunWithBudget(runaway, registry, budget);
+                if (kind == null)
+                    throw new InvalidOperationException($"budget '{name}' did NOT stop the runaway template — availability breach!");
+                budgeted.Add($"{name}: stopped by {kind}");
+            }
+
             if (Canary.Fired)
                 throw new InvalidOperationException("CANARY FIRED — a rejected template executed. Sandbox breach!");
 
@@ -91,7 +113,8 @@ namespace Heddle.Samples.Sandboxed
                 foreach (var (name, output) in rendered)
                     SampleCapture.Write(capture, $"rendered/{name}.txt", output);
                 SampleCapture.Write(capture, "rejected.txt", string.Join("\n", rejected) + "\n");
-                Console.WriteLine($"captured {rendered.Count} rendered/*.txt + rejected.txt; canary unfired");
+                SampleCapture.Write(capture, "budgets.txt", string.Join("\n", budgeted) + "\n");
+                Console.WriteLine($"captured {rendered.Count} rendered/*.txt + rejected.txt + budgets.txt; canary unfired");
                 return 0;
             }
 
@@ -100,6 +123,9 @@ namespace Heddle.Samples.Sandboxed
                 Console.WriteLine($"[{name}] {output}");
             Console.WriteLine("=== rejected templates (positioned diagnostics) ===");
             foreach (var line in rejected)
+                Console.WriteLine(line);
+            Console.WriteLine("=== runaway templates stopped by render budgets ===");
+            foreach (var line in budgeted)
                 Console.WriteLine(line);
             Console.WriteLine($"canary fired: {Canary.Fired}");
             return 0;
@@ -119,6 +145,31 @@ namespace Heddle.Samples.Sandboxed
                 return t.CompileResult.ErrorList.First();
             output = t.Generate(new UserModel { Name = "world", Count = 3 });
             return null;
+        }
+
+        // Renders a well-formed but runaway template under a budget; returns the RenderBudgetKind that stopped it,
+        // or null if it completed (which would be an availability breach for the runaway loop above).
+        private static RenderBudgetKind? RunWithBudget(string template, FunctionRegistry registry, RenderBudget budget)
+        {
+            var options = new TemplateOptions
+            {
+                ExpressionMode = ExpressionMode.Native,
+                Functions = registry,
+                RenderBudget = budget,
+            };
+            using var t = new HeddleTemplate(template, new CompileContext(options, typeof(UserModel)));
+            if (!t.CompileResult.Success)
+                throw new InvalidOperationException("runaway template unexpectedly rejected at compile: " +
+                    t.CompileResult.ErrorList.First());
+            try
+            {
+                t.Generate(new UserModel { Name = "world", Count = 3 });
+                return null;
+            }
+            catch (TemplateRenderBudgetException ex)
+            {
+                return ex.Kind;
+            }
         }
 
         private static string Describe(HeddleCompileError error)

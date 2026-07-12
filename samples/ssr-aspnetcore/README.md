@@ -3,7 +3,7 @@
 **Shows:** classic server-side rendering on an ASP.NET Core minimal API — a `TemplateResolver` composing pages
 from `@partial` header/footer, iterating with `@list` and `@for` (phase 4 sugar), under the `Html` profile with
 `TrimDirectiveLines` on, and the resolver's compiled-template cache. **Source of record:** roadmap current-engine
-demo, upgraded per [phase 4](../../docs/spec/phase-4-ergonomics/README.md) (phase 9 D13 row 1).
+demo, upgraded per the 2.0 ergonomics work — `@for` + [whitespace trimming](../../docs/language-reference.md#whitespace-trimming-) (phase 9 D13 row 1).
 
 ## Run it
 
