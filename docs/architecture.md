@@ -45,14 +45,17 @@ Modes (entered/exited via `pushMode`/`popMode`/`mode`):
 
 | Mode | Entered by | Purpose |
 | --- | --- | --- |
-| *(default)* | — | Top‑level text + directive starts (`@%`, `@<<`, `@`, raw). |
-| `SUB_BLOCK` | `{{` | Subtemplate body; `}}` pops. |
-| `DEF` | `@%` | Definition block: `<name>`, `:` base, `::` type, `->` default, `%@` pops. |
+| *(default)* | — | Top‑level text + directive starts (`@%`, `@<<`, `@`, raw). A top‑level `{{` here is a plain unconnected token — it does **not** push `SUB_BLOCK`. |
+| `SUB_BLOCK` | `{{` after a call (`CALL_RETURNED`), inside a definition (`DEF`), or after an extension name (`OUT_MODE`) | Subtemplate body; `}}` pops. |
+| `DEF` | `@%` | Definition block: `<name>`, `:` base, `::` type, `->` default, `(` opens a prop list, `%@` pops. |
+| `DEF_PROPS` | `(` in `DEF` | Definition prop list (v2 typed props): prop names/types between `( … )`. |
 | `IMPORT_MODE` | `@<<` | Import path between `{{ }}`. |
 | `OUT_MODE` | `@` | Extension name; `(` opens parameter. |
 | `CALL` | `(` | Parameter tokens (ids, `.`, `::`, `:`), nested `(`; inner `@` → `CS`. |
 | `CALL_RETURNED` | `)` | What follows a call: `:` chain, `@` next, `{{` body, raw, etc. |
 | `CS` | inner `@` in a parameter | Embedded C# expression; balances `(`/`)`, ends at matching `)`. |
+| `CS_NESTED` | nested `(` in `CS` | Nested parentheses inside an embedded C# expression. |
+| `INTERP_STR` / `INTERP_VERBATIM_STR` / `INTERP_HOLE` | `$"…"` / `$@"…"` inside `CS` | C# interpolated‑string literals and their `{ … }` holes. |
 
 The mode transitions (solid = push, dashed = pop/return to a mode):
 
@@ -63,11 +66,12 @@ stateDiagram-v2
     Top --> DEF: "@%"
     Top --> IMPORT_MODE: "@&lt;&lt;"
     Top --> OUT_MODE: "@"
-    Top --> SUB_BLOCK: "{{"
 
     DEF --> SUB_BLOCK: "{{"
     DEF --> OUT_MODE: "-&gt; (default output)"
     DEF --> Top: "%@"
+
+    OUT_MODE --> SUB_BLOCK: "{{ (after ext name)"
 
     SUB_BLOCK --> Top: "}}"
     IMPORT_MODE --> Top: "}}"
@@ -85,7 +89,8 @@ stateDiagram-v2
 Comments (`@* … *@`), trimmed whitespace (`@\`), and definition whitespace are routed to the
 **hidden channel** so they never reach the parser but are still available for tooling (the
 listener collects hidden‑channel positions as `SkippedTokens`). This is why comments can
-appear mid‑token. See the
+appear mid‑construct — between any two tokens (e.g. inside a call) — though never inside a single
+token. See the
 [Language Reference → lexer modes](language-reference.md#how-the-lexer-reads-a-template-modes)
 for the author‑facing view.
 
@@ -99,9 +104,10 @@ top‑level rule is `heddle`; the interesting rules are `definition`, `outblock`
 
 [`DocumentParser`](../src/Heddle/Language/DocumentParser.cs) controls prediction strategy:
 
-- It first parses in **SLL** mode (fast). If SLL throws `ParseCanceledException` (ambiguity),
-  or if errors were reported, it **falls back** to `LL_EXACT_AMBIG_DETECTION` (full LL) via
-  `ParseDiagnosticMode`, and records a `HeddleCompileWarning` noting the SLL failure.
+- It first parses in **SLL** mode (fast). If SLL throws `ParseCanceledException` (ambiguity) it
+  **falls back** to `LL_EXACT_AMBIG_DETECTION` (full LL) via `ParseDiagnosticMode` and records a
+  `HeddleCompileWarning` noting the SLL failure. If SLL instead merely reported errors, it re‑parses
+  the same way in full LL mode, but records **no** warning on that path.
 - When `TemplateOptions.ProvideLanguageFeatures` is set (editor/tooling mode), it parses
   directly in LL mode and produces a token list for syntax highlighting instead of optimizing
   for throughput.
@@ -128,7 +134,9 @@ imports, and the raw/text spans. This is the structured representation the compi
 **execution‑ready document** ([`RuntimeDocument`](../src/Heddle/Runtime/RuntimeDocument.cs)):
 a tree of extension instances, each wired to a **compiled** value accessor. The template itself
 is *not* transpiled to C# or to IL — its structure becomes an object graph; only the value
-accessors are compiled, and nothing is interpreted or reflected at render time.
+accessors are compiled. For statically‑typed models nothing is interpreted or reflected at render
+time; dynamic (`dynamic`/`ExpandoObject`) models instead bind their member paths through cached
+DLR call sites (see below).
 
 - It instantiates the right **extension** for each call (resolved by name from the registered
   set), and calls `InitStart` to thread types through the chain and compile nested
@@ -138,7 +146,8 @@ accessors are compiled, and nothing is interpreted or reflected at render time.
   [`ModelParameter`](../src/Heddle/Runtime/Parameters/ModelParameter.cs) builds an
   `Expression<Func<object,object>>` over the resolved property chain (null‑safe for reference
   types) and `.Compile()`s it. Reflection is used **only here, at compile time**, to locate the
-  properties — never at render time.
+  properties — never at render time for statically‑typed models. (Dynamic models compile instead to
+  DLR call sites that resolve members at render time, cached per receiver type.)
 - **Embedded C# expressions** (`@( … )`) are emitted into C# source via the `.tcs` templates in
   [src/Heddle/LanguageTemplates](../src/Heddle/LanguageTemplates)
   (`CSharpPreparseTemplate.tcs`, `CSharpClassTemplate.tcs`) and compiled by **Roslyn**
@@ -183,7 +192,7 @@ byte‑identical parity‑checked output over a component‑heavy composition wo
 Razor, which renders a larger, different page and is **not** under the parity assertion
 (`[MemoryDiagnoser]` enabled). In the run of **2026‑07‑11** (commit `8341bb67`; AMD Ryzen 9 9950X,
 .NET 10.0.9, BenchmarkDotNet 0.15.8) Heddle rendered that page in **32.50 μs / 227.86 KB** — the
-fastest of the six and least‑or‑tied on allocation; the next engine (Fluid) took 2.0× as long and
+fastest of the six and tied‑least on allocation (within 0.3 KB of Handlebars.Net); the next engine (Fluid) took 2.0× as long and
 Scriban 11.7× with 5.07× the allocation. The full render and compile‑cost tables, environment
 header, and raw artifacts live in the [README Performance section](../README.md#performance) and
 [docs/benchmarks/2026-07-11](benchmarks/2026-07-11/). The reasons Heddle leads on the render path are
@@ -204,11 +213,11 @@ structural, not incidental:
 - **Struct `Scope`, aggressive inlining.** The per‑node data view is a readonly `struct` with
   `[MethodImpl(AggressiveInlining)]` transforms, avoiding per‑scope heap allocation as the
   renderer descends into elements and subtemplates.
-- **Composition is free at run time.** Splitting a page into independent reusable templates
+- **Composition is near‑free at run time.** Splitting a page into independent reusable templates
   recombined by a layout (see the benchmark's `@<<{{layout.heddle}}` import + `<body:body>`
-  override) compiles down to the same flat render document as an inline page. Decoupled
-  definitions cost nothing extra to render — unlike Razor sections, whose layout/section
-  binding adds indirection. See
+  override) renders through one pre‑built extension node per definition invocation — no per‑render
+  lookup, activation, or buffer indirection — unlike Razor sections, whose layout/section binding
+  adds indirection. See
   [Language Reference → inheritance](language-reference.md#inheritance-and-override-childbase).
 
 The trade‑off is **up‑front compilation**: the first compile runs ANTLR (parse), expression‑tree
@@ -228,13 +237,13 @@ cached render. Compile cost is benchmarked via
 | Path | Contents |
 | --- | --- |
 | [src/Heddle](../src/Heddle) | Core engine. |
-| `Heddle/Core` | Extension base classes, `IExtension`, `InitContext`. |
-| `Heddle/Extensions` | The 19 built‑in extensions. |
+| `Heddle/Core` | Extension base classes, `InitContext`. |
+| `Heddle/Extensions` | The 24 built‑in extensions. |
 | `Heddle/Language` | Parser host: `DocumentParser`, `HeddleMainListener`, `ParseContext`, `OutputItem`, `DefinitionItem`, `CallParameter`. |
 | `Heddle/Runtime` | `HeddleCompiler`, `RuntimeDocument`, `CompileContext`, `CompileScope`, `IExtension`, `TemplateResolver`. |
-| `Heddle/Data` | `Scope`, `TemplateOptions`, `HeddleCompileResult`, `ExType`, render types. |
+| `Heddle/Data` | `Scope`, `TemplateOptions`, `HeddleCompileResult`, `ExType`, `LinearList`, render types. |
 | `Heddle/Attributes` | The extension/model attributes. |
-| `Heddle/Strings` | Fast string building (`ExStringBuilder`, `LinearList`). |
+| `Heddle/Strings` | Fast string building (`ExStringBuilder`). |
 | `Heddle/LanguageTemplates` | `.tcs` resources used to emit C# for Roslyn. |
 | [src/Heddle.Language](../src/Heddle.Language) | ANTLR grammar + generated lexer/parser + editor assets. |
 | [src/Heddle.Tests](../src/Heddle.Tests) | xUnit tests + `.heddle` fixtures. |

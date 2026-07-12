@@ -28,10 +28,10 @@ runnable templates that exercise edge cases, see the test fixtures in
 13. [Props `<name(prop: Type = default)>`](#props-nameprop-type--default)
 14. [Parameterized slots `out:: Type`](#parameterized-slots-out-type)
 15. [Inheritance and override `<child:base>`](#inheritance-and-override-childbase)
-16. [Subtemplates `{{ … }}`](#subtemplates--)
+16. [Subtemplates `{{ … }}`](#subtemplates---)
 17. [Chaining with `:`](#chaining-with-)
 18. [Recursion](#recursion)
-19. [Imports `@<<{{ … }}`](#imports--)
+19. [Imports `@<<{{ … }}`](#imports---)
 20. [Comments `@* … *@`](#comments---)
 21. [Raw blocks `@{ … }@` and `@:`](#raw-blocks----and-)
 22. [Whitespace trimming `@\`](#whitespace-trimming-)
@@ -91,7 +91,7 @@ deliberate, and both are what make templates compose:
   [`::`](#root-reference-member); the full picture is in
   [Context and data flow](#context-and-data-flow).
 
-- **Heddle are abstract by default; types bind late.** A definition written **without**
+- **Heddle definitions are abstract by default; types bind late.** A definition written **without**
   `:: Type` has no fixed model type — it is a *polymorphic section*. Its real type is bound
   when it's actually used (compiled against whatever concrete model reaches that call site) or
   when an inheriting definition narrows it with `:: Type`. This is closer to a **C++ template**
@@ -119,7 +119,7 @@ deliberate, and both are what make templates compose:
 | `-> chain` | Default output | Marks a definition to render automatically; `chain` selects its data. |
 | `:: Type` | Type annotation | Strongly types a definition's model. |
 | `::Member` | Root reference | Read `Member` from the root model, not the current one. |
-| `@<<{{ path }}` | Import | Include definitions from another template file. |
+| `@<<{{path}}` | Import | Include definitions from another template file (path taken verbatim — no spaces). |
 | `@* … *@` | Comment | Ignored; never emitted. |
 | `@{ … }@` | Raw block | Emitted verbatim; not parsed. |
 | `@: …` | Raw line | Rest of the line emitted verbatim. |
@@ -132,21 +132,25 @@ deliberate, and both are what make templates compose:
 Any character that is not part of a directive is literal text and is emitted unchanged.
 Unicode is fully supported — `<h1>Café — Привет!</h1>` renders as written.
 
-The only special character is **`@`**. To emit a literal `@`, double it: **`@@`**:
+The only special character is **`@`**. There is no character‑doubling escape (`@@` is a compile
+error). To emit a literal `@`, wrap it in a [raw region](#raw-blocks----and-) — the raw block
+`@{ … }@` or the raw line `@:` — which is emitted verbatim and never parsed:
 
 ```heddle
-<p>Reach us at support@@example.com</p>      @* outputs: support@example.com *@
+<p>Reach us at @{support@example.com}@</p>   @* outputs: support@example.com *@
+@* @: makes the entire rest of the line literal (comment stripped, line below emitted as-is): *@
+@: Reach us at support@example.com
 ```
 
-To emit a block of literal text that contains many `@` or `{{ }}` characters, use a
-[raw block](#raw-blocks----and-) instead of escaping each one.
+Those same raw regions are the way to emit a block of literal text that contains many `@` or
+`{{ }}` characters without escaping each one.
 
 ---
 
 ## Output blocks
 
 An **output block** is `@` followed by a [chain](#chaining-with-) of one or more calls, with
-an optional [subtemplate](#subtemplates--):
+an optional [subtemplate](#subtemplates---):
 
 ```
 output =  @ chain [ {{ body }} ]
@@ -159,8 +163,10 @@ A **call** has three parts: an optional extension name, a parenthesized paramete
 optional `{{ … }}` body. The parameter is one of:
 
 - **a member expression** — `@(Title)`, `@list(Articles)`;
+- **a native expression** — the built‑in expression tier, e.g. `@(Price * Qty)`, `@if(Count > 0)` (see [Native expressions](native-expressions.md));
 - **a C# expression** — introduced with an inner `@`, e.g. `@(@2026)`, `@list(@model.Articles.Where(a => a.IsFeatured))`;
 - **another chain** — nested calls;
+- **named prop arguments** — `@card(model, title: "Hi")` (see [Props](#props-nameprop-type--default));
 - **empty** — `@()`, `@out()`, `@list(){{ … }}` — meaning "use the current value as‑is".
 
 When the extension name is omitted, the call uses the **empty extension**
@@ -566,9 +572,9 @@ that the card exposes through `@out()`.
 ## Default output `-> chain`
 
 Most definitions are inert: they render only when you call them by name (`@name()`). Adding a
-`->` turns a definition into an **output** — it renders automatically, in place, as part of
-the document, using the `chain` after `->` to select its data. (This is how a template made of
-nothing but definitions still produces output.)
+`->` turns a definition into an **output** — it renders automatically at the **end of the
+document** (in declaration order), using the `chain` after `->` to select its data. (This is how
+a template made of nothing but definitions still produces output.)
 
 ```
 < name >  -> chain  {{ body }}
@@ -587,11 +593,13 @@ nothing but definitions still produces output.)
 
 `-> (Articles)` does two things: it selects the body's data (take `Articles` off the root
 `Blog`, so `@list()` with an empty parameter iterates them), and it marks the definition as an
-output that emits **here**, at its declaration. The empty form `-> ()` means "render using the
-current value as‑is".
+output that emits automatically at the **end of the document**, in declaration order. The empty
+form `-> ()` means "render using the current value as‑is". (An `@<<` import re‑bases the imported
+file's *own* output chains to the import site, but a default `->` chain still emits at document
+end.)
 
-> **Don't also call it.** Because a `->` definition already renders at its declaration, writing
-> `@article_list()` as well would render the list a *second* time. Use `->` for the regions a
+> **Don't also call it.** Because a `->` definition already renders on its own (at the end of the
+> document), writing `@article_list()` as well would render the list a *second* time. Use `->` for the regions a
 > template should emit on its own; leave the `->` off for reusable definitions you invoke by
 > name (like `article_card` above).
 >
@@ -848,7 +856,7 @@ Then a page imports it and overrides only what it needs:
 
 ```heddle
 @* home.heddle *@
-@<<{{ layout.heddle }}            @* pull in the layout + sidebar definitions *@
+@<<{{layout.heddle}}             @* pull in the layout + sidebar definitions *@
 @%
   <sidebar:sidebar>           @* this page wants a different sidebar *@
   {{ <aside>Welcome, subscriber!</aside> }}
@@ -940,7 +948,7 @@ comment list, where each `Comment` has `Replies` that are themselves `Comment`s:
   {{
     <li>
       <strong>@(Author)</strong>: @(Text)
-      @if(@model.Replies.Count > 0)
+      @if(Replies.Count > 0)
       {{
         <ul>
           @list(Replies){{ @comment() }}    @* recurse into each reply *@
@@ -951,7 +959,9 @@ comment list, where each `Comment` has `Replies` that are themselves `Comment`s:
 %@
 ```
 
-Rendering `@list(Comments){{ @comment() }}` then walks the whole tree to any depth. Recursion
+The example uses the native expression tier (`Replies.Count > 0`), so it works under the default
+`ExpressionMode.Native`; the C#-tier form `@if(@model.Replies.Count > 0)` would need
+`ExpressionMode.FullCSharp`. Rendering `@list(Comments){{ @comment() }}` then walks the whole tree to any depth. Recursion
 is bounded by `TemplateOptions.MaxRecursionCount` (default **100**); see the
 [C# API Reference](csharp-api.md#templateoptions).
 
@@ -965,15 +975,16 @@ naming its replacements. For sharing definition libraries, use `@<<`; to embed a
 rendered output inline, use `@partial()`.
 
 ```
-@<< {{ path/to/file }}
+@<<{{path/to/file}}
 ```
 
 ```heddle
-@<<{{ layout.heddle }}
+@<<{{layout.heddle}}
 ```
 
 The path between `{{ }}` is resolved relative to `TemplateOptions.RootPath` (an absolute path
-wins, per `Path.Combine`). Both forms resolve the path the same way; everything else differs.
+wins, per `Path.Combine`). The path is taken **verbatim** — no trimming — so keep the braces
+tight (`@<<{{layout.heddle}}`); a stray space inside becomes part of the filename.
 
 **`@<<{{ path }}` — the composition import.** Handled at parse time by dedicated `@<<` syntax
 ([HeddleMainListener.ExitImport_block](../src/Heddle/Language/HeddleMainListener.cs)). It parses
@@ -988,7 +999,7 @@ a definition body) is a compile error (**`HED4004`**), because composition merge
 re‑bases chains into the document as a whole and has no well‑defined meaning at a nested scope.
 
 **`@import(){{ path }}` — removed.** The old compile‑time include
-([ImportExtension.cs](../src/Heddle/Extensions/ImportExtension.cs)) merged nothing into the
+([ImportExtension.cs](../src/Heddle/Extensions/Archived/ImportExtension.cs)) merged nothing into the
 importing document and had surprising, offset-dependent isolation semantics. It no longer
 compiles: every `@import()` call site now produces a single positioned **`HED4003`** error at
 the call, naming both replacements — `@<<{{ path }}` to share definitions and layouts across
@@ -1070,7 +1081,8 @@ them with `@\` so they don't leave a blank line behind:
 <h1>@(Title)</h1>
 ```
 
-Without the `@\`, each `@using`/`@model` line would emit its trailing newline. Whitespace that
+Without the `@\`, each `@using`/`@model` line would emit its trailing newline *when
+`TrimDirectiveLines` is off* (the 1.x default) — see below. Whitespace that
 is *not* trimmed is preserved exactly — Heddle is whitespace‑significant, so the spaces and
 newlines you write around directives appear in the output as written.
 
@@ -1121,12 +1133,17 @@ for example, `}}` ends a subtemplate but is plain text elsewhere.
 | --- | --- | --- | --- |
 | *(default)* | start of document | Top‑level text, `@…` directives, definitions, imports, raw blocks. | `@%`→DEF, `@<<`→IMPORT, `@`→OUT |
 | `SUB_BLOCK` | after `{{` | Inside a subtemplate body; like default but `}}` closes it. | `}}`→pop |
-| `DEF` | after `@%` | Inside a definition block: names `< >`, `:` base, `::` type, `->` default, `%@` close. | `{{`→SUB_BLOCK, `->`→OUT, `%@`→pop |
+| `DEF` | after `@%` | Inside a definition block: names `< >`, `:` base, `::` type, `->` default, `%@` close. | `(`→DEF_PROPS, `{{`→SUB_BLOCK, `->`→OUT, `%@`→pop |
+| `DEF_PROPS` | after `(` in a definition header | Reads the typed prop list `(prop: Type = default)` — the phase‑5 prop surface. | `)`→pop |
 | `IMPORT_MODE` | after `@<<` | Reads the import path between `{{ }}`. | `}}`→pop |
 | `OUT_MODE` | after `@` | Reads an extension name, then `(` opens the parameter. | `(`→CALL, raw/sub/def/import→transition |
-| `CALL` | after `(` | Inside a parameter: member ids, `.`, `::` root ref, `:` delim, nested `(`. | `)`→pop, inner `@`→CS |
+| `CALL` | after `(` | Inside a parameter: member ids, `.`, `::` root ref, `:` delim, nested `(`, plus v2 native‑expression tokens (literals, operators, `[ ]` brackets, `,` commas, `this`). | `)`→pop, inner `@`→CS |
 | `CALL_RETURNED` | after `)` | Decides what follows a call: `:` (chain), `@` (next out), `{{` (subtemplate), raw, etc. | many |
 | `CS` | inner `@` inside a parameter | Embedded C# expression; balances nested `(` `)`, ends at the matching `)`. | matching `)`→pop |
+
+The lexer declares **13 modes** in total (default plus 12 named); the table above shows the
+principal ones. Omitted are the four C#-string modes reached from embedded C# — `CS_NESTED`,
+`INTERP_STR`, `INTERP_VERBATIM_STR`, and `INTERP_HOLE`.
 
 You normally never think about modes — but they are the reason comments work everywhere,
 why C# expressions can contain arbitrary parentheses, and why whitespace handling differs
@@ -1137,7 +1154,8 @@ slightly between a definition header and a body. For the full picture see
 
 ## Behavioral nuances summary
 
-- **`@@` emits a literal `@`.** Everything else that isn't a directive is literal text.
+- **A literal `@` needs a raw region** (`@{ … }@` or `@:`) — there is no `@@` doubling escape.
+  Everything else that isn't a directive is literal text.
 - **Whitespace is significant.** Use `@\` to trim; otherwise spaces and newlines are emitted
   as written.
 - **Comments can appear mid‑token** and are always stripped.

@@ -22,7 +22,7 @@ From the repository root (the commands pick up [Heddle.sln](../Heddle.sln)):
 ```bash
 dotnet restore
 dotnet build -c Release
-dotnet test src/Heddle.Tests
+dotnet test               # runs all test projects, as CI does
 ```
 
 ## Target frameworks
@@ -31,7 +31,7 @@ dotnet test src/Heddle.Tests
 | --- | --- |
 | `Heddle` ([csproj](../src/Heddle/Heddle.csproj)) | `netstandard2.0; net6.0; net8.0; net10.0` |
 | `Heddle.Language` ([csproj](../src/Heddle.Language/Heddle.Language.csproj)) | `netstandard2.0; net6.0; net8.0; net10.0` |
-| `Heddle.Tests` | `net48; net6.0; net8.0; net10.0` |
+| `Heddle.Tests` | `net48` (Windows only); `net6.0; net8.0; net10.0` |
 
 All shipping projects use `LangVersion=latest` and are **strong‑name signed** with
 `heddle.snk` (`SignAssembly=true`, `AssemblyOriginatorKeyFile=..\..\heddle.snk`).
@@ -49,13 +49,21 @@ The current release line is **2.0.0**; the published version is set from the rel
 
 ## Testing
 
-Tests use **xUnit** and live in [src/Heddle.Tests](../src/Heddle.Tests). The key suite
-is [HeddleTemplateTests.cs](../src/Heddle.Tests/HeddleTemplateTests.cs); other suites cover the
-compiler, reflection helpers, and string builders.
+Tests use **xUnit**. The core engine suite lives in [src/Heddle.Tests](../src/Heddle.Tests) — its
+key file is [HeddleTemplateTests.cs](../src/Heddle.Tests/HeddleTemplateTests.cs), with other suites
+covering the compiler, reflection helpers, and string builders. Four more test projects cover the
+rest of the toolchain: `Heddle.Generator.Tests` and `Heddle.Generator.IntegrationTests` (the source
+generator), `Heddle.Tool.Tests` (the `heddle` CLI), and `Heddle.LanguageServices.Tests` (the editor
+language services).
+
+Run the whole solution — this is what CI does
+([dotnet.yml](../.github/workflows/dotnet.yml) runs `dotnet test -c Debug --no-restore`):
 
 ```bash
-dotnet test src/Heddle.Tests
+dotnet test
 ```
+
+Or scope to a single project, e.g. `dotnet test src/Heddle.Tests`.
 
 Many tests are **golden‑file** comparisons: a `.heddle` template under
 [TestTemplate/](../src/Heddle.Tests/TestTemplate) is rendered and compared against an
@@ -79,7 +87,8 @@ What it measures
 ([TextRenderBenchmarks.cs](../src/Heddle.Performance/TextRenderBenchmarks.cs),
 `[MemoryDiagnoser]` enabled):
 
-- **`RenderTemplateEngine`** renders the Heddle home page
+- **`RenderHeddle`** (published in the linked 2026‑07‑11 report under its former name,
+  `RenderTemplateEngine`) renders the Heddle home page
   ([TestTemplates/home.heddle](../src/Heddle.Performance/TestTemplates/home.heddle) +
   [layout.heddle](../src/Heddle.Performance/TestTemplates/layout.heddle)) through
   [`HeddleTest`](../src/Heddle.Performance/Runners/HeddleTest.cs).
@@ -104,19 +113,21 @@ In the published run of 2026‑07‑11 **Heddle rendered faster than Razor and a
 > benchmark is a representative, component‑heavy page where the compiled document's advantage
 > is most visible.
 
-Additional comparison material lives under
-[performance/RazorTemplateTest](../performance/RazorTemplateTest), and there are extra runners
-(compilation cost, memory) in
+There are extra runners (compilation cost, memory) in
 [src/Heddle.Performance/Runners](../src/Heddle.Performance/Runners).
 
 ## Packaging
 
-Pack the shipping projects with `dotnet pack`:
+Pack all six shipping packages (`Heddle`, `Heddle.Language`, `Heddle.Generator`,
+`Heddle.LanguageServices`, `Heddle.LanguageServer`, `Heddle.Tool`) by packing the whole solution,
+as CI does:
 
 ```bash
-dotnet pack src/Heddle -c Release -o packages
-dotnet pack src/Heddle.Language -c Release -o packages
+dotnet pack -c Release -o packages
 ```
+
+`Heddle.Tool` and `Heddle.LanguageServer` are RID‑specific `dotnet tool` packages, so `dotnet pack`
+builds and publishes each RID for them (a RID‑less `dotnet build --no-build` would miss those outputs).
 
 NuGet feed configuration is in [NuGet.Config](../NuGet.Config).
 

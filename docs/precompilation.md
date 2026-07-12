@@ -8,12 +8,13 @@ loads. Templates are validated by the build (a broken template fails compilation
 `.heddle` position) and become debuggable (real generated C#, real stack traces).
 
 Pre‑compilation is **purely additive and opt‑in**. The runtime stays fully dynamic:
-runtime‑loaded template strings, `:: dynamic`, `@AllowCSharp` runtime compilation, and hot
+runtime‑loaded template strings, `:: dynamic`, `AllowCSharp`/`ExpressionMode.FullCSharp`
+runtime compilation, and hot
 reload all keep working, and precompiled and runtime‑compiled templates coexist in one
 process. The precompiled assembly is a *cache seeded at build time*, never a cage.
 
 > The generated backend must produce **byte‑identical** output to the runtime backend — a
-> differential harness proves it across the whole fixture corpus on every build. The runtime
+> differential test harness proves it across the whole fixture corpus in CI. The runtime
 > path is the semantic reference.
 
 ---
@@ -31,16 +32,19 @@ package stays runtime‑only and unrestricted):
 ```
 
 By default every `**/*.heddle` file in the project (excluding `bin`/`obj`) is picked up as a
-template. Opt individual files out, or add extra ones, with the `HeddleTemplate` item:
+template. Opt individual files out, or add extra ones, with the `HeddleTemplate` item. The
+only item metadata the generator reads is `Key`, which sets both the lookup key **and** the
+generated class name (via `SanitizeName`); to exclude a file, `Remove` it (or disable the
+default glob and include explicitly):
 
 ```xml
 <ItemGroup>
   <!-- disable the default glob and be explicit -->
   <HeddleTemplate Include="Templates/**/*.heddle" />
-  <!-- an import-only file: hashed for staleness, but no entry point emitted -->
-  <HeddleTemplate Update="Templates/_layout.heddle" Precompile="false" />
-  <!-- override the key or generated class name -->
-  <HeddleTemplate Update="Templates/Home.heddle" Key="home" Name="HomePage" />
+  <!-- exclude an import-only file: drop it from the item set so no entry point is emitted -->
+  <HeddleTemplate Remove="Templates/_layout.heddle" />
+  <!-- override the key (this also renames the generated class to `Home`) -->
+  <HeddleTemplate Update="Templates/Home.heddle" Key="home" />
 </ItemGroup>
 <PropertyGroup>
   <EnableDefaultHeddleTemplates>false</EnableDefaultHeddleTemplates>
@@ -62,7 +66,7 @@ so an unset property produces the same options fingerprint as a default‑option
 | `HeddleTrimDirectiveLines` | `true` (default) \| `false` | Trim directive‑only lines (part of the fingerprint). |
 | `HeddleMaxRecursionCount` | positive int, default `100` | Definition‑carrier recursion limit, baked at build. |
 | `HeddleTemplateRoot` | dir, default `$(MSBuildProjectDirectory)` | Root the template key is made relative to. |
-| `HeddleGeneratedNamespace` | default `$(RootNamespace).HeddleTemplates` | Namespace of the generated entry classes. |
+| `HeddleGeneratedNamespace` | default `Heddle.Generated` | Namespace of the generated entry classes. |
 | `HeddleEmitUtf8Pieces` | `false` (default) \| `true` | Emit pre‑encoded `"…"u8` static pieces for the byte sink. |
 
 ---
@@ -74,12 +78,12 @@ e.g. `views/home/index.heddle` → `Views_Home_Index`). Call it directly — com
 model type, no lookup, no validation gauntlet:
 
 ```csharp
-string html = MyApp.HeddleTemplates.Views_Home_Index.Generate(model);
+string html = Heddle.Generated.Views_Home_Index.Generate(model);
 ```
 
 The signature is `Generate(TModel model, object chained = null, object callerData = null)`
-where `TModel` is the declared `@model` type (`object` for `:: dynamic`, none for a
-model‑less template).
+where `TModel` is the declared `@model` type (`object` for `:: dynamic` **and for a
+model‑less template** — the generator always emits an `object model` parameter).
 
 ## The registry — for dynamic call sites
 
@@ -90,15 +94,18 @@ instead. Registration is repeatable and idempotent per assembly:
 using Heddle.Precompiled;
 
 PrecompiledTemplates.Register(typeof(MyApp.Program).Assembly);   // once per assembly
-// (HeddleTemplate.Configure(assembly) also registers, for convenience)
+// Register(assembly) is the only registration path — HeddleTemplate.Configure(assembly)
+// discovers extensions but does NOT register precompiled templates.
 
 // Discovery is a first-class, public API — keys, model types, fingerprints, capabilities:
 foreach (var entry in PrecompiledTemplates.Entries)
     Console.WriteLine($"{entry.Key}  model={entry.ModelType}  precompiled={entry.IsPrecompiled}");
 ```
 
-`TemplateResolver.GetTemplate` consults the registry **before** the dynamic cache and file
-check. On a hit it runs the per‑request validation gauntlet; all pass → a `HeddleTemplate` in
+For direct (`TemplatePathType.None`) lookups, `TemplateResolver.GetTemplate` consults the
+registry **before** the dynamic cache and file check; hosted view/partial‑view search paths
+stay fully dynamic and do not consult the registry. On a hit it runs the per‑request
+validation gauntlet; all pass → a `HeddleTemplate` in
 precompiled‑adapter mode (zero parse, zero compile). A registry **miss** is never a failure —
 the dynamic path proceeds untouched.
 
@@ -120,9 +127,9 @@ Before trusting a precompiled entry the resolver checks it is compatible with th
 On any failure, behavior is controlled by `TemplateOptions.PrecompiledMismatchPolicy`:
 
 - **`Fallback` (default)** — take the unchanged dynamic path and recompile, plus one
-  `PrecompiledTemplates.OnFallback` callback and an `HED7101` warning naming the reason. A
-  silent fallback that quietly re‑adds compile cost is the failure mode this design guards
-  against.
+  `PrecompiledTemplates.OnFallback` callback whose event carries diagnostic id `HED7101` and
+  the reason. A silent fallback that quietly re‑adds compile cost is the failure mode this
+  design guards against.
 - **`Strict`** — an entry that *exists* but fails the gauntlet **throws**
   `PrecompiledMismatchException` (for deployments that must never pay dynamic‑compile cost). A
   plain registry **miss** is not a `Strict` failure — strictness polices divergence, not
@@ -176,7 +183,8 @@ override is refused as `HED7015` — **except** for a `[BranchRole]` custom bran
 
 ## Build‑time diagnostics
 
-Every build‑time condition reports at its `.heddle` position with an `HED7xxx` id:
+Each build‑time condition reports with an `HED7xxx` id. Template‑content conditions report at
+their `.heddle` position; file/key/option‑level conditions report without a source location:
 
 | Id | Meaning |
 | --- | --- |

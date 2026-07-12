@@ -31,7 +31,7 @@ namespace Heddle.Performance
             // var runner = new TextRenderBenchmarks();
             // await runner.Setup();
             // while (true) {
-            //     await runner.RenderTemplateEngine();
+            //     await runner.RenderHeddle();
             // }
             //
             // await runner.Teardown();

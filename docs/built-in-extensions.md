@@ -9,6 +9,14 @@ All names and attributes below were read directly from
 [src/Heddle/Extensions](../src/Heddle/Extensions). To write your own, see
 [Writing Custom Extensions](custom-extensions.md).
 
+> **Inner‑`@` examples need `ExpressionMode.FullCSharp`.** Snippets on this page that embed C#
+> inside a directive (`@int(@model.Comments.Count)`, `@money(@9.99m)`, `@list(@model.…Where…)`,
+> `@guid(@System.Guid.NewGuid())`, `@for(@new ForModel…)`) require the inner‑`@` C# tier. That is
+> the resolver's default for file templates (`TemplateResolver` compiles Views/Partials with
+> `ExpressionMode.FullCSharp`), so the file‑authoring path just works; but `new TemplateOptions()`
+> defaults to `ExpressionMode.Native`, under which inner‑`@` is a compile error. Set
+> `ExpressionMode.FullCSharp` on the options if you compile these directly.
+
 ## How to read these entries
 
 - **Input** — the model value the extension expects (its `[DataType]`). If the actual model
@@ -181,6 +189,8 @@ strongly‑typed `IEnumerable<T>` (the element type is inferred for typed member
 the source implements `ICollection<T>`, the count is used to pre‑size the output buffer.
 
 ```heddle
+@using(){{System.Linq}}                             @* .Where(...) needs System.Linq *@
+
 @list(Articles){{ @article_card() }}                @* each element is an Article *@
 
 @list(Tags){{ <span class="tag">@()</span> }}       @* @() is the current tag string *@
@@ -200,7 +210,7 @@ chained value (referenceable as `chained` in embedded C#, or output directly wit
 common cases need no embedded C# at all:
 
 ```heddle
-@for(3){{ <li>@out()</li> }}        @* renders <li>0</li><li>1</li><li>2</li> *@
+@for(3){{<li>@out()</li>}}          @* renders <li>0</li><li>1</li><li>2</li> *@
 @for(Count){{ ... }}                @* Count is an int member of the model *@
 ```
 
@@ -212,7 +222,7 @@ includes `range`, which builds a `ForModel` — so `@for(range(...))` gives star
 with no new syntax:
 
 ```heddle
-@for(range(2, 8, 3)){{ [@out()] }}  @* [2][5] — start 2, step 3, last-exclusive *@
+@for(range(2, 8, 3)){{[@out()]}}    @* [2][5] — start 2, step 3, last-exclusive *@
 ```
 
 `step` must be positive: a zero or negative literal step is a compile error (**HED4001**), and a
@@ -221,6 +231,7 @@ non‑positive step known only at render throws. See [native expressions](native
 The C# tier still works for computed models:
 
 ```heddle
+@using(){{System.Linq}}                 @* .Count()/.Skip()/.Take() need System.Linq *@
 @for(@new ForModel() { Last = model.Articles.Count(), Step = 3 })
 {{
   <div class="row">
@@ -235,8 +246,12 @@ The C# tier still works for computed models:
 
 ## Formatting
 
-These all derive from `AbstractHtmlExtension` and are `[EncodeOutput]` (except `guid`). Their
-optional body is the **format string**.
+These all derive from `AbstractHtmlExtension` and are `[EncodeOutput]` — except `guid`, a plain
+unencoded `AbstractExtension`. Their optional body is the **format string**.
+
+> Format‑string and culture bodies are captured **verbatim** — leading/trailing spaces inside the
+> `{{ … }}` are **not** trimmed and render literally (an empty‑but‑padded body can even throw, as with
+> `@money`). Keep them tight: `{{MMMM d, yyyy}}`, `{{N0}}`, `{{en-US}}`.
 
 ### `date`
 [DateExtension.cs](../src/Heddle/Extensions/DateExtension.cs) · input: `DateTime` · HTML‑encoded
@@ -245,7 +260,7 @@ Formats a `DateTime` using the body as a .NET date format string (default `"d"`)
 `CultureInfo.InvariantCulture`.
 
 ```heddle
-@date(PublishedOn){{ MMMM d, yyyy }}     @* e.g. June 28, 2026 *@
+@date(PublishedOn){{MMMM d, yyyy}}       @* e.g. June 28, 2026 *@
 @date(PublishedOn)                       @* default short date *@
 ```
 
@@ -255,18 +270,20 @@ Formats a `DateTime` using the body as a .NET date format string (default `"d"`)
 Like `date` but defaults to the `"t"` (short time) format.
 
 ```heddle
-@time(PublishedOn){{ HH:mm }}
+@time(PublishedOn){{HH:mm}}
 ```
 
 ### `int`
 [IntegerExtension.cs](../src/Heddle/Extensions/IntegerExtension.cs) · input: `int` / `long` · HTML‑encoded
 
-Formats an integer; the body is an optional numeric format string. Other numeric types are
-converted to `long` when possible (invariant culture); non‑convertible values render empty.
+Formats an integer; the body is an optional numeric format string. On the typed tier the
+parameter must be statically `int`/`long` — any other type is a compile‑time `HED0004`. Only on the
+**dynamic tier** (a `dynamic`/`object` model) are other numeric types converted to `long` when
+possible (invariant culture), with non‑convertible values rendering empty.
 
 ```heddle
 @int(Year)                          @* 2026 *@
-@int(@model.Comments.Count){{ 0:N0 }}   @* 1,200 *@
+@int(@model.Comments.Count){{N0}}       @* 1,200 *@
 ```
 
 ### `money`
@@ -276,7 +293,7 @@ Formats a `decimal` as currency (`"c"`). The body is an optional **culture name*
 body the current culture is used. Cultures are cached.
 
 ```heddle
-@money(@9.99m){{ en-US }}    @* $9.99 — body is the culture name *@
+@money(@9.99m){{en-US}}      @* $9.99 — body is the culture name *@
 @money(@1234.5m)             @* current culture *@
 ```
 
@@ -292,15 +309,17 @@ Formats a `Guid`; the body is an optional .NET GUID format specifier (`N`, `D`, 
 ```
 
 ### `string`
-[StringExtension.cs](../src/Heddle/Extensions/StringExtension.cs) · input: `string` (or any) · HTML‑encoded
+[StringExtension.cs](../src/Heddle/Extensions/StringExtension.cs) · input: `string` (non‑string on the dynamic tier) · HTML‑encoded
 
 Converts the model to a string. The optional body is a **default/fallback** rendered when the
-model is `null`. Non‑string models are converted with `Convert.ChangeType` (invariant
-culture), falling back to `ToString()`.
+model is `null`. On the typed tier the parameter must be a `string` — a statically non‑string
+parameter is a compile‑time `HED0004`. Only on the **dynamic tier** (a `dynamic`/`object` model)
+are non‑string values converted with `Convert.ChangeType` (invariant culture), falling back to
+`ToString()`.
 
 ```heddle
 @string(Title)
-@string(Author.Name){{ Anonymous }}    @* fallback when Author.Name is null *@
+@string(Author.Name){{Anonymous}}      @* fallback when Author.Name is null *@
 ```
 
 ---
@@ -437,8 +456,10 @@ chained data. This is how a definition surfaces the caller's inline content.
 > `@`-construct is a real transform of the chained value, e.g. `@out(){{<@(this)>}}`.
 
 ```heddle
-<article_card>
-{{ <article><h2>@(Title)</h2>@out()</article> }}    @* @out() drops in the caller's body *@
+@%
+  <article_card>
+  {{ <article><h2>@(Title)</h2>@out()</article> }}    @* @out() drops in the caller's body *@
+%@
 ```
 
 `@out()` is the mechanism behind layouts: a `layout` definition wraps the page chrome around a
@@ -496,12 +517,12 @@ resolve unqualified identifiers.
 ```
 
 ### `import` — removed
-[ImportExtension.cs](../src/Heddle/Extensions/ImportExtension.cs) · name: `import`
+[ImportExtension.cs](../src/Heddle/Extensions/Archived/ImportExtension.cs) · name: `import`
 
 `@import()` has been **removed**. The name is kept registered only as a tombstone so that any
-call site fails with a single positioned [`HED4003`](language-reference.md#imports--) error
+call site fails with a single positioned [`HED4003`](language-reference.md#imports---) error
 naming its replacements, instead of a generic "unknown extension" error. Use
-[`@<<{{ path }}`](language-reference.md#imports--) to share definitions and layouts across
+[`@<<{{ path }}`](language-reference.md#imports---) to share definitions and layouts across
 files, or [`@partial()`](#partial) to embed another template's rendered output inline.
 
 ### `profile`
@@ -553,10 +574,10 @@ passing the current model.
 | `int` | IntegerExtension | `int`/`long` | ✔ | numeric format string |
 | `money` | MoneyExtension | `decimal` | ✔ | culture name |
 | `guid` | GuidExtension | `Guid` | – | GUID format specifier |
-| `string` | StringExtension | `string`/any | ✔ | fallback when null |
-| `attr` | AttrExtension | `string`/any | ✔ | fallback when null (HTML‑attribute escape) |
-| `js` | JsExtension | `string`/any | –² | fallback when null (JS‑string escape) |
-| `url` | UrlExtension | `string`/any | ✔ | fallback when null (URL‑component escape) |
+| `string` | StringExtension | `string`³ | ✔ | fallback when null |
+| `attr` | AttrExtension | `string`³ | ✔ | fallback when null (HTML‑attribute escape) |
+| `js` | JsExtension | `string`³ | –² | fallback when null (JS‑string escape) |
+| `url` | UrlExtension | `string`³ | ✔ | fallback when null (URL‑component escape) |
 | *(empty)* | EmptyExtension | any | profile¹ | optional body, else stringify model |
 | `raw` | EmptyExtension | any | – | trusted‑value opt‑out (never encodes) |
 | `html` | EmptyHtmlExtension | any | ✔ | optional body, else stringify model |
@@ -574,6 +595,10 @@ passing the current model.
 ² `attr`/`url` are `[EncodeOutput]` **encoding leaves** — the Html profile never re‑encodes them.
 `js` is a **raw leaf** (like `@raw`): it escapes for a JS string literal but is never HTML‑entity
 encoded. See [Encoding contexts](#encoding-contexts).
+
+³ Takes a `string`. On the **typed tier** a statically non‑string parameter is a compile‑time
+`HED0004`; a non‑string value is accepted (and stringified) only on the **dynamic tier**
+(`dynamic`/`object` model). See [Encoding contexts](#encoding-contexts).
 
 ---
 

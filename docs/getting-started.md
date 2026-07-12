@@ -9,8 +9,10 @@ engine from C#. If you only want to learn the template syntax, jump to the
 ::: tip Try it live
 Want to play before integrating? Open the
 <a href="demo.html" target="_blank" rel="noreferrer">live editor demo</a> — write Heddle in
-your browser with syntax highlighting and real-time parse-error checking (it checks syntax;
-it does not render output).
+your browser with syntax highlighting and real-time parse-error checking. It syntax-checks
+immediately and, once the WebAssembly engine loads, live-renders your template (native tier)
+into a sandboxed iframe after the first clean analysis; syntax-only checking is the pre-WASM
+fallback.
 :::
 
 ## Prerequisites
@@ -99,7 +101,7 @@ string result = template.Generate(new Greeting { Name = "Ada", Count = 3 });
 ### Compile from a file
 
 Point `TemplateOptions` at a directory and a template name; the engine reads
-`RootPath + TemplateName + FileNamePostfix`:
+`Path.Combine(RootPath, TemplateName + FileNamePostfix)` — no trailing separator needed on `RootPath`:
 
 ```csharp
 var options = new TemplateOptions("home")       // TemplateName = "home"

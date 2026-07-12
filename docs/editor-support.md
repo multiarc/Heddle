@@ -14,9 +14,10 @@ package you can host yourself.
 
 ### VS Code
 
-Install the **Heddle Template Language** extension from the marketplace. It bundles the language
-server, so no separate install is needed. The extension keeps working (TextMate coloring) even when
-the server is unavailable.
+Install the **Heddle Template Language** extension from its VSIX. CI builds a per‑target VSIX with
+the language server bundled in, so grab it from the release/CI artifacts and install it with
+*Extensions: Install from VSIX…* — no separate server install is needed. The extension keeps
+working (TextMate coloring) even when the server is unavailable.
 
 ### The dotnet tool (any editor)
 
@@ -53,8 +54,10 @@ require('lspconfig').heddle.setup {}
 
 ## Configuring
 
-Two configuration channels; a **`.heddle-lsp.json`** at the workspace root wins field‑by‑field over
-client settings, so it is the editor‑agnostic carrier.
+Two configuration channels. When a **`.heddle-lsp.json`** is present at the workspace root it
+**replaces** client settings entirely — it does not merge field‑by‑field, so put every field you
+need in the file (any field you omit falls back to the built‑in default, not to the client
+setting). Because it is a single file, it is the editor‑agnostic carrier.
 
 ```json
 {

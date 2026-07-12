@@ -146,8 +146,10 @@ positive — unlike every other built‑in, `range` **validates** it: a zero or 
 step is a compile error (**HED4001**, positioned at the step argument), and a non‑positive step
 known only at render throws `TemplateProcessingException` with the same message (a zero/negative
 step would never terminate the loop). A host that registers its own `range` governs its own step
-rules — the static check applies only to the built‑in. Calling `@range(1, 5)` standalone is legal
-but renders `ForModel.ToString()` (useless); `range` is meant for `@for(...)`.
+rules — the static check applies only to the built‑in. Calling `@(range(1, 5))` standalone is legal
+but renders `ForModel.ToString()` (useless). Note that a standalone `@fn(...)` accepts only a
+single positional expression, so a multi‑argument call must be wrapped as `@( fn(a, b) )` —
+`@range(1, 5)` written directly is a parse error (**HED0003**). `range` is meant for `@for(...)`.
 
 ### Registering your own
 

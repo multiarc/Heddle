@@ -1,7 +1,9 @@
 # C# API Reference
 
 This page documents the public surface used to compile and render templates from C#. The
-main types live in the `Heddle` namespace:
+main types live in the `Heddle` (`IHeddleTemplate`/`HeddleTemplate`), `Heddle.Data`
+(`TemplateOptions`/`HeddleCompileResult`/`Scope`), and `Heddle.Runtime` (`CompileContext`)
+namespaces:
 
 - [`IHeddleTemplate`](../src/Heddle/IHeddleTemplate.cs) / [`HeddleTemplate`](../src/Heddle/HeddleTemplate.cs) — compile and render.
 - [`TemplateOptions`](../src/Heddle/Data/TemplateOptions.cs) — where to read templates and which features are on.
@@ -132,11 +134,14 @@ don't flush the partial output as if it were complete.
 | `HeddleCompileResult Compile(string document, ExType modelType = null)` | Compile an inline string. |
 | `HeddleCompileResult Recompile(string newDocument, CompileContext context = null)` | Replace the current template with a new string. |
 | `HeddleCompileResult Recompile(ExType newModelType)` | Recompile the current source against a new model type. |
-| `HeddleCompileResult TryCompilation(CompileContext context)` | **Dry run**: parse + type‑check a file but discard the compiled output. |
+| `HeddleCompileResult TryCompilation(CompileContext context)` | **Dry run**: runs the parse and extension/type‑check passes but discards the compiled output. |
 | `HeddleCompileResult TryCompilation(string document, TemplateOptions options = null, ExType modelType = null)` | Dry run for an inline string. |
 
-`TryCompilation` is ideal for CI/linting — it tells you whether a template *would* compile
-without producing a renderer. A template can only be compiled once per instance; compiling an
+`TryCompilation` is useful for CI/linting — it tells you whether a template's parse and
+extension/type‑check passes succeed, without producing a renderer. Note it does **not** run
+the deferred‑finalization or embedded‑C# (Roslyn) steps, so a `FullCSharp` template (or one
+whose delayed subtemplate fails finalization) can pass the dry run and still fail a real
+`Compile`. A template can only be compiled once per instance; compiling an
 already‑compiled instance throws `TemplateInitException`.
 
 ### State properties
@@ -151,19 +156,25 @@ already‑compiled instance throws `TemplateInitException`.
 ### File watching
 
 When `TemplateOptions.EnableFileChangeCheck` is `true` and you compiled from a file, the
-template installs a `FileSystemWatcher` and recompiles on change. Subscribe to these events:
+template installs a `FileSystemWatcher` and exposes these events:
 
 ```csharp
-template.OnFileChanged += (s, e) => { /* recompiled */ };
+template.OnFileChanged += (s, e) => { /* file changed; recompile follows */ };
 template.OnFileDeleted += (s, e) => { /* … */ };
 template.OnFileRenamed += (s, e) => { /* … */ };
 ```
 
+> **Current limitation.** The watcher's `Filter` is built from `TemplateName` **without** the
+> mandatory `FileNamePostfix`, so it never matches the real file on disk (`home` vs.
+> `home.heddle`): these events do not currently fire and recompile‑on‑change does not occur.
+> Do not rely on live recompilation until the filter is corrected.
+
 ### Disposal
 
 `HeddleTemplate` owns its compiled runtime document and any file watcher. Dispose it when done.
-Disposal is deferred safely if a render is in progress (it disposes once the last concurrent
-`Generate` returns).
+Disposal is **best‑effort deferred** while a render is in progress (it aims to dispose once the
+last in‑flight `Generate` returns); the in‑flight counter is not fully synchronized, so avoid
+disposing an instance that is still being rendered concurrently on other threads.
 
 ---
 
@@ -185,11 +196,15 @@ Controls where templates are read from and which features are enabled
 | `AllowCSharp` | `false` | **Obsolete** bridge over `ExpressionMode` (use `ExpressionMode` directly): `true` == `FullCSharp`. Enables embedded C# (`@( @expr )`, `@new`, LINQ, typed `@model()`). Setting `false` leaves `MemberPathsOnly` untouched, otherwise selects `Native`. Reads and writes keep working; new code sets `ExpressionMode`. |
 | `MaxRecursionCount` | `100` | Upper bound on definition recursion depth. |
 | `RenderBudget` | `null` (unlimited) | Per‑render resource caps for untrusted templates: `RenderBudget.MaxOutputChars`, `MaxRenderOps`, and `MaxRenderTime` (each nullable — a null limit is unbounded). `null` (the default) is today's unlimited behavior with **zero render‑path cost** (no wrapper is created). A breach throws `TemplateRenderBudgetException`. Does **not** participate in `Equals`/`GetHashCode` (it changes no bytes of a successful render — same rule as `MaxRecursionCount`). See [Render budgets](#render-budgets). |
-| `EnableFileChangeCheck` | `false` | Install a `FileSystemWatcher` and recompile on file change. |
+| `EnableFileChangeCheck` | `false` | Install a `FileSystemWatcher` on the source file (see [File watching](#file-watching) — recompile-on-change is currently inoperative because the watcher filter omits `FileNamePostfix`). |
 | `ProvideLanguageFeatures` | `false` | Parse in a tooling mode that emits a token list for editors/highlighters (used by the IDE integrations). |
 | `Data` | `null` | Optional ambient data carried on the options. |
 
-The resolved file path is `RootPath + TemplateName + FileNamePostfix` (`FullPath`).
+The file actually read is `Path.Combine(RootPath, TemplateName + FileNamePostfix)`. The
+`FullPath` property is a plain string concatenation (`RootPath + TemplateName + FileNamePostfix`,
+with no path separator) and is not the resolved read path. A non‑empty `FileNamePostfix` is
+**required** for a file compile — `FileReader` throws if it is empty, so the `""` default cannot
+be used to compile from a file.
 
 ```csharp
 var options = new TemplateOptions("home")
@@ -289,7 +304,7 @@ var options = new TemplateOptions(Path.GetFileNameWithoutExtension(path))
 `TemplateResolver` also accepts a default profile and trimming setting:
 `new TemplateResolver(rootPath, checkFileChange, OutputProfile.Html)` and the four‑parameter
 `new TemplateResolver(rootPath, checkFileChange, OutputProfile.Html, trimDirectiveLines: true)`.
-The existing two‑parameter constructor is unchanged and keeps `(Text, false)`; a per‑call
+The two‑parameter constructor uses the 2.0 defaults `(Html, true)`; a per‑call
 `CompileContext`'s options override both resolver defaults, and the resolver caches each
 template under a key suffixed by profile **and** trimming so one resolver can serve every
 combination without a collision.
@@ -315,9 +330,9 @@ Key members:
 | `OutputProfile OutputProfile` | The effective output profile for items compiled from here on. Initialized from `Options.OutputProfile`; flipped by `@profile()`; snapshotted by child contexts. Compile‑time only. |
 | `ExType ScopeType` | The current model type. May be changed by the `@model()` extension during compile. |
 | `ExType RootScopeType` | The root (level‑0) model type. |
-| `bool Compiled` | Whether the embedded‑C# (Roslyn) compilation step has run. |
+| `bool Compiled` | Whether compile finalization (delayed‑extension completion) has run. |
 | `List<HeddleCompileError> CompileErrors` | Accumulated errors. |
-| `List<HeddleCompileWarning> CompileWarnings` | Accumulated warnings (e.g. SLL→LL fallback). |
+| `List<HeddleCompileWarning> CompileWarnings` | Accumulated warnings (e.g. an `HED2002` profile‑after‑output warning). |
 
 `ExType` is the engine's type wrapper; it can be constructed from a `System.Type`
 (implicitly), or from a type *name* plus a set of imported namespaces (this is how
@@ -333,7 +348,7 @@ The outcome of a compile ([HeddleCompileResult.cs](../src/Heddle/Data/HeddleComp
 | --- | --- |
 | `bool Success` | Whether compilation succeeded. |
 | `IReadOnlyCollection<HeddleCompileError> ErrorList` | Errors, each with a resolved line/column position. |
-| `string Document` | The (optimized) source that was compiled. |
+| `string Document` | The source text that was submitted for compilation. |
 | `ParseContext Context` | The parse tree/context (tokens, definitions, output chains). |
 | `override string ToString()` | A newline‑joined, human‑readable error report. |
 
@@ -365,8 +380,11 @@ but it explains the semantics of `@(Name)`, `::`, `@out()`, and the loop index.
 | `ChainedData` | The chained value — what `@out()` emits and what a chain passes along (also the loop index for `@for`/`@list`). |
 | `ParentModelData` | The enclosing scope's model. |
 | `CallerData` | Caller context (the `callerData` passed to `Generate`). |
-| `RootData` | The root model — what `::Member` / `@root` resolve against. |
 | `Renderer` | The output sink. |
+
+The struct also carries `RootData` (the root model — what `::Member` / `@root` resolve
+against), but it is `internal`: it describes the engine semantics only and is not part of the
+public surface external extensions can read.
 
 `Scope` exposes pure transformations (`Parent()`, `Chain()`, `Model()`, …) that extensions use
 to descend into elements or swap model/chained values. See
@@ -380,8 +398,9 @@ to descend into elements or swap model/chained values. See
   `Success` and read `ErrorList` / `ToString()`.
 - **Parse errors** (malformed syntax) are reported by the ANTLR error listener and appear as
   errors with positions. The parser first tries fast SLL prediction and falls back to full LL
-  diagnostics on ambiguity, recording a warning when it does (see
-  [Architecture](architecture.md#2-parsing)).
+  diagnostics on ambiguity, recording a warning when it does — that SLL→LL warning lands on
+  `ParseContext.Warnings` (reachable via `CompileResult.Context.Warnings`), not
+  `CompileContext.CompileWarnings` (see [Architecture](architecture.md#2-parsing)).
 - **Render errors** surface as exceptions from `Generate`
   (`TemplateInitException`, `TemplateCompileException`, and — in DEBUG —
   `TemplateProcessingException` for a model‑type mismatch).
@@ -392,6 +411,7 @@ to descend into elements or swap model/chained values. See
 using System.Reflection;
 using Heddle;
 using Heddle.Data;
+using Heddle.Runtime;   // CompileContext
 
 HeddleTemplate.Configure(typeof(Program).GetTypeInfo().Assembly);
 
@@ -422,7 +442,8 @@ output. The additions live in the `Heddle.Precompiled` namespace:
   diagnostic callback, and the `BindingResolver` hook.
 - `PrecompiledMismatchPolicy` on `TemplateOptions` — `Fallback` (default: recompile + warn) or
   `Strict` (throw when a precompiled entry exists but cannot be plugged).
-- Typed entry points — `{RootNamespace}.HeddleTemplates.{Name}.Generate(model)` — the
+- Typed entry points — `Heddle.Generated.{Name}.Generate(model)` (the default namespace is
+  `Heddle.Generated`, overridable via `HeddleGeneratedNamespace`) — the
   recommended host API for templates known at compile time (compile‑checked model, no lookup).
   Each typed entry also gains the two **sink overloads** — `Generate(model, TextWriter)` and
   `Generate(model, IBufferWriter<byte>)` — mirroring `HeddleTemplate` (same no‑materialization

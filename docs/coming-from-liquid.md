@@ -5,7 +5,10 @@ Heddle looks close enough to be misleading. The delimiters that matter most mean
 here. This page maps the habits that trip people up to their Heddle equivalents; for the full
 picture read the [Language Reference](language-reference.md).
 
-> Every Heddle snippet below is a complete template, verified to compile against **Heddle 2.0.0**.
+> Every Heddle snippet below is a complete template, verified to compile against **Heddle 2.0.0**
+> under default options — **except the `@partial(){{ sidebar }}` snippet**, which additionally
+> requires a configured `RootPath`/`FileNamePostfix` and an existing `sidebar` template on disk at
+> compile time (see [that section](#include--render---vs-partial)).
 > Where a snippet reads model members it declares a `dynamic` model with `@model(){{dynamic}}`;
 > the Liquid snippets are illustrative and need not compile.
 
@@ -62,14 +65,17 @@ transforms you compose definitions rather than piping one scalar through a long 
 
 ```heddle
 @model(){{dynamic}}
-@partial(){{ sidebar }}     @* compiles and renders another template by name at run time *@
+@partial(){{ sidebar }}     @* compiled when the enclosing template compiles; rendered inline at run time *@
 ```
 
 Liquid's `include` and `render` both splice in another template's output. Heddle splits the job:
-[`@partial()`](built-in-extensions.md#partial) compiles and renders a separate template inline at
-run time (the closest match), while [`@<<{{ file }}`](language-reference.md#imports--) is a
-*compile-time definition import* for sharing layouts and reusable blocks. Reach for `@partial()` to
-embed rendered output, `@<<` to share definitions.
+[`@partial()`](built-in-extensions.md#partial) resolves and compiles its target *when the enclosing
+template compiles*, then renders that template's output inline at run time (the closest match), while
+[`@<<{{ file }}`](language-reference.md#imports---) is a *compile-time definition import* for sharing
+layouts and reusable blocks. Reach for `@partial()` to embed rendered output, `@<<` to share
+definitions. Because the target is read at compile time, this snippet needs more than the defaults to
+compile: set `TemplateOptions.RootPath` and `FileNamePostfix`, and have a `sidebar` template on disk —
+a missing partial is a *compile* error here, not a render-time one (unlike Liquid's `include`).
 
 ## `for` / `forloop.index` → `@list` + `@out()`
 

@@ -12,10 +12,18 @@ nullable `Summary` and an `IsArchived` flag. The app‑context recipes assume th
 `Generate` is a small page context:
 
 ```csharp
-class PageContext { Article Article;  Site Site;  string ArticleJson; }
-class Site        { string Name;  string Host;  string BuildNumber;  CultureInfo Culture; }
-// Article { Title, Author, PublishedOn, IsFeatured, IsArchived, string Summary, IList<string> Tags, Comments }
+class PageContext { public Article Article { get; set; }  public Site Site { get; set; }  public string ArticleJson { get; set; } }
+class Site        { public string Name { get; set; }  public string Host { get; set; }  public string BuildNumber { get; set; }  public CultureInfo Culture { get; set; } }
+// Article { Title, Author, PublishedOn, IsFeatured, IsArchived, string Summary, string Url, IList<string> Tags, Comments }
 ```
+
+> **Inner‑`@` recipes need `ExpressionMode.FullCSharp`.** Several recipes below embed C# inside a
+> directive (`@if(@chained == 0)`, `@if(@!string.IsNullOrEmpty(model.Url))`, `@slug(@chained)`,
+> `@(@root.Site.BuildNumber)`, `@list(@model.Tags.Take(...))`). That is the resolver's default for
+> file templates (`TemplateResolver` compiles Views/Partials with `ExpressionMode.FullCSharp`), so
+> the file‑authoring path works as shown; but `new TemplateOptions()` defaults to
+> `ExpressionMode.Native`, under which inner‑`@` is a compile error — set `FullCSharp` if you compile
+> these directly.
 
 ## Recipes
 
@@ -57,22 +65,27 @@ counterpart to passing a value into a definition. See
 
 ## Presence checks and AND conditions
 
-**Problem:** render markup only when a nullable field is set; combine conditions (there is no
-`else`/`elif`).
+**Problem:** render markup only when a nullable field is set; pick between mutually exclusive
+branches; combine conditions.
 
 ```heddle
 @if(Summary){{ <p class="summary">@(Summary)</p> }}
 @ifnot(Summary){{ <p class="muted">No summary yet.</p> }}
 
-@if(IsFeatured)
-{{
-  @ifnot(IsArchived){{ <span class="badge">Featured</span> }}
-}}
+@* mutually exclusive branches — a real branch set *@
+@if(IsFeatured){{ <span class="badge">Featured</span> }}
+@elif(IsArchived){{ <span class="muted">Archived</span> }}
+@else(){{ <span>Regular</span> }}
+
+@* AND — native && in one condition *@
+@if(IsFeatured && !IsArchived){{ <span class="badge">Featured</span> }}
 ```
 
 **Why:** `@if` treats any non‑null, non‑bool value as "present", so `@if(member)` is an
-"if set" check and `@ifnot(member)` an "if absent" check. Nest `@if`/`@ifnot` for AND. The
-bodies render in the caller's context, so `@(Summary)` inside still refers to the article. See
+"if set" check and `@ifnot(member)` an "if absent" check. For mutually exclusive alternatives use
+[`@elif`/`@else`](built-in-extensions.md#conditionals); for AND, native `&&`/`||` combine conditions
+directly (`@if(A && B)`), and nesting `@if`/`@ifnot` remains an alternative. The bodies render in the
+caller's context, so `@(Summary)` inside still refers to the article. See
 [`if`/`ifnot`](built-in-extensions.md#conditionals) and
 [stepping back](language-reference.md#stepping-back-the-parent-context).
 
@@ -91,6 +104,7 @@ bodies render in the caller's context, so `@(Summary)` inside still refers to th
 
 ```heddle
 @* all but the last tag, then the last on its own *@
+@using(){{System.Linq}}                    @* .Take()/.LastOrDefault() need System.Linq *@
 @list(@model.Tags.Take(model.Tags.Count - 1))
 {{
   <li>@()</li>
@@ -169,13 +183,13 @@ definitions into each template that includes it:
 
 ```heddle
 @* any template *@
-@<<{{ helpers.heddle }}          @* slug/thumb_id are now callable below *@
+@<<{{helpers.heddle}}            @* slug/thumb_id are now callable below *@
 <section id="@slug(@chained)">…</section>
 ```
 
 `@<<` is the right tool here: it actually merges the definitions. A name already
 defined before the import is an error, so libraries compose rather than silently override. See
-[Imports](language-reference.md#imports--).
+[Imports](language-reference.md#imports---).
 
 ---
 
@@ -187,7 +201,7 @@ defined before the import is an error, so libraries compose rather than silently
 <link rel="canonical" href="https://@(::Site.Host)/articles/@(Title)">
 <script src="/app/main.js?v=@(@root.Site.BuildNumber)"></script>
 
-@date(PublishedOn){{ @(::Site.Culture.DateTimeFormat.ShortDatePattern) }}
+@date(PublishedOn){{@(::Site.Culture.DateTimeFormat.ShortDatePattern)}}
 ```
 
 **Why:** `::` (template syntax) and `@root` (C#) reach the original model no matter how deep the
@@ -316,12 +330,9 @@ with untrusted text. See [Output profiles](built-in-extensions.md#output-profile
 
 **Problem:** decide where whitespace trimming actually matters.
 
-**Best option — turn on `TrimDirectiveLines` and drop the `@\` boilerplate.** When a whole line
-is nothing but a no‑output directive, the option swallows the line for you:
-
-```csharp
-var options = new TemplateOptions { TrimDirectiveLines = true };
-```
+**`TrimDirectiveLines` handles the boilerplate for you — and it is on by default in 2.0.** When a
+whole line is nothing but a no‑output directive, the option swallows the line, so you write no `@\`
+at all:
 
 ```heddle
 @using(){{System.Linq}}          @* whole line swallowed — no @\ needed *@
@@ -330,7 +341,8 @@ var options = new TemplateOptions { TrimDirectiveLines = true };
 <article>@(Title)</article>
 ```
 
-If you can't enable the option (or need **mid‑line** control), `@\` still works exactly as before:
+If a host explicitly set `TrimDirectiveLines = false` (for 1.x byte‑identical output), or you need
+**mid‑line** control the option doesn't cover, `@\` still works exactly as before:
 
 ```heddle
 @using(){{System.Linq}}@\        @* @\: trims the following whitespace including the newline *@
@@ -394,12 +406,12 @@ content that a call site replaces via a `<name:name>` [override](language-refere
 ```
 
 A call site fills the main region with the `@page_shell()` body and overrides only the regions it
-cares about by re‑declaring them as `<shell_header:shell_header>` (keep the override header and its
-body on **one line** — the compact override form):
+cares about by re‑declaring them as `<shell_header:shell_header>`. The compact one‑line form below is
+a style choice — a multi‑line indented override body renders identically:
 
 ```heddle
 @%
-  @* this page wants a hero header — one-line override form *@
+  @* this page wants a hero header — compact one-line override form (multi-line works too) *@
   <shell_header:shell_header>{{ <header class="hero"><h1>@(Article.Title)</h1></header> }}
 %@
 @page_shell(){{ <article>@(Article.Summary)</article> }}

@@ -55,7 +55,7 @@ public class TextRenderBenchmarks
 
     // D1-R5: Heddle is the ratio baseline for the render suite.
     [Benchmark(Baseline = true)]
-    public async Task RenderTemplateEngine() {
+    public async Task RenderHeddle() {
         await _heddleTest.Run();
     }
 

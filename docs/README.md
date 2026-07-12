@@ -26,12 +26,14 @@ Current version: **2.0.0**. The published version always follows the latest
 
 - **Compiled and strongly typed.** A template is compiled into an execution‑ready document —
   extension calls wired to compiled accessors (member paths to expression‑tree delegates,
-  embedded C# to Roslyn delegates). Member access and embedded C# are checked at compile time,
-  not discovered at render time.
+  embedded C# to Roslyn delegates). With a typed model, member access and embedded C# are checked
+  at compile time rather than discovered at render time; declaring `@model(){{dynamic}}` instead
+  opts into render‑time member binding.
 - **Fast.** In this repository's benchmark run of 2026‑07‑11, Heddle rendered faster than ASP.NET
   Core Razor and allocated less memory (Razor's page is larger and not parity‑checked — the
   like‑for‑like comparison is against the four parity‑checked Liquid/Handlebars engines, which
-  Heddle also leads). See [Architecture → Performance](architecture.md#performance-characteristics)
+  Heddle leads on render time and where it allocates the least or tied‑least memory —
+  Handlebars.Net is within ~0.3 KB). See [Architecture → Performance](architecture.md#performance-characteristics)
   and the [benchmark project](../src/Heddle.Performance).
 - **Composable without coupling.** Reusable templates are declarative extension points, so a
   page can be split into independent pieces recombined by a layout — at no runtime cost — and

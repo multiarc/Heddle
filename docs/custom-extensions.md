@@ -87,7 +87,6 @@ At render time you read data from [`Scope`](../src/Heddle/Data/Scope.cs) and wri
 | `ModelData` | The current model (your parameter value). |
 | `ChainedData` | The chained value — the output of the call to your **right** in a chain (chains run right‑to‑left), and the loop index for iteration extensions. |
 | `ParentModelData` | The enclosing scope's model. |
-| `RootData` | The root model (what `::` / `@root` resolve to). |
 | `CallerData` | Caller context. |
 | `Renderer` | The output sink (`Renderer.Render(string)`). Under the string, `TextWriter`, and UTF‑8 sinks alike — write through `Render(string)` and it just works. |
 
@@ -450,6 +449,15 @@ namespace MyApp.Extensions
 
 Usage in a template: `@upper(Name)`.
 
+> **Precompilation note.** This example overrides `InitStart` (to type the body against the parent
+> model), which is a **runtime‑tier** shape. Because `UpperExtension` is not a `[BranchRole]` extension,
+> a *precompiled* template calling `@upper(...)` draws a build error (`HED7015`) — see
+> [Precompiled mode](#precompiled-mode). If your templates must precompile, omit the `InitStart` override
+> (accepting the default typing) or keep such templates on the dynamic tier.
+>
+> The example also derives from `AbstractHtmlExtension`/`[EncodeOutput]`, whose HTML encoding is **not**
+> reproduced by precompiled binding (see the warning under [Precompiled mode](#precompiled-mode)).
+
 Compare with the real [`StringExtension`](../src/Heddle/Extensions/StringExtension.cs) and
 [`DateExtension`](../src/Heddle/Extensions/DateExtension.cs), which follow the same shape.
 
@@ -469,10 +477,11 @@ Declared in [src/Heddle/Attributes](../src/Heddle/Attributes):
 | `[BranchRole(BranchRole.Opener\|Continuation\|Terminal)]` | class | Declares the extension's position in a branch set (opener/continuation/terminal), giving it the same set semantics as the built‑in `@if`/`@elif`/`@else` family. Compile‑time only; inherited by subclasses. See [Building your own branch set](#building-your-own-branch-set). |
 | `[NotEncode]` | model property | Reserved, currently **inert** — the attribute type ships but has no effect (its only check runs against extension classes, never properties). Do not rely on it; its per‑property meaning is revisited with typed props. |
 | `[Hidden]` | model property | Hide a model property from template resolution. |
-| `[Options("fieldName")]` | member | Override the name a property is addressed by in templates. |
+| `[Options("fieldName")]` | member | Reserved, currently **inert** — `FieldName` is stored but never read for member resolution (which consults only `[Hidden]`). Intended to override the name a property is addressed by in templates; do not rely on it yet. |
 
 `[ExtensionName]` is `AllowMultiple = true`, so one class can answer to several names. A later
-registration of the same name **replaces** an earlier one.
+registration of the same name **replaces** an earlier one only if the newcomer derives from it or
+carries `[ExtensionReplace]`; otherwise registration throws `TemplateOverrideException`.
 
 ---
 
@@ -522,10 +531,30 @@ reproduces:
   is expected to override `InitStart` (its canonical parent‑model shape), so it is *not* a
   `HED7015` error — a bodied call to it degrades quietly to the dynamic tier instead (see
   [Building your own branch set](#building-your-own-branch-set)). Keep custom logic in `ProcessData`/`RenderData` — the
-  render‑time methods both backends share. A plain extension (the common case) needs no changes.
+  render‑time methods both backends share. A plain, non‑encoding extension (the common case) needs no changes.
+
+**Build‑time binding covers only bodiless custom calls.** A bodiless value transform (`@ext(x)`) binds
+directly to your extension at build time; a call that carries a `{{ … }}` body falls back to the dynamic
+tier for that call site (a bodied body's model‑typing is extension‑specific, so the generator cannot bind
+it conservatively). Bodied calls therefore run identically to the dynamic path.
+
+> **Warning — precompiled binding does NOT reproduce `[EncodeOutput]` / `AbstractHtmlExtension` encoding.**
+> On the dynamic tier, an extension deriving from `AbstractHtmlExtension` and marked `[EncodeOutput]`
+> HTML‑encodes its output. Precompiled binding hard‑codes `RenderType.Raw` for every custom extension and
+> never reads `[EncodeOutput]`, so the *same* extension renders its output **unencoded** once its template
+> is precompiled — a silent loss of HTML encoding, i.e. an XSS vector for untrusted data. There is **no
+> build‑time diagnostic** for this. If you rely on `[EncodeOutput]`/`AbstractHtmlExtension` for encoding,
+> either **encode explicitly inside your `ProcessDataInternal`/`RenderDataInternal` override** (so output is
+> safe on both tiers) or **exclude such templates from precompilation**. The same gap affects the built‑in
+> `@html`. (Scope: the unsafe path is a *bodiless* call — a `{{ … }}` body falls back to the encoding
+> dynamic tier — with *no* `InitStart`/`CompleteInit` override, since an override is caught loudly as
+> `HED7015`. Built‑ins `@string`/`@money`/`@date`/`@time`/`@int` are unaffected because they override a
+> compile‑time hook and fall back to the dynamic tier.)
 
 An extension name that resolves to no `[ExtensionName]` type in any referenced assembly is a
-build error (`HED7006`). Extensions that only ever run through the dynamic path are unaffected.
+build error (`HED7006`) **when the call carries a `{{ … }}` body**; a bodiless unresolvable call falls back
+to the dynamic/function path silently (a delegate‑registered function could satisfy it at run time).
+Extensions that only ever run through the dynamic path are unaffected.
 
 ## Declaratively exporting functions
 
