@@ -1,0 +1,8 @@
+@%
+<n(x: double = 1)>{{[@(x)]}} :: PropArticle
+<opt(tag: string = null)>{{[@(tag)]}} :: PropArticle
+<flag(active: bool = true, label: string)>{{[@(active)|@(label)]}} :: PropArticle
+<pad(width: int = -4)>{{[@(width)]}} :: PropArticle
+<blank()>{{[blank]}} :: PropArticle
+%@
+@n(Article)@opt(Article)@flag(Article, label: "L")@pad(Article)@blank(Article)

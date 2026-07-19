@@ -12,6 +12,10 @@ namespace Heddle.Runtime.Parameters
             _constantResult = constantResult;
         }
 
+        /// <summary>The folded constant value (phase 5 reads this to bake constant prop arguments into the
+        /// frozen prototype at compile time).</summary>
+        internal object Value => _constantResult;
+
         public void Dispose()
         {
         }

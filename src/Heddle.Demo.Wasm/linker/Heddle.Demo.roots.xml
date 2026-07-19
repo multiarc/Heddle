@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Phase 9 D5 — the engine reflection roots for the trimmed WASM publish. These members are reached only by
+  reflection (Activator-created extensions via TemplateFactory; registry MethodInfos), so the trimmer cannot see
+  the reference and would strip them without these roots. Deliberately roots NOTHING in ContextCompilation — the
+  D4 substitution must be free to eliminate the guarded Roslyn branch, and the purity gate asserts the result.
+  The boot smoke test (D10) is the completeness check: an over-trimmed member fails completion/render visibly there.
+-->
+<linker>
+  <assembly fullname="Heddle">
+    <type fullname="Heddle.Extensions.*" />                          <!-- Activator-created extensions -->
+    <type fullname="Heddle.Runtime.Expressions.BuiltInFunctions" />  <!-- registry MethodInfos (phase 1 default set) -->
+  </assembly>
+</linker>

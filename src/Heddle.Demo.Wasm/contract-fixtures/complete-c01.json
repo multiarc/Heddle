@@ -1,0 +1,18 @@
+{
+  "name": "complete-c01",
+  "description": "Typed member completion inside @list(Articles) body: the scope type is Article, so Article members (not Blog's), then the fixed keyword items, then one item per registered function.",
+  "type": "completion",
+  "text": "@using(){{Heddle.Demo.Models}}\n@model(){{Blog}}\n@list(Articles){{ @( }}\n",
+  "version": 1,
+  "caretAfter": "@(",
+  "expectProperties": [
+    { "label": "Author", "detail": "Author", "insertText": "Author" },
+    { "label": "Comments", "detail": "ICollection<Comment>", "insertText": "Comments" },
+    { "label": "IsFeatured", "detail": "Boolean", "insertText": "IsFeatured" },
+    { "label": "PublishedOn", "detail": "DateTime", "insertText": "PublishedOn" },
+    { "label": "Tags", "detail": "IList<String>", "insertText": "Tags" },
+    { "label": "Title", "detail": "String", "insertText": "Title" }
+  ],
+  "expectKeywords": [ "this", "true", "false", "null" ],
+  "expectFunctions": [ "upper", "lower", "range", "len", "abs", "format" ]
+}

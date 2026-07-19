@@ -1,0 +1,5 @@
+@%
+<card(style: string = "plain", compact: bool = false)>{{[@(style)|@(compact)]}} :: PropArticle
+<fancy(tone: string = "info", style: string = "wide"):card>{{[@(style)|@(compact)|@(tone)]}} :: PropArticle
+%@
+@fancy(Article)@fancy(Article, style: "narrow", tone: "loud")

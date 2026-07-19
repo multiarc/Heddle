@@ -1,0 +1,5 @@
+@%
+<inner>{{[in:@out()]}} :: PropArticle
+<outer(out:: PropArticle)>{{@inner(){{<B>@(Title)</B>}}}} :: PropArticle
+%@
+@outer(Article){{<OUT:@(Title)>}}

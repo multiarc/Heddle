@@ -1,0 +1,7 @@
+@model(){{Article}}
+@partial(){{_header}}
+<article>
+  <h2>@(Title)</h2>
+  <p>by @(Author) — rating @for(Stars){{*}}</p>
+</article>
+@partial(){{_footer}}

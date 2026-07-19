@@ -1142,7 +1142,9 @@ namespace Heddle.Performance.TestSuite.Extensions
                 </div>");
         }
 
-        private static readonly Dictionary<string, string> Areas;
+        // internal (was private) so the D1 competitor twins can render the identical area
+        // fragments through their own engines and be asserted byte-parity to Heddle's output.
+        internal static readonly Dictionary<string, string> Areas;
 
         public override object ProcessData(in Scope scope)
         {

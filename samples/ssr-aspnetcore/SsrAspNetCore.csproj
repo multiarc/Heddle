@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Heddle.Samples.SsrAspNetCore</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\tools\SampleCapture.cs" Link="SampleCapture.cs" />
+    <ProjectReference Include="..\..\src\Heddle\Heddle.csproj" />
+  </ItemGroup>
+
+</Project>

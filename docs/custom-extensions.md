@@ -46,10 +46,26 @@ public interface IExtension : IDisposable
    referenced template here, after the main pass).
 3. **`ProcessData` / `RenderData` (render time)** — called per render. Implement **both**:
    `RenderData` streams to `scope.Renderer` (the fast path), `ProcessData` returns a string
-   (used when a parent needs your result as a value, e.g. inside a chain).
+   (used when a parent needs your result as a value, e.g. inside a chain). `ProcessData`'s
+   contract is a `string`: return the textual value, or `string.Empty` when there is no textual
+   value here (e.g. a render‑only extension). The value/string rail coerces any non‑string
+   result to empty output (`as string ?? string.Empty`) — a deliberate guard against a stray
+   object's default `ToString()` leaking into concatenated output, but it also silently drops an
+   otherwise‑meaningful boxed scalar returned instead of a string. Stringify at your own boundary
+   (as `@int`/`@string`/`@guid` do) — do not rely on the rail to convert a non‑string value for you.
 
 > Implement both `ProcessData` and `RenderData` with equivalent behavior. The engine chooses
-> between them depending on context (direct rendering vs. value composition).
+> between them depending on context (direct rendering vs. value composition). `ProcessData` must
+> return a `string` (or `string.Empty`) — a non‑string result is silently coerced to empty output,
+> not stringified for you.
+
+> **Directive‑style extensions and `TrimDirectiveLines`.** An extension whose `InitStart`
+> returns `null` produces no output element and the compiler removes its block from the
+> document (the `@using`/`@model`/`@profile` pattern). Such blocks automatically participate in
+> [directive‑line trimming](language-reference.md#whitespace-trimming-): when
+> `TemplateOptions.TrimDirectiveLines` is on and the block occupies its line by itself, the
+> whole line is swallowed. You get this for free — trimming keys on the removal mechanism, not
+> on a name list, so there is nothing extra to implement.
 
 ### Helpers from the base class
 
@@ -71,9 +87,8 @@ At render time you read data from [`Scope`](../src/Heddle/Data/Scope.cs) and wri
 | `ModelData` | The current model (your parameter value). |
 | `ChainedData` | The chained value — the output of the call to your **right** in a chain (chains run right‑to‑left), and the loop index for iteration extensions. |
 | `ParentModelData` | The enclosing scope's model. |
-| `RootData` | The root model (what `::` / `@root` resolve to). |
 | `CallerData` | Caller context. |
-| `Renderer` | The output sink (`Renderer.Render(string)`). |
+| `Renderer` | The output sink (`Renderer.Render(string)`). Under the string, `TextWriter`, and UTF‑8 sinks alike — write through `Render(string)` and it just works. |
 
 `Scope` is a readonly struct with pure transforms used to build the scope for your subtemplate:
 
@@ -97,6 +112,332 @@ foreach (var item in (IEnumerable)scope.ModelData)
     index++;
 }
 ```
+
+### Writing to the sink: spans and values
+
+`scope.Renderer.Render(string)` is all most extensions ever need, and it works unchanged against
+every sink (string, `TextWriter`, and the UTF‑8 `IBufferWriter<byte>`). When you already have a
+`ReadOnlySpan<char>` or a formattable value, opt into the allocation‑free helpers in
+[`ScopeRendererExtensions`](../src/Heddle/Data/ScopeRendererExtensions.cs):
+
+```csharp
+using Heddle.Data;
+
+// Span write — dispatches to the sink's native span path when available, else materializes a string.
+scope.Renderer.Render(mySpan);
+
+// Value format — no intermediate string on the span/UTF-8 tiers (net6+):
+//   IUtf8SpanFormattable straight to bytes on a UTF-8 sink (net8+), else ISpanFormattable into a
+//   stackalloc char span, else ToString(format, provider). Identical characters on every tier.
+scope.Renderer.Render(count, "N0", CultureInfo.InvariantCulture);   // where count : struct, ISpanFormattable
+```
+
+The capability interfaces behind this are additive and opt‑in — you never have to implement them:
+
+| Interface | Adds | Implemented by |
+| --- | --- | --- |
+| `IScopeRenderer` | `Render(string)` | every renderer (unchanged) |
+| `ISpanScopeRenderer : IScopeRenderer` | `Render(ReadOnlySpan<char>)` | the sink adapters and `HtmlEncodedRenderer` |
+| `IUtf8ScopeRenderer : ISpanScopeRenderer` | `RenderUtf8(ReadOnlySpan<byte>)` | the UTF‑8 sink only |
+
+`HtmlEncodedRenderer` is deliberately **not** an `IUtf8ScopeRenderer`: pre‑encoded bytes must never
+skip an active encode proxy, so under `@html` a value routes through the string bridge (encode,
+then transcode) and is single‑encoded by construction.
+
+> **Never cache the renderer.** `scope.Renderer` is a **per‑render** artifact — the string path
+> builds a fresh one each call, and the sink overloads construct a new adapter per render. Read it
+> from the `Scope` you were handed; never store it in a field. Extension instances are shared across
+> concurrent renders and must stay stateless (all per‑render state lives in the `Scope` lineage).
+
+---
+
+## Extension parameters (`[Prop]`)
+
+A custom extension can declare named, typed input **parameters** with class‑level `[Prop]`
+attributes — the same contract definition props use, so the call shape and diagnostics are
+identical to a definition with props:
+
+```csharp
+[ExtensionName("grid")]
+[Prop("columns", typeof(int), Default = 3)]   // optional (has a default)
+[Prop("span", typeof(int))]                   // required (no default)
+[Prop("label", typeof(string), Optional = true)]   // optional with a null default
+public sealed class GridExtension : AbstractExtension
+{
+    public override object ProcessData(in Scope scope)
+    {
+        int columns = (int) scope.GetParameter("columns");        // throws for an undeclared name
+        if (scope.TryGetParameter("label", out var label)) { … }  // false (never throws) when absent
+        …
+    }
+}
+```
+
+Callers pass parameters by name — `@grid(Photos, columns: 4, span: 2)` — and get the same
+positioned diagnostics definitions get: unknown name (HED5001), missing required (HED5002), type
+mismatch (HED5003), duplicate argument (HED5004). Named arguments on an extension that declares
+**no** `[Prop]` remain an error (HED5005). `[Prop]` is inherited by subclasses; a subclass may
+re‑declare an inherited parameter with an assignable (narrowing) type and a new default. Values are
+bound once at compile — an all‑constant call site shares one frozen array across renders (no
+per‑render allocation). Parameter‑declaring extensions precompile on the bodiless path exactly as
+definitions with props do; bodied calls fall back to the dynamic tier as all bodied custom calls do.
+
+---
+
+## The local context channel
+
+Sibling extensions can coordinate declaratively through a small per‑body **local context frame**
+reached from `Scope`:
+
+```csharp
+scope.Publish(string key, object value);          // last write wins within the frame
+bool scope.TryRead(string key, out object value); // false (never throws) when absent
+```
+
+This is the general mechanism behind the built‑in [branch sets](built-in-extensions.md#branch-sets):
+`@if`/`@ifnot`/`@elif` publish a `BranchState` and `@else` reads and clears it. Use it for any
+"publish in document order, read by a later sibling" pattern — zebra striping, tab sets,
+first‑match‑wins pickers.
+
+**Rules of the road:**
+
+- **Declare participation with `[ScopeChannel]`.** A body is provisioned with a frame at compile
+  time **iff** its document statically contains a `[ScopeChannel]` extension. Mark every extension
+  that calls `Publish`/`TryRead` with `[ScopeChannel]` (it is inherited by subclasses). Forget it
+  and `Publish` throws `InvalidOperationException`; `TryRead` returns `false`. This keeps templates
+  that use no channel allocation‑identical — they never provision a frame.
+- **Keys are ordinal, case‑sensitive strings; `null` values are allowed.** The prefix `heddle.` is
+  reserved for the engine — only `BranchState.ReservedKey` (`"heddle.branch"`) may be published
+  under it, and only with a `BranchState` value. Namespace your own keys (e.g. `"myapp.row"`).
+- **Frames never cross a body boundary.** Each `@list`/`@for` iteration, nested body, `@partial`,
+  and definition invocation starts a fresh frame; a body never sees its parent's. Coordination is
+  strictly across **siblings** of one body execution (like CSS counters), never parent→child.
+- **Thread‑safety.** A frame belongs to one body execution of one render invocation on one thread,
+  so `Publish`/`TryRead` are unsynchronized by design. As always, never store a `Scope` on your
+  extension instance or use it after the call that received it — extension instances are shared
+  across concurrent renders.
+- **Bodies execute only through the funnel.** Any extension that runs a subtemplate body does so
+  via the protected `GetInnerResult(in Scope)` / `RenderInnerResult(in Scope)` — the single seam
+  that installs the body's frame. Custom extensions inherit this for free.
+
+### Example — a publisher/consumer pair (zebra striping)
+
+One `[ScopeChannel]` extension both reads the previous row parity and publishes the next, so a run
+of siblings alternates:
+
+```csharp
+[ExtensionName("zebra")]
+[ScopeChannel]
+public class ZebraExtension : AbstractExtension
+{
+    private const string Key = "myapp.zebra.row";
+
+    public override object ProcessData(in Scope scope) => Next(scope);
+    public override void RenderData(in Scope scope) => scope.Renderer.Render(Next(scope));
+
+    private static string Next(in Scope scope)
+    {
+        bool odd = scope.TryRead(Key, out var value) && value is bool b && b;
+        scope.Publish(Key, !odd);       // flip for the next sibling
+        return odd ? "odd" : "even";
+    }
+}
+```
+
+`@zebra()@zebra()@zebra()` renders `evenoddeven`; inside a `@list` body each row starts fresh.
+
+### Example — a `BranchState` participant that drives a set
+
+`BranchState` and its reserved key are public, so a custom matcher can **satisfy** a branch set —
+publishing `new BranchState(true)` makes a following `@else` render nothing:
+
+```csharp
+[ExtensionName("satisfy")]
+[ScopeChannel]
+public class SatisfyExtension : AbstractExtension
+{
+    public override object ProcessData(in Scope scope)
+    {
+        scope.Publish(BranchState.ReservedKey, new BranchState(true));
+        return string.Empty;
+    }
+
+    public override void RenderData(in Scope scope)
+    {
+        scope.Publish(BranchState.ReservedKey, new BranchState(true));
+    }
+}
+```
+
+`@satisfy()@else(){{ fallback }}` renders nothing — the set is already satisfied. A matcher could
+just as well read the state with `scope.TryRead(BranchState.ReservedKey, out var v)` to render
+alongside a set.
+
+### Building your own branch set
+
+The built‑in `@if`/`@ifnot`/`@elif`/`@else` family is not special‑cased in the engine — each is an
+ordinary extension that declares its **position in a branch set** with `[BranchRole]`. Attach the
+same attribute to your own extensions and a complete `@begin`/`@between`/`@finish` set gets identical
+set semantics: adjacency stripping, orphan diagnostics, the terminal‑optional rule, and locals‑frame
+provisioning — with no engine changes.
+
+There are three roles:
+
+| Role | Built‑ins | Position in the set |
+| --- | --- | --- |
+| `BranchRole.Opener` | `@if`, `@ifnot` | **First.** Opens a fresh set and publishes the initial `BranchState`. Needs no predecessor; never diagnosed. |
+| `BranchRole.Continuation` | `@elif`/`@elseif` | **Middle.** Requires a preceding opener or continuation in the same scope; may re‑publish an updated `BranchState`. Never first, never last. |
+| `BranchRole.Terminal` | `@else` | **Last (optional).** Closes the set and clears its state. Takes no condition. |
+
+**The contract the roles enforce** (the same rules the built‑ins already obey):
+
+- **Opener** starts a fresh set and is never diagnosed (R1). It publishes *opportunistically* — see
+  the `[ScopeChannel]` note below.
+- **Continuation** requires a preceding opener/continuation. An orphaned continuation warns
+  (**HED3002**) and then behaves as an opener (R2). It may change the published value entirely inside
+  its own body (R3).
+- **Terminal** closes the set (R4). An orphaned terminal is a compile **error** (**HED3003**) where
+  statically visible, and the extension's own render‑time exception otherwise. A terminal is
+  **optional** — a set may validly end on an opener or continuation (R5) — and takes **no condition**;
+  a non‑empty parameter warns (**HED3004**) and is evaluated then ignored (R6).
+- Whitespace‑only text between the blocks of one set is stripped silently; non‑whitespace draws
+  **HED3001** (R7).
+- A definition may **shadow** a branch name — a shadowed leftmost call is never a branch (R8). A
+  non‑branch block between siblings ends stripping adjacency but leaves the open set intact, so a
+  following terminal still binds (R9). A roleless `[ScopeChannel]` participant (like `@satisfy`
+  above) suppresses orphan diagnostics for the rest of the set (R10).
+- Roles interoperate **across families** — the machine is role‑based, not name‑based — so
+  `@if(...)…@between(...)…@else(...)` is one valid set.
+
+**`[ScopeChannel]` goes on Continuation and Terminal, not on the Opener** (R11). Continuation and
+terminal extensions *read* the channel (`TryRead`), and locals‑frame provisioning keys off
+`[ScopeChannel]`; omit it and their read always misses at render time (the engine warns —
+**HED3005** at runtime, **HED7016** at build time — but cannot fix it for you). An opener publishes
+*opportunistically*: it carries no `[ScopeChannel]`, so a set with no continuation/terminal sibling
+provisions no frame and the publish is a harmless no‑op — this is exactly what keeps templates that
+use no branch allocation‑identical.
+
+**Type the body against the parent model** (R12). A branch body renders under the *enclosing* model,
+not the condition value, so override `InitStart` with the canonical form all four built‑ins use:
+
+```csharp
+public override ExType InitStart(InitContext init, ExType dataType, ExType chainedType, ExType parent)
+{
+    return base.InitStart(init, parent, chainedType, null);
+}
+```
+
+**Worked example — `@begin`/`@between`/`@finish`** (mirrors the trio kept honest by
+`BranchRoleUniversalityTests`). All three drive the set through the *public* `Scope` channel
+(`Publish`/`TryRead` with `BranchState.ReservedKey`) — never the engine's internal branch
+conveniences:
+
+```csharp
+using System;
+using Heddle.Attributes;
+using Heddle.Core;
+using Heddle.Data;
+using Heddle.Exceptions;
+
+// Opener — canonical InitStart; publishes the initial BranchState. No [ScopeChannel].
+[ExtensionName("begin")]
+[BranchRole(BranchRole.Opener)]
+public class BeginExtension : AbstractExtension
+{
+    public override ExType InitStart(InitContext init, ExType dataType, ExType chainedType, ExType parent)
+        => base.InitStart(init, parent, chainedType, null);
+
+    public override object ProcessData(in Scope scope)
+    {
+        bool satisfied = Truthy(scope.ModelData);
+        TryPublish(scope, satisfied);                      // opportunistic (see R11)
+        return satisfied ? GetInnerResult(scope.Parent()) : string.Empty;
+    }
+
+    public override void RenderData(in Scope scope)
+    {
+        bool satisfied = Truthy(scope.ModelData);
+        TryPublish(scope, satisfied);
+        if (satisfied) RenderInnerResult(scope.Parent());
+    }
+
+    private static bool Truthy(object v) => v != null && (!(v is bool b) || b);
+
+    private static void TryPublish(in Scope scope, bool satisfied)
+    {
+        try { scope.Publish(BranchState.ReservedKey, new BranchState(satisfied)); }
+        catch (InvalidOperationException) { /* no frame => no reader; nothing to publish */ }
+    }
+}
+
+// Continuation — reads the channel, republishes, may render. Carries [ScopeChannel].
+[ExtensionName("between")]
+[ScopeChannel]
+[BranchRole(BranchRole.Continuation)]
+public class BetweenExtension : AbstractExtension
+{
+    public override ExType InitStart(InitContext init, ExType dataType, ExType chainedType, ExType parent)
+        => base.InitStart(init, parent, chainedType, null);
+
+    public override object ProcessData(in Scope scope)
+    {
+        if (AlreadySatisfied(scope)) return string.Empty; // an earlier branch fired — leave it unchanged
+        bool truthy = scope.ModelData is bool b ? b : scope.ModelData != null;
+        scope.Publish(BranchState.ReservedKey, new BranchState(truthy));
+        return truthy ? GetInnerResult(scope.Parent()) : string.Empty;
+    }
+
+    public override void RenderData(in Scope scope)
+    {
+        if (AlreadySatisfied(scope)) return;
+        bool truthy = scope.ModelData is bool b ? b : scope.ModelData != null;
+        scope.Publish(BranchState.ReservedKey, new BranchState(truthy));
+        if (truthy) RenderInnerResult(scope.Parent());
+    }
+
+    private static bool AlreadySatisfied(in Scope scope)
+        => scope.TryRead(BranchState.ReservedKey, out var v) && v is BranchState s && s.Satisfied;
+}
+
+// Terminal — reads the channel, renders when unsatisfied, throws when no set is open. Carries [ScopeChannel].
+[ExtensionName("finish")]
+[ScopeChannel]
+[BranchRole(BranchRole.Terminal)]
+public class FinishExtension : AbstractExtension
+{
+    public override ExType InitStart(InitContext init, ExType dataType, ExType chainedType, ExType parent)
+        => base.InitStart(init, parent, chainedType, null);
+
+    public override object ProcessData(in Scope scope)
+    {
+        if (!scope.TryRead(BranchState.ReservedKey, out var v) || !(v is BranchState s))
+            throw new TemplateProcessingException("'@finish' is a branch terminal with no matching opener in this scope.");
+        return s.Satisfied ? string.Empty : GetInnerResult(scope.Parent());
+    }
+
+    public override void RenderData(in Scope scope)
+    {
+        if (!scope.TryRead(BranchState.ReservedKey, out var v) || !(v is BranchState s))
+            throw new TemplateProcessingException("'@finish' is a branch terminal with no matching opener in this scope.");
+        if (!s.Satisfied) RenderInnerResult(scope.Parent());
+    }
+}
+```
+
+`@begin(A){{a}}@between(B){{b}}@finish(){{c}}` now behaves exactly like
+`@if(A){{a}}@elif(B){{b}}@else(){{c}}`. The role is `Inherited = true`: a subclass of `BeginExtension`
+with a new `[ExtensionName]` and no re‑attribution is still an Opener.
+
+Because a custom terminal's render‑time orphan message is yours to phrase, throw a
+`TemplateProcessingException` when the read misses (as `@finish` does) — the engine's HED3003 covers
+only the statically visible case.
+
+**Precompilation.** Custom branch sets are fully functional on the runtime (dynamic) tier — the
+set‑*structuring* rules above apply on both tiers because classification is role‑based everywhere.
+Only the pinned branch *emission* is reserved for the engine's own built‑ins; a bodied call to a
+custom branch extension simply falls back quietly to the dynamic tier (no `HED7015` error — the
+`InitStart` override is the canonical shape here, not a mistake), and renders identically with full
+role semantics.
 
 ---
 
@@ -141,6 +482,15 @@ namespace MyApp.Extensions
 
 Usage in a template: `@upper(Name)`.
 
+> **Precompilation note.** This example overrides `InitStart` (to type the body against the parent
+> model), which is a **runtime‑tier** shape. Because `UpperExtension` is not a `[BranchRole]` extension,
+> a *precompiled* template calling `@upper(...)` draws a build error (`HED7015`) — see
+> [Precompiled mode](#precompiled-mode). If your templates must precompile, omit the `InitStart` override
+> (accepting the default typing) or keep such templates on the dynamic tier.
+>
+> The example also derives from `AbstractHtmlExtension`/`[EncodeOutput]`, whose HTML encoding is **not**
+> reproduced by precompiled binding (see the warning under [Precompiled mode](#precompiled-mode)).
+
 Compare with the real [`StringExtension`](../src/Heddle/Extensions/StringExtension.cs) and
 [`DateExtension`](../src/Heddle/Extensions/DateExtension.cs), which follow the same shape.
 
@@ -152,17 +502,20 @@ Declared in [src/Heddle/Attributes](../src/Heddle/Attributes):
 
 | Attribute | Target | Purpose |
 | --- | --- | --- |
-| `[ExtensionName("name")]` | class | The verb used in templates (`@name(...)`). Required. The empty name `""` is reserved for the unnamed `@(...)` extension. |
+| `[ExtensionName("name")]` | class | The verb used in templates (`@name(...)`). Required. The empty name `""` is the unnamed `@(...)` carrier; `raw` is its always‑verbatim alias. |
 | `[DataType(typeof(T))]` | class | The model type the extension expects. Repeatable (e.g. `int` *and* `long` on `IntegerExtension`). |
 | `[ChainedType(typeof(T))]` | class | The expected chained‑input type. |
-| `[EncodeOutput]` | class | HTML‑encode the output by default (pairs with `AbstractHtmlExtension`). |
+| `[EncodeOutput]` | class | HTML‑encode the output (pairs with `AbstractHtmlExtension`). This encodes under **both** output profiles — it is independent of `OutputProfile`, which only governs the unnamed `@(...)` carrier. Keep `[EncodeOutput]` on value formatters that emit user text; leave it off for containers that merely forward a body (so encoding stays at the emitting leaf). |
 | `[ExtensionReplace]` | class | Marks an extension intended to replace another of the same name. |
-| `[NotEncode]` | model property | Mark a *model* property as pre‑trusted so its value isn't HTML‑encoded. |
+| `[BranchRole(BranchRole.Opener\|Continuation\|Terminal)]` | class | Declares the extension's position in a branch set (opener/continuation/terminal), giving it the same set semantics as the built‑in `@if`/`@elif`/`@else` family. Compile‑time only; inherited by subclasses. See [Building your own branch set](#building-your-own-branch-set). |
+| `[Prop("name", typeof(T))]` | class | Declares one typed, named input **parameter** the caller passes by name (`@grid(Photos, columns: 4)`) — the identical call shape a definition with props accepts, with the identical diagnostics. One attribute per parameter (`AllowMultiple = true`); inherited by subclasses. Optional when `Default = value` is set (or `Optional = true` for a null default); required otherwise. Read at render via `Scope.TryGetParameter`/`Scope.GetParameter`. |
+| `[NotEncode]` | model property | Reserved, currently **inert** — the attribute type ships but has no effect (its only check runs against extension classes, never properties). Do not rely on it; its per‑property meaning is revisited with typed props. |
 | `[Hidden]` | model property | Hide a model property from template resolution. |
-| `[Options("fieldName")]` | member | Override the name a property is addressed by in templates. |
+| `[Options("fieldName")]` | member | Reserved, currently **inert** — `FieldName` is stored but never read for member resolution (which consults only `[Hidden]`). Intended to override the name a property is addressed by in templates; do not rely on it yet. |
 
 `[ExtensionName]` is `AllowMultiple = true`, so one class can answer to several names. A later
-registration of the same name **replaces** an earlier one.
+registration of the same name **replaces** an earlier one only if the newcomer derives from it or
+carries `[ExtensionReplace]`; otherwise registration throws `TemplateOverrideException`.
 
 ---
 
@@ -191,6 +544,98 @@ Two steps:
 
 `Configure` walks the given assembly and its references, so exporting from any referenced
 assembly is sufficient as long as that assembly is reachable from the one you pass.
+
+## Precompiled mode
+
+When you [pre‑compile templates](precompilation.md) at build time, a custom extension is
+**bound from its referenced assembly, never inlined** — a security or logic patch reaches
+precompiled templates by updating the package, no regeneration. For a template that uses your
+extension to precompile, the extension must satisfy the same contract precompiled binding
+reproduces:
+
+- **A parameterless constructor.** The generator constructs one shared, pre‑built instance per
+  call site (`new YourExtension()`); no `Activator`, no registry lookup at run time.
+- **No reliance on runtime registry mutation.** The instance is built once and never mutated
+  after binding; extensions that expect to be re‑registered or reconfigured per render are not
+  supported.
+- **No `InitStart`/`CompleteInit` override** *(outside the engine assembly)*. Those are
+  compile‑time hooks the build‑time backend runs the *base* behavior of; an override could run
+  arbitrary compile‑time logic the generator cannot evaluate, so a template binding such an
+  extension is a build error (`HED7015`). **Exception:** a `[BranchRole]` custom branch extension
+  is expected to override `InitStart` (its canonical parent‑model shape), so it is *not* a
+  `HED7015` error — a bodied call to it degrades quietly to the dynamic tier instead (see
+  [Building your own branch set](#building-your-own-branch-set)). Keep custom logic in `ProcessData`/`RenderData` — the
+  render‑time methods both backends share. A plain, non‑encoding extension (the common case) needs no changes.
+
+**Build‑time binding covers only bodiless custom calls.** A bodiless value transform (`@ext(x)`) binds
+directly to your extension at build time; a call that carries a `{{ … }}` body falls back to the dynamic
+tier for that call site (a bodied body's model‑typing is extension‑specific, so the generator cannot bind
+it conservatively). Bodied calls therefore run identically to the dynamic path.
+
+> **Warning — precompiled binding does NOT reproduce `[EncodeOutput]` / `AbstractHtmlExtension` encoding.**
+> On the dynamic tier, an extension deriving from `AbstractHtmlExtension` and marked `[EncodeOutput]`
+> HTML‑encodes its output. Precompiled binding hard‑codes `RenderType.Raw` for every custom extension and
+> never reads `[EncodeOutput]`, so the *same* extension renders its output **unencoded** once its template
+> is precompiled — a silent loss of HTML encoding, i.e. an XSS vector for untrusted data. There is **no
+> build‑time diagnostic** for this. If you rely on `[EncodeOutput]`/`AbstractHtmlExtension` for encoding,
+> either **encode explicitly inside your `ProcessDataInternal`/`RenderDataInternal` override** (so output is
+> safe on both tiers) or **exclude such templates from precompilation**. The same gap affects the built‑in
+> `@html`. (Scope: the unsafe path is a *bodiless* call — a `{{ … }}` body falls back to the encoding
+> dynamic tier — with *no* `InitStart`/`CompleteInit` override, since an override is caught loudly as
+> `HED7015`. Built‑ins `@string`/`@money`/`@date`/`@time`/`@int` are unaffected because they override a
+> compile‑time hook and fall back to the dynamic tier.)
+
+An extension name that resolves to no `[ExtensionName]` type in any referenced assembly is a
+build error (`HED7006`) **when the call carries a `{{ … }}` body**; a bodiless unresolvable call falls back
+to the dynamic/function path silently (a delegate‑registered function could satisfy it at run time).
+Extensions that only ever run through the dynamic path are unaffected.
+
+## Declaratively exporting functions
+
+Registered functions (the native‑expression helpers of
+[native expressions](native-expressions.md)) can also be exported **declaratively** from an
+assembly, so the same set is visible to the host at runtime, to the editor tooling, and — in a
+build‑time compilation — to the source generator. One attribute, three readers.
+
+1. **Export** the function container(s) with the assembly‑level attribute
+   [`ExportFunctions`](../src/Heddle/Attributes/ExportFunctionsAttribute.cs). A container is a
+   `public static` class; **every** public static method it declares becomes one registrable
+   function under its lowercase‑invariant method name (`TitleCase` → `titlecase`). Make any helper
+   that must not be exported non‑public — the container is the unit of export.
+
+   ```csharp
+   using Heddle.Attributes;
+
+   [assembly: ExportFunctions(typeof(MyApp.TemplateFunctions))]
+   // or several: [assembly: ExportFunctions(typeof(A), typeof(B))]
+
+   namespace MyApp
+   {
+       public static class TemplateFunctions
+       {
+           public static string TitleCase(string value) => /* … */;   // → titlecase(string)
+       }
+   }
+   ```
+
+   Eligibility is exactly the [`FunctionRegistry.Register`](csharp-api.md) rule set: static, closed
+   (no open generics), non‑`void`, no `ref`/`out`/pointer parameters. An ineligible method or a
+   non‑public/non‑static container is a host programming error (`ArgumentException`).
+
+2. **Register** the exports into your function registry at startup — before the first compile:
+
+   ```csharp
+   var functions = new FunctionRegistry();                    // starts with the built‑ins
+   functions.RegisterFrom(typeof(Program).Assembly);          // add every [ExportFunctions] export
+   var options = new TemplateOptions { Functions = functions };
+   ```
+
+`RegisterFrom` goes through the exact `Register(string, MethodInfo)` path — replace on an exact
+signature, overload otherwise, the same ranked overload resolution. Calling it during startup keeps
+the runtime registry identical to what the editor's one‑shot workspace scan sees, so completion,
+hover, and diagnostics match your host's compile. Purely runtime `Register(name, delegate)`
+registrations remain host‑only (invisible to the editor) — export them declaratively to share them.
+See [editor support](editor-support.md) for the editor side.
 
 ---
 

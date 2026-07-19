@@ -1,0 +1,50 @@
+# Integration demo gallery: every sample is a CI job with golden assertions.
+# A red job here is an integration regression in the owning phase's feature.
+name: Heddle Samples
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'samples/**'
+      - 'src/**'
+      - '.github/workflows/samples.yml'
+  pull_request:
+    branches: [ "main" ]
+    paths:                          # identical list, repeated verbatim — path filters
+      - 'samples/**'                # are per-trigger; keep both lists in sync
+      - 'src/**'
+      - '.github/workflows/samples.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  sample:
+    strategy:
+      fail-fast: false          # one broken sample must not mask the others
+      matrix:
+        sample:
+          - ssr-aspnetcore
+          - definition-library
+          - dynamic-models
+          - sandboxed-user-templates
+          - html-safe-output
+          - custom-extensions
+          - component-props-slots
+          - codegen-t4-successor
+          - precompiled-app
+          - streaming-ssr
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: 10.0.x
+    - name: Comparer self-test
+      run: bash samples/tools/compare-golden-selftest.sh
+    - name: Run sample (capture mode)
+      run: dotnet run --project samples/${{ matrix.sample }} -c Release -- --capture out
+    - name: Compare against goldens
+      run: bash samples/tools/compare-golden.sh samples/${{ matrix.sample }}

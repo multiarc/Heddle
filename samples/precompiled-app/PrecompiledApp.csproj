@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Phase 7 generator props (defaults + CompilerVisible properties/metadata). Imported explicitly because we
+       reference the generator by project, not by NuGet package. -->
+  <Import Project="..\..\src\Heddle.Generator\build\Heddle.Generator.props" />
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Heddle.Samples.Precompiled</RootNamespace>
+    <!-- Emit generated sources so they can be captured as a golden. -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>generated</CompilerGeneratedFilesOutputPath>
+    <EnableDefaultHeddleTemplates>false</EnableDefaultHeddleTemplates>
+    <!-- receipt.heddle stays dynamic (mixed mode) — precompiled invoice + dynamic receipt. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The generator re-emits these each build; excluding the folder keeps them from being compiled twice. -->
+    <Compile Remove="generated\**\*.cs" />
+    <Compile Include="..\tools\SampleCapture.cs" Link="SampleCapture.cs" />
+    <ProjectReference Include="..\..\src\Heddle\Heddle.csproj" />
+    <!-- Build the generator (so its output DLLs exist) but do NOT add its own assembly as a runtime reference. -->
+    <ProjectReference Include="..\..\src\Heddle.Generator\Heddle.Generator.csproj"
+                      ReferenceOutputAssembly="false" />
+    <!-- A ProjectReference package NuGet normally bundles the generator + its generation-time deps into
+         analyzers/dotnet/cs; via ProjectReference we add them as analyzers by hand so the generator can parse. -->
+    <!-- GeneratePathProperty gives $(PkgAntlr4_Runtime_Standard) for the analyzer include below; Antlr is also a
+         normal (transitive) runtime dependency of the engine, used by the dynamic-twin compile. -->
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Analyzer Include="..\..\src\Heddle.Generator\bin\$(Configuration)\netstandard2.0\Heddle.Generator.dll" />
+    <Analyzer Include="..\..\src\Heddle.Generator\bin\$(Configuration)\netstandard2.0\Heddle.Language.dll" />
+    <Analyzer Include="$(PkgAntlr4_Runtime_Standard)\lib\netstandard2.0\Antlr4.Runtime.Standard.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <HeddleTemplate Include="templates\invoice.heddle" />
+    <HeddleTemplate Include="templates\receipt.heddle" />
+  </ItemGroup>
+
+  <!-- Phase 7 generator targets (maps HeddleTemplate items to AdditionalFiles). Imported last. -->
+  <Import Project="..\..\src\Heddle.Generator\build\Heddle.Generator.targets" />
+
+</Project>

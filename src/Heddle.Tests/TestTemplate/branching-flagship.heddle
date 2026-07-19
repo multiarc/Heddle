@@ -1,0 +1,3 @@
+<div class="badge">@if(IsFeatured){{<b>Featured</b>}}
+@elif(IsArchived){{<i>Archived</i>}}
+@else(){{Regular}}</div>

@@ -1,0 +1,14 @@
+{
+  "name": "complete-c04-props",
+  "description": "Named-argument (prop) completion at a definition call site: the card definition's declared props with their default declarations; insertText carries the 'name: ' with trailing space.",
+  "type": "completion",
+  "text": "@using(){{Heddle.Demo.Models}}\n@model(){{Article}}\n@%\n<card(style: string = \"plain\", compact: bool = false)>{{<h2>@(Title)</h2>}} :: Article\n%@\n@card(this, )\n",
+  "version": 1,
+  "caretAfter": "this, ",
+  "expectProps": [
+    { "label": "style", "detail": "string = \"plain\"", "insertText": "style: " },
+    { "label": "compact", "detail": "bool = false", "insertText": "compact: " }
+  ],
+  "expectKeywords": [],
+  "expectFunctions": []
+}

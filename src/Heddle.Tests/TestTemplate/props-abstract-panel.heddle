@@ -1,0 +1,4 @@
+@%
+<panel(style: string)>{{[@(style)]}}
+%@
+@panel(Article, style: "a")@panel(Menu, style: "b")

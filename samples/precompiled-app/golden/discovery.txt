@@ -1,0 +1,2 @@
+templates/invoice.heddle  model=Invoice  precompiled=True
+templates/receipt.heddle  model=Invoice  precompiled=True

@@ -1,0 +1,2 @@
+<a href="/search?q=@url(Query)" title="@attr(Title)">@attr(Title)</a>
+<script>var label = "@js(Label)";</script>

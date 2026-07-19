@@ -22,7 +22,10 @@ namespace Heddle.Extensions {
 
         public override void RenderData(in Scope scope)
         {
-            scope.Renderer.Render(InnerTemplate?.Generate(scope.ModelData, scope.ChainedData));
+            // Phase 8 D11: stream through the caller's renderer instead of materializing the partial's whole output as
+            // a string. The null third argument is callerData — the pre-phase two-argument Generate call also passed
+            // none, so this is argument-for-argument identical, and byte-identity is pinned by the golden corpus.
+            InnerTemplate?.Render(scope.ModelData, scope.ChainedData, null, scope.Renderer);
         }
 
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
@@ -47,10 +50,27 @@ namespace Heddle.Extensions {
         public override void CompleteInit(CompileScope newScope, ParseContext parseContext)
         {
             InnerTemplate = new HeddleTemplate();
+
+            // Phase 6 D25 (stamp site 3): partials AddRange the child compile's errors the same coordinate-foreign
+            // way imports do, so mark them with a shared origin at the @partial site for facade re-anchoring.
+            bool markProvenance = newScope.Options.ProvideLanguageFeatures;
+            int ceMark = markProvenance ? newScope.CompileErrors.Count : 0;
+
             var result = InnerTemplate.Compile(newScope.CompileContext);
             if (!result.Success)
             {
                 newScope.CompileErrors.AddRange(result.Errors);
+            }
+
+            if (markProvenance)
+            {
+                var origin = new ImportOrigin(newScope.Options.FullPath, Position);
+                var errors = newScope.CompileErrors;
+                for (int i = ceMark; i < errors.Count; i++)
+                {
+                    if (errors[i].ImportOrigin == null)
+                        errors[i].ImportOrigin = origin;
+                }
             }
         }
 

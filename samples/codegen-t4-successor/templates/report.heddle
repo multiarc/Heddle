@@ -1,0 +1,6 @@
+@using(){{Heddle.Samples.Codegen}}
+@model(){{BuildInfo}}
+// AUTO-GENERATED build report — do not edit.
+Project:  @(Project)
+Version:  @(Version)
+Commit:   @(Commit)

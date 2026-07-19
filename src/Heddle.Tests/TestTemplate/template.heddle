@@ -49,7 +49,7 @@
                 Name of something
             </th>
         </tr>
-		@for(@new ForModel() { Last = model.Products.Count(), Step = 3 })
+		@for(@new Heddle.Models.Range(0, model.Products.Count(), 3))
 		{{
 			<div>
 				@list(@model.Products.Skip(chained).Take(3))

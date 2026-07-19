@@ -9,6 +9,7 @@ namespace Heddle.Extensions
     /// <para>Optional parameter represents string to show if condition is false</para>
     /// </summary>
     [ExtensionName("ifnot")]
+    [BranchRole(BranchRole.Opener)]
     public class IfNotExtension : AbstractExtension
     {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
@@ -18,18 +19,10 @@ namespace Heddle.Extensions
 
         public override object ProcessData(in Scope scope)
         {
-            if (scope.ModelData == null)
-            {
-                var parentData = scope.Parent();
-                return GetInnerResult(parentData);
-            }
+            bool satisfied = !BranchCondition.IsTruthy(scope.ModelData);
+            scope.PublishBranch(new BranchState(satisfied));
 
-            if (!(scope.ModelData is bool))
-            {
-                return string.Empty;
-            }
-
-            if (!(bool) scope.ModelData)
+            if (satisfied)
             {
                 var parentData = scope.Parent();
                 return GetInnerResult(parentData);
@@ -40,7 +33,10 @@ namespace Heddle.Extensions
 
         public override void RenderData(in Scope scope)
         {
-            if (scope.ModelData == null || scope.ModelData is bool data && !data)
+            bool satisfied = !BranchCondition.IsTruthy(scope.ModelData);
+            scope.PublishBranch(new BranchState(satisfied));
+
+            if (satisfied)
             {
                 var parentData = scope.Parent();
                 RenderInnerResult(parentData);

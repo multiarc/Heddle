@@ -1,0 +1,1 @@
+@list(Items){{@if(IsFeatured){{F}}@elif(IsArchived){{A}}@else(){{R}}}}

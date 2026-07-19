@@ -45,7 +45,11 @@ namespace Heddle.Extensions
 
             if (scope.ModelData is DateTime date)
             {
+#if NET6_0_OR_GREATER
+                scope.Renderer.Render(date, dateFormat, CultureInfo.InvariantCulture);   // phase 8 D10 (still DateTime, not TimeSpan)
+#else
                 scope.Renderer.Render(date.ToString(dateFormat, CultureInfo.InvariantCulture));
+#endif
             }
         }
     }

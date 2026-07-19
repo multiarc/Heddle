@@ -1,0 +1,4 @@
+@using(){{Heddle.Samples.Precompiled}}
+@model(){{Invoice}}
+Invoice #@(Number) for @(Customer)
+Total: @(Amount)

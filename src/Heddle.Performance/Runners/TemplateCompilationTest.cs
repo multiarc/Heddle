@@ -13,7 +13,7 @@ namespace Heddle.Performance.Runners
             (new TemplateOptions("home") {
                 FileNamePostfix = ".heddle",
                 RootPath = @"TestTemplates",
-                AllowCSharp = true
+                ExpressionMode = ExpressionMode.FullCSharp
             }));
             if (!test.CompileResult.Success) {
                 Console.Write(test.CompileResult.ToString());
@@ -38,7 +38,7 @@ namespace Heddle.Performance.Runners
                 (new TemplateOptions("template") {
                     FileNamePostfix = ".heddle",
                     RootPath = @"TestTemplates",
-                    AllowCSharp = true
+                    ExpressionMode = ExpressionMode.FullCSharp
                 }));
                 target.Dispose();
             }

@@ -2,10 +2,11 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net6.0;net8.0;net10.0</TargetFrameworks>
-    <Version>1.0.0$(VersionSuffix)</Version>
+    <Version>2.0.0$(VersionSuffix)</Version>
     <Product>Heddle</Product>
     <Description>Text Template Engine</Description>
     <PackageId>Heddle</PackageId>
+    <IncludeSymbols>true</IncludeSymbols>
     <LangVersion>latest</LangVersion>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
@@ -17,6 +18,12 @@
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="6.0.2" />
     <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="6.0.36" />
+    <!-- Phase 8 WI2: pin the (currently transitive) System.Memory dependency explicitly for
+         IBufferWriter<byte>, BuffersExtensions.Write, and the span/Encoder APIs the sink adapters use. -->
+    <PackageReference Include="System.Memory" Version="4.6.3" />
+    <!-- B2: TemplateOptions.Encoder is System.Text.Encodings.Web.TextEncoder — in-box on net6.0+, but a package
+         reference on netstandard2.0 (and its net48 consumers, who resolve it transitively from this nupkg). -->
+    <PackageReference Include="System.Text.Encodings.Web" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' ">
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.9.2" />
@@ -39,6 +46,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Phase 9 D4: the C#-tier feature-switch substitution. Inert unless a trimmed publish sets
+         Heddle.CSharpTierEnabled=false; then ILLink drops the whole Microsoft.CodeAnalysis graph. -->
+    <EmbeddedResource Include="ILLink.Substitutions.xml">
+      <LogicalName>ILLink.Substitutions.xml</LogicalName>
+    </EmbeddedResource>
     <None Remove="LanguageTemplates\CSharpClassTemplate.tcs" />
     <EmbeddedResource Include="LanguageTemplates\CSharpClassTemplate.tcs" />
     <None Remove="LanguageTemplates\CSharpPreparseTemplate.tcs" />

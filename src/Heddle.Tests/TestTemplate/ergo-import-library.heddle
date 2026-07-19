@@ -1,0 +1,8 @@
+@%
+<lib_badge>
+{{<b>lib</b>}}
+<lib_footer> -> ()
+{{F}}
+%@
+STATIC-IN-LIB
+@lib_badge()

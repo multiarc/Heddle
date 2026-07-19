@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <!-- Phase 9 D5: the demo picker reflects over these models for completion/hover/render, so the whole
+         assembly is trim-rooted by the WASM host (TrimmerRootAssembly). Keep it POCO-only. -->
+  </PropertyGroup>
+
+</Project>

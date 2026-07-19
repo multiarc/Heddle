@@ -1,0 +1,12 @@
+@%
+  <regr_hdr>{{ <header>DEFAULT-HEADER</header> }}
+  <regr_ftr>{{ <footer>DEFAULT-FOOTER</footer> }}
+  <regr_shell>
+  {{
+    <body>
+      @regr_hdr()
+      <main>@out()</main>
+      @regr_ftr()
+    </body>
+  }}
+%@
