@@ -17,7 +17,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v6
         with:
           # The multi-targeted test suite runs net6.0/net8.0/net10.0/net48; the runner image
           # no longer ships the EOL .NET 6 (and may drop 8) runtime, so install them explicitly
@@ -32,7 +32,7 @@ jobs:
         run: dotnet test src/Heddle.Tests/Heddle.Tests.csproj -c Release --no-build
       - name: Test language services
         run: dotnet test src/Heddle.LanguageServices.Tests/Heddle.LanguageServices.Tests.csproj -c Release --no-build
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: JS editor-artifact harness (highlight / beautify / completions)
@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
         # Framework-dependent + R2R per-RID packs cross-pack from one runner (phase 6 D19).
@@ -71,10 +71,10 @@ jobs:
         target: [win32-x64, win32-arm64, linux-x64, linux-arm64, alpine-x64, darwin-x64, darwin-arm64]
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Map VS Code target to .NET RID
