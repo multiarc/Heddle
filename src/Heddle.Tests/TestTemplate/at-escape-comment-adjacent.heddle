@@ -1,0 +1,6 @@
+@%
+<badge>
+{{B}}
+%@
+top:@@*c1*@badge()
+@if(true){{sub:@@*c2*@badge()}}

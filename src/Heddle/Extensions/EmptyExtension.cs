@@ -5,6 +5,7 @@ using Heddle.Data;
 namespace Heddle.Extensions
 {
     [ExtensionName("")]
+    [ExtensionName("raw")]
     public class EmptyExtension : AbstractExtension
     {
         public override object ProcessData(in Scope scope)

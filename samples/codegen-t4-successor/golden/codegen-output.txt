@@ -1,0 +1,6 @@
+
+
+// AUTO-GENERATED build report — do not edit.
+Project:  Heddle
+Version:  2.0.0
+Commit:   deadbeef

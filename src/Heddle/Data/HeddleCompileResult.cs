@@ -6,17 +6,6 @@ using Heddle.Language;
 
 namespace Heddle.Data
 {
-    public class LinePosition
-    {
-        public int Offset { get; set; }
-        public int Line { get; set; }
-        public int LineLength { get; set; }
-
-        public override string ToString()
-        {
-            return $"{Line},{Offset}:{LineLength}";
-        }
-    }
 
     public sealed class HeddleCompileResult
     {

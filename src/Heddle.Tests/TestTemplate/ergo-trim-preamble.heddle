@@ -1,0 +1,9 @@
+@using(){{Heddle.Tests.Data}}
+@using(){{System.Linq}}
+@* page metadata *@
+@model(){{TestDataStructure}}
+@%
+<badge>
+{{<b>NEW</b>}}
+%@
+<h1>@badge()</h1>

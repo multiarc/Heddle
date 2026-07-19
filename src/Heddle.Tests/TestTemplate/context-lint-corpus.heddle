@@ -1,0 +1,22 @@
+<a title="@(X)">row1</a>
+<a title="@attr(X)">row2</a>
+<p>@(X)</p>
+<a title="@raw(X)">row4</a>
+<script>var n = "@(X)";</script>
+<a href="/s?q=@(X)">row6</a>
+<!-- @(X) -->
+@%
+<t>
+{{ @(X) }}
+%@
+<a title="@t()">row8</a>
+<a href="@(FullUrl)">row9</a>
+<a title='@(X)'>row10</a>
+<script src="@(X)"></script>
+<script>for (var i = 0; i < n; i++) { x = @(X); }</script>
+<img src="/img/@(Id)/thumb.png">
+<span data-n="@(Count > 0)@(Label)">row21</span>
+<script src="a>@(X)">row22</script>
+<script data-x="a>b" src="/s?q=@(X)">row23</script>
+<script>x=1</scriptx>@(X)</script>
+<!-- <script> --><p>@(X)</p>

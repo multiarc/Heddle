@@ -19,9 +19,12 @@ TextMate scope names**, any color theme renders it without per‑theme configura
 
 ## Token → scope mapping
 
-The grammar mirrors the token families the Ace highlighter assigns (the segment after the
-`heddle-*.` state prefix in the reference). Standard TextMate scopes are chosen so themes color
-each family sensibly.
+The grammar mirrors the **v1 directive** token families the Ace highlighter assigns (the segment
+after the `heddle-*.` state prefix in the reference). Standard TextMate scopes are chosen so themes
+color each family sensibly. The v2 expression‑level tokens — numeric/string/language literals inside
+calls, `variable.parameter` for props and named arguments, prop‑default constants, and
+native‑expression operators — are classified only by the Ace mode; the shipped TextMate grammar does
+not yet cover them, so they render unclassified under it.
 
 | Construct | Example | Ace family | TextMate scope |
 | --- | --- | --- | --- |
@@ -40,17 +43,29 @@ each family sensibly.
 | Default‑out | `->` | `keyword.operator` | `keyword.operator.default-out.heddle` |
 | Accept type | `:: Article` | `keyword.operator` + `storage.type` | `keyword.operator.type.heddle`, `storage.type.heddle` |
 | Import | `@<<{{ … }}` | `keyword.operator` + `constant.other` | `keyword.operator.import.heddle`, `constant.other.import-path.heddle` |
-| HTML island | `@{` `}@` | `keyword.paren` | `keyword.operator.paren.*.heddle` |
+| Raw block | `@{` `}@` | `keyword.paren` | `keyword.operator.paren.*.heddle` |
 | Line directive | `@:` | `keyword` | `keyword.control.line.heddle` |
 | Comment | `@* … *@` | `comment.block` | `comment.block.heddle` |
 | Whitespace trim | `@\` | `comment.block` | `comment.block.whitespace-trim.heddle` |
-| Literal `@` | `@@` | — | `constant.character.escape.heddle` |
 
 > **Scope of a TextMate grammar.** TextMate grammars are regex/stack based and cannot fully
-> reproduce the Ace highlighter's mode stack (the eight‑mode lexer that disambiguates, e.g.,
+> reproduce the Ace highlighter's mode stack (the 13‑mode lexer that disambiguates, e.g.,
 > `:` as chain delimiter vs. inheritance separator in every position). The grammar covers the
 > distinctive constructs faithfully for reading; the Ace mode remains the reference for
 > interactive editing.
+
+A few known drifts between the two assets:
+
+- **`@\` whitespace‑trim.** The TextMate grammar matches the real single‑backslash `@\` token, but
+  the Ace reference's whitespace‑trim rules currently require *two* backslashes (`@\\`) and so never
+  match the actual token — the table row above describes TextMate behavior, not the Ace mode.
+- **`@{ … }@` raw block.** By the language it is emitted **verbatim** (not parsed). The Ace mode
+  honors this (plain HTML embed, no Heddle rules), but the TextMate grammar still parses Heddle
+  directives inside it, so an `@(Title)` written in a raw block is mis‑colored as a live directive.
+- **`@@` is the literal‑`@` escape.** The TextMate grammar's rule that colors `@@` as a literal‑`@`
+  escape is **correct**: `@@` in text (and in subtemplate bodies) emits a single literal `@`. The
+  one exception is `@@` immediately followed by `*`, which is directive‑`@` + comment‑start
+  (`@*…*@`), not an escape — see the [language reference](language-reference.md#text-and-the--escape).
 
 ## Using the grammar
 

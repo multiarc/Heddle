@@ -20,11 +20,22 @@ namespace Heddle.Runtime.Parameters
             IEnumerable<(Type type, PropertyInfo property)> getModelParameter)
         {
             var inputParameter = Expression.Parameter(typeof(object));
+            var body = BuildNullSafePropertyChain(inputParameter, getModelParameter);
+            return Expression.Lambda<Func<object, object>>(Expression.Convert(body, typeof(object)), inputParameter);
+        }
 
+        /// <summary>
+        /// Builds the null-safe property-hop chain over <paramref name="objectInput"/> (an object-typed
+        /// expression). A hop off a null reference yields <c>default(T)</c> of the hop's property type.
+        /// Shared by the member tier and the native-expression tier so both hop identically.
+        /// </summary>
+        internal static Expression BuildNullSafePropertyChain(Expression objectInput,
+            IEnumerable<(Type type, PropertyInfo property)> getModelParameter)
+        {
             Expression result = null;
             foreach (var parameter in getModelParameter)
             {
-                var input = result ?? Expression.Convert(inputParameter, parameter.type);
+                var input = result ?? Expression.Convert(objectInput, parameter.type);
                 if (parameter.type.IsValueType)
                 {
                     result = Expression.MakeMemberAccess(input, parameter.property);
@@ -42,7 +53,7 @@ namespace Heddle.Runtime.Parameters
             if (result == null)
                 throw new ArgumentException();
 
-            return Expression.Lambda<Func<object, object>>(Expression.Convert(result, typeof(object)), inputParameter);
+            return result;
         }
 
         public void Dispose()

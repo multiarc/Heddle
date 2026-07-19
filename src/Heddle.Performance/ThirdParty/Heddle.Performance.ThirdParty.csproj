@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    D3-R3 fallback harness. This project vendors the Fluid repository's benchmark scenario
+    (Fluid.Benchmarks) UNMODIFIED and adds an idiomatic Heddle entry, so the head-to-head numbers
+    use third-party methodology even while the upstream PR (see PREP-UPSTREAM-PR.md) is unmerged.
+
+    Upstream: https://github.com/sebastienros/fluid  (MIT) — see THIRD-PARTY-NOTICES.md
+    Pinned at commit 1fa7c0bc0d86b51279272da4438a802650b8a89b (2026-06-22), Fluid.Benchmarks/.
+
+    Isolation: references only the Heddle engine (ProjectReference) — the engine gains no packages.
+    Every competitor package is pinned here, at the exact versions the upstream harness pins
+    (Fluid Directory.Packages.props @ the same commit): BenchmarkDotNet 0.15.8, Scriban 7.2.5,
+    DotLiquid 2.3.197, Handlebars.Net 2.1.6. Fluid itself is the released Fluid.Core 2.31.0
+    (upstream builds it from its own source tree via ProjectReference).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Matches the upstream Fluid.Benchmarks TFM (net10.0-only) so the vendored code and its
+         package versions compile against the exact framework the upstream methodology targets. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <SignAssembly>false</SignAssembly>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <!-- The vendored engine benchmark packages resolve pre-release-tagged transitive deps on some
+         feeds; NU5104 is a pack-time advisory and this project never packs (IsPackable=false). -->
+    <NoWarn>$(NoWarn);NU5104</NoWarn>
+    <RootNamespace>Fluid.Benchmarks</RootNamespace>
+    <AssemblyName>Heddle.Performance.ThirdParty</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- No engine dependency changes: only a project reference to the engine under test. -->
+    <ProjectReference Include="..\..\Heddle\Heddle.csproj" />
+  </ItemGroup>
+
+  <!-- Competitor engines + BenchmarkDotNet, pinned to the upstream harness versions. -->
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
+    <!-- The vendored Fluid.Benchmarks at the pinned commit targets the Fluid 3.0 API
+         (TemplateOptions.OutputBufferSize, StringComparers.CamelCase). Its matching released
+         package is Fluid.Core 3.0.0-beta.5, so the vendored FluidBenchmarks.cs compiles unmodified. -->
+    <PackageReference Include="Fluid.Core" Version="3.0.0-beta.5" />
+    <PackageReference Include="Scriban" Version="7.2.5" />
+    <PackageReference Include="DotLiquid" Version="2.3.197" />
+    <PackageReference Include="Handlebars.Net" Version="2.1.6" />
+  </ItemGroup>
+
+  <!-- The vendored template assets, embedded under the upstream logical names so the vendored,
+       unmodified BaseBenchmarks.cs finds them via GetManifestResourceStream("Fluid.Benchmarks.*").
+       product.heddle is the Heddle entry's template (added, not vendored). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Vendor\product.liquid" LogicalName="Fluid.Benchmarks.product.liquid" />
+    <EmbeddedResource Include="Vendor\product.mustache" LogicalName="Fluid.Benchmarks.product.mustache" />
+    <EmbeddedResource Include="Vendor\blogpost.liquid" LogicalName="Fluid.Benchmarks.blogpost.liquid" />
+    <EmbeddedResource Include="product.heddle" LogicalName="Fluid.Benchmarks.product.heddle" />
+  </ItemGroup>
+
+  <!-- Keep BenchmarkDotNet output out of source control if a full benchmark run is ever executed. -->
+  <ItemGroup>
+    <Compile Remove="BenchmarkDotNet.Artifacts\**" />
+    <EmbeddedResource Remove="BenchmarkDotNet.Artifacts\**" />
+    <None Remove="BenchmarkDotNet.Artifacts\**" />
+  </ItemGroup>
+
+</Project>

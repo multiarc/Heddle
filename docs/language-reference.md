@@ -17,23 +17,27 @@ runnable templates that exercise edge cases, see the test fixtures in
 2. [Symbol cheat sheet](#symbol-cheat-sheet)
 3. [Text and the `@` escape](#text-and-the--escape)
 4. [Output blocks](#output-blocks)
-5. [Member expressions `@(A.B.C)`](#member-expressions-abc)
-6. [Root reference `@(::Member)`](#root-reference-member)
-7. [Context and data flow](#context-and-data-flow)
-8. [Embedded C# expressions](#embedded-c-expressions)
-9. [Definitions `@% … %@`](#definitions---)
-10. [Default output `-> chain`](#default-output---chain)
-11. [Type annotation `:: Type`](#type-annotation--type)
-12. [Inheritance and override `<child:base>`](#inheritance-and-override-childbase)
-13. [Subtemplates `{{ … }}`](#subtemplates--)
-14. [Chaining with `:`](#chaining-with-)
-15. [Recursion](#recursion)
-16. [Imports `@<<{{ … }}`](#imports--)
-17. [Comments `@* … *@`](#comments---)
-18. [Raw blocks `@{ … }@` and `@:`](#raw-blocks----and-)
-19. [Whitespace trimming `@\`](#whitespace-trimming-)
-20. [How the lexer reads a template (modes)](#how-the-lexer-reads-a-template-modes)
-21. [Behavioral nuances summary](#behavioral-nuances-summary)
+5. [Output profiles](#output-profiles)
+6. [Member expressions `@(A.B.C)`](#member-expressions-abc)
+7. [Root reference `@(::Member)`](#root-reference-member)
+8. [Context and data flow](#context-and-data-flow)
+9. [Embedded C# expressions](#embedded-c-expressions)
+10. [Definitions `@% … %@`](#definitions---)
+11. [Default output `-> chain`](#default-output---chain)
+12. [Type annotation `:: Type`](#type-annotation--type)
+13. [Props `<name(prop: Type = default)>`](#props-nameprop-type--default)
+14. [Parameterized slots `out:: Type`](#parameterized-slots-out-type)
+15. [Inheritance and override `<child:base>`](#inheritance-and-override-childbase)
+16. [Named content regions `<:name>`](#named-content-regions-name)
+17. [Subtemplates `{{ … }}`](#subtemplates---)
+18. [Chaining with `:`](#chaining-with-)
+19. [Recursion](#recursion)
+20. [Imports `@<<{{ … }}`](#imports---)
+21. [Comments `@* … *@`](#comments---)
+22. [Raw blocks `@{ … }@` and `@:`](#raw-blocks----and-)
+23. [Whitespace trimming `@\`](#whitespace-trimming-)
+24. [How the lexer reads a template (modes)](#how-the-lexer-reads-a-template-modes)
+25. [Behavioral nuances summary](#behavioral-nuances-summary)
 
 ---
 
@@ -88,7 +92,7 @@ deliberate, and both are what make templates compose:
   [`::`](#root-reference-member); the full picture is in
   [Context and data flow](#context-and-data-flow).
 
-- **Heddle are abstract by default; types bind late.** A definition written **without**
+- **Heddle definitions are abstract by default; types bind late.** A definition written **without**
   `:: Type` has no fixed model type — it is a *polymorphic section*. Its real type is bound
   when it's actually used (compiled against whatever concrete model reaches that call site) or
   when an inheriting definition narrows it with `:: Type`. This is closer to a **C++ template**
@@ -110,10 +114,13 @@ deliberate, and both are what make templates compose:
 | `@% … %@` | Definition block | Declare one or more named templates. |
 | `<name>` | Definition name | Names a template inside `@% … %@`. |
 | `<child:base>` | Inheritance | Define `child` based on `base`. |
+| `<name(p: T = d)>` | Props | Typed named parameters with literal defaults; passed by name (`@name(model, p: v)`). |
+| `out:: Type` | Slot parameter | Declares a typed slot; `@out(expr)` renders the caller body once per value as its model. |
+| `this` | Current model | The current scope's model as an expression (e.g. `@out(this)`). |
 | `-> chain` | Default output | Marks a definition to render automatically; `chain` selects its data. |
 | `:: Type` | Type annotation | Strongly types a definition's model. |
 | `::Member` | Root reference | Read `Member` from the root model, not the current one. |
-| `@<<{{ path }}` | Import | Include definitions from another template file. |
+| `@<<{{path}}` | Import | Include definitions from another template file (path taken verbatim — no spaces). |
 | `@* … *@` | Comment | Ignored; never emitted. |
 | `@{ … }@` | Raw block | Emitted verbatim; not parsed. |
 | `@: …` | Raw line | Rest of the line emitted verbatim. |
@@ -126,21 +133,37 @@ deliberate, and both are what make templates compose:
 Any character that is not part of a directive is literal text and is emitted unchanged.
 Unicode is fully supported — `<h1>Café — Привет!</h1>` renders as written.
 
-The only special character is **`@`**. To emit a literal `@`, double it: **`@@`**:
+The only special character is **`@`**. To emit a single literal `@`, double it: **`@@`** is the
+character‑doubling escape, in top‑level text and in subtemplate bodies alike. Runs of `@` pair
+greedily left to right (`@@@@` → `@@`; `@@@(Title)` → `@` followed by the value of `@(Title)`):
 
 ```heddle
-<p>Reach us at support@@example.com</p>      @* outputs: support@example.com *@
+<p>Reach us at @@example.com</p>   @* outputs: Reach us at @example.com *@
 ```
 
-To emit a block of literal text that contains many `@` or `{{ }}` characters, use a
-[raw block](#raw-blocks----and-) instead of escaping each one.
+**One accepted limit:** `@@` immediately followed by `*` is *not* an escape — it stays
+directive‑`@` + comment‑start (`@*…*@`). To output a literal `@*`, use a raw region (`@{@*}@`)
+or a raw line (`@:@*`).
+
+For bulk literal text, [raw regions](#raw-blocks----and-) remain the tool — the raw block
+`@{ … }@` or the raw line `@:` — which are emitted verbatim and never parsed (inside them `@@`
+stays two characters):
+
+```heddle
+<p>Reach us at @{support@example.com}@</p>   @* outputs: support@example.com *@
+@* @: makes the entire rest of the line literal (comment stripped, line below emitted as-is): *@
+@: Reach us at support@example.com
+```
+
+Those same raw regions are the way to emit a block of literal text that contains many `@` or
+`{{ }}` characters without escaping each one.
 
 ---
 
 ## Output blocks
 
 An **output block** is `@` followed by a [chain](#chaining-with-) of one or more calls, with
-an optional [subtemplate](#subtemplates--):
+an optional [subtemplate](#subtemplates---):
 
 ```
 output =  @ chain [ {{ body }} ]
@@ -153,8 +176,10 @@ A **call** has three parts: an optional extension name, a parenthesized paramete
 optional `{{ … }}` body. The parameter is one of:
 
 - **a member expression** — `@(Title)`, `@list(Articles)`;
+- **a native expression** — the built‑in expression tier, e.g. `@(Price * Qty)`, `@if(Count > 0)` (see [Native expressions](native-expressions.md));
 - **a C# expression** — introduced with an inner `@`, e.g. `@(@2026)`, `@list(@model.Articles.Where(a => a.IsFeatured))`;
 - **another chain** — nested calls;
+- **named prop arguments** — `@card(model, title: "Hi")` (see [Props](#props-nameprop-type--default));
 - **empty** — `@()`, `@out()`, `@list(){{ … }}` — meaning "use the current value as‑is".
 
 When the extension name is omitted, the call uses the **empty extension**
@@ -201,11 +226,48 @@ with a body it renders the body against its model; with no body it just stringif
 
 ---
 
+## Output profiles
+
+Whether the bare `@(value)` output HTML‑encodes is governed by the **output profile**, not by
+the syntax. There are two:
+
+- **`OutputProfile.Html`** — the default since 2.0. A bodiless `@(value)` HTML‑encodes by
+  default, closing the XSS‑by‑default gap. `@raw(value)` opts a trusted value out; a bodied
+  `@(value){{…}}` remains a raw rescoping container (its literal body markup is never encoded —
+  only value leaves inside).
+- **`OutputProfile.Text`** — the 1.x‑compatibility setting. `@(value)` emits raw text
+  (text/JSON/code generation), rendering 1.x templates byte‑identically.
+
+```heddle
+@profile(){{ html }}
+<p>@(UserInput)</p>        @* <script> … becomes &lt;script&gt; …            *@
+<aside>@raw(TrustedHtml)</aside>   @* explicit opt-out: emitted verbatim       *@
+```
+
+Two ways to select it, both feeding the same effective profile (the directive wins for output
+compiled after it):
+
+- **Host** — [`TemplateOptions.OutputProfile`](csharp-api.md#templateoptions), or the
+  `TemplateResolver` default‑profile constructor. File extensions carry **no** semantics.
+- **Template** — the [`@profile()`](built-in-extensions.md#profile) directive (`text`/`html`),
+  which flows into bodies, partials, and imports compiled after it.
+
+Encoding runs once, at the emitting leaf: containers and nested producers forward raw, so a
+value is never double‑encoded by nesting. See
+[Built‑in Extensions → HTML encoding](built-in-extensions.md#html-encoding) for the `HED2001`–
+`HED2003` diagnostics and the 2.0 default flip.
+
+---
+
 ## Member expressions `@(A.B.C)`
 
 ```
 member-path = [::] name ( . name )*
 ```
+
+> Beyond a bare member path, the same parentheses accept **native expressions** — operators,
+> literals, and registered functions such as `@(Price * Quantity)` or `@(Name ?? "anon")` —
+> which compile without Roslyn. See [Native Expressions](native-expressions.md).
 
 A member expression is a dotted path of identifiers resolved against the current model:
 
@@ -241,7 +303,7 @@ reach page‑level data (the site title, the current year, a culture) from insid
 Inside the loop the current model is an `Article`, so `@(Title)` is the article's title and
 `@(::Title)` reaches past it to the root `Blog`. The equivalent embedded‑C# form is
 `@(@root.Title)`; the `::` form is pure template syntax and does **not** require
-`AllowCSharp`.
+the C# tier (`ExpressionMode.FullCSharp`).
 
 In real templates this is how you reach page‑ and app‑level context from anywhere — site host,
 build number for cache‑busting, the active culture — without threading it through every call.
@@ -357,6 +419,37 @@ This step‑back is exactly **one level** (it is `scope.Parent()` under the hood
 [Writing Custom Extensions](custom-extensions.md)). There is no operator to climb further; for
 anything higher, use the [root](#reaching-back-out-root) or pass values down explicitly.
 
+For the descend‑vs‑step‑back classification of **every** built‑in (and what a nested `@out()` sees
+in each body), see the authoritative table
+[Built‑in Extensions → Body context at a glance](built-in-extensions.md#body-context-at-a-glance).
+
+### Branching: `@elif` and `@else`
+
+`@if`/`@ifnot` can be followed by `@elif` (alias `@elseif`) and a terminal `@else` to form a
+**branch set** — only the winning branch renders:
+
+```heddle
+@if(IsFeatured){{ <b>Featured</b> }}
+@elif(IsArchived){{ <i>Archived</i> }}
+@else(){{ Regular }}
+```
+
+These are ordinary extensions, not keywords — there is no `{{endif}}`. What structures a set is not
+a fixed list of names but a **role** each block plays, declared with `[BranchRole]`: an **opener**
+starts the set (`@if`/`@ifnot`), a **continuation** extends it (`@elif`/`@elseif`), and an optional
+**terminal** closes it (`@else`). The built‑ins are simply the engine's own role‑carrying
+extensions; any custom extension with the same roles joins a set on equal footing (see
+[Building your own branch set](custom-extensions.md#building-your-own-branch-set)), and roles even
+interoperate across families in one set.
+
+A set is the run of adjacent branch blocks at one body level; text between them is stripped at
+compile time (a non‑whitespace gap warns `HED3001`), while text before the opener and after the last
+branch renders normally. A terminal binds to the **set state** (satisfied once any branch fired), not
+to a specific opener; an orphan terminal is a compile error (`HED3003`). Each `@list`/`@for`
+iteration and nested body gets its own set state. Full rules, the orphan diagnostics, and the public
+`BranchState` channel are in [Built‑in extensions → Branch sets](built-in-extensions.md#branch-sets)
+and [Writing Custom Extensions → the local context channel](custom-extensions.md#the-local-context-channel).
+
 ### Reaching back out: `root`
 
 Because the current model keeps narrowing, a value you need may no longer be in reach — deep
@@ -388,7 +481,7 @@ In [embedded C#](#embedded-c-expressions) the three channels are simply the iden
 `model`, `root`, and `chained`:
 
 ```heddle
-@for(@new ForModel(){ Last = model.Articles.Count(), Step = 3 })
+@for(@new Heddle.Models.Range(0, model.Articles.Count(), 3))
 {{
   @* model = the Blog (the for body keeps the outer model); chained = the loop index *@
   @list(@model.Articles.Skip(chained).Take(3)){{ @article_card() }}
@@ -405,7 +498,7 @@ extensions — see [`Scope`](csharp-api.md#scope-the-data-view-during-rendering)
 Inside a call's parentheses, an inner **`@`** switches the lexer into C# mode (`CS` mode,
 [HeddleLexer.g4](../src/Heddle.Language/HeddleLexer.g4)), so the rest of the parameter is parsed
 as a real C# expression and compiled by Roslyn. This requires
-`TemplateOptions.AllowCSharp = true`.
+`ExpressionMode.FullCSharp` (`TemplateOptions.ExpressionMode = ExpressionMode.FullCSharp`).
 
 The lexer covers the C# **expression** grammar through C# 14, so supported forms include numeric
 literals (digit separators, binary, hex — `1_000`, `0b1010`, `0xFF`), all string forms (regular,
@@ -449,7 +542,7 @@ definition is invoked like any extension: `@name()`.
 
 ```
 definitions = @% def+ %@
-def         = < name [: base] >  [ -> chain ]  {{ body }}  [ :: Type ]
+def         = < name [( props )] [: base] >  [ -> chain ]  {{ body }}  [ :: Type ]
 ```
 
 Anatomy of one definition — an `article_card` component:
@@ -492,9 +585,9 @@ that the card exposes through `@out()`.
 ## Default output `-> chain`
 
 Most definitions are inert: they render only when you call them by name (`@name()`). Adding a
-`->` turns a definition into an **output** — it renders automatically, in place, as part of
-the document, using the `chain` after `->` to select its data. (This is how a template made of
-nothing but definitions still produces output.)
+`->` turns a definition into an **output** — it renders automatically at the **end of the
+document** (in declaration order), using the `chain` after `->` to select its data. (This is how
+a template made of nothing but definitions still produces output.)
 
 ```
 < name >  -> chain  {{ body }}
@@ -513,13 +606,21 @@ nothing but definitions still produces output.)
 
 `-> (Articles)` does two things: it selects the body's data (take `Articles` off the root
 `Blog`, so `@list()` with an empty parameter iterates them), and it marks the definition as an
-output that emits **here**, at its declaration. The empty form `-> ()` means "render using the
-current value as‑is".
+output that emits automatically at the **end of the document**, in declaration order. The empty
+form `-> ()` means "render using the current value as‑is". (An `@<<` import re‑bases the imported
+file's *own* output chains to the import site, but a default `->` chain still emits at document
+end.)
 
-> **Don't also call it.** Because a `->` definition already renders at its declaration, writing
-> `@article_list()` as well would render the list a *second* time. Use `->` for the regions a
+> **Don't also call it.** Because a `->` definition already renders on its own (at the end of the
+> document), writing `@article_list()` as well would render the list a *second* time. Use `->` for the regions a
 > template should emit on its own; leave the `->` off for reusable definitions you invoke by
 > name (like `article_card` above).
+>
+> The compiler warns when it catches this (diagnostic **HED4002**): *"Definition '&lt;name&gt;'
+> (declared at &lt;pos&gt;) has a default output ('->') and is also called by name — it renders
+> twice."* The warning names both the definition's declaration and the offending call. Remove the
+> `->` or remove the call to resolve it. (It is a warning, not an error — the render is
+> well-defined, just usually not what you meant.)
 
 ---
 
@@ -541,9 +642,12 @@ type’s own assembly).
 ```
 
 `dynamic` makes member access late‑bound (resolved at render time via the C# runtime
-binder), which is how `@(Title)` works against an `ExpandoObject` or anonymous model. Concrete
-types (e.g. `Article`, `ICollection<Article>`) enable compile‑time member checking and faster
-access.
+binder), which is how `@(Title)` works against an `ExpandoObject`, a dictionary shape, or a
+**public named type**. One shape it does *not* work against is an **anonymous type from
+another assembly**: anonymous types are internal to the assembly that declares them, so the
+runtime binder inside the Heddle assembly can't see their members and throws at render time —
+pass a public named type (or an `ExpandoObject`) instead. Concrete types (e.g. `Article`,
+`ICollection<Article>`) enable compile‑time member checking and faster access.
 
 Generic and array type names are recognized by the lexer's type rule
 (`ID_TYPE`, [HeddleLexer.g4](../src/Heddle.Language/HeddleLexer.g4)), which accepts
@@ -591,6 +695,107 @@ typed page, where it binds to that page's model. See
 
 ---
 
+## Props `<name(prop: Type = default)>`
+
+Alongside its positional model, a definition can declare **typed named parameters — props —**
+in parentheses right after the name. A prop has a name, a type, and an **optional literal
+default**:
+
+```heddle
+@%
+  <card(style: string = "plain", compact: bool = false)>
+  {{
+    <article class="card @(style)">
+      <h2>@(Title)</h2>
+      @ifnot(compact){{ <p>@(Summary)</p> }}
+      @out()
+    </article>
+  }} :: Article
+%@
+```
+
+- **Types** resolve exactly like a `:: Type` annotation (C# keyword types, dotted names,
+  generics, arrays — `List<string>`, `int[]`).
+- **Defaults are literals only** — the phase‑1 literal forms (`"…"`, `42`, `1.5`, `true`,
+  `'c'`, `null`, and a leading `-` on a number). A default must be convertible to the prop's
+  type under the same rule call‑site arguments use; `<card(style: string = "plain")>` is fine,
+  `<pad(width: int = "x")>` is a compile error (**HED5009**).
+- **A prop with no default is required** — every call site must supply it.
+- `out` and `this` are **reserved** and cannot be prop names (**HED5015**); `out::` declares a
+  slot (below).
+
+**Passing props — named arguments.** At the call site, props are passed **by name** after the
+positional model. The values are ordinary [native expressions](native-expressions.md)
+evaluated in the **caller's** context (paths off the caller model, `::` root refs, functions,
+operators, `this`, literals):
+
+```heddle
+@card(Article, style: "wide", compact: true)
+@card(Article)                                  @* both props take their defaults *@
+@card(Article, style: ::Site.DefaultCardStyle)  @* value from the root context     *@
+```
+
+Missing, unknown, mistyped, or duplicated props are **hard compile errors** (with positions):
+a required prop left unbound is **HED5002**, an unknown name is **HED5001** (the message lists
+the declared props), a value whose type does not convert is **HED5003**, and the same name
+twice is **HED5004**. Named arguments may only be passed to a target that declares a named
+parameter surface — a definition that declares props, or a **custom extension that declares
+`[Prop]` parameters** (see [custom‑extensions → Extension parameters](custom-extensions.md#extension-parameters-prop),
+which reuses this exact contract and its diagnostics). Passing them to any other target — a
+parameter‑less extension, a function, or a prop‑less definition — is **HED5005**/**HED5006**.
+The one conversion set (identity, implicit numeric widening, `T`→`T?`, reference assignability,
+boxing to `object`, the `null` literal for reference/`Nullable<T>` props) governs defaults and
+arguments alike — there is no narrowing, no string parsing, and no implicit `ToString()`.
+
+**Reading props in the body.** A prop is read by its bare name, exactly like a model member —
+`@(style)`, `@if(compact)`, `@list(items)`. Props are statically typed by their declared type
+**even in a `:: dynamic` definition**. When a prop shares a name with a model member, the
+**prop wins** and the compiler warns (**HED5011**); the model member is still reachable with the
+explicit `this.<name>` escape in an expression (`@(this.style)`). A `::`‑rooted path never reads
+a prop.
+
+**Named arguments are expression‑tier**, so under
+[`ExpressionMode.MemberPathsOnly`](csharp-api.md) a call carrying them reports **HED1014** — but
+prop *reads* are member‑tier and work under every mode, so an all‑defaults call still renders.
+
+---
+
+## Parameterized slots `out:: Type`
+
+`@out()` normally splices the caller's `{{ … }}` content as‑is. A definition can instead declare
+a **slot parameter** and hand a **typed value** back into that content, which the caller's body
+receives as its model. Declare it in the prop list with the `::`‑means‑type token, `out:: Type`,
+and project values with `@out(expr)`:
+
+```heddle
+@%
+  <picker(out:: MenuOption)>
+  {{ <ul>@list(Options){{ <li>@out(this)</li> }}</ul> }} :: Menu
+%@
+
+@picker(Menu){{ <a href="/go?id=@(Id)">@(Label)</a> }}
+```
+
+The caller body `{{ <a …>@(Label)</a> }}` is compiled against **`MenuOption`** (the slot type),
+and rendered **once per `@out(expr)` execution** with `expr` as its model — so the picker emits
+one `<li><a>…</a></li>` per option. `@out(this)` passes the current model (the option) as the
+slot value.
+
+Rules (all positioned compile errors):
+
+- Inside a slot‑declaring body every `@out` must pass a value — a bare `@out()` is **HED5013** —
+  and a slot‑mode `@out(expr)` is bodiless (`@out(expr){{…}}` is **HED5018**).
+- The value's static type must be assignable to the slot type (identity/widening/lifting/
+  reference assignability), else **HED5014**; a dynamic value is rejected too.
+- Conversely, `@out` **with a value where no slot is declared** — including outside any
+  definition — is **HED5012**. (This supersedes the old accepted‑and‑ignored `@out(X)`: the
+  argument was always discarded, so delete it, or declare `out:: T`.)
+
+Exactly one slot per definition (a second `out::` is **HED5017**); `foo:: Type` — any name other
+than `out` before `::` — is **HED5016**.
+
+---
+
 ## Inheritance and override `<child:base>`
 
 A definition can inherit from another by name using `:`:
@@ -634,6 +839,13 @@ consequences:
 - If the base **is** typed, children may only narrow to assignable (more‑derived) types; a type
   fixed anywhere in the chain can't be widened or swapped for an incompatible one.
 
+**Props inherit too.** A child inherits every [prop](#props-nameprop-type--default) of its base
+and may append new ones. Re‑declaring an inherited prop name is the sanctioned way to **change
+its default** — it keeps the base's slot position and replaces the default; the re‑declared type
+must be assignable to the inherited type (the same narrowing direction as the model), else
+**HED5008**. So `<fancy(tone: string = "info", style: string = "wide"):card>` inherits `card`'s
+`compact`, re‑defaults `style` to `"wide"`, and adds `tone`.
+
 **Composition without coupling (the standout feature).** Definitions are *declarative
 extension points*, not forward dependencies. A layout exposes named regions and any page
 supplies or overrides them. Put the layout in its own file:
@@ -660,7 +872,7 @@ Then a page imports it and overrides only what it needs:
 
 ```heddle
 @* home.heddle *@
-@<<{{ layout.heddle }}            @* pull in the layout + sidebar definitions *@
+@<<{{layout.heddle}}             @* pull in the layout + sidebar definitions *@
 @%
   <sidebar:sidebar>           @* this page wants a different sidebar *@
   {{ <aside>Welcome, subscriber!</aside> }}
@@ -680,6 +892,84 @@ exposes regions can serve as a base for anything, and because it all compiles in
 execution‑ready document, **this composition costs nothing at render time**. (The
 [performance benchmark](../src/Heddle.Performance) uses exactly this `home` + `layout`
 shape.) See [Architecture → Performance](architecture.md#performance-characteristics).
+
+---
+
+## Named content regions `<:name>`
+
+A definition can expose **more than one overridable content region** — beyond the single
+`@out()` slot — by declaring inner definitions **marked public with a leading colon**:
+
+```
+< :name >                 @* a public region *@
+< :name :: Type >         @* a public region with a typed model *@
+< name >                  @* a private inner definition (the default) *@
+```
+
+A region **is** a definition: the component renders it by calling it (`@heading()`), projects a
+typed value into it the way `@out(expr)` projects into the slot (`@item(this)`), and gives it
+default content a caller may replace. The region's type sits **inside** the angle brackets —
+distinct from a definition's trailing `}} :: Type` — and a region header carries no prop list,
+no base, and no default output chain.
+
+```heddle
+@%
+  <feed(theme: string = "light", title: string = "Home")>
+  {{
+    @%
+      <:heading>{{ <h2 class="@(theme)">@(title)</h2> }}     @* public, untyped *@
+      <:item :: Article>{{ <li>@(Title)</li> }}              @* public, typed *@
+      <divider>{{ <hr class="@(theme)"> }}                   @* private *@
+    %@
+    @heading()
+    <ul>@list(Articles){{ @item(this) }}</ul>
+    @divider()
+    @out()                                                   @* the one anonymous slot, unchanged *@
+  }} :: Feed
+%@
+```
+
+A caller **fills** a public region with the **normal `<name:name>` override it already knows**,
+inside a `@% … %@` block in the call body — no new fill directive:
+
+```heddle
+@feed()
+{{
+  @%
+    <heading:heading>{{ <h2 class="hero">Latest</h2> }}
+    <item:item>{{ <li>@(Title) — #@(Id)</li> }}
+  %@
+  <p class="lede">Intro copy renders through @out() as usual.</p>
+}}
+```
+
+Rules:
+
+- **Call-scoped.** A fill applies to *that call only* and reaches region calls at **any depth**
+  of the component body (inside `@if`/`@list`/`@for` bodies). A second `@feed()` with no
+  override block renders the defaults.
+- **Region-context scope.** An override body runs in the **region's own context** — the
+  component's props (`@(theme)`, `@(title)`) plus the region's model (`@(Title)` against
+  `Article`) — exactly like the default body it replaces. An `@out(value)` inside a region body
+  is the ordinary "no slot" error (**HED5012**); a region is not the host of the component's slot.
+- **Self- and sibling calls.** Inside a fill body, calling the region's **own** name renders the
+  region's *default* (no recursion); calling a **sibling** region resolves that sibling's fill
+  (or default) — exactly like the default body it replaces.
+- **Narrowing.** An override may narrow the region's type with a trailing `:: Type`, in the
+  assignable-only direction — the same rule as
+  [`<child:base>` narrowing](#inheritance-and-override-childbase), with the same
+  *"isn't assignable to base"* error when violated. An untyped override inherits the region's type.
+- **Visibility.** Overriding a **private** region from a call site is **HED5019**; declaring two
+  **public** regions of one name in one component is **HED5020**. A `<x:x>` whose base **is** in
+  scope at the call site stays a **normal override** (the local override wins — it is never
+  rerouted to a region fill); a `<x:x>` naming neither a region nor anything in scope keeps
+  today's *"Base definition x couldn't be found"* error.
+- **Both backends.** Region defaults **and** overridden fills precompile natively under the
+  source generator and render byte-identically to the dynamic engine.
+
+The pre-existing [sibling-override idiom](patterns.md#components-with-multiple-content-regions)
+(document-scope sibling definitions the caller overrides) remains fully supported and unchanged;
+named regions are the component-scoped, visibility-gated evolution of it.
 
 ---
 
@@ -752,7 +1042,7 @@ comment list, where each `Comment` has `Replies` that are themselves `Comment`s:
   {{
     <li>
       <strong>@(Author)</strong>: @(Text)
-      @if(@model.Replies.Count > 0)
+      @if(Replies.Count > 0)
       {{
         <ul>
           @list(Replies){{ @comment() }}    @* recurse into each reply *@
@@ -763,7 +1053,9 @@ comment list, where each `Comment` has `Replies` that are themselves `Comment`s:
 %@
 ```
 
-Rendering `@list(Comments){{ @comment() }}` then walks the whole tree to any depth. Recursion
+The example uses the native expression tier (`Replies.Count > 0`), so it works under the default
+`ExpressionMode.Native`; the C#-tier form `@if(@model.Replies.Count > 0)` would need
+`ExpressionMode.FullCSharp`. Rendering `@list(Comments){{ @comment() }}` then walks the whole tree to any depth. Recursion
 is bounded by `TemplateOptions.MaxRecursionCount` (default **100**); see the
 [C# API Reference](csharp-api.md#templateoptions).
 
@@ -771,26 +1063,48 @@ is bounded by `TemplateOptions.MaxRecursionCount` (default **100**); see the
 
 ## Imports `@<<{{ … }}`
 
-The `@<<` directive imports the **definitions** of another template file into the current
-parse, so you can share a library of definitions across templates.
+Heddle has one import spelling — `@<<{{ path }}`. The legacy `@import()` extension has been
+**removed**: any `@import` call site now fails to compile with a positioned **`HED4003`** error
+naming its replacements. For sharing definition libraries, use `@<<`; to embed another template's
+rendered output inline, use `@partial()`.
 
 ```
-@<< {{ path/to/file }}
+@<<{{path/to/file}}
 ```
 
 ```heddle
-@<<{{ layout.heddle }}
+@<<{{layout.heddle}}
 ```
 
-The path between `{{ }}` is resolved relative to `TemplateOptions.RootPath`. Imports are
-handled by the [`import` extension](built-in-extensions.md#import) machinery
-([ImportExtension.cs](../src/Heddle/Extensions/ImportExtension.cs)), which re‑parses the
-referenced file into the current parse context.
+The path between `{{ }}` is resolved relative to `TemplateOptions.RootPath` (an absolute path
+wins, per `Path.Combine`). The path is taken **verbatim** — no trimming — so keep the braces
+tight (`@<<{{layout.heddle}}`); a stray space inside becomes part of the filename.
 
-> **`@<<` vs `@partial()`.** `@<<` / `@import` pull in *definitions* at compile time (no
-> output of their own). [`@partial()`](built-in-extensions.md#partial) compiles a separate
-> template by name and renders its output inline at run time. Choose `@<<`/`@import` to share
-> reusable definitions; choose `@partial()` to embed another rendered template.
+**`@<<{{ path }}` — the composition import.** Handled at parse time by dedicated `@<<` syntax
+([HeddleMainListener.ExitImport_block](../src/Heddle/Language/HeddleMainListener.cs)). It parses
+the referenced file, **merges its definitions** into the current document (callable after the
+import line — a name already defined *before* the import is a compile error, so imports compose
+rather than silently override), **re‑bases the imported file's own output chains** to render at
+the import position, and **carries its default (`-> `) chains** into the document. Imported
+*static text* never transfers — only definitions and chains. This is the canonical way to share
+a library of definitions or a layout across templates. A `@<<` import must appear at the **top
+level** of a document — nesting it inside a subtemplate (an `@if`/`@for` body, an output block, or
+a definition body) is a compile error (**`HED4004`**), because composition merges definitions and
+re‑bases chains into the document as a whole and has no well‑defined meaning at a nested scope.
+
+**`@import(){{ path }}` — removed.** The old compile‑time include
+([ImportExtension.cs](../src/Heddle/Extensions/Archived/ImportExtension.cs)) merged nothing into the
+importing document and had surprising, offset-dependent isolation semantics. It no longer
+compiles: every `@import()` call site now produces a single positioned **`HED4003`** error at
+the call, naming both replacements — `@<<{{ path }}` to share definitions and layouts across
+files, or `@partial(){{ name }}` to embed another template's rendered output inline. The name
+`import` is kept registered only as a tombstone so the diagnostic is a targeted migration
+signpost, not a generic "unknown extension" error.
+
+> **Imports vs `@partial()`.** `@<<` pulls in *definitions* at compile time (no output of its
+> own beyond the imported chains). [`@partial()`](built-in-extensions.md#partial) compiles a
+> separate template by name and renders its output inline at run time. Choose `@<<` to share
+> reusable definitions and layouts; choose `@partial()` to embed another rendered template.
 
 ---
 
@@ -861,13 +1175,44 @@ them with `@\` so they don't leave a blank line behind:
 <h1>@(Title)</h1>
 ```
 
-Without the `@\`, each `@using`/`@model` line would emit its trailing newline. Whitespace that
+Without the `@\`, each `@using`/`@model` line would emit its trailing newline *when
+`TrimDirectiveLines` is off* (the 1.x default) — see below. Whitespace that
 is *not* trimmed is preserved exactly — Heddle is whitespace‑significant, so the spaces and
 newlines you write around directives appear in the output as written.
 
 > In practice, HTML templates rarely need `@\` — browsers collapse insignificant whitespace, so
 > the stray newlines around directives don't matter. Reach for `@\` mainly in the declaration
 > preamble and when emitting whitespace‑sensitive text (plain text, `<pre>`, JSON, etc.).
+
+### `TemplateOptions.TrimDirectiveLines`
+
+`@\` controls whitespace one directive at a time. When a whole *line* is nothing but a directive
+that produces no output, the option `TemplateOptions.TrimDirectiveLines` removes the need for
+`@\` on it entirely. With it on, a directive that **occupies its line by itself** — only spaces
+or tabs before it, only spaces/tabs then a line terminator (or end of file) after it — swallows
+that whole line: its leading indentation, its trailing spaces, and **one** line terminator
+(`\n`, `\r\n`, or `\r`).
+
+```heddle
+@using(){{System.Linq}}      @* whole line — swallowed under TrimDirectiveLines *@
+@model(){{Blog}}
+@* a comment on its own line *@
+<h1>@(Title)</h1>            @* renders with no blank lines above it *@
+```
+
+The eligible blocks are exactly the ones the compiler removes from the document anyway:
+zero‑output directives (`@using`, `@model`, `@profile(){{…}}`, and any custom
+extension whose `InitStart` returns `null`), definition blocks (`@% … %@`), `@<<` imports, and
+whole‑line comments. Blocks that *do* produce output (raw blocks, branch blocks, `@param(...)`
+— which stays in the document and renders nothing by itself), text that shares its line with
+other content, and author‑written blank lines are all left untouched.
+
+- **Default:** `true` since 2.0 — whole‑line directives swallow their line. Set it back to
+  `false` to keep 1.x whitespace byte‑for‑byte (the 1.x default).
+- `@\` keeps working unchanged and is still the tool for **mid‑line** whitespace control; the
+  option only removes the boilerplate `@\` at the end of whole‑line directives.
+- The setting participates in template‑cache identity (`Equals`/`GetHashCode`) because it changes
+  the rendered bytes — see the [C# API Reference](csharp-api.md#templateoptions).
 
 ---
 
@@ -882,12 +1227,17 @@ for example, `}}` ends a subtemplate but is plain text elsewhere.
 | --- | --- | --- | --- |
 | *(default)* | start of document | Top‑level text, `@…` directives, definitions, imports, raw blocks. | `@%`→DEF, `@<<`→IMPORT, `@`→OUT |
 | `SUB_BLOCK` | after `{{` | Inside a subtemplate body; like default but `}}` closes it. | `}}`→pop |
-| `DEF` | after `@%` | Inside a definition block: names `< >`, `:` base, `::` type, `->` default, `%@` close. | `{{`→SUB_BLOCK, `->`→OUT, `%@`→pop |
+| `DEF` | after `@%` | Inside a definition block: names `< >`, `:` base, `::` type, `->` default, `%@` close. | `(`→DEF_PROPS, `{{`→SUB_BLOCK, `->`→OUT, `%@`→pop |
+| `DEF_PROPS` | after `(` in a definition header | Reads the typed prop list `(prop: Type = default)` — the phase‑5 prop surface. | `)`→pop |
 | `IMPORT_MODE` | after `@<<` | Reads the import path between `{{ }}`. | `}}`→pop |
 | `OUT_MODE` | after `@` | Reads an extension name, then `(` opens the parameter. | `(`→CALL, raw/sub/def/import→transition |
-| `CALL` | after `(` | Inside a parameter: member ids, `.`, `::` root ref, `:` delim, nested `(`. | `)`→pop, inner `@`→CS |
+| `CALL` | after `(` | Inside a parameter: member ids, `.`, `::` root ref, `:` delim, nested `(`, plus v2 native‑expression tokens (literals, operators, `[ ]` brackets, `,` commas, `this`). | `)`→pop, inner `@`→CS |
 | `CALL_RETURNED` | after `)` | Decides what follows a call: `:` (chain), `@` (next out), `{{` (subtemplate), raw, etc. | many |
 | `CS` | inner `@` inside a parameter | Embedded C# expression; balances nested `(` `)`, ends at the matching `)`. | matching `)`→pop |
+
+The lexer declares **13 modes** in total (default plus 12 named); the table above shows the
+principal ones. Omitted are the four C#-string modes reached from embedded C# — `CS_NESTED`,
+`INTERP_STR`, `INTERP_VERBATIM_STR`, and `INTERP_HOLE`.
 
 You normally never think about modes — but they are the reason comments work everywhere,
 why C# expressions can contain arbitrary parentheses, and why whitespace handling differs
@@ -898,19 +1248,27 @@ slightly between a definition header and a body. For the full picture see
 
 ## Behavioral nuances summary
 
-- **`@@` emits a literal `@`.** Everything else that isn't a directive is literal text.
+- **A literal `@` is written `@@`** — the doubling escape works in text and subtemplate bodies
+  (except immediately before `*`, where `@*` starts a comment; use `@{@*}@` for a literal `@*`).
+  Raw regions (`@{ … }@` / `@:`) remain the tool for bulk literal text. Everything else that
+  isn't a directive is literal text.
 - **Whitespace is significant.** Use `@\` to trim; otherwise spaces and newlines are emitted
   as written.
 - **Comments can appear mid‑token** and are always stripped.
-- **Embedded C# requires `AllowCSharp = true`**; `model`, `root`, and `chained` are the
+- **Embedded C# requires `ExpressionMode.FullCSharp`**; `model`, `root`, and `chained` are the
   available identifiers.
 - **`::Member` reads the root model**; plain `Member` reads the current model.
 - **Definitions are invoked like extensions** (`@name()`), can be nested, typed, inherited,
   and fully overridden in document order.
-- **HTML encoding is per‑extension** — see [Built‑in Extensions](built-in-extensions.md) and
-  the `[EncodeOutput]` / `[NotEncode]` attributes. The unnamed `@(...)` output does **not**
-  HTML‑encode; use `@string(...)` (or another `[EncodeOutput]` extension) when you need
-  encoding.
+- **HTML encoding follows the output profile** — under `OutputProfile.Html` (the default since
+  2.0) a bodiless `@(value)` HTML‑encodes by default and `@raw(value)` opts out; under
+  `OutputProfile.Text` (the 1.x‑compatibility setting) the unnamed `@(...)` output is raw.
+  `[EncodeOutput]` extensions
+  (`@string`, `@html`, …) always encode under both profiles. Select the profile with
+  [`TemplateOptions.OutputProfile`](csharp-api.md#templateoptions) or the
+  [`@profile()`](built-in-extensions.md#profile) directive — see
+  [Output profiles](#output-profiles) and
+  [Built‑in Extensions → Output profiles](built-in-extensions.md#output-profiles).
 - **Recursion is capped** by `TemplateOptions.MaxRecursionCount` (default 100).
 - **Type mismatches and unknown members fail at compile time** (or, in `DEBUG`, when
   `Generate` is given a model of the wrong type) — see

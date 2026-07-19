@@ -42,8 +42,13 @@ export default withMermaid(
     // existing README stays the single source and links to it still resolve.
     rewrites: { 'README.md': 'index.md' },
 
-    // assessment.md stays in the repo for contributors but is not published.
-    srcExclude: ['assessment.md'],
+    // Contributor material that stays in the repo but is not published to the docs
+    // site (D9): the spec set under docs/spec/**. The archive/** glob is retained for
+    // any legacy contributor material that may return.
+    srcExclude: [
+      'archive/**',
+      'spec/**'
+    ],
 
     markdown: {
       languages: [
@@ -108,15 +113,20 @@ export default withMermaid(
         {
           text: 'Authoring Templates',
           items: [
+            { text: 'Coming from Liquid', link: '/coming-from-liquid' },
+            { text: 'Coming from Razor', link: '/coming-from-razor' },
             { text: 'Language Reference', link: '/language-reference' },
+            { text: 'Native Expressions', link: '/native-expressions' },
             { text: 'Built-in Extensions', link: '/built-in-extensions' },
-            { text: 'Patterns & Recipes', link: '/patterns' }
+            { text: 'Patterns & Recipes', link: '/patterns' },
+            { text: 'Editor Support', link: '/editor-support' }
           ]
         },
         {
           text: 'Using from C#',
           items: [
-            { text: 'C# API Reference', link: '/csharp-api' }
+            { text: 'C# API Reference', link: '/csharp-api' },
+            { text: 'Build-Time Pre-compilation', link: '/precompilation' }
           ]
         },
         {

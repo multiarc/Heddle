@@ -1,0 +1,15 @@
+{
+  "name": "complete-c02-root",
+  "description": "Root member completion after '::' — the root scope is Blog, so only Blog members are offered (no keyword/function items after a root accessor).",
+  "type": "completion",
+  "text": "@using(){{Heddle.Demo.Models}}\n@model(){{Blog}}\n@(::)\n",
+  "version": 1,
+  "caretAfter": "::",
+  "expectProperties": [
+    { "label": "Articles", "detail": "ICollection<Article>", "insertText": "Articles" },
+    { "label": "Title", "detail": "String", "insertText": "Title" },
+    { "label": "Year", "detail": "Int32", "insertText": "Year" }
+  ],
+  "expectKeywords": [],
+  "expectFunctions": []
+}

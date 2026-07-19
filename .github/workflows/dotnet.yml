@@ -33,7 +33,7 @@ jobs:
         dotnet-version: |
           6.0.x
           8.0.x
-          10.0.x
+        global-json-file: global.json
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
@@ -57,13 +57,15 @@ jobs:
         dotnet-version: |
           6.0.x
           8.0.x
-          10.0.x
+        global-json-file: global.json
     - name: Restore dependencies
       run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore -c Release
+    # No `dotnet build --no-build` split here: Heddle.Tool / Heddle.LanguageServer are RID-specific
+    # .NET tools (PackAsTool + multiple RuntimeIdentifiers), so `dotnet pack` must publish each RID.
+    # A RID-less `dotnet build` never produces those per-RID outputs, so `--no-build` fails with
+    # MSB3030 (missing per-RID assemblies) / NETSDK1085. Let pack build+publish, like the release job.
     - name: Pack beta packages
-      run: dotnet pack -c Release --no-build -o ${{ runner.temp }}/pkg --version-suffix "-beta.${{ github.run_number }}" -p:IncludeSymbols=true -p:SymbolPackageFormat=snupkg
+      run: dotnet pack -c Release -o ${{ runner.temp }}/pkg --version-suffix "-beta.${{ github.run_number }}"
     - name: NuGet login (OIDC -> short-lived API key)
       uses: NuGet/login@v1
       id: nuget-login
@@ -89,14 +91,14 @@ jobs:
         dotnet-version: |
           6.0.x
           8.0.x
-          10.0.x
+        global-json-file: global.json
     - name: Resolve version from tag
       id: ver
       run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
     - name: Restore dependencies
       run: dotnet restore
     - name: Pack release packages
-      run: dotnet pack -c Release -p:Version=${{ steps.ver.outputs.version }} -o ${{ runner.temp }}/pkg -p:IncludeSymbols=true -p:SymbolPackageFormat=snupkg
+      run: dotnet pack -c Release -p:Version=${{ steps.ver.outputs.version }} -o ${{ runner.temp }}/pkg
     - name: NuGet login (OIDC -> short-lived API key)
       uses: NuGet/login@v1
       id: nuget-login

@@ -17,7 +17,7 @@ namespace Heddle.Performance.Runners {
                          (new TemplateOptions("home") {
                              FileNamePostfix = ".heddle",
                              RootPath = @"TestTemplates",
-                             AllowCSharp = true
+                             ExpressionMode = ExpressionMode.FullCSharp
                          }));
             if (!test.CompileResult.Success) {
                 Console.Write(test.CompileResult.ToString());

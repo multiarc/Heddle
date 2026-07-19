@@ -57,7 +57,12 @@ namespace Heddle.Runtime
                 }
 
                 InitErrors =
-                    CodeGenerator.Compile(document);
+                    CodeGenerator.Compile(document,
+                        new CompileContext(new TemplateOptions
+                        {
+                            OutputProfile = OutputProfile.Text,
+                            TrimDirectiveLines = false
+                        }));
             }
             catch (Exception e)
             {
@@ -89,8 +94,34 @@ namespace Heddle.Runtime
         public static void Compile(this CompileScope context)
         {
             Compile(context.CompileContext);
-            if (context.CompileContext.Options.AllowCSharp && context.CSharpContext.Methods.Count > 0 &&
+            if (context.CompileContext.Options.ExpressionMode == ExpressionMode.FullCSharp && context.CSharpContext.Methods.Count > 0 &&
                 !context.CSharpContext.Compiled)
+            {
+                // Phase 9 D4 — the single Roslyn entry. When the trim-time feature switch is off, the
+                // guard below is a constant-true early return (via ILLink.Substitutions.xml), so CompileCSharp
+                // and every Microsoft.CodeAnalysis-typed member it reaches become dead code the linker removes.
+                // A misconfigured runtime host (FullCSharp + switch off) collects HED9001 rather than silently
+                // skipping the pass; the browser demo compiles Native so this never fires there.
+                if (!HeddleFeatures.CSharpTierEnabled)
+                {
+                    context.CompileContext.CompileErrors.Add(new HeddleCompileError
+                    {
+                        Error =
+                            "The C# expression tier is not available in this host: the 'Heddle.CSharpTierEnabled' " +
+                            "feature switch is disabled. Rewrite the template using native expressions " +
+                            "(ExpressionMode.Native), or run it in a host with the C# tier enabled.",
+                        DiagnosticId = HeddleFeatures.CSharpTierDisabledDiagnosticId,
+                        Position = default(BlockPosition)
+                    });
+                    return;
+                }
+
+                CompileCSharp(context);
+            }
+        }
+
+        private static void CompileCSharp(CompileScope context)
+        {
             {
                 if (!InitErrors.Success)
                     throw new TemplateCompileException("Cannot compile base C# generation templates",

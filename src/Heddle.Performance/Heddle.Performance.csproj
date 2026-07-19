@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <Version>1.0.0</Version>
+    <Version>2.0.0</Version>
     <TargetFrameworks>net6.0;net8.0;net10.0</TargetFrameworks>
 	<TieredCompilation>true</TieredCompilation>
     <SignAssembly>true</SignAssembly>
@@ -13,6 +13,15 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Heddle\Heddle.csproj" />
+  </ItemGroup>
+  <!-- ThirdParty/ is a self-contained nested project (the D3-R3 fallback harness) with its own
+       .csproj. Exclude its subtree from this project's default globs so its sources/obj are not
+       swept into this assembly. -->
+  <ItemGroup>
+    <Compile Remove="ThirdParty\**" />
+    <EmbeddedResource Remove="ThirdParty\**" />
+    <None Remove="ThirdParty\**" />
+    <Content Remove="ThirdParty\**" />
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' ">
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="6.0.36" />
@@ -30,9 +39,29 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
   </ItemGroup>
-  <ItemGroup>
+  <!-- BenchmarkDotNet is pinned per-TFM: 0.15.1+ depends on System.Management 9.x and
+       Microsoft.CodeAnalysis 4.14, which dropped net6.0 support (NETSDK "doesn't support net6.0"
+       warnings). The net6.0 leg uses 0.15.0, the last version whose dependency closure still
+       supports net6.0; net8.0/net10.0 use the current pin. -->
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' ">
+    <PackageReference Include="BenchmarkDotNet" Version="0.15.0" />
+  </ItemGroup>
+  <ItemGroup Condition=" '$(TargetFramework)' != 'net6.0' ">
     <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
+    <!-- Scriban is a net8.0+/net10.0-only competitor (maintainer-approved 2026-07-19): 7.2.5 —
+         the only release with the 2026 GHSA advisory fixes — requires System.Text.Json 10, which
+         dropped net6.0; older Scriban versions carry the unfixed advisories. The Scriban twins are
+         compiled out of the net6.0 leg with `#if !NET6_0` rather than suppressing either warning. -->
+    <PackageReference Include="Scriban" Version="7.2.5" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+  </ItemGroup>
+  <!-- D1 competitor benchmark twins (bench project only; engine gains no dependencies). Versions pinned. -->
+  <ItemGroup>
+    <PackageReference Include="Fluid.Core" Version="2.31.0" />
+    <PackageReference Include="DotLiquid" Version="2.3.197" />
+    <PackageReference Include="Handlebars.Net" Version="2.1.6" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="TestSuite\Data\" />
@@ -52,6 +81,14 @@
     </Content>
     <None Remove="TestTemplates\layout.heddle" />
     <Content Include="TestTemplates\layout.heddle">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <None Remove="TestTemplates\trivial-substitution.heddle" />
+    <Content Include="TestTemplates\trivial-substitution.heddle">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <None Remove="TestTemplates\large-loop.heddle" />
+    <Content Include="TestTemplates\large-loop.heddle">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

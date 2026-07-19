@@ -115,12 +115,34 @@ project.lock.json
 # ANTLR tool jar, downloaded on demand by the generate_*.cmd scripts
 /src/Heddle.Language/antlr-4.13.1-complete.jar
 
+# JS test harness dependencies (ace-code) - restored via `npm ci`/`npm install`
+/src/Heddle.Language/node_modules
+
 # VitePress documentation site
 /docs/node_modules
 /docs/.vitepress/dist
 /docs/.vitepress/cache
+
+# VS Code extension build artifacts
+/editors/vscode/node_modules
+/editors/vscode/dist
+/editors/vscode/*.vsix
+/editors/vscode/server
 # Ace editor bundle staged into the site by the docs workflow (generated)
 /docs/public/ace/
+# Phase 9 demo WASM bundle staged into the site by the docs workflow (generated, never committed)
+/docs/public/demo/
+# Phase 9 sample gallery capture outputs (written by `dotnet run -- --capture out`; goldens are committed)
+samples/**/out/
 /.idea
 /src/Heddle.Language/gen
 /src/Heddle.Language/.antlr
+
+# Verify.SourceGenerators snapshot working files
+*.received.*
+# Phase 9 generator EmitCompilerGeneratedFiles output (build artifact)
+samples/**/generated/
+# Playwright demo smoke artifacts
+docs/test-results/
+docs/playwright-report/
+/docs/logs

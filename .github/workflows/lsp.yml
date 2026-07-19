@@ -1,0 +1,103 @@
+# Builds and tests the Heddle language services (facade + LSP server), packs the version-pinned
+# per-RID dotnet tool, and packages the VS Code extension. Phase 6 (editor tooling / LSP).
+
+name: Heddle LSP
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v5
+        with:
+          # The multi-targeted test suite runs net6.0/net8.0/net10.0/net48; the runner image
+          # no longer ships the EOL .NET 6 (and may drop 8) runtime, so install them explicitly
+          # alongside the global.json SDK — otherwise the net6.0 test host aborts (NETCore.App 6 missing).
+          dotnet-version: |
+            6.0.x
+            8.0.x
+          global-json-file: global.json
+      - name: Build (Release)
+        run: dotnet build -c Release Heddle.sln
+      - name: Test engine suite
+        run: dotnet test src/Heddle.Tests/Heddle.Tests.csproj -c Release --no-build
+      - name: Test language services
+        run: dotnet test src/Heddle.LanguageServices.Tests/Heddle.LanguageServices.Tests.csproj -c Release --no-build
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: JS editor-artifact harness (highlight / beautify / completions)
+        working-directory: src/Heddle.Language
+        run: |
+          npm ci
+          npm test
+
+  pack-tool:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+        # Framework-dependent + R2R per-RID packs cross-pack from one runner (phase 6 D19).
+        # -p:EnableToolR2R=true makes PublishReadyToRun visible at the RID-less outer restore so
+        # the crossgen2 runtime packs for every RuntimeIdentifier are restored (else NETSDK1094).
+      - name: Pack heddle-lsp (manifest + per-RID + any)
+        run: dotnet pack src/Heddle.LanguageServer/Heddle.LanguageServer.csproj -c Release -o ./nupkg -p:EnableToolR2R=true
+      - name: Smoke — install and run --version
+        run: |
+          set -euo pipefail
+          dotnet tool install --global Heddle.LanguageServer --add-source ./nupkg --version 2.0.0 || true
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          heddle-lsp --version
+      - uses: actions/upload-artifact@v7
+        with:
+          name: heddle-lsp-nupkg
+          path: ./nupkg/*.nupkg
+
+  vsix:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [win32-x64, win32-arm64, linux-x64, linux-arm64, alpine-x64, darwin-x64, darwin-arm64]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Map VS Code target to .NET RID
+        id: rid
+        run: |
+          case "${{ matrix.target }}" in
+            win32-x64)   echo "rid=win-x64" >> "$GITHUB_OUTPUT" ;;
+            win32-arm64) echo "rid=win-arm64" >> "$GITHUB_OUTPUT" ;;
+            linux-x64)   echo "rid=linux-x64" >> "$GITHUB_OUTPUT" ;;
+            linux-arm64) echo "rid=linux-arm64" >> "$GITHUB_OUTPUT" ;;
+            alpine-x64)  echo "rid=linux-musl-x64" >> "$GITHUB_OUTPUT" ;;
+            darwin-x64)  echo "rid=osx-x64" >> "$GITHUB_OUTPUT" ;;
+            darwin-arm64) echo "rid=osx-arm64" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - name: Publish server (framework-dependent, R2R)
+        run: dotnet publish src/Heddle.LanguageServer/Heddle.LanguageServer.csproj -c Release -r ${{ steps.rid.outputs.rid }} --self-contained false -o editors/vscode/server -p:EnableToolR2R=true
+      - name: Package VSIX
+        working-directory: editors/vscode
+        run: |
+          npm ci
+          npm run copy-grammar
+          npx @vscode/vsce package --target ${{ matrix.target }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: heddle-vsix-${{ matrix.target }}
+          path: editors/vscode/*.vsix

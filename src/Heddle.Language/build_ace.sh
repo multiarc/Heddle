@@ -1,11 +1,15 @@
 #!/bin/bash
+set -e
 
-mkdir ace_build
+mkdir -p ace_build
 cd ace_build
 git clone --depth 1 --branch v1.32.6 https://github.com/ajaxorg/ace.git
 cd ace
-npm install
-npm install antlr4@4.13.1
+# Ace's build tooling depends on `architect-build` via a GitHub tarball URL, a "remote"
+# spec. Newer npm defaults `allow-remote` to `none` and refuses such fetches (EALLOWREMOTE).
+# Opt back in so Ace's own dependencies install.
+npm install --allow-remote=all
+npm install --allow-remote=all antlr4@4.13.1
 cp -R ../../js/src/ ./
 cp -R ./node_modules/antlr4/src/antlr4/ ./src/mode/heddle/
 cp ../../js/fs.js ./src/mode/heddle/antlr4/

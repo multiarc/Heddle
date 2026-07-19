@@ -9,6 +9,7 @@ namespace Heddle.Extensions
     /// <para>Optional parameter represents string to show if condition is true</para>
     /// </summary>
     [ExtensionName("if")]
+    [BranchRole(BranchRole.Opener)]
     public class IfExtension : AbstractExtension
     {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
@@ -18,10 +19,10 @@ namespace Heddle.Extensions
 
         public override object ProcessData(in Scope scope)
         {
-            if (scope.ModelData == null)
-                return string.Empty;
+            bool satisfied = BranchCondition.IsTruthy(scope.ModelData);
+            scope.PublishBranch(new BranchState(satisfied));
 
-            if (!(scope.ModelData is bool) || (bool) scope.ModelData)
+            if (satisfied)
             {
                 var parentData = scope.Parent();
                 return GetInnerResult(parentData);
@@ -32,14 +33,14 @@ namespace Heddle.Extensions
 
         public override void RenderData(in Scope scope)
         {
-            if (scope.ModelData == null)
-                return;
+            bool satisfied = BranchCondition.IsTruthy(scope.ModelData);
+            scope.PublishBranch(new BranchState(satisfied));
 
-            if (scope.ModelData is bool data && !data)
-                return;
-
-            var parentData = scope.Parent();
-            RenderInnerResult(parentData);
+            if (satisfied)
+            {
+                var parentData = scope.Parent();
+                RenderInnerResult(parentData);
+            }
         }
     }
 }

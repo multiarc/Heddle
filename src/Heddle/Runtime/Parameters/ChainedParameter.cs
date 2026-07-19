@@ -23,6 +23,13 @@ namespace Heddle.Runtime.Parameters
             }
         }
 
+        /// <summary>
+        /// The collapsed-or-chain processor (a single <see cref="TemplateItem"/> when the chain held one
+        /// item, otherwise the <see cref="TemplateChain"/>). Exposed for the compile-time
+        /// <c>NeedsLocals</c> walk, which recurses nested chain parameters.
+        /// </summary>
+        internal IDataProcessor Processor => _callParameterChain;
+
         public void Dispose()
         {
             _callParameterChain.Dispose();

@@ -1,0 +1,84 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+
+    <!-- Roslyn incremental source generator, phase 7 D12. -->
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
+
+    <Version>2.0.0$(VersionSuffix)</Version>
+    <PackageId>Heddle.Generator</PackageId>
+    <Description>Build-time template pre-compilation for Heddle (phase 7 incremental source generator).</Description>
+
+    <!-- Analyzer projects that ProjectReference another project trigger this warning; the DLLs are packed
+         into analyzers/dotnet/cs by the targets below.
+         RS2008: this incremental source generator reports build diagnostics but is not distributed as a
+         versioned analyzer package with AnalyzerReleases.{Shipped,Unreleased}.md tracking; the HED7xxx IDs
+         are governed by the diagnostic-ID registry in docs/spec instead. -->
+    <NoWarn>$(NoWarn);RS1038;NU5128;RS2008</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- White-box binder unit tests (ExtensionBinder / Info are internal). Signed with the shared key. -->
+    <InternalsVisibleTo Include="Heddle.Generator.Tests, PublicKey=00240000048000009400000006020000002400005253413100040000010001008F699CB432AD3DC770F9147DE37911B49099706C36AF5F14DB7C2031DD216FFAE283B63A2591814F371929AB231C4A82BCBFAC9803C37B96AE90DC703F4159E8B6AC6E2E9F364F072D1BA2FC5B79F26ACF3BD61637D2DB47F409E2B07CF3F49E988BF2C5F6DDAE6D8F804C770601CCE3F3CEA11F7D61A3583109D9AD3244F6C6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The host compiler provides Microsoft.CodeAnalysis; never shipped (D12). -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.4.0" PrivateAssets="all" />
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The ANTLR front end (generated lexer/parser). Referenced for compile; bundled into the analyzer
+         folder for pack (targets below). -->
+    <ProjectReference Include="..\Heddle.Language\Heddle.Language.csproj" />
+  </ItemGroup>
+
+  <!-- Shared front-end sources (D4 step 2): the same parse pipeline the runtime compiles, linked in so parse
+       knowledge exists exactly once. Excludes the runtime CompileContext adapter partial. -->
+  <ItemGroup>
+    <Compile Include="..\Heddle\Language\**\*.cs" Exclude="..\Heddle\Language\DocumentParser.Runtime.cs">
+      <Link>Shared\Language\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Compile>
+    <Compile Include="..\Heddle\Strings\Core\BlockPosition.cs" Link="Shared\Strings\BlockPosition.cs" />
+    <Compile Include="..\Heddle\Data\CompileError.cs" Link="Shared\Data\CompileError.cs" />
+    <Compile Include="..\Heddle\Data\HeddleCompileError.cs" Link="Shared\Data\HeddleCompileError.cs" />
+    <Compile Include="..\Heddle\Data\HeddleCompileWarning.cs" Link="Shared\Data\HeddleCompileWarning.cs" />
+    <Compile Include="..\Heddle\Data\HeddleDiagnosticIds.cs" Link="Shared\Data\HeddleDiagnosticIds.cs" />
+    <Compile Include="..\Heddle\Data\LinePosition.cs" Link="Shared\Data\LinePosition.cs" />
+    <Compile Include="..\Heddle\Exceptions\TemplateCompileException.cs" Link="Shared\Exceptions\TemplateCompileException.cs" />
+    <Compile Include="..\Heddle\Exceptions\TemplateParseException.cs" Link="Shared\Exceptions\TemplateParseException.cs" />
+    <Compile Include="..\Heddle\Precompiled\TemplateKey.cs" Link="Shared\Precompiled\TemplateKey.cs" />
+    <Compile Include="..\Heddle\Precompiled\DefaultFunctionTable.cs" Link="Shared\Precompiled\DefaultFunctionTable.cs" />
+  </ItemGroup>
+
+  <!-- Pack layout: the generator + its generation-time dependencies inside analyzers/dotnet/cs; MSBuild
+       props/targets under buildTransitive (D12). Microsoft.CodeAnalysis* is never shipped. -->
+  <ItemGroup>
+    <None Include="build\Heddle.Generator.props" Pack="true" PackagePath="buildTransitive\Heddle.Generator.props" />
+    <None Include="build\Heddle.Generator.targets" Pack="true" PackagePath="buildTransitive\Heddle.Generator.targets" />
+    <!-- Directory.Build.props sets PackageReadmeFile=README.md for every project, so the file must be
+         packed (else NU5039). Matches the other packable projects. -->
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <Target Name="_HeddlePackAnalyzers" DependsOnTargets="ResolveReferences" BeforeTargets="_GetPackageFiles">
+    <ItemGroup>
+      <None Include="$(OutputPath)Heddle.Generator.dll" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
+      <None Include="$(OutputPath)Heddle.Language.dll" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
+      <None Include="$(PkgAntlr4_Runtime_Standard)\lib\netstandard2.0\Antlr4.Runtime.Standard.dll"
+            Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
+    </ItemGroup>
+  </Target>
+
+</Project>

@@ -1,0 +1,1 @@
+<div>@partial(){{profile-partial-child}}</div>

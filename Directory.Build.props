@@ -16,6 +16,15 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>template;template-engine;text;codegen;razor-alternative</PackageTags>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <!-- Symbol package format for the library packages that opt in with IncludeSymbols (below).
+         Kept out of the CI `dotnet pack` command line: a global -p:IncludeSymbols=true also forces
+         a symbol package for the RID-specific-tool wrapper packages, which have no assembly, so NuGet
+         fails with NU5017. Setting IncludeSymbols per-project lets the tools/generator opt out. -->
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <!-- net6.0 is intentionally kept as a supported target for back-compat despite being out of Microsoft
+         support; acknowledge it so NETSDK1138 does not warn on every build. Dropping net6.0 would be a
+         consumer-facing breaking change, decided separately from this build-hygiene pass. -->
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
   </PropertyGroup>
 
 </Project>

@@ -1,0 +1,12 @@
+@using(){{Heddle.Samples.DefinitionLibrary}}
+@model(){{Article}}
+@<<{{library.heddle}}
+@%
+<greeting:greeting>
+{{Hello from the PAGE (this definition was overridden).}}
+<region:region>
+{{[region narrowed to Article: @(Title)]}} :: Article
+%@
+greeting -> @greeting()
+footer   -> @footer()
+region   -> @region(this)

@@ -1,0 +1,924 @@
+TYPE Heddle.Language.HeddleLexer : Antlr4.Runtime.Lexer
+  CTOR(Antlr4.Runtime.ICharStream)
+  CTOR(Antlr4.Runtime.ICharStream, System.IO.TextWriter, System.IO.TextWriter)
+  FIELD Antlr4.Runtime.Atn.ATN _ATN
+  FIELD Antlr4.Runtime.IVocabulary DefaultVocabulary
+  FIELD System.Int32 ASSIGN
+  FIELD System.Int32 CALL
+  FIELD System.Int32 CALL_COMMENT
+  FIELD System.Int32 CALL_LBRACKET
+  FIELD System.Int32 CALL_OP_AMP
+  FIELD System.Int32 CALL_OP_AND
+  FIELD System.Int32 CALL_OP_CARET
+  FIELD System.Int32 CALL_OP_EQ
+  FIELD System.Int32 CALL_OP_GE
+  FIELD System.Int32 CALL_OP_GT
+  FIELD System.Int32 CALL_OP_LE
+  FIELD System.Int32 CALL_OP_LSHIFT
+  FIELD System.Int32 CALL_OP_LT
+  FIELD System.Int32 CALL_OP_NEQ
+  FIELD System.Int32 CALL_OP_NOT
+  FIELD System.Int32 CALL_OP_OR
+  FIELD System.Int32 CALL_OP_PERCENT
+  FIELD System.Int32 CALL_OP_PIPE
+  FIELD System.Int32 CALL_OP_PLUS
+  FIELD System.Int32 CALL_OP_QQ
+  FIELD System.Int32 CALL_OP_QUESTION
+  FIELD System.Int32 CALL_OP_RSHIFT
+  FIELD System.Int32 CALL_OP_SLASH
+  FIELD System.Int32 CALL_OP_STAR
+  FIELD System.Int32 CALL_OP_TILDE
+  FIELD System.Int32 CALL_RBRACKET
+  FIELD System.Int32 CALL_RETURNED
+  FIELD System.Int32 CALL_RETURN_COMMENT
+  FIELD System.Int32 CALL_SKIP_WS
+  FIELD System.Int32 CALL_UNKNOWN
+  FIELD System.Int32 CALL_WS
+  FIELD System.Int32 CHAR_LIT
+  FIELD System.Int32 COMMA
+  FIELD System.Int32 COMMENT
+  FIELD System.Int32 CS
+  FIELD System.Int32 CSHARP_END
+  FIELD System.Int32 CSHARP_START
+  FIELD System.Int32 CSHARP_TOKEN
+  FIELD System.Int32 CS_NESTED
+  FIELD System.Int32 DEF
+  FIELD System.Int32 DEFP_ASSIGN
+  FIELD System.Int32 DEFP_COMMA
+  FIELD System.Int32 DEFP_COMMENT
+  FIELD System.Int32 DEFP_MINUS
+  FIELD System.Int32 DEFP_WS
+  FIELD System.Int32 DEF_CLOSE
+  FIELD System.Int32 DEF_COMMENT
+  FIELD System.Int32 DEF_ENDNAME
+  FIELD System.Int32 DEF_OUT
+  FIELD System.Int32 DEF_PROPS
+  FIELD System.Int32 DEF_START
+  FIELD System.Int32 DEF_STARTNAME
+  FIELD System.Int32 DEF_TYPE
+  FIELD System.Int32 DEF_WS
+  FIELD System.Int32 DELIM
+  FIELD System.Int32 FALSE
+  FIELD System.Int32 HOLE_CLOSE
+  FIELD System.Int32 ID
+  FIELD System.Int32 IMPORT_COMMENT
+  FIELD System.Int32 IMPORT_MODE
+  FIELD System.Int32 IMPORT_TOKEN
+  FIELD System.Int32 INTERP_HOLE
+  FIELD System.Int32 INTERP_STR
+  FIELD System.Int32 INTERP_VERBATIM_STR
+  FIELD System.Int32 INT_LIT
+  FIELD System.Int32 ISTR_CLOSE_BRACE_ESC
+  FIELD System.Int32 ISTR_END
+  FIELD System.Int32 ISTR_OPEN_BRACE_ESC
+  FIELD System.Int32 IVSTR_QUOTE_ESC
+  FIELD System.Int32 LBRACKET
+  FIELD System.Int32 MEMBER_P
+  FIELD System.Int32 NULL
+  FIELD System.Int32 OP_AMP
+  FIELD System.Int32 OP_AND
+  FIELD System.Int32 OP_CARET
+  FIELD System.Int32 OP_EQ
+  FIELD System.Int32 OP_GE
+  FIELD System.Int32 OP_GT
+  FIELD System.Int32 OP_LE
+  FIELD System.Int32 OP_LSHIFT
+  FIELD System.Int32 OP_LT
+  FIELD System.Int32 OP_MINUS
+  FIELD System.Int32 OP_NEQ
+  FIELD System.Int32 OP_NOT
+  FIELD System.Int32 OP_OR
+  FIELD System.Int32 OP_PERCENT
+  FIELD System.Int32 OP_PIPE
+  FIELD System.Int32 OP_PLUS
+  FIELD System.Int32 OP_QQ
+  FIELD System.Int32 OP_QUESTION
+  FIELD System.Int32 OP_RSHIFT
+  FIELD System.Int32 OP_SLASH
+  FIELD System.Int32 OP_STAR
+  FIELD System.Int32 OP_TILDE
+  FIELD System.Int32 OUT
+  FIELD System.Int32 OUT_COMMENT
+  FIELD System.Int32 OUT_MODE
+  FIELD System.Int32 OUT_PARAMEND
+  FIELD System.Int32 OUT_PARAMSTART
+  FIELD System.Int32 OUT_SKIP_WS
+  FIELD System.Int32 RAW
+  FIELD System.Int32 RBRACKET
+  FIELD System.Int32 REAL_LIT
+  FIELD System.Int32 ROOT_REF
+  FIELD System.Int32 SKIP_WS
+  FIELD System.Int32 STRING_LIT
+  FIELD System.Int32 SUB_BLOCK
+  FIELD System.Int32 SUB_CLOSE
+  FIELD System.Int32 SUB_COMMENT
+  FIELD System.Int32 SUB_SKIP_WS
+  FIELD System.Int32 SUB_START
+  FIELD System.Int32 TEXT
+  FIELD System.Int32 THIS
+  FIELD System.Int32 TRUE
+  FIELD System.Int32 WS
+  FIELD System.String[] channelNames
+  FIELD System.String[] modeNames
+  FIELD System.String[] ruleNames
+  METHOD System.Boolean Sempred(Antlr4.Runtime.RuleContext, System.Int32, System.Int32)
+  PROP Antlr4.Runtime.IVocabulary Vocabulary {get;}
+  PROP System.Int32[] SerializedAtn {get;}
+  PROP System.String GrammarFileName {get;}
+  PROP System.String[] ChannelNames {get;}
+  PROP System.String[] ModeNames {get;}
+  PROP System.String[] RuleNames {get;}
+TYPE Heddle.Language.HeddleParser : Antlr4.Runtime.Parser
+  CTOR(Antlr4.Runtime.ITokenStream)
+  CTOR(Antlr4.Runtime.ITokenStream, System.IO.TextWriter, System.IO.TextWriter)
+  FIELD Antlr4.Runtime.Atn.ATN _ATN
+  FIELD Antlr4.Runtime.IVocabulary DefaultVocabulary
+  FIELD System.Int32 ASSIGN
+  FIELD System.Int32 CALL_COMMENT
+  FIELD System.Int32 CALL_LBRACKET
+  FIELD System.Int32 CALL_OP_AMP
+  FIELD System.Int32 CALL_OP_AND
+  FIELD System.Int32 CALL_OP_CARET
+  FIELD System.Int32 CALL_OP_EQ
+  FIELD System.Int32 CALL_OP_GE
+  FIELD System.Int32 CALL_OP_GT
+  FIELD System.Int32 CALL_OP_LE
+  FIELD System.Int32 CALL_OP_LSHIFT
+  FIELD System.Int32 CALL_OP_LT
+  FIELD System.Int32 CALL_OP_NEQ
+  FIELD System.Int32 CALL_OP_NOT
+  FIELD System.Int32 CALL_OP_OR
+  FIELD System.Int32 CALL_OP_PERCENT
+  FIELD System.Int32 CALL_OP_PIPE
+  FIELD System.Int32 CALL_OP_PLUS
+  FIELD System.Int32 CALL_OP_QQ
+  FIELD System.Int32 CALL_OP_QUESTION
+  FIELD System.Int32 CALL_OP_RSHIFT
+  FIELD System.Int32 CALL_OP_SLASH
+  FIELD System.Int32 CALL_OP_STAR
+  FIELD System.Int32 CALL_OP_TILDE
+  FIELD System.Int32 CALL_RBRACKET
+  FIELD System.Int32 CALL_RETURN_COMMENT
+  FIELD System.Int32 CALL_SKIP_WS
+  FIELD System.Int32 CALL_UNKNOWN
+  FIELD System.Int32 CALL_WS
+  FIELD System.Int32 CHAR_LIT
+  FIELD System.Int32 COMMA
+  FIELD System.Int32 COMMENT
+  FIELD System.Int32 CSHARP_END
+  FIELD System.Int32 CSHARP_START
+  FIELD System.Int32 CSHARP_TOKEN
+  FIELD System.Int32 DEFP_ASSIGN
+  FIELD System.Int32 DEFP_COMMA
+  FIELD System.Int32 DEFP_COMMENT
+  FIELD System.Int32 DEFP_MINUS
+  FIELD System.Int32 DEFP_WS
+  FIELD System.Int32 DEF_CLOSE
+  FIELD System.Int32 DEF_COMMENT
+  FIELD System.Int32 DEF_ENDNAME
+  FIELD System.Int32 DEF_OUT
+  FIELD System.Int32 DEF_START
+  FIELD System.Int32 DEF_STARTNAME
+  FIELD System.Int32 DEF_TYPE
+  FIELD System.Int32 DEF_WS
+  FIELD System.Int32 DELIM
+  FIELD System.Int32 FALSE
+  FIELD System.Int32 HOLE_CLOSE
+  FIELD System.Int32 ID
+  FIELD System.Int32 IMPORT_COMMENT
+  FIELD System.Int32 IMPORT_TOKEN
+  FIELD System.Int32 INT_LIT
+  FIELD System.Int32 ISTR_CLOSE_BRACE_ESC
+  FIELD System.Int32 ISTR_END
+  FIELD System.Int32 ISTR_OPEN_BRACE_ESC
+  FIELD System.Int32 IVSTR_QUOTE_ESC
+  FIELD System.Int32 LBRACKET
+  FIELD System.Int32 MEMBER_P
+  FIELD System.Int32 NULL
+  FIELD System.Int32 OP_AMP
+  FIELD System.Int32 OP_AND
+  FIELD System.Int32 OP_CARET
+  FIELD System.Int32 OP_EQ
+  FIELD System.Int32 OP_GE
+  FIELD System.Int32 OP_GT
+  FIELD System.Int32 OP_LE
+  FIELD System.Int32 OP_LSHIFT
+  FIELD System.Int32 OP_LT
+  FIELD System.Int32 OP_MINUS
+  FIELD System.Int32 OP_NEQ
+  FIELD System.Int32 OP_NOT
+  FIELD System.Int32 OP_OR
+  FIELD System.Int32 OP_PERCENT
+  FIELD System.Int32 OP_PIPE
+  FIELD System.Int32 OP_PLUS
+  FIELD System.Int32 OP_QQ
+  FIELD System.Int32 OP_QUESTION
+  FIELD System.Int32 OP_RSHIFT
+  FIELD System.Int32 OP_SLASH
+  FIELD System.Int32 OP_STAR
+  FIELD System.Int32 OP_TILDE
+  FIELD System.Int32 OUT
+  FIELD System.Int32 OUT_COMMENT
+  FIELD System.Int32 OUT_PARAMEND
+  FIELD System.Int32 OUT_PARAMSTART
+  FIELD System.Int32 OUT_SKIP_WS
+  FIELD System.Int32 RAW
+  FIELD System.Int32 RBRACKET
+  FIELD System.Int32 REAL_LIT
+  FIELD System.Int32 ROOT_REF
+  FIELD System.Int32 RULE_arg_list
+  FIELD System.Int32 RULE_call
+  FIELD System.Int32 RULE_chain
+  FIELD System.Int32 RULE_csharp_expression
+  FIELD System.Int32 RULE_def
+  FIELD System.Int32 RULE_def_base
+  FIELD System.Int32 RULE_def_literal
+  FIELD System.Int32 RULE_def_prop
+  FIELD System.Int32 RULE_def_prop_default
+  FIELD System.Int32 RULE_def_prop_item
+  FIELD System.Int32 RULE_def_props
+  FIELD System.Int32 RULE_def_region_type
+  FIELD System.Int32 RULE_def_slot
+  FIELD System.Int32 RULE_def_type
+  FIELD System.Int32 RULE_default_chain
+  FIELD System.Int32 RULE_definition
+  FIELD System.Int32 RULE_expr
+  FIELD System.Int32 RULE_extension_id
+  FIELD System.Int32 RULE_heddle
+  FIELD System.Int32 RULE_import_block
+  FIELD System.Int32 RULE_literal
+  FIELD System.Int32 RULE_member_expression
+  FIELD System.Int32 RULE_named_argument
+  FIELD System.Int32 RULE_native_expression
+  FIELD System.Int32 RULE_outblock
+  FIELD System.Int32 RULE_raw
+  FIELD System.Int32 RULE_subtemplate
+  FIELD System.Int32 RULE_text
+  FIELD System.Int32 SKIP_WS
+  FIELD System.Int32 STRING_LIT
+  FIELD System.Int32 SUB_CLOSE
+  FIELD System.Int32 SUB_COMMENT
+  FIELD System.Int32 SUB_SKIP_WS
+  FIELD System.Int32 SUB_START
+  FIELD System.Int32 TEXT
+  FIELD System.Int32 THIS
+  FIELD System.Int32 TRUE
+  FIELD System.Int32 WS
+  FIELD System.String[] ruleNames
+  METHOD Heddle.Language.HeddleParser+Arg_listContext arg_list()
+  METHOD Heddle.Language.HeddleParser+CallContext call()
+  METHOD Heddle.Language.HeddleParser+ChainContext chain()
+  METHOD Heddle.Language.HeddleParser+Csharp_expressionContext csharp_expression()
+  METHOD Heddle.Language.HeddleParser+DefContext def()
+  METHOD Heddle.Language.HeddleParser+Def_baseContext def_base()
+  METHOD Heddle.Language.HeddleParser+Def_literalContext def_literal()
+  METHOD Heddle.Language.HeddleParser+Def_propContext def_prop()
+  METHOD Heddle.Language.HeddleParser+Def_prop_defaultContext def_prop_default()
+  METHOD Heddle.Language.HeddleParser+Def_prop_itemContext def_prop_item()
+  METHOD Heddle.Language.HeddleParser+Def_propsContext def_props()
+  METHOD Heddle.Language.HeddleParser+Def_region_typeContext def_region_type()
+  METHOD Heddle.Language.HeddleParser+Def_slotContext def_slot()
+  METHOD Heddle.Language.HeddleParser+Def_typeContext def_type()
+  METHOD Heddle.Language.HeddleParser+Default_chainContext default_chain()
+  METHOD Heddle.Language.HeddleParser+DefinitionContext definition()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr()
+  METHOD Heddle.Language.HeddleParser+Extension_idContext extension_id()
+  METHOD Heddle.Language.HeddleParser+HeddleContext heddle()
+  METHOD Heddle.Language.HeddleParser+Import_blockContext import_block()
+  METHOD Heddle.Language.HeddleParser+LiteralContext literal()
+  METHOD Heddle.Language.HeddleParser+Member_expressionContext member_expression()
+  METHOD Heddle.Language.HeddleParser+Named_argumentContext named_argument()
+  METHOD Heddle.Language.HeddleParser+Native_expressionContext native_expression()
+  METHOD Heddle.Language.HeddleParser+OutblockContext outblock()
+  METHOD Heddle.Language.HeddleParser+RawContext raw()
+  METHOD Heddle.Language.HeddleParser+SubtemplateContext subtemplate()
+  METHOD Heddle.Language.HeddleParser+TextContext text()
+  METHOD System.Boolean Sempred(Antlr4.Runtime.RuleContext, System.Int32, System.Int32)
+  PROP Antlr4.Runtime.IVocabulary Vocabulary {get;}
+  PROP System.Int32[] SerializedAtn {get;}
+  PROP System.String GrammarFileName {get;}
+  PROP System.String[] RuleNames {get;}
+TYPE Heddle.Language.HeddleParser+AdditiveExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  FIELD Antlr4.Runtime.IToken op
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_MINUS()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_PLUS()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr(System.Int32)
+  METHOD Heddle.Language.HeddleParser+ExprContext[] expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+AndAlsoExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_AND()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr(System.Int32)
+  METHOD Heddle.Language.HeddleParser+ExprContext[] expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+Arg_listContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode COMMA(System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OUT_PARAMEND()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OUT_PARAMSTART()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode[] COMMA()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr(System.Int32)
+  METHOD Heddle.Language.HeddleParser+ExprContext[] expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+BitAndExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_AMP()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr(System.Int32)
+  METHOD Heddle.Language.HeddleParser+ExprContext[] expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+BitOrExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_PIPE()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr(System.Int32)
+  METHOD Heddle.Language.HeddleParser+ExprContext[] expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+BitXorExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_CARET()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr(System.Int32)
+  METHOD Heddle.Language.HeddleParser+ExprContext[] expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+CallContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode COMMA(System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode CSHARP_START()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OUT_PARAMEND()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OUT_PARAMSTART()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode WS(System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode[] COMMA()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode[] WS()
+  METHOD Heddle.Language.HeddleParser+ChainContext chain()
+  METHOD Heddle.Language.HeddleParser+Csharp_expressionContext csharp_expression()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr()
+  METHOD Heddle.Language.HeddleParser+Extension_idContext extension_id()
+  METHOD Heddle.Language.HeddleParser+Member_expressionContext member_expression()
+  METHOD Heddle.Language.HeddleParser+Named_argumentContext named_argument(System.Int32)
+  METHOD Heddle.Language.HeddleParser+Named_argumentContext[] named_argument()
+  METHOD Heddle.Language.HeddleParser+Native_expressionContext native_expression()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+ChainContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode DELIM(System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode[] DELIM()
+  METHOD Heddle.Language.HeddleParser+CallContext call(System.Int32)
+  METHOD Heddle.Language.HeddleParser+CallContext[] call()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+CoalesceExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_QQ()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr(System.Int32)
+  METHOD Heddle.Language.HeddleParser+ExprContext[] expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+Csharp_expressionContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode CSHARP_TOKEN(System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode[] CSHARP_TOKEN()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+DefContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode DEF_ENDNAME()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode DEF_STARTNAME()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode DELIM()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode ID()
+  METHOD Heddle.Language.HeddleParser+Def_baseContext def_base()
+  METHOD Heddle.Language.HeddleParser+Def_propsContext def_props()
+  METHOD Heddle.Language.HeddleParser+Def_region_typeContext def_region_type()
+  METHOD Heddle.Language.HeddleParser+Def_typeContext def_type()
+  METHOD Heddle.Language.HeddleParser+Default_chainContext default_chain()
+  METHOD Heddle.Language.HeddleParser+SubtemplateContext subtemplate()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+Def_baseContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode DELIM()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode ID()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+Def_literalContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode CHAR_LIT()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode FALSE()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode INT_LIT()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode NULL()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_MINUS()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode REAL_LIT()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode STRING_LIT()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode TRUE()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+Def_propContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode DELIM()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode ID(System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode[] ID()
+  METHOD Heddle.Language.HeddleParser+Def_prop_defaultContext def_prop_default()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+Def_prop_defaultContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode ASSIGN()
+  METHOD Heddle.Language.HeddleParser+Def_literalContext def_literal()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+Def_prop_itemContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Heddle.Language.HeddleParser+Def_propContext def_prop()
+  METHOD Heddle.Language.HeddleParser+Def_slotContext def_slot()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+Def_propsContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode COMMA(System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OUT_PARAMEND()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OUT_PARAMSTART()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode[] COMMA()
+  METHOD Heddle.Language.HeddleParser+Def_prop_itemContext def_prop_item(System.Int32)
+  METHOD Heddle.Language.HeddleParser+Def_prop_itemContext[] def_prop_item()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+Def_region_typeContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode DEF_TYPE()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode ID()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+Def_slotContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode DEF_TYPE()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode ID(System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode[] ID()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+Def_typeContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode DEF_TYPE()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode ID()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+Default_chainContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode DEF_OUT()
+  METHOD Heddle.Language.HeddleParser+ChainContext chain()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+DefinitionContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode DEF_CLOSE()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode DEF_START()
+  METHOD Heddle.Language.HeddleParser+DefContext def(System.Int32)
+  METHOD Heddle.Language.HeddleParser+DefContext[] def()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+EqualityExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  FIELD Antlr4.Runtime.IToken op
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_EQ()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_NEQ()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr(System.Int32)
+  METHOD Heddle.Language.HeddleParser+ExprContext[] expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+ExprContext : Antlr4.Runtime.ParserRuleContext
+  CTOR()
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD System.Void CopyFrom(Heddle.Language.HeddleParser+ExprContext)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+Extension_idContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode ID()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+FunctionCallExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode ID()
+  METHOD Heddle.Language.HeddleParser+Arg_listContext arg_list()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+GroupExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OUT_PARAMEND()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OUT_PARAMSTART()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+HeddleContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Heddle.Language.HeddleParser+DefinitionContext definition(System.Int32)
+  METHOD Heddle.Language.HeddleParser+DefinitionContext[] definition()
+  METHOD Heddle.Language.HeddleParser+Import_blockContext import_block(System.Int32)
+  METHOD Heddle.Language.HeddleParser+Import_blockContext[] import_block()
+  METHOD Heddle.Language.HeddleParser+OutblockContext outblock(System.Int32)
+  METHOD Heddle.Language.HeddleParser+OutblockContext[] outblock()
+  METHOD Heddle.Language.HeddleParser+RawContext raw(System.Int32)
+  METHOD Heddle.Language.HeddleParser+RawContext[] raw()
+  METHOD Heddle.Language.HeddleParser+TextContext text(System.Int32)
+  METHOD Heddle.Language.HeddleParser+TextContext[] text()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+Import_blockContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode IMPORT_TOKEN()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode SUB_CLOSE()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode SUB_START()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode WS(System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode[] WS()
+  METHOD Heddle.Language.HeddleParser+TextContext text(System.Int32)
+  METHOD Heddle.Language.HeddleParser+TextContext[] text()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+IndexExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode COMMA(System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode LBRACKET()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode RBRACKET()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode[] COMMA()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr(System.Int32)
+  METHOD Heddle.Language.HeddleParser+ExprContext[] expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+LiteralContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode CHAR_LIT()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode FALSE()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode INT_LIT()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode NULL()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode REAL_LIT()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode STRING_LIT()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode TRUE()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+LiteralExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  METHOD Heddle.Language.HeddleParser+LiteralContext literal()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+MemberHopExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode ID()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode MEMBER_P()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+Member_expressionContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode ID(System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode MEMBER_P(System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode ROOT_REF()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode[] ID()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode[] MEMBER_P()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+MethodCallExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode ID()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode MEMBER_P()
+  METHOD Heddle.Language.HeddleParser+Arg_listContext arg_list()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+MultiplicativeExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  FIELD Antlr4.Runtime.IToken op
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_PERCENT()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_SLASH()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_STAR()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr(System.Int32)
+  METHOD Heddle.Language.HeddleParser+ExprContext[] expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+Named_argumentContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode DELIM()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode ID()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+Native_expressionContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Heddle.Language.HeddleParser+ExprContext expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+OrElseExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_OR()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr(System.Int32)
+  METHOD Heddle.Language.HeddleParser+ExprContext[] expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+OutblockContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OUT()
+  METHOD Heddle.Language.HeddleParser+ChainContext chain()
+  METHOD Heddle.Language.HeddleParser+SubtemplateContext subtemplate()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+PathRootExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode ID()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode ROOT_REF()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+RawContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode RAW()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+RelationalExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  FIELD Antlr4.Runtime.IToken op
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_GE()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_GT()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_LE()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_LT()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr(System.Int32)
+  METHOD Heddle.Language.HeddleParser+ExprContext[] expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+ShiftExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  FIELD Antlr4.Runtime.IToken op
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_LSHIFT()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_RSHIFT()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr(System.Int32)
+  METHOD Heddle.Language.HeddleParser+ExprContext[] expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+SubtemplateContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode SUB_CLOSE()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode SUB_START()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode WS(System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode[] WS()
+  METHOD Heddle.Language.HeddleParser+HeddleContext heddle()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+TernaryExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode DELIM()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_QUESTION()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr(System.Int32)
+  METHOD Heddle.Language.HeddleParser+ExprContext[] expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+TextContext : Antlr4.Runtime.ParserRuleContext
+  CTOR(Antlr4.Runtime.ParserRuleContext, System.Int32)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode DEF_CLOSE()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode DEF_START()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OUT()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode RAW()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode SUB_CLOSE()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode SUB_START()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  PROP System.Int32 RuleIndex {get;}
+TYPE Heddle.Language.HeddleParser+ThisExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  METHOD Antlr4.Runtime.Tree.ITerminalNode THIS()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParser+UnaryExprContext : Heddle.Language.HeddleParser+ExprContext
+  CTOR(Heddle.Language.HeddleParser+ExprContext)
+  FIELD Antlr4.Runtime.IToken op
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_MINUS()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_NOT()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_PLUS()
+  METHOD Antlr4.Runtime.Tree.ITerminalNode OP_TILDE()
+  METHOD Heddle.Language.HeddleParser+ExprContext expr()
+  METHOD System.Void EnterRule(Antlr4.Runtime.Tree.IParseTreeListener)
+  METHOD System.Void ExitRule(Antlr4.Runtime.Tree.IParseTreeListener)
+TYPE Heddle.Language.HeddleParserBaseListener impl Heddle.Language.IHeddleParserListener
+  CTOR()
+  METHOD System.Void EnterAdditiveExpr(Heddle.Language.HeddleParser+AdditiveExprContext)
+  METHOD System.Void EnterAndAlsoExpr(Heddle.Language.HeddleParser+AndAlsoExprContext)
+  METHOD System.Void EnterArg_list(Heddle.Language.HeddleParser+Arg_listContext)
+  METHOD System.Void EnterBitAndExpr(Heddle.Language.HeddleParser+BitAndExprContext)
+  METHOD System.Void EnterBitOrExpr(Heddle.Language.HeddleParser+BitOrExprContext)
+  METHOD System.Void EnterBitXorExpr(Heddle.Language.HeddleParser+BitXorExprContext)
+  METHOD System.Void EnterCall(Heddle.Language.HeddleParser+CallContext)
+  METHOD System.Void EnterChain(Heddle.Language.HeddleParser+ChainContext)
+  METHOD System.Void EnterCoalesceExpr(Heddle.Language.HeddleParser+CoalesceExprContext)
+  METHOD System.Void EnterCsharp_expression(Heddle.Language.HeddleParser+Csharp_expressionContext)
+  METHOD System.Void EnterDef(Heddle.Language.HeddleParser+DefContext)
+  METHOD System.Void EnterDef_base(Heddle.Language.HeddleParser+Def_baseContext)
+  METHOD System.Void EnterDef_literal(Heddle.Language.HeddleParser+Def_literalContext)
+  METHOD System.Void EnterDef_prop(Heddle.Language.HeddleParser+Def_propContext)
+  METHOD System.Void EnterDef_prop_default(Heddle.Language.HeddleParser+Def_prop_defaultContext)
+  METHOD System.Void EnterDef_prop_item(Heddle.Language.HeddleParser+Def_prop_itemContext)
+  METHOD System.Void EnterDef_props(Heddle.Language.HeddleParser+Def_propsContext)
+  METHOD System.Void EnterDef_region_type(Heddle.Language.HeddleParser+Def_region_typeContext)
+  METHOD System.Void EnterDef_slot(Heddle.Language.HeddleParser+Def_slotContext)
+  METHOD System.Void EnterDef_type(Heddle.Language.HeddleParser+Def_typeContext)
+  METHOD System.Void EnterDefault_chain(Heddle.Language.HeddleParser+Default_chainContext)
+  METHOD System.Void EnterDefinition(Heddle.Language.HeddleParser+DefinitionContext)
+  METHOD System.Void EnterEqualityExpr(Heddle.Language.HeddleParser+EqualityExprContext)
+  METHOD System.Void EnterEveryRule(Antlr4.Runtime.ParserRuleContext)
+  METHOD System.Void EnterExtension_id(Heddle.Language.HeddleParser+Extension_idContext)
+  METHOD System.Void EnterFunctionCallExpr(Heddle.Language.HeddleParser+FunctionCallExprContext)
+  METHOD System.Void EnterGroupExpr(Heddle.Language.HeddleParser+GroupExprContext)
+  METHOD System.Void EnterHeddle(Heddle.Language.HeddleParser+HeddleContext)
+  METHOD System.Void EnterImport_block(Heddle.Language.HeddleParser+Import_blockContext)
+  METHOD System.Void EnterIndexExpr(Heddle.Language.HeddleParser+IndexExprContext)
+  METHOD System.Void EnterLiteral(Heddle.Language.HeddleParser+LiteralContext)
+  METHOD System.Void EnterLiteralExpr(Heddle.Language.HeddleParser+LiteralExprContext)
+  METHOD System.Void EnterMemberHopExpr(Heddle.Language.HeddleParser+MemberHopExprContext)
+  METHOD System.Void EnterMember_expression(Heddle.Language.HeddleParser+Member_expressionContext)
+  METHOD System.Void EnterMethodCallExpr(Heddle.Language.HeddleParser+MethodCallExprContext)
+  METHOD System.Void EnterMultiplicativeExpr(Heddle.Language.HeddleParser+MultiplicativeExprContext)
+  METHOD System.Void EnterNamed_argument(Heddle.Language.HeddleParser+Named_argumentContext)
+  METHOD System.Void EnterNative_expression(Heddle.Language.HeddleParser+Native_expressionContext)
+  METHOD System.Void EnterOrElseExpr(Heddle.Language.HeddleParser+OrElseExprContext)
+  METHOD System.Void EnterOutblock(Heddle.Language.HeddleParser+OutblockContext)
+  METHOD System.Void EnterPathRootExpr(Heddle.Language.HeddleParser+PathRootExprContext)
+  METHOD System.Void EnterRaw(Heddle.Language.HeddleParser+RawContext)
+  METHOD System.Void EnterRelationalExpr(Heddle.Language.HeddleParser+RelationalExprContext)
+  METHOD System.Void EnterShiftExpr(Heddle.Language.HeddleParser+ShiftExprContext)
+  METHOD System.Void EnterSubtemplate(Heddle.Language.HeddleParser+SubtemplateContext)
+  METHOD System.Void EnterTernaryExpr(Heddle.Language.HeddleParser+TernaryExprContext)
+  METHOD System.Void EnterText(Heddle.Language.HeddleParser+TextContext)
+  METHOD System.Void EnterThisExpr(Heddle.Language.HeddleParser+ThisExprContext)
+  METHOD System.Void EnterUnaryExpr(Heddle.Language.HeddleParser+UnaryExprContext)
+  METHOD System.Void ExitAdditiveExpr(Heddle.Language.HeddleParser+AdditiveExprContext)
+  METHOD System.Void ExitAndAlsoExpr(Heddle.Language.HeddleParser+AndAlsoExprContext)
+  METHOD System.Void ExitArg_list(Heddle.Language.HeddleParser+Arg_listContext)
+  METHOD System.Void ExitBitAndExpr(Heddle.Language.HeddleParser+BitAndExprContext)
+  METHOD System.Void ExitBitOrExpr(Heddle.Language.HeddleParser+BitOrExprContext)
+  METHOD System.Void ExitBitXorExpr(Heddle.Language.HeddleParser+BitXorExprContext)
+  METHOD System.Void ExitCall(Heddle.Language.HeddleParser+CallContext)
+  METHOD System.Void ExitChain(Heddle.Language.HeddleParser+ChainContext)
+  METHOD System.Void ExitCoalesceExpr(Heddle.Language.HeddleParser+CoalesceExprContext)
+  METHOD System.Void ExitCsharp_expression(Heddle.Language.HeddleParser+Csharp_expressionContext)
+  METHOD System.Void ExitDef(Heddle.Language.HeddleParser+DefContext)
+  METHOD System.Void ExitDef_base(Heddle.Language.HeddleParser+Def_baseContext)
+  METHOD System.Void ExitDef_literal(Heddle.Language.HeddleParser+Def_literalContext)
+  METHOD System.Void ExitDef_prop(Heddle.Language.HeddleParser+Def_propContext)
+  METHOD System.Void ExitDef_prop_default(Heddle.Language.HeddleParser+Def_prop_defaultContext)
+  METHOD System.Void ExitDef_prop_item(Heddle.Language.HeddleParser+Def_prop_itemContext)
+  METHOD System.Void ExitDef_props(Heddle.Language.HeddleParser+Def_propsContext)
+  METHOD System.Void ExitDef_region_type(Heddle.Language.HeddleParser+Def_region_typeContext)
+  METHOD System.Void ExitDef_slot(Heddle.Language.HeddleParser+Def_slotContext)
+  METHOD System.Void ExitDef_type(Heddle.Language.HeddleParser+Def_typeContext)
+  METHOD System.Void ExitDefault_chain(Heddle.Language.HeddleParser+Default_chainContext)
+  METHOD System.Void ExitDefinition(Heddle.Language.HeddleParser+DefinitionContext)
+  METHOD System.Void ExitEqualityExpr(Heddle.Language.HeddleParser+EqualityExprContext)
+  METHOD System.Void ExitEveryRule(Antlr4.Runtime.ParserRuleContext)
+  METHOD System.Void ExitExtension_id(Heddle.Language.HeddleParser+Extension_idContext)
+  METHOD System.Void ExitFunctionCallExpr(Heddle.Language.HeddleParser+FunctionCallExprContext)
+  METHOD System.Void ExitGroupExpr(Heddle.Language.HeddleParser+GroupExprContext)
+  METHOD System.Void ExitHeddle(Heddle.Language.HeddleParser+HeddleContext)
+  METHOD System.Void ExitImport_block(Heddle.Language.HeddleParser+Import_blockContext)
+  METHOD System.Void ExitIndexExpr(Heddle.Language.HeddleParser+IndexExprContext)
+  METHOD System.Void ExitLiteral(Heddle.Language.HeddleParser+LiteralContext)
+  METHOD System.Void ExitLiteralExpr(Heddle.Language.HeddleParser+LiteralExprContext)
+  METHOD System.Void ExitMemberHopExpr(Heddle.Language.HeddleParser+MemberHopExprContext)
+  METHOD System.Void ExitMember_expression(Heddle.Language.HeddleParser+Member_expressionContext)
+  METHOD System.Void ExitMethodCallExpr(Heddle.Language.HeddleParser+MethodCallExprContext)
+  METHOD System.Void ExitMultiplicativeExpr(Heddle.Language.HeddleParser+MultiplicativeExprContext)
+  METHOD System.Void ExitNamed_argument(Heddle.Language.HeddleParser+Named_argumentContext)
+  METHOD System.Void ExitNative_expression(Heddle.Language.HeddleParser+Native_expressionContext)
+  METHOD System.Void ExitOrElseExpr(Heddle.Language.HeddleParser+OrElseExprContext)
+  METHOD System.Void ExitOutblock(Heddle.Language.HeddleParser+OutblockContext)
+  METHOD System.Void ExitPathRootExpr(Heddle.Language.HeddleParser+PathRootExprContext)
+  METHOD System.Void ExitRaw(Heddle.Language.HeddleParser+RawContext)
+  METHOD System.Void ExitRelationalExpr(Heddle.Language.HeddleParser+RelationalExprContext)
+  METHOD System.Void ExitShiftExpr(Heddle.Language.HeddleParser+ShiftExprContext)
+  METHOD System.Void ExitSubtemplate(Heddle.Language.HeddleParser+SubtemplateContext)
+  METHOD System.Void ExitTernaryExpr(Heddle.Language.HeddleParser+TernaryExprContext)
+  METHOD System.Void ExitText(Heddle.Language.HeddleParser+TextContext)
+  METHOD System.Void ExitThisExpr(Heddle.Language.HeddleParser+ThisExprContext)
+  METHOD System.Void ExitUnaryExpr(Heddle.Language.HeddleParser+UnaryExprContext)
+  METHOD System.Void VisitErrorNode(Antlr4.Runtime.Tree.IErrorNode)
+  METHOD System.Void VisitTerminal(Antlr4.Runtime.Tree.ITerminalNode)
+TYPE Heddle.Language.IHeddleParserListener
+  METHOD System.Void EnterAdditiveExpr(Heddle.Language.HeddleParser+AdditiveExprContext)
+  METHOD System.Void EnterAndAlsoExpr(Heddle.Language.HeddleParser+AndAlsoExprContext)
+  METHOD System.Void EnterArg_list(Heddle.Language.HeddleParser+Arg_listContext)
+  METHOD System.Void EnterBitAndExpr(Heddle.Language.HeddleParser+BitAndExprContext)
+  METHOD System.Void EnterBitOrExpr(Heddle.Language.HeddleParser+BitOrExprContext)
+  METHOD System.Void EnterBitXorExpr(Heddle.Language.HeddleParser+BitXorExprContext)
+  METHOD System.Void EnterCall(Heddle.Language.HeddleParser+CallContext)
+  METHOD System.Void EnterChain(Heddle.Language.HeddleParser+ChainContext)
+  METHOD System.Void EnterCoalesceExpr(Heddle.Language.HeddleParser+CoalesceExprContext)
+  METHOD System.Void EnterCsharp_expression(Heddle.Language.HeddleParser+Csharp_expressionContext)
+  METHOD System.Void EnterDef(Heddle.Language.HeddleParser+DefContext)
+  METHOD System.Void EnterDef_base(Heddle.Language.HeddleParser+Def_baseContext)
+  METHOD System.Void EnterDef_literal(Heddle.Language.HeddleParser+Def_literalContext)
+  METHOD System.Void EnterDef_prop(Heddle.Language.HeddleParser+Def_propContext)
+  METHOD System.Void EnterDef_prop_default(Heddle.Language.HeddleParser+Def_prop_defaultContext)
+  METHOD System.Void EnterDef_prop_item(Heddle.Language.HeddleParser+Def_prop_itemContext)
+  METHOD System.Void EnterDef_props(Heddle.Language.HeddleParser+Def_propsContext)
+  METHOD System.Void EnterDef_region_type(Heddle.Language.HeddleParser+Def_region_typeContext)
+  METHOD System.Void EnterDef_slot(Heddle.Language.HeddleParser+Def_slotContext)
+  METHOD System.Void EnterDef_type(Heddle.Language.HeddleParser+Def_typeContext)
+  METHOD System.Void EnterDefault_chain(Heddle.Language.HeddleParser+Default_chainContext)
+  METHOD System.Void EnterDefinition(Heddle.Language.HeddleParser+DefinitionContext)
+  METHOD System.Void EnterEqualityExpr(Heddle.Language.HeddleParser+EqualityExprContext)
+  METHOD System.Void EnterExtension_id(Heddle.Language.HeddleParser+Extension_idContext)
+  METHOD System.Void EnterFunctionCallExpr(Heddle.Language.HeddleParser+FunctionCallExprContext)
+  METHOD System.Void EnterGroupExpr(Heddle.Language.HeddleParser+GroupExprContext)
+  METHOD System.Void EnterHeddle(Heddle.Language.HeddleParser+HeddleContext)
+  METHOD System.Void EnterImport_block(Heddle.Language.HeddleParser+Import_blockContext)
+  METHOD System.Void EnterIndexExpr(Heddle.Language.HeddleParser+IndexExprContext)
+  METHOD System.Void EnterLiteral(Heddle.Language.HeddleParser+LiteralContext)
+  METHOD System.Void EnterLiteralExpr(Heddle.Language.HeddleParser+LiteralExprContext)
+  METHOD System.Void EnterMemberHopExpr(Heddle.Language.HeddleParser+MemberHopExprContext)
+  METHOD System.Void EnterMember_expression(Heddle.Language.HeddleParser+Member_expressionContext)
+  METHOD System.Void EnterMethodCallExpr(Heddle.Language.HeddleParser+MethodCallExprContext)
+  METHOD System.Void EnterMultiplicativeExpr(Heddle.Language.HeddleParser+MultiplicativeExprContext)
+  METHOD System.Void EnterNamed_argument(Heddle.Language.HeddleParser+Named_argumentContext)
+  METHOD System.Void EnterNative_expression(Heddle.Language.HeddleParser+Native_expressionContext)
+  METHOD System.Void EnterOrElseExpr(Heddle.Language.HeddleParser+OrElseExprContext)
+  METHOD System.Void EnterOutblock(Heddle.Language.HeddleParser+OutblockContext)
+  METHOD System.Void EnterPathRootExpr(Heddle.Language.HeddleParser+PathRootExprContext)
+  METHOD System.Void EnterRaw(Heddle.Language.HeddleParser+RawContext)
+  METHOD System.Void EnterRelationalExpr(Heddle.Language.HeddleParser+RelationalExprContext)
+  METHOD System.Void EnterShiftExpr(Heddle.Language.HeddleParser+ShiftExprContext)
+  METHOD System.Void EnterSubtemplate(Heddle.Language.HeddleParser+SubtemplateContext)
+  METHOD System.Void EnterTernaryExpr(Heddle.Language.HeddleParser+TernaryExprContext)
+  METHOD System.Void EnterText(Heddle.Language.HeddleParser+TextContext)
+  METHOD System.Void EnterThisExpr(Heddle.Language.HeddleParser+ThisExprContext)
+  METHOD System.Void EnterUnaryExpr(Heddle.Language.HeddleParser+UnaryExprContext)
+  METHOD System.Void ExitAdditiveExpr(Heddle.Language.HeddleParser+AdditiveExprContext)
+  METHOD System.Void ExitAndAlsoExpr(Heddle.Language.HeddleParser+AndAlsoExprContext)
+  METHOD System.Void ExitArg_list(Heddle.Language.HeddleParser+Arg_listContext)
+  METHOD System.Void ExitBitAndExpr(Heddle.Language.HeddleParser+BitAndExprContext)
+  METHOD System.Void ExitBitOrExpr(Heddle.Language.HeddleParser+BitOrExprContext)
+  METHOD System.Void ExitBitXorExpr(Heddle.Language.HeddleParser+BitXorExprContext)
+  METHOD System.Void ExitCall(Heddle.Language.HeddleParser+CallContext)
+  METHOD System.Void ExitChain(Heddle.Language.HeddleParser+ChainContext)
+  METHOD System.Void ExitCoalesceExpr(Heddle.Language.HeddleParser+CoalesceExprContext)
+  METHOD System.Void ExitCsharp_expression(Heddle.Language.HeddleParser+Csharp_expressionContext)
+  METHOD System.Void ExitDef(Heddle.Language.HeddleParser+DefContext)
+  METHOD System.Void ExitDef_base(Heddle.Language.HeddleParser+Def_baseContext)
+  METHOD System.Void ExitDef_literal(Heddle.Language.HeddleParser+Def_literalContext)
+  METHOD System.Void ExitDef_prop(Heddle.Language.HeddleParser+Def_propContext)
+  METHOD System.Void ExitDef_prop_default(Heddle.Language.HeddleParser+Def_prop_defaultContext)
+  METHOD System.Void ExitDef_prop_item(Heddle.Language.HeddleParser+Def_prop_itemContext)
+  METHOD System.Void ExitDef_props(Heddle.Language.HeddleParser+Def_propsContext)
+  METHOD System.Void ExitDef_region_type(Heddle.Language.HeddleParser+Def_region_typeContext)
+  METHOD System.Void ExitDef_slot(Heddle.Language.HeddleParser+Def_slotContext)
+  METHOD System.Void ExitDef_type(Heddle.Language.HeddleParser+Def_typeContext)
+  METHOD System.Void ExitDefault_chain(Heddle.Language.HeddleParser+Default_chainContext)
+  METHOD System.Void ExitDefinition(Heddle.Language.HeddleParser+DefinitionContext)
+  METHOD System.Void ExitEqualityExpr(Heddle.Language.HeddleParser+EqualityExprContext)
+  METHOD System.Void ExitExtension_id(Heddle.Language.HeddleParser+Extension_idContext)
+  METHOD System.Void ExitFunctionCallExpr(Heddle.Language.HeddleParser+FunctionCallExprContext)
+  METHOD System.Void ExitGroupExpr(Heddle.Language.HeddleParser+GroupExprContext)
+  METHOD System.Void ExitHeddle(Heddle.Language.HeddleParser+HeddleContext)
+  METHOD System.Void ExitImport_block(Heddle.Language.HeddleParser+Import_blockContext)
+  METHOD System.Void ExitIndexExpr(Heddle.Language.HeddleParser+IndexExprContext)
+  METHOD System.Void ExitLiteral(Heddle.Language.HeddleParser+LiteralContext)
+  METHOD System.Void ExitLiteralExpr(Heddle.Language.HeddleParser+LiteralExprContext)
+  METHOD System.Void ExitMemberHopExpr(Heddle.Language.HeddleParser+MemberHopExprContext)
+  METHOD System.Void ExitMember_expression(Heddle.Language.HeddleParser+Member_expressionContext)
+  METHOD System.Void ExitMethodCallExpr(Heddle.Language.HeddleParser+MethodCallExprContext)
+  METHOD System.Void ExitMultiplicativeExpr(Heddle.Language.HeddleParser+MultiplicativeExprContext)
+  METHOD System.Void ExitNamed_argument(Heddle.Language.HeddleParser+Named_argumentContext)
+  METHOD System.Void ExitNative_expression(Heddle.Language.HeddleParser+Native_expressionContext)
+  METHOD System.Void ExitOrElseExpr(Heddle.Language.HeddleParser+OrElseExprContext)
+  METHOD System.Void ExitOutblock(Heddle.Language.HeddleParser+OutblockContext)
+  METHOD System.Void ExitPathRootExpr(Heddle.Language.HeddleParser+PathRootExprContext)
+  METHOD System.Void ExitRaw(Heddle.Language.HeddleParser+RawContext)
+  METHOD System.Void ExitRelationalExpr(Heddle.Language.HeddleParser+RelationalExprContext)
+  METHOD System.Void ExitShiftExpr(Heddle.Language.HeddleParser+ShiftExprContext)
+  METHOD System.Void ExitSubtemplate(Heddle.Language.HeddleParser+SubtemplateContext)
+  METHOD System.Void ExitTernaryExpr(Heddle.Language.HeddleParser+TernaryExprContext)
+  METHOD System.Void ExitText(Heddle.Language.HeddleParser+TextContext)
+  METHOD System.Void ExitThisExpr(Heddle.Language.HeddleParser+ThisExprContext)
+  METHOD System.Void ExitUnaryExpr(Heddle.Language.HeddleParser+UnaryExprContext)

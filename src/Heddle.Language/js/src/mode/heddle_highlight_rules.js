@@ -96,6 +96,19 @@ var HeddleLangHighlightRules = function (heddleMode) {
                 "heddle-sub.comment.start",
                 startPrefix + "heddle-comment"
             ),
+            // Phase 2 (post-2.0) — the literal-@ escape. `@@` renders a single `@`
+            // (lexer AT_ESCAPE / SUB_AT_ESCAPE -> RAW). The negative lookahead is
+            // the comment-adjacency guard: in `@@*…` the escape must NOT fire (the
+            // second `@` begins a `@*…*@` comment), matching the grammar's
+            // `{InputStream.LA(1) != '*'}?` predicate. Mirrors the VS Code
+            // tmLanguage `escaped-at` scope (constant.character.escape.heddle).
+            // Stateless: no `next`, so it applies wherever the start rules are
+            // merged (top level and `{{ … }}` bodies alike).
+            {
+                token: "heddle-sub.constant.character.escape",
+                regex: /@@(?!\*)/,
+                merge: false
+            },
             createNextRule(
                 /@\\\\\s*/,
                 "heddle-sub.comment.block",
@@ -142,6 +155,26 @@ var HeddleLangHighlightRules = function (heddleMode) {
                 startPrefix + "heddle-import"
             ),
             createPushRule(
+                /@(?:elseif|elif)\b/,
+                "heddle-sub.keyword",
+                startPrefix + "heddle-out"
+            ),
+            createPushRule(
+                /@else\b/,
+                "heddle-sub.keyword",
+                startPrefix + "heddle-out"
+            ),
+            createPushRule(
+                /@raw\b/,
+                "heddle-sub.support.function",
+                startPrefix + "heddle-out"
+            ),
+            createPushRule(
+                /@profile\b/,
+                "heddle-sub.support.function",
+                startPrefix + "heddle-out"
+            ),
+            createPushRule(
                 /@/,
                 "heddle-sub.support.function",
                 startPrefix + "heddle-out"
@@ -168,8 +201,8 @@ var HeddleLangHighlightRules = function (heddleMode) {
                 onMatch: function (val, state, stack) {
                     stack.shift();
                     stack.unshift(startPrefix + "heddle-call-returned");
-                    stack.unshift(startPrefix + "heddle-call");
-                    this.next = startPrefix + "heddle-call";
+                    stack.unshift(startPrefix + "heddle-call-arg");
+                    this.next = startPrefix + "heddle-call-arg";
                     this.merge = false;
                     return "heddle-out.keyword.paren.lparen";
                 },
@@ -374,57 +407,158 @@ var HeddleLangHighlightRules = function (heddleMode) {
             createPopRule(/()?/, "heddle-call-returned.empty")
         ];
 
-        rules[startPrefix + "heddle-call"] = [
-            createPushRule(
-                /@\*/,
-                "heddle-call.comment.start",
-                startPrefix + "heddle-comment"
-            ),
-            {
-                regex: /@/,
-                onMatch: function (val, state, stack) {
-                    stack.shift();
-                    stack.unshift("cs-start");
-                    this.next = "cs-start";
-                    this.merge = false;
-                    return "heddle-call.keyword";
+        // Shared native-expression / call-argument rules. Every simple token
+        // routes to the "body" call state (heddle-call); a comma resets to the
+        // argument-start state so a leading `name:` is recognised as a named
+        // argument rather than a ternary `:`.
+        var CALL = startPrefix + "heddle-call";
+        var CALL_ARG = startPrefix + "heddle-call-arg";
+        var DEF_PROPS = startPrefix + "heddle-def-props";
+
+        function expressionRules() {
+            return [
+                createPushRule(
+                    /@\*/,
+                    "heddle-call.comment.start",
+                    startPrefix + "heddle-comment"
+                ),
+                {
+                    regex: /@/,
+                    onMatch: function (val, state, stack) {
+                        stack.shift();
+                        stack.unshift("cs-start");
+                        this.next = "cs-start";
+                        this.merge = false;
+                        return "heddle-call.keyword";
+                    },
                 },
-            },
-            createPushRule(
-                /\(/,
-                "heddle-call.keyword.paren.lparen",
-                startPrefix + "heddle-call"
-            ),
-            createPopRule(
-                /\)/,
-                "heddle-call.keyword.paren.rparen"
-            ),
-            createNextRule(
-                /::/,
-                "heddle-call.punctuation.operator",
-                startPrefix + "heddle-call"
-            ),
-            createNextRule(
-                /:/,
-                "heddle-call.punctuation.operator",
-                startPrefix + "heddle-call"
-            ),
-            createNextRule(
-                /[a-zA-Zа-яА-Я_]+[a-zA-Zа-яА-Я0-9_]*/,
-                "heddle-call.variable.language",
-                startPrefix + "heddle-call"
-            ),
-            createNextRule(
-                /\./,
-                "heddle-call.punctuation.operator",
-                startPrefix + "heddle-call"
-            ),
-            createNextRule(
-                /\s+/,
-                "heddle-call.constant.other",
-                startPrefix + "heddle-call"
-            )
-        ];
+                // String / char literals (with escape sequences).
+                createNextRule(
+                    /"(?:\\.|[^"\\])*"/,
+                    "heddle-call.string.quoted.double",
+                    CALL
+                ),
+                createNextRule(
+                    /'(?:\\.|[^'\\])*'/,
+                    "heddle-call.string.quoted.single",
+                    CALL
+                ),
+                // Real literal BEFORE integer literal (order matters).
+                createNextRule(
+                    /\d+\.\d+(?:[eE][+-]?\d+)?[fFdDmM]?|\.\d+(?:[eE][+-]?\d+)?[fFdDmM]?|\d+(?:[eE][+-]?\d+)[fFdDmM]?|\d+[fFdDmM]/,
+                    "heddle-call.constant.numeric",
+                    CALL
+                ),
+                createNextRule(
+                    /0[xX][0-9a-fA-F]+|\d+/,
+                    "heddle-call.constant.numeric",
+                    CALL
+                ),
+                // Boolean / null literals.
+                createNextRule(
+                    /(?:true|false|null)\b\s*/,
+                    "heddle-call.constant.language",
+                    CALL
+                ),
+                // `this` keyword.
+                createNextRule(
+                    /this\b\s*/,
+                    "heddle-call.variable.language",
+                    CALL
+                ),
+                // Function / method call name: ID immediately followed by `(`.
+                createNextRule(
+                    /[a-zA-Zа-яА-Я_][a-zA-Zа-яА-Я0-9_]*\s*(?=\()/,
+                    "heddle-call.support.function",
+                    CALL
+                ),
+                // General identifier / member-path segment.
+                createNextRule(
+                    /[a-zA-Zа-яА-Я_][a-zA-Zа-яА-Я0-9_]*\s*/,
+                    "heddle-call.variable.language",
+                    CALL
+                ),
+                // Grouping / nested-call parens.
+                createPushRule(
+                    /\(/,
+                    "heddle-call.keyword.paren.lparen",
+                    CALL_ARG
+                ),
+                createPopRule(
+                    /\)/,
+                    "heddle-call.keyword.paren.rparen"
+                ),
+                // Index / grouping brackets.
+                createNextRule(
+                    /\[/,
+                    "heddle-call.keyword.operator",
+                    CALL
+                ),
+                createNextRule(
+                    /\]/,
+                    "heddle-call.keyword.operator",
+                    CALL
+                ),
+                // Argument / element comma resets to argument-start.
+                createNextRule(
+                    /,/,
+                    "heddle-call.punctuation.operator",
+                    CALL_ARG
+                ),
+                // Static / namespace operator.
+                createNextRule(
+                    /::/,
+                    "heddle-call.punctuation.operator",
+                    CALL
+                ),
+                // Member access.
+                createNextRule(
+                    /\./,
+                    "heddle-call.punctuation.operator",
+                    CALL
+                ),
+                // Multi-char operators BEFORE single-char operators.
+                createNextRule(
+                    /\?\?|&&|\|\||==|!=|<=|>=|<<|>>/,
+                    "heddle-call.keyword.operator",
+                    CALL
+                ),
+                // Single-char operators (incl. ternary `?` / `:`).
+                createNextRule(
+                    /[?:&|<>=!+\-*/%^~]/,
+                    "heddle-call.keyword.operator",
+                    CALL
+                ),
+                createNextRule(
+                    /\s+/,
+                    "heddle-call.constant.other",
+                    CALL
+                )
+            ];
+        }
+
+        // Named-argument detection is only active at argument start: a leading
+        // `name:` (single colon) classifies name as a parameter and the colon as
+        // punctuation, then hands off to the expression body.
+        var namedArgumentRule = {
+            regex: /[a-zA-Zа-яА-Я_][a-zA-Zа-яА-Я0-9_]*\s*:(?!:)/,
+            onMatch: function (val, state, stack) {
+                if (stack.length && stack[0] !== CALL) {
+                    stack.shift();
+                    stack.unshift(CALL);
+                }
+                this.next = CALL;
+                this.merge = false;
+                return [
+                    { type: "heddle-call.variable.parameter", value: val.slice(0, -1) },
+                    { type: "heddle-call.punctuation.operator", value: ":" }
+                ];
+            }
+        };
+
+        rules[startPrefix + "heddle-call"] = expressionRules();
+        rules[startPrefix + "heddle-call-arg"] = [namedArgumentRule].concat(expressionRules());
+
 
         rules[startPrefix + "heddle-import"] = [
             createPushRule(
@@ -506,6 +640,25 @@ var HeddleLangHighlightRules = function (heddleMode) {
                 "heddle-def-name.identifier",
                 startPrefix + "heddle-def-name"
             ),
+            createPushRule(
+                /\(/,
+                "heddle-def.keyword.operator.paren",
+                startPrefix + "heddle-def-props"
+            ),
+            // Phase 7 (post-2.0) — the in-header region model type: `<:item :: Article>`.
+            // `::` (DEF_TYPE) inside the angle brackets only occurs on a region
+            // header, and the identifier after it is a type, so it routes to a
+            // dedicated state that classes the type as storage.type (same class
+            // as the trailing `}} :: Type` def_type in heddle-def). Must precede
+            // the single `:` rule so maximal munch is by rule order.
+            createNextRule(
+                /::/,
+                "heddle-def-name.keyword.operator",
+                startPrefix + "heddle-def-region-type"
+            ),
+            // `:` — both the `<child:base>` inheritance delimiter and the phase 7
+            // region visibility marker `<:name>` (same operator class, matching
+            // the tmLanguage's keyword.operator.inheritance.heddle for both).
             createNextRule(
                 /:/,
                 "heddle-def-name.keyword.operator",
@@ -515,6 +668,132 @@ var HeddleLangHighlightRules = function (heddleMode) {
                 />/,
                 "heddle-def-name.punctuation.operator.paren.rparen",
                 startPrefix + "heddle-def"
+            )
+        ];
+
+        // Phase 7 (post-2.0) — the region model type between `::` and the closing
+        // `>` of a `<:name :: Type>` header. Dotted names, generics and arrays
+        // follow the same TYPE_ID surface as other type positions.
+        rules[startPrefix + "heddle-def-region-type"] = [
+            createPushRule(
+                /@\*/,
+                "heddle-def.comment.start",
+                startPrefix + "heddle-comment"
+            ),
+            createPushRule(
+                /[a-zA-Zа-яА-Я_]+[a-zA-Zа-яА-Я_0-9.]*\s*</,
+                "heddle-def-region-type.storage.type",
+                startPrefix + "heddle-generic-type"
+            ),
+            createNextRule(
+                /[a-zA-Zа-яА-Я_]+[a-zA-Zа-яА-Я_0-9.]*\s*(\[])*/,
+                "heddle-def-region-type.storage.type",
+                startPrefix + "heddle-def-region-type"
+            ),
+            createNextRule(
+                />/,
+                "heddle-def-name.punctuation.operator.paren.rparen",
+                startPrefix + "heddle-def"
+            ),
+            createNextRule(
+                /\s+/,
+                "heddle-def-region-type.whitespace",
+                startPrefix + "heddle-def-region-type"
+            )
+        ];
+
+        // Prop-declaration list opened by `<name( … )>` (DEF_PROPS surface).
+        // Isolated from the `<name : base>` header so the two `:` roles never
+        // collide.
+        rules[startPrefix + "heddle-def-props"] = [
+            createPushRule(
+                /@\*/,
+                "heddle-def.comment.start",
+                startPrefix + "heddle-comment"
+            ),
+            // Slot parameter name (ID before `::`) -> keyword.
+            createNextRule(
+                /[a-zA-Zа-яА-Я_][a-zA-Zа-яА-Я0-9_]*\s*(?=::)/,
+                "heddle-def.keyword",
+                startPrefix + "heddle-def-props"
+            ),
+            // Slot type operator `::`.
+            createNextRule(
+                /::/,
+                "heddle-def.keyword.operator",
+                startPrefix + "heddle-def-props"
+            ),
+            // Prop name (ID before single `:`) -> parameter.
+            createNextRule(
+                /[a-zA-Zа-яА-Я_][a-zA-Zа-яА-Я0-9_]*\s*(?=:(?!:))/,
+                "heddle-def.variable.parameter",
+                startPrefix + "heddle-def-props"
+            ),
+            // Prop name / type delimiter `:`.
+            createNextRule(
+                /:/,
+                "heddle-def.punctuation.operator",
+                startPrefix + "heddle-def-props"
+            ),
+            // Default assignment `=`.
+            createNextRule(
+                /=/,
+                "heddle-def.keyword.operator",
+                startPrefix + "heddle-def-props"
+            ),
+            // Default literals.
+            createNextRule(
+                /"(?:\\.|[^"\\])*"/,
+                "heddle-def.string.quoted.double",
+                startPrefix + "heddle-def-props"
+            ),
+            createNextRule(
+                /'(?:\\.|[^'\\])*'/,
+                "heddle-def.string.quoted.single",
+                startPrefix + "heddle-def-props"
+            ),
+            createNextRule(
+                /\d+\.\d+(?:[eE][+-]?\d+)?[fFdDmM]?|\d+(?:[eE][+-]?\d+)[fFdDmM]?|\d+[fFdDmM]/,
+                "heddle-def.constant.numeric",
+                startPrefix + "heddle-def-props"
+            ),
+            createNextRule(
+                /0[xX][0-9a-fA-F]+|\d+/,
+                "heddle-def.constant.numeric",
+                startPrefix + "heddle-def-props"
+            ),
+            createNextRule(
+                /(?:true|false|null)\b\s*/,
+                "heddle-def.constant.language",
+                startPrefix + "heddle-def-props"
+            ),
+            // Generic type e.g. `List<int>` (reuse generic-type handling).
+            createPushRule(
+                /[a-zA-Zа-яА-Я_]+[a-zA-Zа-яА-Я_0-9.]*\s*</,
+                "heddle-def.storage.type",
+                startPrefix + "heddle-generic-type"
+            ),
+            // Type identifier.
+            createNextRule(
+                /[a-zA-Zа-яА-Я_]+[a-zA-Zа-яА-Я_0-9.]*\s*(\[\])*/,
+                "heddle-def.storage.type",
+                startPrefix + "heddle-def-props"
+            ),
+            // Element comma.
+            createNextRule(
+                /,/,
+                "heddle-def.punctuation.operator",
+                startPrefix + "heddle-def-props"
+            ),
+            createNextRule(
+                /\s+/,
+                "heddle-def.whitespace",
+                startPrefix + "heddle-def-props"
+            ),
+            // Prop-list close.
+            createPopRule(
+                /\)/,
+                "heddle-def.keyword.operator.paren"
             )
         ];
 

@@ -29,13 +29,15 @@ jobs:
     steps:
     - uses: actions/checkout@v7
     - name: Setup Node
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: 24
         registry-url: https://registry.npmjs.org
         scope: '@multiarc'
-    - name: Ensure npm supports staged/trusted publishing
-      run: npm install -g npm@latest   # staged publishing requires npm >= 11.15.0
+    # Note: we deliberately do NOT upgrade npm here. The node-bundled npm ships its
+    # dependencies (including `sigstore`, used by the provenance path) intact; a global
+    # `npm install -g npm@latest` self-upgrade prunes those bundled deps and breaks
+    # provenance publishing with "Cannot find module 'sigstore'".
     - name: Build custom Ace bundle
       working-directory: src/Heddle.Language
       run: bash build_ace.sh

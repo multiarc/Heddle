@@ -1,0 +1,168 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Heddle",
+  "scopeName": "text.html.heddle",
+  "fileTypes": ["heddle"],
+  "comment": "Heddle template language. HTML host with embedded Heddle directives and inline C#. Token-to-scope mapping mirrors the Ace highlighter (src/Heddle.Language/js/src/mode/heddle_highlight_rules.js); standard TextMate scopes so any theme colors it.",
+  "patterns": [
+    { "include": "#heddle" },
+    { "include": "text.html.basic" }
+  ],
+  "repository": {
+    "heddle": {
+      "patterns": [
+        { "include": "#comment" },
+        { "include": "#whitespace-trim" },
+        { "include": "#escaped-at" },
+        { "include": "#raw-definition" },
+        { "include": "#import" },
+        { "include": "#csharp-block" },
+        { "include": "#html-block" },
+        { "include": "#line-block" },
+        { "include": "#output" },
+        { "include": "#body" }
+      ]
+    },
+
+    "comment": {
+      "comment": "Ace: heddle-*.comment.start / .comment.block / .comment.end",
+      "name": "comment.block.heddle",
+      "begin": "@\\*",
+      "end": "\\*@",
+      "captures": { "0": { "name": "punctuation.definition.comment.heddle" } }
+    },
+
+    "whitespace-trim": {
+      "comment": "Ace: heddle-*.comment.block — @\\ trims trailing whitespace",
+      "name": "comment.block.whitespace-trim.heddle",
+      "match": "@\\\\"
+    },
+
+    "escaped-at": {
+      "name": "constant.character.escape.heddle",
+      "match": "@@"
+    },
+
+    "output": {
+      "comment": "Ace: heddle-sub.support.function (@) + heddle-out.identifier; chain delimiter heddle-out.punctuation.operator",
+      "patterns": [
+        {
+          "match": "(@)([A-Za-z_\\u0400-\\u04FF][A-Za-z0-9_\\u0400-\\u04FF]*)?",
+          "captures": {
+            "1": { "name": "support.function.directive.heddle" },
+            "2": { "name": "entity.name.function.extension.heddle" }
+          }
+        },
+        { "include": "#call-parens" },
+        { "name": "punctuation.separator.chain.heddle", "match": ":" }
+      ]
+    },
+
+    "call-parens": {
+      "comment": "Ace: heddle-out -> heddle-call. ( ) keyword.paren; member . :: punctuation.operator; member variable.language; inline C# via @ -> cs-",
+      "begin": "(\\()",
+      "beginCaptures": { "1": { "name": "keyword.operator.paren.begin.heddle" } },
+      "end": "(\\))",
+      "endCaptures": { "1": { "name": "keyword.operator.paren.end.heddle" } },
+      "patterns": [
+        { "include": "#csharp-inline" },
+        { "name": "keyword.operator.root.heddle", "match": "::" },
+        { "name": "punctuation.accessor.heddle", "match": "\\." },
+        { "name": "punctuation.separator.chain.heddle", "match": ":" },
+        { "name": "variable.language.member.heddle", "match": "[A-Za-z_\\u0400-\\u04FF][A-Za-z0-9_\\u0400-\\u04FF]*" },
+        { "include": "#call-parens" }
+      ]
+    },
+
+    "csharp-inline": {
+      "comment": "Ace: heddle-call '@' -> cs- (CSharpHighlightRules). @( @ ...C#... )",
+      "begin": "(@)",
+      "beginCaptures": { "1": { "name": "keyword.control.csharp.heddle" } },
+      "end": "(?=\\))",
+      "patterns": [{ "include": "source.cs" }]
+    },
+
+    "csharp-block": {
+      "comment": "@( @ ...C#... ) at output position",
+      "begin": "(@\\()\\s*(@)",
+      "beginCaptures": {
+        "1": { "name": "support.function.directive.heddle" },
+        "2": { "name": "keyword.control.csharp.heddle" }
+      },
+      "end": "(\\))",
+      "endCaptures": { "1": { "name": "keyword.operator.paren.end.heddle" } },
+      "patterns": [{ "include": "source.cs" }]
+    },
+
+    "import": {
+      "comment": "Ace: heddle-sub.keyword.operator (@<<) + heddle-import.constant.other path inside {{ }}",
+      "begin": "(@<<)\\s*({{)",
+      "beginCaptures": {
+        "1": { "name": "keyword.operator.import.heddle" },
+        "2": { "name": "keyword.operator.paren.begin.heddle" }
+      },
+      "end": "(}})",
+      "endCaptures": { "1": { "name": "keyword.operator.paren.end.heddle" } },
+      "patterns": [{ "name": "constant.other.import-path.heddle", "match": "[^}]+" }]
+    },
+
+    "raw-definition": {
+      "comment": "Ace: heddle-def. @% <name:base> -> chain {{ body }} :: AcceptType %@",
+      "name": "meta.definition.heddle",
+      "begin": "(@%)",
+      "beginCaptures": { "1": { "name": "keyword.operator.paren.begin.heddle" } },
+      "end": "(%@)",
+      "endCaptures": { "1": { "name": "keyword.operator.paren.end.heddle" } },
+      "patterns": [
+        { "include": "#comment" },
+        { "include": "#def-name" },
+        { "name": "keyword.operator.default-out.heddle", "match": "->" },
+        { "name": "keyword.operator.type.heddle", "match": "::" },
+        { "include": "#body" },
+        { "name": "storage.type.heddle", "match": "[A-Za-z_\\u0400-\\u04FF][A-Za-z0-9_\\u0400-\\u04FF.]*(?:\\s*\\[\\])*" }
+      ]
+    },
+
+    "def-name": {
+      "comment": "Ace: heddle-def-name. <name : base>",
+      "begin": "(<)",
+      "beginCaptures": { "1": { "name": "punctuation.definition.tag.begin.heddle" } },
+      "end": "(>)",
+      "endCaptures": { "1": { "name": "punctuation.definition.tag.end.heddle" } },
+      "patterns": [
+        { "name": "keyword.operator.inheritance.heddle", "match": ":" },
+        { "name": "entity.name.type.definition.heddle", "match": "[A-Za-z_\\u0400-\\u04FF][A-Za-z0-9_\\u0400-\\u04FF.]*" }
+      ]
+    },
+
+    "html-block": {
+      "comment": "Ace: @{ ... }@ — explicit HTML island",
+      "begin": "(@\\{)",
+      "beginCaptures": { "1": { "name": "keyword.operator.paren.begin.heddle" } },
+      "end": "(\\}@)",
+      "endCaptures": { "1": { "name": "keyword.operator.paren.end.heddle" } },
+      "patterns": [
+        { "include": "#heddle" },
+        { "include": "text.html.basic" }
+      ]
+    },
+
+    "line-block": {
+      "comment": "Ace: @: — single-line directive to end of line",
+      "match": "(@:)",
+      "captures": { "1": { "name": "keyword.control.line.heddle" } }
+    },
+
+    "body": {
+      "comment": "Ace: {{ ... }} body — host content with nested Heddle",
+      "begin": "{{",
+      "beginCaptures": { "0": { "name": "keyword.operator.paren.begin.heddle" } },
+      "end": "}}",
+      "endCaptures": { "0": { "name": "keyword.operator.paren.end.heddle" } },
+      "patterns": [
+        { "include": "#heddle" },
+        { "include": "text.html.basic" }
+      ]
+    }
+  }
+}

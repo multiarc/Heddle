@@ -12,12 +12,31 @@ namespace Heddle.Data
             };
         }
 
+        public static HeddleCompileError ToError(this string errorMessage, BlockPosition position, string diagnosticId) {
+            return new HeddleCompileError
+            {
+                Error = errorMessage,
+                Position = position,
+                DiagnosticId = diagnosticId
+            };
+        }
+
         public static HeddleCompileError ToError(this Exception exception, BlockPosition position) {
             return new HeddleCompileError
             {
                 Error = exception.Message,
                 Exception = exception,
                 Position = position
+            };
+        }
+
+        public static HeddleCompileError ToError(this Exception exception, BlockPosition position, string diagnosticId) {
+            return new HeddleCompileError
+            {
+                Error = exception.Message,
+                Exception = exception,
+                Position = position,
+                DiagnosticId = diagnosticId
             };
         }
     }

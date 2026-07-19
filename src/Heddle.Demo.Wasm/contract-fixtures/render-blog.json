@@ -1,0 +1,18 @@
+{
+  "name": "render-blog",
+  "description": "The blog starter renders live under OutputProfile.Html + ExpressionMode.Native against the deterministic canned Blog. The pinned fragments are the render golden the browser smoke test (S4) also asserts.",
+  "type": "render",
+  "useStarter": "blog",
+  "version": 1,
+  "modelId": "blog",
+  "expectContains": [
+    "<section class=\"blog\">",
+    "<h1>Heddle Weekly</h1>",
+    "<p class=\"year\">Year 2026</p>",
+    "<h2>Native Expressions Ship</h2>",
+    "<p class=\"byline\">by Ada Lovelace</p>",
+    "<p class=\"badge\">Featured</p>",
+    "<h2>Streaming SSR</h2>",
+    "<p class=\"byline\">by Alan Turing</p>"
+  ]
+}

@@ -1,0 +1,18 @@
+<Project>
+
+  <!-- Phase 7 D12: default-include .heddle templates unless the consumer opts out. -->
+  <ItemGroup Condition="'$(EnableDefaultHeddleTemplates)' != 'false'">
+    <HeddleTemplate Include="**\*.heddle" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder);bin\**;obj\**" />
+  </ItemGroup>
+
+  <!-- Map HeddleTemplate items to AdditionalFiles carrying the per-item metadata the generator reads. -->
+  <ItemGroup>
+    <AdditionalFiles Include="@(HeddleTemplate)">
+      <Key>%(HeddleTemplate.Key)</Key>
+      <Name>%(HeddleTemplate.Name)</Name>
+      <Precompile>%(HeddleTemplate.Precompile)</Precompile>
+      <HeddleTemplate>true</HeddleTemplate>
+    </AdditionalFiles>
+  </ItemGroup>
+
+</Project>

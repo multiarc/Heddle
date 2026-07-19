@@ -1,0 +1,4 @@
+@%
+<picker(out:: PropMenuOption)>{{<ul>@list(Options){{<li>@out(this)</li>}}</ul>}} :: PropMenu
+%@
+@picker(Menu){{<a href="/go?id=@(Id)">@(Label)</a>}}

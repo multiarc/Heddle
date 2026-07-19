@@ -1,0 +1,9 @@
+@<<{{regr-import-shell.heddle}}
+@%
+  <regr_hdr:regr_hdr>
+  {{
+    @* the caller wants a hero header *@
+    <header class="hero">HERO-HEADER</header>
+  }}
+%@
+@regr_shell(){{ <article>PAGE-BODY</article> }}

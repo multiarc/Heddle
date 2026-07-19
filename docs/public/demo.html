@@ -1,25 +1,33 @@
 <!DOCTYPE html>
 <!--
-  Heddle live editor demo — a self-contained static page served by GitHub Pages at
-  /Heddle/demo.html. It loads the custom Ace bundle (built from src/Heddle.Language by
-  the docs workflow into ./ace/) and enables the Heddle mode, which provides syntax
-  highlighting and live parse-error reporting via the ANTLR-generated JS parser running
-  in a Web Worker. It does NOT render templates — the Heddle engine is .NET.
+  Heddle live editor demo — a self-contained static page served by GitHub Pages at /Heddle/demo.html.
+
+  Three progressive layers (phase 9):
+    1. Base (always on): the custom Ace bundle + the ANTLR JS-parser mode worker — syntax highlighting,
+       parse-error squiggles, HTML/CSS/JS lint, and a word-list completer. This is the whole experience
+       when WebAssembly is absent, blocked, slow, or unsupported.
+    2. Typed (on when the WASM worker boots): the engine's phase-6 language-service facade compiled to
+       WebAssembly, in a module worker at demo/heddle-demo-worker.js. Typed member completion, hover types,
+       and real positioned HED* compile diagnostics — no Roslyn in the bundle (the C# tier is trimmed out).
+    3. Render (on after the first clean analysis): live template rendering into a sandboxed iframe.
+
+  The demo/ bundle is workflow-staged (gitignored). With it absent, the page runs the base layer (also the
+  local docs-dev mode). The C# tier is off by design — the sandboxed native tier is the showcase.
 -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Heddle — Live Editor Demo</title>
-  <meta name="description" content="Try the Heddle template language in your browser: live syntax highlighting and parse-error checking." />
+  <meta name="description" content="Try the Heddle template language in your browser: typed completion, hover types, real compile diagnostics, and live rendering — all from static hosting." />
   <style>
     :root {
       --bg: #ffffff; --fg: #1c1e21; --muted: #6a737d; --border: #e2e2e3;
-      --accent: #3451b2; --banner: #f6f6f7;
+      --accent: #3451b2; --banner: #f6f6f7; --pane: #fbfbfc; --note: #fff8e6; --note-fg: #7a5b00;
     }
     html.dark {
       --bg: #1b1b1f; --fg: #dfdfd6; --muted: #98989f; --border: #2e2e32;
-      --accent: #a8b1ff; --banner: #202127;
+      --accent: #a8b1ff; --banner: #202127; --pane: #161618; --note: #2a2410; --note-fg: #e8cf83;
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
@@ -28,29 +36,55 @@
       font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     header {
-      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
       padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--banner);
     }
     header h1 { font-size: 16px; margin: 0; font-weight: 600; }
-    header .note { color: var(--muted); font-size: 12.5px; flex: 1 1 320px; min-width: 0; }
+    header .note { color: var(--muted); font-size: 12.5px; flex: 1 1 280px; min-width: 0; }
     header a { color: var(--accent); text-decoration: none; }
     header a:hover { text-decoration: underline; }
-    header .links { display: flex; gap: 14px; align-items: center; }
-    button {
+    header .links { display: flex; gap: 12px; align-items: center; }
+    button, select {
       font: inherit; cursor: pointer; color: var(--fg); background: transparent;
       border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px;
     }
-    button:hover { border-color: var(--accent); }
-    #editor { flex: 1 1 auto; width: 100%; font-size: 14px; }
+    button:hover, select:hover { border-color: var(--accent); }
+    #status-pill {
+      font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
+      border: 1px solid var(--border); color: var(--muted); white-space: nowrap;
+    }
+    #status-pill[data-layer="typed"] { color: var(--accent); border-color: var(--accent); }
+    #status-pill[data-layer="render"] { color: #1a7f37; border-color: #1a7f37; }
+    html.dark #status-pill[data-layer="render"] { color: #4ac26b; border-color: #4ac26b; }
+    #split { flex: 1 1 auto; display: flex; min-height: 0; }
+    #editor { flex: 1 1 55%; width: 100%; font-size: 14px; min-width: 0; }
+    #render-pane {
+      flex: 1 1 45%; display: none; flex-direction: column; border-left: 1px solid var(--border);
+      background: var(--pane); min-width: 0;
+    }
+    #render-pane.active { display: flex; }
+    #render-pane .pane-head {
+      padding: 6px 12px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--border);
+    }
+    #render-note {
+      display: none; padding: 8px 12px; font-size: 12.5px; background: var(--note); color: var(--note-fg);
+      border-bottom: 1px solid var(--border);
+    }
+    #render-note.active { display: block; }
+    #render-frame { flex: 1 1 auto; width: 100%; border: 0; background: #fff; }
     noscript { padding: 16px; display: block; }
+    @media (max-width: 720px) { #split { flex-direction: column; } #render-pane { border-left: 0; border-top: 1px solid var(--border); } }
   </style>
 </head>
 <body>
   <header>
     <h1>Heddle&nbsp;— Live Editor</h1>
-    <span class="note">
-      Live syntax highlighting &amp; parse-error checking. This demo checks syntax only —
-      it does <strong>not</strong> render output (the engine is .NET).
+    <span id="status-pill" data-layer="syntax" title="Active layer">Syntax</span>
+    <label style="font-size:12.5px;color:var(--muted);">Model
+      <select id="model-picker" aria-label="Model set" disabled><option>blog</option></select>
+    </label>
+    <span class="note" id="header-note">
+      Syntax checking only — rendering requires WebAssembly (the engine is .NET).
     </span>
     <span class="links">
       <button id="theme-toggle" type="button" aria-label="Toggle dark mode">🌓 Theme</button>
@@ -60,44 +94,83 @@
   </header>
 
   <noscript>This interactive demo requires JavaScript.</noscript>
-  <div id="editor"></div>
+  <div id="split">
+    <div id="editor"></div>
+    <div id="render-pane">
+      <div class="pane-head">Rendered output — sandboxed <code>&lt;iframe&gt;</code>, native tier only (no C# execution)</div>
+      <div id="render-note"></div>
+      <iframe id="render-frame" sandbox title="Rendered output"></iframe>
+    </div>
+  </div>
 
   <script src="ace/ace.js"></script>
+  <!-- The autocomplete extension (Completer + the Ctrl+Space keybinding + enableBasicAutocompletion option)
+       is a separate module in the src-noconflict build; it must be loaded before attachCompleter uses it. -->
+  <script src="ace/ext-language_tools.js"></script>
   <script>
     (function () {
-      // A small, intentionally clean template. Edit it — try deleting a `)` or a `}`
-      // to watch the live parse-error squiggles appear.
-      var SAMPLE = [
-        "@* Welcome to the Heddle live editor.",
+      // ---- Base layer: Ace editor + the existing mode worker (unchanged behavior) --------------------------
+      // The starter template showcases v2 constructs so the new coloring is demonstrable even in the
+      // syntax-only fallback: native expressions (operators / ternary / null-coalescing), an
+      // @if/@elif/@else chain, a prop-based component (typed props + defaults + an @out() slot),
+      // plus the post-2.0 additions: the `@@` literal-@ escape and a named content region
+      // (`<:name>` declaration + `<name:name>` caller fill).
+      var FALLBACK_SAMPLE = [
+        "@* Welcome to the Heddle live editor — now showing v2 constructs.",
         "   Syntax highlighting and error checking update as you type.",
         "   This demo checks syntax only and does not render output. *@",
         "",
         "@model(){{dynamic}}",
         "",
-        "<p>Hi @(Name) — you have @int(Count) new",
-        "   @if(Count){{comments}}@ifnot(Count){{messages}}.</p>",
+        "@* A prop-based component: typed props with defaults, an @out() slot,",
+        "   and a public named content region (<:footer>) with a default body. *@",
+        "@%",
+        "<badge(label: string = \"new\", featured: bool = false)>{{",
+        "  @%<:footer>{{<small>Follow @@heddle</small>}}%@",
+        "  <span class=\"badge @(featured ? \"hot\" : \"\")\">@(label)</span>",
+        "  <div class=\"slot\">@out()</div>",
+        "  @footer()",
+        "}}",
+        "%@",
+        "",
+        "<article>",
+        "  <h1>@(Title)</h1>",
+        "",
+        "  @* Native expressions: operators, a ternary, a null-coalescing fallback. *@",
+        "  <p>Score: @(Likes + Comments * 2), @(Likes > 0 ? \"popular\" : \"quiet\")</p>",
+        "  <p>By @(Author ?? \"anonymous\")</p>",
+        "",
+        "  @* An @if / @elif / @else chain. *@",
+        "  @if(Featured){{ <em>Featured</em> }}",
+        "  @elif(Archived){{ <i>Archived</i> }}",
+        "  @else(){{ Regular }}",
+        "",
+        "  @* Call the component with named arguments and a slot body,",
+        "     filling its public <:footer> region with <footer:footer>.",
+        "     `@@` escapes a literal at-sign (me@@example.com -> me@example.com). *@",
+        "  @badge(featured: true, label: \"top\"){{",
+        "    @%<footer:footer>{{<small>Questions? me@@example.com</small>}}%@",
+        "    <a href=\"#\">read more</a>",
+        "  }}",
+        "</article>",
         "",
         "@* Tip: break the markup above to see live error reporting. *@"
       ].join("\n");
 
       ace.config.set("basePath", "ace");
-
       var editor = ace.edit("editor");
       editor.session.setMode("ace/mode/heddle");
       editor.setOptions({
-        fontSize: "14px",
-        showPrintMargin: false,
-        useWorker: true,
-        wrap: true,
-        tabSize: 2,
-        useSoftTabs: true
+        fontSize: "14px", showPrintMargin: false, useWorker: true,
+        wrap: true, tabSize: 2, useSoftTabs: true,
+        enableBasicAutocompletion: true, enableLiveAutocompletion: false
       });
-      editor.setValue(SAMPLE, -1);
+      editor.setValue(FALLBACK_SAMPLE, -1);
       editor.focus();
 
-      // Light/dark theme toggle (Ace theme + page chrome), persisted.
+      // Theme toggle (Ace theme + page chrome), persisted.
       var THEMES = { light: "ace/theme/textmate", dark: "ace/theme/tomorrow_night" };
-      function apply(mode) {
+      function applyTheme(mode) {
         document.documentElement.classList.toggle("dark", mode === "dark");
         editor.setTheme(THEMES[mode]);
         try { localStorage.setItem("heddle-demo-theme", mode); } catch (e) {}
@@ -105,11 +178,238 @@
       var saved = null;
       try { saved = localStorage.getItem("heddle-demo-theme"); } catch (e) {}
       var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-      apply(saved || (prefersDark ? "dark" : "light"));
-
+      applyTheme(saved || (prefersDark ? "dark" : "light"));
       document.getElementById("theme-toggle").addEventListener("click", function () {
-        apply(document.documentElement.classList.contains("dark") ? "light" : "dark");
+        applyTheme(document.documentElement.classList.contains("dark") ? "light" : "dark");
       });
+
+      // Capture the base worker's parse/lint annotations so the typed layer can merge (not replace) them.
+      var baseAnnotations = [];
+      editor.session.on("changeAnnotation", function () {
+        if (!typed.active) return;            // in fallback mode the base annotations stand alone
+        baseAnnotations = editor.session.getAnnotations() || [];
+      });
+
+      // ---- Status pill + header copy ------------------------------------------------------------------------
+      var pill = document.getElementById("status-pill");
+      var headerNote = document.getElementById("header-note");
+      function setLayer(layer) {
+        pill.setAttribute("data-layer", layer);
+        if (layer === "syntax") { pill.textContent = "Syntax";
+          headerNote.textContent = "Syntax checking only — rendering requires WebAssembly (the engine is .NET)."; }
+        else if (layer === "typed") { pill.textContent = "Typed";
+          headerNote.textContent = "Typed completion, hover types & real compile diagnostics — served from static hosting."; }
+        else if (layer === "render") { pill.textContent = "Typed + Render";
+          headerNote.textContent = "Live rendering in a sandboxed native tier — user templates, no C# execution surface."; }
+      }
+
+      // ---- Offset boundary: Ace positions <-> facade UTF-16 offsets (the single conversion site) -----------
+      function offsetAt(pos) { return editor.session.doc.positionToIndex(pos); }
+      function positionAt(offset) { return editor.session.doc.indexToPosition(offset); }
+
+      // ---- Typed layer: the module-worker bridge ----------------------------------------------------------
+      var typed = { active: false, worker: null, ready: false, models: {}, modelId: "blog", seq: 1, pending: {}, version: 1 };
+
+      function callWorker(cmd, args) {
+        return new Promise(function (resolve, reject) {
+          if (!typed.ready) { reject(new Error("worker not ready")); return; }
+          var id = typed.seq++;
+          typed.pending[id] = { resolve: resolve, reject: reject };
+          var msg = Object.assign({ id: id, cmd: cmd }, args || {});
+          typed.worker.postMessage(msg);
+        });
+      }
+
+      function bootWorker() {
+        var worker;
+        try {
+          worker = new Worker("demo/heddle-demo-worker.js", { type: "module" });
+        } catch (e) { return; }                 // no module-worker support -> stay in fallback
+        typed.worker = worker;
+
+        var bootTimer = setTimeout(function () { /* 30s boot budget; stay fallback if it never fires */ }, 30000);
+
+        worker.addEventListener("message", function (e) {
+          var d = e.data || {};
+          if (d.evt === "ready") { clearTimeout(bootTimer); onWorkerReady(); return; }
+          if (d.evt === "boot-failed") { clearTimeout(bootTimer); return; }   // stay fallback
+          if (typeof d.id === "number" && typed.pending[d.id]) {
+            var p = typed.pending[d.id]; delete typed.pending[d.id];
+            if (d.ok) p.resolve(d.result); else p.reject(new Error(d.error && d.error.message || "worker error"));
+          }
+        });
+        worker.addEventListener("error", function () { /* stay fallback */ });
+      }
+
+      function onWorkerReady() {
+        typed.ready = true;
+        callWorker("init").then(function (init) {
+          typed.active = true;
+          setLayer("typed");
+          // Model picker from the catalog.
+          var picker = document.getElementById("model-picker");
+          picker.innerHTML = "";
+          (init.models || []).forEach(function (m) {
+            typed.models[m.id] = m;
+            var opt = document.createElement("option");
+            opt.value = m.id; opt.textContent = m.displayName || m.id;
+            picker.appendChild(opt);
+          });
+          picker.disabled = false;
+          picker.addEventListener("change", function () { selectModel(picker.value, true); });
+
+          // Load the default model's starter template so typed features have real content.
+          selectModel(typed.modelId, false);
+
+          attachCompleter();
+          attachHover();
+          document.getElementById("render-pane").classList.add("active");
+          scheduleAnalyze();
+        }).catch(function () { /* init failed: stay fallback */ });
+      }
+
+      function selectModel(id, confirmReplace) {
+        var m = typed.models[id];
+        if (!m) return;
+        typed.modelId = id;
+        if (m.starterTemplate) {
+          if (!confirmReplace || window.confirm("Replace the editor contents with the " + (m.displayName || id) + " starter template?")) {
+            editor.setValue(m.starterTemplate, -1);
+          }
+        }
+        scheduleAnalyze();
+      }
+
+      // ---- Completion: a dynamic Ace completer backed by the facade ---------------------------------------
+      function attachCompleter() {
+        var langTools = ace.require && ace.require("ace/ext/language_tools");
+        if (!langTools) return;
+        var demoCompleter = {
+          getCompletions: function (ed, session, pos, prefix, callback) {
+            var offset = offsetAt(pos);
+            ensureFreshAnalysis().then(function () { return callWorker("complete", { path: "demo.heddle", offset: offset }); })
+              .then(function (res) {
+                var items = (res.items || []).map(function (it) {
+                  return { caption: it.label, value: it.insertText || it.label, meta: it.detail || it.kind,
+                           docText: (it.detail ? it.detail + "\n" : "") + it.label };
+                });
+                callback(null, items);
+              })
+              .catch(function () { callback(null, []); });
+          },
+          getDocTooltip: function (item) {
+            if (item.docText && !item.docHTML) item.docHTML = "<b>" + escapeHtml(item.caption) + "</b><br/>" + escapeHtml(item.meta || "");
+          }
+        };
+        langTools.setCompleters([demoCompleter]);   // the static word list is out of the active set (typed mode)
+        editor.setOptions({ enableBasicAutocompletion: true, enableLiveAutocompletion: true });
+      }
+
+      // ---- Hover: HoverTooltip from the pinned Ace bundle --------------------------------------------------
+      function attachHover() {
+        var TooltipMod = ace.require && ace.require("ace/tooltip");
+        if (!TooltipMod || !TooltipMod.HoverTooltip) return;
+        var hoverTooltip = new TooltipMod.HoverTooltip();
+        hoverTooltip.setDataProvider(function (e, ed) {
+          var pos = ed.renderer.screenToTextCoordinates(e.clientX, e.clientY);
+          var offset = offsetAt(pos);
+          callWorker("hover", { path: "demo.heddle", offset: offset }).then(function (res) {
+            if (!res || !res.markdown) return;
+            var node = document.createElement("div");
+            node.style.padding = "4px 8px";
+            node.textContent = res.markdown;
+            var start = positionAt(res.offset), end = positionAt(res.offset + (res.length || 0));
+            hoverTooltip.showForRange(ed, { start: start, end: end }, node, e);
+          }).catch(function () {});
+        });
+        hoverTooltip.addToEditor(editor);
+      }
+
+      // ---- Analyze + render loop: one 300ms debounce, render on clean -------------------------------------
+      var analyzeTimer = null, analyzeInFlight = null, lastAnalyzedText = null;
+      editor.session.on("change", function () { if (typed.active) scheduleAnalyze(); });
+
+      function scheduleAnalyze() {
+        if (!typed.active) return;
+        clearTimeout(analyzeTimer);
+        analyzeTimer = setTimeout(runAnalyze, 300);
+      }
+
+      function ensureFreshAnalysis() {
+        // The page owns freshness: re-analyze if the buffer changed since the last completed analysis.
+        if (lastAnalyzedText === editor.getValue()) return Promise.resolve();
+        return runAnalyze();
+      }
+
+      function runAnalyze() {
+        if (!typed.active) return Promise.resolve();
+        var text = editor.getValue();
+        var version = ++typed.version;
+        analyzeInFlight = callWorker("analyze", { path: "demo.heddle", text: text, version: version })
+          .then(function (res) {
+            if (version !== typed.version) return;          // stale response, a newer analyze superseded it
+            lastAnalyzedText = text;
+            publishDiagnostics(res.diagnostics || []);
+            var hasError = (res.diagnostics || []).some(function (d) { return d.severity === "error"; });
+            if (!hasError) runRender(); else showCsharpDeclineIfAny(res.diagnostics || []);
+          })
+          .catch(function () {});
+        return analyzeInFlight;
+      }
+
+      function publishDiagnostics(diags) {
+        var typedAnnotations = diags.map(function (d) {
+          var pos = positionAt(d.offset || 0);
+          var idPrefix = d.id ? "[" + d.id + "] " : "";
+          var fix = d.fix ? " — Fix: " + d.fix : "";
+          return { row: pos.row, column: pos.column, text: idPrefix + d.message + fix,
+                   type: d.severity === "warning" ? "warning" : "error" };
+        });
+        // Merge with the base worker's parse/lint annotations, de-dup by (row, column, text).
+        var merged = baseAnnotations.concat(typedAnnotations);
+        var seen = {}, out = [];
+        merged.forEach(function (a) {
+          var key = a.row + ":" + a.column + ":" + a.text;
+          if (!seen[key]) { seen[key] = true; out.push(a); }
+        });
+        editor.session.setAnnotations(out);
+      }
+
+      function runRender() {
+        setRenderNote("");
+        callWorker("render", { path: "demo.heddle", modelId: typed.modelId }).then(function (res) {
+          if (res && typeof res.html === "string") {
+            document.getElementById("render-frame").srcdoc = res.html;
+            if (typed.active) setLayer("render");
+          } else if (res && res.error) {
+            setRenderNote(res.error);
+          }
+        }).catch(function (err) { setRenderNote(String(err && err.message || err)); });
+      }
+
+      function showCsharpDeclineIfAny(diags) {
+        var csharp = diags.find(function (d) { return d.id && /^HED1/.test(d.id); });
+        if (csharp) setRenderNote("The C# tier is not available in the browser demo — this is the sandbox working. (" + csharp.id + ")");
+      }
+
+      function setRenderNote(text) {
+        var note = document.getElementById("render-note");
+        if (text) { note.textContent = text; note.classList.add("active"); }
+        else { note.textContent = ""; note.classList.remove("active"); }
+      }
+
+      function escapeHtml(s) {
+        return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+        });
+      }
+
+      // Lazy-create the typed layer once the base page is interactive.
+      function startTypedLayer() {
+        try { bootWorker(); } catch (e) { /* stay fallback */ }
+      }
+      if (window.requestIdleCallback) window.requestIdleCallback(startTypedLayer, { timeout: 3000 });
+      else window.addEventListener("load", startTypedLayer);
     })();
   </script>
 </body>

@@ -1,0 +1,6 @@
+Line total: @(Price * Quantity)
+Author: @(Name ?? "anonymous")
+Badge: @(IsFeatured ? "featured" : "plain")
+Remaining: @(::Total - Amount)
+Items check: @if(Count > 0){{ has items }}
+Null hop: @if(A.B > 0){{ has b }}done

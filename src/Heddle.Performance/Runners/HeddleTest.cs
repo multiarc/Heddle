@@ -16,7 +16,7 @@ namespace Heddle.Performance.Runners
                     new TemplateOptions("home") {
                         FileNamePostfix = ".heddle",
                         RootPath = @"TestTemplates",
-                        AllowCSharp = true,
+                        ExpressionMode = ExpressionMode.FullCSharp,
                         ProvideLanguageFeatures = false
                     }
                 )
@@ -28,5 +28,8 @@ namespace Heddle.Performance.Runners
             _length += output.Length;
             return Task.CompletedTask;
         }
+
+        /// <summary>The rendered home page, used as the parity oracle for the D1 competitor twins.</summary>
+        public string Render() => _target.Generate(_model);
     }
 }

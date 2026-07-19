@@ -1,0 +1,35 @@
+<Solution>
+  <Folder Name="/codegen-t4-successor/">
+    <Project Path="codegen-t4-successor/CodegenT4Successor.csproj" />
+  </Folder>
+  <Folder Name="/component-props-slots/">
+    <Project Path="component-props-slots/ComponentPropsSlots.csproj" />
+  </Folder>
+  <Folder Name="/custom-extensions/">
+    <Project Path="custom-extensions/CustomExtensions.csproj" />
+  </Folder>
+  <Folder Name="/definition-library/">
+    <Project Path="definition-library/DefinitionLibrary.csproj" />
+  </Folder>
+  <Folder Name="/dynamic-models/">
+    <Project Path="dynamic-models/DynamicModels.csproj" />
+  </Folder>
+  <Folder Name="/html-safe-output/">
+    <Project Path="html-safe-output/HtmlSafeOutput.csproj" />
+  </Folder>
+  <Folder Name="/precompiled-app/">
+    <Project Path="precompiled-app/PrecompiledApp.csproj" />
+  </Folder>
+  <Folder Name="/sandboxed-user-templates/">
+    <Project Path="sandboxed-user-templates/SandboxedUserTemplates.csproj" />
+  </Folder>
+  <Folder Name="/ssr-aspnetcore/">
+    <Project Path="ssr-aspnetcore/SsrAspNetCore.csproj" />
+  </Folder>
+  <Folder Name="/streaming-ssr/">
+    <Project Path="streaming-ssr/StreamingSsr.csproj" />
+  </Folder>
+  <Project Path="../src/Heddle.Generator/Heddle.Generator.csproj" />
+  <Project Path="../src/Heddle.Language/Heddle.Language.csproj" />
+  <Project Path="../src/Heddle/Heddle.csproj" />
+</Solution>

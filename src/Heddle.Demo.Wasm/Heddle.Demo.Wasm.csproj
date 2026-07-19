@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>          <!-- required by the JS interop source generator -->
+    <InvariantGlobalization>true</InvariantGlobalization> <!-- ~-30% bundle; matches phase 1 invariant defaults -->
+    <PublishTrimmed>true</PublishTrimmed>                 <!-- wasm default, stated explicitly -->
+    <IsPackable>false</IsPackable>
+    <WasmMainJSPath>wwwroot/main.js</WasmMainJSPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- D4: disable the C# tier and let the trimmer drop the whole Microsoft.CodeAnalysis graph -->
+    <RuntimeHostConfigurationOption Include="Heddle.CSharpTierEnabled" Value="false" Trim="true" />
+    <!-- D5: reflection roots — the demo picker reflects over the models; the engine reflects over extensions/functions -->
+    <TrimmerRootAssembly Include="Heddle.Demo.Models" />
+    <TrimmerRootDescriptor Include="linker\Heddle.Demo.roots.xml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Heddle.LanguageServices\Heddle.LanguageServices.csproj" />
+    <ProjectReference Include="..\Heddle.Demo.Models\Heddle.Demo.Models.csproj" />
+  </ItemGroup>
+
+</Project>
