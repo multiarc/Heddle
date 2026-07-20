@@ -34,27 +34,40 @@ namespace Heddle.Demo.Models
     {
         // The blog starter: @model pins the root type (resolvable because the host registers this assembly via
         // HeddleTemplate.Configure). Native expressions + Html profile only — no C# tier in the browser.
-        private const string BlogStarter =
-            "@using(){{Heddle.Demo.Models}}\n" +
-            "@model(){{Blog}}\n" +
-            "<section class=\"blog\">\n" +
-            "  <h1>@(Title)</h1>\n" +
-            "  <p class=\"year\">Year @(Year)</p>\n" +
-            "@list(Articles){{  <article>\n" +
-            "    <h2>@(Title)</h2>\n" +
-            "    <p class=\"byline\">by @(Author.Name)</p>\n" +
-            "@if(IsFeatured){{    <p class=\"badge\">Featured</p>\n}}  </article>\n}}" +
-            "</section>\n";
+        // Indented for readability — the extra whitespace it emits is insignificant in HTML output.
+        private const string BlogStarter = """
+            @using(){{Heddle.Demo.Models}}
+            @model(){{Blog}}
+            <section class="blog">
+              <h1>@(Title)</h1>
+              <p class="year">Year @(Year)</p>
+              @list(Articles){{
+                <article>
+                  <h2>@(Title)</h2>
+                  <p class="byline">by @(Author.Name)</p>
+                  @if(IsFeatured){{<p class="badge">Featured</p>}}
+                </article>
+              }}
+            </section>
+            """;
 
         // The article-card starter pairs an Article root with a <card> component definition (props + a slot).
-        private const string ArticleCardStarter =
-            "@using(){{Heddle.Demo.Models}}\n" +
-            "@model(){{Article}}\n" +
-            "@%\n" +
-            "<card(style: string = \"plain\")>{{<article class=\"card @(style)\"><h2>@(Title)</h2>" +
-            "<p class=\"byline\">by @(Author.Name)</p>@out()</article>}} :: Article\n" +
-            "%@\n" +
-            "@card(this, style: \"wide\"){{<p class=\"tags\">@list(Tags){{<span>@(this) </span>}}</p>}}\n";
+        private const string ArticleCardStarter = """
+            @using(){{Heddle.Demo.Models}}
+            @model(){{Article}}
+            @%
+            <card(style: string = "plain")>{{
+              <article class="card @(style)">
+                <h2>@(Title)</h2>
+                <p class="byline">by @(Author.Name)</p>
+                @out()
+              </article>
+            }} :: Article
+            %@
+            @card(this, style: "wide"){{
+              <p class="tags">@list(Tags){{<span>@(this) </span>}}</p>
+            }}
+            """;
 
         private static Blog CreateBlog()
         {
