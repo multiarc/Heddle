@@ -504,6 +504,35 @@ test("onUpdate backstop: a parse-time throw surfaces the errors collected so far
         "a failed parse must not emit codeok");
 });
 
+test("onUpdate emits exactly one annotate for a clean parse (no early parse-only emit)", () => {
+    const HeddleWorker = loadHeddleWorker(function () {
+        this.context = { errors: [] };
+        this.parseGetErrors = () => [];
+    });
+    const sender = makeSender();
+    const worker = new HeddleWorker(sender);
+    worker.doc = {
+        getValue: () => "<p>ok</p>",
+        getAllLines: () => ["<p>ok</p>"],
+        indexToPosition: (index) => ({ row: 0, column: index })
+    };
+    // The embedded-language lint pass tokenizes the document; a tokenizer yielding
+    // no tokens keeps every embedded string empty, so the lint contributes nothing.
+    worker.heddleMode = {
+        getTokenizer: () => ({
+            getLineTokensWithState: () => ({ tokens: [], state: ["start"] })
+        })
+    };
+    worker.onUpdate(); // must not throw
+    const annotate = sender.events.filter((e) => e.name === "annotate");
+    assert.strictEqual(annotate.length, 1,
+        "consumers full-replace the annotation set on every emit; a clean parse " +
+        "must not publish an early parse-only set before the lint-merged one");
+    assert.deepStrictEqual(annotate[0].data, []);
+    assert.ok(sender.events.some((e) => e.name === "codeok"),
+        "a clean parse still emits codeok");
+});
+
 test("malformed region syntax surfaces positioned HED0003 annotations", async (t) => {
     const rows = [
         ["missing region name", "@%<:>{{x}}%@", 0, 4, "HED0003: missing ID at '>'"],
