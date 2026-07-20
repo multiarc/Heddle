@@ -34,7 +34,7 @@
 
   <ItemGroup>
     <!-- The host compiler provides Microsoft.CodeAnalysis; never shipped (D12). -->
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.4.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" PrivateAssets="all" />
     <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" GeneratePathProperty="true" />
   </ItemGroup>
 
