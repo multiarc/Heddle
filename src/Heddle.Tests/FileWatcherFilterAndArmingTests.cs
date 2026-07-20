@@ -24,6 +24,11 @@ namespace Heddle.Tests
             return dir;
         }
 
+        /// <summary>A per-test watched-file stem, unique across concurrently running tests AND across the
+        /// parallel per-TFM test hosts — no two watchers can ever agree on a file name, so a write in one
+        /// process can never be picked up by another's watcher.</summary>
+        public static string NewStem() => "home-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+
         public static void CleanupDir(string dir)
         {
             try
@@ -138,6 +143,9 @@ namespace Heddle.Tests
     /// </summary>
     public class FileWatcherFilterAndArmingTests
     {
+        // Per-test watched-file stem: isolates this test from concurrent tests and parallel TFM hosts.
+        private readonly string _stem = FileWatcherTestSupport.NewStem();
+
         /// <summary>D1 + D2: a file compile of <c>home</c> + <c>.heddle</c> with the flag on watches
         /// <c>home.heddle</c> (not the postfix-less <c>home</c> of the old bug) and is armed.</summary>
         [Fact]
@@ -146,13 +154,13 @@ namespace Heddle.Tests
             var dir = FileWatcherTestSupport.NewTempDir();
             try
             {
-                File.WriteAllText(Path.Combine(dir, "home.heddle"), "HELLO");
-                using var template = new HeddleTemplate(FileWatcherTestSupport.WatchOptions(dir, "home"));
+                File.WriteAllText(Path.Combine(dir, _stem + ".heddle"), "HELLO");
+                using var template = new HeddleTemplate(FileWatcherTestSupport.WatchOptions(dir, _stem));
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
 
                 var watcher = FileWatcherTestSupport.GetWatcher(template);
                 Assert.NotNull(watcher);
-                Assert.Equal("home.heddle", watcher.Filter);
+                Assert.Equal(_stem + ".heddle", watcher.Filter);
                 Assert.True(watcher.EnableRaisingEvents, "the watcher must be armed (EnableRaisingEvents)");
             }
             finally
@@ -177,8 +185,8 @@ namespace Heddle.Tests
             var dir = FileWatcherTestSupport.NewTempDir();
             try
             {
-                File.WriteAllText(Path.Combine(dir, "home.heddle"), "HELLO");
-                var options = FileWatcherTestSupport.WatchOptions(dir, "home");
+                File.WriteAllText(Path.Combine(dir, _stem + ".heddle"), "HELLO");
+                var options = FileWatcherTestSupport.WatchOptions(dir, _stem);
                 options.EnableFileChangeCheck = false;
                 using var template = new HeddleTemplate(options);
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
