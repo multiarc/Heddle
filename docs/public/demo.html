@@ -183,12 +183,39 @@
         applyTheme(document.documentElement.classList.contains("dark") ? "light" : "dark");
       });
 
-      // Capture the base worker's parse/lint annotations so the typed layer can merge (not replace) them.
+      // ---- Annotation merge point (the single owner of session.setAnnotations in typed mode) --------------
+      // Two producers make markers: the base mode worker (parse/lint — its createWorker handler calls
+      // session.setAnnotations, a full replace) and the typed WASM layer (HED* compile diagnostics). Each
+      // fires on its own debounce, so whichever landed last used to win and silently wipe the other —
+      // typed-only warnings like HED2004 blinked in and out depending on which publisher finished last.
+      // Both now feed publishMerged(): base results are captured here from changeAnnotation, typed results
+      // are cached with the text they were computed from and re-merged after every base replace.
       var baseAnnotations = [];
+      var typedAnnotations = [];        // last typed diagnostics, already converted to Ace positions
+      var typedAnnotationsText = null;  // the buffer text those diagnostics were computed from
+      var republishing = false;         // our own setAnnotations also fires changeAnnotation
       editor.session.on("changeAnnotation", function () {
-        if (!typed.active) return;            // in fallback mode the base annotations stand alone
+        if (republishing) return;
         baseAnnotations = editor.session.getAnnotations() || [];
+        if (!typed.active) return;      // in fallback mode the base annotations stand alone
+        // The base worker just replaced the whole set; put the typed diagnostics back — unless the
+        // buffer moved on since they were computed (a fresh analyze is already debounced then, and
+        // re-adding them would pin stale rows).
+        if (typedAnnotations.length && typedAnnotationsText === editor.getValue()) publishMerged();
       });
+
+      function publishMerged() {
+        // De-dup by (row, column, text): both layers can report the same finding.
+        var merged = baseAnnotations.concat(typedAnnotations);
+        var seen = {}, out = [];
+        merged.forEach(function (a) {
+          var key = a.row + ":" + a.column + ":" + a.text;
+          if (!seen[key]) { seen[key] = true; out.push(a); }
+        });
+        republishing = true;
+        try { editor.session.setAnnotations(out); }
+        finally { republishing = false; }
+      }
 
       // ---- Status pill + header copy ------------------------------------------------------------------------
       var pill = document.getElementById("status-pill");
@@ -349,7 +376,7 @@
           .then(function (res) {
             if (version !== typed.version) return;          // stale response, a newer analyze superseded it
             lastAnalyzedText = text;
-            publishDiagnostics(res.diagnostics || []);
+            publishDiagnostics(res.diagnostics || [], text);
             var hasError = (res.diagnostics || []).some(function (d) { return d.severity === "error"; });
             if (!hasError) runRender(); else showCsharpDeclineIfAny(res.diagnostics || []);
           })
@@ -357,22 +384,16 @@
         return analyzeInFlight;
       }
 
-      function publishDiagnostics(diags) {
-        var typedAnnotations = diags.map(function (d) {
+      function publishDiagnostics(diags, analyzedText) {
+        typedAnnotations = diags.map(function (d) {
           var pos = positionAt(d.offset || 0);
           var idPrefix = d.id ? "[" + d.id + "] " : "";
           var fix = d.fix ? " — Fix: " + d.fix : "";
           return { row: pos.row, column: pos.column, text: idPrefix + d.message + fix,
                    type: d.severity === "warning" ? "warning" : "error" };
         });
-        // Merge with the base worker's parse/lint annotations, de-dup by (row, column, text).
-        var merged = baseAnnotations.concat(typedAnnotations);
-        var seen = {}, out = [];
-        merged.forEach(function (a) {
-          var key = a.row + ":" + a.column + ":" + a.text;
-          if (!seen[key]) { seen[key] = true; out.push(a); }
-        });
-        editor.session.setAnnotations(out);
+        typedAnnotationsText = analyzedText;
+        publishMerged();
       }
 
       function runRender() {
