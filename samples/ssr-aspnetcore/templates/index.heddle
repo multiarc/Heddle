@@ -3,7 +3,9 @@
 <main>
   <h2>@(Title)</h2>
   <ul>
-@list(Articles){{    <li>#@(Id) @(Title) by @(Author) @for(Stars){{*}}</li>
-}}  </ul>
+    @list(Articles){{
+      <li>#@(Id) @(Title) by @(Author) @for(Stars){{*}}</li>
+    }}
+  </ul>
 </main>
 @partial(){{_footer}}
