@@ -1,0 +1,23 @@
+// Workload 3 — large-loop, templ idiomatic port. Idiomatic component decomposition: a row
+// component invoked from the loop; ints render natively via { } expressions.
+//
+// Doc citations (Q1.7):
+//   - https://templ.guide/syntax-and-usage/expressions/
+//   - https://templ.guide/syntax-and-usage/statements/
+//   - https://templ.guide/syntax-and-usage/template-composition/
+package idiomatic
+
+import "heddle.dev/benchmarks/go/internal/model"
+
+templ largeLoopRow(r model.LoopRow) {
+	<tr>
+		<td>{ r.Name }</td>
+		<td>{ r.Value }</td>
+	</tr>
+}
+
+templ largeLoop(m model.LoopModel) {
+	for _, r := range m.Items {
+		@largeLoopRow(r)
+	}
+}

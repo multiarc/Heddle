@@ -1,0 +1,18 @@
+{# Idiomatic Jinja2 fortunes-encoded: `.html`-named template -- escaping is the
+   environment's select_autoescape(), engaged by file extension; no filter syntax
+   appears (Phase 5 D4/D5).
+   Doc: https://jinja.palletsprojects.com/en/stable/api/#autoescaping #}
+<!DOCTYPE html>
+<html>
+<head>
+<title>Fortunes</title>
+</head>
+<body>
+<table>
+<tr><th>id</th><th>message</th></tr>
+{% for r in rows %}
+<tr><td>{{ r.id }}</td><td>{{ r.message }}</td></tr>
+{% endfor %}
+</table>
+</body>
+</html>

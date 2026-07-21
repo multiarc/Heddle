@@ -1,0 +1,22 @@
+{
+  "workload": "composed-page",
+  "suite": "raw",
+  "values": [
+    { "text": "<title>Title</title>", "count": 1 },
+    { "text": "<div class=\"footer-links-column\"><span>Need Help?</span><ul>", "count": 1 }
+  ],
+  "markers": [
+    "<title>Title</title>",
+    "<meta property=\"og:image\" content=\"/files/catalog/img.jpg\">",
+    "<link rel=\"stylesheet\" href=\"/main.css\" />",
+    "xmas-shipping-alert-1.jpg",
+    "/content/wholesale-promotions",
+    "/content/request-catalog\">Catalog</a>",
+    "/product/coming-soon-paleo-pork",
+    "/products/paleo-friendly-pork",
+    "<div class=\"footer-links-column\">",
+    "<script src=\"/bodyend.js\"></script>"
+  ],
+  "forbidden": [],
+  "required": []
+}

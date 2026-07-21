@@ -1,0 +1,1 @@
+<th:block th:fragment="layout">[(${sections.meta})][(${sections.social})][(${comps.assets_styles})][(${comps.custom_styles})][(${comps.head_scripts})][(${comps.body_scripts})]<th:block th:each="name : ${areaNames}">[(${areas[name]})]</th:block>[(${comps.assets_scripts})][(${sections.page_scripts})][(${sections.endpage_scripts})][(${comps.body_end_scripts})]</th:block>

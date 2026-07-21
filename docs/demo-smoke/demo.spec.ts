@@ -56,6 +56,30 @@ test.describe('Heddle demo', () => {
     await expect(annotation).toHaveCount(1, { timeout: 30_000 });
   });
 
+  test('S2b typed warning persists: HED2004 survives the base worker republish', async ({ page }) => {
+    await page.goto(DEMO);
+    await waitForLayer(page, 'Typed');
+
+    // A bare @(value) inside an attribute value fires the typed-layer-only HED2004 warning.
+    // The template parses clean, so the base mode worker publishes an empty/lint-only set on its own
+    // (slower) debounce — before the fix, that full-replace landed after the typed publish and wiped
+    // the warning ("blinks and goes away"). Set the value via the Ace API: keystroke auto-pairing on
+    // the quotes is editor-version fragile (same reason as S3).
+    await page.evaluate(() => {
+      const ed = (window as any).ace.edit('editor');
+      ed.setValue('@using(){{Heddle.Demo.Models}}\n@model(){{Blog}}\n<a href="@(Title)">x</a>\n', -1);
+      ed.focus();
+    });
+
+    const warning = page.locator('.ace_gutter-cell.ace_warning');
+    await expect(warning).toHaveCount(1, { timeout: 30_000 });
+
+    // Both publishers debounce well under a second (base worker 500ms, typed 300ms + analyze).
+    // Waiting past them and re-asserting catches the last-writer-wins wipe.
+    await page.waitForTimeout(2_000);
+    await expect(warning).toHaveCount(1);
+  });
+
   test('S3 typed completion: Article members complete (C01 fixture, browser side)', async ({ page }) => {
     await page.goto(DEMO);
     await waitForLayer(page, 'Typed');

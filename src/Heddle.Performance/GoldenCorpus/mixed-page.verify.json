@@ -1,0 +1,24 @@
+{
+  "workload": "mixed-page",
+  "suite": "raw",
+  "values": [
+    { "text": "Mercantile - Catalog", "count": 1 },
+    { "text": "Autumn hardware sale", "count": 1 },
+    { "text": "Product 01", "count": 1 },
+    { "text": "Product 36", "count": 1 },
+    { "text": "MX-1036", "count": 1 },
+    { "text": "<article class=\"card\">", "count": 36 },
+    { "text": "<p class=\"sale\">On sale</p>", "count": 12 },
+    { "text": "Free shipping on orders over 60.", "count": 1 }
+  ],
+  "markers": [
+    "<!DOCTYPE html>",
+    "<header>",
+    "class=\"hero\"",
+    "class=\"grid\"",
+    "<footer>",
+    "</html>"
+  ],
+  "forbidden": [],
+  "required": []
+}

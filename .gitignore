@@ -146,3 +146,8 @@ samples/**/generated/
 docs/test-results/
 docs/playwright-report/
 /docs/logs
+
+# Python benchmark harness (docs/spec/cross-stack-benchmarks/phase-5-python/ WI1):
+# venv and raw measurement outputs are never committed; published copies go to docs/benchmarks/<date>/
+benchmarks/python/.venv/
+benchmarks/python/results/

@@ -1,0 +1,42 @@
+<!--/*
+  Idiomatic Thymeleaf authoring (Q1.7/D7) — official doc citations:
+  https://www.thymeleaf.org/doc/tutorials/3.1/usingthymeleaf.html
+    §3 (natural templating, xmlns:th on the root element),
+    §4.8 (literal substitutions: |...|), §6 (iteration: th:each),
+    §7.1 (simple conditionals: th:if), §12 (unescaped text: th:utext)
+*/-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="utf-8">
+<title th:utext="${m.pageTitle}">Store - Catalog</title>
+<style>body{font:16px/1.5 system-ui;margin:0;color:#222}header{background:#1a2b3c;color:#fff;padding:12px 24px}nav a{color:#9cf;margin-right:12px;text-decoration:none}main{max-width:960px;margin:0 auto;padding:24px}.hero{background:#f4f6f8;padding:32px;border-radius:8px}.banner{background:#fff4d6;padding:8px 16px;border-radius:4px}.grid{display:flex;flex-wrap:wrap;gap:16px}.card{border:1px solid #ddd;border-radius:6px;padding:16px;width:280px}.card h3{margin:0 0 8px}.price{font-weight:700}.sale{color:#b00020;font-weight:700}footer{border-top:1px solid #ddd;margin-top:32px;padding:16px 24px;color:#666}</style>
+</head>
+<body>
+<header>
+    <h1 th:utext="${m.storeName}">Store</h1>
+    <nav><a href="/">Home</a><a href="/catalog">Catalog</a><a href="/deals">Deals</a><a href="/about">About</a><a href="/support">Support</a><a href="/account">Account</a></nav>
+</header>
+<main>
+    <div class="banner" th:if="${m.showBanner}" th:utext="${m.bannerText}">Banner text</div>
+    <section class="hero">
+        <h2 th:utext="${m.heroHeading}">Hero heading</h2>
+        <p th:utext="${m.heroTagline}">Hero tagline</p>
+    </section>
+    <section class="grid">
+        <article class="card" th:each="p : ${m.products}">
+            <h3 th:utext="${p.name}">Product name</h3>
+            <p class="sku" th:utext="${p.sku}">SKU</p>
+            <p class="price" th:utext="${p.price}">0</p>
+            <p class="sale" th:if="${p.onSale}">On sale</p>
+            <p class="blurb" th:utext="${p.blurb}">Blurb</p>
+        </article>
+    </section>
+    <pre class="debug" th:if="${m.showDebugPanel}">debug</pre>
+</main>
+<footer>
+    <p th:utext="${m.footerNote}">Footer note</p>
+    <p th:utext="|${m.storeName} ${m.year} ${m.supportEmail}|">Store 2000 support</p>
+</footer>
+</body>
+</html>

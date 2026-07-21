@@ -30,8 +30,14 @@ namespace Heddle.Samples.StreamingSsr
 
     internal static class Program
     {
-        private const string TemplateText =
-            "<h1>@(Title)</h1>\n<ul>\n@list(Items){{  <li>@(this)</li>\n}}</ul>\n";
+        private const string TemplateText = """
+            <h1>@(Title)</h1>
+            <ul>
+              @list(Items){{
+                <li>@(this)</li>
+              }}
+            </ul>
+            """;
 
         private static readonly Report Model = new Report
         {

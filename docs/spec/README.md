@@ -23,10 +23,6 @@ Specs are contributor material, **not published** to the docs site
 
 ## Initiatives
 
-None in flight. Everything specified to date shipped in **`v2.0.0`** (released
-2026-07-19); the durable outcomes live in the documents above — the decisions `D1`–`D9`,
-the [claimed diagnostic-ID registry](common/cross-cutting-decisions.md#claimed-diagnostic-ids-registry),
-the [next-window candidate register](common/breaking-windows.md#next-window-candidate-register),
-and the [2.0 window record](records.md#the-20-breaking-window--as-shipped-record). A new
-initiative adds its documents here per the
-[conventions](common/spec-conventions.md#index-maintenance).
+| Initiative | Status | Summary |
+| --- | --- | --- |
+| [cross-stack-benchmarks](cross-stack-benchmarks/README.md) | Specified — ready for implementation | Eight-phase cross-stack benchmark program (foundation; Rust, JVM, JS, Python, Go ecosystems; consolidated report; Linux cross-check): one golden corpus, parity contract v2 with the N1–N5 + N3b strip-at-comparison pipeline, and one metrics/publication protocol owned by Phase 1; per-ecosystem harnesses under top-level `benchmarks/<ecosystem>/`; wall time per render as the only cross-comparable metric, with honest-reporting rules and no cross-ecosystem ranking of non-Heddle engines. |

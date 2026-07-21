@@ -1,0 +1,9 @@
+{# Idiomatic Askama template (WI5, README D8/Q1.7). Patterns follow the Askama 0.16 book:
+   "Template syntax - Include" (include-per-iteration; included templates get full access
+   to the context, loop variables included) and "Template syntax - For";
+   default HTML escaping left on. #}
+<div class="panel">
+  {% for item in items %}
+    {% include "idiomatic/askama/fragment-heavy-tile.html" %}
+  {% endfor %}
+</div>

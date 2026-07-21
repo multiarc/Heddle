@@ -22,6 +22,25 @@ src/Heddle.Generator.IntegrationTests/Fixtures/** text eol=lf
 src/Heddle.LanguageServices.Tests/Corpus/**       text eol=lf
 src/Heddle.Demo.Wasm/contract-fixtures/**         text eol=lf
 
+# Golden oracle corpus (docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/
+# golden-corpus.md): the *.golden.html files intentionally end WITHOUT a trailing newline and
+# must round-trip byte-exact on every platform, so they are pinned -text (no smudging at all)
+# rather than eol=lf. The JSON sidecars are ordinary LF text.
+src/Heddle.Performance/GoldenCorpus/*.golden.html -text
+src/Heddle.Performance/GoldenCorpus/*.verify.json text eol=lf
+src/Heddle.Performance/GoldenCorpus/manifest.json text eol=lf
+
+# Rust benchmark harness (docs/spec/cross-stack-benchmarks/phase-2-rust/README.md D2):
+# composed-page fragment data must round-trip byte-exact (-text); template files are ordinary
+# LF text (their line endings are erased by contract N2, but LF keeps diffs clean).
+benchmarks/rust/data/** -text
+benchmarks/rust/templates/** text eol=lf
+
+# Python benchmark harness (docs/spec/cross-stack-benchmarks/phase-5-python/README.md D3):
+# template files are committed LF on every platform — Mako passes a literal \r\n in a template
+# file through into rendered output, so LF-pinning keeps checked-in bytes equal to authored bytes.
+benchmarks/python/templates/** text eol=lf
+
 # Custom for Visual Studio
 *.cs     diff=csharp
 *.sln    merge=union

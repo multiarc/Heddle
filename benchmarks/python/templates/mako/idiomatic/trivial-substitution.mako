@@ -1,0 +1,16 @@
+<%doc>
+Idiomatic Mako trivial-substitution: plain template, multi-line card,
+${} expression substitution (Phase 5 D5).
+Doc: https://docs.makotemplates.org/en/latest/syntax.html#expression-substitution
+</%doc>
+<article>
+  <h1>${title}</h1>
+  <p class="sku">${sku}</p>
+  <p class="price">${price}</p>
+  <p class="brand">${brand}</p>
+  <p class="cat">${category}</p>
+  <p class="avail">${availability}</p>
+  <a class="link" href="${url}"><img src="${image_url}"></a>
+  <p class="sum">${summary}</p>
+  <p class="rating">${rating}</p>
+</article>

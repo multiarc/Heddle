@@ -1,0 +1,11 @@
+<!--/*
+  Idiomatic Thymeleaf authoring (Q1.7/D7) — official doc citations:
+  https://www.thymeleaf.org/doc/tutorials/3.1/usingthymeleaf.html
+    §8.1 (defining fragments: th:fragment with arguments),
+    §12 (unescaped text: th:utext)
+*/-->
+<section class="tile" th:fragment="tile(item)">
+    <h3 th:utext="${item.name}">tile name</h3>
+    <p class="v" th:utext="${item.value}">0</p>
+    <span class="badge" th:utext="${item.badge}">badge</span>
+</section>

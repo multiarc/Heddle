@@ -105,3 +105,14 @@ composition semantics, which is out of scope for the D benchmark workstream. Swa
 embed the layout's literal HTML verbatim (parity-drift risk) — so the workload is left as the
 parity-asserted fragment sequence and documented precisely here and in the published numbers. The
 non-negotiable property (all five engines do identical, parity-checked work) holds regardless.
+
+## Contract v2
+
+The parity rule above (contract v1) remains authoritative for the intra-.NET raw suites exactly
+as written. The cross-stack benchmark program extends it — not replaces it — with
+[parity contract v2](../../../docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/parity-contract-v2.md)
+(defined output encoding, the N3b whitespace strip applied to both sides at comparison time, and
+entity canonicalization for the encoded suite) and with the committed
+[golden oracle corpus](../GoldenCorpus/README.md) that phases 2–6 gate against
+(`export-corpus` / `verify-corpus` verbs, freshness-asserted in every render benchmark's
+`[GlobalSetup]` via `GoldenCorpus.AssertFresh`).

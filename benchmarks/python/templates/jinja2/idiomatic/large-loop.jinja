@@ -1,0 +1,6 @@
+{# Idiomatic Jinja2 large-loop: a {% for %} loop over items, one row per source
+   line (Phase 5 D5).
+   Doc: https://jinja.palletsprojects.com/en/stable/templates/#for #}
+{% for item in items %}
+<tr><td>{{ item.name }}</td><td>{{ item.value }}</td></tr>
+{% endfor %}

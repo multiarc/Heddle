@@ -1,0 +1,16 @@
+{# Idiomatic Tera template (WI5, README D8/Q1.7). Patterns follow the Tera docs
+   (keats.github.io/tera): "Getting started" and "Variables" (expression substitution,
+   default auto-escaping left on - the pinned values contain no escapable characters). #}
+<article>
+  <h1>{{ title }}</h1>
+  <p class="sku">{{ sku }}</p>
+  <p class="price">{{ price }}</p>
+  <p class="brand">{{ brand }}</p>
+  <p class="cat">{{ category }}</p>
+  <p class="avail">{{ availability }}</p>
+  <a class="link" href="{{ url }}">
+    <img src="{{ image_url }}">
+  </a>
+  <p class="sum">{{ summary }}</p>
+  <p class="rating">{{ rating }}</p>
+</article>

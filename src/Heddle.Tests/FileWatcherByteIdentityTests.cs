@@ -11,6 +11,9 @@ namespace Heddle.Tests
     /// </summary>
     public class FileWatcherByteIdentityTests
     {
+        // Per-test watched-file stem: isolates this test from concurrent tests and parallel TFM hosts.
+        private readonly string _stem = FileWatcherTestSupport.NewStem();
+
         private const string Source = "<p>@()</p>|@raw()";
         // Pre-recorded baseline for Source with model "<b>x</b>" under the default options (Html profile,
         // legacy WebUtility encoder): the unnamed sink encodes, @raw does not.
@@ -31,8 +34,8 @@ namespace Heddle.Tests
             var dir = FileWatcherTestSupport.NewTempDir();
             try
             {
-                File.WriteAllText(Path.Combine(dir, "home.heddle"), Source);
-                var options = FileWatcherTestSupport.WatchOptions(dir, "home");
+                File.WriteAllText(Path.Combine(dir, _stem + ".heddle"), Source);
+                var options = FileWatcherTestSupport.WatchOptions(dir, _stem);
                 options.EnableFileChangeCheck = false;
                 using var fromFile = new HeddleTemplate(options);
                 Assert.True(fromFile.CompileResult.Success, fromFile.CompileResult.ToString());

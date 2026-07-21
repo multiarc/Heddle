@@ -1,0 +1,1 @@
+<ul class="matrix">{{#each rows}}<li>{{#if is_bronze}}<span class="t0">bronze</span>{{else if is_silver}}<span class="t1">silver</span>{{else if is_gold}}<span class="t2">gold</span>{{else}}<span class="t3">platinum</span>{{/if}}<em>{{{name}}}</em>{{#if has_note}}<small>{{{note}}}</small>{{/if}}{{#if is_active}}<b>active</b>{{/if}}</li>{{/each}}</ul>

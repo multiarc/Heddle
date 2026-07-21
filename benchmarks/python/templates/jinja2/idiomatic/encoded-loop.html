@@ -1,0 +1,9 @@
+{# Idiomatic Jinja2 encoded-loop: `.html`-named template -- escaping is the
+   environment's select_autoescape(), engaged by file extension; the attribute
+   value position is escaped by the same autoescape path (Phase 5 D4/D5).
+   Doc: https://jinja.palletsprojects.com/en/stable/api/#autoescaping #}
+<table>
+{% for item in items %}
+<tr><td data-tag="{{ item.tag }}">{{ item.name }}</td><td>{{ item.comment }}</td></tr>
+{% endfor %}
+</table>

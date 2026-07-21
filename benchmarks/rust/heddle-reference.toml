@@ -1,0 +1,27 @@
+# Heddle reference wall-time values for the `summarize` tool (Phase 2 spec, README D13).
+#
+# Schema (normative):
+#   pending    = bool     # true while the Phase 1 protocol run is unpublished (SR-6)
+#   source-run = string   # date of the published Phase 1 protocol run, e.g. "2026-08-01"
+#   [workloads]           # workload id -> Heddle wall time in ns/render, transcribed once
+#   <workload-id> = <ns>  # from the published Phase 1 run and reviewed in diff
+#
+# STANDING RULING SR-6 (2026-07-21): the Phase 1 protocol run does not exist yet, so this
+# file carries the correct schema but NO reference values — `pending = true` makes
+# `summarize` fail loudly ("reference pending the Phase 1 protocol run") rather than emit
+# tables with fabricated Heddle numbers. When the Phase 1 run is published: set
+# `pending = false`, fill `source-run` with the run date, and uncomment/fill the eight
+# workload entries below from that run's report.
+
+pending = true
+source-run = "PENDING"
+
+[workloads]
+# composed-page = 0.0
+# trivial-substitution = 0.0
+# large-loop = 0.0
+# mixed-page = 0.0
+# conditional-heavy = 0.0
+# fragment-heavy = 0.0
+# fortunes-encoded = 0.0
+# encoded-loop = 0.0

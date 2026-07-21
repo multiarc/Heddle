@@ -1,0 +1,6 @@
+<% /* idiomatic Eta implementation (Phase 4).
+      Patterns followed: https://eta.js.org/docs/4.x.x/syntax/cheatsheet,
+      https://eta.js.org/docs/4.x.x/syntax/layouts-and-blocks (layout, it.body),
+      https://eta.js.org/docs/4.x.x/api/overview (loadTemplate, render). */ %>
+<% layout("@shell", it) %>
+<% it.area_names.forEach(n => { %><%~ it.areas[n] !== undefined ? it.areas[n] : "" %><% }) %>
