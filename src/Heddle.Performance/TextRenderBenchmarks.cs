@@ -33,6 +33,10 @@ public class TextRenderBenchmarks
     public async Task Setup() {
         _host = Host.CreateDefaultBuilder()
             .ConfigureServices(ConfigureDefaultServices)
+            // Host lifecycle hygiene only (no benchmark-semantics change): suppress the console
+            // lifetime's "Application started / Press Ctrl+C" status banner so benchmark stdout
+            // stays clean, and keep warnings+ on stderr.
+            .UseConsoleLifetime(o => o.SuppressStatusMessages = true)
             .ConfigureLogging(logging => logging.AddConsole(co => co.LogToStandardErrorThreshold = LogLevel.Warning))
             .Build();
 
@@ -55,7 +59,12 @@ public class TextRenderBenchmarks
 
     [GlobalCleanup]
     public async Task Teardown() {
+        // StopAsync stops hosted services but does NOT dispose the host: without Dispose the
+        // ConsoleLifetime registrations and the PhysicalFileProvider/file-watcher machinery
+        // (config reload + Razor runtime compilation) stay alive and can keep the BenchmarkDotNet
+        // child process from exiting on Windows after the run finishes. Dispose releases them.
         await _host.StopAsync();
+        _host.Dispose();
     }
 
     // D1-R5: Heddle is the ratio baseline for the render suite.

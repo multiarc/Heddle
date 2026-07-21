@@ -151,3 +151,5 @@ docs/playwright-report/
 # venv and raw measurement outputs are never committed; published copies go to docs/benchmarks/<date>/
 benchmarks/python/.venv/
 benchmarks/python/results/
+# Windows master-runner outputs (benchmarks/run-all.ps1): per-run logs + copied artifacts
+benchmarks/out/
