@@ -153,3 +153,4 @@ benchmarks/python/.venv/
 benchmarks/python/results/
 # Windows master-runner outputs (benchmarks/run-all.ps1): per-run logs + copied artifacts
 benchmarks/out/
+/benchmarks/go/bench.exe
