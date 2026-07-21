@@ -1,0 +1,8 @@
+{# Idiomatic Askama template (WI5, README D8/Q1.7). Patterns follow the Askama 0.16 book:
+   "Template syntax - For" (loop over a slice); default HTML escaping left on. #}
+{% for item in items %}
+  <tr>
+    <td>{{ item.name }}</td>
+    <td>{{ item.value }}</td>
+  </tr>
+{% endfor %}

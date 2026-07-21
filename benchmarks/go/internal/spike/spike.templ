@@ -1,0 +1,48 @@
+// S1 — templ controlled-track feasibility spike (WI2).
+// Probes P1–P4 of docs/spec/cross-stack-benchmarks/phase-6-go/templ-feasibility.md,
+// executed at the pinned toolchain (Go 1.26.5, templ v0.3.1020). Throwaway-quality but
+// committed in-tree as evidence; excluded from benchmark runs. Generated via
+// `go tool templ generate` (the pinned CLI through the go.mod tool directive — D3).
+package spike
+
+import "heddle.dev/benchmarks/go/internal/model"
+
+// P1 — smallest-workload byte gate: trivial-substitution authored densely per
+// port-mapping.md §Workload 2 (the pinned one-line <article> card, ten substitutions in
+// pinned order including the two attribute positions).
+templ trivialSubstitution(m model.SubstitutionModel) {
+	<article><h1>{ m.Title }</h1><p class="sku">{ m.Sku }</p><p class="price">{ m.Price }</p><p class="brand">{ m.Brand }</p><p class="cat">{ m.Category }</p><p class="avail">{ m.Availability }</p><a class="link" href={ m.Url }><img src={ m.ImageUrl }></a><p class="sum">{ m.Summary }</p><p class="rating">{ m.Rating }</p></article>
+}
+
+// P1 (second half) — the mixed-page footer construct: string expressions separated by
+// single literal spaces; F3's fixed point (a lone space maps to itself).
+templ spacedExpressions(a string, b string, c string) {
+	<p>{ a } { b } { c }</p>
+}
+
+// P2 — escaper bytes, text path: a one-row fortunes-shaped fragment.
+templ fortunesRow(id string, message string) {
+	<tr><td>{ id }</td><td>{ message }</td></tr>
+}
+
+// P2 — escaper bytes, attribute path: an encoded-loop-shaped row (data-tag={ tag } plus
+// two text expressions).
+templ encodedRow(tag string, name string, comment string) {
+	<tr><td data-tag={ tag }>{ name }</td><td>{ comment }</td></tr>
+}
+
+// P3 — style passthrough: the exact mixed-page <style> line (CSS braces, single spaces)
+// authored as a literal <style> element (F4 executed).
+templ styleBlock() {
+	<style>body{font:16px/1.5 system-ui;margin:0;color:#222}header{background:#1a2b3c;color:#fff;padding:12px 24px}nav a{color:#9cf;margin-right:12px;text-decoration:none}main{max-width:960px;margin:0 auto;padding:24px}.hero{background:#f4f6f8;padding:32px;border-radius:8px}.banner{background:#fff4d6;padding:8px 16px;border-radius:4px}.grid{display:flex;flex-wrap:wrap;gap:16px}.card{border:1px solid #ddd;border-radius:6px;padding:16px;width:280px}.card h3{margin:0 0 8px}.price{font-weight:700}.sale{color:#b00020;font-weight:700}footer{border-top:1px solid #ddd;margin-top:32px;padding:16px 24px;color:#666}</style>
+}
+
+// P4 — inter-statement whitespace (evidence only): two consecutive @templ.Raw calls on
+// separate lines whose payloads reproduce the composed-page CSS-comment neighborhood
+// (comp-assets-styles → comp-custom-styles → comp-head-scripts, the one non-tag-flanked
+// fragment boundary of the oracle).
+templ boundary(link string, css string, script string) {
+	@templ.Raw(link)
+	@templ.Raw(css)
+	@templ.Raw(script)
+}

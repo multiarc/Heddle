@@ -1,0 +1,17 @@
+section	meta	section.meta.txt
+section	social	section.social.txt
+section	page_scripts	section.page_scripts.txt
+section	endpage_scripts	section.endpage_scripts.txt
+comp	assets_styles	comp.assets_styles.txt
+comp	custom_styles	comp.custom_styles.txt
+comp	head_scripts	comp.head_scripts.txt
+comp	body_scripts	comp.body_scripts.txt
+comp	assets_scripts	comp.assets_scripts.txt
+comp	body_end_scripts	comp.body_end_scripts.txt
+area	Alert Top Section Above Nav	area.1.alert-top-section-above-nav.txt
+area	Secondary Wholesale Menu	area.2.secondary-wholesale-menu.txt
+area	Secondary Retail Menu	area.3.secondary-retail-menu.txt
+area	Wholesale Top Mega Menu	area.4.wholesale-top-mega-menu.txt
+area	Retail Top Mega Menu	area.5.retail-top-mega-menu.txt
+area	Alert Top Section Below Nav	area.6.alert-top-section-below-nav.txt
+area	Footer Links	area.7.footer-links.txt

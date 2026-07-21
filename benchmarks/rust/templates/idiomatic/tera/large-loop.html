@@ -1,0 +1,8 @@
+{# Idiomatic Tera template (WI5, README D8/Q1.7). Patterns follow the Tera docs
+   (keats.github.io/tera): "Control structures - For loops"; default auto-escaping on. #}
+{% for item in items %}
+  <tr>
+    <td>{{ item.name }}</td>
+    <td>{{ item.value }}</td>
+  </tr>
+{% endfor %}

@@ -28,6 +28,10 @@ namespace Heddle.Tests
     /// </summary>
     public class FileWatcherReloadTests
     {
+        // xunit news up the class per test: every test watches its own uniquely named file, isolating it
+        // from concurrent tests and from the other TFMs' test hosts running the same suite in parallel.
+        private readonly string _stem = FileWatcherTestSupport.NewStem();
+
         private static string WriteFile(string dir, string stem, string content)
         {
             var path = Path.Combine(dir, stem + ".heddle");
@@ -44,8 +48,8 @@ namespace Heddle.Tests
             var dir = FileWatcherTestSupport.NewTempDir();
             try
             {
-                var path = WriteFile(dir, "home", "ONE");
-                using var template = new HeddleTemplate(FileWatcherTestSupport.WatchOptions(dir, "home"));
+                var path = WriteFile(dir, _stem, "ONE");
+                using var template = new HeddleTemplate(FileWatcherTestSupport.WatchOptions(dir, _stem));
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
                 Assert.Equal("ONE", template.Generate(null));
 
@@ -76,8 +80,8 @@ namespace Heddle.Tests
             var dir = FileWatcherTestSupport.NewTempDir();
             try
             {
-                WriteFile(dir, "home", "@(@ 1 + 1 )");
-                var options = FileWatcherTestSupport.WatchOptions(dir, "home");
+                WriteFile(dir, _stem, "@(@ 1 + 1 )");
+                var options = FileWatcherTestSupport.WatchOptions(dir, _stem);
                 options.ExpressionMode = ExpressionMode.FullCSharp;
                 using var template = new HeddleTemplate(options);
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
@@ -86,8 +90,8 @@ namespace Heddle.Tests
 
                 foreach (var edit in new[] { "@(@ 2 * 3 )", "@(@ 10 - 4 )", "@(@ 7 + 1 )" })
                 {
-                    WriteFile(dir, "home", edit);
-                    FileWatcherTestSupport.InvokeChanged(template, dir, "home.heddle");
+                    WriteFile(dir, _stem, edit);
+                    FileWatcherTestSupport.InvokeChanged(template, dir, _stem + ".heddle");
                     Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
 
                     using var fresh = new HeddleTemplate(edit,
@@ -111,8 +115,8 @@ namespace Heddle.Tests
             var dir = FileWatcherTestSupport.NewTempDir();
             try
             {
-                WriteFile(dir, "home", "@(@ 1 + 1 )|@()");
-                var options = FileWatcherTestSupport.WatchOptions(dir, "home");
+                WriteFile(dir, _stem, "@(@ 1 + 1 )|@()");
+                var options = FileWatcherTestSupport.WatchOptions(dir, _stem);
                 options.ExpressionMode = ExpressionMode.FullCSharp;
                 options.Encoder = HtmlEncoder.Create(UnicodeRanges.All);
                 options.RenderBudget = new RenderBudget { MaxOutputChars = 32 };
@@ -121,8 +125,8 @@ namespace Heddle.Tests
                 FileWatcherTestSupport.Disarm(template);
                 Assert.Equal("2|&#x27;", template.Generate("'"));   // modern encoder: ' → &#x27; (WebUtility yields &#39;)
 
-                WriteFile(dir, "home", "@(@ 40 + 2 )|@()");
-                FileWatcherTestSupport.InvokeChanged(template, dir, "home.heddle");
+                WriteFile(dir, _stem, "@(@ 40 + 2 )|@()");
+                FileWatcherTestSupport.InvokeChanged(template, dir, _stem + ".heddle");
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
 
                 Assert.Equal("42|&#x27;", template.Generate("'"));
@@ -145,15 +149,15 @@ namespace Heddle.Tests
             var dir = FileWatcherTestSupport.NewTempDir();
             try
             {
-                WriteFile(dir, "home", "@profile(){{text}}\n@()");
-                var options = FileWatcherTestSupport.WatchOptions(dir, "home");   // OutputProfile default: Html
+                WriteFile(dir, _stem, "@profile(){{text}}\n@()");
+                var options = FileWatcherTestSupport.WatchOptions(dir, _stem);   // OutputProfile default: Html
                 using var template = new HeddleTemplate(options);
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
                 FileWatcherTestSupport.Disarm(template);
                 Assert.Equal("<b>", template.Generate("<b>"));      // directive flips the first compile to Text
 
-                WriteFile(dir, "home", "@()");                      // directive removed
-                FileWatcherTestSupport.InvokeChanged(template, dir, "home.heddle");
+                WriteFile(dir, _stem, "@()");                      // directive removed
+                FileWatcherTestSupport.InvokeChanged(template, dir, _stem + ".heddle");
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
                 using (var fresh = new HeddleTemplate("@()", new CompileContext(new TemplateOptions(options))))
                 {
@@ -161,8 +165,8 @@ namespace Heddle.Tests
                 }
                 Assert.Equal("&lt;b&gt;", template.Generate("<b>"));   // options default (Html), not the stale Text
 
-                WriteFile(dir, "home", "@profile(){{text}}\n@()");  // directive re-added
-                FileWatcherTestSupport.InvokeChanged(template, dir, "home.heddle");
+                WriteFile(dir, _stem, "@profile(){{text}}\n@()");  // directive re-added
+                FileWatcherTestSupport.InvokeChanged(template, dir, _stem + ".heddle");
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
                 Assert.Equal("<b>", template.Generate("<b>"));
             }
@@ -184,22 +188,22 @@ namespace Heddle.Tests
             var dir = FileWatcherTestSupport.NewTempDir();
             try
             {
-                WriteFile(dir, "home", "@model(){{FileWatcherConcreteModel}}\n@(Name)");
-                var options = FileWatcherTestSupport.WatchOptions(dir, "home");   // default object model
+                WriteFile(dir, _stem, "@model(){{FileWatcherConcreteModel}}\n@(Name)");
+                var options = FileWatcherTestSupport.WatchOptions(dir, _stem);   // default object model
                 using var template = new HeddleTemplate(options);
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
                 FileWatcherTestSupport.Disarm(template);
                 Assert.Equal("n1", template.Generate(new FileWatcherConcreteModel { Name = "n1" }));
 
-                WriteFile(dir, "home", "@()");                      // @model removed → back to the original object model
-                FileWatcherTestSupport.InvokeChanged(template, dir, "home.heddle");
+                WriteFile(dir, _stem, "@()");                      // @model removed → back to the original object model
+                FileWatcherTestSupport.InvokeChanged(template, dir, _stem + ".heddle");
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
                 // A string payload is NOT a FileWatcherConcreteModel: this render succeeds only because the
                 // reload seeded the pre-@model original (object), like a from-scratch compile of "@()".
                 Assert.Equal("payload", template.Generate("payload"));
 
-                WriteFile(dir, "home", "@model(){{FileWatcherConcreteModel}}\n@(Name)");   // directive re-added
-                FileWatcherTestSupport.InvokeChanged(template, dir, "home.heddle");
+                WriteFile(dir, _stem, "@model(){{FileWatcherConcreteModel}}\n@(Name)");   // directive re-added
+                FileWatcherTestSupport.InvokeChanged(template, dir, _stem + ".heddle");
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
                 Assert.Equal("n2", template.Generate(new FileWatcherConcreteModel { Name = "n2" }));
 #if DEBUG
@@ -221,15 +225,15 @@ namespace Heddle.Tests
             var dir = FileWatcherTestSupport.NewTempDir();
             try
             {
-                WriteFile(dir, "home", "@(Name)");
-                var options = FileWatcherTestSupport.WatchOptions(dir, "home");
+                WriteFile(dir, _stem, "@(Name)");
+                var options = FileWatcherTestSupport.WatchOptions(dir, _stem);
                 using var template = new HeddleTemplate(options, typeof(FileWatcherConcreteModel));
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
                 FileWatcherTestSupport.Disarm(template);
                 Assert.Equal("a", template.Generate(new FileWatcherConcreteModel { Name = "a" }));
 
-                WriteFile(dir, "home", "X:@(Name)");
-                FileWatcherTestSupport.InvokeChanged(template, dir, "home.heddle");
+                WriteFile(dir, _stem, "X:@(Name)");
+                FileWatcherTestSupport.InvokeChanged(template, dir, _stem + ".heddle");
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
                 Assert.Equal("X:b", template.Generate(new FileWatcherConcreteModel { Name = "b" }));
             }
@@ -248,12 +252,12 @@ namespace Heddle.Tests
             var dir = FileWatcherTestSupport.NewTempDir();
             try
             {
-                var target = WriteFile(dir, "home", "ONE");
-                using var template = new HeddleTemplate(FileWatcherTestSupport.WatchOptions(dir, "home"));
+                var target = WriteFile(dir, _stem, "ONE");
+                using var template = new HeddleTemplate(FileWatcherTestSupport.WatchOptions(dir, _stem));
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
                 Assert.Equal("ONE", template.Generate(null));
 
-                var temp = Path.Combine(dir, "home.heddle.tmp");
+                var temp = Path.Combine(dir, _stem + ".heddle.tmp");
                 File.WriteAllText(temp, "TWO");
                 FileWatcherTestSupport.RetryIO(() => File.Delete(target));
                 FileWatcherTestSupport.RetryIO(() => File.Move(temp, target));   // rename lands the new content ON the watched name
@@ -275,8 +279,8 @@ namespace Heddle.Tests
             var dir = FileWatcherTestSupport.NewTempDir();
             try
             {
-                var path = WriteFile(dir, "home", "GOOD");
-                using var template = new HeddleTemplate(FileWatcherTestSupport.WatchOptions(dir, "home"));
+                var path = WriteFile(dir, _stem, "GOOD");
+                using var template = new HeddleTemplate(FileWatcherTestSupport.WatchOptions(dir, _stem));
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
                 FileWatcherTestSupport.Disarm(template);
                 var lastGoodResult = template.CompileResult;
@@ -286,7 +290,7 @@ namespace Heddle.Tests
                 template.OnFileDeleted += (s, e) => { observedSender = s; deleted++; };
 
                 File.Delete(path);
-                FileWatcherTestSupport.InvokeDeleted(template, dir, "home.heddle");
+                FileWatcherTestSupport.InvokeDeleted(template, dir, _stem + ".heddle");
 
                 Assert.Equal(1, deleted);
                 Assert.Same(template, observedSender);
@@ -308,8 +312,8 @@ namespace Heddle.Tests
             var dir = FileWatcherTestSupport.NewTempDir();
             try
             {
-                var path = WriteFile(dir, "home", "GOOD");
-                using var template = new HeddleTemplate(FileWatcherTestSupport.WatchOptions(dir, "home"));
+                var path = WriteFile(dir, _stem, "GOOD");
+                using var template = new HeddleTemplate(FileWatcherTestSupport.WatchOptions(dir, _stem));
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
                 FileWatcherTestSupport.Disarm(template);
                 var lastGoodResult = template.CompileResult;
@@ -320,7 +324,7 @@ namespace Heddle.Tests
                 foreach (var truncated in new[] { string.Empty, " \t\r\n " })
                 {
                     File.WriteAllText(path, truncated);
-                    FileWatcherTestSupport.InvokeChanged(template, dir, "home.heddle");
+                    FileWatcherTestSupport.InvokeChanged(template, dir, _stem + ".heddle");
                     Assert.Same(lastGoodResult, template.CompileResult);   // no recompile, no failure surfaced
                     Assert.Equal("GOOD", template.Generate(null));
                 }
@@ -341,8 +345,8 @@ namespace Heddle.Tests
             var dir = FileWatcherTestSupport.NewTempDir();
             try
             {
-                var target = WriteFile(dir, "home", "ONE");
-                using var template = new HeddleTemplate(FileWatcherTestSupport.WatchOptions(dir, "home"));
+                var target = WriteFile(dir, _stem, "ONE");
+                using var template = new HeddleTemplate(FileWatcherTestSupport.WatchOptions(dir, _stem));
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
 
                 int changed = 0, deletedCount = 0, renamed = 0;

@@ -1,0 +1,24 @@
+<% /* idiomatic Eta implementation (Phase 4).
+      Patterns followed: https://eta.js.org/docs/4.x.x/syntax/cheatsheet,
+      https://eta.js.org/docs/4.x.x/syntax/layouts-and-blocks (layout, it.body),
+      https://eta.js.org/docs/4.x.x/api/overview (loadTemplate, render). */ %>
+<% layout("@page", it) %>
+<% if (it.show_banner) { %>
+  <div class="banner"><%= it.banner_text %></div>
+<% } %>
+<section class="hero">
+  <h2><%= it.hero_heading %></h2>
+  <p><%= it.hero_tagline %></p>
+</section>
+<section class="grid">
+<% it.products.forEach(p => { %>
+  <article class="card">
+    <h3><%= p.name %></h3>
+    <p class="sku"><%= p.sku %></p>
+    <p class="price"><%= p.price %></p>
+    <% if (p.on_sale) { %><p class="sale">On sale</p><% } %>
+    <p class="blurb"><%= p.blurb %></p>
+  </article>
+<% }) %>
+</section>
+<% if (it.show_debug_panel) { %><pre class="debug">debug</pre><% } %>

@@ -1,0 +1,25 @@
+// Workload 2 — trivial-substitution, templ idiomatic port. Naturally formatted — indented,
+// one element per line (the shape templ fmt produces) — with { } text expressions and
+// attribute expressions.
+//
+// Doc citations (Q1.7):
+//   - https://templ.guide/syntax-and-usage/expressions/
+package idiomatic
+
+import "heddle.dev/benchmarks/go/internal/model"
+
+templ trivialSubstitution(m model.SubstitutionModel) {
+	<article>
+		<h1>{ m.Title }</h1>
+		<p class="sku">{ m.Sku }</p>
+		<p class="price">{ m.Price }</p>
+		<p class="brand">{ m.Brand }</p>
+		<p class="cat">{ m.Category }</p>
+		<p class="avail">{ m.Availability }</p>
+		<a class="link" href={ m.Url }>
+			<img src={ m.ImageUrl }/>
+		</a>
+		<p class="sum">{ m.Summary }</p>
+		<p class="rating">{ m.Rating }</p>
+	</article>
+}

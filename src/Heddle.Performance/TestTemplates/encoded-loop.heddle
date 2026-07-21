@@ -1,0 +1,1 @@
+<table>@list(Items){{<tr><td data-tag="@attr(Tag)">@(Name)</td><td>@(Comment)</td></tr>}}</table>

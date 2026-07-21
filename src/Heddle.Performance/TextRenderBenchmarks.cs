@@ -50,6 +50,7 @@ public class TextRenderBenchmarks
         // documented normalization) before we time anything, so a drifted twin fails loudly rather
         // than benchmarking different work.
         ParityCheck.Assert();
+        GoldenCorpus.AssertFresh("composed-page");
     }
 
     [GlobalCleanup]

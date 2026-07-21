@@ -1,0 +1,25 @@
+// Workload 1 — composed-page, templ controlled port (port-mapping.md §Controlled track —
+// templ, rule 5). One component issuing @templ.Raw per section/component fragment in twin
+// order plus the real loop over AreaNames — the fragments are RUNTIME DATA, byte-exact
+// through templ.Raw (F2). Authoring form: separate-line @templ.Raw calls — S1 probe P4
+// proved templ emits zero separator bytes between consecutive statement nodes, so the
+// oracle's zero-separator concatenation is already byte-exact.
+package templeng
+
+import "heddle.dev/benchmarks/go/internal/model"
+
+templ composedPage(m model.ComposedModel) {
+	@templ.Raw(m.Section["meta"])
+	@templ.Raw(m.Section["social"])
+	@templ.Raw(m.Comp["assets_styles"])
+	@templ.Raw(m.Comp["custom_styles"])
+	@templ.Raw(m.Comp["head_scripts"])
+	@templ.Raw(m.Comp["body_scripts"])
+	for _, name := range m.AreaNames {
+		@templ.Raw(m.Areas[name])
+	}
+	@templ.Raw(m.Comp["assets_scripts"])
+	@templ.Raw(m.Section["page_scripts"])
+	@templ.Raw(m.Section["endpage_scripts"])
+	@templ.Raw(m.Comp["body_end_scripts"])
+}

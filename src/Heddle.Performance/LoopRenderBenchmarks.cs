@@ -37,6 +37,7 @@ public class LoopRenderBenchmarks
         // normalization — a functional no-op here, the sources are whitespace-free) before we time
         // anything, so a drifted twin fails loudly rather than benchmarking different work.
         ParityCheck.AssertLoop();
+        GoldenCorpus.AssertFresh("large-loop");
     }
 
     // Heddle is the ratio baseline for the render suite.

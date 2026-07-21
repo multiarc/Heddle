@@ -20,6 +20,9 @@ namespace Heddle.Tests
     /// </summary>
     public class FileWatcherSwapConcurrencyTests
     {
+        // Per-test watched-file stem: isolates this test from concurrent tests and parallel TFM hosts.
+        private readonly string _stem = FileWatcherTestSupport.NewStem();
+
         private static void AssertQueueDrained(HeddleTemplate template)
         {
             var queue = FileWatcherTestSupport.GetSupersededQueue(template);
@@ -188,9 +191,9 @@ namespace Heddle.Tests
             var dir = FileWatcherTestSupport.NewTempDir();
             try
             {
-                var path = Path.Combine(dir, "home.heddle");
+                var path = Path.Combine(dir, _stem + ".heddle");
                 File.WriteAllText(path, "LIVE@p1witness()");
-                var template = new HeddleTemplate(FileWatcherTestSupport.WatchOptions(dir, "home"));
+                var template = new HeddleTemplate(FileWatcherTestSupport.WatchOptions(dir, _stem));
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
                 FileWatcherTestSupport.Disarm(template);
                 var liveDoc = FileWatcherTestSupport.GetRuntimeDocument(template);
@@ -200,7 +203,7 @@ namespace Heddle.Tests
                 DisposalWitnessExtension.Reset();
 
                 File.WriteAllText(path, "ZOMBIE@p1witness()");
-                FileWatcherTestSupport.InvokeChanged(template, dir, "home.heddle");   // late callback
+                FileWatcherTestSupport.InvokeChanged(template, dir, _stem + ".heddle");   // late callback
 
                 // The fresh artifact was disposed by the store block's guard (its witness fired) …
                 Assert.Equal(DisposalWitnessExtension.CreatedCount, DisposalWitnessExtension.DisposedCount);
@@ -226,15 +229,15 @@ namespace Heddle.Tests
             var dir = FileWatcherTestSupport.NewTempDir();
             try
             {
-                var path = Path.Combine(dir, "home.heddle");
+                var path = Path.Combine(dir, _stem + ".heddle");
                 File.WriteAllText(path, "ONE@p1witness()");
-                using var template = new HeddleTemplate(FileWatcherTestSupport.WatchOptions(dir, "home"));
+                using var template = new HeddleTemplate(FileWatcherTestSupport.WatchOptions(dir, _stem));
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
                 FileWatcherTestSupport.Disarm(template);
                 DisposalWitnessExtension.Reset();
 
                 File.WriteAllText(path, "TWO@p1witness()");
-                FileWatcherTestSupport.InvokeChanged(template, dir, "home.heddle");   // idle reload
+                FileWatcherTestSupport.InvokeChanged(template, dir, _stem + ".heddle");   // idle reload
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
 
                 Assert.Equal("TWO", template.Generate(null));

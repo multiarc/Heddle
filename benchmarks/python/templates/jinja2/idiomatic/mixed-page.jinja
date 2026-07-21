@@ -1,0 +1,31 @@
+{# Idiomatic Jinja2 mixed-page: extends the base skeleton and fills its blocks;
+   the product loop and conditionals nest inside the content block (Phase 5 D5).
+   Docs: https://jinja.palletsprojects.com/en/stable/templates/#template-inheritance
+         https://jinja.palletsprojects.com/en/stable/templates/#if #}
+{% extends "base.jinja" %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block content %}
+{% if show_banner %}
+<div class="banner">{{ banner_text }}</div>
+{% endif %}
+<section class="hero">
+<h2>{{ hero_heading }}</h2>
+<p>{{ hero_tagline }}</p>
+</section>
+<section class="grid">
+{% for p in products %}
+<article class="card">
+<h3>{{ p.name }}</h3>
+<p class="sku">{{ p.sku }}</p>
+<p class="price">{{ p.price }}</p>
+{% if p.on_sale %}
+<p class="sale">On sale</p>
+{% endif %}
+<p class="blurb">{{ p.blurb }}</p>
+</article>
+{% endfor %}
+</section>
+{% if show_debug_panel %}
+<pre class="debug">debug</pre>
+{% endif %}
+{% endblock %}

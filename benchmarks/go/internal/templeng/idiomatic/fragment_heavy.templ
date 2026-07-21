@@ -1,0 +1,27 @@
+// Workload 6 — fragment-heavy, templ idiomatic port. The tile partial is a templ component
+// called @tile(item) in the loop — templ's partial-with-argument construct — authored in
+// the naturally formatted one-element-per-line shape.
+//
+// Doc citations (Q1.7):
+//   - https://templ.guide/syntax-and-usage/template-composition/
+//   - https://templ.guide/syntax-and-usage/statements/
+//   - https://templ.guide/syntax-and-usage/expressions/
+package idiomatic
+
+import "heddle.dev/benchmarks/go/internal/model"
+
+templ tile(r model.FragmentRow) {
+	<section class="tile">
+		<h3>{ r.Name }</h3>
+		<p class="v">{ r.Value }</p>
+		<span class="badge">{ r.Badge }</span>
+	</section>
+}
+
+templ fragmentHeavy(m model.FragmentModel) {
+	<div class="panel">
+		for _, item := range m.Items {
+			@tile(item)
+		}
+	</div>
+}

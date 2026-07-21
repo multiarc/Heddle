@@ -170,12 +170,18 @@ namespace Heddle
         {
             if (Interlocked.CompareExchange(ref _teardownDone, 1, 0) != 0)
                 return; // already torn down — idempotent across Dispose / deferred exit / finalizer
+            // The watcher is disposed OUTSIDE _publishGate: on .NET Framework, FileSystemWatcher.Dispose
+            // blocks on the component lock its event dispatch holds while a callback (Reload → Compile)
+            // waits on _publishGate — nesting the two locks deadlocks (netfx-only; .NET Core+ dispatch is
+            // lock-free). Safe unnested: Dispose() set _disposeAfterComplete before Teardown, so a callback
+            // acquiring the gate from here on discards its fresh artifact via the store block's guard, and
+            // once this Dispose returns no further callback can start.
+            _watcher?.Dispose();
             // Phase 1 D5: the gate makes teardown disposal and the store block's post-Teardown guard mutually
             // exclusive — a late watcher callback either observes the dispose flag and discards its fresh
             // artifact, or publishes fully before this disposal runs (never a leak, never a resurrection).
             lock (_publishGate)
             {
-                _watcher?.Dispose();
                 _runtimeDocument?.Dispose();
                 // Drain-dispose the remaining superseded docs. Teardown never runs while a render executes
                 // (Phase 4 proof), so DrainLocked's _runners gate reads 0 here and the queue empties.
@@ -565,7 +571,7 @@ namespace Heddle
             string document = null;
             try
             {
-                document = _reader.ReadEntireFile();
+                document = ReadForReload();
                 if (!string.IsNullOrWhiteSpace(document))
                     CompileResult = Compile(new CompileScope(
                         new CompileContext(_watchOptions, _watchModelType)
@@ -578,6 +584,25 @@ namespace Heddle
             {
                 CompileResult = new HeddleCompileResult(false, document, null);
                 CompileResult.Errors.Add(ex.ToError(default(BlockPosition)));   // last-good stays published
+            }
+        }
+
+        // A watcher event is one-shot: if this read fails, no further event arrives to retry it, so a
+        // transient sharing violation (the saving editor, an antivirus/indexer scan of a freshly renamed
+        // file) would leave last-good published forever. Ride out that window briefly before giving up;
+        // a persistent failure still surfaces on CompileResult via Reload's catch.
+        private string ReadForReload()
+        {
+            for (var attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    return _reader.ReadEntireFile();
+                }
+                catch (Exception e) when (attempt < 10 && e.InnerException is IOException)
+                {
+                    Thread.Sleep(25);
+                }
             }
         }
 

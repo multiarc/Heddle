@@ -267,7 +267,6 @@ oop.inherits(HeddleWorker, Mirror);
         var errors = errorsToAnnotations(results, function (index) {
             return doc.indexToPosition(index);
         });
-        this.sender.emit("annotate", errors);
 
         if (errors.length === 0) {
             this.sender.emit("codeok", value);
@@ -386,9 +385,14 @@ oop.inherits(HeddleWorker, Mirror);
             jsString = jsString.replace(/^#!.*\n/, "\n");
 
             this.validateJs(jsString).forEach(jsError => errors.push(jsError));
-
-            this.sender.emit("annotate", errors);
         }
+
+        // Exactly one "annotate" per update. Consumers replace the whole annotation
+        // set on every emit, so the old parse-only emit followed by the lint-merged
+        // one replaced the set twice per keystroke — double the churn, and a double
+        // wipe for anyone merging external markers into the session (the demo page
+        // merges the typed WASM compile diagnostics on top of these).
+        this.sender.emit("annotate", errors);
     };
 
 }).call(HeddleWorker.prototype);

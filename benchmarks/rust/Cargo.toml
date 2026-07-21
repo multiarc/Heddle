@@ -1,0 +1,50 @@
+[package]
+name = "heddle-bench-rust"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Cross-stack benchmark harness (Phase 2 - Rust): Askama and Tera vs the Heddle golden corpus"
+
+[lib]
+bench = false
+
+[dependencies]
+askama = "=0.16.0"
+tera = { version = "=2.0.0", default-features = false }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.151"
+allocation-counter = { version = "=0.8.1", optional = true }
+
+[dev-dependencies]
+criterion = "=0.8.2"
+
+[features]
+alloc-count = ["dep:allocation-counter"]
+
+[[bench]]
+name = "controlled"
+harness = false
+
+[[bench]]
+name = "idiomatic"
+harness = false
+
+[[bench]]
+name = "cold"
+harness = false
+
+[[bin]]
+name = "gate"
+path = "src/bin/gate.rs"
+bench = false
+
+[[bin]]
+name = "summarize"
+path = "src/bin/summarize.rs"
+bench = false
+
+[[bin]]
+name = "alloc_report"
+path = "src/bin/alloc_report.rs"
+required-features = ["alloc-count"]
+bench = false

@@ -1,0 +1,22 @@
+{
+  "workload": "conditional-heavy",
+  "suite": "raw",
+  "values": [
+    { "text": "unit-000", "count": 1 },
+    { "text": "unit-199", "count": 1 },
+    { "text": "<li>", "count": 200 },
+    { "text": "<span class=\"t0\">bronze</span>", "count": 50 },
+    { "text": "<span class=\"t3\">platinum</span>", "count": 50 },
+    { "text": "<small>", "count": 100 },
+    { "text": "<b>active</b>", "count": 160 }
+  ],
+  "markers": [
+    "<ul class=\"matrix\">",
+    "unit-000",
+    "unit-100",
+    "unit-199",
+    "</ul>"
+  ],
+  "forbidden": [],
+  "required": []
+}

@@ -1,0 +1,11 @@
+{# Idiomatic Askama template (WI5, README D8/Q1.7). Patterns follow the Askama 0.16 book:
+   "Filters - escape" (the default Html escaper covers text and attribute-value positions)
+   and "Template syntax - For". #}
+<table>
+  {% for item in items %}
+    <tr>
+      <td data-tag="{{ item.tag }}">{{ item.name }}</td>
+      <td>{{ item.comment }}</td>
+    </tr>
+  {% endfor %}
+</table>

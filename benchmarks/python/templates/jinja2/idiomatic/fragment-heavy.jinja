@@ -1,0 +1,10 @@
+{# Idiomatic Jinja2 fragment-heavy: imports the tile macro and calls it per
+   item (Phase 5 D5).
+   Docs: https://jinja.palletsprojects.com/en/stable/templates/#macros
+         https://jinja.palletsprojects.com/en/stable/templates/#import #}
+{% from "tile.jinja" import tile %}
+<div class="panel">
+{% for item in items %}
+{{ tile(item) }}
+{% endfor %}
+</div>

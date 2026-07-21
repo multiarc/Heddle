@@ -40,21 +40,27 @@ namespace Heddle.Samples.ComponentPropsSlots
             CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
             HeddleTemplate.Configure(typeof(Program).Assembly);
 
-            var template = string.Join("\n",
-                "@%",
-                "<card(style: string = \"plain\", compact: bool = false, badge: string)>" +
-                "{{<article class=\"card @(style)\"><h2>@(Title)</h2>" +
-                "@ifnot(compact){{<p>@(Summary)</p>}}" +
-                "<span class=\"badge\">@(badge)</span><div class=\"slot\">@out()</div></article>}} :: Article",
-                "<picker(out:: MenuOption)>" +
-                "{{<ul class=\"picker\">@list(Options){{<li>@out(this)</li>}}</ul>}} :: Menu",
-                "%@",
-                "@model(){{Page}}",
-                "<main>",
-                "@card(Featured, badge: \"hot\"){{<em>read more</em>}}",
-                "@card(Featured, style: \"wide\", compact: true, badge: \"sale\")",
-                "@picker(Nav){{<a href=\"/go/@(Id)\">@(Label)</a>}}",
-                "</main>\n");
+            const string template = """
+                @%
+                <card(style: string = "plain", compact: bool = false, badge: string)>{{
+                  <article class="card @(style)">
+                    <h2>@(Title)</h2>
+                    @ifnot(compact){{<p>@(Summary)</p>}}
+                    <span class="badge">@(badge)</span>
+                    <div class="slot">@out()</div>
+                  </article>
+                }} :: Article
+                <picker(out:: MenuOption)>{{
+                  <ul class="picker">@list(Options){{<li>@out(this)</li>}}</ul>
+                }} :: Menu
+                %@
+                @model(){{Page}}
+                <main>
+                  @card(Featured, badge: "hot"){{<em>read more</em>}}
+                  @card(Featured, style: "wide", compact: true, badge: "sale")
+                  @picker(Nav){{<a href="/go/@(Id)">@(Label)</a>}}
+                </main>
+                """;
 
             var model = new Page
             {

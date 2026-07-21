@@ -22,12 +22,15 @@ namespace Heddle.Samples.DynamicModels
             HeddleTemplate.Configure(typeof(Program).Assembly);
 
             // The template is assembled at runtime — the point of the dynamic tier: no compiled model type.
-            var template = string.Join("\n",
-                "@model(){{dynamic}}",
-                "Order #@(Id) for @(Customer.Name)",
-                "Items:",
-                "@list(Items){{ - @(this)",
-                "}}");
+            // Plain-text output, so whitespace is significant: each item body is exactly " - @(this)\n",
+            // which is why the body opens on the @list line and closes at the start of the next.
+            const string template = """
+                @model(){{dynamic}}
+                Order #@(Id) for @(Customer.Name)
+                Items:
+                @list(Items){{ - @(this)
+                }}
+                """;
 
             // A statically-typed object graph accessed entirely through the dynamic tier (public POCOs: the C#
             // runtime binder cannot see another assembly's *anonymous* types, so the object graph uses named types

@@ -1,0 +1,9 @@
+<!--/*
+  Idiomatic Thymeleaf authoring (Q1.7/D7) — official doc citations:
+  https://www.thymeleaf.org/doc/tutorials/3.1/usingthymeleaf.html
+    §6 (iteration: th:each on the repeated element), §12 (unescaped text: th:utext)
+*/-->
+<tr th:each="r : ${items}">
+    <td th:utext="${r.name}">row name</td>
+    <td th:utext="${r.value}">0</td>
+</tr>

@@ -1,0 +1,5 @@
+# Go benchmark harness (docs/spec/cross-stack-benchmarks/phase-6-go/README.md D2/D3):
+# composed-page fragment data must round-trip byte-exact (-text) — the files are embedded
+# (go:embed) as RUNTIME DATA and byte-checked against the golden corpus by the controlled
+# gate; any smudging would fail the gate. Sources and generated *_templ.go are ordinary text.
+internal/model/data/** -text

@@ -1,0 +1,27 @@
+// Workload 8 — encoded-loop, templ idiomatic port. Idiomatic decomposition: a row
+// component invoked from the loop; data-tag={ r.Tag } is templ's attribute expression
+// (auto-quoted and attribute-encoded), the other two substitutions are text-context — all
+// emitted spellings sit inside the N5 table.
+//
+// Doc citations (Q1.7):
+//   - https://templ.guide/syntax-and-usage/expressions/
+//   - https://templ.guide/syntax-and-usage/statements/
+//   - https://templ.guide/syntax-and-usage/template-composition/
+package idiomatic
+
+import "heddle.dev/benchmarks/go/internal/model"
+
+templ encodedLoopRow(r model.EncodedLoopRow) {
+	<tr>
+		<td data-tag={ r.Tag }>{ r.Name }</td>
+		<td>{ r.Comment }</td>
+	</tr>
+}
+
+templ encodedLoop(m model.EncodedLoopModel) {
+	<table>
+		for _, r := range m.Items {
+			@encodedLoopRow(r)
+		}
+	</table>
+}

@@ -1,0 +1,22 @@
+<% /* idiomatic Eta implementation (Phase 4).
+      Patterns followed: https://eta.js.org/docs/4.x.x/syntax/cheatsheet,
+      https://eta.js.org/docs/4.x.x/syntax/layouts-and-blocks (layout, it.body),
+      https://eta.js.org/docs/4.x.x/api/overview (loadTemplate, render). */ %>
+<ul class="matrix">
+<% it.rows.forEach(r => { %>
+  <li>
+    <% if (r.is_bronze) { %>
+      <span class="t0">bronze</span>
+    <% } else if (r.is_silver) { %>
+      <span class="t1">silver</span>
+    <% } else if (r.is_gold) { %>
+      <span class="t2">gold</span>
+    <% } else { %>
+      <span class="t3">platinum</span>
+    <% } %>
+    <em><%= r.name %></em>
+    <% if (r.has_note) { %><small><%= r.note %></small><% } %>
+    <% if (r.is_active) { %><b>active</b><% } %>
+  </li>
+<% }) %>
+</ul>

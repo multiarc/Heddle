@@ -1,0 +1,31 @@
+// Workload 7 — fortunes-encoded, templ controlled port (port-mapping.md §Controlled track —
+// templ). Dense text discipline: every { } expression directly flanked by <td>/</td>;
+// newlines only between sibling elements/statements. templ's default escaping path fires on
+// the text-context substitutions; its &#34;/&#39; spellings are reconciled by N5 (D4), the
+// Japanese row passes through byte-intact (S1 probe P2).
+//
+// Doctype authoring note: templ's generator normalizes a literal <!DOCTYPE html> to
+// lowercase <!doctype html> — a NON-whitespace byte change vs the pinned skeleton — so the
+// doctype is emitted via @templ.Raw over the exact pinned literal (the engine's documented
+// raw mechanism, applied to constant template text, not data). Every other node is authored
+// natively.
+package templeng
+
+import "heddle.dev/benchmarks/go/internal/model"
+
+templ fortunesEncoded(m model.FortuneModel) {
+	@templ.Raw("<!DOCTYPE html>")
+	<html>
+		<head>
+			<title>Fortunes</title>
+		</head>
+		<body>
+			<table>
+				<tr><th>id</th><th>message</th></tr>
+				for _, r := range m.Rows {
+					<tr><td>{ r.Id }</td><td>{ r.Message }</td></tr>
+				}
+			</table>
+		</body>
+	</html>
+}

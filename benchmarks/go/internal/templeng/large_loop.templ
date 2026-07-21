@@ -1,0 +1,12 @@
+// Workload 3 — large-loop, templ controlled port (port-mapping.md §Controlled track —
+// templ, rules 1–3). Dense single-line row body; Value is an int — templ renders numbers
+// natively (F5), identical bytes to strconv.Itoa on the raw alphabet.
+package templeng
+
+import "heddle.dev/benchmarks/go/internal/model"
+
+templ largeLoop(m model.LoopModel) {
+	for _, r := range m.Items {
+		<tr><td>{ r.Name }</td><td>{ r.Value }</td></tr>
+	}
+}

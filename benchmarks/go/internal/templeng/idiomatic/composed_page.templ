@@ -1,0 +1,26 @@
+// Workload 1 — composed-page, templ idiomatic port. The section/component/area fragments
+// are runtime HTML data, so the idiomatic authoring is the engine's documented raw-HTML
+// mechanism (@templ.Raw) inside a naturally formatted component, one fragment per line.
+//
+// Doc citations (Q1.7):
+//   - https://templ.guide/syntax-and-usage/rendering-raw-html/
+//   - https://templ.guide/syntax-and-usage/statements/  (for loop over the area names)
+package idiomatic
+
+import "heddle.dev/benchmarks/go/internal/model"
+
+templ composedPage(m model.ComposedModel) {
+	@templ.Raw(m.Section["meta"])
+	@templ.Raw(m.Section["social"])
+	@templ.Raw(m.Comp["assets_styles"])
+	@templ.Raw(m.Comp["custom_styles"])
+	@templ.Raw(m.Comp["head_scripts"])
+	@templ.Raw(m.Comp["body_scripts"])
+	for _, name := range m.AreaNames {
+		@templ.Raw(m.Areas[name])
+	}
+	@templ.Raw(m.Comp["assets_scripts"])
+	@templ.Raw(m.Section["page_scripts"])
+	@templ.Raw(m.Section["endpage_scripts"])
+	@templ.Raw(m.Comp["body_end_scripts"])
+}

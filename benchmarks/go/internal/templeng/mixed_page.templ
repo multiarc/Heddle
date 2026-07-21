@@ -1,0 +1,61 @@
+// Workload 4 — mixed-page, templ controlled port (port-mapping.md §Controlled track —
+// templ, rules 1–3 and 6). The pinned skeleton with newlines only between sibling
+// elements/statements (N2/N3-erased); all text-bearing elements dense; the <style> block is
+// a literal <style> element — S1 probe P3 proved its contents render byte-identical (F4),
+// so the @templ.Raw fallback of rule 6 is not needed. The footer's single literal spaces
+// between expressions survive verbatim (S1 probe P1, F3 fixed point).
+//
+// Doctype authoring note: templ's generator normalizes a literal <!DOCTYPE html> to
+// lowercase <!doctype html> — a NON-whitespace byte change vs the pinned skeleton — so the
+// doctype is emitted via @templ.Raw over the exact pinned literal (the engine's documented
+// raw mechanism, applied to constant template text, not data). Every other node is authored
+// natively.
+package templeng
+
+import "heddle.dev/benchmarks/go/internal/model"
+
+templ mixedPage(m model.MixedModel) {
+	@templ.Raw("<!DOCTYPE html>")
+	<html>
+		<head>
+			<meta charset="utf-8">
+			<title>{ m.PageTitle }</title>
+			<style>body{font:16px/1.5 system-ui;margin:0;color:#222}header{background:#1a2b3c;color:#fff;padding:12px 24px}nav a{color:#9cf;margin-right:12px;text-decoration:none}main{max-width:960px;margin:0 auto;padding:24px}.hero{background:#f4f6f8;padding:32px;border-radius:8px}.banner{background:#fff4d6;padding:8px 16px;border-radius:4px}.grid{display:flex;flex-wrap:wrap;gap:16px}.card{border:1px solid #ddd;border-radius:6px;padding:16px;width:280px}.card h3{margin:0 0 8px}.price{font-weight:700}.sale{color:#b00020;font-weight:700}footer{border-top:1px solid #ddd;margin-top:32px;padding:16px 24px;color:#666}</style>
+		</head>
+		<body>
+			<header>
+				<h1>{ m.StoreName }</h1>
+				<nav><a href="/">Home</a><a href="/catalog">Catalog</a><a href="/deals">Deals</a><a href="/about">About</a><a href="/support">Support</a><a href="/account">Account</a></nav>
+			</header>
+			<main>
+				if m.ShowBanner {
+					<div class="banner">{ m.BannerText }</div>
+				}
+				<section class="hero">
+					<h2>{ m.HeroHeading }</h2>
+					<p>{ m.HeroTagline }</p>
+				</section>
+				<section class="grid">
+					for _, p := range m.Products {
+						<article class="card">
+							<h3>{ p.Name }</h3>
+							<p class="sku">{ p.Sku }</p>
+							<p class="price">{ p.Price }</p>
+							if p.OnSale {
+								<p class="sale">On sale</p>
+							}
+							<p class="blurb">{ p.Blurb }</p>
+						</article>
+					}
+				</section>
+				if m.ShowDebugPanel {
+					<pre class="debug">debug</pre>
+				}
+			</main>
+			<footer>
+				<p>{ m.FooterNote }</p>
+				<p>{ m.StoreName } { m.Year } { m.SupportEmail }</p>
+			</footer>
+		</body>
+	</html>
+}

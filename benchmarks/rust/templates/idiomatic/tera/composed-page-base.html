@@ -1,0 +1,16 @@
+{# Idiomatic Tera base template (WI5, README D8/Q1.7). Patterns follow the Tera docs
+   (keats.github.io/tera): "Inheritance" (base with default block content) and
+   "Auto-escaping" (the safe filter for trusted-HTML fragments under default escaping). #}
+{% block meta %}{{ section_meta | safe }}{% endblock %}
+{% block social %}{{ section_social | safe }}{% endblock %}
+{{ comp_assets_styles | safe }}
+{{ comp_custom_styles | safe }}
+{{ comp_head_scripts | safe }}
+{{ comp_body_scripts | safe }}
+{% for name in area_names %}
+  {{ areas[name] | safe }}
+{% endfor %}
+{{ comp_assets_scripts | safe }}
+{% block page_scripts %}{{ section_page_scripts | safe }}{% endblock %}
+{% block endpage_scripts %}{{ section_endpage_scripts | safe }}{% endblock %}
+{{ comp_body_end_scripts | safe }}

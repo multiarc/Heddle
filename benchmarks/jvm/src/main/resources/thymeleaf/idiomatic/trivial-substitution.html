@@ -1,0 +1,19 @@
+<!--/*
+  Idiomatic Thymeleaf authoring (Q1.7/D7) — official doc citations:
+  https://www.thymeleaf.org/doc/tutorials/3.1/usingthymeleaf.html
+    §3 (natural templating), §5 (setting attribute values: th:href/th:src),
+    §12 (unescaped text: th:utext)
+*/-->
+<article>
+    <h1 th:utext="${m.title}">Product title</h1>
+    <p class="sku" th:utext="${m.sku}">SKU-0000</p>
+    <p class="price" th:utext="${m.price}">0</p>
+    <p class="brand" th:utext="${m.brand}">Brand</p>
+    <p class="cat" th:utext="${m.category}">Category</p>
+    <p class="avail" th:utext="${m.availability}">Availability</p>
+    <a class="link" th:href="${m.url}">
+        <img th:src="${m.imageUrl}">
+    </a>
+    <p class="sum" th:utext="${m.summary}">Summary</p>
+    <p class="rating" th:utext="${m.rating}">0.0</p>
+</article>

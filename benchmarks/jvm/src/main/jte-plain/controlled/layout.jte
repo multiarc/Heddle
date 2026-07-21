@@ -1,0 +1,2 @@
+@param heddle.benchmarks.jvm.model.Models.ComposedModel m
+${m.getSections().get("meta")}${m.getSections().get("social")}${m.getComps().get("assets_styles")}${m.getComps().get("custom_styles")}${m.getComps().get("head_scripts")}${m.getComps().get("body_scripts")}@for(var name : m.getAreaNames())${m.getAreas().get(name)}@endfor${m.getComps().get("assets_scripts")}${m.getSections().get("page_scripts")}${m.getSections().get("endpage_scripts")}${m.getComps().get("body_end_scripts")}

@@ -1,0 +1,18 @@
+<!--/*
+  Idiomatic Thymeleaf authoring (Q1.7/D7) — official doc citations:
+  https://www.thymeleaf.org/doc/tutorials/3.1/usingthymeleaf.html
+    §6 (iteration: th:each), §7.1 (simple conditionals: th:if),
+    §7.2 (switch statements: th:switch / th:case, default th:case="*"),
+    §12 (unescaped text: th:utext)
+*/-->
+<ul class="matrix">
+    <li th:each="r : ${rows}" th:switch="${true}">
+        <span class="t0" th:case="${r.bronze}">bronze</span>
+        <span class="t1" th:case="${r.silver}">silver</span>
+        <span class="t2" th:case="${r.gold}">gold</span>
+        <span class="t3" th:case="*">platinum</span>
+        <em th:utext="${r.name}">unit name</em>
+        <small th:if="${r.hasNote}" th:utext="${r.note}">note</small>
+        <b th:if="${r.active}">active</b>
+    </li>
+</ul>

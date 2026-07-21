@@ -1,0 +1,3 @@
+% for item in items:
+<tr><td>${item["name"]}</td><td>${item["value"]}</td></tr>\
+% endfor

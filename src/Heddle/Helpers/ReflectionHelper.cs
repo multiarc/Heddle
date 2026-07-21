@@ -13,16 +13,8 @@ namespace Heddle.Helpers
     /// </summary>
     internal class ReflectionHelper
     {
-        private static readonly Regex GenericExpression = new Regex
-            (@"^(?<main_type>[_a-zA-Z@][a-zA-Z0-9\.]*)<(?<generic_parameters>[_a-zA-Z@][a-zA-Z0-9\.\+\[\]]*)>$",
-                RegexOptions.Compiled | RegexOptions.Singleline);
-        
         private static readonly Regex TupleExpression = new Regex
         (@"^\((?<tuple_types>(?>\((?<c>)|[^()]+|\)(?<-c>))*(?(c)(?!)))\)$",
-            RegexOptions.Compiled | RegexOptions.Singleline);
-
-        private static readonly Regex ArrayExpression = new Regex
-        (@"^(?<main_type>[_a-zA-Z@][a-zA-Z0-9\.]*)(\[\])+$",
             RegexOptions.Compiled | RegexOptions.Singleline);
 
         private static readonly Regex WhitespaceChars = new Regex(@"\s+", RegexOptions.Compiled | RegexOptions.Singleline);
@@ -83,6 +75,11 @@ namespace Heddle.Helpers
                     string shortName;
                     if (type.IsNested)
                     {
+                        // Canonical stored keys are CLR metadata names ('+' between declaring types,
+                        // e.g. Outer+Nested). A dotted alias (Outer.Nested) is registered additionally,
+                        // because the template lexer cannot accept '+'; both keys point at the same Type.
+                        // If a real namespaced type shares the dotted spelling, the alias lands in the
+                        // same list and surfaces as the existing "ambiguous" error rather than a silent pick.
                         StringBuilder shortNameBuilder = new StringBuilder();
                         shortNameBuilder.Append(type.Name);
                         var parent = type.DeclaringType;
@@ -92,6 +89,10 @@ namespace Heddle.Helpers
                             parent = parent.IsNested ? parent.DeclaringType : null;
                         }
                         shortName = shortNameBuilder.ToString();
+
+                        var dottedAlias = shortName.Replace('+', '.');
+                        _shortNames.AddOrUpdate(dottedAlias, () => new List<Type> {type}, l => l.Add(type));
+                        _fullNames.AddOrUpdate(type.Namespace + "." + dottedAlias, () => new List<Type> {type}, l => l.Add(type));
                     }
                     else
                     {
@@ -164,6 +165,20 @@ namespace Heddle.Helpers
             if (typeName.Contains(","))
             {
                 var result = Type.GetType(typeName, false);
+                if (result == null)
+                {
+                    // Templates spell nested types with dots (the lexer rejects '+'), but CLR metadata
+                    // names use '+'. Retry with one more trailing dot converted to '+' per attempt
+                    // (A.B.C.D → A.B.C+D → A.B+C+D → ...), stopping at the first hit.
+                    var candidate = typeName.ToCharArray();
+                    for (var i = typeName.IndexOf(',') - 1; result == null && i >= 0; i--)
+                    {
+                        if (candidate[i] != '.')
+                            continue;
+                        candidate[i] = '+';
+                        result = Type.GetType(new string(candidate), false);
+                    }
+                }
                 if (result == null)
                 {
                     throw new InvalidOperationException($"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)})");
@@ -278,13 +293,14 @@ namespace Heddle.Helpers
             if (string.IsNullOrWhiteSpace(typeName))
                 throw new ArgumentException();
 
+            imports = imports ?? new string[0];
+
             if (typeName.StartsWith("("))
             {
                 var match = TupleExpression.Match(typeName);
                 if (match.Success)
                 {
-                    typeName = $"System.ValueTuple<{match.Groups["tuple_types"]}>";
-                    return ResolveGenericType(typeName, imports);
+                    return ResolveGenericType($"System.ValueTuple<{match.Groups["tuple_types"]}>", imports);
                 }
             }
 
@@ -298,39 +314,114 @@ namespace Heddle.Helpers
                 return ResolveGenericType(typeName, imports);
             }
 
-            return ResolveSimpleType(typeName, imports ?? new string[0]);
+            return ResolveSimpleType(typeName, imports);
         }
 
+        /// <summary>
+        /// Resolves a C#-style generic name — a dotted chain where any segment may carry a type-argument
+        /// list, e.g. <c>Ns.Outer&lt;int&gt;.Inner&lt;string&gt;</c>: the definition is looked up by its
+        /// backtick spelling (<c>Ns.Outer`1.Inner`1</c>) and closed over all arguments left to right
+        /// (nested types inherit their outers' generic parameters, so the counts add up).
+        /// </summary>
         private static Type ResolveGenericType(string typeName, ICollection<string> imports)
         {
-            var match = GenericExpression.Match(typeName);
-            if (match.Success)
+            var argumentNames = ExtractGenericArguments(typeName, imports, out var definitionName);
+            var definition = ResolveSimpleType(definitionName, imports);
+
+            if (definition.GetGenericArguments().Length != argumentNames.Count)
+                throw ResolveError(typeName, imports,
+                    $"the type takes {definition.GetGenericArguments().Length} generic argument(s), not {argumentNames.Count}");
+
+            return definition.MakeGenericType(argumentNames.Select(name => ResolveType(name, imports)).ToArray());
+        }
+
+        /// <summary>
+        /// Rewrites <c>Ns.Outer&lt;int&gt;.Inner&lt;string&gt;</c> into the backtick definition name
+        /// <c>Ns.Outer`1.Inner`1</c> and returns the extracted argument names, left to right.
+        /// </summary>
+        private static List<string> ExtractGenericArguments(string typeName, ICollection<string> imports,
+            out string definitionName)
+        {
+            var definition = new StringBuilder(typeName.Length);
+            var arguments = new List<string>();
+
+            for (var i = 0; i < typeName.Length; i++)
             {
-                var importsArray = imports ?? new string[0];
-                var genericParameters = match.Groups["generic_parameters"].Value.Split(',');
-                Type modelType = ResolveSimpleType(match.Groups["main_type"].Value + "`" + genericParameters.Length,
-                    importsArray);
-                modelType = modelType.MakeGenericType(genericParameters
-                    .Select(parameter => ResolveType(parameter, importsArray)).ToArray());
+                if (typeName[i] != '<')
                 {
-                    return modelType;
+                    definition.Append(typeName[i]);
+                    continue;
                 }
+
+                if (!TryFindMatchingAngleBracket(typeName, i, out var close))
+                    throw ResolveError(typeName, imports, "unbalanced angle brackets");
+
+                var list = SplitTopLevelArguments(typeName.Substring(i + 1, close - i - 1));
+                if (list.Any(string.IsNullOrEmpty))
+                    throw ResolveError(typeName, imports, "empty generic argument");
+
+                definition.Append('`').Append(list.Count);
+                arguments.AddRange(list);
+                i = close;
             }
 
-            return ResolveSimpleType(typeName, imports ?? new string[0]);
+            definitionName = definition.ToString();
+            return arguments;
+        }
+
+        /// <summary>Finds the <c>&gt;</c> matching the <c>&lt;</c> at <paramref name="open"/>.</summary>
+        private static bool TryFindMatchingAngleBracket(string text, int open, out int close)
+        {
+            var depth = 0;
+            for (close = open; close < text.Length; close++)
+            {
+                if (text[close] == '<') depth++;
+                else if (text[close] == '>' && --depth == 0) return true;
+            }
+            close = -1;
+            return false;
+        }
+
+        private static InvalidOperationException ResolveError(string typeName, ICollection<string> imports, string reason)
+        {
+            return new InvalidOperationException(
+                $"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)}), {reason}");
+        }
+
+        /// <summary>
+        /// Splits an argument list on commas that sit outside any <c>&lt;&gt;</c>, <c>()</c> or <c>[]</c>
+        /// pair; parts are trimmed.
+        /// </summary>
+        private static List<string> SplitTopLevelArguments(string argumentList)
+        {
+            var parts = new List<string>();
+            var depth = 0;
+            var start = 0;
+            for (var i = 0; i < argumentList.Length; i++)
+            {
+                var c = argumentList[i];
+                if (c == '<' || c == '(' || c == '[') depth++;
+                else if (c == '>' || c == ')' || c == ']') depth--;
+                else if (c == ',' && depth == 0)
+                {
+                    parts.Add(argumentList.Substring(start, i - start).Trim());
+                    start = i + 1;
+                }
+            }
+            parts.Add(argumentList.Substring(start).Trim());
+            return parts;
         }
 
         private static Type ResolveArrayType(string typeName, ICollection<string> imports)
         {
-            var match = ArrayExpression.Match(typeName);
-            if (match.Success)
+            if (!typeName.EndsWith("[]", StringComparison.Ordinal))
             {
-                var importsArray = imports ?? new string[0];
-                var modelType = ResolveType(match.Groups["main_type"].Value, importsArray);
-                return modelType.MakeArrayType();
+                // A trailing ']' that is not an "[]" suffix — not an array spelling we support.
+                return ResolveSimpleType(typeName, imports);
             }
-            
-            return ResolveSimpleType(typeName, imports ?? new string[0]); 
+
+            var elementName = typeName.Substring(0, typeName.Length - 2).TrimEnd();
+            return ResolveType(elementName, imports).MakeArrayType();
         }
     }
 }
