@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>@(PageTitle)</title>
+<style>body{font:16px/1.5 system-ui;margin:0;color:#222}header{background:#1a2b3c;color:#fff;padding:12px 24px}nav a{color:#9cf;margin-right:12px;text-decoration:none}main{max-width:960px;margin:0 auto;padding:24px}.hero{background:#f4f6f8;padding:32px;border-radius:8px}.banner{background:#fff4d6;padding:8px 16px;border-radius:4px}.grid{display:flex;flex-wrap:wrap;gap:16px}.card{border:1px solid #ddd;border-radius:6px;padding:16px;width:280px}.card h3{margin:0 0 8px}.price{font-weight:700}.sale{color:#b00020;font-weight:700}footer{border-top:1px solid #ddd;margin-top:32px;padding:16px 24px;color:#666}</style>
+</head>
+<body>
+<header>
+<h1>@(StoreName)</h1>
+<nav><a href="/">Home</a><a href="/catalog">Catalog</a><a href="/deals">Deals</a><a href="/about">About</a><a href="/support">Support</a><a href="/account">Account</a></nav>
+</header>
+<main>
+@if(ShowBanner){{<div class="banner">@(BannerText)</div>}}
+<section class="hero">
+<h2>@(HeroHeading)</h2>
+<p>@(HeroTagline)</p>
+</section>
+<section class="grid">
+@list(Products){{<article class="card"><h3>@(Name)</h3><p class="sku">@(Sku)</p><p class="price">@(Price)</p>@if(OnSale){{<p class="sale">On sale</p>}}<p class="blurb">@(Blurb)</p></article>}}
+</section>
+@if(ShowDebugPanel){{<pre class="debug">debug</pre>}}
+</main>
+<footer>
+<p>@(FooterNote)</p>
+<p>@(StoreName) @(Year) @(SupportEmail)</p>
+</footer>
+</body>
+</html>

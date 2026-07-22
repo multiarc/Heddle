@@ -1,0 +1,19 @@
+<!--/*
+  Idiomatic Thymeleaf authoring (Q1.7/D7) — official doc citations:
+  https://www.thymeleaf.org/doc/tutorials/3.1/usingthymeleaf.html
+    §6 (iteration: th:each), §8.1 (defining fragments: th:fragment),
+    §11.4 (synthetic th:block container), §12 (unescaped text: th:utext)
+*/-->
+<th:block th:fragment="layout">
+    <th:block th:utext="${sections.meta}">meta section</th:block>
+    <th:block th:utext="${sections.social}">social section</th:block>
+    <th:block th:utext="${comps.assets_styles}">asset styles</th:block>
+    <th:block th:utext="${comps.custom_styles}">custom styles</th:block>
+    <th:block th:utext="${comps.head_scripts}">head scripts</th:block>
+    <th:block th:utext="${comps.body_scripts}">body scripts</th:block>
+    <th:block th:each="name : ${areaNames}" th:utext="${areas[name]}">area</th:block>
+    <th:block th:utext="${comps.assets_scripts}">asset scripts</th:block>
+    <th:block th:utext="${sections.page_scripts}">page scripts</th:block>
+    <th:block th:utext="${sections.endpage_scripts}">endpage scripts</th:block>
+    <th:block th:utext="${comps.body_end_scripts}">body end scripts</th:block>
+</th:block>

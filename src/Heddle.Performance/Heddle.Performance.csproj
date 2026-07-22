@@ -91,6 +91,26 @@
     <Content Include="TestTemplates\large-loop.heddle">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <None Remove="TestTemplates\mixed-page.heddle" />
+    <Content Include="TestTemplates\mixed-page.heddle">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <None Remove="TestTemplates\conditional-heavy.heddle" />
+    <Content Include="TestTemplates\conditional-heavy.heddle">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <None Remove="TestTemplates\fragment-heavy.heddle" />
+    <Content Include="TestTemplates\fragment-heavy.heddle">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <None Remove="TestTemplates\fortunes-encoded.heddle" />
+    <Content Include="TestTemplates\fortunes-encoded.heddle">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <None Remove="TestTemplates\encoded-loop.heddle" />
+    <Content Include="TestTemplates\encoded-loop.heddle">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

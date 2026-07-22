@@ -1,0 +1,40 @@
+// Workload 5 — conditional-heavy, templ idiomatic port. Idiomatic decomposition: a row
+// component holding the four-way if/else if/else chain and the two toggles, invoked from
+// the loop.
+//
+// Doc citations (Q1.7):
+//   - https://templ.guide/syntax-and-usage/statements/  (if/else if/else, for)
+//   - https://templ.guide/syntax-and-usage/expressions/
+//   - https://templ.guide/syntax-and-usage/template-composition/
+package idiomatic
+
+import "heddle.dev/benchmarks/go/internal/model"
+
+templ matrixRow(r model.ConditionalRow) {
+	<li>
+		if r.IsBronze {
+			<span class="t0">bronze</span>
+		} else if r.IsSilver {
+			<span class="t1">silver</span>
+		} else if r.IsGold {
+			<span class="t2">gold</span>
+		} else {
+			<span class="t3">platinum</span>
+		}
+		<em>{ r.Name }</em>
+		if r.HasNote {
+			<small>{ r.Note }</small>
+		}
+		if r.IsActive {
+			<b>active</b>
+		}
+	</li>
+}
+
+templ conditionalHeavy(m model.ConditionalModel) {
+	<ul class="matrix">
+		for _, r := range m.Rows {
+			@matrixRow(r)
+		}
+	</ul>
+}

@@ -1,0 +1,9 @@
+{# Idiomatic Tera template (WI5, README D8/Q1.7). Patterns follow the Tera docs
+   (keats.github.io/tera): "Include" (include-per-iteration; includes render using the
+   current context, loop variables included) and "Control structures - For loops";
+   default auto-escaping left on. #}
+<div class="panel">
+  {% for item in items %}
+    {% include "idiomatic/tera/fragment-heavy-tile.html" %}
+  {% endfor %}
+</div>

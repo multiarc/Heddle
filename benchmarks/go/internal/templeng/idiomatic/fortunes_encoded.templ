@@ -1,0 +1,45 @@
+// Workload 7 — fortunes-encoded, templ idiomatic port. Idiomatic decomposition: a row
+// component invoked from the loop; templ's default escaping path fires on the { }
+// expressions (its &#34;/&#39; spellings are reconciled by N5).
+//
+// Doctype authoring note (same variant as the controlled port): templ's generator
+// normalizes a literal <!DOCTYPE html> to lowercase <!doctype html> — a non-whitespace byte
+// change that would miss the verifier's "<!DOCTYPE html>" ordered marker — so the doctype
+// is emitted via @templ.Raw over the exact pinned literal (the engine's documented raw
+// mechanism, applied to constant template text, not data).
+//
+// Doc citations (Q1.7):
+//   - https://templ.guide/syntax-and-usage/expressions/
+//   - https://templ.guide/syntax-and-usage/statements/
+//   - https://templ.guide/syntax-and-usage/template-composition/
+//   - https://templ.guide/syntax-and-usage/rendering-raw-html/  (doctype literal)
+package idiomatic
+
+import "heddle.dev/benchmarks/go/internal/model"
+
+templ fortuneRow(r model.FortuneRow) {
+	<tr>
+		<td>{ r.Id }</td>
+		<td>{ r.Message }</td>
+	</tr>
+}
+
+templ fortunesEncoded(m model.FortuneModel) {
+	@templ.Raw("<!DOCTYPE html>")
+	<html>
+		<head>
+			<title>Fortunes</title>
+		</head>
+		<body>
+			<table>
+				<tr>
+					<th>id</th>
+					<th>message</th>
+				</tr>
+				for _, r := range m.Rows {
+					@fortuneRow(r)
+				}
+			</table>
+		</body>
+	</html>
+}

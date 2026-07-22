@@ -1,0 +1,78 @@
+{
+  "$schema": "manifest schema v1 (informal; fields below are normative)",
+  "generator": "Heddle.Performance export-corpus",
+  "entries": [
+    {
+      "workload": "composed-page",
+      "suite": "raw",
+      "file": "composed-page.golden.html",
+      "byteLength": 34847,
+      "hash": "sha256:c6e28f750d4a67ffc9582d92f5e35dfbeffe3a6698ca2eda04fb2bbf4b31de23",
+      "generatingCommit": "ccf5a9c5e7cd91624fa83fa07f7ec7cd28abd11d",
+      "generatedUtc": "2026-07-21T19:36:55Z"
+    },
+    {
+      "workload": "trivial-substitution",
+      "suite": "raw",
+      "file": "trivial-substitution.golden.html",
+      "byteLength": 338,
+      "hash": "sha256:9625402771c316bc1ca29e218b1cc510ee6be980c071ec12e1e3fe2a040e962c",
+      "generatingCommit": "ccf5a9c5e7cd91624fa83fa07f7ec7cd28abd11d",
+      "generatedUtc": "2026-07-21T19:36:55Z"
+    },
+    {
+      "workload": "large-loop",
+      "suite": "raw",
+      "file": "large-loop.golden.html",
+      "byteLength": 192780,
+      "hash": "sha256:0ff8f7db3e41db17c740b194429ead05b1643dca47b5a671b57358f77a73bf42",
+      "generatingCommit": "ccf5a9c5e7cd91624fa83fa07f7ec7cd28abd11d",
+      "generatedUtc": "2026-07-21T19:36:55Z"
+    },
+    {
+      "workload": "mixed-page",
+      "suite": "raw",
+      "file": "mixed-page.golden.html",
+      "byteLength": 9712,
+      "hash": "sha256:def947fa2801f475aa2de4c10a57c7074aa8323422a46f1e8ee977382dc6b75b",
+      "generatingCommit": "ccf5a9c5e7cd91624fa83fa07f7ec7cd28abd11d",
+      "generatedUtc": "2026-07-21T19:36:55Z"
+    },
+    {
+      "workload": "conditional-heavy",
+      "suite": "raw",
+      "file": "conditional-heavy.golden.html",
+      "byteLength": 15549,
+      "hash": "sha256:b754410b74d91d79f5c20085e5dd3444b1df057ee25ad314aca7d6686072131a",
+      "generatingCommit": "ccf5a9c5e7cd91624fa83fa07f7ec7cd28abd11d",
+      "generatedUtc": "2026-07-21T19:36:55Z"
+    },
+    {
+      "workload": "fragment-heavy",
+      "suite": "raw",
+      "file": "fragment-heavy.golden.html",
+      "byteLength": 4730,
+      "hash": "sha256:a7bbe88ac601452f7405e6c1fb96e3c6fe0a69ad6febb4baf199d9d1bde3c5bc",
+      "generatingCommit": "ccf5a9c5e7cd91624fa83fa07f7ec7cd28abd11d",
+      "generatedUtc": "2026-07-21T19:36:55Z"
+    },
+    {
+      "workload": "fortunes-encoded",
+      "suite": "encoded",
+      "file": "fortunes-encoded.golden.html",
+      "byteLength": 1156,
+      "hash": "sha256:059bfacdce7d66b25f291c73d90fe5032b92061f8c740ea7d8e4e2e0eb3e7f0d",
+      "generatingCommit": "ccf5a9c5e7cd91624fa83fa07f7ec7cd28abd11d",
+      "generatedUtc": "2026-07-21T19:36:55Z"
+    },
+    {
+      "workload": "encoded-loop",
+      "suite": "encoded",
+      "file": "encoded-loop.golden.html",
+      "byteLength": 831685,
+      "hash": "sha256:bd750aae602e3fdfc07a4d2020e38b162080bf4b58ccb4b7b1b738e6aa5663b7",
+      "generatingCommit": "ccf5a9c5e7cd91624fa83fa07f7ec7cd28abd11d",
+      "generatedUtc": "2026-07-21T19:36:55Z"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "workload": "large-loop",
+  "suite": "raw",
+  "values": [
+    { "text": "<tr><td>row-0</td><td>0</td></tr>", "count": 1 },
+    { "text": "<tr><td>row-4999</td><td>4999</td></tr>", "count": 1 },
+    { "text": "<tr><td>row-", "count": 5000 }
+  ],
+  "markers": [
+    "row-0",
+    "row-2500",
+    "row-4999"
+  ],
+  "forbidden": [],
+  "required": []
+}

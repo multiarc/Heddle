@@ -38,6 +38,7 @@ public class SubstitutionRenderBenchmarks
         // normalization — a functional no-op here, the sources are whitespace-free) before we time
         // anything, so a drifted twin fails loudly rather than benchmarking different work.
         ParityCheck.AssertSubstitution();
+        GoldenCorpus.AssertFresh("trivial-substitution");
     }
 
     // Heddle is the ratio baseline for the render suite.

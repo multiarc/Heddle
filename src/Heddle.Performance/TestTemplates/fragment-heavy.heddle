@@ -1,0 +1,5 @@
+@%
+<tile>
+{{<section class="tile"><h3>@(Name)</h3><p class="v">@(Value)</p><span class="badge">@(Badge)</span></section>}}
+%@
+<div class="panel">@list(Items){{@tile()}}</div>

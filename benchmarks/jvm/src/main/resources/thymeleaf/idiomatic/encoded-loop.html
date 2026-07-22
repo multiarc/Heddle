@@ -1,0 +1,12 @@
+<!--/*
+  Idiomatic Thymeleaf authoring (Q1.7/D7) — official doc citations:
+  https://www.thymeleaf.org/doc/tutorials/3.1/usingthymeleaf.html
+    §5.2 (setting attribute values: th:attr), §6 (iteration: th:each),
+    §12 (escaped text: th:text)
+*/-->
+<table>
+    <tr th:each="item : ${items}">
+        <td th:attr="data-tag=${item.tag}" th:text="${item.name}">item name</td>
+        <td th:text="${item.comment}">comment</td>
+    </tr>
+</table>

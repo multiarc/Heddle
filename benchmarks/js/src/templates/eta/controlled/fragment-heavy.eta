@@ -1,0 +1,1 @@
+<div class="panel"><% it.items.forEach(item => { %><%~ include("@tile", item) %><% }) %></div>

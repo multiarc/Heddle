@@ -1,0 +1,10 @@
+{# Idiomatic Jinja2 tile: the repeated unit as a macro, imported by
+   fragment-heavy.jinja (Phase 5 D5).
+   Doc: https://jinja.palletsprojects.com/en/stable/templates/#macros #}
+{% macro tile(item) %}
+<section class="tile">
+  <h3>{{ item.name }}</h3>
+  <p class="v">{{ item.value }}</p>
+  <span class="badge">{{ item.badge }}</span>
+</section>
+{% endmacro %}

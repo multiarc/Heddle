@@ -1,0 +1,1 @@
+<!DOCTYPE html><html><head><title>Fortunes</title></head><body><table><tr><th>id</th><th>message</th></tr><% it.rows.forEach(r => { %><tr><td><%= r.id %></td><td><%= r.message %></td></tr><% }) %></table></body></html>

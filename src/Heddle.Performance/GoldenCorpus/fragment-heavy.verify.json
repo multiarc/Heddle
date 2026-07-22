@@ -1,0 +1,19 @@
+{
+  "workload": "fragment-heavy",
+  "suite": "raw",
+  "values": [
+    { "text": "<section class=\"tile\">", "count": 48 },
+    { "text": "tile-00", "count": 1 },
+    { "text": "tile-47", "count": 1 },
+    { "text": "<span class=\"badge\">new</span>", "count": 12 }
+  ],
+  "markers": [
+    "<div class=\"panel\">",
+    "tile-00",
+    "tile-24",
+    "tile-47",
+    "</div>"
+  ],
+  "forbidden": [],
+  "required": []
+}

@@ -1,0 +1,11 @@
+// Workload 2 — trivial-substitution, templ controlled port (port-mapping.md §Controlled
+// track — templ, rules 1–2). The pinned one-line <article> card, ten substitutions in
+// pinned order including the two attribute positions — identical authoring to the S1 P1
+// probe, which passed the full byte gate.
+package templeng
+
+import "heddle.dev/benchmarks/go/internal/model"
+
+templ trivialSubstitution(m model.SubstitutionModel) {
+	<article><h1>{ m.Title }</h1><p class="sku">{ m.Sku }</p><p class="price">{ m.Price }</p><p class="brand">{ m.Brand }</p><p class="cat">{ m.Category }</p><p class="avail">{ m.Availability }</p><a class="link" href={ m.Url }><img src={ m.ImageUrl }></a><p class="sum">{ m.Summary }</p><p class="rating">{ m.Rating }</p></article>
+}

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Reflection;
 using BenchmarkDotNet.Attributes;
 using Heddle;
@@ -50,19 +50,19 @@ public class PropsRenderBenchmarks
         AssemblyHelper.Configure(typeof(PropsRenderBenchmarks).GetTypeInfo().Assembly);
 
         _noProps = new HeddleTemplate(
-            "@% <card>{{<article><h2>@(Title)</h2><p>@(Summary)</p></article>}} :: Heddle.Performance.PropsRenderBenchmarks+Article %@\n@card(this)",
+            "@% <card>{{<article><h2>@(Title)</h2><p>@(Summary)</p></article>}} :: Heddle.Performance.PropsRenderBenchmarks.Article %@\n@card(this)",
             new CompileContext(new TemplateOptions(), typeof(Article)));
 
         _allConstant = new HeddleTemplate(
-            "@% <card(style: string = \"plain\")>{{<article class=\"@(style)\"><h2>@(Title)</h2><p>@(Summary)</p></article>}} :: Heddle.Performance.PropsRenderBenchmarks+Article %@\n@card(this)",
+            "@% <card(style: string = \"plain\")>{{<article class=\"@(style)\"><h2>@(Title)</h2><p>@(Summary)</p></article>}} :: Heddle.Performance.PropsRenderBenchmarks.Article %@\n@card(this)",
             new CompileContext(new TemplateOptions(), typeof(Article)));
 
         _dynamic = new HeddleTemplate(
-            "@% <card(style: string = \"plain\")>{{<article class=\"@(style)\"><h2>@(Title)</h2><p>@(Summary)</p></article>}} :: Heddle.Performance.PropsRenderBenchmarks+Article %@\n@card(this, style: Title)",
+            "@% <card(style: string = \"plain\")>{{<article class=\"@(style)\"><h2>@(Title)</h2><p>@(Summary)</p></article>}} :: Heddle.Performance.PropsRenderBenchmarks.Article %@\n@card(this, style: Title)",
             new CompileContext(new TemplateOptions(), typeof(Article)));
 
         _slot = new HeddleTemplate(
-            "@% <picker(out:: Heddle.Performance.PropsRenderBenchmarks+Option)>{{<ul>@list(Options){{<li>@out(this)</li>}}</ul>}} :: Heddle.Performance.PropsRenderBenchmarks+Menu %@\n@picker(this){{<a>@(Id):@(Label)</a>}}",
+            "@% <picker(out:: Heddle.Performance.PropsRenderBenchmarks.Option)>{{<ul>@list(Options){{<li>@out(this)</li>}}</ul>}} :: Heddle.Performance.PropsRenderBenchmarks.Menu %@\n@picker(this){{<a>@(Id):@(Label)</a>}}",
             new CompileContext(new TemplateOptions(), typeof(Menu)));
 
         _article = new Article { Title = "Hello", Summary = "World" };

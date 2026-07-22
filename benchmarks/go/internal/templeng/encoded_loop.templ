@@ -1,0 +1,15 @@
+// Workload 8 — encoded-loop, templ controlled port (port-mapping.md §Controlled track —
+// templ, rule 2). data-tag={ r.Tag } is templ's attribute expression (auto-quoted and
+// attribute-encoded); the other two substitutions are text-context. All emitted spellings
+// sit inside the N5 table (S1 probe P2 pinned the exact bytes).
+package templeng
+
+import "heddle.dev/benchmarks/go/internal/model"
+
+templ encodedLoop(m model.EncodedLoopModel) {
+	<table>
+		for _, r := range m.Items {
+			<tr><td data-tag={ r.Tag }>{ r.Name }</td><td>{ r.Comment }</td></tr>
+		}
+	</table>
+}

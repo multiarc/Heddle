@@ -1,0 +1,29 @@
+{
+  "workload": "fortunes-encoded",
+  "suite": "encoded",
+  "values": [
+    { "text": "A bad random number generator: 1, 1, 1, 1, 1, 4.33e67, 1, 1, 1", "count": 1 },
+    { "text": "A computer program does what you tell it to do, not what you want it to do.", "count": 1 },
+    { "text": "A computer scientist is someone who fixes things that aren", "count": 1 },
+    { "text": "A list is only as strong as its weakest link. — Donald Knuth", "count": 1 },
+    { "text": "After enough decimal places, nobody gives a damn.", "count": 1 },
+    { "text": "Any program that runs right is obsolete.", "count": 1 },
+    { "text": "Computers make very fast, very accurate mistakes.", "count": 1 },
+    { "text": "Emacs is a nice operating system, but I prefer UNIX. — Tom Christiansen", "count": 1 },
+    { "text": "Feature: A bug with seniority.", "count": 1 },
+    { "text": "fortune: No such file or directory", "count": 1 },
+    { "text": "&lt;script&gt;alert(", "count": 1 },
+    { "text": ");&lt;/script&gt;", "count": 1 },
+    { "text": "フレームワークのベンチマーク", "count": 1 },
+    { "text": "<tr><td>", "count": 12 }
+  ],
+  "markers": [
+    "<!DOCTYPE html>",
+    "<table>",
+    "<tr><th>id</th><th>message</th></tr>",
+    "フレームワークのベンチマーク",
+    "</table>"
+  ],
+  "forbidden": ["<script>alert("],
+  "required": [{ "text": "&lt;script&gt;alert(", "minCount": 1 }, { "text": ");&lt;/script&gt;", "minCount": 1 }]
+}

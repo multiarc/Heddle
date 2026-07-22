@@ -1,0 +1,11 @@
+<!--/*
+  Idiomatic Thymeleaf authoring (Q1.7/D7) — official doc citations:
+  https://www.thymeleaf.org/doc/tutorials/3.1/usingthymeleaf.html
+    §6 (iteration: th:each), §8.1 (including fragments: th:replace),
+    §11.4 (synthetic th:block container)
+*/-->
+<div class="panel">
+    <th:block th:each="item : ${items}">
+        <div th:replace="~{idiomatic/tile :: tile(${item})}"></div>
+    </th:block>
+</div>

@@ -1,0 +1,25 @@
+{# Idiomatic Askama template (WI5, README D8/Q1.7). Patterns follow the Askama 0.16 book:
+   "Template syntax - If" (if / elif / else chain) and "Template syntax - For";
+   default HTML escaping left on. #}
+<ul class="matrix">
+  {% for r in rows %}
+    <li>
+      {% if r.is_bronze %}
+        <span class="t0">bronze</span>
+      {% elif r.is_silver %}
+        <span class="t1">silver</span>
+      {% elif r.is_gold %}
+        <span class="t2">gold</span>
+      {% else %}
+        <span class="t3">platinum</span>
+      {% endif %}
+      <em>{{ r.name }}</em>
+      {% if r.has_note %}
+        <small>{{ r.note }}</small>
+      {% endif %}
+      {% if r.is_active %}
+        <b>active</b>
+      {% endif %}
+    </li>
+  {% endfor %}
+</ul>

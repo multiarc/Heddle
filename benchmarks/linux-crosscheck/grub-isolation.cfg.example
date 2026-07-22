@@ -1,0 +1,50 @@
+# grub-isolation.cfg.example — "Ubuntu — benchmark isolation" boot entry template
+# (Phase 8 spec D1.6 / D2.1; environment-and-toolchains.md "Boot-parameter configuration").
+#
+# BARE-METAL ONLY. WSL2 has no GRUB and no isolable topology; under SR-2 this file
+# is committed as a template and instantiated only during the D1 bare-metal install.
+#
+# HOW TO INSTANTIATE (do NOT copy this file verbatim):
+#
+# 1. On the installed bare-metal system, read the actual SMT thread-sibling pair of
+#    CPU 4's physical core — NEVER assume an enumeration scheme (spec: "verify at
+#    implementation"):
+#
+#        cat /sys/devices/system/cpu/cpu4/topology/thread_siblings_list
+#
+#    Example outputs: "4,20" (Linux often enumerates the 9950X's siblings core-major)
+#    or "8-9" — whatever it prints IS the pair; record it in the run log.
+#
+# 2. Replace every <PAIR> below with that exact list (kernel cpu-list syntax, e.g. 4,20).
+#
+# 3. Append the menuentry to /etc/grub.d/40_custom (below the exec tail line), or
+#    equivalently add the three parameters to a dedicated entry via your preferred
+#    mechanism. Do NOT put them in GRUB_CMDLINE_LINUX_DEFAULT — the default entry
+#    must stay un-isolated; the isolation entry is selected only for measurement
+#    sessions (D2.1).
+#
+# 4. sudo update-grub
+#
+# 5. Boot the entry and verify (recorded in the run log, D1 "done when"):
+#        cat /proc/cmdline                          # contains all three parameters, verbatim
+#        cat /sys/devices/system/cpu/isolated       # prints exactly <PAIR>
+#
+# The parameter set is pyperf's documented isolation recommendation
+# (https://pyperf.readthedocs.io/en/latest/system.html):
+#   isolcpus=<PAIR>    remove the pair from the general scheduler affinity mask
+#   nohz_full=<PAIR>   omit scheduler ticks on the pair while single-task
+#   rcu_nocbs=<PAIR>   move RCU callbacks off the pair
+#
+# ---- template (replace <PAIR>; adjust root/UUID lines to match the installed
+# ---- default entry — copy them from /boot/grub/grub.cfg's primary Ubuntu entry) ----
+
+menuentry 'Ubuntu — benchmark isolation' {
+        # Copy the following from the installed default Ubuntu menuentry:
+        #   insmod / search lines, root UUID, kernel and initrd paths.
+        insmod gzio
+        insmod part_gpt
+        insmod ext2
+        search --no-floppy --fs-uuid --set=root <ROOT-FS-UUID>
+        linux   /boot/vmlinuz ro quiet isolcpus=<PAIR> nohz_full=<PAIR> rcu_nocbs=<PAIR>
+        initrd  /boot/initrd.img
+}
