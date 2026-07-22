@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>Heddle.Performance.LoopRenderBenchmarks-20260721-233258</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8894/25H2/2025Update/HudsonValley2)
+AMD Ryzen 9 9950X 4.30GHz, 1 CPU, 32 logical and 16 physical cores
+.NET SDK 10.0.302
+  [Host]     : .NET 10.0.10 (10.0.10, 10.0.1026.32716), X64 RyuJIT x86-64-v4
+  DefaultJob : .NET 10.0.10 (10.0.10, 10.0.1026.32716), X64 RyuJIT x86-64-v4
+</code></pre>
+<pre><code></code></pre>
+
+<table>
+<thead><tr><th>Method    </th><th>Mean</th><th>Error</th><th>StdDev</th><th>Ratio</th><th>RatioSD</th><th>Gen0</th><th>Gen1</th><th>Gen2</th><th>Allocated</th><th>Alloc Ratio</th>
+</tr>
+</thead><tbody><tr><td>RenderHeddle</td><td>514.7 &mu;s</td><td>5.18 &mu;s</td><td>4.84 &mu;s</td><td>1.00</td><td>0.01</td><td>54.6875</td><td>32.2266</td><td>32.2266</td><td>1.14 MB</td><td>1.00</td>
+</tr><tr><td>RenderFluid</td><td>799.0 &mu;s</td><td>10.35 &mu;s</td><td>9.68 &mu;s</td><td>1.55</td><td>0.02</td><td>94.7266</td><td>50.7813</td><td>16.6016</td><td>1.63 MB</td><td>1.42</td>
+</tr><tr><td>RenderScriban</td><td>1,394.4 &mu;s</td><td>6.64 &mu;s</td><td>15.78 &mu;s</td><td>2.71</td><td>0.04</td><td>140.6250</td><td>62.5000</td><td>31.2500</td><td>2.72 MB</td><td>2.38</td>
+</tr><tr><td>RenderDotLiquid</td><td>3,733.7 &mu;s</td><td>24.99 &mu;s</td><td>20.87 &mu;s</td><td>7.25</td><td>0.08</td><td>1046.8750</td><td>453.1250</td><td>15.6250</td><td>16.85 MB</td><td>14.72</td>
+</tr><tr><td>RenderHandlebars</td><td>668.3 &mu;s</td><td>12.95 &mu;s</td><td>15.42 &mu;s</td><td>1.30</td><td>0.03</td><td>55.6641</td><td>30.2734</td><td>15.6250</td><td>1.01 MB</td><td>0.88</td>
+</tr></tbody></table>
+</body>
+</html>
