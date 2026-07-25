@@ -151,6 +151,17 @@ docs/playwright-report/
 # venv and raw measurement outputs are never committed; published copies go to docs/benchmarks/<date>/
 benchmarks/python/.venv/
 benchmarks/python/results/
-# Windows master-runner outputs (benchmarks/run-all.ps1): per-run logs + copied artifacts
+__pycache__/
+# Go harness in-place outputs (benchmarks/go/run-benchmarks.{sh,ps1} write here before the
+# master runner's copy-results step lifts them into the run directory)
+benchmarks/go/results/
+# Master-runner outputs (benchmarks/run-all.ps1, benchmarks/run-all.sh): per-run logs + copied artifacts
 benchmarks/out/
 /benchmarks/go/bench.exe
+# Prebuilt Go bench binary on Linux (benchmarks/go/run-benchmarks.sh)
+/benchmarks/go/bench
+# The Rust harness declares [[bin]] gate/summarize/alloc_report at src/bin/*.rs
+# (docs/spec/cross-stack-benchmarks/phase-2-rust/ D11/D10/D13). The generic [Bb]in patterns
+# near the top of this file would swallow those sources, so re-include them explicitly.
+!benchmarks/rust/src/bin/
+!benchmarks/rust/src/bin/*.rs

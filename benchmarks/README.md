@@ -44,14 +44,35 @@ powershell -ExecutionPolicy Bypass -File benchmarks\run-all.ps1
 powershell -ExecutionPolicy Bypass -File benchmarks\run-all.ps1 -Smoke
 ```
 
-Linux, from `benchmarks/linux-crosscheck/` (see [its README](linux-crosscheck/README.md) for
-the full bare-metal order of operations — install, GRUB isolation entry, environment capture):
+```bash
+# Linux (bare metal) — FULL measurement, one command (tunes, measures, untunes).
+# Needs the "Ubuntu — benchmark isolation" boot entry (see preconditions below):
+./benchmarks/run-all.sh --tune
+
+# Linux (bare metal) — same, without that boot entry: performance governors + boost off
+# are set here and restored on exit; the missing CPU isolation is a recorded delta:
+./benchmarks/run-all.sh --tune-no-isolation
+
+# Linux (bare metal) — FULL measurement on an already-tuned machine:
+./benchmarks/run-all.sh
+
+# Linux — SMOKE (short functional pass; no tuned state required, no measurement validity):
+./benchmarks/run-all.sh --smoke
+```
+
+**Two Linux runners, different jobs.** `benchmarks/run-all.sh` is the twin of the Windows runner
+(per-step logs, summary table, `--ecosystem` subsets, and `taskset` + `nice -n -20` standing in
+for the Windows High priority classes). `benchmarks/linux-crosscheck/` is the Phase 8 cross-check
+protocol — D2 no-priority posture, tuned-state pre-flight against a recorded session state,
+`validate.py` part-2 tables. **Anything published as a Linux cross-check goes through
+`linux-crosscheck/`**; see [its README](linux-crosscheck/README.md) for the full bare-metal order
+of operations (install, GRUB isolation entry, environment capture):
 
 ```bash
-# Linux — FULL measurement (bare-metal protocol box only):
+# Phase 8 cross-check, from benchmarks/linux-crosscheck/ — FULL measurement:
 sudo ./tune.sh && ./run-all.sh; ./untune.sh
 
-# Linux/WSL — functional pass (no tuned state required; bypass is recorded):
+# Phase 8 cross-check, Linux/WSL — functional pass (no tuned state required; bypass is recorded):
 ./run-all.sh --smoke --no-tune-check
 ```
 
@@ -63,6 +84,37 @@ sudo ./tune.sh && ./run-all.sh; ./untune.sh
 | `-Ecosystem dotnet,rust,jvm,js,python,go` | subset (any combination; program order is preserved) |
 | `-OutDir <path>` | artifact/log destination (default `benchmarks\out\windows-run-<timestamp>`, git-ignored; the path must not contain spaces) |
 | `-JsStabilityRepeat` | opt in to the JS five-run stability procedure (Phase 4 D13) before the timed JS suites — it is publication-gating but a separate step, so it never auto-runs |
+
+### Linux runner options
+
+| Option | Effect |
+|---|---|
+| `--smoke` | short functional flags everywhere (same shapes as `-Smoke`); also skips the bare-metal pre-flight, recorded in the log |
+| `--ecosystem dotnet,rust,jvm,js,python,go` | subset (any combination; program order is preserved) |
+| `--out-dir <path>` | artifact/log destination (default `benchmarks/out/linux-run-<timestamp>`, git-ignored) |
+| `--js-stability-repeat` | opt in to the JS five-run stability procedure (Phase 4 D13), exactly as `-JsStabilityRepeat` |
+| `--tune` | run the committed `linux-crosscheck/tune.sh` under `sudo` before the run and `untune.sh` from an `EXIT` trap afterwards (so an aborted run still restores the machine). Those two scripts are invoked unmodified. Requires the isolation boot entry — `tune.sh` refuses without it |
+| `--tune-no-isolation` | tune what needs no reboot: `performance` governors, `cpufreq/boost=0`, `kernel.perf_event_max_sample_rate=1`. Every prior value is captured to `logs/tune-prior-state.txt` first and restored from an `EXIT` trap. The absent isolated SMT pair is recorded, the pre-flight accepts it, timed runs are not pinned, and pyperf falls back to `--affinity=4`. Mutually exclusive with `--tune` |
+| `--no-tune-check` | record a bypass of the bare-metal pre-flight (and of the WSL refusal) and measure anyway — the numbers are not publishable |
+| `--no-priority` | launch the JS and Go timed runs plain, matching the Phase 8 D2 posture |
+
+### Bare-metal preconditions (Linux, full measurement)
+
+Without `--smoke` the runner refuses to measure under WSL and pre-flights the machine state,
+aborting with instructions unless all of the following hold:
+
+* the *Ubuntu — benchmark isolation* GRUB entry is booted, so `/sys/devices/system/cpu/isolated`
+  equals the SMT sibling pair of the isolation core (read from the topology, never assumed).
+  Instantiate it from [linux-crosscheck/grub-isolation.cfg.example](linux-crosscheck/grub-isolation.cfg.example)
+  — read the pair with `cat /sys/devices/system/cpu/cpu4/topology/thread_siblings_list`, put
+  `isolcpus=<PAIR> nohz_full=<PAIR> rcu_nocbs=<PAIR>` on a **dedicated** entry (never on
+  `GRUB_CMDLINE_LINUX_DEFAULT`), `sudo update-grub`, reboot into it. Without this entry
+  `--tune` refuses by design; use `--tune-no-isolation` to measure anyway with the delta recorded;
+* every cpufreq policy reads `performance` and `/sys/devices/system/cpu/cpufreq/boost` reads `0`
+  — this is what `--tune` (i.e. `linux-crosscheck/tune.sh`) or `--tune-no-isolation` establishes;
+* quiet machine: no other builds, watchers, indexing editors or browsers for the duration;
+* root or passwordless `sudo`, so `nice -n -20` and pyperf's priority elevation actually apply
+  (missing privileges are recorded, not fatal — the run continues at default priority).
 
 ## What a run does
 
@@ -77,18 +129,26 @@ sudo ./tune.sh && ./run-all.sh; ./untune.sh
 6. Go: `go test ./suites` (TestMain gates before anything can time)
 
 **Phase 2 — measurement**, in the anchor-first program order dotnet → rust → jvm → js →
-python → go. The runner prints the machine-state rules (protocol box, quiet machine, AC/High
-Performance power) before this phase; failures here are recorded and the run continues, with
-a nonzero overall exit at the end.
+python → go. The runner prints the machine-state rules (protocol box, quiet machine, power/tuned
+state) before this phase; failures here are recorded and the run continues, with a nonzero
+overall exit at the end.
 
 | Ecosystem | Full mode (protocol shape) | Smoke mode |
 |---|---|---|
 | .NET | 8 suites, one `--filter *<Suite>*` run each, BDN defaults + MemoryDiagnoser | same, `--job Dry` |
 | Rust | `cargo bench --bench controlled --bench idiomatic --bench cold -- --noplot`, then `alloc_report` (alloc-count feature), then `summarize` (non-fatal while the Phase 1 Heddle reference rows are pending) | `cargo bench … -- --test` |
 | JVM | `java -jar target/benchmarks.jar -prof gc -rf json -rff <out>` — committed annotation regime (Fork 5, 5×10 s / 5×10 s), **~4.5–5.5 h** | `-f 1 -wi 1 -i 1 -w 1s -r 1s -foe true` |
-| JS | `run.ps1` per bench script (High priority, `--expose-gc --allow-natives-syntax`); stability 5-repeat only with `-JsStabilityRepeat` | the three scripts once via `run.ps1` |
-| Python | five pyperf Runner scripts, `--affinity=4 -o <out>\python\<name>.json`, elevated shell (warned if not), then the separate `mem_tracemalloc.py` pass | pyperf `--debug-single-value`; memory `--reps 5` |
-| Go | `run-benchmarks.ps1` (version asserts, templ freshness, vet, gates, prebuild, High-priority timed runs `-test.count=20 -test.benchtime=1s`, benchstat) | `-Count 1 -BenchTime 100ms` |
+| JS | `run.ps1` / `run.sh` per bench script (`--expose-gc --allow-natives-syntax`, priority posture per platform); stability 5-repeat only with `-JsStabilityRepeat` / `--js-stability-repeat` | the three scripts once via the launcher |
+| Python | five pyperf Runner scripts, `--affinity=<4 on Windows, isolated pair on Linux> -o <out>/python/<name>.json`, elevated shell / root (warned if not), then the separate `mem_tracemalloc.py` pass | pyperf `--debug-single-value`; memory `--reps 5` |
+| Go | `run-benchmarks.ps1` / `run-benchmarks.sh` (version asserts, templ freshness, vet, gates, prebuild, timed runs `-test.count=20 -test.benchtime=1s`, benchstat) | `-Count 1 -BenchTime 100ms` / `--count 1 --benchtime 100ms` |
+
+**Priority posture (Linux twins).** Windows sets a High process priority class for the JS and Go
+timed runs (`start /high`, `PriorityClass = High`); `run-all.sh`, `js/run.sh` and
+`go/run-benchmarks.sh` approximate that with `taskset -c <isolated SMT pair>` + `nice -n -20`.
+The Phase 8 launchers under `linux-crosscheck/` deliberately do **not** (D2: the tune plus CPU
+isolation *is* the isolation), so numbers from the twins are not drop-in comparable with the
+published cross-check runs — record the delta in the run report's environment block, or pass
+`--no-priority` to match D2.
 
 ## Where artifacts land
 
@@ -108,20 +168,24 @@ Everything from one Windows run lands under the run's `-OutDir`
   go\                       copy of benchmarks\go\results (bench + benchstat outputs)
 ```
 
-Linux run outputs land under `benchmarks/linux-crosscheck/out/` (self-git-ignored).
+A Linux run's outputs land under `--out-dir` in exactly the same shape
+(default `benchmarks/out/linux-run-<yyyyMMdd-HHmmss>`, git-ignored), with `logs/tune.log` added
+when `--tune` is used. The Phase 8 cross-check tooling writes elsewhere:
+`benchmarks/linux-crosscheck/out/` (self-git-ignored).
 
 ## Running one harness alone (manual per-ecosystem commands)
 
-All commands from the harness directory shown; gates first, always.
+All commands from the harness directory shown; gates first, always. Where the launcher differs
+per platform, the Windows form is given first and the Linux twin second.
 
 | Ecosystem | Directory | Gate | Measurement |
 |---|---|---|---|
 | .NET | `src/Heddle.Performance` | `dotnet run -c Release -f net10.0 -- parity` then `… -- verify-corpus` | `dotnet run -c Release -f net10.0 -- --filter *<Suite>*` (8 suites; `export-corpus` rewrites goldens — never run it casually) |
 | Rust | `benchmarks/rust` | `cargo run --release --bin gate` | `cargo bench --bench controlled --bench idiomatic --bench cold -- --noplot`; `cargo run --release --features alloc-count --bin alloc_report`; `cargo run --release --bin summarize` |
-| JVM | `benchmarks/jvm` | `.\mvnw.cmd -q clean verify` (add `-Dmaven.compiler.release=23` on a JDK < 25) | `java -jar target\benchmarks.jar -prof gc -rf json -rff jmh-result.json` |
-| JS | `benchmarks/js` | `npm ci` + `npm run selftest` + `npm run gate` | `./run.ps1 bench/controlled.mjs` (also `idiomatic.mjs`, `cold-compile.mjs`); stability: `./run.ps1 bench/controlled.mjs -Repeat 5` |
-| Python | `benchmarks/python` | `python -m runner.selftest` + `python -m runner.gate_all` (venv python) | `python bench_<name>.py --affinity=4 -o results\<name>.json` (×5, elevated shell); `python mem_tracemalloc.py -o results\memory.json` |
-| Go | `benchmarks/go` | `go test ./suites` | `./run-benchmarks.ps1` |
+| JVM | `benchmarks/jvm` | `.\mvnw.cmd -q clean verify` / `./mvnw -q clean verify` (add `-Dmaven.compiler.release=23` on a JDK < 25) | `java -jar target/benchmarks.jar -prof gc -rf json -rff jmh-result.json` |
+| JS | `benchmarks/js` | `npm ci` + `npm run selftest` + `npm run gate` | `./run.ps1 bench/controlled.mjs` / `./run.sh bench/controlled.mjs` (also `idiomatic.mjs`, `cold-compile.mjs`); stability: `-Repeat 5` / `--repeat 5` |
+| Python | `benchmarks/python` | `python -m runner.selftest` + `python -m runner.gate_all` (venv python: `.venv\Scripts\python.exe` / `.venv/bin/python`) | `python bench_<name>.py --affinity=4 -o results/<name>.json` (×5, elevated shell / root); `python mem_tracemalloc.py -o results/memory.json` |
+| Go | `benchmarks/go` | `go test ./suites` | `./run-benchmarks.ps1` / `./run-benchmarks.sh` |
 
 ## Publication
 
@@ -132,3 +196,24 @@ the two-track tables, the allocation labels/caveats, and the honest-reporting ru
 runners never write into `docs/`. The Linux cross-check report additionally goes through
 `linux-crosscheck/validate.py` (part 2 tables/verdicts) and the WI8 assembly step described
 in [linux-crosscheck/README.md](linux-crosscheck/README.md).
+
+**The tables themselves are generated, not transcribed.** Once the artifacts are in place,
+`report/consolidate.py` reads every harness's native output — BenchmarkDotNet CSV, Criterion
+`estimates.json`, JMH JSON, mitata JSON, pyperf JSON, benchstat text — and writes
+`consolidated-tables.md` into the run directory:
+
+```bash
+python benchmarks/report/consolidate.py docs/benchmarks/<run-date>
+python benchmarks/report/consolidate.py --check docs/benchmarks/<run-date>
+```
+
+`--check` re-derives the tables and diffs them against the committed file, so a published
+report stays byte-reproducible from its artifacts and a stale table is a failing command rather
+than a silent error. The report's `index.md` is still hand-written — the narrative, the
+environment block, the findings and the caveat register are judgement, not extraction — and it
+links the generated tables rather than restating their numbers. Note this keeps the
+runners-never-write-into-`docs/` invariant intact: `consolidate.py` is run by hand after a run,
+never by `run-all.ps1`/`run-all.sh`.
+
+Worked example: [docs/benchmarks/2026-07-22](../docs/benchmarks/2026-07-22) is the first
+six-ecosystem report published this way.
