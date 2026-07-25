@@ -15,7 +15,7 @@
 #
 # usage:
 #   ./run.sh bench/controlled.mjs
-#   ./run.sh bench/controlled.mjs --repeat 5
+#   ./run.sh bench/controlled.mjs --repeat 18
 #   ./run.sh bench/controlled.mjs --no-priority
 
 set -uo pipefail
@@ -25,7 +25,7 @@ HARNESS_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd
 
 usage() {
   echo "usage: run.sh <bench/script.mjs> [--repeat N] [--no-priority]"
-  echo "  --repeat N       run the script N times into artifacts/stability/run-<k>.txt|.json (1-100)"
+  echo "  --repeat N       run N times into artifacts/stability/<name>/, then aggregate (1-100)"
   echo "  --no-priority    plain launch, no taskset/nice (Phase 8 D2 posture)"
 }
 
@@ -83,8 +83,13 @@ if [ "$REPEAT" -le 1 ]; then
   exit "$code"
 fi
 
-# --repeat mode: N consecutive full runs into artifacts/stability/run-<k>.txt/.json (D13).
-STABILITY_DIR="$ARTIFACTS_DIR/stability"
+# --repeat mode: N consecutive full runs into artifacts/stability/<name>/run-<k>.txt/.json.
+#
+# The directory is per script, and it is CLEARED first. Both matter: `bench/aggregate.mjs`
+# medians every run-*.json it finds positionally, so a leftover pass from a different script --
+# or from a longer previous sequence -- would silently corrupt the aggregate rather than fail.
+STABILITY_DIR="$ARTIFACTS_DIR/stability/$NAME"
+rm -rf "$STABILITY_DIR"
 mkdir -p "$STABILITY_DIR"
 
 k=1
@@ -104,5 +109,10 @@ while [ "$k" -le "$REPEAT" ]; do
   echo "run.sh: repeat $k/$REPEAT complete."
   k=$((k + 1))
 done
-echo "run.sh: $REPEAT consecutive runs captured under artifacts/stability/."
-exit 0
+echo "run.sh: $REPEAT consecutive runs captured under artifacts/stability/$NAME/."
+
+# Collapse the passes into the published artifact + the D13 verdict (ledger E6). This OVERWRITES
+# artifacts/<name>.json, which currently holds only the final pass, with the cross-pass
+# aggregate; a 'failed' verdict exits non-zero and takes the whole step down with it.
+node "$HARNESS_ROOT/bench/aggregate.mjs" "$NAME"
+exit $?

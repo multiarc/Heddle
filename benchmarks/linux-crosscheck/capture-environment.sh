@@ -198,9 +198,9 @@ REPO="$OUT/repo-state.md"
   else
     echo "- Working tree: **DIRTY** (a measurement session requires a clean tree — same discipline as export-corpus)"
   fi
-  echo "- Corpus generatingCommit values (from src/Heddle.Performance/GoldenCorpus/manifest.json):"
-  if [ -f "src/Heddle.Performance/GoldenCorpus/manifest.json" ]; then
-    grep -o '"generatingCommit"[^,}]*' src/Heddle.Performance/GoldenCorpus/manifest.json | sort -u | sed 's/^/  - `/;s/$/`/'
+  echo "- Corpus generatingCommit values (from benchmarks/dotnet/GoldenCorpus/manifest.json):"
+  if [ -f "benchmarks/dotnet/GoldenCorpus/manifest.json" ]; then
+    grep -o '"generatingCommit"[^,}]*' benchmarks/dotnet/GoldenCorpus/manifest.json | sort -u | sed 's/^/  - `/;s/$/`/'
   else
     echo "  - manifest.json not found"
   fi

@@ -1,0 +1,158 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The .NET cross-stack benchmark harness (ledger E8). Structured like the other five ecosystem
+    harnesses under benchmarks/: models, templates, a gate, and bench targets, all under one
+    project with a verb-dispatching entry point.
+
+    net10.0 only, unlike the retired src/Heddle.Performance which multi-targeted net6/net8/net10.
+    The cross-stack protocol pins a single runtime for the .NET leg, and the multi-TFM matrix
+    existed for the intra-.NET historical comparison rather than for this program.
+
+    Deliberately NOT strong-name signed: three of the five competitor packages ship unsigned, and
+    signing this assembly only buys a CS8002 warning per unsigned reference (as the retired
+    project emitted for Scriban). Nothing consumes this assembly.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>Heddle.Benchmarks.Dotnet</AssemblyName>
+    <RootNamespace>Heddle.Benchmarks.Dotnet</RootNamespace>
+    <TieredCompilation>true</TieredCompilation>
+    <!-- The golden corpus lives beside this project and is read at runtime, never compiled. -->
+    <EnableDefaultNoneItems>true</EnableDefaultNoneItems>
+    <!-- The generated precompiled templates are written to disk so they are reviewable and
+         diffable; a backend nobody can read is a backend nobody can audit. -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)generated</CompilerGeneratedFilesOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Heddle\Heddle.csproj" />
+    <!--
+      The build-time precompilation generator. Referenced as an ANALYZER (no runtime assembly
+      reference) so it runs during compilation and emits an entry class per template. This is what
+      makes the precompiled render techniques measurable at all; the retired harness never
+      referenced it, so half of Heddle's render surface went unmeasured.
+    -->
+    <ProjectReference Include="..\..\src\Heddle.Generator\Heddle.Generator.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <!--
+    A ProjectReference does not bring a package's buildTransitive props/targets, so the generator's
+    MSBuild contract is imported explicitly. Without this the CompilerVisibleProperty/ItemMetadata
+    declarations are absent and the generator sees no configuration at all.
+  -->
+  <Import Project="..\..\src\Heddle.Generator\build\Heddle.Generator.props" />
+
+  <PropertyGroup>
+    <!-- The engine defaults the runtime templates use, so both backends compile the same way. -->
+    <HeddleOutputProfile>Text</HeddleOutputProfile>
+    <HeddleExpressionMode>Native</HeddleExpressionMode>
+    <HeddleGeneratedNamespace>Heddle.Benchmarks.Dotnet.Generated</HeddleGeneratedNamespace>
+    <!--
+      Template keys are derived RELATIVE to this root, and the generator's own default is the
+      project directory. Left at that default the key for layout.heddle would be
+      `templates/controlled/heddle/layout.heddle`, while `@<<{{layout.heddle}}` looks up the bare
+      name, and the import fails with HED7011. Rooting at the template directory makes the two
+      agree, and it matches the RootPath the runtime backend is given so both backends resolve
+      imports identically.
+    -->
+    <HeddleTemplateRoot>$(MSBuildProjectDirectory)/templates/controlled/heddle</HeddleTemplateRoot>
+    <!-- The templates tree is data read at runtime; default-globbing it would also sweep the
+         idiomatic tree in under colliding keys. Templates are declared explicitly below. -->
+    <EnableDefaultHeddleTemplates>false</EnableDefaultHeddleTemplates>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Precompiled templates, CONTROLLED TRACK ONLY.
+
+      No Key metadata: with no HeddleTemplateRoot set the generator derives the key from the file
+      NAME, which is exactly what `@<<{{layout.heddle}}` writes, so imports resolve. (Self-
+      referencing `%(Filename)` metadata on a wildcard include does not survive item creation, and
+      the resulting empty key fails import resolution with HED7011.) Both tracks contain a
+      `layout.heddle`, so including both would collide on key and on generated class name.
+
+      Precompilation is a COMPILATION strategy rather than an authoring one: the same three sinks,
+      reached through a build-time-generated tree instead of a runtime-compiled one. Measuring it on
+      one track answers the technique question. The idiomatic track therefore carries the three
+      runtime techniques only, which the registry reflects rather than papering over.
+
+      The two ENCODED workloads are excluded. HeddleOutputProfile is compilation-wide, and they need
+      Html where the six raw workloads need Text; a single project cannot precompile both. Including
+      them under Text produced a manifest claiming OutputProfile.Text for fortunes-encoded, i.e. a
+      precompiled template that would not escape. That is a real constraint of the generator's
+      MSBuild contract, so it is disclosed rather than worked around.
+
+      Of the six remaining, the emitter currently covers five: home.heddle (@&lt;&lt; layout extend)
+      and fragment-heavy.heddle (@% definition blocks) are silently left un-precompiled and fall
+      back to the dynamic path. The harness DETECTS coverage from the manifest at runtime instead of
+      assuming it. A fallback measured and labelled "precompiled" would be reporting the runtime
+      backend under the wrong name.
+    -->
+    <HeddleTemplate Include="templates\controlled\heddle\*.heddle"
+                    Exclude="templates\controlled\heddle\fortunes-encoded.heddle;templates\controlled\heddle\encoded-loop.heddle">
+      <Precompile>true</Precompile>
+    </HeddleTemplate>
+  </ItemGroup>
+
+  <!--
+    A ProjectReference-as-Analyzer contributes only the generator assembly itself. The published
+    package ships its generation-time dependencies alongside it under analyzers/dotnet/cs; consuming
+    the generator from source has to reproduce that by hand, or the generator loads and then fails
+    at first parse with HED7012 "Could not load Antlr4.Runtime.Standard".
+  -->
+  <Target Name="_AddHeddleGeneratorDependencies" BeforeTargets="CoreCompile"
+          DependsOnTargets="ResolveProjectReferences">
+    <ItemGroup>
+      <Analyzer Include="$(MSBuildThisFileDirectory)..\..\src\Heddle.Generator\bin\$(Configuration)\netstandard2.0\Heddle.Language.dll"
+                Condition="Exists('$(MSBuildThisFileDirectory)..\..\src\Heddle.Generator\bin\$(Configuration)\netstandard2.0\Heddle.Language.dll')" />
+      <Analyzer Include="$(NuGetPackageRoot)antlr4.runtime.standard\4.13.1\lib\netstandard2.0\Antlr4.Runtime.Standard.dll"
+                Condition="Exists('$(NuGetPackageRoot)antlr4.runtime.standard\4.13.1\lib\netstandard2.0\Antlr4.Runtime.Standard.dll')" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Maps the HeddleTemplate items above onto AdditionalFiles with the metadata the generator
+       reads. Imported after the items are declared, which is what the package's buildTransitive
+       ordering would do for a PackageReference consumer. -->
+  <Import Project="..\..\src\Heddle.Generator\build\Heddle.Generator.targets" />
+
+  <!-- The engine under test's own harness. -->
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
+  </ItemGroup>
+
+  <!--
+    Competitor engines, versions pinned to the cross-stack manifest. These are harness-only
+    dependencies; the Heddle engine itself gains nothing from them.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Fluid.Core" Version="2.31.0" />
+    <PackageReference Include="Scriban" Version="7.2.5" />
+    <PackageReference Include="DotLiquid" Version="2.3.197" />
+    <PackageReference Include="Handlebars.Net" Version="2.1.6" />
+  </ItemGroup>
+
+  <!-- Razor renders through MVC DI, so the twin needs a host and runtime view compilation. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="10.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
+  </ItemGroup>
+
+  <!--
+    The corpus is data read at runtime by every harness in the repo, this one included. It is not
+    copied to the output directory: the gate resolves it repo-relative from the assembly location
+    so there is exactly one copy in the tree (Corpus.cs).
+  -->
+  <ItemGroup>
+    <None Remove="GoldenCorpus\**" />
+    <None Include="GoldenCorpus\**" CopyToOutputDirectory="Never" />
+  </ItemGroup>
+
+</Project>

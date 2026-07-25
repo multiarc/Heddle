@@ -560,6 +560,11 @@ verdict the existing suite operates under.
   identical under both.
 - **Razor twin:** untouched, still outside every gate (`ParityCheck.Twins()` continues not to
   yield it), not part of the cross-stack contract.
+  **Amended 2026-07-25 ([E5](../../records.md#cross-spec-amendments-ledger)):** superseded — a
+  back-compat statement for this phase, not a placement ruling. `ParityCheck` now *does* yield
+  Razor for `composed-page`, via a host-aware overload (Razor renders through MVC DI), and the
+  `parity` verb builds that host lazily so the one-command proof covers all five twins. Razor
+  stays outside the cross-stack contract: phases 2–6 do not measure it.
 - **Published reports:** `docs/benchmarks/2026-07-11/` and `2026-07-18/` untouched; WI8 creates
   a new date.
 - **No breaking window needed:** every change is additive

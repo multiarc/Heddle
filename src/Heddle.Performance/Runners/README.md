@@ -7,7 +7,7 @@ four other .NET template engines, so the render/allocation/parse numbers in
 | Runner | Engine | Package (pinned) |
 | --- | --- | --- |
 | `HeddleTest` | Heddle (baseline) | — |
-| `RazorTest` | ASP.NET Core Razor | `Microsoft.AspNetCore.Mvc.Razor.*` |
+| `RazorTest` | ASP.NET Core Razor | `Microsoft.AspNetCore.Mvc.Razor.*` (parity-asserted since 2026-07-25 — [ledger E5](../../../docs/spec/records.md#cross-spec-amendments-ledger)) |
 | `FluidTest` | Fluid (Liquid) | `Fluid.Core` 2.31.0 |
 | `ScribanTest` | Scriban | `Scriban` 7.2.5 — net8.0+ legs only: 7.2.5 (the only release with the 2026 GHSA advisory fixes) requires System.Text.Json 10, which dropped net6.0, so the Scriban twins are compiled out of the net6.0 leg (`#if !NET6_0`) |
 | `DotLiquidTest` | DotLiquid (Liquid) | `DotLiquid` 2.3.197 |
@@ -18,13 +18,14 @@ four other .NET template engines, so the render/allocation/parse numbers in
 Every twin composes the page from the same four building blocks. `FluidTest` and `DotLiquidTest`
 share a single Liquid source (`LiquidTemplates.cs`) because both consume the same dialect.
 
-| Heddle construct | Liquid (Fluid / DotLiquid) | Scriban | Handlebars |
-| --- | --- | --- | --- |
-| Layout inheritance — `@<<{{layout.heddle}}` (home pulls in the layout) | `{% include 'layout' %}` (Fluid via `IFileProvider`, DotLiquid via `IFileSystem`) | `{{ include 'layout' }}` via `ITemplateLoader` | `{{> layout }}` registered partial |
-| Reusable section defaults — `<meta>`, `<socialmeta>`, `<page_scripts>` … in the `@% … %@` block | `{{ section.meta }}` members | `{{ section.meta }}` members | `{{{section.meta}}}` members |
-| Component call, **with argument** — `@area_component(@"Footer Links")` | `{{ areas[name] }}` map lookup | `{{ area name }}` imported .NET function | `{{area name}}` helper (`WriteSafeString`) |
-| Component call, **no argument** — `@head_scripts()`, `@custom_styles()` | `{{ comp.head_scripts }}` map lookup | `{{ comp.head_scripts }}` member | `{{{comp.head_scripts}}}` member |
-| List loop over the ordered area menus — Heddle issues the `@area_component` calls in document order | `{% for name in area_names %}…{% endfor %}` | `{{ for name in area_names }}…{{ end }}` | `{{#each area_names}}…{{/each}}` |
+| Heddle construct | Liquid (Fluid / DotLiquid) | Scriban | Handlebars | Razor |
+| --- | --- | --- | --- | --- |
+| Layout inheritance — `@<<{{layout.heddle}}` (home pulls in the layout) | `{% include 'layout' %}` (Fluid via `IFileProvider`, DotLiquid via `IFileSystem`) | `{{ include 'layout' }}` via `ITemplateLoader` | `{{> layout }}` registered partial | `Layout = "twin-layout.cshtml"` in `twin-home.cshtml` |
+| Reusable section defaults — `<meta>`, `<socialmeta>`, `<page_scripts>` … in the `@% … %@` block | `{{ section.meta }}` members | `{{ section.meta }}` members | `{{{section.meta}}}` members | `@Html.Raw(Model.Sections["meta"])` |
+| Component call, **with argument** — `@area_component(@"Footer Links")` | `{{ areas[name] }}` map lookup | `{{ area name }}` imported .NET function | `{{area name}}` helper (`WriteSafeString`) | `@Html.Raw(Model.Areas[name])` |
+| Component call, **no argument** — `@head_scripts()`, `@custom_styles()` | `{{ comp.head_scripts }}` map lookup | `{{ comp.head_scripts }}` member | `{{{comp.head_scripts}}}` member | `@Html.Raw(Model.Components["head_scripts"])` |
+| List loop over the ordered area menus — Heddle issues the `@area_component` calls in document order | `{% for name in area_names %}…{% endfor %}` | `{{ for name in area_names }}…{{ end }}` | `{{#each area_names}}…{{/each}}` | `@for (…) { @Html.Raw(…) }` |
+| The `@body()` slot (resolves to the layout's empty default) | no body placeholder | no body placeholder | no body placeholder | `@RenderBody()`, kept in its real position; MVC requires a layout to call it once |
 
 The area-menu fragments are not transcribed into any template language: every twin reads them from
 `AreaComponent.Areas` (the exact dictionary Heddle renders from) via `TwinContent.Areas`, so a twin
@@ -50,14 +51,22 @@ Run the check on its own (fast, no BenchmarkDotNet/host spin-up):
 dotnet run -c Release --project src/Heddle.Performance -f net10.0 -- parity
 ```
 
-Confirmed output — all four twins equal Heddle (34,837 normalized chars):
+Confirmed output — all five twins equal Heddle:
 
 ```
-[PASS] Fluid       55456 raw chars, 34837 normalized chars == Heddle
-[PASS] Scriban     55456 raw chars, 34837 normalized chars == Heddle
-[PASS] DotLiquid   55456 raw chars, 34837 normalized chars == Heddle
-[PASS] Handlebars  55456 raw chars, 34837 normalized chars == Heddle
+[PASS] Fluid       54340 raw chars, 34837 normalized chars == Heddle
+[PASS] Scriban     54340 raw chars, 34837 normalized chars == Heddle
+[PASS] DotLiquid   54340 raw chars, 34837 normalized chars == Heddle
+[PASS] Handlebars  54340 raw chars, 34837 normalized chars == Heddle
+[PASS] Razor       54358 raw chars, 34839 normalized chars == Heddle
 ```
+
+Razor's normalized length differs by two characters because Razor emits slightly different
+incidental whitespace; the comparison strips every whitespace run from both sides (contract v2
+step N3b) before the ordinal compare, so whitespace can never decide a verdict here. Razor is
+also the one twin that needs a host — MVC resolves the view engine, temp-data provider and model
+metadata from DI — so `ParityCheck.Twins` takes an optional `IServiceProvider`, the `parity` verb
+builds that host lazily for this one check, and `TextRenderBenchmarks` passes its own.
 
 ## Dimensions measured (D1-R4/R5)
 
@@ -85,10 +94,27 @@ section.meta → section.social
 → assets_scripts → page_scripts (empty) → endpage_scripts (empty) → body_end_scripts
 ```
 
-This keeps the parity comparison honest (all five engines render byte-identical output). Note that
-`RazorTest` is a pre-existing twin that renders the full HTML page from `Views/home.cshtml` and is
-**not** under the parity assertion; bringing the Heddle corpus and the Razor view back into a single
-composed page is a separate template-authoring concern outside D1's scope.
+This keeps the parity comparison honest (all six engines render byte-identical output).
+
+**Razor, as of 2026-07-25 ([ledger E5](../../../docs/spec/records.md#cross-spec-amendments-ledger)).**
+`RazorTest` used to render the full HTML page from `Views/home.cshtml` + `Views/layout.cshtml` and
+was **not** under the parity assertion, while still occupying a row in `TextRenderBenchmarks` — a
+suite whose whole premise is that every row does identical work. It also carried its own
+hand-duplicated 56 KB copy of the area dictionary under `TestSuite/RazorExtensions/`, which had
+already drifted from `layout.heddle` unnoticed (an empty `logo-holder` against Heddle's
+`<a href="/">`), and a `RazorCustomStyles` component that no view ever invoked, so Razor silently
+omitted the `/* CSS Comment Test */` fragment Heddle emits. Nothing compared the two, so nothing
+caught any of it.
+
+It is now a twin like the other four: `Views/twin-home.cshtml` + `Views/twin-layout.cshtml` render
+the same fragment sequence from the shared `TwinContent` fixtures, projected onto the public
+`RazorTwinModel` (needed because runtime compilation emits the view into a separate assembly that
+cannot see `internal` members). The full-page views and the duplicated fixture tree are deleted.
+Razor's measured figure changed completely as a result — it is no longer rendering a larger page.
+It has been re-measured against this twin: **Heddle 30.52 μs vs Razor 41.66 μs** on the
+`composed-page` workload, both byte-identical, in the published
+[2026-07-25 run](../../../docs/benchmarks/2026-07-25/). Figures from before that run describe the
+old full-page workload and must not be carried over.
 
 ### Root cause (investigated for D2 — no engine change)
 

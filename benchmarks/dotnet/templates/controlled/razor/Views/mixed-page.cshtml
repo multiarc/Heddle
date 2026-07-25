@@ -1,0 +1,20 @@
+@*
+    Razor parity twin -- mixed-page (ledger E8/E9).
+
+    Razor is now measured on ALL EIGHT workloads. It previously existed for composed-page only,
+    which meant the repository's "faster than Razor" claim rested on the single least favourable
+    workload in the set. An engine with one workload does not belong in a cross-stack table.
+
+    Every value comes from the shared PUBLIC fixtures under src/Models/, the same objects every
+    other engine reads, so this twin cannot drift from the engine it is compared against. Its
+    predecessor did drift -- it carried a hand-duplicated 56 KB copy of the area dictionary that had
+    diverged unnoticed -- precisely because nothing compared the two.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model MixedContent.MixedModel
+@{ Layout = null; }
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>@Html.Raw(Model.PageTitle)</title><style>body{font:16px/1.5 system-ui;margin:0;color:#222}header{background:#1a2b3c;color:#fff;padding:12px 24px}nav a{color:#9cf;margin-right:12px;text-decoration:none}main{max-width:960px;margin:0 auto;padding:24px}.hero{background:#f4f6f8;padding:32px;border-radius:8px}.banner{background:#fff4d6;padding:8px 16px;border-radius:4px}.grid{display:flex;flex-wrap:wrap;gap:16px}.card{border:1px solid #ddd;border-radius:6px;padding:16px;width:280px}.card h3{margin:0 0 8px}.price{font-weight:700}.sale{color:#b00020;font-weight:700}footer{border-top:1px solid #ddd;margin-top:32px;padding:16px 24px;color:#666}</style></head><body><header><h1>@Html.Raw(Model.StoreName)</h1><nav><a href="/">Home</a><a href="/catalog">Catalog</a><a href="/deals">Deals</a><a href="/about">About</a><a href="/support">Support</a><a href="/account">Account</a></nav></header><main>@if (Model.ShowBanner)
+{<div class="banner">@Html.Raw(Model.BannerText)</div>}<section class="hero"><h2>@Html.Raw(Model.HeroHeading)</h2><p>@Html.Raw(Model.HeroTagline)</p></section><section class="grid">@foreach (var p in Model.Products)
+{<article class="card"><h3>@Html.Raw(p.Name)</h3><p class="sku">@Html.Raw(p.Sku)</p><p class="price">@p.Price</p>@if (p.OnSale)
+{<p class="sale">On sale</p>}<p class="blurb">@Html.Raw(p.Blurb)</p></article>}</section>@if (Model.ShowDebugPanel)
+{<pre class="debug">debug</pre>}</main><footer><p>@Html.Raw(Model.FooterNote)</p><p>@Html.Raw(Model.StoreName) @Model.Year @Html.Raw(Model.SupportEmail)</p></footer></body></html>

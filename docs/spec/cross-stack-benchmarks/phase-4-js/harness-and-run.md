@@ -151,28 +151,47 @@ Both track scripts follow the same skeleton (README D10–D12):
 import { bench, group, run, do_not_optimize } from "mitata";
 import { assertControlledGate } from "../src/gate/controlled.mjs";  // or verifier
 import { renderers } from "../src/engines/index.mjs";               // per-track render table
+import { flatten } from "./_shared.mjs";                            // %FlattenString (D11, E4)
 
 assertControlledGate("controlled");   // throws → exit 1 → no numbers (contract rule 2)
 
 for (const id of WORKLOAD_IDS) {
   group(`${id} [controlled]`, () => {
-    bench("handlebars", () => do_not_optimize(renderers.handlebars[id]()));
-    bench("eta", () => do_not_optimize(renderers.eta[id]()));
+    bench("handlebars", () => do_not_optimize(flatten(renderers.handlebars[id]())));
+    bench("eta", () => do_not_optimize(flatten(renderers.eta[id]())));
   });
 }
 
 const result = await run();           // default 'mitata' format → stdout (captured by run.ps1)
 writeArtifacts("controlled", result); // JSON: result.benchmarks, BigInt→string replacer
 deoptCheckTrailer();                  // scans in-process capture buffer for '!' → DEOPT-CHECK line
+materialisationCheckTrailer(result);  // implied throughput vs ceiling → exits 1 on a violation
 ```
 
 Normative points:
 
 - **Flags:** every measurement invocation uses `--expose-gc --allow-natives-syntax` (mitata's
-  canonical set; enables GC control between benches and the optimization-status/DCE marker).
+  canonical set; enables GC control between benches, the optimization-status/DCE marker, and —
+  amended 2026-07-25, [E4](../../records.md#cross-spec-amendments-ledger) — the `%FlattenString`
+  materialisation primitive in the benchmark body).
+- **Materialisation (D11 as amended, E4):** every body is
+  `() => do_not_optimize(flatten(render(...)))`. Without `flatten`, V8 returns an unflattened
+  `ConsString` from these `+=`-built templates and the timed region measures rope construction
+  rather than output production. `flatten` is built through `new Function` so its absence under
+  the flag-less gate entry points is a catchable runtime error rather than a module-load
+  `SyntaxError`; a run that lands on the fallback is not a sanctioned measurement run and
+  `MATERIALISATION-CHECK` fails it.
 - **Warmup/sampling:** mitata's automatic warmup and sampling, unmodified — no manual warmup,
-  no custom min/max iteration settings. (Per-harness stability settings recorded in the report:
-  the flag set, priority class, power plan, and this "harness defaults" statement.)
+  no custom min/max iteration settings, and none available: `B.run()` builds its own options
+  object and `run()` forwards only `throw`, so `min_cpu_time` (642 ms) is unreachable from the
+  public API. (Per-harness stability settings recorded in the report: the flag set, priority
+  class, power plan, and this "harness defaults" statement.)
+- **Passes (ledger E6):** each render track is measured as **18 repeat passes**, one process
+  each, and `bench/aggregate.mjs` publishes the median of the per-pass `avg` with the cross-pass
+  `min … max` as dispersion. Because the per-cell budget cannot be raised, the ecosystem's share
+  of the uniform ~10 min budget is spent on independent processes — the cross-process term a
+  single-process harness otherwise never samples. `cold-compile` stays one pass (compile-dominated
+  D10 sidebar).
 - **Statistic:** the published wall time per render is mitata's `avg`, per [Phase 1 README D12
   — Wall-time statistic mapping (Q2.1)](../phase-1-cross-stack-foundation/README.md#d12--wall-time-statistic-mapping-q21)
   (which reads it off the protocol's mapping table); dispersion published alongside is the
@@ -192,6 +211,14 @@ Normative points:
   that buffer for the `!` marker, emitting the final line `DEOPT-CHECK: clean` or
   `DEOPT-CHECK: flagged <bench names>`. The publication checklist consumes it; the `.txt`
   capture remains the human-readable mirror only.
+- **MATERIALISATION-CHECK (D12 companion, [E4](../../records.md#cross-spec-amendments-ledger)):**
+  computed from `result.benchmarks` after `writeArtifacts`, not from the text capture. For each
+  cell it divides the golden `byteLength` (from `src/gate/corpus.mjs`) by the cell's `avg` and
+  compares against the 50 B/ns physical ceiling, printing `MATERIALISATION-CHECK: clean` or
+  `MATERIALISATION-CHECK: flagged <cells>`. It **exits non-zero** on any violation, and also if
+  the `flatten` primitive fell back to its non-natives path. This is fatal rather than
+  explainable: a violation means the harness is not doing the work it reports. D12's `!` marker
+  cannot cover this — its `avg < 1.42 × noop.avg` threshold only catches total elimination.
 
 ## Windows stability verification
 
@@ -207,14 +234,22 @@ Windows 11 protocol box (Ryzen 9 9950X), High-performance power plan, no interac
 other benchmark/build processes; launcher `run.ps1` (High priority class); pinned Node and
 packages (`npm ci` beforehand).
 
-**Procedure:**
+**Procedure.** Since [ledger E6](../../records.md#cross-spec-amendments-ledger) this is not a
+separate pass over the harness — it *is* the measurement, and it runs on every measurement run
+of both render tracks rather than once before the first publication:
 
-1. `./run.ps1 bench/controlled.mjs -Repeat 5` — five consecutive full controlled-suite runs;
-   captures land in `artifacts/stability/run-1..5.{txt,json}`.
-2. A summarizer step (small script or manual table — the JSON artifacts carry `avg` per bench)
-   computes, per benchmark cell, mean, stddev, and **RSD = stddev/mean** of the five `avg`
-   values, into `stability-summary.md`.
-3. Verdict per README D13 thresholds: all cells ≤ 5% → `STABILITY: verified`; any cell in
+1. `./run.ps1 bench/<track>.mjs -Repeat 18` (`--repeat 18` on Linux) — 18 consecutive full runs
+   of the track; captures land in `artifacts/stability/<track>/run-1..18.{txt,json}`. The
+   directory is per track and is cleared first, so a leftover pass from another track or a longer
+   previous sequence cannot be medianed in. Five remains the floor: `aggregate.mjs` refuses fewer.
+2. `bench/aggregate.mjs <track>`, invoked automatically by the launcher at the end of a repeat
+   sequence, computes per cell the median, the cross-pass `min … max`, and
+   **RSD = stddev/mean** of the per-pass `avg` values, writes `stability-summary-<track>.md`, and
+   republishes `artifacts/<track>.json` + `.txt` as the aggregate so the two published views
+   agree.
+3. Verdict per README D13 thresholds, printed as a `STABILITY:` line and enforced by exit code
+   (`failed` exits 1, taking the run step down with it): all cells ≤ 5% → `STABILITY: verified`;
+   any cell in
    (5%, 10%] after one investigate-and-re-run cycle → `STABILITY: verified-with-disclosure`
    (the RSD table must be published in the report); any cell > 10% persisting →
    `STABILITY: failed` → no publication; evidence recorded; tinybench amendment proposed via
@@ -237,7 +272,8 @@ One new directory `docs/benchmarks/<yyyy-MM-dd>/` in the protocol's publication 
 2. **`## Environment`** — fenced block recording: mitata 1.0.34; OS name + build; CPU model;
    `node --version` (24.18.0) and `process.versions.v8`; handlebars 4.7.9; eta 4.6.0; repo
    commit; launcher settings (High priority class, High-performance power plan, flags
-   `--expose-gc --allow-natives-syntax`, "mitata defaults — no custom warmup/sampling");
+   `--expose-gc --allow-natives-syntax`, "mitata defaults — no custom warmup/sampling",
+   the pass count and that the published statistic is the cross-pass median (E6));
    stability verdict line and, if `verified-with-disclosure`, the RSD table.
 3. **`## The workloads`** — one bullet per workload: id, owned dimension (from Phase 1
    workloads.md), suite, and the gate that ran (controlled byte gate / idiomatic verifier);

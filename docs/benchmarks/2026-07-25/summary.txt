@@ -1,0 +1,44 @@
+mode:       MEASUREMENT (spec protocol shapes)
+budget:     baseline (E6 measurement budget)
+ecosystems: dotnet rust jvm js python go
+finished:   2026-07-25 17:02:15
+
+Ecosystem  Phase    Step                                 ExitCode  Seconds  Status
+---------  -------  -----------------------------------  --------  -------  ------
+dotnet     gate     gate-parity                          0         5        OK
+dotnet     gate     gate-verify-corpus                   0         3        OK
+rust       gate     gate                                 0         1        OK
+jvm        gate     gate-build-verify                    0         3        OK
+js         gate     npm-ci                               0         1        OK
+js         gate     selftest                             0         0        OK
+js         gate     gate                                 0         0        OK
+python     gate     pip-install                          0         0        OK
+python     gate     selftest                             0         0        OK
+python     gate     gate-all                             0         1        OK
+go         gate     gate                                 0         0        OK
+dotnet     measure  suite-TextRenderBenchmarks           0         117      OK
+dotnet     measure  suite-SubstitutionRenderBenchmarks   0         95       OK
+dotnet     measure  suite-LoopRenderBenchmarks           0         228      OK
+dotnet     measure  suite-MixedRenderBenchmarks          0         106      OK
+dotnet     measure  suite-ConditionalRenderBenchmarks    0         111      OK
+dotnet     measure  suite-FragmentRenderBenchmarks       0         112      OK
+dotnet     measure  suite-FortunesRenderBenchmarks       0         105      OK
+dotnet     measure  suite-EncodedLoopRenderBenchmarks    0         133      OK
+dotnet     copy     copy-bdn-artifacts                   0         0        OK
+rust       measure  criterion-bench                      0         1229     OK
+rust       measure  alloc-report                         0         1        OK
+rust       measure  summarize                            0         0        OK
+rust       copy     copy-criterion                       0         0        OK
+jvm        measure  jmh-full                             0         1292     OK
+js         measure  bench-controlled-x54                 0         842      OK
+js         measure  bench-idiomatic-x54                  0         849      OK
+js         measure  bench-cold-compile                   0         16       OK
+js         copy     copy-artifacts                       0         0        OK
+python     measure  bench_jinja2_controlled              0         297      OK
+python     measure  bench_jinja2_idiomatic               0         304      OK
+python     measure  bench_mako_controlled                0         303      OK
+python     measure  bench_mako_idiomatic                 0         328      OK
+python     measure  bench_cold_compile                   0         274      OK
+python     measure  mem-tracemalloc                      0         27       OK
+go         measure  run-benchmarks                       0         1698     OK
+go         copy     copy-results                         0         0        OK

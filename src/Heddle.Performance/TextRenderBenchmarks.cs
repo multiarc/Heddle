@@ -1,22 +1,15 @@
-﻿using System.Diagnostics;
-using System.IO;
-using System.Reflection;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Html;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.ObjectPool;
-using Heddle.Native;
 using Heddle.Performance.Runners;
 using Heddle.Performance.TestSuite;
 
 namespace Heddle.Performance;
 
-[MemoryDiagnoser]
+// ShortRunJob (LaunchCount 1, WarmupCount 3, IterationCount 3) rather than BenchmarkDotNet's
+// adaptive defaults: ledger E6's uniform ~10 min per-ecosystem measurement budget. At defaults
+// these eight suites cost 21.5 min for 41 methods (~32 s each), the second-largest leg.
+[MemoryDiagnoser, ShortRunJob]
 public class TextRenderBenchmarks
 {
     private IHost _host;
@@ -30,17 +23,11 @@ public class TextRenderBenchmarks
     private HandlebarsTest _handlebarsTest;
 
     [GlobalSetup]
-    public async Task Setup() {
-        _host = Host.CreateDefaultBuilder()
-            .ConfigureServices(ConfigureDefaultServices)
-            // Host lifecycle hygiene only (no benchmark-semantics change): suppress the console
-            // lifetime's "Application started / Press Ctrl+C" status banner so benchmark stdout
-            // stays clean, and keep warnings+ on stderr.
-            .UseConsoleLifetime(o => o.SuppressStatusMessages = true)
-            .ConfigureLogging(logging => logging.AddConsole(co => co.LogToStandardErrorThreshold = LogLevel.Warning))
-            .Build();
+    public Task Setup() {
+        // The MVC host exists for the Razor twin. Since E5 it is required by the GATE as well as
+        // the row: Razor is a parity twin now, and it is the one engine that renders through DI.
+        _host = RazorHost.Build();
 
-        await _host.StartAsync();
         _heddleTest = new HeddleTest();
         _razorTest = new RazorTest(_host.Services);
         _fluidTest = new FluidTest();
@@ -52,9 +39,11 @@ public class TextRenderBenchmarks
 
         // D1-R3: every competitor twin must render output identical to Heddle (after the single
         // documented normalization) before we time anything, so a drifted twin fails loudly rather
-        // than benchmarking different work.
-        ParityCheck.Assert();
+        // than benchmarking different work. Passing the host's services includes the Razor twin,
+        // which since E5 is asserted like the other four rather than exempt.
+        ParityCheck.Assert(_host.Services);
         GoldenCorpus.AssertFresh("composed-page");
+        return Task.CompletedTask;
     }
 
     [GlobalCleanup]
@@ -100,40 +89,4 @@ public class TextRenderBenchmarks
         await _handlebarsTest.Run();
     }
     
-    private static void ConfigureDefaultServices(IServiceCollection services) {
-        services.AddSingleton<ObjectPoolProvider, DefaultObjectPoolProvider>();
-
-        var diagnosticSource = new DiagnosticListener("Microsoft.AspNetCore");
-        services.AddSingleton<DiagnosticSource>(diagnosticSource);
-
-        services.AddLogging();
-        services.AddControllersWithViews();
-        services.AddRazorPages().AddRazorRuntimeCompilation().AddApplicationPart(typeof(Program).Assembly);
-        services.AddSingleton<RazorViewToStringRenderer>();
-        services.AddSingleton<DiagnosticSource>(diagnosticSource);
-        services.AddSingleton<DiagnosticListener>(diagnosticSource);
-        var appDirectory = Directory.GetCurrentDirectory();
-        var fileProvider = new PhysicalFileProvider(appDirectory);
-        services.AddSingleton<IWebHostEnvironment>(new HostingEnvironment(fileProvider, appDirectory));
-        AssemblyHelper.Configure(typeof(Program).GetTypeInfo().Assembly);
-        AssemblyHelper.Configure(typeof(IHtmlContent).GetTypeInfo().Assembly);
-    }
-
-    internal class HostingEnvironment : IWebHostEnvironment
-    {
-        public HostingEnvironment(IFileProvider contentRootFileProvider, string webRootPath) {
-            ContentRootFileProvider = contentRootFileProvider;
-            WebRootPath = webRootPath;
-            ContentRootPath = webRootPath;
-            WebRootFileProvider = contentRootFileProvider;
-        }
-
-        public string EnvironmentName { get; set; } = "Production";
-
-        public string ApplicationName { get; set; } = "Heddle.Performance";
-        public string WebRootPath { get; set; }
-        public IFileProvider WebRootFileProvider { get; set; }
-        public string ContentRootPath { get; set; }
-        public IFileProvider ContentRootFileProvider { get; set; }
-    }
 }

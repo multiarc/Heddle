@@ -1,0 +1,1 @@
+<ul class="matrix">@list(Rows){{<li>@if(IsBronze){{<span class="t0">bronze</span>}}@elif(IsSilver){{<span class="t1">silver</span>}}@elif(IsGold){{<span class="t2">gold</span>}}@else(){{<span class="t3">platinum</span>}}<em>@(Name)</em>@if(HasNote){{<small>@(Note)</small>}}@if(IsActive){{<b>active</b>}}</li>}}</ul>

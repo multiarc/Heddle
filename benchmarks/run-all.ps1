@@ -17,7 +17,8 @@
 #   powershell -ExecutionPolicy Bypass -File benchmarks\run-all.ps1 -Smoke     # short functional pass
 #   ... -Ecosystem rust,go        # subset
 #   ... -OutDir E:\bench-out      # artifact/log destination (no spaces in the path)
-#   ... -JsStabilityRepeat        # opt in to the JS five-run stability procedure (Phase 4 D13)
+#   ... -Budget baseline          # ~30 min/ecosystem instead of the ~10 min default
+#   ... -JsPasses 24              # more JS repeat passes than the profile default
 #
 # Windows PowerShell 5.1 compatible: no pipeline chain operators, no ternary, ASCII only.
 
@@ -30,13 +31,53 @@ param(
 
     [string]$OutDir = '',
 
-    # Phase 4 D13: the five-run stability procedure is a separate publication-gating step,
-    # never auto-run. This switch opts in (full mode only; runs BEFORE the timed suites,
-    # matching the Linux run-all.sh measurement order).
-    [switch]$JsStabilityRepeat
+    # Ledger E6 measurement budget. Every harness's committed source/script default IS 'short',
+    # so a bare single-harness invocation is the ~10 min shape; 'baseline' layers CLI overrides
+    # on top -- roughly 3x the capture samples and one extra warmup run -- for ~30 min each.
+    # Named -Budget, not -Profile: PowerShell already has an automatic variable of that
+    # name (the profile script path), and a parameter would shadow it inside this script.
+    [ValidateSet('short', 'baseline')]
+    [string]$Budget = 'short',
+
+    # JS repeat passes per render track, aggregated by bench/aggregate.mjs into the published
+    # artifact plus the D13 verdict. 0 means "take the profile default" (18 short / 54 baseline);
+    # 5 is D13's floor and aggregate.mjs refuses fewer.
+    [ValidateRange(0, 200)]
+    [int]$JsPasses = 0
 )
 
 $ErrorActionPreference = 'Continue'
+
+# --- Measurement budget profiles (ledger E6) -------------------------------------------------
+#
+# Nothing here changes WHAT is measured, only how many times. The committed source/script
+# defaults are the 'short' shape; 'baseline' layers CLI overrides for roughly 3x the capture
+# samples plus one extra warmup run. .NET is the exception to that ratio: it is overhead-bound
+# (one process per method, plus JIT and MemoryDiagnoser), so its baseline values are simply
+# BenchmarkDotNet's own adaptive-default shape -- the regime the protocol pinned before E6.
+if ($Budget -eq 'baseline') {
+    $dotnetProfileArgs = ' --warmupCount 7 --iterationCount 15'
+    $rustProfileArgs   = ' --warm-up-time 4 --measurement-time 30'
+    $jmhProfileArgs    = ' -wi 2 -i 9'
+    $pyValuesArgs      = ' --values 9 --warmups 2'
+    $pyColdArgs        = ''            # pyperf default 20 processes
+    $goProfileArgs     = ' -Count 42'
+    $profileJsPasses   = 54
+}
+else {
+    $dotnetProfileArgs = ''            # [ShortRunJob] in source: LaunchCount 1 / W3 / I3
+    $rustProfileArgs   = ''            # source: warmup 3 s, measurement 10 s
+    $jmhProfileArgs    = ''            # annotations: Fork 3, W 1x2s, M 3x1s
+    $pyValuesArgs      = ''            # pyperf default 3 values
+    $pyColdArgs        = ' --processes 7'
+    $goProfileArgs     = ''            # script default -Count 14
+    $profileJsPasses   = 18
+}
+if ($JsPasses -eq 0) { $JsPasses = $profileJsPasses }
+if ($JsPasses -lt 5) {
+    Write-Host 'ERROR: -JsPasses must be at least 5 (Phase 4 D13 verdict floor).'
+    exit 1
+}
 
 # --- Layout ---------------------------------------------------------------------------------
 $BenchRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -206,6 +247,7 @@ Note '==========================================================================
 Note ' Heddle cross-stack benchmarks -- Windows master runner'
 Note ('   date:       ' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))
 Note ('   mode:       ' + $mode)
+Note ('   budget:     ' + $Budget + '   (E6 measurement budget)')
 Note ('   ecosystems: ' + ($Selected -join ', '))
 Note ('   out dir:    ' + $OutDir)
 Note '=============================================================================='
@@ -249,6 +291,26 @@ Push-Location $GoDir
 $vTempl = Get-ToolVersion 'go tool templ version'
 Pop-Location
 Note ('   templ      : ' + $vTempl + '   (pin: v0.3.1020, via go tool)')
+
+# --- toolchain.json: the pin deltas, machine-readable -----------------------------------------
+# The notes above are for a human reading the step log. A published report also needs the deltas
+# in its environment block, and reconstructing them by hand from artifact metadata after the fact
+# is error-prone -- an earlier report had to do exactly that. benchmarks/report/consolidate.py
+# reads this file and generates the pin-drift table from it. SR-3 posture is unchanged: drift is
+# recorded, never fatal.
+$toolchain = [ordered]@{
+    '.NET SDK' = @{ pin = '(protocol records the observed line)'; actual = $vDotnet; drift = $false }
+    'Rust'     = @{ pin = '1.97.1';     actual = $vRustc; drift = ($vRustc -notmatch '1\.97\.1') }
+    'JDK'      = @{ pin = 'Temurin 25'; actual = $vJava;  drift = ($JdkMajor -ne 25) }
+    'Node.js'  = @{ pin = 'v24.18.0';   actual = $vNode;  drift = (-not $NodeIsPinned) }
+    'CPython'  = @{ pin = '3.14.6';     actual = $vPy;    drift = ($vPy -notmatch '3\.14\.6') }
+    'Go'       = @{ pin = 'go1.26.x';   actual = $vGo;    drift = ($vGo -notmatch 'go1\.26\.') }
+    'templ'    = @{ pin = 'v0.3.1020';  actual = $vTempl; drift = ($vTempl -notmatch 'v0\.3\.1020') }
+}
+$toolchainPath = Join-Path $OutDir 'toolchain.json'
+# -Depth 3 keeps the nested pin/actual/drift objects; the default (2) would stringify them.
+$toolchain | ConvertTo-Json -Depth 3 | Set-Content -Path $toolchainPath -Encoding utf8NoBOM
+Note ('   toolchain.json written to ' + $toolchainPath + ' (pin deltas, machine-readable)')
 
 # Goldens-rewrite hazard: a stray dotnet-hosted watcher (Heddle demo/docs tooling) touching
 # the working tree during export/verify would dirty the corpus manifest. Best-effort check:
@@ -338,6 +400,7 @@ function Write-Summary {
     $summaryPath = Join-Path $OutDir 'summary.txt'
     $header = @(
         ('mode:       ' + $mode),
+        ('budget:     ' + $Budget + '   (E6 measurement budget)'),
         ('ecosystems: ' + ($Selected -join ', ')),
         ('finished:   ' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')),
         ''
@@ -392,6 +455,7 @@ foreach ($eco in $Selected) {
             foreach ($suite in $DotnetSuites) {
                 $bdnCmd = 'dotnet run -c Release -f net10.0 -- --filter *' + $suite + '*'
                 if ($Smoke) { $bdnCmd = $bdnCmd + ' --job Dry' }
+                elseif ($dotnetProfileArgs -ne '') { $bdnCmd = $bdnCmd + $dotnetProfileArgs }
                 [void](Invoke-Step -Eco 'dotnet' -Phase $measurePhase -Name ('suite-' + $suite) -WorkDir $PerfDir -Command $bdnCmd)
             }
             Copy-Artifacts -Eco 'dotnet' -Name 'copy-bdn-artifacts' `
@@ -408,9 +472,12 @@ foreach ($eco in $Selected) {
             }
             else {
                 [void](Invoke-Step -Eco 'rust' -Phase $measurePhase -Name 'criterion-bench' -WorkDir $RustDir `
-                    -Command ('cargo bench ' + $benchTargets + ' -- --noplot'))
+                    -Command ('cargo bench ' + $benchTargets + ' -- --noplot' + $rustProfileArgs))
+                # --out lands the D13 artifact straight in the run dir: Copy-Artifacts only handles
+                # directories, and before this the report existed nowhere but the step log.
+                [void](New-Item -ItemType Directory -Force -Path (Join-Path $OutDir 'rust'))
                 [void](Invoke-Step -Eco 'rust' -Phase $measurePhase -Name 'alloc-report' -WorkDir $RustDir `
-                    -Command 'cargo run --release --features alloc-count --bin alloc_report')
+                    -Command ('cargo run --release --features alloc-count --bin alloc_report -- --out "' + (Join-Path $OutDir 'rust\alloc-report.txt') + '"'))
                 # summarize reads heddle-reference.toml; while the Phase 1 Windows reference
                 # rows are pending it fails loudly by design -- captured, non-fatal.
                 [void](Invoke-Step -Eco 'rust' -Phase $measurePhase -Name 'summarize' -WorkDir $RustDir -NonFatal `
@@ -428,32 +495,40 @@ foreach ($eco in $Selected) {
                     -Command ('java -jar target\benchmarks.jar -f 1 -wi 1 -i 1 -w 1s -r 1s -foe true -prof gc -rf json -rff ' + $rff))
             }
             else {
-                Write-Host 'NOTE: full JMH run uses the committed annotation regime (Fork 5, 5x10s/5x10s).' -ForegroundColor Yellow
-                Write-Host '      Expect roughly 4.5-5.5 hours unattended (Phase 3 procedure).' -ForegroundColor Yellow
+                Write-Host 'NOTE: JMH regime = annotations (Fork 3, 1x2s warmup, 3x1s measure)' -ForegroundColor Yellow
+                Write-Host ("      + budget '" + $Budget + "' overrides:" + $jmhProfileArgs) -ForegroundColor Yellow
+                Write-Host '      Expect ~9 min (short) / ~23 min (baseline); it was 4.5 h before ledger E6.' -ForegroundColor Yellow
                 [void](Invoke-Step -Eco 'jvm' -Phase $measurePhase -Name 'jmh-full' -WorkDir $JvmDir `
-                    -Command ('java -jar target\benchmarks.jar -prof gc -rf json -rff ' + $rff))
+                    -Command ('java -jar target\benchmarks.jar' + $jmhProfileArgs + ' -prof gc -rf json -rff ' + $rff))
             }
         }
         'js' {
             # Phase 4 shapes via the committed launcher run.ps1 (High priority class,
             # node --expose-gc --allow-natives-syntax, stdout captured to artifacts/).
+            #
+            # The two render tracks run $JsPasses times each and are aggregated (ledger E6).
+            # mitata exposes no per-cell time budget -- B.run() builds its own options object, so
+            # min_cpu_time (642 ms) is unreachable from the public API -- which left this
+            # ecosystem measuring 32 cells in 31 s against 15-31 s/cell everywhere else. Its
+            # share of the uniform budget is spent on independent processes instead: run.ps1
+            # -Repeat N, then bench/aggregate.mjs medians the per-pass avg into
+            # artifacts/<track>.json and emits the D13 verdict. The stability procedure IS the
+            # measurement now, rather than a separate gate someone has to remember -- which is
+            # how the withdrawn 2026-07-22 run shipped JS numbers with no RSD verdict at all.
+            #
+            # cold-compile stays a single pass: compile-dominated D10 sidebar, not a protocol
+            # cell, so repeating it buys a verdict for numbers no ranking consumes.
             $runPs1 = 'powershell -NoProfile -ExecutionPolicy Bypass -File run.ps1'
-            if (-not $Smoke) {
-                if ($JsStabilityRepeat) {
-                    [void](Invoke-Step -Eco 'js' -Phase $measurePhase -Name 'stability-repeat5' -WorkDir $JsDir `
-                        -Command ($runPs1 + ' bench/controlled.mjs -Repeat 5'))
-                    Write-Host 'NOTE: compute the five-run RSD verdict (Phase 4 D13 thresholds) from' -ForegroundColor Yellow
-                    Write-Host '      artifacts\stability\run-*.json before publishing JS numbers.' -ForegroundColor Yellow
+            foreach ($jsTrack in @('controlled', 'idiomatic')) {
+                if ($Smoke) {
+                    [void](Invoke-Step -Eco 'js' -Phase $measurePhase -Name ('bench-' + $jsTrack) -WorkDir $JsDir `
+                        -Command ($runPs1 + ' bench/' + $jsTrack + '.mjs'))
                 }
                 else {
-                    Write-Host 'NOTE: the JS five-run stability procedure (Phase 4 D13) is a separate,' -ForegroundColor Yellow
-                    Write-Host '      publication-gating step. Re-run with -JsStabilityRepeat to execute it.' -ForegroundColor Yellow
+                    [void](Invoke-Step -Eco 'js' -Phase $measurePhase -Name ('bench-' + $jsTrack + '-x' + $JsPasses) -WorkDir $JsDir `
+                        -Command ($runPs1 + ' bench/' + $jsTrack + '.mjs -Repeat ' + $JsPasses))
                 }
             }
-            [void](Invoke-Step -Eco 'js' -Phase $measurePhase -Name 'bench-controlled' -WorkDir $JsDir `
-                -Command ($runPs1 + ' bench/controlled.mjs'))
-            [void](Invoke-Step -Eco 'js' -Phase $measurePhase -Name 'bench-idiomatic' -WorkDir $JsDir `
-                -Command ($runPs1 + ' bench/idiomatic.mjs'))
             [void](Invoke-Step -Eco 'js' -Phase $measurePhase -Name 'bench-cold-compile' -WorkDir $JsDir `
                 -Command ($runPs1 + ' bench/cold-compile.mjs'))
             Copy-Artifacts -Eco 'js' -Name 'copy-artifacts' `
@@ -472,10 +547,17 @@ foreach ($eco in $Selected) {
             New-Item -ItemType Directory -Force -Path $pyOut | Out-Null
             $pySmokeArgs = ''
             if ($Smoke) { $pySmokeArgs = ' --debug-single-value' }
+            # The four render scripts keep pyperf's default 20x3x1 (Phase 5 D8) -- at ~9 min for
+            # the 32 protocol cells they already sit inside ledger E6's uniform budget. The
+            # cold-compile sidebar does not: at defaults it cost 288 s, a third of the
+            # ecosystem's time for a non-comparable sidebar (D10), so it runs with 7 processes.
             $pyScripts = @('bench_jinja2_controlled', 'bench_jinja2_idiomatic', 'bench_mako_controlled', 'bench_mako_idiomatic', 'bench_cold_compile')
             foreach ($s in $pyScripts) {
+                $pyShapeArgs = ''
+                if ($s -eq 'bench_cold_compile') { $pyShapeArgs = $pyColdArgs }
+                else { $pyShapeArgs = $pyValuesArgs }
                 [void](Invoke-Step -Eco 'python' -Phase $measurePhase -Name $s -WorkDir $PyDir `
-                    -Command ($VenvPy + ' ' + $s + '.py --affinity=4' + $pySmokeArgs + ' -o ' + (Join-Path $pyOut ($s + '.json'))))
+                    -Command ($VenvPy + ' ' + $s + '.py --affinity=4' + $pyShapeArgs + $pySmokeArgs + ' -o ' + (Join-Path $pyOut ($s + '.json'))))
             }
             # Memory pass -- tracemalloc, separate from timing (Phase 5 D11).
             $memArgs = ''
@@ -488,6 +570,7 @@ foreach ($eco in $Selected) {
             # templ freshness, vet, gates, prebuild, High-priority timed runs, benchstat).
             $goCmd = 'powershell -NoProfile -ExecutionPolicy Bypass -File run-benchmarks.ps1'
             if ($Smoke) { $goCmd = $goCmd + ' -Count 1 -BenchTime 100ms' }
+            elseif ($goProfileArgs -ne '') { $goCmd = $goCmd + $goProfileArgs }
             [void](Invoke-Step -Eco 'go' -Phase $measurePhase -Name 'run-benchmarks' -WorkDir $GoDir -Command $goCmd)
             Copy-Artifacts -Eco 'go' -Name 'copy-results' `
                 -Source (Join-Path $GoDir 'results') -Dest (Join-Path $OutDir 'go')
@@ -496,6 +579,26 @@ foreach ($eco in $Selected) {
 }
 
 Write-Summary
+
+# --- consolidated tables ----------------------------------------------------------------------
+# Publishing used to mean copying artifacts into docs/benchmarks/<date>/ and then running
+# consolidate.py by hand. That hand step is exactly where table ORDER and transcribed figures drift
+# from the artifacts, so the runner does it here: the out dir gets its own consolidated-tables.md
+# and summary-tables.md, generated in tier order, before anyone looks at a number. Publishing is
+# then a copy -- no regeneration, no hand-ordered tables, no transcription.
+#
+# Non-fatal by design: a full sweep is expensive and a table-generation failure must not discard
+# it. The step is recorded like any other, so `RESULT: OK` still means every measurement is green
+# and a WARN row here says the tables need attention, not the run.
+if (-not $Smoke) {
+    # Stdlib-only and CPython >= 3.12, so the interpreter on PATH is enough -- the harness venv
+    # under benchmarks/python is pyperf's, and consolidate.py must not depend on it.
+    $consolidateCmd = 'python benchmarks\report\consolidate.py "' + $OutDir + '"'
+    [void](Invoke-Step -Eco 'report' -Phase $measurePhase -Name 'consolidate' -WorkDir $RepoRoot `
+        -NonFatal -Command $consolidateCmd)
+    Write-Summary
+}
+
 if ($script:Failed) {
     Write-Host 'RESULT: FAILED (one or more steps exited nonzero -- see summary above).' -ForegroundColor Red
     exit 1

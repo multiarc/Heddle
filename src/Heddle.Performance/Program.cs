@@ -8,15 +8,22 @@ namespace Heddle.Performance
     public class Program
     {
         public static void Main(string[] args) {
-            // Fast, host-free D1 parity harness: `dotnet run -c Release -- parity`. Confirms every
-            // competitor twin renders output identical to Heddle after the documented normalization
-            // without spinning up the full BenchmarkDotNet run (which the render GlobalSetup also asserts).
+            // D1 parity harness: `dotnet run -c Release -- parity`. Confirms every competitor twin
+            // renders output identical to Heddle after the documented normalization without spinning
+            // up the full BenchmarkDotNet run (which the render GlobalSetup also asserts).
+            //
+            // Seven of the eight workloads stay host-free and fast. The composed-page check builds
+            // the MVC host, because since ledger entry E5 Razor is a parity twin like the other four
+            // and it is the one engine that renders through DI — a one-command proof that silently
+            // skipped it would not be proving what it claims. The host is built lazily and disposed
+            // immediately, so the cost lands on exactly one of the eight checks.
             if (args != null && args.Length > 0 && string.Equals(args[0], "parity", StringComparison.OrdinalIgnoreCase))
             {
                 var all = true;
+                using var razorHost = RazorHost.Build();
                 foreach (var report in new Func<(bool AllMatch, string Text)>[]
                 {
-                    ParityCheck.Report,
+                    () => ParityCheck.Report(razorHost.Services),
                     ParityCheck.ReportSubstitution,
                     ParityCheck.ReportLoop,
                     ParityCheck.ReportMixed,

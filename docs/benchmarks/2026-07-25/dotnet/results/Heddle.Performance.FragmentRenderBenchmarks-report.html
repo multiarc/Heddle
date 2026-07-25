@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>Heddle.Performance.FragmentRenderBenchmarks-20260725-145218</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Linux Ubuntu 24.04.4 LTS (Noble Numbat)
+AMD Ryzen 9 9950X 0.62GHz, 1 CPU, 32 logical and 16 physical cores
+.NET SDK 10.0.110
+  [Host]   : .NET 10.0.10 (10.0.10, 10.0.1026.32716), X64 RyuJIT x86-64-v4
+  ShortRun : .NET 10.0.10 (10.0.10, 10.0.1026.32716), X64 RyuJIT x86-64-v4
+</code></pre>
+<pre><code>Job=ShortRun  IterationCount=15  LaunchCount=1  
+WarmupCount=7  
+</code></pre>
+
+<table>
+<thead><tr><th>Method    </th><th>Mean</th><th>Error</th><th>StdDev</th><th>Ratio</th><th>RatioSD</th><th>Gen0</th><th>Gen1</th><th>Allocated</th><th>Alloc Ratio</th>
+</tr>
+</thead><tbody><tr><td>RenderHeddle</td><td>3.907 &mu;s</td><td>0.0031 &mu;s</td><td>0.0029 &mu;s</td><td>1.00</td><td>0.00</td><td>1.3733</td><td>0.0458</td><td>22.45 KB</td><td>1.00</td>
+</tr><tr><td>RenderFluid</td><td>14.294 &mu;s</td><td>0.0238 &mu;s</td><td>0.0223 &mu;s</td><td>3.66</td><td>0.01</td><td>2.0905</td><td>0.0153</td><td>34.37 KB</td><td>1.53</td>
+</tr><tr><td>RenderScriban</td><td>47.704 &mu;s</td><td>0.1881 &mu;s</td><td>0.1760 &mu;s</td><td>12.21</td><td>0.04</td><td>9.7656</td><td>-</td><td>160.13 KB</td><td>7.13</td>
+</tr><tr><td>RenderDotLiquid</td><td>221.247 &mu;s</td><td>0.7034 &mu;s</td><td>0.6580 &mu;s</td><td>56.63</td><td>0.17</td><td>54.1992</td><td>3.9063</td><td>887.27 KB</td><td>39.53</td>
+</tr><tr><td>RenderHandlebars</td><td>29.368 &mu;s</td><td>0.1957 &mu;s</td><td>0.1830 &mu;s</td><td>7.52</td><td>0.05</td><td>29.1443</td><td>2.4719</td><td>476.2 KB</td><td>21.22</td>
+</tr></tbody></table>
+</body>
+</html>

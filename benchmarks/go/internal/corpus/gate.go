@@ -16,14 +16,14 @@ import (
 
 // Dir returns the committed corpus directory, resolved repo-relative from this source file
 // via runtime.Caller so `go test` works from any working directory
-// (benchmarks/go/internal/corpus → ../../../../src/Heddle.Performance/GoldenCorpus).
+// (benchmarks/go/internal/corpus → ../../../dotnet/GoldenCorpus).
 func Dir() string {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
 		panic("gate: runtime.Caller failed — cannot resolve the corpus directory")
 	}
 	return filepath.Join(filepath.Dir(thisFile),
-		"..", "..", "..", "..", "src", "Heddle.Performance", "GoldenCorpus")
+		"..", "..", "..", "dotnet", "GoldenCorpus")
 }
 
 // Workloads holds the eight workload ids in workload-number order (Phase 1 workloads.md).

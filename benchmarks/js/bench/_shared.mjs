@@ -2,18 +2,20 @@
 // §mitata run shape). Provides: the in-process gates (run BEFORE any bench() registration —
 // a failure exits 1 before run(), so no numbers exist for a failed gate, contract v2
 // controlled-gate rule 2), the group/bench registration helper (one group per workload,
-// bodies `() => do_not_optimize(render())`), the single-run() capture (a `print` tap feeds
+// bodies `() => do_not_optimize(flatten(render()))` per D11 as amended by records.md E4),
+// the single-run() capture (a `print` tap feeds
 // the same lines that reach stdout into an in-process buffer), the artifact writer (one
 // process, one sample set, two views: `<name>.txt` from the capture buffer + `<name>.json`
-// from run()'s returned benchmarks, BigInt-safe), and the D12 DEOPT-CHECK trailer (scans the
+// from run()'s returned benchmarks, BigInt-safe), the D12 DEOPT-CHECK trailer (scans the
 // in-process capture buffer — never the externally redirected .txt — for mitata's `!`
-// "likely optimized out" marker).
+// "likely optimized out" marker), and its E4 companion MATERIALISATION-CHECK (implied output
+// throughput against a physical ceiling; fatal, unlike DEOPT-CHECK).
 import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { bench, group, run, do_not_optimize } from "mitata";
 
-import { WORKLOADS, loadVerifyDefinition } from "../src/gate/corpus.mjs";
+import { WORKLOADS, loadVerifyDefinition, loadCorpusEntry } from "../src/gate/corpus.mjs";
 import { assertControlledCell } from "../src/gate/controlled.mjs";
 import { verify } from "../src/gate/verifier.mjs";
 
@@ -25,6 +27,54 @@ export const WORKLOAD_IDS = Object.freeze(WORKLOADS.map((w) => w.id));
 
 // benchmarks/js/bench/_shared.mjs -> artifacts live at benchmarks/js/artifacts/ (gitignored).
 const artifactsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "artifacts");
+
+// ---- the materialisation primitive (D11 as amended, records.md E4) ---------------------------
+
+// Both engines build their output with `+=`, so `render()` hands back an unflattened V8
+// ConsString rope. mitata's `do_not_optimize(v)` is `{ $._ = v; }` in full: it makes the value
+// escape so V8 cannot prove it unread, and never walks it. Timing that measures rope
+// CONSTRUCTION, not output production — the 2026-07-22 run reported eta/composed-page at
+// 330.7 ns for 34,847 B, i.e. ~105 GB/s, which is above this machine's store bandwidth.
+//
+// %FlattenString forces the rope into a flat sequential string, which is the work every other
+// ecosystem's harness already does. Note `s.length` would NOT work: V8 stores the length on the
+// ConsString, so reading it is O(1) and never flattens.
+//
+// Natives syntax is parse-time, and `npm run gate` / `npm run selftest` do not pass
+// --allow-natives-syntax. Building the primitive through `new Function` keeps its absence a
+// catchable runtime error instead of an unconditional module-load SyntaxError for every module
+// that imports this one.
+let nativeFlatten = true;
+
+/**
+ * Forces V8 to materialise `s`. The sanctioned measurement path is `%FlattenString`; the
+ * fallback exists only so the flag-less gate entry points can import this module, and a
+ * measurement run that lands on it is failed by `materialisationCheckTrailer`.
+ */
+export const flatten = (() => {
+  try {
+    // eslint-disable-next-line no-new-func
+    const native = new Function("s", "return %FlattenString(s);");
+    native("ab" + String(Date.now() % 7)); // prove it runs, not just parses
+    return native;
+  } catch {
+    nativeFlatten = false;
+    return (s) => {
+      // charCodeAt on a ConsString forces a flatten; do_not_optimize keeps the read live.
+      do_not_optimize(s.charCodeAt(s.length - 1));
+      return s;
+    };
+  }
+})();
+
+/** Whether `flatten` is the natives-backed primitive. False means this is not a valid run. */
+export const nativeFlattenAvailable = () => nativeFlatten;
+
+// The physical ceiling for output bytes per nanosecond on the protocol machine. A cell above
+// this claims more sustained single-core store bandwidth than the box has while also running
+// template logic, so the harness cannot be materialising its output. Kept numerically in step
+// with benchmarks/report/consolidate.py's PLAUSIBILITY_CEILING_B_PER_NS.
+const PLAUSIBILITY_CEILING_B_PER_NS = 50.0;
 
 function failGate(messages) {
   for (const message of Array.isArray(messages) ? messages : [messages]) console.error(message);
@@ -93,14 +143,15 @@ export function namedBench(name, fn) {
 /**
  * D11 registration shape for the two track scripts: one `group('<workload-id> [<track>]')`
  * per workload containing the `handlebars` and `eta` benches, every body
- * `() => do_not_optimize(render())` (mitata's documented DCE guard consumes the string).
+ * `() => do_not_optimize(flatten(render()))` — `flatten` materialises the rope (E4) and
+ * mitata's documented DCE guard then consumes the flat string.
  */
 export function registerTrackGroups(track, renderers) {
   for (const id of WORKLOAD_IDS) {
     group(`${id} [${track}]`, () => {
       for (const engine of ENGINES) {
         const render = renderers[engine][id];
-        namedBench(engine, () => do_not_optimize(render()));
+        namedBench(engine, () => do_not_optimize(flatten(render())));
       }
     });
   }
@@ -181,5 +232,81 @@ export function deoptCheckTrailer() {
     if (name) flagged.push(currentGroup ? `${name} (${currentGroup})` : name);
   }
   console.log(flagged.length === 0 ? "DEOPT-CHECK: clean" : `DEOPT-CHECK: flagged ${flagged.join(", ")}`);
+  return flagged;
+}
+
+// ---- MATERIALISATION-CHECK trailer (D12 companion, records.md E4) -----------------------------
+
+/**
+ * Divides each cell's golden output size by its reported `avg` and fails the run if any cell
+ * claims more throughput than the machine can physically deliver — the signature of a harness
+ * that is not materialising its output.
+ *
+ * This is the companion D12 cannot be: mitata's `!` marker fires only when
+ * `avg < 1.42 * noop.avg` against an EMPTY FUNCTION, so a cell can skip nearly all of its work
+ * and still sit three orders of magnitude above the trigger. The 2026-07-22 run reported
+ * `DEOPT-CHECK: clean` while measuring rope construction.
+ *
+ * Unlike DEOPT-CHECK, a violation here is fatal rather than explainable: it means the harness is
+ * not doing the work it reports. Exits 1 on a violation, and on a non-natives `flatten`, since a
+ * silent fallback would reintroduce the defect invisibly.
+ *
+ * `result.benchmarks` carries no workload name — `alias` is the engine only — so cells are
+ * matched positionally, exactly as registerTrackGroups() emitted them (WORKLOAD_IDS order,
+ * ENGINES within each group). The shape is asserted before it is trusted.
+ */
+export function materialisationCheckTrailer(result) {
+  if (!nativeFlatten) {
+    console.error(
+      "MATERIALISATION-CHECK: FAILED — %FlattenString is unavailable, so the benchmark bodies " +
+        "fell back to a non-sanctioned materialisation path. Run through run.ps1/run.sh or " +
+        "npm run bench:* so node receives --allow-natives-syntax (D11 as amended, records.md E4).",
+    );
+    process.exit(1);
+  }
+
+  const benchmarks = result?.benchmarks ?? [];
+  const expected = ENGINES.length * WORKLOAD_IDS.length;
+  if (benchmarks.length !== expected) {
+    console.error(
+      `MATERIALISATION-CHECK: FAILED — expected ${expected} cells in run() output, found ` +
+        `${benchmarks.length}; the positional workload mapping cannot be trusted.`,
+    );
+    process.exit(1);
+  }
+
+  const flagged = [];
+  for (let i = 0; i < benchmarks.length; i++) {
+    const entry = benchmarks[i];
+    const engine = ENGINES[i % ENGINES.length];
+    if (entry.alias !== engine) {
+      console.error(
+        `MATERIALISATION-CHECK: FAILED — cell ${i} is '${entry.alias}', expected '${engine}'; ` +
+          "the positional workload mapping cannot be trusted.",
+      );
+      process.exit(1);
+    }
+    const id = WORKLOAD_IDS[Math.floor(i / ENGINES.length)];
+    const avg = Number(entry.runs?.[0]?.stats?.avg);
+    if (!Number.isFinite(avg) || avg <= 0) {
+      console.error(`MATERIALISATION-CHECK: FAILED — cell ${engine}/${id} has no usable avg.`);
+      process.exit(1);
+    }
+    const bytesPerNs = loadCorpusEntry(id).bytes.length / avg;
+    if (bytesPerNs > PLAUSIBILITY_CEILING_B_PER_NS) {
+      flagged.push(`${engine}/${id} (${bytesPerNs.toFixed(1)} B/ns)`);
+    }
+  }
+
+  if (flagged.length > 0) {
+    console.error(`MATERIALISATION-CHECK: flagged ${flagged.join(", ")}`);
+    console.error(
+      `every flagged cell exceeds the ${PLAUSIBILITY_CEILING_B_PER_NS} B/ns ceiling, so its ` +
+        "output cannot be being produced — the numbers from this run are not publishable " +
+        "(D12 companion, records.md E4).",
+    );
+    process.exit(1);
+  }
+  console.log("MATERIALISATION-CHECK: clean");
   return flagged;
 }

@@ -19,7 +19,7 @@ The specs are the source of truth; nothing in this file overrides them:
 
 | Toolchain | Pin | Notes |
 |---|---|---|
-| .NET SDK | the exact SDK of the Windows protocol run (observed line: 10.0.302) | suites target `net10.0`, `-c Release` |
+| .NET SDK | **TBD** — pinned to the SDK of the Windows protocol run, which is pending re-test. The published 2026-07-25 Linux run used SDK 10.0.110 / runtime .NET 10.0.10 | suites target `net10.0`, `-c Release` |
 | Rust | rustc/cargo 1.97.1 | `rust-toolchain.toml` in `benchmarks/rust` |
 | JDK | Temurin 25 | `pom.xml` pins `maven.compiler.release=25`; on a JDK < 25 the runner passes `-Dmaven.compiler.release=23` |
 | Node.js | v24.18.0 | `package.json` `engines`; on any other node the runner uses `npm ci --engine-strict=false` |
@@ -83,7 +83,8 @@ sudo ./tune.sh && ./run-all.sh; ./untune.sh
 | `-Smoke` | short functional flags everywhere (see table below) |
 | `-Ecosystem dotnet,rust,jvm,js,python,go` | subset (any combination; program order is preserved) |
 | `-OutDir <path>` | artifact/log destination (default `benchmarks\out\windows-run-<timestamp>`, git-ignored; the path must not contain spaces) |
-| `-JsStabilityRepeat` | opt in to the JS five-run stability procedure (Phase 4 D13) before the timed JS suites — it is publication-gating but a separate step, so it never auto-runs |
+| `-Budget short\|baseline` | measurement budget per ecosystem: `short` ~10 min each (default), `baseline` ~30 min each. Named `-Budget` because `$PROFILE` is a PowerShell automatic variable |
+| `-JsPasses <n>` | JS repeat passes per render track (default: the budget's — 18 short / 54 baseline; minimum 5, D13's verdict floor) |
 
 ### Linux runner options
 
@@ -92,7 +93,8 @@ sudo ./tune.sh && ./run-all.sh; ./untune.sh
 | `--smoke` | short functional flags everywhere (same shapes as `-Smoke`); also skips the bare-metal pre-flight, recorded in the log |
 | `--ecosystem dotnet,rust,jvm,js,python,go` | subset (any combination; program order is preserved) |
 | `--out-dir <path>` | artifact/log destination (default `benchmarks/out/linux-run-<timestamp>`, git-ignored) |
-| `--js-stability-repeat` | opt in to the JS five-run stability procedure (Phase 4 D13), exactly as `-JsStabilityRepeat` |
+| `--budget short\|baseline` | measurement budget per ecosystem, exactly as `-Budget` |
+| `--js-passes <n>` | JS repeat passes per render track, exactly as `-JsPasses` |
 | `--tune` | run the committed `linux-crosscheck/tune.sh` under `sudo` before the run and `untune.sh` from an `EXIT` trap afterwards (so an aborted run still restores the machine). Those two scripts are invoked unmodified. Requires the isolation boot entry — `tune.sh` refuses without it |
 | `--tune-no-isolation` | tune what needs no reboot: `performance` governors, `cpufreq/boost=0`, `kernel.perf_event_max_sample_rate=1`. Every prior value is captured to `logs/tune-prior-state.txt` first and restored from an `EXIT` trap. The absent isolated SMT pair is recorded, the pre-flight accepts it, timed runs are not pinned, and pyperf falls back to `--affinity=4`. Mutually exclusive with `--tune` |
 | `--no-tune-check` | record a bypass of the bare-metal pre-flight (and of the WSL refusal) and measure anyway — the numbers are not publishable |
@@ -137,10 +139,71 @@ overall exit at the end.
 |---|---|---|
 | .NET | 8 suites, one `--filter *<Suite>*` run each, BDN defaults + MemoryDiagnoser | same, `--job Dry` |
 | Rust | `cargo bench --bench controlled --bench idiomatic --bench cold -- --noplot`, then `alloc_report` (alloc-count feature), then `summarize` (non-fatal while the Phase 1 Heddle reference rows are pending) | `cargo bench … -- --test` |
-| JVM | `java -jar target/benchmarks.jar -prof gc -rf json -rff <out>` — committed annotation regime (Fork 5, 5×10 s / 5×10 s), **~4.5–5.5 h** | `-f 1 -wi 1 -i 1 -w 1s -r 1s -foe true` |
-| JS | `run.ps1` / `run.sh` per bench script (`--expose-gc --allow-natives-syntax`, priority posture per platform); stability 5-repeat only with `-JsStabilityRepeat` / `--js-stability-repeat` | the three scripts once via the launcher |
+| JVM | `java -jar target/benchmarks.jar -prof gc -rf json -rff <out>` — committed annotation regime (Fork 3, 1×2 s / 3×1 s), **~9 min**; `baseline` adds `-wi 2 -i 9` | `-f 1 -wi 1 -i 1 -w 1s -r 1s -foe true` |
+| JS | `run.ps1` / `run.sh` per bench script (`--expose-gc --allow-natives-syntax`, priority posture per platform); the two render tracks run `-Repeat <passes>` and are aggregated by `bench/aggregate.mjs`, which emits the D13 `STABILITY:` verdict every run | the three scripts once via the launcher |
 | Python | five pyperf Runner scripts, `--affinity=<4 on Windows, isolated pair on Linux> -o <out>/python/<name>.json`, elevated shell / root (warned if not), then the separate `mem_tracemalloc.py` pass | pyperf `--debug-single-value`; memory `--reps 5` |
 | Go | `run-benchmarks.ps1` / `run-benchmarks.sh` (version asserts, templ freshness, vet, gates, prebuild, timed runs `-test.count=20 -test.benchtime=1s`, benchstat) | `-Count 1 -BenchTime 100ms` / `--count 1 --benchtime 100ms` |
+
+### Measurement budget — `--budget short` (default) / `baseline`
+
+Each harness sets its own run lengths, so before
+[ledger E6](../docs/spec/records.md#cross-spec-amendments-ledger) "one cell" cost wildly
+different amounts of wall clock per ecosystem. These are **measured** figures from the
+withdrawn 2026-07-22 Windows run's `summary.txt`, not estimates. That run's *render figures* are
+invalid and its report has been removed pending a Windows re-test (**TBD**), but its per-step
+wall-clock durations are simply how long each harness took, which is what this comparison needs:
+
+| Ecosystem | Cells | Was | s/cell | The problem |
+|---|---:|---:|---:|---|
+| JS | 32 | 31 s | **1.0** | 15–32× *below* every other leg |
+| Rust | 33 | 8.3 min | 15 | in band |
+| Python | 32 | 14.3 min | 17 | in band |
+| Go | 32 | 13.8 min | 26 | in band |
+| .NET | 41 | 21.5 min | 32 | in band |
+| JVM | 32 | **4.47 h** | **503** | 16–34× above the band; **83% of the whole session** |
+
+Neither extreme was chosen — both are what the harness happened to default to. E6 replaced that
+with **one budget per ecosystem**, selectable:
+
+```bash
+./benchmarks/run-all.sh                    # --budget short    ~10 min each  (default)
+./benchmarks/run-all.sh --budget baseline   # ~30 min each: 3x capture samples, +1 warmup run
+```
+```powershell
+.\benchmarks\run-all.ps1 -Budget baseline   # same on Windows (-Budget, not -Profile: $PROFILE is reserved)
+```
+
+Every harness's **committed source/script default is the `short` shape**, so a bare invocation of
+any single harness is already the ~10 min regime; `baseline` layers CLI overrides on top. Nothing
+changes about *what* is measured — only how many times.
+
+| Ecosystem | Knob | `short` (committed default) | `baseline` override | short | baseline |
+|---|---|---|---|---:|---:|
+| .NET | BenchmarkDotNet job | `[ShortRunJob]` — L1 / W3 / I3 | `--warmupCount 7 --iterationCount 15` | ~9 min | ~21 min |
+| Rust | criterion | warmup 3 s, measure 10 s, 100 samples | `--warm-up-time 4 --measurement-time 30` | 8.3 min | ~20 min |
+| JVM | JMH annotations | `@Fork(3)`, `@Warmup(1×2s)`, `@Measurement(3×1s)` | `-wi 2 -i 9` | **8.6 min** ✓ | ~23 min |
+| JS | aggregated passes | 18 passes per render track | 54 passes | **9.6 min** ✓ | ~29 min |
+| Python | pyperf | render 20×3×1; cold-compile `--processes 7` | `--values 9 --warmups 2`; cold-compile at default 20 | ~11 min | ~32 min |
+| Go | `go test -count` | `14` | `--count 42` | ~9.7 min | ~29 min |
+
+✓ = measured on this repo, not projected. Session total: **~1 h** short, **~2.5 h** baseline,
+against 5.45 h before. .NET is the one leg that does not scale with sample count — it launches a
+process per benchmark method and pays JIT plus `[MemoryDiagnoser]` each time, so its `baseline`
+values are simply BenchmarkDotNet's own adaptive-default shape, the regime the protocol pinned
+before E6.
+
+**JS is a different mechanism, and deliberately so.** mitata exposes no per-cell time budget:
+`B.run()` builds its own options object and `run()` forwards only `throw`, so the 642 ms
+`min_cpu_time` is unreachable without forking the library. JS therefore spends its budget on
+**independent processes** — `run.sh --repeat N`, then `bench/aggregate.mjs` publishes the median
+of the per-pass `avg` with the cross-pass `min … max` as dispersion. That buys the
+*cross-process* term a single-process harness never samples, which is the same thing JMH gets
+from forks and pyperf from its 20 workers. It also makes the Phase 4 D13 stability verdict
+automatic instead of opt-in: every run writes `stability-summary-<track>.md` with a
+`STABILITY:` line and exits non-zero on `failed`. Measured here: 18 passes of the controlled
+track in 279 s → `STABILITY: verified`, cross-pass RSD median 1.81% / max 2.85%. The
+withdrawn 2026-07-22 run shipped JS numbers with no verdict at all because the old opt-in switch was
+simply never passed.
 
 **Priority posture (Linux twins).** Windows sets a High process priority class for the JS and Go
 timed runs (`start /high`, `PriorityClass = High`); `run-all.sh`, `js/run.sh` and
@@ -215,5 +278,5 @@ links the generated tables rather than restating their numbers. Note this keeps 
 runners-never-write-into-`docs/` invariant intact: `consolidate.py` is run by hand after a run,
 never by `run-all.ps1`/`run-all.sh`.
 
-Worked example: [docs/benchmarks/2026-07-22](../docs/benchmarks/2026-07-22) is the first
+Worked example: [docs/benchmarks/2026-07-25](../docs/benchmarks/2026-07-25) is the first
 six-ecosystem report published this way.

@@ -12,7 +12,10 @@ namespace Heddle.Performance;
 /// render raw and are parity-checked byte-identical in <see cref="Setup"/> before any timing.
 /// Host-free (no Razor/DI).
 /// </summary>
-[MemoryDiagnoser]
+// ShortRunJob (LaunchCount 1, WarmupCount 3, IterationCount 3) rather than BenchmarkDotNet's
+// adaptive defaults: ledger E6's uniform ~10 min per-ecosystem measurement budget. At defaults
+// these eight suites cost 21.5 min for 41 methods (~32 s each), the second-largest leg.
+[MemoryDiagnoser, ShortRunJob]
 public class SubstitutionRenderBenchmarks
 {
     private SubstitutionHeddleTest _heddleTest;

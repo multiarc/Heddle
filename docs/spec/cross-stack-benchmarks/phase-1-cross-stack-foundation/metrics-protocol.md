@@ -45,7 +45,7 @@ statistic published alongside. The mapping, fixed once here:
 
 | Ecosystem | Harness | "Wall time per render" = | Dispersion published alongside |
 |---|---|---|---|
-| .NET (this phase) | BenchmarkDotNet (`0.15.8` on net10.0 — the protocol-run TFM) | the `Mean` column | `Error` and `StdDev` columns as reported |
+| .NET (this phase) | BenchmarkDotNet (`0.15.8` on net10.0 — the protocol-run TFM), `[ShortRunJob]` since [ledger E6](../../records.md#cross-spec-amendments-ledger) | the `Mean` column | `Error` and `StdDev` columns as reported |
 | Rust (phase 2) | Criterion.rs | the point estimate of Criterion's `mean` (its reported estimate line) | the 95% confidence interval bounds |
 | JVM (phase 3) | JMH, `Mode.AverageTime` | the `Score` (avgt) | the `Error` (99.9% CI) as reported |
 | JS/Node (phase 4) | mitata | the reported `avg` | the printed percentile spread (min … max, p75/p99 as emitted) |
@@ -142,7 +142,10 @@ Phase 1 closes by executing this protocol once, intra-.NET, over all eight workl
 - Suites: `TextRenderBenchmarks` (composed-page), `SubstitutionRenderBenchmarks`,
   `LoopRenderBenchmarks`, plus the five new benchmark classes
   ([README implementation plan](README.md#implementation-plan)); `net10.0`, `-c Release`,
-  BenchmarkDotNet 0.15.8, `[MemoryDiagnoser]` on.
+  BenchmarkDotNet 0.15.8, `[MemoryDiagnoser]` on, and `[ShortRunJob]`
+  (`LaunchCount 1, WarmupCount 3, IterationCount 3`) rather than the adaptive defaults — the
+  eight suites cost 21.5 min for 41 methods at defaults, and E6 gives every ecosystem the same
+  ~10 min budget. `[MemoryDiagnoser]` is unaffected, so the allocation column is unchanged.
 - Published under `docs/benchmarks/<run-date>/` in the format above. This publication is the
   **source of the Heddle reference rows** phases 2–6 excerpt (rule 1), which is why it must land
   before any ecosystem report.

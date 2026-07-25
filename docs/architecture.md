@@ -186,11 +186,16 @@ length‑based on net8+ and count‑based on older targets).
 
 ## Performance characteristics
 
-The repository's [BenchmarkDotNet suite](../src/Heddle.Performance) measures Heddle against four
-other .NET template engines (Fluid, Scriban, DotLiquid, Handlebars.Net) — all four rendering
-byte‑identical parity‑checked output over a component‑heavy composition workload — plus ASP.NET Core
-Razor, which renders a larger, different page and is **not** under the parity assertion
-(`[MemoryDiagnoser]` enabled). In the run of **2026‑07‑11** (commit `8341bb67`; AMD Ryzen 9 9950X,
+The repository's [BenchmarkDotNet suite](../src/Heddle.Performance) measures Heddle against five
+other .NET template engines (Fluid, Scriban, DotLiquid, Handlebars.Net and ASP.NET Core Razor) over
+a component‑heavy composition workload, every one of them rendering byte‑identical parity‑checked
+output (`[MemoryDiagnoser]` enabled). Razor joined the parity assertion on 2026‑07‑25
+([ledger E5](../docs/spec/records.md#cross-spec-amendments-ledger)); before that it rendered a larger,
+different page outside every gate. The published
+[2026‑07‑25 cross‑stack run](benchmarks/2026-07-25/) is the first to measure it under parity:
+**Heddle 30.52 μs vs Razor 41.66 μs**, with Heddle fastest of all six .NET engines on that
+workload. The 2026‑07‑11 figures below are the older intra‑.NET record, and their Razor pairing
+describes the pre‑parity workload. In the run of **2026‑07‑11** (commit `8341bb67`; AMD Ryzen 9 9950X,
 .NET 10.0.9, BenchmarkDotNet 0.15.8) Heddle rendered that page in **32.50 μs / 227.86 KB** — the
 fastest of the six and tied‑least on allocation (within 0.3 KB of Handlebars.Net); the next engine (Fluid) took 2.0× as long and
 Scriban 11.7× with 5.07× the allocation. The full render and compile‑cost tables, environment

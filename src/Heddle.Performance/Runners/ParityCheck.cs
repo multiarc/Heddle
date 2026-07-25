@@ -14,10 +14,18 @@ namespace Heddle.Performance.Runners
     /// render benchmark's GlobalSetup so a drifted twin fails loudly instead of benchmarking
     /// different work; <see cref="Report"/> is a fast, host-free harness
     /// (`dotnet run -c Release -- parity`).
+    ///
+    /// The composed-page twin set takes an optional <see cref="IServiceProvider"/> (ledger entry
+    /// E5). Razor is a parity twin like the rest, but it is the one engine that renders through MVC
+    /// DI, so it can only be included when a host exists. Passing null yields the four host-free
+    /// twins; the `parity` verb builds a host lazily so the one-command proof still covers all five.
     /// </summary>
     internal static class ParityCheck
     {
-        public static IEnumerable<(string Name, Func<string> Render)> Twins()
+        /// <param name="services">
+        /// When non-null, the Razor twin is included. Null keeps the set host-free.
+        /// </param>
+        public static IEnumerable<(string Name, Func<string> Render)> Twins(IServiceProvider services = null)
         {
             yield return ("Fluid", () => new FluidTest().Render());
 #if !NET6_0
@@ -25,14 +33,25 @@ namespace Heddle.Performance.Runners
 #endif
             yield return ("DotLiquid", () => new DotLiquidTest().Render());
             yield return ("Handlebars", () => new HandlebarsTest().Render());
+            if (services != null)
+            {
+                // Constructed once, outside the returned closure: compiling the view is setup, not
+                // the work being compared, and the other twins likewise construct before rendering.
+                var razor = new RazorTest(services);
+                yield return ("Razor", () => razor.Render());
+            }
         }
 
         /// <summary>Throws if any twin diverges from Heddle. Called from GlobalSetup.</summary>
-        public static void Assert()
-            => AssertAgainst(new HeddleTest().Render(), Twins());
+        /// <param name="services">
+        /// Pass the benchmark host's services to include the Razor twin; null asserts the four
+        /// host-free twins only.
+        /// </param>
+        public static void Assert(IServiceProvider services = null)
+            => AssertAgainst(new HeddleTest().Render(), Twins(services));
 
         /// <summary>Human-readable pass/fail report with the first divergence for any failing twin.</summary>
-        public static (bool AllMatch, string Text) Report()
+        public static (bool AllMatch, string Text) Report(IServiceProvider services = null)
         {
             var sb = new StringBuilder();
             var heddleRaw = new HeddleTest().Render();
@@ -41,7 +60,7 @@ namespace Heddle.Performance.Runners
             sb.AppendLine($"  Heddle oracle: {heddleRaw.Length} raw chars, {oracle.Length} normalized chars");
             var oracleStripped = StripWhitespace(oracle);
             var all = true;
-            foreach (var (name, render) in Twins())
+            foreach (var (name, render) in Twins(services))
             {
                 var raw = render();
                 var actual = TwinContent.Normalize(raw);

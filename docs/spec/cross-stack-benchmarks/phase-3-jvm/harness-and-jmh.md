@@ -161,9 +161,9 @@ One class per workload, e.g.:
 ```java
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
-@Fork(5)
-@Warmup(iterations = 5, time = 10, timeUnit = TimeUnit.SECONDS)
-@Measurement(iterations = 5, time = 10, timeUnit = TimeUnit.SECONDS)
+@Fork(3)
+@Warmup(iterations = 2, time = 5, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 5, time = 2, timeUnit = TimeUnit.SECONDS)
 @Threads(1)
 @State(Scope.Benchmark)
 public class ConditionalHeavyBench {
@@ -211,8 +211,11 @@ On the protocol machine only (Windows 11 / Ryzen 9 9950X — Q1.6), Temurin 25 l
    java -jar target/benchmarks.jar -prof gc -rf json -rff jmh-result.json | Tee-Object jmh-log.txt
    ```
 
-   Expected duration ≈ 4.5–5.5 h (32 benchmarks × 5 forks × 100 s measured time + startup);
-   run unattended.
+   Expected duration ≈ **9 min** — measured 515 s for all 32 cells (32 × 3 forks × 5 s measured
+   time + fork startup) at [ledger E6](../../records.md#cross-spec-amendments-ledger)'s `short`
+   budget, which the annotations encode. The `baseline` budget adds `-wi 2 -i 9` for ≈ 23 min.
+   Before E6 this was ≈ 4.5–5.5 h. Still run it on the quiet box — a shorter regime reduces the
+   *reservation*, not the quiet-machine requirement.
 4. **DCE plausibility pass** (D9, mandatory before publication): for every cell check
    `ns/op ≥ oracle byteLength / 10` and the size-ordering consistency across
    `trivial-substitution` < `large-loop` < `encoded-loop` per engine-track column; quarantine

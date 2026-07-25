@@ -303,24 +303,53 @@ Every plan lean, flagged assumption, and spec-territory delegation for this phas
 ### D11 — mitata run shape: canonical flags, `do_not_optimize`, automatic warmup, one group per workload
 - **Decision.** Every measurement invocation is
   `node --expose-gc --allow-natives-syntax bench/<script>.mjs` (the README's own canonical
-  flag set — `--allow-natives-syntax` powers the optimization-status/DCE detection,
+  flag set — `--allow-natives-syntax` powers the optimization-status/DCE detection **and the
+  materialisation primitive below (amended 2026-07-25, [E4](../../records.md#cross-spec-amendments-ledger))**,
   `--expose-gc` gives mitata GC control between benchmarks). Every benchmark body is
-  `() => do_not_optimize(render(...))` so the rendered string is consumed via mitata's
-  documented DCE guard. Benchmarks are registered as one `group('<workload-id> [<track>]')` per
+  `() => do_not_optimize(flatten(render(...)))` so the rendered string is both **materialised**
+  and consumed via mitata's documented DCE guard. Benchmarks are registered as one `group('<workload-id> [<track>]')` per
   workload containing the `handlebars` and `eta` benches. mitata's automatic warmup is used
-  unmodified — no manual warmup loops, no custom sampling parameters. Output: the default
-  `mitata` format captured to a text artifact, plus a JSON artifact serialized from `run()`'s
-  returned `{ benchmarks }` (BigInt-safe replacer) in the same single run — never two runs.
+  unmodified — no manual warmup loops, no custom sampling parameters (and, per
+  [E6](../../records.md#cross-spec-amendments-ledger), none are *reachable*: `B.run()` builds its
+  own options object and `run()` forwards only `throw`, so the 642 ms `min_cpu_time` cannot be
+  raised without forking the library). Output per process: the default `mitata` format captured
+  to a text artifact, plus a JSON artifact serialized from `run()`'s returned `{ benchmarks }`
+  (BigInt-safe replacer) in the same single run — never two runs. **E6 amendment:** the two
+  render tracks are measured as **18 repeat passes**, each a separate process that still emits
+  both views of its own single run (under `artifacts/stability/<track>/run-<k>.txt|.json`);
+  `bench/aggregate.mjs` then publishes the median of the per-pass `avg` with the cross-pass
+  min…max as dispersion. The never-two-runs invariant is per pass, and the aggregator owns both
+  published views so they cannot disagree.
 - **Rationale.** Flags and marker semantics verified against the README; `do_not_optimize` and
   `run()`'s return type verified against `main.d.mts` (Assumed state) — one process yields both
   the human-readable capture and the machine-readable numbers from the *same* samples, so the
   published tables and artifacts cannot disagree.
+- **Amendment (2026-07-25, [E4](../../records.md#cross-spec-amendments-ledger)).** The original
+  body shape `() => do_not_optimize(render(...))` did not measure output production.
+  `do_not_optimize` is `function do_not_optimize(v) { $._ = v; }` in full
+  (`mitata/src/lib.mjs:5`) — it makes the value escape so V8 cannot prove it unread, and never
+  walks it. Both engines build their output with `+=`, so `render()` returns an unflattened V8
+  `ConsString` and the timed region only allocated rope cells. Measured: `eta`/`composed-page`
+  = 330.7 ns for 34,847 B ≈ **105 GB/s**, above the protocol machine's single-core store
+  bandwidth. The body therefore composes a materialisation call **with** the DCE guard:
+  `flatten` forces a flat string via `%FlattenString`. Two constraints on implementations:
+  - **`s.length` is not a substitute.** V8 stores the length on the `ConsString`, so reading it
+    is O(1) and never flattens.
+  - `%FlattenString` is parse-time syntax and the gate entry points (`npm run gate`,
+    `npm run selftest`) do not pass `--allow-natives-syntax`, so the primitive is constructed
+    through `new Function` to keep its absence a catchable runtime error. A run that falls back
+    is **not** a sanctioned measurement run and must fail — see D12's companion check.
 - **Alternatives rejected.** `format: 'json'`-only run (loses the human-readable artifact the
   established report style links); two runs with different formats (two sets of numbers — which
-  one is published becomes an integrity question); manual sink variables (undocumented;
-  `do_not_optimize` is the tool's own mechanism).
+  one is published becomes an integrity question); manual sink variables *replacing*
+  `do_not_optimize` (undocumented; `do_not_optimize` is the tool's own mechanism). **Amended
+  2026-07-25:** this last rejection governs sinks that *replace* the guard; a materialisation
+  call composed with it, as in the amendment above, is required rather than rejected.
 - **Grounding.** mitata README + `main.d.mts` *(fetched, Assumed state)*;
-  [metrics-protocol §Wall-time statistic mapping](../phase-1-cross-stack-foundation/metrics-protocol.md#wall-time-statistic-mapping-q21).
+  [metrics-protocol §Wall-time statistic mapping](../phase-1-cross-stack-foundation/metrics-protocol.md#wall-time-statistic-mapping-q21);
+  amendment evidence in ledger E4 (the run that first exposed it has since been withdrawn as
+  invalid; the defect and the fix were both confirmed independently at source level and by the
+  12.9x change the fix produced on `eta`/`composed-page`).
 
 ### D12 — Deopt/DCE flag handling: a `!`-marked cell is never published unexamined
 - **Decision.** After every measurement run, the captured output is scanned for mitata's `!`
@@ -331,6 +360,24 @@ Every plan lean, flagged assumption, and spec-territory delegation for this phas
   credible). The check is mechanical: the runner scans the in-process capture buffer and prints a
   `DEOPT-CHECK: clean` / `DEOPT-CHECK: flagged <bench names>` trailer that the publication
   checklist requires to read `clean` or be explained in prose.
+- **Amendment (2026-07-25, [E4](../../records.md#cross-spec-amendments-ledger)) — this check is
+  necessary but not sufficient, and gains a companion.** mitata computes the marker as
+  `optimized_out = stats.avg < 1.42 * noop.avg` (`mitata/src/main.mjs:531`), where `noop` is an
+  *empty function*. A cell can therefore skip most of its work and still sit three orders of
+  magnitude above the trigger: the run that exposed the defect reported `DEOPT-CHECK: clean` while
+  `eta`/`composed-page` was measuring rope construction rather than output production. **`!`
+  detects total elimination, not partial work elision.** A companion check runs alongside it,
+  with the same publication-gating status:
+  > **`MATERIALISATION-CHECK`.** After every measurement run, each cell's implied output
+  > throughput (golden `byteLength` ÷ its `avg`) is compared against a physical ceiling — the
+  > protocol machine's plausible single-core store bandwidth, currently **50 B/ns**, the same
+  > constant the consolidated report's plausibility register uses. The runner prints
+  > `MATERIALISATION-CHECK: clean` / `MATERIALISATION-CHECK: flagged <cells>` and **exits
+  > non-zero** on any violation, and likewise if the D11 `flatten` primitive fell back to its
+  > non-natives path — a silent fallback would reintroduce the defect invisibly, which is how it
+  > reached publication once. Unlike D12's `!`, a flagged cell here is fatal rather than
+  > explainable: it means the harness is not doing the work it claims, not that a number needs
+  > interpretation.
 - **Rationale.** Plan success criterion verbatim ("no published number comes from a run in
   which mitata flagged a deoptimization … that was not investigated and documented"); `!` is
   the tool's only documented pathology marker, so the procedure binds to it exactly.
@@ -341,6 +388,17 @@ Every plan lean, flagged assumption, and spec-territory delegation for this phas
   [plan §Success criteria](../../../plan/phase-4-js.md#success-criteria).
 
 ### D13 — Windows stability verification: a 5-run repeatability procedure gates first publication
+
+> **Amended by [ledger E6](../../records.md#cross-spec-amendments-ledger) (2026-07-25).** This
+> procedure is no longer a *separate* pre-publication step: the two render tracks are now
+> **measured** as 18 repeat passes and the verdict is computed from those same passes by
+> `bench/aggregate.mjs` on every run, writing `stability-summary-<track>.md` and exiting non-zero
+> on `failed`. The thresholds and escalation path below are unchanged and now execute
+> automatically. The reason for the change is recorded evidence that an opt-in gate does not
+> hold: the withdrawn 2026-07-22 run published JS numbers with **no RSD verdict at all**, because the
+> runner's opt-in switch was simply not passed and nothing failed as a result. Five runs remains
+> the floor (`aggregate.mjs` refuses fewer); E6's budget funds 18.
+
 - **Decision.** Because upstream documents no Windows support statement at all, mitata's
   stability on the protocol machine is verified empirically **before any published run**, by
   this procedure (full operational detail in

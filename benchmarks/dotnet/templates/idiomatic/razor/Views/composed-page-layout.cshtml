@@ -1,0 +1,37 @@
+@*
+    Idiomatic Razor -- composed-page layout (phase 9; authoring standard D16).
+
+    Patterns followed, from Microsoft's own documentation:
+      Razor syntax        https://learn.microsoft.com/aspnet/core/mvc/views/razor
+      Layouts             https://learn.microsoft.com/aspnet/core/mvc/views/layout
+      Partial views       https://learn.microsoft.com/aspnet/core/mvc/views/partial
+
+    Strongly-typed @model, C# control flow, and the DEFAULT @expression output -- which HTML-encodes
+    -- rather than Html.Raw. That is the substantive idiomatic difference from the controlled twin:
+    a Razor developer reaches for Html.Raw only when the value genuinely is markup, which here is
+    only the composed-page fragments. Checked by the functional verifier, not the byte gate.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@{
+    var sections = TwinContent.Sections();
+    var comp = TwinContent.Components();
+    var areas = TwinContent.Areas;
+    var order = TwinContent.AreaOrder;
+}
+@* These values ARE markup, so Html.Raw is correct here rather than a shortcut. *@
+@Html.Raw(sections["meta"])
+@Html.Raw(sections["social"])
+@Html.Raw(comp["assets_styles"])
+@Html.Raw(comp["custom_styles"])
+@Html.Raw(comp["head_scripts"])
+@Html.Raw(comp["body_scripts"])
+@for (var i = 0; i < order.Length - 1; i++)
+{
+    @Html.Raw(areas[order[i]])
+}
+@RenderBody()
+@Html.Raw(areas[order[order.Length - 1]])
+@Html.Raw(comp["assets_scripts"])
+@Html.Raw(sections["page_scripts"])
+@Html.Raw(sections["endpage_scripts"])
+@Html.Raw(comp["body_end_scripts"])

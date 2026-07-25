@@ -1,0 +1,1 @@
+<div class="panel">{{ for item in items }}{{ include 'tile' }}{{ end }}</div>

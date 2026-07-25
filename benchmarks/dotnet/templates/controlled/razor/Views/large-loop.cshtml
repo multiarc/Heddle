@@ -1,0 +1,17 @@
+@*
+    Razor parity twin -- large-loop (ledger E8/E9).
+
+    Razor is now measured on ALL EIGHT workloads. It previously existed for composed-page only,
+    which meant the repository's "faster than Razor" claim rested on the single least favourable
+    workload in the set. An engine with one workload does not belong in a cross-stack table.
+
+    Every value comes from the shared PUBLIC fixtures under src/Models/, the same objects every
+    other engine reads, so this twin cannot drift from the engine it is compared against. Its
+    predecessor did drift -- it carried a hand-duplicated 56 KB copy of the area dictionary that had
+    diverged unnoticed -- precisely because nothing compared the two.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model LoopContent.LoopModel
+@{ Layout = null; }
+@foreach (var item in Model.Items)
+{<tr><td>@Html.Raw(item.Name)</td><td>@item.Value</td></tr>}

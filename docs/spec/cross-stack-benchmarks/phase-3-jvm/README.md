@@ -375,18 +375,28 @@ Ordered by the plan's internal ordering: Thymeleaf controlled-track feasibility 
   *(fetched)*; JMH README (uber-jar usage) via spike D §4;
   [golden-corpus.md — location rationale](../phase-1-cross-stack-foundation/golden-corpus.md#location-and-layout).
 
-### D9 — JMH configuration pin: 1.37, explicit-defaults, return-value Blackhole, gc profiler, DCE plausibility rule
+### D9 — JMH configuration pin: 1.37, explicit run-length regime, return-value Blackhole, gc profiler, DCE plausibility rule
+
+> **Amended by [ledger E6](../../records.md#cross-spec-amendments-ledger) (2026-07-25).** The
+> run-length half of this decision — `@Fork(5)` with `5 × 10 s` warmup and `5 × 10 s`
+> measurement, i.e. JMH 1.37's stock defaults — put this ecosystem at **503 s per cell against
+> a 15–31 s per-cell band across the other five**, making it 83% of the whole cross-stack
+> session, while the JS leg sat 15–32× *below* that band. The regime below is the amended one,
+> sized to E6's uniform ~10 min per-ecosystem budget. Everything else in D9 (version, mode, time
+> unit, `@Threads(1)`, gate placement, return-value Blackhole, `-prof gc`, the DCE
+> plausibility rule) is unchanged.
 
 - **Decision.** JMH `1.37` (`jmh-core` + `jmh-generator-annprocess`, Central-verified latest).
-  Every benchmark class carries the full explicit annotation set — JMH 1.37's defaults stated
-  explicitly, per the JMH samples' state-your-settings discipline (JMHSample_13):
+  Every benchmark class carries the full explicit annotation set, per the JMH samples'
+  state-your-settings discipline (JMHSample_13). Run lengths are stated deliberately rather
+  than inherited from JMH's defaults (E6):
 
   ```java
   @BenchmarkMode(Mode.AverageTime)
   @OutputTimeUnit(TimeUnit.NANOSECONDS)
-  @Fork(5)
-  @Warmup(iterations = 5, time = 10, timeUnit = TimeUnit.SECONDS)
-  @Measurement(iterations = 5, time = 10, timeUnit = TimeUnit.SECONDS)
+  @Fork(3)
+  @Warmup(iterations = 2, time = 5, timeUnit = TimeUnit.SECONDS)
+  @Measurement(iterations = 5, time = 2, timeUnit = TimeUnit.SECONDS)
   @Threads(1)
   @State(Scope.Benchmark)
   ```
@@ -406,13 +416,34 @@ Ordered by the plan's internal ordering: Thymeleaf controlled-track feasibility 
   result-consumption path is audited and the anomaly explained in writing.
 - **Rationale.** The protocol maps JMH's `Mode.AverageTime` `Score` to "wall time per render"
   (Phase 1 D12) — average-time mode with ns output feeds the protocol's ns-normalized ratio
-  column with no conversion. Explicit defaults are the most defensible pin: deviating from
-  maintainer defaults would itself need evidence, and 5 forks is precisely JMHSample_13's
-  run-to-run-variance aggregation guidance. Expected wall-clock for the full run:
-  32 benchmarks × 5 forks × (50 s + 50 s) ≈ 4.5 h plus fork startup — an overnight run on the
-  protocol box, recorded in the run procedure.
-- **Alternatives rejected.** Fewer forks/iterations to shorten the run (trades the variance
-  evidence the protocol publishes for convenience); `Mode.SampleTime`/`Throughput` (D12 pinned
+  column with no conversion. The run lengths are set from the measured variance decomposition
+  (E6), each term against the job it does:
+  - **Forks stay plural and stay the largest term** — fork-to-fork spread *is* the dominant
+    noise source (median RSD 1.18%, max 3.28% across the 15 cells with complete data), which
+    is exactly JMHSample_13's point. Three forks is the smallest count that still *estimates*
+    that spread rather than merely sampling it once.
+  - **Iteration *length* carries the cut, not iteration count.** Within-fork RSD across five
+    10 s iterations was 0.18% median / 1.45% max — orders below the fork term, so per-iteration
+    duration was the over-provisioned dimension. Three measurement iterations per fork are kept
+    so JMH still reports a per-fork spread; nine samples across three forks is what the ranked
+    tables consume.
+  - **Warmup is 2 s per fork.** The average over the *first* 10 s warmup iteration already sat
+    within ~1% of the fifth (iterations 2–4 deviate 0.36% median / 2.34% max), so the JIT
+    transient completes well inside one iteration and 50 s of warmup per fork was inert. This is
+    the one dimension where under-spending biases the mean rather than widening the interval, so
+    it is the term to revisit first if a protocol run shows drift against the old regime.
+
+  Expected wall-clock: 32 benchmarks × 3 forks × (2 s + 3 s) ≈ **9–10 min** plus fork startup —
+  E6's uniform per-ecosystem budget, replacing what was an overnight reservation.
+- **Alternatives rejected.** Keeping JMH's stock defaults (the original ruling; overturned by
+  E6 on measured evidence that 4.5 h buys precision nothing in the report consumes —
+  see the resolution-limit arithmetic there); dropping to `@Fork(1)` or `@Fork(2)` (1 cannot
+  see the dominant variance term at all and 2 cannot estimate it — this is the part of
+  JMHSample_13's guidance that is *not* over-provisioning); cutting measurement *iterations*
+  instead of measurement *time* (iterations are what JMH's per-fork statistics are computed
+  from, and they are nearly free); shortening warmup below 10 s per fork (the one dimension
+  where under-spending biases the mean rather than widening it — variance is quantifiable
+  after the fact, a half-warm C2 profile is not); `Mode.SampleTime`/`Throughput` (D12 pinned
   avgt); a `Blackhole` parameter instead of returning (equivalent per JMH docs, but returning
   is the samples' primary recommendation and reads cleaner); custom heap flags for the 1 MB
   encoded-loop outputs (defaults suffice; any tuning would be an undisclosed advantage knob).
@@ -732,7 +763,7 @@ harness's gate commands are its test suite, mirroring the intra-.NET arrangement
 - Models are built once per fork and reused; `Context` (Thymeleaf) is reused across renders
   (D2); JTE renders into a fresh `StringOutput`/`FiveEntityHtmlOutput` per call — output-buffer
   allocation is part of a render everywhere in the program.
-- `encoded-loop` produces ~1 MB per render; at 5 measurement iterations × 10 s × 5 forks this
+- `encoded-loop` produces ~1 MB per render; at 5 measurement iterations × 2 s × 3 forks this
   is GC-heavy by design (escaping throughput is the owned dimension); `gc.alloc.rate.norm`
   captures it per-ecosystem.
 - The custom `FiveEntityHtmlOutput` (controlled encoded JTE) is a straight-line per-char

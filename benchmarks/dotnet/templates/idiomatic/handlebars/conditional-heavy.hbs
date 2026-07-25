@@ -1,0 +1,25 @@
+{{!--
+  Idiomatic Handlebars -- conditional-heavy (phase 9; authoring standard D16).
+
+  Patterns followed, from the engines' own documentation:
+    Handlebars language   https://handlebarsjs.com/guide/
+    Handlebars.Net        https://github.com/Handlebars-Net/Handlebars.Net#readme
+
+  Uses `{{#each}}` blocks with `this`, `{{#if}}`/`{{else}}` chains, and registered partials. Raw
+  triple-mustaches appear only where the value genuinely IS an HTML fragment; plain text goes
+  through the default encoder, which is what the guide teaches. Checked by the functional verifier.
+--}}
+
+<ul class="matrix">
+  {{#each rows}}
+    <li>
+      {{#if is_bronze}}<span class="t0">bronze</span>
+      {{else}}{{#if is_silver}}<span class="t1">silver</span>
+      {{else}}{{#if is_gold}}<span class="t2">gold</span>
+      {{else}}<span class="t3">platinum</span>{{/if}}{{/if}}{{/if}}
+      <em>{{name}}</em>
+      {{#if has_note}}<small>{{note}}</small>{{/if}}
+      {{#if is_active}}<b>active</b>{{/if}}
+    </li>
+  {{/each}}
+</ul>

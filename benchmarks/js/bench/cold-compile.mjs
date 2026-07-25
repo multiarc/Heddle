@@ -15,9 +15,15 @@
 // Shape: in-process controlled byte gate (reuses the controlled render tables) over all 16
 // cells BEFORE any bench() registration (failure exits 1 before run(), D10) → the 16 cold
 // benches under group `cold-compile [per-ecosystem]` (harness-and-run.md §mitata run shape),
-// bench names `<engine> <workload-id>`, bodies `() => do_not_optimize(coldRender())` → a
+// bench names `<engine> <workload-id>`, bodies
+// `() => do_not_optimize(flatten(coldRender()))` (D11 as amended, records.md E4 — the compile
+// is only half the cell; without flatten the first render's rope is never materialised) → a
 // SINGLE run() → artifacts/cold-compile.txt + artifacts/cold-compile.json (two views of the
 // same samples) → DEOPT-CHECK trailer over the in-process capture buffer (D12).
+//
+// No MATERIALISATION-CHECK here: these cells time compile + first render together, so their
+// implied output throughput is dominated by compilation and the physical ceiling says nothing
+// about them. The two track scripts carry that check.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -33,6 +39,7 @@ import {
   runAndCapture,
   writeArtifacts,
   deoptCheckTrailer,
+  flatten,
 } from "./_shared.mjs";
 
 import { model as composedPage } from "../src/models/composed-page.mjs";
@@ -117,8 +124,8 @@ group("cold-compile [per-ecosystem]", () => {
   for (const id of WORKLOAD_IDS) {
     const hb = handlebarsCold(id);
     const et = etaCold(id);
-    namedBench(`handlebars ${id}`, () => do_not_optimize(hb()));
-    namedBench(`eta ${id}`, () => do_not_optimize(et()));
+    namedBench(`handlebars ${id}`, () => do_not_optimize(flatten(hb())));
+    namedBench(`eta ${id}`, () => do_not_optimize(flatten(et())));
   }
 });
 

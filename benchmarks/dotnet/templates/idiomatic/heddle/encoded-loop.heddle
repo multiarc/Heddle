@@ -1,0 +1,22 @@
+@*
+    Idiomatic Heddle -- encoded-loop (phase 9; authoring standard D16).
+
+    Patterns followed, from Heddle's own documentation:
+      Language reference   docs/language-reference.md
+      Architecture         docs/architecture.md
+
+    Authored the way the reference teaches -- readable block layout, definitions declared in the
+    @%...%@ header, and `@list`/`@if`/`@elif`/`@else` for control flow -- rather than collapsed onto
+    one line to match the oracle byte-for-byte. Checked by the functional verifier, not the byte
+    gate. The encoded workloads rely on OutputProfile.Html, where `@(...)` encodes by default and
+    `@attr(...)` applies attribute-context encoding; nothing here opts out.
+*@
+
+<table>
+@list(Items){{
+    <tr>
+        <td data-tag="@attr(Tag)">@(Name)</td>
+        <td>@(Comment)</td>
+    </tr>
+}}
+</table>

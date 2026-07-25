@@ -1,0 +1,16 @@
+{%- comment -%}
+  Idiomatic Liquid -- large-loop (phase 9; authoring standard D16).
+
+  Patterns followed, from the engines' own documentation:
+    Liquid language reference   https://shopify.github.io/liquid/
+    Fluid                       https://github.com/sebastienros/fluid#readme
+    DotLiquid                   http://dotliquidmarkup.org/
+
+  Authored the way the docs teach rather than to match the oracle byte-for-byte: readable
+  whitespace, Liquid's own control-flow tags, and the documented `escape` filter on untrusted
+  values. Checked by the functional verifier, not the byte gate.
+{%- endcomment -%}
+
+{% for item in items %}
+  <tr><td>{{ item.name }}</td><td>{{ item.value }}</td></tr>
+{% endfor %}

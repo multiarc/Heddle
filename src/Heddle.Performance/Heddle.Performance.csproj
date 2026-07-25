@@ -67,12 +67,12 @@
     <Folder Include="TestSuite\Data\" />
   </ItemGroup>
   <ItemGroup>
-    <None Remove="Views\home.cshtml" />
-    <Content Include="Views\home.cshtml">
+    <None Remove="Views\twin-home.cshtml" />
+    <Content Include="Views\twin-home.cshtml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <None Remove="Views\layout.cshtml" />
-    <Content Include="Views\layout.cshtml">
+    <None Remove="Views\twin-layout.cshtml" />
+    <Content Include="Views\twin-layout.cshtml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <None Remove="TestTemplates\home.heddle" />

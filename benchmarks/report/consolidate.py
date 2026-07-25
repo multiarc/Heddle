@@ -2,19 +2,23 @@
 """Assemble the published tables for a cross-stack benchmark run directory.
 
 Stdlib-only, CPython >= 3.12. Reads a run directory's raw harness artifacts and writes
-`consolidated-tables.md` next to them. The report's `index.md` pastes those tables verbatim;
-`--check` re-derives them and diffs against the committed file, so the report is
-byte-reproducible from the artifacts.
+`consolidated-tables.md` and `summary-tables.md` next to them. The report's `index.md` embeds the
+latter with VitePress's `<!--@include:-->` directive and links the former; `--check` re-derives
+both and diffs against the committed files, so the report is byte-reproducible from the artifacts.
 
-    python benchmarks/report/consolidate.py docs/benchmarks/2026-07-22
-    python benchmarks/report/consolidate.py --check docs/benchmarks/2026-07-22
+Table ORDER is owned by this script, not by the report: workloads are emitted tier 1 (realistic
+sizing) before tier 2 (edge-case sizing), ascending by rendered size within each tier. See the
+`sizing regimes` block below for how the tier is derived.
+
+    python benchmarks/report/consolidate.py docs/benchmarks/2026-07-25
+    python benchmarks/report/consolidate.py --check docs/benchmarks/2026-07-25
 
 Contract (docs/spec/cross-stack-benchmarks/phase-7-consolidated-report/report-assembly.md
 §`consolidate.py` contract):
 
   * No new measurements and no new metrics. The only arithmetic is unit conversion to
     ns/render, the `vs Heddle` ratio, and the implied-throughput plausibility figure
-    (golden byteLength / ns) mandated by the D6 amendment.
+    (rendered output size / ns) mandated by the D6 amendment.
   * Each ecosystem contributes its harness's default central-tendency point estimate with the
     harness-native dispersion alongside, per metrics-protocol.md §Wall-time statistic mapping.
     That mapping is a contract this script may not vary.
@@ -35,8 +39,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-MANIFEST = REPO / "src" / "Heddle.Performance" / "GoldenCorpus" / "manifest.json"
+MANIFEST = REPO / "benchmarks" / "dotnet" / "GoldenCorpus" / "manifest.json"
 OUTPUT_NAME = "consolidated-tables.md"
+# The headline tables index.md embeds via VitePress `<!--@include:-->`, so the narrative page
+# never hand-transcribes a measured number.
+SUMMARY_NAME = "summary-tables.md"
 
 # Ecosystem order everywhere (report-assembly.md §index.md normative structure).
 ECOSYSTEMS = [".NET", "Rust", "JVM", "JS", "Python", "Go"]
@@ -52,27 +59,6 @@ EVIDENCE = {
     "Python": "reach/context",
 }
 
-# Engines that are measured and ranked like every other row but are NOT under the byte-parity
-# assertion, because they emit a different payload rather than the golden output. Every measured
-# cell is published and ranked — nothing is dropped — but these rows carry the reason inline and
-# their implied-throughput figure is withheld, since the golden byte length does not describe
-# what they produced. This has nothing to do with whitespace: the parity gate's N3b rule already
-# strips every whitespace run from both sides before comparing, so whitespace differences never
-# disqualify a cell anywhere in this program.
-NOT_PARITY_CHECKED = {
-    (".NET", "Razor (full page)"): "renders the full Views/home.cshtml page — a larger, "
-                                   "different payload, not the golden output; therefore "
-                                   "outside the parity assertion and its implied-throughput "
-                                   "figure is withheld",
-}
-
-
-def evidence_of(cell: Cell) -> str:
-    if cell.ecosystem == ".NET" and cell.engine == "Heddle":
-        return "anchor (baseline)"
-    if (cell.ecosystem, cell.engine) in NOT_PARITY_CHECKED:
-        return "not parity-checked"
-    return EVIDENCE[cell.ecosystem]
 
 # Display names, pinned to the versions in each harness's manifest.
 ENGINE_NAMES = {
@@ -94,6 +80,54 @@ ENGINE_NAMES = {
     ("Go", "stdlib-html"): "html/template (go1.26)",
     ("Go", "templ"): "templ v0.3.1020",
 }
+
+# Razor became a real byte-parity twin on 2026-07-25 (records.md ledger entry E5): it now renders
+# `Views/twin-*.cshtml` off the shared TwinContent fixtures and is asserted by ParityCheck like
+# Fluid/Scriban/DotLiquid/Handlebars. Before that it rendered the full `Views/layout.cshtml` page —
+# a larger, different payload — and sat outside every gate.
+#
+# Run directories predating that date hold the OLD measurement, so they must keep the caveat: the
+# figure in them really is a different workload, and its implied throughput really is meaningless
+# against the golden byte length. Runs from that date onward get a plain twin row. Keying this to
+# the run date rather than deleting the branch is what keeps already-published evidence honest.
+RAZOR_PARITY_FROM = "2026-07-25"
+
+# Engines measured and ranked like every other row but NOT under the byte-parity assertion in the
+# run being processed. Every measured cell is still published and ranked — nothing is dropped — but
+# these rows carry the reason inline and their implied-throughput figure is withheld, since the
+# golden byte length does not describe what they produced. This has nothing to do with whitespace:
+# the parity gate's N3b rule already strips every whitespace run from both sides before comparing,
+# so whitespace differences never disqualify a cell anywhere in this program.
+NOT_PARITY_CHECKED: dict[tuple[str, str], str] = {}
+
+_RAZOR_LEGACY_REASON = (
+    "renders the full Views/layout.cshtml page — a larger, different payload, not the golden "
+    "output; therefore outside the parity assertion in this run and its implied-throughput "
+    "figure is withheld. Brought under the parity gate on " + RAZOR_PARITY_FROM +
+    " (records.md E5); later runs carry a plain twin row"
+)
+
+
+def configure_run_era(run: Path) -> bool:
+    """Set up the Razor-era-dependent tables from the run directory's date. Returns True if the
+    run postdates the E5 parity change."""
+    razor_is_twin = run.name >= RAZOR_PARITY_FROM  # both are ISO dates; lexical == chronological
+    NOT_PARITY_CHECKED.clear()
+    if razor_is_twin:
+        ENGINE_NAMES[(".NET", "Razor")] = "Razor (ASP.NET Core MVC)"
+    else:
+        ENGINE_NAMES[(".NET", "Razor")] = "Razor (full page)"
+        NOT_PARITY_CHECKED[(".NET", "Razor (full page)")] = _RAZOR_LEGACY_REASON
+    return razor_is_twin
+
+
+def evidence_of(cell: Cell) -> str:
+    if cell.ecosystem == ".NET" and cell.engine == "Heddle":
+        return "anchor (baseline)"
+    if (cell.ecosystem, cell.engine) in NOT_PARITY_CHECKED:
+        return "not parity-checked"
+    return EVIDENCE[cell.ecosystem]
+
 
 # .NET suite -> workload (pinned in metrics-protocol.md; not re-derived here).
 DOTNET_SUITES = {
@@ -131,10 +165,111 @@ BENCHSTAT_UNITS = {"n": 1.0, "µ": 1e3, "u": 1e3, "m": 1e6, "": 1e9}
 # Implied-throughput ceiling, in output bytes per nanosecond. Above this a cell claims more
 # sustained store bandwidth than a single core of the protocol machine has while *also* running
 # template logic, so the harness cannot be materialising the full output. Set from the observed
-# distribution, which has a clean gap: the next-highest cell in this run sits at 30.9 B/ns
-# (a compiled Rust template that is mostly a memcpy of large literal chunks — plausible), then
-# the flagged cells jump to 91.7 and 105.4.
+# distribution of an earlier run, which had a clean gap. It is deliberately CONSERVATIVE for
+# modern hardware: a raw 55,466-byte memcpy on the 2026-07-25 box costs 438 ns, i.e. 126 B/ns, so
+# a compiled template that is largely a memcpy of literal chunks can legitimately sit above 50.
+# A flagged cell means "look at this", not "this is impossible" — the authoritative materialisation
+# control is the harness-side MATERIALISATION-CHECK, not this ceiling.
 PLAUSIBILITY_CEILING_B_PER_NS = 50.0
+
+# ---- sizing regimes ---------------------------------------------------------------------------
+#
+# The CLR allocates any object of 85,000 bytes or more on the Large Object Heap, and .NET strings
+# are UTF-16 — so a rendered page crosses that line at 42,500 characters, and every render past it
+# allocates on the LOH and drives a full, blocking Gen2 collection. The step is sharp and
+# measurable: on the 2026-07-25 box `new string(ReadOnlySpan<char>)` sustains 40.3 B/ns at
+# 84,800 B and 8.9 B/ns at 108,680 B — 4.5x, at the threshold. None of the other five ecosystems
+# has this cliff; their outputs are UTF-8 or Latin-1 and stay on the normal heap.
+#
+# Workloads on either side of that boundary are therefore not measuring the same thing, so the
+# generated tables lead with the ones below it and present the ones above it as edge cases with
+# the caveat attached, instead of using the normative protocol order. The protocol order is not
+# lost — it is what `manifest.json` records and what the workload numbering in the specs means.
+LOH_THRESHOLD_BYTES = 85_000
+UTF16_BYTES_PER_CHAR = 2
+
+# Rendered output length in CHARACTERS, which is what decides the LOH question. This is NOT the
+# golden `byteLength`: the golden is the NORMALIZED form, because TwinContent.Normalize collapses
+# every inter-tag whitespace run before the oracle is stored. The two agree within 2.4% on seven
+# of the eight workloads and differ by 1.56x on composed-page (34,847 B stored, 54,401 chars
+# rendered), so using the golden here would misclassify that workload into tier 1 and would also
+# understate its implied throughput by the same factor.
+#
+# Measured 2026-07-25 by rendering each workload and taking the length: .NET via
+# `HeddleTest.Render()`, JS via `tracks.controlled.<engine>[<id>]()`, Rust via
+# `engines::askama_controlled::render_*()`. The three ecosystems agree within 2% (they differ only
+# in whitespace, which N3b erases before the gate compares); the .NET figure is recorded because
+# it is the one that decides the LOH question. Re-measure if templates or models change. A
+# workload missing from this table falls back to the golden byteLength and is footnoted as such
+# in the generated tables, so a new workload degrades loudly rather than silently.
+RENDERED_CHARS: dict[str, int] = {
+    "composed-page": 54_401,
+    "trivial-substitution": 338,
+    "large-loop": 192_780,
+    "mixed-page": 9_740,
+    "conditional-heavy": 15_549,
+    "fragment-heavy": 4_730,
+    "fortunes-encoded": 1_157,
+    "encoded-loop": 851_685,
+}
+
+# A workload whose rendered size differs from its golden byteLength by more than this fraction
+# gets an explicit both-figures caption, because the reader would otherwise take the golden as
+# the payload.
+SIZE_DIVERGENCE_NOTE_THRESHOLD = 0.05
+
+TIER_TITLES = {
+    1: "Tier 1 — realistic sizing",
+    2: "Tier 2 — edge-case sizing",
+}
+
+TIER_BLURBS = {
+    1: (
+        "Outputs that fit the size of a real page, partial or fragment, and stay clear of the "
+        f"{LOH_THRESHOLD_BYTES:,}-byte Large Object Heap threshold once materialised as UTF-16. "
+        "**These are the primary results.**"
+    ),
+    2: (
+        "Outputs that exceed the "
+        f"{LOH_THRESHOLD_BYTES:,}-byte Large Object Heap threshold as UTF-16, so every .NET "
+        "render allocates on the LOH and drives a full Gen2 collection — a cost structural to the "
+        "runtime and absent in the other five ecosystems. These are stress tests, not page "
+        "renders; read them with that caveat attached."
+    ),
+}
+
+
+def rendered_chars(workload: str, golden_bytes: dict[str, int]) -> tuple[int, bool]:
+    """(chars, measured). Falls back to the golden byteLength when the workload is unmeasured."""
+    if workload in RENDERED_CHARS:
+        return RENDERED_CHARS[workload], True
+    return golden_bytes[workload], False
+
+
+def tier_of(workload: str, golden_bytes: dict[str, int]) -> int:
+    """1 below the LOH threshold, 2 at or above it. Derived, never declared per workload."""
+    chars, _ = rendered_chars(workload, golden_bytes)
+    return 2 if chars * UTF16_BYTES_PER_CHAR >= LOH_THRESHOLD_BYTES else 1
+
+
+def ordered_workloads(workloads: list[str], golden_bytes: dict[str, int]) -> list[str]:
+    """Tier 1 first, then tier 2; ascending by rendered size within each tier."""
+    return sorted(
+        workloads,
+        key=lambda w: (tier_of(w, golden_bytes), rendered_chars(w, golden_bytes)[0], w),
+    )
+
+
+def size_caption(workload: str, golden_bytes: dict[str, int]) -> str:
+    """The size clause for a table caption, naming both figures when they diverge."""
+    chars, measured = rendered_chars(workload, golden_bytes)
+    gold = golden_bytes[workload]
+    if not measured:
+        return f"{gold:,} B golden output (rendered size unmeasured — see RENDERED_CHARS)"
+    if abs(chars - gold) / gold > SIZE_DIVERGENCE_NOTE_THRESHOLD:
+        return f"{chars:,} B rendered output ({gold:,} B golden, after whitespace normalization)"
+    return f"{chars:,} B rendered output"
+
 
 # mitata's per-render heap estimate, keyed (track, engine, workload). Populated by load_js and
 # used only by the JS materialisation register, where it corroborates the throughput signal.
@@ -533,14 +668,63 @@ def golden_entries() -> list[dict]:
     return doc["entries"]
 
 
+def toolchain_table(run: Path) -> list[str]:
+    """The pin-drift table, from the runner's `toolchain.json`.
+
+    Drift matters: a cross-stack ranking taken at unpinned toolchains is honest about that run but
+    weaker as a claim about the ecosystems, so the deltas belong in the report rather than only in
+    a step log. Older runs have no such file — the runners started writing it on 2026-07-25 — and
+    for those the report states that rather than silently omitting the section.
+    """
+    path = run / "toolchain.json"
+    if not path.exists():
+        return [
+            "No `toolchain.json` in this run: the runners began recording pin deltas "
+            "machine-readably on 2026-07-25. Any drift for this run was transcribed by hand into "
+            "the report's environment section from the harness artifacts' own metadata.",
+            "",
+        ]
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    rows = []
+    drifted = 0
+    for tool, rec in doc.items():
+        drift = bool(rec.get("drift"))
+        drifted += drift
+        rows.append([
+            tool, rec.get("pin", "—"), rec.get("actual", "—"),
+            "**yes**" if drift else "no",
+        ])
+    out = table(["Toolchain", "Pin", "Actually ran", "Drift"], ["l", "l", "l", "l"], rows)
+    out += [""]
+    out += [
+        f"{drifted} of {len(rows)} toolchains drifted from their pin in this run. Within-ecosystem "
+        "comparisons are unaffected — both engines in an ecosystem ran on the identical toolchain — "
+        "but cross-stack rankings involving a drifted ecosystem are provisional as statements about "
+        "that ecosystem."
+        if drifted
+        else "Every toolchain ran at its pin in this run.",
+        "",
+    ]
+    return out
+
+
 # ---- rendering ------------------------------------------------------------------------------
 
 
 def render(run: Path) -> str:
+    # Which era's Razor this run holds decides its display name and whether it carries the
+    # non-parity caveat. Must run before any engine name is resolved.
+    configure_run_era(run)
+
     entries = golden_entries()
-    workloads = [e["workload"] for e in entries]
     golden_bytes = {e["workload"]: e["byteLength"] for e in entries}
     suite_of = {e["workload"]: e["suite"] for e in entries}
+    # Tier 1 (realistic sizing) first, then tier 2 (edge cases), ascending by rendered size in
+    # each. Every table in this file is emitted in this order; nothing is ordered by hand.
+    workloads = ordered_workloads([e["workload"] for e in entries], golden_bytes)
+    # The implied-throughput numerator is the RENDERED size, not the normalized golden — see
+    # RENDERED_CHARS. Using the golden understates composed-page by 1.56x.
+    size_bytes = {w: rendered_chars(w, golden_bytes)[0] for w in workloads}
 
     dotnet, dotnet_alloc = load_dotnet(run)
     rust, rust_cold = load_rust(run)
@@ -567,7 +751,46 @@ def render(run: Path) -> str:
         "",
         f"# Consolidated tables — {run.name}",
         "",
+        "## Toolchain pins and drift",
+        "",
     ]
+    out += toolchain_table(run)
+
+    # ---- 0. the sizing regimes that fix table order everywhere below ----
+    out += [
+        "## Sizing regimes",
+        "",
+        f"The CLR allocates any object of **{LOH_THRESHOLD_BYTES:,} bytes or more on the Large",
+        "Object Heap**, and .NET strings are UTF-16 — so a rendered page crosses that line at",
+        f"**{LOH_THRESHOLD_BYTES // UTF16_BYTES_PER_CHAR:,} characters**, and every render past it",
+        "allocates on the LOH and drives a full, blocking Gen2 collection. None of the other five",
+        "ecosystems has this cliff: their outputs are UTF-8 or Latin-1 and stay on the normal heap.",
+        "",
+        "Workloads on either side of that boundary are therefore not measuring the same thing.",
+        "Every table below is ordered **tier 1 first, then tier 2, ascending by rendered size**",
+        "within each — not in normative protocol order, which `manifest.json` and the phase specs",
+        "retain. The tier is derived from the rendered size, never declared per workload.",
+        "",
+    ]
+    tier_rows = []
+    for w in workloads:
+        chars, measured = rendered_chars(w, golden_bytes)
+        tier_rows.append([
+            w, suite_of[w], f"{golden_bytes[w]:,}",
+            f"{chars:,}" + ("" if measured else " ‡"),
+            f"{chars * UTF16_BYTES_PER_CHAR:,}",
+            f"**{tier_of(w, golden_bytes)}**",
+        ])
+    out += table(
+        ["Workload", "Suite", "golden B", "rendered chars", "as UTF-16 B", "tier"],
+        ["l", "l", "r", "r", "r", "r"], tier_rows)
+    out += [""]
+    if any(w not in RENDERED_CHARS for w in workloads):
+        out += [
+            "‡ rendered size unmeasured — the golden `byteLength` was substituted. Re-measure and",
+            "update `RENDERED_CHARS` in `consolidate.py`.",
+            "",
+        ]
 
     # ---- 1. cross-stack ranked, one table per workload (Phase 7 D6 amendment) ----
     out += [
@@ -580,6 +803,7 @@ def render(run: Path) -> str:
     ]
     for track in ("controlled", "idiomatic"):
         out += [f"### {track.capitalize()} track", ""]
+        emitted_tier = None
         for workload in workloads:
             rows_src = sorted(
                 [c for c in cells if c.track == track and c.workload == workload],
@@ -587,21 +811,24 @@ def render(run: Path) -> str:
             )
             if not rows_src:
                 continue
+            tier = tier_of(workload, golden_bytes)
+            if tier != emitted_tier:
+                emitted_tier = tier
+                out += [f"#### {TIER_TITLES[tier]}", "", TIER_BLURBS[tier], ""]
             anchor = heddle[workload]
             rows = []
             for i, c in enumerate(rows_src, start=1):
                 unchecked = (c.ecosystem, c.engine) in NOT_PARITY_CHECKED
                 # The golden size does not describe a non-parity-checked payload, so its
                 # implied throughput would be arithmetic on mismatched operands.
-                bpn = "n/a †" if unchecked else f"{golden_bytes[workload] / c.ns:.1f}"
+                bpn = "n/a †" if unchecked else f"{size_bytes[workload] / c.ns:.1f}"
                 rows.append([
                     str(i), c.engine + (" †" if unchecked else ""), c.ecosystem,
                     evidence_of(c), c.stat, c.dispersion, fmt_ns(c.ns),
                     fmt_ratio(c.ns / anchor), bpn,
                 ])
             out += [
-                f"**{workload} — cross-stack ({track}) — "
-                f"{golden_bytes[workload]:,} B golden output**",
+                f"**{workload} — cross-stack ({track}) — {size_caption(workload, golden_bytes)}**",
                 "",
             ]
             out += table(
@@ -740,29 +967,50 @@ def render(run: Path) -> str:
     out += [
         "## Plausibility register",
         "",
-        "`implied B/ns` is the golden output size divided by the wall time — the diagnostic the",
-        "D6 amendment requires on every cross-stack table. It is **not** a performance metric.",
+        "`implied B/ns` is the **rendered** output size divided by the wall time — the diagnostic",
+        "the D6 amendment requires on every cross-stack table. It is **not** a performance metric.",
         "Its purpose is to expose cells where the harness cannot be producing the full output,",
         "so a reader does not mistake a measurement artifact for engine speed.",
+        "",
+        "The numerator is the rendered size, not the golden `byteLength`. The golden oracle is",
+        "stored in its **normalized** form — `TwinContent.Normalize` collapses every inter-tag",
+        "whitespace run before export — so on `composed-page` it is 1.56x smaller than what the",
+        "engines actually emit (34,847 B stored against 54,401 chars rendered). Dividing by the",
+        "golden there understated every engine's throughput by that factor and would have let a",
+        "cell sit above the ceiling unflagged. The other seven workloads agree within 2.4%.",
         "",
         f"### Cells above the {PLAUSIBILITY_CEILING_B_PER_NS:.0f} B/ns ceiling",
         "",
         "A cell above this ceiling claims more sustained store bandwidth than one core of this",
-        "machine has while also executing template logic. The threshold is set from the observed",
-        "distribution rather than a model: this run's cells drop from 105.4 and 91.7 B/ns to",
-        "30.9 B/ns, and that 30.9 figure is a compiled Rust template whose output is mostly a",
-        "memcpy of large literal chunks — fast, but physically possible.",
+        "machine has while also executing template logic. The threshold was set from the observed",
+        "distribution of an earlier run rather than from a model. That run — since withdrawn, and",
+        "its render figures invalid — had two cells at 105.4 and 91.7 B/ns and then nothing until",
+        "30.9 B/ns, which was a compiled Rust template whose output is mostly a memcpy of large",
+        "literal chunks: fast, but physically possible. The ceiling sits in that gap. The two high",
+        "cells were the V8 rope artifact, since fixed harness-side (ledger E4), and the threshold",
+        "is retained as a standing cross-check rather than as a finding about that run.",
         "",
     ]
+    # This run's own distribution, stated rather than asserted: a hardcoded sentence about
+    # "this run" silently became false the first time the tables were regenerated.
+    ranked_bpn = sorted((size_bytes[c.workload] / c.ns for c in cells), reverse=True)
+    if ranked_bpn:
+        out += [
+            f"In *this* run the highest implied throughput is **{ranked_bpn[0]:.1f} B/ns**, and the "
+            f"top five are "
+            + ", ".join(f"{v:.1f}" for v in ranked_bpn[:5])
+            + f" B/ns against the {PLAUSIBILITY_CEILING_B_PER_NS:.0f} B/ns ceiling.",
+            "",
+        ]
     flagged = []
-    for c in sorted(cells, key=lambda c: -(golden_bytes[c.workload] / c.ns)):
-        bpn = golden_bytes[c.workload] / c.ns
+    for c in sorted(cells, key=lambda c: -(size_bytes[c.workload] / c.ns)):
+        bpn = size_bytes[c.workload] / c.ns
         if bpn > PLAUSIBILITY_CEILING_B_PER_NS:
             flagged.append([c.ecosystem, c.engine, c.track, c.workload,
-                            f"{golden_bytes[c.workload]:,}", fmt_time(c.ns), f"{bpn:.1f}"])
+                            f"{size_bytes[c.workload]:,}", fmt_time(c.ns), f"{bpn:.1f}"])
     if flagged:
         out += table(
-            ["Ecosystem", "Engine", "Track", "Workload", "golden B", "wall time", "implied B/ns"],
+            ["Ecosystem", "Engine", "Track", "Workload", "rendered B", "wall time", "implied B/ns"],
             ["l", "l", "l", "l", "r", "r", "r"], flagged)
     else:
         out += ["No cell exceeds the ceiling in this run."]
@@ -774,50 +1022,132 @@ def render(run: Path) -> str:
         out += [
             "### JS — heap per render against output size (corroborating signal)",
             "",
-            "mitata reports an estimated heap figure per render. A cell whose heap is a small",
-            "fraction of its golden output size cannot be materialising that output: V8",
-            "represents string concatenation as an unflattened `ConsString` rope, and mitata's",
-            "`do_not_optimize()` consumes the returned reference without forcing it flat.",
+            "mitata reports an estimated heap figure per render, published here as context only.",
             "",
-            "The heap figure is a sampling estimate, so a ratio moderately below 1 is within",
-            "its noise and decides nothing. A ratio below 0.1 is not: a thirty-fold shortfall",
-            "against a known output size is far outside what the estimate's error can explain.",
-            "The two diagnostics are independent, and the `reading` column reports each cell on",
-            "its own evidence rather than collapsing them into one verdict.",
+            "**This column cannot decide materialisation, and is no longer read as if it could.**",
+            "The figure is a *net* heap delta measured across a batch of thousands of iterations,",
+            "so anything the collector reclaims inside that batch is invisible to it: a render",
+            "that allocates its full output and immediately drops it can report a near-zero",
+            "delta. That is why the same metric yields a ratio above 5 on `large-loop` (where",
+            "allocation outruns the collector within a batch) and near 0.01 on `composed-page`",
+            "(where it does not) in one and the same run. Earlier revisions of this register",
+            "treated a ratio below 0.1 as proof of a non-materialised output; on the artifacts of",
+            "the run that first exposed the defect that happened to agree with it, but it is not a",
+            "sound inference and it false-positives on cells that are now provably correct.",
             "",
-            "In this run only `composed-page` is decided, for **both** JS engines (ratio 0.03).",
-            "`eta` on that workload is confirmed twice over, since it also breaks the throughput",
-            "ceiling. The mid-range cells (`mixed-page`, `conditional-heavy`, `fragment-heavy`)",
-            "have plausible throughput and heap ratios inside the noise band, so they are not",
-            "called artifacts.",
+            "**The authoritative control is harness-side, not report-side.** Every bench body",
+            "materialises through `%FlattenString` and each run asserts `MATERIALISATION-CHECK`",
+            "before writing artifacts, failing the step outright rather than annotating a table",
+            "([ledger E4](../../../docs/spec/records.md#cross-spec-amendments-ledger)). The",
+            "throughput ceiling above is the report-side cross-check on that gate. A low heap",
+            "ratio here is a prompt to look at those two, not a verdict of its own.",
             "",
         ]
         rows = []
         for (track, engine, workload), heap in sorted(
-            JS_HEAP.items(), key=lambda kv: (kv[1] / golden_bytes[kv[0][2]])
+            JS_HEAP.items(), key=lambda kv: (kv[1] / size_bytes[kv[0][2]])
         ):
-            gb = golden_bytes[workload]
+            gb = size_bytes[workload]
             ratio = heap / gb
             over_ceiling = gb / next(
                 c.ns for c in cells
                 if c.ecosystem == "JS" and c.track == track and c.workload == workload
                 and c.engine == name("JS", engine)
             ) > PLAUSIBILITY_CEILING_B_PER_NS
-            if ratio < 0.1:
-                verdict = "artifact — output not materialised"
-                if over_ceiling:
-                    verdict += "; throughput also above ceiling"
+            # Deliberately none of these is a materialisation verdict; see the note above.
+            if over_ceiling:
+                verdict = "THROUGHPUT ABOVE CEILING — see the section above"
+            elif ratio < 0.1:
+                verdict = "net delta ≈ 0 (garbage reclaimed within the batch)"
             elif ratio < 1.0:
-                verdict = "inconclusive — inside the estimate's noise"
+                verdict = "net delta below output size"
             else:
-                verdict = "consistent with materialised output"
+                verdict = "net delta at or above output size"
             rows.append([workload, name("JS", engine), track, f"{gb:,}",
                          f"{heap:,.0f}", f"{ratio:.2f}", verdict])
         out += table(
-            ["Workload", "Engine", "Track", "golden B", "heap/render B", "ratio", "reading"],
+            ["Workload", "Engine", "Track", "rendered B", "heap/render B", "ratio", "reading"],
             ["l", "l", "l", "r", "r", "r", "l"], rows)
         out += [""]
 
+    return {
+        OUTPUT_NAME: "\n".join(out).rstrip() + "\n",
+        SUMMARY_NAME: render_summary(run, cells, dotnet, heddle, workloads, golden_bytes),
+    }
+
+
+def render_summary(
+    run: Path,
+    cells: list[Cell],
+    dotnet: list[Cell],
+    heddle: dict[str, float],
+    workloads: list[str],
+    golden_bytes: dict[str, int],
+) -> str:
+    """The headline tables `index.md` embeds, in the same tier order as the full tables.
+
+    These exist so the report's narrative page never hand-transcribes a number: index.md pulls
+    them in with VitePress's `<!--@include:-->` directive, and `--check` re-derives them from the
+    artifacts alongside the consolidated tables.
+    """
+    ctl = [c for c in cells if c.track == "controlled"]
+    tiers = {t: [w for w in workloads if tier_of(w, golden_bytes) == t] for t in (1, 2)}
+
+    out: list[str] = [
+        "<!-- Generated by benchmarks/report/consolidate.py. Do not edit by hand.",
+        f"     Source: {run.as_posix()} — regenerate with",
+        f"     `python benchmarks/report/consolidate.py {run.as_posix()}`",
+        "     and verify with `--check`. index.md embeds these with <!--@include:-->. -->",
+        "",
+    ]
+
+    def dotnet_margin_rows(ws: list[str]) -> list[list[str]]:
+        rows = []
+        for w in ws:
+            field = sorted((c for c in dotnet if c.track == "controlled" and c.workload == w),
+                           key=lambda c: c.ns)
+            if len(field) < 2:
+                continue
+            anchor = heddle[w]
+            rival = next((c for c in field if c.engine != "Heddle"), None)
+            if rival is None:
+                continue
+            ratio = rival.ns / anchor
+            verdict = (f"**{ratio:.2f}×**" if ratio > 1
+                       else f"**{ratio:.2f}× — Heddle loses**")
+            rows.append([w, f"{golden_bytes[w]:,} B", fmt_time(anchor),
+                         f"{rival.engine} — {fmt_time(rival.ns)}", verdict])
+        return rows
+
+    def rank_rows(ws: list[str]) -> list[list[str]]:
+        rows = []
+        for w in ws:
+            field = sorted((c for c in ctl if c.workload == w), key=lambda c: c.ns)
+            if not field:
+                continue
+            rank = next(i for i, c in enumerate(field, 1)
+                        if c.ecosystem == ".NET" and c.engine == "Heddle")
+            ahead = ", ".join(f"{c.engine} ({c.ecosystem})" for c in field[:rank - 1]) or "—"
+            rows.append([w, f"{golden_bytes[w]:,} B", f"**#{rank}** of {len(field)}", ahead])
+        return rows
+
+    for t in (1, 2):
+        if not tiers[t]:
+            continue
+        out += [f"### {TIER_TITLES[t]} — .NET field", "", TIER_BLURBS[t], ""]
+        out += table(["Workload", "Golden", "Heddle", "Next .NET engine", "Margin"],
+                     ["l", "r", "r", "l", "r"], dotnet_margin_rows(tiers[t]))
+        out += ["", f"### {TIER_TITLES[t]} — cross-stack rank", ""]
+        out += table(["Workload", "Golden", "Heddle rank", "Ahead of it"],
+                     ["l", "r", "r", "l"], rank_rows(tiers[t]))
+        out += [""]
+
+    out += [
+        f"*Source: {run.as_posix()}, controlled track. Tier is derived from rendered output size "
+        f"against the {LOH_THRESHOLD_BYTES:,}-byte Large Object Heap threshold; see "
+        "[Sizing regimes](consolidated-tables.md#sizing-regimes).*",
+        "",
+    ]
     return "\n".join(out).rstrip() + "\n"
 
 
@@ -826,7 +1156,7 @@ def render(run: Path) -> str:
 
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("run", type=Path, help="the run directory, e.g. docs/benchmarks/2026-07-22")
+    ap.add_argument("run", type=Path, help="the run directory, e.g. docs/benchmarks/2026-07-25")
     ap.add_argument("--check", action="store_true",
                     help="re-derive the tables and diff against the committed file")
     args = ap.parse_args(argv)
@@ -837,30 +1167,38 @@ def main(argv: list[str]) -> int:
         return 2
 
     try:
-        text = render(run)
+        outputs = render(run)
     except Fail as exc:
         print(f"consolidate: {exc}", file=sys.stderr)
         return 1
 
-    target = run / OUTPUT_NAME
     if args.check:
-        if not target.exists():
-            print(f"consolidate --check: {target} does not exist", file=sys.stderr)
+        stale = False
+        for filename, text in outputs.items():
+            target = run / filename
+            if not target.exists():
+                print(f"consolidate --check: {target} does not exist", file=sys.stderr)
+                stale = True
+                continue
+            committed = target.read_text(encoding="utf-8")
+            if committed != text:
+                import difflib
+                diff = difflib.unified_diff(
+                    committed.splitlines(keepends=True), text.splitlines(keepends=True),
+                    fromfile=f"{target} (committed)", tofile="re-derived", n=2)
+                sys.stderr.writelines(diff)
+                print(f"consolidate --check: {target} is stale", file=sys.stderr)
+                stale = True
+        if stale:
             return 1
-        committed = target.read_text(encoding="utf-8")
-        if committed != text:
-            import difflib
-            diff = difflib.unified_diff(
-                committed.splitlines(keepends=True), text.splitlines(keepends=True),
-                fromfile=f"{target} (committed)", tofile="re-derived", n=2)
-            sys.stderr.writelines(diff)
-            print(f"consolidate --check: {target} is stale", file=sys.stderr)
-            return 1
-        print(f"consolidate --check: {target} matches the artifacts")
+        print("consolidate --check: "
+              + ", ".join(str(run / f) for f in outputs) + " match the artifacts")
         return 0
 
-    target.write_text(text, encoding="utf-8", newline="\n")
-    print(f"consolidate: wrote {target} ({len(text.splitlines())} lines)")
+    for filename, text in outputs.items():
+        target = run / filename
+        target.write_text(text, encoding="utf-8", newline="\n")
+        print(f"consolidate: wrote {target} ({len(text.splitlines())} lines)")
     return 0
 
 

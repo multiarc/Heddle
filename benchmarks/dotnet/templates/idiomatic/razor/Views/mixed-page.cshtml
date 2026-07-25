@@ -1,0 +1,63 @@
+@*
+    Idiomatic Razor -- mixed-page (phase 9; authoring standard D16).
+
+    Patterns followed, from Microsoft's own documentation:
+      Razor syntax        https://learn.microsoft.com/aspnet/core/mvc/views/razor
+      Layouts             https://learn.microsoft.com/aspnet/core/mvc/views/layout
+      Partial views       https://learn.microsoft.com/aspnet/core/mvc/views/partial
+
+    Strongly-typed @model, C# control flow, and the DEFAULT @expression output -- which HTML-encodes
+    -- rather than Html.Raw. That is the substantive idiomatic difference from the controlled twin:
+    a Razor developer reaches for Html.Raw only when the value genuinely is markup, which here is
+    only the composed-page fragments. Checked by the functional verifier, not the byte gate.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model MixedContent.MixedModel
+@{ Layout = null; }
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>@Model.PageTitle</title>
+    <style>body{font:16px/1.5 system-ui;margin:0;color:#222}header{background:#1a2b3c;color:#fff;padding:12px 24px}nav a{color:#9cf;margin-right:12px;text-decoration:none}main{max-width:960px;margin:0 auto;padding:24px}.hero{background:#f4f6f8;padding:32px;border-radius:8px}.banner{background:#fff4d6;padding:8px 16px;border-radius:4px}.grid{display:flex;flex-wrap:wrap;gap:16px}.card{border:1px solid #ddd;border-radius:6px;padding:16px;width:280px}.card h3{margin:0 0 8px}.price{font-weight:700}.sale{color:#b00020;font-weight:700}footer{border-top:1px solid #ddd;margin-top:32px;padding:16px 24px;color:#666}</style>
+</head>
+<body>
+    <header>
+        <h1>@Model.StoreName</h1>
+        <nav><a href="/">Home</a><a href="/catalog">Catalog</a><a href="/deals">Deals</a><a href="/about">About</a><a href="/support">Support</a><a href="/account">Account</a></nav>
+    </header>
+    <main>
+        @if (Model.ShowBanner)
+        {
+            <div class="banner">@Model.BannerText</div>
+        }
+        <section class="hero">
+            <h2>@Model.HeroHeading</h2>
+            <p>@Model.HeroTagline</p>
+        </section>
+        <section class="grid">
+            @foreach (var p in Model.Products)
+            {
+                <article class="card">
+                    <h3>@p.Name</h3>
+                    <p class="sku">@p.Sku</p>
+                    <p class="price">@p.Price</p>
+                    @if (p.OnSale)
+                    {
+                        <p class="sale">On sale</p>
+                    }
+                    <p class="blurb">@p.Blurb</p>
+                </article>
+            }
+        </section>
+        @if (Model.ShowDebugPanel)
+        {
+            <pre class="debug">debug</pre>
+        }
+    </main>
+    <footer>
+        <p>@Model.FooterNote</p>
+        <p>@Model.StoreName @Model.Year @Model.SupportEmail</p>
+    </footer>
+</body>
+</html>
