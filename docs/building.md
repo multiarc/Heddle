@@ -92,20 +92,26 @@ What it measures
   ([TestTemplates/home.heddle](../src/Heddle.Performance/TestTemplates/home.heddle) +
   [layout.heddle](../src/Heddle.Performance/TestTemplates/layout.heddle)) through
   [`HeddleTest`](../src/Heddle.Performance/Runners/HeddleTest.cs).
-- **`RenderRazor`** renders a comparable Razor page
-  ([Views/home.cshtml](../src/Heddle.Performance/Views) + `layout.cshtml`) with runtime
-  compilation through [`RazorTest`](../src/Heddle.Performance/Runners/RazorTest.cs). Razor's page is
-  larger and renders different bytes, so — unlike the four Liquid/Handlebars twins — it is **not**
-  held to the byte‑identical parity assertion; treat its row as indicative rather than
-  apples‑to‑apples.
+- **`RenderRazor`** renders the same page through ASP.NET Core Razor with runtime compilation
+  ([Views/twin-home.cshtml](../src/Heddle.Performance/Views) + `twin-layout.cshtml`, via
+  [`RazorTest`](../src/Heddle.Performance/Runners/RazorTest.cs)). Since 2026‑07‑25 it is a full
+  parity twin like the four Liquid/Handlebars engines — held to the same byte‑identical assertion
+  and rendering from the same shared fixtures. Before that it rendered a larger, different page and
+  sat outside every gate; any Razor figure published earlier describes that old workload, not this
+  one.
 
 Both pages are shaped alike: one layout, several reusable templates/sections, and a dozen
-component invocations — the Heddle components live in
-[TestSuite/Extensions](../src/Heddle.Performance/TestSuite/Extensions) and their Razor
-counterparts in [TestSuite/RazorExtensions](../src/Heddle.Performance/TestSuite/RazorExtensions).
-In the published run of 2026‑07‑11 **Heddle rendered faster than Razor and allocated less memory**
-(and led the four parity‑checked engines too); for the numbers see the
-[README Performance section](../README.md#performance), and for *why*, see
+component invocations. The Heddle components live in
+[TestSuite/Extensions](../src/Heddle.Performance/TestSuite/Extensions); every twin — Razor
+included — renders the same fragments straight from
+[TwinContent](../src/Heddle.Performance/Runners/TwinContent.cs) rather than from its own copy, so
+no twin can drift from the engine it is compared against.
+In the published cross‑stack run of 2026‑07‑25 **Heddle rendered the composed page 1.37× faster
+than ASP.NET Core Razor (30.52 μs vs 41.66 μs) and allocated less memory**, on byte‑identical
+output under the same parity gate — and led all five other .NET engines on seven of the eight
+protocol workloads. For the numbers see the
+[README Performance section](../README.md#performance) and the
+[full report](benchmarks/2026-07-25/); for *why*, see
 [Architecture → Performance characteristics](architecture.md#performance-characteristics).
 
 > Benchmark numbers are hardware‑ and workload‑specific — run the suite on your target machine

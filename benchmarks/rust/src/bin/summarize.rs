@@ -152,8 +152,11 @@ fn render_table(track: &str, reference: &Reference, missing: &mut Vec<String>) -
         "### Wall time - {track} track (Criterion mean, 95% CI)\n\n"
     ));
     out.push_str(&format!(
-        "Heddle rows are the labeled excerpt from the published Phase 1 protocol run of \
-         {}; they are not re-measured here (presentation rule 1). Ratios are engine / Heddle.\n\n",
+        "Heddle rows are the labeled excerpt from the published run of {} named by \
+         `heddle-reference.toml`; they are not re-measured here (presentation rule 1). Whether \
+         that run is on the protocol machine is stated in that file's header - as of 2026-07-25 \
+         it is not, and the Windows protocol run is pending a re-test. Ratios are engine / \
+         Heddle.\n\n",
         reference.source_run
     ));
     out.push_str("| Workload | Engine | Criterion mean (95% CI) | ns/render | Ratio vs Heddle |\n");

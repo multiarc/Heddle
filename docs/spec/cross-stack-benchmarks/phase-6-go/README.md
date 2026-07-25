@@ -212,13 +212,17 @@ trusted from the plan or the spikes where a first-hand check was possible.
   §controlled-track-gate 2.
 
 ### D9 — Stability settings on the protocol machine
-- **Decision.** `-count=20`, `-benchtime=1s`, prebuilt test binary launched at **High** priority
+- **Decision.** `-count=14` (`-count=20` before
+  [ledger E6](../../records.md#cross-spec-amendments-ledger)'s uniform ~10 min per-ecosystem
+  budget; 14 stays above benchstat's ≥10 working guidance while dropping the leg from 13.8 to
+  ~9.7 min), `-benchtime=1s`, prebuilt test binary launched at **High** priority
   via `cmd /c start /high /wait /b`, no CPU affinity, runtime-default `GOMAXPROCS`/`GOGC`
   (recorded); fallback trigger: benchstat variation > ±5% on any suite → that suite re-runs
   pinned to CCD0 (`/affinity 0xFFFF`) with the pinning recorded in the report. Full table in
   [harness-and-measurement.md](harness-and-measurement.md#repeated-runs-stability-settings-benchstat).
-- **Rationale.** Q1.6 delegates per-harness Windows stability settings to this spec. Count 20 is
-  benchstat's own "ideally 20"; High priority mirrors what BenchmarkDotNet applied to the
+- **Rationale.** Q1.6 delegates per-harness Windows stability settings to this spec. Count 20 was
+  benchstat's own "ideally 20" — E6 trades that ideal for cross-ecosystem budget parity, keeping
+  the count comfortably inside benchstat's usable range; High priority mirrors what BenchmarkDotNet applied to the
   published .NET numbers on this box (continuity — the same argument that chose the machine);
   no-affinity is likewise the .NET runs' posture, with the dual-CCD pinning held as a recorded,
   evidence-triggered fallback rather than a default that departs from precedent. Priority is set

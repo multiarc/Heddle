@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -14,7 +14,7 @@ namespace Heddle.Performance.Runners
     /// The golden oracle corpus (spec D6/D7/D9/D10; normative format in
     /// docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/golden-corpus.md).
     /// Eight workloads, one <c>&lt;id&gt;.golden.html</c> each under
-    /// <c>src/Heddle.Performance/GoldenCorpus/</c> containing Heddle's rendered output in the
+    /// <c>benchmarks/dotnet/GoldenCorpus/</c> containing Heddle's rendered output in the
     /// stored N1–N5 form (<see cref="TwinContent.Normalize"/> = N2/N3/N4; N1 = UTF-8 no BOM,
     /// no trailing newline; N5 is an identity transform on Heddle output) plus a
     /// <c>manifest.json</c> (byte length, SHA-256, generating commit) and one
@@ -299,7 +299,7 @@ namespace Heddle.Performance.Runners
         /// <summary>The committed corpus directory, resolved from the repo root (works both under
         /// `dotnet run` in the project directory and under BenchmarkDotNet child processes).</summary>
         internal static string CorpusDirectory()
-            => Path.Combine(FindRepoRoot(), "src", "Heddle.Performance", "GoldenCorpus");
+            => Path.Combine(FindRepoRoot(), "benchmarks", "dotnet", "GoldenCorpus");
 
         private static string FindRepoRoot()
         {

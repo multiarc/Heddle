@@ -8,7 +8,8 @@
     artifacts/<name>.txt (in addition to the JSON the script writes itself), sets the process
     priority class to High immediately after start, waits for exit, and propagates the exit
     code. `-Repeat N` runs the same invocation N times sequentially into
-    artifacts/stability/run-<k>.txt/.json (the D13 Windows stability verification procedure).
+    artifacts/stability/<name>/run-<k>.txt/.json, then aggregates them into the published
+    artifacts/<name>.json and emits the D13 stability verdict (ledger E6).
 
 .EXAMPLE
     ./run.ps1 bench/controlled.mjs
@@ -69,9 +70,14 @@ if ($Repeat -le 1) {
     exit $code
 }
 
-# -Repeat mode: N consecutive full runs into artifacts/stability/run-<k>.txt/.json (D13).
-$stabilityDir = Join-Path $artifactsDir 'stability'
-if (-not (Test-Path $stabilityDir)) { New-Item -ItemType Directory -Path $stabilityDir | Out-Null }
+# -Repeat mode: N consecutive full runs into artifacts/stability/<name>/run-<k>.txt/.json.
+#
+# The directory is per script, and it is CLEARED first. Both matter: bench/aggregate.mjs medians
+# every run-*.json it finds positionally, so a leftover pass from a different script -- or from a
+# longer previous sequence -- would silently corrupt the aggregate rather than fail.
+$stabilityDir = Join-Path (Join-Path $artifactsDir 'stability') $name
+if (Test-Path $stabilityDir) { Remove-Item -Recurse -Force $stabilityDir }
+New-Item -ItemType Directory -Path $stabilityDir -Force | Out-Null
 
 for ($k = 1; $k -le $Repeat; $k++) {
     $stdoutPath = Join-Path $stabilityDir "run-$k.txt"
@@ -90,5 +96,10 @@ for ($k = 1; $k -le $Repeat; $k++) {
     }
     Write-Host "run.ps1: repeat $k/$Repeat complete."
 }
-Write-Host "run.ps1: $Repeat consecutive runs captured under artifacts/stability/."
-exit 0
+Write-Host "run.ps1: $Repeat consecutive runs captured under artifacts/stability/$name/."
+
+# Collapse the passes into the published artifact + the D13 verdict (ledger E6). This OVERWRITES
+# artifacts/<name>.json, which currently holds only the final pass, with the cross-pass
+# aggregate; a 'failed' verdict exits non-zero and takes the whole step down with it.
+& node (Join-Path $harnessRoot 'bench/aggregate.mjs') $name
+exit $LASTEXITCODE

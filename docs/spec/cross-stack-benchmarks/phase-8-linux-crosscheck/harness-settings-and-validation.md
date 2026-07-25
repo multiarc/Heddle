@@ -49,13 +49,14 @@ and is not varied by anything here.
 
 ### D8 — JMH (JVM; Windows source: Phase 3 harness-and-jmh measurement procedure)
 
-- Identical annotation regime — `Mode.AverageTime`, ns, `@Fork(5)`, `@Warmup(5 × 10 s)`,
-  `@Measurement(5 × 10 s)`, `@Threads(1)`, no `jvmArgs`, no `@CompilerControl` — and the
+- Identical annotation regime — `Mode.AverageTime`, ns, `@Fork(3)`, `@Warmup(1 × 2 s)`,
+  `@Measurement(3 × 1 s)`, `@Threads(1)`, no `jvmArgs`, no `@CompilerControl` — and the
   identical invocation: `./mvnw -q clean verify` (gates wired into `verify`) then
   `java -jar target/benchmarks.jar -prof gc -rf json -rff jmh-result.json | tee jmh-log.txt`.
 - Temurin 25 Linux x64 per the toolchain table; the JMH `# VM version` line is the recorded
-  runtime identity. Expected duration unchanged (≈ 4.5–5.5 h); run unattended in the session
-  state.
+  runtime identity. Expected duration ≈ 9 min at E6's `short` budget / ≈ 23 min at `baseline`,
+  matching Phase 3 ([ledger E6](../../records.md#cross-spec-amendments-ledger); it was
+  ≈ 4.5–5.5 h); run unattended in the session state.
 - The Phase 3 DCE plausibility pass (ns/op ≥ oracle byteLength / 10; size-ordering consistency)
   is executed on the Linux results identically before publication.
 - Trigger: JMH's own per-benchmark `Error` (99.9% CI) exceeding 5% of `Score` on any cell → one

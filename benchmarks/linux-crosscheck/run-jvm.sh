@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # run-jvm.sh — JMH launcher (Phase 8 spec D8; Windows source: Phase 3 harness-and-jmh).
-# Annotation regime lives in the sources (Fork 5, 5x10s / 5x10s, Threads 1, no jvmArgs)
+# Annotation regime lives in the sources (Fork 3, 1x2s / 3x1s, Threads 1, no jvmArgs; ledger E6
+# short budget; the 'baseline' budget adds -wi 2 -i 9)
 # and carries verbatim; this launcher performs the identical invocation:
 #   ./mvnw -q clean verify   (gates wired into verify — D12)
 #   java -jar target/benchmarks.jar -prof gc -rf json -rff jmh-result.json | tee jmh-log.txt
@@ -30,7 +31,7 @@ if [ "$LCX_SMOKE" = "1" ]; then
   lcx_note "SMOKE: JMH -f 1 -wi 1 -i 1 -w 1s -r 1s (no measurement validity)" 2>&1 | tee -a "$LCX_OUT_DIR/run-jvm.log"
   java -jar target/benchmarks.jar -f 1 -wi 1 -i 1 -w 1s -r 1s -prof gc -rf json -rff "$RESULT_JSON" | tee "$LOG_TXT"
 else
-  # Measurement (Phase 3 verbatim; annotation regime governs shape). ~4.5-5.5 h unattended.
+  # Measurement (Phase 3 verbatim; annotation regime governs shape). ~9 min at the short budget.
   java -jar target/benchmarks.jar -prof gc -rf json -rff "$RESULT_JSON" | tee "$LOG_TXT"
 fi
 lcx_note "jvm launcher done; jmh-result.json + jmh-log.txt under $LCX_OUT_DIR"

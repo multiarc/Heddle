@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>Heddle.Performance.EncodedLoopRenderBenchmarks-20260725-145554</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Linux Ubuntu 24.04.4 LTS (Noble Numbat)
+AMD Ryzen 9 9950X 0.62GHz, 1 CPU, 32 logical and 16 physical cores
+.NET SDK 10.0.110
+  [Host]   : .NET 10.0.10 (10.0.10, 10.0.1026.32716), X64 RyuJIT x86-64-v4
+  ShortRun : .NET 10.0.10 (10.0.10, 10.0.1026.32716), X64 RyuJIT x86-64-v4
+</code></pre>
+<pre><code>Job=ShortRun  IterationCount=15  LaunchCount=1  
+WarmupCount=7  
+</code></pre>
+
+<table>
+<thead><tr><th>Method    </th><th>Mean</th><th>Error</th><th>StdDev</th><th>Ratio</th><th>RatioSD</th><th>Gen0</th><th>Gen1</th><th>Gen2</th><th>Allocated</th><th>Alloc Ratio</th>
+</tr>
+</thead><tbody><tr><td>RenderHeddle</td><td>1.882 ms</td><td>0.0122 ms</td><td>0.0102 ms</td><td>1.00</td><td>0.01</td><td>273.4375</td><td>111.3281</td><td>111.3281</td><td>5.72 MB</td><td>1.00</td>
+</tr><tr><td>RenderFluid</td><td>2.781 ms</td><td>0.0026 ms</td><td>0.0022 ms</td><td>1.48</td><td>0.01</td><td>335.9375</td><td>230.4688</td><td>62.5000</td><td>5.86 MB</td><td>1.02</td>
+</tr><tr><td>RenderScriban</td><td>7.197 ms</td><td>0.0154 ms</td><td>0.0144 ms</td><td>3.82</td><td>0.02</td><td>695.3125</td><td>468.7500</td><td>125.0000</td><td>12.12 MB</td><td>2.12</td>
+</tr><tr><td>RenderDotLiquid</td><td>10.984 ms</td><td>0.0425 ms</td><td>0.0398 ms</td><td>5.84</td><td>0.04</td><td>1843.7500</td><td>843.7500</td><td>62.5000</td><td>29.99 MB</td><td>5.25</td>
+</tr><tr><td>RenderHandlebars</td><td>1.460 ms</td><td>0.0094 ms</td><td>0.0084 ms</td><td>0.78</td><td>0.01</td><td>154.2969</td><td>111.3281</td><td>54.6875</td><td>3.11 MB</td><td>0.54</td>
+</tr></tbody></table>
+</body>
+</html>

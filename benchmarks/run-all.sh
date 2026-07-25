@@ -26,7 +26,8 @@
 #   ./benchmarks/run-all.sh --smoke             # short functional pass
 #   ./benchmarks/run-all.sh --ecosystem rust,go # subset
 #   ./benchmarks/run-all.sh --out-dir /data/bench-out
-#   ./benchmarks/run-all.sh --js-stability-repeat
+#   ./benchmarks/run-all.sh --budget baseline   # ~30 min/ecosystem instead of the ~10 min default
+#   ./benchmarks/run-all.sh --js-passes 24     # more JS passes than the profile's default
 #   ./benchmarks/run-all.sh --no-tune-check     # record the bypass and measure anyway
 #   ./benchmarks/run-all.sh --no-priority       # plain launches (Phase 8 D2 posture)
 
@@ -41,7 +42,10 @@ usage: run-all.sh [options]
   --smoke                  short functional flags everywhere (no measurement validity)
   --ecosystem LIST         comma-separated subset of dotnet,rust,jvm,js,python,go
   --out-dir PATH           artifact/log destination (default benchmarks/out/linux-run-<stamp>)
-  --js-stability-repeat    run the JS five-run stability procedure before the timed suites
+  --budget NAME            measurement budget per ecosystem (ledger E6):
+                             short     ~10 min each  (default)
+                             baseline  ~30 min each  (3x capture samples, +1 warmup run)
+  --js-passes N            JS repeat passes per render track; overrides the budget default
   --tune                   sudo linux-crosscheck/tune.sh first, untune.sh on exit
                            (requires the isolcpus boot entry -- the full protocol state)
   --tune-no-isolation      no reboot needed: set performance governors + boost off + perf
@@ -56,7 +60,8 @@ EOF
 # --- Arguments -----------------------------------------------------------------------------
 SMOKE=0
 OUT_DIR=""
-JS_STABILITY_REPEAT=0
+BUDGET="short"
+JS_PASSES=""
 DO_TUNE=0
 DO_TUNE_NO_ISOLATION=0
 NO_TUNE_CHECK=0
@@ -66,7 +71,8 @@ while [ $# -gt 0 ]; do
     --smoke) SMOKE=1 ;;
     --ecosystem) ECO_ARG="${2:?--ecosystem requires a list}"; shift ;;
     --out-dir) OUT_DIR="${2:?--out-dir requires a path}"; shift ;;
-    --js-stability-repeat) JS_STABILITY_REPEAT=1 ;;
+    --budget) BUDGET="${2:?--budget requires a name}"; shift ;;
+    --js-passes) JS_PASSES="${2:?--js-passes requires N}"; shift ;;
     --tune) DO_TUNE=1 ;;
     --tune-no-isolation) DO_TUNE_NO_ISOLATION=1 ;;
     --no-tune-check) NO_TUNE_CHECK=1 ;;
@@ -79,6 +85,43 @@ done
 if [ "$DO_TUNE" = "1" ] && [ "$DO_TUNE_NO_ISOLATION" = "1" ]; then
   bench_die "--tune and --tune-no-isolation are mutually exclusive"
 fi
+# --- Measurement budget (ledger E6) ---------------------------------------------------------
+#
+# Every harness's committed source/script default IS the short profile, so a bare invocation of
+# any single harness is the ~10 min shape. `--budget baseline` layers CLI overrides on top --
+# roughly 3x the capture samples and one extra warmup run -- for the ~30 min shape. Nothing
+# below changes what is measured, only how many times.
+case "$BUDGET" in
+  short)
+    DOTNET_PROFILE_ARGS=()                                   # [ShortRunJob] in source: L1/W3/I3
+    RUST_PROFILE_ARGS=()                                     # source: warmup 3 s, measure 10 s
+    JMH_PROFILE_ARGS=()                                      # annotations: F3, W 1x2s, M 3x1s
+    PY_VALUES_ARGS=()                                         # pyperf default 3 values
+    PY_COLD_ARGS=(--processes 7)
+    GO_PROFILE_ARGS=()                                        # script default --count 14
+    BUDGET_JS_PASSES=18
+    ;;
+  baseline)
+    # .NET is overhead-bound (one process per method, plus JIT and MemoryDiagnoser), so sample
+    # count alone cannot stretch it far; these values are BenchmarkDotNet's own adaptive-default
+    # shape, i.e. the regime the protocol pinned before E6.
+    DOTNET_PROFILE_ARGS=(--warmupCount 7 --iterationCount 15)
+    RUST_PROFILE_ARGS=(--warm-up-time 4 --measurement-time 30)
+    JMH_PROFILE_ARGS=(-wi 2 -i 9)
+    PY_VALUES_ARGS=(--values 9 --warmups 2)
+    PY_COLD_ARGS=()                                           # pyperf default 20 processes
+    GO_PROFILE_ARGS=(--count 42)
+    BUDGET_JS_PASSES=54
+    ;;
+  *) bench_die "unknown --budget '$BUDGET' (valid: short, baseline)" ;;
+esac
+[ -n "$JS_PASSES" ] || JS_PASSES="$BUDGET_JS_PASSES"
+case "$JS_PASSES" in
+  ''|*[!0-9]*) bench_die "--js-passes must be an integer" ;;
+esac
+# 5 is Phase 4 D13's floor for a stability verdict; bench/aggregate.mjs refuses fewer, so catch
+# it here rather than after the passes have already been spent.
+[ "$JS_PASSES" -ge 5 ] || bench_die "--js-passes must be at least 5 (Phase 4 D13 verdict floor)"
 
 # Fixed program order (anchor-first, then the program's priority order -- same as Windows).
 ALL_ORDER=(dotnet rust jvm js python go)
@@ -240,6 +283,7 @@ write_summary() {
   printf '%s\n' "$table"
   {
     echo "mode:       $MODE"
+echo "budget:     $BUDGET (E6 measurement budget)"
     echo "ecosystems: ${SELECTED[*]}"
     echo "finished:   $(date '+%Y-%m-%d %H:%M:%S')"
     echo ""
@@ -314,6 +358,42 @@ esac
 V_TEMPL="$( cd "$GO_DIR" && go tool templ version 2>&1 | tail -n 1 )"
 [ -n "$V_TEMPL" ] || V_TEMPL="NOT FOUND"
 note "   templ      : $V_TEMPL   (pin: v0.3.1020, via go tool)"
+
+# --- toolchain.json: the pin deltas, machine-readable -----------------------------------------
+# The notes above are for a human reading the step log. A published report also needs the deltas
+# in its environment block, and reconstructing them by hand from artifact metadata after the fact
+# is error-prone -- an earlier report had to do exactly that. benchmarks/report/consolidate.py
+# reads this file and generates the pin-drift table from it. SR-3 posture is unchanged: drift is
+# recorded, never fatal.
+write_toolchain_json() {
+  local path="$OUT_DIR/toolchain.json"
+  # json_row <key> <pin> <actual> <drift-bool>
+  json_row() {
+    printf '  "%s": { "pin": %s, "actual": %s, "drift": %s }' \
+      "$1" "$(json_str "$2")" "$(json_str "$3")" "$4"
+  }
+  json_str() { printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'; }
+  local drift_rustc drift_jdk drift_node drift_py drift_go drift_templ
+  case "$V_RUSTC" in *1.97.1*) drift_rustc=false ;; *) drift_rustc=true ;; esac
+  [ "$JDK_MAJOR" = "25" ] && drift_jdk=false || drift_jdk=true
+  [ "$NODE_IS_PINNED" = "1" ] && drift_node=false || drift_node=true
+  case "$V_PY" in *3.14.6*) drift_py=false ;; *) drift_py=true ;; esac
+  case "$V_GO" in *go1.26.*) drift_go=false ;; *) drift_go=true ;; esac
+  case "$V_TEMPL" in *v0.3.1020*) drift_templ=false ;; *) drift_templ=true ;; esac
+  {
+    echo '{'
+    json_row ".NET SDK" "(protocol records the observed line)" "$V_DOTNET" false; echo ','
+    json_row "Rust"     "1.97.1"     "$V_RUSTC" "$drift_rustc"; echo ','
+    json_row "JDK"      "Temurin 25" "$V_JAVA"  "$drift_jdk";   echo ','
+    json_row "Node.js"  "v24.18.0"   "$V_NODE"  "$drift_node";  echo ','
+    json_row "CPython"  "3.14.6"     "$V_PY"    "$drift_py";    echo ','
+    json_row "Go"       "go1.26.x"   "$V_GO"    "$drift_go";    echo ','
+    json_row "templ"    "v0.3.1020"  "$V_TEMPL" "$drift_templ"; echo
+    echo '}'
+  } > "$path"
+  note "   toolchain.json written to $path (pin deltas, machine-readable)"
+}
+write_toolchain_json
 
 # Goldens-rewrite hazard: a stray dotnet-hosted watcher (Heddle demo/docs tooling) touching
 # the working tree during export/verify would dirty the corpus manifest. Best-effort check.
@@ -530,7 +610,11 @@ for eco in "${SELECTED[@]}"; do
       # MemoryDiagnoser via suite attributes; one --filter run per protocol suite.
       for suite in "${DOTNET_SUITES[@]}"; do
         BDN_ARGS=(dotnet run -c Release -f net10.0 -- --filter "*$suite*")
-        [ "$SMOKE" = "1" ] && BDN_ARGS+=(--job Dry)
+        if [ "$SMOKE" = "1" ]; then
+          BDN_ARGS+=(--job Dry)
+        else
+          BDN_ARGS+=(${DOTNET_PROFILE_ARGS[@]+"${DOTNET_PROFILE_ARGS[@]}"})
+        fi
         run_step dotnet "$MEASURE_PHASE" "suite-$suite" "$PERF_DIR" -- "${BDN_ARGS[@]}"
       done
       copy_artifacts dotnet copy-bdn-artifacts "$PERF_DIR/BenchmarkDotNet.Artifacts" "$OUT_DIR/dotnet"
@@ -544,9 +628,14 @@ for eco in "${SELECTED[@]}"; do
           cargo bench --bench controlled --bench idiomatic --bench cold -- --test
       else
         run_step rust "$MEASURE_PHASE" criterion-bench "$RUST_DIR" -- \
-          cargo bench --bench controlled --bench idiomatic --bench cold -- --noplot
+          cargo bench --bench controlled --bench idiomatic --bench cold -- --noplot \
+          ${RUST_PROFILE_ARGS[@]+"${RUST_PROFILE_ARGS[@]}"}
+        # --out lands the D13 artifact straight in the run dir: copy_artifacts only handles
+        # directories, and before this the report existed nowhere but the step log.
+        mkdir -p "$OUT_DIR/rust"
         run_step rust "$MEASURE_PHASE" alloc-report "$RUST_DIR" -- \
-          cargo run --release --features alloc-count --bin alloc_report
+          cargo run --release --features alloc-count --bin alloc_report -- \
+          --out "$OUT_DIR/rust/alloc-report.txt"
         # summarize reads heddle-reference.toml; while the Phase 1 Windows reference rows
         # are pending it fails loudly by design -- captured, non-fatal.
         run_step rust "$MEASURE_PHASE" summarize "$RUST_DIR" --non-fatal -- \
@@ -577,30 +666,41 @@ for eco in "${SELECTED[@]}"; do
         run_step jvm "$MEASURE_PHASE" jmh-smoke "$JVM_DIR" -- \
           java -jar target/benchmarks.jar -f 1 -wi 1 -i 1 -w 1s -r 1s -foe true -prof gc -rf json -rff "$RFF"
       else
-        echo "${C_YELLOW}NOTE: full JMH run uses the committed annotation regime (Fork 5, 5x10s/5x10s).${C_RESET}"
-        echo "${C_YELLOW}      Expect roughly 4.5-5.5 hours unattended (Phase 3 procedure).${C_RESET}"
+        echo "${C_YELLOW}NOTE: JMH regime = annotations (Fork 3, 1x2s warmup, 3x1s measure)${C_RESET}"
+        echo "${C_YELLOW}      + budget '$BUDGET' overrides ${JMH_PROFILE_ARGS[*]:-(none)}.${C_RESET}"
+        echo "${C_YELLOW}      Expect ~9 min (short) / ~23 min (baseline); it was 4.5 h before ledger E6.${C_RESET}"
         run_step jvm "$MEASURE_PHASE" jmh-full "$JVM_DIR" -- \
-          java -jar target/benchmarks.jar -prof gc -rf json -rff "$RFF"
+          java -jar target/benchmarks.jar ${JMH_PROFILE_ARGS[@]+"${JMH_PROFILE_ARGS[@]}"} \
+          -prof gc -rf json -rff "$RFF"
       fi
       ;;
     js)
       # Phase 4 shapes via the committed launcher js/run.sh (taskset + nice, node
       # --expose-gc --allow-natives-syntax, stdout captured to artifacts/).
-      if [ "$SMOKE" != "1" ]; then
-        if [ "$JS_STABILITY_REPEAT" = "1" ]; then
-          run_step js "$MEASURE_PHASE" stability-repeat5 "$JS_DIR" -- \
-            ./run.sh bench/controlled.mjs --repeat 5 ${PRIORITY_ARGS[@]+"${PRIORITY_ARGS[@]}"}
-          echo "${C_YELLOW}NOTE: compute the five-run RSD verdict (Phase 4 D13 thresholds) from${C_RESET}"
-          echo "${C_YELLOW}      artifacts/stability/run-*.json before publishing JS numbers.${C_RESET}"
+      #
+      # The two render tracks run JS_PASSES times each and are aggregated (ledger E6). mitata
+      # exposes no per-cell time budget -- `B.run()` builds its own options object, so
+      # min_cpu_time (642 ms) is unreachable from the public API -- which left this ecosystem
+      # measuring 32 cells in 31 s against 15-31 s/cell everywhere else. Its share of the uniform
+      # budget is therefore spent on independent processes: run.sh --repeat N, then
+      # bench/aggregate.mjs medians the per-pass avg into artifacts/<track>.json and emits the
+      # D13 verdict. That makes the stability procedure the measurement rather than a separate
+      # publication-gating step someone has to remember, which is how the withdrawn 2026-07-22 run
+      # JS numbers with no RSD verdict at all.
+      #
+      # cold-compile stays a single pass: it is compile-dominated (D10 sidebar, not a protocol
+      # cell), so repeating it buys a stability verdict for numbers no ranking consumes.
+      for js_script in controlled idiomatic; do
+        if [ "$SMOKE" = "1" ]; then
+          run_step js "$MEASURE_PHASE" "bench-$js_script" "$JS_DIR" -- \
+            ./run.sh "bench/$js_script.mjs" ${PRIORITY_ARGS[@]+"${PRIORITY_ARGS[@]}"}
         else
-          echo "${C_YELLOW}NOTE: the JS five-run stability procedure (Phase 4 D13) is a separate,${C_RESET}"
-          echo "${C_YELLOW}      publication-gating step. Re-run with --js-stability-repeat to execute it.${C_RESET}"
+          run_step js "$MEASURE_PHASE" "bench-$js_script-x$JS_PASSES" "$JS_DIR" -- \
+            ./run.sh "bench/$js_script.mjs" --repeat "$JS_PASSES" ${PRIORITY_ARGS[@]+"${PRIORITY_ARGS[@]}"}
         fi
-      fi
-      for js_script in controlled idiomatic cold-compile; do
-        run_step js "$MEASURE_PHASE" "bench-$js_script" "$JS_DIR" -- \
-          ./run.sh "bench/$js_script.mjs" ${PRIORITY_ARGS[@]+"${PRIORITY_ARGS[@]}"}
       done
+      run_step js "$MEASURE_PHASE" bench-cold-compile "$JS_DIR" -- \
+        ./run.sh bench/cold-compile.mjs ${PRIORITY_ARGS[@]+"${PRIORITY_ARGS[@]}"}
       copy_artifacts js copy-artifacts "$JS_DIR/artifacts" "$OUT_DIR/js"
       ;;
     python)
@@ -622,9 +722,19 @@ for eco in "${SELECTED[@]}"; do
       mkdir -p "$OUT_DIR/python"
       PY_SMOKE_ARGS=()
       [ "$SMOKE" = "1" ] && PY_SMOKE_ARGS=(--debug-single-value)
+      # The four render scripts keep pyperf's default 20x3x1 (Phase 5 D8) -- at ~9 min for the
+      # 32 protocol cells they already sit inside ledger E6's uniform budget. The cold-compile
+      # sidebar does not: at defaults it cost 288 s, a third of the ecosystem's time for a
+      # non-comparable sidebar (D10), so it runs with 7 processes.
       for s in bench_jinja2_controlled bench_jinja2_idiomatic bench_mako_controlled bench_mako_idiomatic bench_cold_compile; do
+        if [ "$s" = "bench_cold_compile" ]; then
+          PY_SHAPE_ARGS=(${PY_COLD_ARGS[@]+"${PY_COLD_ARGS[@]}"})
+        else
+          PY_SHAPE_ARGS=(${PY_VALUES_ARGS[@]+"${PY_VALUES_ARGS[@]}"})
+        fi
         run_step python "$MEASURE_PHASE" "$s" "$PY_DIR" -- \
-          "$VENV_PY" "$s.py" "--affinity=$PY_AFFINITY" ${PY_SMOKE_ARGS[@]+"${PY_SMOKE_ARGS[@]}"} \
+          "$VENV_PY" "$s.py" "--affinity=$PY_AFFINITY" \
+          ${PY_SHAPE_ARGS[@]+"${PY_SHAPE_ARGS[@]}"} ${PY_SMOKE_ARGS[@]+"${PY_SMOKE_ARGS[@]}"} \
           -o "$OUT_DIR/python/$s.json"
       done
       # Memory pass -- tracemalloc, separate from timing (Phase 5 D11).
@@ -637,7 +747,11 @@ for eco in "${SELECTED[@]}"; do
       # Phase 6 reproduce path: the committed run-benchmarks.sh (version asserts, templ
       # freshness, vet, gates, prebuild, timed runs, benchstat).
       GO_ARGS=(./run-benchmarks.sh)
-      [ "$SMOKE" = "1" ] && GO_ARGS+=(--count 1 --benchtime 100ms)
+      if [ "$SMOKE" = "1" ]; then
+        GO_ARGS+=(--count 1 --benchtime 100ms)
+      else
+        GO_ARGS+=(${GO_PROFILE_ARGS[@]+"${GO_PROFILE_ARGS[@]}"})
+      fi
       GO_ARGS+=(${PRIORITY_ARGS[@]+"${PRIORITY_ARGS[@]}"})
       run_step go "$MEASURE_PHASE" run-benchmarks "$GO_DIR" -- "${GO_ARGS[@]}"
       copy_artifacts go copy-results "$GO_DIR/results" "$OUT_DIR/go"
@@ -646,6 +760,23 @@ for eco in "${SELECTED[@]}"; do
 done
 
 write_summary
+
+# --- consolidated tables ----------------------------------------------------------------------
+# Publishing used to mean copying artifacts into docs/benchmarks/<date>/ and then running
+# consolidate.py by hand. That hand step is exactly where table ORDER and transcribed figures drift
+# from the artifacts, so the runner does it here: the out dir gets its own consolidated-tables.md
+# and summary-tables.md, generated in tier order, before anyone looks at a number. Publishing is
+# then a copy -- no regeneration, no hand-ordered tables, no transcription.
+#
+# Non-fatal by design: a full sweep is expensive and a table-generation failure must not discard
+# it. The step is recorded like any other, so `RESULT: OK` still means every measurement is green
+# and a WARN row here says the tables need attention, not the run.
+if [ "$SMOKE" != "1" ]; then
+  run_step report "$MEASURE_PHASE" consolidate "$REPO_ROOT" --non-fatal -- \
+    python3 benchmarks/report/consolidate.py "$OUT_DIR"
+  write_summary
+fi
+
 if [ "$FAILED" = "1" ]; then
   echo "${C_RED}RESULT: FAILED (one or more steps exited nonzero -- see summary above).${C_RESET}"
   exit 1

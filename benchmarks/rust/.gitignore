@@ -1,2 +1,5 @@
 # Cargo build artifacts (Cargo.lock IS committed — README D1 reproducibility pin).
 /target
+# alloc_report's D13 artifact: a per-run measurement output. The master runners copy it into the
+# run directory, and the published copy lives there — never here.
+/alloc-report.txt

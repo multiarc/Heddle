@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>Heddle.Performance.MixedRenderBenchmarks-20260725-144840</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Linux Ubuntu 24.04.4 LTS (Noble Numbat)
+AMD Ryzen 9 9950X 0.62GHz, 1 CPU, 32 logical and 16 physical cores
+.NET SDK 10.0.110
+  [Host]   : .NET 10.0.10 (10.0.10, 10.0.1026.32716), X64 RyuJIT x86-64-v4
+  ShortRun : .NET 10.0.10 (10.0.10, 10.0.1026.32716), X64 RyuJIT x86-64-v4
+</code></pre>
+<pre><code>Job=ShortRun  IterationCount=15  LaunchCount=1  
+WarmupCount=7  
+</code></pre>
+
+<table>
+<thead><tr><th>Method    </th><th>Mean</th><th>Error</th><th>StdDev</th><th>Ratio</th><th>RatioSD</th><th>Gen0</th><th>Gen1</th><th>Allocated</th><th>Alloc Ratio</th>
+</tr>
+</thead><tbody><tr><td>RenderHeddle</td><td>3.591 &mu;s</td><td>0.0026 &mu;s</td><td>0.0025 &mu;s</td><td>1.00</td><td>0.00</td><td>2.6779</td><td>0.1907</td><td>43.88 KB</td><td>1.00</td>
+</tr><tr><td>RenderFluid</td><td>11.939 &mu;s</td><td>0.0161 &mu;s</td><td>0.0150 &mu;s</td><td>3.32</td><td>0.00</td><td>1.7700</td><td>-</td><td>28.99 KB</td><td>0.66</td>
+</tr><tr><td>RenderScriban</td><td>28.637 &mu;s</td><td>0.0926 &mu;s</td><td>0.0866 &mu;s</td><td>7.97</td><td>0.02</td><td>7.3242</td><td>0.9766</td><td>121.71 KB</td><td>2.77</td>
+</tr><tr><td>RenderDotLiquid</td><td>79.000 &mu;s</td><td>0.3185 &mu;s</td><td>0.2979 &mu;s</td><td>22.00</td><td>0.08</td><td>17.3340</td><td>1.3428</td><td>283.67 KB</td><td>6.47</td>
+</tr><tr><td>RenderHandlebars</td><td>9.854 &mu;s</td><td>0.0229 &mu;s</td><td>0.0191 &mu;s</td><td>2.74</td><td>0.01</td><td>2.6703</td><td>0.1984</td><td>43.83 KB</td><td>1.00</td>
+</tr></tbody></table>
+</body>
+</html>

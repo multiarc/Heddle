@@ -1,0 +1,1 @@
+<article><h1>@(Title)</h1><p class="sku">@(Sku)</p><p class="price">@(Price)</p><p class="brand">@(Brand)</p><p class="cat">@(Category)</p><p class="avail">@(Availability)</p><a class="link" href="@(Url)"><img src="@(ImageUrl)"></a><p class="sum">@(Summary)</p><p class="rating">@(Rating)</p></article>

@@ -19,7 +19,7 @@ import java.util.Map;
  * mismatch or absence (surfaced by {@link GateCli} as exit 2).
  *
  * Path resolution (spec D8 / harness-and-jmh.md): default
- * {@code ../../src/Heddle.Performance/GoldenCorpus/} relative to the harness working
+ * {@code ../dotnet/GoldenCorpus/} relative to the harness working
  * directory ({@code benchmarks/jvm/}), overridable with {@code -Dheddle.corpus=<path>}.
  */
 public final class Corpus {
@@ -98,12 +98,12 @@ public final class Corpus {
             }
             return p;
         }
-        Path byConvention = Path.of("..", "..", "src", "Heddle.Performance", "GoldenCorpus");
+        Path byConvention = Path.of("..", "dotnet", "GoldenCorpus");
         if (Files.isDirectory(byConvention)) {
             return byConvention;
         }
         // Convenience fallback when invoked from the repo root instead of benchmarks/jvm/.
-        Path fromRepoRoot = Path.of("src", "Heddle.Performance", "GoldenCorpus");
+        Path fromRepoRoot = Path.of("benchmarks", "dotnet", "GoldenCorpus");
         if (Files.isDirectory(fromRepoRoot)) {
             return fromRepoRoot;
         }

@@ -1,0 +1,30 @@
+@*
+    Razor parity twin -- composed-page (layout) (ledger E8/E9).
+
+    Razor is now measured on ALL EIGHT workloads. It previously existed for composed-page only,
+    which meant the repository's "faster than Razor" claim rested on the single least favourable
+    workload in the set. An engine with one workload does not belong in a cross-stack table.
+
+    Every value comes from the shared PUBLIC fixtures under src/Models/, the same objects every
+    other engine reads, so this twin cannot drift from the engine it is compared against. Its
+    predecessor did drift -- it carried a hand-duplicated 56 KB copy of the area dictionary that had
+    diverged unnoticed -- precisely because nothing compared the two.
+
+    Reproduces the byte sequence Heddle's home.heddle + layout.heddle actually emit -- the
+    reusable-section defaults, the fixed component outputs and the ordered area menus -- rather
+    than transcribing the layout's literal HTML chrome. See GoldenCorpus/README.md for why
+    Heddle's output is that fragment sequence.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@{
+    var sections = TwinContent.Sections();
+    var comp = TwinContent.Components();
+    var areas = TwinContent.Areas;
+    var order = TwinContent.AreaOrder;
+}
+@Html.Raw(sections["meta"])@Html.Raw(sections["social"])@Html.Raw(comp["assets_styles"])@Html.Raw(comp["custom_styles"])@Html.Raw(comp["head_scripts"])@Html.Raw(comp["body_scripts"])@for (var i = 0; i < order.Length - 1; i++)
+{@Html.Raw(areas[order[i]])}@*
+    layout.heddle's @body() slot sits here, between the last navigation area and the footer area.
+    It resolves to the layout's empty default, so this renders nothing -- but the slot is kept in
+    its real position, and Razor requires a layout to call RenderBody exactly once.
+*@@RenderBody()@Html.Raw(areas[order[order.Length - 1]])@Html.Raw(comp["assets_scripts"])@Html.Raw(sections["page_scripts"])@Html.Raw(sections["endpage_scripts"])@Html.Raw(comp["body_end_scripts"])

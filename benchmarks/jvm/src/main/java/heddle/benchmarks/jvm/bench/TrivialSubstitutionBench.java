@@ -21,8 +21,10 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * trivial-substitution (raw suite) - WI5 benchmark class. Annotations are the spec D9 pin: JMH
- * 1.37's defaults stated explicitly (JMHSample_13 state-your-settings discipline); no
- * jvmArgs, no CompilerControl, no per-class deviations. Engines and models are built once
+ * 1.37 with an explicit run-length regime (JMHSample_13 state-your-settings discipline), sized
+ * by ledger E6's uniform ~10 min per-ecosystem measurement budget rather than by JMH's stock
+ * defaults - 3 forks keep the dominant (fork-to-fork) variance term sampled, while warmup and
+ * measurement time carry the cut; no jvmArgs, no CompilerControl, no per-class deviations. Engines and models are built once
  * per fork; {@code @Setup(Level.Trial)} re-asserts this workload's four cell gates in the
  * same process that produces the numbers (contract gate rule 2, spec D11) - a gate throw
  * aborts the fork with no numbers. Every {@code @Benchmark} method is exactly one render
@@ -31,9 +33,9 @@ import java.util.concurrent.TimeUnit;
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
-@Fork(5)
-@Warmup(iterations = 5, time = 10, timeUnit = TimeUnit.SECONDS)
-@Measurement(iterations = 5, time = 10, timeUnit = TimeUnit.SECONDS)
+@Fork(3)
+@Warmup(iterations = 1, time = 2, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 3, time = 1, timeUnit = TimeUnit.SECONDS)
 @Threads(1)
 @State(Scope.Benchmark)
 public class TrivialSubstitutionBench {

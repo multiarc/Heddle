@@ -1,0 +1,17 @@
+{{!--
+  Idiomatic Handlebars -- fragment-heavy (phase 9; authoring standard D16).
+
+  Patterns followed, from the engines' own documentation:
+    Handlebars language   https://handlebarsjs.com/guide/
+    Handlebars.Net        https://github.com/Handlebars-Net/Handlebars.Net#readme
+
+  Uses `{{#each}}` blocks with `this`, `{{#if}}`/`{{else}}` chains, and registered partials. Raw
+  triple-mustaches appear only where the value genuinely IS an HTML fragment; plain text goes
+  through the default encoder, which is what the guide teaches. Checked by the functional verifier.
+--}}
+
+<div class="panel">
+  {{#each items}}
+    {{> tile this}}
+  {{/each}}
+</div>

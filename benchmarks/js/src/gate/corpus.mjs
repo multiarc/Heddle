@@ -1,5 +1,5 @@
 // Golden-corpus loader (Phase 4 WI3; spec: harness-and-run.md §Harness layout / §Gate
-// implementation). Reads the Phase 1 corpus read-only from src/Heddle.Performance/GoldenCorpus/
+// implementation). Reads the Phase 1 corpus read-only from benchmarks/dotnet/GoldenCorpus/
 // via a repo-relative path resolved from import.meta.url (one source of truth — never copied),
 // and verifies each corpus file's SHA-256 + byte length against manifest.json before use
 // (corrupted-checkout guard).
@@ -10,7 +10,7 @@ import path from "node:path";
 
 // benchmarks/js/src/gate/corpus.mjs -> repo root is four levels up.
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
-export const corpusDir = path.join(repoRoot, "src", "Heddle.Performance", "GoldenCorpus");
+export const corpusDir = path.join(repoRoot, "benchmarks", "dotnet", "GoldenCorpus");
 
 /** The eight workloads, ordered by workload number (Phase 1 workloads.md §The set at a glance). */
 export const WORKLOADS = Object.freeze([
@@ -32,7 +32,7 @@ export function loadManifest() {
   const manifestPath = path.join(corpusDir, "manifest.json");
   if (!existsSync(manifestPath)) {
     throw new Error(
-      "corpus entry manifest.json not found under src/Heddle.Performance/GoldenCorpus/ — run Phase 1 export-corpus first",
+      "corpus entry manifest.json not found under benchmarks/dotnet/GoldenCorpus/ — run Phase 1 export-corpus first",
     );
   }
   manifestCache = JSON.parse(readFileSync(manifestPath, "utf8"));
@@ -52,14 +52,14 @@ export function loadCorpusEntry(id) {
   const file = path.join(corpusDir, `${id}.golden.html`);
   if (!existsSync(file)) {
     throw new Error(
-      `corpus entry ${id} not found under src/Heddle.Performance/GoldenCorpus/ — run Phase 1 export-corpus first`,
+      `corpus entry ${id} not found under benchmarks/dotnet/GoldenCorpus/ — run Phase 1 export-corpus first`,
     );
   }
   const manifest = loadManifest();
   const entry = (manifest.entries ?? []).find((e) => e.workload === id);
   if (!entry) {
     throw new Error(
-      `corpus entry ${id} has no manifest.json entry under src/Heddle.Performance/GoldenCorpus/ — run Phase 1 export-corpus first`,
+      `corpus entry ${id} has no manifest.json entry under benchmarks/dotnet/GoldenCorpus/ — run Phase 1 export-corpus first`,
     );
   }
 
@@ -87,7 +87,7 @@ export function loadVerifyDefinition(id) {
   const file = path.join(corpusDir, `${id}.verify.json`);
   if (!existsSync(file)) {
     throw new Error(
-      `corpus entry ${id} not found under src/Heddle.Performance/GoldenCorpus/ — run Phase 1 export-corpus first`,
+      `corpus entry ${id} not found under benchmarks/dotnet/GoldenCorpus/ — run Phase 1 export-corpus first`,
     );
   }
   return JSON.parse(readFileSync(file, "utf8"));

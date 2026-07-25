@@ -286,7 +286,12 @@ template texts are normative in [templates.md](templates.md); harness mechanics 
   `bench_mako_controlled.py`, `bench_mako_idiomatic.py`, `bench_cold_compile.py`. Benchmark
   names are `<engine>/<track>/<workload-id>` (cold pass: `<engine>/cold-compile/<workload-id>`).
   Run shape is **pyperf's CPython defaults, pinned as the decision**: 20 processes × 3 values ×
-  1 warmup, loops auto-calibrated to ≥ 100 ms per raw value (`min_time` default). Each
+  1 warmup, loops auto-calibrated to ≥ 100 ms per raw value (`min_time` default). The four render
+  scripts keep this unchanged — 32 protocol cells in 546 s already sits inside
+  [E6](../../records.md#cross-spec-amendments-ledger)'s uniform ~10 min per-ecosystem budget.
+  **E6 amendment, cold-compile only:** `bench_cold_compile.py` runs with `--processes 7`; at the
+  default 20 it cost 288 s, a third of the ecosystem's budget for a deliberately non-comparable
+  sidebar (D10) that no ranking consumes. Each
   invocation runs from an **elevated PowerShell** (so psutil's `REALTIME_PRIORITY_CLASS`
   elevation is actually granted rather than silently downgraded) with
   **`--affinity=4`** and `-o results/<script>.json`. Render callables are registered

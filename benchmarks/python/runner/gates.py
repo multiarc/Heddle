@@ -19,7 +19,7 @@ from pathlib import Path
 # ---- corpus access (harness.md: repo root = parents[3] of this file) --------------------------
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-CORPUS_DIR = REPO_ROOT / "src" / "Heddle.Performance" / "GoldenCorpus"
+CORPUS_DIR = REPO_ROOT / "benchmarks" / "dotnet" / "GoldenCorpus"
 
 #: The eight workload ids in workload-number order (Phase 1 workloads.md).
 WORKLOADS = [

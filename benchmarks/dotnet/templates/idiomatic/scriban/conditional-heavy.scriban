@@ -1,0 +1,26 @@
+{{## Idiomatic Scriban -- conditional-heavy (phase 9; authoring standard D16).
+
+     Patterns followed, from Scriban's own documentation:
+       language          https://github.com/scriban/scriban/blob/master/doc/language.md
+       builtins/html     https://github.com/scriban/scriban/blob/master/doc/builtins.md#html-functions
+       runtime/includes  https://github.com/scriban/scriban/blob/master/doc/runtime.md
+
+     Uses Scriban's whitespace-control markers, its for/if statements, and the documented
+     html.escape builtin on untrusted values. Checked by the functional verifier, not the
+     byte gate. Note the multi-line comment delimiters: the single-line form ends at the
+     first newline, which would leave the doc URLs to parse as expressions. ##}}
+
+<ul class="matrix">
+  {{~ for r in rows ~}}
+    <li>
+      {{~ if r.is_bronze ~}}<span class="t0">bronze</span>
+      {{~ else if r.is_silver ~}}<span class="t1">silver</span>
+      {{~ else if r.is_gold ~}}<span class="t2">gold</span>
+      {{~ else ~}}<span class="t3">platinum</span>
+      {{~ end ~}}
+      <em>{{ r.name }}</em>
+      {{~ if r.has_note ~}}<small>{{ r.note }}</small>{{~ end ~}}
+      {{~ if r.is_active ~}}<b>active</b>{{~ end ~}}
+    </li>
+  {{~ end ~}}
+</ul>

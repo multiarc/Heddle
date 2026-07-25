@@ -1,0 +1,418 @@
+{
+  "jinja2/controlled/composed-page": {
+    "allocated": {
+      "mean": 114381.44,
+      "median": 114362.0,
+      "std": 67.80845273729716
+    },
+    "retained": {
+      "mean": 112498.32,
+      "median": 112498.0,
+      "std": 3.2
+    },
+    "repetitions": 100
+  },
+  "jinja2/controlled/trivial-substitution": {
+    "allocated": {
+      "mean": 3826.32,
+      "median": 3784.0,
+      "std": 96.49900611829213
+    },
+    "retained": {
+      "mean": 1643.32,
+      "median": 1643.0,
+      "std": 3.2
+    },
+    "repetitions": 100
+  },
+  "jinja2/controlled/large-loop": {
+    "allocated": {
+      "mean": 638745.32,
+      "median": 638703.0,
+      "std": 96.49900611829213
+    },
+    "retained": {
+      "mean": 194133.32,
+      "median": 194133.0,
+      "std": 3.2
+    },
+    "repetitions": 100
+  },
+  "jinja2/controlled/mixed-page": {
+    "allocated": {
+      "mean": 17897.32,
+      "median": 17855.0,
+      "std": 96.49900611829213
+    },
+    "retained": {
+      "mean": 11053.32,
+      "median": 11053.0,
+      "std": 3.2
+    },
+    "repetitions": 100
+  },
+  "jinja2/controlled/conditional-heavy": {
+    "allocated": {
+      "mean": 32920.32,
+      "median": 32878.0,
+      "std": 96.49900611829213
+    },
+    "retained": {
+      "mean": 16902.32,
+      "median": 16902.0,
+      "std": 3.2
+    },
+    "repetitions": 100
+  },
+  "jinja2/controlled/fragment-heavy": {
+    "allocated": {
+      "mean": 17648.32,
+      "median": 17648.0,
+      "std": 3.2
+    },
+    "retained": {
+      "mean": 10763.32,
+      "median": 10763.0,
+      "std": 3.2
+    },
+    "repetitions": 100
+  },
+  "jinja2/controlled/fortunes-encoded": {
+    "allocated": {
+      "mean": 8602.32,
+      "median": 8560.0,
+      "std": 96.49900611829213
+    },
+    "retained": {
+      "mean": 3614.32,
+      "median": 3614.0,
+      "std": 3.2
+    },
+    "repetitions": 100
+  },
+  "jinja2/controlled/encoded-loop": {
+    "allocated": {
+      "mean": 3893982.32,
+      "median": 3893940.0,
+      "std": 96.49900611829213
+    },
+    "retained": {
+      "mean": 1524740.32,
+      "median": 1524740.0,
+      "std": 3.2
+    },
+    "repetitions": 100
+  },
+  "mako/controlled/composed-page": {
+    "allocated": {
+      "mean": 116607.24,
+      "median": 116549.0,
+      "std": 175.40792974715202
+    },
+    "retained": {
+      "mean": 115019.56,
+      "median": 114981.0,
+      "std": 133.90606688076068
+    },
+    "repetitions": 100
+  },
+  "mako/controlled/trivial-substitution": {
+    "allocated": {
+      "mean": 5503.92,
+      "median": 5440.0,
+      "std": 145.77356732032365
+    },
+    "retained": {
+      "mean": 3405.32,
+      "median": 3363.0,
+      "std": 96.8400618326815
+    },
+    "repetitions": 100
+  },
+  "mako/controlled/large-loop": {
+    "allocated": {
+      "mean": 827179.92,
+      "median": 827116.0,
+      "std": 145.77356732032365
+    },
+    "retained": {
+      "mean": 195804.32,
+      "median": 195762.0,
+      "std": 96.8400618326815
+    },
+    "repetitions": 100
+  },
+  "mako/controlled/mixed-page": {
+    "allocated": {
+      "mean": 22914.92,
+      "median": 22851.0,
+      "std": 145.77356732032365
+    },
+    "retained": {
+      "mean": 13003.32,
+      "median": 12961.0,
+      "std": 96.8400618326815
+    },
+    "repetitions": 100
+  },
+  "mako/controlled/conditional-heavy": {
+    "allocated": {
+      "mean": 46642.92,
+      "median": 46579.0,
+      "std": 145.77356732032365
+    },
+    "retained": {
+      "mean": 18581.32,
+      "median": 18539.0,
+      "std": 96.8400618326815
+    },
+    "repetitions": 100
+  },
+  "mako/controlled/fragment-heavy": {
+    "allocated": {
+      "mean": 55222.0,
+      "median": 55202.0,
+      "std": 47.13702355791029
+    },
+    "retained": {
+      "mean": 46501.32,
+      "median": 46501.0,
+      "std": 3.2
+    },
+    "repetitions": 100
+  },
+  "mako/controlled/fortunes-encoded": {
+    "allocated": {
+      "mean": 10148.92,
+      "median": 10085.0,
+      "std": 145.77356732032365
+    },
+    "retained": {
+      "mean": 5293.32,
+      "median": 5251.0,
+      "std": 96.8400618326815
+    },
+    "repetitions": 100
+  },
+  "mako/controlled/encoded-loop": {
+    "allocated": {
+      "mean": 4151844.92,
+      "median": 4151781.0,
+      "std": 145.77356732032365
+    },
+    "retained": {
+      "mean": 1526415.32,
+      "median": 1526373.0,
+      "std": 96.8400618326815
+    },
+    "repetitions": 100
+  },
+  "jinja2/idiomatic/composed-page": {
+    "allocated": {
+      "mean": 114624.24,
+      "median": 114584.0,
+      "std": 93.48527891458298
+    },
+    "retained": {
+      "mean": 112480.32,
+      "median": 112480.0,
+      "std": 3.2
+    },
+    "repetitions": 100
+  },
+  "jinja2/idiomatic/trivial-substitution": {
+    "allocated": {
+      "mean": 3855.32,
+      "median": 3813.0,
+      "std": 96.49900611829213
+    },
+    "retained": {
+      "mean": 1672.32,
+      "median": 1672.0,
+      "std": 3.2
+    },
+    "repetitions": 100
+  },
+  "jinja2/idiomatic/large-loop": {
+    "allocated": {
+      "mean": 648746.32,
+      "median": 648704.0,
+      "std": 96.49900611829213
+    },
+    "retained": {
+      "mean": 204134.32,
+      "median": 204134.0,
+      "std": 3.2
+    },
+    "repetitions": 100
+  },
+  "jinja2/idiomatic/mixed-page": {
+    "allocated": {
+      "mean": 18549.24,
+      "median": 18509.0,
+      "std": 93.48527891458298
+    },
+    "retained": {
+      "mean": 11675.32,
+      "median": 11675.0,
+      "std": 3.2
+    },
+    "repetitions": 100
+  },
+  "jinja2/idiomatic/conditional-heavy": {
+    "allocated": {
+      "mean": 40507.32,
+      "median": 40465.0,
+      "std": 96.49900611829213
+    },
+    "retained": {
+      "mean": 22665.32,
+      "median": 22665.0,
+      "std": 3.2
+    },
+    "repetitions": 100
+  },
+  "jinja2/idiomatic/fragment-heavy": {
+    "allocated": {
+      "mean": 19956.56,
+      "median": 19920.0,
+      "std": 87.44548893655713
+    },
+    "retained": {
+      "mean": 9791.32,
+      "median": 9791.0,
+      "std": 3.2
+    },
+    "repetitions": 100
+  },
+  "jinja2/idiomatic/fortunes-encoded": {
+    "allocated": {
+      "mean": 8674.32,
+      "median": 8632.0,
+      "std": 96.49900611829213
+    },
+    "retained": {
+      "mean": 3686.32,
+      "median": 3686.0,
+      "std": 3.2
+    },
+    "repetitions": 100
+  },
+  "jinja2/idiomatic/encoded-loop": {
+    "allocated": {
+      "mean": 3913988.32,
+      "median": 3913946.0,
+      "std": 96.49900611829213
+    },
+    "retained": {
+      "mean": 1544746.32,
+      "median": 1544746.0,
+      "std": 3.2
+    },
+    "repetitions": 100
+  },
+  "mako/idiomatic/composed-page": {
+    "allocated": {
+      "mean": 117232.52,
+      "median": 117181.0,
+      "std": 182.19162295437042
+    },
+    "retained": {
+      "mean": 115116.84,
+      "median": 115065.0,
+      "std": 141.03790736228083
+    },
+    "repetitions": 100
+  },
+  "mako/idiomatic/trivial-substitution": {
+    "allocated": {
+      "mean": 5532.92,
+      "median": 5469.0,
+      "std": 145.77356732032365
+    },
+    "retained": {
+      "mean": 3434.32,
+      "median": 3392.0,
+      "std": 96.8400618326815
+    },
+    "repetitions": 100
+  },
+  "mako/idiomatic/large-loop": {
+    "allocated": {
+      "mean": 832196.92,
+      "median": 832133.0,
+      "std": 145.77356732032365
+    },
+    "retained": {
+      "mean": 200805.32,
+      "median": 200763.0,
+      "std": 96.8400618326815
+    },
+    "repetitions": 100
+  },
+  "mako/idiomatic/mixed-page": {
+    "allocated": {
+      "mean": 24878.94,
+      "median": 24755.0,
+      "std": 254.22120408427895
+    },
+    "retained": {
+      "mean": 14937.26,
+      "median": 14833.0,
+      "std": 211.00737791687175
+    },
+    "repetitions": 100
+  },
+  "mako/idiomatic/conditional-heavy": {
+    "allocated": {
+      "mean": 47704.92,
+      "median": 47641.0,
+      "std": 145.77356732032365
+    },
+    "retained": {
+      "mean": 19643.32,
+      "median": 19601.0,
+      "std": 96.8400618326815
+    },
+    "repetitions": 100
+  },
+  "mako/idiomatic/fragment-heavy": {
+    "allocated": {
+      "mean": 19939.6,
+      "median": 19853.0,
+      "std": 194.75828064241037
+    },
+    "retained": {
+      "mean": 9618.92,
+      "median": 9552.0,
+      "std": 152.04874816381033
+    },
+    "repetitions": 100
+  },
+  "mako/idiomatic/fortunes-encoded": {
+    "allocated": {
+      "mean": 10196.92,
+      "median": 10133.0,
+      "std": 145.77356732032365
+    },
+    "retained": {
+      "mean": 5341.32,
+      "median": 5299.0,
+      "std": 96.8400618326815
+    },
+    "repetitions": 100
+  },
+  "mako/idiomatic/encoded-loop": {
+    "allocated": {
+      "mean": 4161866.92,
+      "median": 4161803.0,
+      "std": 145.77356732032365
+    },
+    "retained": {
+      "mean": 1536421.32,
+      "median": 1536379.0,
+      "std": 96.8400618326815
+    },
+    "repetitions": 100
+  }
+}

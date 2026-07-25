@@ -1,0 +1,26 @@
+@*
+    Idiomatic Heddle -- fortunes-encoded (phase 9; authoring standard D16).
+
+    Patterns followed, from Heddle's own documentation:
+      Language reference   docs/language-reference.md
+      Architecture         docs/architecture.md
+
+    Authored the way the reference teaches -- readable block layout, definitions declared in the
+    @%...%@ header, and `@list`/`@if`/`@elif`/`@else` for control flow -- rather than collapsed onto
+    one line to match the oracle byte-for-byte. Checked by the functional verifier, not the byte
+    gate. The encoded workloads rely on OutputProfile.Html, where `@(...)` encodes by default and
+    `@attr(...)` applies attribute-context encoding; nothing here opts out.
+*@
+
+<!DOCTYPE html>
+<html>
+<head><title>Fortunes</title></head>
+<body>
+    <table>
+        <tr><th>id</th><th>message</th></tr>
+        @list(Rows){{
+            <tr><td>@(Id)</td><td>@(Message)</td></tr>
+        }}
+    </table>
+</body>
+</html>

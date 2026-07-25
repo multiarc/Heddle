@@ -28,9 +28,21 @@ once published; corrections are a complete new dated directory stating what it c
 ## `index.md` — normative structure
 
 Sections in this exact order. Ecosystem order everywhere: **.NET, Rust, JVM, JS, Python, Go**
-(absent ones simply missing from tables, present in the manifest). Workload order everywhere:
-the protocol order 1–8 (`composed-page`, `trivial-substitution`, `large-loop`, `mixed-page`,
-`conditional-heavy`, `fragment-heavy`, `fortunes-encoded`, `encoded-loop`).
+(absent ones simply missing from tables, present in the manifest).
+
+Workload order everywhere — **amended 2026-07-25 by [ledger E7](../../records.md#cross-spec-amendments-ledger)**:
+**tier 1 (realistic sizing) before tier 2 (edge-case sizing), ascending by rendered output size
+within each tier.** The tier is *derived*, never declared per workload: a workload is tier 2 when
+its rendered output reaches the CLR's **85,000-byte Large Object Heap threshold** as UTF-16, past
+which every .NET render drives a full Gen2 collection — a cost structural to that runtime and
+absent in the other five ecosystems. Workloads either side of that line are not measuring the same
+thing, so a report that interleaves them buries its own primary results.
+
+This governs **presentation only**. The protocol numbering 1–8 (`composed-page`,
+`trivial-substitution`, `large-loop`, `mixed-page`, `conditional-heavy`, `fragment-heavy`,
+`fortunes-encoded`, `encoded-loop`) is unchanged and remains what `manifest.json` and the phase
+specs record. Ordering is owned by `consolidate.py`, not by the report author: no table in a
+published directory may be ordered by hand.
 
 1. **H1** — `# Cross-stack consolidated report — <date>`.
 2. **Intro** (no heading) — required statements, each present:
@@ -440,7 +452,20 @@ empty arrays; every ecosystem id appears exactly once.
      transformations where a needed column is absent, recording a per-table flag;
   4. emit `consolidated-tables.md`: all D5 wall-time tables (workload-major, ecosystem-minor,
      per track) and all D7 sidebar tables, each with caption and provenance note exactly per
-     this document; excluded cells rendered as specified; absent ecosystems simply absent;
+     this document; excluded cells rendered as specified; absent ecosystems simply absent.
+     **Amended 2026-07-25 (ledger E7):** workload-major order is the tier order defined under
+     §`index.md` normative structure, preceded by a generated `## Sizing regimes` section
+     stating the derivation; and the script emits a **second** artifact, `summary-tables.md`,
+     carrying the headline per-tier tables that `index.md` embeds with VitePress's
+     `<!--@include:-->` directive, so the narrative page transcribes no measured figure by
+     hand. `--check` covers both files;
+  4b. the **implied-throughput numerator is the rendered output size, not the golden
+     `byteLength`** (ledger E7). The golden oracle is stored normalized —
+     `TwinContent.Normalize` collapses every inter-tag whitespace run before export — so on
+     `composed-page` it is 1.56× smaller than what engines emit (34,847 B stored, 54,401 chars
+     rendered). Rendered sizes live in `RENDERED_CHARS`; a workload missing from it falls back
+     to the golden size and is footnoted in the generated tables rather than silently
+     misclassified;
   5. emit the `heddle-trails` checklist to stdout (every cell with ratio < 1.00 or dispersion
      interval containing 1.00) — advisory output, never written into the published files.
 - **Check mode (`--check`):** regenerate to memory and fail non-zero unless (a) output

@@ -1,0 +1,23 @@
+{{!--
+  Idiomatic Handlebars -- trivial-substitution (phase 9; authoring standard D16).
+
+  Patterns followed, from the engines' own documentation:
+    Handlebars language   https://handlebarsjs.com/guide/
+    Handlebars.Net        https://github.com/Handlebars-Net/Handlebars.Net#readme
+
+  Uses `{{#each}}` blocks with `this`, `{{#if}}`/`{{else}}` chains, and registered partials. Raw
+  triple-mustaches appear only where the value genuinely IS an HTML fragment; plain text goes
+  through the default encoder, which is what the guide teaches. Checked by the functional verifier.
+--}}
+
+<article>
+  <h1>{{title}}</h1>
+  <p class="sku">{{sku}}</p>
+  <p class="price">{{price}}</p>
+  <p class="brand">{{brand}}</p>
+  <p class="cat">{{category}}</p>
+  <p class="avail">{{availability}}</p>
+  <a class="link" href="{{url}}"><img src="{{image_url}}"></a>
+  <p class="sum">{{summary}}</p>
+  <p class="rating">{{rating}}</p>
+</article>

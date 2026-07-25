@@ -1,5 +1,5 @@
 //! Read-only access to the Phase 1 golden corpus at
-//! `src/Heddle.Performance/GoldenCorpus/`, resolved repo-relative from
+//! `benchmarks/dotnet/GoldenCorpus/`, resolved repo-relative from
 //! `CARGO_MANIFEST_DIR` (README D2 — Phase 1 D6's revisit trigger is not fired; a relative
 //! read is convenient). Formats: `golden-corpus.md` (Phase 1).
 
@@ -9,9 +9,9 @@ use serde::Deserialize;
 
 use crate::verifier::VerifyDef;
 
-/// `benchmarks/rust/../../src/Heddle.Performance/GoldenCorpus/`.
+/// `benchmarks/rust/../dotnet/GoldenCorpus/`.
 pub fn corpus_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../src/Heddle.Performance/GoldenCorpus")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../dotnet/GoldenCorpus")
 }
 
 /// Loads `<id>.golden.html` — the normalized oracle (stored N1–N5 form, UTF-8 no BOM, no

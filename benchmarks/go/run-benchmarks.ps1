@@ -9,12 +9,13 @@
 #   5. Prebuild: `go test -c -o bench.exe ./suites`.
 #   6. Two timed invocations at High process priority via `cmd /c start /high /wait /b`
 #      (priority set at process creation, no race): BenchmarkRender, then the
-#      BenchmarkColdParse sidebar. Defaults: -test.count=20, -test.benchtime=1s.
+#      BenchmarkColdParse sidebar. Defaults: -test.count=14, -test.benchtime=1s (ledger E6
+#      uniform budget; was 20).
 #   7. benchstat over each output.
 #
 # Windows PowerShell 5.1 compatible (no pipeline chain operators, ASCII only).
 param(
-    [int]$Count = 20,
+    [int]$Count = 14,
     [string]$BenchTime = "1s",
     [switch]$VersionCheckOnly
 )
