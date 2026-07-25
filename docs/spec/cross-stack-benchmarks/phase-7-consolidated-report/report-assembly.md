@@ -35,7 +35,9 @@ the protocol order 1–8 (`composed-page`, `trivial-substitution`, `large-loop`,
 1. **H1** — `# Cross-stack consolidated report — <date>`.
 2. **Intro** (no heading) — required statements, each present:
    - what this document is (the program's single consolidated cross-language comparison) and
-     what it is not (a leaderboard);
+     what it is not — **amended 2026-07-25:** it is not a *league table*: it carries
+     per-workload rankings but no aggregate score, no overall winner, and no cross-workload
+     average of any kind (D6(c), unchanged), so no single-number verdict can be quoted from it;
    - **no-new-measurements statement**: every figure is a verbatim excerpt of an
      already-published protocol-conformant run; this report measured nothing and derived no
      new metric (the only arithmetic: ns/render unit conversion, and a Heddle ratio only where
@@ -63,10 +65,15 @@ the protocol order 1–8 (`composed-page`, `trivial-substitution`, `large-loop`,
    - the ratio rule: every ratio column anchors to the Heddle reference row
      (`ratio = engine wall time ÷ Heddle reference wall time`; < 1.00 means the engine beat
      the Heddle reference);
-   - the **ranking-scope rule**: Heddle may be compared against any engine, wall-time-only;
-     non-Heddle engines are never compared or ranked across ecosystems — each table is one
-     ecosystem's engines plus the Heddle row, and no cross-ecosystem reading of two
-     competitor rows is valid (Q6.2);
+   - the **ranking-scope rule** (as amended 2026-07-25 by the [D6
+     amendment](README.md#d6--ranking-scope-enforcement-q62-and-the-no-score-rule-made-checkable)):
+     Heddle may be compared against any engine, wall-time-only. Per-ecosystem tables are one
+     ecosystem's engines plus the Heddle row, and remain the normative view. In *addition*,
+     each workload publishes one cross-stack ranked table spanning ecosystems, carrying an
+     evidence-class column and an implied-throughput column; it is a per-workload ranking
+     only — **no aggregate score, overall winner, or cross-workload average exists anywhere**
+     (D6(c)). The report's *prose* still never ranks two non-Heddle engines against each
+     other across ecosystems (D6(b)): the narrative is Heddle-anchored throughout;
    - the evidence-class rule: Rust/JVM/Go tables are fair-fight evidence (compiled peers /
      same-class engines); JS/Python tables are reach/context evidence, not a fair fight;
    - the counted-claims convention (tag format below) so readers can parse the analysis

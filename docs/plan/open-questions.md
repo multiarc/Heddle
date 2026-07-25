@@ -339,6 +339,22 @@ follow the program-wide resolution — see the stance note below; Phase 7's aggr
   uniform across phases 2–6 and fixed once in the Phase 1 publication protocol; baselines for the
   non-cross-comparable metrics (allocations, etc.) stay within-ecosystem, the exact choice a spec
   detail.
+- **Amendment (user, 2026-07-25).** Clause (ii) is narrowed to **prose and aggregate scores**.
+  A consolidated report may publish, *in addition to* the per-ecosystem tables (which remain
+  the normative view), **one cross-stack ranked wall-time table per workload** — every measured
+  engine from every included ecosystem plus the Heddle row, ranked by ns/render, with an
+  ecosystem column, a `vs Heddle` ratio, a per-row evidence-class marker (fair-fight vs
+  reach/context) and an implied-throughput column (golden `byteLength ÷ ns`) so measurement
+  artifacts are visible in the table. What stays forbidden, unchanged: any geomean, points
+  total, medal count, cross-workload average or other **aggregate score** anywhere (so no
+  overall winner can be quoted), and any **prose** sentence ranking two non-Heddle engines
+  against each other across ecosystems — the narrative remains Heddle-anchored and every
+  claim still names its workload. Clauses (i) and (iii) are unchanged. Rationale: readers of
+  a six-ecosystem program ask the cross-stack question first, and publishing all the inputs
+  while withholding the ranking does not prevent the comparison — it only removes our chance
+  to attach evidence-class and plausibility context. Accepted in full knowledge that the
+  ranking does not flatter Heddle (it places Heddle last on `composed-page`). Instantiated in
+  [Phase 7 D6](../spec/cross-stack-benchmarks/phase-7-consolidated-report/README.md#d6--ranking-scope-enforcement-q62-and-the-no-score-rule-made-checkable).
 
 ### Q7.1 — Does the consolidated report also feed `docs/language-assessment.md` and the published docs site, or is the date-stamped benchmark directory the phase's sole publication surface?  [status: RESOLVED]
 - **Context.** Raised by Phase 7: `docs/language-assessment.md` already sourced its performance

@@ -47,7 +47,12 @@ export default withMermaid(
     // any legacy contributor material that may return.
     srcExclude: [
       'archive/**',
-      'spec/**'
+      'spec/**',
+      // Raw harness artifacts committed alongside the benchmark reports. They are markdown
+      // (BenchmarkDotNet's `-report-github.md` export) but they are evidence, not pages:
+      // publishing them adds a dozen near-identical routes and floods local search. The
+      // reports' own index.md links them, and GitHub renders them at the source path.
+      'benchmarks/*/dotnet/**'
     ],
 
     markdown: {
@@ -136,6 +141,16 @@ export default withMermaid(
             { text: 'Architecture', link: '/architecture' },
             { text: 'Syntax Highlighting', link: '/syntax-highlighting' },
             { text: 'Building & Testing', link: '/building' }
+          ]
+        },
+        {
+          text: 'Benchmarks',
+          collapsed: true,
+          items: [
+            { text: 'Cross-stack run — 2026-07-22', link: '/benchmarks/2026-07-22/' },
+            { text: '· consolidated tables', link: '/benchmarks/2026-07-22/consolidated-tables' },
+            { text: 'Run — 2026-07-18', link: '/benchmarks/2026-07-18/' },
+            { text: 'Run — 2026-07-11', link: '/benchmarks/2026-07-11/' }
           ]
         }
       ],

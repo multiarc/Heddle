@@ -1,0 +1,578 @@
+[
+  {
+    "kind": "static",
+    "args": {},
+    "alias": "handlebars composed-page",
+    "group": 1,
+    "baseline": false,
+    "runs": [
+      {
+        "stats": {
+          "kind": "fn",
+          "min": 134300,
+          "max": 925400,
+          "p25": 139200,
+          "p50": 140900,
+          "p75": 146000,
+          "p99": 522600.00000047684,
+          "p999": 744800.0000004768,
+          "avg": 165400.96675312842,
+          "ticks": 4241,
+          "heap": {
+            "_": 4142,
+            "total": 1978985848,
+            "min": 2888,
+            "max": 2030200,
+            "avg": 477785.0912602607
+          }
+        },
+        "args": {},
+        "name": "handlebars composed-page"
+      }
+    ],
+    "style": {
+      "highlight": false,
+      "compact": false
+    }
+  },
+  {
+    "kind": "static",
+    "args": {},
+    "alias": "eta composed-page",
+    "group": 1,
+    "baseline": false,
+    "runs": [
+      {
+        "stats": {
+          "kind": "fn",
+          "min": 4203.22265625,
+          "max": 4784.0576171875,
+          "p25": 4212.6220703125,
+          "p50": 4229.541015625,
+          "p75": 4269.2626953125,
+          "p99": 4622.412109375,
+          "p999": 4622.412109375,
+          "avg": 4280.185275607639,
+          "ticks": 147456,
+          "heap": {
+            "_": 5,
+            "total": 8453.685546875,
+            "min": 30.77734375,
+            "max": 7948.509765625,
+            "avg": 1690.737109375
+          }
+        },
+        "args": {},
+        "name": "eta composed-page"
+      }
+    ],
+    "style": {
+      "highlight": false,
+      "compact": false
+    }
+  },
+  {
+    "kind": "static",
+    "args": {},
+    "alias": "handlebars trivial-substitution",
+    "group": 1,
+    "baseline": false,
+    "runs": [
+      {
+        "stats": {
+          "kind": "fn",
+          "min": 124900,
+          "max": 653500,
+          "p25": 129400,
+          "p50": 131200,
+          "p75": 137100,
+          "p99": 455100,
+          "p999": 608400,
+          "avg": 151551.57463330458,
+          "ticks": 4636,
+          "heap": {
+            "_": 4539,
+            "total": 2190679664,
+            "min": 7712,
+            "max": 1296824,
+            "avg": 482634.8675919806
+          }
+        },
+        "args": {},
+        "name": "handlebars trivial-substitution"
+      }
+    ],
+    "style": {
+      "highlight": false,
+      "compact": false
+    }
+  },
+  {
+    "kind": "static",
+    "args": {},
+    "alias": "eta trivial-substitution",
+    "group": 1,
+    "baseline": false,
+    "runs": [
+      {
+        "stats": {
+          "kind": "fn",
+          "min": 3961.328125,
+          "max": 4385.791015625,
+          "p25": 3974.7802734375,
+          "p50": 3985.302734375,
+          "p75": 3998.046875,
+          "p99": 4194.482421875,
+          "p999": 4194.482421875,
+          "avg": 4019.7847806490386,
+          "ticks": 159744,
+          "heap": {
+            "_": 15,
+            "total": 81439.615234375,
+            "min": 5374.166015625,
+            "max": 5797.7890625,
+            "avg": 5429.307682291666
+          }
+        },
+        "args": {},
+        "name": "eta trivial-substitution"
+      }
+    ],
+    "style": {
+      "highlight": false,
+      "compact": false
+    }
+  },
+  {
+    "kind": "static",
+    "args": {},
+    "alias": "handlebars large-loop",
+    "group": 1,
+    "baseline": false,
+    "runs": [
+      {
+        "stats": {
+          "kind": "fn",
+          "min": 348600,
+          "max": 1533900,
+          "p25": 362500,
+          "p50": 365500,
+          "p75": 383600,
+          "p99": 935600,
+          "p999": 1255200,
+          "avg": 426365.16717325227,
+          "ticks": 1645,
+          "heap": {
+            "_": 1542,
+            "total": 3243517312,
+            "min": 920792,
+            "max": 3301080,
+            "avg": 2103448.3216601815
+          }
+        },
+        "args": {},
+        "name": "handlebars large-loop"
+      }
+    ],
+    "style": {
+      "highlight": false,
+      "compact": false
+    }
+  },
+  {
+    "kind": "static",
+    "args": {},
+    "alias": "eta large-loop",
+    "group": 1,
+    "baseline": false,
+    "runs": [
+      {
+        "stats": {
+          "kind": "fn",
+          "min": 157000,
+          "max": 696500,
+          "p25": 160500,
+          "p50": 161700,
+          "p75": 163600,
+          "p99": 540800,
+          "p999": 566300,
+          "avg": 173132.6932545544,
+          "ticks": 4062,
+          "heap": {
+            "_": 3964,
+            "total": 3201711344,
+            "min": 178696,
+            "max": 1200928,
+            "avg": 807697.1099899092
+          }
+        },
+        "args": {},
+        "name": "eta large-loop"
+      }
+    ],
+    "style": {
+      "highlight": false,
+      "compact": false
+    }
+  },
+  {
+    "kind": "static",
+    "args": {},
+    "alias": "handlebars mixed-page",
+    "group": 1,
+    "baseline": false,
+    "runs": [
+      {
+        "stats": {
+          "kind": "fn",
+          "min": 256400,
+          "max": 1127800,
+          "p25": 266100,
+          "p50": 277600.00000190735,
+          "p75": 318200,
+          "p99": 783700,
+          "p999": 993600,
+          "avg": 327116.76758268685,
+          "ticks": 2147,
+          "heap": {
+            "_": 2079,
+            "total": 2010404616,
+            "min": 5600,
+            "max": 2165632,
+            "avg": 967005.5873015873
+          }
+        },
+        "args": {},
+        "name": "handlebars mixed-page"
+      }
+    ],
+    "style": {
+      "highlight": false,
+      "compact": false
+    }
+  },
+  {
+    "kind": "static",
+    "args": {},
+    "alias": "eta mixed-page",
+    "group": 1,
+    "baseline": false,
+    "runs": [
+      {
+        "stats": {
+          "kind": "fn",
+          "min": 9207.2021484375,
+          "max": 9583.8134765625,
+          "p25": 9229.39453125,
+          "p50": 9258.203125,
+          "p75": 9397.9248046875,
+          "p99": 9470.7763671875,
+          "p999": 9470.7763671875,
+          "avg": 9318.450520833334,
+          "ticks": 61440,
+          "heap": {
+            "_": 8,
+            "total": 40743.25,
+            "min": 5066.447265625,
+            "max": 5182.828125,
+            "avg": 5092.90625
+          }
+        },
+        "args": {},
+        "name": "eta mixed-page"
+      }
+    ],
+    "style": {
+      "highlight": false,
+      "compact": false
+    }
+  },
+  {
+    "kind": "static",
+    "args": {},
+    "alias": "handlebars conditional-heavy",
+    "group": 1,
+    "baseline": false,
+    "runs": [
+      {
+        "stats": {
+          "kind": "fn",
+          "min": 233200,
+          "max": 1102500,
+          "p25": 242900,
+          "p50": 250000,
+          "p75": 286000,
+          "p99": 693000,
+          "p999": 947200,
+          "avg": 300884.0616966581,
+          "ticks": 2334,
+          "heap": {
+            "_": 2248,
+            "total": 2731317776,
+            "min": 16568,
+            "max": 2350080,
+            "avg": 1214999.0106761565
+          }
+        },
+        "args": {},
+        "name": "handlebars conditional-heavy"
+      }
+    ],
+    "style": {
+      "highlight": false,
+      "compact": false
+    }
+  },
+  {
+    "kind": "static",
+    "args": {},
+    "alias": "eta conditional-heavy",
+    "group": 1,
+    "baseline": false,
+    "runs": [
+      {
+        "stats": {
+          "kind": "fn",
+          "min": 12020.9228515625,
+          "max": 12360.7421875,
+          "p25": 12040.4052734375,
+          "p50": 12051.708984375,
+          "p75": 12082.4462890625,
+          "p99": 12229.8583984375,
+          "p999": 12229.8583984375,
+          "avg": 12101.689009232954,
+          "ticks": 45056,
+          "heap": {
+            "_": 11,
+            "total": 29252.130859375,
+            "min": 2653.1328125,
+            "max": 2697.482421875,
+            "avg": 2659.2846235795455
+          }
+        },
+        "args": {},
+        "name": "eta conditional-heavy"
+      }
+    ],
+    "style": {
+      "highlight": false,
+      "compact": false
+    }
+  },
+  {
+    "kind": "static",
+    "args": {},
+    "alias": "handlebars fragment-heavy",
+    "group": 1,
+    "baseline": false,
+    "runs": [
+      {
+        "stats": {
+          "kind": "fn",
+          "min": 79900,
+          "max": 785900,
+          "p25": 84700,
+          "p50": 87600,
+          "p75": 91800,
+          "p99": 411500,
+          "p999": 693200,
+          "avg": 106257.03894529474,
+          "ticks": 6599,
+          "heap": {
+            "_": 6443,
+            "total": 2084253576,
+            "min": 1984,
+            "max": 1211072,
+            "avg": 323491.16498525534
+          }
+        },
+        "args": {},
+        "name": "handlebars fragment-heavy"
+      }
+    ],
+    "style": {
+      "highlight": false,
+      "compact": false
+    }
+  },
+  {
+    "kind": "static",
+    "args": {},
+    "alias": "eta fragment-heavy",
+    "group": 1,
+    "baseline": false,
+    "runs": [
+      {
+        "stats": {
+          "kind": "fn",
+          "min": 7879.736328125,
+          "max": 8467.7978515625,
+          "p25": 7931.0302734375,
+          "p50": 7957.177734375,
+          "p75": 8042.3095703125,
+          "p99": 8134.521484375,
+          "p999": 8134.521484375,
+          "avg": 8022.762044270833,
+          "ticks": 73728,
+          "heap": {
+            "_": 5,
+            "total": 27242.76953125,
+            "min": 582.994140625,
+            "max": 6666.205078125,
+            "avg": 5448.55390625
+          }
+        },
+        "args": {},
+        "name": "eta fragment-heavy"
+      }
+    ],
+    "style": {
+      "highlight": false,
+      "compact": false
+    }
+  },
+  {
+    "kind": "static",
+    "args": {},
+    "alias": "handlebars fortunes-encoded",
+    "group": 1,
+    "baseline": false,
+    "runs": [
+      {
+        "stats": {
+          "kind": "fn",
+          "min": 47800,
+          "max": 866500,
+          "p25": 50200,
+          "p50": 51400,
+          "p75": 53500,
+          "p99": 163300,
+          "p999": 635200,
+          "avg": 61405.6709615216,
+          "ticks": 11409,
+          "heap": {
+            "_": 11216,
+            "total": 2157676160,
+            "min": 984,
+            "max": 612224,
+            "avg": 192374.8359486448
+          }
+        },
+        "args": {},
+        "name": "handlebars fortunes-encoded"
+      }
+    ],
+    "style": {
+      "highlight": false,
+      "compact": false
+    }
+  },
+  {
+    "kind": "static",
+    "args": {},
+    "alias": "eta fortunes-encoded",
+    "group": 1,
+    "baseline": false,
+    "runs": [
+      {
+        "stats": {
+          "kind": "fn",
+          "min": 3694.2138671875,
+          "max": 3935.15625,
+          "p25": 3704.7119140625,
+          "p50": 3718.5546875,
+          "p75": 3739.892578125,
+          "p99": 3926.9775390625,
+          "p999": 3926.9775390625,
+          "avg": 3741.070847284226,
+          "ticks": 172032,
+          "heap": {
+            "_": 25,
+            "total": 94404.76953125,
+            "min": 3765.87890625,
+            "max": 3854.93359375,
+            "avg": 3776.19078125
+          }
+        },
+        "args": {},
+        "name": "eta fortunes-encoded"
+      }
+    ],
+    "style": {
+      "highlight": false,
+      "compact": false
+    }
+  },
+  {
+    "kind": "static",
+    "args": {},
+    "alias": "handlebars encoded-loop",
+    "group": 1,
+    "baseline": false,
+    "runs": [
+      {
+        "stats": {
+          "kind": "fn",
+          "min": 3731500,
+          "max": 5984200,
+          "p25": 3784400,
+          "p50": 3849500,
+          "p75": 4103100,
+          "p99": 5727300,
+          "p999": 5755100,
+          "avg": 4116590.4191616764,
+          "ticks": 167,
+          "heap": {
+            "_": 137,
+            "total": 803018920,
+            "min": 5397320,
+            "max": 6482640,
+            "avg": 5861451.97080292
+          }
+        },
+        "args": {},
+        "name": "handlebars encoded-loop"
+      }
+    ],
+    "style": {
+      "highlight": false,
+      "compact": false
+    }
+  },
+  {
+    "kind": "static",
+    "args": {},
+    "alias": "eta encoded-loop",
+    "group": 1,
+    "baseline": false,
+    "runs": [
+      {
+        "stats": {
+          "kind": "fn",
+          "min": 3216300,
+          "max": 4384800,
+          "p25": 3256700,
+          "p50": 3304200,
+          "p75": 3383900,
+          "p99": 4112500,
+          "p999": 4340600,
+          "avg": 3439451.4851485146,
+          "ticks": 202,
+          "heap": {
+            "_": 165,
+            "total": 1005011376,
+            "min": 6090392,
+            "max": 6102760,
+            "avg": 6090978.036363636
+          }
+        },
+        "args": {},
+        "name": "eta encoded-loop"
+      }
+    ],
+    "style": {
+      "highlight": false,
+      "compact": false
+    }
+  }
+]

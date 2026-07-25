@@ -232,9 +232,13 @@ decisions below fix *what* and *why*.
   sub-tables are what Q6.2 needs (no single table whose rows invite sorting non-Heddle engines
   across ecosystems). The Heddle row in every sub-table gives the one sanctioned cross-table
   reading — Heddle-anchored ratios — without ranking competitors against each other.
-- **Alternatives rejected.** One combined table per workload with an ecosystem column
-  (physically a cross-ecosystem leaderboard of non-Heddle engines the moment a reader sorts
-  it — Q6.2's target); per-ecosystem top-level grouping with workloads inside (reproduces the
+- **Alternatives rejected.** One combined table per workload with an ecosystem column *as the
+  only view* (a cross-ecosystem leaderboard of non-Heddle engines the moment a reader sorts
+  it — Q6.2's target). **Amended 2026-07-25:** such a table is now published *in addition to*
+  the per-ecosystem sub-tables, under the conditions in the [D6
+  amendment](#d6--ranking-scope-enforcement-q62-and-the-no-score-rule-made-checkable); the
+  per-ecosystem sub-tables required here remain the normative view and are not replaced.
+  Per-ecosystem top-level grouping with workloads inside (reproduces the
   per-ecosystem reports and buries the per-workload juxtaposition the plan demands); adding
   dispersion-normalized or significance columns (new derived metrics — barred).
 - **Grounding.** [open-questions Q6.2, Q2.1](../../../plan/open-questions.md);
@@ -245,19 +249,53 @@ decisions below fix *what* and *why*.
 ### D6 — Ranking-scope enforcement (Q6.2) and the no-score rule, made checkable
 - **Decision.** Enforced properties of the published report, each verified by the publication
   checklist ([report-assembly.md — checklist](report-assembly.md#publication-checklist)):
-  (a) no table contains wall-time rows from two ecosystems' non-Heddle engines; (b) no prose
-  sentence ranks or compares two non-Heddle engines from different ecosystems (Heddle-vs-X is
-  permitted anywhere, wall-time-only); (c) no geomean, points total, medal count,
-  cross-workload average, or any single aggregate score exists anywhere; (d) every summary
-  statement in the findings section names its workload(s) — no workload-free "X is faster
-  than Heddle" sentence; (e) no table or prose juxtaposes allocation/GC/memory/cold figures
-  across runtimes (sidebars are per-ecosystem sections under their own H2, each labeled).
+  (a) no table contains wall-time rows from two ecosystems' non-Heddle engines, **except the
+  sanctioned per-workload cross-stack ranked table defined in the amendment below**; (b) no
+  prose sentence ranks or compares two non-Heddle engines from different ecosystems
+  (Heddle-vs-X is permitted anywhere, wall-time-only); (c) no geomean, points total, medal
+  count, cross-workload average, or any single aggregate score exists anywhere; (d) every
+  summary statement in the findings section names its workload(s) — no workload-free "X is
+  faster than Heddle" sentence; (e) no table or prose juxtaposes allocation/GC/memory/cold
+  figures across runtimes (sidebars are per-ecosystem sections under their own H2, each
+  labeled).
+- **Amendment (2026-07-25).** Property (a) is relaxed for exactly one construct: a
+  **per-workload cross-stack ranked wall-time table** — one table per workload, rows being
+  every measured engine from every included ecosystem plus the Heddle row, ranked by
+  ns/render, with an ecosystem column and a `vs Heddle` ratio column. Conditions, all
+  required:
+  - **One table per workload, never an aggregate.** Property (c) is *unchanged and still
+    binding*: there is no geomean, no points total, no medal count, no cross-workload
+    average, and no overall score anywhere. The construct is eight independent per-workload
+    rankings, not a league table.
+  - Each such table carries an **evidence-class marker per row** (fair-fight vs
+    reach/context, per D-evidence classes) so a reader cannot silently read a Python or JS
+    row as a compiled-peer result.
+  - Each such table carries an **implied-throughput column** (golden `byteLength ÷ ns`) so
+    physically implausible cells — measurement artifacts rather than engine speed — are
+    visible in the table itself rather than only in prose.
+  - Properties (b), (d), (e) remain unchanged and fully binding. In particular (b) still
+    forbids *prose* that ranks two non-Heddle engines across ecosystems: the table may be
+    published, but the narrative around it discusses Heddle-anchored comparisons only.
+  - The amendment overrides the "not a leaderboard" intro statement and the ranking-scope
+    rule in [report-assembly.md](report-assembly.md) to the extent of this construct only.
+- **Amendment rationale.** Readers of a six-ecosystem program ask the cross-stack question
+  first, and withholding the ranking while publishing all its inputs does not prevent the
+  comparison — it only means readers assemble it themselves, without the evidence-class and
+  plausibility context we can attach. The original concern (a leaderboard invites a
+  single-number verdict) is answered by keeping (c) intact: with no aggregate score, no
+  overall winner can be quoted, and every claim still has to name a workload under (d).
+  Accepted by the maintainer on 2026-07-25 in full knowledge that the ranking does not
+  flatter Heddle — it places Heddle last on `composed-page`.
 - **Rationale.** These are the plan's non-goals and success criteria converted into binary
   checks; the consolidated view is where the plan says the temptation is strongest, so the
   rules are enumerated rather than implied.
 - **Alternatives rejected.** A "reader's digest" summary table of best-engine-per-workload
-  (a medal table by another name — fails (c)/(d) in spirit); relegating the rules to prose
-  guidance (unenforceable — the checklist makes them gates).
+  distilled to one row per workload (still a medal table — fails (c)/(d): it implies an
+  overall winner and detaches the claim from the numbers); relegating the rules to prose
+  guidance (unenforceable — the checklist makes them gates). Note the per-workload ranked
+  table admitted by the amendment above is a different construct: it publishes every row
+  with its dispersion, evidence class and plausibility figure rather than distilling a
+  winner.
 - **Grounding.** [open-questions Q6.2](../../../plan/open-questions.md); plan §Non-goals,
   §Success criteria, §Risks (summarization pressure).
 
@@ -662,8 +700,11 @@ publication precondition.
 3. Every relative link in `index.md` resolves (source runs, evidence records, plan/spec
    documents).
 4. Grep gates for D6: no `geomean`/aggregate-score construct; every wall-time table's rows are
-   one ecosystem's engines + the Heddle row; allocation/memory/cold figures appear only under
-   the sidebars H2 and each sidebar carries the verbatim label.
+   one ecosystem's engines + the Heddle row, **except the per-workload cross-stack ranked
+   tables admitted by the [D6
+   amendment](#d6--ranking-scope-enforcement-q62-and-the-no-score-rule-made-checkable), which
+   must each carry the evidence-class and implied-throughput columns**; allocation/memory/cold
+   figures appear only under the sidebars H2 and each sidebar carries the verbatim label.
 5. The counted-claims tags all parse (`*(evidence: …; n = <int>)*`) and every `n ≤ 2` claim
    carries the thin-evidence wording.
 
