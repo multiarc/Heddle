@@ -146,7 +146,17 @@ than a test-count ratio.
 >
 > Closing the gap means feature areas contributing their template shapes to the corpus, which is
 > the standing rule D8 records in [testing-standards](../spec/common/testing-standards.md) — it is
-> how new areas are supposed to arrive, not a backfill anyone has done. Treat the residue as open.
+> how new areas are supposed to arrive, not a backfill anyone has done.
+>
+> **Residue owner: [phase 7 — shared test corpus](phase-7-shared-test-corpus.md)** (proposed, not
+> started). Its diagnosis is that D8's rule was recorded as prose with no mechanism behind it:
+> contributing a template means hand-adding a row to `Heddle.Tests.csproj`'s 112-file list and
+> reaching it from another project by assembly-path traversal, so the rule cannot bind. Phase 7
+> supplies the mechanism — one shared corpus home with declared per-entry intent, membership gated
+> by set equality rather than the count this phase's WI4 pinned — and then backfills the feature
+> shapes in reviewable stages. It also records the sharper form of the argument: hand-kept duplicate
+> **test inputs** are hand-kept duplicate **rules** one level up, and this program's own suites carry
+> 18 template literals duplicated character-for-character across the two tiers.
 
 ### D5 — Intent is declared: `ExpectPrecompiled` is the default, `ExpectDegrade` is explicit
 

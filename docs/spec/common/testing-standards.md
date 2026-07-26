@@ -130,3 +130,49 @@ input mismatch and the nested/generic AQN mismatch) reached release precisely th
 - **A guarded fixture that fails because of a known, owned defect is quarantined, never
   weakened.** Its `Skip` string names the owning work item and the defect, and the owning work
   item un-skips it as acceptance evidence. An unexplained or orphaned skip is a review failure.
+
+## Test-input single-sourcing
+
+> Added by [ledger entry E9](../records.md#cross-spec-amendments-ledger) (generator ↔ engine
+> code-sharing program, phase 7). Normative for every spec that adds tests exercising the same
+> language construct on more than one tier (build tier, run tier, editor).
+
+**A duplicate test input is a duplicate rule one level up.** The code-sharing program removed rules
+the generator and the runtime each maintained as two hand-kept copies, because nothing forced the
+copies to agree. A template shape written as an inline string in a generator test *and again* as an
+inline string in a runtime test drifts for exactly the same reason, and the consequence is worse:
+the two tiers are then verified against two texts, so the premise of a differential test — that
+both tiers were handed identical input — silently stops holding, and no assertion anywhere notices.
+The rule:
+
+- **A template shape that more than one tier verifies exists exactly once**, as a file in the
+  shared test corpus, and every consuming suite reads that file. Both tiers compile the same bytes.
+  Copying a template literal from one suite into another is the defect this rule names, not a
+  shortcut.
+- **Every corpus entry declares its intent, and the declaration is total.** An entry says how the
+  build tier must classify it (precompiles / degrades to a marker / falls back safely / front-end
+  error) and how it may be exercised (standalone and byte-compared / with a named model / resolve-only,
+  for shapes no tier can render standalone), with a one-line justification. Intent is *declared*,
+  never inferred from a filename: negative probes that must fail to compile and deliberate-degrade
+  shapes that must not precompile are ordinary corpus members, and a sweep that assumed otherwise
+  would either break or quietly widen what counts as precompiled. Completeness is asserted in both
+  directions — an entry with no declaration and a declaration with no entry are each a red test.
+- **Corpus membership is gated by set equality against the declaration, never by a count or a
+  floor.** A count can be made green by editing one digit; set equality can only be made green by
+  naming the file whose classification changed and writing down why. Floors are worse still — this
+  repo has shipped a `>= 25` floor against an actual 40, which let fifteen templates stop
+  precompiling silently.
+- **Proximity still wins where it genuinely wins.** A one-line probe, a diagnostic-position probe
+  whose assertion pins offsets into that literal, and a constructed or `[Theory]`-generated template
+  stay inline: a template next to its assertion is better test code, and those cases gain no
+  cross-tier coverage. The rule targets shapes two tiers verify, not every string literal.
+- **Shared test assets are reached from the consumer's own output directory**, never by walking up
+  out of `bin/<cfg>/<tfm>` into a sibling project. Path traversal to another project's assets
+  encodes the configuration name, the TFM directory and the project nesting as assumptions, and its
+  failure mode is a test that finds nothing and passes.
+- **What moves is byte-identical, and its encoding is pinned by a gate.** A move is proven a rename;
+  a merge of two tiers' near-identical copies resolves and *records* every difference (a divergence
+  found while merging is a drift finding, not a formatting nit). Line endings are pinned in
+  [`.gitattributes`](../../../.gitattributes) per the rule above; byte-order marks are independent
+  of that pin and get their own assertion, because a BOM-bearing fixture is either deliberate
+  coverage or an accident and the two must be distinguishable.

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Heddle.Language.Expressions;
 using Xunit;
 
@@ -179,6 +180,84 @@ namespace Heddle.Tests
             // Framework build host. Pinned as a value assertion on the two formats the formatter must use.
             Assert.Equal("0.10000000000000001D", LiteralFormatter.Format(0.1d));
             Assert.Equal("0.100000001F", LiteralFormatter.Format(0.1f));
+        }
+
+        // ---- The format-identity guard (phase-4 audit, 2026-07-26) ------------------------------------------
+        //
+        // Why the round-trip sweeps above cannot carry drift #9 on their own: on .NET Core "R" *is* the
+        // shortest-round-trippable form, so every one of the 60 000 values round-trips identically under the bug.
+        // Reverting G17/G9 → "R" therefore reddens nothing on a CoreCLR leg except a literal-string assertion.
+        // The defect is only *observable* on net48, which is Windows-gated here and cannot be run on this box.
+        //
+        // So the guard on the legs that do run is stated as what it actually is: an assertion about the format
+        // *choice*, not about round-tripping. The formatter must emit exactly the fixed-significant-digit form on
+        // every host — that is the property that makes the .NET Framework host safe — so these sweeps compare the
+        // formatter's text to G17/G9 text over the same corner set and value space the round-trip legs use. Any
+        // other format string ("R", "G", "G15", …) reddens them on every TFM.
+
+        [Theory]
+        [MemberData(nameof(DoubleCorners))]
+        public void DoubleText_IsExactlyTheG17Form(double value) =>
+            Assert.Equal(value.ToString("G17", CultureInfo.InvariantCulture) + "D", LiteralFormatter.Format(value));
+
+        [Theory]
+        [MemberData(nameof(SingleCorners))]
+        public void SingleText_IsExactlyTheG9Form(float value) =>
+            Assert.Equal(value.ToString("G9", CultureInfo.InvariantCulture) + "F", LiteralFormatter.Format(value));
+
+        [Fact]
+        public void EveryFormattedReal_IsTheFixedDigitForm_OverTheRandomizedValueSpace()
+        {
+            var random = new Random(Seed);
+            var buffer = new byte[8];
+            int doubleChanged = 0, singleChanged = 0;
+            for (int i = 0; i < 20000; i++)
+            {
+                random.NextBytes(buffer);
+                double d = BitConverter.ToDouble(buffer, 0);
+                if (!double.IsNaN(d) && !double.IsInfinity(d))
+                {
+                    Assert.Equal(d.ToString("G17", CultureInfo.InvariantCulture) + "D", LiteralFormatter.Format(d));
+                    if (d.ToString("R", CultureInfo.InvariantCulture) != d.ToString("G17", CultureInfo.InvariantCulture))
+                        doubleChanged++;
+                }
+
+                float f = BitConverter.ToSingle(buffer, 0);
+                if (!float.IsNaN(f) && !float.IsInfinity(f))
+                {
+                    Assert.Equal(f.ToString("G9", CultureInfo.InvariantCulture) + "F", LiteralFormatter.Format(f));
+                    if (f.ToString("R", CultureInfo.InvariantCulture) != f.ToString("G9", CultureInfo.InvariantCulture))
+                        singleChanged++;
+                }
+            }
+
+            // The sweeps above are only a guard if "R" and G17/G9 really do disagree on the text for a large share
+            // of the value space; otherwise a revert to "R" could slip through them the way it slips through the
+            // round-trip legs. On every host the two differ for most values (G17/G9 pad to the full digit count),
+            // and this counter makes that assumption fail loudly rather than silently weaken the guard.
+            Assert.True(doubleChanged > 10000,
+                $"'R' and G17 produced identical text for all but {doubleChanged} sampled doubles — the " +
+                "format-identity guard above would no longer detect a revert to \"R\".");
+            Assert.True(singleChanged > 10000,
+                $"'R' and G9 produced identical text for all but {singleChanged} sampled singles.");
+        }
+
+        [Fact]
+        public void HumanScaleDecimals_AreTheFixedDigitForm_WhereRIsAtItsWorst()
+        {
+            // The shape real templates carry, and the exact class where .NET Framework's "R" mis-round-trips: a
+            // literal like 0.1 whose shortest form is 3 chars and whose exact G17 expansion is 19.
+            Assert.Equal("0.29999999999999999D", LiteralFormatter.Format(0.3d));
+            Assert.Equal("0.33333333333333331D", LiteralFormatter.Format(1d / 3d));
+            Assert.Equal("4.94065645841247E-324D", LiteralFormatter.Format(double.Epsilon));
+            Assert.Equal("1.00000002E+30F", LiteralFormatter.Format(1E+30F));
+            Assert.Equal("3.40282347E+38F", LiteralFormatter.Format(float.MaxValue));
+            foreach (var value in new[] { 0.1d, 0.2d, 0.3d, 1d / 3d, 123456789.123456789d })
+            {
+                var text = LiteralFormatter.Format(value);
+                Assert.Equal(value.ToString("G17", CultureInfo.InvariantCulture) + "D", text);
+                Assert.NotEqual(value.ToString("R", CultureInfo.InvariantCulture) + "D", text);
+            }
         }
     }
 }
