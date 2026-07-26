@@ -238,6 +238,40 @@ unrecorded breaking change.
   ruled. Those faults are not forgiven: the moment a precompiled template imports the file, the importer's parse pulls
   the same content through the same channels and raises them.
 
+- **`PrecompiledFallbackEvent.Key` is removed and replaced by two carriers** (phase 5, Q8.33;
+  `PrecompiledFallbackEvent`, **ships in 2.1.0 — not yet shipped**). The event's single `Key` property held a
+  *template key* for the per-request reasons and an *assembly name* for the registration-time ones
+  (`SchemaVersionUnsupported`, `EngineVersionIncompatible`, `RegisteredNameUnavailable`). It is replaced by
+  `TemplateKey` and `AssemblyName`, exactly one of which is populated, and the public constructor by the two
+  factories `ForTemplate` / `ForAssembly` which enforce that mapping. **This is a real binary break on shipped 2.0
+  public API**, stated as such rather than argued away: a host that reads `event.Key` will not compile against 2.1.
+
+  **Judgement: a declared 2.1 break, not window-gated** — on the same footing as Q8.2's schema-floor rise, and on
+  four grounds.
+  (a) **The alternative is the worse break, not a smaller one.** Keeping `Key` and narrowing its meaning to template
+  keys is a *behavioural* break with no compile-time signal: a 2.0 host that reads `Key` to log which assembly was
+  rejected would silently start logging null, on the diagnostic channel whose entire purpose is to stop failures
+  being silent. Removal converts that into a compiler error at the one line that has to change, and the fix is
+  mechanical (`Key` → `TemplateKey` or `AssemblyName`, chosen by which reasons the host handles). The
+  [policy](#policy-applies-to-every-window)'s test — could a user *correctly* depend on the old behaviour — cuts
+  both ways here, so the tie is broken by which break a user can *see*.
+  (b) **The affected population is already rebuilding for 2.1, and is the same population.** The only way to observe
+  this type is to consume the precompiled tier, and Q8.2's floor rise already requires every 2.0-precompiled
+  assembly to be rebuilt against the 2.1 generator or lose precompilation. There is no host that keeps working
+  across 2.1 *and* reads this property.
+  (c) **No rendered byte changes, and no fallback decision changes.** Which reasons fire, when they fire, what
+  `Detail` says, and what `Strict` throws are all untouched; only the shape of the payload handed to `OnFallback`
+  moves. `PrecompiledMismatchException` is unaffected — it never carried the union field.
+  (d) **The mapping is enforced from both sides, so the split cannot silently re-collapse.** `ForTemplate` refuses a
+  registration-time reason, `ForAssembly` refuses a per-request one, both refuse a blank carrier, and the classifier
+  behind them is an exhaustive switch that throws for a reason nobody has classified — so a reason added later
+  cannot be raised until it has been assigned a carrier. The declaration side is
+  `PrecompiledFallbackCarrierTests`, which checks that classification against the whole enum in both directions and
+  pins the *absence* of a `Key` member by reflection, so a well-meaning convenience re-addition reds.
+  **Cost, as expected and reviewed:** the public-surface golden (`public-api-heddle.txt`) moves by exactly the four
+  lines of this change and nothing else, and `FallbackGuard` (generator integration suite) collapses the two
+  carriers for *display and matching only*, which is a test-side choice — the engine keeps them apart.
+
 - **The release line is stated once, and every first-party assembly is signed** (phase 5, Q8.11;
   `Directory.Build.props`, `Directory.Build.targets`, shipped 2.1.0). Not a behavioural change and recorded
   only because it moves a shipped surface: nine per-project `<Version>` elements collapse into one

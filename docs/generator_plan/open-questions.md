@@ -12,10 +12,13 @@ ruled (user, 2026-07-26); the remainder stand at their stated defaults**, which 
 decision until revisited.
 
 **Q8.32–Q8.35 are ruled (user, 2026-07-26)**
-([section](#opened-by-the-q828q831-landing-2026-07-26--awaiting-rulings)). **Ruled but
-unimplemented: Q8.13, Q8.14, Q8.17, Q8.19, Q8.32, Q8.33, Q8.35** — two of those are conditional on a
-feasibility assessment that has not been made (Q8.19's emitter-walk cost, Q8.32's late-binding
-stage). Q8.34 requires no behavioural change and closes with one verification and a phase-8 item.
+([section](#opened-by-the-q828q831-landing-2026-07-26--awaiting-rulings)). **Q8.33 landed 2026-07-26**
+(the fallback event's two carriers, a declared 2.1 break). **Q8.32 landed in part** — sub-question (b),
+the silent registration drop, is closed; sub-question (a) was rejected by the ruling; the late-binding
+third stage the ruling reframed it around is still conditional on an unmade feasibility assessment.
+**Ruled but unimplemented: Q8.13, Q8.14, Q8.17, Q8.19, Q8.35** — Q8.19's emitter-walk cost is the other
+outstanding feasibility assessment. Q8.34 requires no behavioural change and closes with one
+verification and a phase-8 item.
 
 Each resolved entry below records the question, the ruling, and the folding target. Two rulings
 carry a program-wide principle referenced by several phases:
@@ -982,6 +985,100 @@ so the outstanding set is complete in one place.
   tier's whole advantage for validation timing. If it does not come out contained, stop and report the
   cost rather than half-doing it. **Recorded as a distinct piece of work, not folded into a phase.**
 
+  **Landed (2026-07-26) — sub-question (b) only.** An unnormalizable `RegisteredName` in
+  `PrecompiledTemplates.Register`'s pass 2 now reports `HED7104` /
+  `PrecompiledFallbackReason.RegisteredNameUnavailable` instead of being `continue`d past in silence. The
+  registration path has no silent drop left: every discarded manifest row is now either reported or a throw.
+
+  **One reason and one id for both causes, not a second row in the registry.** A refused spelling and a collided
+  spelling are one situation from the host's side — a name it expected to resolve does not, and the template is
+  still reachable by its key — with the same remedy, so splitting them across two ids would advertise a
+  distinction the host cannot act on. The registry row for `HED7104` and the enum member's own documentation are
+  widened to say so, rather than a new id being claimed.
+
+  The detail names **both** the refused spelling and the key of the template that asked for it. A report naming
+  only the spelling tells a host with fifty templates that something, somewhere, lost a name; that half is pinned
+  by its own assertion, because dropping it is a mutation the resolution assertions do not catch.
+
+  **Deliberately not done, so it reads as a decision:**
+  - **No per-request gauntlet arm for `RegisteredName`** — sub-question (a), rejected by the ruling.
+    `PrecompiledGauntlet` is untouched apart from one call-site rename forced by Q8.33's field split.
+  - **No throw.** Q8.25's rule holds: a broken addition costs the addition and nothing more. The template stays
+    registered under its key and the rest of the assembly registers normally.
+  - **No build-tier change.** The generator already refuses such a name with `HED7004` and so cannot emit one; this
+    arm exists for manifests no build tier vetted, and the two tiers still agree.
+  - **The late-binding third stage the ruling reframed the question around is not attempted here.** It remains
+    conditional on the feasibility assessment the ruling asked for, unstarted, and is not folded into this landing.
+
+  One residue, recorded because mutation testing found it rather than assumed it away: also *indexing* the refused
+  spelling would pass every test, because `TryGet` normalizes before consulting the name index, so a spelling
+  outside `TryNormalize`'s range is unreachable by any lookup and the arbitration arms only ever compare normalized
+  strings. The state is unreachable, so the mutant is extensionally equal to the code; the argument is written into
+  the fixture next to the test rather than being left for the next reader to re-derive.
+
+  **Feasibility assessment (2026-07-26).** Both conditions the ruling set are answered, and they point the
+  same way: **the timing goal is achievable and worth doing; the indirection mechanism is not.**
+  Recommendation — **proceed with a named subset (validation only); do not proceed with indirection.**
+  Evidence in full in the scratchpad report; the load-bearing parts:
+
+  - **The dynamic runtime does not late-bind — it is *deferred-resolution*, and the resolution point is
+    sealed shut.** `NativeExpressionCompiler` takes `options.Functions` and calls `_registry.Freeze()` in
+    its constructor, so every later `Register` throws ("*…is now frozen. Register functions before the
+    first compile*"). The resolved target is then baked into the expression tree: `Expression.Call(null,
+    chosen.Method, …)` for methods and — decisive — `Expression.Invoke(Expression.Constant(chosen.Target,
+    …))` for delegate registrations, i.e. **the delegate instance itself is a constant, not a cell**.
+    Extensions resolve the same way: `HeddleCompiler` instantiates via `TemplateFactory` at compile and
+    stores the instance on the compiled item, which the resolver caches. So *neither* tier carries an
+    indirection; they differ only in which phase performs the one lookup (dynamic: compile; generated:
+    build). Adding a re-pointable cell to the generator would therefore not be matching the source of
+    truth, it would be inventing a third binding mode and then changing the source of truth to match
+    *it* — the outcome the ruling named as disqualifying.
+  - **Generated code cannot carry indirection cheaply, for three independent reasons.** Prop values are
+    emitted as `PrecompiledPropSetter(<slot.Index>, …)`, so a late-resolved extension type writes into
+    the wrong slots — which is exactly what phase 3's OQ4 prop-layout fingerprint exists to prevent, so
+    name-based late binding would delete the guarantee the fingerprint was created to provide. Function
+    overload choice *and* argument casts are baked into the emitted C# text, so a cell can only be typed
+    as the build-time signature and buys exactly one bit — "is a compatible target present?" — which
+    `CheckFunctions` already answers from manifest rows. And `PrecompiledRuntime.Bind`'s pinned invariant
+    is *"the extension is never mutated after `Bind` returns"*, which is what makes the `static readonly`
+    field and the lock-free render correct; a stage-3 re-point is that mutation. Cost, stated honestly as
+    a shape argument and **not** a measurement: the tier has never been benchmarked here
+    (`src/Heddle.Performance` has no precompiled benchmark, and no published report in
+    `docs/benchmarks/` carries a precompiled row — the `Heddle` anchor rows are the dynamic tier), so no
+    number supports or refutes "trades the tier's whole advantage". What is verifiable from code is that
+    `E0.RenderData(...)` reads a `static readonly` field of an exact type — the only signal making that
+    call devirtualizable, since `AbstractExtension.RenderData` is `abstract` and no extension in the
+    chain is `sealed` — and that dropping `readonly` to permit a re-point converts every substitution
+    site in every template to a virtual call. The indirection with the worst cost (extensions, the
+    per-substitution hot path) is the one with the least validation value.
+  - **The ruling's actual goal needs no indirection.** Gauntlet steps 2 and 3 are pure comparisons of
+    manifest facts against live registries, so they can run once after configuration over
+    `PrecompiledTemplates.Entries`. Two findings make this a bigger win than the mechanism it replaces.
+    First, **the typed entry point runs no gauntlet at all**: `Templates_X.Generate(model)` goes straight
+    to `PrecompiledRuntime.GenerateString`, and the gauntlet is reached *only* through
+    `PrecompiledTemplates.TryResolve`, whose only production callers are `TemplateResolver.Search` and
+    `ConsultPrecompiled`. For a host on the documented recommended API an extension- or function-binding
+    mismatch is **never detected today**, so the third stage is not a re-timing — it is the only check
+    such a host can ever have. Second, it genuinely removes per-request work: a precompiled hit is not
+    entered into `TemplatesCache`, so `Validate` runs on every request, allocating a `List`, a `HashSet`
+    and several LINQ pipelines in `CheckFunctions` and hashing every content/import file under
+    `EnableFileChangeCheck`.
+  - **The contained subset.** *(A)* An aggregate, host-callable post-configuration pass that runs the
+    existing gauntlet over every registered entry and reports **all** failures at once rather than the
+    first. `Entries` and `Validate(entry, options)` are already public, so this is an aggregate API, a
+    report shape and documentation — **no generated-code change, no manifest row, no schema bump**, no
+    `PrecompiledRuntime` invariant touched, no `FunctionRegistry` change. It should share its
+    collect-don't-stop report type with Q8.19. *(B)* Sub-question (b) above — `HED7104` for an
+    unnormalizable `RegisteredName` — is independent of all of this and stays as ruled.
+  - **Named and deliberately not started:** the `HED7014` **delegate-only** case is the one place
+    indirection would strictly *add* coverage rather than trade it, since today a single delegate-only
+    call makes the whole template fall back. It is not contained: a closure's signature is not in
+    metadata, so the emitter has no return type to keep typing the expression with, and an
+    `object`-typed unknown-return node cascades through operator legality, the coercion rail and member
+    hops. A bounded slice exists (delegate-only calls in output-only position) but still needs an emitter
+    change, a manifest row and a per-feature schema gate. This is the "stop and report the cost" branch.
+  - **One question the subset raises rather than settles:** filed as **Q8.38**.
+
 - **Q8.33 — `PrecompiledFallbackEvent.Key` carries two different kinds of string and a host cannot
   tell which it has.** For per-request reasons `Key` is a template key; for the registration-time
   reasons (`SchemaVersionUnsupported`, `EngineVersionIncompatible`, and now
@@ -1008,6 +1105,43 @@ so the outstanding set is complete in one place.
   two, because a 2.0 host reading `Key` for an assembly name would silently start reading null. Decide
   it as a 2.1 break either way, record it, and pin the reason→populated-carrier mapping from both
   sides so no reason can be added later that populates neither.
+
+  **Landed (2026-07-26).** `Key` is **removed** and replaced by two properties — `TemplateKey` and `AssemblyName` —
+  of which exactly one is populated. The public constructor is replaced by two factories,
+  `PrecompiledFallbackEvent.ForTemplate` and `ForAssembly`, so the carrier is chosen by the call rather than by a
+  positional string whose meaning the reader has to look up.
+
+  **Removal, not narrowing, and the reasoning is the ruling's own.** Both options break a 2.0 host; only one of them
+  tells it. Narrowing `Key` to template keys leaves a host that logged the rejected assembly silently logging null,
+  on the channel whose entire purpose is that failures are not silent. Removal is a compiler error at the one line
+  that has to change, with a mechanical fix. Dispositioned as a declared 2.1 break in
+  `docs/spec/common/breaking-windows.md`, on the same footing as Q8.2's schema-floor rise, with the population
+  argument stated: the only way to see this type is to consume the precompiled tier, and Q8.2 already requires that
+  population to rebuild for 2.1.
+
+  **The mapping is pinned from both sides, which was the explicit ask.** Code side: each factory refuses a reason
+  belonging to the other carrier, both refuse a blank carrier, and the classifier behind them is an **exhaustive
+  switch that throws on `default`** — so a reason added later cannot be raised at all until it has been assigned a
+  carrier. Declaration side: `PrecompiledFallbackCarrierTests` declares the assembly-scoped set and checks it
+  against `Enum.GetValues` in both directions, so a new reason with no declaration and a declaration the code
+  disagrees with are each red. Neither side can be made green by editing only the other.
+
+  A reflection test also pins the **absence** of a `Key` member and of any public constructor. That is the mutant
+  worth guarding: re-adding `Key => TemplateKey ?? AssemblyName` as a convenience would restore exactly the
+  ambiguity this closes, and it compiles.
+
+  **Deliberately not done:**
+  - **No `KeyKind` discriminator.** The ruling asked for separate carriers, and once they exist the populated one
+    *is* the discriminator; a third property would be a second way to ask the same question.
+  - **No change to which reasons fire, when, with what `Detail`, or to what `Strict` throws.**
+    `PrecompiledMismatchException` never carried the union field and is untouched.
+  - **`default(PrecompiledFallbackEvent)` still bypasses both factories**, as it does for every value type. Stated
+    in the type's own documentation rather than defended against — nothing in the engine produces one, and making
+    the struct unconstructible-by-default is not available in C#.
+
+  Cost: the public-surface golden moves by exactly four lines and nothing else (reviewed line by line), and the
+  generator suite's `FallbackGuard` collapses the two carriers for matching and display — a test-side choice, noted
+  in its own remarks so it is not mistaken for the engine blurring them again.
 
 - **Q8.34 — A name that resolved can stop resolving because an unrelated assembly loaded, and the
   only notice is `OnFallback`.** The eviction half of the disjointness invariant is what makes key
@@ -1043,6 +1177,41 @@ so the outstanding set is complete in one place.
   extend here, because `Strict`'s subject is degradation to the dynamic tier and no degradation occurs.
   **No behavioural change to the eviction path.**
 
+  **Verification (2026-07-26) — the ruling's second consequence does not hold today: the engine *does*
+  auto-load, by default, and it is stronger than the shape the question anticipated.** Not an enumeration
+  of assemblies the host already loaded — `AssemblyHelper`'s **static constructor** forces
+  `Assembly.Load` over the entry assembly's whole transitive `GetReferencedAssemblies()` closure (loader
+  failures swallowed) *and* over every `DependencyContext.GetDefaultAssemblyNames()` entry. There is no
+  switch: `AssemblyHelper.Configure(startupAssembly)` is not an opt-in gate but a one-shot
+  (`if (!_configured)`) that runs *after* the static ctor has already walked everything.
+  `TemplateFactory`'s static constructor then scans every assembly in that set for
+  `[ExportExtensions]`. It reaches the precompiled path through gauntlet step 2 —
+  `PrecompiledTemplates.TryResolve` → `PrecompiledGauntlet.CheckExtensions` →
+  `TemplateFactory.TryGetExtensionType` → both static ctors — so any precompiled template carrying at
+  least one `ExtensionBindings` row triggers it, which is effectively all of them (the sample manifest
+  carries `("html", "Heddle.Extensions.EmptyHtmlExtension, Heddle")`). This is the forbidden shape
+  precisely because the scanned set decides **extension name ownership**: `AddExtensions` resolves
+  collisions by walk order and raises `TemplateOverrideException` *from a static constructor* when an
+  unrelated claimant collides, so an assembly the integration layer never chose to load can win a name or
+  fail type initialization. **Recorded as a defect, not fixed — filed as Q8.37**, because the code is not
+  on the precompiled path proper (it is the shared discovery the dynamic tier also depends on) and
+  removing it has a back-compat surface, so it needs a ruling rather than an audit edit.
+
+  What verification found **clean**, so the defect is precisely scoped: `PrecompiledTemplates.Register`
+  is explicitly opt-in, takes one `Assembly`, and has no scan-all overload, no `GetAssemblies` call and no
+  reflection-based manifest discovery — the samples and the cross-stack benchmark harness all pass an
+  explicit assembly (`PrecompiledTemplates.Register(typeof(Program).Assembly)`); there is **no module
+  initializer anywhere** in `src/` and none in generated code; the **LSP server never calls `Register`**
+  and its own loading is workspace-configuration-driven through a collectible `ModelAssemblyContext` plus
+  the tracked `RegisterModelAssemblies`/`Unregister` pair; and the **typed entry point does not trigger
+  the walk at all** (`PrecompiledRuntime.GenerateString` touches neither `TemplateFactory` nor
+  `AssemblyHelper`, because generated code names its extension types directly). So the auto-load is
+  reached by the resolver/gauntlet path only. Note also that this defect and the README's
+  post-implementation **finding 3** (`[ExportExtensions]` unmodelled by the generator) are two halves of
+  one seam — the runtime discovers from a set the host did not choose, the generator scans a different set
+  — and whichever ruling closes Q8.37 must be checked against finding 3 so the tiers agree on which set
+  is authoritative.
+
 - **Q8.35 — `Min == Max == Current` makes the support window a single point.** The Q8.2 collapse was
   right — schemas 3, 4 and 5 were never released, so there was no window to preserve. But the
   constants now say something stronger than "we collapsed unreleased churn": they say this engine
@@ -1075,3 +1244,41 @@ so the outstanding set is complete in one place.
   which means a fixture holding a pre-change manifest, not a reviewer's judgement. Fold into
   `docs/spec/common/breaking-windows.md` as a named rule so future landings apply it without
   re-deriving it.
+
+## Opened by the Q8.32/Q8.34 assessment pass (2026-07-26) — awaiting rulings
+
+- **Q8.37 — The engine auto-loads and auto-scans assemblies by default, which Q8.34's ruling forbids
+  (defect).** Found by the verification Q8.34's ruling demanded; full chain recorded in that entry.
+  `AssemblyHelper`'s static constructor `Assembly.Load`s the entry assembly's entire transitive reference
+  closure plus every `DependencyContext` default assembly name, unconditionally and with loader failures
+  swallowed; `TemplateFactory`'s static constructor scans that set for `[ExportExtensions]`; the
+  precompiled path reaches both through gauntlet step 2's `TemplateFactory.TryGetExtensionType`. Because
+  the scanned set decides extension **name ownership**, and a collision between unrelated claimants throws
+  `TemplateOverrideException` out of a static constructor, an assembly the integration layer never chose
+  to load can take a name or fail type initialization — the ordering decision the ruling says must stay
+  with the host.
+
+  Not fixed in the assessment pass, deliberately, because the code is **shared engine discovery** rather
+  than a precompiled-path detail: the dynamic tier depends on the same scan, and hosts today rely on
+  `[ExportExtensions]` being found without registering anything, so removing or gating it is a
+  behavioural break needing a window disposition — not an audit edit. The question is therefore *what
+  replaces it*: an explicit registration call the host makes (matching `PrecompiledTemplates.Register`'s
+  already-clean opt-in shape, which is the in-repo precedent), an opt-in switch that preserves today's
+  behaviour for existing hosts, or narrowing the walk without removing it. Whatever is chosen must be
+  reconciled with the README's post-implementation **finding 3** — the generator scans *all referenced*
+  assemblies while the runtime scans only `[ExportExtensions]`-carrying ones — since the two are halves of
+  one seam and a fix to either alone widens the drift.
+
+- **Q8.38 — A post-configuration validation pass has to be told which `TemplateOptions` it is validating
+  against, and nothing says which.** Raised by Q8.32's feasibility assessment, which recommends the
+  validation-only subset. Four of the gauntlet's inputs are **per-request**, not per-configuration:
+  `OutputProfile`, `ExpressionMode` and `TrimDirectiveLines` (step 1's fingerprint comparison) and
+  `options.Functions` (step 3). A single pass run "after the host has finished configuring" can therefore
+  only be complete with respect to one options shape, and a host that renders under more than one — two
+  profiles, or a request-scoped `FunctionRegistry` — gets an answer that is true for one shape and silent
+  about the others. Options: the pass takes one `TemplateOptions` and its report says so explicitly; it
+  takes a set and reports per (entry, options) pair; or the engine defines a host-declared canonical
+  options instance and validates only that. The third is the smallest API and the most likely to mislead,
+  so this wants a ruling before the subset is built rather than a default chosen during implementation.
+  Note the constraint is not incidental: step 1 exists *because* the fingerprint is a per-request check,
+  so it cannot simply be hoisted with steps 2 and 3.

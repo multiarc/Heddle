@@ -216,7 +216,7 @@ namespace Heddle.Precompiled
 
         private static PrecompiledFallbackEvent Fail(string key, PrecompiledFallbackReason reason, string detail)
         {
-            return new PrecompiledFallbackEvent(key, reason, detail, Hed7101);
+            return PrecompiledFallbackEvent.ForTemplate(key, reason, detail, Hed7101);
         }
     }
 }

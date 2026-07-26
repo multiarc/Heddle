@@ -294,7 +294,7 @@ namespace Heddle.Tests
             var evt = Assert.Single(events);
             Assert.Equal(PrecompiledFallbackReason.RegisteredNameUnavailable, evt.Reason);
             Assert.Equal("HED7104", evt.DiagnosticId);
-            Assert.Equal(b, evt.Key);
+            Assert.Equal(b, evt.AssemblyName);
             Assert.Contains("shared/banner.heddle", evt.Detail);
             // The detail names who owns the spelling, which is the only actionable part of the report.
             Assert.Contains(a, evt.Detail);
@@ -317,7 +317,7 @@ namespace Heddle.Tests
             var evt = Assert.Single(events);
             Assert.Equal(PrecompiledFallbackReason.RegisteredNameUnavailable, evt.Reason);
             Assert.Equal("HED7104", evt.DiagnosticId);
-            Assert.Equal(b, evt.Key);
+            Assert.Equal(b, evt.AssemblyName);
             Assert.Contains("shared/banner.heddle", evt.Detail);
         }
 
@@ -336,7 +336,7 @@ namespace Heddle.Tests
 
             var evt = Assert.Single(events);
             Assert.Equal(PrecompiledFallbackReason.RegisteredNameUnavailable, evt.Reason);
-            Assert.Equal(b, evt.Key);
+            Assert.Equal(b, evt.AssemblyName);
 
             // First-come kept it.
             Assert.True(PrecompiledTemplates.TryGet("Shared", out var entry));
@@ -385,6 +385,75 @@ namespace Heddle.Tests
             Assert.Empty(events);
             Assert.True(PrecompiledTemplates.TryGet("templates/report.heddle", out var entry));
             Assert.Equal("templates/report.heddle", entry.Key);
+        }
+
+        /// <summary>
+        /// <para><b>Q8.32(b): the registration path has no silent drop left.</b> A <c>RegisteredName</c> the shared
+        /// key rule refuses — a <c>..</c> segment, a trailing separator, whitespace — used to be <c>continue</c>d past
+        /// with no event at all: the one place in registration where a manifest row was discarded and nothing was
+        /// said, while both <em>collision</em> arms already reported <c>HED7104</c>. The generator cannot emit such a
+        /// name (a name that fails normalization is <c>HED7004</c> at build time and never reaches a manifest), so the
+        /// population is exactly the manifests no build tier vetted — hand-written, third-party, or emitted by a tool
+        /// that skipped the rule. That is the population most in need of being told.</para>
+        /// <para>It reports through the same channel and the same id as a collision, deliberately: from the host's
+        /// side the outcome is identical — a name it expected to resolve does not, and the template is still reachable
+        /// by its key — so a second id would split one situation across two rows of the registry. The
+        /// <em>sub-question (a)</em> half of Q8.32, a per-request gauntlet arm for <c>RegisteredName</c>, was rejected
+        /// as over-engineering and is deliberately absent: a name resolves to an entry whose every row the gauntlet
+        /// already re-checks, so re-validating the name would re-validate nothing.</para>
+        /// <para><b>One mutation survives here, and it is recorded rather than papered over.</b> Indexing the refused
+        /// spelling anyway — <c>byName[template.RegisteredName] = template</c> alongside the report — passes every
+        /// test, and provably must: <see cref="PrecompiledTemplates.TryGet"/> normalizes before it consults the name
+        /// index, so a spelling outside the range of <c>TryNormalize</c> is unreachable by any lookup; the eviction
+        /// and arbitration arms compare against <em>normalized</em> keys and names only; and
+        /// <see cref="PrecompiledTemplates.Entries"/> reads the key index. The mutant is therefore extensionally
+        /// equal to the code — unreachable state, not a defect — and the observable half of this arm is the report,
+        /// which two other mutants (dropping the event, dropping the requesting key from its detail) do kill.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("../escape")]
+        [InlineData("nested/../escape")]
+        [InlineData("trailing/")]
+        [InlineData("   ")]
+        [InlineData("./")]
+        public void AnUnnormalizableRegisteredNameReportsHed7104(string unusable)
+        {
+            var events = new List<PrecompiledFallbackEvent>();
+            PrecompiledTemplates.OnFallback = e => events.Add(e);
+
+            var a = Register("A", Entry("templates/report.heddle", unusable));
+
+            var evt = Assert.Single(events);
+            Assert.Equal(PrecompiledFallbackReason.RegisteredNameUnavailable, evt.Reason);
+            Assert.Equal("HED7104", evt.DiagnosticId);
+            Assert.Equal(a, evt.AssemblyName);
+            // The report has to name the spelling that was refused and the template that asked for it; otherwise a
+            // host with fifty templates is told only that something, somewhere, lost a name.
+            Assert.Contains(unusable, evt.Detail);
+            Assert.Contains("templates/report.heddle", evt.Detail);
+
+            // The addition is what was lost, and nothing else: the template is still reachable by its key, and the
+            // refused spelling resolves to nothing.
+            Assert.True(PrecompiledTemplates.TryGet("templates/report.heddle", out var entry));
+            Assert.Equal("templates/report.heddle", entry.Key);
+            Assert.False(PrecompiledTemplates.TryGet(unusable, out _));
+        }
+
+        /// <summary>The complement, so the new report cannot be satisfied by reporting on every row: an
+        /// <em>absent</em> name is not a refused name. Every pre-existing project's manifest is entirely rows like
+        /// this, and a registration that raised an event per row would make <c>OnFallback</c> useless as a
+        /// signal.</summary>
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        public void AnAbsentRegisteredNameStaysSilent(string absent)
+        {
+            var events = new List<PrecompiledFallbackEvent>();
+            PrecompiledTemplates.OnFallback = e => events.Add(e);
+
+            Register("A", Entry("templates/report.heddle", absent));
+
+            Assert.Empty(events);
         }
 
         /// <summary>
