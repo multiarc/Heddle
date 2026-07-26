@@ -167,6 +167,10 @@ one `@else`. Only the winning branch's body renders.
   its branch sets and its compile‑time scan.
 - **Isolation.** Each `@list`/`@for` iteration, each nested body, and each `@partial` gets its
   own set state — an inner set can never satisfy or clear an outer one.
+- **A custom continuation or terminal must declare `[ScopeChannel]`** to read the state an opener
+  publishes. One that does not draws `HED3005` (and `HED7016` at build time) and then misses every
+  read at render, so it behaves as though no opener ran — see
+  [building your own branch set](custom-extensions.md#building-your-own-branch-set).
 
 These four are the engine's own **role‑carrying** extensions: each declares its position in a set
 with `[BranchRole]` (opener / continuation / terminal). Nothing about the classification is
@@ -227,6 +231,10 @@ control with no new syntax:
 
 `step` must be positive: a zero or negative literal step is a compile error (**HED4001**), and a
 non‑positive step known only at render throws. See [native expressions](native-expressions.md#range).
+
+Calling a definition that carries a default output (`-> chain`) by name renders it **twice** — once
+where the call is, once at document end — and the compiler warns with **HED4002**. See
+[default output](language-reference.md#default-output---chain).
 
 The C# tier still works for computed models:
 

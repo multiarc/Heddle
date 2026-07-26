@@ -715,7 +715,8 @@ default**:
 ```
 
 - **Types** resolve exactly like a `:: Type` annotation (C# keyword types, dotted names,
-  generics, arrays — `List<string>`, `int[]`).
+  generics, arrays — `List<string>`, `int[]`). A type name that does not resolve is **HED5010**.
+- **Prop names are unique within one header** — declaring the same name twice is **HED5007**.
 - **Defaults are literals only** — the phase‑1 literal forms (`"…"`, `42`, `1.5`, `true`,
   `'c'`, `null`, and a leading `-` on a number). A default must be convertible to the prop's
   type under the same rule call‑site arguments use; `<card(style: string = "plain")>` is fine,
