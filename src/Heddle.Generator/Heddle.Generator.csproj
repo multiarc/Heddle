@@ -71,6 +71,10 @@
     <Compile Include="..\Heddle\Precompiled\PrecompiledSchema.cs" Link="Shared\Precompiled\PrecompiledSchema.cs" />
     <Compile Include="..\Heddle\Precompiled\PrecompiledOptionsFingerprint.cs" Link="Shared\Precompiled\PrecompiledOptionsFingerprint.cs" />
     <Compile Include="..\Heddle\Precompiled\PrecompiledCapabilities.cs" Link="Shared\Precompiled\PrecompiledCapabilities.cs" />
+    <!-- Q8.31: linked, not restated, so the emitted member name is the real enum member and a rename breaks this
+         compile instead of producing a manifest that will not compile in the consumer. Same reason
+         PrecompiledCapabilities above is linked. -->
+    <Compile Include="..\Heddle\Precompiled\PrecompiledLinePathForm.cs" Link="Shared\Precompiled\PrecompiledLinePathForm.cs" />
     <Compile Include="..\Heddle\Precompiled\HeddleBuildOptions.cs" Link="Shared\Precompiled\HeddleBuildOptions.cs" />
     <Compile Include="..\Heddle\Data\OutputProfile.cs" Link="Shared\Data\OutputProfile.cs" />
     <Compile Include="..\Heddle\Data\ExpressionMode.cs" Link="Shared\Data\ExpressionMode.cs" />

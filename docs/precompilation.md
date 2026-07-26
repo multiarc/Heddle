@@ -38,8 +38,8 @@ metadata are read:
 | Metadata | Effect |
 | --- | --- |
 | `Key` | The item's explicit **registration key**, replacing the path‑derived one. It sets both the lookup key **and** the generated class name (via `SanitizeName`), and it is the remedy for a template outside `HeddleTemplateRoot` — an explicit key suppresses `HED7018`, because the flattened key is then what you asked for. It normalizes through the shared key rule and takes part in `HED7002`/`HED7003`. A value the normalizer refuses is `HED7004`. |
-| `Name` | An **additional** name the `@<<` import map answers to — *not* a rename. The template keeps its key (path‑derived, or `Key`) **and** answers to the name, so both spellings resolve and nothing that resolved before stops resolving. It does not touch the key, the manifest row, the generated class name, the `#line` file or `HED7018`, and it is never a registry lookup, so it takes no part in `HED7002`/`HED7003`. Setting `Key` *and* `Name` is two names for one template, not a conflict. Importing a named template by its key resolves and warns (`HED7028`); a name the normalizer refuses, or one another template already answers to, is `HED7004` against the name — the key is unaffected. |
-| `Precompile` | `false` opts the file out of pre‑compilation: no entry point, no manifest entry — but it **stays available to `@<<` imports**, which `Remove` cannot do. Absent or any other value means "precompile". This pairs naturally with `Name`: an import‑only partial under a friendly name. |
+| `Name` | An **additional** name the template answers to — *not* a rename. The template keeps its key (path‑derived, or `Key`) **and** answers to the name, so both spellings resolve and nothing that resolved before stops resolving. It works at **both tiers**: the `@<<` import map at build time, and the precompiled registry at run time (the manifest row carries it, so `TryGet`/`TryResolve` find the same template by either spelling). It does not touch the key, the generated class name, the `#line` file or `HED7018`, and it takes no part in `HED7002`/`HED7003`, which are about keys. Where a spelling names one template's key and another's name, **the key wins** — a name is an addition and never displaces an existing spelling. Setting `Key` *and* `Name` is two names for one template, not a conflict. Importing a named template by its key resolves and warns (`HED7028`); a name the normalizer refuses, or one another template in the same build already answers to, is `HED7004` against the name — the key is unaffected. Across assemblies the same collision is `HED7104` at registration. |
+| `Precompile` | `false` opts the file out of pre‑compilation: no entry point, no manifest entry — but it **stays available to `@<<` imports**, which `Remove` cannot do. Absent or any other value means "precompile". This pairs naturally with `Name`: an import‑only partial under a friendly name. Its `Key`/`Name` are validated and its own imports advised like any other item's, even though it emits nothing; note that with no manifest row, an opted‑out template's `Name` is a **build‑time** import spelling only — there is no registry entry for the runtime to answer with. |
 
 ```xml
 <ItemGroup>
@@ -114,6 +114,27 @@ PrecompiledTemplates.Register(typeof(MyApp.Program).Assembly);   // once per ass
 foreach (var entry in PrecompiledTemplates.Entries)
     Console.WriteLine($"{entry.Key}  model={entry.ModelType}  precompiled={entry.IsPrecompiled}");
 ```
+
+### Lookup by key, and by registered name
+
+A lookup resolves **keys first, registered `Name`s second**. Both spellings reach the same entry, so
+a template built with `Name="BuildReport"` is found by `BuildReport` and by its key, and the entry it
+returns reports its **key** either way — the key is the identity the staleness check and every
+diagnostic message are written against. A name is not a registry *entry*: `Entries` does not
+double‑count it.
+
+The order is a decision, not an accident. Where a spelling names one template's key and another's
+registered name, the **key owner wins**, whichever assembly registered first: a `Name` is an
+*addition*, and an addition that displaced a spelling which already resolved would be a rename by the
+back door. The losing name is simply not registered (or, if a key claims its spelling later, it stops
+being registered), and the host hears about it once through `OnFallback` as `HED7104` —
+`PrecompiledFallbackReason.RegisteredNameUnavailable`. Nothing throws, and the template whose name lost
+stays fully reachable by its key. Contrast a duplicate **key**, which does throw
+`PrecompiledRegistrationException`: two templates claiming one registration has no resolvable answer,
+while a name/key collision already has one.
+
+Name lookup is ordinal, exactly as key lookup is, so a case‑sloppy spelling misses rather than serving
+the wrong template.
 
 **Every** resolver arm consults the registry. For direct (`TemplatePathType.None`) lookups
 `TemplateResolver.GetTemplate` consults it before the dynamic cache and file check; for the
@@ -195,6 +216,7 @@ saw hides a packaging bug behind identical output. The classification:
 | `SchemaVersionUnsupported` | **must surface** | A manifest outside the engine's schema window means the deployable pairs generator and engine packages out of contract — a packaging defect that today silently un‑precompiles an entire assembly. |
 | `EngineVersionIncompatible` | **must surface** | The same argument for engine skew; whole‑assembly silent rejection is the worst place to be quiet. |
 | `CaseMismatch` | informational | Never a gauntlet failure — a registry lookup miss is contractually never a failure; the `HED7103` event is a diagnostic aid. |
+| `RegisteredNameUnavailable` | informational | Never a gauntlet failure and never a throw (`HED7104`): a registered `Name` is an *addition*, and an addition whose spelling is already taken costs the addition and nothing more — the template stays registered under its key, so no resolution that worked before changes meaning. Unlike a duplicate key there is nothing unresolvable to refuse, because key precedence already decides which template the spelling means. |
 | duplicate key at registration | already surfaces | `PrecompiledTemplates.Register` throws `PrecompiledRegistrationException` — the precedent that registration defects throw. |
 
 **Today's behavior is unchanged**: under the default `Fallback` policy every class above still

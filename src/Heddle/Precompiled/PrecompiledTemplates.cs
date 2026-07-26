@@ -14,37 +14,57 @@ namespace Heddle.Precompiled
     {
         internal const string Hed7102 = Data.HeddleDiagnosticIds.PrecompiledManifestRejected;
         internal const string Hed7103 = Data.HeddleDiagnosticIds.PrecompiledKeyCaseMismatch;
+        internal const string Hed7104 = Data.HeddleDiagnosticIds.PrecompiledRegisteredNameUnavailable;
         // The accepted schema window lives in the shared PrecompiledSchema (phase 5 D5), which the generator also
-        // emits from; see MinSupportedSchemaVersion for why 2.1 raised the floor to 4 (Q8.2 — schema 1–3 manifests
-        // reference a PrecompiledExtensionBinding constructor that no longer exists, so accepting them faulted here
-        // instead of falling back). This comment used to describe a {1, 2} window and was four schema bumps stale.
+        // emits from; see MinSupportedSchemaVersion for why 2.1 raises the floor to 3 (Q8.2 — the RELEASED schema 1–2
+        // manifests reference a PrecompiledExtensionBinding constructor that no longer exists, so accepting them
+        // faults here instead of falling back). The window is a point: {1, 2} shipped and are now excluded, the three
+        // unreleased bumps above 2 were collapsed into one, so 3 is the only shape this engine reads.
 
         private sealed class Snapshot
         {
             public Snapshot(Dictionary<string, PrecompiledTemplateInfo> byKey,
                 Dictionary<string, string> keyOwner,
                 Dictionary<string, string> shadow,
-                HashSet<string> assemblies)
+                HashSet<string> assemblies,
+                Dictionary<string, PrecompiledTemplateInfo> byName,
+                Dictionary<string, string> nameOwner)
             {
                 ByKey = byKey;
                 KeyOwner = keyOwner;
                 Shadow = shadow;
                 Assemblies = assemblies;
+                ByName = byName;
+                NameOwner = nameOwner;
             }
 
             public Dictionary<string, PrecompiledTemplateInfo> ByKey { get; }
             public Dictionary<string, string> KeyOwner { get; }
             public Dictionary<string, string> Shadow { get; }
             public HashSet<string> Assemblies { get; }
+
+            /// <summary>The registered-name index (Q8.30) — a <b>second</b> index rather than extra rows in
+            /// <see cref="ByKey"/>, which is what makes key precedence structural. Invariant, enforced from both
+            /// directions in <see cref="Register"/>: no spelling is present here and in <see cref="ByKey"/> at the
+            /// same time.</summary>
+            public Dictionary<string, PrecompiledTemplateInfo> ByName { get; }
+
+            /// <summary>Which assembly a registered name belongs to, for first-come arbitration and for the
+            /// <c>HED7104</c> detail.</summary>
+            public Dictionary<string, string> NameOwner { get; }
         }
 
         private static readonly object RegistrationLock = new object();
 
-        private static Snapshot _snapshot = new Snapshot(
+        private static Snapshot _snapshot = EmptySnapshot();
+
+        private static Snapshot EmptySnapshot() => new Snapshot(
             new Dictionary<string, PrecompiledTemplateInfo>(StringComparer.Ordinal),
             new Dictionary<string, string>(StringComparer.Ordinal),
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
-            new HashSet<string>(StringComparer.Ordinal));
+            new HashSet<string>(StringComparer.Ordinal),
+            new Dictionary<string, PrecompiledTemplateInfo>(StringComparer.Ordinal),
+            new Dictionary<string, string>(StringComparer.Ordinal));
 
         /// <summary>Per-request/registration fallback and diagnostic callback (HED71xx). Invoked outside locks.</summary>
         public static Action<PrecompiledFallbackEvent> OnFallback { get; set; }
@@ -87,6 +107,10 @@ namespace Heddle.Precompiled
                 return;
             }
 
+            // HED7104 reports (Q8.30) are collected under the lock and raised after it: OnFallback is host code and
+            // must never run while the registration lock is held.
+            List<PrecompiledFallbackEvent> lostNames = null;
+
             lock (RegistrationLock)
             {
                 var current = _snapshot;
@@ -99,8 +123,11 @@ namespace Heddle.Precompiled
                 var byKey = new Dictionary<string, PrecompiledTemplateInfo>(current.ByKey, StringComparer.Ordinal);
                 var keyOwner = new Dictionary<string, string>(current.KeyOwner, StringComparer.Ordinal);
                 var shadow = new Dictionary<string, string>(current.Shadow, StringComparer.OrdinalIgnoreCase);
+                var byName = new Dictionary<string, PrecompiledTemplateInfo>(current.ByName, StringComparer.Ordinal);
+                var nameOwner = new Dictionary<string, string>(current.NameOwner, StringComparer.Ordinal);
 
-                // Stage transactionally: validate every key before publishing anything.
+                // Pass 1 — keys. Staged transactionally: every key is validated before anything is published, and a
+                // duplicate throws, because two templates claiming one registration has no resolvable answer.
                 foreach (var template in templates)
                 {
                     var key = TemplateKey.Normalize(template.Key);
@@ -109,15 +136,92 @@ namespace Heddle.Precompiled
                     byKey[key] = template;
                     keyOwner[key] = assemblyName;
                     shadow[key] = key;
+
+                    // A key beats a name that was already answering to its spelling, even though that name got there
+                    // first. This is the eviction half of the invariant: without it, key precedence would hold only
+                    // when the key's assembly happened to register first, and which template a spelling meant would
+                    // depend on host load order. The name's own template is untouched — it keeps its key.
+                    if (byName.ContainsKey(key))
+                    {
+                        var displaced = nameOwner.TryGetValue(key, out var previous) ? previous : "<unknown>";
+                        byName.Remove(key);
+                        nameOwner.Remove(key);
+                        (lostNames ?? (lostNames = new List<PrecompiledFallbackEvent>())).Add(
+                            new PrecompiledFallbackEvent(assemblyName,
+                                PrecompiledFallbackReason.RegisteredNameUnavailable,
+                                $"Name: '{key}' registered by '{displaced}' is now the template key of '{assemblyName}'; " +
+                                "the key wins and the name no longer resolves", Hed7104));
+                    }
+
+                }
+
+                // Pass 2 — names, over the whole manifest's keys, mirroring the build tier's two-pass import map
+                // (Q8.25). Keys-first is what makes `Name` additive rather than an override, at both tiers: every key
+                // is already known when the first name is considered, so a name can never displace one.
+                foreach (var template in templates)
+                {
+                    if (string.IsNullOrEmpty(template.RegisteredName))
+                        continue;
+                    if (!TemplateKey.TryNormalize(template.RegisteredName, out var name))
+                        continue;
+
+                    var key = TemplateKey.Normalize(template.Key);
+
+                    // The name spells the template's own key: it asks for the spelling that already resolves to it, so
+                    // there is nothing to add and nothing to report.
+                    if (string.Equals(name, key, StringComparison.Ordinal))
+                        continue;
+
+                    // The insert-time half of the invariant: the spelling belongs to a key, or to a name that got
+                    // there first. Either way the addition is refused and the loser is told — it is not a throw,
+                    // because a broken addition costs the addition and nothing more (Q8.25's rule, applied here).
+                    string owner = null;
+                    if (keyOwner.TryGetValue(name, out var keyHolder))
+                        owner = "the template key of '" + keyHolder + "'";
+                    else if (nameOwner.TryGetValue(name, out var nameHolder))
+                        owner = "a registered name of '" + nameHolder + "'";
+
+                    if (owner != null)
+                    {
+                        (lostNames ?? (lostNames = new List<PrecompiledFallbackEvent>())).Add(
+                            new PrecompiledFallbackEvent(assemblyName,
+                                PrecompiledFallbackReason.RegisteredNameUnavailable,
+                                $"Name: '{name}' requested by '{key}' is already {owner}; the name is not registered " +
+                                "and the template stays reachable by its key", Hed7104));
+                        continue;
+                    }
+
+                    byName[name] = template;
+                    nameOwner[name] = assemblyName;
                 }
 
                 var assemblies = new HashSet<string>(current.Assemblies, StringComparer.Ordinal) { assemblyName };
-                Volatile.Write(ref _snapshot, new Snapshot(byKey, keyOwner, shadow, assemblies));
+                Volatile.Write(ref _snapshot,
+                    new Snapshot(byKey, keyOwner, shadow, assemblies, byName, nameOwner));
+            }
+
+            if (lostNames != null)
+            {
+                foreach (var evt in lostNames)
+                    RaiseFallback(evt);
             }
         }
 
-        /// <summary>Normalizes <paramref name="key"/> then performs an ordinal lookup. A case-only miss fires the
-        /// shadow-index <see cref="PrecompiledFallbackReason.CaseMismatch"/> callback (HED7103) and returns false.</summary>
+        /// <summary>
+        /// <para>Normalizes <paramref name="key"/> then performs an ordinal lookup — <b>keys first, registered names
+        /// second</b> (Q8.30). A case-only miss fires the shadow-index
+        /// <see cref="PrecompiledFallbackReason.CaseMismatch"/> callback (HED7103) and returns false.</para>
+        /// <para>The parameter is still called <c>key</c> because that is what it is for every caller that has one; a
+        /// registered name is an additional spelling of the same lookup, not a second lookup. The order is the
+        /// decision, not an implementation detail: a spelling that names one template's key and another's registered
+        /// name resolves to the <b>key</b> owner, always, and independently of the order the two assemblies
+        /// registered in. A name is an addition, and an addition that displaced an existing spelling would be the
+        /// override Q8.25 corrected; the build tier's import map resolves the same way round, so neither tier can
+        /// disagree with the other about what a spelling means.</para>
+        /// <para>The name index is consulted only after the key index misses <em>and</em> is guaranteed disjoint from
+        /// it by <see cref="Register"/>, so the ordering here is belt-and-braces rather than the only guard — a
+        /// shadowed name cannot be in the index to be found.</para>
+        /// </summary>
         public static bool TryGet(string key, out PrecompiledTemplateInfo entry)
         {
             entry = null;
@@ -126,6 +230,9 @@ namespace Heddle.Precompiled
 
             var snapshot = Volatile.Read(ref _snapshot);
             if (snapshot.ByKey.TryGetValue(normalized, out entry))
+                return true;
+
+            if (snapshot.ByName.TryGetValue(normalized, out entry))
                 return true;
 
             if (snapshot.Shadow.TryGetValue(normalized, out var actual) &&
@@ -183,11 +290,7 @@ namespace Heddle.Precompiled
         {
             lock (RegistrationLock)
             {
-                Volatile.Write(ref _snapshot, new Snapshot(
-                    new Dictionary<string, PrecompiledTemplateInfo>(StringComparer.Ordinal),
-                    new Dictionary<string, string>(StringComparer.Ordinal),
-                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
-                    new HashSet<string>(StringComparer.Ordinal)));
+                Volatile.Write(ref _snapshot, EmptySnapshot());
             }
         }
 

@@ -169,7 +169,7 @@ Two independent reviewers — a verifier (completion vs. each plan's acceptance 
 adversary (defect hunt) — reviewed the landed program. Both mutation-tested pins to confirm they
 fire. Findings that survived orchestrator verification, most severe first:
 
-1. **P1 — `PrecompiledExtensionBinding` binary break.** The schema-4 field landed as an *optional
+1. **P1 — `PrecompiledExtensionBinding` binary break.** The prop-layout field landed as an *optional
    constructor parameter*, so the 2-arg `.ctor(string, string)` no longer exists in metadata
    (confirmed by reflection over the built assembly). Every manifest emitted by the pre-program
    generator references it. `MinSupportedSchemaVersion = 1` *accepts* those manifests, and the
@@ -179,12 +179,17 @@ fire. Findings that survived orchestrator verification, most severe first:
    overloads. **Fix:** add a real 2-arg overload, or raise `MinSupportedSchemaVersion` so the gate
    rejects what would fault; then check in a binary manifest fixture built at an older schema, so
    the support window is *demonstrated* rather than asserted.
-   (**closed 2026-07-26** by phase 5's Q8.2 landing.) `MinSupportedSchemaVersion` is **4** — the exact
-   boundary of the faulting set — so a 2.0.x-precompiled assembly now degrades with one `HED7102`
-   (`SchemaVersionUnsupported`) instead of crashing at startup, and the break ships as declared at 2.1 with
-   no shim. The window is *demonstrated*: `OldSchemaManifestFixture` compiles a manifest against a reference
-   facade carrying the pre-schema-4 surface under the real assembly's identity, with the real `Heddle`
-   excluded from the reference set, so its IL genuinely names the absent `.ctor(string, string)`. It is built
+   (**closed 2026-07-26** by phase 5's Q8.2 landing; **the number and the reasoning were corrected the same
+   day** — see the Q8.2 register entry.) `MinSupportedSchemaVersion` is **3**, the exact boundary of the
+   faulting set: verified against the `v2.0.0` tag, the released generator emitted `schemaVersion: 2` and the
+   released engine accepted `1–2`, so **schemas 1 and 2 are the only released shapes** and the three
+   unreleased increments above 2 collapse into a single schema 3. A 2.0.x-precompiled assembly now degrades
+   with one `HED7102` (`SchemaVersionUnsupported`) instead of crashing at startup, and the break ships as
+   declared at 2.1 with no shim — a *pending* break, not one that "already shipped in 2.0.0", which is what
+   the first landing wrongly claimed. The window is *demonstrated*: `OldSchemaManifestFixture` compiles a
+   manifest against a reference facade carrying the pre-break surface under the real assembly's identity,
+   with the real `Heddle` excluded from the reference set, so its IL genuinely names the absent
+   `.ctor(string, string)`; both released schemas are covered. It is built
    at test time rather than checked in, because a committed `.dll` cannot be re-derived or reviewed and the
    construction *is* the evidence. Note what the superseded pin could not be: `new
    PrecompiledExtensionBinding("a", "b")` binds to the three-parameter constructor against today's assembly,

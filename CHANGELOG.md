@@ -15,12 +15,17 @@ begin to occur because they were never wired. Each item's window judgement is re
 ### Changed (breaking)
 
 - **Precompiled assemblies built by a 2.0.x generator are no longer accepted.**
-  `PrecompiledSchema.MinSupportedSchemaVersion` rises `1` → `4`. Schema 4 moved the extension
-  prop-layout fingerprint onto `PrecompiledExtensionBinding` as an optional third constructor
-  parameter, which removed the two-argument `.ctor(string, string)` that every schema 1–3 manifest
-  calls — so those manifests have been unrunnable since 2.0.0, and the old floor of `1` *accepted*
-  them and then crashed with a `MissingMethodException` out of `PrecompiledTemplates.Register` at host
-  startup. The gate now rejects them cleanly instead.
+  `PrecompiledSchema.MinSupportedSchemaVersion` rises `1` → `3`, and the manifest schema the generator
+  emits goes `2` → `3`. 2.0.0 shipped schema 2; this release moves the prop-layout fingerprint onto
+  `PrecompiledExtensionBinding` as an optional third constructor parameter, which **removes** the
+  two-argument `.ctor(string, string)` that every schema 1–2 manifest calls. Those manifests therefore
+  cannot run against the 2.1 engine at all, and a floor of `1` would *accept* them and then crash with
+  a `MissingMethodException` out of `PrecompiledTemplates.Register` at host startup. The gate rejects
+  them cleanly instead.
+  Schema 3 is a **single** increment carrying everything added since 2.0: the `PrecompiledRuntime.DynamicMember`
+  routing, the extension prop-layout fingerprint, the per-carrier `BindDefinition` overload, and the two
+  new per-template fields below. There is no schema 4 or 5 — intermediate numbers existed only inside
+  unreleased development and are not migration steps.
   **What to do:** rebuild with the 2.1 `Heddle.Generator`. `Heddle.Generator` and `Heddle` are
   version-locked — pair the matching versions.
   **If you do not:** registration raises one `PrecompiledFallbackReason.SchemaVersionUnsupported`
@@ -39,19 +44,37 @@ begin to occur because they were never wired. Each item's window judgement is re
 
 ### Added
 
-- **`Name` item metadata** as an **additional** `@<<` import name — not a rename:
+- **`Name` item metadata** as an **additional** name for a template — not a rename:
   `<HeddleTemplate Update="t/report.heddle" Name="BuildReport" />` leaves the key
   `t/report.heddle` and the class `Heddle.Generated.T_Report` exactly as they were, and makes
-  `@<<{{BuildReport}}` resolve **as well as** `@<<{{t/report.heddle}}`. Nothing that resolved before stops
+  `BuildReport` resolve **as well as** `t/report.heddle`. Nothing that resolved before stops
   resolving. It pairs naturally with `Precompile="false"`: an import-only partial under a friendly name.
   Because a name is not a registration key, it takes no part in the duplicate (`HED7002`) or
   case-only-twin (`HED7003`) checks and does not suppress the out-of-root warning (`HED7018`) — the
   path-derived key is still there and still unasked-for. Setting `Key` *and* `Name` is two names for one
   template, not a conflict. A value the normalizer refuses, or a name another template already answers
   to, is `HED7004` against the name; the key is unaffected.
+- **The name works at run time too, not only for `@<<` imports.** The manifest row carries it
+  (`PrecompiledTemplateInfo.RegisteredName`) and `PrecompiledTemplates.TryGet`/`TryResolve` — and so every
+  resolver arm — find the same template by either spelling. Where a spelling names one template's key and
+  another's registered name, **the key wins**, whichever assembly registered first: a name is an addition
+  and never displaces a spelling that already resolved. Lookup is ordinal, as key lookup is.
 - **`HED7028`** (warning): an `@<<` import names a template by its registration key while that template
   also carries a `Name`. Both spellings resolve — this recommends the name-first spelling for a named
   template. It cannot fire for a project that sets no `Name`.
+- **`HED7104`** (`PrecompiledFallbackReason.RegisteredNameUnavailable`, via `OnFallback`): a registered
+  `Name` could not become a lookup spelling because another *registered* template already answers to it,
+  as its key or as its own name. Never a throw — the template stays reachable by its key, and only the
+  addition is lost. This collision is only detectable at registration, since the build tier cannot read a
+  referenced assembly's manifest rows; within one build the same fault is `HED7004`.
+- **`PrecompiledTemplateInfo.LinePathForm`** records which form a template's generated `#line` file names
+  are in — `RootRelative`, `TemplatePath`, or `Unspecified` for a fallback-marker row that has no
+  generated source. Machine-readable, for stack-trace symbolizers and editor tooling.
+- **`Precompile="false"` items are validated and advised.** An opted-out item's `Key`/`Name` now raise the
+  same `HED7004` faults an included item's would, instead of failing silently and surfacing as `HED7011`
+  at whichever file imported it; and its own imports can draw the `HED7028` advisory. It still contributes
+  no entry point and no manifest entry. Its *template* errors remain unreported — the file is excluded from
+  this build by request, and they surface through any precompiled template that imports it.
 
 ### Fixed
 
@@ -59,8 +82,8 @@ begin to occur because they were never wired. Each item's window judgement is re
   were always equal for a path-derived key; an explicit `Key` made the difference observable and would
   have pointed every mapped span at a path that does not exist. A template **outside**
   `HeddleTemplateRoot` now gets its own (absolute) path rather than a bare filename the compiler cannot
-  open, and every generated file states which form its `#line` names are in — root-relative, or the
-  template's own path — as a header comment.
+  open, and which form a template's `#line` names are in is recorded on its manifest row (see
+  `LinePathForm` under *Added*) rather than as a comment in the generated file, so tooling can act on it.
 - **`heddle-lsp --version` and the LSP `initialize` response reported `1.0.0`** for the whole 2.0 line.
   The value is now read off the assembly rather than hand-maintained.
 - **`HED7004`'s message** names the offending metadata and the reason, covering an unusable or

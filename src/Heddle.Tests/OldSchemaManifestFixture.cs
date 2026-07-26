@@ -8,10 +8,16 @@ using Microsoft.CodeAnalysis.CSharp;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// <para>Builds a <b>genuine old-schema precompiled manifest assembly</b> — one whose IL references
-    /// <c>PrecompiledExtensionBinding..ctor(string, string)</c>, the two-argument constructor that schema 1–3
-    /// generators emitted and that <b>no longer exists in metadata</b> since the schema-4 prop-layout fingerprint
+    /// <para>Builds a <b>genuine released-schema precompiled manifest assembly</b> — one whose IL references
+    /// <c>PrecompiledExtensionBinding..ctor(string, string)</c>, the two-argument constructor the <b>shipped
+    /// v2.0.0</b> generator emitted and that <b>no longer exists in metadata</b> since the prop-layout fingerprint
     /// landed as an optional third parameter rather than as a real overload (Q8.2, review finding P1).</para>
+    ///
+    /// <para><b>Which schemas this is about, verified against the tag.</b> At <c>v2.0.0</c> the generator emitted
+    /// <c>schemaVersion: 2</c>, the engine accepted <c>1–2</c>, and the two-argument constructor was real. Schemas 1
+    /// and 2 are therefore the <em>only</em> released shapes, and they are what this fixture reproduces. An earlier
+    /// version of this doc said "schema 1–3", which was wrong in a way that mattered: schema 3 has never shipped, so
+    /// naming it here implied the break's victim set included a shape no generator ever emitted.</para>
     ///
     /// <para><b>Why it is built this way, and what it refuses to do.</b> The obvious way to write an "old manifest"
     /// test is <c>new PrecompiledExtensionBinding("a", "b")</c> — which is exactly what
@@ -22,7 +28,7 @@ namespace Heddle.Tests
     /// exercising a call the window's oldest members cannot make.</para>
     ///
     /// <para>So the fixture never compiles against the real assembly. It compiles against a <b>reference facade</b>
-    /// that declares the pre-schema-4 surface — including a real two-argument
+    /// that declares the pre-break surface — including a real two-argument
     /// <c>PrecompiledExtensionBinding</c> constructor — under the real assembly's identity (name, version, and
     /// public key, taken from the live assembly and signed with the repository key). The emitted fixture therefore
     /// carries an assembly reference and a member reference indistinguishable from what a 2.0 generator emitted, and
@@ -36,7 +42,7 @@ namespace Heddle.Tests
     /// </summary>
     internal static class OldSchemaManifestFixture
     {
-        /// <summary>The pre-schema-4 slice of the precompiled surface a manifest touches. Deliberately tiny: only the
+        /// <summary>The released (schema 1–2) slice of the precompiled surface a manifest touches. Deliberately tiny: only the
         /// attribute, the manifest interface, the info type as a bare name, and the two-argument extension binding
         /// whose disappearance is the break.</summary>
         private const string FacadeSource = @"
@@ -81,8 +87,8 @@ namespace Heddle.Precompiled
 }
 ";
 
-        /// <summary>What a schema 1–3 generator emitted: a manifest whose <c>GetTemplates</c> constructs an extension
-        /// binding through the two-argument constructor.</summary>
+        /// <summary>What the released (schema 1–2) generator emitted: a manifest whose <c>GetTemplates</c> constructs
+        /// an extension binding through the two-argument constructor.</summary>
         private const string ManifestSourceTemplate = @"
 using System;
 using System.Collections.Generic;
@@ -169,7 +175,7 @@ namespace OldGenerated
 
         private static string RepoKeyPath() => PipelineContractTests.FindRepoFile("heddle.snk");
 
-        /// <summary>The break itself, as metadata: the two-argument constructor a schema 1–3 manifest calls is not
+        /// <summary>The break itself, as metadata: the two-argument constructor a released schema 1–2 manifest calls is not
         /// present on the live type. Asserted by the tests, and stated here because every other claim in this file
         /// rests on it.</summary>
         public static bool LiveTypeHasTheTwoArgumentConstructor() =>

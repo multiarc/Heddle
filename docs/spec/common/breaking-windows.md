@@ -119,33 +119,49 @@ unrecorded breaking change.
   type changes on either tier, and depending on `ResolveType` *throwing* for padded input is not a
   dependency the contract offers.
 
-- **The precompiled schema floor rose 1 → 4** (phase 5, Q8.2; `PrecompiledSchema.MinSupportedSchemaVersion`,
-  shipped 2.1.0). A manifest built by a 2.0.x generator at schema 1–3 is no longer accepted: registration
-  reports `SchemaVersionUnsupported` (`HED7102`) once and every template in that assembly renders through the
-  dynamic path. **Judgement: defect repair, not window-gated**, and rule 1's "one window per major" is not
-  engaged — on three grounds.
-  (a) **The break already shipped, in 2.0.0.** Schema 4 added the prop-layout fingerprint to
-  `PrecompiledExtensionBinding` as an *optional third constructor parameter*, which removes the two-argument
-  `.ctor(string, string)` from metadata. Every schema 1–3 manifest's IL names that constructor. So those
-  manifests have been unrunnable since 2.0.0 regardless of the window; what 2.1 changes is only whether the
-  engine *says so* or crashes.
-  (b) **The old behaviour was a `MissingMethodException` at host startup**, thrown out of
-  `PrecompiledTemplates.Register` — neither a degrade nor a render, and not something a user could correctly
-  depend on, which is the [policy](#policy-applies-to-every-window)'s test. `Min = 1` advertised a support
-  window the metadata could not honour; the fix retracts a false claim rather than withdrawing a working
-  capability. `4` is exactly the boundary (1–3 were built against two arguments, 4+ against three), so no
-  runnable manifest is excluded.
-  (c) **No rendered byte changes, on either tier.** A rejected assembly falls back to the dynamic engine,
-  which is byte-identical by design. Under `PrecompiledMismatchPolicy.Strict` a deployment that must never
-  pay dynamic-compile cost throws instead — the documented, chosen posture for exactly this case, and the
-  same treatment 1.x manifests received in the 2.0 window.
-  **Accepted consequence, recorded rather than argued away:** a project precompiled by a 2.0.x generator and
-  not rebuilt loses precompilation (or throws under `Strict`). `Heddle.Generator` and `Heddle` were already
-  documented as version-locked. No compatibility shim: adding a real two-argument overload back would keep
-  the faulting set *accepted*, which is the state being fixed. Demonstrated by
-  `OldSchemaManifestRejectionTests`, which builds a manifest whose IL genuinely names the absent constructor —
-  the earlier "old manifest" test constructed one through the optional parameter, so it exercised a
-  *new*-schema call and could never have caught this.
+- **The precompiled schema floor rises 1 → 3, and the unreleased schemas collapse into one** (phase 5, Q8.2 as
+  corrected; `PrecompiledSchema.MinSupportedSchemaVersion`, **ships in 2.1.0 — not yet shipped**). A manifest built
+  by a 2.0.x generator is no longer accepted: registration reports `SchemaVersionUnsupported` (`HED7102`) once and
+  every template in that assembly renders through the dynamic path.
+
+  **This entry replaces an earlier version of itself that was factually wrong, and the correction is the point.**
+  The superseded text argued the break was "already shipped, in 2.0.0, because schema 4's optional third parameter
+  removed the two-argument constructor then". Verified against the `v2.0.0` tag, that is false in every particular:
+  the shipped generator emitted `schemaVersion: 2`, the shipped engine accepted `Min = 1, Max = 2` (as two private
+  consts — `PrecompiledSchema.cs` did not exist yet), and the shipped `PrecompiledExtensionBinding` had a **real
+  two-argument constructor** which the shipped generator called. **Schemas 1 and 2 are the only schemas that have
+  ever shipped.** Schema 3, 4 and 5 were all unreleased, so the constructor break has *not* happened in any release:
+  it is a genuine, pending 2.1 binary break, which is the opposite of what the old disposition claimed. A normative
+  document must not carry a false premise, so the sentence is replaced rather than annotated.
+
+  **The collapse.** Because nothing above schema 2 was ever observable, the three unreleased increments
+  (dynamic-member routing at 3, the prop-layout row at 4, the per-carrier `BindDefinition` overload at 5) are
+  collapsed into **one**: schema **3** carries all of them, plus Q8.30's registered name and Q8.31's `#line` path
+  form. Carrying three increments would advertise a migration history no user could have had, and would leave the
+  support window claiming to read manifest shapes no generator ever emitted. `Min = Max = Current = 3` — the window
+  is a point: every schema below it is a released shape whose IL is unrunnable, and nothing above it exists.
+
+  **Judgement: still not window-gated, but on repaired grounds** — the old (a) is withdrawn, and the remaining two
+  carry it.
+  (a) *Withdrawn.* The break has not shipped. It lands in 2.1, declared.
+  (b) **What is being withdrawn was never a working capability.** With `Min = 1` the gate *accepts* a released
+  manifest and the fault then lands as a `MissingMethodException` out of `PrecompiledTemplates.Register` — a
+  host-startup crash, neither a degrade nor a render, and not something a user could correctly depend on, which is
+  the [policy](#policy-applies-to-every-window)'s test. `Min = 1` advertises a support window the metadata cannot
+  honour; the change retracts a false claim rather than removing something that worked. `3` is exactly the boundary
+  (1–2 were built against two arguments, 3 against three), so no runnable manifest is excluded.
+  (c) **No rendered byte changes, on either tier.** A rejected assembly falls back to the dynamic engine, which is
+  byte-identical by design. Under `PrecompiledMismatchPolicy.Strict` a deployment that must never pay
+  dynamic-compile cost throws instead — the documented, chosen posture for exactly this case.
+  **Accepted consequence, recorded rather than argued away:** a project precompiled by a 2.0.x generator and not
+  rebuilt loses precompilation (or throws under `Strict`). This is a real cost to a real population — every 2.0
+  consumer — and it is accepted because the alternative is a startup crash. `Heddle.Generator` and `Heddle` were
+  already documented as version-locked. No compatibility shim: restoring a real two-argument overload would keep the
+  faulting set *accepted*, which is the state being fixed. Demonstrated by `OldSchemaManifestRejectionTests`, which
+  builds manifests whose IL genuinely names the absent constructor at **both** released schemas and shows the clean
+  rejection, plus a control arm admitting the same bytes at `Min` to show the crash the gate prevents — the earlier
+  "old manifest" test constructed its binding through the optional parameter, so it exercised a *new*-schema call
+  and could never have caught this.
 
 - **The per-item `HeddleTemplate` metadata started working** (phase 5, Q8.12; `Heddle.Generator.targets`,
   shipped 2.1.0). `Key`, `Name` and `Precompile` were all inert from a real project: the targets restated each
@@ -170,6 +186,57 @@ unrecorded breaking change.
   key — additive by construction, since no pre-existing project sets `Name` at all and the build has no
   `TreatWarningsAsErrors` (Q8.26). The superseded sentence is replaced rather than annotated in place: a
   normative document must not carry two dispositions for one change.
+
+- **The precompiled registry answers to a registered `Name`** (phase 5, Q8.30; `PrecompiledTemplates`,
+  `PrecompiledTemplateInfo.RegisteredName`, ships in 2.1.0). A template built with `Name="BuildReport"` now resolves
+  by that spelling at run time as well as at build time: the manifest row carries the name and `TryGet`/`TryResolve`
+  consult a name index after the key index.
+  **Judgement: additive, not window-gated — and the widening question is answered rather than waved past.** It *is* a
+  widening: a lookup string that missed before can now hit, and that acceptance cannot be withdrawn later without a
+  window. Three grounds for taking it anyway.
+  (a) **The widening is scoped to opt-in data that no existing project has.** The new resolution path exists only for
+  a template whose item carries `Name`, and `Name` did nothing at all from a real csproj until 2.1 (Q8.12's targets
+  defect: every per-item metadatum was overwritten with `""`). So the population whose lookups change behaviour is
+  exactly the population that adds the metadatum in 2.1 or later — there is no 2.0 project whose resolution can move.
+  (b) **Nothing that resolved before stops resolving, and this is structural rather than tested-for.** Keys are
+  consulted first and the two indexes are kept disjoint, so a name can neither displace a key nor shadow one. The
+  ordering is the same one the build tier's import map has used since Q8.25, which is why the tiers cannot disagree.
+  (c) **No rendered byte changes.** A name resolves to the same entry the key resolves to — the same
+  `IProcessStrategy`, validated by the same gauntlet.
+  **The shadowing hazard, stated plainly because it is the one real risk:** a host that had a template keyed
+  `shared/banner.heddle` and a *different* template named `shared/banner.heddle` would, before 2.1, see the name do
+  nothing; after 2.1 the name is a live spelling. It still cannot take the key's spelling — the key wins, and the
+  colliding name is dropped with an `HED7104` callback — so the hazard is *reported*, not silent, and the resolved
+  template is unchanged. What a host cannot do is rely on a `Name` being ignored, which is not a dependency the
+  contract offers (the same reasoning Q8.12 used for the metadata starting to work at all).
+
+- **The `#line` relativity marker moves from generated code into the manifest** (phase 5, Q8.31;
+  `PrecompiledTemplateInfo.LinePathForm`, ships in 2.1.0). The comment line Q8.27 emitted under
+  `// <auto-generated/>` is deleted; the same fact is a manifest field a tool can read.
+  **Judgement: not a breaking change, and not behavioural at all.** (a) The removed line is a **comment in generated
+  code** — not public API, not rendered output, and not something a program could have consumed, which is precisely
+  why Q8.31 judged it the wrong carrier. (b) Generated-source goldens move by exactly one deleted line (five Verify
+  snapshots and the sample golden), reviewed as part of this change. (c) No rendered byte changes: the sample's
+  `codegen-output.txt` is unchanged, which is the assertion that the emitted *code* changed and the emitted *output*
+  did not.
+
+- **An opted-out item's key/name metadata is validated, and its imports advised** (phase 5, Q8.28 / Q8.29;
+  `HeddleTemplateGenerator`, ships in 2.1.0). A `Precompile="false"` item now raises the same `HED7004` a precompiled
+  item would for a malformed `Key`, a malformed `Name` or an already-taken `Name`, and its own `@<<` imports can draw
+  the `HED7028` advisory.
+  **Judgement: defect repair, not window-gated — with one honest caveat.** (a) **A build can newly fail**, and that is
+  the point rather than a side effect: the fault being reported was always real, and reporting it *nowhere* meant the
+  author instead met `HED7011` at an innocent importer, pointing at the wrong file. A project relying on a broken
+  metadatum being unreported is not a dependency the contract offers — and again, no 2.0 project could have set the
+  metadata at all. (b) **`HED7028` is a warning**, and the build has no `TreatWarningsAsErrors` (Q8.26), so the
+  advisory cannot fail anything. (c) **The opt-out's contract is unchanged and pinned**: an opted-out item still
+  contributes no entry point and no manifest entry.
+  **Deliberately not done, and recorded so it is a choice rather than an oversight:** an opted-out item's *template*
+  errors — a missing import, a parse error — stay unreported. The ruling asks for its metadata validated and its
+  imports advised; promoting every opted-out file's parse diagnostics to build errors would red previously-green
+  builds over templates the author explicitly told this build not to compile, which is a far larger change than was
+  ruled. Those faults are not forgiven: the moment a precompiled template imports the file, the importer's parse pulls
+  the same content through the same channels and raises them.
 
 - **The release line is stated once, and every first-party assembly is signed** (phase 5, Q8.11;
   `Directory.Build.props`, `Directory.Build.targets`, shipped 2.1.0). Not a behavioural change and recorded

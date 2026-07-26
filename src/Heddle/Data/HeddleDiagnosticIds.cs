@@ -327,6 +327,14 @@ namespace Heddle.Data
         /// <summary>A registry lookup missed on case alone; informational, never a failure.</summary>
         public const string PrecompiledKeyCaseMismatch = "HED7103";
 
+        /// <summary>A template's registered <c>Name</c> could not be added as a lookup spelling because another
+        /// registered template already answers to it — as its key, or as its own registered name (Q8.30). A
+        /// <b>runtime</b> id because the collision spans assemblies: within one compilation the build tier reports
+        /// the same fault as <c>HED7004</c>, but a referenced assembly's manifest rows live in a
+        /// <c>GetTemplates</c> method body, which is IL rather than symbol metadata, so nothing at build time can
+        /// see them. The template itself stays registered under its key — only the addition is lost.</summary>
+        public const string PrecompiledRegisteredNameUnavailable = "HED7104";
+
         // Phase 9 (HED9001) is intentionally NOT a public constant here: the phase adds no public API surface
         // (see the phase 9 spec's Public API contract). Its stable code lives on the internal
         // Heddle.Runtime.HeddleFeatures.CSharpTierDisabledDiagnosticId, surfaced through HeddleCompileError.DiagnosticId.

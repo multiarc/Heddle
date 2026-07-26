@@ -169,6 +169,7 @@ TYPE Heddle.Data.HeddleDiagnosticIds
   FIELD System.String PrecompiledGauntletFallback
   FIELD System.String PrecompiledKeyCaseMismatch
   FIELD System.String PrecompiledManifestRejected
+  FIELD System.String PrecompiledRegisteredNameUnavailable
   FIELD System.String ProfileDirectiveAfterOutput
   FIELD System.String PropDefaultNotConvertible
   FIELD System.String PropRedeclarationMismatch
@@ -743,6 +744,7 @@ TYPE Heddle.Precompiled.PrecompiledFallbackReason : System.Enum
   FIELD Heddle.Precompiled.PrecompiledFallbackReason ExtensionBindingMismatch
   FIELD Heddle.Precompiled.PrecompiledFallbackReason FunctionBindingMismatch
   FIELD Heddle.Precompiled.PrecompiledFallbackReason OptionsMismatch
+  FIELD Heddle.Precompiled.PrecompiledFallbackReason RegisteredNameUnavailable
   FIELD Heddle.Precompiled.PrecompiledFallbackReason SchemaVersionUnsupported
   FIELD Heddle.Precompiled.PrecompiledFallbackReason StaleContent
   FIELD Heddle.Precompiled.PrecompiledFallbackReason StaleImport
@@ -793,6 +795,11 @@ TYPE Heddle.Precompiled.PrecompiledImport : System.ValueType
   CTOR(System.String, System.String)
   PROP System.String ContentHash {get;}
   PROP System.String Key {get;}
+TYPE Heddle.Precompiled.PrecompiledLinePathForm : System.Enum
+  FIELD Heddle.Precompiled.PrecompiledLinePathForm RootRelative
+  FIELD Heddle.Precompiled.PrecompiledLinePathForm TemplatePath
+  FIELD Heddle.Precompiled.PrecompiledLinePathForm Unspecified
+  FIELD System.Int32 value__
 TYPE Heddle.Precompiled.PrecompiledMismatchException : System.Exception
   CTOR(System.String, Heddle.Precompiled.PrecompiledFallbackReason, System.String)
   PROP Heddle.Precompiled.PrecompiledFallbackReason Reason {get;}
@@ -839,10 +846,12 @@ TYPE Heddle.Precompiled.PrecompiledRuntime
 TYPE Heddle.Precompiled.PrecompiledSchema
   FIELD System.Int32 CurrentSchemaVersion
   FIELD System.Int32 DynamicMemberRoutingSchemaVersion
+  FIELD System.Int32 LinePathFormSchemaVersion
   FIELD System.Int32 MaxSupportedSchemaVersion
   FIELD System.Int32 MinSupportedSchemaVersion
   FIELD System.Int32 PerCarrierLocalsSchemaVersion
   FIELD System.Int32 PropLayoutFingerprintSchemaVersion
+  FIELD System.Int32 RegisteredNameSchemaVersion
   METHOD System.Boolean IsEngineCompatible(System.Version, System.Version)
   METHOD System.Boolean IsSupported(System.Int32)
   METHOD System.String FormatEngineVersion(System.Version)
@@ -850,7 +859,9 @@ TYPE Heddle.Precompiled.PrecompiledSchema
   PROP System.Boolean EmitsPerCarrierLocals {get;}
 TYPE Heddle.Precompiled.PrecompiledTemplateInfo
   CTOR(System.String, System.Type, System.Type, System.Boolean, System.String, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledImport>, Heddle.Precompiled.PrecompiledOptionsFingerprint, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledExtensionBinding>, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledFunctionBinding>, Heddle.Precompiled.PrecompiledCapabilities, Heddle.Runtime.IProcessStrategy)
+  CTOR(System.String, System.Type, System.Type, System.Boolean, System.String, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledImport>, Heddle.Precompiled.PrecompiledOptionsFingerprint, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledExtensionBinding>, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledFunctionBinding>, Heddle.Precompiled.PrecompiledCapabilities, Heddle.Runtime.IProcessStrategy, System.String, Heddle.Precompiled.PrecompiledLinePathForm)
   PROP Heddle.Precompiled.PrecompiledCapabilities Capabilities {get;}
+  PROP Heddle.Precompiled.PrecompiledLinePathForm LinePathForm {get;}
   PROP Heddle.Precompiled.PrecompiledOptionsFingerprint OptionsFingerprint {get;}
   PROP Heddle.Runtime.IProcessStrategy Strategy {get;}
   PROP System.Boolean IsDynamic {get;}
@@ -860,6 +871,7 @@ TYPE Heddle.Precompiled.PrecompiledTemplateInfo
   PROP System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledImport> Imports {get;}
   PROP System.String ContentHash {get;}
   PROP System.String Key {get;}
+  PROP System.String RegisteredName {get;}
   PROP System.Type EntryPointType {get;}
   PROP System.Type ModelType {get;}
 TYPE Heddle.Precompiled.PrecompiledTemplates

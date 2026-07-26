@@ -366,6 +366,8 @@ namespace Heddle.Data
                 warning);
             Add(HeddleDiagnosticIds.PrecompiledManifestRejected, "Precompiled manifest rejected", warning);
             Add(HeddleDiagnosticIds.PrecompiledKeyCaseMismatch, "Precompiled key differs only by case", warning);
+            Add(HeddleDiagnosticIds.PrecompiledRegisteredNameUnavailable,
+                "Precompiled template's registered name is already taken", warning);
 
             return rows;
         }

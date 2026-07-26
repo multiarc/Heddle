@@ -161,10 +161,19 @@ namespace Heddle.Generator.Tests
 
         // ---- What Name does NOT change ------------------------------------------------------------------
 
-        /// <summary>The registration key is untouched: the manifest row and the generated entry class stay
-        /// path-derived. Under the override implementation this test's expectations were the exact inverse.</summary>
+        /// <summary>
+        /// <para>The registration key is untouched: the manifest row's <c>key</c> and the generated entry class stay
+        /// path-derived. Under the override implementation this test's expectations were the exact inverse.</para>
+        /// <para><b>Q8.30 changed one of them.</b> This test used to assert
+        /// <c>DoesNotContain("BuildReport", manifest)</c> — the manifest carried keys only, because Q8.25 scoped
+        /// <c>Name</c> to build-time import resolution. The manifest now carries the name in its <em>own</em> field, so
+        /// the assertion becomes the sharper one it should always have been: the name does not move the <c>key</c>, the
+        /// entry class or the <c>#line</c> file, and it appears in exactly one place, as <c>registeredName</c>. The
+        /// blanket "the string does not appear" form could not distinguish "the name is recorded as a name" from "the
+        /// name replaced the key", which is the confusion the whole Q8.12→Q8.25→Q8.30 sequence is about.</para>
+        /// </summary>
         [Fact]
-        public void NameDoesNotChangeTheRegistrationKeyOrTheEntryClass()
+        public void NameIsRecordedAsANameAndDoesNotChangeTheKeyOrTheEntryClass()
         {
             var run = GeneratorHarness.Run(new[] { (ReportPath, "hello\n") },
                 globalOptions: RootOption, perFileOptions: Meta(ReportPath, name: "BuildReport"));
@@ -172,9 +181,51 @@ namespace Heddle.Generator.Tests
             Assert.Empty(run.GeneratorDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
             var manifest = Manifest(run);
             Assert.Contains("key: \"templates/report.heddle\"", manifest);
-            Assert.DoesNotContain("BuildReport", manifest);
+            // Recorded as a name (Q8.30), so the runtime registry can answer to it...
+            Assert.Contains("registeredName: \"BuildReport.heddle\"", manifest);
+            // ...and nowhere else: not as the key, and not as the entry class.
+            Assert.DoesNotContain("key: \"BuildReport", manifest);
             Assert.Contains(run.GeneratedSourceTexts, s => s.Contains("class Templates_Report"));
             Assert.DoesNotContain(run.GeneratedSourceTexts, s => s.Contains("class BuildReport"));
+        }
+
+        /// <summary>An unnamed template — every pre-existing project — records no name. The field is present and null,
+        /// not absent: a row shape that varied per template would be a second manifest grammar.</summary>
+        [Fact]
+        public void AnUnnamedTemplateRecordsANullName()
+        {
+            var run = GeneratorHarness.Run(new[] { (ReportPath, "hello\n") }, globalOptions: RootOption);
+
+            Assert.Contains("registeredName: null", Manifest(run));
+        }
+
+        /// <summary>A name that could not be registered must not reach the manifest: the build tier refused it, so the
+        /// runtime index must not hold it either, or the two tiers would disagree about which template answers to the
+        /// spelling. Here the name collides with a sibling's key, which is HED7004.</summary>
+        [Fact]
+        public void AnUnregisterableNameIsNotRecordedInTheManifest()
+        {
+            var run = GeneratorHarness.Run(new[]
+            {
+                ("/repo/app/shared/banner.heddle", "a\n"),
+                (ReportPath, "b\n")
+            }, globalOptions: RootOption, perFileOptions: Meta(ReportPath, name: "shared/banner"));
+
+            Assert.Single(WithId(run, "HED7004"));
+            var manifest = Manifest(run);
+            Assert.Contains("key: \"templates/report.heddle\"", manifest);
+            Assert.DoesNotContain("registeredName: \"shared/banner.heddle\"", manifest);
+        }
+
+        /// <summary>A name equal to the template's own key adds no spelling, so it records none — the key row already
+        /// is that spelling. The runtime skips such a name for the same reason.</summary>
+        [Fact]
+        public void ANameEqualToTheOwnKeyIsNotRecordedInTheManifest()
+        {
+            var run = GeneratorHarness.Run(new[] { (ReportPath, "hello\n") },
+                globalOptions: RootOption, perFileOptions: Meta(ReportPath, name: "templates/report.heddle"));
+
+            Assert.Contains("registeredName: null", Manifest(run));
         }
 
         /// <summary>An explicit <c>Key</c> still moves the key — <c>Name</c>'s correction did not touch that path.
@@ -512,7 +563,151 @@ namespace Heddle.Generator.Tests
             Assert.Empty(WithId(run, "HED7028"));
         }
 
-        // ---- #line: the file, and its relativity (Q8.12 separation, Q8.27 form) ------------------------
+        // ---- Q8.28 / Q8.29: an opted-out item is validated and advised ---------------------------------
+
+        /// <summary>
+        /// <para>Q8.28. The diagnostics loop used to <c>continue</c> on <c>!Precompile</c> <em>before</em> key
+        /// derivation, so a malformed <c>Name</c> on an import-only item produced <b>no diagnostic at all</b>: the name
+        /// silently failed to register, and every <c>@&lt;&lt;</c> that used it drew HED7011 at the <em>importer</em> —
+        /// pointing at a file that was written correctly, about a fault in a different file.</para>
+        /// <para>That population is not an edge case: a <c>Precompile="false"</c> partial under a friendly name is the
+        /// primary use case for the <c>Name</c>/<c>Precompile</c> pair, so it was precisely the case whose faults were
+        /// unreportable.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("../escape")]
+        [InlineData("  ")]
+        [InlineData("a/./b")]
+        public void AMalformedNameOnAnOptedOutItemReportsHed7004(string metadata)
+        {
+            var run = GeneratorHarness.Run(new[] { (ReportPath, DefinesBanner) },
+                globalOptions: RootOption,
+                perFileOptions: Meta(ReportPath, name: metadata, precompile: "false"));
+
+            var hed7004 = Assert.Single(WithId(run, "HED7004"));
+            Assert.Equal(DiagnosticSeverity.Error, hed7004.Severity);
+            Assert.Contains("Name", hed7004.GetMessage());
+            Assert.Contains(ReportPath, hed7004.GetMessage());
+        }
+
+        /// <summary>The same for a <c>Name</c> whose spelling is already taken — the fault the ruling calls out by
+        /// name, because it is the one that silently loses a registration a project depends on.</summary>
+        [Fact]
+        public void AnAlreadyTakenNameOnAnOptedOutItemReportsHed7004()
+        {
+            var run = GeneratorHarness.Run(new[]
+            {
+                ("/repo/app/shared/banner.heddle", "a\n"),
+                (ReportPath, DefinesBanner)
+            }, globalOptions: RootOption,
+                perFileOptions: Meta(ReportPath, name: "shared/banner", precompile: "false"));
+
+            var hed7004 = Assert.Single(WithId(run, "HED7004"));
+            Assert.Contains("Name", hed7004.GetMessage());
+            Assert.Contains("shared/banner.heddle", hed7004.GetMessage());
+        }
+
+        /// <summary>And for a malformed <c>Key</c>. Pre-existing and deliberate while an opted-out item registered
+        /// nothing — an unusable registration key cost nothing — but the ruling levels it: the same fault reports the
+        /// same way whichever side of the opt-out the item is on, and an unusable <c>Key</c> does cost something,
+        /// because <c>Key</c> also names the item's import spelling.</summary>
+        [Fact]
+        public void AMalformedKeyOnAnOptedOutItemReportsHed7004()
+        {
+            var run = GeneratorHarness.Run(new[] { (ReportPath, DefinesBanner) },
+                globalOptions: RootOption,
+                perFileOptions: Meta(ReportPath, key: "../escape", precompile: "false"));
+
+            var hed7004 = Assert.Single(WithId(run, "HED7004"));
+            Assert.Contains("Key", hed7004.GetMessage());
+        }
+
+        /// <summary><b>The invariant the ruling protects.</b> Validating an opted-out item must not start precompiling
+        /// it: no entry point, no manifest entry. Asserted on a clean opted-out item with a working name, so the
+        /// diagnostics change cannot have leaked into the emit decision.</summary>
+        [Fact]
+        public void AValidatedOptedOutItemStillContributesNoEntryPointAndNoManifestEntry()
+        {
+            var run = GeneratorHarness.Run(new[]
+            {
+                (ReportPath, DefinesBanner),
+                ("/repo/app/page.heddle", Imports("BuildReport"))
+            }, globalOptions: RootOption,
+                perFileOptions: Meta(ReportPath, name: "BuildReport", precompile: "false"));
+
+            Assert.Empty(run.GeneratorDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            var manifest = Manifest(run);
+            // No row for the opted-out template, under either spelling.
+            Assert.DoesNotContain("key: \"templates/report.heddle\"", manifest);
+            Assert.DoesNotContain("BuildReport", manifest);
+            // No entry class either.
+            Assert.DoesNotContain(run.GeneratedSourceTexts, s => s.Contains("class Templates_Report"));
+            // The importer, which does precompile, resolved the import.
+            Assert.Contains("BANNER-TEXT", Source(run, "class Page"));
+        }
+
+        /// <summary>Q8.29: HED7028 fires for an import inside an opted-out file. The advisory is raised by the
+        /// <em>importer</em>, and an opted-out importer never parsed, so the case the advisory is most for — a named
+        /// partial imported by path from another partial — could not be advised. Q8.28 and Q8.29 are one defect from
+        /// either end and get the same answer: an opted-out template is still a participant in the import graph.
+        /// </summary>
+        [Fact]
+        public void Hed7028FiresForAnImportInsideAnOptedOutFile()
+        {
+            const string importer = "/repo/app/partials/_wrapper.heddle";
+            var run = GeneratorHarness.Run(new[]
+            {
+                (ReportPath, DefinesBanner),
+                (importer, Imports("templates/report.heddle"))
+            }, globalOptions: RootOption,
+                perFileOptions: new Dictionary<string, Dictionary<string, string>>
+                {
+                    [ReportPath] = new Dictionary<string, string>
+                        { ["build_metadata.AdditionalFiles.Name"] = "BuildReport" },
+                    [importer] = new Dictionary<string, string>
+                        { ["build_metadata.AdditionalFiles.Precompile"] = "false" }
+                });
+
+            var hed7028 = Assert.Single(WithId(run, "HED7028"));
+            Assert.Equal(DiagnosticSeverity.Warning, hed7028.Severity);
+            Assert.Equal(importer, hed7028.Location.GetLineSpan().Path);
+            Assert.Contains("BuildReport.heddle", hed7028.GetMessage());
+        }
+
+        /// <summary>The advisory parse of an opted-out file reports <b>only</b> the advisory. A missing import inside
+        /// an opted-out file stays silent, and so do its template errors: the ruling asks for the item's metadata to be
+        /// validated and its imports advised, and turning every opted-out file's parse errors into build errors would
+        /// red previously-green builds over templates the author explicitly told this build not to compile. Those
+        /// faults are not forgiven — the moment a precompiled template imports the file they surface through the
+        /// importer's own parse.</summary>
+        [Fact]
+        public void TheAdvisoryParseOfAnOptedOutFileReportsNothingElse()
+        {
+            const string partial = "/repo/app/partials/_wrapper.heddle";
+            var run = GeneratorHarness.Run(new[]
+            {
+                (partial, "@<<{{ does/not/exist.heddle }}@\\\ntext\n")
+            }, globalOptions: RootOption,
+                perFileOptions: Meta(partial, precompile: "false"));
+
+            Assert.Empty(WithId(run, "HED7011"));
+            Assert.Empty(run.GeneratorDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        }
+
+        /// <summary>An importer that <em>does</em> precompile still reports the missing import, so the suppression
+        /// above is scoped to the opt-out rather than having removed the diagnostic.</summary>
+        [Fact]
+        public void APrecompiledFileStillReportsItsMissingImport()
+        {
+            var run = GeneratorHarness.Run(new[]
+            {
+                ("/repo/app/page.heddle", "@<<{{ does/not/exist.heddle }}@\\\ntext\n")
+            }, globalOptions: RootOption);
+
+            Assert.Single(WithId(run, "HED7011"));
+        }
+
+        // ---- #line: the file, and its relativity (Q8.12 separation, Q8.31 carrier) ---------------------
 
         /// <summary>The <c>#line</c> file names the <b>file</b>, the key names the <b>registration</b>. Conflating them
         /// was invisible while every key was path-derived — the two strings were equal — and an explicit <c>Key</c>
@@ -536,37 +731,67 @@ namespace Heddle.Generator.Tests
             Assert.Contains("\"templates/report.heddle\"", Source(plain, "class Templates_Report"));
         }
 
-        /// <summary>Q8.27, the relativity marking. Under the template root the <c>#line</c> file is root-relative and
-        /// the generated file <b>says so</b>: an absolute path would be right for one machine and would bake that
-        /// machine's layout into every checked-in generated-source golden, so the form stays relative and is labelled
-        /// instead of being churned.</summary>
+        /// <summary>
+        /// <para>Q8.27's relativity marking, <b>as Q8.31 relocated it</b>. Under the template root the <c>#line</c>
+        /// file is root-relative — an absolute path would be right for one machine and would bake that machine's
+        /// layout into every checked-in generated-source golden, so the form stays relative and is <em>labelled</em>
+        /// instead of being churned. What changed is where the label lives: Q8.27 emitted a comment line under
+        /// <c>// &lt;auto-generated/&gt;</c>, and Q8.31 makes it the manifest row's <c>linePathForm</c>, because a
+        /// comment is unreadable to the tools that would want it (a stack-trace symbolizer, an IDE, the LSP).</para>
+        /// <para>Both halves are asserted together — the form is recorded <em>and</em> the comment is gone — so an
+        /// implementation that added the manifest field without removing the prose cannot pass. Two carriers for one
+        /// fact is the state this closes.</para>
+        /// </summary>
         [Fact]
-        public void UnderTheRootTheLineFileIsRootRelativeAndMarkedAsSuch()
+        public void UnderTheRootTheLineFileIsRootRelativeAndTheFormIsRecordedInTheManifest()
         {
             var run = GeneratorHarness.Run(new[] { (ReportPath, "@model(){{System.String}}@\\\nx @(this) y\n") },
                 globalOptions: RootOption);
 
             var source = Source(run, "class Templates_Report");
-            Assert.Contains("// #line file names below are RELATIVE to HeddleTemplateRoot.", source);
             Assert.Contains("\"templates/report.heddle\"", source);
+            Assert.Contains("linePathForm: global::Heddle.Precompiled.PrecompiledLinePathForm.RootRelative",
+                Manifest(run));
+            // The comment Q8.27 added is gone from the generated file.
+            Assert.DoesNotContain("#line file names below", source);
         }
 
-        /// <summary>Q8.27, the absolute half. Outside the root there is no anchor to be relative to, so the template's
-        /// own path is emitted — absolute in a real build, which is what a <c>#line</c> is for — and the marker says
-        /// which form it is. This replaces a bare-filename fallback that named no openable file and collided across
-        /// directories.</summary>
+        /// <summary>Q8.27, the absolute half, likewise relocated. Outside the root there is no anchor to be relative
+        /// to, so the template's own path is emitted — absolute in a real build, which is what a <c>#line</c> is for —
+        /// and the manifest records <em>which</em> form it is. This replaces a bare-filename fallback that named no
+        /// openable file and collided across directories.</summary>
         [Fact]
-        public void OutsideTheRootTheLineFileIsTheTemplatesOwnPathAndMarkedAsSuch()
+        public void OutsideTheRootTheLineFileIsTheTemplatesOwnPathAndTheFormIsRecorded()
         {
             const string outside = "/repo/shared/banner.heddle";
             var run = GeneratorHarness.Run(new[] { (outside, "@model(){{System.String}}@\\\nx @(this) y\n") },
                 globalOptions: RootOption);
 
             var source = Source(run, "class Banner");
-            Assert.Contains("// #line file names below are the template's own path", source);
             Assert.Contains("\"" + outside + "\"", source);
+            Assert.Contains("linePathForm: global::Heddle.Precompiled.PrecompiledLinePathForm.TemplatePath",
+                Manifest(run));
+            Assert.DoesNotContain("#line file names below", source);
             // The old form was the bare filename, which the compiler could not open.
             Assert.DoesNotContain("\"banner.heddle\"", source);
+        }
+
+        /// <summary>The two forms are genuinely distinguished by the recorded value, not just present: one compilation
+        /// containing a rooted and an out-of-root template records a different form for each. A constant would satisfy
+        /// each single-template test above.</summary>
+        [Fact]
+        public void TheTwoLineFormsAreRecordedDistinctlyInOneCompilation()
+        {
+            const string body = "@model(){{System.String}}@\\\nx @(this) y\n";
+            var run = GeneratorHarness.Run(new[]
+            {
+                (ReportPath, body),
+                ("/repo/shared/banner.heddle", body)
+            }, globalOptions: RootOption);
+
+            var manifest = Manifest(run);
+            Assert.Contains("linePathForm: global::Heddle.Precompiled.PrecompiledLinePathForm.RootRelative", manifest);
+            Assert.Contains("linePathForm: global::Heddle.Precompiled.PrecompiledLinePathForm.TemplatePath", manifest);
         }
     }
 }
