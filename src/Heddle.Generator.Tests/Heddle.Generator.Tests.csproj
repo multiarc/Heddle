@@ -38,6 +38,7 @@
     <!-- Phase 6 D12.6: the line-rule golden vectors, authored once in Heddle.Tests and asserted by every
          surface that maps an offset to a position. Plain data, no Heddle dependency. -->
     <Compile Include="..\Heddle.Tests\LineIndexVectors.cs" Link="Shared\LineIndexVectors.cs" />
+    <Compile Include="..\Heddle.Tests\DiagnosticCorpusVectors.cs" Link="Shared\DiagnosticCorpusVectors.cs" />
     <!-- Phase 1 D4: the prop-default conversion vectors, authored once and driven through both tiers' tables. -->
     <Compile Include="..\Heddle.Tests\PropDefaultConversionVectors.cs" Link="Shared\PropDefaultConversionVectors.cs" />
   </ItemGroup>
