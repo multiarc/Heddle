@@ -594,12 +594,18 @@ needed no change; this record, the README row and the phase-0 pointer are the re
 
 ### Findings
 
-**F1 — `DegradesToMarker` has zero members, and the bucket was never asserted.** Every one of the 17
-non-precompiling, non-error corpus entries is **`Absent`** from the manifest (a whole-template
+**F1 — `DegradesToMarker` had zero members, and the bucket was never asserted.** Every one of the 17
+non-precompiling, non-error corpus entries was **`Absent`** from the manifest (a whole-template
 degrade), not a `HED7014` marker. `CorpusDifferentialTests` computed a `markers` `SortedSet` and then
-asserted nothing about it — a dead computation, which is why nobody noticed the bucket was empty. The
-tier is kept (stage 4 was expected to populate it) and is now asserted **positively**: an empty set is
-still a pinned set, so the first template that starts emitting a marker reddens something.
+asserted nothing about it — a dead computation, which is why nobody noticed the bucket was empty.
+Stage 0 asserted the set and left it empty; the empty set was then **ruled insufficient** (Q8.43: a
+tier must describe something that exists), so the corpus gained `fn-unresolvable-marker.heddle`, whose
+call to a function resolvable from neither the default table nor any referenced export is the only
+construct that produces a manifest row with a null strategy rather than no row. `ResolveOnly`, because
+it renders only against a host that registers the delegate;
+`UnresolvableFunctionTests.TheCorpusMarkerFixtureDegradesToAMarkerEntry` owns it and asserts the
+marker classification directly. Verified load-bearing by mis-declaring the row as `FallsBackSafely`,
+which reddens the whole-corpus set equality.
 
 **F2 — the sweep was byte-comparing 10 entries where 32 were available.** Measured, not assumed: of
 the 40 precompiling entries, **32 render standalone and byte-identically on both backends**. The

@@ -1227,6 +1227,17 @@ which is the bookkeeping failure this section exists to correct.
   The underlying defect is the one worth not repeating: the suite computed a `markers` set and asserted
   **nothing** about it, so a bucket that had emptied out looked healthy. Whatever shape the fix takes, the
   set must be asserted, not merely computed.
+
+  **Implemented (2026-07-26).** The corpus gains `fn-unresolvable-marker.heddle` — a model-less template
+  calling a function resolvable from neither the default table nor any referenced export, which is the
+  only construct that yields a manifest row with `strategy: null` instead of no row at all. Declared
+  `DegradesToMarker` / `ResolveOnly`: it renders only against a host that registers the delegate, so no
+  shared harness renders it and `UnresolvableFunctionTests.TheCorpusMarkerFixtureDegradesToAMarkerEntry`
+  owns both its classification and its diagnostic. The tier's doc comment stops describing itself as
+  permanently empty and instead says what distinguishes it from `FallsBackSafely` — the entry exists and
+  routes to the dynamic path, rather than not existing. Falsifiability checked by mis-declaring the row as
+  `FallsBackSafely`, which reddens the whole-corpus set equality.
+  *Where it lives:* `CorpusIntent`'s table and `CorpusTier` doc; [phase 7 F1](phase-7-shared-test-corpus.md#findings).
 - **Q8.44 — Should the props file serve `Heddle.Generator.Tests` and `Heddle.LanguageServices.Tests`
   too?** *(opened 2026-07-26; not blocking.)*
 
