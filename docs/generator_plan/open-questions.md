@@ -1042,6 +1042,19 @@ which is the bookkeeping failure this section exists to correct.
   additively, with discovery deprecated but still working. Recorded rather than resolved: whichever is
   chosen changes what else may land in 2.1, so it is a maintainer decision.
 
+  **Ruling (user, 2026-07-26): 2.1 IS a breaking window — for binary changes and minor API changes or
+  additions.** A *substantial* API change is what would call for 3.0, and that is explicitly not on the
+  table yet. So exit (a): the window is open, and `records.md`'s "2.1 opens no window" is superseded.
+  Policy rule 1's "one window per major" is the wording that gives way — a window is opened by a
+  maintainer decision, not by the version component that carries it.
+
+  **This had already been ruled once**, at Q8.37 (*"the current breaking window"*), and re-asking it cost
+  a round trip. The conflict was real — a ratified record said the opposite — but the fix was to correct
+  the stale record against the standing ruling, not to re-open the decision. Recorded so the next
+  contradiction of this shape is resolved by asking which record is stale, and only escalated if the
+  answer is genuinely undetermined.
+  *Where it lives:* [breaking-windows.md — policy](../spec/common/breaking-windows.md#policy-applies-to-every-window);
+  [records.md — the 2.1 window](../spec/records.md#the-21-release--as-shipped-record).
 - **Q8.40 — A ratified testing rule forbids a cross-project output read that a ratified landing
   accepted. Which governs? (AWAITING RULING)** Raised by consolidating the register against the specs.
   [testing-standards' *Test-input single-sourcing*](../spec/common/testing-standards.md#test-input-single-sourcing)
@@ -1063,3 +1076,17 @@ which is the bookkeeping failure this section exists to correct.
   `ItemGroup` that copies the DLL into the consumer's own output, or a narrower rule that permits an
   ordered, declared read. Recorded rather than resolved because either answer changes what phase 7
   must deliver.
+
+  **Ruling (user, 2026-07-26): no conflict — E9 is about test *inputs*.** *"What common spec meant is
+  test inputs. Test outputs or build artifacts may obviously be stored somewhere else but need to be
+  conflict free. Input is what is git stored, outputs are generally not."* Inputs are the git-stored
+  things — templates, goldens, fixtures — and those must come from the consumer's own output directory.
+  A compiled sibling assembly is an **output**, so E9 never governed this read.
+
+  What does govern it is the obligation the two cases share: the read must be **conflict-free and must
+  fail loudly on a miss**. Both already hold — Q8.20's landing ordered the build with a
+  `ProjectReference` carrying `ReferenceOutputAssembly="false"`, and the three lookups in
+  `CorpusResolverSweepTests` assert the directory was found instead of returning early, which is the
+  silent-pass failure mode E9 actually names. **No code change.** E9's wording is amended to say
+  *inputs* and to state the outputs case explicitly, since the rule as written read as covering both.
+  *Where it lives:* [testing-standards.md — test-input single-sourcing](../spec/common/testing-standards.md).
