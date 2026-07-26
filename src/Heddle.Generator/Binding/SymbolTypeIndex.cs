@@ -27,10 +27,7 @@ namespace Heddle.Generator.Binding
 
         private SymbolTypeIndex() { }
 
-        /// <summary>One index per compilation — the walk is the same shape <c>ExtensionBinder</c> already makes,
-        /// and every model-type resolution in a compilation asks the same question of the same universe. The
-        /// retention policy (occupancy bound, staleness eviction) lives in
-        /// <see cref="SymbolTypeIndexCache"/>; this stays the one call site the binder knows about.</summary>
+        /// <summary>One index per compilation, cached in <see cref="SymbolTypeIndexCache"/>.</summary>
         internal static SymbolTypeIndex For(Compilation compilation) => SymbolTypeIndexCache.Shared.Get(compilation);
 
         /// <summary>Builds the index from scratch. A <c>null</c> compilation yields an empty index, so a caller
@@ -123,10 +120,8 @@ namespace Heddle.Generator.Binding
                 return true;
             }
 
-            // Several claimants — the imports settle it, or the name is ambiguous. This is the rule the runtime's
-            // short-name arm used to break by taking the first assembly-scan-ordered import match: an
-            // order-dependent silent pick the build tier cannot reproduce by construction. Both tiers now raise
-            // the ambiguity instead.
+            // Several candidates — the imports resolve it, or the name is ambiguous.
+            // Both tiers raise ambiguity instead of using assembly-order matching.
             INamedTypeSymbol single = null;
             int matches = 0;
             foreach (var candidate in candidates)

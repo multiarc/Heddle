@@ -67,8 +67,7 @@ namespace Heddle.Tests
 
             foreach (var property in settable)
             {
-                // Fresh instance per property so that derived properties (AllowCSharp -> ExpressionMode)
-                // cannot interfere with one another.
+                // Fresh instance: derived properties (AllowCSharp→ExpressionMode) must not interfere.
                 var source = new TemplateOptions();
                 var current = property.GetValue(source);
                 var probe = Synthesize(property, current);
@@ -92,7 +91,6 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>The historically-missed ProvideLanguageFeatures copy, pinned by name.</summary>
         [Fact]
         public void CopyConstructorPreservesProvideLanguageFeatures()
         {
@@ -101,7 +99,6 @@ namespace Heddle.Tests
             Assert.True(copy.ProvideLanguageFeatures);
         }
 
-        /// <summary>OutputProfile copies through the copy constructor.</summary>
         [Fact]
         public void CopyConstructorPreservesOutputProfile()
         {
@@ -110,7 +107,6 @@ namespace Heddle.Tests
             Assert.Equal(OutputProfile.Html, copy.OutputProfile);
         }
 
-        /// <summary>The get-only, ctor-set TemplateName copies when no override name is passed.</summary>
         [Fact]
         public void CopyConstructorPreservesTemplateNameWhenNoOverride()
         {

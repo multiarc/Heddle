@@ -10,15 +10,9 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// The generator's extension-discovery <b>scope</b>.
-    /// <para>The runtime registers the engine's own extensions unconditionally
-    /// (<c>TemplateFactory.LoadBaseExtensions</c>) and then, for every other loaded assembly, only what an
-    /// <c>[assembly: ExportExtensions(...)]</c> attribute names — or everything, for the parameterless <c>All</c> form.
-    /// The generator's <c>ExtensionBinder.CollectTypes</c> scanned every referenced assembly unconditionally, so it bound
-    /// and precompiled extensions the runtime will never register. The gauntlet's extension-identity check then finds
-    /// the name <c>&lt;unresolved&gt;</c> and every render of every such template falls back — silently, permanently.</para>
-    /// <para>No test used an assembly without the attribute, which is exactly why nothing caught it. These probe
-    /// compilations are those assemblies.</para>
+    /// The generator's extension-discovery scope. The runtime registers only what <c>[assembly: ExportExtensions(...)]</c>
+    /// names, but the generator unconditionally scanned every referenced assembly — binding extensions the runtime will
+    /// never register, so templates fall back permanently. These tests probe compilations without the attribute.
     /// </summary>
     public class ExportExtensionsScopeTests
     {
@@ -68,8 +62,7 @@ namespace Probe
         [Fact]
         public void AnAssemblyWithNoExportAttributeContributesNothing()
         {
-            // The reproducing case. The runtime never scans this assembly, so binding anything from it produces a
-            // manifest row whose name the live registry cannot resolve → permanent per-request fallback.
+            // The runtime never scans this assembly, so binding anything from it produces unresolvable names.
             var binder = Bind(Bodies);
 
             Assert.False(binder.TryResolve("alpha", out _));
@@ -113,9 +106,7 @@ namespace Probe
         [Fact]
         public void AnAllFormShortCircuitsTheAssemblysRemainingAttributes()
         {
-            // TemplateFactory.ObtainExtensions `break`s out of the attribute loop on the first All, so a selective
-            // attribute after it is never read. It cannot change the outcome — All is already everything — but the
-            // build tier reproduces the shape rather than a coincidentally-equal one.
+            // The runtime breaks on the first All form, so subsequent selective attributes are never read.
             var binder = Bind(
                 "[assembly: Heddle.Attributes.ExportExtensions]" +
                 "[assembly: Heddle.Attributes.ExportExtensions(typeof(Probe.AlphaExtension))]" + Bodies);
@@ -199,9 +190,7 @@ namespace Probe
         [Fact]
         public void AnUnexportedNameIsNotKnownToTheRuntimeSoABodiedCallIsHed7006()
         {
-            // The consequence, end to end. The name resolves to nothing under the runtime's rule — the runtime's
-            // own TemplateFactory.Create raises "Cannot find extension" (HED0002) for it — so the build tier's
-            // matching verdict is HED7006, not a manifest row that will fall back on every render forever.
+            // The runtime cannot resolve the name, so the build tier raises HED7006 instead of binding it.
             var run = GeneratorHarness.RunWithSources(
                 new[] { ("views/unexported.heddle", "@model(){{System.String}}@\\\n@alpha(this){{body}}\n") },
                 new[] { Bodies });

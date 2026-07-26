@@ -423,7 +423,6 @@ namespace Heddle.Language.Expressions
 
         private static string DecodeString(string text)
         {
-            // Strip the surrounding double quotes.
             string body = text.Substring(1, text.Length - 2);
             return DecodeEscapes(body, false);
         }

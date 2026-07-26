@@ -68,49 +68,38 @@ namespace Heddle.Tests
 
         internal static IReadOnlyList<Case> Cases { get; } = new[]
         {
-            // HED0xxx — a parse-channel syntax error; one of only two entries the build tier can forward today.
             new Case("syntax", "@list(x){{ unterminated",
                 new[] { "HED0003/E@23,0" }, null,
                 new[] { "HED0003/E@23,0" }, None),
 
-            // HED1xxx — unknown function. Compile channel; the build tier raises HED7014 instead.
             new Case("unknownFunction", "@(nosuchfunc(1))",
                 new[] { "HED1001/E@2,13" }, null,
                 None, new[] { "HED7014" }),
 
-            // HED2xxx — an unknown @profile value. Compile channel; the build tier raises HED7022.
             new Case("unknownProfile", "@profile(){{xml}}\nhi\n",
                 new[] { "HED2001/E@1,9" }, null,
                 None, new[] { "HED7022" }),
 
-            // HED2004 — the encoding lint, and the only fixture whose verdict depends on the profile. Under Text
-            // it is silent; under Html it fires. It is here so "the editor lints like the build of record" is a test.
             new Case("encodingLint", "<a href=\"@(1)\">t</a>",
                 new[] { "HED2004/W@10,3" }, None,
                 None, None),
 
-            // HED3xxx warning — an orphan @elif compiles, warns, and behaves as @if.
             new Case("orphanElif", "@elif(true){{1}}",
                 new[] { "HED3002/W@1,10" }, null,
                 None, None),
 
-            // HED3xxx error — an orphan @else does not.
             new Case("orphanElse", "@else(){{1}}",
                 new[] { "HED3003/E@1,6" }, null,
                 None, None),
 
-            // HED4xxx — a non-positive range step, positioned at the argument.
             new Case("rangeStep", "@for(range(1, 5, 0)){{x}}",
                 new[] { "HED4001/E@17,1" }, null,
                 None, None),
 
-            // HED4003 — the legacy @import directive. The second of the two parse-channel entries.
             new Case("legacyImport", "@import(){{gone}}\nhello\n",
                 new[] { "HED4003/E@1,8" }, null,
                 new[] { "HED4003/E@1,8" }, None),
 
-            // The control: a template that must produce nothing anywhere. A host that starts inventing
-            // diagnostics fails here first.
             new Case("clean", "hello world", None, None, None, None),
         };
     }

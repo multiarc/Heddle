@@ -114,10 +114,8 @@ namespace Heddle.Generator.Binding
             var args = new RankArgument<GenTypeRef>[arguments.Count];
             for (int i = 0; i < arguments.Count; i++)
             {
-                // An OperandCategory.Unknown argument has no rank token at all, so the ranker would be ranking
-                // against nothing: whatever front it produced would be an artefact of the generator's ignorance,
-                // never a statement about the runtime — which binds on the expression's real static type. Leaving
-                // here, before Bind runs, is what keeps the Unknown case a silent degrade.
+                // Unknown arguments have no rank token; returning early keeps it a silent degrade, not a
+                // false ranking against the generator's ignorance.
                 if (!TryDescribe(arguments[i], out var described))
                     return null;
                 args[i] = described;

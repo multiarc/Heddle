@@ -6,14 +6,8 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Registry isolation for every gauntlet-crossing suite. The precompiled registry is process-global and
-    /// <see cref="PrecompiledTemplates.Register"/> throws <c>PrecompiledRegistrationException</c> on a duplicate key,
-    /// so corpus-scale registration would otherwise leak keys across tests and turn HED7002 duplicate detection into
-    /// cross-test flakiness. Deriving from this base clears the registry before and after each test; joining
-    /// <c>[Collection("PrecompiledRegistry")]</c> (<c>DisableParallelization = true</c>) keeps the resets from racing
-    /// another test's registration.
-    /// <para><see cref="PrecompiledTemplates.ResetForTests"/> is <c>internal</c> — reachable here only through an
-    /// <c>InternalsVisibleTo</c> grant in the engine's <c>AssemblyInfo.cs</c>.</para>
+    /// Base for gauntlet-crossing suites: clears process-global registry before/after each test to prevent key leakage.
+    /// Requires <c>[Collection("PrecompiledRegistry")]</c> serialization to avoid reset races.
     /// </summary>
     public abstract class PrecompiledRegistryTestBase : IDisposable
     {
@@ -33,10 +27,7 @@ namespace Heddle.Generator.IntegrationTests
     }
 
     /// <summary>
-    /// The leakage canary. Two tests register the same key; each must see a registry containing only its own
-    /// registration. If the per-test reset ever stops running (or the collection stops being serialized), the second
-    /// test throws <c>PrecompiledRegistrationException</c> instead of quietly inheriting the first test's entry —
-    /// the failure this canary exists to make loud.
+    /// Leakage canary: two tests registering the same key must each see only their own entry (detects reset failures).
     /// </summary>
     [Collection("PrecompiledRegistry")]
     public class PrecompiledRegistryLeakageCanaryTests : PrecompiledRegistryTestBase
@@ -65,7 +56,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void CanaryB_StartsCleanAndCanRegisterTheSameKeyAgain()
         {
-            // Would throw PrecompiledRegistrationException if CanaryA's registration had leaked into this test.
+            // Would throw if CanaryA's registration had leaked.
             Assert.Empty(PrecompiledTemplates.Entries);
             Assert.False(PrecompiledTemplates.TryGet(CanaryKey, out _));
             RegisterCanary();
@@ -83,9 +74,7 @@ namespace Heddle.Generator.IntegrationTests
     }
 
     /// <summary>
-    /// The sentinel's own unit tests: save/restore, the expected/unexpected split, and the
-    /// <see cref="FallbackGuard.GuardedOptions"/> factory. No generator involved; the events are raised through the
-    /// public <see cref="PrecompiledTemplates.OnFallback"/> hook directly.
+    /// Unit tests for <see cref="FallbackGuard"/>: save/restore, expected/unexpected split, and <see cref="FallbackGuard.GuardedOptions"/>.
     /// </summary>
     [Collection("PrecompiledRegistry")]
     public class FallbackGuardTests : PrecompiledRegistryTestBase

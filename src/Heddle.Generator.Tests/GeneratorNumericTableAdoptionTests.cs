@@ -11,18 +11,13 @@ using TemplateEmitter = gen::Heddle.Generator.Emit.TemplateEmitter;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// The numeric-kind table consolidation. The emitter's <c>SpecialType</c>-keyed copy of the widening table was
-    /// never tested against the shared table: <c>NumericTableLockstepTests</c> compares the shared table to the
-    /// <b>runtime's</b> pre-extraction body only, and no test referenced the emitter's copy at all — it could have
-    /// drifted a row in silence, changing which prop defaults precompile and what cast the emitter writes.
-    /// <para><c>TemplateEmitter.IsImplicitNumericWidening</c> is now a two-line adapter over
-    /// <see cref="NumericTable.IsImplicit"/>. <b>Legacy*</b> below is the deleted table, transcribed verbatim, and
-    /// the sweep is exhaustive over every <see cref="SpecialType"/> member — so the fold is characterized rather
-    /// than argued, and re-introducing a private copy that differs anywhere fails here.</para>
+    /// The emitter's widening table must match the shared <see cref="NumericTable"/>; drifting silently would
+    /// change property defaults and generated casts. Exhaustively tests <see cref="TemplateEmitter.IsImplicitNumericWidening"/>
+    /// against the shared table and a legacy reference.
     /// </summary>
     public class GeneratorNumericTableAdoptionTests
     {
-        #region Legacy body — verbatim pre-fold TemplateEmitter.IsImplicitNumericWidening
+        #region Legacy table (pre-consolidation)
 
         private static bool LegacyIsImplicitNumericWidening(SpecialType from, SpecialType to)
         {
@@ -83,8 +78,7 @@ namespace Heddle.Generator.Tests
             }
         }
 
-        /// <summary>The fold itself: the emitter's answer <b>is</b> the shared table's answer through the Roslyn
-        /// facts adapter, for every pair — not merely equal to it today.</summary>
+        /// <summary>The emitter's rule is the shared table's rule (through the Roslyn facts adapter) for all pairs.</summary>
         [Fact]
         public void TheEmittersWideningRule_IsTheSharedTableThroughTheAdapter()
         {
@@ -97,9 +91,8 @@ namespace Heddle.Generator.Tests
             }
         }
 
-        /// <summary>The adapter the fold rides on, pinned in its own right: twelve numeric primitives map across,
-        /// everything else (including <c>bool</c>, <c>string</c>, <c>object</c>, <c>IntPtr</c>) is
-        /// <see cref="NumericKind.None"/>. A wrong row here would silently un-widen a prop default.</summary>
+        /// <summary>The <c>SpecialType</c> adapter: twelve numeric primitives map across; others (including
+        /// <c>bool</c>, <c>string</c>, <c>object</c>) are <see cref="NumericKind.None"/>. A wrong mapping silently breaks property defaults.</summary>
         [Fact]
         public void TheSpecialTypeAdapterCoversTheTwelvePrimitives_AndNothingElse()
         {

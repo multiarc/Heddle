@@ -162,7 +162,7 @@ namespace Heddle.Data
                 }
             }
 
-            /// <summary>True when <paramref name="name"/> is reserved and cannot be a parameter name.</summary>
+            /// <summary>Whether <paramref name="name"/> is reserved.</summary>
             public static bool IsReserved(string name)
             {
                 for (var i = 0; i < ReservedNames.Length; i++)
@@ -194,13 +194,11 @@ namespace Heddle.Data
             const HeddleDiagnosticSeverity error = HeddleDiagnosticSeverity.Error;
             const HeddleDiagnosticSeverity warning = HeddleDiagnosticSeverity.Warning;
 
-            // --- Core engine ------------------------------------------------------------------------------
             Add(HeddleDiagnosticIds.PropertyNotFound, "Unresolvable member path", error);
             Add(HeddleDiagnosticIds.ExtensionNotFound, "Extension not found", error);
             Add(HeddleDiagnosticIds.SyntaxError, "Template syntax error", error);
             Add(HeddleDiagnosticIds.ReturnTypeMismatch, "Chained value type mismatch", error);
 
-            // --- Native-expression tier -------------------------------------------------------------------
             Add(HeddleDiagnosticIds.UnknownFunction, "Unknown function", error);
             Add(HeddleDiagnosticIds.ExtensionCalledAsFunction, "Extension called as a function", error);
             Add(HeddleDiagnosticIds.MethodCallNotAvailable, "Method call in a native expression", error);
@@ -220,27 +218,23 @@ namespace Heddle.Data
             Add(HeddleDiagnosticIds.FunctionRequiresExpressionArguments, "Function requires expression arguments",
                 error);
 
-            // --- Output profiles & encoding ---------------------------------------------------------------
             Add(HeddleDiagnosticIds.UnknownOutputProfile, "Unknown output profile", error);
             Add(HeddleDiagnosticIds.ProfileDirectiveAfterOutput, "Profile directive after output", warning);
             Add(HeddleDiagnosticIds.RedundantEncodingExtension, "Redundant encoding extension", warning);
             Add(HeddleDiagnosticIds.MissingContextEncoder, "Missing HTML-context encoder", warning);
 
-            // --- Branching / branch sets ------------------------------------------------------------------
             Add(HeddleDiagnosticIds.BranchTextStripped, "Text between branch blocks is never rendered", warning);
             Add(HeddleDiagnosticIds.ElifWithoutIf, "Branch continuation without an opener", warning);
             Add(HeddleDiagnosticIds.ElseWithoutIf, "Branch terminal without an opener", error);
             Add(HeddleDiagnosticIds.ElseConditionIgnored, "Branch terminal condition ignored", warning);
             Add(HeddleDiagnosticIds.BranchRoleMissingScopeChannel, "Branch role without scope channel", warning);
 
-            // --- Template semantics & ergonomics ----------------------------------------------------------
             Add(HeddleDiagnosticIds.RangeStepNotPositive, "Range step is not positive", error);
             Add(HeddleDiagnosticIds.DefinitionRendersTwice, "Definition renders twice", warning);
             Add(HeddleDiagnosticIds.LegacyImportDirective, "Removed @import directive", error);
             Add(HeddleDiagnosticIds.ComposeImportNotTopLevel, "Composition import is not top level", error);
             Add(HeddleDiagnosticIds.LiquidStyleInterpolationMisread, "Liquid-style interpolation misread", warning);
 
-            // --- Props & slots ----------------------------------------------------------------------------
             Add(HeddleDiagnosticIds.UnknownProp, "Unknown prop", error);
             Add(HeddleDiagnosticIds.MissingRequiredProp, "Missing required prop", error);
             Add(HeddleDiagnosticIds.PropTypeMismatch, "Prop type mismatch", error);
@@ -262,7 +256,6 @@ namespace Heddle.Data
             Add(HeddleDiagnosticIds.RegionNotPublic, "Region is not public", error);
             Add(HeddleDiagnosticIds.DuplicateRegionDeclaration, "Duplicate region declaration", error);
 
-            // --- Build-time generator (HED70xx) -----------------------------------------------------------
             // These rows carry MessageFormat: the generator's descriptor factory projects them, so the format is
             // shared knowledge rather than a second copy.
             Add(HeddleDiagnosticIds.BuildUnreadableFile, "Unreadable Heddle template", error,
@@ -357,7 +350,6 @@ namespace Heddle.Data
                 "template error — please report it; setting Precompile=\"false\" on the item unblocks the build " +
                 "in the meantime (the template then renders through the dynamic path).");
 
-            // --- Precompiled-runtime registration / fallback (HED71xx) ------------------------------------
             // Carried on PrecompiledFallbackEvent rather than formatted, so title + severity only.
             Add(HeddleDiagnosticIds.PrecompiledGauntletFallback, "Precompiled template fell back to the dynamic tier",
                 warning);

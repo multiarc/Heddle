@@ -3,7 +3,6 @@ namespace Heddle.Generator.Binding
     /// <summary>Why a function-call binder refused a call.</summary>
     internal enum BindRefusalKind
     {
-        /// <summary>The call bound; there is no refusal.</summary>
         Bound,
 
         /// <summary>The generator refused without proving anything: an argument the operand estimator could not

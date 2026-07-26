@@ -49,10 +49,6 @@ namespace Heddle.Language {
                     "Cannot create definition".ToError(CurrentParseContext.GetBlockPosition(context)));
                 return;
             }
-            // A region-fill candidate (<x:x> with an unresolved base) is captured at parse and never
-            // registered — it must not self-shadow the region default a self-call resolves to, and its error is
-            // already emitted (emit-then-retract). CurrentDefenition stays non-null so ExitSubtemplate can attach
-            // the override body's context to the candidate item.
             if (CurrentParseContext.CurrentDefenition.IsFillCandidate)
             {
                 return;
@@ -61,9 +57,6 @@ namespace Heddle.Language {
             {
                 if (CurrentParseContext.DefinitionsBlock.Definitions.ContainsKey(CurrentParseContext.CurrentDefenition.Name))
                 {
-                    // Upgrade the id-less duplicate error to HED5020 only when BOTH the stored entry
-                    // and the incoming declaration are public regions. A public region colliding with a private or
-                    // document-scope <name> keeps the id-less message.
                     var stored = CurrentParseContext.DefinitionsBlock.Definitions[CurrentParseContext.CurrentDefenition.Name];
                     if (stored.IsPublicRegion && CurrentParseContext.CurrentDefenition.IsPublicRegion)
                     {
@@ -136,9 +129,6 @@ namespace Heddle.Language {
                                     CurrentParseContext.GetBlockPosition(context)));
                             return;
                         }
-                        // A within-component <region:region> replace preserves region-ness — the
-                        // replaced entry's visibility carries onto the replacing layer (the model type already
-                        // inherits via CreateDefinition's `modelType ?? baseDefenition?.ModelType`).
                         if (definition.IsRegion)
                         {
                             CurrentParseContext.CurrentDefenition.IsRegion = true;
@@ -257,10 +247,6 @@ namespace Heddle.Language {
             if (context.GetText() != "import")
                 return;
 
-            // '@import' is removed. Raise the positioned HED4003 removal error at the shared parse layer so the
-            // dynamic and precompiled tiers carry the identical diagnostic for every call shape (top-level,
-            // chained/consuming, and nested in any subtemplate) — the ParseContext.Errors list is shared by
-            // reference down the whole context tree, exactly as the @<< HED4004 detection relies on.
             var call = context.Parent as HeddleParser.CallContext;
             if (call == null)
                 return;
@@ -306,11 +292,6 @@ namespace Heddle.Language {
             {
                 string document = _settings.ReadImport(path);
 
-                // Mark the imported parse's diagnostics with a shared ImportOrigin so
-                // the LSP facade re-anchors them to this @<< site. Flag-gated — production compiles take one bool
-                // check and allocate nothing. All front-end diagnostics live on the ParseContext,
-                // so the two ParseContext ranges are the only ones stamped (the runtime adapter copies them into
-                // the compile context after the whole parse completes).
                 bool markProvenance = CurrentParseContext.ProvideLanguageFeatures;
                 ImportOrigin origin = null;
                 int peMark = 0, pwMark = 0;
@@ -328,14 +309,6 @@ namespace Heddle.Language {
                 if (markProvenance)
                     isolatedContext.ImportOrigin = origin;
                 isolatedContext.OutputChains.Clear();
-                // The imported document is parsed in its own coordinate space. The importing document's hidden-token
-                // positions (inherited here by IsolateContextWithTree) are in the importing file's coordinates and
-                // must not seed the import parse: EnterSubtemplate transfers a context's SkippedTokens into each
-                // definition-body sub-context by filtering on the body's span, and an importing-file token whose
-                // offset happens to fall inside an imported body's span would be injected into that body, shifting
-                // its output chains and corrupting the render. Clear them so only the imported file's own hidden
-                // tokens (recorded fresh by the parse below) reach the imported bodies — symmetric to the
-                // OutputChains reset above.
                 isolatedContext.SkippedTokens.Clear();
                 DocumentParser.Parse(document, isolatedContext, _settings/*, true*/);
                 CurrentParseContext.DefaultChains.Clear();
@@ -355,9 +328,6 @@ namespace Heddle.Language {
                 {
                     StampImportedRange(CurrentParseContext.Errors, peMark, origin);
                     StampImportedRange(CurrentParseContext.Warnings, pwMark, origin);
-                    // Attach the origin to purely-imported definitions so their call-site-compiled bodies
-                    // re-anchor to this import site too. Definitions copied from the
-                    // pre-import local set keep their own (null) provenance.
                     foreach (var pair in CurrentParseContext.DefinitionsBlock.Definitions)
                     {
                         if (!preImportNames.Contains(pair.Key))

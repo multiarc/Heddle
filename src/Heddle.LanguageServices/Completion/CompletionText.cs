@@ -3,11 +3,8 @@ using System.Text;
 namespace Heddle.LanguageServices.Completion
 {
     /// <summary>
-    /// Repairs an in-progress buffer so the enclosing block parses (the engine's ANTLR parser is strict, but a
-    /// user typing <c>@(</c>, <c>@(x.</c>, <c>@(::</c> has an incomplete construct). A placeholder identifier is
-    /// inserted at the cursor and the parens opened in the innermost body are closed after it, so the surrounding
-    /// <c>@list(...){{ … }}</c> body still compiles and records its narrowed model type — the offset is unchanged,
-    /// so context detection and the scope-map query stay aligned with the cursor.
+    /// Repairs incomplete constructs by inserting a placeholder and closing unclosed parens,
+    /// so the enclosing scope remains compilable. Offset is preserved for context detection.
     /// </summary>
     internal static class CompletionText
     {

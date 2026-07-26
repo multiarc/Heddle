@@ -47,9 +47,8 @@ namespace Heddle.Tests
         private static readonly PrecompiledOptionsFingerprint TextNative =
             new PrecompiledOptionsFingerprint(OutputProfile.Text, ExpressionMode.Native, false);
 
-        // The gauntlet fixtures are fingerprinted Text/Native/false; a request must match on the dimensions
-        // not under test, or the options check (which precedes the extension/function/staleness checks) masks
-        // the reason being asserted. The 2.0 engine defaults (Html/true) no longer match, so pin explicitly.
+        // Fixtures are Text/Native/false; requests must match these dimensions to avoid masking the checks.
+        // The 2.0 defaults (Html/true) don't match, so pin explicitly.
         private static TemplateOptions Match() =>
             new TemplateOptions { OutputProfile = OutputProfile.Text, TrimDirectiveLines = false };
 

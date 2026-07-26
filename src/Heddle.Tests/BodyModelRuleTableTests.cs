@@ -7,11 +7,8 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The body model-typing table. The rule used to live only as prose comments on each emission branch, so a
-    /// change to (say) <c>ListExtension</c>'s element-type derivation silently kept the old generator typing. The
-    /// table is now data; this suite is the run-tier half of its conformance (the build-tier half asserts the
-    /// emitter's branches use the same rows), driven end-to-end through real renders rather than through the
-    /// resolvers, so it is the observable typing that is pinned.
+    /// The body model-typing table, now data (was scattered prose). This suite pins observable typing (run-tier conformance);
+    /// the emitter's branches use the same rows (build-tier conformance).
     /// </summary>
     public class BodyModelRuleTableTests
     {
@@ -34,13 +31,11 @@ namespace Heddle.Tests
             Assert.Equal(BodyModelRules.PinnedNames.OrderBy(n => n), registered.OrderBy(n => n));
         }
 
-        // The rows are predictions about observable output: each row computes the expected rendered text FROM the row,
-        // so a changed row makes the prediction wrong and the test red.
+        // Each row predicts observable output; a changed row makes the test red.
 
         private const string PersonHeader = "@model(){{Heddle.Tests.BodyModelRuleTableTests+Person}}@\\\n";
 
-        /// <summary>Renders, or returns <c>null</c> when the template does not compile — which is what a body read
-        /// of a member the body's model does not have amounts to.</summary>
+        /// <summary>Renders or returns <c>null</c> on compile failure (e.g., reading a nonexistent member).</summary>
         private static string TryRender(string template, object model)
         {
             try
@@ -53,11 +48,8 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>The <c>Body</c> column, as a prediction: a body typed by <see cref="BodyModelSource.Parent"/>
-        /// can bind the ENCLOSING model's members; a body typed any other way cannot, and the read fails to compile.
-        /// Every probe body reads <c>Name</c>, which only the enclosing <see cref="Person"/> has — so the row alone
-        /// decides the expected outcome, and <c>@list</c>'s <c>ElementOfData</c> row (element type <c>int</c>, no
-        /// <c>Name</c>) is discriminated from the branch/<c>@for</c> rows' <c>Parent</c>.</summary>
+        /// <summary>Body column prediction: Parent-typed bodies bind the enclosing model; others fail.
+        /// Probe reads Name (only on Person) to discriminate @list from @for/@branch rows.</summary>
         [Theory]
         [InlineData("if", "@if(Name){{@(Name)}}", "Ada")]
         [InlineData("ifnot", "@ifnot(Other){{@(Name)}}", "Ada")]
@@ -75,11 +67,8 @@ namespace Heddle.Tests
                 TryRender(PersonHeader + template, new Person { Name = "Ada", Scores = new[] { 7 } }));
         }
 
-        /// <summary>The <c>Chained</c> column, as a prediction: <c>@for</c>'s
-        /// <see cref="ChainedModelSource.Int32Index"/> is what makes a non-slot <c>@out()</c> inside its body splice
-        /// the boxed iteration index. <see cref="ChainedModelSource.None"/> would mean nothing host-specific on the
-        /// chained channel, so <c>@out()</c> would have nothing to splice — which is what this asserts instead when
-        /// the row changes. Without this the column had no consumer anywhere: it could be flipped freely.</summary>
+        /// <summary>Chained column prediction: Int32Index makes @out() splice the iteration index;
+        /// None means @out() splices nothing.</summary>
         [Fact]
         public void TheChainedColumnPredictsWhatOutSplicesInsideAForBody()
         {
@@ -88,8 +77,7 @@ namespace Heddle.Tests
             Assert.Equal(expected, Render(PersonHeader + "@for(3){{@out()}}", new Person { Name = "Ada" }));
         }
 
-        /// <summary>The branch rows' <c>Chained</c> column, same treatment: <c>None</c> predicts that a branch body's
-        /// <c>@out()</c> splices nothing.</summary>
+        /// <summary>Branch rows' Chained column: None predicts empty @out().</summary>
         [Theory]
         [InlineData("if")]
         [InlineData("else")]
@@ -108,9 +96,7 @@ namespace Heddle.Tests
             Assert.False(BodyModelRules.TryGet(null, out _, out _));
         }
 
-        /// <summary>The observed typing, end-to-end: an <c>@if</c> body reads the ENCLOSING model's members
-        /// (Parent), while an <c>@list</c> body reads the ELEMENT's (ElementOfData) — the two rows whose confusion
-        /// would silently change which member the emitted C# binds.</summary>
+        /// <summary>Observed typing: @if reads enclosing model (Parent); @list reads element (ElementOfData).</summary>
         [Fact]
         public void ObservedTypingMatchesTheParentAndElementRows()
         {
@@ -120,8 +106,7 @@ namespace Heddle.Tests
             Assert.Equal("79", Render("@model(){{" + typeof(Person).FullName + "}}@\\\n@list(Scores){{@(this)}}", model));
         }
 
-        /// <summary>The <c>@for</c> row's chained half: the body sees the enclosing model, and <c>@out()</c>
-        /// splices the boxed iteration index off the chained channel.</summary>
+        /// <summary>@for chained row: body sees enclosing model, @out() splices iteration index.</summary>
         [Fact]
         public void ObservedForTypingMatchesTheParentPlusIndexRow()
         {

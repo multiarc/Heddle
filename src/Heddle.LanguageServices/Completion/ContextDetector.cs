@@ -53,18 +53,15 @@ namespace Heddle.LanguageServices.Completion
             while (i >= 0 && (text[i] == ' ' || text[i] == '\t'))
                 i--;
 
-            // Member of a resolved prefix (anchor '.').
             if (i >= 0 && text[i] == '.')
             {
                 var (prefix, rootRef) = ReadPathBefore(text, i);
                 return new CompletionContext(CompletionContextKind.MemberOfPrefix, prefix, rootRef, null);
             }
 
-            // Root-model members (anchor '::').
             if (i >= 1 && text[i] == ':' && text[i - 1] == ':')
                 return new CompletionContext(CompletionContextKind.RootMembers, null, true, null);
 
-            // Inside call parens.
             if (TryFindEnclosingCall(text, offset, out var callName, out var openParen))
             {
                 var defProps = FindDefinitionProps(analysis, callName);
@@ -73,10 +70,8 @@ namespace Heddle.LanguageServices.Completion
                 return new CompletionContext(CompletionContextKind.ExpressionPosition, null, false, callName);
             }
 
-            // Region-override position: a '<' anchor (optionally mid-word) at an override
-            // position of a definition block inside a call body ({{ … }} of a '@name(...)' call). Offers the
-            // callee's public region names for the '<name:name>' override form; the '@%'/'}}' anchor guard keeps
-            // plain HTML tags in body text from triggering it.
+            // Region-override position: '<' anchor in a definition body override ({{ … }} of '@name(...)').
+            // Guard keeps plain HTML tags in body text from triggering it.
             {
                 int w = i;
                 while (w >= 0 && (char.IsLetterOrDigit(text[w]) || text[w] == '_'))
@@ -89,7 +84,6 @@ namespace Heddle.LanguageServices.Completion
                 }
             }
 
-            // Callable names after '@' or a chain ':'.
             if (i >= 0 && text[i] == '@')
                 return new CompletionContext(CompletionContextKind.CallableNames, null, false, null);
             if (i >= 0 && text[i] == ':' && (i == 0 || text[i - 1] != ':'))
@@ -233,7 +227,6 @@ namespace Heddle.LanguageServices.Completion
                 i--;
             bool boundary = i == openParen || (i > openParen && text[i] == ',');
 
-            // Collect already-passed prop names ("name:") between the paren and the offset.
             var region = text.Substring(openParen + 1, Math.Max(0, offset - openParen - 1));
             foreach (var part in region.Split(','))
             {

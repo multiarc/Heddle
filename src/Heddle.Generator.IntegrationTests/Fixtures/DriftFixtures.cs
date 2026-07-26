@@ -4,13 +4,10 @@ using Heddle.Data;
 
 namespace Heddle.Generator.IntegrationTests.Fixtures
 {
-    /// <summary>Container for the <b>nested</b>-type AQN drift fixture. Reflection spells the nested
-    /// type <c>Ns.DriftContainer+NestedYellExtension</c>; the generator's Roslyn
-    /// <c>FullyQualifiedFormat</c> spelling is <c>Ns.DriftContainer.NestedYellExtension</c> — the two identity
-    /// strings never match, so the gauntlet's extension check rejects the entry on every request.</summary>
+    /// <summary>Nested-type AQN drift: reflection vs. Roslyn spelling differ (+ vs. .), causing extension rejection.</summary>
     public static class DriftContainer
     {
-        /// <summary>A plain extension (no compile-time hook override) that happens to be a nested type.</summary>
+        /// <summary>Plain nested extension, no compile-time hook override.</summary>
         [ExtensionName("driftnested")]
         public sealed class NestedYellExtension : AbstractExtension
         {
@@ -21,9 +18,7 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         }
     }
 
-    /// <summary>Base of the inherited-<c>[ExtensionName]</c> drift pair. Declares the name; the runtime
-    /// reads <c>[ExtensionName]</c> with <c>inherit: true</c>, so the subclass below claims the same name and
-    /// (being assignable to this type) replaces it in the live table.</summary>
+    /// <summary>Base of inherited-name drift pair: declares name that subclass inherits and overrides.</summary>
     [ExtensionName("driftbase")]
     public class DriftBaseExtension : AbstractExtension
     {
@@ -32,10 +27,7 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public override void RenderData(in Scope scope) => scope.Renderer.Render((string) ProcessData(scope));
     }
 
-    /// <summary>Subclass carrying <b>no declared</b> <c>[ExtensionName]</c>. The runtime registers it under
-    /// <c>"driftbase"</c> (inherited attribute + <c>IsAssignableFrom</c> override); the generator's declared-only
-    /// attribute read never sees it and binds the base — manifest says <c>DriftBaseExtension</c>, live says
-    /// <c>DriftInheritedExtension</c>.</summary>
+    /// <summary>Subclass with no declared [ExtensionName]: inherits parent name at runtime but generator sees only declaration.</summary>
     public sealed class DriftInheritedExtension : DriftBaseExtension
     {
     }

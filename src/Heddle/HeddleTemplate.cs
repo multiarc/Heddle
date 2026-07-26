@@ -15,7 +15,7 @@ using Heddle.Strings.Core;
 namespace Heddle
 {
     /// <summary>
-    /// Use this class to operate with engine, parse source template, make replace with data and generate result string.
+    /// Parse, compile, and render a Heddle template against a data model.
     /// </summary>
     public sealed class HeddleTemplate : IHeddleTemplate
     {
@@ -26,40 +26,29 @@ namespace Heddle
         private volatile RuntimeDocument _runtimeDocument;
         private volatile IProcessStrategy _processStrategy;
         private string _document;
-        // Disposal state: plain ints accessed only through Interlocked/Volatile (a `volatile` field
-        // passed by ref to Interlocked raises CS0420, and the atomics already provide the fences). Never mix a
-        // plain ++/--/read with these fields.
-        // 0 = live, 1 = disposal requested (fences new renders out; set once via Interlocked.Exchange).
+        // Disposal state: never mix plain ++/--/read with these — use only Interlocked/Volatile.
+        // 0 = live, 1 = disposal requested.
         private int _disposeAfterComplete;
-        // Active render count; mutated only via Interlocked.Increment/Decrement, read via Volatile.Read.
         private int _runners;
-        // One-shot CAS guard: the actual resource teardown runs exactly once across the explicit-Dispose,
-        // deferred-last-exit, and finalizer paths.
+        // Teardown runs exactly once across Dispose, deferred-last-exit, and finalizer paths.
         private int _teardownDone;
-        // Serializes every publisher (watcher callback / Recompile / first compile) through the store
-        // block's capture-superseded → field-writes → enqueue → drain sequence, and guards every drain site.
-        // Renders NEVER take this lock — they read the volatile snapshot only (off the render hot path).
+        // Serializes publishers (watcher callbacks, Recompile, first compile) so fields publish coherently.
+        // Renders never take this lock — they read the volatile snapshot only (off the render hot path).
         private readonly object _publishGate = new object();
-        // Superseded runtime documents awaiting release. null for every template that never reloads
-        // (zero cost); created and enqueued only under _publishGate; the volatile null-check lets ExitRender
-        // skip the lock entirely on the common non-reloading path.
+        // Superseded documents awaiting release; null for non-reloading templates (zero cost).
+        // Volatile null-check lets ExitRender skip the lock on the common path.
         private volatile ConcurrentQueue<RuntimeDocument> _supersededDocs;
-        // Recompile inputs captured at the first file compile so a watcher reload reconstructs a
-        // from-scratch-equivalent fresh context. _watchModelType is captured PRE-compile (the original ctor
-        // RootScopeType) because a root @model reassigns RootScopeType in place during the compile; OutputProfile
-        // is deliberately NOT captured — re-derived from _watchOptions + the freshly-parsed @profile each reload.
+        // _watchModelType is captured PRE-compile (before a root @model directive flips it);
+        // OutputProfile is deliberately NOT captured — re-derived from the freshly-parsed @profile each reload.
         private string _watchFileName;
         private TemplateOptions _watchOptions;
         private ExType _watchModelType;
         private string _watchControllerName;
-        // The effective output encoder (TemplateOptions.Encoder). Resolved once at compile (dynamic tier) or from
-        // the precompiled-adapter ctor, then stamped on each render's sink. null = the legacy WebUtility path.
+        // Resolved once at compile (or from precompiled-adapter ctor); null = legacy WebUtility path.
         private System.Text.Encodings.Web.TextEncoder _encoder;
-        // The effective render budget (TemplateOptions.RenderBudget). Resolved once at compile (dynamic tier) or
-        // carried on the precompiled-adapter ctor. null = unlimited: the budget wrapper is never created (zero cost).
+        // Resolved once at compile (or from precompiled-adapter ctor); null = unlimited.
         private RenderBudget _renderBudget;
-        // The effective TemplateOptions.ValidateModelType (opt-in Release model-type guard). Resolved once
-        // at compile on the store path; read (never written) on the render path. DEBUG always validates.
+        // Resolved once at compile on the store path; read-only on the render path. Always true in DEBUG.
         private bool _validateModelType;
 #if NET8_0_OR_GREATER
          private volatile int _maxLength;
@@ -94,9 +83,7 @@ namespace Heddle
             CompileResult = Compile(new CompileScope(context ?? new CompileContext()), document);
         }
 
-        // Precompiled adapter mode: resolvers bind a generated strategy directly (no parse/compile), and CompileResult
-        // reports success to hide this from callers. Model-type validation is skipped on precompiled paths since there's
-        // no CompileContext; non-precompiled templates validate in DEBUG and optionally per TemplateOptions.ValidateModelType.
+        // Precompiled adapter mode: resolvers bind a strategy directly (no parse/compile); model-type validation is skipped.
         private readonly bool _precompiled;
 
         internal HeddleTemplate(IProcessStrategy precompiledStrategy,
@@ -105,8 +92,8 @@ namespace Heddle
             if (precompiledStrategy == null)
                 throw new ArgumentNullException(nameof(precompiledStrategy));
             _processStrategy = precompiledStrategy;
-            _encoder = encoder;   // carry the request's encoder onto the precompiled-adapter render (resolver path)
-            _renderBudget = renderBudget;   // carry the request's budget onto the precompiled-adapter render
+            _encoder = encoder;
+            _renderBudget = renderBudget;
             _precompiled = true;
             CompileResult = new HeddleCompileResult(true, null, null);
         }
@@ -119,12 +106,10 @@ namespace Heddle
         #region IDisposable Members
 
         // Non-blocking, idempotent dispose that is safe to call concurrently with active renders.
-        // Setting the flag first orders against EnterRender's increment-then-re-read: any render still executing
-        // observed the flag clear after its increment, so that increment precedes the runners read below and
-        // Dispose defers teardown to the last ExitRender. No spin, no wait, no drain.
+        // Setting the flag first orders against EnterRender's increment-then-re-read.
         public void Dispose()
         {
-            Interlocked.Exchange(ref _disposeAfterComplete, 1); // fence out new renders; idempotent
+            Interlocked.Exchange(ref _disposeAfterComplete, 1);
             if (Volatile.Read(ref _runners) == 0)
                 Teardown();
         }
@@ -151,8 +136,7 @@ namespace Heddle
         {
             if (Interlocked.Decrement(ref _runners) == 0)
             {
-                // When the last render exits, release any superseded documents a reload parked.
-                // The volatile null-check keeps non-reloading templates lock-free on this path.
+                // Volatile null-check keeps non-reloading templates lock-free on this path.
                 if (_supersededDocs != null)
                     lock (_publishGate)
                     {
@@ -166,29 +150,18 @@ namespace Heddle
         private void Teardown()
         {
             if (Interlocked.CompareExchange(ref _teardownDone, 1, 0) != 0)
-                return; // already torn down — idempotent across Dispose / deferred exit / finalizer
-            // The watcher is disposed OUTSIDE _publishGate: on .NET Framework, FileSystemWatcher.Dispose
-            // blocks on the component lock its event dispatch holds while a callback (Reload → Compile)
-            // waits on _publishGate — nesting the two locks deadlocks (netfx-only; .NET Core+ dispatch is
-            // lock-free). Safe unnested: Dispose() set _disposeAfterComplete before Teardown, so a callback
-            // acquiring the gate from here on discards its fresh artifact via the store block's guard, and
-            // once this Dispose returns no further callback can start.
+                return; // already torn down — idempotent
+            // Dispose watcher OUTSIDE _publishGate: on .NET Framework, nesting deadlocks (netfx-only).
             _watcher?.Dispose();
-            // The gate makes teardown disposal and the store block's post-Teardown guard mutually
-            // exclusive — a late watcher callback either observes the dispose flag and discards its fresh
-            // artifact, or publishes fully before this disposal runs (never a leak, never a resurrection).
             lock (_publishGate)
             {
                 _runtimeDocument?.Dispose();
-                // Drain-dispose the remaining superseded docs. Teardown never runs while a render executes,
-                // so DrainLocked's _runners gate reads 0 here and the queue empties.
                 DrainLocked();
             }
             GC.SuppressFinalize(this);
         }
 
-        // Dispose queued superseded documents iff no render can hold one. Caller holds _publishGate,
-        // so no concurrent publisher can append while the loop runs (the drain-TOCTOU closure).
+        // Dispose queued documents iff no render can hold one (caller holds _publishGate).
         private void DrainLocked()
         {
             var q = _supersededDocs;
@@ -202,24 +175,22 @@ namespace Heddle
         #endregion
 
         /// <summary>
-        /// Generates result string (source template replaced with data). Data non-serialized
+        /// Render the template against data and return the result as a string.
         /// </summary>
-        /// <param name="data">Input object</param>
-        /// <param name="callerData"></param>
-        /// <param name="chained"></param>
-        /// <returns>Generated string</returns>
+        /// <param name="data">The root model object.</param>
+        /// <param name="chained">Optional chained context.</param>
+        /// <param name="callerData">Optional caller context.</param>
+        /// <returns>The rendered output.</returns>
         public string Generate(object data, object chained = null, object callerData = null)
         {
-            // String path wraps render core with string-specific logic: seeded renderer, high-water tracking, ToString/Clear.
-            // Sink renders skip high-water logic.
+            // String path wraps render core with high-water tracking; sink renders skip that.
 #if NET8_0_OR_GREATER
             var renderer = new ScopeRenderer(_maxLength);
 #else
             var renderer = new ScopeRenderer(_maxElementCount);
 #endif
-            renderer.SetOutputEncoder(_encoder);   // stamp the effective encoder on the sink
-            // Wrap in the budget seam only when a budget is configured — the null path keeps the bare sink (no
-            // wrapper, no allocation). ToString/Clear/high-water still read the underlying ScopeRenderer directly.
+            renderer.SetOutputEncoder(_encoder);
+            // Wrap in the budget seam only when configured — null path keeps the bare sink (zero cost).
             Render(data, chained, callerData, _renderBudget == null ? (IScopeRenderer)renderer : new BudgetedRenderer(renderer, _renderBudget));
 #if NET8_0_OR_GREATER
             var newMax = Math.Max(_maxLength, renderer.TotalLength);
@@ -251,7 +222,7 @@ namespace Heddle
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
             var renderer = new TextWriterScopeRenderer(writer);
-            renderer.SetOutputEncoder(_encoder);   // stamp the effective encoder on the sink
+            renderer.SetOutputEncoder(_encoder);
             Render(data, chained, callerData, _renderBudget == null ? (IScopeRenderer)renderer : new BudgetedRenderer(renderer, _renderBudget));
         }
 
@@ -267,21 +238,16 @@ namespace Heddle
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
             var renderer = new Utf8ScopeRenderer(writer);
-            renderer.SetOutputEncoder(_encoder);   // stamp the effective encoder on the sink
+            renderer.SetOutputEncoder(_encoder);
             Render(data, chained, callerData, _renderBudget == null ? (IScopeRenderer)renderer : new BudgetedRenderer(renderer, _renderBudget));
         }
 
         /// <summary>
-        /// The shared render core: compile guards, the model-type check (always in DEBUG; in Release
-        /// when <see cref="TemplateOptions.ValidateModelType"/> is opted in), the dispose guard, the
-        /// runner/dispose bookkeeping, root <see cref="Scope"/> construction over the supplied renderer (including
-        /// root-frame provisioning), and <c>_processStrategy.Render</c>. Three callers: the string
-        /// <see cref="Generate(object,object,object)"/>, the two sink overloads, and <c>PartialExtension.RenderData</c>
-        /// (streaming partials).
+        /// Shared render core: compile/dispose guards, model-type check, runner bookkeeping, root <see cref="Scope"/> construction.
         /// </summary>
         internal void Render(object data, object chained, object callerData, IScopeRenderer renderer)
         {
-            // Liveness guard only (was this template ever compiled?) — a plain volatile read, not the swap snapshot.
+            // Liveness guard only — plain volatile read, not the swap snapshot.
             if (_processStrategy == null)
             {
                 if (CompileResult == null)
@@ -292,16 +258,13 @@ namespace Heddle
             EnterRender();
             try
             {
-                // The document snapshot is taken AFTER EnterRender's increment so the superseded-doc
-                // drain's _runners gate provably covers every render that could hold it. One volatile read of the
-                // document yields a coherent (Strategy, NeedsLocals) pair; _context is read once so the model-type
-                // guard and the render share one coherent context.
+                // Snapshot taken AFTER EnterRender's increment so _runners gate covers every render that could hold it.
                 var doc = _runtimeDocument;
                 var ctx = _context;
-                var strategy = doc != null ? doc.Strategy : _processStrategy; // precompiled: doc == null, strategy is the field
+                var strategy = doc != null ? doc.Strategy : _processStrategy;
                 var validateModelType = _validateModelType;
 #if DEBUG
-                validateModelType = true; // DEBUG always validates (historical guard); Release honors the opt-in
+                validateModelType = true; // DEBUG always validates; Release honors the opt-in
 #endif
                 if (validateModelType && !_precompiled && data != null && !ctx.ScopeType.Type.IsType(data))
                 {
@@ -343,15 +306,13 @@ namespace Heddle
             {
                 _reader = new FileReader(context.Options);
                 document = _reader.ReadEntireFile();
-                // Capture RootScopeType before compile; a root @model directive flips it during compilation.
-                // Reloads must re-parse the directive, not reuse the flipped type.
+                // Capture RootScopeType PRE-compile; a root @model directive flips it during compilation.
                 if (context.Options.EnableFileChangeCheck)
                     _watchModelType = context.RootScopeType;
                 CompileResult = Compile(new CompileScope(context), document);
                 if (context.Options.EnableFileChangeCheck)
                 {
-                    // The watch filter derives from the SAME name the reader reads
-                    // (RootPath / (TemplateName + FileNamePostfix)) so the two can never diverge again.
+                    // Watch filter must use the exact name the reader reads (RootPath / (TemplateName + FileNamePostfix)).
                     var watchedFile = _reader.GetFileName();
                     var directory = Path.GetDirectoryName(watchedFile);
                     _watchFileName = Path.GetFileName(watchedFile);
@@ -366,9 +327,7 @@ namespace Heddle
                     _watcher.Created += FileCreated;
                     _watcher.Deleted += FileDeleted;
                     _watcher.Renamed += FileRenamed;
-                    // Arm the watcher (it raises nothing until enabled). Armed even when the first
-                    // compile soft-failed (template errors) so an edit-to-fix save recovers the template; a
-                    // thrown read failure lands in the catch below and never reaches this statement.
+                    // Arm even when first compile soft-fails (template errors) so edit-to-fix saves recover the template.
                     _watcher.EnableRaisingEvents = true;
                 }
             }
@@ -387,9 +346,7 @@ namespace Heddle
             return Compile(new CompileScope(new CompileContext(modelType)), document);
         }
 
-        // Engine-internal compile with an explicit context. Used by the C# code-generation meta-templates,
-        // which emit raw C# source and must render under OutputProfile.Text with directive-line trimming off,
-        // independent of the engine's public output defaults.
+        // Engine-internal compile: used by C# code-generation meta-templates for raw source output.
         internal HeddleCompileResult Compile(string document, CompileContext context)
         {
             if (_runtimeDocument != null)
@@ -403,9 +360,7 @@ namespace Heddle
                 throw new TemplateInitException("Template already compiled.");
             var reader = new FileReader(context.Options);
             var document = reader.ReadEntireFile();
-            // Dry-run isolation: mirror caller's current ScopeType/OutputProfile to compile the same context
-            // as Compile(context) would, even if caller mutated them. Caller's CompileContext never mutates,
-            // so a real Compile finalizes from scratch.
+            // Mirror caller's mutated ScopeType/OutputProfile; caller's CompileContext never mutates, so real Compile finalizes from scratch.
             var probe = new CompileContext(context.Options, context.RootScopeType)
             {
                 ScopeType = context.ScopeType,          // mirror a caller-mutated model type; setter leaves the already-non-null RootScopeType intact
@@ -432,53 +387,51 @@ namespace Heddle
                 {
                     RuntimeDocument rtdoc = HeddleCompiler.Compile(optimizedDocument, compileScope,
                         parseContext, null);
-                    bool stored = false;   // true once the artifact is owned elsewhere (published to fields) → the finally must not dispose it
+                    bool stored = false;   // true once published to fields; finally must not dispose
                     try
                     {
                         if (compileScope.CompileErrors.Count > 0)
                         {
                             var result = new HeddleCompileResult(false, document, parseContext);
                             result.Errors.AddRange(compileScope.CompileErrors);
-                            return result;                       // finally disposes compileScope + rtdoc
+                            return result;
                         }
-                        compileScope.Compile();                  // parity: CompleteInit + FullCSharp Roslyn, in dry runs too — MAY THROW
+                        compileScope.Compile();   // MAY THROW
                         if (compileScope.CompileErrors.Count > 0)
                         {
                             var result = new HeddleCompileResult(false, document, parseContext);
                             result.Errors.AddRange(compileScope.CompileErrors);
-                            return result;                       // finally disposes
+                            return result;
                         }
                         if (!simulate)
                         {
-                            // Serialize all publishers (watcher callbacks, Recompile, first
-                            // compile) so the field group publishes coherently and each superseded document is
-                            // enqueued exactly once. Renders never take this lock.
+                            // Serialize publishers (watcher callbacks, Recompile, first compile) so fields publish coherently.
+                            // Renders never take this lock.
                             lock (_publishGate)
                             {
                                 if (Volatile.Read(ref _disposeAfterComplete) != 0)
                                 {
-                                    // Dispose()/Teardown() already ran (or is committed): do not publish onto a
-                                    // dead template — release the fresh artifact instead of leaking it.
+                                    // Dispose()/Teardown() already ran: do not publish onto a dead template.
                                     compileScope.Dispose();
                                     rtdoc?.Dispose();
-                                    stored = true;               // the finally must NOT dispose again
+                                    stored = true;
                                     return new HeddleCompileResult(true, document, parseContext);
                                 }
-                                var superseded = _runtimeDocument;   // the document about to be replaced (null on first compile)
+                                var superseded = _runtimeDocument;
                                 _context = compileScope;
                                 _document = optimizedDocument;
-                                _runtimeDocument = rtdoc;            // volatile publish — document first
-                                _processStrategy = rtdoc?.Strategy;  // volatile publish — then strategy
-                                _encoder = compileScope.CompileContext.Options.Encoder;   // resolve the effective encoder once
-                                _renderBudget = compileScope.CompileContext.Options.RenderBudget;   // resolve the budget once
-                                _validateModelType = compileScope.CompileContext.Options.ValidateModelType;   // resolve the opt-in guard once
+                                _runtimeDocument = rtdoc;
+                                _processStrategy = rtdoc?.Strategy;
+                                _encoder = compileScope.CompileContext.Options.Encoder;
+                                _renderBudget = compileScope.CompileContext.Options.RenderBudget;
+                                _validateModelType = compileScope.CompileContext.Options.ValidateModelType;
                                 if (superseded != null)
                                 {
                                     _supersededDocs = _supersededDocs ?? new ConcurrentQueue<RuntimeDocument>();
                                     _supersededDocs.Enqueue(superseded);
                                 }
-                                DrainLocked();                       // dispose queued docs iff no render can hold them
-                                stored = true;                       // retained by the template — do NOT dispose in finally
+                                DrainLocked();
+                                stored = true;
                             }
                         }
                         return new HeddleCompileResult(true, document, parseContext);
@@ -525,18 +478,18 @@ namespace Heddle
 
         public event FileSystemEventHandler OnFileChanged;
 
-        // Public events use template as sender (not the watcher). Delete keeps last-good renderable (no reload);
-        // rename recompiles if it lands on watched name (atomic-save); create/recreate raises OnFileChanged (no OnFileCreated) and reloads.
+        // Public events use template as sender (not the watcher); delete keeps last-good (no reload);
+        // rename/create/recreate recompiles; no public OnFileCreated.
         private void FileDeleted(object sender, FileSystemEventArgs e)
         {
-            OnFileDeleted?.Invoke(this, e);     // keep the last-good document renderable; do not reload
+            OnFileDeleted?.Invoke(this, e);
         }
 
         private void FileRenamed(object sender, RenamedEventArgs e)
         {
             OnFileRenamed?.Invoke(this, e);
             if (string.Equals(Path.GetFileName(e.FullPath), _watchFileName, StringComparison.OrdinalIgnoreCase))
-                Reload();                       // atomic-save: the rename landed the new content ON the target
+                Reload();
         }
 
         private void FileChanged(object sender, FileSystemEventArgs e)
@@ -547,12 +500,11 @@ namespace Heddle
 
         private void FileCreated(object sender, FileSystemEventArgs e)
         {
-            OnFileChanged?.Invoke(this, e);     // no OnFileCreated in the public surface; a (re)create is a content change
+            OnFileChanged?.Invoke(this, e);
             Reload();
         }
 
-        // Recompile from a fresh context (captured options + pre-@model type); OutputProfile re-derives each reload.
-        // Empty/failed reads keep last-good published.
+        // Recompile from fresh context (captured options + pre-@model type); OutputProfile re-derives.
         private void Reload()
         {
             string document = null;
@@ -565,19 +517,16 @@ namespace Heddle
                         {
                             ControllerName = _watchControllerName,
                         }), document);
-                // else: empty/whitespace save — no-op, last-good stays published
+                // Empty/whitespace save — no-op, last-good stays published.
             }
             catch (Exception ex)
             {
                 CompileResult = new HeddleCompileResult(false, document, null);
-                CompileResult.Errors.Add(ex.ToError(default(BlockPosition)));   // last-good stays published
+                CompileResult.Errors.Add(ex.ToError(default(BlockPosition)));
             }
         }
 
-        // A watcher event is one-shot: if this read fails, no further event arrives to retry it, so a
-        // transient sharing violation (the saving editor, an antivirus/indexer scan of a freshly renamed
-        // file) would leave last-good published forever. Ride out that window briefly before giving up;
-        // a persistent failure still surfaces on CompileResult via Reload's catch.
+        // Watcher event is one-shot: transient sharing violations must be retried briefly before giving up.
         private string ReadForReload()
         {
             for (var attempt = 0; ; attempt++)

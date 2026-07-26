@@ -23,8 +23,6 @@ namespace Heddle.Generator.Tests
     /// </summary>
     public class DocumentShapingCharacterizationTests
     {
-        // ---- vector plumbing ----
-
         internal static ParseContext Ctx(
             (int start, int length)[] chains = null,
             (int start, int length)[] definitions = null,
@@ -51,8 +49,6 @@ namespace Heddle.Generator.Tests
                + " chains=[" + Positions(context.OutputChains.Select(c => c.BlockPosition)) + "]"
                + " defs=[" + Positions(context.DefinitionsBlock.Positions) + "]"
                + " raws=[" + Positions(context.RawOutputItems.Select(r => r.BlockPosition)) + "]";
-
-        // ---- pin 1: ShiftBySkippedTokens, three-way over all three lists ----
 
         [Fact]
         public void Pin1_ShiftBySkippedTokens_ThreeWayOverEveryList()
@@ -156,12 +152,8 @@ namespace Heddle.Generator.Tests
 
             DocumentShaping.TrimHiddenRemnantLines(context, ref working);
 
-            // The whitespace-only remnant line [2,5) is removed (seed 3); the chain enclosing it keeps its start
-            // and loses the whole seed; the raw ending exactly at the removal's start is wholly before.
             Assert.Equal("doc=[A\\nB\\n] chains=[2+0] defs=[] raws=[1+2,0+2]", Snapshot(context, working));
         }
-
-        // ---- pin 3: the WidenToWholeLine vector table (extensional-equality pin) ----
 
         [Theory]
         [InlineData("  ab  \nX", 2, 2, 0, 7)]        // in-bounds whole line, LF terminator
@@ -185,8 +177,6 @@ namespace Heddle.Generator.Tests
             Assert.Equal(expectedStart, widened.StartIndex);
             Assert.Equal(expectedLength, widened.Length);
         }
-
-        // ---- pin 4: RemoveDefinitions ----
 
         [Theory]
         // trimming off — exactly the block
@@ -212,8 +202,6 @@ namespace Heddle.Generator.Tests
             Assert.Equal(expected, Snapshot(context, working));
         }
 
-        // ---- pin 5: ReplaceRawOutput ----
-
         [Theory]
         // replacement shorter than the span; the chain exactly at the splice start is NOT shifted (`>`, not `>=`)
         [InlineData("AA[[RAW]]BB", 2, 7, "x", new[] { 2, 7, 9, 2 }, "doc=[AAxBB] chains=[2+7,3+2] defs=[] raws=[2+7]")]
@@ -235,8 +223,6 @@ namespace Heddle.Generator.Tests
             Assert.Equal(expected, Snapshot(context, working));
         }
 
-        // ---- pin 6: RemoveEmptyItem ----
-
         [Theory]
         [InlineData("  @m()  \nTail\n", 2, 5, new[] { 2, 5, 9, 4 }, false,
             "doc=[   \\nTail\\n] chains=[2+5,4+4] defs=[] raws=[]")]
@@ -254,8 +240,6 @@ namespace Heddle.Generator.Tests
 
             Assert.Equal(expected, Snapshot(context, working));
         }
-
-        // ---- pin 7: the branch-set strip machine ----
 
         [Theory]
         // opener → continuation → terminal: two gaps, applied right-to-left
@@ -405,8 +389,6 @@ namespace Heddle.Generator.Tests
                 default: return DocumentShaping.BranchKind.Other;
             }
         }
-
-        // ---- pin 8: SlicePieces ----
 
         [Theory]
         // element at offset 0 — no leading piece; trailing remainder emitted

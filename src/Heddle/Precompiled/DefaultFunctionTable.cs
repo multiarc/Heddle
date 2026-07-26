@@ -2,9 +2,7 @@ using System.Collections.Generic;
 
 namespace Heddle.Precompiled
 {
-    /// <summary>One default built-in overload as pure strings: the registered function name, the
-    /// <see cref="PrecompiledFunctions"/> shim method that binds it, and the parameter/return CLR type names. Value
-    /// data only — safe to hold in an incremental-generator pipeline model.</summary>
+    /// <summary>One default built-in overload: registered function name, shim method name, and CLR parameter/return types.</summary>
     internal readonly struct DefaultFunctionRow
     {
         public DefaultFunctionRow(string name, string shimMethodName, string[] parameterTypeNames,
@@ -25,18 +23,12 @@ namespace Heddle.Precompiled
         public string ReturnTypeName { get; }
     }
 
-    /// <summary>
-    /// The shared-sourced table of the 18 default built-in function names (35 overloads) that a fresh
-    /// <c>FunctionRegistry</c> starts with. Compiled into <b>both</b>
-    /// <c>Heddle</c> and the <c>Heddle.Generator</c> analyzer (like <see cref="TemplateKey"/>): the generator
-    /// seeds its merged function table from these rows and emits <see cref="PrecompiledFunctions"/> shim calls for
-    /// default-bound names; the engine's <c>DefaultFunctionLockstepTests</c> gate this table against
-    /// <c>FunctionRegistry.Default</c> and the shim in both directions.
-    /// </summary>
+    /// <summary>The 18 default built-in function names (35 overloads) compiled into both Heddle and Heddle.Generator.
+    /// The generator seeds its merged table from these rows and emits PrecompiledFunctions shim calls; the engine
+    /// tests the table against FunctionRegistry.Default in both directions.</summary>
     internal static class DefaultFunctionTable
     {
-        /// <summary>The assembly-qualified type name (without version) the shim forwards to — the target recorded on
-        /// every shim-bound <see cref="PrecompiledFunctionBinding"/> row.</summary>
+        /// <summary>Assembly-qualified type name (without version) that the shim forwards to.</summary>
         public const string ShimTargetTypeName = "Heddle.Runtime.Expressions.BuiltInFunctions, Heddle";
 
         private const string Str = "System.String";

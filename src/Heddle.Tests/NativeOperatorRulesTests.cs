@@ -27,15 +27,9 @@ namespace Heddle.Tests
     }
 
     /// <summary>
-    /// The operator classification table.
-    /// <para>Two guards. The <b>structural</b> one enumerates <see cref="ExprOperator"/> and demands a verdict for
-    /// every member over the category cross-product, so a new operator cannot ship without a row. The
-    /// <b>lockstep sweep</b> then compiles the real thing: for every operator over every operand pair in the
-    /// decidable categories, it asserts that <see cref="OperatorVerdict.Supported"/> really does compile in the
-    /// native tier and <see cref="OperatorVerdict.NotDefined"/> really does raise a positioned error — the two
-    /// verdicts the generator acts on. <see cref="OperatorVerdict.RequiresRuntimeSemantics"/> means only "do not
-    /// emit" and is deliberately unconstrained: it is the answer for operands whose behavior depends on user-defined
-    /// operators the descriptor does not carry.</para>
+    /// The operator classification table. Structural guard: every ExprOperator/category pair has a verdict.
+    /// Lockstep sweep: compiles and asserts Supported compiles, NotDefined errors, over all decidable pairs.
+    /// RequiresRuntimeSemantics means "do not emit" (user-defined operator behavior).
     /// </summary>
     public class NativeOperatorRulesTests
     {

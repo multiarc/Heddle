@@ -7,11 +7,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The verdict-level pins for the shared region-fill matching rule (<see cref="RegionFillResolver"/>).
-    /// What is pinned here is the shared <em>decision</em>, including its lazy-lookup contract — no region
-    /// table is consulted for a candidate the origin filter rejects.
-    /// <para>The reaction per verdict is a contract: both backends map each verdict to the same observable
-    /// facts (error retraction, fill installation, error raising). This table specifies the contract.</para>
+    /// Pins the shared region-fill decision including its lazy-lookup contract — no region table lookup for candidates the origin filter rejects.
     /// </summary>
     public class RegionFillResolverTests
     {
@@ -86,7 +82,7 @@ namespace Heddle.Tests
             Assert.Equal(new[] { "head=DefaultMissing" }, verdicts);
         }
 
-        [Fact] // pins the lazy layout resolution: a foreign-origin candidate performs no lookup at all
+        [Fact] // Foreign-origin candidate performs no region table lookup.
         public void ForeignOriginCandidateIsFilteredWithoutConsultingTheRegionTable()
         {
             var origin = new ParseContext();
@@ -101,13 +97,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// The reaction contract per verdict. Both backends map a verdict to the same three observable facts:
-        /// whether the candidate's tentative base-not-found error is retracted, whether a fill is installed, and
-        /// whether a new error is raised. The runtime's reactions live in <c>HeddleCompiler.BuildRegionFillScope</c>
-        /// and the generator's in <c>TemplateEmitter.TryBuildGeneratorFillScope</c>; the cross-tier proof that they
-        /// agree is the paired <c>RegionTests</c> fixture (build HED7024 ⇄ runtime HED5019, build-forwarded
-        /// base-not-found ⇄ runtime base-not-found). This table is the specification those two adapters are
-        /// written against.
+        /// Documents the observable reaction facts (error retraction, fill installation, error raising) per verdict.
         /// </summary>
         [Theory]
         [InlineData(RegionFillVerdict.Matched, true, true, false)]
@@ -123,8 +113,7 @@ namespace Heddle.Tests
             Assert.Equal(raisesError, verdict == RegionFillVerdict.Private);
         }
 
-        /// <summary>Every verdict the enum declares has a row in the reaction table above — the guard against a
-        /// new verdict slipping in with an unstated reaction on one tier.</summary>
+        /// <summary>Guards against a verdict added without a defined reaction.</summary>
         [Fact]
         public void EveryVerdictHasAReactionRow()
         {

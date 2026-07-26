@@ -15,8 +15,7 @@ namespace Heddle.LanguageServices
 
         internal ScopeMapView(ScopeMap map, ExType rootType = null)
         {
-            // The root type after compile (post-@model) overrides the first-recorded entry, whose model was the
-            // pre-directive document scope.
+            // Post-@model root type overrides the first-recorded entry.
             RootType = rootType ?? map?.RootType;
             _entries = map?.Entries ?? (IReadOnlyList<ScopeMapEntry>)System.Array.Empty<ScopeMapEntry>();
         }
@@ -30,8 +29,7 @@ namespace Heddle.LanguageServices
         /// </summary>
         public IReadOnlyList<ExType> GetModelTypesAt(int offset)
         {
-            // The innermost containing span is the shortest span that contains the offset. Multiple entries may
-            // share that exact span (one per call site) — return every model type recorded for it.
+            // Find the innermost (shortest) span containing the offset, return all model types recorded for it.
             int bestLength = int.MaxValue;
             int bestOffset = -1;
             foreach (var entry in _entries)

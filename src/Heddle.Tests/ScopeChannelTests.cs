@@ -137,7 +137,6 @@ namespace Heddle.Tests
             Assert.Equal("NONE", t.Generate(null));
         }
 
-        // Directive bodies execute under Scope.Null and must not throw
         [Fact]
         public void DirectiveBodyExecutionUnderScopeNullDoesNotThrow()
         {
@@ -146,7 +145,6 @@ namespace Heddle.Tests
             Assert.Equal("ok", t.Generate(null));
         }
 
-        // Sandbox shape: compiled-parameter delegate carries no Scope
         [Fact]
         public void CompiledParameterDelegateCarriesNoScope()
         {

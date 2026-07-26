@@ -7,12 +7,7 @@ using Xunit;
 
 namespace Heddle.Tests
 {
-    /// <summary>
-    /// The pass-order lockstep: <c>DocumentShaping</c>'s header states the relative order of the shared passes
-    /// as a normative contract. The two drivers are legitimately different programs, so nothing but a test keeps
-    /// them sequencing it the same way. This reads both driver bodies and asserts the shared-pass call sequence
-    /// in each equals the contract. A reordering on one side alone is a red build.
-    /// </summary>
+    /// <summary>Pins that both drivers invoke the shared DocumentShaping passes in contract order.</summary>
     public class DocumentShapingPassOrderLockstepTests
     {
         private static readonly string[] ExpectedOrder =
@@ -72,17 +67,8 @@ namespace Heddle.Tests
             Assert.Equal(ExpectedOrder, SharedPassCalls(shape));
         }
 
-        /// <summary>
-        /// <para>Pin 10's missing half. The success criterion is that the empty-default-chain pin "turns red if
-        /// <b>either</b> side reintroduces the skip", but the only pin that landed —
-        /// <c>Heddle.Generator.Tests.DocumentShaperAdapterTests.EmptyDefaultChainIsModelledAsAZeroLengthElementAtDocumentEnd</c>
-        /// — drives the generator's shaper only, so a runtime-side regression was invisible to it.</para>
-        /// <para>The runtime half is not reachable as a machine-level vector: <c>CompileBody</c>'s default-chain
-        /// element is minted inside the item-compile loop, gated on the chain's own compiled
-        /// <c>returnTypeChainedPrevious</c>. So it is pinned the way this file already pins the pass order — over
-        /// the driver bodies: both must construct the zero-length element at document end, and neither may carry the
-        /// count-based skip the alignment removed.</para>
-        /// </summary>
+        /// <summary>Both drivers must construct a zero-length element at document end for empty default chains
+        /// and neither may reintroduce the count-based skip removed during alignment.</summary>
         [Fact]
         public void NeitherDriverSkipsAnEmptyDefaultChain()
         {
@@ -94,14 +80,12 @@ namespace Heddle.Tests
 
             foreach (var pair in new[] { ("runtime CompileBody", compileBody), ("generator Shape", shape) })
             {
-                // The zero-length element at document end — the shape both tiers model (bytes unaffected; the
-                // element renders nothing, but it defeats RuntimeDocument's single-element fast path identically).
+                // Zero-length element at document end for both tiers.
                 Assert.Contains("BlockPosition(", pair.Item2);
                 Assert.Contains(", 0)", pair.Item2);
                 Assert.Matches(@"new BlockPosition\(\s*\w+(\.\w+)*(\.Length)?,\s*0\s*\)", pair.Item2);
 
-                // ...and no reintroduced skip. `Chain == null || Chain.Count == 0` on the default-chain loop must
-                // not reappear; either side growing it back is red here.
+                // No reintroduced count-based skip on default-chain loop.
                 Assert.DoesNotMatch(@"Chain\s*==\s*null", pair.Item2);
                 Assert.DoesNotMatch(@"Chain\.Count\s*==\s*0", pair.Item2);
                 Assert.DoesNotMatch(@"Count\s*==\s*0", pair.Item2);

@@ -17,8 +17,7 @@ namespace Heddle.Precompiled
     /// </summary>
     public static class PrecompiledRuntime
     {
-        // The renderer grows as needed; the initial capacity is a perf hint only and never changes output bytes.
-        // (The size-adaptive per-template high-water mark HeddleTemplate.Generate keeps is a future refinement.)
+        // Initial capacity is a perf hint only; the renderer grows as needed and never changes output bytes.
         private const int DefaultBufferCapacity = 256;
 
         /// <summary>InitStart-equivalent: installs a generated body on a pre-constructed extension.
@@ -35,15 +34,10 @@ namespace Heddle.Precompiled
             return extension;
         }
 
-        /// <summary>Bind for definition call sites. Constructs the engine-internal definition carrier
-        /// itself — <c>DefinitionBaseExtension</c> is internal to <c>Heddle</c>, so generated code never names it (the
-        /// same public-entry/internal-access posture as <see cref="Bind{TExtension}"/>) — and returns it as
-        /// <see cref="AbstractExtension"/>. The outer carrier's body is the invocation-site caller content; its
-        /// <c>DefinitionParameterTemplate</c> is an inner carrier whose body is the definition body. Props are
-        /// installed on the definition-body scope (the frozen prototype shared when all-constant; each dynamic setter
-        /// runs against the caller view). Both carriers get the baked recursion limit
-        /// (<paramref name="maxRecursionCount"/> = the build's <c>HeddleMaxRecursionCount</c>) that <c>InitStart</c>
-        /// would otherwise read from options — build wins over runtime options.</summary>
+        /// <summary>Bind for definition call sites. Constructs the engine-internal definition carrier and
+        /// returns it as <see cref="AbstractExtension"/>. Outer carrier body is caller content; inner carrier's body
+        /// is the definition body. Props install on definition-body scope. The build's
+        /// <paramref name="maxRecursionCount"/> (= <c>HeddleMaxRecursionCount</c>) takes precedence over runtime options.</summary>
         public static AbstractExtension BindDefinition(IProcessStrategy body, IProcessStrategy callerContent,
             object[] props, PrecompiledPropSetter[] dynamicSetters, RenderType renderType, bool needsLocals,
             int maxRecursionCount, int line, int column)
@@ -59,17 +53,10 @@ namespace Heddle.Precompiled
             => BindDefinition(body, callerContent, props, dynamicSetters, renderType, needsLocals, needsLocals,
                 slotMode, maxRecursionCount, line, column);
 
-        /// <summary>
-        /// Per-carrier locals overload. The two carriers a definition call site builds
-        /// host <b>different</b> documents — the inner carrier the definition body, the outer carrier the invocation
-        /// site's caller content — and the dynamic tier derives each one's frame-provisioning flag from its own
-        /// <c>RuntimeDocument.NeedsLocals</c> (<c>AbstractExtension.InitStart</c>). The older overloads apply one
-        /// flag to both, which suppresses the deliberate frame-<i>clearing</i> a non-participating body gets under a
-        /// provisioned parent (<c>AbstractExtension.GetInnerResult</c>) — that is a behavior change, not a harmless
-        /// over-provision, so the flags are split here.
-        /// <para>The existing overloads are retained and unchanged: assemblies emitted by older generator versions
-        /// keep binding, and passing the same value twice is byte-identical to them.</para>
-        /// </summary>
+        /// <summary>Per-carrier locals overload. The two carriers host different documents (inner = definition body,
+        /// outer = caller content) with independent frame-provisioning flags from <c>RuntimeDocument.NeedsLocals</c>.
+        /// Older overloads apply one flag to both, which suppresses deliberate frame-clearing under provisioned parents
+        /// — a behavior change. Old overloads remain for compatibility with assemblies from older generator versions.</summary>
         /// <param name="bodyNeedsLocals">Frame provisioning for the definition <b>body</b> (the inner carrier).</param>
         /// <param name="callerContentNeedsLocals">Frame provisioning for the invocation site's <b>caller content</b>
         /// (the outer carrier).</param>
@@ -84,8 +71,6 @@ namespace Heddle.Precompiled
             inner.SetMaxRecursion(maxRecursionCount);
 
             var outer = new DefinitionBaseExtension { DefinitionParameterTemplate = inner };
-            // The outer carrier's body is the caller content; it is pre-rendered onto the chained channel (non-slot)
-            // or projected lazily via the SlotContent carrier (slot mode).
             outer.BindPrecompiled(callerContent, renderType, callerContentNeedsLocals, position);
             outer.SetMaxRecursion(maxRecursionCount);
             outer.SlotMode = slotMode;
@@ -94,15 +79,11 @@ namespace Heddle.Precompiled
             return outer;
         }
 
-        /// <summary>Bind for parameter-declaring extension call sites. Constructs the engine-internal
-        /// <c>ExtensionParameterCarrier</c> itself (it is internal to <c>Heddle</c> — the same public-entry/
-        /// internal-access posture as <see cref="BindDefinition"/>) and returns it as <see cref="AbstractExtension"/>.
-        /// The <paramref name="renderType"/> — the generator-computed <c>Encode</c>/<c>Raw</c> derived from the
-        /// extension's <c>[EncodeOutput]</c>/<c>[NotEncode]</c> — is applied to the <b>inner</b> extension via
-        /// <c>BindPrecompiled</c>, exactly as the dynamic tier's <c>InitializeTemplate</c> → <c>SetUpRenderType</c>
-        /// lands it before the carrier wraps — the carrier is transparent: an <c>[EncodeOutput]</c> inner self-encodes
-        /// on both tiers. Called once from a generated static initializer (thread-safe via CLR type-init); nothing
-        /// is mutated after it returns.</summary>
+        /// <summary>Bind for parameter-declaring extension call sites. Constructs and returns an engine-internal
+        /// <c>ExtensionParameterCarrier</c> as <see cref="AbstractExtension"/>. The <paramref name="renderType"/>
+        /// (from extension's <c>[EncodeOutput]</c>/<c>[NotEncode]</c>) applies to the inner extension; the carrier
+        /// is transparent to render type. Called once from generated static initializer (thread-safe via CLR type-init);
+        /// nothing mutated after return.</summary>
         public static AbstractExtension BindExtension<TExtension>(TExtension extension, object[] props,
             PrecompiledPropSetter[] dynamicSetters, string[] parameterNames, RenderType renderType, bool needsLocals,
             int line, int column)
@@ -119,12 +100,9 @@ namespace Heddle.Precompiled
             return carrier;
         }
 
-        /// <summary>Binds an <see cref="OutExtension"/> call site. <paramref name="slotMode"/> puts
-        /// the carrier in slot-projection mode — a slot-declaring definition body's <c>@out(value)</c> projects the
-        /// invocation-site caller content through the <c>SlotContent</c> carrier instead of splicing the pre-rendered
-        /// chained content — reproducing what <c>OutExtension.InitStart</c> derives from
-        /// <c>CompileContext.SlotParameterType</c> (which <c>BindDefinition</c> bypasses). The dynamic path is
-        /// unchanged: this setter is only reached from generated static initializers.</summary>
+        /// <summary>Binds an <see cref="OutExtension"/> call site. <paramref name="slotMode"/> puts the carrier
+        /// in slot-projection mode: <c>@out(value)</c> projects caller content through <c>SlotContent</c> carrier
+        /// instead of splicing pre-rendered chained content. Only reached from generated static initializers.</summary>
         public static Heddle.Extensions.OutExtension BindOut(Heddle.Extensions.OutExtension extension, bool slotMode,
             int line, int column)
         {
@@ -260,19 +238,16 @@ namespace Heddle.Precompiled
             }
         }
 
-        // Wrap the sink in the budget seam when the ambient options carry a RenderBudget; otherwise return the
-        // bare sink unchanged (null path = no wrapper, no allocation). The wrapper enforces the same limits the
-        // dynamic engine's HeddleTemplate.Generate does, so both backends throw identically.
+        // Wrapper enforces same render budget limits as dynamic engine — both backends throw identically.
         private static IScopeRenderer WithBudget(IScopeRenderer sink)
         {
             var budget = _ambientOptions?.RenderBudget;
             return budget == null ? sink : new BudgetedRenderer(sink, budget);
         }
 
-        /// <summary>The single piece-write hook for generated bodies: writes the pre-encoded u8 twin when
-        /// the scope's renderer is a UTF-8 sink, the string form otherwise — including under encode proxies, which are
-        /// deliberately not <see cref="IUtf8ScopeRenderer"/>, so pre-encoded bytes never bypass an active
-        /// proxy. The only u8/string decision point in generated code.</summary>
+        /// <summary>Writes pre-encoded u8 for UTF-8 sinks, string otherwise. Encode proxies are deliberately not
+        /// <see cref="IUtf8ScopeRenderer"/> so pre-encoded bytes never bypass a proxy. The only u8/string decision
+        /// point in generated code.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void WritePiece(in Scope scope, string piece, ReadOnlySpan<byte> utf8Piece)
         {
@@ -282,8 +257,7 @@ namespace Heddle.Precompiled
                 scope.Renderer.Render(piece);
         }
 
-        // The ambient options a generated @partial resolves against. Thread-static so concurrent renders
-        // never share it; read only by ResolvePartial, so the dynamic path is untouched.
+        // Thread-static so concurrent renders never share ambient options; dynamic path only reads this, untouched.
         [ThreadStatic] private static TemplateOptions _ambientOptions;
 
         /// <summary>Registry-then-dynamic-compile partial resolution against the ambient options, dynamic child
@@ -341,21 +315,12 @@ namespace Heddle.Precompiled
                 scope.Renderer.Render(_template.Generate(scope.ModelData, scope.ChainedData));
         }
 
-        /// <summary>
-        /// One dynamic member hop — the single implementation of the dynamic tier's member access, shared by the
-        /// engine and by generated precompiled code.
-        /// <para>A <c>null</c> receiver propagates <c>null</c>, exactly like the engine's per-hop
-        /// <c>Condition(input == null, null, Dynamic(GetMember …))</c>, so a chain of these calls reproduces the
-        /// dynamic member path hop for hop.</para>
-        /// <para><b>Binder context.</b> The member is bound in <b>Heddle's</b> assembly context, not the calling
-        /// assembly's. Generated code used to emit an inline <c>(dynamic)</c> cast chain, which binds in the
-        /// consumer's context and therefore resolved the consumer's <c>internal</c> members — members the engine's
-        /// own dynamic tier cannot see. Routing both tiers through this helper makes that choice exist once.
-        /// Note the deliberate asymmetry it preserves: the <i>typed</i> member tier accepts an <c>internal</c>
-        /// getter regardless of assembly, while the dynamic tier does not. Reproducing the engine's behavior is
-        /// deliberate; harmonizing the two tiers would widen visibility and is a breaking change.</para>
-        /// <para>Thread-safe: call sites are cached per member name and the DLR's own polymorphic inline cache
-        /// handles the per-receiver-type dispatch.</para>
+        /// <summary>Single dynamic member hop — shared single implementation of dynamic tier's member access.
+        /// <para><c>null</c> receiver propagates <c>null</c>, reproducing engine's per-hop behavior.</para>
+        /// <para><b>Binder context:</b> bound in Heddle's assembly, not caller's. This prevents seeing caller's
+        /// <c>internal</c> members. Asymmetry with typed tier is deliberate and preserved for back-compat: widening
+        /// visibility would be a breaking change.</para>
+        /// <para>Thread-safe: sites cached per member name; DLR polymorphic inline cache handles dispatch.</para>
         /// </summary>
         /// <param name="receiver">The object to read the member from; <c>null</c> yields <c>null</c>.</param>
         /// <param name="name">The member name, ordinal and case-sensitive.</param>
@@ -380,8 +345,7 @@ namespace Heddle.Precompiled
         private static System.Runtime.CompilerServices.CallSite<Func<System.Runtime.CompilerServices.CallSite, object, object>>
             CreateMemberSite(string name)
         {
-            // typeof(Runtime.Parameters.DynamicParameter) is the engine's own binder context — the same type the
-            // dynamic tier passes, so both tiers see the identical member set.
+            // Same binder context as dynamic tier so both tiers see identical member set.
             var binder = Microsoft.CSharp.RuntimeBinder.Binder.GetMember(
                 Microsoft.CSharp.RuntimeBinder.CSharpBinderFlags.None, name,
                 typeof(Runtime.Parameters.DynamicParameter),

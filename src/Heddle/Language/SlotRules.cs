@@ -1,17 +1,7 @@
 namespace Heddle.Language
 {
     /// <summary>
-    /// The two slot rules, written once. Both are pure functions of
-    /// already-linked parse types, so this is genuinely shared code on both tiers rather than a pinned table:
-    /// <list type="bullet">
-    /// <item><description><see cref="HasOutValue"/> — the canonical five-way "does this <c>@out</c> carry a
-    /// value?" test, previously private to <c>OutExtension</c> and approximated in the emitter by
-    /// <c>!IsModelTypeParameter</c> plus two special cases. The approximation happened to agree today and would
-    /// have stopped agreeing at the next <see cref="CallParameter"/> carrier.</description></item>
-    /// <item><description><see cref="SlotTypeName"/>/<see cref="HasSlot"/> — the first declared <c>out::</c> down
-    /// the base chain, which the runtime's <c>HeddleCompiler.ResolveSlotType</c> and two emitter copies each
-    /// spelled out.</description></item>
-    /// </list>
+    /// Slot rules shared between runtime and emitter tiers: <see cref="HasOutValue"/>, <see cref="SlotTypeName"/>, and <see cref="HasSlot"/>.
     /// </summary>
     internal static class SlotRules
     {

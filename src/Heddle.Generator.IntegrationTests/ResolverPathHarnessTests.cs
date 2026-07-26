@@ -3,12 +3,7 @@ using Xunit;
 
 namespace Heddle.Generator.IntegrationTests
 {
-    /// <summary>
-    /// <see cref="DifferentialHarness.RenderViaResolver"/>'s own coverage: templates render byte-identically to the dynamic
-    /// engine through the full registration → resolver → per-request gauntlet → precompiled-adapter seam, in both sub-modes
-    /// (registry-only and file-backed with the staleness check on). This is the seam the direct-invoke harness bypasses:
-    /// <c>Register</c>, <c>ConsultPrecompiled</c>, and every <c>PrecompiledGauntlet</c> check.
-    /// </summary>
+    /// <summary>Templates render byte-identically to dynamic engine through the registration → resolver → gauntlet → adapter seam, in both sub-modes (registry-only and file-backed).</summary>
     [Collection("PrecompiledRegistry")]
     public class ResolverPathHarnessTests : PrecompiledRegistryTestBase
     {
@@ -39,8 +34,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal(dyn, precompiled);
         }
 
-        /// <summary>A model-less template with no <c>@model</c> directive still crosses the gauntlet — the sub-mode
-        /// that corpus processing uses for every entry.</summary>
+        /// <summary>Model-less templates (no <c>@model</c> directive) cross the gauntlet, as corpus processing requires.</summary>
         [Fact]
         public void ModelLessTemplate_CrossesTheGauntlet()
         {

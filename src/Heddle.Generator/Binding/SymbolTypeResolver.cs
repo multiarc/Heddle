@@ -41,15 +41,8 @@ namespace Heddle.Generator.Binding
             public ITypeSymbol ResultType;
         }
 
-        /// <summary>The Roslyn-side projection of the shared alias table. It cannot reuse the
-        /// <see cref="System.Type"/> values <c>CSharpTypeNames</c> carries, so it is an adapter — but its
-        /// <b>key set</b> is asserted equal to <c>CSharpTypeNames.AliasNames</c> in full. Adding an alias to one
-        /// side without the other is a red build rather than a silent divergence between what a template may
-        /// write and what the build tier binds.
-        /// <para><c>dynamic</c> is now a key here, mapped to <c>System.Object</c> — which is exactly what the
-        /// runtime's alias table resolves it to (<c>CSharpTypeNames</c> maps it to <c>typeof(object)</c>). Leaving
-        /// it out was a build-tier-only refusal of a spelling the run tier accepts, and "match the runtime exactly"
-        /// leaves no room for it.</para></summary>
+        /// <summary>The Roslyn-side projection of the shared alias table; key set must match runtime's CSharpTypeNames.
+        /// <c>dynamic</c> maps to <c>System.Object</c> to match the runtime exactly.</summary>
         internal static readonly Dictionary<string, SpecialType> Keywords = new Dictionary<string, SpecialType>
         {
             ["bool"] = SpecialType.System_Boolean, ["byte"] = SpecialType.System_Byte,
@@ -62,31 +55,16 @@ namespace Heddle.Generator.Binding
             ["string"] = SpecialType.System_String, ["dynamic"] = SpecialType.System_Object,
         };
 
-        /// <summary>The last <see cref="ResolveModelType"/> call's failure class — <c>Ambiguous</c> is the
-        /// build-time twin of the runtime's "the type name is ambigous" throw and surfaces as <c>HED7023</c>;
-        /// everything else stays a quiet degrade (or <c>HED7007</c> where the caller already guards).</summary>
+        /// <summary>The last ResolveModelType failure class.</summary>
         public TypeSpellingFault LastFault { get; private set; }
 
-        /// <summary>
-        /// Model-type resolution now runs the <b>shared</b> spelling parser (<see cref="TypeSpelling"/>) over
-        /// the <b>runtime's</b> lookup rule (<see cref="SymbolTypeIndex"/>). Three things change:
-        /// <list type="bullet">
-        /// <item><description>generic, array, tuple and dotted-nested spellings resolve at all — the build tier
-        /// supported none of them, so whole feature areas silently never precompiled;</description></item>
-        /// <item><description>the unilateral implicit <c>System</c>/<c>System.Collections.Generic</c> fallback is
-        /// gone: the runtime has no implicit namespaces, and a name resolvable only through them used to bind on
-        /// one tier and not the other;</description></item>
-        /// <item><description>a name several types answer to, unsettled by the <c>@using</c> imports, is
-        /// <see cref="TypeSpellingFault.Ambiguous"/> — the runtime's own verdict — rather than a pick.</description></item>
-        /// </list>
-        /// </summary>
+        /// <summary>Resolves model types using the shared spelling parser over the runtime's lookup rule.</summary>
         public ITypeSymbol ResolveModelType(string text, IReadOnlyList<string> usings)
         {
             LastFault = TypeSpellingFault.None;
             if (string.IsNullOrEmpty(text))
                 return null;
 
-            // Nullable suffix (T?): resolve the underlying, then construct System.Nullable<T> for value types.
             if (text.Length > 1 && text[text.Length - 1] == '?')
             {
                 var underlying = ResolveModelType(text.Substring(0, text.Length - 1).Trim(), usings);
@@ -106,8 +84,7 @@ namespace Heddle.Generator.Binding
             return null;
         }
 
-        /// <summary>The Roslyn <see cref="ITypeLookup{TType}"/> adapter: keyword aliases, then the runtime's
-        /// index rule, then the generic/array construction Roslyn expresses natively.</summary>
+        /// <summary>The Roslyn ITypeLookup adapter over keyword aliases and the runtime's index rule.</summary>
         private sealed class SymbolTypeLookup : ITypeLookup<ITypeSymbol>
         {
             private readonly Compilation _compilation;
@@ -163,13 +140,7 @@ namespace Heddle.Generator.Binding
             }
         }
 
-        /// <summary>
-        /// Whether <b>any</b> type whose name matches <paramref name="text"/> (its final dotted segment) exists in the
-        /// compilation or its referenced assemblies. Milestone 2 uses this as the <c>HED7007</c> guard: the runtime
-        /// resolves a bare model type name by scanning loaded assemblies, so a name that <see cref="ResolveModelType"/>
-        /// cannot bind (no namespace, no <c>@using</c>) may still be a perfectly valid type the dynamic path renders.
-        /// Only when <b>no</b> such type exists anywhere is the declaration a genuine typo worth erroring.
-        /// </summary>
+        /// <summary>Checks whether any type named <paramref name="text"/> exists in the compilation or references.</summary>
         public bool TypeNameExistsAnywhere(string text)
         {
             if (string.IsNullOrEmpty(text))
@@ -250,23 +221,7 @@ namespace Heddle.Generator.Binding
             return result;
         }
 
-        /// <summary>
-        /// Member lookup is now the <b>shared</b> <see cref="MemberPathWalk"/> driven through the Roslyn
-        /// <see cref="SymbolMemberModel"/> adapter, closing three verified divergences — all of which ran in the
-        /// dangerous direction, because the same resolver drives <i>emission</i>, so extra permissiveness became
-        /// emitted typed code the dynamic tier rejects:
-        /// <list type="number">
-        /// <item><description><c>Accessibility.ProtectedOrInternal</c> was accepted here and rejected by the
-        /// runtime's <c>getter.IsAssembly || getter.IsPublic</c>. The runtime's narrower sandbox is normative
-        /// and the generator tightens;</description></item>
-        /// <item><description>an <c>internal</c> getter declared on a <b>base</b> class was accepted here, while
-        /// <c>Type.GetProperty</c> never surfaces an inherited non-public property — the shared table's
-        /// <c>declaredOnReceiver</c> row;</description></item>
-        /// <item><description>the interface root's <c>AllInterfaces</c> walk surfaced base-interface members
-        /// <c>Type.GetProperty</c> on an interface does not — the adapter now supplies no base-interface closure,
-        /// matching the reflection adapter.</description></item>
-        /// </list>
-        /// </summary>
+        /// <summary>Member lookup uses the shared MemberPathWalk through a Roslyn adapter, aligned with runtime behavior.</summary>
         private static IPropertySymbol FindProperty(ITypeSymbol type, string name) =>
             MemberPathWalk.TryFind(SymbolMemberModel.Instance, type, name, out var found) ? found : null;
 
@@ -275,9 +230,7 @@ namespace Heddle.Generator.Binding
         {
             internal static readonly SymbolMemberModel Instance = new SymbolMemberModel();
 
-            /// <summary>The real attribute, by <b>fully-qualified metadata name</b>. The old check matched any
-            /// attribute merely <i>named</i> <c>HiddenAttribute</c>, from any namespace, so a foreign attribute of
-            /// that name hid a member at build time that the runtime exposed. Matching any namespace is not sound.</summary>
+            /// <summary>The Hidden attribute by fully-qualified name to avoid foreign attributes.</summary>
             private const string HiddenAttributeFullName = "Heddle.Attributes.HiddenAttribute";
 
             public bool IsDynamic(ITypeSymbol type) => type != null && type.TypeKind == TypeKind.Dynamic;
@@ -305,8 +258,7 @@ namespace Heddle.Generator.Binding
 
             public bool IsInterface(ITypeSymbol type) => type.TypeKind == TypeKind.Interface;
 
-            /// <summary>Deliberately empty, mirroring the reflection adapter: <c>Type.GetProperty</c> on an
-            /// interface does not search base interfaces, and that narrower behavior matches what the runtime does.</summary>
+            /// <summary>Deliberately empty: mirrors reflection where GetProperty on an interface does not search base interfaces.</summary>
             public IEnumerable<ITypeSymbol> BaseInterfaces(ITypeSymbol type)
             {
                 yield break;
@@ -344,9 +296,7 @@ namespace Heddle.Generator.Binding
             }
         }
 
-        /// <summary>The <c>Nullable&lt;T&gt;</c> test, unified to avoid multiple spellings. Both
-        /// <c>ConstructedFrom</c> and <c>OriginalDefinition</c> now go through the one Roslyn <c>ITypeFacts</c>
-        /// adapter.</summary>
+        /// <summary>Tests whether a type is non-nullable value type; unified to avoid multiple spellings.</summary>
         public static bool IsNonNullableValueType(ITypeSymbol type)
         {
             if (type == null || !type.IsValueType)

@@ -14,14 +14,8 @@ using RenderTypeRules = gen::Heddle.Data.RenderTypeRules;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// <c>[EncodeOutput]</c> + <c>[NotEncode]</c> on one extension is <b>not a declarable state</b>. <c>NotEncodeAttribute</c>
-    /// is <c>AttributeTargets.Property</c>, so co-declaring it with the class-targeted <c>[EncodeOutput]</c> is <b>CS0592</b> —
-    /// a C# compiler <em>error</em>, raised in the extension author's own project. The one state the pair can be observed in is
-    /// forged/IL-authored metadata, and there both tiers already agree (the shared <see cref="RenderTypeRules.Derive"/> answers
-    /// <see cref="RenderType.Raw"/> — indistinguishable from carrying neither attribute), so there is no tier divergence for a
-    /// use-site error to close either.
-    /// <para>If <c>NotEncodeAttribute</c>'s targets widen, the contradiction becomes declarable and new diagnostics would become
-    /// implementable and required — re-open the register entry if that changes.</para>
+    /// [EncodeOutput] + [NotEncode] is not declarable (CS0592, different attribute targets).
+    /// Pair observable only in forged metadata, where both tiers agree (RenderType.Raw).
     /// </summary>
     public class ContradictoryEncodingAttributeTests
     {
@@ -72,9 +66,7 @@ namespace Contradiction
             var tpa = (string) AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
             var refs = tpa.Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
-                // Heddle.Generator is an analyzer, never a reference; it also carries linked copies of runtime
-                // types, which would make those names ambiguous (CS0433) beside Heddle.dll. Same filter the
-                // other symbol suites apply.
+                // Heddle.Generator is analyzer-only; linked copies create CS0433 ambiguity with Heddle.dll.
                 .Where(p => !string.Equals(Path.GetFileNameWithoutExtension(p), "Heddle.Generator",
                     StringComparison.OrdinalIgnoreCase))
                 .Select(p => (MetadataReference) MetadataReference.CreateFromFile(p))
@@ -89,9 +81,7 @@ namespace Contradiction
                 new[] { CSharpSyntaxTree.ParseText(source) }, References,
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        /// <summary>The declaration-side surface is already occupied by the C# compiler at error severity: CS0592 is the
-        /// <b>only</b> error the contradictory declaration produces, and removing the impossible attribute makes the same
-        /// declaration compile clean.</summary>
+        /// <summary>CS0592 is the only error; removing [NotEncode] makes the declaration compile.</summary>
         [Fact]
         public void TheContradictoryDeclarationIsAlreadyACSharpCompilerError()
         {
@@ -106,11 +96,8 @@ namespace Contradiction
                 .Where(d => d.Severity == DiagnosticSeverity.Error));
         }
 
-        /// <summary>The binder's symbol-side read of the pair, for the one state it is observable in: Roslyn records
-        /// an invalidly-applied attribute on the symbol, so <c>HasNotEncode</c> can be true — but only in a
-        /// compilation that is already failing CS0592. So a use-site error could never be the diagnostic standing
-        /// between an author and a green build, and the verdict it would fire over is one both tiers already share.
-        /// </summary>
+        /// <summary>Binder sees the pair only in failing compilations (CS0592); no use-site error is possible
+        /// and both tiers agree on the verdict.</summary>
         [Fact]
         public void TheBinderOnlySeesThePairInAnAlreadyFailingCompilation()
         {
@@ -121,14 +108,12 @@ namespace Contradiction
             Assert.True(ExtensionBinder.Build(contradictory).TryResolve("contradiction", out var info));
             Assert.True(info.HasEncodeOutput);
             Assert.True(info.HasNotEncode);
-            // The shared truth table over that pair — the same function the run tier evaluates over the reflected
-            // flags. Raw, i.e. exactly what an extension carrying neither attribute derives: nothing diverges.
+            // Both tiers derive RenderType.Raw for that pair (same as neither attribute).
             Assert.Equal(RenderType.Raw, RenderTypeRules.Derive(info.HasEncodeOutput, info.HasNotEncode));
             Assert.Equal(RenderTypeRules.Derive(false, false),
                 RenderTypeRules.Derive(info.HasEncodeOutput, info.HasNotEncode));
 
-            // The declarable shape derives Encode, so the assertion above is about the veto and not about a
-            // binder that reads no attributes at all.
+            // Declarable shape derives Encode; tests the veto, not a null-reading binder.
             Assert.True(ExtensionBinder.Build(Compile(EncodeOnlySource)).TryResolve("contradiction", out var sane));
             Assert.True(sane.HasEncodeOutput);
             Assert.False(sane.HasNotEncode);

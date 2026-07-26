@@ -8,13 +8,8 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The <b>reflection-side</b> driver of the shared <see cref="PropLayoutCore"/>. Its twin in
-    /// <c>Heddle.Generator.Tests</c> feeds the identical declaration lists through the Roslyn adapter and asserts
-    /// the same slot order and the same ordered fault sequence; the two files together are what "one wire format,
-    /// one implementation" means operationally.
-    /// <para>The shapes are the differential set: a deep chain past <c>object</c>, a multi-fault
-    /// declaration list, an inherited re-declaration with default re-application, and the unusable-type variants
-    /// including by-ref (the arm the build tier's local predicate never had).</para>
+    /// Reflection-side driver of <see cref="PropLayoutCore"/>, paired with a generator-side twin to assert
+    /// identical slot order and fault sequences across the two implementations.
     /// </summary>
     public class PropLayoutCoreReflectionTests
     {
@@ -136,8 +131,7 @@ namespace Heddle.Tests
         [Fact]
         public void ByRefAndPointerTypesAreRejected()
         {
-            // The two arms the generator's local predicate was missing entirely (by-ref) or under-matching
-            // (IsUnboundGenericType instead of ContainsGenericParameters).
+            // By-ref and unbounded generics were missing from the generator's local predicate.
             var sink = new RecordingSink();
             PropLayoutCore.Build(new[]
             {

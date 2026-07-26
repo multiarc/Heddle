@@ -82,9 +82,7 @@ namespace Heddle.Runtime.Expressions
             return $"{Name}({string.Join(", ", ParameterTypes.Select(FriendlyName))})";
         }
 
-        /// <summary>Signature text for HED1012/HED1013. The alias table is shared so the spelling a
-        /// user reads in a signature error is the spelling the editor's completion list and the build tier's
-        /// binder use for the same type; the fallback stays this site's own.</summary>
+        /// <summary>Signature text for HED1012/HED1013 (uses shared alias table for consistency with editor completion).</summary>
         private static string FriendlyName(Type type) =>
             Helpers.CSharpTypeNames.TryGetDisplayName(type, out var name) ? name : type.Name;
     }

@@ -7,12 +7,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The two slot rules, now shared. The five-way <see cref="SlotRules.HasOutValue"/> theory is the important
-    /// half: the emitter used to approximate it as <c>!IsModelTypeParameter || first-segment-non-empty ||
-    /// any-prop-arguments</c>, which agreed with the canonical test on every shape that exists <em>today</em> and
-    /// would have stopped agreeing the moment a sixth carrier was added to <see cref="CallParameter"/>. The rows
-    /// below enumerate all five carriers plus the "nothing" case, so the shared implementation is the thing under
-    /// test rather than the agreement.
+    /// Pins the shared slot rules, particularly <see cref="SlotRules.HasOutValue"/>, which enumerates all five carriers of <see cref="CallParameter"/> plus the "nothing" case.
     /// </summary>
     public class SlotRulesTests
     {
@@ -29,33 +24,27 @@ namespace Heddle.Tests
 
         public static IEnumerable<object[]> OutValueShapes()
         {
-            // native expression
             yield return new object[]
             {
                 "native expression",
                 new CallParameter { NativeExpression = new LiteralNode(1, new BlockPosition(0, 1)) }, true
             };
-            // chain parameter
             yield return new object[]
             {
                 "chain parameter",
                 new CallParameter { ChainParameter = new List<OutputItem>() }, true
             };
-            // C# expression
             yield return new object[]
             {
                 "C# expression", new CallParameter { CSharpExpression = "1 + 1" }, true
             };
-            // named prop arguments
             yield return new object[]
             {
                 "prop arguments",
                 new CallParameter { PropArguments = new List<NamedArgument>() }, true
             };
-            // non-empty first model segment
             yield return new object[] { "model path", Model("Name"), true };
             yield return new object[] { "multi-hop model path", Model("A", "B"), true };
-            // the "nothing" shapes
             yield return new object[] { "no parameter at all", new CallParameter(), false };
             yield return new object[] { "empty segment array", Model(), false };
             yield return new object[] { "empty first segment", Model(""), false };
@@ -70,9 +59,7 @@ namespace Heddle.Tests
             Assert.NotNull(label);
         }
 
-        /// <summary>An <em>empty but non-null</em> <c>PropArguments</c> list is the one row where the emitter's
-        /// old approximation (<c>Count != 0</c>) disagreed with the canonical test (<c>!= null</c>). The runtime is
-        /// normative, so the shared rule keeps the null check; this row pins the resolved direction.</summary>
+        /// <summary>Empty but non-null <c>PropArguments</c> counts as a value (checks null, not count).</summary>
         [Fact]
         public void EmptyButPresentPropArgumentsCountAsAValue()
         {
@@ -116,8 +103,7 @@ namespace Heddle.Tests
             Assert.False(SlotRules.HasSlot(null));
         }
 
-        /// <summary>An empty (not null) declared slot type is "no slot": the walk skips it and keeps going, which
-        /// is what lets a middle layer declare nothing without hiding its base's slot.</summary>
+        /// <summary>Empty (non-null) declared slot type is skipped; lets a middle layer declare nothing without hiding its base's slot.</summary>
         [Fact]
         public void AnEmptySlotTypeNameIsSkipped()
         {

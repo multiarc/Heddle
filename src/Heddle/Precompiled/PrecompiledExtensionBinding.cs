@@ -20,18 +20,9 @@ namespace Heddle.Precompiled
 
         /// <summary>
         /// A fingerprint of the extension's resolved <c>[Prop]</c> slot layout — the ordered
-        /// <c>name:&lt;slot type AQN&gt;</c> pairs, joined with <c>|</c> — or <c>null</c> for an extension that
-        /// declares no parameters — the row is then omitted entirely rather than emitted empty.
-        /// <para>Slot <b>indices</b> are the wire format between the generator's frozen <c>object[]</c> prototype
-        /// and the runtime's <c>ExtensionParameterCarrier</c>, and until this row existed they were the one
-        /// wire-format contract with <b>no</b> gauntlet coverage: the gauntlet checked options, extension identity,
-        /// functions and staleness, so a layout disagreement was silent wrong rendered output rather than a
-        /// fallback. Sharing <c>PropLayoutCore</c> makes a disagreement much harder; this row makes it
-        /// <i>visible</i> when one happens anyway (a referenced extension package changing its <c>[Prop]</c> set
-        /// without the templates being regenerated is the live case).</para>
-        /// <para>The check is vacuous when the value is <c>null</c>, so older manifests keep passing — the schema
-        /// evolution stays inside the <c>Min</c>/<c>Max</c> compatibility predicate and no
-        /// re-precompilation is forced.</para>
+        /// <c>name:&lt;slot type AQN&gt;</c> pairs, joined with <c>|</c> — or <c>null</c> for extensions with no parameters.
+        /// Enables detection of layout disagreements (e.g., a referenced extension package changing its <c>[Prop]</c> set
+        /// without regeneration). The check is vacuous when <c>null</c>, so schema evolution stays backward compatible.
         /// </summary>
         public string PropLayoutFingerprint { get; }
     }

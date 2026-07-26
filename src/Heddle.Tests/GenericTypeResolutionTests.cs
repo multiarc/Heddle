@@ -158,7 +158,6 @@ namespace Heddle.Tests
         {
             Configure();
             Assert.Same(typeof(int[][][]), ReflectionHelper.ResolveType("int[][][]"));
-            // Whitespace between suffix pairs is tolerated (each pair is trimmed as it is peeled).
             Assert.Same(typeof(int[][]), ReflectionHelper.ResolveType("int[] []"));
         }
 

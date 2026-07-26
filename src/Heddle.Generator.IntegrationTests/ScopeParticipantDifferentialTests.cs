@@ -3,16 +3,9 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// The <c>needsLocals</c> parity fixtures.
-    /// <para>A definition call site builds <b>two</b> carriers that host two different documents: the inner one holds
-    /// the definition body, the outer one holds the invocation site's caller content. The dynamic tier derives each
-    /// carrier's frame-provisioning flag from its own document (<c>AbstractExtension.InitStart</c> →
-    /// <c>RuntimeDocument.NeedsLocals</c>). The emitter used to OR the two flags together and hand the result to both
-    /// carriers, which is not a harmless over-provision: <c>needsLocals: false</c> instructs <c>AbstractExtension.GetInnerResult</c>
-    /// to hand a <em>cleared</em> frame to a non-participating body, and the OR replaced that with a fresh one.</para>
-    /// <para>The fixtures assert the <b>dynamic</b> tier's bytes. <c>@flag</c> publishes opportunistically and <c>@peek</c>
-    /// reads, and neither carries <c>[ScopeChannel]</c>, so a body holding only those two is non-participating on both tiers
-    /// and its rendered text reports whether it was given a frame.</para>
+    /// The <c>needsLocals</c> parity fixtures. Definition call sites build two carriers (inner body, outer caller
+    /// content), each provisioning its frame independently. This validates the fix to the bug where flags were ORed
+    /// together instead of kept separate per carrier.
     /// </summary>
     public class ScopeParticipantDifferentialTests
     {
@@ -81,10 +74,8 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// scope-selfcall-participant — the <c>GetOrBuildDefinitionBody</c> pre-mark path under the shared
-        /// recursive scan: a definition whose body both hosts a participant and calls itself. The pre-mark exists
-        /// so the self-call encountered mid-population bakes the right flag; this fixture is what would catch it
-        /// baking the wrong one.
+        /// A definition whose body both hosts a participant and calls itself; the pre-mark flag must survive the
+        /// mid-population self-call to avoid baking the wrong flag.
         /// </summary>
         [Fact]
         public void SelfCallingDefinitionWithAParticipant()

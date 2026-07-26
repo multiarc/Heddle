@@ -66,8 +66,7 @@ namespace Heddle.Generator.Tests
             gen::Heddle.Data.HeddleDiagnosticCatalog.TryGet("HED2004", out var row);
             Assert.Equal(row.Title, GeneratorDiagnostics.Forwarded("HED2004", true).Title.ToString());
 
-            // An id the catalog does not know (a future front-end id built against an older generator) still
-            // forwards under its own id rather than collapsing — the identity is what matters.
+            // Unknown ids still forward under their own id—identity is preserved.
             Assert.Equal("HED9999", GeneratorDiagnostics.Forwarded("HED9999", true).Id);
         }
     }

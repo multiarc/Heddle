@@ -33,20 +33,14 @@ namespace Heddle.Language.Binding
         /// ordinary method can never be special-name, so the mapping is conservative in the safe direction).</summary>
         public bool IsSpecialName;
 
-        /// <summary>Ordered parameter-type keys, in whatever spelling the adapter uses for signature identity
-        /// (reflection: <c>Type.FullName</c>; Roslyn: the same, through the shared display format). Two
-        /// registrations with equal keys are the same signature and <b>replace</b> rather than add an overload.</summary>
+        /// <summary>Parameter-type keys for signature identity. Equal keys mean same signature, causing replacement not overload.</summary>
         public IReadOnlyList<string> ParameterTypeKeys;
     }
 
     /// <summary>
-    /// The <c>[ExportFunctions]</c> eligibility, naming and merge rules, stated once.
-    /// <para>Runtime authority is <c>FunctionRegistry.RegisterContainer</c>/<c>Register</c>/<c>AddOrReplace</c>. The
-    /// generator's transcription silently skipped ineligible containers, counted methods the runtime <em>refuses</em>
-    /// (its per-function overload count included <c>void</c>, open-generic and by-ref methods), and gave a function
-    /// name exclusively to the first container that claimed it. Because the gauntlet compares overload counts
-    /// <b>exactly</b>, one <c>void Log(string)</c> helper in an export container permanently un-precompiled every
-    /// template calling any function from it.</para>
+    /// The <c>[ExportFunctions]</c> eligibility, naming and merge rules. The generator's original transcription
+    /// silently miscounted methods the runtime refuses, breaking precompilation's manifest gauntlet for entire
+    /// export containers. These rules, stated once, prevent that divergence.
     /// </summary>
     internal static class ExportRules
     {
@@ -57,9 +51,7 @@ namespace Heddle.Language.Binding
         internal static bool IsContainerEligible(bool isStaticClass, bool isPublicOrNestedPublic) =>
             isStaticClass && isPublicOrNestedPublic;
 
-        /// <summary>The declared-only, public, static, non-special-name filter the runtime's
-        /// <c>BindingFlags.Public | Static | DeclaredOnly</c> enumeration plus its <c>IsSpecialName</c>
-        /// <c>continue</c> apply. A skipped method is <b>not</b> an error — it is simply not a function.</summary>
+        /// <summary>True for public, static, non-special-name methods; skipped methods are not errors.</summary>
         internal static bool IsCandidate(in ExportedMethodFacts facts) =>
             facts.IsPublic && facts.IsStatic && !facts.IsSpecialName;
 

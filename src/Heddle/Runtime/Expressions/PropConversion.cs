@@ -4,13 +4,8 @@ using Heddle.Data;
 
 namespace Heddle.Runtime.Expressions
 {
-    /// <summary>
-    /// The single implementation of the prop conversion set (identity; implicit numeric widening;
-    /// <c>T</c>→<c>T?</c> lifting; reference assignability; boxing to <see cref="object"/>; the <c>null</c>
-    /// literal). Used verbatim for prop defaults (HED5009), named-argument type checks (HED5003), and — with
-    /// <paramref name="allowBoxToObject"/> = false — slot-value checks (HED5014). Keeps prop-narrowing and
-    /// model-narrowing from drifting by reusing <see cref="NumericPromotion"/> and reflection assignability.
-    /// </summary>
+    /// <summary>Converts props via identity, numeric widening, nullable lifting, reference assignability, boxing, and null-literal rules.
+    /// Used for defaults (HED5009), named-argument checks (HED5003), and slot-value checks with <paramref name="allowBoxToObject"/> = false.</summary>
     internal static class PropConversion
     {
         /// <summary>Static-type check: can <paramref name="source"/> convert to <paramref name="target"/>?</summary>
@@ -26,28 +21,28 @@ namespace Heddle.Runtime.Expressions
             if (s == null || t == null)
                 return false;
             if (s == t)
-                return true;                                   // identity
+                return true;
 
             if (allowBoxToObject && t == typeof(object) && s.IsValueType)
-                return true;                                   // boxing to object
+                return true;
 
             if (NumericPromotion.IsImplicitNumeric(s, t))
-                return true;                                   // implicit numeric widening
+                return true;
 
             var tUnder = Nullable.GetUnderlyingType(t);
-            if (tUnder != null)                                // target is Nullable<W>
+            if (tUnder != null)
             {
                 if (s == tUnder)
-                    return true;                               // identity-lift
+                    return true;
                 if (s.IsValueType && NumericPromotion.IsImplicitNumeric(s, tUnder))
-                    return true;                               // widen-then-lift
+                    return true;
                 var sUnder = Nullable.GetUnderlyingType(s);
                 if (sUnder != null && (sUnder == tUnder || NumericPromotion.IsImplicitNumeric(sUnder, tUnder)))
-                    return true;                               // Nullable<S> -> Nullable<W>
+                    return true;
             }
 
             if (!s.IsValueType && t.IsAssignableFrom(s))
-                return true;                                   // reference assignability (never value types)
+                return true;                                   // Reference types only (value types handled above).
 
             return false;
         }

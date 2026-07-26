@@ -80,9 +80,7 @@ namespace Heddle.Runtime.Expressions
                 throw new ArgumentNullException(nameof(name));
             if (staticMethod == null)
                 throw new ArgumentNullException(nameof(staticMethod));
-            // The four eligibility rejections are the shared ExportRules predicate — the same one the
-            // generator now applies, so its manifest overload counts can no longer include a method this method
-            // refuses. The throws (and their exact messages) are unchanged.
+            // Shared ExportRules predicate keeps generator manifest counts in sync with this method's rejections.
             var rejection = ExportRules.Evaluate(DescribeMethod(staticMethod));
             if (rejection != ExportRejection.None)
                 throw new ArgumentException(ExportRules.RejectionMessage(rejection), nameof(staticMethod));
@@ -91,7 +89,6 @@ namespace Heddle.Runtime.Expressions
             AddOrReplace(FunctionEntry.FromMethod(name, staticMethod));
         }
 
-        /// <summary>True when a function with this exact name is registered.</summary>
         public bool Contains(string name)
         {
             return name != null && _functions.ContainsKey(name);

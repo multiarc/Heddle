@@ -9,22 +9,12 @@ using Heddle.Precompiled;
 namespace Heddle.LanguageServices
 {
     /// <summary>
-    /// <para>Reads the workspace <c>.heddle-lsp.json</c> and produces a
-    /// <see cref="HeddleLanguageServiceOptions"/>. Relative paths resolve against the workspace root. A present
-    /// file wins field-by-field over any client-supplied defaults (applied by the caller by merging first).</para>
-    /// <para><b>Full options parity.</b> The editor follows the same
-    /// configuration surface the runtime permits: every analysis-applicable <see cref="TemplateOptions"/> option has
-    /// a key here, with its <b>name</b> the camelCase of the option's own property name and its <b>default</b> taken
-    /// from <see cref="HeddleBuildOptions"/> — the one names/defaults table the MSBuild props and
-    /// <see cref="TemplateOptions"/>' own constructor are pinned against. Options with no analysis meaning are named
-    /// exclusions in <c>WorkspaceOptionParityTests</c>, not silent omissions.</para>
-    /// <para><b>Token parsing is shared, reactions are not.</b> Profile and mode values parse through
-    /// <see cref="OutputProfileRules"/>, the same functions the engine and the build tier use, so the three hosts
-    /// cannot disagree on which spellings exist. What each host <i>does</i> with a bad value legitimately differs:
-    /// a template author's typo is a compile error (<c>HED2001</c>), a build property's is a build diagnostic
-    /// (<c>HED7009</c>), and a workspace-config typo must never break editing — so it keeps the default and adds a
-    /// line to <see cref="HeddleLanguageServiceOptions.ConfigurationMessages"/>, which the server logs. No
-    /// <c>HED</c> id is minted for it; <c>HED6xxx</c> stays reserved-unclaimed.</para>
+    /// Reads <c>.heddle-lsp.json</c> and produces <see cref="HeddleLanguageServiceOptions"/>. The file wins
+    /// field-by-field over client defaults. Every analysis-applicable <see cref="TemplateOptions"/> option maps
+    /// here with camelCased names and defaults from <see cref="HeddleBuildOptions"/> — the single table MSBuild
+    /// props and <see cref="TemplateOptions"/> are pinned against. Profile/mode parse through
+    /// <see cref="OutputProfileRules"/> shared with engine/build tier. Config typos keep defaults and log to
+    /// <see cref="HeddleLanguageServiceOptions.ConfigurationMessages"/> (no HED diagnostic, HED6xxx reserved).
     /// </summary>
     internal static class WorkspaceConfig
     {
@@ -42,10 +32,7 @@ namespace Heddle.LanguageServices
         internal static readonly string TrimDirectiveLinesKey = ConfigKey(nameof(TemplateOptions.TrimDirectiveLines));
         internal static readonly string MaxRecursionCountKey = ConfigKey(nameof(TemplateOptions.MaxRecursionCount));
 
-        /// <summary>The key naming rule, stated once: the option's own property name, camelCased. It agrees with
-        /// the <c>Heddle</c>-stripped, camelCased MSBuild property names in
-        /// <see cref="HeddleBuildOptions"/> for every option both surfaces carry, which
-        /// <c>WorkspaceOptionParityTests</c> asserts rather than assumes.</summary>
+        /// <summary>Naming rule: option's property name, camelCased, asserted to match MSBuild by WorkspaceOptionParityTests.</summary>
         internal static string ConfigKey(string optionName) =>
             string.IsNullOrEmpty(optionName)
                 ? optionName
@@ -132,8 +119,7 @@ namespace Heddle.LanguageServices
             return Read(workspaceRoot, json);
         }
 
-        /// <summary><c>true</c> when the key is present and is a JSON string; a present key of the wrong kind is
-        /// reported and treated as absent.</summary>
+        /// <summary><c>true</c> when key is present and is a JSON string; wrong kind is reported and treated as absent.</summary>
         private static bool TryReadString(JsonElement element, string key, ICollection<string> messages,
             out string value)
         {
@@ -150,9 +136,7 @@ namespace Heddle.LanguageServices
             return true;
         }
 
-        /// <summary>A bool option: JSON <c>true</c>/<c>false</c>, or a string parsed by the shared
-        /// <see cref="HeddleBuildOptions.TryReadBool"/> so the editor accepts exactly the spellings the build
-        /// property does.</summary>
+        /// <summary>Bool option: JSON true/false or string parsed by shared <see cref="HeddleBuildOptions.TryReadBool"/>.</summary>
         private static bool ReadBool(JsonElement element, string key, bool fallback, ICollection<string> messages)
         {
             if (!element.TryGetProperty(key, out var property))
@@ -173,8 +157,7 @@ namespace Heddle.LanguageServices
             }
         }
 
-        /// <summary>A positive-int option: a JSON number, or a string parsed by the shared
-        /// <see cref="HeddleBuildOptions.TryReadPositiveInt"/>.</summary>
+        /// <summary>Positive-int option: JSON number or string parsed by shared <see cref="HeddleBuildOptions.TryReadPositiveInt"/>.</summary>
         private static int ReadPositiveInt(JsonElement element, string key, int fallback,
             ICollection<string> messages)
         {

@@ -17,11 +17,10 @@ namespace Heddle.Tests
     }
 
     /// <summary>
-    /// <see cref="PrecompiledRuntime.DynamicMember"/> is the single implementation of a dynamic member hop.
-    /// Generated code used to inline a <c>(dynamic)</c> cast chain, which binds in the <b>consumer's</b> assembly
-    /// context and therefore saw the consumer's <c>internal</c> members — members the engine's own dynamic tier,
-    /// binding in <c>Heddle</c>'s context, cannot see. The rule is not code-sharable, so the fix is making the
-    /// choice exist once; these tests pin what that once-chosen behavior is.
+    /// <see cref="PrecompiledRuntime.DynamicMember"/> is the sole implementation to prevent drift between engine
+    /// and generated code; they previously inlined <c>(dynamic)</c> casts that bind in the consumer's assembly
+    /// context and see internal members the engine's dynamic tier (binding in <c>Heddle</c>'s context) cannot.
+    /// These tests pin the once-chosen behavior.
     /// </summary>
     public class DynamicMemberTests
     {

@@ -28,11 +28,8 @@ namespace Heddle.Generator.Tests
             Assert.Equal(shared, symbolSide);
         }
 
-        /// <summary>The third arm: the two projections must agree on <b>what each alias means</b>,
-        /// not merely on the key set. <c>dynamic</c> is the row that made the difference: it used to be a named
-        /// exclusion on the symbol side, so a template writing <c>:: dynamic</c> bound on the run tier (the shared
-        /// table maps it to <c>typeof(object)</c>) and not on the build tier. "Match the runtime exactly" leaves no
-        /// room for a build-tier-only refusal, so it now maps to <c>System.Object</c> — the same type.</summary>
+        /// <summary>The two projections must agree on what each alias means.
+        /// <c>dynamic</c> now maps to <c>System.Object</c> on both tiers.</summary>
         [Fact]
         public void EveryAliasMeansTheSameTypeOnBothTiers()
         {
@@ -55,11 +52,8 @@ namespace Heddle.Generator.Tests
             Assert.Equal(typeof(object), gen::Heddle.Helpers.CSharpTypeNames.Aliases[dynamicAlias]);
         }
 
-        /// <summary>The fourth arm, closing the boundary between this table and the <c>NumericKind</c> lattice.
-        /// An alias is either numeric on <b>both</b> the reflection side
-        /// (<c>NumericTable.FromClrType</c>) and the Roslyn side (<c>SymbolFacts.ToNumericKind</c>), or on neither,
-        /// and the two must name the same kind. Adding <c>nint</c>/<c>nuint</c> to the alias table without adding
-        /// the kind — or the reverse — is what this goes red on.</summary>
+        /// <summary>An alias must classify to the same numeric kind on both the reflection and Roslyn sides.
+        /// Adding <c>nint</c>/<c>nuint</c> to the alias table without updating <c>NumericKind</c> will fail this test.</summary>
         [Fact]
         public void EveryAliasClassifiesToTheSameNumericKindOnBothTiers()
         {
@@ -74,9 +68,8 @@ namespace Heddle.Generator.Tests
             }
         }
 
-        /// <summary>The other direction: every non-<c>None</c> <c>NumericKind</c> is reachable from some alias. A
-        /// kind with no alias would be a primitive the lattice promotes over but no template can spell — exactly the
-        /// half-landed <c>nint</c> the arm above cannot see.</summary>
+        /// <summary>Every non-<c>None</c> numeric kind must be reachable as an alias.
+        /// A kind with no alias is a primitive templates cannot spell.</summary>
         [Fact]
         public void EveryNumericKindIsSpellableAsAnAlias()
         {

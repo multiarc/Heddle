@@ -59,7 +59,7 @@ namespace Heddle.Tests
         [MemberData(nameof(Sinks))]
         public void OutputChars_Breach_Throws(SinkKind sink)
         {
-            var t = Compile("abcdefghij", new RenderBudget { MaxOutputChars = 5 });   // 10 static chars > 5
+            var t = Compile("abcdefghij", new RenderBudget { MaxOutputChars = 5 });
             var ex = Assert.Throws<TemplateRenderBudgetException>(() => Render(t, sink));
             Assert.Equal(RenderBudgetKind.OutputChars, ex.Kind);
             Assert.Equal(5, ex.Limit);
@@ -79,7 +79,7 @@ namespace Heddle.Tests
         [MemberData(nameof(Sinks))]
         public void RenderOps_Breach_Throws(SinkKind sink)
         {
-            var t = Compile("@for(10){{x}}", new RenderBudget { MaxRenderOps = 5 });   // 10 write ops > 5
+            var t = Compile("@for(10){{x}}", new RenderBudget { MaxRenderOps = 5 });
             var ex = Assert.Throws<TemplateRenderBudgetException>(() => Render(t, sink));
             Assert.Equal(RenderBudgetKind.RenderOps, ex.Kind);
             Assert.Equal(5, ex.Limit);
@@ -97,7 +97,6 @@ namespace Heddle.Tests
         [MemberData(nameof(Sinks))]
         public void RenderTime_Breach_Throws(SinkKind sink)
         {
-            // A zero deadline fires on the first render op on every sink.
             var t = Compile("@for(1000000){{x}}", new RenderBudget { MaxRenderTime = TimeSpan.Zero });
             var ex = Assert.Throws<TemplateRenderBudgetException>(() => Render(t, sink));
             Assert.Equal(RenderBudgetKind.RenderTime, ex.Kind);
@@ -111,7 +110,6 @@ namespace Heddle.Tests
             Assert.Equal("xxxxxxxxxx", Render(t, sink));
         }
 
-        // Empty-loop deadline backstop
         [Fact]
         public void EmptyLoop_ZeroOutput_TerminatesViaDeadline()
         {
@@ -123,7 +121,6 @@ namespace Heddle.Tests
             Assert.Equal(RenderBudgetKind.RenderTime, ex.Kind);
         }
 
-        // Empty-loop deadline under an encode proxy (universality check)
         [Fact]
         public void EmptyLoop_NestedInValueExtensionBody_TerminatesViaDeadline()
         {
@@ -146,7 +143,6 @@ namespace Heddle.Tests
             Assert.Equal(string.Empty, t.Generate(null));
         }
 
-        // Recursion interplay
         [Fact]
         public void Budget_Fires_IndependentOf_MaxRecursionCount()
         {
@@ -166,16 +162,14 @@ namespace Heddle.Tests
             Assert.Equal(RenderBudgetKind.OutputChars, ex.Kind);
         }
 
-        // Zero cost when off (behavioral leg)
         [Theory]
         [MemberData(nameof(Sinks))]
         public void NullBudget_NeverThrows_AndRendersNormally(SinkKind sink)
         {
-            var t = Compile("@for(500){{x}}", budget: null);   // no wrapper installed on the null path
+            var t = Compile("@for(500){{x}}", budget: null);
             Assert.Equal(new string('x', 500), Render(t, sink));
         }
 
-        // Exception shape
         [Fact]
         public void Exception_Message_MatchesPattern()
         {

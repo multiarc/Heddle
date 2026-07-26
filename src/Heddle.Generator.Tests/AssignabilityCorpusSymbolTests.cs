@@ -12,13 +12,9 @@ using SymbolTypeFacts = gen::Heddle.Generator.Binding.SymbolTypeFacts;
 
 namespace Heddle.Generator.Tests
 {
-    /// <summary>
-    /// The <b>symbol-side</b> driver of the shared assignability conformance corpus. Same data file
-    /// as the reflection-side driver in <c>Heddle.Tests</c>; this one asserts that the Roslyn
-    /// <c>ITypeFacts</c> adapter's two nullable corrections land it on the CLR's answer, row for row.
-    /// <para>Spellings are resolved through a probe compilation's <c>typeof</c> expressions, so the corpus can use
-    /// any legal C# type syntax (generics, arrays, tuple syntax) without this test growing a second parser.</para>
-    /// </summary>
+    /// <summary>Symbol-side driver of the shared assignability conformance corpus; asserts that the Roslyn
+    /// <c>ITypeFacts</c> adapter's nullable corrections land on the CLR's answer using a probe compilation's
+    /// <c>typeof</c> expressions to resolve spellings without a second parser.</summary>
     public class AssignabilityCorpusSymbolTests
     {
         private static readonly (SymbolTypeFacts Facts, IReadOnlyDictionary<string, ITypeSymbol> Types) Probe =
@@ -82,22 +78,22 @@ namespace Heddle.Generator.Tests
         [Fact]
         public void TheTwoNullableCorrectionsAreWhatRoslynAloneWouldGetWrong()
         {
-            // Documents *why* the adapter is not a bare ClassifyConversion call: the raw classification disagrees
-            // with the CLR in both directions on exactly these two rows.
+            // Roslyn's raw classification disagrees with the CLR in both directions on exactly these two rows,
+            // necessitating the adapter's two corrections.
             var csharp = (CSharpCompilation) Probe.Facts.Compilation;
             var intType = Probe.Types["System.Int32"];
             var nullableInt = Probe.Types["System.Nullable<System.Int32>"];
             var comparable = Probe.Types["System.IComparable"];
 
             var aToNullable = csharp.ClassifyConversion(intType, nullableInt);
-            Assert.True(aToNullable.IsNullable);              // "ImplicitNullable" — neither reference nor boxing
+            Assert.True(aToNullable.IsNullable);
             Assert.False(aToNullable.IsReference);
             Assert.False(aToNullable.IsBoxing);
-            Assert.True(Probe.Facts.IsAssignableFrom(nullableInt, intType));   // …but the CLR says true
+            Assert.True(Probe.Facts.IsAssignableFrom(nullableInt, intType));
 
             var cToInterface = csharp.ClassifyConversion(nullableInt, comparable);
-            Assert.True(cToInterface.IsBoxing);                                // Roslyn: boxing
-            Assert.False(Probe.Facts.IsAssignableFrom(comparable, nullableInt)); // …but the CLR says false
+            Assert.True(cToInterface.IsBoxing);
+            Assert.False(Probe.Facts.IsAssignableFrom(comparable, nullableInt));
         }
     }
 }

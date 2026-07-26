@@ -59,14 +59,8 @@ namespace Heddle.Tests
                 Snapshot(context, ""));
         }
 
-        /// <summary>
-        /// Pin 1, boundary rows. The captured vector above exercises the three-way classification but never at its
-        /// <em>boundaries</em>: no block in it starts exactly at a skipped token's start, ends exactly at its end,
-        /// or ends exactly at its start. Mutation testing confirmed six single-comparison mutants of the
-        /// classification survived it (<c>chainBlockStart &lt;= startToSkip</c> → <c>&lt;</c>, <c>chainBlockEnd &gt;=
-        /// endToSkip</c> → <c>&gt;</c>, both again for the definitions list, the raw list's <c>&gt;</c>, and the chain
-        /// after-shift <c>&gt;</c>). One row per boundary, each derived from the runtime body's own predicates.
-        /// </summary>
+        /// <summary>Pin 1, boundary rows. Mutation testing confirmed six mutants at classification boundaries;
+        /// one row per boundary, derived from the runtime body's predicates.</summary>
         [Theory]
         // enclosing at the exact LEFT boundary: block start == skipped start → keeps its start, loses the length
         [InlineData(new[] { 10, 4 }, new[] { 10, 8 }, new int[0], new int[0],
@@ -110,11 +104,7 @@ namespace Heddle.Tests
         // remnant inside a definition block — the ShiftListsAfter enclosing case (a historical bug)
         [InlineData("A\n  \nB\n", new[] { 2, 4 }, new[] { 0, 1 }, new[] { 0, 6 },
             "doc=[A\\nB\\n] chains=[0+1] defs=[0+3] raws=[]")]
-        // The already-removed-span guard, actually constrained. The row above ("two hidden tokens on one line")
-        // does NOT constrain it — after the first removal the second probe lands on a line that retains content,
-        // so it declines on its own and deleting the guard changes nothing (mutation-verified). Here BOTH tokens
-        // map to clean start 2 on a run of THREE blank lines, so without the guard the second probe would eat a
-        // second line.
+        // Guard is mutation-verified: without it, the second probe would remove an extra line.
         [InlineData("A\n\n\nB\n", new[] { 2, 3, 5, 2 }, new[] { 0, 1 }, new int[0],
             "doc=[A\\n\\nB\\n] chains=[0+1] defs=[] raws=[]")]
         public void Pin2_TrimHiddenRemnantLines(string document, int[] skipped, int[] chains, int[] definitions,
@@ -284,18 +274,8 @@ namespace Heddle.Tests
             Assert.Equal("doc=[if  el] chains=[0+2,40+2] defs=[] raws=[]", Snapshot(outOfBounds, shortDoc));
         }
 
-        /// <summary>
-        /// <para>Pin 7, the structural half. The strip vectors above cannot see the divergence pin 7 exists for:
-        /// the generator's pre-refactor private enum had <b>four</b> kinds to the runtime's five, so a
-        /// <c>[ScopeChannel]</c> non-role extension fell into <c>default:</c> instead of <c>Participant</c> —
-        /// and since both arms disarm, no assertion over the working document can tell them apart. It is checkable
-        /// only as shape: the enum has five kinds, defined once, here.</para>
-        /// <para>Byte-equality of <c>Participant</c> and <c>Other</c> inside the strip machine is therefore the
-        /// honest limit of the strip-level pin; what the collapse actually cost was the runtime's orphan state
-        /// (<c>Participant</c> → <c>Unknown</c>, <c>Other</c> → unchanged), which reaches the drivers only through
-        /// the observer's reported kind — pinned by the event-stream test below and, at template granularity, by
-        /// <c>BranchSetCompilerTests.C18</c>.</para>
-        /// </summary>
+        /// <summary>The refactor collapsed four-kind and five-kind enums. The divergence is visible only through
+        /// the observer's reported kind, pinned by the event-stream test below.</summary>
         [Fact]
         public void Pin7_BranchKindHasFiveKindsDefinedOnce()
         {
@@ -304,13 +284,8 @@ namespace Heddle.Tests
                 System.Enum.GetNames(typeof(DocumentShaping.BranchKind)));
         }
 
-        /// <summary>
-        /// Pin 7, the observer contract. Every runtime HED300x diagnostic was re-hosted onto this event stream,
-        /// and its <em>order</em> within one block — HED3005 (classified) → HED3001 (gap) → HED3002/3/4 (completed)
-        /// — is the reason the interface has three events rather than two. Nothing pinned that at machine granularity;
-        /// the branch suites pin it only through the diagnostics it produces. This asserts the stream itself, including
-        /// that a <c>[ScopeChannel]</c> non-role chain is reported as <c>Participant</c> and not <c>Other</c>.
-        /// </summary>
+        /// <summary>Pin 7, the observer contract: event order (classified → gap → completed) explains three events.
+        /// Tests assert [ScopeChannel] non-role chains are reported Participant.</summary>
         [Theory]
         // opener → continuation → terminal: classified before gap before completed, twice
         [InlineData("if  el  ee  ZZ", "if@0+2|elif@4+2|else@8+2",

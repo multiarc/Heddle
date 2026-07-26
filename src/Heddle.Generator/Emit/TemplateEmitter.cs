@@ -65,33 +65,28 @@ namespace Heddle.Generator.Emit
         private readonly FunctionExportResolver _exports;
         private readonly ExtensionBinder _extensionBinder;
 
-        // Directives extracted from the document.
-        private string _modelTypeText;   // trimmed @model body; null when no @model
-        private BlockPosition _modelDirectivePosition;   // the @model(){{…}} span (for HED7007)
+        private string _modelTypeText;
+        private BlockPosition _modelDirectivePosition;
         private ITypeSymbol _modelSymbol;
         private readonly List<string> _usings = new List<string>();
 
-        // Manifest accumulation.
         private readonly List<(string Name, string Type, string Assembly, string PropLayout)> _extensionBindings =
             new List<(string, string, string, string)>();
         private readonly List<(string Name, string Target, int OverloadCount)> _functionBindings =
             new List<(string, string, int)>();
 
-        // Extension-field allocation, document order.
         private readonly List<string> _extensionFields = new List<string>();
         private readonly StringBuilder _fieldDecls = new StringBuilder();
-        private readonly StringBuilder _methodDecls = new StringBuilder();   // dynamic prop-arg evaluators
+        private readonly StringBuilder _methodDecls = new StringBuilder();
         private int _extensionCounter;
         private int _dynEvalCounter;
         private int _dynSettersCounter;
 
-        // Function names resolvable at build from neither the default table nor a referenced export.
-        // Their presence degrades the template to a HED7014 fallback-marker entry.
+        // Unresolvable functions degrade the template to a HED7014 fallback-marker entry.
         private readonly List<(string Name, BlockPosition Position)> _unresolvableFunctions =
             new List<(string, BlockPosition)>();
 
-        // Emitter-produced Roslyn diagnostics (HED7005 surrogate warning, HED7006/HED7015 extension binding) with
-        // their .heddle span; the generator reports each via ToLocation. Collected regardless of the emit outcome.
+        // Collected regardless of emit outcome.
         private readonly List<EmitDiagnostic> _diagnostics = new List<EmitDiagnostic>();
 
         internal readonly struct EmitDiagnostic
@@ -292,8 +287,6 @@ namespace Heddle.Generator.Emit
             }
         }
 
-        // ---- Body construction (recursive: Body0 = document root; extension bodies become nested bodies) ----
-
         private readonly struct BodyContext
         {
             public BodyContext(string modelCast, ITypeSymbol modelSymbol, bool isDynamic, PropLayoutInfo props = null,
@@ -396,16 +389,15 @@ namespace Heddle.Generator.Emit
             public bool NeedsModelLocal;
             public bool NeedsCSharpModel;   // FullCSharp verbatim: declare `var model = (T)scope.ModelData;`
             public bool HostsParticipant;
-            public readonly List<object> Segments = new List<object>();   // Piece | Call
+            public readonly List<object> Segments = new List<object>();
         }
 
         private readonly List<string> _pieces = new List<string>();
         private readonly List<BodyClass> _bodies = new List<BodyClass>();
         private int _bodyCounter;
 
-        // Definition bodies compile once into a shared body class (keyed by definition identity), referenced by every
-        // call site — never inlined per call, so a self-recursive definition does not loop the generator. Reserved
-        // before population so a self-call during the build finds it.
+        // Compiled once per identity, keyed to prevent infinite recursion during self-calls.
+        // Reserved before population so a self-call during build finds it.
         private readonly Dictionary<string, DefBodyInfo> _definitionBodies =
             new Dictionary<string, DefBodyInfo>(System.StringComparer.Ordinal);
 
@@ -448,19 +440,8 @@ namespace Heddle.Generator.Emit
 
             // The piece walk itself is shared with RuntimeDocument.GetDocumentPieces, so the
             // P0..Pn constants below are the same strings the dynamic tier slices.
-            // The element walk COLLECTS refusals rather than abandoning at the first one, so a template with two
-            // provably illegal calls reports both instead of making the author fix one, rebuild, and meet the next.
-            // This is sound only because sibling elements are independent — they share the same immutable BodyContext,
-            // and nothing a refused element touches can make a later legal element illegal — so skipping one and
-            // continuing cannot manufacture a refusal (or a green) that a fresh walk would not reach. The refusal
-            // itself still propagates: `refused` survives the loop, this method returns false, BuildBody returns a null
-            // body, and Emit's `root == null` arm still means NO .g.cs and NO manifest row. Collecting is about how
-            // many diagnostics one build surfaces, never about emitting past a refusal — a partial emit would be far
-            // worse than one-at-a-time reporting. Only the FIRST reason is kept to provide the template-level
-            // UnsupportedReason.
-            // The expression walk deliberately does NOT do this: NativeExpressionWriter.Write is string-or-null
-            // composition, where a parent has nothing to compose once a child returns null, so continuing there would
-            // mean fabricating placeholder text and discarding it. Two refusals inside ONE expression still report once.
+            // Collect refusals for multi-error reporting (sound: sibling elements are independent).
+            // Still refuses the body (partial emit would be worse than sequential reporting).
             string localReason = null;
             string firstReason = null;
             var refused = false;
@@ -468,18 +449,14 @@ namespace Heddle.Generator.Emit
                 piece => AddPiece(body, piece),
                 element =>
                 {
-                    // An empty call chain that renders nothing: modeled in the element list for parity, but it
-                    // emits no segment.
+                    // Empty chain: modeled for parity but emits no segment.
                     if (element.Chain.Chain == null || element.Chain.Chain.Count == 0)
                         return true;
 
                     if (profileByChain != null && profileByChain.TryGetValue(element.Chain, out var elementProfile))
                         _profileHtml = elementProfile;
 
-                    // Keyed on [ScopeChannel] presence so bodiless custom channel extensions also provision a
-                    // locals frame; deliberately runs before definition resolution. The walk is the shared full-chain,
-                    // parameter-recursing scan, so it agrees with the runtime's RuntimeDocument.ComputeNeedsLocals
-                    // instead of probing chain[0] only.
+                    // Run before definition resolution (bodiless custom channel extensions also need locals frame).
                     if (ParticipantScan.ChainHostsParticipant(element.Chain, HasScopeChannel))
                         body.HostsParticipant = true;
 
@@ -519,8 +496,7 @@ namespace Heddle.Generator.Emit
         /// inherited profile, flipped in document order by every <c>@profile(){{html|text}}</c> directive (which is a
         /// zero-output chain removed from the piece stream but still document-ordered). Keyed by chain identity so the
         /// element walk can look up the profile that was active where each call sits.</summary>
-        // One HED7022 per unknown-@profile directive, keyed by its source offset: a body may be walked more than
-        // once across the emit, and a template with two distinct typos deserves two squiggles.
+        // One HED7022 per source offset: bodies walk more than once, typos deserve separate squiggles.
         private readonly HashSet<int> _reportedUnknownProfiles = new HashSet<int>();
 
         private Dictionary<OutputChain, bool> MapProfilePerChain(ParseContext ctx)
@@ -611,7 +587,6 @@ namespace Heddle.Generator.Emit
 
             if (name.Length == 0)
             {
-                // Unnamed carrier: EmptyExtension (Text) / EmptyHtmlExtension (Html, encode).
                 if (!string.IsNullOrEmpty(item.ParameterTemplate))
                 {
                     reason = "bodied unnamed carrier";
@@ -624,17 +599,11 @@ namespace Heddle.Generator.Emit
                 return MakeCall(uField, uParam, uUses, item.Position, uCs);
             }
 
-            // Definition invocation wins over extension/function name resolution (matches HeddleCompiler.CompileItem's
-            // definition-first precedence), so a definition may shadow a branch keyword. Resolution is context-aware
-            // — the ambient fill scope first (the dynamic tier's RegionFillScope precedence), then the ENCLOSING
-            // body's parse context (so inner-definition calls — region defaults — resolve), not only the flat
-            // document root.
+            // Definition-first precedence (matches HeddleCompiler.CompileItem) — definitions may shadow branches.
+            // Ambient fill scope first (RegionFillScope precedence), then enclosing parse context.
             var resolutionCtx = chain.Context ?? ctx ?? _parse;
-            // The precedence is the shared CallTargetRules classifier the runtime's CompileItem also runs —
-            // fill → definition → extension → registered function → unknown. The emission per kind stays this
-            // file's own; only the *decision* is shared. This avoids an inversion where the emitter would try the
-            // function tier BEFORE the extension binder, so a host-exported function sharing a name with a
-            // registered extension would bind as a function at build and as the extension at run.
+            // Shared CallTargetRules precedence: fill → definition → extension → function → unknown.
+            // Must use this order to avoid binding function-first, causing divergence if host-exported functions share names with extensions.
             var callTarget = CallTargetRules.ResolveCallTarget(name, cp,
                 n => bctx.Fills != null && bctx.Fills.ContainsKey(n),
                 resolutionCtx.DefenitionExists,
@@ -658,10 +627,7 @@ namespace Heddle.Generator.Emit
             if (_extensionBinder.TryResolve(name, out var branchInfo) && branchInfo.Role.HasValue &&
                 branchInfo.IsEngineAssembly)
             {
-                // Branch bodies execute under scope.Parent(): the model stays the enclosing body's model. The rule
-                // is BodyModelRules' row for this name — (Parent, None) — and it is *consumed*, not asserted: the
-                // row picks the context the body is built in. A row that stopped saying Parent would change these
-                // bytes, which is what makes the table load-bearing.
+                // Body model: the rule is BodyModelRules' row and it is consumed, not asserted.
                 if (!TryNestedBodyContext(name, bctx, out var branchBodyCtx))
                 {
                     reason = "no pinned body model-typing row for branch '" + name + "'";
@@ -680,11 +646,7 @@ namespace Heddle.Generator.Emit
                 }
 
                 bool needsLocals = branchBody != null && branchBody.HostsParticipant;
-                // The manifest row's type/assembly come from the BINDER (BareTypeName carries the metadata `+` for a
-                // nested type, AssemblyName the real assembly) — not from stripping `global::` off the display name
-                // and defaulting the assembly to "Heddle". That stripping spelled a nested type `Ns.Outer.Inner`
-                // where the gauntlet computes `Ns.Outer+Inner, <asm>`; it was unreachable only because every engine
-                // branch-role extension happens to be top-level today (post-implementation review finding 4).
+                // Use binder's BareTypeName (handles nested types with +) and AssemblyName; don't parse display name.
                 var field = AllocateBodyExtension(name, branchInfo.GlobalName, branchInfo.BareTypeName,
                     branchBody?.Name, needsLocals, item.Position, branchInfo.AssemblyName);
                 var call = MakeCall(field, bParam, bUses, item.Position, bCs);
@@ -693,14 +655,8 @@ namespace Heddle.Generator.Emit
 
             if (name == "list")
             {
-                // The collection is evaluated against the enclosing model; the element body is on the dynamic
-                // tier — the element type is discoverable only by reflection (ListExtension.InitStart), so the
-                // emitter routes the body through the dynamic tier rather than guessing it.
-                // The element body is the dynamic tier; a slot @out(value) may still appear inside it, so the
-                // enclosing definition's slot mode propagates into the nested body. The ambient fill scope and the
-                // region host's prop layout also propagate, so @item(this) nested in an @list body resolves the
-                // call site's fill. BodyModelRules' ElementOfData row decides this context, and
-                // TryNestedBodyContext is where it is read.
+                // Element body on dynamic tier; element type discoverable only by reflection (InitStart).
+                // Slot mode and fill scope propagate; BodyModelRules' ElementOfData row decides context.
                 if (!TryNestedBodyContext("list", bctx, out var itemCtx))
                 {
                     reason = "no pinned body model-typing row for 'list'";
@@ -726,9 +682,7 @@ namespace Heddle.Generator.Emit
 
             if (name == "for")
             {
-                // @for(n)/@for(Count)/@for(range(...)): ForIndexExtension re-scopes each iteration via
-                // scope.Parent(i) — BodyModelRules' row for "for" is (Parent, Int32Index): the body is typed by
-                // the enclosing model (like a branch body) and @out() splices the boxed index.
+                // Body typed by enclosing model; @out() splices the boxed index (BodyModelRules row).
                 if (!TryNestedBodyContext("for", bctx, out var forBodyCtx))
                 {
                     reason = "no pinned body model-typing row for 'for'";
@@ -752,8 +706,7 @@ namespace Heddle.Generator.Emit
                 return MakeCall(forField, fParam, fUses, item.Position, fCs);
             }
 
-            // Standalone function call (@upper(x) / @(upper(x))): the runtime wraps a function CallNode in an
-            // unnamed EmptyExtension carrier. Reached only when the shared classifier picked the function tier.
+            // Reached only when the shared classifier picked the function tier.
             if (callTarget == CallTargetKind.Function && string.IsNullOrEmpty(item.ParameterTemplate))
             {
                 var callNode = BuildFunctionCallNode(name, cp, item.Position);
@@ -771,25 +724,17 @@ namespace Heddle.Generator.Emit
                 return MakeCall(fField, "(object)(" + expr + ")", writer.UsedModel, item.Position);
             }
 
-            // Custom extension bound from a referenced assembly: resolve the [ExtensionName] type and reproduce
-            // the TemplateItem render protocol against a bound instance — never inlined.
             if (_extensionBinder.TryResolve(name, out var extInfo))
                 return BuildCustomExtensionCall(name, extInfo, item, cp, bctx, out reason);
 
-            // The name resolves under the RUNTIME's discovery predicate but the generator cannot reproduce its
-            // render protocol (an IExtension-direct implementor, or an unresolvable collision the runtime would
-            // raise TemplateOverrideException for). The runtime WILL find it, so HED7006 — whose documented
-            // meaning is "the runtime will not find it either" — must not fire; the call degrades to dynamic with
-            // the recorded reason instead.
+            // Runtime will find it but emitter cannot reproduce render protocol — must not fire HED7006.
             if (_extensionBinder.TryGetUnbindableReason(name, out var unbindableReason))
             {
                 reason = unbindableReason;
                 return null;
             }
 
-            // HED7006 — an extension-only shape (a bodied call) whose name resolves to no [ExtensionName] type in any
-            // referenced assembly. A bodiless call is function-compatible (a delegate-only host registration could
-            // satisfy it at run time), so it degrades quietly rather than hard-failing what the runtime might accept.
+            // HED7006 — bodied call with no bound extension. Bodiless may be function-compatible (delegate registration).
             if (!string.IsNullOrEmpty(item.ParameterTemplate))
                 _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.ExtensionNotBindable, item.Position, name));
 
@@ -1126,36 +1071,21 @@ namespace Heddle.Generator.Emit
         {
             reason = null;
 
-            // Full overrides (<name:name>) require document-order layering: an override body's by-name call to the
-            // same name resolves to the *base* layer, not the override, and the definition rendered at a call site
-            // depends on which overrides are in scope there. The emitter resolves definitions flatly through
-            // ParseContext.GetDefenition (always the most-derived layer), so an override calling itself would recurse
-            // forever. Refuse to precompile — the dynamic backend's DefinitionResolver owns this — a safe fallback.
-            // The bail is lifted ONLY for a materialized region fill — its fill scope carries the
-            // self-call→base rebind, so no recursive self-call is ever emitted. The plain sibling
-            // override keeps the bail and stays silently un-precompiled.
+            // Emitter resolves flatly (always most-derived), so overrides calling themselves would recurse.
+            // Lifted only for materialized region fills (fill scope carries self-call→base rebind).
             if (!isFill && DefinitionInvolvesOverride(def)) { reason = "definition override/layering"; return null; }
 
-            // Slot definitions bind through the slot-mode BindDefinition overload (handled below); a default output
-            // ('-> chain') renders the definition at document end via ParseContext.DefaultChains — already surfaced as
-            // a document-end element by DocumentShaper, so a by-name call and the default-chain self-call both route
-            // here with no special casing (the HED4002 double-render warning is the runtime's, non-fatal).
+            // Slot definitions bind through the slot-mode BindDefinition overload.
             bool slotMode = SlotRules.HasSlot(def);
 
             var layout = ResolvePropLayout(def);
             if (layout.Failed) { reason = "unresolved prop type"; return null; }
 
-            // The props carriage: a shared frozen object[] prototype plus, for any non-constant argument, per-call
-            // dynamic setters evaluated against the caller view. The dynamic-arg expressions evaluate
-            // against the enclosing body's model (the caller context, bctx).
+            // Frozen object[] prototype + dynamic setters for non-constant arguments (evaluated against caller view).
             if (!TryBuildPropsPrototype(layout, cp, bctx, out var propsFieldRef, out var dynamicSettersRef, out reason))
                 return null;
 
-            // The fill scope the definition BODY builds under — the generator's twin of the dynamic
-            // tier's CreateExtension rule. A region body (default or fill) inherits the ambient scope (its own name
-            // rebound to the base default when it IS the fill); a non-region call builds a fresh call-scoped scope
-            // from this call site's candidates: a private or dangling
-            // candidate un-precompiles the template so the DYNAMIC tier raises the error.
+            // Fill scope follows the generator's twin of the dynamic tier's CreateExtension rule.
             Dictionary<string, DefinitionItem> bodyFills;
             if (def.IsRegion)
             {
@@ -1166,8 +1096,7 @@ namespace Heddle.Generator.Emit
                 return null;
             }
 
-            // A region body borrows the enclosing component's model/props; a non-region
-            // body keeps the pre-existing typing (its declared :: T + its own layout + slot mode).
+            // Region body borrows enclosing component's model/props; non-region keeps declared :: T + own layout + slot mode.
             BodyContext defBodyCtx;
             if (def.IsRegion)
             {
@@ -1187,9 +1116,7 @@ namespace Heddle.Generator.Emit
                 defBodyCtx = defBodyCtx.WithFills(bodyFills, layout.Count > 0 ? layout : null);
             }
 
-            // The definition body compiles once into a shared body class per (definition identity, fill-scope
-            // digest) — the per-run dedup key: a filled body is a distinct class from the unfilled default;
-            // identical/no-override calls share one body class.
+            // Compiled once per (definition identity, fill-scope digest); filled bodies are distinct from unfilled.
             var bodyInfo = GetOrBuildDefinitionBody(def, defBodyCtx, out reason);
             if (bodyInfo == null || bodyInfo.Failed)
             {
@@ -1197,14 +1124,10 @@ namespace Heddle.Generator.Emit
                 return null;
             }
 
-            // The invocation value evaluates against the enclosing body's model (the caller's context, bctx).
             if (!BuildParamExpr(cp, bctx, out var paramExpr, out var usesModel, out var usesCsModel, out reason))
                 return null;
 
-            // Caller content (@name(P){{...}}) is typed by the invoked definition's :: T in the ordinary case, and by
-            // the declared slot type in slot mode (runtime CreateExtension:
-            // callerModelType = slotType ?? dataType). The caller content is lexical — the AMBIENT fill
-            // scope stays active in it (never the callee's).
+            // Caller content typed by :: T (or slot type in slot mode); ambient fill scope stays active (lexical).
             BodyClass callerBody = null;
             if (!string.IsNullOrEmpty(item.ParameterTemplate) && item.Context != null)
             {
@@ -1226,11 +1149,7 @@ namespace Heddle.Generator.Emit
                     return null;
             }
 
-            // Each carrier carries its OWN body's flag. The two carriers host different documents —
-            // the inner one the definition body, the outer one this invocation site's caller content — and the
-            // dynamic tier derives each flag from its own RuntimeDocument. OR-ing them (the pre-fix shape)
-            // suppressed the deliberate frame-CLEARING a non-participating body gets under a provisioned parent
-            // (AbstractExtension.GetInnerResult), which is a behavior change, not an over-provision.
+            // Each carrier uses its own body's flag (not OR'd); two different documents, separate derivation.
             bool bodyNeedsLocals = bodyInfo.Body.HostsParticipant;
             bool callerContentNeedsLocals = callerBody != null && callerBody.HostsParticipant;
             var field = AllocateDefinitionExtension(bodyInfo.Body.Name, callerBody?.Name, propsFieldRef,
@@ -1238,22 +1157,17 @@ namespace Heddle.Generator.Emit
             return MakeCall(field, paramExpr, usesModel, item.Position, usesCsModel);
         }
 
-        /// <summary>@out() — the bodiless caller-content splice. Non-slot: EmptyParameter passes the current model
-        /// through and OutExtension renders the chained caller content (generated-code.md example 5). Slot mode
-        /// (@out(value) inside a slot-declaring definition body): the value expression becomes the projection model
-        /// and OutExtension renders the caller content lazily against it (README slots; example 5's slot note).</summary>
+        /// <summary>The bodiless caller-content splice. Non-slot: passes current model. Slot mode: value becomes projection model.</summary>
         private Call BuildOutCall(OutputItem item, CallParameter cp, BodyContext bctx, out string reason)
         {
             reason = null;
             if (!string.IsNullOrEmpty(item.ParameterTemplate)) { reason = "bodied @out"; return null; }
-            // The canonical five-way test OutExtension.InitStart runs, not the emitter's
-            // `!IsModelTypeParameter` approximation — equivalent today, a booby trap at the next carrier.
+            // Use the canonical five-way test (OutExtension.InitStart), not a simplified approximation.
             bool hasValue = SlotRules.HasOutValue(cp);
 
             if (hasValue)
             {
-                // A value on @out is only valid inside a slot-declaring definition body (the runtime raises
-                // SlotValueWithoutSlot otherwise) — refuse to precompile a value elsewhere.
+                // Value on @out is only valid inside a slot-declaring definition body.
                 if (!bctx.InSlot) { reason = "@out with value outside a slot definition"; return null; }
                 if (cp.PropArguments != null && cp.PropArguments.Count != 0) { reason = "@out prop arguments"; return null; }
                 if (!BuildParamExpr(cp, bctx, out var vParam, out var vUses, out var vCs, out reason))
@@ -1262,26 +1176,21 @@ namespace Heddle.Generator.Emit
                 return MakeCall(slotField, vParam, vUses, item.Position, vCs);
             }
 
-            // A bodiless valueless @out inside a slot definition is the SlotValueRequired error at runtime — refuse.
+            // Bodiless valueless @out inside slot definition is a SlotValueRequired error at runtime.
             if (bctx.InSlot) { reason = "@out() without a slot value"; return null; }
 
             var field = AllocateOutExtension(slotMode: false, item.Position);
             return MakeCall(field, "scope.ModelData", false, item.Position);
         }
 
-        /// <summary>@partial(model){{name}} — renders the named template with the parameter value as its model.
-        /// The partial's strategy is resolved lazily on first render (registry first, dynamic compile
-        /// second) via <c>PrecompiledRuntime.ResolvePartial</c> and memoized in a static field; the render splices the
-        /// partial's output exactly as <c>PartialExtension.InnerTemplate.Generate</c> does. The name (the body) must be
-        /// static text.</summary>
+        /// <summary>Renders the named template with the parameter as its model. Strategy resolved lazily on first render (registry first, dynamic compile second) and memoized. The name must be static text.</summary>
         private Partial BuildPartialCall(OutputItem item, CallParameter cp, BodyContext bctx, out string reason)
         {
             reason = null;
             var name = item.ParameterTemplate;
             if (string.IsNullOrWhiteSpace(name)) { reason = "empty @partial name"; return null; }
 
-            // The name must be static text: a body carrying processors (output chains), definitions, imports, or raw
-            // output is a dynamic partial name the emitter can not resolve at build.
+            // Name must be static text; bodies with output chains, definitions, or imports are dynamic.
             var ctx = item.Context;
             if (ctx != null &&
                 ((ctx.OutputChains != null && ctx.OutputChains.Count != 0) ||
@@ -1305,8 +1214,7 @@ namespace Heddle.Generator.Emit
             _fieldDecls.Append("        private static global::Heddle.Runtime.IProcessStrategy ").Append(field)
                 .Append(";\n");
 
-            // The dynamic-compile fallback types the child by the caller-site model type; a dynamic tier
-            // caller compiles the child on the dynamic tier too.
+            // Dynamic-compile fallback types child by caller-site model type.
             string callerModelFq = (!bctx.IsDynamic && bctx.ModelSymbol != null)
                 ? SymbolTypeResolver.FullyQualified(bctx.ModelSymbol)
                 : null;
@@ -1324,10 +1232,7 @@ namespace Heddle.Generator.Emit
         private DefBodyInfo GetOrBuildDefinitionBody(DefinitionItem def, BodyContext bodyCtx, out string reason)
         {
             reason = null;
-            // The per-run dedup key. Definition identity (name + declaration position + declaring
-            // context offset — inner definitions of two components may share a body-relative position) extended
-            // with the active fill-scope digest, so a FILLED body is a distinct emitted class from the unfilled
-            // default within one run; an empty digest shares the default body class.
+            // Dedup key: definition identity + fill-scope digest (filled bodies are distinct from unfilled).
             var key = def.Name + "@" + def.Position + "@" + (def.Context?.AbsoluteOffset ?? 0) +
                       "#" + FillsDigest(bodyCtx.Fills);
             if (_definitionBodies.TryGetValue(key, out var existing))
@@ -1337,8 +1242,7 @@ namespace Heddle.Generator.Emit
             }
 
             var info = new DefBodyInfo { Body = NewBody(bodyCtx) };
-            // Pre-mark participant hosting so a self-call encountered during population bakes the correct
-            // needsLocals. The shared full-chain scan, identical to the one PopulateBody runs.
+            // Pre-mark to bake correct needsLocals when self-call is encountered during population.
             if (ParticipantScan.BodyHostsParticipant(def.Context, HasScopeChannel))
                 info.Body.HostsParticipant = true;
             _definitionBodies[key] = info;
@@ -1382,9 +1286,7 @@ namespace Heddle.Generator.Emit
             return copy.Count == 0 ? null : copy;
         }
 
-        // Candidates consumed by a matched public fill during this emit. Any candidate left
-        // unconsumed at the end of Emit (a private/dangling override, or one inside a body no definition call
-        // owns) un-precompiles the template so the dynamic tier raises the error.
+        // Unconsumed candidates (private/dangling) un-precompile the template so dynamic tier raises the error.
         private readonly HashSet<RegionFillCandidate> _consumedCandidates = new HashSet<RegionFillCandidate>();
 
         /// <summary>
@@ -1438,7 +1340,6 @@ namespace Heddle.Generator.Emit
                     {
                         case RegionFillVerdict.Dangling:
                         case RegionFillVerdict.DefaultMissing:
-                            // genuinely dangling (or declared but not stored) — the parse-emitted error stays
                             break;
 
                         case RegionFillVerdict.Private:
@@ -1479,12 +1380,8 @@ namespace Heddle.Generator.Emit
             new HashSet<Heddle.Data.HeddleCompileError>();
 
         /// <summary>
-        /// The body context of a region (default or materialized fill). A typed region
-        /// (<c>:: T</c>) types its body by the declared model; an untyped region called bare types it by the
-        /// ENCLOSING model (the dynamic tier's <c>dataType = ScopeType</c> for a bare call). Either way the body
-        /// borrows the enclosing component's prop layout and never the enclosing slot mode (a region declares no
-        /// <c>out::</c> slot). An untyped region called with an explicit value degrades (its dynamic body typing
-        /// is the argument's type, which the emitter does not reproduce).
+        /// The body context of a region. Typed region (:: T) types by declared model; untyped bare region types by enclosing model.
+        /// Either way, body borrows enclosing prop layout and never enclosing slot mode. Untyped with explicit value degrades.
         /// </summary>
         private bool TryRegionBodyContext(DefinitionItem def, CallParameter cp, BodyContext bctx,
             out BodyContext ctx, out string reason)
@@ -1520,9 +1417,7 @@ namespace Heddle.Generator.Emit
             return true;
         }
 
-        /// <summary>The body-model-typing rule for a definition: <c>:: dynamic</c> is the dynamic tier; a declared
-        /// <c>:: T</c> resolves to its symbol; an undeclared (or unresolvable) model type degrades the template to the
-        /// dynamic path (the runtime types such a body as <c>object</c>, whose member reads it then rejects).</summary>
+        /// <summary>Body-model-typing rule: <c>:: dynamic</c> is dynamic tier; declared <c>:: T</c> resolves to symbol; undeclared degrades to dynamic path.</summary>
         private BodyContext DefinitionBodyContext(DefinitionItem def, out string reason)
         {
             reason = null;
@@ -1544,9 +1439,7 @@ namespace Heddle.Generator.Emit
         private static bool DefinitionHasProps(DefinitionItem def)
             => AnyLayer(def, d => d.PropDeclarations != null && d.PropDeclarations.Count != 0);
 
-        /// <summary>The one base-chain walk over a definition's layers, outermost-first —
-        /// the shape five near-identical loops in this file used to spell out. Two of the five moved into the
-        /// shared <see cref="SlotRules"/>; the rest route through here.</summary>
+        /// <summary>The one base-chain walk over definition layers (outermost-first). Avoids five near-identical loops; two moved to <see cref="SlotRules"/>.</summary>
         private static bool AnyLayer(DefinitionItem def, System.Func<DefinitionItem, bool> predicate)
         {
             for (var d = def; d != null; d = d.BaseDefinition)
@@ -1554,8 +1447,6 @@ namespace Heddle.Generator.Emit
                     return true;
             return false;
         }
-
-        // ---- Prop layout ----
 
         private sealed class PropSlotInfo
         {
@@ -1654,8 +1545,7 @@ namespace Heddle.Generator.Emit
                 return false;
             }
 
-            // Only reproduce a boxed value when the literal's CLR type already matches the target's underlying type
-            // (no conversion), or the target is object/string with a matching literal. Numeric widening is deferred.
+            // Reproduce only when literal CLR type matches target's underlying (no conversion) or target is object/string.
             var literal = LiteralFormatter.Format(value);
             if (literal == null)
                 return false;
@@ -1673,9 +1563,7 @@ namespace Heddle.Generator.Emit
                 return true;
             }
 
-            // Implicit numeric widening (PropConversion.ConvertValue): the runtime stores the
-            // widened boxed value (Convert.ChangeType to the target underlying) in the prototype. A C# cast to the
-            // target underlying keyword boxes to the identical CLR type/value (e.g. (double)1 == 1.0d).
+            // Runtime stores widened boxed value; cast to target keyword boxes to identical CLR type/value.
             if (valueSpecial != SpecialType.None &&
                 IsImplicitNumericWidening(valueSpecial, underlying.SpecialType))
             {
@@ -1690,14 +1578,7 @@ namespace Heddle.Generator.Emit
             return false;
         }
 
-        /// <summary>C#'s implicit numeric conversions (spec §10.2.3) over <see cref="SpecialType"/> — the exact set
-        /// <c>NumericPromotion.IsImplicitNumeric</c> allows for prop-default widening (differential-gated).
-        /// <para>This used to be a <b>second live copy</b> of
-        /// the §10.2.3 table, keyed on <see cref="SpecialType"/>, whose agreement with the shared table no test ever
-        /// checked. It is now a two-line adapter over the one
-        /// shared table (<see cref="NumericTable.IsImplicit"/> via <see cref="SymbolFacts.ToNumericKind"/>), so
-        /// "exactly one numeric-kind table" is true of the built assemblies.
-        /// <c>GeneratorNumericTableAdoptionTests</c> pins the fold against the deleted body, verbatim.</para></summary>
+        /// <summary>C#'s implicit numeric conversions (spec §10.2.3). Adapter over shared <see cref="NumericTable.IsImplicit"/>.</summary>
         internal static bool IsImplicitNumericWidening(SpecialType from, SpecialType to) =>
             NumericTable.IsImplicit(SymbolFacts.ToNumericKind(from), SymbolFacts.ToNumericKind(to));
 
@@ -1748,13 +1629,9 @@ namespace Heddle.Generator.Emit
 
         private int _propsCounter;
 
-        /// <summary>Builds the props carriage for a call site: a frozen <c>static readonly object[]</c>
-        /// prototype (defaults + constant arguments, shared, zero per-render allocation) plus, for any non-constant
-        /// argument, a <c>PrecompiledPropSetter[]</c> whose evaluators run against the caller view — exactly what the
-        /// runtime <c>PropsBinder</c> produces. <paramref name="propsFieldRef"/> is <c>"null"</c> for a prop-less
-        /// definition; <paramref name="dynamicSettersRef"/> is <c>"null"</c> for an all-constant call. Falls back
-        /// (returns false) for a prop value the emitter can not reproduce byte-exactly or a dynamic argument it can
-        /// not type (root refs, non-path native args needing conversion).</summary>
+        /// <summary>Builds props carriage: frozen prototype + dynamic setters for non-constant arguments.
+        /// <paramref name="propsFieldRef"/> is "null" for prop-less; <paramref name="dynamicSettersRef"/> is "null" for all-constant.
+        /// Falls back for unreproducible values or untypeable dynamic arguments.</summary>
         private bool TryBuildPropsPrototype(PropLayoutInfo layout, CallParameter cp,
             BodyContext bctx, out string propsFieldRef, out string dynamicSettersRef, out string reason)
         {
@@ -1842,11 +1719,7 @@ namespace Heddle.Generator.Emit
             return true;
         }
 
-        /// <summary>Emits an evaluator for a non-constant prop argument: a static method computing the
-        /// argument expression against the caller view's model, wrapped in a <c>PrecompiledPropSetter(index, eval)</c>.
-        /// Supports a typed-caller member path (with numeric widening to the prop type) and any writable native
-        /// expression when the prop type is <c>object</c>; root references and conversions the emitter can not prove
-        /// fall back.</summary>
+        /// <summary>Emits an evaluator for non-constant prop arguments. Supports typed-caller member paths and native expressions.</summary>
         private bool TryBuildDynamicSetter(NamedArgument arg, PropSlotInfo slot, BodyContext bctx, out string setterExpr,
             out string reason)
         {
@@ -1917,9 +1790,7 @@ namespace Heddle.Generator.Emit
                 .Append(", props: ").Append(propsFieldRef)
                 .Append(", dynamicSetters: ").Append(dynamicSettersRef)
                 .Append(", global::Heddle.Data.RenderType.Raw");
-            // The per-carrier overload, gated on the schema that introduced it exactly as the
-            // DynamicMember routing is (PrecompiledSchema.EmitsPerCarrierLocals). Below the gate the emission is
-            // the pre-fix single-flag shape.
+            // Per-carrier overload gated on schema (PrecompiledSchema.EmitsPerCarrierLocals).
             if (PrecompiledSchema.EmitsPerCarrierLocals)
                 _fieldDecls.Append(", bodyNeedsLocals: ").Append(bodyNeedsLocals ? "true" : "false")
                     .Append(", callerContentNeedsLocals: ").Append(callerContentNeedsLocals ? "true" : "false");
@@ -1934,10 +1805,8 @@ namespace Heddle.Generator.Emit
             return field;
         }
 
-        /// <summary>The caller-content typing for a slot-mode definition (README body model-typing rule): the caller
-        /// body executes with <c>ModelData</c> = the slot value, declared to be the slot type. <c>:: dynamic</c> is
-        /// never a slot type (the runtime rejects a dynamic slot value); an unresolvable slot type degrades the
-        /// template to the dynamic path.</summary>
+        /// <summary>Caller-content typing for slot-mode definitions: ModelData = slot value (declared slot type).
+        /// Dynamic slot types and unresolvable types degrade the template.</summary>
         private BodyContext SlotBodyContext(DefinitionItem def, out string reason)
         {
             reason = null;
@@ -2026,9 +1895,7 @@ namespace Heddle.Generator.Emit
                         return true;   // reads scope.PropsData, not the model local
                     }
 
-                    // Multi-hop: cast the boxed prop to its declared slot type and walk the rest hop-by-hop, the same
-                    // member tier the single-hop model path uses (differential-gated). A dynamic/unresolvable prop
-                    // type falls back.
+                    // Multi-hop: cast prop to slot type and walk hop-by-hop (same tier as single-hop model path).
                     if (slot.Type == null || slot.Type.TypeKind == TypeKind.Dynamic)
                     {
                         reason = "multi-hop prop read on dynamic/unresolved type";
@@ -2051,8 +1918,7 @@ namespace Heddle.Generator.Emit
 
                 if (bctx.IsDynamic)
                 {
-                    // Dynamic tier (generated-code.md example 4, protocol rule 6): a leading conditional guards
-                    // the first hop, dynamic ?. carries the rest — exactly what DynamicParameter emits.
+                    // Dynamic tier: leading conditional guards first hop, dynamic ?. carries rest (DynamicParameter emits this).
                     if (cp.RootReference) { reason = "dynamic root-reference member path"; return false; }
                     paramExpr = WriteDynamicPath("m", segments);
                     usesModel = true;
@@ -2065,9 +1931,7 @@ namespace Heddle.Generator.Emit
                 var resolution = _resolver.ResolvePath(bctx.ModelSymbol, segments);
                 if (resolution.Kind != SymbolTypeResolver.PathKind.Resolved)
                 {
-                    // Milestone 2 (HED7008): a genuine property-not-found on the typed model — the same condition the
-                    // runtime raises as HED0001. Positioned by locating the dotted path in the source (the raw
-                    // segments carry no BlockPosition); skipped when it cannot be located (never a false diagnostic).
+                    // HED7008: property-not-found on typed model (same as runtime HED0001).
                     if (resolution.Kind == SymbolTypeResolver.PathKind.Failed)
                         RecordMemberFailure(bctx.ModelSymbol, segments, resolution);
                     reason = "member path (" + resolution.Kind + ")";
@@ -2128,13 +1992,8 @@ namespace Heddle.Generator.Emit
             return false;
         }
 
-        /// <summary>The FullCSharp verbatim tier (generated-code.md example 3): the parser-captured C# expression is
-        /// pasted verbatim, binding a local named <c>model</c> — the exact identifier the runtime's
-        /// <c>CSharpClassTemplate</c> method signature declares — so a pasted expression means the same thing on both
-        /// backends. Only emitted under <c>ExpressionMode.FullCSharp</c> (the generator never widens the sandbox);
-        /// a typed model is required (the runtime types <c>model</c>); expressions referencing the
-        /// <c>chained</c>/<c>root</c> parameters degrade to the dynamic path (their static types are not reproducible
-        /// in-generator here — a reserved follow-up).</summary>
+        /// <summary>FullCSharp tier: C# expression pasted verbatim with local <c>model</c> bound (same name as runtime).
+        /// Only under FullCSharp mode; requires typed model. Chained/root references degrade (types not reproducible).</summary>
         private bool BuildCSharpExpr(string csharp, BodyContext bctx, out string paramExpr, out bool usesCSharpModel,
             out string reason)
         {
@@ -2144,8 +2003,7 @@ namespace Heddle.Generator.Emit
 
             if (_config.ExpressionMode != Heddle.Data.ExpressionMode.FullCSharp)
             {
-                // The runtime rejects C# unless AllowCSharp (== FullCSharp); refuse to precompile (the dynamic path
-                // will surface the engine's own C#-tier gate). HED7012 wrapping is the diagnostics work item.
+                // Runtime rejects C# unless FullCSharp mode; dynamic path surfaces engine's gate.
                 reason = "embedded C# outside FullCSharp mode";
                 return false;
             }
@@ -2189,8 +2047,7 @@ namespace Heddle.Generator.Emit
                 return BuildParamExpr(inner.CallParameter, bctx, out paramExpr, out usesModel, out usesCSharpModel,
                     out reason);
 
-            // The same shared precedence the top-level dispatch runs, so a nested producer resolves
-            // its name exactly as HeddleCompiler.CompileItem does for a chain parameter.
+            // Use same precedence as top-level dispatch (HeddleCompiler.CompileItem).
             var innerTarget = CallTargetRules.ResolveCallTarget(name, inner.CallParameter, null,
                 _parse.DefenitionExists,
                 n => _extensionBinder.TryResolve(n, out _),
@@ -2214,11 +2071,8 @@ namespace Heddle.Generator.Emit
                 return true;
             }
 
-            // A producer name in @(name(args)) that is neither a default built-in, a discovered export, nor a
-            // definition is a delegate-only remainder — the runtime would resolve it as a function and
-            // fail to find it. Record it so the template degrades to a HED7014 fallback marker
-            // (e.g. @(shout(Name))). Function-shaped only: bodiless (guarded above) and not a
-            // nested chain.
+            // Delegate-only remainder — record so template degrades to HED7014 fallback marker.
+            // Function-shaped only: bodiless and not nested chain.
             if (innerTarget == CallTargetKind.Unknown &&
                 CallTargetRules.IsFunctionCompatibleShape(inner.CallParameter))
             {
@@ -2230,16 +2084,8 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>
-        /// The dynamic-tier member access. This replaced the inline
-        /// <c>m == null ? (object)null : (object)(((dynamic)m).A?.B)</c> cast chain with chained
-        /// <c>PrecompiledRuntime.DynamicMember</c> calls. The old shape was null-guarded identically, but a
-        /// <c>(dynamic)</c> cast in generated code binds in the <b>consumer's</b> assembly context while the engine
-        /// binds in <c>Heddle</c>'s — so a consumer <c>internal</c> property resolved on the precompiled tier and
-        /// threw/returned null on the dynamic one. Routing both tiers through one helper makes the accessibility
-        /// divergence disappear structurally instead of being argued away in a doc comment.
-        /// <para>Emission is gated on the manifest schema version
-        /// (<c>PrecompiledSchema.DynamicMemberRoutingSchemaVersion</c>): an engine too old to carry the helper
-        /// rejects the assembly at registration and falls back, rather than faulting mid-render.</para>
+        /// Dynamic-tier member access via chained <c>PrecompiledRuntime.DynamicMember</c> calls.
+        /// Avoids assembly-context divergence of inline <c>(dynamic)</c> cast. Gated on schema version.
         /// </summary>
         private static string WriteDynamicPath(string local, string[] segments)
         {
@@ -2282,10 +2128,7 @@ namespace Heddle.Generator.Emit
         private string AllocateEmptyExtension(BlockPosition position)
         {
             var field = "E" + _extensionCounter++;
-            // The running profile (post-@profile-flip) decides encoding — the redirect reproduced at the
-            // exact document position the carrier sits. The decision is the shared
-            // OutputProfileRules rule the runtime's UnnamedCarrierName runs; only this call site is bodiless
-            // (BuildCall refuses a bodied unnamed carrier above), so hasBody is false here.
+            // Running profile (post-@profile-flip) decides encoding via shared OutputProfileRules rule.
             OutputProfileRules.ResolveUnnamedCarrier(
                 _profileHtml ? Heddle.Data.OutputProfile.Html : Heddle.Data.OutputProfile.Text,
                 hasBody: false, out var carrierKind, out var carrierRenderType);
@@ -2300,10 +2143,7 @@ namespace Heddle.Generator.Emit
                 .Append("(), body: null, ").Append(renderType)
                 .Append(", needsLocals: false, line: ").Append(line).Append(", column: ").Append(col).Append(");\n");
             _extensionFields.Add(field);
-            // The manifest binding name must resolve (via TemplateFactory) to the bound type in the gauntlet:
-            // under Html the bodiless carrier redirects to the "html" extension (EmptyHtmlExtension); under Text
-            // it is the empty-named EmptyExtension. Recording "" with the Html type would resolve "" -> EmptyExtension
-            // and mismatch.
+            // Manifest binding name must resolve to bound type: Html redirects to "html" (EmptyHtmlExtension), Text to "" (EmptyExtension).
             RecordExtensionBinding(OutputProfileRules.CarrierRegistryName(carrierKind),
                 html ? "Heddle.Extensions.EmptyHtmlExtension" : "Heddle.Extensions.EmptyExtension");
             return field;
@@ -2339,8 +2179,7 @@ namespace Heddle.Generator.Emit
             return PropLayoutCore.Fingerprint(slots, TypeFacts);
         }
 
-        /// <summary>Records one manifest <c>ExtensionBindings</c> row, at most once per (name, type). One method
-        /// with a defaulted assembly, not the two overloads that differed by a literal.</summary>
+        /// <summary>Records manifest <c>ExtensionBindings</c> row (at most once per name/type).</summary>
         private void RecordExtensionBinding(string name, string type, string assembly = "Heddle",
             string propLayoutFingerprint = null)
         {
@@ -2354,10 +2193,7 @@ namespace Heddle.Generator.Emit
                 _functionBindings.Add((name, target, overloadCount));
         }
 
-        /// <summary>Copies the writer's recorded remainders into the template-level channels: unresolvable
-        /// (delegate-only) function names turn the template into a HED7014 fallback marker; genuine member-path
-        /// failures become HED7008 diagnostics; a call the shared ranker proved illegal becomes a
-        /// HED7025 error. All three are drained after every native-expression write.</summary>
+        /// <summary>Drains writer's recorded remainders into template-level channels (unresolvable functions, member failures, unbindable calls).</summary>
         private void DrainUnresolvable(NativeExpressionWriter writer)
         {
             foreach (var fn in writer.UnresolvableFunctions)
@@ -2370,15 +2206,7 @@ namespace Heddle.Generator.Emit
                         mf.Position, mf.ReceiverType, mf.Member, mf.Path));
             }
 
-            // HED7025. The template still degrades — the error replaces the *silence*, not the refusal — so
-            // this is reported exactly like HED7008: recorded here, drained in every result branch.
-            // On the seen-set: one report per call site is already guaranteed one level down, because the writer
-            // records only on its per-CallNode memo miss, and no shape found so far routes one call through two
-            // writers (a definition body called twice does not — ADefinitionBodyCalledTwiceReportsItsCallOnce). So
-            // this set is a DEFENSIVE guard with no reachable trigger today, stated as such rather than dressed up
-            // as covered behaviour: deleting it reddens nothing (mutation-verified 2026-07-26). It is kept because
-            // its failure mode is asymmetric — a duplicate squawk is noise, and the alternative to noise here would
-            // be discovering it in a consumer's build log.
+            // HED7025: defensive guard against duplicate reports (failure mode is asymmetric: noise vs discovery in build log).
             foreach (var call in writer.UnbindableFunctionCalls)
             {
                 var seenKey = call.Name + "@" + call.Position.StartIndex;
@@ -2442,8 +2270,7 @@ namespace Heddle.Generator.Emit
 
         private IReadOnlyList<(string Name, BlockPosition Position)> _dedupedUnresolvable;
 
-        /// <summary>The unresolvable-function list, first-position-wins per name. Memoized —
-        /// the marker result and the marker manifest builder both ask for it, and the list is closed by then.</summary>
+        /// <summary>The unresolvable-function list, first-position-wins per name. Memoized.</summary>
         private IReadOnlyList<(string Name, BlockPosition Position)> DedupeUnresolvable()
         {
             if (_dedupedUnresolvable != null)
@@ -2456,8 +2283,7 @@ namespace Heddle.Generator.Emit
             return _dedupedUnresolvable = result;
         }
 
-        /// <summary>Records one manifest <c>FunctionBindings</c> row per default/exported function the writer bound —
-        /// defaults to the shim's forwarding target, exports to their discovered container.</summary>
+        /// <summary>Records manifest <c>FunctionBindings</c> rows for bound default/exported functions.</summary>
         private void RecordFunctionUses(NativeExpressionWriter writer)
         {
             foreach (var fn in writer.UsedDefaultFunctions)
@@ -2466,8 +2292,6 @@ namespace Heddle.Generator.Emit
             foreach (var ex in writer.UsedExports)
                 RecordFunctionBinding(ex.Name, ex.Aqn, ex.OverloadCount);
         }
-
-        // ---- File rendering ----
 
         private string RenderFile(string modelType, BodyClass root)
         {
@@ -2513,18 +2337,15 @@ namespace Heddle.Generator.Emit
             w.Line($"internal static readonly global::System.Type __ModelType = typeof({modelType});");
             w.Line();
 
-            // Piece table (global, document order — determinism).
             for (int i = 0; i < _pieces.Count; i++)
                 PieceWriter.EmitPiece(w, i, _pieces[i], _config.EmitUtf8Pieces, utf8Supported: true);
             w.Line();
 
-            // Extension instances.
             foreach (var line in _fieldDecls.ToString().Split('\n'))
                 if (line.Length != 0)
                     w.Raw(line);
             w.Line();
 
-            // Dynamic prop-argument evaluators — static methods referenced by the setter arrays above.
             if (_methodDecls.Length != 0)
             {
                 foreach (var line in _methodDecls.ToString().Split('\n'))
@@ -2552,7 +2373,6 @@ namespace Heddle.Generator.Emit
             w.Line("{");
             w.Indent();
 
-            // Render
             w.Line("public void Render(in global::Heddle.Data.Scope scope)");
             w.Line("{");
             w.Indent();
@@ -2565,10 +2385,7 @@ namespace Heddle.Generator.Emit
                 if (seg is Piece p)
                 {
                     w.Raw("#line hidden");
-                    // When the u8 twin exists (HeddleEmitUtf8Pieces on, no lone surrogate) route the piece
-                    // through the one WritePiece hook — the zero-transcode byte branch on a UTF-8 sink, the string form
-                    // otherwise (including under encode proxies, which are not IUtf8ScopeRenderer). Otherwise the plain
-                    // string render, unchanged.
+                    // Route through WritePiece hook when u8 twin exists (zero-transcode byte branch on UTF-8 sink).
                     if (HasU8Twin(p.Index))
                         w.Line($"global::Heddle.Precompiled.PrecompiledRuntime.WritePiece(in scope, P{p.Index}, P{p.Index}U8);");
                     else
@@ -2591,7 +2408,6 @@ namespace Heddle.Generator.Emit
             w.Line("}");
             w.Line();
 
-            // Execute
             w.Line("public string Execute(in global::Heddle.Data.Scope scope)");
             w.Line("{");
             w.Indent();
@@ -2639,9 +2455,7 @@ namespace Heddle.Generator.Emit
             w.Line("}");
         }
 
-        /// <summary>The lazily-memoized partial-strategy resolution the generated @partial call site closes over:
-        /// <c>LazyInitializer.EnsureInitialized(ref _partialN, () =&gt; ResolvePartial("key"))</c> — registry-first,
-        /// dynamic-compile second, at-most-once per field.</summary>
+        /// <summary>Lazily-memoized partial-strategy resolution via <c>LazyInitializer.EnsureInitialized</c>.</summary>
         private static string PartialResolveExpr(Partial pt)
         {
             var resolve = pt.CallerModelTypeFq == null
@@ -2662,18 +2476,8 @@ namespace Heddle.Generator.Emit
             w.Raw($"#line ({c.SpanStartLine}, {c.SpanStartCol}) - ({c.SpanEndLine}, {c.SpanEndCol}) \"{_lineDirectiveFile}\"");
         }
 
-        // ---- Manifest entry ----
-
-        /// <summary>The one manifest-entry builder, serving both the normal entry and the HED7014
-        /// fallback-marker twin — a
-        /// <see cref="Heddle.Precompiled.PrecompiledTemplateInfo"/> with a null entry class and null strategy
-        /// (<c>IsPrecompiled == false</c>) plus one null-target <c>FunctionBindings</c> row per unresolvable name,
-        /// the row the gauntlet short-circuits on with <c>UnsupportedFunction</c>. The two used to be verbatim
-        /// copies of thirteen named arguments differing in five lines.
-        /// <para>The <c>PrecompiledTemplateInfo</c> constructor-argument names and the fingerprint/capabilities type
-        /// names below stay string constants: <c>PrecompiledTemplateInfo</c> pulls <c>IProcessStrategy</c> and is not
-        /// linkable, so <c>nameof</c> is unavailable. The integration suite compiles every emitted manifest against
-        /// the real <c>Heddle</c> reference, which makes a renamed constructor parameter a red build there.</para></summary>
+        /// <summary>Manifest-entry builder for both normal and HED7014 fallback-marker entries.
+        /// Constructor-argument names stay string constants (PrecompiledTemplateInfo not linkable).</summary>
         private string BuildManifestEntry(string contentHash, bool isDynamic, string modelType, bool marker)
         {
             var entryType = $"global::{_namespace}.{_sanitizedName}";
@@ -2717,12 +2521,7 @@ namespace Heddle.Generator.Emit
             return sb.ToString();
         }
 
-        /// <summary>Formats the options fingerprint from a <b>real</b> <see cref="PrecompiledOptionsFingerprint"/>
-        /// constructed out of the build config, emitting each member through <c>Enum.ToString()</c>.
-        /// Adding a fourth identity-bearing field to the struct then breaks this method's compile — a missing
-        /// constructor argument — instead of surfacing as run-time <c>OptionsMismatch</c> fallbacks; the arity test
-        /// pins formatter arity == constructor arity as the second guard. The old string-switch had a
-        /// <c>default: return "Native"</c> arm that would bake any unrecognized mode as Native.</summary>
+        /// <summary>Formats the options fingerprint from build config. Arity mismatch breaks compile (safety guard).</summary>
         private string FingerprintExpr()
         {
             var fingerprint = new PrecompiledOptionsFingerprint(_config.OutputProfile, _config.ExpressionMode,
@@ -2758,8 +2557,7 @@ namespace Heddle.Generator.Emit
                 .Select(b => "new global::Heddle.Precompiled.PrecompiledExtensionBinding(" +
                              CSharpEscape.StringLiteral(b.Name) + ", " +
                              CSharpEscape.StringLiteral(b.Type + ", " + b.Assembly) +
-                             // The additive prop-layout row (schema 3). Omitted entirely for a
-                             // parameter-less extension, so nothing about existing manifests changes shape.
+                             // Prop-layout row omitted for parameter-less extensions (schema compatibility).
                              (b.PropLayout == null ? "" : ", " + CSharpEscape.StringLiteral(b.PropLayout)) + ")")));
             sb.Append(" }");
             return sb.ToString();

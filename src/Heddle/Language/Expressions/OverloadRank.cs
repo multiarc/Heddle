@@ -85,18 +85,9 @@ namespace Heddle.Language.Expressions
     }
 
     /// <summary>
-    /// Heddle's function-overload selection rule: rank exact 0, widening/reference/lifting 1 — <b>flat</b> — and
-    /// boxing to <c>object</c> 2, with params-expanded arguments ranked one worse; then take the Pareto
-    /// non-dominated front and call any non-singleton front ambiguous.
-    /// <para>The <i>candidate set</i> was already shared (<c>DefaultFunctionTable</c> mirrors the registry); the
-    /// <i>selection rule</i> was not. The generator's comment claimed the consumer's C# compiler reproduces this
-    /// rank "by construction" — that claim was false because the rank vector here is flat while C# prefers the
-    /// closest target. <c>min(1, 2u)</c> is the counter-example: <c>(long,long)</c>, <c>(double,double)</c> and
-    /// <c>(decimal,decimal)</c> all rank <c>(1,1)</c>, so the runtime raises HED1013 while C# picks <c>Min(long,long)</c>
-    /// and renders.</para>
-    /// <para>The flat Pareto rank is the semantics of record. The generator consults this core as an emit guard —
-    /// degrade on ambiguity, and emit cast-pinned to the chosen signature otherwise, which makes the "by
-    /// construction" claim actually true.</para>
+    /// Heddle's function-overload selection rule: flat Pareto rank (exact 0, widening/reference/lifting 1, boxing 2,
+    /// params-expanded one worse), then take the non-dominated front. Used as an emit guard to degrade on ambiguity
+    /// and emit cast-pinned otherwise.
     /// </summary>
     internal static class OverloadRank
     {

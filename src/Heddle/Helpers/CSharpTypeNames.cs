@@ -5,16 +5,13 @@ using System.Collections.ObjectModel;
 namespace Heddle.Helpers
 {
     /// <summary>
-    /// <para>Single source of truth for C# type aliases, stated once to prevent divergence. <see cref="Aliases"/>
-    /// maps template-written aliases to CLR types; <see cref="TryGetDisplayName"/> maps types back to user-readable
-    /// aliases for signatures and completion lists. The numeric subset is held in lockstep with
-    /// <c>NumericKind</c> by <c>AliasTableLockstepTests</c>. Dependency-free netstandard2.0.</para>
+    /// Single source of truth for C# type aliases to prevent divergence. The numeric subset is kept
+    /// in lockstep with <c>NumericKind</c> by <c>AliasTableLockstepTests</c>.
     /// </summary>
     internal static class CSharpTypeNames
     {
-        /// <summary>The <c>dynamic</c> alias, which shares <see cref="object"/>'s CLR type so the display
-        /// direction prints <c>object</c> instead. Both tiers share this row to avoid silently diverging.
-        /// Named as a constant so the one place it is treated specially is greppable.</summary>
+        /// <summary>The <c>dynamic</c> alias (mapped to <see cref="object"/> so display prints <c>object</c>);
+        /// named constant to keep special handling greppable.</summary>
         public const string DynamicAlias = "dynamic";
 
         private static readonly Dictionary<string, Type> AliasToType = new Dictionary<string, Type>(StringComparer.Ordinal)
@@ -42,15 +39,12 @@ namespace Heddle.Helpers
         private static readonly ReadOnlyCollection<string> Names =
             new ReadOnlyCollection<string>(new List<string>(AliasToType.Keys));
 
-        /// <summary>Alias → CLR type, ordinal-keyed. <c>dynamic</c> is present and resolves to
-        /// <see cref="object"/>; every other key is its own primitive.</summary>
+        /// <summary>Alias to CLR type (ordinal-keyed); <c>dynamic</c> resolves to <see cref="object"/>.</summary>
         public static IReadOnlyDictionary<string, Type> Aliases => AliasToType;
 
-        /// <summary>The alias key list — the agreed shared boundary with the build tier's symbol-side map and
-        /// with the parse-direction spelling parser.</summary>
+        /// <summary>The alias key list.</summary>
         public static IReadOnlyList<string> AliasNames => Names;
 
-        /// <summary>Resolves an alias a template wrote to its CLR type.</summary>
         public static bool TryGetType(string alias, out Type type)
         {
             if (alias == null)
@@ -62,9 +56,8 @@ namespace Heddle.Helpers
             return AliasToType.TryGetValue(alias, out type);
         }
 
-        /// <summary>The reader-facing spelling of a type: its C# alias, or a single-rank array of one
-        /// (<c>object[]</c>, the params shape function signatures print). <c>false</c> when the type has no
-        /// alias — the caller then applies its own fallback, which legitimately differs by surface.</summary>
+        /// <summary>The reader-facing spelling of a type (C# alias or single-rank array). <c>false</c> when
+        /// the type has no alias.</summary>
         public static bool TryGetDisplayName(Type type, out string name)
         {
             if (type != null)

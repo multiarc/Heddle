@@ -5,14 +5,10 @@ using Microsoft.CodeAnalysis;
 
 namespace Heddle.Generator.Diagnostics
 {
-    /// <summary>The generator's Roslyn <see cref="DiagnosticDescriptor"/>s: the <c>HED7xxx</c> block
-    /// used directly as the diagnostic <c>Id</c>, category <c>"Heddle.Precompile"</c>. Forwarded front-end
-    /// diagnostics — errors and warnings alike — keep their own IDs; an ID-less forwarded entry is
-    /// wrapped as <c>HED7012</c>/<c>HED7013</c>.
-    /// <para>Every descriptor is a <b>projection</b> of its <see cref="HeddleDiagnosticCatalog"/> row:
-    /// id, title and severity are stated once, in the shared netstandard2.0 data table the runtime and the
-    /// language server read too, and this class contributes only the Roslyn shape. The named fields stay so every
-    /// call site is unchanged; what is gone is the second registry they used to be.</para></summary>
+    /// <summary>Roslyn <see cref="DiagnosticDescriptor"/>s (HED7xxx block): projections of <see cref="HeddleDiagnosticCatalog"/>,
+    /// where the shared table retains id/title/severity (keeping <c>Microsoft.CodeAnalysis</c> dependencies out),
+    /// and this class contributes only the Roslyn shape. Forwarded front-end diagnostics keep their own IDs;
+    /// ID-less entries are wrapped as <c>HED7012</c>/<c>HED7013</c>.</summary>
     internal static class GeneratorDiagnostics
     {
         private const string Category = "Heddle.Precompile";
@@ -37,13 +33,9 @@ namespace Heddle.Generator.Diagnostics
                 ? DiagnosticSeverity.Warning
                 : DiagnosticSeverity.Error;
 
-        /// <summary>The descriptor for a forwarded front-end diagnostic: the
-        /// front end's own <c>HEDxxxx</c> id with a passthrough <c>"{0}"</c> format — it has already formatted
-        /// the message — at the severity its entry subtype declares, and the catalog's title when the id is
-        /// catalogued. An entry carrying no id falls back to <see cref="ForwardedError"/>/
-        /// <see cref="ForwardedWarning"/> — the contract for
-        /// <c>HED7012</c>/<c>HED7013</c>. Descriptors are cached per (id, severity) because generators run
-        /// in-IDE and one template can raise the same id many times.</summary>
+        /// <summary>A forwarded front-end diagnostic with the front-end's HEDxxxx id and passthrough <c>"{0}"</c> format.
+        /// Entries with no id fall back to <see cref="ForwardedError"/>/<see cref="ForwardedWarning"/>
+        /// (<c>HED7012</c>/<c>HED7013</c>). Cached per (id, severity) because generators run in-IDE.</summary>
         public static DiagnosticDescriptor Forwarded(string id, bool isWarning)
         {
             if (string.IsNullOrEmpty(id))
@@ -115,7 +107,6 @@ namespace Heddle.Generator.Diagnostics
         public static readonly DiagnosticDescriptor UnresolvableMember =
             FromCatalog(HeddleDiagnosticIds.BuildUnresolvableMember);
 
-        /// <summary>An MSBuild build-option value is unparsable.</summary>
         public static readonly DiagnosticDescriptor OptionParseError =
             FromCatalog(HeddleDiagnosticIds.BuildOptionParseError);
 

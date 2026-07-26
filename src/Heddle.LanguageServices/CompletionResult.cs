@@ -57,7 +57,7 @@ namespace Heddle.LanguageServices
         public IReadOnlyList<CompletionItem> Items { get; }
     }
 
-    /// <summary>Hover payload: markdown content plus the hovered token's span.</summary>
+    /// <summary>Hover information for a location.</summary>
     public sealed class HoverResult
     {
         internal HoverResult(string markdown, int offset, int length)
@@ -72,7 +72,7 @@ namespace Heddle.LanguageServices
         public int Length { get; }
     }
 
-    /// <summary>Go-to-definition target, projected onto one LSP Location.</summary>
+    /// <summary>Go-to-definition target location.</summary>
     public sealed class DefinitionTarget
     {
         internal DefinitionTarget(string sourcePath, int offset, int length)

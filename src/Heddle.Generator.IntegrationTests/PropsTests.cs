@@ -6,10 +6,8 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Props with all-constant call sites: the definition prop layout resolves over symbols; an all-constant call
-    /// site shares one frozen <c>object[]</c> prototype installed on the definition-body scope via <c>BindDefinition</c>;
-    /// body reads go through <c>PrecompiledRuntime.Prop(in scope, i)</c> resolved prop-first. Differential-gated against
-    /// the runtime <c>PropsBinder</c>.
+    /// Tests props with all-constant call sites: prototype-based resolution, prop-first body reads, and differential
+    /// verification against the runtime <c>PropsBinder</c>.
     /// </summary>
     public class PropsTests
     {
@@ -32,8 +30,7 @@ namespace Heddle.Generator.IntegrationTests
         [MemberData(nameof(Articles))]
         public void CardExample(Article model)
         {
-            // generated-code.md example 5: props with defaults, an all-constant call, a prop-conditioned @ifnot,
-            // an @out() splice. Rendered off a typed root here (dynamic root is exercised elsewhere).
+            // Props with defaults, constant call, @ifnot condition, @out() splice.
             var t = "@model(){{" + ArticleType + "}}@\\\n" +
                     "@%\n" +
                     "  <card(style: string = \"plain\", compact: bool = false)>\n" +
@@ -58,7 +55,7 @@ namespace Heddle.Generator.IntegrationTests
         [MemberData(nameof(Articles))]
         public void PropShadowsModelMember(Article model)
         {
-            // The prop 'Title' shadows the model member of the same name — the prop wins (prop-first resolution).
+            // Prop shadows model member; prop-first resolution wins.
             var t = "@model(){{" + ArticleType + "}}@\\\n" +
                     "@%<hdr(Title: string = \"P\")>{{[@(Title)]}} :: " + ArticleType + "%@\n" +
                     "@hdr(this, Title: \"shadowed\")\n";
@@ -69,8 +66,7 @@ namespace Heddle.Generator.IntegrationTests
         [MemberData(nameof(Articles))]
         public void NumericWideningDefault(Article model)
         {
-            // A double prop defaulted with an int literal (1) — the runtime widens the boxed prototype value
-            // (Convert.ChangeType 1 -> 1.0d); the emitter bakes (double)(1). Also a decimal, long, and float default.
+            // Prototype defaults widen: int → double, etc.; emitter bakes conversions.
             var t = "@model(){{" + ArticleType + "}}@\\\n" +
                     "@%<num(d: double = 1, m: decimal = 2, l: long = 3, f: float = 4)>{{[@(d)|@(m)|@(l)|@(f)]}} :: " + ArticleType + "%@\n" +
                     "@num(this)@num(this, d: 1.5, m: 9)\n";
@@ -81,8 +77,7 @@ namespace Heddle.Generator.IntegrationTests
         [MemberData(nameof(Articles))]
         public void MultiHopPropRead(Article model)
         {
-            // A prop typed by the model's type; the body reads a member off the boxed prop (prop.Title) — the
-            // multi-hop prop read casts the boxed prop to its slot type and walks the member tier.
+            // Prop typed as model type; body reads member off boxed prop (multi-hop cast and walk).
             var t = "@model(){{" + ArticleType + "}}@\\\n" +
                     "@%<wrap(art: " + ArticleType + " = null)>{{[@(art.Title)/@(art.Summary)]}} :: " + ArticleType + "%@\n" +
                     "@wrap(this)\n";
@@ -93,8 +88,7 @@ namespace Heddle.Generator.IntegrationTests
         [MemberData(nameof(Articles))]
         public void DynamicPropArgument_MemberPath(Article model)
         {
-            // A non-constant argument (a model member path) becomes a dynamic setter evaluated per invocation
-            // against the caller view — the runtime PropsBinder's dynamic-slot plan, reproduced.
+            // Non-constant argument (member path) becomes dynamic setter per invocation.
             var t = "@model(){{" + ArticleType + "}}@\\\n" +
                     "@%<hd(text: string = \"d\")>{{[@(text)]}} :: " + ArticleType + "%@\n" +
                     "@hd(this, text: Title)@hd(this, text: Summary)\n";
@@ -105,7 +99,7 @@ namespace Heddle.Generator.IntegrationTests
         [MemberData(nameof(Articles))]
         public void DynamicPropArgument_WideningAndObject(Article model)
         {
-            // A dynamic arg widened to the prop type (int model member -> double prop) and one boxed to an object prop.
+            // Dynamic args widened (int → double) and boxed (→ object).
             var t = "@model(){{" + ArticleType + "}}@\\\n" +
                     "@%<mix(n: double = 0, any: object = null)>{{[@(n)|@(any)]}} :: " + ArticleType + "%@\n" +
                     "@mix(this, n: Title.Length, any: Title)\n";

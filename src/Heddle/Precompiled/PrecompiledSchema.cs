@@ -14,38 +14,9 @@ namespace Heddle.Precompiled
     /// </summary>
     public static class PrecompiledSchema
     {
-        /// <summary>
-        /// <para>Oldest manifest schema this engine accepts. <b>Raised 1 → 3 in 2.1, the one
-        /// narrowing this constant has ever had</b> — and a genuine, declared binary break rather than a gate
-        /// catching up with one that had already happened.</para>
-        /// <para><b>The released facts, verified against the <c>v2.0.0</c> tag.</b> The shipped generator emitted
-        /// <c>schemaVersion: 2</c>; the shipped engine accepted <c>Min = 1, Max = 2</c> (as two private consts —
-        /// this file did not exist yet); the shipped <see cref="PrecompiledExtensionBinding"/> had a real
-        /// <b>two-argument</b> <c>.ctor(string, string)</c> and the shipped generator emitted two-argument calls. So
-        /// <b>schemas 1 and 2 are the only schemas that have ever shipped</b>, and everything numbered above 2 is
-        /// unreleased work-in-progress.</para>
-        /// <para><b>What the break is.</b> The prop-layout fingerprint landed on
-        /// <see cref="PrecompiledExtensionBinding"/> as an <em>optional third constructor parameter</em> rather than
-        /// as a real overload, so the two-argument <c>.ctor(string, string)</c> that every <b>released</b>
-        /// (schema 1–2) manifest's IL calls no longer exists in metadata. With <c>Min = 1</c> the gate would
-        /// <em>accept</em> exactly those manifests, and the fault would land as a
-        /// <see cref="MissingMethodException"/> from <c>Activator.CreateInstance</c>/<c>GetTemplates</c> inside
-        /// <c>PrecompiledTemplates.Register</c> — a host-startup crash, not the clean per-manifest fallback the
-        /// taxonomy promises. Advertising a support window the metadata cannot honour is worse than declaring the
-        /// break: <c>3</c> excludes exactly the faulting set (1–2 were built against the two-argument constructor,
-        /// 3 against the three-argument one), so a 2.0-precompiled assembly degrades to the dynamic path with one
-        /// <c>HED7102</c> callback.</para>
-        /// <para><b>Why the numbers collapsed.</b> The unreleased line had reached 5 across three separate bumps
-        /// (dynamic-member routing at 3, the prop-layout row at 4, the per-carrier <c>BindDefinition</c> overload at
-        /// 5). None of them was ever observable by a user, so carrying three increments would advertise a migration
-        /// history that never existed and would leave this window claiming to support manifest shapes no generator
-        /// ever emitted. They are collapsed into <b>one</b> increment past the released <c>2</c>: schema
-        /// <b>3</b> carries all of it, plus the registered name and the <c>#line</c> path form.</para>
-        /// <para>Consequence, declared at 2.1 with no compatibility shim: a project precompiled by a 2.0.x
-        /// generator must be rebuilt to stay precompiled. Demonstrated — not asserted — by
-        /// <c>OldSchemaManifestRejectionTests</c>, which builds a manifest whose IL genuinely names the absent
-        /// constructor and shows the clean rejection at each released schema and the fault at <c>Min</c>.</para>
-        /// </summary>
+        /// <summary>Oldest manifest schema this engine accepts. Raised from 1 to 3 in version 2.1 (a declared
+        /// binary break): schemas 1–2 reference a <see cref="PrecompiledExtensionBinding"/> constructor no longer in
+        /// metadata, so accepting them causes startup faults instead of graceful fallback.</summary>
         public const int MinSupportedSchemaVersion = 3;
 
         /// <summary>Newest manifest schema this engine accepts. Equal to

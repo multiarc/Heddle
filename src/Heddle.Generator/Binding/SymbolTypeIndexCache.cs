@@ -4,30 +4,11 @@ using Microsoft.CodeAnalysis;
 namespace Heddle.Generator.Binding
 {
     /// <summary>
-    /// The retention contract around <see cref="SymbolTypeIndex"/>'s per-<see cref="Compilation"/> index.
-    /// <para>Building the index walks every type of the compilation and of every referenced assembly, so reuse
-    /// across the many model-type resolutions of one generator pass is worth having. Keeping the built indexes
-    /// forever is not: a <see cref="Compilation"/> is immutable, the IDE creates a new one per keystroke-batch,
-    /// and it never hands an older one back — so every entry except the newest is unreachable by construction and
-    /// a strong-keyed dictionary merely pins it, along with the whole symbol universe behind it. (Editing a
-    /// template and editing it back does <b>not</b> restore the earlier entry either: the reverted state is yet
-    /// another new <see cref="Compilation"/> instance.)</para>
-    /// <para><b>Eviction rule.</b> Two bounds, both stated here and both observable:</para>
-    /// <list type="number">
-    /// <item><description><b>Age.</b> A <i>generation</i> is one compilation admitted to the cache — an edit
-    /// epoch. Every ask stamps the entry it serves with the current generation. An entry untouched for more than
-    /// <see cref="MaxIdleGenerations"/> generations is evicted, whether or not the cache is full: the compilations
-    /// that keep arriving are the evidence that the old one is behind, and the process needs no clock to see it.
-    /// Hits do not advance the generation, so a busy project cannot age out its neighbour by asking a lot.</description></item>
-    /// <item><description><b>Occupancy.</b> At most <see cref="Capacity"/> entries; admitting past it drops the
-    /// least recently used. This is the hard bound, so retention is constant even if every entry keeps being
-    /// touched.</description></item>
-    /// </list>
-    /// <para><b>Eviction cannot change an answer.</b> An entry is a pure function of its compilation, which is
-    /// immutable, so a miss rebuilds a value indistinguishable from the one evicted. Generation counting is
-    /// deliberately derived from the cache's own operation sequence and never from a clock: nothing on the
-    /// generation path is read by emission, and no generator output depends on whether a lookup hit or missed.
-    /// <c>SymbolTypeIndexCacheTests.EvictionCannotChangeWhatTheIndexAnswers</c> pins that.</para>
+    /// Per-<see cref="Compilation"/> index cache with bounded retention. Every compilation is immutable and
+    /// unreachable once newer ones arrive, so entries must evict: by age (untouched beyond
+    /// <see cref="MaxIdleGenerations"/> generations) and by occupancy (at most <see cref="Capacity"/> entries,
+    /// least recently used evicted first). Eviction is safe: every miss rebuilds a value indistinguishable from
+    /// the one evicted, since entries are pure functions of immutable compilations.
     /// </summary>
     internal sealed class SymbolTypeIndexCache
     {
@@ -44,11 +25,9 @@ namespace Heddle.Generator.Binding
 
         private int _generation;
 
-        /// <summary>A handful of projects' worth of indexes, and no more.</summary>
+        /// <summary>Capacity: enough for concurrent projects, bounded to avoid accumulation during editing.</summary>
         private const int DefaultCapacity = 8;
 
-        /// <summary>Two edit epochs of tolerance: enough that an interleaved build of two projects keeps both
-        /// indexes, small enough that a session of edits does not accumulate them.</summary>
         private const int DefaultMaxIdleGenerations = 2;
 
         internal SymbolTypeIndexCache() : this(DefaultCapacity, DefaultMaxIdleGenerations) { }
@@ -96,8 +75,7 @@ namespace Heddle.Generator.Binding
             }
         }
 
-        /// <summary>The index for this compilation, built on first ask and reused until it is evicted. A
-        /// <c>null</c> compilation is answered with an empty index and is never admitted.</summary>
+        /// <summary>Gets or builds the index, cached until eviction. Null compilation returns empty index, never cached.</summary>
         internal SymbolTypeIndex Get(Compilation compilation)
         {
             if (compilation == null)

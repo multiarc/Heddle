@@ -37,8 +37,7 @@ namespace Heddle.Tests
             return (bool) field.GetValue(extension);
         }
 
-        /// <summary>The inner carrier holds the definition body; it hangs off the outer carrier's
-        /// <c>DefinitionParameterTemplate</c>.</summary>
+        /// <summary>The inner carrier holds the definition body, accessible via <c>DefinitionParameterTemplate</c>.</summary>
         private static AbstractExtension Inner(AbstractExtension outer)
         {
             var property = outer.GetType().GetProperty("DefinitionParameterTemplate",
@@ -66,9 +65,7 @@ namespace Heddle.Tests
             Assert.Equal((body, callerContent), PerCarrier(body, callerContent));
         }
 
-        /// <summary>The 10-argument (slot-aware) legacy overload: one <c>needsLocals</c> reaches both carriers, which
-        /// is exactly the behavior it always had, and equals the per-carrier overload called with both flags equal.
-        /// </summary>
+        /// <summary>The 10-argument legacy overload applies one flag to both carriers, preserving original behavior.</summary>
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
@@ -82,7 +79,7 @@ namespace Heddle.Tests
             Assert.Equal(PerCarrier(needsLocals, needsLocals), (NeedsLocals(Inner(outer)), NeedsLocals(outer)));
         }
 
-        /// <summary>The 9-argument legacy overload, same claim — it forwards through the slot-aware one.</summary>
+        /// <summary>The 9-argument legacy overload forwards through the 10-argument one.</summary>
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
@@ -94,8 +91,7 @@ namespace Heddle.Tests
             Assert.Equal(PerCarrier(needsLocals, needsLocals), (NeedsLocals(Inner(outer)), NeedsLocals(outer)));
         }
 
-        /// <summary>Slot mode is orthogonal to the split — the per-carrier overload is the only one that takes both
-        /// flags, and it must still honour <c>slotMode</c>.</summary>
+        /// <summary>The per-carrier overload must respect <c>slotMode</c> independently of the split.</summary>
         [Fact]
         public void SlotModeIsIndependentOfThePerCarrierFlags()
         {

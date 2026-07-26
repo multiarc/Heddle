@@ -9,20 +9,9 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// <para>Before this gate, the release line was hand-maintained in <b>nine</b>
-    /// <c>&lt;Version&gt;</c> elements plus four npm manifests, a TypeScript constant, a workflow argument and a C#
-    /// const — eighteen statements of one fact, with nothing forcing them to agree. They did not: the language
-    /// server's own <c>InformationalVersion</c> still read <c>1.0.0</c> at 2.0, which is what
-    /// <c>heddle-lsp --version</c> printed and what the LSP <c>initialize</c> response reported, and the one test
-    /// that touched it compared it against itself.</para>
-    /// <para>The mechanism is one <c>&lt;VersionPrefix&gt;</c> in <c>Directory.Build.props</c>; this is the gate that
-    /// keeps the statements that <em>cannot</em> be centralised (npm manifests, the VS Code pin, the workflow's tool
-    /// install, prose release-line statements) in step with it. Every assertion names its file, so a failure says
-    /// which statement drifted rather than that "a version is wrong".</para>
-    /// <para><b>Deliberately not asserted:</b> version numbers that are not the release line — the semver spec URL in
-    /// the CHANGELOG, "byte-identical to 2.0.0" behaviour pins that name a historical release, the
-    /// <c>codegen-t4-successor</c> sample's <c>Version = "2.0.0"</c> model datum (sample data that happens to look
-    /// like a version), and third-party pins.</para>
+    /// Version consistency gate: all release-line statements are asserted against the canonical
+    /// <c>&lt;VersionPrefix&gt;</c> in Directory.Build.props. Deliberately not asserted: historical version pins,
+    /// sample data, and third-party references.
     /// </summary>
     public class VersionConsistencyTests
     {
@@ -48,13 +37,6 @@ namespace Heddle.Tests
         private static string RepoRoot =>
             Path.GetDirectoryName(PipelineContractTests.FindRepoFile("Directory.Build.props"));
 
-        /// <summary>Set equality against the empty set, not a count: the duplication is gone, and a project that
-        /// reintroduces its own <c>&lt;Version&gt;</c> is named in the failure message. The three non-shipping
-        /// projects carried one too — overridden by CI, read by nobody — so "it is only documentation" was never a
-        /// reason to keep them.</summary>
-        /// <summary>Build output and nested checkouts are not repository source. The dot-directory arm matters
-        /// as much as bin/obj: a git worktree under <c>.claude/</c> is a whole second copy of the tree, so without
-        /// it this gate reports every project twice and fails on files no release ever ships.</summary>
         private static bool IsNotSource(string relative) =>
             relative.Split(Path.DirectorySeparatorChar)
                 .Any(s => s == "bin" || s == "obj" || s.StartsWith("."));
@@ -78,9 +60,7 @@ namespace Heddle.Tests
                 string.Join(", ", offenders));
         }
 
-        /// <summary>The built assembly agrees with the props. This is what makes the props value the release line
-        /// rather than a comment: a CI tag override (<c>-p:Version=</c>) that disagrees with the checked-in prefix
-        /// reds the build instead of shipping a package whose number no source states.</summary>
+        /// <summary>The built assembly version matches Directory.Build.props, making the props file the release line.</summary>
         [Fact]
         public void TheBuiltEngineAssemblyCarriesTheCanonicalVersion()
         {
@@ -89,9 +69,7 @@ namespace Heddle.Tests
             Assert.Equal(Canonical, $"{version.Major}.{version.Minor}.{version.Build}");
         }
 
-        /// <summary>The npm manifests and their lockfiles. The lockfile states the version twice (root and the
-        /// <c>packages[""]</c> self-entry) and <c>npm version</c> updates both, so both are asserted — a hand-edited
-        /// manifest with a stale lock is the drift this catches.</summary>
+        /// <summary>npm manifests and their lockfiles state the version (lockfiles state it twice).</summary>
         [Theory]
         [InlineData("editors/vscode/package.json", 1)]
         [InlineData("editors/vscode/package-lock.json", 2)]
@@ -99,8 +77,6 @@ namespace Heddle.Tests
         [InlineData("src/Heddle.Language/package-lock.json", 2)]
         public void NpmManifestsCarryTheCanonicalVersion(string relative, int expectedStatements)
         {
-            // Only the manifest's own version — dependency versions live deeper in the file, after the first
-            // "dependencies"/"devDependencies" key, and are third-party pins.
             var text = Read(relative);
             var cut = new[] { "\"dependencies\"", "\"devDependencies\"", "\"engines\"" }
                 .Select(k => text.IndexOf(k, StringComparison.Ordinal))
@@ -117,9 +93,7 @@ namespace Heddle.Tests
             Assert.All(found, v => Assert.Equal(Canonical, v));
         }
 
-        /// <summary>The riskiest statement in the survey: the VS Code extension pins the NuGet tool version it tells
-        /// the user to install, in TypeScript, outside every MSBuild and NuGet check. A stale pin sends users to a
-        /// version of the language server that does not exist yet, or an old one.</summary>
+        /// <summary>The VS Code extension pins the tool version; a stale pin sends users to the wrong version.</summary>
         [Fact]
         public void TheVsCodeExtensionPinsTheCanonicalToolVersion()
         {
@@ -129,8 +103,7 @@ namespace Heddle.Tests
             Assert.Equal(Canonical, m.Groups["v"].Value);
         }
 
-        /// <summary>The LSP workflow packs and installs the tool by an explicit <c>--version</c>, with no tag
-        /// override, so its literal is a third statement of the release line.</summary>
+        /// <summary>The LSP workflow installs the tool with an explicit <c>--version</c> literal.</summary>
         [Fact]
         public void TheLspWorkflowInstallsTheCanonicalToolVersion()
         {
@@ -142,11 +115,7 @@ namespace Heddle.Tests
             Assert.All(found, v => Assert.Equal(Canonical, v));
         }
 
-        /// <summary>The <c>--version-suffix</c> contract. <c>VersionPrefix</c> + <c>VersionSuffix</c> are joined by
-        /// the SDK with a single <c>-</c>, so a suffix that carries its own leading dash — which is what the beta job
-        /// passed while the projects spelled <c>2.0.0$(VersionSuffix)</c> by hand — now produces <c>2.1.0--beta.N</c>.
-        /// Centralising the version made that argument's shape load-bearing, so it is pinned here rather than
-        /// discovered on a release.</summary>
+        /// <summary>The <c>--version-suffix</c> must not lead with '-' because the SDK joins prefix and suffix with one dash.</summary>
         [Fact]
         public void TheBetaVersionSuffixCarriesNoLeadingDash()
         {
@@ -157,8 +126,7 @@ namespace Heddle.Tests
                     "one dash, so '" + m.Groups["s"].Value + "' would produce a double dash.");
         }
 
-        /// <summary>The prose statements of the release line. Limited to sentences that state the <em>current</em>
-        /// line, because a document naming a historical release is making a different claim.</summary>
+        /// <summary>Prose statements of the current release line in documentation files.</summary>
         [Theory]
         [InlineData("docs/building.md", @"current release line is \*\*(?<v>\d+\.\d+\.\d+)\*\*")]
         [InlineData("docs/README.md", @"Current release line: \*\*(?<v>\d+\.\d+\.\d+)\*\*")]
@@ -174,10 +142,7 @@ namespace Heddle.Tests
             Assert.All(found, v => Assert.Equal(Canonical, v));
         }
 
-        /// <summary>The language server's reported version is <b>derived</b>, not stated: a literal there is what
-        /// made <c>heddle-lsp --version</c> print <c>1.0.0</c> for the whole 2.0 line. This is a source-shape pin
-        /// rather than a value comparison, stated as such: the value cannot drift once it is read off the assembly, so
-        /// what needs guarding is the reintroduction of a literal.</summary>
+        /// <summary>The language server derives its version from the assembly; any literal is a regression.</summary>
         [Fact]
         public void TheLanguageServerDerivesItsReportedVersionRatherThanStatingOne()
         {
@@ -193,21 +158,10 @@ namespace Heddle.Tests
             Assert.Contains("AssemblyInformationalVersionAttribute", body);
         }
 
-        /// <summary>
-        /// <para>The signing half. The build has no <c>TreatWarningsAsErrors</c>, so "the <c>CS8002</c>
-        /// warnings stopped" is not a property any gate held — an unsigned first-party project would simply start
-        /// warning again and nothing would fail. This is that gate, expressed the way the warning arises: <b>every</b>
-        /// project under <c>src/</c> that produces an assembly is signed, unless it is named below with a reason.</para>
-        /// <para>Deliberately scoped to <c>src/</c>. The samples and the benchmark project are consumer-shaped —
-        /// they model what a user's project looks like, and a user's project is not signed — and they reference nothing
-        /// signed, so they raise no <c>CS8002</c>. Signing them would be modelling a lie.</para>
-        /// </summary>
+        /// <summary>Every assembly-producing project under src/ is strong-named to prevent CS8002 warnings.</summary>
         [Fact]
         public void EveryFirstPartyProjectUnderSrcIsStrongNamed()
         {
-            // The one deliberate exception, named with its reason rather than silently absent: this project exists to
-            // host the unsigned third-party comparison engines, and signing it would only manufacture the CS8002 the
-            // rest of this work removes.
             var accepted = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "Heddle.Performance.ThirdParty.csproj"
@@ -234,10 +188,7 @@ namespace Heddle.Tests
                 "signed project that references it): " + string.Join(", ", unsigned));
         }
 
-        /// <summary>The third-party half. Unsigned references we accept are a <em>declared list</em> in
-        /// <c>Directory.Build.targets</c>, not a project-level <c>NoWarn</c> — so an unsigned reference that is not on
-        /// the list still warns wherever it appears. Pinned as a source shape because the mechanism is the point: a
-        /// blanket suppression would look identical from the outside and would silence the next one silently.</summary>
+        /// <summary>Unsigned third-party references are declared in Directory.Build.targets, not blanket-suppressed.</summary>
         [Fact]
         public void UnsignedThirdPartyReferencesAreAcceptedByNameAndNotByABlanketNoWarn()
         {
@@ -256,9 +207,7 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>The release line has a CHANGELOG section and a compare link. Keeping this in the gate is what
-        /// stops a version bump from shipping with no record of what changed — the CHANGELOG entry the binary
-        /// break requires is then structurally impossible to forget.</summary>
+        /// <summary>The CHANGELOG has a section and compare link for the canonical version.</summary>
         [Fact]
         public void TheChangelogHasASectionForTheCanonicalVersion()
         {

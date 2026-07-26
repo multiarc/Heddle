@@ -105,7 +105,6 @@ namespace Heddle.Generator.Tests
             const string attribute = "[assembly: Heddle.Attributes.ExportExtensions]";
             var lines = source.Replace("\r\n", "\n").Split('\n').ToList();
 
-            // After the last using directive, or at the top when there are none.
             var insertAt = 0;
             for (var i = 0; i < lines.Count; i++)
                 if (lines[i].TrimStart().StartsWith("using ", StringComparison.Ordinal))
@@ -122,8 +121,7 @@ namespace Heddle.Generator.Tests
             var tpa = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
             var refs = tpa.Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
-                // The generator is an analyzer, not a reference; it links the runtime's option types into it,
-                // so referencing both would make those names ambiguous (CS0433) in the generated code.
+                // Exclude the generator itself; it embeds the runtime types, causing CS0433 if both are referenced.
                 .Where(p => !string.Equals(Path.GetFileNameWithoutExtension(p), "Heddle.Generator",
                     StringComparison.OrdinalIgnoreCase))
                 .Select(p => (MetadataReference)MetadataReference.CreateFromFile(p))

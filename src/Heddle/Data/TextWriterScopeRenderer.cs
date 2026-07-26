@@ -21,7 +21,7 @@ namespace Heddle.Data
             _writer = writer ?? throw new ArgumentNullException(nameof(writer));
         }
 
-        // The effective output encoder for this render, set by the render entry point (null = legacy path).
+        // null = legacy path
         internal void SetOutputEncoder(TextEncoder encoder) => _outputEncoder = encoder;
         TextEncoder IEncoderCarrier.Encoder => _outputEncoder;
 
@@ -40,8 +40,7 @@ namespace Heddle.Data
             // it with true span paths.
             _writer.Write(data);
 #else
-            // The span overload does not exist on netstandard2.0/net48 — rent, copy, and use Write(char[], int, int)
-            // (present everywhere). This is exactly what the BCL's own base TextWriter.Write(ReadOnlySpan<char>) does.
+            // The span overload does not exist on netstandard2.0/net48 — rent, copy, and use Write(char[], int, int).
             var buffer = ArrayPool<char>.Shared.Rent(data.Length);
             try
             {

@@ -4,12 +4,8 @@ using Heddle.Language.Expressions;
 namespace Heddle.Runtime.Expressions
 {
     /// <summary>
-    /// Table-driven C# numeric-promotion knowledge shared by the native-expression operator compiler
-    /// and the function-overload resolver. Works over reflected <see cref="Type"/>s at compile time.
-    /// <para>The tables themselves live once, in <see cref="NumericTable"/> under
-    /// <c>Language/Expressions/</c>, where the generator's linked build sees the identical data. This type keeps its
-    /// public shape and is a thin <see cref="Type"/>-keyed façade over that lattice; the exhaustive 13×13 lockstep
-    /// sweep in the test suite pins the delegation against the pre-extraction bodies.</para>
+    /// C# numeric-promotion lookups shared by the operator compiler and function resolver.
+    /// Wraps <see cref="NumericTable"/> with <see cref="Type"/>-based APIs.
     /// </summary>
     internal static class NumericPromotion
     {
@@ -23,10 +19,8 @@ namespace Heddle.Runtime.Expressions
             return NumericTable.IsImplicit(NumericTable.FromClrType(from), NumericTable.FromClrType(to));
         }
 
-        /// <summary>
-        /// Binary numeric promotion. Returns the promoted type or <c>false</c> for the illegal mixes
-        /// (decimal with float/double; ulong with a signed integral) which the caller reports as HED1008.
-        /// </summary>
+        /// <summary>Binary numeric promotion; returns the promoted type or <c>false</c> for illegal mixes
+        /// (decimal with float/double, ulong with signed integral).</summary>
         public static bool TryPromote(Type left, Type right, out Type promoted)
         {
             if (!NumericTable.TryPromote(NumericTable.FromClrType(left), NumericTable.FromClrType(right),

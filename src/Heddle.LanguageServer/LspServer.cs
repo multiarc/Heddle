@@ -19,10 +19,8 @@ namespace Heddle.LanguageServer
     /// </summary>
     internal sealed class LspServer
     {
-        /// <summary>The version <c>heddle-lsp --version</c> prints and the LSP <c>initialize</c> response reports as
-        /// <c>serverInfo.version</c>. It is read off this assembly's
-        /// <see cref="AssemblyInformationalVersionAttribute"/>, with the source-revision suffix trimmed. Derived,
-        /// not stated, so there is no second statement of the release line left here to drift.</summary>
+        /// <summary>Version reported by <c>heddle-lsp --version</c> and LSP <c>initialize</c> response.
+        /// Read from <see cref="AssemblyInformationalVersionAttribute"/> (source-revision trimmed); derived to prevent drift.</summary>
         internal static readonly string InformationalVersion = ReadInformationalVersion();
 
         private static string ReadInformationalVersion()
@@ -126,7 +124,6 @@ namespace Heddle.LanguageServer
         [JsonRpcMethod("workspace/didChangeConfiguration", UseSingleObjectParameterDeserialization = true)]
         public void DidChangeConfiguration(LspProtocol.DidChangeConfigurationParams @params)
         {
-            // Re-read the workspace file/settings and rebuild on config changes.
             lock (_lifecycleGate)
             {
                 if (!_initialized)
@@ -345,7 +342,7 @@ namespace Heddle.LanguageServer
 
         private static HeddleLanguageServiceOptions BuildOptions(string root, JsonElement? settings)
         {
-            // A present .heddle-lsp.json file is authoritative; otherwise forwarded client settings; otherwise a bare typeless workspace.
+            // Precedence: .heddle-lsp.json > client settings > bare workspace.
             var filePath = string.IsNullOrEmpty(root)
                 ? WorkspaceConfig.FileName
                 : Path.Combine(root, WorkspaceConfig.FileName);
@@ -374,7 +371,7 @@ namespace Heddle.LanguageServer
                 catch { return uri; }
             }
 
-            return uri; // untitled / non-file — analyzed typelessly
+            return uri;
         }
 
         internal static string PathToUri(string path)

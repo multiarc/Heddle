@@ -6,11 +6,8 @@ using Heddle.Exceptions;
 
 namespace Heddle.Runtime.Expressions
 {
-    /// <summary>
-    /// The frozen default whitelist of native-expression functions. Every method is invariant-culture and
-    /// exception-safe at render (defensive bodies, not compiler-inserted try/catch). Bound by explicit
-    /// <see cref="MethodInfo"/> — never to BCL span overloads — keeping the set interpreter-portable.
-    /// </summary>
+    /// <summary>Frozen default whitelist of native-expression functions, all invariant-culture and exception-safe,
+    /// bound explicitly by <see cref="MethodInfo"/> to ensure interpreter portability.</summary>
     internal static class BuiltInFunctions
     {
         internal static string Upper(string value) => value?.ToUpperInvariant() ?? string.Empty;
@@ -174,7 +171,6 @@ namespace Heddle.Runtime.Expressions
             return new Heddle.Models.Range(start, last, step);
         }
 
-        /// <summary>Builds the registry entries binding each default name to its explicit <see cref="MethodInfo"/>.</summary>
         internal static IEnumerable<FunctionEntry> CreateEntries()
         {
             yield return Bind("upper", nameof(Upper), typeof(string));

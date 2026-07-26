@@ -10,10 +10,8 @@ using Heddle.TestCorpus;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The <c>@@</c> → literal-<c>@</c> escape. Each test pins one row of the tokenization rules:
-    /// greedy left-to-right pairing, the comment-adjacency guard (<c>@@*</c> stays
-    /// directive-<c>@</c> + comment), the odd-run tail error, and the <c>SUB_BLOCK</c> mirror. The golden
-    /// fixture proves the escape composes in a document and the render is stable.
+    /// The <c>@@</c> escape to literal <c>@</c>; tests verify tokenization rules (greedy pairing,
+    /// comment-adjacency guard, odd-run tail errors, SUB_BLOCK mirror) and composition stability.
     /// </summary>
     public class AtEscapeTests
     {

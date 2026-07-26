@@ -34,8 +34,7 @@ namespace Heddle.Generator.Binding
 
         private static string NamespaceOf(INamedTypeSymbol type)
         {
-            // A nested type's ContainingNamespace is the namespace of its outermost declaring type, matching
-            // Type.Namespace on the reflection side.
+            // ContainingNamespace returns the outermost type's namespace, matching reflection's Type.Namespace.
             var ns = type.ContainingNamespace;
             return ns == null || ns.IsGlobalNamespace ? null : ns.ToDisplayString();
         }

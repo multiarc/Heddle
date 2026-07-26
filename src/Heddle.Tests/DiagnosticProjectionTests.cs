@@ -8,11 +8,8 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The one drain rule: which channels a host drains, how it decides severity, whether it carries the id and
-    /// the fix, and how it de-duplicates used to differ across three hosts. The language server had the complete
-    /// rule, the generator had a partial one (parse channels only, severity by which collection the entry sat in,
-    /// no fix, warning ids dropped), and <see cref="HeddleCompileResult"/> had a third. These pin the rule they
-    /// now share.
+    /// Verification of the unified diagnostic drain rule: channels, severity determination, fix carriage, and de-duplication
+    /// across language server, generator, and compile result.
     /// </summary>
     public class DiagnosticProjectionTests
     {

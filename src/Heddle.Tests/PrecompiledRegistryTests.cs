@@ -49,9 +49,7 @@ namespace Heddle.Tests
     [CollectionDefinition("PrecompiledRegistrySerial", DisableParallelization = true)]
     public sealed class PrecompiledRegistrySerialCollection { }
 
-    /// <summary>Registry validation: registration gate (schema/engine), transactional duplicate-key rejection,
-    /// per-assembly idempotence, normalized <see cref="PrecompiledTemplates.TryGet"/>, and the case-mismatch shadow
-    /// callback. Serialized — the registry is process-global static state.</summary>
+    /// <summary>Validates registry registration, duplicate-key rejection, per-assembly idempotence, normalized <see cref="PrecompiledTemplates.TryGet"/>, and case-mismatch fallback. Serialized — the registry is process-global static state.</summary>
     [Collection("PrecompiledRegistrySerial")]
     public class PrecompiledRegistryTests : IDisposable
     {
@@ -75,17 +73,10 @@ namespace Heddle.Tests
         private static string CompatibleVersion =>
             $"{RuntimeVersion.Major}.{Math.Max(RuntimeVersion.Minor, 0)}.{Math.Max(RuntimeVersion.Build, 0)}";
 
-        /// <summary>Any schema inside the accepted window. <c>MinSupportedSchemaVersion</c> was raised from 1 → 3, and
-        /// these tests were written against a literal <c>1</c> — which is now *outside* the window, so they would have
-        /// exercised the rejection path while claiming to test registration. They ask for "the oldest schema this
-        /// engine accepts" instead, which is what they always meant: none of them is about a schema number.</summary>
+        /// <summary>Uses the minimum supported schema version, not a literal, so tests use the oldest schema the engine accepts.</summary>
         private static int SupportedSchema => PrecompiledSchema.MinSupportedSchemaVersion;
 
-        /// <summary>The two out-of-window edges, derived from the window rather than written as literals. Written as
-        /// literals they go stale on every bump silently: the pair used to be <c>3</c> and <c>6</c> against a
-        /// <c>4–5</c> window, and after the unreleased-schema collapse to a single schema 3 both literals would have
-        /// landed on the wrong side of the boundary while the test kept passing for the wrong reason (<c>3</c> is now
-        /// the only supported schema, so the "below the floor" case would have been testing acceptance).</summary>
+        /// <summary>Out-of-window edges derived from the window rather than written as literals, so they update automatically on schema version bumps.</summary>
         public static IEnumerable<object[]> OutOfWindowSchemas => new[]
         {
             new object[] { PrecompiledSchema.MinSupportedSchemaVersion - 1 },
@@ -136,10 +127,7 @@ namespace Heddle.Tests
             Assert.Contains("already registered", ex.Message);
         }
 
-        /// <summary>Both edges of the window (see <see cref="OutOfWindowSchemas"/> for why they are derived, not
-        /// literal). The <b>below</b>-window case had no test: until 2.1 the window's floor
-        /// was 1, so "a manifest too old to run" was unrepresentable here, and the manifests that were too old to run
-        /// were the ones being accepted.</summary>
+        /// <summary>Both edges of the supported schema window; derived to avoid staleness on version bumps.</summary>
         [Theory]
         [MemberData(nameof(OutOfWindowSchemas))]
         public void UnsupportedSchemaIgnoresManifest(int schema)

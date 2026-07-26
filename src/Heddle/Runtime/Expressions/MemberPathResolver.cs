@@ -58,14 +58,8 @@ namespace Heddle.Runtime.Expressions
     }
 
     /// <summary>
-    /// The reflection fact source for the shared member walk. Roslyn's mirror of this adapter lives in
-    /// the generator; both feed the identical <see cref="MemberVisibility"/> policy, so the six divergences
-    /// verified between the two hand-written resolvers cannot re-open.
-    /// <para>Two capability choices are deliberate and runtime-normative: <see cref="BaseInterfaces"/>
-    /// returns nothing (reflection's <c>GetProperty</c> never searched base interfaces, so surfacing them would be a
-    /// behavior <i>widening</i> — a breaking-window candidate, not a drift fix), and non-public members declared on a
-    /// base class stay invisible, which <see cref="MemberVisibility"/> encodes through its
-    /// <c>declaredOnReceiver</c> rule.</para>
+    /// Reflection adapter for member walk. <see cref="BaseInterfaces"/> returns nothing (breaking-window constraint),
+    /// and non-public base members stay invisible per <see cref="MemberVisibility"/>.
     /// </summary>
     internal sealed class ReflectionTypeModel : ITypeModel<Type, PropertyInfo>
     {

@@ -31,11 +31,9 @@ namespace Heddle.Tests
             {
                 File.WriteAllText(Path.Combine(root, "lib.heddle"), ImportBody);
 
-                // Runtime file-IO path (the pre-seam behavior, via the CompileContext adapter).
                 var fileContext = DocumentParser.Parse(MainTemplate,
                     new CompileContext(new TemplateOptions { RootPath = root }), out var fileClean);
 
-                // Build-time seam path: same content served from memory, never from disk.
                 var settings = new ParserSettings
                 {
                     RootPath = "<none>",
@@ -71,7 +69,6 @@ namespace Heddle.Tests
             var context = DocumentParser.Parse(duplicate, compileContext, out _);
 
             Assert.NotEmpty(context.Errors);
-            // Same references copied through: the compile context sees exactly the front-end's errors.
             Assert.Equal(context.Errors.Count, compileContext.CompileErrors.Count);
             Assert.Same(context.Errors[0], compileContext.CompileErrors[0]);
         }

@@ -11,25 +11,12 @@ using TemplateEmitter = gen::Heddle.Generator.Emit.TemplateEmitter;
 
 namespace Heddle.Generator.Tests
 {
-    /// <summary>
-    /// The build-tier half of the extraction acceptance. Each extraction's done-when is "the generator-side copy is
-    /// deleted", which is a claim about the emitter's <em>shape</em> rather than about any rendered byte, so it is
-    /// asserted here structurally. The byte-neutrality half is the unchanged snapshot/golden/differential suites.
-    /// <para>Also carries the build-tier side of body-model-typing conformance: the emitter's pinned emission branches
-    /// must declare the same rows the runtime conforms to, asserted over the table rather than over emitted text.</para>
-    /// </summary>
+    /// <summary>The extraction acceptance: asserts structurally that generator-side copies are deleted.
+    /// Also pins body-model-typing conformance: emitter branches must match the runtime table.</summary>
     public class EmitterSharedRuleAdoptionTests
     {
-        // -------------------------------------------------------------------------------------------------------
-        // "The generator-side copy is deleted" used to be asserted by NAME — Assert.DoesNotContain(methods,
-        // m => m.Name == "ScanHostsParticipant"). A copy reintroduced under any other name walked straight past it,
-        // which is the one failure mode the assertion existed for. The pins below are name-independent: they
-        // constrain the *inputs* a re-implementation would necessarily have to read, over the emitter's source.
-        //
-        // Source text rather than reflection because a duplicated loop is a shape, not a member: IL-level detection
-        // needs a full opcode walker for no extra fidelity. Locating the file is the same walk-up
-        // CorpusDifferentialTests does for the corpus, and a missing file FAILS rather than skips.
-        // -------------------------------------------------------------------------------------------------------
+        // Pins by source text inputs, not names, so re-implementation cannot hide by renaming. Loop shape is not
+        // a member: reflection cannot reliably detect duplication.
 
         private static string EmitterSource()
         {
@@ -156,17 +143,8 @@ namespace Heddle.Generator.Tests
             Assert.NotNull(typeof(HeddleTemplate).Assembly.GetType(typeName));
         }
 
-        // -------------------------------------------------------------------------------------------------------
-        // Build-tier conformance: the emitter's nested body build context is derived from the row. What used to stand here was a theory whose InlineData rows were the table's
-        // own rows, asserted against the table — tautological, and it never touched the emitter. The emitter's only
-        // link to the table was a Debug.Assert, i.e. nothing at all in Release.
-        //
-        // Both halves are fixed. TemplateEmitter.TryNestedBodyContext now *derives* the nested body's build context
-        // from the row (Parent → keep the enclosing typed context; ElementOfData → build on the dynamic tier), and
-        // the three arms that emit a pinned body call it, so the row decides emitted bytes. The tests below run the
-        // generator and read those bytes back: a row that stopped saying Parent, or one that stopped saying
-        // ElementOfData, changes them — and a deleted row degrades the template, which ExpectTypedBody catches too.
-        // -------------------------------------------------------------------------------------------------------
+        // Build-tier conformance: TemplateEmitter.TryNestedBodyContext derives nested body context from the row.
+        // Tests run the generator and read emitted bytes: row changes change bytes.
 
         private const string ModelSource =
             "namespace RuleAdoption { public class Person { public string Name { get; set; } " +

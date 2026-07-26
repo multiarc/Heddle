@@ -136,13 +136,6 @@ namespace Heddle.Generator.Emit
 
         private string WriteCall(CallNode call)
         {
-            // Resolution: a discovered [ExportFunctions] name binds directly to its container; a default
-            // built-in binds through the public PrecompiledFunctions shim (BuiltInFunctions is internal). A name in
-            // *both* a container export and the default table is a merged forwarder group — not yet emitted, so the
-            // template degrades to the dynamic path. A name in neither is unsupported here (HED7014 handled by the
-            // emitter). A default built-in's overload is selected by the shared OverloadRank core using flat Pareto
-            // rank, and emitted cast-pinned to the winning signature. An ambiguous or inapplicable call degrades.
-            // Export calls carry no parameter-type metadata, so they keep resolving through the consumer's compiler.
             bool isDefault = DefaultShims.TryGetValue(call.Name, out var shim);
             bool hasExport = _exports != null && _exports.TryGet(call.Name, out var export);
 
@@ -150,9 +143,6 @@ namespace Heddle.Generator.Emit
                 return null; // forwarder group across shim + export — deferred
             if (!isDefault && !hasExport)
             {
-                // A bare name(args) inside a native expression is unambiguously a function call. Resolvable from
-                // neither the default table nor a referenced export, so record it so the emitter degrades the
-                // template to a HED7014 fallback-marker entry (never emitted code).
                 _unresolvableFunctions.Add((call.Name, call.Position));
                 return null;
             }
@@ -167,9 +157,6 @@ namespace Heddle.Generator.Emit
 
             if (hasExport)
             {
-                // Exports carry full signatures, so the SHARED ranker chooses the overload and the call is emitted
-                // cast-pinned — the same treatment built-ins receive. A call the ranker refuses (ambiguous under the
-                // flat Pareto rank, inapplicable, or carrying an argument the estimator cannot type) degrades.
                 var exportBinding = BindExportCall(call);
                 if (exportBinding == null)
                     return null;
@@ -209,17 +196,12 @@ namespace Heddle.Generator.Emit
             var resolution = _resolver.ResolvePath(_modelType, path.Segments);
             if (resolution.Kind != SymbolTypeResolver.PathKind.Resolved)
             {
-                // A genuine property-not-found on a resolved, non-dynamic receiver — the same condition the runtime
-                // raises as HED0001 (HED7008). A DynamicHop is a legal dynamic member access, never a failure.
-                // Recorded here; the emitter reports it (and still degrades to the dynamic path — same emitted code,
-                // better errors).
                 if (resolution.Kind == SymbolTypeResolver.PathKind.Failed)
                 {
                     var idx = resolution.DynamicIndex;
                     var receiver = resolution.Hops.Count == 0
                         ? _modelType
                         : resolution.Hops[resolution.Hops.Count - 1].Property;
-                    // An object-typed (untyped) receiver resolves member access dynamically at runtime — never a typo.
                     if (!TemplateEmitter.IsUntypedReceiver(receiver))
                     {
                         var member = idx >= 0 && idx < path.Segments.Count
@@ -253,9 +235,6 @@ namespace Heddle.Generator.Emit
             var op = OperatorLexeme.ForUnary(node.Operator);
             if (op == null)
                 return null;
-            // Operands are written first even though the guard may discard the result: writing is what records
-            // member-path failures (HED7008) and unresolvable function names (HED7014), and a degrading operator
-            // must not silence a diagnostic the emitter would otherwise report.
             var operand = Write(node.Operand);
             if (operand == null)
                 return null;
@@ -273,10 +252,6 @@ namespace Heddle.Generator.Emit
             var right = Write(node.Right);
             if (left == null || right == null)
                 return null;
-            // The native tier deliberately deviates from C# at seven points, so emitting `(l op r)` verbatim is
-            // only sound where the shared classification table says the two agree. Everything else degrades to the
-            // dynamic tier, where the runtime's own compiler — the semantics of record — evaluates the expression
-            // (or raises its own positioned error). Never the consumer's compiler's opinion.
             if (NativeOperatorRules.Classify(node.Operator, Estimate(node.Left), Estimate(node.Right)) !=
                 OperatorVerdict.Supported)
                 return null;
@@ -296,14 +271,9 @@ namespace Heddle.Generator.Emit
             return "(" + c + " ? " + t + " : " + f + ")";
         }
 
-        #region Operand-kind estimation (the generator's facts adapter for the shared rule tables)
+        #region Operand-kind estimation
 
-        /// <summary>
-        /// The static-kind estimate for a sub-expression, as the shared rule tables see it. Anything
-        /// the estimator cannot type confidently is <see cref="OperandKind.Unknown"/>, and every rule degrades on
-        /// Unknown — the estimator is only ever allowed to be conservative, never optimistic. Memoized because the
-        /// operator guards estimate the same sub-trees the emission walk then re-visits.
-        /// </summary>
+        /// <summary>The static-kind estimate for a sub-expression; anything unknown degrades conservatively.</summary>
         private OperandKind Estimate(ExprNode node)
         {
             if (node == null)
@@ -363,10 +333,7 @@ namespace Heddle.Generator.Emit
                 : OperandKind.Unknown;
         }
 
-        /// <summary>A built-in contributes the return type of the overload the <b>shared ranker</b> selects, so
-        /// <c>len(s) &gt; 0</c> and <c>min(1, 2) &gt; 0</c> both keep precompiling while a call the ranker refuses
-        /// (ambiguous, inapplicable, or carrying an operand the estimator cannot type) contributes nothing. An
-        /// <b>export</b> call does the same — it carries the signatures the ranker needs.</summary>
+        /// <summary>Built-in and export calls contribute their return type if the ranker accepts them; otherwise unknown.</summary>
         private OperandKind EstimateCall(CallNode call)
         {
             if (_exports != null && _exports.TryGet(call.Name, out _))
@@ -381,8 +348,7 @@ namespace Heddle.Generator.Emit
             return binding == null ? OperandKind.Unknown : DefaultFunctionBinder.ReturnKind(binding.Row);
         }
 
-        /// <summary>Resolves a call against the shared ranker and candidate rows, or null when the ranker refuses it
-        /// or the name is not a built-in. Memoized: the operator guards and the emission walk both ask.</summary>
+        /// <summary>Resolves a call against the shared ranker; returns null if refused or not a built-in.</summary>
         private ExportFunctionBinder.Binding BindExportCall(CallNode call)
         {
             if (_exportBindings.TryGetValue(call, out var cached))
@@ -403,9 +369,7 @@ namespace Heddle.Generator.Emit
             return binding;
         }
 
-        /// <summary>Records a proven-illegal call once per call site. Called from the memo-miss arm of each
-        /// binder so the two consumers — the operand-kind estimator that guards an enclosing operator, and the
-        /// emission walk — cannot report the same span twice.</summary>
+        /// <summary>Records proven-illegal calls once per site to prevent duplicate reports.</summary>
         private void RecordIfProvenIllegal(CallNode call, in Binding.BindRefusal refusal)
         {
             if (refusal.Kind == Binding.BindRefusalKind.ProvenIllegal)

@@ -10,8 +10,6 @@ namespace Heddle.Tests
     /// </summary>
     public class CSharpEscapeTests
     {
-        #region Legacy body — verbatim pre-fold PieceWriter.Escape
-
         private static string LegacyPieceEscape(string value)
         {
             var sb = new StringBuilder(value.Length + 2);
@@ -43,12 +41,10 @@ namespace Heddle.Tests
             return sb.ToString();
         }
 
-        #endregion
-
         [Fact]
         public void StringForm_IsByteIdenticalToTheLegacyTable_ForEverySurrogateFreeCodeUnit()
         {
-            // Exhaustive over the BMP minus the surrogate range — the only inputs whose handling the fold changed.
+            // The BMP range is where pre-fold handling changed.
             for (int i = 0; i <= 0xFFFF; i++)
             {
                 if (i >= 0xD800 && i <= 0xDFFF)
@@ -86,8 +82,7 @@ namespace Heddle.Tests
         [Fact]
         public void LoneSurrogates_AreEscaped_NotWrittenRaw()
         {
-            // Neither generator table guarded a lone surrogate in a literal — only the u8 twin was guarded
-            // — so an unpaired code unit went raw into generated source.
+            // Legacy tables did not guard lone surrogates; this test ensures the new path escapes them.
             Assert.Equal("\"a\\ud800b\"", CSharpEscape.StringLiteral("a\uD800b"));
             Assert.Equal("\"\\udc00\"", CSharpEscape.StringLiteral("\uDC00"));
             Assert.Equal("'\\ud800'", CSharpEscape.CharLiteral('\uD800'));
@@ -105,7 +100,7 @@ namespace Heddle.Tests
         [Fact]
         public void LoneSurrogateDetection()
         {
-            // Not a [Theory]: xUnit's data serializer mangles an unpaired surrogate in a test name.
+            // Can't use [Theory]: xUnit's data serializer mangles unpaired surrogates in test names.
             Assert.True(CSharpEscape.HasLoneSurrogate("\uD800"));
             Assert.True(CSharpEscape.HasLoneSurrogate("\uDC00"));
             Assert.True(CSharpEscape.HasLoneSurrogate("a\uD800"));

@@ -123,8 +123,7 @@ namespace Heddle.Tests
                 scope.Renderer.Render((string) ProcessDataInternal(scope));
         }
 
-        /// <summary>The [Prop]-less twin of <see cref="EncodedGridExtension"/> with the identical output shape
-        /// (columns pinned to the default 3) — the F6 byte-identity companion.</summary>
+        /// <summary>F6 byte-identity companion without <see cref="EncodedGridExtension"/>'s parameterization.</summary>
         [EncodeOutput]
         public sealed class EncodedPlainExtension : AbstractHtmlExtension
         {
@@ -135,8 +134,7 @@ namespace Heddle.Tests
                 scope.Renderer.Render((string) ProcessDataInternal(scope));
         }
 
-        /// <summary>White-box frozen-array identity probe: captures the carried values array reference so the
-        /// all-constant zero-alloc claim (shared frozen array across renders) is observable.</summary>
+        /// <summary>Captures the parameter values array reference to verify zero-alloc frozen-array reuse.</summary>
         [Prop("columns", typeof(int), Default = 3)]
         public sealed class CaptureParamsExtension : AbstractExtension
         {
@@ -191,8 +189,6 @@ namespace Heddle.Tests
                 e => Assert.NotEqual(default, e.Position));
         }
 
-        // ---- Success rows ----
-
         [Fact]
         public void NamedArgumentBindsAndReadsViaGetParameter()
         {
@@ -216,8 +212,6 @@ namespace Heddle.Tests
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             Assert.Equal("-cols=7:photos", t.Generate(Model()));
         }
-
-        // ---- Validation rows (reused call-time ids) ----
 
         [Fact]
         public void ParameterLessExtensionWithNamedArgsIsHed5005()
@@ -263,8 +257,6 @@ namespace Heddle.Tests
                      e.Error.Contains("extension 'p8gridReq'"));
         }
 
-        // ---- Malformed-declaration rows (reused declaration-side ids, positioned at the call) ----
-
         [Theory]
         [InlineData("-@p8dup(Photos)", HeddleDiagnosticIds.DuplicatePropDeclaration)]
         [InlineData("-@p8reserved(Photos)", HeddleDiagnosticIds.ReservedPropName)]
@@ -275,8 +267,6 @@ namespace Heddle.Tests
         {
             AssertError(Compile(template), id);
         }
-
-        // ---- Inherited re-declaration rows ----
 
         [Fact]
         public void WideningRedeclarationIsHed5008()
@@ -292,8 +282,6 @@ namespace Heddle.Tests
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             Assert.Equal("-n=narrowed", t.Generate(Model()));
         }
-
-        // ---- Nullable<T> re-declaration (both directions — the cross-tier oracle) ----
 
         [Fact]
         public void NullableInterfaceRedeclarationIsHed5008()
@@ -314,8 +302,6 @@ namespace Heddle.Tests
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             Assert.Equal("-n=5", t.Generate(Model()));
         }
-
-        // ---- Call-site symmetry with definition props ----
 
         private const string GridDef =
             "@% <gridDef(columns: int = 3)>{{cols=@(columns)}} :: System.String %@\n";
@@ -342,8 +328,6 @@ namespace Heddle.Tests
             }
         }
 
-        // ---- Sandbox-negative ----
-
         [Fact]
         public void MemberPathsOnlyModeRejectsNamedArgumentsWithHed1014()
         {
@@ -351,8 +335,6 @@ namespace Heddle.Tests
                 new TemplateOptions { ExpressionMode = ExpressionMode.MemberPathsOnly });
             AssertError(t, HeddleDiagnosticIds.NativeExpressionsDisabled);
         }
-
-        // ---- Encoding preserved (F6) ----
 
         [Fact]
         public void EncodeOutputExtensionWithPropStillEncodesByteIdenticallyToPropLessTwin()
@@ -376,8 +358,6 @@ namespace Heddle.Tests
             Assert.Contains(t.Context.CompileWarnings,
                 w => w.DiagnosticId == HeddleDiagnosticIds.RedundantEncodingExtension);
         }
-
-        // ---- Scope accessor contract + frozen-array identity ----
 
         [Fact]
         public void TryGetParameterReturnsFalseWithoutFrame()

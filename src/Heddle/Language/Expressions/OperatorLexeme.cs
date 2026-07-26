@@ -1,18 +1,12 @@
 namespace Heddle.Language.Expressions
 {
     /// <summary>
-    /// The single <see cref="ExprOperator"/> → C# lexeme table. Before this file the same list lived in three
-    /// places — the generator's <c>BinarySymbol</c> plus inline unary lexemes, the runtime's error-text <c>Symbol</c>
-    /// (which never carried <c>&amp;&amp;</c>/<c>||</c>/<c>??</c>), and the AST builder's token mapping — adding an
-    /// operator meant four touch points, and a transposed <c>&amp;</c>/<c>&amp;&amp;</c> in the generator was a
-    /// silent miscompile rather than a build break.
-    /// <para>Roslyn-free and netstandard2.0-clean: this file compiles into <c>Heddle</c> and is linked into the
-    /// generator by the existing <c>Language\**</c> glob, beside <see cref="ExprOperator"/> itself.</para>
+    /// The single <see cref="ExprOperator"/> → C# lexeme table, consolidated to prevent drift across
+    /// the generator, runtime, and AST builder. Netstandard2.0-clean and linked into the generator.
     /// </summary>
     internal static class OperatorLexeme
     {
-        /// <summary>The lexeme for an operator in <b>binary</b> position, or null when the value is a unary-only
-        /// operator (the exact contract the generator's <c>BinarySymbol</c> had: null means "do not emit").</summary>
+        /// <summary>The lexeme for an operator in binary position, or null for unary-only operators.</summary>
         public static string ForBinary(ExprOperator op)
         {
             switch (op)
@@ -40,8 +34,7 @@ namespace Heddle.Language.Expressions
             }
         }
 
-        /// <summary>The lexeme for an operator in <b>unary</b> position, or null when the value is a binary-only
-        /// operator.</summary>
+        /// <summary>The lexeme for an operator in unary position, or null for binary-only operators.</summary>
         public static string ForUnary(ExprOperator op)
         {
             switch (op)
@@ -58,10 +51,10 @@ namespace Heddle.Language.Expressions
         /// diagnostics, where the node type has already disambiguated the arity.</summary>
         public static string For(ExprOperator op) => ForBinary(op) ?? ForUnary(op);
 
-        /// <summary>Whether the operator has a binary lexeme (the generator's emittable-binary set).</summary>
+        /// <summary>Whether the operator has a binary lexeme.</summary>
         public static bool IsBinary(ExprOperator op) => ForBinary(op) != null;
 
-        /// <summary>Whether the operator has a unary lexeme (the generator's emittable-unary set).</summary>
+        /// <summary>Whether the operator has a unary lexeme.</summary>
         public static bool IsUnary(ExprOperator op) => ForUnary(op) != null;
     }
 }

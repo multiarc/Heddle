@@ -109,40 +109,28 @@ namespace Heddle.Data
             return new Scope(RootData, CallerData, ModelData, ChainedData, renderer, ParentModelData, Locals, PropsData, SlotCarrier, ExtensionParameterValues, ExtensionParameters);
         }
 
-        /// <summary>
-        /// Returns a copy with only the local-context frame replaced (all data fields carried over).
-        /// Called only by the frame-installation points (root generate and the body-execution funnel).
-        /// </summary>
+        /// <summary>Returns a copy with only the local-context frame replaced.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal readonly Scope WithLocals(ScopeLocals locals)
         {
             return new Scope(RootData, CallerData, ModelData, ChainedData, Renderer, ParentModelData, locals, PropsData, SlotCarrier, ExtensionParameterValues, ExtensionParameters);
         }
 
-        /// <summary>
-        /// Returns a copy with only the props carriage replaced (all other fields carried over). Called only by
-        /// the props-installation point (<c>DefinitionBaseExtension</c>).
-        /// </summary>
+        /// <summary>Returns a copy with only the props carriage replaced.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal readonly Scope WithProps(object[] props)
         {
             return new Scope(RootData, CallerData, ModelData, ChainedData, Renderer, ParentModelData, Locals, props, SlotCarrier, ExtensionParameterValues, ExtensionParameters);
         }
 
-        /// <summary>
-        /// Returns a copy with only the slot carrier replaced (all other fields carried over). Called only by
-        /// the slot-installation point (<c>DefinitionBaseExtension</c> in slot mode).
-        /// </summary>
+        /// <summary>Returns a copy with only the slot carrier replaced.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal readonly Scope WithSlot(object slot)
         {
             return new Scope(RootData, CallerData, ModelData, ChainedData, Renderer, ParentModelData, Locals, PropsData, slot, ExtensionParameterValues, ExtensionParameters);
         }
 
-        /// <summary>
-        /// Returns a copy with only the extension-parameter frame replaced (all other fields carried over).
-        /// Called only by the parameter-installation point (<c>ExtensionParameterCarrier</c>).
-        /// </summary>
+        /// <summary>Returns a copy with only the extension-parameter frame replaced.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal readonly Scope WithExtensionParameters(object[] values, ExtensionParameterMap map)
         {
@@ -262,14 +250,13 @@ namespace Heddle.Data
             return Locals.TryGet(key, out value);
         }
 
-        /// <summary>Zero-boxing branch-slot write. Silent no-op when no frame exists (the opportunistic
-        /// <c>@if</c>/<c>@ifnot</c> path — safe because a frameless body provably has no reader).</summary>
+        /// <summary>Silent no-op when no frame exists.</summary>
         internal void PublishBranch(in BranchState state)
         {
             Locals?.SetBranch(state);
         }
 
-        /// <summary><c>false</c> when no frame exists or the branch slot is empty; never throws.</summary>
+        /// <summary>Returns <c>false</c> when no frame exists or the branch slot is empty.</summary>
         internal bool TryReadBranch(out BranchState state)
         {
             if (Locals != null)
@@ -279,7 +266,7 @@ namespace Heddle.Data
             return false;
         }
 
-        /// <summary>Empties the branch slot (the terminal <c>@else</c> action); no-op when no frame exists.</summary>
+        /// <summary>Empties the branch slot; no-op when no frame exists.</summary>
         internal void ClearBranch()
         {
             Locals?.ClearBranch();

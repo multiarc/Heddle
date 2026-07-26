@@ -37,8 +37,6 @@ namespace Heddle.Generator.IntegrationTests
 
         private static Cart Model() => new Cart { Name = "Basket", Count = 3, IsFeatured = true };
 
-        // The seeds. Each asserts it actually changed the manifest, so a generator change that renames the row cannot
-        // silently turn this meta-suite into a no-op that "passes".
         private static string SeedWrongContentHash(string manifest) =>
             Replace(manifest, "contentHash: \"", "\"", new string('0', 64), "contentHash");
 
@@ -94,8 +92,6 @@ namespace Heddle.Generator.IntegrationTests
             return template.Generate(Model());
         }
 
-        // Seeded content-hash mismatch. Only reachable under EnableFileChangeCheck (file-backed).
-
         [Fact]
         public void SeededHashMismatch_Strict_ThrowsStaleContent()
         {
@@ -148,8 +144,7 @@ namespace Heddle.Generator.IntegrationTests
             var stageDir = DifferentialHarness.StageCorpus(Corpus);
             try
             {
-                // Reference: the precompiled tier's own bytes, taken with the staleness check off so the gauntlet
-                // passes and the adapter serves the render.
+                // Reference: staleness check off so gauntlet passes and adapter serves the precompiled render.
                 var precompiled = RenderThroughResolver(stageDir, PrecompiledMismatchPolicy.Fallback,
                     fileBacked: false);
                 var degraded = RenderThroughResolver(stageDir, PrecompiledMismatchPolicy.Fallback, fileBacked: true);
@@ -160,8 +155,6 @@ namespace Heddle.Generator.IntegrationTests
                 DifferentialHarness.TryDeleteDirectory(stageDir);
             }
         }
-
-        // Seeded extension-AQN mismatch. Checked at gauntlet step 2, before staleness, so it fires in registry-only mode too.
 
         [Fact]
         public void SeededExtensionAqnMismatch_Strict_ThrowsExtensionBindingMismatch()
@@ -198,12 +191,10 @@ namespace Heddle.Generator.IntegrationTests
             var stageDir = DifferentialHarness.StageCorpus(Corpus);
             try
             {
-                // The clean registration's precompiled bytes...
                 Register(null);
                 var precompiled = RenderThroughResolver(stageDir, PrecompiledMismatchPolicy.Fallback,
                     fileBacked: false);
 
-                // ...are indistinguishable from the seeded registration's silently-degraded dynamic bytes.
                 PrecompiledTemplates.ResetForTests();
                 Register(SeedWrongExtensionAqn);
                 var degraded = RenderThroughResolver(stageDir, PrecompiledMismatchPolicy.Fallback, fileBacked: false);
@@ -214,10 +205,6 @@ namespace Heddle.Generator.IntegrationTests
                 DifferentialHarness.TryDeleteDirectory(stageDir);
             }
         }
-
-        // Seeded options-fingerprint mismatch. Gauntlet step 1, the earliest check, and the third distinct failure class.
-        // A literal arity change would not compile the manifest, so what is seeded is a wrong fingerprint *value* — the
-        // observable form of the same condition, and the one a real options drift would take.
 
         [Fact]
         public void SeededOptionsFingerprintMismatch_Strict_ThrowsOptionsMismatch()

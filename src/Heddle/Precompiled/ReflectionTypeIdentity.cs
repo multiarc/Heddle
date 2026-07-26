@@ -21,12 +21,7 @@ namespace Heddle.Precompiled
         }
 
         /// <summary>The type's nesting chain as CLR metadata names, outermost declaring type first.
-        /// <para><c>Type.Name</c> already carries the per-segment backtick arity (<c>C`1</c>) for generic
-        /// definitions <em>and</em> constructed generics; the identity string is therefore the <em>nominal</em>
-        /// spelling, without the <c>[[…]]</c> type-argument list <see cref="Type.FullName"/> appends to a
-        /// constructed generic. That is deliberate and pinned by test: the manifest's domain is registered
-        /// extension types and export containers, which are nominal, and formatting both tiers from the same
-        /// decomposition is what makes them agree.</para></summary>
+        /// Uses nominal spelling without type-argument lists (pinned by test) to ensure the manifest's nominal domain stays consistent.</summary>
         private static IReadOnlyList<string> MetadataChain(Type type)
         {
             var chain = new List<string>(2);

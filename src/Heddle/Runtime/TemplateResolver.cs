@@ -162,13 +162,7 @@ namespace Heddle.Runtime {
         {
             if (viewName == null) throw new ArgumentNullException(nameof(viewName));
             if (controllerName == null) throw new ArgumentNullException(nameof(controllerName));
-            // Host-path munging, deliberately distinct from the key grammar. The extension itself
-            // comes from the shared TemplateKey.TemplateExtension; the three surrounding rules do NOT fold onto
-            // TemplateKey's — this side appends only when the name has no extension at all (a `.txt` view stays
-            // `.txt`), rejects `..` as a substring, and folds `~/` anywhere, while TemplateKey appends on a
-            // dot-less final segment, rejects `..` per segment, and strips only a leading `~/`. Substituting one
-            // for the other would change resolver behavior; the shared grammar governs *keys*, which is where the
-            // registry consult below maps into it.
+            // Path normalization here differs deliberately from TemplateKey grammar; must stay in sync with registry consult.
             if (!Path.HasExtension(viewName))
             {
                 viewName += TemplateKey.TemplateExtension;
@@ -203,9 +197,7 @@ namespace Heddle.Runtime {
             List<string> searched = new List<string>();
             foreach (var path in locations) {
                 var relativePath = string.Format(path, viewName, controllerName);
-                // No second key grammar: the candidate's root-relative path goes through the same shared
-                // TemplateKey rules the generator derives its keys with ('\'->'/', leading separator stripped,
-                // '..' rejected) — equivalently TryMakeRelative(Path.Combine(_rootPath, relativePath), _rootPath).
+                // Candidate path uses the same shared TemplateKey normalization as the generator.
                 if (!TemplateKey.TryNormalize(relativePath, out var key))
                     continue;
                 var options = requestOptions ?? HostedOptions(Path.Combine(_rootPath, relativePath), profile, trim);

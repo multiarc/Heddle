@@ -87,9 +87,7 @@ namespace Probe
         {
             var resolver = Resolve(IneligibleMethodSource);
 
-            // An ineligible METHOD is not a silent build-tier over-count. FunctionRegistry.RegisterContainer wraps
-            // the ArgumentException and rethrows, so the whole container fails to register and the host throws at
-            // startup. The build must error (HED7021) rather than adjusting a count for a container that will never exist.
+            // The container fails registration and the build errors (HED7021) rather than silently adjusting counts.
             var reasons = resolver.IneligibleContainers.Select(c => c.Reason).ToList();
             Assert.Equal(4, reasons.Count);
             Assert.Contains(reasons, r => r.Contains("Helpers.Log") && r.Contains("must return a value"));
@@ -162,9 +160,7 @@ namespace Probe
             Assert.True(resolver.TryGet("slug", out var slug));
             Assert.Equal(2, slug.Overloads.Count);
 
-            // One manifest row PER container, each with its own count — the shape the merged live registry produces.
-            // First-container-wins recorded a single row and made every merged name a permanent FunctionBindingMismatch,
-            // because the gauntlet sees a live target absent from the recorded set.
+            // One manifest row per container, matching the merged live registry shape.
             Assert.Equal(2, slug.ManifestRows.Count);
             Assert.Contains(slug.ManifestRows, r => r.Aqn == "Probe.First, ExportProbe" && r.OverloadCount == 1);
             Assert.Contains(slug.ManifestRows, r => r.Aqn == "Probe.Second, ExportProbe" && r.OverloadCount == 1);

@@ -8,37 +8,9 @@ using Microsoft.CodeAnalysis.CSharp;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// <para>Builds a <b>genuine released-schema precompiled manifest assembly</b> — one whose IL references
-    /// <c>PrecompiledExtensionBinding..ctor(string, string)</c>, the two-argument constructor the <b>shipped
-    /// v2.0.0</b> generator emitted and that <b>no longer exists in metadata</b> since the prop-layout fingerprint
-    /// landed as an optional third parameter rather than as a real overload.</para>
-    ///
-    /// <para><b>Which schemas this is about, verified against the tag.</b> At <c>v2.0.0</c> the generator emitted
-    /// <c>schemaVersion: 2</c>, the engine accepted <c>1–2</c>, and the two-argument constructor was real. Schemas 1
-    /// and 2 are therefore the <em>only</em> released shapes, and they are what this fixture reproduces. An earlier
-    /// version of this doc said "schema 1–3", which was wrong in a way that mattered: schema 3 has never shipped, so
-    /// naming it here implied the break's victim set included a shape no generator ever emitted.</para>
-    ///
-    /// <para><b>Why it is built this way, and what it refuses to do.</b> The obvious way to write an "old manifest"
-    /// test is <c>new PrecompiledExtensionBinding("a", "b")</c> — which is exactly what
-    /// <c>PropLayoutFingerprintTests.AManifestPredatingTheRowStillPasses</c> does. That call compiles against
-    /// <em>today's</em> assembly, so the C# compiler silently binds it to the three-parameter constructor and passes
-    /// <c>null</c> for the new one. The resulting IL is a <b>new</b>-schema call wearing an old-schema shape, which is
-    /// precisely the substitution that let a binary break ship: the test asserted the compatibility window while
-    /// exercising a call the window's oldest members cannot make.</para>
-    ///
-    /// <para>So the fixture never compiles against the real assembly. It compiles against a <b>reference facade</b>
-    /// that declares the pre-break surface — including a real two-argument
-    /// <c>PrecompiledExtensionBinding</c> constructor — under the real assembly's identity (name, version, and
-    /// public key, taken from the live assembly and signed with the repository key). The emitted fixture therefore
-    /// carries an assembly reference and a member reference indistinguishable from what a 2.0 generator emitted, and
-    /// at load time that reference resolves to the real <c>Heddle</c>, where the member is gone. Nothing in this file
-    /// can accidentally bind to the current constructor, because the current assembly is not among its
-    /// references.</para>
-    ///
-    /// <para>Built at test time rather than checked in as a <c>.dll</c>: a committed binary cannot be re-derived,
-    /// reviewed, or re-signed, and this repository checks in no compiled fixtures. The construction is the evidence,
-    /// and it is auditable.</para>
+    /// Builds a precompiled manifest assembly with old (schema 1–2) metadata using a reference facade.
+    /// This ensures the fixture references pre-break surfaces rather than binding silently to current constructors.
+    /// Built at test time, not checked in, so the construction is auditable.
     /// </summary>
     internal static class OldSchemaManifestFixture
     {
@@ -152,11 +124,7 @@ namespace OldGenerated
             var options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,
                 optimizationLevel: OptimizationLevel.Release);
 
-            // The facade must carry the real assembly's public key, or the fixture's assembly reference records a
-            // different identity and will not resolve to it. Public signing, not full signing: it stamps the identity
-            // (name/version/public key) without producing a signature, which is all that is needed — the facade is a
-            // compile-time reference and is never loaded. Full signing is also unavailable to Roslyn on this platform
-            // (CS7027), so public signing is both sufficient and the only portable option.
+            // Facade must carry the real assembly's public key; public signing (not full) stamps identity without a signature.
             if (version != null)
                 options = options.WithCryptoKeyFile(RepoKeyPath()).WithPublicSign(true);
 

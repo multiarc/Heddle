@@ -38,18 +38,9 @@ namespace Heddle.Language
         Int32Index
     }
 
-    /// <summary>
-    /// <para>The body model-typing table. Which model a nested body is
-    /// typed by is one of the highest-blast-radius rules in the emitter: a mistyped body changes which member,
-    /// overload and conversion the emitted C# binds, and therefore the rendered value. Until this file the rule
-    /// existed <em>only</em> as prose comments on each emission branch, guarded by an "is this the engine
-    /// assembly" check.</para>
-    /// <para>It stays a table rather than a shared resolver on purpose: the two resolvers derive the actual type
-    /// from different worlds (Roslyn symbols vs. reflected <c>Type</c>s), and the drift surface here is the
-    /// <em>choice</em>, not the type math. Conformance is enforced from both sides — a runtime test asserts each
-    /// built-in's observed typing matches its row, a generator-side test asserts each pinned emission branch
-    /// declares the same row.</para>
-    /// </summary>
+    /// <summary>The body model-typing table, consolidated from prose comments scattered across emission branches.
+    /// Kept as a table (not a shared resolver) because the two sides derive type from different worlds; conformance
+    /// is test-enforced on both sides.</summary>
     internal static class BodyModelRules
     {
         /// <summary>The typing of a definition body: its declared <c>:: T</c>.</summary>

@@ -11,12 +11,8 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// The <b>symbol-side</b> driver of the type-name corpus, resolving the same spellings under the same imports
-    /// and asserting the same outcomes as <c>Heddle.Tests.TypeSpellingLockstepTests</c>. This validates that the
-    /// generator reproduces the runtime's type-resolution semantics and verdicts.
-    /// <para>The tie probes are declared in this compilation rather than referenced, so the two drivers exercise
-    /// their own universes — identical <i>rules</i> must produce identical <i>verdicts</i>, even when the assembly
-    /// universes differ.</para>
+    /// Validates that the generator reproduces the runtime's type-resolution semantics using the same spelling
+    /// corpus and assertion outcomes as <c>Heddle.Tests.TypeSpellingLockstepTests</c> in separate compilation universes.
     /// </summary>
     public class TypeSpellingSymbolLockstepTests
     {
@@ -55,23 +51,19 @@ namespace Probe.Nest { public class Outer { public class Inner { } } }";
         }
 
         [Theory]
-        // Keyword aliases, including the one that used to be a build-tier-only refusal.
         [InlineData("int", "int")]
         [InlineData("string", "string")]
         [InlineData("dynamic", "object")]
-        // Generics, arrays, tuples, dotted-nested — none of which the build tier could resolve at all before.
         [InlineData("System.Collections.Generic.List<int>", "System.Collections.Generic.List<int>")]
         [InlineData("int[]", "int[]")]
         [InlineData("System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<int>>",
             "System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<int>>")]
         [InlineData("(int, string)", "(int, string)")]
-        // One-element tuples are now resolved on both tiers (previously refused only on the shared parser).
         [InlineData("(int)", "System.ValueTuple<int>")]
         [InlineData("()", "UNRESOLVED")]
         [InlineData(" int ", "int")]
         [InlineData("Probe.Nest.Outer.Inner", "Probe.Nest.Outer.Inner")]
         [InlineData("Probe.Only.UniqueProbe", "Probe.Only.UniqueProbe")]
-        // A globally unique short name binds with no import — the runtime's rule, which the build tier lacked.
         [InlineData("UniqueProbe", "Probe.Only.UniqueProbe")]
         [InlineData("NoSuchTypeAnywhere", "UNRESOLVED")]
         public void SpellingsResolveAsTheRuntimeResolvesThem(string spelling, string expected)
@@ -89,7 +81,6 @@ namespace Probe.Nest { public class Outer { public class Inner { } } }";
         [Fact]
         public void ShortNameTieUnsettledByImportsIsTheAmbiguityErrorNotAPick()
         {
-            // The build tier now matches the runtime's ambiguity handling: the same input that throws "ambiguous".
             Assert.Equal("AMBIGUOUS", Resolve("TieProbe", "Probe.Alpha", "Probe.Beta"));
             Assert.Equal("AMBIGUOUS", Resolve("TieProbe", "Probe", "Probe.Alpha"));
         }
@@ -103,10 +94,7 @@ namespace Probe.Nest { public class Outer { public class Inner { } } }";
         [Fact]
         public void ImplicitSystemNamespacesAreGone()
         {
-            // The generator used to append `System` and `System.Collections.Generic` to every lookup. `Uri` is a
-            // System type with a unique short name, so it still resolves — by the runtime's uniqueness rule, not by
-            // a hard-coded namespace. The distinction is visible on a name the uniqueness rule cannot settle:
-            // `TieProbe` has three claimants and no import, and nothing implicit rescues it (asserted above).
+            // Generator no longer implicitly appends System namespaces; Uri resolves by uniqueness rule, TieProbe does not.
             Assert.Equal("System.Uri", Resolve("System.Uri"));
             Assert.Equal("UNRESOLVED", Resolve("TieProbe"));
         }

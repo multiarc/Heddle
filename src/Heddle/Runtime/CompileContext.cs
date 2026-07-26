@@ -149,10 +149,7 @@ namespace Heddle.Runtime {
             _csharpContext = new CSharpContext();
         }
 
-        /// <summary>
-        /// Create new untyped (<see cref="System.Object"/>) initial level context to load and compile template from a file.
-        /// Enclosing template level = 0
-        /// </summary>
+        /// <summary>Create an untyped context (System.Object) for template compilation.</summary>
         /// <param name="options"></param>
         /// <param name="modelType"></param>
         public CompileContext(TemplateOptions options, ExType modelType = null)
@@ -169,11 +166,7 @@ namespace Heddle.Runtime {
             _csharpContext = new CSharpContext();
         }
 
-        /// <summary>
-        /// Create new untyped (<see cref="System.Object"/>) Context using old Context data with new template file name
-        /// Enclosing template level = 0
-        /// Use for templates typed explicitly in template file but not in code.
-        /// </summary>
+        /// <summary>Create a context with a new template file name.</summary>
         /// <param name="context">Old Context</param>
         /// <param name="newName">New Tempalte File Name</param>
         public CompileContext(
@@ -183,10 +176,7 @@ namespace Heddle.Runtime {
         }
 
 
-        /// <summary>
-        /// Create new typed Context using old Context data just changing Type.
-        /// Enclosing level = Old Context level + 1
-        /// </summary>
+        /// <summary>Create a context with a new model type.</summary>
         /// <param name="context">Old Context</param>
         /// <param name="newType">New Enclosing Template Data Type</param>
         public CompileContext(
@@ -195,11 +185,7 @@ namespace Heddle.Runtime {
         {
         }
 
-        /// <summary>
-        /// Create new typed Context using old Context data, changing type and template file name.
-        /// Enclosing template level = 0
-        /// Use for templates typed explicitly in code but not in template file.
-        /// </summary>
+        /// <summary>Create a context with a new model type and template file name.</summary>
         /// <param name="context">Old Context</param>
         /// <param name="newType">New Template Data Type</param>
         /// <param name="newName">New Tempalte File Name</param>

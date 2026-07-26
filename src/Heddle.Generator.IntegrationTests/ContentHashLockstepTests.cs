@@ -10,19 +10,16 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Lockstep gate for the content-hash rule. The generator's emitted manifest hash, the runtime
-    /// gauntlet's <c>HashFile</c>, and the pinned rule restated in this file must agree for every supported
-    /// on-disk encoding — a divergence here is what once made every BOM'd/UTF-16 template permanently
-    /// <c>StaleContent</c>. The generator half runs the <b>real</b> generator over the same characters; the runtime half reads
-    /// real bytes off disk, so a decoder divergence is a red test rather than a silent per-request fallback.
+    /// Lockstep test ensuring the generator's hash, runtime gauntlet, and pinned rule implementation
+    /// agree for all supported on-disk encodings. A past divergence made BOM'd/UTF-16 templates permanently
+    /// <c>StaleContent</c>.
     /// </summary>
     public class ContentHashLockstepTests
     {
         private const string Key = "hashlockstep.heddle";
         private const string Content = "@model(){{System.String}}@\\\nhash é中 @(this)\n";
 
-        /// <summary>The on-disk encodings inside the pinned contract: a BOM is honored and stripped, and a
-        /// BOM-less file is UTF-8.</summary>
+        /// <summary>Supported on-disk encodings with their pinned contracts.</summary>
         public static IEnumerable<object[]> Encodings => new[]
         {
             new object[] { "utf8-no-bom", (object)new UTF8Encoding(false) },
@@ -67,8 +64,7 @@ namespace Heddle.Generator.IntegrationTests
             }
         }
 
-        /// <summary>An encoding-only re-save (the same characters, a different on-disk byte shape) is not an edit —
-        /// the whole point of hashing the text domain.</summary>
+        /// <summary>Encoding-only re-save (same characters, different on-disk bytes) does not change the hash — hashing the text domain, not byte representation.</summary>
         [Fact]
         public void EncodingOnlyResaveDoesNotChangeTheRuntimeHash()
         {
@@ -85,9 +81,7 @@ namespace Heddle.Generator.IntegrationTests
             }
         }
 
-        /// <summary>The rule, restated independently of both implementations: lowercase-hex SHA-256 of the decoded
-        /// text re-encoded as UTF-8 without a BOM. A lockstep test that called the shared helper would only prove the
-        /// two sides call the same method, not that the method computes the pinned identity.</summary>
+        /// <summary>The pinned rule restated independently: lowercase-hex SHA-256 of text decoded then re-encoded as UTF-8 without BOM. Independent implementation avoids circular proof (both sides calling the shared method).</summary>
         private static string ExpectedHash(string text)
         {
             using (var sha = SHA256.Create())

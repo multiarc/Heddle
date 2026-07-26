@@ -22,15 +22,7 @@ namespace Heddle.Language.Binding
         Conflict
     }
 
-    /// <summary>
-    /// The extension-registration precedence rule, stated once for both tiers.
-    /// <para>Runtime authority is <c>TemplateFactory.AddExtensions</c>: candidates are enumerated with
-    /// <c>[ExtensionReplace]</c> ones last; a name collision is resolved by replacing the incumbent when the
-    /// candidate declares <c>Replace</c> <b>or</b> when <c>incumbent.IsAssignableFrom(candidate)</c>, and by
-    /// throwing <c>TemplateOverrideException</c> otherwise. The assignability edge is supplied by the caller
-    /// (reflection's <c>Type.IsAssignableFrom</c> on the run tier, the Roslyn adapter on the build tier), so this
-    /// file needs neither type system.</para>
-    /// </summary>
+    /// <summary>The extension-registration precedence rule for both tiers.</summary>
     internal static class ExtensionRegistrationRules
     {
         /// <summary>The runtime's verdict, verbatim. Never returns <see cref="ExtensionRegistrationVerdict.KeepIncumbent"/>.</summary>
@@ -45,15 +37,8 @@ namespace Heddle.Language.Binding
         }
 
         /// <summary>
-        /// The build tier's verdict: <see cref="Resolve"/> plus one documented relaxation.
-        /// <para>The generator enumerates compilation and referenced-assembly symbols; the runtime enumerates
-        /// loaded assemblies starting with the engine's own. Those orders are not the same and cannot be made so,
-        /// which matters for exactly one pair shape: a base and its subclass both carrying the name. The runtime
-        /// registers whichever it meets first and then replaces (base first) or throws (subclass first). Making
-        /// the build tier order-<em>insensitive</em> over the inheritance relation — keep the more derived type
-        /// whichever order it arrives in — reproduces the outcome the runtime reaches when it is the enumeration
-        /// order that decides, rather than baking assembly-scan order into build output. Genuinely unrelated
-        /// claimants still come back <see cref="ExtensionRegistrationVerdict.Conflict"/>.</para>
+        /// The build tier's verdict: order-insensitive over inheritance (keep the more derived type regardless of enumeration order)
+        /// to match runtime behavior; genuinely unrelated claimants still conflict.
         /// </summary>
         internal static ExtensionRegistrationVerdict ResolveForBuild(bool hasIncumbent, bool candidateReplaces,
             bool incumbentAssignableFromCandidate, bool candidateAssignableFromIncumbent)

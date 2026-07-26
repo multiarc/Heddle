@@ -27,9 +27,7 @@ namespace Heddle.Generator.IntegrationTests
             ["build_property.HeddleExpressionMode"] = "FullCSharp"
         };
 
-        /// <summary>The hosted arms compile under <see cref="ExpressionMode.FullCSharp"/>, so a manifest built under
-        /// the default <c>Native</c> is refused by the gauntlet's fingerprint step — which is exactly the behavior
-        /// the last test in this file pins.</summary>
+        /// <summary>Builds under FullCSharp; Native-built manifests are refused by the fingerprint step.</summary>
         private static void Register(string key, Dictionary<string, string> buildOptions = null)
         {
             var gen = DifferentialHarness.Generate(new[] { (key, Content) }, buildOptions ?? FullCSharpBuild);
@@ -123,9 +121,7 @@ namespace Heddle.Generator.IntegrationTests
             guard.Verify();
         }
 
-        /// <summary>Tier order beats location order. The registry entry sits at
-        /// the arm's <i>second</i> location while a real file sits at the first; the registry still wins, exactly as
-        /// a cached location-2 template has always beaten a location-1 file on disk.</summary>
+        /// <summary>Tier order beats location order; registry hits win over earlier-location disk files.</summary>
         [Fact]
         public void RegistryHitAtALaterLocationBeatsAnEarlierLocationOnDisk()
         {
@@ -152,9 +148,7 @@ namespace Heddle.Generator.IntegrationTests
             }
         }
 
-        /// <summary>No special-casing in the resolver: a manifest built under <c>Native</c> simply fails the
-        /// gauntlet's fingerprint step against the arms' <c>FullCSharp</c> request, raises the documented
-        /// <c>OnFallback</c> event, and the ladder continues to the dynamic path.</summary>
+        /// <summary>Native-built manifests fail the fingerprint step against FullCSharp requests, triggering fallback.</summary>
         [Fact]
         public void NativeBuiltManifestIsRefusedForTheArmsFullCSharpRequest()
         {

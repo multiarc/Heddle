@@ -71,14 +71,13 @@ namespace Heddle.LanguageServices.Tests
             var result = host.Complete(path, offset);
             var byKind = result.Items;
 
-            // Property items are matched EXACTLY as a set (label+detail+insertText) — the scope-type members.
+            // Property items as unordered set.
             var actualProps = byKind.Where(i => i.Kind == "property")
                 .Select(i => (i.Label, i.Detail, i.InsertText)).OrderBy(t => t.Label, StringComparer.Ordinal).ToList();
             var expectedProps = (fixture.ExpectProperties ?? new List<ItemSpec>())
                 .Select(p => (p.Label, p.Detail, p.InsertText)).OrderBy(t => t.Label, StringComparer.Ordinal).ToList();
             Assert.Equal(expectedProps, actualProps);
 
-            // Prop (named-argument) items matched exactly, when the fixture pins them.
             if (fixture.ExpectProps != null)
             {
                 var actualPropArgs = byKind.Where(i => i.Kind == "prop")
@@ -94,8 +93,7 @@ namespace Heddle.LanguageServices.Tests
                 .OrderBy(l => l, StringComparer.Ordinal).ToList();
             Assert.Equal(expectedKeywords, actualKeywords);
 
-            // Function items: the pinned subset must be present (the registry list is asserted exactly by the
-            // engine's own DefaultFunctionLockstep suite; here we assert the projection surfaces them).
+            // Pinned functions must be present in the projection.
             var actualFunctions = new HashSet<string>(byKind.Where(i => i.Kind == "function").Select(i => i.Label));
             foreach (var fn in fixture.ExpectFunctions ?? new List<string>())
                 Assert.Contains(fn, actualFunctions);

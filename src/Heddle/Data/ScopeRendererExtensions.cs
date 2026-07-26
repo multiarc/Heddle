@@ -32,8 +32,7 @@ namespace Heddle.Data
             IFormatProvider formatProvider) where T : struct, ISpanFormattable
         {
 #if NET8_0_OR_GREATER
-            // UTF-8 tier: format straight to bytes into the sink, no string, no char round-trip. The `is` test's box is
-            // eliminated by the JIT's specialized generic instantiation for a value-type T, so this allocates zero.
+            // UTF-8 tier: no string or char round-trip, zero-alloc due to JIT specialization for value type T.
             if (renderer is IUtf8ScopeRenderer u8 && value is System.IUtf8SpanFormattable u8Formattable)
             {
                 Span<byte> utf8Buffer = stackalloc byte[256];
@@ -45,7 +44,6 @@ namespace Heddle.Data
                 // Pathological (destination too small) — fall through to the char-span tier.
             }
 #endif
-            // Char-span tier: all NET6_0_OR_GREATER builds.
             Span<char> buffer = stackalloc char[256];
             if (value.TryFormat(buffer, out int written, format.AsSpan(), formatProvider))
             {

@@ -47,8 +47,7 @@ namespace Heddle.Tests
             {
                 RootPath = Path.GetFullPath("TestTemplate"), TrimDirectiveLines = false
             };
-            // Two shots: the bodiless call, then the bodied one — '@profile()' only compiles with its
-            // '{{html|text}}' body, and a body is harmless for every other built-in.
+            // '@profile()' requires its '{{html|text}}' body; body is harmless for others.
             var template = new HeddleTemplate("[@" + name + "()]", new CompileContext(options, ExType.Dynamic));
             if (!template.CompileResult.Success)
                 template = new HeddleTemplate("[@" + name + "(){{text}}]", new CompileContext(options, ExType.Dynamic));
@@ -103,8 +102,7 @@ namespace Heddle.Tests
                     $"'{name}' is on the generator's directive list but the runtime renders it.");
             }
 
-            // '@import' stays on the generator's list but can never compile, so it is unprobeable BY DESIGN (HED4003).
-            // Any other name joining it means a directive silently stopped compiling — red.
+            // '@import' is unprobeable by design (HED4003); any other unprobeable directive is a red flag.
             Assert.Equal(new[] { "import" }, unprobeable.ToArray());
         }
     }

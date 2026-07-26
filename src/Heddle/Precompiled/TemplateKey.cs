@@ -16,9 +16,7 @@ namespace Heddle.Precompiled
     /// </summary>
     public static class TemplateKey
     {
-        /// <summary>The one template file extension. Its MSBuild twin — the
-        /// <c>**\*.heddle</c> glob in <c>Heddle.Generator.targets</c> — is XML and cannot reference this const; it
-        /// carries a comment naming this member as normative.</summary>
+        /// <summary>The template file extension; referenced by MSBuild glob <c>**\*.heddle</c> in <c>Heddle.Generator.targets</c>.</summary>
         public const string TemplateExtension = ".heddle";
 
         /// <summary>Whether a path or key carries the template extension. <b>Case-insensitive</b> — the policy both
@@ -144,7 +142,6 @@ namespace Heddle.Precompiled
                 return false;
             }
 
-            // The rule is expressed against the shared const; the trigger is "no '.' in the final segment".
             var last = segments[segments.Length - 1];
             if (last.IndexOf('.') < 0)
                 segments[segments.Length - 1] = last + TemplateExtension;

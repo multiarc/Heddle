@@ -6,16 +6,12 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>
-    /// <c>DocumentAnalyzer.RenderPath</c> refactored to use <c>TemplateKey.TryMakeRelative</c> (shared relativization
-    /// with documented two-case-domain policy) plus the LSP's own absolute-path fallback, replacing the previous
-    /// hand-rolled prefix strip.
-    /// <para>The legacy body below is the pre-change implementation transcribed <b>verbatim</b> — the characterization
-    /// oracle. Every vector is checked against it, and the three vectors where the two deliberately differ are named,
-    /// with the legacy answer recorded as evidence of the behavioral delta.</para>
+    /// Validates refactored <c>RenderPath</c> against the pre-refactor implementation; three test vectors show
+    /// intentional behavioral changes.
     /// </summary>
     public class RenderPathTests
     {
-        #region Legacy body — verbatim pre-refactor DocumentAnalyzer.RenderPath
+        #region Legacy body
 
         private static string LegacyRenderPath(string path, string root)
         {
@@ -48,9 +44,9 @@ namespace Heddle.LanguageServices.Tests
         {
             { "/root/a/b.heddle", "/root", "a/b.heddle" },
             { "/root/b.heddle", "/root/", "b.heddle" },
-            { "/root/a/b.heddle", "/ROOT", "a/b.heddle" },      // the documented case-insensitive prefix domain
-            { "/other/b.heddle", "/root", "/other/b.heddle" },  // outside the root — absolute, '/'-formed
-            { "/root/a/b.heddle", "", "/root/a/b.heddle" },     // no root configured
+            { "/root/a/b.heddle", "/ROOT", "a/b.heddle" },      // case-insensitive
+            { "/other/b.heddle", "/root", "/other/b.heddle" },  // outside root
+            { "/root/a/b.heddle", "", "/root/a/b.heddle" },     // empty root
             { "/root/a/b.heddle", null, "/root/a/b.heddle" },
             { "", "/root", "" },
             { null, "/root", null },
@@ -64,9 +60,7 @@ namespace Heddle.LanguageServices.Tests
             Assert.Equal(expected, DocumentAnalyzer.RenderPath(path, root));
         }
 
-        /// <summary>The defect the shared rule fixes: <c>StartsWith(rootFull)</c> matched a <i>sibling</i>
-        /// directory whose name merely began with the root's, and the LSP then displayed a file outside the
-        /// workspace as if it were a key inside it. <c>TryMakeRelative</c> requires the separator.</summary>
+        /// <summary>Sibling directories starting with root's prefix are no longer misidentified; <c>TryMakeRelative</c> requires separator.</summary>
         [Fact]
         public void ASiblingDirectorySharingTheRootsPrefixIsNoLongerRenderedAsAKey()
         {
@@ -74,8 +68,7 @@ namespace Heddle.LanguageServices.Tests
             Assert.Equal("/rootx/a.heddle", DocumentAnalyzer.RenderPath("/rootx/a.heddle", "/root"));
         }
 
-        /// <summary>The root itself is not a template under the root. Legacy returned the empty string — a
-        /// display of nothing at all; the shared rule declines and the absolute path is shown.</summary>
+        /// <summary>Root directory renders as absolute path instead of empty string.</summary>
         [Fact]
         public void TheRootItselfRendersAbsoluteRatherThanEmpty()
         {
@@ -83,9 +76,7 @@ namespace Heddle.LanguageServices.Tests
             Assert.Equal("/root", DocumentAnalyzer.RenderPath("/root", "/root"));
         }
 
-        /// <summary>A path that resolves above the root is outside the key domain, and the fallback shows it as
-        /// written (only separators normalized) rather than as its resolved form. Both bodies agree; pinned
-        /// because it is the case a naive prefix strip is most likely to regress on if anyone reintroduces one.</summary>
+        /// <summary>Path above root renders as written (separators normalized) rather than resolved; both implementations agree.</summary>
         [Fact]
         public void APathAboveTheRootRendersAbsolute()
         {

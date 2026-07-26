@@ -10,10 +10,8 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The run-tier arm of the projection-equivalence corpus. Asserts the shared drain against
-    /// <see cref="DiagnosticCorpusVectors"/>, which the editor suite and the build-tier suite assert against too —
-    /// so the three hosts are compared to one another through one table instead of three sets of hand-written
-    /// expectations that can drift apart.
+    /// Run-tier arm of the projection-equivalence corpus: all three hosts (run, editor, build) assert against
+    /// <see cref="DiagnosticCorpusVectors"/>.
     /// </summary>
     public class DiagnosticProjectionCorpusTests
     {
@@ -60,8 +58,7 @@ namespace Heddle.Tests
             Assert.Equal(c.Entries, Drained(HeddleDiagnosticProjection.Drain(compile, result.Context)));
         }
 
-        /// <summary>The profile-dependent row is the point: only the encoding lint changes with the profile, and
-        /// the corpus says so per fixture rather than the test guessing.</summary>
+        /// <summary>Only encoding lint changes with profile; the corpus specifies this per fixture.</summary>
         [Theory]
         [MemberData(nameof(Names))]
         public void TheFullDrainMatchesTheCorpusUnderText(string name)
@@ -72,9 +69,8 @@ namespace Heddle.Tests
             Assert.Equal(c.TextProfileEntries, Drained(HeddleDiagnosticProjection.Drain(compile, result.Context)));
         }
 
-        /// <summary>The parse-channel subset the build tier can forward today. This is the measured half of the
-        /// program's recorded compile-channel gap: if a diagnostic ever moves channel, this goes red on the
-        /// fixture that moved, and the build-tier arm goes red with it.</summary>
+        /// <summary>The parse-channel subset the build tier can forward; if a diagnostic moves channel, this
+        /// and the build-tier arm both go red.</summary>
         [Theory]
         [MemberData(nameof(Names))]
         public void TheParseChannelSubsetIsExactlyWhatTheCorpusDeclares(string name)
@@ -83,12 +79,10 @@ namespace Heddle.Tests
             var (_, result) = Compile(c.Template, OutputProfile.Html);
 
             Assert.Equal(c.ParseChannel, Drained(HeddleDiagnosticProjection.Drain(result.Context)));
-            // …and the subset really is a subset — a declaration error in the table itself.
             Assert.Empty(c.ParseChannel.Except(c.Entries));
         }
 
-        /// <summary>The third surface: what <see cref="HeddleCompileResult"/> renders for the same fixture is the
-        /// error half of the same drain, position for position.</summary>
+        /// <summary><see cref="HeddleCompileResult"/> renders the same entries, position for position.</summary>
         [Theory]
         [MemberData(nameof(Names))]
         public void CompileResultRendersTheSameEntries(string name)

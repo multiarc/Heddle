@@ -2,38 +2,20 @@ using System;
 
 namespace Heddle.Language
 {
-    /// <summary>What a standalone <c>@name(…)</c> call resolves to.</summary>
     internal enum CallTargetKind
     {
-        /// <summary>An ambient region fill overrides the name at this call site.</summary>
         Fill,
-
-        /// <summary>A definition declared in (or visible from) the enclosing parse context.</summary>
         Definition,
-
-        /// <summary>A registered extension. Beats a registered function of the same name.</summary>
         Extension,
-
-        /// <summary>A registered function, in the one shape a standalone call can carry it.</summary>
         Function,
-
         /// <summary>A registered function whose call shape the function tier cannot accept — a chain parameter or
         /// a C# expression. An error on both tiers rather than a fall-through.</summary>
         FunctionShapeUnsupported,
-
-        /// <summary>The name resolves to nothing.</summary>
         Unknown
     }
 
-    /// <summary>
-    /// <para>The name-resolution precedence for a standalone call,
-    /// written once. The order is: ambient fill scope → enclosing definitions → extension → registered function
-    /// (extension wins a name collision) → unknown. Per-side knowledge enters as predicates; the
-    /// <em>emission</em> per kind stays each backend's own, because the emitter's <c>out</c>/<c>partial</c>/branch/
-    /// <c>list</c>/<c>for</c> special-casing has no runtime twin.</para>
-    /// <para>The registry invariant this used to assert only in a comment — default-function names never collide
-    /// with built-in extension names — is now an executable lockstep test rather than a claim.</para>
-    /// </summary>
+    /// <summary>Name-resolution precedence for standalone calls: ambient fill → definitions → extension → function → unknown.
+    /// Extension wins a name collision; the registry invariant (no default-function/extension-name collision) is now an executable lockstep test.</summary>
     internal static class CallTargetRules
     {
         /// <summary>

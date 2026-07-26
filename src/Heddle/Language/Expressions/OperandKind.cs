@@ -1,9 +1,6 @@
 namespace Heddle.Language.Expressions
 {
-    /// <summary>
-    /// The coarse static classification an operand carries into the operator-legality and overload-rank rules.
-    /// <see cref="Unknown"/> is not an error — it is "no static type available", and every rule degrades on it.
-    /// </summary>
+    /// <summary>Coarse static classification for operands; <see cref="Unknown"/> means "no static type available" and causes graceful degradation.</summary>
     internal enum OperandCategory
     {
         /// <summary>No static type available — always degrades (degrade-on-doubt).</summary>
@@ -31,12 +28,7 @@ namespace Heddle.Language.Expressions
         Other
     }
 
-    /// <summary>
-    /// One operand's facts, as the shared rule tables see them: a category, the numeric kind when the category is
-    /// <see cref="OperandCategory.Numeric"/>, and whether a <c>Nullable&lt;T&gt;</c> wrapper was present. The fact
-    /// sources are per-side adapters (Roslyn symbols in the generator, reflected <c>Type</c>s in the runtime); this
-    /// struct is the only shape the rules ever see, which is what lets one table serve both.
-    /// </summary>
+    /// <summary>Operand classification: category, numeric kind (if applicable), and nullability. The sole shape used by operator rules, enabling one table to serve both generator and runtime.</summary>
     internal readonly struct OperandKind
     {
         private OperandKind(OperandCategory category, NumericKind kind, bool isNullable)

@@ -6,10 +6,8 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Definition invocation. A definition compiles once into a shared body class; each call site binds an
-    /// engine-internal carrier through <c>PrecompiledRuntime.BindDefinition</c> (outer carrier = caller content,
-    /// inner carrier = the definition body, recursion limit baked). Differential-gated byte-for-byte against the
-    /// runtime backend.
+    /// Definition invocation: shared body class, call-site binding, and recursion guard coverage.
+    /// Differential-gated byte-for-byte against the runtime backend.
     /// </summary>
     public class DefinitionTests
     {
@@ -45,7 +43,7 @@ namespace Heddle.Generator.IntegrationTests
         [MemberData(nameof(Products))]
         public void DefinitionWithCallerContent(Product model)
         {
-            // Caller content { … } is pre-rendered onto the chained channel; @out() splices it back.
+            // Caller-supplied content { … } is buffered and spliced back via @out().
             var t = "@model(){{" + ProductType + "}}@\\\n" +
                     "@%<box>{{[@out()]}} :: Heddle.Generator.IntegrationTests.Fixtures.Manufacturer%@\n" +
                     "@box(Manufacturer){{name=@(Name)}}\n";
@@ -64,7 +62,6 @@ namespace Heddle.Generator.IntegrationTests
         [MemberData(nameof(Greetings))]
         public void DynamicDefinition(GreetingModel model)
         {
-            // generated-code.md example 4 shape.
             var t = "@%<greeting>{{Hello, @(User.Name)!}} :: dynamic%@\n@greeting(Payload)\n";
             AssertParity("views/greeting.heddle", t, typeof(GreetingModel), model);
         }
@@ -80,8 +77,7 @@ namespace Heddle.Generator.IntegrationTests
         [MemberData(nameof(Trees))]
         public void SelfRecursiveDefinition(TreeNode model)
         {
-            // The definition calls itself on Next until null — the shared body class + static carrier fields let the
-            // generator terminate while the runtime recursion guard still bounds depth (README recursion note).
+            // Recursion guard bounds depth even though the generator terminates on the shared body class.
             var t = "@model(){{" + TreeType + "}}@\\\n" +
                     "@%<walk>{{@(Label)@if(Next){{-@walk(Next)}}}} :: " + TreeType + "%@\n" +
                     "@walk(this)\n";

@@ -5,21 +5,9 @@ using System.Text;
 
 namespace Heddle.Precompiled
 {
-    /// <summary>
-    /// <para>The shared content-hash rule for precompiled templates. One pure, IO-free source file,
-    /// compiled into both <c>Heddle</c> (runtime staleness check) and the <c>Heddle.Generator</c> analyzer
-    /// (build-time manifest emission) so the two sides cannot hash different things.</para>
-    /// <para><b>The staleness identity of a template is the lowercase-hex SHA-256 of its decoded text re-encoded
-    /// as UTF-8 without a BOM.</b> The text domain — not the raw file bytes — is canonical on both sides: the
-    /// parser and the emitter consume decoded text, so the compiled artifact depends on exactly that form, and
-    /// re-saving a template with a BOM or as UTF-16 without changing a character does not change the compiled
-    /// output and must not read as stale. It is also the only implementable choice on the build side, whose only
-    /// input is Roslyn's decoded <c>SourceText</c> (direct file IO is a banned API in an analyzer).</para>
-    /// <para><b>Encoding edge.</b> A file with no BOM that is not valid UTF-8 is outside the contract: the build
-    /// may decode it through the system code page while the runtime decodes UTF-8 with replacement, so its
-    /// staleness verdict is unspecified. The failure mode is the safe one — a <c>StaleContent</c> fallback to the
-    /// byte-identical dynamic path.</para>
-    /// </summary>
+    /// <summary>Shared content-hash rule for both runtime and build-time staleness checks.
+    /// The staleness identity is lowercase-hex SHA-256 of decoded text as UTF-8 without a BOM;
+    /// re-encoding or BOM changes alone do not affect the compiled output.</summary>
     public static class ContentHash
     {
         private static readonly UTF8Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);

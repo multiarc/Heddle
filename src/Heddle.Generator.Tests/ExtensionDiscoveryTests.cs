@@ -10,17 +10,8 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// White-box pins on <see cref="ExtensionBinder"/>:
-    /// <list type="bullet">
-    /// <item><description><b>nested-container discovery</b>: the scan descends into nested types, which it never
-    /// did (it enumerated <c>INamespaceSymbol.GetTypeMembers()</c> only);</description></item>
-    /// <item><description><b>AQN formatting</b>: a nested/generic identity is spelled with <c>+</c> and a backtick
-    /// arity, exactly as reflection spells it;</description></item>
-    /// <item><description><b>inherited <c>[ExtensionName]</c></b>: a subclass with no declared name registers under
-    /// its base's name and takes it over through the shared registration precedence;</description></item>
-    /// <item><description><b>the narrowed <c>HED7006</c> trigger</b>: a name that resolves under the runtime's own
-    /// predicate but is unbindable here is <i>known</i>, never an error.</description></item>
-    /// </list>
+    /// White-box pins on <see cref="ExtensionBinder"/>: nested-container discovery, AQN formatting with <c>+</c>
+    /// and backtick arity, inherited <c>[ExtensionName]</c> precedence, and known-but-unbindable detection.
     /// </summary>
     public class ExtensionDiscoveryTests
     {
@@ -31,8 +22,6 @@ namespace Heddle.Generator.Tests
             var tpa = (string) AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
             var refs = tpa.Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
-                // Heddle.Generator carries linked copies of runtime types; handing it to a probe compilation
-                // alongside Heddle.dll would make those names ambiguous (CS0433).
                 .Where(p => !string.Equals(Path.GetFileNameWithoutExtension(p), "Heddle.Generator",
                     StringComparison.OrdinalIgnoreCase))
                 .Select(p => (MetadataReference) MetadataReference.CreateFromFile(p))
@@ -97,8 +86,6 @@ namespace Probe
 
             Assert.True(binder.TryResolve("nestedone", out var one));
             Assert.Equal("Probe.Container+NestedExtension, ExtensionDiscoveryTest", one.AqnSansVersion);
-            // The 'global::'-stripped display string — the spelling this replaced — used a dot and would never have
-            // matched reflection's Type.FullName.
             Assert.Equal("global::Probe.Container.NestedExtension", one.GlobalName);
         }
 
@@ -202,8 +189,7 @@ namespace Probe
         {
             var binder = Bind(SubclassOfBuiltInSource);
 
-            // The false-HED7006 shape from the plan: `class MyIf : IfExtension` with no declared name. The runtime
-            // registers it under "if" (inherited attribute) and replaces the built-in (IsAssignableFrom).
+            // A subclass with no declared name takes the inherited attribute and replaces the built-in.
             Assert.True(binder.TryResolve("if", out var info));
             Assert.Equal("Probe.MyIf", info.BareTypeName);
         }
@@ -237,9 +223,7 @@ namespace Probe
         {
             var binder = Bind(InterfaceDirectSource);
 
-            // Discovery follows the runtime (implements IExtension + inherited name); bindability is a separate,
-            // later axis. The name is KNOWN — so HED7006, whose documented meaning is "the runtime will not find it
-            // either", must not fire for it.
+            // Known but unbindable: discovery follows the runtime, but bindability is separate.
             Assert.False(binder.TryResolve("ifacedirect", out _));
             Assert.True(binder.IsKnownToRuntime("ifacedirect"));
             Assert.True(binder.TryGetUnbindableReason("ifacedirect", out var reason));
@@ -282,8 +266,7 @@ namespace Probe
         {
             var binder = Bind(UnrelatedCollisionSource);
 
-            // The runtime raises TemplateOverrideException at registration — a host wiring error the build must not
-            // turn into a build failure, and equally must not silently bind one of the two.
+            // Degrade rather than silent bind or error; the runtime raises TemplateOverrideException on collision.
             Assert.False(binder.TryResolve("clash", out _));
             Assert.True(binder.IsKnownToRuntime("clash"));
             Assert.True(binder.TryGetUnbindableReason("clash", out var reason));
@@ -293,10 +276,7 @@ namespace Probe
         [Fact]
         public void BranchRoleHasExactlyOneDefinitionInTheRepository()
         {
-            // The generator's hand-mirrored enum is gone; Heddle.Attributes.BranchRole is compiled into
-            // Heddle.Generator as linked source, so the two assemblies' members are the same declaration.
-            // (Named by reflection rather than `typeof`: both assemblies now declare the name, and the generator
-            // reference carries the global alias too, so a source-level `typeof` is CS0433 by construction.)
+            // Linked source: both assemblies declare the name, requiring reflection by name to avoid CS0433.
             var runtime = typeof(Heddle.Precompiled.PrecompiledTemplates).Assembly
                 .GetType("Heddle.Attributes.BranchRole", throwOnError: true);
             var linked = typeof(ExtensionBinder).Assembly

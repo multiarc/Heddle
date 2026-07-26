@@ -7,13 +7,8 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Build-time forwarding of front-end diagnostics. The warning path once collapsed every forwarded
-    /// warning into <c>HED7013</c>, discarding both
-    /// <c>HeddleCompileError.DiagnosticId</c> and <c>HeddleCompileWarning.Fix</c>, while the error path one loop
-    /// above already forwarded real IDs — two rules for one seam, and a suppression surface
-    /// (<c>#pragma warning disable</c>, <c>NoWarn</c>) that could not name a single Heddle lint. These pin the
-    /// one rule: real ID when the entry has one, <c>HED7012</c>/<c>HED7013</c> only when it does not, severity
-    /// from the entry's subtype, and the <c>Fix</c> carried into the message.
+    /// Validates diagnostic forwarding: real IDs when available, <c>HED7012</c>/<c>HED7013</c> as fallback wrappers,
+    /// severity from entry subtype, and <c>Fix</c> text carried into the message.
     /// </summary>
     public class ForwardedDiagnosticTests
     {
@@ -62,9 +57,7 @@ namespace Heddle.Generator.Tests
                 GeneratorDiagnostics.ForwardedMessage("boom", "do the other thing"));
         }
 
-        /// <summary>The id-less SLL parse-fallback warning is the one warning the parse channel produces today,
-        /// and it carries a <c>Fix</c>. This pins the shape both halves of the fix produce for it: the
-        /// <c>HED7013</c> wrapper (it has no id) <b>and</b> the Fix text, which the build tier used to drop.</summary>
+        /// <summary>Id-less SLL warning keeps HED7013 wrapper and gains its Fix text.</summary>
         [Fact]
         public void TheIdLessSllWarningKeepsHed7013AndGainsItsFix()
         {
@@ -80,9 +73,7 @@ namespace Heddle.Generator.Tests
                 GeneratorDiagnostics.ForwardedMessage(warning.Error, warning.Fix));
         }
 
-        /// <summary>End-to-end: a template whose parse raises an id-carrying diagnostic reports it under that id
-        /// in MSBuild output, not under a HED70xx wrapper — so <c>NoWarn</c>/<c>#pragma</c> on the id the editor
-        /// shows is the id the build honours.</summary>
+        /// <summary>Id-carrying parse error reaches build under its own id, not a HED70xx wrapper.</summary>
         [Fact]
         public void AnIdCarryingParseErrorReachesTheBuildUnderItsOwnId()
         {

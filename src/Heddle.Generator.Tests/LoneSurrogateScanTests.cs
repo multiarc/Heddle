@@ -19,18 +19,18 @@ namespace Heddle.Generator.Tests
     {
         public static TheoryData<string, int> Vectors => new TheoryData<string, int>
         {
-            { "", -1 },                       // empty
-            { "0061,0062", -1 },              // "ab"
-            { "D83D,DE00", -1 },              // a well-formed pair
-            { "0061,D83D,DE00,0062", -1 },    // pair between plain chars
-            { "D800", 0 },                    // lone high
-            { "DC00", 0 },                    // lone low
-            { "0061,D800", 1 },               // trailing lone high
-            { "D800,0061", 0 },               // lone high before a plain char
-            { "0061,0062,DC00,0063", 2 },     // lone low mid-string
-            { "D83D,DE00,D800", 2 },          // pair then lone high — the index is past the pair
-            { "D800,D800", 0 },               // high followed by high
-            { "DC00,D83D,DE00", 0 },          // lone low before a pair
+            { "", -1 },
+            { "0061,0062", -1 },
+            { "D83D,DE00", -1 },
+            { "0061,D83D,DE00,0062", -1 },
+            { "D800", 0 },
+            { "DC00", 0 },
+            { "0061,D800", 1 },
+            { "D800,0061", 0 },
+            { "0061,0062,DC00,0063", 2 },
+            { "D83D,DE00,D800", 2 },
+            { "D800,D800", 0 },
+            { "DC00,D83D,DE00", 0 },
         };
 
         private static string Decode(string codeUnits) =>

@@ -26,13 +26,8 @@ namespace Heddle.Runtime.Parameters
         }
 
         /// <summary>
-        /// Builds the null-safe property-hop chain over <paramref name="objectInput"/> (an object-typed
-        /// expression). A hop off a null reference yields <c>default(T)</c> of the hop's property type.
-        /// Shared by the member tier and the native-expression tier so both hop identically.
-        /// <para>The branch decision itself is <see cref="MemberHopRule.Form"/>, the same function the
-        /// generator's <c>MemberPathWriter</c> maps to text. The two null-guarded forms collapse to one expression
-        /// shape here — the split only matters where C#'s <c>?.</c> would widen a non-nullable value property to
-        /// <c>Nullable&lt;T&gt;</c>, which expression trees never do.</para>
+        /// Builds the null-safe property-hop chain over <paramref name="objectInput"/>.
+        /// Shared by the member tier and the native-expression tier so both hop identically using <see cref="MemberHopRule.Form"/>.
         /// </summary>
         internal static Expression BuildNullSafePropertyChain(Expression objectInput,
             IEnumerable<(Type type, PropertyInfo property)> getModelParameter)

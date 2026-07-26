@@ -33,7 +33,7 @@ namespace Heddle.Core
         {
             if (_processStrategy == null)
                 return _innerResult;
-            // Three scope-frame cases: fresh frame if body needs locals; cleared if parent provisioned but body doesn't; passthrough (fast path) otherwise.
+            // Avoid creating scope locals when the body doesn't need them (fast path).
             if (_needsLocals)
                 return _processStrategy.Execute(scope.WithLocals(new ScopeLocals()));
             if (scope.Locals != null)
@@ -137,22 +137,11 @@ namespace Heddle.Core
         }
 
         /// <summary>
-        /// <para>Computes this extension's chained/output value for <paramref name="scope"/>. Return a
-        /// <see cref="string"/> when the extension has a textual value to contribute; return
-        /// <see cref="string.Empty"/> when it has no textual value here (e.g. a render-only extension,
-        /// or a directive that produces no output).</para>
-        /// <para>The value/string rail coerces any non-<see cref="string"/> result to empty output
-        /// (<c>as string ?? string.Empty</c>). This is a deliberate guard — it keeps a stray object's
-        /// default <c>ToString()</c> from leaking into concatenated output — but it also silently drops
-        /// an otherwise-meaningful boxed scalar (e.g. an <see cref="int"/> or a <see cref="System.Guid"/>)
-        /// returned here instead of a string. Built-in formatters (<c>@int</c>, <c>@string</c>,
-        /// <c>@guid</c>, …) already stringify at their own boundary before returning, so they are safe.
-        /// Stringify at your own boundary too: do not rely on the rail to convert a non-string value for
-        /// you.</para>
+        /// Computes this extension's value for <paramref name="scope"/>. Return a <see cref="string"/>, or <see cref="string.Empty"/> for no output.
+        /// Any non-string result is coerced to empty (prevents stray <c>ToString()</c> leakage); stringify at your own boundary instead.
         /// </summary>
         /// <param name="scope">The current render scope.</param>
-        /// <returns>A <see cref="string"/> textual value, or <see cref="string.Empty"/> when this
-        /// extension has no textual value to contribute.</returns>
+        /// <returns>A <see cref="string"/>, or <see cref="string.Empty"/>.</returns>
         public abstract object ProcessData(in Scope scope);
 
         public abstract void RenderData(in Scope scope);

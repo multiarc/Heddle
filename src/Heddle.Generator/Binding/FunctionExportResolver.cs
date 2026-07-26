@@ -120,10 +120,6 @@ namespace Heddle.Generator.Binding
             var assemblies = new List<IAssemblySymbol> { compilation.Assembly };
             assemblies.AddRange(compilation.SourceModule.ReferencedAssemblySymbols);
 
-            // The bookkeeping accumulates every container's contribution under one name (merge, not replace). The
-            // order fed in is: compilation assembly first, then referenced assemblies, then per
-            // assembly the attribute declaration order — the only thing it can change is which of two
-            // identical-signature registrations survives, which is the runtime's replace-on-identical rule.
             var bookkeeping = new ExportBookkeeping<ExportOverloadInfo>();
 
             foreach (var assembly in assemblies)
@@ -177,9 +173,6 @@ namespace Heddle.Generator.Binding
             if (container == null)
                 return;
 
-            // Reflection's "public" for a container is IsPublic || IsNestedPublic — a nested public container is a
-            // legal export target, so the symbol test walks the containing chain rather than looking at the
-            // declared accessibility alone.
             bool isStaticClass = container.TypeKind == TypeKind.Class && container.IsStatic;
             bool isPublic = IsPubliclyVisible(container);
             if (!ExportRules.IsContainerEligible(isStaticClass, isPublic))
@@ -200,9 +193,6 @@ namespace Heddle.Generator.Binding
                 if (!ExportRules.IsCandidate(facts))
                     continue;
 
-                // An ineligible METHOD is not a silent over-count on one tier — RegisterContainer wraps the
-                // ArgumentException and rethrows, so the whole container fails to register and the host throws at
-                // startup. That is a build error, not an excluded manifest row.
                 var rejection = ExportRules.Evaluate(facts);
                 if (rejection != ExportRejection.None)
                 {

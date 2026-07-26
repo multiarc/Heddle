@@ -21,7 +21,7 @@ namespace Heddle.Precompiled
         /// <summary>The prop's layout index (the same index the runtime backend's layout assigns).</summary>
         public int Index { get; }
 
-        /// <summary>Computes the boxed prop value against the caller view.</summary>
+        /// <summary>The prop's evaluator.</summary>
         public PrecompiledPropEvaluator Evaluate { get; }
     }
 }

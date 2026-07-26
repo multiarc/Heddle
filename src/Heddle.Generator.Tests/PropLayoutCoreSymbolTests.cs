@@ -89,8 +89,7 @@ class Generic<T> { public static readonly System.Type G = typeof(System.Collecti
             {
                 converted = declaration.DefaultValue;
                 sourceDisplay = declaration.DefaultValue?.GetType().Name ?? "null";
-                // The probe only exercises reference/identity defaults; conversion legality is verified in tests
-                // that cover the emitter's DefaultConvertible behavior.
+                // Only exercises reference/identity defaults; conversion legality tested separately.
                 return declaration.DefaultValue == null
                     ? targetType.IsReferenceType
                     : Probe.Facts.IsAssignableFrom(targetType,

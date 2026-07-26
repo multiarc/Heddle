@@ -32,15 +32,8 @@ namespace Heddle.Generator.IntegrationTests
         private static readonly IReadOnlyList<MetadataReference> References = BuildReferences();
 
         /// <summary>
-        /// The engine test models (<c>Heddle.Tests.dll</c>), which the corpus runs hand to the compilations they
-        /// create so a template declaring <c>:: PropArticle</c> can bind.
-        /// <para>This replaces <c>HeddleTestsDll()</c>, which was triplicated across the three corpus suites and
-        /// worked by taking <b>this</b> assembly's location and string-replacing the project name inside the path to
-        /// guess where a sibling project's build output sat. That encoded the configuration name, the TFM directory
-        /// and the project nesting as assumptions, and returned <c>null</c> on a miss — which is how five tests came
-        /// to silently <c>return</c> and report a pass. The .csproj now copies the DLL into this project's own
-        /// output (<c>OutputItemType="Content"</c>), so the lookup is <see cref="AppContext.BaseDirectory"/> and a
-        /// miss throws.</para>
+        /// The engine test models (<c>Heddle.Tests.dll</c>), loaded from <see cref="AppContext.BaseDirectory"/>
+        /// and required for corpus model binding. Throws if not found.
         /// </summary>
         internal static string EngineTestModelsDll()
         {
@@ -58,10 +51,8 @@ namespace Heddle.Generator.IntegrationTests
         internal static IReadOnlyList<MetadataReference> EngineTestModelReferences() =>
             new[] { MetadataReference.CreateFromFile(EngineTestModelsDll()) };
 
-        // The direct-invoke paths only ever *compile* against the extra references (Heddle.Tests for the corpus
-        // models/extensions), so those assemblies never had to load. Registering generated output does load them —
-        // PrecompiledTemplates.Register instantiates the manifest, whose entry rows touch every generated entry
-        // class's static ctor. Remember each extra reference's path and satisfy the load from it.
+        // Extra references only compile-time load; registering generated output forces runtime loads (manifest instantiation).
+        // Track paths to provide assembly resolution.
         private static readonly Dictionary<string, string> ExtraReferencePaths =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -102,9 +93,7 @@ namespace Heddle.Generator.IntegrationTests
             var tpa = (string) AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
             var refs = tpa.Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
-                // Heddle.Generator is an *analyzer*, never a reference — a consuming project never compiles against
-                // it. The runtime's option/fingerprint sources are linked into it, so leaving it on the reference
-                // list would make every one of those type names ambiguous (CS0433) in generated code.
+                // Exclude Heddle.Generator: its linked sources would cause name ambiguities (CS0433) in generated code.
                 .Where(p => !string.Equals(Path.GetFileNameWithoutExtension(p), "Heddle.Generator",
                     StringComparison.OrdinalIgnoreCase))
                 .Select(p => (MetadataReference) MetadataReference.CreateFromFile(p))
@@ -241,8 +230,7 @@ namespace Heddle.Generator.IntegrationTests
             return result;
         }
 
-        /// <summary>Renders one template through the precompiled backend (compiled generated code) and the dynamic
-        /// engine, returning both outputs for a byte-for-byte assertion.</summary>
+        /// <summary>Renders one template through both backends, returning outputs for byte-for-byte comparison.</summary>
         public static (string precompiled, string dynamic) Render(string key, string content, Type modelType,
             object model, Dictionary<string, string> globalOptions = null, TemplateOptions runtimeOptions = null)
         {
@@ -269,10 +257,8 @@ namespace Heddle.Generator.IntegrationTests
             return (precompiled, dyn);
         }
 
-        /// <summary>Renders one template through both backends under an explicit <see cref="TemplateOptions"/> —
-        /// threaded into the precompiled backend via the options-carrying <c>GenerateString</c> overload so a
-        /// <c>TemplateOptions.Encoder</c> reaches the precompiled sink exactly as it reaches the dynamic engine.
-        /// Used by the marker-encoder differential fixture.</summary>
+        /// <summary>Renders one template through both backends with explicit <see cref="TemplateOptions"/>,
+        /// ensuring the precompiled backend receives the same options as the dynamic engine.</summary>
         public static (string precompiled, string dynamic) RenderWithOptions(string key, string content,
             Type modelType, object model, TemplateOptions options, Dictionary<string, string> globalOptions = null)
         {
@@ -301,9 +287,7 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>Like <see cref="RenderWithOptions"/> but returns each backend as a separately-invokable delegate,
-        /// so a test can assert each throws independently — the byte-identical tuple form short-circuits on the first
-        /// backend's exception, which hides whether the second backend behaves the same. Used by the C1 budget-breach
-        /// differential fixture (G-R3: identical exception kind on both backends).</summary>
+        /// allowing independent exception testing (the tuple form short-circuits on the first exception).</summary>
         public static (Func<string> precompiled, Func<string> dynamic) DeferredWithOptions(string key, string content,
             Type modelType, object model, TemplateOptions options, Dictionary<string, string> globalOptions = null)
         {
@@ -332,10 +316,8 @@ namespace Heddle.Generator.IntegrationTests
             return (precompiled, dynamic);
         }
 
-        /// <summary>Renders one target template (identified by <paramref name="targetKey"/>) through both backends
-        /// when the corpus carries <c>@&lt;&lt;</c> imports: the generator sees every template as an
-        /// <c>AdditionalFiles</c> input (imports resolve), and the dynamic engine reads imports from
-        /// <paramref name="rootPath"/>. Returns both outputs for a byte-for-byte assertion.</summary>
+        /// <summary>Renders one target template through both backends with corpus imports: the generator sees all
+        /// templates as <c>AdditionalFiles</c>, and the dynamic engine reads imports from <paramref name="rootPath"/>.</summary>
         public static (string precompiled, string dynamic) RenderInCorpus(
             IReadOnlyList<(string key, string content)> corpus, string targetKey, string targetContent,
             Type modelType, object model, string rootPath,
@@ -373,19 +355,10 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// The gauntlet-crossing twin of <see cref="RenderInCorpus"/>: runs the generator over the corpus, registers
-        /// the compiled assembly into the process-global <see cref="PrecompiledTemplates"/> registry, and renders
-        /// <paramref name="targetKey"/> through a real <see cref="TemplateResolver"/> (<c>TemplatePathType.None</c> →
-        /// <c>ConsultPrecompiled</c> → <c>TryResolve</c> → the per-request gauntlet) under two guards:
-        /// <see cref="PrecompiledMismatchPolicy.Strict"/> on the request options, and a <see cref="FallbackGuard"/>
-        /// around the whole render. Returns <c>(precompiled, dynamic)</c> like the direct-invoke paths.
-        /// <para>Two sub-modes. <b>Registry-only</b> (<paramref name="fileBacked"/> false, the default): the resolver
-        /// root points at a directory that does not exist, so a fallback that somehow escaped both guards still could
-        /// not fake the render — the dynamic re-compile has nothing to read. <b>File-backed</b>: the corpus is staged
-        /// into a real temp directory and the resolver is built with <c>checkFileChange: true</c>, so the gauntlet's
-        /// staleness step (<c>CheckStaleness</c>/<c>HashFile</c>) runs against real generator-emitted content hashes.</para>
-        /// <para>The caller is responsible for registry isolation (<see cref="PrecompiledRegistryTestBase"/>): the
-        /// registry is process-global and <c>Register</c> throws on a duplicate key.</para>
+        /// Runs the generator, registers the assembly into the process-global <see cref="PrecompiledTemplates"/> registry,
+        /// and renders through <see cref="TemplateResolver"/> under <see cref="PrecompiledMismatchPolicy.Strict"/> and
+        /// <see cref="FallbackGuard"/>. Registry-only mode (default): resolver root is nonexistent. File-backed: corpus staged
+        /// to temp directory with file-change checking. Caller must ensure registry isolation (process-global, throws on key collision).
         /// </summary>
         public static (string precompiled, string dynamic) RenderViaResolver(
             IReadOnlyList<(string key, string content)> corpus, string targetKey, string targetContent,
@@ -429,15 +402,8 @@ namespace Heddle.Generator.IntegrationTests
             public Type ModelType { get; }
             public object Model { get; }
 
-            /// <summary>Whether THIS target is rendered after it resolves.
-            /// <para>Per target, not per sweep. The sweep-wide <c>render: false</c> this replaces was a blanket:
-            /// because a handful of corpus entries genuinely cannot render standalone (a bare <c>@else</c>
-            /// continuation has no matching opener in its own scope), EVERY entry lost its byte assertion. Declaring
-            /// it per entry means the sweep renders the <c>Standalone</c> set and skips only what genuinely cannot
-            /// be rendered — a strict coverage gain that falls out of the taxonomy rather than needing its own
-            /// work.</para>
-            /// <para><c>render: false</c> still proves the entry crossed the gauntlet: the verdict lands at
-            /// <c>TryResolve</c>, before any byte is produced.</para></summary>
+            /// <summary>Whether THIS target renders after resolution (per-target). <c>false</c> still verifies
+            /// the entry crossed the gauntlet, stopping at <c>TryResolve</c> before rendering.</summary>
             public bool Render { get; }
         }
 
@@ -451,11 +417,8 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// The gauntlet-crossing sweep: one generator run and one <see cref="PrecompiledTemplates.Register"/> for the
-        /// whole corpus, then every target resolved and rendered through one <see cref="TemplateResolver"/> under a
-        /// single <see cref="FallbackGuard"/> and <see cref="PrecompiledMismatchPolicy.Strict"/>. Sharing the
-        /// generator run and the registration minimizes suite time: the gauntlet's verdict is per-template, so the
-        /// marginal cost of a target is one <c>TryResolve</c> plus one render.
+        /// One generator run and registration for the whole corpus, then resolves and renders every target through
+        /// one <see cref="TemplateResolver"/> under <see cref="FallbackGuard"/> and <see cref="PrecompiledMismatchPolicy.Strict"/>.
         /// </summary>
         internal static IReadOnlyList<ResolverSweepResult> SweepViaResolver(
             IReadOnlyList<(string key, string content)> corpus, IReadOnlyList<ResolverTarget> targets,
@@ -502,9 +465,7 @@ namespace Heddle.Generator.IntegrationTests
                         results.Add(new ResolverSweepResult
                         {
                             Key = target.Key,
-                            // render: false resolves without rendering — the gauntlet runs at TryResolve, before any
-                            // byte is produced, so a corpus fragment that is only meaningful when imported (a bare
-                            // @else continuation, say) still proves it crossed the gauntlet on the precompiled tier.
+                            // render: false verifies resolution at TryResolve (before rendering) without bytes.
                             Precompiled = render && target.Render ? template.Generate(target.Model) : null,
                         });
                     }
@@ -596,10 +557,8 @@ namespace Heddle.Generator.IntegrationTests
         private static ExType ToExType(Type modelType) =>
             modelType == null || modelType == typeof(object) ? ExType.Dynamic : new ExType(modelType);
 
-        /// <summary>A registry miss is silent by design (no <c>OnFallback</c> event, no Strict throw), so the one
-        /// failure mode the two guards cannot see is "the resolver never consulted a registered entry". The adapter
-        /// constructor sets the private <c>_precompiled</c> flag; reading it is the only way to tell an adapter
-        /// template from a dynamically-compiled one, and it is what makes file-backed mode trustworthy.</summary>
+        /// <summary>Verifies the template was served by a precompiled adapter by reading its private <c>_precompiled</c>
+        /// flag (registry misses are silent by design and would escape the guards).</summary>
         private static void AssertServedByPrecompiledAdapter(HeddleTemplate template, string key)
         {
             var field = typeof(HeddleTemplate).GetField("_precompiled",
@@ -615,19 +574,8 @@ namespace Heddle.Generator.IntegrationTests
         internal static string NonexistentRoot() =>
             Path.Combine(Path.GetTempPath(), "heddle-registry-only-" + Guid.NewGuid().ToString("N"));
 
-        /// <summary>
-        /// Writes the corpus to a fresh temp directory, each entry <b>at its declared encoding</b>.
-        /// <para>This used to write <c>new UTF8Encoding(false)</c> unconditionally, and that was a real hole. The
-        /// file-backed sub-mode exists precisely to exercise <c>PrecompiledGauntlet.HashFile</c>, which opens a
-        /// <c>FileStream</c> and decodes with <c>detectEncodingFromByteOrderMarks: true</c> — the BOM path. Eight
-        /// corpus templates carry a UTF-8 BOM, and not one of them ever reached the staged tree with it, so the only
-        /// sub-mode that can catch content-hash rule drift never staged the shape the BOM path was written for.</para>
-        /// <para>The old doc comment argued the encoding was immaterial because both sides hash DECODED text. That is
-        /// true, and it is exactly why hashing decoded text is the fix — but a test that only ever stages the shape
-        /// which works is not evidence that the other shape works. The declared <see cref="CorpusIntent"/> BOM flag
-        /// is what lets the staged tree reproduce each entry's real encoding; entries with no declared row (ad-hoc
-        /// fixtures from other suites) keep the no-BOM default, which is the shape templates ship in.</para>
-        /// </summary>
+        /// <summary>Writes the corpus to a fresh temp directory, each entry at its declared encoding (via
+        /// <see cref="CorpusIntent"/> BOM flag) to reproduce real file-content hashing behavior.</summary>
         internal static string StageCorpus(IReadOnlyList<(string key, string content)> corpus)
         {
             var dir = Path.Combine(Path.GetTempPath(), "heddle-file-backed-" + Guid.NewGuid().ToString("N"));
@@ -673,24 +621,22 @@ namespace Heddle.Generator.IntegrationTests
             return null;
         }
 
-        /// <summary>The generator's own <c>SanitizeName</c>, reached through <c>InternalsVisibleTo</c> rather than
-        /// mirrored. The mirror this replaces was a line-for-line copy by its own admission, and a naming-rule change
-        /// silently degraded the harness — <c>FindEntryTypeByKey</c> simply returned null, so the suite whose job is
-        /// catching build/run divergence became the thing that drifted.</summary>
+        /// <summary>Reaches the generator's <c>SanitizeName</c> via <c>InternalsVisibleTo</c> rather than mirroring
+        /// it, preventing silent drift if naming rules change.</summary>
         private static string SanitizeKey(string key) =>
             generator::Heddle.Generator.HeddleTemplateGenerator.SanitizeName(key);
 
-        /// <summary>Finds the single generated entry point in the compiled assembly (one template rendered per
-        /// call): a public static class in the generated namespace exposing a public static <c>Generate</c>.</summary>
+        /// <summary>Finds the generated entry point: a public static class in the generated namespace with a public
+        /// static <c>Generate</c> method returning a string.</summary>
         private static MethodInfo FindEntryPoint(Assembly assembly)
         {
             foreach (var type in assembly.GetTypes())
             {
-                if (!type.IsClass || !type.IsAbstract || !type.IsSealed) // static class
+                if (!type.IsClass || !type.IsAbstract || !type.IsSealed)
                     continue;
                 if (type.Namespace != GeneratedNamespace)
                     continue;
-                // Three Generate overloads exist (string + two sinks). Select the string-returning entry.
+                // Select the string-returning overload; multiple Generate methods exist.
                 var m = type.GetMethods(BindingFlags.Public | BindingFlags.Static)
                     .FirstOrDefault(mi => mi.Name == "Generate" && mi.ReturnType == typeof(string));
                 if (m != null)

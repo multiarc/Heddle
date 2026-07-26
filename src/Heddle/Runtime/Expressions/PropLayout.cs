@@ -122,9 +122,7 @@ namespace Heddle.Runtime.Expressions
         internal static PropLayout ResolveFromExtension(Type extensionType, CompileScope compileScope,
             string ownerDisplay, BlockPosition ownerCallPosition)
         {
-            // Both reflection and generator sides use the shared core for sequencing and indexing via their
-            // respective adapters, preventing divergence. Decode the layers into declarations, feed through the
-            // core with a reflection adapter, then re-shape the resulting slots.
+            // Both sides use the shared core to prevent divergence.
             var declarations = ReadDeclarations(extensionType);
             var sink = new ReflectionPropSink(compileScope, ownerDisplay, ownerCallPosition);
             var built = PropLayoutCore.Build(declarations, ReflectionTypeFacts.Instance, sink, out _);

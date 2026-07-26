@@ -10,13 +10,9 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The legacy <c>@import()</c> function has been removed. Any call site now produces a single positioned
-    /// <c>HED4003</c> removal <b>error</b> (no longer a warning), for every call shape — top-level,
-    /// chained/consuming, and nested inside an <c>@if</c>/<c>@for</c> body, an output block, or a definition body.
-    /// The message names <c>@&lt;&lt;{{ path }}</c> and <c>@partial(){{ name }}</c> as the replacements and is never
-    /// the generic "Cannot find extension" fallthrough — the <c>import</c> name stays registered as a tombstone.
-    /// <c>@&lt;&lt;</c> composition never raises <c>HED4003</c>. Errors are read from the compile result's error
-    /// list filtered by <see cref="HeddleDiagnosticIds.LegacyImportDirective"/>.
+    /// The legacy <c>@import()</c> raises positioned <c>HED4003</c> error in all contexts. The message names
+    /// <c>@&lt;&lt;{{ path }}</c> and <c>@partial(){{ name }}</c> as replacements; <c>import</c> stays registered
+    /// as a tombstone to avoid the generic fallthrough.
     /// </summary>
     public class LegacyImportRemovalTests
     {
@@ -40,9 +36,6 @@ namespace Heddle.Tests
         private static List<HeddleCompileError> RemovalErrors(List<HeddleCompileError> errors) =>
             errors.Where(e => e.DiagnosticId == HeddleDiagnosticIds.LegacyImportDirective).ToList();
 
-        // Asserts the single positioned HED4003 removal error for a call shape that carries exactly one @import:
-        // the exact expected message, a positioned whole-call span starting at the @import call, and that no error
-        // is the generic "Cannot find extension" fallthrough.
         private static HeddleCompileError AssertSinglePositionedRemovalError(string template)
         {
             var errors = CompileErrors(template);
@@ -52,7 +45,6 @@ namespace Heddle.Tests
             Assert.Equal(ExpectedMessage, error.Error);
             Assert.True(error.Position.Length > 0, "HED4003 carries a whole-call span");
 
-            // Positioned at the @import call (the whole-call span begins within the '@import(' opening).
             int at = template.IndexOf("@import", StringComparison.Ordinal);
             Assert.InRange(error.Position.StartIndex, at, at + "@import".Length);
 

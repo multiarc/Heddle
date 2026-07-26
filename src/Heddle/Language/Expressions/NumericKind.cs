@@ -27,11 +27,9 @@ namespace Heddle.Language.Expressions
 
     /// <summary>
     /// The C# implicit-numeric-conversion (§10.2.3) and binary/unary promotion tables, keyed on
-    /// <see cref="NumericKind"/>. Transcribed from the runtime's <c>NumericPromotion</c> <see cref="Type"/>-keyed table
-    /// and diffed against the generator's <c>SpecialType</c>-keyed twin in <c>TemplateEmitter</c>; they agreed
-    /// entry-for-entry, and this file is what stops that agreement from rotting. Every function returns
-    /// false/<see cref="NumericKind.None"/> for <see cref="NumericKind.None"/> rather than throwing, so callers can
-    /// feed unclassified operands safely.
+    /// <see cref="NumericKind"/>. This file stops the agreement with other implementations from rotting. Every
+    /// function returns false/<see cref="NumericKind.None"/> for <see cref="NumericKind.None"/> rather than
+    /// throwing, so callers can feed unclassified operands safely.
     /// <para>BCL types only (<see cref="FromClrType"/> takes a <see cref="Type"/>); no Roslyn, netstandard2.0-clean.</para>
     /// </summary>
     internal static class NumericTable

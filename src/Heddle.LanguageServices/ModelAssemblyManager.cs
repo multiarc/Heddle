@@ -36,7 +36,7 @@ namespace Heddle.LanguageServices
                 }
                 catch
                 {
-                    // an unreadable/invalid model assembly degrades to typeless for that file
+                    // Unreadable/invalid assemblies degrade to typeless.
                 }
             }
 

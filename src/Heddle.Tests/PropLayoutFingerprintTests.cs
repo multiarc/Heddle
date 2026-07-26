@@ -82,14 +82,12 @@ namespace Heddle.Tests
             var added = PropLayout.Fingerprint(typeof(FingerprintFixtures.FingerprintAddedExtension));
 
             Assert.NotEqual(baseline, added);
-            Assert.StartsWith(baseline, added);   // base slots keep their indices; the new one appends
+            Assert.StartsWith(baseline, added);
         }
 
         [Fact]
         public void ARedeclarationThatKeepsTheLayoutKeepsTheFingerprint()
         {
-            // Re-declaring `b` as the same type keeps both index and slot type, so a compatible extension update
-            // does NOT invalidate every precompiled template that binds it.
             Assert.Equal(PropLayout.Fingerprint(typeof(FingerprintFixtures.FingerprintBaseExtension)),
                 PropLayout.Fingerprint(typeof(FingerprintFixtures.FingerprintNarrowedExtension)));
         }
@@ -100,8 +98,6 @@ namespace Heddle.Tests
             var live = typeof(FingerprintFixtures.FingerprintBaseExtension);
             var entry = Entry(new PrecompiledExtensionBinding("fpbase",
                 PrecompiledGauntlet.AqnSansVersion(live),
-                // A stale fingerprint: what the manifest would carry if the extension package had since gained a
-                // slot. Before this row the render simply wrote values into the wrong slots.
                 PropLayout.Fingerprint(typeof(FingerprintFixtures.FingerprintAddedExtension))));
 
             var failure = PrecompiledGauntlet.Validate(entry, new TemplateOptions(),
@@ -109,9 +105,7 @@ namespace Heddle.Tests
 
             Assert.NotNull(failure);
             Assert.Equal(PrecompiledFallbackReason.ExtensionBindingMismatch, failure.Value.Reason);
-            // The detail string is pinned in full, not probed for a substring. Every Fail() in the gauntlet spells
-            // its detail "<Thing> 'name': manifest=X live=Y", and telemetry consumers read these; a substring
-            // assertion let a hand-restored version of this check drift to a different shape unnoticed.
+            // Assert the full detail string, not a substring (telemetry format is "<Thing> 'name': manifest=X live=Y").
             Assert.Equal(
                 "Extension 'fpbase': prop layout " +
                 "manifest=" + PropLayout.Fingerprint(typeof(FingerprintFixtures.FingerprintAddedExtension)) + " " +
@@ -122,10 +116,7 @@ namespace Heddle.Tests
         [Fact]
         public void ALiveExtensionThatDroppedAllItsPropsReportsTheAbsentSentinel()
         {
-            // The live fingerprint is null when the extension no longer declares any [Prop] at all — the package
-            // removed them. Interpolating a null there would render "live=" and read as a formatting bug on the
-            // single most diagnostic case, so it uses the same angle-bracket sentinel as this file's
-            // <unresolved>/<missing>/<delegate>/<overloads added> details.
+            // When an extension drops all [Prop], the detail uses <none> sentinel (not null, which would break format).
             var live = typeof(FingerprintFixtures.NoPropsExtension);
             Assert.Null(PropLayout.Fingerprint(live));
 
@@ -150,15 +141,8 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// <para>A binding row carrying <b>no</b> fingerprint is checked vacuously, so the layout check cannot
-        /// invalidate a row that predates it. That is the property this test is for, and it still holds.</para>
-        /// <para><b>What it must not be read as claiming.</b> It is not evidence that a real pre-fingerprint
-        /// manifest still loads: <c>new PrecompiledExtensionBinding("fpbase", aqn)</c> compiles against
-        /// <em>today's</em> assembly, so the compiler binds it to the three-parameter constructor and passes
-        /// <c>null</c>. A real released (schema 1–2) manifest calls a two-parameter constructor that no longer exists
-        /// in metadata, and would throw <see cref="MissingMethodException"/> long before reaching the gauntlet — the
-        /// optional parameter makes a new-schema call look like an old one. That claim lives in
-        /// <c>OldSchemaManifestRejectionTests</c>, which builds a real old manifest.</para>
+        /// Rows without a fingerprint are checked vacuously, so the layout check does not invalidate pre-fingerprint rows.
+        /// (This test does not prove old manifests still load — that is in <c>OldSchemaManifestRejectionTests</c>.)
         /// </summary>
         [Fact]
         public void ARowWithNoFingerprintIsCheckedVacuously()
@@ -180,8 +164,7 @@ namespace Heddle.Tests
                 new[] { binding }, null, default, NoOpStrategy.Instance);
         }
 
-        /// <summary>Any non-null strategy makes the entry "precompiled" for the gauntlet's step-0 short-circuit;
-        /// nothing here renders.</summary>
+        /// <summary>Dummy strategy to mark the entry as precompiled; does not render.</summary>
         private sealed class NoOpStrategy : Heddle.Runtime.IProcessStrategy
         {
             internal static readonly NoOpStrategy Instance = new NoOpStrategy();
@@ -191,8 +174,7 @@ namespace Heddle.Tests
             public void Render(in Scope scope) { }
         }
 
-        /// <summary>The corlib assembly name differs between TFMs; the assertion is about shape, not the BCL's
-        /// packaging, so the assembly half is normalised.</summary>
+        /// <summary>Normalizes the assembly name to <c>System.Private.CoreLib</c> so the assertion is platform-independent.</summary>
         private static string Normalize(string fingerprint) =>
             fingerprint?.Replace(", " + typeof(int).Assembly.GetName().Name, ", System.Private.CoreLib");
     }

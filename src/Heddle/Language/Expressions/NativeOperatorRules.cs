@@ -18,20 +18,9 @@ namespace Heddle.Language.Expressions
     }
 
     /// <summary>
-    /// A decision table encoding how the native tier handles the seven documented deviations from C# semantics.
-    /// Before this file the runtime implemented them by hand while the generator emitted <c>(left op right)</c>
-    /// unconditionally, consulting no operand types — so mixed-type equality produced <b>CS0019 in the consumer's
-    /// build</b> for a template the runtime accepts, while enum arithmetic produced valid C# that renders where the
-    /// runtime raises a positioned error. Opposite verdicts, silently.
-    /// <para>The generator emits only on <see cref="OperatorVerdict.Supported"/>; both other verdicts degrade to the
-    /// dynamic tier. The runtime builds <c>Expression</c> trees and gains a lockstep sweep asserting that
-    /// <see cref="OperatorVerdict.Supported"/> really compiles and <see cref="OperatorVerdict.NotDefined"/> really
-    /// raises a positioned error.</para>
-    /// <para><b>Exactness boundary.</b> The verdicts are exact over the decidable categories — <c>Numeric</c>,
-    /// <c>Bool</c>, <c>String</c>, <c>Enum</c>, <c>NullLiteral</c>. For <c>Reference</c>/<c>Other</c> the outcome
-    /// depends on user-defined operators the descriptor deliberately does not carry, and for <c>Unknown</c> there
-    /// are no facts at all; both answer <see cref="OperatorVerdict.RequiresRuntimeSemantics"/>, which means "do not
-    /// emit" and claims nothing about whether the runtime compiles it.</para>
+    /// Decision table for native-tier operator semantics. Ensures generator and runtime reach the same verdict
+    /// where exact, or both degrade where not. Exact for Numeric, Bool, String, Enum, NullLiteral; inexact for
+    /// Reference, Other, Unknown (runtime-owned).
     /// </summary>
     internal static class NativeOperatorRules
     {
@@ -91,7 +80,7 @@ namespace Heddle.Language.Expressions
                     case OperandCategory.NullLiteral:
                         return OperatorVerdict.Supported;   // string.Concat on both sides, same text
                     default:
-                        // Formatting the non-string side is runtime-owned (Dev 6 reaches enums and user types).
+                        // Formatting is runtime-owned for enums and user types.
                         return OperatorVerdict.RequiresRuntimeSemantics;
                 }
             }
