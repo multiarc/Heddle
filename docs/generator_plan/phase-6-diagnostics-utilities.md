@@ -991,3 +991,84 @@ differential, corpus-render-parity, resolver-sweep and hosted-registry suites in
   compile-channel stages, which is pipeline work no phase 0–6 schedules.
 - **`PropFaults.FaultOrder` and the twin-vocabulary message unification** remain phase 3's, per the
   first pass's hand-off. Unchanged here.
+
+---
+
+## Restoration audit (2026-07-26)
+
+Both passes re-walked against source after the program was committed, following the reviewer
+incident in which an uncommitted-tree `git checkout` destroyed landed work. WI1–WI11 and the
+reconciliation are all present and correct in the tree; two defects in landed work were found and
+fixed, and one destroyed item was verified as correctly restored by hand.
+
+### The hand-restored `Hed7101` const — verified correct
+
+`PrecompiledGauntlet.cs:18` now reads
+`internal const string Hed7101 = Data.HeddleDiagnosticIds.PrecompiledGauntletFallback;`. That is
+exactly the shape WI5 landed, confirmed against the sibling the revert did not touch:
+`PrecompiledTemplates.cs:15-16` carries `Hed7102`/`Hed7103` in the identical form
+(`internal const string`, pointing at `Data.HeddleDiagnosticIds.PrecompiledManifestRejected` /
+`…KeyCaseMismatch`). Same mechanism, same accessibility, correct shared row
+(`PrecompiledGauntletFallback == "HED7101"`), and the single consumer at `:219` is unchanged. No
+other id literal survives anywhere in `PrecompiledGauntlet.cs` — the only remaining `"HED…"`
+string literals in `src/Heddle/` are the `HeddleDiagnosticIds` constant definitions themselves and
+`HeddleFeatures.CSharpTierDisabledDiagnosticId` (`HED9001`, deliberately not a public constant —
+see the comment at `HeddleDiagnosticIds.cs:314`).
+
+### Corrections
+
+- **The catalog is 82 rows, not 80.** Verified by count: 82 `Add(…)` rows against 82
+  `HeddleDiagnosticIds` constants, bijective, gated by `DiagnosticCatalogTests`. The wrong number
+  never appeared in this plan — it is in the program README's phase table, which this phase does
+  not edit; the README already records the correction in its own audit section. No code change:
+  the invariant that matters (bijection with the constants) is gated, and a hard-coded count would
+  be a worse test than the bijection.
+- **D12.5's projection-equivalence corpus was genuinely missing, and is now built.** What shipped
+  in pass 1 was unit tests of the drain rule plus a single-template `HeddleCompileResult`
+  agreement check — no cross-host comparison at all, so the *Success criteria* line claiming "a
+  host that drops it turns the suite red" was false. Now delivered as
+  [`DiagnosticCorpusVectors.cs`](../../src/Heddle.Tests/DiagnosticCorpusVectors.cs): nine fixtures
+  (one per diagnostic block `HED0xxx`–`HED4xxx`, the profile-dependent `HED2004` encoding lint, and
+  a clean control), each carrying the measured `(Id, IsWarning, Offset, Length)` multiset plus two
+  declared per-host delta columns. Three suites assert against the one table — `Heddle.Tests`
+  (`DiagnosticProjectionCorpusTests`: the full drain under both profiles, the parse-channel subset,
+  and `HeddleCompileResult`), `Heddle.LanguageServices.Tests`
+  (`DiagnosticProjectionCorpusLspTests`) and `Heddle.Generator.Tests`
+  (`DiagnosticProjectionCorpusGeneratorTests`) — so the hosts are compared transitively through
+  shared expectations, following the `LineIndexVectors` linking precedent this phase already set.
+  **Verified load-bearing by mutation:** flipping one fixture's parse-channel column turns both the
+  run-tier and the build-tier arm red on that fixture.
+  - *Measured findings the corpus now pins.* The run tier and the editor agree entry-for-entry on
+    all nine fixtures. Exactly **two** of the nine entries are parse-channel (`HED0003`,
+    `HED4003`) — everything else is compile-channel and is therefore invisible to the build tier,
+    which is the program's recorded scope gap turned from prose into a per-fixture gated fact. Two
+    fixtures show the build tier raising its own twin instead (`HED7014` for the unknown function,
+    `HED7022` for the unknown profile).
+  - *Declared out of scope, with reasons in the file:* the `HED5xxx` declaration block (needs a
+    per-host extension assembly), and D12.5's two host-policy cases — import-origin re-anchoring
+    and the generator's retract filter — which have no cross-host counterpart and stay pinned in
+    `ImportOriginTests` and `DiagnosticProjectionTests` respectively.
+
+### The BOM check — no damage in this phase's territory
+
+Two generator snapshots (`Example5_DefinitionWithProps`, `Example7_FunctionShimCall`) lost a UTF-8
+BOM relative to the pre-program baseline. **Not restored, deliberately.** At the baseline those two
+were the *only* two of the eight carrying a BOM; the other six never had one. Both are files whose
+content also changed (`schemaVersion: 2 → 5`, plus phase 5's `HED7018` line), so `Verify` rewrote
+them on acceptance with its default encoding and, in doing so, made all eight consistent.
+Re-adding the BOM would restore an inconsistency that the next acceptance would undo again. Neither
+snapshot was touched by phase 6 — the content deltas belong to phases 1/3/4 (the schema bumps) and
+phase 5 (the diagnostic line). Every other file changed between the baseline and HEAD was checked:
+no other golden or fixture gained or lost a BOM.
+
+### Re-run acceptance evidence
+
+Both lockstep gates green — generator-side code↔registry↔docs
+(`PipelineDiagnosticsTests.EveryGeneratorDiagnosticIdIsClaimedInTheRegistryAndListedInTheDocsTable`)
+and runtime-side `HeddleDiagnosticIds`⇄registry
+(`DiagnosticIdTests.ConstantsAndTheClaimedIdRegistryAgree`) — along with the catalog,
+line-index, projection, alias, escape, forwarded-diagnostic and WI9 completeness gates.
+Phase 1's `HED7022`/`HED7024`, which no other audit covered, are verified end to end: both are
+`FromCatalog` projections (never hand-built descriptors), both catalog rows carry a well-formed
+`MessageFormat`, and both raise sites supply the matching arity — `HED7022` one argument for `{0}`
+at `TemplateEmitter.cs:479`, `HED7024` two for `{0}`/`{1}` at `:1375`.

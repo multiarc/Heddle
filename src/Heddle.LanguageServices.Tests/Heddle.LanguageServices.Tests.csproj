@@ -42,6 +42,7 @@
     <!-- Phase 6 D12.6: the line-rule golden vectors, authored once in Heddle.Tests and asserted by every
          surface that maps an offset to a position. Plain data, no Heddle dependency. -->
     <Compile Include="..\Heddle.Tests\LineIndexVectors.cs" Link="Shared\LineIndexVectors.cs" />
+    <Compile Include="..\Heddle.Tests\DiagnosticCorpusVectors.cs" Link="Shared\DiagnosticCorpusVectors.cs" />
   </ItemGroup>
 
   <ItemGroup>
