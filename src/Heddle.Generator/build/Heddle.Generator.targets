@@ -17,9 +17,11 @@
        the generator suites inject `build_metadata.*` directly. Do not reintroduce the elements; there is nothing to
        map, and mapping it explicitly is what unmapped it. Two gates stand behind that: the structural half is
        `PipelineContractTests.EveryDeclaredItemMetadataIsReadByTheGeneratorAndNotNulledByTheTargets`, and the
-       behavioural half is the `samples/codegen-t4-successor` sample, whose `Name="BuildReport"` renames the generated
-       entry class its `Program.cs` calls by name — so a metadatum that stops flowing fails that sample's build
-       outright, in CI, rather than degrading quietly. -->
+       behavioural half is the `samples/codegen-t4-successor` sample, whose import-only partial carries
+       `Name="Banner"` and is imported by that name — so a metadatum that stops flowing fails that sample's build
+       outright with HED7011, in CI, rather than degrading quietly. (Under Q8.12's first, override implementation the
+       behavioural gate was the generated entry class being *renamed* by `Name`; Q8.25 made `Name` additive, so the
+       key and the class name no longer move and the gate had to move with it.) -->
   <ItemGroup>
     <AdditionalFiles Include="@(HeddleTemplate)">
       <HeddleTemplate>true</HeddleTemplate>

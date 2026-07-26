@@ -348,6 +348,13 @@ namespace Heddle.Data
                 "{0} The Heddle runtime rejects the same call with {1} when it compiles this template, so the " +
                 "build reports it here rather than pre-compiling a call it has already proved illegal. Cast an " +
                 "argument to one candidate's parameter type, or change the argument list to match one candidate.");
+            // Q8.25. Unlike HED7004 — "this item's explicit key metadata is unusable" — nothing here is unusable:
+            // the import resolved. The advice is about which of two working spellings to prefer, so it is its own
+            // fault class at its own severity and needs its own id.
+            Add(HeddleDiagnosticIds.BuildNamedTemplateImportedByKey,
+                "Named Heddle template imported by key rather than by its registered name", warning,
+                "Import '{0}' resolves a template that has a registered Name '{1}'. Both spellings resolve; prefer " +
+                "'{1}' for a template with a registered name.");
             Add(HeddleDiagnosticIds.BuildEmitterFault, "Heddle template emitter fault", error,
                 "The Heddle template emitter failed on '{0}': {1}: {2}. This is a generator defect rather than a " +
                 "template error — please report it; setting Precompile=\"false\" on the item unblocks the build " +

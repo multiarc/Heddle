@@ -153,13 +153,23 @@ unrecorded breaking change.
   target a cross-item `%()` reference evaluates to the empty string — so each element overwrote the value the
   transform had just copied. Only the generator suites, which inject `build_metadata.*` directly, ever saw the
   metadata at all. **Judgement: defect repair, not window-gated.** (a) No documented behaviour is withdrawn;
-  three documented behaviours begin to occur. (b) No rendered byte changes: `Key`/`Name` change a registration
-  key and the generated class name, `Precompile="false"` moves a file to the dynamic path, and the dynamic and
-  precompiled tiers are byte-identical. (c) **A build can newly fail, and that is stated, not glossed:** a
-  project that set `Key`/`Name` and called the generated entry class by its old path-derived name will not
-  compile until the call is renamed — which is what `samples/codegen-t4-successor` needed, and its golden
-  changed accordingly. A project relying on documented metadata being *ignored* is not a dependency the
-  contract offers.
+  three documented behaviours begin to occur. (b) No rendered byte changes: `Key` changes a registration key and
+  the generated class name, `Name` adds an `@<<` import spelling, `Precompile="false"` moves a file to the
+  dynamic path, and the dynamic and precompiled tiers are byte-identical. (c) **A build can newly fail, and that
+  is stated, not glossed:** a project that set `Key` and called the generated entry class by its old
+  path-derived name will not compile until the call is renamed. A project relying on documented metadata being
+  *ignored* is not a dependency the contract offers.
+
+  **This disposition was corrected (Q8.25).** As first written it read "a project that set `Key`/`Name` and
+  calls the generated entry class by its old name will not compile until renamed", and cited
+  `samples/codegen-t4-successor` as the instance. That was true of an implementation in which `Name` *overrode*
+  the key — which is what shipped first and was wrong. With `Name` additive, **`Name` moves nothing**: the key,
+  the manifest row and the generated class name are all unchanged by it, so it cannot break a call site and
+  cannot make an import stop resolving. The rename clause now applies to `Key` alone, and the sample no longer
+  needs one. `Name`'s only new emission is `HED7028`, a **warning** where a named template is imported by its
+  key — additive by construction, since no pre-existing project sets `Name` at all and the build has no
+  `TreatWarningsAsErrors` (Q8.26). The superseded sentence is replaced rather than annotated in place: a
+  normative document must not carry two dispositions for one change.
 
 - **The release line is stated once, and every first-party assembly is signed** (phase 5, Q8.11;
   `Directory.Build.props`, `Directory.Build.targets`, shipped 2.1.0). Not a behavioural change and recorded

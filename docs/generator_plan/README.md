@@ -11,11 +11,11 @@
 
 **All seven phases (0–6) are implemented.** The quarantine register phase 0 opened is empty — every
 red fixture was earned green by its owning phase, none deleted and none weakened (one, phase 1's
-F11, was *reshaped*; see that phase's record). Suite: **4986 passed / 0 failed / 0 skipped**
-(the count rose through the post-implementation audits, which added coverage the phases had claimed
-but not held — see the findings section),
-against a pre-program baseline of 2630 / 0 / 0. Diagnostic IDs `HED7018`–`HED7024` were claimed in
-registry order. Two items are recorded as **not delivered** and are named here rather than buried
+F11, was *reshaped*; see that phase's record). Suite: **5348 passed / 0 failed / 0 skipped**
+against a pre-program baseline of 2630 / 0 / 0 — the count more than doubled, and most of the growth
+came *after* the phases, from the post-implementation audits and rulings adding coverage the phases
+had claimed but not held (see the findings section). Diagnostic IDs `HED7018`–`HED7028` were claimed
+in registry order. Two items are recorded as **not delivered** and are named here rather than buried
 in a phase: the [compile-channel drain gap](#known-program-level-gap--the-compile-channel-drain-is-unscheduled)
 below, and phase 2's WI9 paired before/after benchmark (argued structurally, not measured).
 Phase numbering follows the research-document
@@ -321,6 +321,15 @@ Fixed by deleting the restatements. Gated two ways, because one would not have c
 structurally by `PipelineContractTests.EveryDeclaredItemMetadataIsReadByTheGeneratorAndNotNulledByTheTargets`
 (set equality *plus* a refusal of any future restatement), and behaviourally by the sample gallery,
 which is the only place a real MSBuild evaluation runs.
+
+The behavioural gate was **rebuilt once**, and how it broke is instructive. Its first form leaned on
+`Name` renaming the generated entry class, which `Program.cs` then called by name — so a metadatum that
+stopped flowing failed the sample's compile. Q8.25 then ruled `Name` **additive**, so it stopped moving
+the class name and that gate silently became a no-op: the sample would have kept building with the
+metadata inert again. It is now an import-only partial (`templates/_banner.heddle`, `Precompile="false"`)
+carrying `Name="Banner"` and imported as `@<<{{Banner}}` — a metadatum that stops flowing now fails the
+build with `HED7011`. **A behavioural gate is coupled to the semantics it gates**; when the semantics are
+re-derived, the gate has to be re-derived with them, or the gate quietly stops gating.
 
 **Standing lesson:** a build-surface contract verified only through injected analyzer-config values
 is unverified. Where a claim depends on MSBuild evaluation, something must actually evaluate MSBuild.

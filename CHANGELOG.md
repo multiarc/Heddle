@@ -31,30 +31,40 @@ begin to occur because they were never wired. Each item's window judgement is re
 
 - **`<HeddleTemplate>` per-item metadata now takes effect.** `Key`, `Name` and `Precompile` were all
   inert from a real project — the targets file overwrote each with the empty string while appearing to
-  map it — so only projects that never used them were unaffected. If you set `Key` or `Name`, the
-  template's registration key **and its generated entry-class name** now follow it, so a call to the old
-  path-derived class name must be renamed. If you set `Precompile="false"`, that file now really stops
-  precompiling (it remains available to `@<<` imports) and renders through the dynamic path.
+  map it — so only projects that never used them were unaffected. If you set `Key`, the template's
+  registration key **and its generated entry-class name** now follow it, so a call to the old
+  path-derived class name must be renamed. `Name` moves nothing (see *Added*). If you set
+  `Precompile="false"`, that file now really stops precompiling (it remains available to `@<<` imports)
+  and renders through the dynamic path.
 
 ### Added
 
-- **`Name` item metadata** as a second spelling of `Key`: `<HeddleTemplate Update="t/report.heddle"
-  Name="BuildReport" />` registers the template as `BuildReport.heddle` and generates
-  `Heddle.Generated.BuildReport`. Both spellings normalize through the same key rule, participate in the
-  duplicate (`HED7002`) and case-only-twin (`HED7003`) checks, and suppress the out-of-root warning
-  (`HED7018`), since an explicit key makes the flattened key intentional. Setting both is accepted only
-  when they normalize to the same key; two different keys, or a value the normalizer refuses, is
-  `HED7004`.
+- **`Name` item metadata** as an **additional** `@<<` import name — not a rename:
+  `<HeddleTemplate Update="t/report.heddle" Name="BuildReport" />` leaves the key
+  `t/report.heddle` and the class `Heddle.Generated.T_Report` exactly as they were, and makes
+  `@<<{{BuildReport}}` resolve **as well as** `@<<{{t/report.heddle}}`. Nothing that resolved before stops
+  resolving. It pairs naturally with `Precompile="false"`: an import-only partial under a friendly name.
+  Because a name is not a registration key, it takes no part in the duplicate (`HED7002`) or
+  case-only-twin (`HED7003`) checks and does not suppress the out-of-root warning (`HED7018`) — the
+  path-derived key is still there and still unasked-for. Setting `Key` *and* `Name` is two names for one
+  template, not a conflict. A value the normalizer refuses, or a name another template already answers
+  to, is `HED7004` against the name; the key is unaffected.
+- **`HED7028`** (warning): an `@<<` import names a template by its registration key while that template
+  also carries a `Name`. Both spellings resolve — this recommends the name-first spelling for a named
+  template. It cannot fire for a project that sets no `Name`.
 
 ### Fixed
 
 - **`#line` directives in generated code name the template file, not its registration key.** The two
-  were always equal for a path-derived key; an explicit `Key`/`Name` made the difference observable and
-  would have pointed every mapped span at a path that does not exist.
+  were always equal for a path-derived key; an explicit `Key` made the difference observable and would
+  have pointed every mapped span at a path that does not exist. A template **outside**
+  `HeddleTemplateRoot` now gets its own (absolute) path rather than a bare filename the compiler cannot
+  open, and every generated file states which form its `#line` names are in — root-relative, or the
+  template's own path — as a header comment.
 - **`heddle-lsp --version` and the LSP `initialize` response reported `1.0.0`** for the whole 2.0 line.
   The value is now read off the assembly rather than hand-maintained.
-- **`HED7004`'s message** names the offending metadata and the reason, covering the new
-  `Key`-and-`Name`-disagree case as well as a malformed value.
+- **`HED7004`'s message** names the offending metadata and the reason, covering an unusable or
+  already-taken `Name` as well as a malformed `Key`.
 
 ### Build and packaging
 
