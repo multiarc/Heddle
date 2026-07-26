@@ -9,10 +9,10 @@
   rather than remembered.
 - **Depends on:** phases 0–6 landed (their behaviour changes are the sweep's input) and the six
   post-implementation audits (their findings are its bill of materials). Two *ordering* dependencies,
-  not gating ones: the queued **Q8.2** work item (the 2.1 version bump + `MinSupportedSchemaVersion = 4`)
-  must land before this plan's CHANGELOG/migration deliverables can state a shipped fact, and
-  **phase 7** stage 0 must land before D9's executable-example single-sourcing has a corpus to
-  single-source *into*. Nothing depends on this phase.
+  not gating ones: the queued **Q8.2** work item (the 2.1 version bump + the schema floor rise) must land
+  before this plan's CHANGELOG/migration deliverables can state a shipped fact. **The phase-7 dependency
+  is gone** — D9 was rejected by Q8.10, and with it this phase's only hard external dependency. Nothing
+  depends on this phase.
 - **Changes an externally-visible contract:** **the published documentation is itself an
   externally-visible contract, and this phase changes it** — that is the point. No engine source, no
   generator source, no rendered byte, no public API and no diagnostic ID changes (`HED7025` is
@@ -164,7 +164,7 @@ of them:
   ambiguity error, Q2.2's narrowed catch, Q6.2's profile flip), the sweep documents it. It does not
   reopen it.
 - **Not a translation, localisation, or docs-site-infrastructure change.** `docs/.vitepress/**` is
-  touched only if D9's include mechanism requires it, and then minimally.
+  not touched at all — D9's include mechanism was rejected (Q8.10), which was the only reason to.
 
 ## Design direction
 
@@ -447,7 +447,34 @@ in evidence documents where the *old* line numbers are the historically accurate
 anchor is still right, and it is an edit to documents owned by others. *No gate at all, just the
 convention.* Rejected — that is the current state, and the current state produced 86.
 
-### D9 — Prose examples become executable by **single-sourcing from phase 7's corpus**, never by transcription
+### D9 — ~~Prose examples become executable by single-sourcing from phase 7's corpus~~ — **rejected**
+
+**Decision (revised, 2026-07-26 — supersedes everything struck through below).** **D9 is rejected as
+designed. Doc examples stay hand-written prose and this phase does not block on phase 7.**
+
+Documentation has a different job from a test fixture: it *explains*, and byte-identity with a corpus
+entry is not a property worth buying. A doc example is chosen for what it teaches — minimal, elided,
+built up in stages — and a corpus entry is chosen for what it exercises. Forcing one artifact to
+serve both makes each worse at its own job, and the coupling would be paid on every future doc edit.
+
+Concretely, none of this happens: no `<!--@include: -->` from corpus templates into published pages,
+no corpus intent rows added for the sake of doc examples, no expected-output goldens included into
+prose, and **no dependency on phase 7 stage 0** — this phase's stage 5 loses its only hard external
+dependency and can run whenever the earlier stages are done.
+
+What replaces it is not a mechanism: doc examples are kept honest by **review**, under D11's
+documentation-currency rule (a rule-bearing section carries the commit it was verified against), and
+by [D10](../spec/common/cross-cutting-decisions.md#d10--documentation-authority-is-mapped-and-it-is-conditional) —
+an unmarked, ungated prose claim is evidence of intent, not an authority, so a stale example cannot
+order a code change. That is the honest posture: the examples are prose, and prose is reviewed.
+
+The one thing the struck-through text got right, kept: `ScopeChannelDocExampleTests` **is** an
+anti-pattern — a hand transcription of a doc example, two copies of one input with nothing forcing
+them to agree. The answer is to **delete the false coupling**, not to formalise it into an include
+mechanism. That deletion stays in scope.
+
+<details>
+<summary>Superseded design (kept for the record — do not implement)</summary>
 
 **Decision.** Yes, some prose examples become tested fixtures — but the mechanism is
 single-sourcing, not a second copy. Specifically:
@@ -489,6 +516,16 @@ single-artifact principle the whole program is about, applied one more level out
   formatter change (`"R"`→`G17`/`G9`) and a profile default flip, both of which can invalidate a
   documented output.
 
+</details>
+
+**Note on the struck-through rationale's strongest point**, since rejecting D9 does not make it
+false: the program *did* ship a byte-changing literal formatter change and a profile default flip,
+either of which can invalidate a documented output, and review is a weaker guard against that than a
+gate would be. The ruling accepts that cost knowingly — the alternative was coupling every doc
+example to a corpus entry, and D11's currency rule is what carries the residual risk. If a shipped
+doc example is later found stale, that is a docs defect to fix, not evidence that this should be
+reopened.
+
 ### D10 — Staging: N before M before mechanism, with the gates landing before the batch they guard
 
 **Decision.** Six stages, each one reviewable landing (or a small group), in this order:
@@ -500,7 +537,7 @@ single-artifact principle the whole program is about, applied one more level out
 | **2** | The gates: D4 (diagnostics, all blocks), D5 (options), D6 (public API), D8 part 1 (citations) + part 2 (advisory report). | Gates land **before** the class-M batches they guard, so each batch is landed *green against its gate* rather than hand-checked. This is the phase-0 ordering lesson applied to prose. |
 | **3** | Class **M**, in behaviour-change batches: (a) the build-error/fallback batch — the narrowed catch, `HED7020`, `HED7006`'s narrowing, `[ZeroOutput]`, the schema window; (b) the diagnostics batch — the 20 undocumented IDs and the `HED71xx` rows, landed green against D4; (c) the options/MSBuild batch — `Name` removal, `Precompile`, `FullPath`/`RenderPath`, the LSP table, landed green against D5. | One subject per landing. Each batch has a gate that already exists by stage 2. |
 | **4** | The 2.1 prose deliverables + version gate (D7b). **Blocked on Q8.2's landing.** | Cannot state a shipped fact before it ships. |
-| **5** | D9's executable examples. **Blocked on phase 7 stage 0.** Plus the documentation-currency rule (D11) as a standing testing/spec-convention rule, and the README/records bookkeeping. | Last because it has the only hard external dependency and the least urgency. |
+| **5** | The documentation-currency rule (D11) as a standing testing/spec-convention rule, the deletion of `ScopeChannelDocExampleTests`' false coupling, and the README/records bookkeeping. **No longer blocked** — D9's executable examples were rejected (Q8.10). | Last for least urgency; the external dependency it used to carry is gone. |
 
 **Rationale.** The ordering falls out of D1 (consequence-of-trust) with one addition worth stating:
 the gates go *before* the bulk prose work, not after. The temptation is the reverse — fix everything,
@@ -556,9 +593,9 @@ non-deterministic gate, no stable failure, and this repo's gates are all determi
   input. Not gating in a build sense; the plan cannot be *executed* against a different code state.
 - **Stage 4 is blocked on Q8.2's work item** (the 2.1 bump + `MinSupportedSchemaVersion = 4` +
   old-schema manifest fixture). Stages 0–3 and 5 are unblocked.
-- **Stage 5's D9 items are blocked on phase 7 stage 0** (WI1–WI6: the shared corpus home, the props
-  file, the intent table and its gates). If phase 7 has not landed, stage 5 ships without D9 and D9
-  becomes a phase-7 follow-on — see **Q8.10**.
+- **Stage 5 has no external dependency.** D9's single-sourcing was rejected (Q8.10), so the former
+  block on phase 7 stage 0 is void: stage 5 runs whenever stages 0–4 are done, in either order
+  relative to phase 7.
 - **Stage 3(b) is soft-blocked on Q8.1's work item** for one row only: `HED7025` gets its
   `precompilation.md` and registry rows *from Q8.1's landing*, per that ruling. This phase documents
   it only if it exists; the D4 gate is designed so an allocated-but-unimplemented ID is visible
@@ -582,8 +619,8 @@ non-deterministic gate, no stable failure, and this repo's gates are all determi
   template the generator cannot emit now **fails the build** instead of degrading quietly. Both were
   already true in code; only the description changes.
 - **Docs site:** `cd docs && npm run docs:build` must pass on every landing (verified green at
-  baseline, `c415943`). D9's includes are the only mechanism risk — an `@include:` path outside
-  VitePress's `srcDir` is unproven here and is called out in Risks.
+  baseline, `c415943`). With D9 rejected there is no mechanism risk left here — every change is
+  prose in a page the site already builds.
 - **Suite:** four new gate tests plus one advisory report generator. All are markdown/file readers;
   cost is milliseconds. They must work on every TFM leg — `DiagnosticIdTests.ReadSpec`'s
   `[CallerFilePath]` trick is the established pattern for reaching a doc from a test without probing
@@ -606,14 +643,13 @@ non-deterministic gate, no stable failure, and this repo's gates are all determi
   name in the message. A gate with no demonstrated red is not done.
 - **Concurrent edits to `docs/generator_plan/**`.** Mitigation: the two-file edit surface stated in
   Non-goals and repeated in the work items; the 86 stale citations are handed over as an inventory.
-- **Phase 7 slips and D9 has nowhere to single-source into.** Mitigation: D9 is stage 5, isolated;
-  Q8.10 records the fallback (ship without it, do not transcribe).
+- ~~**Phase 7 slips and D9 has nowhere to single-source into.**~~ Void — D9 is rejected (Q8.10) and
+  this phase no longer consumes the corpus.
 - **Q8.2 lands the bump with its own CHANGELOG text**, duplicating stage 4. Mitigation: this plan's
   D7 states the split explicitly, and stage 4's work item is written as *"write the entry Q8.2's
   landing references"* — the sequencing is one direction only.
-- **VitePress `@include:` cannot reach outside `docs/`.** Unproven. Mitigation: D9's work item
-  begins with a spike; the fallback is a build-time copy step into `docs/public` or a small
-  generated fragment under `docs/`, either of which keeps the corpus as the single source.
+- ~~**VitePress `@include:` cannot reach outside `docs/`.**~~ Void — no includes are added (Q8.10).
+  The question was never answered and does not need to be.
 - **The "documented exemption" escape hatch in D4 gets used as the default.** Mitigation: the
   exemption set requires a stated reason per entry (the `RegistryOnly` precedent) and its size is
   asserted, so growing it is a visible one-line diff — the same device phase 7's D5 uses for its row
@@ -708,10 +744,12 @@ under the post-implementation section; restated here with the default that is op
   alignments only. Re-auditing seven phases' evidence chains is a bigger effort than the anchor
   defect warrants, and every one of those D-items also carries source evidence.
 - **Q8.10 — If phase 7 has not landed when stages 0–4 are done, does D9 ship, slip, or transcribe?**
-  **Default: slip.** D9's items move to a phase-7 follow-on and this phase closes without them, with
-  the omission recorded in its success criteria as not-delivered (the posture phase 2's WI9 and phase
-  6's D5 established). Hand-transcription is explicitly *not* the fallback — it is the defect D9
-  exists to avoid, and shipping it would leave a second copy for phase 7 to clean up.
+  **Ruled (user, 2026-07-26): neither — D9 is rejected outright.** Docs stay refined, separate prose;
+  byte-identity with a corpus entry is not a property worth buying, because a doc example is chosen
+  for what it teaches and a corpus entry for what it exercises. So the question dissolves rather than
+  resolving: there is nothing to slip, and hand-transcription remains the anti-pattern it always was —
+  `ScopeChannelDocExampleTests`' false coupling is deleted, not formalised. See D9 for the full
+  disposition and for the one cost this knowingly accepts.
 - **Q8.11 — Should the nine `<Version>` elements be centralised into `Directory.Build.props` as part
   of the 2.1 bump?** Four of the nine are on non-shipping projects; all nine are overridden by CI
   from the git tag (`dotnet.yml`), and `Directory.Build.props` currently excludes Version *by an
@@ -775,7 +813,7 @@ documents.
 | `editor-support.md` **is** already correct on the `Text`→`Html` flip (phase 6 updated it), and the VS Code extension's mirror default is `html` — so this surface is a gate opportunity, not a defect | `docs/editor-support.md:84`, `:94-99`; `editors/vscode/package.json` `heddle.compile.outputProfile` default `html` |
 | `editor-support.md`'s exclusion prose names **6** options while the LSP parity gate documents **11**, under the claim *"every compile option that affects analysis has a key here"* | `docs/editor-support.md:75-79` vs phase 6's WI9 record (6 wired, 11 documented exclusions) |
 | `custom-extensions.md:591` still states the pre-narrowing `HED7006` trigger, while `precompilation.md:262` carries the narrowed one | Compare the two rows |
-| Hand-transcription of doc examples into tests already exists and is the anti-pattern D9 replaces | `src/Heddle.Tests/ScopeChannelDocExampleTests.cs` — *"--- Verbatim from docs/custom-extensions.md ---"* |
+| Hand-transcription of doc examples into tests already exists and is the anti-pattern D9 (as revised) deletes | `src/Heddle.Tests/ScopeChannelDocExampleTests.cs` — *"--- Verbatim from docs/custom-extensions.md ---"* |
 | VitePress `<!--@include: -->` already reads a generated file from disk at build time in this repo | `docs/.vitepress/config.mts` `srcExclude` note on `benchmarks/*/summary-tables.md`; `docs/spec/cross-stack-benchmarks/phase-7-consolidated-report/report-assembly.md` |
 | `docs/spec/**` is unpublished, so a "user-facing" claim there is contributor-facing | [cross-cutting-decisions D9](../spec/common/cross-cutting-decisions.md#d9--spec-pages-stay-unpublished); `srcExclude: ['spec/**', …]` |
 | The amendments mechanism and its two existing additive precedents (E8 posture, E9 single-sourcing) | [spec-conventions §Amendments](../spec/common/spec-conventions.md#amendments-during-implementation); [records.md ledger](../spec/records.md#cross-spec-amendments-ledger) |
@@ -878,15 +916,16 @@ latent-bug fix is never reviewed in the same diff as a wording improvement.**
   version-skew scenario reddens, and the entry describes what Q8.2 actually shipped rather than what
   it planned to.
 
-**Stage 5 — executable examples and the standing rule. D9 blocked on phase 7 stage 0.**
+**Stage 5 — the standing rule and bookkeeping. No external dependency.**
 
-- **WI14 — Include spike + example single-sourcing (D9).** Prove `<!--@include: -->` can reach a
-  corpus file (or land the fallback copy step); move the qualifying doc examples into phase 7's
-  corpus with intent rows; convert the documents to includes; retire
-  `ScopeChannelDocExampleTests`' transcription in favour of the single-sourced entry. **Done when**
-  each converted example's doc text and test input are the same bytes, the doc-example-drift scenario
-  passes, and the (i)/(ii)/(iii) criteria are recorded in the corpus rows' `Why`. *(Slips per Q8.10
-  if phase 7 has not landed.)*
+- **WI14 — Delete the false coupling (D9, as revised).** Retire
+  `src/Heddle.Tests/ScopeChannelDocExampleTests.cs`' hand transcription — the *"--- Verbatim from
+  docs/custom-extensions.md ---"* block — rather than formalising it into an include mechanism. What
+  the test asserts about `Scope` channel behaviour is kept where it is genuinely a behaviour test; the
+  claim that it is *the doc's bytes* is what goes, because nothing enforced it and the doc is free to
+  diverge by design. **Done when** no test claims to be verbatim from a document, and the behavioural
+  coverage that block provided is either still asserted elsewhere or explicitly recorded as dropped
+  with its reason.
 - **WI15 — Documentation-currency rule + bookkeeping (D11).** The additive testing-standards section
   and its ledger entry; this phase's README row and `records.md` entries; the not-delivered items (if
   any) recorded explicitly rather than dropped. **Done when** criterion 12 holds and every criterion

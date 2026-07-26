@@ -503,10 +503,46 @@ question, the ruling or default, and where it is folded.
   stays in the program README. The sharper half is retroactivity: several landed phase D-items
   resolved drift *by citing* that document, and narrowing the convention makes those citations weaker
   evidence than they were when ratified. **Ruling (user, 2026-07-26): put it in [cross-cutting-decisions.md](../spec/common/cross-cutting-decisions.md)** — record there whatever matters to the *global* context, and the **documentation mapping** in particular (which document is normative for which claim block, and therefore which claims can be relied on when aligning drift). That mapping is the part a future reader most needs and the part currently spread across a registry column, a plan bullet and an implicit convention. Non-retroactive as proposed: already-ratified D-items stand.
+
+  **Landed (2026-07-26)** as `cross-cutting-decisions.md` **D10 — "Documentation authority is mapped, and
+  it is conditional"**, in two parts, because the ruling asked for two different things and they are only
+  useful together. *(a)* The **mapping**: a nine-row table naming one normative home per claim block, with
+  an explicit tie-break for claims that span two homes — the home whose *diagnostics* the claim can
+  produce wins, since a diagnostic has a registry owner and prose does not. *(b)* The **condition**: a home
+  outranks the implementations only for a claim carrying a verification marker or covered by a gate.
+
+  Two things stated that the question left implicit and a future reader would otherwise have to guess.
+  A claim block **absent** from the table has no normative document at all — the implementations are the
+  authority and the runtime engine is the tie-break — so the table is closed rather than illustrative.
+  And a document acquires a block **by being added to the table**, not by asserting authority in its own
+  prose, which is how the convention became diffuse in the first place. Non-retroactive as ruled: already
+  ratified resolutions stand, and the reason is recorded (relitigating outcomes under a rule that did not
+  exist when they were taken is not a correction).
 - **Q8.10 — If phase 7 has not landed when phase 8's stages 0–4 are done, does D9 ship, slip, or
   transcribe?** D9 makes qualifying doc examples executable by **single-sourcing** them from phase 7's
   shared corpus and including them into the page, so the doc and the test read the same bytes. That
   needs phase 7 stage 0 to exist. **Ruling (user, 2026-07-26): keep the docs as refined, separate prose — do not single-source them from the corpus.** Documentation has a *different job* from a test fixture: it explains, and byte-identity with a corpus entry is not a property worth buying. So phase 8's D9 is **rejected as designed**: no `@include:` from corpus templates, no corpus intent rows added for doc examples, and phase 8 no longer blocks on phase 7. Doc examples stay hand-written and are kept honest by review, not by transcription-equality. (The `ScopeChannelDocExampleTests` anti-pattern is still an anti-pattern — the answer is to delete the false coupling, not to formalise it.)
+
+  **Landed (2026-07-26).** Phase 8's D9 is rewritten as **rejected**, with the superseded design kept
+  inside a collapsed block rather than deleted, so the plan records what was decided *against* — the
+  program's convention for reversed decisions. The consequences are propagated rather than left in the
+  D-item: the phase header's phase-7 dependency is gone, the stage table's stage 5 no longer says
+  "blocked", both D9 risk rows are struck as void, and the docs-site mechanism risk (an `@include:` path
+  outside VitePress's `srcDir`) is retired unanswered — it no longer needs answering.
+
+  **WI14 is repurposed, not dropped.** It was the include spike; it is now the deletion of
+  `ScopeChannelDocExampleTests`' *"--- Verbatim from docs/custom-extensions.md ---"* coupling. The
+  distinction that keeps the deletion honest: what that fixture asserts about `Scope` channel behaviour
+  stays where it is genuinely a behaviour test — what goes is the *claim to be the document's bytes*,
+  which nothing enforced and which the ruling makes deliberately false, since the doc is now free to
+  diverge by design. Done-when requires the behavioural coverage to be either still asserted elsewhere or
+  recorded as dropped with a reason, so the deletion cannot quietly lose a test.
+
+  **One cost accepted knowingly**, recorded in D9 so it is not rediscovered as a surprise: the old
+  rationale's strongest point survives rejection — this program shipped a byte-changing literal formatter
+  change and a profile default flip, either of which can invalidate a documented output, and review is a
+  weaker guard than a gate. D11's currency rule carries that residual risk. A stale doc example found
+  later is a docs defect to fix, not grounds to reopen this.
 - **Q8.11 — Should the nine `<Version>` elements be centralised as part of the 2.1 bump?** Four of
   the nine sit on non-shipping projects, all nine are overridden by CI from the git tag
   (`.github/workflows/dotnet.yml`), and `Directory.Build.props` excludes `Version` *by an explicit

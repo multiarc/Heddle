@@ -138,6 +138,53 @@ the nav.
 **Rationale.** Specs serve implementers, not template authors; keeping them out of the
 site keeps the published docs an author/integrator surface.
 
+## D10 — Documentation authority is mapped, and it is conditional
+
+**Decision.** Two parts: *which* document arbitrates a claim, and *when* it gets to.
+
+**(a) The mapping.** A claim block has exactly one normative home, and it is the home named in
+the table below. Where a claim spans two homes, the one whose *diagnostics* the claim can produce
+owns it — that is the tie-break, because a diagnostic has a registry owner and prose does not.
+
+| Claim block | Normative home | Also gated by |
+| --- | --- | --- |
+| Native-expression semantics (operators, coercion, arity, overloads) | [native-expressions.md](../../native-expressions.md) | `HED1001`–`HED1017` registry rows |
+| Built-in extensions, output profiles, branch sets | [built-in-extensions.md](../../built-in-extensions.md) | `HED2001`–`HED4005` registry rows |
+| Template syntax and parse shapes | [language-reference.md](../../language-reference.md) | parser tests |
+| Extension authoring, `Scope` channels, carrier transparency | [custom-extensions.md](../../custom-extensions.md) | [D6](#d6--the-scope-publishread-channel-is-public-api) |
+| Precompiled tier: manifest, gauntlet, fallback taxonomy, schema | [precompilation.md](../../precompilation.md) | `HED7xxx`/`HED71xx` registry rows, [D8](#d8--template-identity--naming-policy-has-one-owner) |
+| Template identity, keys, registered names | [D8](#d8--template-identity--naming-policy-has-one-owner)'s named owner | `HED7002`–`HED7004`, `HED7018`, `HED7028`, `HED7104` |
+| Host/embedding API surface | [csharp-api.md](../../csharp-api.md) | the public-API golden |
+| Breaking-change process, schema-version policy | [breaking-windows.md](breaking-windows.md) | window as-shipped records |
+| Test posture, single-sourcing, regression gates | [testing-standards.md](testing-standards.md) | — |
+
+Anything **not** in a listed block has no normative document: the implementations are the
+authority, and the runtime dynamic engine is the tie-break between them (the match principle). A
+document acquires a block by being added to this table, not by asserting authority in its own prose.
+
+**(b) The condition.** A normative home outranks the implementations **for a claim that carries a
+verification marker or is covered by a gate**. An unmarked, ungated claim is *evidence of intent,
+not an authority*: a contradiction between it and both implementations agreeing is resolved by
+investigating and recording the outcome — never by editing code to match the sentence. Marked
+claims use the footer form *"Verified against source at `<commit>` (`<date>`); claims marked ✓ are
+gated by `<test>`."*
+
+**Non-retroactive.** Decisions already ratified against the unconditional convention stand as
+ratified; this narrowing applies to resolutions taken after it. Re-opening them would relitigate
+outcomes on a rule that did not exist when they were taken.
+
+**Rationale.** When two tiers disagree, some document has to break the tie, and for expression
+semantics the specification genuinely is the better arbiter than either implementation. But
+unconditional authority over prose that nothing checks is a defect-generating mechanism: it lets a
+stale sentence order a code change. The condition keeps the convention where it earns its keep (two
+tiers disagree) and removes its teeth where it was dangerous (both tiers agree and the doc is
+simply out of date) — which does not make stale prose unfixable, only non-executable.
+
+The mapping is here rather than in a program plan because it is the part a future reader most needs
+and the part that was previously spread across a registry column, a plan bullet, and an unstated
+convention. A reader aligning drift has to know which sentence is allowed to win *before* deciding
+what to change.
+
 ## Claimed diagnostic IDs (registry)
 
 The live allocation state of the [D1](#d1--stable-diagnostic-ids-hedxxxx) blocks. A spec
