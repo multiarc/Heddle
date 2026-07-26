@@ -18,7 +18,7 @@ using Microsoft.Extensions.Logging;
 namespace Heddle.Samples.SsrAspNetCore
 {
     // Sample 1 — classic server-side rendering on a minimal API. A TemplateResolver over templates/ composes a
-    // page with @partial header/footer, iterates with @list and @for (phase 4 sugar), renders under the Html
+    // page with @partial header/footer, iterates with @list and @for, renders under the Html
     // profile with TrimDirectiveLines on, and caches compiled templates (the same request served twice is
     // byte-equal — the observable cache contract).
     public sealed class Article
@@ -50,7 +50,7 @@ namespace Heddle.Samples.SsrAspNetCore
 
             var templates = Path.Combine(SampleCapture.SampleRoot(), "templates") + Path.DirectorySeparatorChar;
             // One resolver for the app: Html profile + directive-line trimming, caching compiled templates
-            // keyed by path+profile+trim (phase 4 upgrade). The resolver root is the templates directory.
+            // keyed by path+profile+trim. The resolver root is the templates directory.
             var resolver = new TemplateResolver(templates, checkFileChange: false, OutputProfile.Html,
                 trimDirectiveLines: true);
 

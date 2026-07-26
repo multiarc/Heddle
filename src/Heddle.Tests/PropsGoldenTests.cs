@@ -10,9 +10,9 @@ using Heddle.TestCorpus;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The six phase-5 fixture/golden pairs (props-card, props-defaults, props-abstract-panel, props-inherit,
-    /// slot-picker, slot-compose), rendered under <c>AllowCSharp = false</c> against committed goldens. These
-    /// are the file-driven twins of the inline binding/inheritance/slot tests and the phase-9 gallery source.
+    /// The six props/slot fixture-and-golden pairs (props-card, props-defaults, props-abstract-panel, props-inherit,
+    /// slot-picker, slot-compose), rendered under <c>AllowCSharp = false</c> against committed goldens — the
+    /// file-driven twins of the inline binding/inheritance/slot tests.
     /// </summary>
     public class PropsGoldenTests
     {

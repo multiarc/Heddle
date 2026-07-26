@@ -24,19 +24,24 @@ namespace Heddle.Helpers
         /// </summary>
         private sealed class NameMaps
         {
-            public NameMaps(Dictionary<string, List<Type>> shortNames, Dictionary<string, List<Type>> fullNames)
+            public NameMaps(Dictionary<string, List<Type>> shortNames, Dictionary<string, List<Type>> fullNames,
+                int generation)
             {
                 ShortNames = shortNames;
                 FullNames = fullNames;
+                Generation = generation;
             }
 
             public Dictionary<string, List<Type>> ShortNames { get; }
 
             public Dictionary<string, List<Type>> FullNames { get; }
+
+            /// <summary>The assembly-set stamp these maps were built from; a newer stamp means they are stale.</summary>
+            public int Generation { get; }
         }
 
         private static NameMaps _maps = new NameMaps(
-            new Dictionary<string, List<Type>>(), new Dictionary<string, List<Type>>());
+            new Dictionary<string, List<Type>>(), new Dictionary<string, List<Type>>(), -1);
 
         static ReflectionHelper()
         {
@@ -52,6 +57,7 @@ namespace Heddle.Helpers
             var shortNames = new Dictionary<string, List<Type>>();
             var fullNames = new Dictionary<string, List<Type>>();
             var assemblies = AssemblyHelper.GetAssemblies();
+            var generation = AssemblyHelper.Generation;
             lock (assemblies)
             {
                 foreach (var type in assemblies.SelectMany(a =>
@@ -94,7 +100,28 @@ namespace Heddle.Helpers
                 }
             }
 
-            Volatile.Write(ref _maps, new NameMaps(shortNames, fullNames));
+            Volatile.Write(ref _maps, new NameMaps(shortNames, fullNames, generation));
+        }
+
+        /// <summary>
+        /// The name maps, rebuilt first if the assembly set has changed since they were built. Without this, an
+        /// assembly the host loads *after* the first type resolution was permanently invisible — so whether
+        /// <c>@model Some.Late.Type</c> resolved depended on whether an unrelated earlier compile had happened, which
+        /// is not a property any host can reason about.
+        /// </summary>
+        private static NameMaps CurrentMaps()
+        {
+            // Observe before comparing: the stamp only advances when something looks at the assembly set, so reading it
+            // without observing would leave a late-loaded assembly invisible until an unrelated call happened to look.
+            // This costs one AppDomain enumeration per type resolution — a compile-time path, never a render one.
+            AssemblyHelper.GetAssemblies();
+
+            var maps = Volatile.Read(ref _maps);
+            if (maps.Generation == AssemblyHelper.Generation)
+                return maps;
+
+            Reconfigure();
+            return Volatile.Read(ref _maps);
         }
 
         public ReflectionHelper(Type innerType)
@@ -153,7 +180,7 @@ namespace Heddle.Helpers
         {
             // One read of the published snapshot: both maps must come from the same rebuild, or a resolve racing a
             // Register can consult a new short-name map against an old full-name one.
-            var maps = Volatile.Read(ref _maps);
+            var maps = CurrentMaps();
             var shortNames = maps.ShortNames;
             var fullNames = maps.FullNames;
 

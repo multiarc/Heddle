@@ -214,11 +214,16 @@ degradation to the dynamic tier and no degradation occurs.
 
 **How the engine obtains its assembly set.** Two sources, and no third:
 
-- **Observation.** Assemblies the host has already loaded **from disk into the default load context**
-  are visible for type resolution and C#-tier metadata. Observing decides nothing — an assembly is
-  there or it is not. Excluded, deliberately: assemblies with no file location (the engine's own
-  emitted expression assemblies, anything loaded from a stream) and assemblies in a collectible or
-  custom context, because observing those would pin a context the host expects to unload.
+- **Observation.** Assemblies the host has already loaded **into the default load context** are visible
+  for type resolution and C#-tier metadata, and remain so however late they load — the engine re-checks
+  the set rather than holding a snapshot, so load order does not decide what resolves. Observing decides
+  nothing: an assembly is there or it is not. Excluded, deliberately: a dynamic assembly, an assembly in
+  a collectible or custom context (observing one would pin a context the host expects to unload — this
+  is what excludes an `Assembly.Load(byte[])` result, which the runtime places in its own context), and
+  the engine's **own** emitted expression assemblies, which would otherwise accumulate one per compiled
+  C# expression. **`Assembly.Location` is deliberately not the test:** it is empty for the whole
+  application in a single-file or WASM publish, so filtering on it made the engine observe nothing at
+  all there — a defect an adversarial review reproduced against a real single-file host.
 - **Registration.** `HeddleTemplate.Register(assembly)` for anything else, and it is the **only**
   source of `[ExportExtensions]`: extension **name ownership** is decided exclusively by assemblies a
   host names. A loaded-but-unregistered assembly cannot take a name, so it cannot collide with an
@@ -226,7 +231,9 @@ degradation to the dynamic tier and no degradation occurs.
 
 `AssemblyHelper` declares no static constructor and calls no `Assembly.Load`; the removal of the walk
 that did both is recorded as [2.1 window item 10](../records.md#the-21-breaking-window--as-shipped-record).
-`PrecompiledTemplates.Register` has the same shape, and there is no module initializer anywhere in `src/`.
+`PrecompiledTemplates.Register` has the same shape. The engine ships no module initializer — one exists in
+`src/`, in the generator integration suite, where it is a **test host** registering itself, which is the
+pattern this decision prescribes rather than an exception to it.
 
 ## Claimed diagnostic IDs (registry)
 

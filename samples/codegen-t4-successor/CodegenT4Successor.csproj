@@ -43,7 +43,7 @@
 
   <ItemGroup>
     <HeddleTemplate Include="templates\report.heddle" />
-    <!-- The Name item metadatum (Q8.12/Q8.25): an ADDITIONAL import name, not a rename. This partial keeps its
+    <!-- The Name item metadatum is an ADDITIONAL import name, not a rename. This partial keeps its
          path-derived key `templates/_banner.heddle` AND answers to `Banner`, which is the spelling report.heddle
          imports. Precompile="false" makes it import-only: no entry point, no manifest row. This is also the
          behavioural gate for finding 10 — if the per-item metadata stops flowing from a real csproj again, the
