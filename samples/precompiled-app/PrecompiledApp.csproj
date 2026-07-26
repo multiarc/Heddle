@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Phase 7 generator props (defaults + CompilerVisible properties/metadata). Imported explicitly because we
+  <!-- Generator props (defaults + CompilerVisible properties/metadata). Imported explicitly because we
        reference the generator by project, not by NuGet package. -->
   <Import Project="..\..\src\Heddle.Generator\build\Heddle.Generator.props" />
 
@@ -45,7 +45,7 @@
     <HeddleTemplate Include="templates\receipt.heddle" />
   </ItemGroup>
 
-  <!-- Phase 7 generator targets (maps HeddleTemplate items to AdditionalFiles). Imported last. -->
+  <!-- Generator targets (maps HeddleTemplate items to AdditionalFiles). Imported last. -->
   <Import Project="..\..\src\Heddle.Generator\build\Heddle.Generator.targets" />
 
 </Project>

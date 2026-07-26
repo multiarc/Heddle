@@ -53,8 +53,9 @@ judgements that predate the window's ratification remain in
   `[assembly: ExportExtensions]`. Because that scanned set decided extension **name ownership**, an
   assembly you never chose to load could take a name, or collide with an unrelated claimant and throw
   `TemplateOverrideException` out of a type initializer.
-  The set is now what your host has already loaded from disk into the default load context, plus what
-  you register. `[ExportExtensions]` is read **per assembly, at registration**.
+  The set is now what your host has already loaded into the default load context, plus what you
+  register — including assemblies that load later, since the engine re-checks rather than snapshotting.
+  `[ExportExtensions]` is read **per assembly, at registration**.
   **What to do:** call `HeddleTemplate.Register(assembly)` for your application assembly and for every
   extension library you use. Registration is **not transitive** — an extension library you merely
   reference is not discovered. `HeddleTemplate.Configure(assembly)` is the same call under its older
@@ -96,8 +97,9 @@ judgements that predate the window's ratification remain in
   also carries a `Name`. Both spellings resolve — this recommends the name-first spelling for a named
   template. It cannot fire for a project that sets no `Name`.
 - **`HED7104`** (`PrecompiledFallbackReason.RegisteredNameUnavailable`, via `OnFallback`): a registered
-  `Name` could not become a lookup spelling because another *registered* template already answers to it,
-  as its key or as its own name. Never a throw — the template stays reachable by its key, and only the
+  `Name` could not become a lookup spelling — either because another *registered* template already answers
+  to it, as its key or as its own name, or because the shared key rule refuses the spelling outright (a
+  `..` segment, a trailing separator, whitespace). Never a throw — the template stays reachable by its key, and only the
   addition is lost. This collision is only detectable at registration, since the build tier cannot read a
   referenced assembly's manifest rows; within one build the same fault is `HED7004`.
 - **`HeddleTemplate.Register(Assembly)`** — the explicit registration seam described under *Changed*.

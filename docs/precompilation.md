@@ -383,8 +383,11 @@ The pattern that keeps the reporting out of the request path:
 HeddleTemplate.Register(typeof(Program).Assembly);
 HeddleTemplate.Register(typeof(SomeLibrary.WidgetExtension).Assembly);
 
-// 2. Functions next, into the registry the request options will carry.
-options.Functions.RegisterFrom(typeof(Program).Assembly);
+// 2. Functions next. TemplateOptions.Functions defaults to null, which means the frozen built-ins —
+//    so create a registry, fill it, and assign it. Registering into the default one throws.
+var functions = new FunctionRegistry();
+functions.RegisterFrom(typeof(Program).Assembly);
+options.Functions = functions;
 
 // 3. Then the precompiled manifests.
 PrecompiledTemplates.Register(typeof(Program).Assembly);

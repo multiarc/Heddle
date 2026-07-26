@@ -5,7 +5,7 @@ namespace Heddle.Data
     /// </summary>
     public enum ExpressionMode
     {
-        /// <summary>Strict pre-phase-1 surface: member paths, nested chains, and empty parameters only.</summary>
+        /// <summary>The strictest surface: member paths, nested chains, and empty parameters only.</summary>
         MemberPathsOnly = 0,
 
         /// <summary>Default. Adds the sandbox-safe native expression tier (operators, literals, registered functions).</summary>

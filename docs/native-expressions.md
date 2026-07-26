@@ -266,7 +266,7 @@ dynamic tier instead of guessing.
 | `HED1002` | error | An in‑expression call names an extension or definition rather than a registered function. Call it standalone, or register a function. |
 | `HED1003` | error | Method‑call syntax (`x.Foo(...)`) appears in an expression. Only registered functions are callable. |
 | `HED1004` | error | An operand is a dynamic scope, or a path crosses a `[Dynamic]` property. Declare a typed `@model`, or use the `@` C# tier. |
-| `HED1005` | error | `&&`/`||` applied to a non‑`bool` operand — including `bool?`, which C# would accept. |
+| `HED1005` | error | `&&`/`\|\|` applied to a non‑`bool` operand — including `bool?`, which C# would accept. |
 | `HED1006` | error | `??` applied to a left operand that is a non‑nullable value type. |
 | `HED1007` | error | The `?:` arms have no common type. Also raised for a `??` pair with no common type. |
 | `HED1008` | error | A binary operator has no rule for its operand types — a reference/value equality mix, a promotion with no common type, enum arithmetic, a `null` literal in a relational position — or a numeric literal overflows its type. |

@@ -238,7 +238,7 @@ namespace Heddle.TestCorpus
                 bom: true),
 
             new CorpusIntentRow("fn-unresolvable-marker.heddle", CorpusTier.DegradesToMarker, CorpusRender.ResolveOnly,
-                "The one marker entry: it calls a function resolvable from neither the default table nor any referenced export, which is the only construct that yields a manifest row with a null strategy instead of no row at all. Renders only against a host that registers the delegate, so UnresolvableFunctionTests owns both its classification and its bytes."),
+                "The one marker entry: it calls a function resolvable from neither the default table nor any referenced export, which is the only construct that yields a manifest row with a null strategy instead of no row at all. Renders only against a host that registers the delegate, so no shared harness renders it and nothing asserts its bytes; UnresolvableFunctionTests owns its classification and its diagnostic."),
 
             // These entries assert the diagnostic's IDENTITY, not offsets into a hand-counted string, which is why
             // they are corpus entries at all; position probes stay inline in their own tests.

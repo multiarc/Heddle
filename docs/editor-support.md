@@ -135,10 +135,12 @@ runs a **one‑shot scan** of the configured `assemblies`:
   exported functions register into the workspace registry, so their calls resolve (no false
   "unknown function"), complete with real signatures, and participate in expression typing.
 
-For runtime parity, call
-[`options.Functions.RegisterFrom(assembly)`](custom-extensions.md#declaratively-exporting-functions)
-and [`HeddleTemplate.Register(assembly)`](csharp-api.md#registration-register) on the same assemblies
-in your host startup — the editor and the host then see one set.
+For runtime parity, do the same two registrations on the same assemblies in your host startup — a
+`new FunctionRegistry()` filled with
+[`RegisterFrom(assembly)`](custom-extensions.md#declaratively-exporting-functions) and assigned to
+`TemplateOptions.Functions`, plus
+[`HeddleTemplate.Register(assembly)`](csharp-api.md#registration-register). The editor and the host
+then see one set.
 
 **The scan is one‑shot per server process.** A new export, a changed extension body, or an
 `assemblies` change after load requires a **server restart** (VS Code: *Heddle: Restart Language

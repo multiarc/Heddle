@@ -3,6 +3,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using Heddle.Helpers;
 #if !NETSTANDARD2_0
 using System.Runtime.Loader;
@@ -12,8 +14,9 @@ namespace Heddle.Native
 {
     /// <summary>
     /// The assembly set engine type resolution and the C# tier see. The engine loads nothing: it observes what the
-    /// host has already loaded from disk into the default context, and takes anything else — in-memory assemblies,
-    /// collectible contexts, extension providers — only by explicit registration.
+    /// host has already loaded into the default context, and takes anything else — a collectible or custom context, an
+    /// assembly not yet loaded — only by explicit registration. Extension <b>names</b> are a separate question and come
+    /// only from registration, never from observation.
     /// </summary>
     internal static class AssemblyHelper
     {
@@ -35,29 +38,57 @@ namespace Heddle.Native
         }
 
         /// <summary>
-        /// Adds assemblies the host has loaded into the default context and can name on disk. Assemblies without a
-        /// file location (emitted expression assemblies, streams) and assemblies in a collectible or custom context
-        /// are skipped: observing those would pin a context the host expects to unload, and the engine's own emitted
-        /// assemblies would accumulate in the type maps.
+        /// Adds assemblies the host has loaded into the default context. Bumps <see cref="Generation"/> when the set
+        /// changes, so <see cref="ReflectionHelper"/> can rebuild its name maps instead of holding a snapshot taken
+        /// before the assembly existed.
         /// </summary>
         private static void ObserveLoadedAssemblies()
         {
             var loaded = AppDomain.CurrentDomain.GetAssemblies();
+            if (loaded.Length == Volatile.Read(ref _observedCount))
+                return;   // nothing has loaded since the last pass; the per-assembly work below is not free
+
             lock (Assemblies)
             {
+                var added = false;
                 foreach (var assembly in loaded)
                 {
+                    // Observability first, THEN remember it. Remembering an excluded assembly would hold a strong
+                    // reference to a collectible one and pin the very context the exclusion exists to let go.
                     if (!IsObservable(assembly))
                         continue;
+                    // Reference identity, because GetName() allocates an AssemblyName per call and this runs on every
+                    // type resolution — the already-seen case must not pay for one.
+                    if (!Seen.Add(assembly))
+                        continue;
                     if (AssemblyCache.TryAdd(assembly.GetName(), assembly))
+                    {
                         Assemblies.Add(assembly);
+                        added = true;
+                    }
                 }
+
+                Volatile.Write(ref _observedCount, loaded.Length);
+                if (added)
+                    Interlocked.Increment(ref _generation);
             }
         }
 
+        /// <summary>
+        /// Excluded, and only these: a dynamic assembly, which has no types worth mapping; an assembly in a
+        /// collectible or custom load context, because observing one would pin a context the host expects to unload;
+        /// and the engine's <b>own</b> Roslyn-emitted expression assemblies, which would otherwise accumulate in the
+        /// type maps one per compiled C# expression.
+        /// <para><see cref="Assembly.Location"/> is deliberately <b>not</b> consulted. It is empty for every assembly
+        /// in a single-file or WASM publish — the whole application, not an edge case — so filtering on it made the
+        /// engine observe nothing at all there, and no host registration could repair type resolution for the
+        /// framework assemblies a model type needs.</para>
+        /// </summary>
         private static bool IsObservable(Assembly assembly)
         {
-            if (assembly == null || assembly.IsDynamic || string.IsNullOrEmpty(assembly.Location))
+            if (assembly == null || assembly.IsDynamic)
+                return false;
+            if (EngineEmitted.TryGetValue(assembly, out _))
                 return false;
 #if !NETSTANDARD2_0
             var context = AssemblyLoadContext.GetLoadContext(assembly);
@@ -66,6 +97,41 @@ namespace Heddle.Native
 #endif
             return true;
         }
+
+        /// <summary>The engine's own emitted expression assemblies, held weakly so tracking them pins nothing.</summary>
+        private static readonly ConditionalWeakTable<Assembly, object> EngineEmitted =
+            new ConditionalWeakTable<Assembly, object>();
+
+        /// <summary>Records an assembly the engine itself emitted and loaded, so observation skips it.</summary>
+        internal static void MarkEngineEmitted(Assembly assembly)
+        {
+            if (assembly == null)
+                return;
+#if NETSTANDARD2_0
+            lock (EngineEmitted)
+            {
+                if (!EngineEmitted.TryGetValue(assembly, out _))
+                    EngineEmitted.Add(assembly, null);
+            }
+#else
+            EngineEmitted.AddOrUpdate(assembly, null);
+#endif
+        }
+
+        /// <summary>Every <b>observable</b> assembly already classified, by reference, so the per-pass work skips it.
+        /// Holds only assemblies that are in the default context and therefore never unloaded — an excluded
+        /// collectible assembly must never land here, or this set becomes the pin. Guarded by the
+        /// <see cref="Assemblies"/> monitor.</summary>
+        private static readonly HashSet<Assembly> Seen = new HashSet<Assembly>();
+
+        /// <summary>The loaded-assembly count at the last pass; an unchanged count means nothing new to classify.</summary>
+        private static int _observedCount = -1;
+
+        private static int _generation;
+
+        /// <summary>Increments whenever the observed or registered set changes; a cached view of the set is stale when
+        /// its stamp differs.</summary>
+        internal static int Generation => Volatile.Read(ref _generation);
 
         /// <summary>
         /// Registers an assembly the engine would not otherwise see, and offers its assembly-level
@@ -79,7 +145,10 @@ namespace Heddle.Native
             lock (Assemblies)
             {
                 if (AssemblyCache.TryAdd(assembly.GetName(), assembly))
+                {
                     Assemblies.Add(assembly);
+                    Interlocked.Increment(ref _generation);
+                }
             }
 
             Runtime.TemplateFactory.RegisterExportedExtensions(assembly);
@@ -109,6 +178,7 @@ namespace Heddle.Native
                     Assemblies.Add(assembly);
                     ModelAssemblies.Add(assembly);
                     ModelNames.Add(name);
+                    Interlocked.Increment(ref _generation);
                 }
             }
 
@@ -130,6 +200,7 @@ namespace Heddle.Native
                     AssemblyCache.TryRemove(name, out _);
                 ModelAssemblies.Clear();
                 ModelNames.Clear();
+                Interlocked.Increment(ref _generation);
             }
 
             ReflectionHelper.Reconfigure();

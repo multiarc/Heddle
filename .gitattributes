@@ -13,7 +13,7 @@
 # output — failing on Windows while Linux (LF everywhere) passes. Pin every such root to LF so the
 # byte comparison holds identically on both platforms regardless of the developer's autocrlf setting.
 # All files under these roots are text (verified: no binaries). New golden/fixture roots MUST be
-# added here in the same change that introduces them — see docs/spec/common/testing-standards.md.
+# added here in the same change that introduces them.
 #
 # eol=lf pins line endings and says nothing about byte-order marks; the two are independent, and a
 # BOM drift can pass every eol=lf check there is. Templates carrying a deliberate UTF-8 BOM declare

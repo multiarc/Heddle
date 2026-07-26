@@ -177,6 +177,8 @@ namespace Heddle.Runtime
 
                                 context.CSharpContext.CompiledAssembly =
                                     Assembly.Load(codeStream.ToArray(), symbolStream.ToArray());
+                                // Ours, not the host's: observation must not map its types.
+                                Native.AssemblyHelper.MarkEngineEmitted(context.CSharpContext.CompiledAssembly);
                             }
 
                             Cache.TryAdd(code, context.CSharpContext.CompiledAssembly);

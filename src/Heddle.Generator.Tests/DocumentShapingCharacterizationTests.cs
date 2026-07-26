@@ -66,7 +66,7 @@ namespace Heddle.Generator.Tests
         }
 
         /// <summary>
-        /// Pin 1, boundary rows (added by the phase-2 restoration audit, 2026-07-26). The captured vector above
+        /// Pin 1, boundary rows (added by the restoration audit, 2026-07-26). The captured vector above
         /// exercises the three-way classification but never at its <em>boundaries</em>: no block in it starts
         /// exactly at a skipped token's start, ends exactly at its end, or ends exactly at its start. Mutation
         /// testing confirmed six single-comparison mutants of the classification survived it

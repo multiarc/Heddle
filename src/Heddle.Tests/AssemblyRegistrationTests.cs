@@ -18,19 +18,25 @@ namespace Heddle.Tests
     public class AssemblyRegistrationTests
     {
         /// <summary>
-        /// An explicit static constructor is what force-loaded the entry assembly's whole reference closure at type
-        /// init. <c>beforefieldinit</c> is present exactly when a type declares none, so this reddens if one returns.
+        /// An explicit static constructor is the shape that force-loaded the entry assembly's whole reference closure
+        /// at type init, and <c>beforefieldinit</c> is present exactly when a type declares none.
+        /// <para><b>This checks the shape, not the behaviour.</b> A static field initializer runs at type init too and
+        /// keeps <c>beforefieldinit</c>, so <c>private static readonly int _ = WalkEverything();</c> would pass here.
+        /// <see cref="AnObservedOnDiskAssemblyOffersNoExtensionNameUntilRegistered"/> is what actually pins the
+        /// behaviour, whatever triggers it; this one is a cheap guard on the specific shape that caused the defect.</para>
         /// </summary>
         [Fact]
-        public void AssemblyHelperDoesNoWorkAtTypeInitialization()
+        public void AssemblyHelperDeclaresNoStaticConstructor()
         {
             Assert.True(typeof(AssemblyHelper).Attributes.HasFlag(TypeAttributes.BeforeFieldInit),
                 "AssemblyHelper declares an explicit static constructor.");
         }
 
-        /// <summary>The dependency-context walk was the only consumer, so the package reference went with it.</summary>
+        /// <summary>The dependency-context walk was the only consumer, so the package reference went with it. Reads
+        /// the emitted assembly references, so what this pins is that no engine code <b>uses</b> DependencyModel — a
+        /// restored but unused PackageReference stays green, which is the property worth having.</summary>
         [Fact]
-        public void EngineDoesNotReferenceTheDependencyModelPackage()
+        public void NoEngineCodeUsesTheDependencyModelPackage()
         {
             Assert.DoesNotContain("Microsoft.Extensions.DependencyModel",
                 typeof(HeddleTemplate).Assembly.GetReferencedAssemblies().Select(name => name.Name));
@@ -95,6 +101,26 @@ namespace Heddle.Tests
 
             HeddleTemplate.Register(probe);
             Assert.True(TemplateFactory.Exists(extensionName));
+        }
+
+        /// <summary>
+        /// An assembly the host loads <b>after</b> the engine has already resolved a type must still become visible.
+        /// Before this was pinned, the name maps were built once and never rebuilt from observation, so whether
+        /// <c>@model Some.Late.Type</c> resolved depended on whether an unrelated earlier compile had happened —
+        /// order-dependence no host can reason about, and it falsified the documented rule that the set is what the
+        /// host has loaded plus what it registers.
+        /// </summary>
+        [Fact]
+        public void AnAssemblyLoadedAfterTheFirstResolutionStillResolves()
+        {
+            // Force the maps to exist first — this is the "unrelated earlier compile" that used to decide the outcome.
+            Assert.NotNull(ReflectionHelper.ResolveType("System.DateTime"));
+
+            var suffix = Guid.NewGuid().ToString("N").Substring(0, 12);
+            var typeName = "LateExtension" + suffix;
+            var probe = CompileToFileAndLoad(ProbeSource(suffix, "late" + suffix, typeName));
+
+            Assert.NotNull(ReflectionHelper.ResolveType($"ProbeNamespace{suffix}.{typeName}"));
         }
 
         [Fact]

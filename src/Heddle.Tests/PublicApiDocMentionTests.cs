@@ -38,6 +38,8 @@ namespace Heddle.Tests
                     continue;
                 var typeName = mention.Value.Substring(0, split);
                 var member = mention.Value.Substring(split + 1);
+                if (FileExtensions.Contains(member))
+                    continue;   // "TemplateKey.cs" is a file name, not a member reference
 
                 if (!surface.BySimpleName.TryGetValue(typeName.Split('.').Last(), out var candidates))
                     continue;
@@ -51,7 +53,7 @@ namespace Heddle.Tests
                 unresolved.Add(mention.Value + " (" + mention.Key + ")");
             }
 
-            Assert.True(checkedCount >= 50,
+            Assert.True(checkedCount >= 100,
                 "Only " + checkedCount + " documented Type.Member mentions were checkable — the backtick convention " +
                 "or the golden shape changed, and this gate is no longer checking anything.");
 
@@ -122,14 +124,31 @@ namespace Heddle.Tests
         };
 
         /// <summary>Backticked <c>Type.Member</c> (optionally namespace-qualified) mentions, keyed by document.</summary>
+        /// <summary>Trailing segments that make a mention a file name rather than a member reference.</summary>
+        private static readonly HashSet<string> FileExtensions =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "cs", "csproj", "props", "targets", "md", "json", "tcs", "g4", "xml" };
+
+        /// <summary>
+        /// The published pages, and only those. Two exclusions, both reasoned rather than overlooked:
+        /// <list type="bullet">
+        /// <item>the <c>docs/spec</c>, <c>docs/plan</c>, <c>docs/generator_plan</c> and <c>docs/research</c> trees name
+        /// <b>internal</b> members deliberately — measured, 378 mentions and 72 of them internal or file names — so
+        /// "absent from the public golden" is not a defect there;</item>
+        /// <item>the CHANGELOG names removed members <b>because</b> they were removed. Including it reddens on
+        /// <c>PrecompiledFallbackEvent.Key</c>, which it is correct to name.</item>
+        /// </list>
+        /// </summary>
         private static List<KeyValuePair<string, string>> Mentions()
         {
             var mentions = new List<KeyValuePair<string, string>>();
             foreach (var file in Directory.GetFiles(Path.Combine(RepoRoot(), "docs"), "*.md"))
             {
                 var text = File.ReadAllText(file);
+                // The argument list is matched, not just "()": requiring empty parentheses made every documented
+                // call with arguments invisible — including `HeddleTemplate.Register(assembly)`, this gate's own
+                // subject. A file extension is excluded, so `TemplateKey.cs` is not read as a member named "cs".
                 foreach (Match match in Regex.Matches(text,
-                             @"`(?<name>(?:[A-Za-z_][A-Za-z0-9_]*\.)*[A-Z][A-Za-z0-9_]*(?:<[^`]*>)?\.[A-Za-z_][A-Za-z0-9_]*)(?:<[^`]*>)?(?:\(\))?`"))
+                             @"`(?<name>(?:[A-Za-z_][A-Za-z0-9_]*\.)*[A-Z][A-Za-z0-9_]*(?:<[^`]*>)?\.[A-Za-z_][A-Za-z0-9_]*)(?:<[^`]*>)?(?:\([^`]*\))?`"))
                     mentions.Add(new KeyValuePair<string, string>(
                         Path.GetFileName(file), Normalize(match.Groups["name"].Value)));
             }
