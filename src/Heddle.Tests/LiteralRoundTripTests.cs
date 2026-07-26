@@ -231,15 +231,17 @@ namespace Heddle.Tests
                 }
             }
 
-            // The sweeps above are only a guard if "R" and G17/G9 really do disagree on the text for a large share
-            // of the value space; otherwise a revert to "R" could slip through them the way it slips through the
-            // round-trip legs. On every host the two differ for most values (G17/G9 pad to the full digit count),
-            // and this counter makes that assumption fail loudly rather than silently weaken the guard.
-            Assert.True(doubleChanged > 10000,
-                $"'R' and G17 produced identical text for all but {doubleChanged} sampled doubles — the " +
-                "format-identity guard above would no longer detect a revert to \"R\".");
-            Assert.True(singleChanged > 10000,
-                $"'R' and G9 produced identical text for all but {singleChanged} sampled singles.");
+            // The sweeps above are only a guard if "R" and G17/G9 really do disagree on the text for a large part of
+            // the value space; otherwise a revert to "R" could slip through them the way it slips through the
+            // round-trip legs. Measured here rather than assumed: over uniformly random bit patterns (mostly extreme
+            // exponents, where the shortest round-trippable form already needs the full digit count anyway) the two
+            // formats agree for a bit over half the sample — ~8.7k of 20k differ — so the floor sits well under half.
+            // The author-written literal shapes below (0.1, 1/3, …) are where they differ every time.
+            Assert.True(doubleChanged > 4000,
+                $"'R' and G17 produced different text for only {doubleChanged} of the sampled doubles — the " +
+                "format-identity guard above would no longer reliably detect a revert to \"R\".");
+            Assert.True(singleChanged > 4000,
+                $"'R' and G9 produced different text for only {singleChanged} of the sampled singles.");
         }
 
         [Fact]
@@ -249,10 +251,10 @@ namespace Heddle.Tests
             // literal like 0.1 whose shortest form is 3 chars and whose exact G17 expansion is 19.
             Assert.Equal("0.29999999999999999D", LiteralFormatter.Format(0.3d));
             Assert.Equal("0.33333333333333331D", LiteralFormatter.Format(1d / 3d));
-            Assert.Equal("4.94065645841247E-324D", LiteralFormatter.Format(double.Epsilon));
+            Assert.Equal("4.9406564584124654E-324D", LiteralFormatter.Format(double.Epsilon));
             Assert.Equal("1.00000002E+30F", LiteralFormatter.Format(1E+30F));
             Assert.Equal("3.40282347E+38F", LiteralFormatter.Format(float.MaxValue));
-            foreach (var value in new[] { 0.1d, 0.2d, 0.3d, 1d / 3d, 123456789.123456789d })
+            foreach (var value in new[] { 0.1d, 0.2d, 0.3d, 1d / 3d, 2d / 3d })
             {
                 var text = LiteralFormatter.Format(value);
                 Assert.Equal(value.ToString("G17", CultureInfo.InvariantCulture) + "D", text);

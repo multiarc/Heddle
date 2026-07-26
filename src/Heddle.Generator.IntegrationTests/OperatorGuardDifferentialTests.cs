@@ -160,6 +160,95 @@ namespace Heddle.Generator.IntegrationTests
                 HeddleDiagnosticIds.BinaryOperatorNotDefined);
         }
 
+        // --- The unary and ternary halves of the guard ------------------------------------------------------------
+        //
+        // Added by the phase-4 audit (2026-07-26) to close a surviving mutant: deleting the `Supported` guards from
+        // `WriteUnary` *and* `WriteTernary` together reddened **zero** tests in all three suites, even though D3/D6
+        // and the success criteria both say "binaries/unaries/ternaries". The binary half had eight named entries;
+        // the other two arities rode along on the shared estimator with no differential coverage at all, so the
+        // unconditional-emit defect they were fixed for could have been reintroduced silently. One entry per verdict
+        // class per arity, mirroring the binary rows above.
+
+        [Fact]
+        public void UnaryNegateOnAnEnum_DegradesInsteadOfEmitting()
+        {
+            // C# accepts `-enumValue` (it yields the underlying type) and would render; the native tier rejects any
+            // non-numeric negate operand. Opposite verdicts before the guard — the unary twin of deviation 4.
+            AssertBothTiersReject("guard/unary-enum.heddle", "-Status", HeddleDiagnosticIds.UnaryOperatorNotDefined);
+        }
+
+        [Fact]
+        public void UnaryNegateOnAUserStruct_DegradesInsteadOfEmitting()
+        {
+            // Money declares an implicit conversion from int, so the consumer's compiler would happily negate it
+            // through that conversion; the native tier never consults user conversions (deviation 6) and errors.
+            AssertBothTiersReject("guard/unary-struct.heddle", "-Total", HeddleDiagnosticIds.UnaryOperatorNotDefined);
+        }
+
+        [Fact]
+        public void UnaryNotOnANullableBool_DegradesAndRendersTheRuntimeResult()
+        {
+            // The other verdict class: the runtime *does* lift `!` over bool?, so this renders — but only the
+            // runtime's own lifting is trusted to do it, so the expression degrades rather than being emitted.
+            AssertDegradesAndRenders("guard/unary-lifted-not.heddle", "!Approved",
+                new Order { Approved = true }, "value: False\n");
+        }
+
+        [Fact]
+        public void StringConcatWithAUserConvertibleStruct_DegradesAndRendersTheRuntimeResult()
+        {
+            // Another surviving mutant closed by the phase-4 audit: promoting the string-`+` row's
+            // Enum/Reference/Other partners to `Supported` reddened zero tests, because every fixture partner's
+            // ToString and C#'s chosen overload happened to agree. `Label` breaks that tie on purpose — it declares
+            // an implicit conversion to string that differs from its ToString — so the row's claim ("formatting the
+            // non-string side is runtime-owned") is now observable: C# would emit Concat(string, string) through the
+            // user conversion and render "converted:x", the runtime goes through Concat(object, object) and renders
+            // "tostring:x". Deviation 6, in the concat position.
+            AssertDegradesAndRenders("guard/concat-user-conversion.heddle", "\"n=\" + Tag",
+                new Order { Tag = new Label("x") }, "value: n=tostring:x\n");
+        }
+
+        // --- The shift row: a wide count is CS0019 in the consumer's build --------------------------------------
+        //
+        // Also a surviving mutant closed by the phase-4 audit: deleting the shift row's `RequiresRuntimeSemantics`
+        // arm entirely — emitting lifted shifts and wide shift counts verbatim — reddened zero tests. C# defines
+        // `<<` only for an int-typed (or implicitly-int) count, while the runtime narrows *any* integral count to
+        // int, so `Count << Big` is a hard consumer-build error precompiled and a rendering expression at run time:
+        // the CS0019 class this phase exists to close, on a row no fixture reached.
+
+        [Fact]
+        public void WideShiftCount_DegradesAndRendersTheRuntimeResult()
+        {
+            AssertDegradesAndRenders("guard/shift-wide-count.heddle", "Count << Big",
+                new Order { Count = 3, Big = 2 }, "value: 12\n");
+        }
+
+        [Fact]
+        public void LiftedShift_DegradesAndRendersTheRuntimeResult()
+        {
+            // The lifted half of the same row. C# and the runtime happen to agree on the text here, but the
+            // agreement is unproven (the runtime narrows the lifted count to int? on its own path), so the row
+            // degrades on purpose — and this entry is what makes "degrades and renders identically" a fact.
+            AssertDegradesAndRenders("guard/shift-lifted.heddle", "Maybe << 2",
+                new Order { Maybe = 3 }, "value: 12\n");
+        }
+
+        [Fact]
+        public void TernaryWithANonBoolCondition_DegradesInsteadOfEmitting()
+        {
+            AssertBothTiersReject("guard/ternary-cond.heddle", "Count ? \"a\" : \"b\"",
+                HeddleDiagnosticIds.TernaryConditionNotBool);
+        }
+
+        [Fact]
+        public void TernaryWithUnrelatedArms_DegradesInsteadOfEmitting()
+        {
+            // C# would reject this too (CS0173 — in the *consumer's* build, the worst failure mode), and the runtime
+            // rejects it with its own positioned diagnostic. The guard turns a build break into a matched verdict.
+            AssertBothTiersReject("guard/ternary-arms.heddle", "Count > 0 ? Name : Count",
+                HeddleDiagnosticIds.TernaryArmsNoCommonType);
+        }
+
         // --- The coverage floor: the shapes that must keep precompiling ---------------------------------------------
 
         [Theory]
