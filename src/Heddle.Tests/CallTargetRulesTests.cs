@@ -10,10 +10,9 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Generator plan phase 1 WI7 (D8) — the name-resolution precedence, now one classifier both dispatch sites
-    /// call. The rows enumerate the whole order; the invariant test at the bottom turns the emitter's
-    /// comment-only claim ("default-function names do not collide with built-in extension names") into something
-    /// that fails when it stops being true.
+    /// The name-resolution precedence, now one classifier both dispatch sites call. The rows enumerate the whole
+    /// order; the invariant test at the bottom turns the emitter's comment-only claim ("default-function names do
+    /// not collide with built-in extension names") into something that fails when it stops being true.
     /// </summary>
     public class CallTargetRulesTests
     {

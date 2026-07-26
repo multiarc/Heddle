@@ -160,7 +160,7 @@ namespace Heddle.Generator.Tests
             Assert.Empty(run.GeneratorDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
             var manifest = Manifest(run);
             Assert.Contains("key: \"templates/report.heddle\"", manifest);
-            // Recorded as a name (Q8.30), so the runtime registry can answer to it...
+            // Recorded as a name so the runtime registry can answer to it.
             Assert.Contains("registeredName: \"BuildReport.heddle\"", manifest);
             // ...and nowhere else: not as the key, and not as the entry class.
             Assert.DoesNotContain("key: \"BuildReport", manifest);

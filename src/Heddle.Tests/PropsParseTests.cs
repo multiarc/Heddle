@@ -9,8 +9,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The executable grammar spec for phase 5 (grammar.md parse corpus PP01–PP24 / NP01–NP15): the 5th
-    /// <c>call</c> alternative (named arguments), the <c>this</c> primary, the <c>def_props</c> rule family,
+    /// Named arguments in calls (5th call alternative), the <c>this</c> primary, the <c>def_props</c> rule family,
     /// and their DTO/AST shapes via the public <see cref="ExprNode"/>/<see cref="PropDeclaration"/>/
     /// <see cref="NamedArgument"/> surfaces. Positive rows assert shapes; negative rows assert a positioned
     /// HED0003 syntax error (never an exception).

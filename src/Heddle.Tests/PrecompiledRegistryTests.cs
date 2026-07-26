@@ -49,7 +49,7 @@ namespace Heddle.Tests
     [CollectionDefinition("PrecompiledRegistrySerial", DisableParallelization = true)]
     public sealed class PrecompiledRegistrySerialCollection { }
 
-    /// <summary>Phase 7 D2/D6/D7 registry: registration gate (schema/engine), transactional duplicate-key rejection,
+    /// <summary>Registry validation: registration gate (schema/engine), transactional duplicate-key rejection,
     /// per-assembly idempotence, normalized <see cref="PrecompiledTemplates.TryGet"/>, and the case-mismatch shadow
     /// callback. Serialized — the registry is process-global static state.</summary>
     [Collection("PrecompiledRegistrySerial")]
@@ -75,7 +75,7 @@ namespace Heddle.Tests
         private static string CompatibleVersion =>
             $"{RuntimeVersion.Major}.{Math.Max(RuntimeVersion.Minor, 0)}.{Math.Max(RuntimeVersion.Build, 0)}";
 
-        /// <summary>Any schema inside the accepted window. Q8.2 raised <c>MinSupportedSchemaVersion</c> 1 → 3, and
+        /// <summary>Any schema inside the accepted window. <c>MinSupportedSchemaVersion</c> was raised from 1 → 3, and
         /// these tests were written against a literal <c>1</c> — which is now *outside* the window, so they would have
         /// exercised the rejection path while claiming to test registration. They ask for "the oldest schema this
         /// engine accepts" instead, which is what they always meant: none of them is about a schema number.</summary>

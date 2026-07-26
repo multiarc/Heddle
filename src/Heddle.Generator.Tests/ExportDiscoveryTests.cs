@@ -63,7 +63,6 @@ namespace Probe
             Assert.Single(slug.ManifestRows);
             Assert.Equal(2, slug.ManifestRows[0].OverloadCount);
 
-            // A property is a pair of special-name accessors, never a function.
             Assert.False(resolver.TryGet("version", out _));
             Assert.False(resolver.TryGet("get_version", out _));
             Assert.Empty(resolver.IneligibleContainers);
@@ -88,10 +87,9 @@ namespace Probe
         {
             var resolver = Resolve(IneligibleMethodSource);
 
-            // Plan correction, verified against the runtime: an ineligible METHOD is not a silent build-tier
-            // over-count. FunctionRegistry.RegisterContainer wraps the ArgumentException and rethrows, so the whole
-            // container fails to register and the host throws at startup. Under the match principle the build must
-            // error too — HED7021 — rather than adjusting a count for a container that will never exist.
+            // An ineligible METHOD is not a silent build-tier over-count. FunctionRegistry.RegisterContainer wraps
+            // the ArgumentException and rethrows, so the whole container fails to register and the host throws at
+            // startup. The build must error (HED7021) rather than adjusting a count for a container that will never exist.
             var reasons = resolver.IneligibleContainers.Select(c => c.Reason).ToList();
             Assert.Equal(4, reasons.Count);
             Assert.Contains(reasons, r => r.Contains("Helpers.Log") && r.Contains("must return a value"));
@@ -164,9 +162,9 @@ namespace Probe
             Assert.True(resolver.TryGet("slug", out var slug));
             Assert.Equal(2, slug.Overloads.Count);
 
-            // OQ2: one manifest row PER container, each with its own count — the shape the merged live registry
-            // produces. First-container-wins recorded a single row and made every merged name a permanent
-            // FunctionBindingMismatch, because the gauntlet sees a live target absent from the recorded set.
+            // One manifest row PER container, each with its own count — the shape the merged live registry produces.
+            // First-container-wins recorded a single row and made every merged name a permanent FunctionBindingMismatch,
+            // because the gauntlet sees a live target absent from the recorded set.
             Assert.Equal(2, slug.ManifestRows.Count);
             Assert.Contains(slug.ManifestRows, r => r.Aqn == "Probe.First, ExportProbe" && r.OverloadCount == 1);
             Assert.Contains(slug.ManifestRows, r => r.Aqn == "Probe.Second, ExportProbe" && r.OverloadCount == 1);

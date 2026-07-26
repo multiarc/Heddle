@@ -16,16 +16,14 @@ namespace Heddle.Generator.IntegrationTests
     /// <b>front-end error fixture</b> whose error the generator forwards. Every non-fixture template's generated
     /// <c>.g.cs</c> is required to compile (compile-safety). Byte-for-byte render parity for the supported families is
     /// covered by the family-specific differential suites with representative models.
-    /// <para><b>Phase 7 D3/D5.</b> The classification is no longer two hand-maintained <c>HashSet</c>s and a corpus
-    /// file count in this file. It is read from <see cref="CorpusIntent"/>, and every pin is <b>set equality reported
-    /// as a symmetric difference</b>. Both replaced pins were counts, and both had already gone wrong in this tree: a
-    /// <c>&gt;= 25</c> floor sat against an actual 40 (fifteen templates could stop precompiling in silence), and the
-    /// <c>&gt;= 40</c> floor that replaced it here sat against an actual 62 beside a comment claiming "~45". A count
-    /// is rubber-stampable — a stage that changes a classification is made green by editing one digit, and the commit
+    /// <para>The classification is no longer two hand-maintained <c>HashSet</c>s and a corpus file count in this file.
+    /// It is read from <see cref="CorpusIntent"/>, and every pin is <b>set equality reported as a symmetric
+    /// difference</b>. Both replaced pins were counts, and both had already gone wrong in this tree: a <c>&gt;= 25</c>
+    /// floor sat against an actual 40 (fifteen templates could stop precompiling in silence), and the <c>&gt;= 40</c>
+    /// floor that replaced it here sat against an actual 62 beside a comment claiming "~45". A count is
+    /// rubber-stampable — a stage that changes a classification is made green by editing one digit, and the commit
     /// looks identical either way. Set equality cannot be: making it green requires naming the file that moved and
     /// writing down why, in its intent row.</para>
-    /// <para>Numbering note: the "Phase 7" this class's older comments cited is
-    /// <c>docs/precompilation.md</c>'s phase 7, not the generator plan's.</para>
     /// </summary>
     public class CorpusDifferentialTests
     {
@@ -98,10 +96,9 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// D3's two bidirectional completeness gates. Neither direction can drift silently: a template added without
-        /// a row fails naming the template, and a row outliving its template fails naming the row. This is what turns
-        /// phase 0's standing "new feature areas contribute their templates to the corpus" rule from a request into a
-        /// mechanism — contributing a template REQUIRES declaring what it is for.
+        /// Two bidirectional completeness gates. Neither direction can drift silently: a template added without a row
+        /// fails naming the template, and a row outliving its template fails naming the row. Contributing a template
+        /// REQUIRES declaring what it is for.
         /// </summary>
         internal static void AssertIntentIsTotal()
         {

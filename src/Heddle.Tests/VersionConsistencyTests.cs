@@ -158,8 +158,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>The prose statements of the release line. Limited to sentences that state the <em>current</em>
-        /// line — the four documents the phase-8 survey listed — because a document naming a historical release is
-        /// making a different claim.</summary>
+        /// line, because a document naming a historical release is making a different claim.</summary>
         [Theory]
         [InlineData("docs/building.md", @"current release line is \*\*(?<v>\d+\.\d+\.\d+)\*\*")]
         [InlineData("docs/README.md", @"Current release line: \*\*(?<v>\d+\.\d+\.\d+)\*\*")]

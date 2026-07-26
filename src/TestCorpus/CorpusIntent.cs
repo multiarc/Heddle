@@ -114,9 +114,6 @@ namespace Heddle.TestCorpus
         /// block).</summary>
         public static readonly IReadOnlyList<CorpusIntentRow> Rows = new[]
         {
-            // Tier = Precompiles (40). Render values were measured by rendering each entry through both
-            // backends and comparing bytes: 32 of the 40 render identically model-less.
-
             // Pure text plus @@ escapes collapses to raw, and pure static text precompiles.
             new CorpusIntentRow("at-escape.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "Pure text plus @@ escapes collapses to a raw write, so the emitter binds it with no model."),
@@ -141,7 +138,6 @@ namespace Heddle.TestCorpus
             new CorpusIntentRow("regr-compose-shim.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "Compose-nesting regression shim: as its own top-level document its @<< composes at offset 0, so it precompiles."),
 
-            // Branch family.
             new CorpusIntentRow("branch-import-def.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "Branch definition library: supported constructs only; renders empty standalone on both tiers."),
             new CorpusIntentRow("branch-import-else.heddle", CorpusTier.Precompiles, CorpusRender.ResolveOnly,
@@ -159,7 +155,6 @@ namespace Heddle.TestCorpus
             new CorpusIntentRow("branching-partial-parent.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "The parent half of the branch/partial pair; byte parity also pinned by CorpusRenderParityTests."),
 
-            // Ergonomics family.
             new CorpusIntentRow("ergo-double-render.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "Double-render warning fixture (W08); the warning is parse-time, the shape itself precompiles and is byte-pinned by CorpusRenderParityTests."),
             new CorpusIntentRow("ergo-for.heddle", CorpusTier.Precompiles, CorpusRender.WithModel,
@@ -167,7 +162,6 @@ namespace Heddle.TestCorpus
             new CorpusIntentRow("ergo-trim-preamble.heddle", CorpusTier.Precompiles, CorpusRender.WithModel,
                 "Declares ':: TestDataStructure'; the trim-directive goldens in Heddle.Tests own its bytes."),
 
-            // Profile family.
             new CorpusIntentRow("profile-directive.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "@profile() directive flip; model-less and byte-pinned by CorpusRenderParityTests."),
             new CorpusIntentRow("profile-flagship.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
@@ -183,45 +177,38 @@ namespace Heddle.TestCorpus
             new CorpusIntentRow("props-abstract-panel.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "Abstract props panel with no declared model type, so it renders standalone on both tiers."),
             new CorpusIntentRow("props-defaults.heddle", CorpusTier.Precompiles, CorpusRender.WithModel,
-                "Phase 3 F8: joined the precompiled set when the build tier stopped resolving model names by its own rule. Writes a bare ':: PropArticle', which a model-less standalone render cannot bind; the props differential suite owns its bytes."),
+                "Joined the precompiled set once the build tier stopped resolving model names by its own rule. Writes a bare ':: PropArticle', which a model-less standalone render cannot bind; the props differential suite owns its bytes."),
             new CorpusIntentRow("props-inherit.heddle", CorpusTier.Precompiles, CorpusRender.WithModel,
-                "Phase 3 F8, as props-defaults: a bare ':: PropArticle' short name the runtime binds through its global name index."),
+                "Props-defaults: a bare ':: PropArticle' short name the runtime binds through its global name index."),
             new CorpusIntentRow("slot-compose.heddle", CorpusTier.Precompiles, CorpusRender.WithModel,
-                "Phase 3 F8, as props-defaults: bare ':: PropArticle'; the slot/default-output suite owns its bytes."),
+                "Props-defaults: bare ':: PropArticle'; the slot/default-output suite owns its bytes."),
             new CorpusIntentRow("slot-picker.heddle", CorpusTier.Precompiles, CorpusRender.WithModel,
-                "Phase 3 F8: bare ':: PropMenuOption'/':: PropMenu' short names; the slot suite owns its bytes."),
+                "Bare ':: PropMenuOption'/':: PropMenu' short names; the slot suite owns its bytes."),
 
-            // for / range.
             new CorpusIntentRow("range-for.heddle", CorpusTier.Precompiles, CorpusRender.WithModel,
-                "Phase 6 WI8 range-for fixture: native-tier constructs only so it precompiles, but ':: ErgoForData' means byte parity is ForTests.RangeForFixture's."),
+                "Range-for fixture: native-tier constructs only so it precompiles, but ':: ErgoForData' means byte parity is ForTests.RangeForFixture's."),
 
-            // Regression / shaper fixtures.
             new CorpusIntentRow("regr-def-inner-comment.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "Hidden-token offset regression: a single-file definition with an inner-comment body; the enclosing-block trim fix lives in both backends, and the bytes are pinned by CorpusRenderParityTests."),
             new CorpusIntentRow("shaper-clamp-imported.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "The library half of the phase-2 WI1 clamp-drift pair; a zero-output directive, so it renders empty on both tiers."),
+                "The library half of the clamp-drift pair; a zero-output directive, so it renders empty on both tiers."),
             new CorpusIntentRow("shaper-clamp-overshoot.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "Phase 2 WI1 clamp drift: an indented last-line @<< whose re-based chain overshoots the widened-away import line. Precompiles ONLY since the clamp fix — before it the emitter threw and silently degraded."),
+                "Clamp drift: an indented last-line @<< whose re-based chain overshoots the widened-away import line. Precompiles only since the clamp fix; before it the emitter threw and silently degraded."),
             new CorpusIntentRow("optimized-document.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "The optimized-document flagship; model-less, byte-pinned by CorpusRenderParityTests, and BOM-bearing.",
                 bom: true),
 
-            // Streaming fixtures.
             new CorpusIntentRow("streaming-large.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "Streaming fixture: pure static text, so it precompiles on the dynamic tier and renders identically."),
             new CorpusIntentRow("streaming-unicode.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "Streaming fixture: static plus dynamic @(Name)/@(City) against a dynamic model, so it precompiles and renders identically."),
 
-            // TryCompile parity trio.
             new CorpusIntentRow("trycompile-parity-child.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "The static child of the TryCompile-parity pair; supported constructs only."),
             new CorpusIntentRow("trycompile-parity-parent.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "A parent with a @partial call site of the static child; supported constructs only."),
             new CorpusIntentRow("trycompile-parity-typed.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "A typed @(Name) document against a dynamic model; renders empty standalone on both tiers."),
-
-            // Tier = FallsBackSafely (17). Every one is ABSENT from the manifest — a whole-template degrade, not a
-            // marker. Each is output-safe: the dynamic tier renders it and a runtime golden pins the bytes.
 
             new CorpusIntentRow("at-escape-comment-adjacent.heddle", CorpusTier.FallsBackSafely, CorpusRender.Standalone,
                 "Falls back on its definition call sites; pinned by its runtime golden (AtEscapeTests), and it renders model-less on the dynamic tier."),
@@ -265,9 +252,8 @@ namespace Heddle.TestCorpus
                 "Whitespace-torture document with FullCSharp expressions the emitter refuses; HeddleTemplateTests owns its bytes.",
                 bom: true),
 
-            // Tier = FrontEndError (5). Deliberate parse errors the shared front end reports and the generator
-            // forwards as build errors. These assert the diagnostic's IDENTITY, not offsets into a hand-counted
-            // string, which is why they are corpus entries at all; position probes stay inline in their own tests.
+            // These entries assert the diagnostic's IDENTITY, not offsets into a hand-counted string, which is why
+            // they are corpus entries at all; position probes stay inline in their own tests.
 
             new CorpusIntentRow("ergo-import-broken.heddle", CorpusTier.FrontEndError, CorpusRender.ResolveOnly,
                 "Imports a target that does not resolve; the front end errors and the generator forwards it."),

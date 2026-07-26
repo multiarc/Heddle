@@ -6,10 +6,10 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Q8.3 — <see cref="ExportBookkeeping{TPayload}"/> shipped with <b>no test at all</b>. It is the shared
-    /// implementation of the runtime's <c>AddOrReplace</c> merge semantics — the rule that decides how many manifest
-    /// rows a function name gets and what each row's overload count is — and the gauntlet compares those counts
-    /// <em>exactly</em>, in both directions. An untested rule in that position is the whole reason phase 3 existed.
+    /// <see cref="ExportBookkeeping{TPayload}"/> shipped with <b>no test at all</b>. It is the shared implementation
+    /// of the runtime's <c>AddOrReplace</c> merge semantics — the rule that decides how many manifest rows a function
+    /// name gets and what each row's overload count is — and the gauntlet compares those counts <em>exactly</em>, in
+    /// both directions. An untested rule in that position is critical.
     /// <para>Lives in <c>Heddle.Tests</c> deliberately: the file compiles into the <c>Heddle</c> assembly, so a
     /// mutation of it reddens a <b>runtime</b> leg rather than only the generator's.</para>
     /// </summary>
@@ -79,7 +79,7 @@ namespace Heddle.Tests
             book.AddOrReplace("slug", Overload(First, "First.Slug(string)", "System.String"));
             book.AddOrReplace("slug", Overload(Second, "Second.Slug(int)", "System.Int32"));
 
-            // OQ2's merge: one row PER container, each with its own count. First-container-wins recorded a single
+            // Merge rule: one row PER container, each with its own count. First-container-wins recorded a single
             // row and made every merged name a permanent FunctionBindingMismatch.
             Assert.Equal(2, book.Overloads("slug").Count);
             Assert.Equal(new[] { First, Second }, book.Containers("slug"));

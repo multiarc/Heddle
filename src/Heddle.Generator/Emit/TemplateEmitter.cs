@@ -247,10 +247,10 @@ namespace Heddle.Generator.Emit
             };
         }
 
-        /// <summary>The pre-phase-1 classification: the four built-in directive names, hard-coded. Kept as the
-        /// fallback for a name the binder cannot resolve (a template compiled before its reference closure is
-        /// complete, or against an engine reference predating <c>[ZeroOutput]</c>) — never as the primary rule,
-        /// which is what made a CUSTOM zero-output extension diverge silently (D10 / F17).</summary>
+        /// <summary>The four built-in directive names, hard-coded. Kept as the fallback for a name the binder cannot
+        /// resolve (a template compiled before its reference closure is complete, or against an engine reference
+        /// predating <c>[ZeroOutput]</c>) — never as the primary rule, which is what made a CUSTOM zero-output
+        /// extension diverge silently.</summary>
         private static bool IsDirectiveName(string name) =>
             name == "model" || name == "using" || name == "import" || name == "profile";
 
@@ -404,8 +404,8 @@ namespace Heddle.Generator.Emit
         private int _bodyCounter;
 
         // Definition bodies compile once into a shared body class (keyed by definition identity), referenced by every
-        // call site — never inlined per call, so a self-recursive definition does not loop the generator (README
-        // "Emitter completion notes": recursion). Reserved before population so a self-call during the build finds it.
+        // call site — never inlined per call, so a self-recursive definition does not loop the generator. Reserved
+        // before population so a self-call during the build finds it.
         private readonly Dictionary<string, DefBodyInfo> _definitionBodies =
             new Dictionary<string, DefBodyInfo>(System.StringComparer.Ordinal);
 
@@ -468,19 +468,18 @@ namespace Heddle.Generator.Emit
                 piece => AddPiece(body, piece),
                 element =>
                 {
-                    // The runtime's zero-length default element (Q2.1 / plan D10): an empty call chain that renders
-                    // nothing. Modeled in the element list for parity, but it emits no segment.
+                    // An empty call chain that renders nothing: modeled in the element list for parity, but it
+                    // emits no segment.
                     if (element.Chain.Chain == null || element.Chain.Chain.Count == 0)
                         return true;
 
                     if (profileByChain != null && profileByChain.TryGetValue(element.Chain, out var elementProfile))
                         _profileHtml = elementProfile;
 
-                    // Keyed on [ScopeChannel] presence (not the branch role) so bodiless custom channel extensions
-                    // also provision a locals frame; deliberately runs before definition resolution (the
-                    // over-provision Q1.4 rules to keep — documented in ParticipantScan). Phase 1 D5: the walk is
-                    // the shared full-chain, parameter-recursing scan, so it agrees with the runtime's
-                    // RuntimeDocument.ComputeNeedsLocals instead of probing chain[0] only.
+                    // Keyed on [ScopeChannel] presence so bodiless custom channel extensions also provision a
+                    // locals frame; deliberately runs before definition resolution. The walk is the shared full-chain,
+                    // parameter-recursing scan, so it agrees with the runtime's RuntimeDocument.ComputeNeedsLocals
+                    // instead of probing chain[0] only.
                     if (ParticipantScan.ChainHostsParticipant(element.Chain, HasScopeChannel))
                         body.HostsParticipant = true;
 
@@ -546,11 +545,9 @@ namespace Heddle.Generator.Emit
                     }
                     else if (_reportedUnknownProfiles.Add(lm.Position.StartIndex))
                     {
-                        // The runtime raises HED2001 for this template and never compiles it. The emitter
-                        // used to fall through with a comment claiming "the template falls back" — it does not:
-                        // nothing else refuses, so the template precompiled with the flip silently ignored and
-                        // rendered output the dynamic tier would never produce. The options fingerprint keeps the
-                        // COMPILE-TIME profile, so the gauntlet cannot catch it either. HED7022, at the directive.
+                        // The runtime raises HED2001 for this template and never compiles it. The emitter previously
+                        // fell through silently, rendering output the dynamic tier would never produce. Now it reports
+                        // HED7022 at the directive so the problem is visible.
                         _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.UnknownOutputProfile,
                             lm.Position, v));
                     }
@@ -614,7 +611,7 @@ namespace Heddle.Generator.Emit
 
             if (name.Length == 0)
             {
-                // Unnamed carrier: EmptyExtension (Text) / EmptyHtmlExtension (Html, encode) for a bodiless call.
+                // Unnamed carrier: EmptyExtension (Text) / EmptyHtmlExtension (Html, encode).
                 if (!string.IsNullOrEmpty(item.ParameterTemplate))
                 {
                     reason = "bodied unnamed carrier";
@@ -697,14 +694,13 @@ namespace Heddle.Generator.Emit
             if (name == "list")
             {
                 // The collection is evaluated against the enclosing model; the element body is on the dynamic
-                // tier — BodyModelRules' row for "list" is (ElementOfData, None), and the element type is
-                // discoverable only by reflection (ListExtension.InitStart), so the emitter routes the body
-                // through the dynamic tier rather than guessing it. generated-code.md example 3.
+                // tier — the element type is discoverable only by reflection (ListExtension.InitStart), so the
+                // emitter routes the body through the dynamic tier rather than guessing it.
                 // The element body is the dynamic tier; a slot @out(value) may still appear inside it, so the
-                // enclosing definition's slot mode propagates into the nested body. Phase 7 D4: the ambient
-                // fill scope (and the region host's prop layout) also propagate — the BLOCKER-A depth seam —
-                // so @item(this) nested in an @list body resolves the call site's fill. All of that is what
-                // BodyModelRules' ElementOfData row means here, and TryNestedBodyContext is where it is read.
+                // enclosing definition's slot mode propagates into the nested body. The ambient fill scope and the
+                // region host's prop layout also propagate, so @item(this) nested in an @list body resolves the
+                // call site's fill. BodyModelRules' ElementOfData row decides this context, and
+                // TryNestedBodyContext is where it is read.
                 if (!TryNestedBodyContext("list", bctx, out var itemCtx))
                 {
                     reason = "no pinned body model-typing row for 'list'";
@@ -757,9 +753,7 @@ namespace Heddle.Generator.Emit
             }
 
             // Standalone function call (@upper(x) / @(upper(x))): the runtime wraps a function CallNode in an
-            // unnamed EmptyExtension carrier (HeddleCompiler.CompileItem function path). Reached only when the
-            // shared classifier picked the function tier — i.e. the name is NOT a registered extension, which is
-            // the invariant the comment here used to assert for the default table alone.
+            // unnamed EmptyExtension carrier. Reached only when the shared classifier picked the function tier.
             if (callTarget == CallTargetKind.Function && string.IsNullOrEmpty(item.ParameterTemplate))
             {
                 var callNode = BuildFunctionCallNode(name, cp, item.Position);
@@ -777,16 +771,16 @@ namespace Heddle.Generator.Emit
                 return MakeCall(fField, "(object)(" + expr + ")", writer.UsedModel, item.Position);
             }
 
-            // Custom extension bound from a referenced assembly (D9 / WI6): resolve the [ExtensionName] type and
-            // reproduce the TemplateItem render protocol against a bound instance — never inlined.
+            // Custom extension bound from a referenced assembly: resolve the [ExtensionName] type and reproduce
+            // the TemplateItem render protocol against a bound instance — never inlined.
             if (_extensionBinder.TryResolve(name, out var extInfo))
                 return BuildCustomExtensionCall(name, extInfo, item, cp, bctx, out reason);
 
-            // Phase 3 (F3): the name resolves under the RUNTIME's discovery predicate but the generator cannot
-            // reproduce its render protocol (an IExtension-direct implementor, or an unresolvable collision the
-            // runtime would raise TemplateOverrideException for). The runtime WILL find it, so HED7006 — whose
-            // documented meaning is "the runtime will not find it either" — must not fire; the call degrades to
-            // dynamic with the recorded reason instead. This is the false-HED7006 build break.
+            // The name resolves under the RUNTIME's discovery predicate but the generator cannot reproduce its
+            // render protocol (an IExtension-direct implementor, or an unresolvable collision the runtime would
+            // raise TemplateOverrideException for). The runtime WILL find it, so HED7006 — whose documented
+            // meaning is "the runtime will not find it either" — must not fire; the call degrades to dynamic with
+            // the recorded reason instead.
             if (_extensionBinder.TryGetUnbindableReason(name, out var unbindableReason))
             {
                 reason = unbindableReason;
@@ -803,7 +797,7 @@ namespace Heddle.Generator.Emit
             return null;
         }
 
-        /// <summary>Binds a custom <c>[ExtensionName]</c> extension resolved from a referenced assembly (D9). A plain
+        /// <summary>Binds a custom <c>[ExtensionName]</c> extension resolved from a referenced assembly. A plain
         /// extension (no <c>InitStart</c>/<c>CompleteInit</c> override) carries exactly the base behavior
         /// <c>PrecompiledRuntime.Bind</c> reproduces, so it renders byte-identically. A non-engine hook override is
         /// refused as <c>HED7015</c>; an engine-assembly hook override the emitter has no pinned knowledge of, and a
@@ -816,8 +810,8 @@ namespace Heddle.Generator.Emit
             if (info.OverridesHook && !info.IsEngineAssembly && !info.Role.HasValue)
             {
                 // HED7015: resolvable but unevaluable — a build error, not a silent degrade (contrast HED7014).
-                // Suppressed for role extensions: a custom branch trio's InitStart override is the canonical shape
-                // (R12), not an authoring error — it degrades quietly to the dynamic tier instead (§6.3.3).
+                // Suppressed for role extensions: a custom branch trio's InitStart override is the canonical shape,
+                // not an authoring error — it degrades quietly to the dynamic tier instead.
                 _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.ExtensionOverridesHook,
                     item.Position, name, info.AqnSansVersion, "InitStart/CompleteInit"));
                 reason = "extension <" + name + "> overrides a compile-time hook";
@@ -840,24 +834,24 @@ namespace Heddle.Generator.Emit
                 return null;
             }
 
-            // Phase 8 (WI5, F7 guard): named arguments on a PARAMETER-LESS extension must not be silently
-            // dropped — the dynamic tier hard-errors HED5005 for that call, so the precompiled tier degrades and
-            // lets the dynamic tier govern (mirrors TryBuildPropsPrototype's prop-less-definition guard).
+            // Named arguments on a PARAMETER-LESS extension must not be silently dropped — the dynamic tier
+            // hard-errors HED5005 for that call, so the precompiled tier degrades and lets the dynamic tier govern
+            // (mirrors TryBuildPropsPrototype's prop-less-definition guard).
             if (info.Parameters.Count == 0 && cp.PropArguments != null && cp.PropArguments.Count != 0)
             {
                 reason = "named arguments on parameter-less extension <" + name + ">";
                 return null;
             }
 
-            // Phase 8 (WI5): a bodiless parameter-declaring extension binds its [Prop] layout at build time —
-            // the frozen prototype + dynamic setters props already emit, installed through BindExtension.
+            // A bodiless parameter-declaring extension binds its [Prop] layout at build time — the frozen
+            // prototype + dynamic setters props already emit, installed through BindExtension.
             if (info.Parameters.Count != 0)
             {
                 var extLayout = ResolveExtensionPropLayout(name, info, item.Position);
                 if (extLayout == null)
                 {
                     // Malformed [Prop] declaration — HED7017 recorded (once per extension type); refuse, the
-                    // build fails like HED7015 rather than silently degrading (D6 "never silently").
+                    // build fails like HED7015 rather than silently degrading.
                     reason = "malformed [Prop] declaration on extension <" + name + ">";
                     return null;
                 }
@@ -893,29 +887,26 @@ namespace Heddle.Generator.Emit
                 .Append(", needsLocals: false, line: ")
                 .Append(line).Append(", column: ").Append(col).Append(");\n");
             _extensionFields.Add(field);
-            // Phase 3 (F1): the manifest type name comes from the shared AqnFormatter, not from stripping
-            // 'global::' off a display string — a nested extension spells 'Ns.Outer+Inner' on both tiers now.
+            // The manifest type name comes from the shared AqnFormatter, not from stripping 'global::' off a
+            // display string — a nested extension spells 'Ns.Outer+Inner' on both tiers.
             RecordExtensionBinding(name, info.BareTypeName, info.AssemblyName);
             return field;
         }
 
-        /// <summary>Phase 8 (D8/WI5/WI5b): the extension's output render type derived from its
-        /// <c>[EncodeOutput]</c>/<c>[NotEncode]</c> symbols — the EXACT expression the dynamic tier's
-        /// <c>InitializeTemplate</c> evaluates over the concrete instance type, emitted as the
-        /// <c>global::Heddle.Data.RenderType.*</c> literal. Never hard-coded <c>Raw</c>: a plain
-        /// <c>[EncodeOutput]</c> custom extension must self-encode on the precompiled tier exactly as it does on
-        /// the dynamic tier (the P8-J-E1 alignment; the flags degrade to false → <c>Raw</c>, the pre-fix safe
-        /// value, against an older engine reference).</summary>
+        /// <summary>The extension's output render type derived from its <c>[EncodeOutput]</c>/<c>[NotEncode]</c>
+        /// symbols — the EXACT expression the dynamic tier's <c>InitializeTemplate</c> evaluates over the concrete
+        /// instance type, emitted as the <c>global::Heddle.Data.RenderType.*</c> literal. Never hard-coded <c>Raw</c>:
+        /// a plain <c>[EncodeOutput]</c> custom extension must self-encode on the precompiled tier exactly as it does
+        /// on the dynamic tier; the flags degrade to false → <c>Raw</c>, the safe value, against an older engine
+        /// reference.</summary>
         private static string DerivedRenderTypeLiteral(ExtensionBinder.Info info)
-            // Phase 1 D11: the truth table is the shared RenderTypeRules.Derive the runtime's InitializeTemplate
-            // evaluates; only the enum→literal spelling is emitter-side.
             => "global::Heddle.Data.RenderType." +
                RenderTypeRules.Derive(info.HasEncodeOutput, info.HasNotEncode);
 
-        /// <summary>Phase 8 (WI5): allocates a parameter-declaring custom extension call site — the carrier bind
-        /// through <c>PrecompiledRuntime.BindExtension</c> with the frozen props prototype, optional dynamic
-        /// setters, the ordered parameter names, and the derived render type (applied to the INNER extension so an
-        /// <c>[EncodeOutput]</c> inner self-encodes, H1). Field typed <c>AbstractExtension</c> (the carrier is
+        /// <summary>Allocates a parameter-declaring custom extension call site — the carrier bind through
+        /// <c>PrecompiledRuntime.BindExtension</c> with the frozen props prototype, optional dynamic setters, the
+        /// ordered parameter names, and the derived render type (applied to the INNER extension so an
+        /// <c>[EncodeOutput]</c> inner self-encodes). Field typed <c>AbstractExtension</c> (the carrier is
         /// engine-internal), as <c>AllocateDefinitionExtension</c> does.</summary>
         private string AllocateParameterizedExtension(string name, ExtensionBinder.Info info, string propsFieldRef,
             string dynamicSettersRef, string parameterNamesRef, BlockPosition position,
@@ -933,15 +924,15 @@ namespace Heddle.Generator.Emit
                 .Append(", needsLocals: false, line: ")
                 .Append(line).Append(", column: ").Append(col).Append(");\n");
             _extensionFields.Add(field);
-            // Phase 3 (OQ4): the prop-layout fingerprint travels with the binding row. Built through the shared
+            // The prop-layout fingerprint travels with the binding row. Built through the shared
             // PropLayout.FormatFingerprint over this side's slots and ITypeFacts, so the string the runtime
             // recomputes from the live extension type is byte-identical when the layouts agree.
             RecordExtensionBinding(name, info.BareTypeName, info.AssemblyName, FingerprintOf(layout));
             return field;
         }
 
-        /// <summary>Phase 8 (WI5): emits the ordered parameter-name array field a <c>BindExtension</c> call site
-        /// hands the runtime for its name→index map.</summary>
+        /// <summary>Emits the ordered parameter-name array field a <c>BindExtension</c> call site hands the
+        /// runtime for its name→index map.</summary>
         private string EmitParameterNamesField(PropLayoutInfo layout)
         {
             var field = "ParamNames" + _paramNamesCounter++;
@@ -953,13 +944,13 @@ namespace Heddle.Generator.Emit
 
         private int _paramNamesCounter;
 
-        // Phase 8 (WI5): the per-template extension [Prop] layout cache — one resolution (and one HED7017 per
-        // malformed type) per extension name per template. A null value marks a malformed layout.
+        // Per-template extension [Prop] layout cache — one resolution (and one HED7017 per malformed type) per
+        // extension name per template. A null value marks a malformed layout.
         private readonly Dictionary<string, PropLayoutInfo> _extensionPropLayouts =
             new Dictionary<string, PropLayoutInfo>(System.StringComparer.Ordinal);
 
         /// <summary>
-        /// Phase 8 (WI5) / phase 3 (F4): the generator's extension prop layout, sequenced by the <b>shared</b>
+        /// The generator's extension prop layout, sequenced by the <b>shared</b>
         /// <see cref="PropLayoutCore"/> the runtime's <c>PropLayout.ResolveFromExtension</c> also drives — one
         /// layer walk, one slot-index rule, one ordered fault vocabulary. This method is the Roslyn adapter:
         /// declarations in, <see cref="SymbolTypeFacts"/> and a <c>HED7017</c> sink alongside, slots out.
@@ -1018,8 +1009,8 @@ namespace Heddle.Generator.Emit
         /// <summary>The build tier's prop-fault sink: every fault class becomes one <c>HED7017</c> at the call
         /// position, carrying the <b>shared</b> fault sentence from <c>HeddleDiagnosticCatalog.PropFaults</c> —
         /// the same words the dynamic tier's <c>HED5007</c>/<c>HED5008</c>/<c>HED5009</c>/<c>HED5010</c>/
-        /// <c>HED5015</c> use for the same condition (the twin-vocabulary unification phase 6 handed to phase 3).
-        /// The default conversion itself stays here: it is the D2 rule over Roslyn constants, not a layout rule.</summary>
+        /// <c>HED5015</c> use for the same condition. The default conversion itself stays here: it is defined
+        /// over Roslyn constants, not a layout rule.</summary>
         private sealed class EmitterPropSink : IPropLayoutSink<ITypeSymbol>
         {
             private readonly TemplateEmitter _emitter;
@@ -1061,10 +1052,10 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>
-        /// Phase 8 (WI5): the HED5009 twin — mirrors <c>PropConversion.CanConvertTypes(source, target,
-        /// allowBoxToObject: true)</c> over symbols for the attribute-representable default sources (primitive,
-        /// string, enum, typeof): identity; box-to-object; implicit numeric widening (incl. widen-then-lift to a
-        /// nullable target); identity-lift; reference assignability.
+        /// The HED5009 twin — mirrors <c>PropConversion.CanConvertTypes(source, target, allowBoxToObject: true)</c>
+        /// over symbols for the attribute-representable default sources (primitive, string, enum, typeof): identity;
+        /// box-to-object; implicit numeric widening (incl. widen-then-lift to a nullable target); identity-lift;
+        /// reference assignability.
         /// </summary>
         private bool DefaultConvertible(ITypeSymbol source, ITypeSymbol target)
         {
@@ -1086,9 +1077,8 @@ namespace Heddle.Generator.Emit
                 if (source.IsValueType &&
                     IsImplicitNumericWidening(sourceSpecial, targetUnderlying.SpecialType))
                     return true;                                                 // widen-then-lift
-                // Phase 1 D4 (F7, drift #13): the source-nullable row the runtime's PropConversion has and this
-                // table did not — Nullable<S> converts to Nullable<W> when the underlyings are identical or
-                // implicitly-numeric-widening. Its absence was a safe over-refusal (the template fell back), but
+                // Nullable<S> converts to Nullable<W> when the underlyings are identical or implicitly-numeric-
+                // widening. This row was missing and caused safe over-refusal (the template fell back), but
                 // an over-refusal is still a divergence: the two tiers disagreed about what precompiles.
                 if (TryGetNullableUnderlying(source, out var sourceUnderlying) &&
                     (SymbolEqualityComparer.Default.Equals(sourceUnderlying, targetUnderlying) ||
@@ -1106,10 +1096,10 @@ namespace Heddle.Generator.Emit
             return false;
         }
 
-        /// <summary>Phase 1 D4: the emitter's single <c>Nullable&lt;T&gt;</c> probe. The file used to carry two —
-        /// one over <c>ConstructedFrom</c>, one over <c>OriginalDefinition</c> — which is a latent divergence
-        /// inside one file, so both spellings are folded here onto <c>OriginalDefinition</c> (the form that is
-        /// never null).</summary>
+        /// <summary>The emitter's single <c>Nullable&lt;T&gt;</c> probe. The file used to carry two — one over
+        /// <c>ConstructedFrom</c>, one over <c>OriginalDefinition</c> — which is a latent divergence inside one
+        /// file, so both spellings are folded here onto <c>OriginalDefinition</c> (the form that is never null).
+        /// </summary>
         private static bool TryGetNullableUnderlying(ITypeSymbol type, out ITypeSymbol underlying)
         {
             if (type is INamedTypeSymbol named &&
@@ -1129,7 +1119,7 @@ namespace Heddle.Generator.Emit
         private static bool NullDefaultLegal(ITypeSymbol target)
             => target.IsReferenceType || TryGetNullableUnderlying(target, out _);
 
-        // ---- Definition invocation (README keystone; generated-code.md examples 4/5) ----
+        // ---- Definition invocation ----
 
         private Call BuildDefinitionCall(DefinitionItem def, OutputItem item, CallParameter cp, BodyContext bctx,
             bool isFill, out string reason)

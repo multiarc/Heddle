@@ -14,9 +14,9 @@ namespace Heddle.Generator.Tests
     /// <c>Heddle.Tests.MemberVisibilityConformanceTests</c>'s, and the model type is the same shape; this turns
     /// "the two resolvers happen to agree" into "a divergent policy is structurally impossible", because both now
     /// run the one <c>MemberVisibility</c> decision table.
-    /// <para>Three rows are the known divergences this adoption closed. Each ran the dangerous direction — the
-    /// generator was <i>more</i> permissive, and the same resolver drives emission, so the extra permissiveness
-    /// became emitted typed code the dynamic tier rejects.</para>
+    /// <para>Three rows are known divergences this adoption closed. Each ran the dangerous direction — the generator
+    /// was more permissive, and the same resolver drives emission, so the extra permissiveness became emitted
+    /// typed code the dynamic tier rejects.</para>
     /// </summary>
     public class MemberVisibilitySymbolConformanceTests
     {
@@ -90,16 +90,16 @@ namespace Probe
             yield return new object[] { "InternalHere", true, "internal getter on the receiver" };
             yield return new object[] { "PublicOnBase", true, "public getter inherited from a base class" };
             yield return new object[] { "InternalOnBase", false,
-                "F7 divergence 2: inherited non-public members are not surfaced (Type.GetProperty's behavior, runtime-normative)" };
+                "inherited non-public members are not surfaced (Type.GetProperty's behavior, runtime-normative)" };
             yield return new object[] { "ProtectedOnBase", false, "protected is outside the sandbox" };
             yield return new object[] { "ProtectedInternalHere", false,
-                "F7 divergence 1 / OQ1: the generator used to accept ProtectedOrInternal; the runtime rejects it" };
+                "the generator used to accept ProtectedOrInternal; the runtime rejects it" };
             yield return new object[] { "ProtectedHere", false, "protected is outside the sandbox" };
             yield return new object[] { "PrivateHere", false, "private is outside the sandbox" };
             yield return new object[] { "WriteOnly", false, "not readable" };
             yield return new object[] { "HiddenHere", false, "[Hidden] by the real attribute type" };
             yield return new object[] { "ForeignHiddenHere", true,
-                "F7 divergence 3: a foreign *.HiddenAttribute hides nothing — the match is on the full metadata name" };
+                "a foreign *.HiddenAttribute hides nothing — the match is on the full metadata name" };
             yield return new object[] { "StaticHere", false, "statics are not member-path reachable" };
             yield return new object[] { "Shadowed", true, "new-shadowed: the most-derived accessible one" };
             yield return new object[] { "PublicWithPrivateGetter", false, "accessibility is the getter's" };
@@ -117,8 +117,8 @@ namespace Probe
         [Fact]
         public void BaseInterfaceMembersAreNotSurfacedFromAnInterfaceRoot()
         {
-            // F7 divergence 3's sibling: FindProperty used to walk AllInterfaces, so a base-interface member bound
-            // at build time that Type.GetProperty on an interface does not surface at run time.
+            // FindProperty used to walk AllInterfaces, so a base-interface member bound at build time that
+            // Type.GetProperty on an interface does not surface at run time.
             Assert.Equal(SymbolTypeResolver.PathKind.Resolved,
                 Probe.Resolver.ResolvePath(Probe.DerivedFacet, new[] { "FromDerivedInterface" }).Kind);
             Assert.Equal(SymbolTypeResolver.PathKind.Failed,

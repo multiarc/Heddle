@@ -10,7 +10,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Generator plan phase 1 WI9 (D10) — the zero-output protocol. The runtime's rule is behavioral: a directive's
+    /// The zero-output protocol. The runtime's rule is behavioral: a directive's
     /// <c>InitStart</c> returns <c>null</c>, and that is what makes the compiler drop the block. A build-time
     /// generator can only read symbols, so <c>[ZeroOutput]</c> is the declarative form of the same fact — and this
     /// conformance test is what keeps the two from drifting apart, for every built-in at once.

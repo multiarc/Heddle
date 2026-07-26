@@ -99,10 +99,9 @@ namespace Heddle.Tests
     }
 
     /// <summary>
-    /// Q8.32 subset A — the aggregate post-configuration validation pass. The per-request gauntlet answers one
-    /// entry at a time and only where a request reaches it (which, on the recommended typed entry point, is
-    /// nowhere); this pass runs the same gauntlet over every registered entry once the host has finished
-    /// configuring and reports <b>all</b> failures together.
+    /// The aggregate post-configuration validation pass. The per-request gauntlet answers one entry at a time and
+    /// only where a request reaches it; this pass runs the same gauntlet over every registered entry once the host
+    /// has finished configuring and reports <b>all</b> failures together.
     /// <para>Serialized with the other registry suites — the registry is process-global static state.</para>
     /// </summary>
     [Collection("PrecompiledRegistrySerial")]
@@ -184,9 +183,9 @@ namespace Heddle.Tests
                 report.Failures.Select(f => f.TemplateKey).ToArray());
         }
 
-        /// <summary>Q8.38's constraint, resolved in code and pinned here. Four gauntlet inputs are per-request, so a
-        /// single pass can only be complete with respect to one options shape — the report therefore names the shape
-        /// it used, and the same registry gets opposite verdicts under two shapes.</summary>
+        /// <summary>Four gauntlet inputs are per-request, so a single pass can only be complete with respect to one
+        /// options shape — the report therefore names the shape it used, and the same registry gets opposite
+        /// verdicts under two shapes.</summary>
         [Fact]
         public void ReportNamesTheOptionsItValidatedAgainst()
         {
@@ -304,7 +303,7 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>A D21 marker entry is a failure of the pass exactly as it is of the gate — it is registered,
+        /// <summary>A marker entry is a failure of the pass exactly as it is of the gate — it is registered,
         /// and it will never render precompiled. Excluding it would make the pass quieter than the truth.</summary>
         [Fact]
         public void MarkerEntriesAreReported()

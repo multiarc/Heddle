@@ -24,8 +24,6 @@ namespace Heddle.Tests
 
         private static Root Model() => new Root { Photos = "photos", Cols = 7 };
 
-        // ---- Fixtures (registered by name through the public AddExtensions seam, the established pattern) ----
-
         [Prop("columns", typeof(int), Default = 3)]
         public sealed class GridExtension : AbstractExtension
         {

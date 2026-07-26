@@ -9,17 +9,17 @@ namespace Heddle.Tests
     /// <para>Three suites assert against this one table, so the hosts are compared to each other transitively and
     /// a host that silently drops a channel turns the suite red: <c>Heddle.Tests</c> (the drain itself, the
     /// parse-channel subset, and <c>HeddleCompileResult</c>), <c>Heddle.LanguageServices.Tests</c> (the editor),
-    /// and <c>Heddle.Generator.Tests</c> (the build tier). The file is linked into the latter two, following the
-    /// <c>LineIndexVectors</c> precedent.</para>
+    /// and <c>Heddle.Generator.Tests</c> (the build tier). The file is linked into the latter two, following a
+    /// shared precedent.</para>
     /// <para>Every value here was <b>measured</b>, not derived. Templates deliberately avoid model members: a
     /// typeless editor session types the model as <c>null</c> and a runtime compile types it as
     /// <c>ExType.Dynamic</c>, so a member path would draw <c>HED0001</c> on one side only — a model-typing
     /// difference, not a drain difference, and not what this corpus is for.</para>
     /// <para><b>Not covered:</b> the <c>HED5xxx</c> declaration block (its templates need an extension assembly
-    /// each host registers differently), and the two host-policy cases D12.5 names — import origin re-anchoring
-    /// and the generator's region-fill retract filter — which are asserted in their own suites
-    /// (<c>ImportOriginTests</c>, <c>DiagnosticProjectionTests.TheIncludePredicateFiltersBeforeProjection</c>)
-    /// because neither has a cross-host counterpart to compare against.</para>
+    /// each host registers differently), and cases like import origin re-anchoring and the generator's region-fill
+    /// retract filter — which are asserted in their own suites (<c>ImportOriginTests</c>,
+    /// <c>DiagnosticProjectionTests.TheIncludePredicateFiltersBeforeProjection</c>) because neither has a cross-host
+    /// counterpart to compare against.</para>
     /// </summary>
     internal static class DiagnosticCorpusVectors
     {

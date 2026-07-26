@@ -12,8 +12,6 @@ namespace Heddle.Language {
     public class ParseContext {
         private readonly int _offset;
 
-        //internal bool DefenitionsOnly { get; set; }
-
         private readonly bool _inDefintionContext;
 
         private readonly List<HeddleToken> _tokens = new List<HeddleToken>();
@@ -81,7 +79,7 @@ namespace Heddle.Language {
 
         private static ParseContext IsolateContextFrom(ParseContext context)
         {
-            var newContext = new ParseContext(context, context._offset);// { DefenitionsOnly = context.DefenitionsOnly };
+            var newContext = new ParseContext(context, context._offset);
             newContext.IsolationOrigin = context.OriginIdentity;
             newContext.DefinitionsBlock.Positions.AddRange(context.DefinitionsBlock.Positions);
             newContext.RawOutputItems.AddRange(context.RawOutputItems);
@@ -186,8 +184,8 @@ namespace Heddle.Language {
         internal DefinitionItem CreateDefinition(HeddleParser.DefContext context, out OutputChain chain) {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
-            // Phase 7 D1/D2: <:name> / <:name :: Type> — a public region declaration. The leading DELIM is a
-            // direct child of def only in the region alternative (the <child:base> DELIM lives inside def_base).
+            // A public region declaration <:name> / <:name :: Type> has a leading DELIM as a direct child of def
+            // only in the region alternative (the <child:base> DELIM lives inside def_base).
             if (context.DELIM() != null)
                 return CreateRegionDefinition(context, out chain);
             var defBase = context.def_base();
@@ -309,10 +307,10 @@ namespace Heddle.Language {
         }
 
         /// <summary>
-        /// Phase 7 D1/D2: builds the <see cref="DefinitionItem"/> for a public region declaration
+        /// Builds the <see cref="DefinitionItem"/> for a public region declaration
         /// (<c>&lt;:name&gt;</c> / <c>&lt;:name :: Type&gt;</c>). A region carries no prop list, no base, and no
         /// default output chain; its model type is the in-header <c>def_region_type</c> or <c>object</c> when
-        /// omitted. A <c>&lt;:name&gt;</c> outside any definition body is a positioned id-less parse error (F6).
+        /// omitted. A <c>&lt;:name&gt;</c> outside any definition body is a positioned id-less parse error.
         /// </summary>
         private DefinitionItem CreateRegionDefinition(HeddleParser.DefContext context, out OutputChain chain)
         {
@@ -354,9 +352,9 @@ namespace Heddle.Language {
         }
 
         /// <summary>
-        /// Parses a definition header's prop list (phase 5). Builds the <see cref="PropDeclaration"/> list and
+        /// Parses a definition header's prop list, builds the <see cref="PropDeclaration"/> list and
         /// the slot type name, emitting the parse-time header diagnostics HED5015/HED5016/HED5017/HED5007 and
-        /// the editor tokens (D18). Base props are not flattened here — inheritance flattening is a compile-time
+        /// editor tokens. Base props are not flattened here — inheritance flattening is a compile-time
         /// concern (the layout resolver).
         /// </summary>
         private (IReadOnlyList<PropDeclaration> props, string slotTypeName) ParseDefProps(
@@ -429,7 +427,7 @@ namespace Heddle.Language {
                     defaultValue = ExpressionAstBuilder.DecodeDefaultLiteral(defaultCtx.def_literal(), this, out _);
                 }
 
-                // The reserved-name set is shared vocabulary (phase 6 D4): the same list backs PropLayout's
+                // The reserved-name set is shared vocabulary: the same list backs PropLayout's
                 // attribute-source twin and the generator's emitter twin, so a change lands in one place.
                 if (HeddleDiagnosticCatalog.PropFaults.IsReserved(name))
                 {
@@ -552,7 +550,7 @@ namespace Heddle.Language {
                 throw new TemplateParseException("Raw block is strangely null".ToError(GetAbsoluteBlockPosition(context)));
             var text = raw.GetText();
 
-            // Phase 2 (post-2.0) WI1 — the '@@' literal-@ escape: the lexer re-types the two-char '@@' as
+            // The '@@' literal-@ escape: the lexer re-types the two-char '@@' as
             // RAW (AT_ESCAPE/SUB_AT_ESCAPE); it maps to a single literal '@' collapsed by ReplaceRawOutput.
             if (text == "@@")
             {

@@ -35,8 +35,8 @@ namespace Heddle.Generator.Tests
         /// (<c>HeddleMainListener</c>), the import block's own line is widened away by <c>RemoveDefinitions</c>
         /// under <c>TrimDirectiveLines</c> — leading whitespace included — and the surviving chain's stored start
         /// now overshoots the shortened working document.</para>
-        /// <para>Before WI1 this threw <c>IndexOutOfRangeException</c> out of <c>WidenToWholeLine</c>, swallowed by
-        /// the generator's per-template <c>catch (Exception)</c> into a silent loss of precompilation. After it,
+        /// <para>Previously threw <c>IndexOutOfRangeException</c> out of <c>WidenToWholeLine</c>, swallowed by
+        /// the generator's per-template <c>catch (Exception)</c> into a silent loss of precompilation. Now
         /// the generator clamps exactly as the runtime does and the working document is the runtime's.</para>
         /// </summary>
         [Theory]
@@ -57,7 +57,7 @@ namespace Heddle.Generator.Tests
         public void ScopeChannelNonRoleExtensionClassifiesParticipantAndDisarmsTheStrip()
         {
             // if → participant → elif: the participant disarms, so no gap is collected across it and the document
-            // is untouched — byte-identical to the pre-WI4 behavior, where the same extension fell into `default:`.
+            // is untouched.
             var parse = new ParseContext();
             AddChain(parse, "if", 0, 2);
             AddChain(parse, "part", 4, 2);
@@ -125,7 +125,7 @@ namespace Heddle.Generator.Tests
                 .GetMethod("IsDirectiveName", BindingFlags.NonPublic | BindingFlags.Static);
             Assert.NotNull(isDirectiveName);
 
-            // The mirror in Heddle.Tests.ZeroOutputLockstepTests, restated: those four names and nothing else.
+            // Verifies these four names and nothing else are directives: the complete lockstep set.
             foreach (var name in new[] { "model", "using", "import", "profile" })
                 Assert.True((bool) isDirectiveName.Invoke(null, new object[] { name }), name);
             foreach (var name in new[] { "if", "for", "list", "out", "partial", "raw", "html", "js", "attr" })

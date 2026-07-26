@@ -47,8 +47,6 @@ namespace Heddle.Tests
             PrecompiledTemplates.ResetForTests();
         }
 
-        // ---- Fixture plumbing --------------------------------------------------------------------------------
-
         private sealed class NameFakeStrategy : IProcessStrategy
         {
             public string Execute(in Scope scope) => string.Empty;
@@ -114,8 +112,6 @@ namespace Heddle.Tests
                 ExpressionMode = ExpressionMode.Native,
                 TrimDirectiveLines = false
             };
-
-        // ---- The behaviour Q8.30 asks for ------------------------------------------------------------------
 
         /// <summary>
         /// <para><b>The assertion the ruling asked for.</b> A template registered under a name resolves by that name,
@@ -365,27 +361,20 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// <para><b>Q8.32(b): the registration path has no silent drop left.</b> A <c>RegisteredName</c> the shared
-        /// key rule refuses — a <c>..</c> segment, a trailing separator, whitespace — used to be <c>continue</c>d past
-        /// with no event at all: the one place in registration where a manifest row was discarded and nothing was
-        /// said, while both <em>collision</em> arms already reported <c>HED7104</c>. The generator cannot emit such a
-        /// name (a name that fails normalization is <c>HED7004</c> at build time and never reaches a manifest), so the
-        /// population is exactly the manifests no build tier vetted — hand-written, third-party, or emitted by a tool
-        /// that skipped the rule. That is the population most in need of being told.</para>
-        /// <para>It reports through the same channel and the same id as a collision, deliberately: from the host's
-        /// side the outcome is identical — a name it expected to resolve does not, and the template is still reachable
-        /// by its key — so a second id would split one situation across two rows of the registry. The
-        /// <em>sub-question (a)</em> half of Q8.32, a per-request gauntlet arm for <c>RegisteredName</c>, was rejected
-        /// as over-engineering and is deliberately absent: a name resolves to an entry whose every row the gauntlet
-        /// already re-checks, so re-validating the name would re-validate nothing.</para>
-        /// <para><b>One mutation survives here, and it is recorded rather than papered over.</b> Indexing the refused
-        /// spelling anyway — <c>byName[template.RegisteredName] = template</c> alongside the report — passes every
-        /// test, and provably must: <see cref="PrecompiledTemplates.TryGet"/> normalizes before it consults the name
-        /// index, so a spelling outside the range of <c>TryNormalize</c> is unreachable by any lookup; the eviction
-        /// and arbitration arms compare against <em>normalized</em> keys and names only; and
-        /// <see cref="PrecompiledTemplates.Entries"/> reads the key index. The mutant is therefore extensionally
-        /// equal to the code — unreachable state, not a defect — and the observable half of this arm is the report,
-        /// which two other mutants (dropping the event, dropping the requesting key from its detail) do kill.</para>
+        /// <para>The registration path has no silent drop. A <c>RegisteredName</c> that fails the shared key rule —
+        /// containing <c>..</c>, a trailing separator, or whitespace — is now reported. The generator cannot emit such
+        /// a name (a name that fails normalization is <c>HED7004</c> at build time and never reaches a manifest), so
+        /// the population is hand-written, third-party, or emitted by a tool that skipped the rule. That is the
+        /// population most in need of being told.</para>
+        /// <para>It reports through the same channel and the same id as a collision: from the host's side the outcome
+        /// is identical — a name expected to resolve does not, yet the template is still reachable by its key. A name
+        /// resolves to an entry whose every row the gauntlet already re-checks, so per-request re-validation of the
+        /// name would re-validate nothing.</para>
+        /// <para>One mutation survives: indexing the refused spelling alongside the report passes every test because
+        /// <see cref="PrecompiledTemplates.TryGet"/> normalizes before consulting the name index, so a spelling outside
+        /// <c>TryNormalize</c>'s range is unreachable by any lookup; the eviction and arbitration arms compare against
+        /// normalized keys and names only; and <see cref="PrecompiledTemplates.Entries"/> reads the key index. The
+        /// mutant is extensionally equal — unreachable state, not defect — and the observable half is the report.</para>
         /// </summary>
         [Theory]
         [InlineData("../escape")]
@@ -442,9 +431,9 @@ namespace Heddle.Tests
         /// <para><b>The report is asserted, not just the resolution</b>, and that distinction was found by mutation
         /// testing. Checking a name against the pre-registration keys instead of this manifest's staged ones
         /// <em>survived</em> while only the resolution was asserted: the name went into the name index in violation
-        /// of the disjointness invariant, and the lookup still returned the key owner because
-        /// <see cref="PrecompiledTemplates.TryGet"/> consults keys first. Two redundant guards masking each other is
-        /// exactly the shape a mutation survives, so the invariant is now pinned where it is actually established —
+        /// of the disjointness invariant, yet the lookup still returned the key owner because
+        /// <see cref="PrecompiledTemplates.TryGet"/> consults keys first. Two redundant guards masking each other
+        /// is exactly the shape a mutation survives, so the invariant is now pinned where it is established —
         /// the name is refused, and the host is told.</para>
         /// </summary>
         [Theory]

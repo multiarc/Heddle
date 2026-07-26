@@ -6,9 +6,9 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 composition coverage: the shipped families nested inside one another — branches inside list element
-    /// bodies (the list binding must carry <c>needsLocals</c> when the element body hosts elif/else participants),
-    /// branches under a dynamic root, and nested lists. All differential-gated against the runtime backend.
+    /// Composition coverage: the shipped families nested inside one another — branches inside list element bodies
+    /// (the list binding must carry <c>needsLocals</c> when the element body hosts elif/else participants), branches
+    /// under a dynamic root, and nested lists. All differential-gated against the runtime backend.
     /// </summary>
     public class CompositionTests
     {

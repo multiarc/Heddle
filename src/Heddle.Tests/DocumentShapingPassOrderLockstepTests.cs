@@ -51,15 +51,12 @@ namespace Heddle.Tests
         public void RuntimeDriverInvokesTheSharedPassesInContractOrder()
         {
             var root = RepoRoot();
-            // CompileBody's own body, plus ProcessBranchSets (its step-5 wrapper, which hosts the strip call and
-            // the runtime-only diagnostics observer).
             var compileBody = MethodBody(Path.Combine(root, "Heddle", "Runtime", "HeddleCompiler.cs"),
                 "private static RuntimeDocument CompileBody(", "private enum OrphanState");
             var processBranchSets = MethodBody(Path.Combine(root, "Heddle", "Runtime", "HeddleCompiler.cs"),
                 "private static void ProcessBranchSets(", "private sealed class BranchSetDiagnostics");
 
             var calls = new List<string>(SharedPassCalls(compileBody));
-            // step 5 sits between ReplaceRawOutput and the chain-compile loop's RemoveEmptyItem
             calls.Insert(calls.IndexOf("RemoveEmptyItem"), SharedPassCalls(processBranchSets)[0]);
 
             Assert.Equal(ExpectedOrder, calls);
@@ -76,9 +73,8 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// <para>Pin 10's missing half (added by the phase-2 restoration audit, 2026-07-26). WI8's success criterion
-        /// is that the empty-default-chain pin "turns red if <b>either</b> side reintroduces the skip" (D10/Q2.1),
-        /// but the only pin that landed —
+        /// <para>Pin 10's missing half. The success criterion is that the empty-default-chain pin "turns red if
+        /// <b>either</b> side reintroduces the skip", but the only pin that landed —
         /// <c>Heddle.Generator.Tests.DocumentShaperAdapterTests.EmptyDefaultChainIsModelledAsAZeroLengthElementAtDocumentEnd</c>
         /// — drives the generator's shaper only, so a runtime-side regression was invisible to it.</para>
         /// <para>The runtime half is not reachable as a machine-level vector: <c>CompileBody</c>'s default-chain
@@ -104,8 +100,8 @@ namespace Heddle.Tests
                 Assert.Contains(", 0)", pair.Item2);
                 Assert.Matches(@"new BlockPosition\(\s*\w+(\.\w+)*(\.Length)?,\s*0\s*\)", pair.Item2);
 
-                // ...and no reintroduced skip. `Chain == null || Chain.Count == 0` on the default-chain loop is
-                // exactly the divergence Q2.1 ruled out; either side growing it back is red here.
+                // ...and no reintroduced skip. `Chain == null || Chain.Count == 0` on the default-chain loop must
+                // not reappear; either side growing it back is red here.
                 Assert.DoesNotMatch(@"Chain\s*==\s*null", pair.Item2);
                 Assert.DoesNotMatch(@"Chain\.Count\s*==\s*0", pair.Item2);
                 Assert.DoesNotMatch(@"Count\s*==\s*0", pair.Item2);

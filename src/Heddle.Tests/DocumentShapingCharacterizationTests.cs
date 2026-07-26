@@ -17,8 +17,6 @@ namespace Heddle.Tests
     /// </summary>
     public class DocumentShapingCharacterizationTests
     {
-        // ---- vector plumbing ----
-
         internal static ParseContext Ctx(
             (int start, int length)[] chains = null,
             (int start, int length)[] definitions = null,
@@ -46,8 +44,6 @@ namespace Heddle.Tests
                + " defs=[" + Positions(context.DefinitionsBlock.Positions) + "]"
                + " raws=[" + Positions(context.RawOutputItems.Select(r => r.BlockPosition)) + "]";
 
-        // ---- pin 1: ShiftBySkippedTokens, three-way over all three lists ----
-
         [Fact]
         public void Pin1_ShiftBySkippedTokens_ThreeWayOverEveryList()
         {
@@ -64,12 +60,11 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// Pin 1, boundary rows (added by the phase-2 restoration audit, 2026-07-26). The captured vector above
-        /// exercises the three-way classification but never at its <em>boundaries</em>: no block in it starts
-        /// exactly at a skipped token's start, ends exactly at its end, or ends exactly at its start. Mutation
-        /// testing confirmed six single-comparison mutants of the classification survived it
-        /// (<c>chainBlockStart &lt;= startToSkip</c> → <c>&lt;</c>, <c>chainBlockEnd &gt;= endToSkip</c> →
-        /// <c>&gt;</c>, both again for the definitions list, the raw list's <c>&gt;</c>, and the chain
+        /// Pin 1, boundary rows. The captured vector above exercises the three-way classification but never at its
+        /// <em>boundaries</em>: no block in it starts exactly at a skipped token's start, ends exactly at its end,
+        /// or ends exactly at its start. Mutation testing confirmed six single-comparison mutants of the
+        /// classification survived it (<c>chainBlockStart &lt;= startToSkip</c> → <c>&lt;</c>, <c>chainBlockEnd &gt;=
+        /// endToSkip</c> → <c>&gt;</c>, both again for the definitions list, the raw list's <c>&gt;</c>, and the chain
         /// after-shift <c>&gt;</c>). One row per boundary, each derived from the runtime body's own predicates.
         /// </summary>
         [Theory]
@@ -102,8 +97,6 @@ namespace Heddle.Tests
             Assert.Equal(expected, Snapshot(context, ""));
         }
 
-        // ---- pin 2: TrimHiddenRemnantLines ----
-
         [Theory]
         // whole-line comment remnant — removed
         [InlineData("A\n\nB\n", new[] { 2, 5 }, new[] { 0, 1, 3, 1 }, new int[0],
@@ -114,14 +107,14 @@ namespace Heddle.Tests
         // two hidden tokens on one line — removed once via the already-removed-span skip
         [InlineData("A\n\nB\n", new[] { 2, 3, 5, 2 }, new[] { 0, 1 }, new int[0],
             "doc=[A\\nB\\n] chains=[0+1] defs=[] raws=[]")]
-        // remnant inside a definition block — the ShiftListsAfter enclosing case (the documented historical bug)
+        // remnant inside a definition block — the ShiftListsAfter enclosing case (a historical bug)
         [InlineData("A\n  \nB\n", new[] { 2, 4 }, new[] { 0, 1 }, new[] { 0, 6 },
             "doc=[A\\nB\\n] chains=[0+1] defs=[0+3] raws=[]")]
-        // Added by the restoration audit (2026-07-26): the already-removed-span guard, actually constrained. The
-        // row above ("two hidden tokens on one line") does NOT constrain it — after the first removal the second
-        // probe lands on a line that retains content, so it declines on its own and deleting the guard changes
-        // nothing (mutation-verified). Here BOTH tokens map to clean start 2 on a run of THREE blank lines, so
-        // without the guard the second probe would eat a second line.
+        // The already-removed-span guard, actually constrained. The row above ("two hidden tokens on one line")
+        // does NOT constrain it — after the first removal the second probe lands on a line that retains content,
+        // so it declines on its own and deleting the guard changes nothing (mutation-verified). Here BOTH tokens
+        // map to clean start 2 on a run of THREE blank lines, so without the guard the second probe would eat a
+        // second line.
         [InlineData("A\n\n\nB\n", new[] { 2, 3, 5, 2 }, new[] { 0, 1 }, new int[0],
             "doc=[A\\n\\nB\\n] chains=[0+1] defs=[] raws=[]")]
         public void Pin2_TrimHiddenRemnantLines(string document, int[] skipped, int[] chains, int[] definitions,
@@ -136,11 +129,11 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// Pin 2's <c>ShiftListsAfter</c> boundaries (added by the restoration audit, 2026-07-26). The row above
-        /// pins the definitions-list enclosing arm — deleting that arm is red, which is the documented historical
-        /// bug — but nothing pinned the <em>chain</em> list's enclosing arm or the exact boundary comparisons, and
-        /// three mutants of them survived. Here the chain spans the removed remnant span exactly (both boundaries
-        /// at once) and the two raw items straddle the raw list's <c>end &gt; removedStart</c> boundary.
+        /// Pin 2's <c>ShiftListsAfter</c> boundaries. The row above pins the definitions-list enclosing arm —
+        /// deleting that arm is red, which is a documented historical bug — but nothing pinned the <em>chain</em>
+        /// list's enclosing arm or the exact boundary comparisons, and three mutants of them survived. Here the
+        /// chain spans the removed remnant span exactly (both boundaries at once) and the two raw items straddle
+        /// the raw list's <c>end &gt; removedStart</c> boundary.
         /// </summary>
         [Fact]
         public void Pin2_ShiftListsAfter_EnclosingAndShiftBoundaries()
@@ -154,8 +147,6 @@ namespace Heddle.Tests
             // and loses the whole seed; the raw ending exactly at the removal's start is wholly before.
             Assert.Equal("doc=[A\\nB\\n] chains=[2+0] defs=[] raws=[1+2,0+2]", Snapshot(context, working));
         }
-
-        // ---- pin 3: the WidenToWholeLine vector table (the WI1 extensional-equality pin) ----
 
         [Theory]
         [InlineData("  ab  \nX", 2, 2, 0, 7)]        // in-bounds whole line, LF terminator
@@ -179,8 +170,6 @@ namespace Heddle.Tests
             Assert.Equal(expectedStart, widened.StartIndex);
             Assert.Equal(expectedLength, widened.Length);
         }
-
-        // ---- pin 4: RemoveDefinitions ----
 
         [Theory]
         // trimming off — exactly the block
@@ -206,8 +195,6 @@ namespace Heddle.Tests
             Assert.Equal(expected, Snapshot(context, working));
         }
 
-        // ---- pin 5: ReplaceRawOutput ----
-
         [Theory]
         // replacement shorter than the span; the chain exactly at the splice start is NOT shifted (`>`, not `>=`)
         [InlineData("AA[[RAW]]BB", 2, 7, "x", new[] { 2, 7, 9, 2 }, "doc=[AAxBB] chains=[2+7,3+2] defs=[] raws=[2+7]")]
@@ -229,8 +216,6 @@ namespace Heddle.Tests
             Assert.Equal(expected, Snapshot(context, working));
         }
 
-        // ---- pin 6: RemoveEmptyItem ----
-
         [Theory]
         [InlineData("  @m()  \nTail\n", 2, 5, new[] { 2, 5, 9, 4 }, false,
             "doc=[   \\nTail\\n] chains=[2+5,4+4] defs=[] raws=[]")]
@@ -248,8 +233,6 @@ namespace Heddle.Tests
 
             Assert.Equal(expected, Snapshot(context, working));
         }
-
-        // ---- pin 7: the branch-set strip machine ----
 
         [Theory]
         // opener → continuation → terminal: two gaps, applied right-to-left
@@ -302,11 +285,11 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// <para>Pin 7, the structural half (added by the restoration audit, 2026-07-26). The strip vectors above
-        /// cannot see the divergence pin 7 exists for: the generator's pre-phase private enum had <b>four</b> kinds
-        /// to the runtime's five, so a <c>[ScopeChannel]</c> non-role extension fell into <c>default:</c> instead of
-        /// <c>Participant</c> — and since both arms disarm, no assertion over the working document can tell them
-        /// apart. It is checkable only as shape: the enum has five kinds, defined once, here.</para>
+        /// <para>Pin 7, the structural half. The strip vectors above cannot see the divergence pin 7 exists for:
+        /// the generator's pre-refactor private enum had <b>four</b> kinds to the runtime's five, so a
+        /// <c>[ScopeChannel]</c> non-role extension fell into <c>default:</c> instead of <c>Participant</c> —
+        /// and since both arms disarm, no assertion over the working document can tell them apart. It is checkable
+        /// only as shape: the enum has five kinds, defined once, here.</para>
         /// <para>Byte-equality of <c>Participant</c> and <c>Other</c> inside the strip machine is therefore the
         /// honest limit of the strip-level pin; what the collapse actually cost was the runtime's orphan state
         /// (<c>Participant</c> → <c>Unknown</c>, <c>Other</c> → unchanged), which reaches the drivers only through
@@ -322,12 +305,11 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// Pin 7, the observer contract (added by the restoration audit, 2026-07-26). Every runtime HED300x
-        /// diagnostic was re-hosted onto this event stream, and its <em>order</em> within one block — HED3005
-        /// (classified) → HED3001 (gap) → HED3002/3/4 (completed) — is the reason the interface has three events
-        /// rather than the plan's two. Nothing pinned that at machine granularity; the branch suites pin it only
-        /// through the diagnostics it produces. This asserts the stream itself, including that a
-        /// <c>[ScopeChannel]</c> non-role chain is reported as <c>Participant</c> and not <c>Other</c>.
+        /// Pin 7, the observer contract. Every runtime HED300x diagnostic was re-hosted onto this event stream,
+        /// and its <em>order</em> within one block — HED3005 (classified) → HED3001 (gap) → HED3002/3/4 (completed)
+        /// — is the reason the interface has three events rather than two. Nothing pinned that at machine granularity;
+        /// the branch suites pin it only through the diagnostics it produces. This asserts the stream itself, including
+        /// that a <c>[ScopeChannel]</c> non-role chain is reported as <c>Participant</c> and not <c>Other</c>.
         /// </summary>
         [Theory]
         // opener → continuation → terminal: classified before gap before completed, twice
@@ -383,8 +365,8 @@ namespace Heddle.Tests
             context.OutputChains.Add(chain);
         }
 
-        /// <summary>The vector table's stand-in for each backend's real classifier: the same rule shape (R8
-        /// definition-first guard, then role, then <c>[ScopeChannel]</c> → Participant).</summary>
+        /// <summary>The vector table's stand-in for each backend's real classifier: the same rule shape
+        /// (definition-first guard, then role, then <c>[ScopeChannel]</c> → Participant).</summary>
         internal static DocumentShaping.BranchKind Classify(OutputChain chain, HashSet<string> definitions)
         {
             var name = chain.Chain != null && chain.Chain.Count > 0 ? chain.Chain[0].ExtensionName : null;
@@ -399,8 +381,6 @@ namespace Heddle.Tests
                 default: return DocumentShaping.BranchKind.Other;
             }
         }
-
-        // ---- pin 8: SlicePieces ----
 
         [Theory]
         // element at offset 0 — no leading piece; trailing remainder emitted

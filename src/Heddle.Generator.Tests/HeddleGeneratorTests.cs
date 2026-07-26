@@ -6,10 +6,9 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Phase 7 WI2/WI3 gate: the incremental generator discovers <c>.heddle</c> templates, parses them through the
-    /// shared front end compiled into the analyzer (D4), surfaces template errors at their <c>.heddle</c> span
-    /// (build-time validation), reads the compilation-wide options (D14), and emits the discovery attribute + typed
-    /// manifest (D6). Driven through <see cref="Microsoft.CodeAnalysis.CSharp.CSharpGeneratorDriver"/> (D19).
+    /// The incremental generator discovers <c>.heddle</c> templates, parses them through the shared front end
+    /// compiled into the analyzer, surfaces template errors at their <c>.heddle</c> span (build-time validation),
+    /// reads the compilation-wide options, and emits the discovery attribute + typed manifest.
     /// </summary>
     public class HeddleGeneratorTests
     {
@@ -58,7 +57,7 @@ namespace Heddle.Generator.Tests
             var error = run.GeneratorDiagnostics.FirstOrDefault(d => d.Severity == DiagnosticSeverity.Error);
             Assert.NotNull(error);
             Assert.Contains("Views/Dup.heddle", error.Location.GetLineSpan().Path);
-            // A forwarded front-end error carrying no DiagnosticId is wrapped as HED7012 (D13).
+            // A forwarded front-end error carrying no DiagnosticId is wrapped as HED7012.
             Assert.Equal("HED7012", error.Id);
         }
 
@@ -75,9 +74,7 @@ namespace Heddle.Generator.Tests
             Assert.DoesNotContain(run.GeneratorDiagnostics, d => d.Severity == DiagnosticSeverity.Error);
         }
 
-        [Fact] // Both-tier parity: an @import() template surfaces the HED4003 removal ERROR at build time,
-               // forwarded from the shared parse layer, so the precompiled tier carries the identical
-               // id/severity/message/position as the dynamic tier.
+        [Fact]
         public void LegacyImportEmitsHed4003AtTheCallSite()
         {
             var run = GeneratorHarness.Run(new[]
@@ -94,8 +91,7 @@ namespace Heddle.Generator.Tests
             Assert.Equal(0, single.Location.GetLineSpan().StartLinePosition.Line);
         }
 
-        [Fact] // Nested-shape parity: an @import() nested in an @if body still emits a single HED4003 Error — pins the
-               // call shape the old generator's leftmost/top-level OutputChains scan structurally missed.
+        [Fact]
         public void LegacyImportNestedInIfEmitsHed4003()
         {
             var run = GeneratorHarness.Run(new[]
@@ -108,7 +104,7 @@ namespace Heddle.Generator.Tests
             Assert.Contains("has been removed", single.GetMessage());
         }
 
-        [Fact] // B3-R3: @<< composition import is spliced by the ImportReader and never raises HED4003.
+        [Fact]
         public void ComposeImportEmitsNoHed4003InGenerator()
         {
             var run = GeneratorHarness.Run(new[]
@@ -149,7 +145,7 @@ namespace Heddle.Generator.Tests
         [Fact]
         public void DistinctKeysSanitizingToOneIdentifierReportHed7010()
         {
-            // "a.b.heddle" -> "A_b" and "a-b.heddle" -> "A_b" collide on the entry-class identifier (D11).
+            // "a.b.heddle" -> "A_b" and "a-b.heddle" -> "A_b" collide on the entry-class identifier.
             var run = GeneratorHarness.Run(new[]
             {
                 ("a.b.heddle", "one\n"),
@@ -252,8 +248,8 @@ namespace Heddle.Generator.Tests
         [Fact]
         public void UnresolvableModelTypeReportsHed7007()
         {
-            // Milestone 2 (D3): a declared @model type that resolves as no symbol and matches no type name anywhere
-            // in the reference closure is a genuine unresolvable symbol.
+            // A declared @model type that resolves as no symbol and matches no type name anywhere in the reference
+            // closure is a genuine unresolvable symbol.
             var run = GeneratorHarness.Run(new[]
             {
                 ("Views/Home.heddle", "@model(){{Totally.Bogus.NonexistentModelZzz}}@\\\nHi @(this)\n")
@@ -324,8 +320,8 @@ namespace Heddle.Generator.Tests
         [Fact]
         public void GeneratorAssemblyDoesNotReferenceRuntimeHeddle()
         {
-            // D4/D12 packaging constraint: the generator shares front-end SOURCE and references the ANTLR
-            // Heddle.Language, but never the runtime Heddle assembly.
+            // The generator shares front-end SOURCE and references the ANTLR Heddle.Language, but never the runtime
+            // Heddle assembly.
             var referenced = typeof(HeddleTemplateGenerator).Assembly.GetReferencedAssemblies()
                 .Select(a => a.Name).ToList();
             Assert.DoesNotContain("Heddle", referenced);

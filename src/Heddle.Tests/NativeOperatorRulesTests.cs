@@ -27,7 +27,7 @@ namespace Heddle.Tests
     }
 
     /// <summary>
-    /// Phase 4 WI5 (D6 / 04 F2) — the operator classification table.
+    /// The operator classification table.
     /// <para>Two guards. The <b>structural</b> one enumerates <see cref="ExprOperator"/> and demands a verdict for
     /// every member over the category cross-product, so a new operator cannot ship without a row. The
     /// <b>lockstep sweep</b> then compiles the real thing: for every operator over every operand pair in the
@@ -70,8 +70,6 @@ namespace Heddle.Tests
             yield return OperandKind.Of(OperandCategory.Reference);
             yield return OperandKind.Of(OperandCategory.Other);
         }
-
-        // ---- Structural completeness -----------------------------------------------------------------------
 
         [Fact]
         public void EveryOperatorHasAVerdictForEveryOperandPair()
@@ -238,8 +236,6 @@ namespace Heddle.Tests
             Assert.Equal(OperatorVerdict.NotDefined, NativeOperatorRules.Classify(ExprOperator.Add, u64, i32));
             Assert.Equal(OperatorVerdict.NotDefined, NativeOperatorRules.Classify(ExprOperator.LessThan, dec, dbl));
         }
-
-        // ---- The lockstep sweep: table verdict ↔ what the runtime compiler actually does -------------------
 
         [Fact]
         public void BinaryVerdictsPredictTheCompilersOutcome()

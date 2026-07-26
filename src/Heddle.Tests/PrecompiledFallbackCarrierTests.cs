@@ -114,7 +114,7 @@ namespace Heddle.Tests
         /// 2.0 host rather than a null at run time: no <c>Key</c> member, and no public constructor that could take a
         /// string meaning either thing. Asserted by reflection because the point is the <em>absence</em> of a member,
         /// which no ordinary call site can express — and because a well-meaning re-addition of a convenience
-        /// <c>Key</c> would re-create the exact ambiguity Q8.33 removed.</summary>
+        /// <c>Key</c> would re-create an ambiguous union between template keys and assembly names.</summary>
         [Fact]
         public void TheUnionKeyCarrierIsGoneFromTheSurface()
         {

@@ -8,7 +8,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Resolver cache identity under output profiles (phase 2 D8, X08): one resolver serves the same file
+    /// Resolver cache identity under output profiles: one resolver serves the same file
     /// under both profiles from two profile-suffixed cache entries (no collision), repeat requests hit the
     /// cache, the additive three-parameter constructor supplies a default profile, per-call context options
     /// take precedence over that default, and <c>RemoveFromCache</c> still evicts by instance.
@@ -93,7 +93,6 @@ namespace Heddle.Tests
         {
             HeddleTemplate.Configure(typeof(TemplateResolverProfileTests).GetTypeInfo().Assembly);
 
-            // Resolver default is Html, but the per-call context asks for Text — the context wins.
             var resolver = new TemplateResolver(Root, false, OutputProfile.Html);
             var template = resolver.GetTemplate("profile-flagship.heddle", "", out _, Context(OutputProfile.Text), TemplatePathType.None);
             Assert.Contains("<script>alert(1)</script>", template.Generate(Model()));

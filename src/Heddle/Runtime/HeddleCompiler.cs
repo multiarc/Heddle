@@ -1210,15 +1210,15 @@ namespace Heddle.Runtime
                     bodyFills = BuildRegionFillScope(definition, extensionItem, compileScope);
                 }
 
-                // Caller-content compile: model type is the slot type in slot mode (D11), else the positional
-                // model type; the enclosing prop layout/slot type stay active (D12 — caller content is lexical).
+                // Caller-content compile: model type is the slot type in slot mode, else the positional model type;
+                // the enclosing prop layout/slot type stay active (caller content is lexical).
                 var callerModelType = slotType ?? dataType;
                 returnTypeChainedPrevious = InitializeTemplate(extension, extensionItem.ParameterTemplate,
                     callerModelType, returnTypeChainedPrevious, compileScope, parseContext, extensionItem);
 
-                // Def-body compile under this definition's own layout/slot type (D12 save/set/restore). Phase 7:
-                // a region body keeps the ENCLOSING component's prop layout (D6 — a region declares no props; it
-                // borrows the component's), and the fill scope rides the same save/set/restore block (D4 step 2).
+                // Def-body compile under this definition's own layout/slot type (save/set/restore):
+                // a region body keeps the ENCLOSING component's prop layout (a region declares no props; it
+                // borrows the component's), and the fill scope rides the same save/set/restore block.
                 var savedLayout = compileContext.ActivePropLayout;
                 var savedSlot = compileContext.SlotParameterType;
                 var savedFills = compileContext.RegionFillScope;
@@ -1266,10 +1266,10 @@ namespace Heddle.Runtime
                 returnTypeChainedPrevious = InitializeTemplate(extension, extensionItem.ParameterTemplate, dataType,
                     returnTypeChainedPrevious, compileScope, parseContext, extensionItem);
 
-                // Phase 8 (D4/WI4): a parameter-declaring extension binds its [Prop] layout and is wrapped in the
+                // A parameter-declaring extension binds its [Prop] layout and is wrapped in the
                 // parameter carrier. The wrap happens AFTER InitializeTemplate so the render type
                 // ([EncodeOutput]/[NotEncode]) and InitStart land on the INNER extension — the carrier carries
-                // neither attribute (D4 carrier-transparency, security-sensitive). Defaults are installed even for
+                // neither attribute (carrier-transparency, security-sensitive). Defaults are installed even for
                 // an argument-less call (the layout is bound whenever non-empty, exactly as definitions bind).
                 if (PropLayout.DeclaresExtensionParameters(templateType))
                 {
@@ -1292,9 +1292,9 @@ namespace Heddle.Runtime
         }
 
         /// <summary>
-        /// Phase 8 (D5): resolves (and caches, per extension <see cref="Type"/> per compile) the [Prop] layout of a
+        /// Resolves (and caches, per extension <see cref="Type"/> per compile) the [Prop] layout of a
         /// parameter-declaring extension. The declaration-side diagnostics
-        /// (HED5007/HED5008/HED5009/HED5010/HED5015) are therefore emitted once, positioned at the FIRST call site
+        /// (HED5007/HED5008/HED5009/HED5010/HED5015) are emitted once, positioned at the FIRST call site
         /// of that type in the compile — a representative position (declaration faults are per-type, not per-call),
         /// exactly as a definition's HED5009/HED5010 surface once through <see cref="ResolveLayoutCached"/>.
         /// </summary>
@@ -1314,7 +1314,7 @@ namespace Heddle.Runtime
         }
 
         /// <summary>
-        /// Resolves (and caches, D6) the prop layout of <paramref name="definition"/>. Keyed by a stable
+        /// Resolves (and caches) the prop layout of <paramref name="definition"/>. Keyed by a stable
         /// definition identity so two call sites of one definition share the layout instance across the isolated
         /// contexts the parser produces per body.
         /// </summary>
@@ -1332,7 +1332,7 @@ namespace Heddle.Runtime
         }
 
         /// <summary>
-        /// Phase 7 D3: resolves (and caches) the named-region table of <paramref name="definition"/>, keyed by the
+        /// Resolves (and caches) the named-region table of <paramref name="definition"/>, keyed by the
         /// same stable name+position identity <see cref="ResolveLayoutCached"/> uses for props.
         /// </summary>
         private static RegionLayout ResolveRegionLayoutCached(DefinitionItem definition, CompileScope compileScope)
@@ -1349,12 +1349,12 @@ namespace Heddle.Runtime
         }
 
         /// <summary>
-        /// Phase 7 D4/D5/D10 — the call-site fill step. Matches the caller content's captured
+        /// The call-site fill step. Matches the caller content's captured
         /// <see cref="RegionFillCandidate"/>s (origin identity = the caller-content parse context, stable across
         /// isolation copies) against the callee's region table:
         /// a PUBLIC match retracts the parse-emitted base-not-found error and materializes the fill; a PRIVATE
         /// match retracts and raises HED5019 (once per candidate); a candidate matching NO region keeps its
-        /// already-emitted error — byte-identical to today (D5, additivity). Returns <c>null</c> when the call
+        /// already-emitted error — byte-identical (additivity). Returns <c>null</c> when the call
         /// site carries no matched fills.
         /// </summary>
         private static RegionFillScope BuildRegionFillScope(DefinitionItem definition, OutputItem extensionItem,
@@ -1370,9 +1370,9 @@ namespace Heddle.Runtime
             Dictionary<string, DefinitionItem> fills = null;
             RegionLayout layout = null;
 
-            // Generator plan phase 2 D7: the four-step matching rule is shared (RegionFillResolver); only the
-            // table and the reactions are runtime-specific. The layout stays lazily resolved — the delegate runs
-            // only for candidates the shared rule lets past the origin filter, exactly as the inline loop did.
+            // The four-step matching rule is shared (RegionFillResolver); only the table and the reactions are
+            // runtime-specific. The layout stays lazily resolved — the delegate runs only for candidates the shared
+            // rule lets past the origin filter, exactly as the inline loop did.
             RegionFillResolver.Resolve(candidates, callerContext.OriginIdentity,
                 (string name, out bool isPublic) =>
                 {
@@ -1420,7 +1420,7 @@ namespace Heddle.Runtime
         }
 
         /// <summary>
-        /// The D5 retract: removes the candidate's captured base-not-found error OBJECT from BOTH downstream
+        /// Removes the candidate's captured base-not-found error OBJECT from BOTH downstream
         /// lists — the runtime-authoritative <c>CompileContext.CompileErrors</c> (the result reads only this) and
         /// the shared parse-side <c>ParseContext.Errors</c> (the LSP union reference-dedups over it). A
         /// parse-list-only removal would be inert: <c>DocumentParser.CopyErrorsTo</c> copied the same reference
@@ -1432,11 +1432,10 @@ namespace Heddle.Runtime
             candidate.Origin.Errors.Remove(candidate.Error);
         }
 
-        /// <summary>Resolves the slot parameter type (D3), inheriting the first declared <c>out::</c> down the
+        /// <summary>Resolves the slot parameter type, inheriting the first declared <c>out::</c> down the
         /// base chain; HED5010 (slot form) when unresolvable.</summary>
         private static ExType ResolveSlotType(DefinitionItem definition, CompileScope compileScope)
         {
-            // Phase 1 D6: the base-chain walk is the shared SlotRules rule the emitter's two copies now call too.
             var slotName = SlotRules.SlotTypeName(definition);
             if (slotName == null)
                 return null;
@@ -1458,15 +1457,13 @@ namespace Heddle.Runtime
         }
 
         /// <summary>
-        /// Binds a call site's named arguments against the layout (D10): builds the frozen prototype (defaults +
+        /// Binds a call site's named arguments against <paramref name="layout"/>: builds the frozen prototype (defaults +
         /// converted constant arguments) and the dynamic slot plan, emitting HED5001/HED5003/HED5004 per argument
         /// and HED5002 for any unbound required slot. Argument values are native expressions compiled in the
-        /// caller's context (D8 — evaluated against <c>scope.Parent()</c> at bind).
-        /// </summary>
-        /// <summary>Binds a call site's named arguments against <paramref name="layout"/> (phase 5 D8 / phase 8 D4).
+        /// caller's context (evaluated against <c>scope.Parent()</c> at bind).
         /// <paramref name="ownerDisplay"/> is the complete owner noun phrase — <c>definition '&lt;name&gt;'</c> or
-        /// <c>extension '&lt;name&gt;'</c> — interpolated verbatim into the HED5001/HED5002/HED5003 messages (the
-        /// definition-tier text is byte-identical to the pre-phase-8 wording).</summary>
+        /// <c>extension '&lt;name&gt;'</c> — interpolated verbatim into the HED5001/HED5002/HED5003 messages.
+        /// </summary>
         private static PropsBinder BindProps(PropLayout layout, string ownerDisplay, OutputItem extensionItem,
             CompileScope compileScope, ParseContext parseContext)
         {
@@ -1637,7 +1634,7 @@ namespace Heddle.Runtime
         {
             modelType ??= typeof(object);
             chainedType ??= typeof(object);
-            // Phase 1 D11: the truth table is the shared RenderTypeRules.Derive — the emitter's
+            // The truth table is the shared RenderTypeRules.Derive — the emitter's
             // DerivedRenderTypeLiteral evaluates the same function over the symbol-side flags.
             var extensionType = extension.GetType();
             RenderType directRender = RenderTypeRules.Derive(
