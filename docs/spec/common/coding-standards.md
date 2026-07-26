@@ -54,6 +54,12 @@ the lines the change needs. Concretely, the established style is:
 The complete rule set for comments in this repository. It applies to inline `//`, `/* */`, and XML
 doc comments, in product code and tests alike, and to existing code the moment you touch it.
 
+**Every commentable file, not only `.cs`.** MSBuild `<!-- -->` comments in `.csproj` / `.props` /
+`.targets`, and `#` comments in `.gitattributes` / `.gitignore`, are held to the same rules — the first
+sweep of these rules was scoped to `.cs` and left every build file citing plans and decision ids, which
+is how the gap was found. So is any comment the build **emits**: a citation written into generated code
+ships into every consumer's output, where an internal document reference means nothing at all.
+
 ### C1 — Default to no comment
 
 Before writing or keeping one, try to make it unnecessary: a clearer name, a named local instead of
