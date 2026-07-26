@@ -272,20 +272,29 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains(reported, d => d.GetMessage().Contains("'max'"));
         }
 
-        /// <summary>Two illegal call sites in <i>one</i> template report **once**, and that is the emitter's
-        /// pre-existing shape rather than a dedupe defect: the body build abandons at the first construct it cannot
-        /// write, so the second call is never reached. Pinned as a fact so it reads as a known limit — an author
-        /// fixes the reported call and the next build surfaces the next one — and so a later change that makes the
-        /// emitter continue past an unwritable construct reddens here and gets to decide deliberately.</summary>
+        /// <summary>Two illegal call sites in <i>one</i> template report <b>twice</b>. This pin previously recorded
+        /// the opposite — the body build abandoned at the first construct it could not write, so the second call was
+        /// never reached — and said in as many words that a later change making the emitter continue past an
+        /// unwritable construct should redden here and decide deliberately. <b>Q8.19 (ruled user, 2026-07-26) is that
+        /// decision:</b> the element walk now records the refusal, skips the element and keeps walking, so both calls
+        /// are reported at their own spans and the author fixes both in one pass.
+        /// <para>Refusal still propagates — the walk returns "refused" at the end, so the template still does not
+        /// precompile. <c>ExpectDegrade</c> asserts that half, because collecting diagnostics must never become
+        /// emitting past a refusal.</para></summary>
         [Fact]
-        public void TwoCallSitesInOneTemplateReportOnceBecauseTheBodyBuildAbandonsAtTheFirst()
+        public void TwoCallSitesInOneTemplateReportBothBecauseTheBodyWalkCollectsRefusals()
         {
             const string key = "overload/two-sites.heddle";
             const string content = "@model(){{" + OrderType + "}}@\\\n@(min(1, 2u)) @(max(1, 2u))\n";
             var gen = DifferentialHarness.Generate(new[] { (key, content) });
 
-            var single = Assert.Single(Unbindable(gen));
-            Assert.Contains("'min'", single.GetMessage());
+            var reported = Unbindable(gen);
+            Assert.Equal(2, reported.Length);
+            Assert.Contains(reported, d => d.GetMessage().Contains("'min'"));
+            Assert.Contains(reported, d => d.GetMessage().Contains("'max'"));
+
+            // Two reports, still zero precompiled output.
+            DifferentialHarness.ExpectDegrade(gen, key);
         }
 
         // -------------------------------------------------------------------------------------------------

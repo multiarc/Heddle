@@ -16,9 +16,10 @@ decision until revisited.
 (the fallback event's two carriers, a declared 2.1 break). **Q8.32 landed in part** — sub-question (b),
 the silent registration drop, is closed; sub-question (a) was rejected by the ruling; the late-binding
 third stage the ruling reframed it around is still conditional on an unmade feasibility assessment.
-**Ruled but unimplemented: Q8.13, Q8.14, Q8.17, Q8.19, Q8.35** — Q8.19's emitter-walk cost is the other
-outstanding feasibility assessment. Q8.34 requires no behavioural change and closes with one
-verification and a phase-8 item.
+**Ruled but unimplemented: Q8.13, Q8.14, Q8.17, Q8.35.** **Q8.19 landed in part 2026-07-26** — its
+feasibility assessment is made: the *element* walk collects refusals and reports each at its own span,
+the *expression* walk does not and deliberately was not attempted (see the entry). Q8.34 requires no
+behavioural change and closes with one verification and a phase-8 item.
 
 Each resolved entry below records the question, the ruling, and the folding target. Two rulings
 carry a program-wide principle referenced by several phases:
@@ -408,6 +409,33 @@ question, the ruling or default, and where it is folded.
   by the truth-table theory. Either the combination is meaningful and deserves a fixture, or it is
   incoherent and should be a registration/build **error on both tiers** under the match principle.
   **Ruling (user, 2026-07-26): make it a diagnostic, on two surfaces.** The combination is incoherent, so (a) at the **use site**, a compile-time **error** when a template uses such an extension, and (b) at the extension's **own** project build, a **warning** raised by an analyzer where the extension is declared — so the author who wrote the contradiction sees it in their own build instead of only their consumers seeing it in theirs. Two IDs: `HED7026` (use-site error), `HED7027` (declaration-site analyzer warning). This is Q6.1's early-surfacing principle applied to extension *authorship*, and the program's first declaration-side analyzer — a new surface, to be treated as such rather than as a rule-table tweak.
+
+  **Assessment (2026-07-26) — the premise does not hold, and neither diagnostic is implementable or
+  needed.** The ruling assumed the contradiction is a state an extension author can declare. It is not:
+  `NotEncodeAttribute` is `AttributeTargets.Property` while `EncodeOutputAttribute` is
+  `AttributeTargets.Class`, so co-declaring them on one extension **type** is `CS0592` — a C# compiler
+  *error*, raised in the extension author's own project. That is precisely the surface (b) was to occupy,
+  at a **stronger** severity than the warning it specified, and it is delivered by the language rather
+  than by an analyzer this program would have to build and ship.
+
+  Nor is there a use-site divergence for (a) to close. The pair is observable only in forged or
+  IL-authored metadata, and there both tiers evaluate the same shared `RenderTypeRules.Derive` and both
+  answer `RenderType.Raw` — indistinguishable from an extension carrying neither attribute. No tier
+  disagrees, nothing renders differently, and there is no silent degrade: the match principle is already
+  satisfied. An error would have to invent a fault the engine does not otherwise recognise.
+
+  **`HED7026` and `HED7027` were therefore not claimed and both ids stay free.** What landed instead is
+  the finding in executable form, on both tiers: `ContradictoryEncodingAttributeTests` (build tier) pins
+  that the declaration is rejected by the compiler, and `TheNotEncodeVetoRowIsUnreachableFromAnyDeclaration`
+  (runtime tier) pins the disjoint attribute targets and that the one observable state is behaviourally
+  identical to carrying neither attribute. **Both are written to redden if `NotEncodeAttribute`'s targets
+  ever widen** — at which point the contradiction becomes declarable, this assessment expires, and the
+  ruling's two diagnostics become implementable and required. The tests say so in their own doc comments,
+  so the reopening condition is attached to the thing that would trip it rather than only recorded here.
+
+  **Deliberately not done:** no diagnostic on either tier; no analyzer package (the program still has no
+  declaration-side analyzer surface, and this was to be its first); no change to `RenderTypeRules`, whose
+  fourth truth-table row stays exactly as it is — it is unreachable from any declaration, not wrong.
 - **Q8.15 — Stabilise the two intermittently-failing tests?** Phase 3's audit observed
   `Heddle.Tests.BodyModelRuleTableTests` (a *different* row failing on each of two consecutive
   solution runs; passes in isolation and in its leg alone) and
@@ -494,6 +522,50 @@ question, the ruling or default, and where it is folded.
   own artifact, correct and lock-guarded, but it pins every `Compilation` it has ever seen for the
   process lifetime. Fine for a one-shot build; questionable for a long-lived IDE session where the
   analyzer sees a new `Compilation` per keystroke-batch. **Ruling (user, 2026-07-26): give the cache a real operational contract**, in three parts: (a) a **clear operation API** rather than a bare static dictionary; (b) **observable capacity/occupancy**; (c) **genuine staleness eviction** — the motivating case is that editing a template and editing it back restores an entry that is *identical yet old*, and retaining it has no value, so **age must participate in eviction, not just identity**. Design the eviction rule explicitly and record it; do not merely cap the size.
+
+  **Landed (2026-07-26)** as
+  [`SymbolTypeIndexCache`](../../src/Heddle.Generator/Binding/SymbolTypeIndexCache.cs), a ~90-line
+  class holding the retention policy that used to be a `private static readonly Dictionary` reached
+  from `SymbolTypeIndex.For`. *(a)* The **operation API** is `Get` / `Contains` / `Clear` with
+  `Count` / `Capacity` / `MaxIdleGenerations` / `Generation` as the observable state; `SymbolTypeIndex.For`
+  stays the single call site the binder knows about and now delegates to `SymbolTypeIndexCache.Shared`,
+  so there is one retention policy rather than one dictionary per would-be caller. *(b)* **Occupancy**
+  is `Count` against a stated `Capacity` (default 8), enforced by dropping the least recently used
+  entry on admission. *(c)* The **staleness rule**, stated once in the class's doc comment and pinned
+  by tests: a *generation* is one compilation admitted to the cache — an edit epoch — and an entry
+  untouched for more than `MaxIdleGenerations` (default 2) generations is evicted **whether or not the
+  cache is full**. Age is therefore an independent eviction reason, not a tie-break under capacity
+  pressure, which is what the ruling asked for; the age-driven eviction test runs at capacity 64 with
+  three entries precisely so it cannot pass for size reasons.
+
+  **The clock is the admission counter, never a wall clock.** Generation advances only when a new
+  compilation is admitted, and hits do not advance it, so a busy project cannot age out its neighbour
+  by asking a lot, and nothing on the eviction path reads `DateTime`. This matters beyond taste: a
+  generator whose behaviour depends on elapsed time is a generator whose output is not a function of
+  its inputs. The invariant that licenses eviction at all is that an entry is a pure function of an
+  immutable `Compilation`, so a miss rebuilds a value indistinguishable from the one evicted —
+  `EvictionCannotChangeWhatTheIndexAnswers` pins it by resolving the same spellings through a cache
+  that evicts on every single insert (capacity 1, zero idle tolerance) and one that never evicts, and
+  requiring identical answers.
+
+  **One premise of the question does not hold, and the correction strengthens the ruling.** Editing a
+  template and editing it back does not "restore an entry that is identical yet old": a `Compilation`
+  is immutable and the reverted state is *yet another* new instance, so the old entry is not restored —
+  it is unreachable and merely pinned, along with the entire symbol universe behind it. The real leak
+  shape is therefore *retained-but-unreachable*, which is worse than the register described (nothing
+  can ever hit those entries) and is exactly what an age bound collects.
+
+  **Deliberately not done.** No weak-reference or `ConditionalWeakTable` keying — it would fix pinning
+  by construction but gives neither observable occupancy nor an age, and `ConditionalWeakTable` is not
+  enumerable on `netstandard2.0`, which the generator targets; the capacity bound already makes
+  retention constant. No timer, no background sweep, no `IDisposable`/flush hook, no cache statistics
+  (hit/miss counters), no per-entry cost accounting, and no configuration surface — capacity and idle
+  tolerance are constructor parameters used by the tests, not MSBuild properties, since no scenario
+  needs both values. `Generation` is exposed read-only for observability and is not part of any output
+  or diagnostic. The other per-process statics in the generator (`DefaultFunctionBinder.RowsByName`,
+  `NativeExpressionWriter.DefaultShims`, `GeneratorDiagnostics.ForwardedDescriptors`) were left alone:
+  they are bounded lookup tables keyed by strings, not by compilations, so the retention question does
+  not arise. Nothing under `src/Heddle/` was touched.
 - **Q8.9 — Where does the narrowed authority convention live, and is it retroactive?** Phase 8 D3
   narrows the convention (*"expression semantics defer first to `docs/native-expressions.md`"*) so
   that a normative document outranks the implementations **only for claims that carry a verification
@@ -675,6 +747,62 @@ question, the ruling or default, and where it is folded.
   the template), do it. If it turns out to require restructuring the body walk, stop and report the
   cost rather than half-doing it — a partial rewrite of the walk is worse than the current honest
   one-at-a-time behaviour.
+  **Assessment (2026-07-26).** The ruling's conditional split the question in two, and the two halves
+  landed differently — both outcomes are stated here, because "collect all of them" reads as done
+  otherwise.
+
+  **The element walk was contained, and it landed.** `TemplateEmitter.PopulateBody` is the only place a
+  body gives up: `BuildCall` returns `null` with an `out string reason` — no throws, no flags — and the
+  walk abandoned on the spot. `BuildBody`'s call sites all react to the *null body*, never to where the
+  walk stopped, so the loop could record the first reason, skip the refusing element and keep walking
+  with **no call-site and no signature changes**. The change is three locals in one method: the element
+  callback sets a `refused` flag and returns `true` where it returned `false`, and the walk ends
+  `reason = firstReason ?? localReason; return completed && !refused;`. Soundness rests on sibling
+  elements being independent — they share the same immutable `BodyContext`, and nothing a refused
+  element touches can make a later legal element illegal — so skipping one cannot manufacture a refusal,
+  or a green, that a fresh walk would not reach.
+
+  **Refusal still propagates, which is the load-bearing half.** `PopulateBody` returns `false` at the
+  end, so a nested body's refusal still fails its parent element up to `Emit`, where `root == null`
+  still means **no `.g.cs` and no manifest row**. Collecting is about how many diagnostics one build
+  surfaces, never about emitting past a refusal: a partial emit — a template compiled with its illegal
+  elements quietly dropped — would be far worse than one-at-a-time reporting. That guard is a test of
+  its own, and the mutant that claims success while refused is killed by it.
+
+  **Population covered.** Every diagnostic raised from an element the walk can now reach rather than
+  never visit: `HED7025`, `HED7008`, `HED7006`, `HED7015`, `HED7017`, `HED7014`, `HED7022` — sibling
+  elements, one per refusing element. **None** for two refusals inside one expression (below).
+
+  **The expression walk was NOT contained, and was not attempted.** `NativeExpressionWriter.Write` is
+  string-or-`null` composition: every node returns `null` as soon as a child does, because the parent
+  has nothing to compose. Continuing there means fabricating placeholder text for the failed child and
+  discarding it — the restructuring the ruling explicitly says to stop at rather than half-do. So
+  `@(min(1, 2u) + max(1, 2u))` still reports once, where `@(min(1, 2u)) @(max(1, 2u))` now reports
+  twice. That asymmetry is deliberate and is the honest boundary of this landing.
+
+  **One behavioural consequence, pinned rather than left to be discovered.** A delegate-only function
+  *after* the first unwritable construct is now reached, so it lands in `_unresolvableFunctions` and
+  `Emit` takes the `HED7014` fallback-marker arm instead of returning a plain unsupported result: the
+  build gains a warning and a **marker** manifest row (null entry point) where before there was no row
+  at all. That is the correct outcome — the template really does call a function no metadata can
+  represent, and the marker is how the registry records "known, deliberately not precompiled"; walk
+  order was the only reason it stayed hidden.
+
+  **Match principle.** The dynamic engine raises the first such error and stops, so a build reporting
+  two `HED7025`s reports a set no single dynamic compile produces. That is a difference in *how many*
+  errors surface per build, never in *which* verdict either tier reaches: every collected report is one
+  the runtime would raise once the earlier was fixed.
+
+  **Landed (2026-07-26).** Three tests in `CollectedRefusalDiagnosticTests` (two-refusals-two-spans, the
+  emits-nothing guard, the `HED7014` consequence). The pre-existing tripwire
+  `TwoCallSitesInOneTemplateReportOnceBecauseTheBodyBuildAbandonsAtTheFirst` — written to redden when
+  exactly this change was made — reddened as designed and was flipped to
+  `...ReportBothBecauseTheBodyWalkCollectsRefusals`, now asserting both reports **and** `ExpectDegrade`.
+  Mutation: 4 run, 2 killed (revert-to-abandon; drop the `refused` guard), 2 survivors, both in the same
+  equivalence class — *which* reason is kept — and both unobservable by construction:
+  `Result.UnsupportedReason` is write-only, read in prose at `HeddleTemplateGenerator.cs:418` and
+  nowhere in code, reaching no diagnostic and no manifest field. Recorded in the code comment rather
+  than closed by inventing an observable.
 - **Q8.24 — A 1.x manifest's rejection reason changed from `EngineVersionIncompatible` to
   `SchemaVersionUnsupported`.** The 2.0 window's as-shipped record and the CHANGELOG both state that
   1.x precompiled assemblies fall back because "the engine-version gate rejects 1.x manifests". With
