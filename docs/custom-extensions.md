@@ -64,8 +64,14 @@ public interface IExtension : IDisposable
 > document (the `@using`/`@model`/`@profile` pattern). Such blocks automatically participate in
 > [directive‑line trimming](language-reference.md#whitespace-trimming-): when
 > `TemplateOptions.TrimDirectiveLines` is on and the block occupies its line by itself, the
-> whole line is swallowed. You get this for free — trimming keys on the removal mechanism, not
-> on a name list, so there is nothing extra to implement.
+> whole line is swallowed. Trimming keys on the removal mechanism, not on a name list, so no
+> registration or name list needs updating.
+>
+> On the **dynamic tier** that is all it takes. For the block to be removed when the template is
+> **precompiled**, declare [`[ZeroOutput]`](#precompiled-mode): a build-time generator reads symbols
+> and cannot observe that your `InitStart` returns `null`, so without the attribute the block is
+> removed dynamically and kept as output precompiled — the two tiers disagree on bytes, which is the
+> one thing pre-compilation may never do. Declare it whenever `InitStart` returns `null`.
 
 ### Helpers from the base class
 
