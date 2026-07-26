@@ -171,6 +171,12 @@ The rule:
   encodes the configuration name, the TFM directory and the project nesting as assumptions, and its
   failure mode is a test that finds nothing and passes.
 
+  **A build copy is not a second home.** Copying an input into a consumer's output directory so a test
+  can read it at run time says nothing about where the input is *stored*, and creates no ownership
+  problem to solve by relocating it. Inputs live in tracked folders; which project directory holds them
+  is a filing detail. This rule constrains how a test *reaches* an input, never where the repository
+  keeps it.
+
   **The rule is about inputs, and inputs are what git stores** — templates, goldens, fixtures. A test
   that reads another project's *output* — a compiled assembly, a generated file — is doing something
   else and is not covered here: build artifacts legitimately live outside the consumer's own output
