@@ -251,10 +251,24 @@ namespace Heddle.Generator.Tests
                 "Documented ids with no descriptor: " + string.Join(", ", orphaned));
         }
 
+        /// <summary>
+        /// Ids claimed by a <b>row of the registry table</b>. Anchored on both axes deliberately: to the registry
+        /// section, because a block reservation elsewhere in the document is not a claim, and to the start of a table
+        /// row, because a prose mention is not a claim either. Unanchored, deleting an id's row while leaving it named
+        /// anywhere in the file kept this gate green.
+        /// </summary>
         private static HashSet<string> ClaimedIds(string markdown)
         {
+            const string heading = "## Claimed diagnostic IDs (registry)";
+            var start = markdown.IndexOf(heading, StringComparison.Ordinal);
+            Assert.True(start >= 0, "Claimed-ID registry section '" + heading + "' not found.");
+            var end = markdown.IndexOf("\n## ", start + heading.Length, StringComparison.Ordinal);
+            markdown = end < 0 ? markdown.Substring(start) : markdown.Substring(start, end - start);
+
             var ids = new HashSet<string>(StringComparer.Ordinal);
-            foreach (Match match in Regex.Matches(markdown, @"`HED(?<from>\d{4})`(?:[–-]`HED(?<to>\d{4})`)?"))
+            foreach (Match match in Regex.Matches(markdown,
+                         @"^\| `HED(?<from>\d{4})`(?:[–-]`HED(?<to>\d{4})`)? \|",
+                         RegexOptions.Multiline))
             {
                 var from = int.Parse(match.Groups["from"].Value);
                 var to = match.Groups["to"].Success ? int.Parse(match.Groups["to"].Value) : from;

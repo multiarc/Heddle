@@ -85,9 +85,10 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// The claimed-ID registry and <see cref="HeddleDiagnosticIds"/> agree bidirectionally over HED0xxx–HED5xxx
-        /// (HED7xxx is asserted generator-side). Exclusions: HED6xxx/HED8xxx reserved-unclaimed, HED9001 deliberately
-        /// not public, HED7xxx is generator/precompiled block.
+        /// The claimed-ID registry and <see cref="HeddleDiagnosticIds"/> agree bidirectionally over **every** block a
+        /// constant exists in — including `HED7xxx`, which the generator suite also checks from its own side. The only
+        /// exclusion is <see cref="RegistryOnly"/>: a claimed id with no public constant. `HED6xxx`/`HED8xxx` are
+        /// reserved and claim nothing, so they need no exclusion.
         /// </summary>
         [Fact]
         public void ConstantsAndTheClaimedIdRegistryAgree()
@@ -141,7 +142,7 @@ namespace Heddle.Tests
                 .Select(f => (string)f.GetRawConstantValue()));
 
             var undocumented = constants
-                .Where(id => !published.Values.Any(text => text.Contains(id)))
+                .Where(id => !published.Values.Any(text => NamesId(text, id)))
                 .OrderBy(id => id, StringComparer.Ordinal)
                 .ToList();
             Assert.True(undocumented.Count == 0,
@@ -159,13 +160,20 @@ namespace Heddle.Tests
                     continue;
                 }
 
-                if (!text.Contains(pair.Key))
+                if (!NamesId(text, pair.Key))
                     misfiled.Add(pair.Key + " → " + pair.Value);
             }
 
             Assert.True(misfiled.Count == 0,
                 "Diagnostic ids absent from the document the registry names as their owner: " +
                 string.Join(", ", misfiled.OrderBy(m => m, StringComparer.Ordinal)));
+        }
+
+        /// <summary>Whole-token match, so a typo'd id that merely contains a real one ("HED3005x") does not satisfy
+        /// the gate for the id it swallowed.</summary>
+        private static bool NamesId(string text, string id)
+        {
+            return Regex.IsMatch(text, @"\bHED" + id.Substring(3) + @"\b");
         }
 
         /// <summary>Every published page, keyed by file name — <c>docs/*.md</c> only. The spec, plan and research

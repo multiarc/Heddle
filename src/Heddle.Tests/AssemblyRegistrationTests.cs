@@ -47,22 +47,7 @@ namespace Heddle.Tests
             var suffix = Guid.NewGuid().ToString("N").Substring(0, 12);
             var extensionName = "probe" + suffix;
             var typeName = "ProbeExtension" + suffix;
-            var probe = CompileAndLoad($@"
-using Heddle.Attributes;
-using Heddle.Core;
-using Heddle.Data;
-
-[assembly: ExportExtensions(typeof(ProbeNamespace{suffix}.{typeName}))]
-
-namespace ProbeNamespace{suffix}
-{{
-    [ExtensionName(""{extensionName}"")]
-    public class {typeName} : AbstractExtension
-    {{
-        public override object ProcessData(in Scope scope) => ""probe"";
-        public override void RenderData(in Scope scope) => scope.Renderer.Render(""probe"");
-    }}
-}}");
+            var probe = CompileAndLoad(ProbeSource(suffix, extensionName, typeName));
 
             Assert.False(TemplateFactory.Exists(extensionName),
                 "an unregistered assembly took an extension name");
@@ -84,16 +69,77 @@ namespace ProbeNamespace{suffix}
             HeddleTemplate.Register(assembly);
         }
 
+        /// <summary>
+        /// The behavioural pin, and the one that matters. The sibling tests pin the *mechanism* the old walk used — no
+        /// explicit static constructor, no DependencyModel — and a review found that restoring the same discovery
+        /// lazily, from <c>GetAssemblies()</c> instead of a type initializer, passed the whole suite. This test states
+        /// the behaviour instead: an assembly written to disk and loaded into the default context, which every
+        /// observation path therefore sees, must still offer no extension name until the host registers it. Any
+        /// reintroduced scan-all reddens here whatever triggers it.
+        /// <para>File-backed on purpose: an in-memory probe has no <c>Location</c>, so the observation filter skips it
+        /// and the negative assertion would hold for the wrong reason.</para>
+        /// </summary>
+        [Fact]
+        public void AnObservedOnDiskAssemblyOffersNoExtensionNameUntilRegistered()
+        {
+            var suffix = Guid.NewGuid().ToString("N").Substring(0, 12);
+            var extensionName = "ondisk" + suffix;
+            var probe = CompileToFileAndLoad(ProbeSource(suffix, extensionName, "OnDiskExtension" + suffix));
+
+            Assert.False(string.IsNullOrEmpty(probe.Location),
+                "the probe must be file-backed, or it is skipped by the observation filter and proves nothing");
+            Assert.Contains(probe, AssemblyHelper.GetAssemblies());
+
+            Assert.False(TemplateFactory.Exists(extensionName),
+                "an observed but unregistered on-disk assembly took an extension name — scan-all discovery is back");
+
+            HeddleTemplate.Register(probe);
+            Assert.True(TemplateFactory.Exists(extensionName));
+        }
+
         [Fact]
         public void RegisterRejectsNull()
         {
             Assert.Throws<ArgumentNullException>(() => HeddleTemplate.Register(null));
         }
 
+        private static string ProbeSource(string suffix, string extensionName, string typeName) => $@"
+using Heddle.Attributes;
+using Heddle.Core;
+using Heddle.Data;
+
+[assembly: ExportExtensions(typeof(ProbeNamespace{suffix}.{typeName}))]
+
+namespace ProbeNamespace{suffix}
+{{
+    [ExtensionName(""{extensionName}"")]
+    public class {typeName} : AbstractExtension
+    {{
+        public override object ProcessData(in Scope scope) => ""probe"";
+        public override void RenderData(in Scope scope) => scope.Renderer.Render(""probe"");
+    }}
+}}";
+
+        /// <summary>Emits the probe to a real file and loads it by path, so it enters the default load context with a
+        /// non-empty <see cref="Assembly.Location"/> — the shape the observation path accepts.</summary>
+        private static Assembly CompileToFileAndLoad(string source)
+        {
+            var bytes = Emit(source, out var assemblyName);
+            var path = Path.Combine(Path.GetTempPath(), assemblyName + ".dll");
+            File.WriteAllBytes(path, bytes);
+            return Assembly.LoadFrom(path);
+        }
+
         private static Assembly CompileAndLoad(string source)
         {
+            return Assembly.Load(Emit(source, out _));
+        }
+
+        private static byte[] Emit(string source, out string assemblyName)
+        {
+            assemblyName = "Probe" + Guid.NewGuid().ToString("N");
             var compilation = CSharpCompilation.Create(
-                "Probe" + Guid.NewGuid().ToString("N"),
+                assemblyName,
                 new[] { CSharpSyntaxTree.ParseText(source) },
                 AssemblyHelper.GetApplicationReferences(),
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
@@ -104,7 +150,7 @@ namespace ProbeNamespace{suffix}
                 string.Join("\n", result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
                     .Select(d => d.GetMessage())));
 
-            return Assembly.Load(stream.ToArray());
+            return stream.ToArray();
         }
     }
 }

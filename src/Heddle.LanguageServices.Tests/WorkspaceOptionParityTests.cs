@@ -123,6 +123,39 @@ namespace Heddle.LanguageServices.Tests
         }
 
         /// <summary>
+        /// The documented exclusion list is the gate's exclusion set, exactly. The prose claims "every compile option
+        /// that affects analysis has a key here", which is only checkable if the options that deliberately have none
+        /// are enumerated — and a partial enumeration is the worse state, because it reads as complete. The prose named
+        /// 6 of 11 until this leg existed.
+        /// </summary>
+        [Fact]
+        public void TheDocumentedExclusionListIsExactlyTheGatesExclusionSet()
+        {
+            var documented = ExclusionTableOptions(ReadDoc("editor-support.md"));
+
+            Assert.Equal(
+                Excluded.Keys.OrderBy(k => k, StringComparer.Ordinal).ToList(),
+                documented.OrderBy(k => k, StringComparer.Ordinal).ToList());
+        }
+
+        /// <summary>The option names in <c>editor-support.md</c>'s no-key table — rows of <c>| `Option` | reason |</c>
+        /// naming a <see cref="TemplateOptions"/> member (or <c>AllowCSharp</c>, which is one under its obsolete name).</summary>
+        private static List<string> ExclusionTableOptions(string markdown)
+        {
+            var known = new HashSet<string>(Excluded.Keys, StringComparer.Ordinal);
+            var rows = Regex.Matches(markdown, @"^\| `(?<option>[A-Za-z]+)` \| [^|]*\|", RegexOptions.Multiline)
+                .Cast<Match>()
+                .Select(m => m.Groups["option"].Value)
+                .Where(known.Contains)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            Assert.True(rows.Count > 0,
+                "No exclusion-table rows parsed from editor-support.md — the table shape changed.");
+            return rows;
+        }
+
+        /// <summary>
         /// The VS Code extension's <c>contributes.configuration</c> mirrors the same keys, and its defaults agree
         /// with the shared table. A default that drifts is the worst kind: the editor reports diagnostics the host
         /// would not, and nothing fails.
@@ -167,10 +200,12 @@ namespace Heddle.LanguageServices.Tests
             Assert.Equal(expected, match.Groups["value"].Value.Trim());
         }
 
-        /// <summary>The keys of <c>editor-support.md</c>'s settings table — its rows are <c>| `key` | … | … |</c>.</summary>
+        /// <summary>The keys of <c>editor-support.md</c>'s settings table — rows of <c>| `key` | … | … |</c>. The
+        /// leading-lowercase requirement is what separates them from the no-key table's <c>| `Option` | … |</c> rows on
+        /// the same page: a config key is an option name camelCased, so it never starts uppercase.</summary>
         private static List<string> SettingsTableKeys(string markdown)
         {
-            var keys = Regex.Matches(markdown, @"^\| `(?<key>[a-zA-Z]+)` \| (?<desc>[^|]*)\|", RegexOptions.Multiline)
+            var keys = Regex.Matches(markdown, @"^\| `(?<key>[a-z][a-zA-Z]*)` \| (?<desc>[^|]*)\|", RegexOptions.Multiline)
                 .Cast<Match>()
                 .Select(m => m.Groups["key"].Value)
                 .Distinct(StringComparer.Ordinal)
