@@ -4,12 +4,17 @@ The consolidated Q&A register for the seven phases. Numbering is `Q<phase>.<n>`,
 phase plan's own Open-questions section.
 
 **Pre-authoring questions (Q0.1–Q6.3): all resolved (user, 2026-07-25) and folded into the phases.**
-**Post-implementation questions (Q7.1–Q8.31):** opened after the phases landed, by the two
-post-implementation reviews, the six phase audits, and the phase-8 docs sweep authored from
-the Q8.7 ruling — see
+**Post-implementation questions (Q7.1–Q8.35):** opened after the phases landed, by the two
+post-implementation reviews, the six phase audits, the phase-8 docs sweep authored from
+the Q8.7 ruling, and the landings themselves — see
 [the section below](#post-implementation-questions-opened-2026-07-26). **Q7.4 and Q8.1–Q8.5 are
 ruled (user, 2026-07-26); the remainder stand at their stated defaults**, which are the operative
 decision until revisited.
+
+**Awaiting a ruling right now: Q8.32–Q8.35**, opened by the Q8.28–Q8.31 landing
+([section](#opened-by-the-q828q831-landing-2026-07-26--awaiting-rulings)). **Ruled but
+unimplemented: Q8.13, Q8.14, Q8.17, Q8.19** — Q8.19's ruling is conditional on a cost assessment
+that has not been made.
 
 Each resolved entry below records the question, the ruling, and the folding target. Two rulings
 carry a program-wide principle referenced by several phases:
@@ -915,3 +920,67 @@ question, the ruling or default, and where it is folded.
   acceptance and they are exactly four kinds — the deleted comment, `schemaVersion: 5` → `3` (the Q8.2 collapse),
   and the two new manifest rows. The sample's rendered `codegen-output.txt` is **unchanged**, which is the
   assertion that the emitted code moved and the emitted output did not.
+
+## Opened by the Q8.28–Q8.31 landing (2026-07-26) — awaiting rulings
+
+These four are new. **Q8.19 is not** — it carries forward from the Q8.1 landing with a ruling
+already recorded ("collect all of them, if it is not a major undertaking") and is still
+unimplemented; the cost assessment that ruling asked for has not been done. It is listed here only
+so the outstanding set is complete in one place.
+
+- **Q8.32 — `RegisteredName` is the only manifest field the gauntlet does not validate.** Every
+  other row the manifest carries is re-checked per request at the gate: the options fingerprint,
+  extension bindings (now including the prop-layout fingerprint), function bindings, staleness. A
+  name is checked **only at registration**, and only for collisions against spellings *this process
+  already holds*. Nothing re-establishes at request time that the name still describes the template
+  it claims, so a manifest naming a template it does not own — a hand-written manifest, a
+  third-party emitter, a stale assembly rebuilt against different sources — resolves by that name
+  and renders precompiled output with no fallback event. That is the silent-fallback shape this
+  whole program exists to eliminate, reappearing on the one field added last.
+
+  Two sub-questions, because they may not get the same answer. *(a)* Should the gauntlet check
+  `RegisteredName` per request at all, given that a name adds no new *rendering* surface — the entry
+  it resolves to is the same object a key lookup returns, and that entry's own rows are already
+  gauntleted? *(b)* Registration currently `continue`s past a `RegisteredName` that fails
+  `TemplateKey.TryNormalize` **with no event at all** — the only wholly silent drop in the
+  registration path, since both collision arms report `HED7104`. The generator cannot emit such a
+  name (it emits only names that registered at build time), so the population is exactly the
+  non-generator manifests, which is also the population sub-question (a) is about.
+
+- **Q8.33 — `PrecompiledFallbackEvent.Key` carries two different kinds of string and a host cannot
+  tell which it has.** For per-request reasons `Key` is a template key; for the registration-time
+  reasons (`SchemaVersionUnsupported`, `EngineVersionIncompatible`, and now
+  `RegisteredNameUnavailable`) it is an **assembly name**. This is pre-existing 2.0 convention and
+  the landing kept it rather than widening it — deliberately, and the docs now state it — but
+  `HED7104` is the first reason that made the overload load-bearing for something a host might want
+  to *act* on: "which template stopped resolving under which spelling" is recoverable only by
+  parsing `Detail`, which is a pinned human-readable format string, not an API. Options: leave it
+  (documented ambiguity, zero break); add a discriminator property (`KeyKind`, additive, no break);
+  or add the contested spelling and its owner as their own properties. Nothing forces this today —
+  no shipped host branches on it — so it is recorded as a design question, not a defect.
+
+- **Q8.34 — A name that resolved can stop resolving because an unrelated assembly loaded, and the
+  only notice is `OnFallback`.** The eviction half of the disjointness invariant is what makes key
+  precedence order-independent, so it is not in question. What is in question is its *observability*:
+  a host that registered assembly A, resolved `"Banner"` successfully, then loaded assembly B whose
+  template key is `"Banner"`, silently gets a different template from the same lookup string
+  afterwards. `HED7104` is reported, but only through `OnFallback`, which is an optional callback
+  most hosts never set — and `Strict` policy does not apply, because this is not a fallback to the
+  dynamic tier: both spellings still resolve precompiled, just to different templates than before.
+  So the loudest available signal is one a default host does not hear. Whether that is acceptable
+  turns on whether the situation is a *host configuration error* (two assemblies disagreeing about a
+  spelling, arguably worth throwing or at least honouring `Strict`) or a *legitimate late-binding
+  outcome* (the ordering rule working as designed, worth only a callback).
+
+- **Q8.35 — `Min == Max == Current` makes the support window a single point.** The Q8.2 collapse was
+  right — schemas 3, 4 and 5 were never released, so there was no window to preserve. But the
+  constants now say something stronger than "we collapsed unreleased churn": they say this engine
+  reads exactly one schema. Every future manifest change is therefore a **whole-assembly rejection**
+  for every assembly built against the previous version, until rebuilt — correct behaviour when a
+  change is genuinely binary-breaking (which schema 3's was, per Q8.2's demonstrated
+  `MissingMethodException`), and unnecessarily severe when it is purely additive. A new optional
+  manifest field, read through a `PrecompiledSchema.<Feature>SchemaVersion` gate of the kind
+  `RegisteredNameSchemaVersion` already establishes, needs no rejection at all: an older manifest
+  simply carries no value for it. The question is whether the floor should trail `Current` whenever
+  the delta is additive, and if so what test proves a candidate change *is* additive rather than
+  asserting it. Wanted before 2.2, not before 2.1 — 2.1 ships one schema and one window either way.
