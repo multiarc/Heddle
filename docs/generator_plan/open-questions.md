@@ -1245,6 +1245,24 @@ so the outstanding set is complete in one place.
   `docs/spec/common/breaking-windows.md` as a named rule so future landings apply it without
   re-deriving it.
 
+  **Landed (2026-07-26).** The rule is `breaking-windows.md` **policy item 7**, placed with the other six
+  rather than in the not-window-gated section, because it governs how every future window is *composed* —
+  it is not a one-off disposition. It states both halves: the number bumps only when an already-emitted
+  manifest can no longer be read or bound, and an additive change is read through a per-feature
+  `<Feature>SchemaVersion` gate instead.
+
+  The proof obligation is written as the operative part, since that is what makes the rule enforceable
+  rather than aspirational: a fixture holding a **pre-change** manifest that still reads correctly
+  afterwards, with "the reviewer judged it additive" explicitly rejected as evidence — the failure mode is
+  a constructor signature that no longer binds, which is invisible in source and appears only in emitted
+  IL, exactly as the Q8.2 fixture had to demonstrate. Where that fixture cannot be produced, the change is
+  breaking by default and the number bumps.
+
+  **Deliberately not done:** no code change. `Min = Max = Current = 3` stays as the Q8.2 collapse left it
+  — the rule governs changes from here on and does not retroactively relax `Min` for the schema-3 break,
+  which remains real on its demonstrated `MissingMethodException`. No test was added either: the
+  obligation attaches to a future change, so a test today would have no pre-change manifest to hold.
+
 ## Opened by the Q8.32/Q8.34 assessment pass (2026-07-26) — awaiting rulings
 
 - **Q8.37 — The engine auto-loads and auto-scans assemblies by default, which Q8.34's ruling forbids

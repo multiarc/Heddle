@@ -31,6 +31,22 @@ Completed windows are recorded in the [historical records](../records.md), never
    would let a ratified window adopt it. The register becomes a window only by an
    explicit maintainer decision to open one; adding a row requires a decision record in
    an owning spec.
+7. **The manifest schema version tracks breakage, not releases.** `PrecompiledSchema`'s
+   number is bumped only when an **already-emitted** manifest can no longer be read or can no
+   longer bind — i.e. when the change is genuinely breaking and old assemblies must be rejected
+   at the gate and rebuilt. A purely **additive** change does not bump it: the new field is read
+   through a per-feature `PrecompiledSchema.<Feature>SchemaVersion` gate (the shape
+   `RegisteredNameSchemaVersion` establishes), and a manifest emitted before the change simply
+   carries no value for it. A release with no schema change is normal, not a contradiction —
+   package version and schema version are independent, and conflating them is what produced
+   three unreleased schema numbers for internal churn in the 2.1 cycle.
+
+   **Additivity is proved per change, never asserted.** The proof obligation is a fixture holding
+   a manifest emitted *before* the change and still read correctly after it — a reviewer's
+   judgement that a change "only adds a field" is not evidence, because the failure mode
+   (a constructor signature that no longer binds) is invisible in source and appears only in the
+   emitted IL. Where the fixture cannot be produced, the change is breaking by default and the
+   number bumps.
 
 ## Explicit not-window-gated rulings
 
