@@ -60,7 +60,7 @@ metadata are read:
 </PropertyGroup>
 ```
 
-A template whose path is **not** under `HeddleTemplateRoot` and that carries no explicit `Key`/`Name`
+A template whose path is **not** under `HeddleTemplateRoot` and that carries no explicit `Key`
 registers under its bare filename — the directory is dropped — and the build reports `HED7018`
 naming the file, the root, and the flattened key it used.
 
@@ -97,6 +97,13 @@ string html = Heddle.Generated.Views_Home_Index.Generate(model);
 The signature is `Generate(TModel model, object chained = null, object callerData = null)`
 where `TModel` is the declared `@model` type (`object` for `:: dynamic` **and for a
 model‑less template** — the generator always emits an `object model` parameter).
+
+> **This path runs no validation gauntlet, and it has no fallback either.** A typed entry point calls
+> `PrecompiledRuntime.GenerateString` directly: it never looks the template up, so it never reaches the
+> gauntlet, so an extension or function binding that drifted between build and deployment is not
+> detected and not degraded — it renders precompiled against the stale binding. That is the price of
+> the fast path, and the remedy is the aggregate pass below: call
+> [`PrecompiledTemplates.ValidateAll`](#validating-everything-once-after-configuration) once at startup.
 
 ## The registry — for dynamic call sites
 
@@ -202,6 +209,52 @@ On any failure, behavior is controlled by `TemplateOptions.PrecompiledMismatchPo
 An assembly whose manifest schema/engine version is incompatible is ignored wholesale (every
 template falls back), with one `HED7102` callback per manifest.
 
+### Validating everything once, after configuration
+
+The gauntlet above runs **per request, and only on the dynamic call path** — typed entry points never
+reach it. `PrecompiledTemplates.ValidateAll` runs the same checks over **every** registered entry at a
+time of the host's choosing, and reports *all* the failures rather than the first:
+
+```csharp
+// Once, after registration/extension/function configuration is complete and before serving:
+var report = PrecompiledTemplates.ValidateAll(options);
+if (!report.PassedForValidatedOptions) {
+    foreach (var failure in report.Failures)          // ordered by template key
+        log.Warn("{0}: {1} — {2}", failure.TemplateKey, failure.Reason, failure.Detail);
+    // Your call what a failure costs: log it, or refuse to start.
+}
+```
+
+Each failure is an ordinary `PrecompiledFallbackEvent` carrying the same reason, `Detail` and
+`HED7101` id the per‑request gate produces, so existing logging handles it unchanged.
+
+**It is a report, not a gate.** Nothing about per‑request behaviour changes: the gauntlet still runs
+where it ran before. The pass does not raise `OnFallback` — nothing degraded, because no render
+happened — and `PrecompiledMismatchPolicy.Strict` does not make it throw, because that policy polices
+requests. What a failure costs is the caller's decision.
+
+**The verdict is scoped to the options you pass, and the report says so.** Four gauntlet inputs are
+per‑request rather than per‑configuration: `OutputProfile`, `ExpressionMode` and `TrimDirectiveLines`
+(the fingerprint), and the effective `Functions` registry. One pass can therefore only be complete for
+one options shape, so the report records the shape it used and names its green property accordingly:
+
+| Member | Meaning |
+| --- | --- |
+| `PassedForValidatedOptions` | No entry failed **under the validated options**. Not an unscoped "is valid". |
+| `Failures` | Every failing entry, ordered by template key (ordinal). |
+| `EntriesChecked` | How many registered entries were examined — a snapshot of `Entries`, markers included. |
+| `ValidatedFingerprint` | The `(OutputProfile, ExpressionMode, TrimDirectiveLines)` triple compared against — a snapshot, so mutating your `TemplateOptions` afterwards cannot make the report describe a shape it did not check. |
+| `ValidatedFunctions` | The effective `FunctionRegistry`, by reference; `null` means the default‑registry shape. |
+| `ValidatedStaleness` | Whether the staleness step ran (`EnableFileChangeCheck`). When false, the report says nothing about files changing on disk. |
+
+A host that renders under more than one shape — two output profiles, or a request‑scoped
+`FunctionRegistry` — calls the pass once per shape. There is no parameterless overload, deliberately: a
+verdict with no options to scope it could only be misread.
+
+A `UnsupportedFunction` marker entry (`HED7014`, a delegate‑only function the build refused on purpose)
+is reported like any other failure. That is not noise: the entry is registered and will never render
+precompiled, and excluding it would make the pass quieter than the truth.
+
 ### The staleness identity
 
 `ContentHash` is the lowercase‑hex SHA‑256 of the template's **decoded text** re‑encoded as UTF‑8
@@ -279,6 +332,19 @@ assemblies the host registers from — every `options.Functions.RegisterFrom(ass
 startup pairs with a build‑time reference to the same assembly; both read the same
 `[ExportFunctions]` metadata.
 
+**Binding is static, and the build‑time inventory is the only scope that can be correct.** A
+precompiled call is emitted as a direct call to the chosen method — nothing in `PrecompiledRuntime`
+consults `options.Functions` at render, so precompiled code cannot resolve a function a host
+registers at run time *at all*. That is why `HED7025` proves illegality against the overload set the
+build can see (the shipped built‑in table plus every `[ExportFunctions]` method) rather than against
+some wider one: there is no wider one for what precompiles. A host that registers extra overloads —
+which can make an ambiguous set unambiguous, or an inapplicable set applicable — is handled at the
+gate instead: the gauntlet's `FunctionBindings` check sees the divergence and the template renders
+through the dynamic tier, where the host's registrations are live. The one case the gate cannot
+rescue is a build **error**, since it fails before any tier is chosen; the escape hatch there is
+`Precompile="false"` on the item, which skips key derivation and emit entirely while keeping the
+template in the `@<<` import map.
+
 A function that *cannot* be expressed as an exported `public static` method (a
 `Register(string, Delegate)` closure) is not representable in assembly metadata: the template
 draws build warning `HED7014` and is left un‑precompiled (a fallback‑marker entry) — it
@@ -319,7 +385,7 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 | `HED7015` | A bound extension overrides a compile‑time hook — unevaluable at build. |
 | `HED7016` | A branch continuation/terminal (`[BranchRole]`) omits `[ScopeChannel]`, so it can never read the branch state at run time (warning). |
 | `HED7017` | An extension declares a malformed `[Prop]` parameter — the build‑tier twin of the dynamic tier's declaration diagnostics. |
-| `HED7018` | A template is outside `HeddleTemplateRoot` and has no explicit `Key`/`Name`, so its directory is dropped and it registers under a flattened filename key (warning). |
+| `HED7018` | A template is outside `HeddleTemplateRoot` and has no explicit `Key`, so its directory is dropped and it registers under a flattened filename key (warning). Only `Key` suppresses it: a `Name` is additive and leaves the flattened key in place, so the warning is still about something real. |
 | `HED7019` | The `Heddle` engine assembly is not visible among the compilation's references, so the manifest records the generator's own version as `engineVersion` (warning). |
 | `HED7020` | The template emitter threw — a generator defect, not a template error. That one template emits nothing; the rest of the pass and the manifest are unaffected. |
 | `HED7021` | An `[assembly: ExportFunctions(...)]` container is not a public static class. The runtime throws when the host assembly is registered, so the build errors rather than skipping the container silently. |
@@ -332,6 +398,22 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 
 Member/type errors in milestone 1 arrive as C# errors remapped to the template span via
 `#line`; milestone 2 replaces the covered ones with native `HED7007`/`HED7008`.
+
+**How many of these one build reports.** The body walk **collects** refusals rather than abandoning
+at the first: two sibling elements that each refuse produce two diagnostics, each at its own
+`.heddle` position, for every id an element can raise (`HED7025`, `HED7008`, `HED7006`, `HED7015`,
+`HED7017`, `HED7014`, `HED7022`). Refusal still propagates — a refused element fails its body up to
+the template, so the template emits no generated source and no manifest row; collecting changes how
+many diagnostics a build *surfaces*, never what it emits. Within **one expression** the walk still
+reports once: expression writing is string-or-`null` composition, where a parent has nothing to
+compose once a child fails, so `@(min(1, 2u)) @(max(1, 2u))` reports twice while
+`@(min(1, 2u) + max(1, 2u))` reports once. That asymmetry is deliberate.
+
+This is the one place the build tier deliberately does not mirror the dynamic engine's *shape*: the
+dynamic engine raises the first such error and stops, so a build can report a set no single dynamic
+compile produces. The match principle is untouched — every collected report is one the runtime
+raises for the same input once the earlier fault is fixed. What differs is how many surface per
+build, never which verdict either tier reaches.
 
 ---
 

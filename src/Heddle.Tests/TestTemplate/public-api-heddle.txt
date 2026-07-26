@@ -877,6 +877,7 @@ TYPE Heddle.Precompiled.PrecompiledTemplateInfo
   PROP System.Type EntryPointType {get;}
   PROP System.Type ModelType {get;}
 TYPE Heddle.Precompiled.PrecompiledTemplates
+  METHOD Heddle.Precompiled.PrecompiledValidationReport ValidateAll(Heddle.Data.TemplateOptions)
   METHOD System.Boolean TryGet(System.String, out Heddle.Precompiled.PrecompiledTemplateInfo)
   METHOD System.Boolean TryResolve(System.String, Heddle.Data.TemplateOptions, out Heddle.Precompiled.PrecompiledTemplateInfo)
   METHOD System.Nullable<Heddle.Precompiled.PrecompiledFallbackEvent> Validate(Heddle.Precompiled.PrecompiledTemplateInfo, Heddle.Data.TemplateOptions)
@@ -884,6 +885,14 @@ TYPE Heddle.Precompiled.PrecompiledTemplates
   PROP System.Action<Heddle.Precompiled.PrecompiledFallbackEvent> OnFallback {get;set;}
   PROP System.Collections.Generic.IReadOnlyCollection<Heddle.Precompiled.PrecompiledTemplateInfo> Entries {get;}
   PROP System.Func<Heddle.Precompiled.PrecompiledExtensionBinding, System.Type, System.Boolean> BindingResolver {get;set;}
+TYPE Heddle.Precompiled.PrecompiledValidationReport
+  METHOD System.String ToString()
+  PROP Heddle.Precompiled.PrecompiledOptionsFingerprint ValidatedFingerprint {get;}
+  PROP Heddle.Runtime.Expressions.FunctionRegistry ValidatedFunctions {get;}
+  PROP System.Boolean PassedForValidatedOptions {get;}
+  PROP System.Boolean ValidatedStaleness {get;}
+  PROP System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledFallbackEvent> Failures {get;}
+  PROP System.Int32 EntriesChecked {get;}
 TYPE Heddle.Precompiled.TemplateKey
   FIELD System.String TemplateExtension
   METHOD System.Boolean HasTemplateExtension(System.String)
