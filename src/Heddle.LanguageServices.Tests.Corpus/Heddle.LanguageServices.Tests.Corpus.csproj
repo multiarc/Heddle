@@ -4,9 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <IsPackable>false</IsPackable>
-    <!-- Signed so it can carry Heddle's InternalsVisibleTo-free public extensions; not required, but keeps it
-         loadable alongside the signed engine. Q8.11: this comment shipped at 2.0 describing signing the project did
-         not do — the two properties below are what make it true. -->
+    <!-- Signed so it stays loadable alongside the signed engine. -->
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
     <Nullable>disable</Nullable>

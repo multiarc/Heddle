@@ -1,8 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- Facade + server target CoreCLR only; the facade cannot satisfy net48, so this suite is net10.0 only
-         (phase 6 D21). It is the additional test home CI runs alongside Heddle.Tests. -->
+    <!-- Facade and server target CoreCLR only, so this suite is net10.0 only. -->
     <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <LangVersion>latest</LangVersion>
@@ -27,8 +26,8 @@
     <ProjectReference Include="..\Heddle\Heddle.csproj" />
     <ProjectReference Include="..\Heddle.LanguageServices\Heddle.LanguageServices.csproj" />
     <ProjectReference Include="..\Heddle.LanguageServer\Heddle.LanguageServer.csproj" />
-    <!-- Phase 9 D14: the cross-host contract test runs the shared fixtures against DemoHost on ordinary CoreCLR
-         (the [JSExport]/worker shell is browser-only and untested here — DemoHost carries all the logic). -->
+    <!-- The cross-host contract test runs the shared fixtures against DemoHost on ordinary CoreCLR; the
+         [JSExport]/worker shell is browser-only and untested here, and DemoHost carries all the logic. -->
     <ProjectReference Include="..\Heddle.Demo.Wasm\Heddle.Demo.Wasm.csproj" />
     <ProjectReference Include="..\Heddle.Demo.Models\Heddle.Demo.Models.csproj" />
     <!-- The corpus is built and copied but NOT referenced as an assembly, so it is loaded fresh by the facade's
@@ -38,14 +37,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Phase 6 D12.6: the line-rule golden vectors, authored once in Heddle.Tests and asserted by every
-         surface that maps an offset to a position. Plain data, no Heddle dependency. -->
+    <!-- The line-rule golden vectors, authored once in Heddle.Tests and asserted by every surface that maps an
+         offset to a position. Plain data, no Heddle dependency. -->
     <Compile Include="..\Heddle.Tests\LineIndexVectors.cs" Link="Shared\LineIndexVectors.cs" />
     <Compile Include="..\Heddle.Tests\DiagnosticCorpusVectors.cs" Link="Shared\DiagnosticCorpusVectors.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Phase 9 D14: the shared cross-host contract fixtures, copied so DemoContractTests can load them. -->
+    <!-- The shared cross-host contract fixtures, copied so DemoContractTests can load them. -->
     <None Include="..\Heddle.Demo.Wasm\contract-fixtures\*.json"
           Link="contract-fixtures\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Corpus\broken-lib.heddle"><CopyToOutputDirectory>Always</CopyToOutputDirectory></None>

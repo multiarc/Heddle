@@ -1,27 +1,19 @@
 <Project>
 
-  <!-- Phase 7 D12: default-include .heddle templates unless the consumer opts out.
-       The extension below is the XML twin of TemplateKey.TemplateExtension (phase 5 D4), which is normative;
-       MSBuild cannot reference the const, so the two are kept in step by review. -->
+  <!-- The extension below is the XML twin of TemplateKey.TemplateExtension, which is normative; MSBuild cannot
+       reference the const, so the two are kept in step by review. -->
   <ItemGroup Condition="'$(EnableDefaultHeddleTemplates)' != 'false'">
     <HeddleTemplate Include="**\*.heddle" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder);bin\**;obj\**" />
   </ItemGroup>
 
-  <!-- Map HeddleTemplate items to AdditionalFiles carrying the per-item metadata the generator reads.
-       `Include="@(HeddleTemplate)"` is an item *transform*, so it already copies every metadatum HeddleTemplate
-       carries — Key, Name and Precompile arrive here for free. This block used to restate them as
-       `<Key>%(HeddleTemplate.Key)</Key>` etc., and that was actively destructive: outside a target a cross-item
-       `%(Other.Metadata)` reference evaluates to the empty string, so each element *overwrote* the metadatum the
-       transform had just copied with "". Every per-item metadatum was therefore inert from a real csproj — not only
-       `Name` (Q8.12's subject) but `Key` and `Precompile` too, neither of which any test reached through this file:
-       the generator suites inject `build_metadata.*` directly. Do not reintroduce the elements; there is nothing to
-       map, and mapping it explicitly is what unmapped it. Two gates stand behind that: the structural half is
-       `PipelineContractTests.EveryDeclaredItemMetadataIsReadByTheGeneratorAndNotNulledByTheTargets`, and the
-       behavioural half is the `samples/codegen-t4-successor` sample, whose import-only partial carries
-       `Name="Banner"` and is imported by that name — so a metadatum that stops flowing fails that sample's build
-       outright with HED7011, in CI, rather than degrading quietly. (Under Q8.12's first, override implementation the
-       behavioural gate was the generated entry class being *renamed* by `Name`; Q8.25 made `Name` additive, so the
-       key and the class name no longer move and the gate had to move with it.) -->
+  <!-- `Include="@(HeddleTemplate)"` is an item transform, so Key, Name and Precompile are already copied.
+       Do NOT restate them as `<Key>%(HeddleTemplate.Key)</Key>`: outside a target a cross-item `%(Other.Metadata)`
+       reference evaluates to the empty string, so each such element overwrites the metadatum the transform just
+       copied. That made every per-item metadatum inert from a real csproj — mapping it explicitly is what unmapped
+       it. Guarded structurally by
+       `PipelineContractTests.EveryDeclaredItemMetadataIsReadByTheGeneratorAndNotNulledByTheTargets`, and
+       behaviourally by `samples/codegen-t4-successor`, whose import-only partial is imported by its `Name` and so
+       fails the build with HED7011 in CI if the metadatum stops flowing. -->
   <ItemGroup>
     <AdditionalFiles Include="@(HeddleTemplate)">
       <HeddleTemplate>true</HeddleTemplate>

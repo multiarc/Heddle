@@ -2312,19 +2312,19 @@ namespace Heddle.Generator.Emit
             w.Line("{");
             w.Indent();
 
-            w.Line("/// <summary>Typed entry point — the recommended host API (phase 7 D11).</summary>");
+            w.Line("/// <summary>Typed entry point — the recommended host API.</summary>");
             w.Line($"public static string Generate({modelType} model, object chained = null, object callerData = null)");
             w.Indent();
             w.Line("=> global::Heddle.Precompiled.PrecompiledRuntime.GenerateString(Root, model, chained, callerData);");
             w.Outdent();
             w.Line();
-            w.Line("/// <summary>Renders into a TextWriter with no full-output materialization (phase 8).</summary>");
+            w.Line("/// <summary>Renders into a TextWriter with no full-output materialization.</summary>");
             w.Line($"public static void Generate({modelType} model, global::System.IO.TextWriter writer, object chained = null, object callerData = null)");
             w.Indent();
             w.Line("=> global::Heddle.Precompiled.PrecompiledRuntime.GenerateToWriter(Root, model, chained, callerData, writer);");
             w.Outdent();
             w.Line();
-            w.Line("/// <summary>Renders UTF-8 into an IBufferWriter&lt;byte&gt; with no full-output materialization (phase 8).</summary>");
+            w.Line("/// <summary>Renders UTF-8 into an IBufferWriter&lt;byte&gt; with no full-output materialization.</summary>");
             w.Line($"public static void Generate({modelType} model, global::System.Buffers.IBufferWriter<byte> writer, object chained = null, object callerData = null)");
             w.Indent();
             w.Line("=> global::Heddle.Precompiled.PrecompiledRuntime.GenerateUtf8(Root, model, chained, callerData, writer);");

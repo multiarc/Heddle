@@ -18,14 +18,13 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <!-- D19: Verify.SourceGenerators snapshots over CSharpGeneratorDriver (multi-file outputs + diagnostics). -->
+    <!-- Snapshots over CSharpGeneratorDriver: multi-file outputs plus diagnostics. -->
     <PackageReference Include="Verify.Xunit" Version="31.12.5" />
     <PackageReference Include="Verify.SourceGenerators" Version="2.5.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The generator under test; also referenced as a normal assembly so tests can instantiate it and drive it
-         through CSharpGeneratorDriver (D19). -->
+    <!-- The generator under test; also referenced as a normal assembly so tests can instantiate and drive it. -->
     <!-- `gen` alias (in addition to global): the generator links the shared Heddle.Language sources, so
          ParseContext/DocumentParser/DocumentShaping exist in BOTH referenced assemblies. Shaping tests that drive
          the generator's copy disambiguate with `extern alias gen;`; every other test keeps the global alias. -->
@@ -35,11 +34,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Phase 6 D12.6: the line-rule golden vectors, authored once in Heddle.Tests and asserted by every
-         surface that maps an offset to a position. Plain data, no Heddle dependency. -->
+    <!-- The line-rule golden vectors, authored once in Heddle.Tests and asserted by every surface that maps an
+         offset to a position. Plain data, no Heddle dependency. -->
     <Compile Include="..\Heddle.Tests\LineIndexVectors.cs" Link="Shared\LineIndexVectors.cs" />
     <Compile Include="..\Heddle.Tests\DiagnosticCorpusVectors.cs" Link="Shared\DiagnosticCorpusVectors.cs" />
-    <!-- Phase 1 D4: the prop-default conversion vectors, authored once and driven through both tiers' tables. -->
+    <!-- The prop-default conversion vectors, authored once and driven through both tiers' tables. -->
     <Compile Include="..\Heddle.Tests\PropDefaultConversionVectors.cs" Link="Shared\PropDefaultConversionVectors.cs" />
   </ItemGroup>
 

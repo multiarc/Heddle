@@ -13,12 +13,10 @@
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
     <LangVersion>latest</LangVersion>
-    <!-- B2-R10: the marker TextEncoder in EncoderOptionTests overrides the unsafe char* members. -->
+    <!-- The marker TextEncoder in EncoderOptionTests overrides the unsafe char* members. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <!-- Phase 7 WI1: the corpus reaches the output directory through TestCorpus.props' Content glob, on identical
-         terms to every other consumer. Dropping it from this project's default None glob keeps exactly one item
-         describing each corpus file, so "how does this file get to bin/" has one answer here too and not a
-         project-specific second one. -->
+    <!-- The corpus reaches the output directory through TestCorpus.props' Content glob, on identical terms to
+         every other consumer. Excluding it from the default None glob keeps exactly one item per corpus file. -->
     <DefaultItemExcludes>$(DefaultItemExcludes);TestTemplate\**;TestOutput\**</DefaultItemExcludes>
   </PropertyGroup>
 
@@ -60,16 +58,10 @@
     <ProjectReference Include="..\Heddle\Heddle.csproj" />
   </ItemGroup>
 
-  <!-- Phase 7 WI1 (D1) — the shared test corpus.
-
-       This one <Import> replaces the 112 hand-listed <None Update="TestTemplate\…"> rows that stood here. The
-       hand-listing was itself an instance of the defect phase 7 removes: a corpus file added without its row is a
-       file that silently never reaches any output directory, and nothing would have reddened. (Audited at the time
-       of the swap: the list and the directory agreed exactly, 112 to 112 — it had not drifted YET.)
-
-       The corpus files themselves do not move; they stay in this project's TestTemplate\ directory (D1 as revised
-       2026-07-26). What the props file adds is that OTHER test projects import the same line and get their own
-       build copy, which is what lets the generator suites consume the same FILES the engine suites read. -->
+  <!-- The shared test corpus. Replaces 112 hand-listed <None Update="TestTemplate\…"> rows, where a corpus file
+       added without its row silently never reached any output directory and nothing reddened. The files stay in this
+       project's TestTemplate\ directory; what the props file adds is that other test projects import the same line
+       and get their own build copy, so the generator suites consume the same files the engine suites read. -->
   <Import Project="..\TestCorpus\TestCorpus.props" />
 
 </Project>

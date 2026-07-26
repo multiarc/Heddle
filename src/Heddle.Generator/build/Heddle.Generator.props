@@ -1,6 +1,6 @@
 <Project>
 
-  <!-- Phase 7 D12/D14: compilation-wide options surfaced to the generator as build_property.* -->
+  <!-- Compilation-wide options surfaced to the generator as build_property.* -->
   <ItemGroup>
     <CompilerVisibleProperty Include="HeddleOutputProfile" />
     <CompilerVisibleProperty Include="HeddleExpressionMode" />
@@ -12,31 +12,28 @@
   </ItemGroup>
 
   <!-- Per-item metadata surfaced as build_metadata.AdditionalFiles.*.
-       `Precompile` is the per-item opt-out (phase 5, Q5.1): the file stays in the @<< import map, but emits no entry
-       point and no manifest entry.
-       `Key` is the item's explicit REGISTRATION key, replacing the path-derived one: it names the manifest row, the
-       generated entry class and the runtime registry lookup, participates in HED7002 / HED7003 / HED7004, and
-       suppresses HED7018 (an explicit key makes the flattened out-of-root key intentional).
-       `Name` is an ADDITIONAL import name, not an override (Q8.12 restored the metadatum phase 5 deleted on an
-       overreaching record; Q8.25 corrected its semantics after the first implementation shipped it as a second
-       spelling of `Key`, which silently broke every @<< that named a file by its path). A named template keeps its
-       key AND answers to the name, so both spellings resolve; importing one by its key draws the HED7028 advisory.
-       A `Name` that the normaliser refuses, or that another template already answers to, is HED7004 against the name
-       only — the key is unaffected. It does NOT touch the key, the manifest, the entry class or the #line file, and
-       it does not suppress HED7018.
-       Every name declared here is mapped onto AdditionalFiles by Heddle.Generator.targets and read by the generator;
-       the props↔targets↔code set-equality gate in PipelineContractTests is what makes a declared-but-never-wired
-       metadata name — exactly what `Name` was — a red test instead of dead XML. -->
+       `Precompile` is the per-item opt-out: the file stays in the @<< import map but emits no entry point and no
+       manifest entry.
+       `Key` replaces the path-derived registration key: it names the manifest row, the generated entry class and the
+       runtime lookup, participates in HED7002 / HED7003 / HED7004, and suppresses HED7018 (an explicit key makes a
+       flattened out-of-root key intentional).
+       `Name` is an ADDITIONAL import name, never an override. A named template keeps its key and also answers to the
+       name; importing it by key draws the HED7028 advisory. A `Name` the normaliser refuses, or one another template
+       already answers to, is HED7004 against the name only. It does not touch the key, the manifest, the entry class
+       or the #line file, and does not suppress HED7018. An earlier implementation made it a second spelling of `Key`,
+       which silently broke every @<< that named a file by its path.
+       A name declared here must also be mapped onto AdditionalFiles by Heddle.Generator.targets and read by the
+       generator; the props↔targets↔code set-equality gate in PipelineContractTests turns a declared-but-unwired
+       metadata name into a red test instead of dead XML. -->
   <ItemGroup>
     <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Key" />
     <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Name" />
     <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Precompile" />
   </ItemGroup>
 
-  <!-- Defaults (stated explicitly; flipped together with the engine defaults in the 2.0 window). The normative
-       table is Heddle.Precompiled.HeddleBuildOptions (phase 5 D8) — HeddleTemplateRoot's default is expressible
-       only here, so this XML stays a second physical statement and the props↔code↔runtime lockstep test proves the
-       two never diverge. -->
+  <!-- Defaults, stated explicitly. The normative table is Heddle.Precompiled.HeddleBuildOptions;
+       HeddleTemplateRoot's default is expressible only here, so this XML is a second physical statement of the rest
+       and the props↔code↔runtime lockstep test proves the two never diverge. -->
   <PropertyGroup>
     <HeddleOutputProfile Condition="'$(HeddleOutputProfile)' == ''">Html</HeddleOutputProfile>
     <HeddleExpressionMode Condition="'$(HeddleExpressionMode)' == ''">Native</HeddleExpressionMode>
