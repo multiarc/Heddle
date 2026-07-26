@@ -130,9 +130,9 @@ project.lock.json
 /editors/vscode/server
 # Ace editor bundle staged into the site by the docs workflow (generated)
 /docs/public/ace/
-# Phase 9 demo WASM bundle staged into the site by the docs workflow (generated, never committed)
+# Demo WASM bundle staged into the site by the docs workflow (generated, never committed)
 /docs/public/demo/
-# Phase 9 sample gallery capture outputs (written by `dotnet run -- --capture out`; goldens are committed)
+# Sample gallery capture outputs (written by `dotnet run -- --capture out`; goldens are committed)
 samples/**/out/
 /.idea
 /src/Heddle.Language/gen
@@ -140,15 +140,15 @@ samples/**/out/
 
 # Verify.SourceGenerators snapshot working files
 *.received.*
-# Phase 9 generator EmitCompilerGeneratedFiles output (build artifact)
+# Generator EmitCompilerGeneratedFiles output (build artifact)
 samples/**/generated/
 # Playwright demo smoke artifacts
 docs/test-results/
 docs/playwright-report/
 /docs/logs
 
-# Python benchmark harness (docs/spec/cross-stack-benchmarks/phase-5-python/ WI1):
-# venv and raw measurement outputs are never committed; published copies go to docs/benchmarks/<date>/
+# Python benchmark harness: venv and raw measurement outputs are never committed; published copies go
+# to docs/benchmarks/<date>/
 benchmarks/python/.venv/
 benchmarks/python/results/
 __pycache__/
@@ -160,9 +160,8 @@ benchmarks/out/
 /benchmarks/go/bench.exe
 # Prebuilt Go bench binary on Linux (benchmarks/go/run-benchmarks.sh)
 /benchmarks/go/bench
-# The Rust harness declares [[bin]] gate/summarize/alloc_report at src/bin/*.rs
-# (docs/spec/cross-stack-benchmarks/phase-2-rust/ D11/D10/D13). The generic [Bb]in patterns
-# near the top of this file would swallow those sources, so re-include them explicitly.
+# The Rust harness declares [[bin]] gate/summarize/alloc_report at src/bin/*.rs. The generic [Bb]in
+# patterns near the top of this file would swallow those sources, so re-include them explicitly.
 !benchmarks/rust/src/bin/
 !benchmarks/rust/src/bin/*.rs
 

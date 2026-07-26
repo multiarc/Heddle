@@ -6,15 +6,15 @@ namespace Heddle.Generated
 {
     public static class Dyn
     {
-        /// <summary>Typed entry point — the recommended host API (phase 7 D11).</summary>
+        /// <summary>Typed entry point — the recommended host API.</summary>
         public static string Generate(object model, object chained = null, object callerData = null)
             => global::Heddle.Precompiled.PrecompiledRuntime.GenerateString(Root, model, chained, callerData);
 
-        /// <summary>Renders into a TextWriter with no full-output materialization (phase 8).</summary>
+        /// <summary>Renders into a TextWriter with no full-output materialization.</summary>
         public static void Generate(object model, global::System.IO.TextWriter writer, object chained = null, object callerData = null)
             => global::Heddle.Precompiled.PrecompiledRuntime.GenerateToWriter(Root, model, chained, callerData, writer);
 
-        /// <summary>Renders UTF-8 into an IBufferWriter&lt;byte&gt; with no full-output materialization (phase 8).</summary>
+        /// <summary>Renders UTF-8 into an IBufferWriter&lt;byte&gt; with no full-output materialization.</summary>
         public static void Generate(object model, global::System.Buffers.IBufferWriter<byte> writer, object chained = null, object callerData = null)
             => global::Heddle.Precompiled.PrecompiledRuntime.GenerateUtf8(Root, model, chained, callerData, writer);
 

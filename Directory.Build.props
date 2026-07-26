@@ -6,15 +6,12 @@
     Packaging-only properties are harmless on non-packable projects.
   -->
   <PropertyGroup>
-    <!-- The release line, stated ONCE (Q8.11). It used to be nine hand-maintained <Version> elements — four of them
-         on non-shipping projects, all nine overridden by CI from the git tag, and this file excluded Version by an
-         explicit comment — the duplication class the code-sharing program spent itself deleting from source. The
-         statements that cannot live here (npm manifests, the VS Code extension's NuGet tool pin, the LSP workflow's
-         explicit version argument, the prose release-line sentences) are held in step by VersionConsistencyTests.
-         VersionPrefix, not Version: a `dotnet pack` version-suffix argument of `beta.N` then composes 2.1.0-beta.N,
-         and CI's release job still overrides the whole thing with a Version property from the tag. A suffix must NOT
-         carry its own leading dash, because the SDK joins prefix and suffix with one; the beta job's argument used to,
-         harmlessly, only because the projects spelled `2.0.0$(VersionSuffix)` by hand. -->
+    <!-- The release line, stated once. The statements that cannot live here — npm manifests, the VS Code
+         extension's NuGet tool pin, the LSP workflow's explicit version argument, the prose release-line sentences —
+         are held in step by VersionConsistencyTests.
+         VersionPrefix, not Version, so a `dotnet pack` version-suffix argument of `beta.N` composes 2.1.0-beta.N and
+         CI's release job can still override the whole thing from the tag. A suffix must NOT carry its own leading
+         dash: the SDK joins prefix and suffix with one. -->
     <VersionPrefix>2.1.0</VersionPrefix>
     <Authors>Aliaksandr Kukrash</Authors>
     <Company />

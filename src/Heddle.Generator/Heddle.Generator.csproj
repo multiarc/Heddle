@@ -6,7 +6,6 @@
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
 
-    <!-- Roslyn incremental source generator, phase 7 D12. -->
     <IsRoslynComponent>true</IsRoslynComponent>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
@@ -16,26 +15,26 @@
     <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
 
     <PackageId>Heddle.Generator</PackageId>
-    <Description>Build-time template pre-compilation for Heddle (phase 7 incremental source generator).</Description>
+    <Description>Build-time template pre-compilation for Heddle (incremental source generator).</Description>
 
     <!-- Analyzer projects that ProjectReference another project trigger this warning; the DLLs are packed
          into analyzers/dotnet/cs by the targets below.
          RS2008: this incremental source generator reports build diagnostics but is not distributed as a
          versioned analyzer package with AnalyzerReleases.{Shipped,Unreleased}.md tracking; the HED7xxx IDs
-         are governed by the diagnostic-ID registry in docs/spec instead. -->
+         are governed by the repository's diagnostic-ID registry instead. -->
     <NoWarn>$(NoWarn);RS1038;NU5128;RS2008</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- White-box binder unit tests (ExtensionBinder / Info are internal). Signed with the shared key. -->
     <InternalsVisibleTo Include="Heddle.Generator.Tests, PublicKey=00240000048000009400000006020000002400005253413100040000010001008F699CB432AD3DC770F9147DE37911B49099706C36AF5F14DB7C2031DD216FFAE283B63A2591814F371929AB231C4A82BCBFAC9803C37B96AE90DC703F4159E8B6AC6E2E9F364F072D1BA2FC5B79F26ACF3BD61637D2DB47F409E2B07CF3F49E988BF2C5F6DDAE6D8F804C770601CCE3F3CEA11F7D61A3583109D9AD3244F6C6" />
-    <!-- Phase 6 D9: the differential/partial suites located generated entry classes through hand-kept mirrors of
-         SanitizeName; they now call the production method. Same signing key as the line above. -->
+    <!-- The differential/partial suites call the production SanitizeName rather than mirroring it.
+         Same signing key as the line above. -->
     <InternalsVisibleTo Include="Heddle.Generator.IntegrationTests, PublicKey=00240000048000009400000006020000002400005253413100040000010001008F699CB432AD3DC770F9147DE37911B49099706C36AF5F14DB7C2031DD216FFAE283B63A2591814F371929AB231C4A82BCBFAC9803C37B96AE90DC703F4159E8B6AC6E2E9F364F072D1BA2FC5B79F26ACF3BD61637D2DB47F409E2B07CF3F49E988BF2C5F6DDAE6D8F804C770601CCE3F3CEA11F7D61A3583109D9AD3244F6C6" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The host compiler provides Microsoft.CodeAnalysis; never shipped (D12). -->
+    <!-- The host compiler provides Microsoft.CodeAnalysis; never shipped. -->
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.4.0" PrivateAssets="all" />
     <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" GeneratePathProperty="true" />
   </ItemGroup>
@@ -46,9 +45,8 @@
     <ProjectReference Include="..\Heddle.Language\Heddle.Language.csproj" />
   </ItemGroup>
 
-  <!-- Shared front-end sources (D4 step 2): the same parse pipeline the runtime compiles, linked in so parse
-       knowledge exists exactly once. Excludes the `*.Runtime.cs` halves — the partials that reach into the
-       runtime's CompileContext, which is not part of the linked closure. -->
+  <!-- The same parse pipeline the runtime compiles, linked in so parse knowledge exists exactly once. Excludes the
+       `*.Runtime.cs` halves — the partials reaching into the runtime's CompileContext, which is not linked. -->
   <ItemGroup>
     <Compile Include="..\Heddle\Language\**\*.cs" Exclude="..\Heddle\Language\**\*.Runtime.cs">
       <Link>Shared\Language\%(RecursiveDir)%(Filename)%(Extension)</Link>
@@ -66,31 +64,29 @@
     <Compile Include="..\Heddle\Exceptions\TemplateParseException.cs" Link="Shared\Exceptions\TemplateParseException.cs" />
     <Compile Include="..\Heddle\Precompiled\TemplateKey.cs" Link="Shared\Precompiled\TemplateKey.cs" />
     <Compile Include="..\Heddle\Precompiled\DefaultFunctionTable.cs" Link="Shared\Precompiled\DefaultFunctionTable.cs" />
-    <!-- Phase 5: the pipeline-level generator↔runtime contracts, stated once (D1/D5/D7/D8). -->
+    <!-- The pipeline-level generator↔runtime contracts, stated once. -->
     <Compile Include="..\Heddle\Precompiled\ContentHash.cs" Link="Shared\Precompiled\ContentHash.cs" />
     <Compile Include="..\Heddle\Precompiled\PrecompiledSchema.cs" Link="Shared\Precompiled\PrecompiledSchema.cs" />
     <Compile Include="..\Heddle\Precompiled\PrecompiledOptionsFingerprint.cs" Link="Shared\Precompiled\PrecompiledOptionsFingerprint.cs" />
     <Compile Include="..\Heddle\Precompiled\PrecompiledCapabilities.cs" Link="Shared\Precompiled\PrecompiledCapabilities.cs" />
-    <!-- Q8.31: linked, not restated, so the emitted member name is the real enum member and a rename breaks this
-         compile instead of producing a manifest that will not compile in the consumer. Same reason
-         PrecompiledCapabilities above is linked. -->
+    <!-- Linked, not restated, so the emitted member name is the real enum member: a rename breaks this compile
+         instead of producing a manifest that will not compile in the consumer. -->
     <Compile Include="..\Heddle\Precompiled\PrecompiledLinePathForm.cs" Link="Shared\Precompiled\PrecompiledLinePathForm.cs" />
     <Compile Include="..\Heddle\Precompiled\HeddleBuildOptions.cs" Link="Shared\Precompiled\HeddleBuildOptions.cs" />
     <Compile Include="..\Heddle\Data\OutputProfile.cs" Link="Shared\Data\OutputProfile.cs" />
     <Compile Include="..\Heddle\Data\ExpressionMode.cs" Link="Shared\Data\ExpressionMode.cs" />
-    <!-- Phase 1 (D11): the encoding-deciding rules, beside the enums they interpret. -->
+    <!-- The encoding-deciding rules, beside the enums they interpret. -->
     <Compile Include="..\Heddle\Data\RenderType.cs" Link="Shared\Data\RenderType.cs" />
     <Compile Include="..\Heddle\Data\OutputProfileRules.cs" Link="Shared\Data\OutputProfileRules.cs" />
     <Compile Include="..\Heddle\Data\RenderTypeRules.cs" Link="Shared\Data\RenderTypeRules.cs" />
-    <!-- Phase 3: the binding-layer contracts, stated once (F1/F9). BranchRole replaces the hand-mirrored enum
-         that used to live in Emit\ExtensionBinder.cs, whose numeric values were a cross-assembly contract
-         enforced only by a doc comment. -->
+    <!-- The binding-layer contracts, stated once. BranchRole is linked rather than mirrored because its numeric
+         values are a cross-assembly contract. -->
     <Compile Include="..\Heddle\Precompiled\AqnFormatter.cs" Link="Shared\Precompiled\AqnFormatter.cs" />
     <Compile Include="..\Heddle\Attributes\BranchRole.cs" Link="Shared\Attributes\BranchRole.cs" />
   </ItemGroup>
 
   <!-- Pack layout: the generator + its generation-time dependencies inside analyzers/dotnet/cs; MSBuild
-       props/targets under buildTransitive (D12). Microsoft.CodeAnalysis* is never shipped. -->
+       props/targets under buildTransitive. Microsoft.CodeAnalysis* is never shipped. -->
   <ItemGroup>
     <None Include="build\Heddle.Generator.props" Pack="true" PackagePath="buildTransitive\Heddle.Generator.props" />
     <None Include="build\Heddle.Generator.targets" Pack="true" PackagePath="buildTransitive\Heddle.Generator.targets" />
