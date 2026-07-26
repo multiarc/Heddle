@@ -473,3 +473,12 @@ access, arrays drive `@list`/`@for`, and scalars map to CLR primitives.
 ```
 heddle render <template> [--model-json <file>] [--out <file>] [--root <dir>]
 ```
+
+---
+
+*Verified against source at `6639f6f` (2026-07-26).* Claims marked ✓ are gated by a test:
+the `HED70xx`/`HED71xx` tables ✓ (descriptor ⇄ registry ⇄ this page, both directions); the
+fallback-reason taxonomy ✓ (an exhaustive classifier that throws on an unmapped reason); the
+gauntlet's four steps ✓ (`PrecompiledGauntletTests`); the schema support window ✓
+(`OldSchemaManifestRejectionTests`, over both released schemas). The MSBuild option table and the
+startup-order guidance are dated-verified, not gated.

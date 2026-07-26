@@ -301,3 +301,16 @@ expressions, and [csharp-api.md](csharp-api.md) for when to escalate to the `@` 
 For host‑side guidance on exposing models safely — DTOs, `[Hidden]`, the registry freeze, render
 budgets, and encoding contexts — see
 [Exposing models to untrusted templates](patterns.md#exposing-models-to-untrusted-templates).
+
+---
+
+*Verified against source at `6639f6f` (2026-07-26).* Claims marked ✓ are gated by a test:
+the diagnostics table ✓ (`DiagnosticIdTests.EveryShippedIdIsNamedInAPublishedDocument` — every id
+here is a shipped constant and this page is its registry-designated home); deviation 1's guard ✓
+(`OperatorGuardDifferentialTests.MixedTypeEquality_CompilesTheConsumerProject_AndDegrades`); the
+operator legality table and the lifted-operand shapes ✓ (`NativeOperatorRulesTests`, which drives the
+shared rule core both tiers use); the overload-rank measurement ✓
+(`OverloadBetternessEvaluationTests`). Everything else on this page is dated-verified, not gated —
+which matters: an unmarked claim is **evidence of intent, not an authority**, so a contradiction
+between it and both tiers agreeing is investigated and recorded, never resolved by editing code to
+match the sentence.

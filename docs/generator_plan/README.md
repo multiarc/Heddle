@@ -123,8 +123,12 @@ Supplements (linked from their main plans):
   number went to the phase's first genuinely new condition instead.
 - **Authority convention (applies everywhere):** the runtime engine's observable behavior is
   normative when aligning drift, except where a plan's D-item records the runtime itself as
-  the defect; expression semantics defer first to
-  [docs/native-expressions.md](../native-expressions.md). Anything that would *widen*
+  the defect. Which *document* may outrank the implementations, and under what condition, is
+  [D10](../spec/common/cross-cutting-decisions.md#d10--documentation-authority-is-mapped-and-it-is-conditional) —
+  the mapping plus the rule that a normative home outranks code only for a claim that is **verified or
+  gated**. This bullet used to grant `native-expressions.md` unconditional authority over expression
+  semantics; that was narrowed after four of its normative claims turned out to be false, each in a
+  direction that would have made a reader break working code (E10). Anything that would *widen*
   behavior (member visibility, overload semantics, coercion rail) is a
   [breaking-windows](../spec/common/breaking-windows.md) candidate, not a drift fix.
 - **Parity-restoring fixes are argued as not window-gated** in each plan's Back-compat
