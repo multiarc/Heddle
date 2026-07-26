@@ -3,7 +3,7 @@
 #pragma warning disable
 [assembly: global::Heddle.Precompiled.HeddleCompiledTemplates(
     manifestType:  typeof(global::Heddle.Generated.__HeddleManifest),
-    schemaVersion: 5,
+    schemaVersion: 3,
     engineVersion: "2.1.0")]
 
 namespace Heddle.Generated

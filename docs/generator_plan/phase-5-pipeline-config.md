@@ -911,21 +911,115 @@ Cost paid: five of the eight generator snapshots moved (header line plus the `vi
 file), and the sample's generated-source golden gained the header line. Three snapshots emit only the manifest,
 which carries no `#line` and no header.
 
-### Q8.2 — `MinSupportedSchemaVersion` 1 → 4, and a manifest fixture that is genuinely old
+### Q8.2 — `MinSupportedSchemaVersion` 1 → 3, the unreleased schemas collapsed, and a manifest fixture that is genuinely old
 
-The break had already shipped in 2.0.0: schema 4 put the prop-layout fingerprint on
-`PrecompiledExtensionBinding` as an optional third constructor parameter, removing the two-argument
-constructor every schema 1–3 manifest's IL names. `Min = 1` then *accepted* precisely the manifests that
-cannot run, and the fault landed as a `MissingMethodException` out of `PrecompiledTemplates.Register` at host
-startup. `4` excludes exactly the faulting set.
+**This section was rewritten (2026-07-26). Its first version rested on a false premise about the release, and
+the premise — not just the number — is what changed.** As first written it read: *"The break had already
+shipped in 2.0.0: schema 4 put the prop-layout fingerprint on `PrecompiledExtensionBinding` as an optional
+third constructor parameter, removing the two-argument constructor every schema 1–3 manifest's IL names."*
+Verified against the `v2.0.0` tag, every clause of that is wrong:
 
-The demonstration is the deliverable. `OldSchemaManifestFixture` compiles a manifest against a **reference
-facade** carrying the pre-schema-4 surface under the real assembly's identity (name, version, public key),
-with the real `Heddle` excluded from the reference set — so the emitted IL genuinely names
-`.ctor(string, string)` and *cannot* bind to the current form. This is the one thing the superseded pin could
-not do: `new PrecompiledExtensionBinding("a", "b")` compiles against today's assembly and silently binds to
-the three-parameter constructor, so it exercised a new-schema call wearing an old-schema shape — the
-substitution through which the break reached release behind a green suite.
+| Claim | `v2.0.0` reality |
+| --- | --- |
+| Schema 4 shipped | The generator emitted `schemaVersion: 2` (`HeddleTemplateGenerator.cs:380`) |
+| The engine accepted schema 4 | It accepted `Min = 1, Max = 2` — two private consts; `PrecompiledSchema.cs` did not exist |
+| The two-argument constructor was gone | It was a **real** constructor, and the shipped emitter called it (`TemplateEmitter.cs:2591`) |
+
+So **schemas 1 and 2 are the only released schemas**, schemas 3–5 were unreleased development, and the
+constructor break has never shipped: it is a genuine, *pending* 2.1 binary break. That is the opposite of the
+claim, and it inverts the argument — the old text presented the change as a gate catching up with an existing
+break, when in fact 2.1 both *creates* the break and gates it in the same release. The break is still taken
+(ruled), and it is still not window-gated, but on repaired grounds: what `Min = 1` would withdraw is not a
+working capability but a false advertisement, since accepting a released manifest yields a
+`MissingMethodException` out of `PrecompiledTemplates.Register` at host startup rather than a render.
+
+**The collapse.** Because nothing above schema 2 was ever observable, the three unreleased increments —
+dynamic-member routing (3), the prop-layout row (4), the per-carrier `BindDefinition` overload (5) — become a
+**single** schema 3, together with Q8.30's `RegisteredName` and Q8.31's `LinePathForm`. `Min = Max = Current = 3`:
+one increment past the released `2`, and the window is a point. Rationale: an increment no user could observe
+is not a migration step, and advertising three of them would claim a history that never existed while leaving
+the support window promising to read shapes no generator ever emitted. `Min = 3` rather than the `4` the
+ruling's words named — the collapse makes `4 > Max` impossible, and `3` is the faithful reading of "reject
+every released schema, accept only the new one".
+
+**The gate that happened to hold, re-derived rather than adjusted.** `Min == PropLayoutFingerprintSchemaVersion`
+was asserted as an *identity* ("the floor is the schema at which the three-argument constructor became the only
+one"), and it held at 4 for a reason that no longer exists. It still holds, at 3, and for the same stated
+reason — so it is kept. What is new is that it now also implies `Min == Max == Current`, which the test states
+explicitly so the point-shaped window is visible rather than incidental.
+
+**The demonstration is the deliverable, and its construction was already right.** `OldSchemaManifestFixture`
+compiles a manifest against a **reference facade** carrying the pre-break surface under the real assembly's
+identity (name, version, public key), with the real `Heddle` excluded from the reference set — so the emitted
+IL genuinely names `.ctor(string, string)` and *cannot* bind to the current form. Retargeting it at the
+released schemas reddened nothing, which is itself the evidence that only the numbers were wrong. The
+rejection arm is now a `[Theory]` over schema **1 and 2** — both released, both in the victim set, written as
+literals because they are facts about the tag, where deriving them from the current floor would make the test
+agree with any floor at all — and the control arm still admits the same bytes at `Min` and observes the crash
+the gate prevents.
+
+This is the one thing the superseded pin could not do: `new PrecompiledExtensionBinding("a", "b")` compiles
+against today's assembly and silently binds to the three-parameter constructor, so it exercised a new-schema
+call wearing an old-schema shape. Two lessons, both about the same habit — **reasoning from current source
+instead of from the release**. That is how the substitution passed for evidence, and it is how the "already
+shipped" claim spread through five documents unchallenged.
+
+### Q8.30 / Q8.31 — the manifest gains two per-template fields, and the generated file loses a comment
+
+Both land in schema 3 (above), because a manifest either has the schema 3 row shape or it does not; two
+additive fields do not need two increments.
+
+**Q8.30 — `RegisteredName`, and the resolution order.** `Name`'s scope has now moved three times: **override**
+(Q8.12 landing 1) → **additive, import-only** (Q8.25) → **additive, plus runtime** (Q8.30). Each step
+invalidated the previous step's rules rather than extending them, so each was re-derived; the fixture doc on
+`RegisteredNameLookupTests` carries the sequence, as `TemplateNameMetadataTests` carries the first two.
+
+The decision the ruling left open: **keys win.** A spelling naming one template's key and another's registered
+name resolves to the key owner, always, and independently of registration order. Grounds, in order of weight —
+*additivity* (an addition that displaced an existing spelling is the override Q8.25 corrected), *the match
+principle* (the build tier's import map is already keys-first, names-second, so the tiers cannot disagree about
+what a spelling means), and *determinism* (one dictionary holding both makes the winner depend on which
+assembly loaded first, which is the host's business). Mechanically: two indexes, keys consulted first, with a
+disjointness invariant enforced from **both** directions — a name whose spelling a key owns is refused at
+insert, and a key arriving later evicts the name shadowing its spelling. Both directions are needed because
+either can happen first across assemblies, and a one-sided implementation passes exactly one of the two order
+tests depending on load order.
+
+The new collision class is cross-assembly and therefore **runtime**: `HED7104` /
+`PrecompiledFallbackReason.RegisteredNameUnavailable`. The build tier cannot see it — the generator reads
+referenced assemblies' *symbols*, but a manifest's rows live in a `GetTemplates` method **body**, i.e. IL.
+Within one compilation the same fault stays `HED7004`. It does **not** join the duplicate-key throw: two
+templates claiming one *key* is unresolvable, while a name/key collision is fully resolved by the ordering
+rule, and Q8.25's "a broken addition costs the addition and nothing more" decides the rest. The contrast is
+asserted in a single test so neither can drift into the other.
+
+**Q8.31 — `LinePathForm`.** Q8.27's decision about the `#line` *form* is untouched; only its carrier moved,
+from a comment under `// <auto-generated/>` to a manifest field, because a comment is unreadable to the
+symbolizer, IDE or LSP that would want it. An **enum** with three members rather than a bool, and `Unspecified`
+is why: a fallback-marker row has no generated source and so no `#line` directives to describe, and a bool
+would force it to assert something false. The enum file is *linked* into the generator rather than having its
+member names restated as literals, so a rename breaks the generator's compile instead of emitting a manifest
+that will not compile in the consumer. Both halves — field recorded, comment absent — are asserted together,
+so an implementation leaving two carriers for one fact cannot pass.
+
+### Q8.28 / Q8.29 — opted-out items are validated and advised
+
+One change, because they are one defect seen from either end. The `!template.Precompile` `continue` moved to
+*after* key and name derivation, so an opted-out item raises exactly the `HED7004` faults an included one does,
+and is parsed in advisory-only mode so its own imports can draw `HED7028`.
+
+**`HED7029` was not needed and stays free.** Every exposed fault had a home (`HED7004` for the three unusable
+metadata cases, `HED7028` for the advisory). Two candidates were declined: a warning that an opted-out item's
+`Name` is build-time-only would fire on the feature's *intended* shape (an import-only partial under a friendly
+name is the primary use case Q8.28 itself names), and the cross-assembly collision is invisible to the build
+tier and got a runtime id instead.
+
+**The narrow scope is a decision.** An opted-out item's *template* diagnostics stay unreported: draining every
+opted-out file's parse channels would redden previously-green builds over templates the author explicitly
+excluded, which is far larger than what was ruled. It suppresses rather than forgives — a precompiled template
+importing the file pulls the same content through the same channels — and the boundary is pinned from both
+sides, so the suppression cannot silently widen. The opt-out's own contract is unchanged and pinned: no entry
+point, no manifest entry.
 
 ### Q8.11 — one `<VersionPrefix>`, every first-party assembly signed, and a gate
 

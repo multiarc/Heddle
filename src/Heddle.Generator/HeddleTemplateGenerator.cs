@@ -224,12 +224,13 @@ namespace Heddle.Generator
                     continue;
                 }
 
-                // Precompile="false" (Q5.1 ruling): the per-item opt-out. The file is already in the import map
-                // built above, so every @<< that references it still resolves (no HED7011 on importers) — it simply
-                // contributes no entry point and no manifest entry, which is what `Remove` could never express.
-                if (!template.Precompile)
-                    continue;
-
+                // Key and name derivation, and their diagnostics, run BEFORE the Precompile gate (Q8.28). They used to
+                // run after it, so a malformed `Key`, a malformed `Name` or an already-taken `Name` on an
+                // import-only item produced no diagnostic at all: the name silently failed to register and every @<<
+                // that used it drew HED7011 at the *importer*, pointing at the wrong file. That population — a named
+                // import-only partial — is the primary use case for the `Name`/`Precompile` pair, so it was exactly
+                // the case whose faults were unreportable. An opted-out item now raises the same key/name faults an
+                // included one would; what it still contributes is nothing: no entry point and no manifest entry.
                 var key = DeriveKey(template, config.TemplateRoot, out var outOfRoot, out var keyFault);
                 if (key == null)
                 {
@@ -247,20 +248,49 @@ namespace Heddle.Generator
                 // else — the key still registers and every existing import still resolves. Two faults reach this:
                 // a value the normalizer refuses, and a spelling another template's key or name already owns.
                 var registeredName = DeriveName(template, out var nameFault);
+                var nameRegistered = false;
                 if (nameFault != null)
                 {
                     spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.InvalidKeyMetadata,
                         Location.None, template.Text.Path, nameFault));
                 }
-                else if (registeredName != null && !string.Equals(registeredName, key, StringComparison.Ordinal) &&
-                    (!aliasOwners.TryGetValue(registeredName, out var aliasOwner) ||
-                        !string.Equals(aliasOwner, template.Text.Path, StringComparison.Ordinal)))
+                else if (registeredName == null ||
+                    string.Equals(registeredName, key, StringComparison.Ordinal))
+                {
+                    // No name, or a name that spells this template's own key: nothing is added, nothing is reported.
+                }
+                else if (aliasOwners.TryGetValue(registeredName, out var aliasOwner) &&
+                    string.Equals(aliasOwner, template.Text.Path, StringComparison.Ordinal))
+                {
+                    nameRegistered = true;
+                }
+                else
                 {
                     spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.InvalidKeyMetadata,
                         Location.None, template.Text.Path,
                         "Name=\"" + template.NameMetadata + "\" registers the import spelling '" + registeredName +
                         "', which another template already answers to. Registered names share the import-path " +
                         "namespace with template keys, so the name must be free."));
+                }
+
+                // Q8.30: only a name that actually registered travels to the manifest, so the runtime name index and
+                // the build-time import map hold the same set of spellings for the same templates.
+                var registeredNameForManifest = nameRegistered ? registeredName : null;
+
+                // Precompile="false" (Q5.1 ruling): the per-item opt-out. The file is already in the import map built
+                // above, so every @<< that references it still resolves (no HED7011 on importers) — it simply
+                // contributes no entry point and no manifest entry, which is what `Remove` could never express.
+                //
+                // Q8.29: it is still a participant in the import graph, so it is parsed far enough to advise on its
+                // own imports. HED7028 is raised by the *importer*, and an opted-out importer never parsed, so a
+                // named partial imported by path from another opted-out partial could not be advised — the same
+                // defect as Q8.28 seen from the other end, and it gets the same answer. Advisory-only: see
+                // ParseAndReport's `advisoryOnly` for why a missing import inside an opted-out file is still not an
+                // error here.
+                if (!template.Precompile)
+                {
+                    ParseAndReport(spc, template, importMap, nameByKeySpelling, out _, out _, advisoryOnly: true);
+                    continue;
                 }
 
                 // HED7018 (D3): the template is not under HeddleTemplateRoot and carries no explicit key metadata, so
@@ -323,7 +353,11 @@ namespace Heddle.Generator
                     // here rather than left conflated because they usually agree. `rootRelative` carries Q8.27's
                     // relativity marking through to the generated file's header.
                     var lineFile = LineDirectiveFile(template, config.TemplateRoot, out var lineFileIsRootRelative);
-                    var emitter = new TemplateEmitter(key, sanitized, ns, cleanDocument, template.Content, parsed, config, compilation, exports, template.Text.Path, lineFile, lineFileIsRootRelative);
+                    var emitter = new TemplateEmitter(key, sanitized, ns, cleanDocument, template.Content, parsed, config, compilation, exports, template.Text.Path, lineFile, lineFileIsRootRelative,
+                        // Q8.30: the name goes onto the manifest row only if it actually registered. A name that lost
+                        // its spelling (reported at HED7004 above) must not reach the runtime index, or the two tiers
+                        // would disagree about which template answers to it.
+                        registeredName: registeredNameForManifest);
                     var result = emitter.Emit(ContentHash.HashText(template.Content));
 
                     // Emitter-produced Roslyn diagnostics (HED7005 surrogate, HED7006/HED7015 extension binding),
@@ -405,9 +439,18 @@ namespace Heddle.Generator
             EmitManifest(spc, ns, engineVersion, manifestEntries);
         }
 
+        /// <summary>Parses the template through the shared front end and reports what the build tier owes the author.
+        /// <para><paramref name="advisoryOnly"/> is the <c>Precompile="false"</c> mode (Q8.29): the parse runs so the
+        /// import reader can raise HED7028 for this file's own imports, and <b>nothing else is reported</b>. The
+        /// missing-import error and the drained parse channels stay silent for an opted-out item, deliberately and
+        /// narrowly: the ruling asks for validation of the item's metadata and advice on its imports, and turning
+        /// every opted-out file's template errors into build errors is a different and much larger change — it would
+        /// red previously-green builds over templates that, by the author's explicit instruction, this build does not
+        /// compile. Those faults are unchanged, not forgiven: the moment a precompiled template imports the file, the
+        /// importer's own parse pulls the same content through the same channels and raises them.</para></summary>
         private static ParseContext ParseAndReport(SourceProductionContext spc, TemplateFile template,
             Dictionary<string, string> importMap, Dictionary<string, string> nameByKeySpelling,
-            out string cleanDocument, out bool hadErrors)
+            out string cleanDocument, out bool hadErrors, bool advisoryOnly = false)
         {
             cleanDocument = template.Content;
             hadErrors = false;
@@ -460,12 +503,15 @@ namespace Heddle.Generator
 
             var sourceText = template.Text.GetText();
 
-            foreach (var missing in missingImports)
+            if (!advisoryOnly)
             {
-                hadErrors = true;
-                var position = FindImportBlock(template.Content, missing);
-                spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.ImportNotIncluded,
-                    ToLocation(template.Text, sourceText, position), missing));
+                foreach (var missing in missingImports)
+                {
+                    hadErrors = true;
+                    var position = FindImportBlock(template.Content, missing);
+                    spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.ImportNotIncluded,
+                        ToLocation(template.Text, sourceText, position), missing));
+                }
             }
 
             // HED7028: guidance only, and deliberately not gated on `hadErrors` — the import resolved, so the advice
@@ -476,6 +522,12 @@ namespace Heddle.Generator
                     ToLocation(template.Text, sourceText, FindImportBlock(template.Content, advised.Key)),
                     advised.Key, advised.Value));
             }
+
+            // An opted-out item is here for the advisory above and nothing else: no error channel, and no parse
+            // context to hand back, because no emit follows.
+            if (advisoryOnly)
+                return null;
+
             // Phase 7 D5 (emit-then-retract, generator side): a base-not-found error captured on a region-fill
             // candidate is tentative — a matched public fill retracts it on the dynamic tier, and the emitter
             // decides matched vs unmatched during Emit. Never report it as a build error here; an unmatched

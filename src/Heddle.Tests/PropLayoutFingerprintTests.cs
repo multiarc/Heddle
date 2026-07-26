@@ -153,10 +153,10 @@ namespace Heddle.Tests
         /// <para>A binding row carrying <b>no</b> fingerprint is checked vacuously, so the layout check cannot
         /// invalidate a row that predates it. That is the property this test is for, and it still holds.</para>
         /// <para><b>What it must no longer be read as claiming (Q8.2).</b> It used to be named
-        /// <c>AManifestPredatingTheRowStillPasses</c> and cited "schema 1–3" as evidence that the row's arrival forced
+        /// <c>AManifestPredatingTheRowStillPasses</c> and cited old manifests as evidence that the row's arrival forced
         /// no re-precompilation. It could never be that evidence: <c>new PrecompiledExtensionBinding("fpbase", aqn)</c>
         /// compiles against <em>today's</em> assembly, so the compiler binds it to the three-parameter constructor and
-        /// passes <c>null</c>. A real schema 1–3 manifest calls a two-parameter constructor that no longer exists in
+        /// passes <c>null</c>. A real released (schema 1–2) manifest calls a two-parameter constructor that no longer exists in
         /// metadata, and would throw <see cref="MissingMethodException"/> long before reaching the gauntlet. The
         /// optional parameter made a *new*-schema call look like an old one, and that substitution is how the binary
         /// break shipped behind a green suite. The claim about real old manifests now lives in

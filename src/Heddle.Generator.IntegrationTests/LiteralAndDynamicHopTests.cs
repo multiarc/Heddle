@@ -60,7 +60,16 @@ namespace Heddle.Generator.IntegrationTests
                 "global::Heddle.Precompiled.PrecompiledRuntime.DynamicMember(global::Heddle.Precompiled.PrecompiledRuntime.DynamicMember(m, \"Nested\"), \"Amount\")",
                 source);
             Assert.DoesNotContain("(dynamic)", source);
-            Assert.Contains("schemaVersion: 5", gen.ManifestSource);
+            // Asked of the constant, not of a literal: this test is about the routing shape being gated on the schema
+            // that introduced it, never about a particular number. Written as "schemaVersion: 5" it went stale the
+            // moment the unreleased schemas 3–5 were collapsed into one.
+            Assert.Contains(
+                "schemaVersion: " + Heddle.Precompiled.PrecompiledSchema.DynamicMemberRoutingSchemaVersion,
+                gen.ManifestSource);
+            Assert.True(
+                Heddle.Precompiled.PrecompiledSchema.CurrentSchemaVersion >=
+                Heddle.Precompiled.PrecompiledSchema.DynamicMemberRoutingSchemaVersion,
+                "DynamicMember routing is emitted below the schema that introduced it.");
         }
 
         /// <summary>

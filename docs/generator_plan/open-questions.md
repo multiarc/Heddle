@@ -256,15 +256,52 @@ question, the ruling or default, and where it is folded.
   built at the old schema — not asserted. *Folded into:* a post-audit work item.
   **Implemented (2026-07-26):** `MinSupportedSchemaVersion = 4`, landed atomically with Q8.11's 2.1 bump.
   The demonstration is `OldSchemaManifestRejectionTests` over `OldSchemaManifestFixture`, which compiles a
-  manifest against a **reference facade** carrying the pre-schema-4 surface under the real assembly's
+  manifest against a **reference facade** carrying the pre-break surface under the real assembly's
   identity (name, version, public key), with the real `Heddle` excluded from the reference set — so the
   emitted IL genuinely names `.ctor(string, string)` and cannot bind to the current three-parameter form.
-  Three assertions: the 2-arg constructor is absent from metadata; the fixture declaring schema 3 is
-  rejected cleanly (`SchemaVersionUnsupported`/`HED7102`, no throw, nothing registered); and the *same
-  bytes* declaring schema `Min` are admitted and fault with `MissingMethodException` — the control arm that
-  makes "the gate prevents a startup crash" evidence rather than narration, and that shows 4 is exactly
-  where the boundary belongs. Mutating the facade to declare the optional third parameter — reproducing the
-  substitution the ruling forbade — reddens the suite.
+  Three assertions: the 2-arg constructor is absent from metadata; a fixture declaring a schema below the
+  floor is rejected cleanly (`SchemaVersionUnsupported`/`HED7102`, no throw, nothing registered); and the
+  *same bytes* declaring schema `Min` are admitted and fault with `MissingMethodException` — the control arm
+  that makes "the gate prevents a startup crash" evidence rather than narration. Mutating the facade to
+  declare the optional third parameter — reproducing the substitution the ruling forbade — reddens the suite.
+
+  **CORRECTED (2026-07-26, same day): the number was wrong, and so was the reason given for it.** The user
+  checked the release and the premise collapsed. Verified against the `v2.0.0` tag: the shipped generator
+  emitted `schemaVersion: 2` (`HeddleTemplateGenerator.cs:380`), the shipped engine accepted
+  `Min = 1, Max = 2` (`PrecompiledTemplates.cs`, two private consts — `PrecompiledSchema.cs` did not exist
+  yet), and the shipped `PrecompiledExtensionBinding` had a **real 2-arg `.ctor`** which the shipped emitter
+  called (`TemplateEmitter.cs:2591`). **Schemas 1 and 2 are the only released schemas. Schemas 3, 4 and 5 were
+  all unreleased.**
+
+  Two consequences, both landed. First, **the reasoning in `breaking-windows.md` was false and is replaced,
+  not softened**: it argued the break "already shipped, in 2.0.0, because schema 4's optional parameter
+  removed the 2-arg ctor then". Schema 4 never shipped, so the constructor break has never shipped either —
+  it is a genuine *pending* 2.1 binary break, which is the opposite of the claim. A normative document cannot
+  carry a false premise, and grounds (a) of that disposition is withdrawn outright; (b) and (c) carry it.
+
+  Second, **the unreleased history collapses into a single schema 3.** `Min = Max = Current = 3`, and
+  everything that had been 3, 4 and 5 becomes 3: `DynamicMemberRoutingSchemaVersion`,
+  `PropLayoutFingerprintSchemaVersion`, `PerCarrierLocalsSchemaVersion`, plus Q8.30's
+  `RegisteredNameSchemaVersion` and Q8.31's `LinePathFormSchemaVersion`. Rationale: an increment no user
+  could observe is not a migration step, and three of them would advertise a history that never existed while
+  leaving the window claiming to read shapes no generator ever emitted. One increment past the released `2`
+  carries all of it. `Min = 3` — not the `4` the ruling's words named, because the collapse makes `4 > Max`
+  impossible; `3` is the faithful reading of "reject every released schema, accept only the new one".
+
+  **The gate that happened to hold, re-derived.** `Min == PropLayoutFingerprintSchemaVersion` was asserted as
+  an identity — "the floor is the schema at which the 3-arg constructor became the only one" — and it held at
+  4 for a reason that no longer exists. It still holds, at 3, and for the *same* stated reason, so the
+  identity is kept rather than deleted; what changed is that it now also implies `Min == Max == Current`,
+  which the test states explicitly so the point-shaped window is visible rather than incidental.
+
+  **The fixture now targets the released shapes.** `OldSchemaManifestRejectionTests` reddened nothing when
+  retargeted, which is itself the evidence that the construction technique was right and only the numbers were
+  wrong: the rejection arm became a `[Theory]` over schema **1 and 2** — both released, both in the break's
+  victim set, written as literals because they are facts about the tag and deriving them from the current floor
+  would make the test agree with any floor at all — and the control arm still admits the same bytes at `Min`
+  and observes the `MissingMethodException`. `PrecompiledRegistryTests`' out-of-window edges became
+  `[MemberData]` derived from the window: as literals (`3` and `6` against a `4–5` window) the collapse would
+  have left the "below the floor" case testing *acceptance* while the test kept passing.
   `PropLayoutFingerprintTests.AManifestPredatingTheRowStillPasses` is renamed
   `ARowWithNoFingerprintIsCheckedVacuously` with its schema claim removed, because it could never have been
   evidence for it; `PrecompiledRegistryTests`' five schema-1 registrations now ask for
@@ -723,6 +760,35 @@ question, the ruling or default, and where it is folded.
   opted-out items too, reporting the same faults an included item would raise, plus a diagnostic for
   anything with no existing home (claim `HED7029` if needed). The population whose faults are
   currently unreportable is exactly the population the feature is for.
+
+  **Landed (2026-07-26), with Q8.29 — one change, because they are one defect.** The `!template.Precompile`
+  `continue` moved to *after* key and name derivation, so an opted-out item now raises exactly the faults an
+  included one does: a malformed `Key`, a malformed `Name` and an already-taken `Name` are all `HED7004`
+  against the item that is wrong, instead of surfacing as `HED7011` at an innocent importer.
+
+  **`HED7029` was not needed, and the id stays free.** Every fault this exposes already had a home: the three
+  above are instances of `HED7004`'s "this item's explicit key metadata is unusable" class, and the advisory is
+  `HED7028`. Two candidates were considered and declined. *(1)* "This item declares `Name` but is opted out, so
+  the name is a build-time import spelling only and the runtime cannot answer to it" — true under Q8.30, and
+  declined because that pairing is the feature's **intended** shape (Q8.28's own words: an import-only partial
+  under a friendly name is the primary use case), and a warning on the intended use is noise. *(2)* The
+  cross-assembly name/key collision Q8.30 introduces — declined *as a build-time id* because the build tier
+  cannot see it: a referenced assembly's manifest rows live in a `GetTemplates` method **body**, which is IL and
+  not symbol metadata. That one got a **runtime** id instead, `HED7104`, recorded under Q8.30.
+
+  **What deliberately did not change**, stated so it is a decision and not an omission. An opted-out item's
+  *template* diagnostics — a missing import, a parse error — stay unreported. The ruling asks for its metadata
+  validated and its imports advised; draining every opted-out file's parse channels would turn previously-green
+  builds red over templates the author explicitly excluded from this build, which is a much larger change than
+  was ruled. It is a suppression, not an amnesty: as soon as a precompiled template imports the file, the
+  importer's own parse pulls the same content through the same channels and raises them. The mechanism is
+  `ParseAndReport`'s `advisoryOnly` flag, and the boundary is pinned from both sides — an opted-out file with a
+  missing import reports nothing, a precompiled file with the same missing import still reports `HED7011`.
+
+  **The invariant is pinned, not assumed:** `AValidatedOptedOutItemStillContributesNoEntryPointAndNoManifestEntry`
+  asserts a clean opted-out item with a working name yields no manifest row under either spelling and no entry
+  class, while the importer that *does* precompile still resolves the import. Six new tests were confirmed red
+  against the pre-change ordering before the fix.
 - **Q8.29 — `HED7028` cannot fire for an import-only *named* template, which is the case it is most
   for.** The advisory is raised from `ParseAndReport`, which only runs for items that reach the
   emit loop; the *importer* is what raises it, so a named `Precompile="false"` partial imported by
@@ -734,6 +800,14 @@ question, the ruling or default, and where it is folded.
   inside an opted-out file. The two are one defect seen from either end — an opted-out template is
   still a participant in the import graph, so it must be parsed enough to validate and advise even
   though it contributes no entry point and no manifest entry.
+
+  **Landed (2026-07-26) with Q8.28, as one change.** An opted-out item is now parsed through the same
+  `ParseAndReport`, in `advisoryOnly` mode: the import reader runs — which is what produces the advisory data,
+  so the rule lives in one place rather than being reimplemented for the opt-out — and `HED7028` is reported at
+  the importer's own `@<<{{…}}` block. Nothing else is. Pinned by
+  `Hed7028FiresForAnImportInsideAnOptedOutFile`, which asserts the diagnostic lands in the *opted-out* file's
+  path, so an implementation that advised from somewhere else cannot pass. See Q8.28 for why the
+  advisory-only scope is narrow and for the two-sided pin that keeps it scoped to the opt-out.
 - **Q8.30 — Nothing pins that a registered `Name` is *not* a runtime registry key.** Q8.25 scopes
   `Name` to `@<<` import resolution on the user's words ("an optional additional name register for
   import to use"). The generator honours that — the manifest carries only keys — and
@@ -756,6 +830,55 @@ question, the ruling or default, and where it is folded.
   asked for is of **that** behaviour — not, as this question originally proposed, that a runtime name
   lookup misses. Diagnostics this requires (most obviously a name colliding with another template's
   key across the registry) are in scope. Manifest schema change — coordinate the bump with Q8.31.
+
+  **Landed (2026-07-26).** `PrecompiledTemplateInfo` gains `RegisteredName`; the generator emits it; the registry
+  answers to it. `Name`'s scope has now moved **three** times and the fixture doc
+  (`RegisteredNameLookupTests`) states all three, because each step invalidated the previous step's rules rather
+  than extending them: **override** (Q8.12 landing 1) → **additive, import-only** (Q8.25) → **additive, plus
+  runtime** (Q8.30). Only a name that actually registered at build time reaches the manifest, so the two tiers
+  hold the same spellings for the same templates.
+
+  **Resolution order — the decision, stated rather than left implicit. Keys win.** A lookup string matching one
+  template's key and another's registered name resolves to the **key owner**, always, and independently of the
+  order the assemblies registered in. Three grounds, in order of weight. *Additivity:* a name is an addition, and
+  an addition that displaced a spelling which already resolved is exactly the override Q8.25 corrected —
+  re-introducing it at the runtime tier would undo that correction on the surface where it is hardest to see.
+  *The match principle:* the build tier's import map has been two passes, keys first, names second, since Q8.25,
+  so the runtime uses the same order and the tiers cannot disagree about what a spelling means. *Determinism:*
+  one dictionary holding both would make the winner depend on which assembly registered first, which is the
+  host's business, not the engine's.
+
+  Mechanically it is **two indexes with a disjointness invariant** — no spelling is ever in both — enforced from
+  *both* directions, because either can happen first across assemblies: a name whose spelling a key already owns
+  is refused at insert, and a key arriving later **evicts** the name that was shadowing its spelling. A one-sided
+  implementation passes exactly one of the two order tests, and which one depends on host load order, so both are
+  asserted separately plus a third that pins the property over both orders.
+
+  **The new collision class, and why it does not throw.** A registered name colliding with another *registered*
+  template — by key or by name — is `HED7104` / `PrecompiledFallbackReason.RegisteredNameUnavailable`, reported
+  once per lost name through `OnFallback`. It is a **runtime** id because the collision spans assemblies and the
+  build tier structurally cannot see it: the generator reads referenced assemblies' *symbols*, but a manifest's
+  rows live in a `GetTemplates` method **body**, i.e. IL. Within one compilation the same fault is still
+  `HED7004`. It does **not** join the duplicate-key throw, and the contrast is asserted in one test so neither can
+  drift into the other: two templates claiming one *key* is unresolvable — either could be the one the host meant,
+  and picking silently is the illegitimate fallback the taxonomy forbids — whereas a name/key collision is fully
+  resolved by the ordering rule above, with no ambiguity about which template renders. Q8.25's principle then
+  decides the rest: **a broken addition costs the addition and nothing more**, and throwing would take a whole
+  assembly's registration down over an alias.
+
+  **The behaviour assertion the ruling asked for** is `ALookupByRegisteredNameFindsTheSameEntryAsALookupByKey`:
+  both spellings resolve, to the *same object* (reference identity — two indexes holding different objects for one
+  template would satisfy a weaker check while being the exact drift the manifest field prevents), and the entry
+  keeps reporting its **key**, which is the identity the staleness check and every diagnostic are written against.
+  It was confirmed red before the implementation, missing at the name lookup. `TryResolve` is asserted separately,
+  because a name that resolved only through `TryGet` would be invisible to the resolver and `PrecompiledRuntime`,
+  which is every real caller.
+
+  One asymmetry follows from the opt-out and is left standing deliberately: an opted-out item contributes no
+  manifest row, so its `Name` is a build-time import spelling only. Q8.28 considered warning about that and
+  declined — it is the feature's intended shape, not a fault.
+
+  Schema: **3**, shared with Q8.31 — see the Q8.2 correction above for why the number went *down*.
 - **Q8.31 — The `#line` relativity marker is prose in generated code, not a machine-readable
   form.** Q8.27's marking is a comment line. That is exactly what the ruling asked for (a reader
   can tell which form a `#line` is in) and it is what the snapshots pin, but a *tool* — a stack-trace
@@ -767,3 +890,28 @@ question, the ruling or default, and where it is folded.
   code.** The `#line` path form becomes machine-readable manifest data instead of prose in the
   generated file, and the header comment Q8.27 added is deleted. One schema bump shared with Q8.30,
   which also adds a manifest field.
+
+  **Landed (2026-07-26).** The carrier is `PrecompiledTemplateInfo.LinePathForm`, a three-member
+  `PrecompiledLinePathForm` enum: `RootRelative`, `TemplatePath`, and `Unspecified` for a row that makes no claim.
+  Q8.27's two prose sentences map onto the first two members exactly, so the *decision* Q8.27 took is untouched —
+  only where it is written down changed. The comment under `// <auto-generated/>` is gone from every generated
+  file.
+
+  **An enum, not a bool**, and `Unspecified` is the reason: a fallback-marker entry has no generated source and
+  therefore no `#line` directives to describe, so it must be able to say nothing rather than be forced to claim
+  one of two forms. A bool would have made the marker row assert something false.
+
+  The enum file is **linked into the generator** (`Heddle.Generator.csproj`, beside `PrecompiledCapabilities`)
+  rather than having its member names restated as string literals, so a rename breaks the generator's own compile
+  instead of emitting a manifest that will not compile in the consumer.
+
+  **Both halves are asserted together** — the form is recorded *and* `#line file names below` is absent from the
+  generated source — so an implementation that added the field without deleting the prose cannot pass; two
+  carriers for one fact is the state this closes. A third test pins the two forms as genuinely *distinguished*
+  (one compilation with a rooted and an out-of-root template records a different value for each), which a constant
+  would have satisfied in the single-template tests.
+
+  Cost, as predicted: the eight Verify snapshots and the sample golden move. Deltas reviewed line by line before
+  acceptance and they are exactly four kinds — the deleted comment, `schemaVersion: 5` → `3` (the Q8.2 collapse),
+  and the two new manifest rows. The sample's rendered `codegen-output.txt` is **unchanged**, which is the
+  assertion that the emitted code moved and the emitted output did not.

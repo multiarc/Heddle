@@ -70,7 +70,11 @@ namespace Heddle.Tests
                 "HED7008", "HED7009", "HED7010", "HED7011", "HED7012", "HED7013", "HED7014",
                 "HED7015", "HED7016", "HED7017", "HED7018", "HED7019", "HED7020", "HED7021", "HED7022",
                 "HED7023", "HED7024", "HED7025", "HED7028",
-                "HED7101", "HED7102", "HED7103"
+                "HED7101", "HED7102", "HED7103",
+                // Q8.30: a registered Name that another registered template already answers to. A runtime id because
+                // the collision spans assemblies — a referenced manifest's rows are IL, not symbol metadata, so the
+                // build tier cannot see them (within one compilation the same fault is HED7004).
+                "HED7104"
             };
 
             var constants = typeof(HeddleDiagnosticIds)

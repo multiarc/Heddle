@@ -88,8 +88,8 @@ namespace Heddle.Precompiled
                 // Phase 3 OQ4 — the identity check above proves the manifest and the live registry name the same
                 // type, not that the type still lays its [Prop] slots out the same way. An extension package that
                 // gains or re-orders a slot keeps its AQN, so without this row the render writes values into the
-                // wrong slots. Vacuous when the fingerprint is absent (schema 1–3 manifests): the additive-schema
-                // contract means the row's arrival forces nobody to re-precompile.
+                // wrong slots. Vacuous when the fingerprint is absent, which is a parameter-less extension: the row
+                // is omitted entirely rather than emitted empty, so nothing about such a binding's shape changed.
                 if (!string.IsNullOrEmpty(binding.PropLayoutFingerprint))
                 {
                     var liveFingerprint = PropLayout.Fingerprint(liveType);

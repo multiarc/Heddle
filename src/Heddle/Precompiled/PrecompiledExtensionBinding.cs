@@ -21,7 +21,7 @@ namespace Heddle.Precompiled
         /// <summary>
         /// Phase 3 (OQ4): a fingerprint of the extension's resolved <c>[Prop]</c> slot layout — the ordered
         /// <c>name:&lt;slot type AQN&gt;</c> pairs, joined with <c>|</c> — or <c>null</c> for an extension that
-        /// declares no parameters (and for every manifest emitted before schema 4).
+        /// declares no parameters — the row is then omitted entirely rather than emitted empty.
         /// <para>Slot <b>indices</b> are the wire format between the generator's frozen <c>object[]</c> prototype
         /// and the runtime's <c>ExtensionParameterCarrier</c>, and until this row existed they were the one
         /// wire-format contract with <b>no</b> gauntlet coverage: the gauntlet checked options, extension identity,

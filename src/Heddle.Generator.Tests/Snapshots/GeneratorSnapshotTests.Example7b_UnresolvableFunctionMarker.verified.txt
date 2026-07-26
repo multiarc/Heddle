@@ -3,7 +3,7 @@
 #pragma warning disable
 [assembly: global::Heddle.Precompiled.HeddleCompiledTemplates(
     manifestType:  typeof(global::Heddle.Generated.__HeddleManifest),
-    schemaVersion: 5,
+    schemaVersion: 3,
     engineVersion: "2.1.0")]
 
 namespace Heddle.Generated
@@ -28,7 +28,9 @@ namespace Heddle.Generated
                     extensionBindings: global::System.Array.Empty<global::Heddle.Precompiled.PrecompiledExtensionBinding>(),
                     functionBindings: new global::Heddle.Precompiled.PrecompiledFunctionBinding[] { new global::Heddle.Precompiled.PrecompiledFunctionBinding("nosuchfn9000", null, 0) },
                     capabilities: global::Heddle.Precompiled.PrecompiledCapabilities.None,
-                    strategy: null)
+                    strategy: null,
+                    registeredName: null,
+                    linePathForm: global::Heddle.Precompiled.PrecompiledLinePathForm.Unspecified)
                 ,
             };
         }

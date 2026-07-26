@@ -114,35 +114,50 @@ namespace Heddle.Tests
             Assert.True(PrecompiledSchema.IsSupported(PrecompiledSchema.CurrentSchemaVersion));
         }
 
-        /// <summary>The shipped constants, pinned. Phase 4 D11 bumped the emitted schema to 3, phase 3 (OQ4) to 4 for
-        /// the additive prop-layout row, and phase 1 (D2) to 5 for the per-carrier <c>BindDefinition</c> overload.
-        /// <b>2.1 (Q8.2) narrowed the floor 1 → 4</b> — the only narrowing this window has had, and a declared binary
-        /// break: schema 1–3 manifests reference a <c>PrecompiledExtensionBinding</c> constructor that no longer exists
-        /// in metadata, so accepting them faulted at <c>Register</c> instead of falling back. The floor is now exactly
-        /// the schema at which the three-argument constructor became the only one, which is why it equals
-        /// <see cref="PrecompiledSchema.PropLayoutFingerprintSchemaVersion"/> and is asserted as that identity rather
-        /// than as a coincidence of two literals.</summary>
+        /// <summary>
+        /// <para>The constants, pinned — <b>and the released line is the anchor</b>, not the working one. Verified
+        /// against the <c>v2.0.0</c> tag: the shipped generator emitted <c>schemaVersion: 2</c> and the shipped engine
+        /// accepted <c>1–2</c>. <b>Schemas 1 and 2 are the only released schemas</b>; the three unreleased bumps that
+        /// had accumulated (dynamic-member routing at 3, the prop-layout row at 4, per-carrier
+        /// <c>BindDefinition</c> at 5) were collapsed into a single schema <b>3</b>, which also carries Q8.30's
+        /// registered name and Q8.31's <c>#line</c> path form. An unreleased increment is not a migration step, and
+        /// advertising three of them would claim a history no user could have.</para>
+        /// <para><b>2.1 (Q8.2, corrected) narrows the floor 1 → 3</b> — the only narrowing this window has had, and a
+        /// real, not-yet-shipped binary break: a released schema 1–2 manifest's IL names
+        /// <c>PrecompiledExtensionBinding..ctor(string, string)</c>, which the optional third parameter removed from
+        /// metadata, so accepting one faults at <c>Register</c> instead of falling back. The floor is exactly the
+        /// schema at which the three-argument constructor became the only one — which is why it equals
+        /// <see cref="PrecompiledSchema.PropLayoutFingerprintSchemaVersion"/>, asserted as that identity rather than
+        /// as a coincidence of two literals. That identity now also means <c>Min == Max == Current</c>: with the
+        /// unreleased history collapsed there is exactly one readable shape, and the window is a point.</para>
+        /// </summary>
         [Fact]
-        public void SchemaConstantsAreUnchangedByTheConsolidation()
+        public void SchemaConstantsPinTheCollapsedWindowAgainstTheReleasedLine()
         {
-            Assert.Equal(4, PrecompiledSchema.MinSupportedSchemaVersion);
-            Assert.Equal(5, PrecompiledSchema.MaxSupportedSchemaVersion);
-            Assert.Equal(5, PrecompiledSchema.CurrentSchemaVersion);
-            Assert.Equal(4, PrecompiledSchema.PropLayoutFingerprintSchemaVersion);
-            Assert.Equal(5, PrecompiledSchema.PerCarrierLocalsSchemaVersion);
+            Assert.Equal(3, PrecompiledSchema.MinSupportedSchemaVersion);
+            Assert.Equal(3, PrecompiledSchema.MaxSupportedSchemaVersion);
+            Assert.Equal(3, PrecompiledSchema.CurrentSchemaVersion);
+            Assert.Equal(3, PrecompiledSchema.PropLayoutFingerprintSchemaVersion);
+            Assert.Equal(3, PrecompiledSchema.PerCarrierLocalsSchemaVersion);
+            Assert.Equal(3, PrecompiledSchema.RegisteredNameSchemaVersion);
+            Assert.Equal(3, PrecompiledSchema.LinePathFormSchemaVersion);
 
             // The floor is the prop-layout schema *because* that is where the constructor arity changed. Stated as an
             // identity so a future bump of one without the other has to justify itself.
             Assert.Equal(PrecompiledSchema.PropLayoutFingerprintSchemaVersion,
                 PrecompiledSchema.MinSupportedSchemaVersion);
 
+            // Every field that landed in the collapse shares the one increment, so a future field that needs its own
+            // schema step cannot quietly reuse this number.
+            Assert.Equal(PrecompiledSchema.CurrentSchemaVersion, PrecompiledSchema.RegisteredNameSchemaVersion);
+            Assert.Equal(PrecompiledSchema.CurrentSchemaVersion, PrecompiledSchema.LinePathFormSchemaVersion);
+
             Assert.False(PrecompiledSchema.IsSupported(0));
-            Assert.False(PrecompiledSchema.IsSupported(6));
-            // Below the new floor: the manifests the 2.1 break excludes.
+            Assert.False(PrecompiledSchema.IsSupported(4));
+            // Below the floor: the two RELEASED schemas, which is exactly the set the 2.1 break excludes.
             Assert.False(PrecompiledSchema.IsSupported(1));
-            Assert.False(PrecompiledSchema.IsSupported(3));
-            Assert.True(PrecompiledSchema.IsSupported(4));
-            Assert.True(PrecompiledSchema.IsSupported(5));
+            Assert.False(PrecompiledSchema.IsSupported(2));
+            Assert.True(PrecompiledSchema.IsSupported(3));
         }
 
         /// <summary>The D11 gate itself: the generator only emits <c>DynamicMember</c> routing at or above the
