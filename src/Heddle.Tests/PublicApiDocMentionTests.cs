@@ -72,6 +72,55 @@ namespace Heddle.Tests
             return name.TrimEnd('.', ' ');
         }
 
+        /// <summary>
+        /// A namespace-qualified engine name must have its <b>type</b> in the goldens. The sibling test skips a mention
+        /// whose type is unknown — it cannot tell <c>Widget.Length</c> in prose from a real API — which means a
+        /// document naming a *removed type* slipped through silently, the dangling-symbol shape this gate exists for.
+        /// Qualification removes the ambiguity: <c>Heddle.Runtime.DocumentsCache.Get</c> is unmistakably an API claim.
+        /// <para>Limit: an <b>unqualified</b> mention of a removed type stays review-only, because no rule separates it
+        /// from ordinary PascalCase prose.</para>
+        /// </summary>
+        [Fact]
+        public void EveryQualifiedEngineTypeIsInThePublicApiGolden()
+        {
+            var surface = Surface();
+            var unknown = new List<string>();
+            var checkedCount = 0;
+
+            foreach (var mention in Mentions())
+            {
+                if (!EngineNamespaces.Any(ns => mention.Value.StartsWith(ns, StringComparison.Ordinal)))
+                    continue;
+
+                // The mention is Namespace.Type or Namespace.Type.Member; try the longest prefix that is a type.
+                var segments = mention.Value.Split('.');
+                checkedCount++;
+                var resolved = false;
+                for (var take = segments.Length; take >= 3 && !resolved; take--)
+                    resolved = surface.BySimpleName.TryGetValue(segments[take - 1], out var candidates)
+                               && candidates.Contains(string.Join(".", segments.Take(take)));
+
+                if (!resolved)
+                    unknown.Add(mention.Value + " (" + mention.Key + ")");
+            }
+
+            Assert.True(checkedCount >= 1,
+                "No namespace-qualified engine names were extracted — the backtick convention changed.");
+            Assert.True(unknown.Count == 0,
+                "Published documents name qualified engine types absent from the public-API golden: " +
+                string.Join("; ", unknown.Distinct(StringComparer.Ordinal).OrderBy(u => u, StringComparer.Ordinal)) +
+                ". A qualified name is an API claim, so either the type is not public or the golden is stale.");
+        }
+
+        /// <summary>The engine's own namespaces. A name under any other <c>Heddle.</c> prefix — an assembly or package
+        /// id, the generated-code namespace, a project name, the <c>Heddle.CSharpTierEnabled</c> switch — is not
+        /// engine surface and is not an API claim.</summary>
+        private static readonly string[] EngineNamespaces =
+        {
+            "Heddle.Attributes.", "Heddle.Core.", "Heddle.Data.", "Heddle.Exceptions.", "Heddle.Extensions.",
+            "Heddle.Language.", "Heddle.Models.", "Heddle.Precompiled.", "Heddle.Runtime.", "Heddle.Strings.",
+        };
+
         /// <summary>Backticked <c>Type.Member</c> (optionally namespace-qualified) mentions, keyed by document.</summary>
         private static List<KeyValuePair<string, string>> Mentions()
         {

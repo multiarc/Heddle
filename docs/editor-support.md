@@ -73,9 +73,24 @@ setting). Because it is a single file, it is the editor‑agnostic carrier.
 
 The editor follows the same configuration surface the engine permits: every compile option that
 affects analysis has a key here, and its name is the option's own name camel‑cased, with the same
-default the engine and the build tier use. Options with no analysis meaning — render‑time settings
-such as `Encoder`, `RenderBudget`, `ValidateModelType`, `PrecompiledMismatchPolicy`,
-`EnableFileChangeCheck`, and the per‑render `Data` — have no key by design.
+default the engine and the build tier use.
+
+The options with **no** key are exactly these eleven, each for a stated reason — the list is gated
+against the parity test's own exclusion set, so it cannot quietly fall out of date:
+
+| Option | Why it has no key |
+| --- | --- |
+| `TemplateName` | Per‑document identity; the analyzer derives it from the file being analyzed. |
+| `FullPath` | Computed from `RootPath`/`TemplateName`/`FileNamePostfix` — not an input. |
+| `Functions` | A `FunctionRegistry` object with no literal JSON form; represented by `assemblies`, which the one‑shot export scan reads. |
+| `Data` | Render input (the model instance); analysis compiles, never renders. |
+| `Encoder` | Render‑time output encoding, object‑valued; changes rendered bytes, never a diagnostic. |
+| `RenderBudget` | Per‑render resource limits, object‑valued; no lint depends on them. |
+| `ValidateModelType` | Render‑time failure handling for wrong‑typed data; analysis has no data. |
+| `PrecompiledMismatchPolicy` | Selects run‑tier fallback vs throw; the analyzer never consults the precompiled registry. |
+| `EnableFileChangeCheck` | The runtime's file watcher; the editor owns document versioning itself. |
+| `ProvideLanguageFeatures` | Always on in the LSP — the analyzer's operating mode, not a workspace choice. |
+| `AllowCSharp` | Obsolete bridge over `ExpressionMode`; wiring both would let a config contradict itself. |
 
 | Field | Meaning | Default |
 | --- | --- | --- |
