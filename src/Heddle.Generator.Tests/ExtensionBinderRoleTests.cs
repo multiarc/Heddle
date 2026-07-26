@@ -86,7 +86,7 @@ namespace Heddle.Generator.Tests
             Assert.False(ifNotInfo.IsBranchParticipant);
         }
 
-        private const string TrioSource = @"
+        private static readonly string TrioSource = GeneratorHarness.WithAllExtensionsExported(@"
 using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
@@ -133,7 +133,7 @@ namespace CustomBranch
         public override object ProcessData(in Scope scope) => string.Empty;
         public override void RenderData(in Scope scope) { }
     }
-}";
+}");
 
         [Fact]
         public void ResolvesSourceDeclaredTrioRoles()

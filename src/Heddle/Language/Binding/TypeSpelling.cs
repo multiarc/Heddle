@@ -76,8 +76,13 @@ namespace Heddle.Language.Binding
             // Tuple: "(a, b)" — the whole spelling parenthesised, split at top level.
             if (spelling[0] == '(' && spelling[spelling.Length - 1] == ')')
             {
+                // Arity 1 is legal: `(int)` is `System.ValueTuple<int>`, which is what the reflection tier has
+                // always resolved it to. The shared parser originally required two elements, so the build tier
+                // refused a spelling the run tier accepted — a drift introduced by the extraction itself, found
+                // when the runtime was folded onto this parser (Q8.3). An EMPTY element is still malformed: `()`
+                // splits to one empty part, which fails when the element is resolved below.
                 var parts = SplitTopLevelArguments(spelling.Substring(1, spelling.Length - 2));
-                if (parts.Count < 2)
+                if (parts.Count == 0)
                 {
                     fault = TypeSpellingFault.Malformed;
                     return false;

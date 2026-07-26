@@ -42,7 +42,7 @@ namespace Heddle.Generator.Tests
 
         // A continuation and a terminal that FAIL the R11 contract (no [ScopeChannel]); plus one compliant
         // continuation, to prove the drift set is exactly the offenders.
-        private const string DriftSource = @"
+        private static readonly string DriftSource = GeneratorHarness.WithAllExtensionsExported(@"
 using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
@@ -84,9 +84,9 @@ namespace DriftBranch
         public override object ProcessData(in Scope scope) => string.Empty;
         public override void RenderData(in Scope scope) { }
     }
-}";
+}");
 
-        private const string CompliantTrioSource = @"
+        private static readonly string CompliantTrioSource = GeneratorHarness.WithAllExtensionsExported(@"
 using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
@@ -118,7 +118,7 @@ namespace OkBranch
         public override object ProcessData(in Scope scope) => string.Empty;
         public override void RenderData(in Scope scope) { }
     }
-}";
+}");
 
         private sealed class TemplateText : AdditionalText
         {

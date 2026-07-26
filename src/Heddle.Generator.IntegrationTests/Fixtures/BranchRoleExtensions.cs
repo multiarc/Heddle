@@ -28,7 +28,21 @@ using Heddle.Runtime;
     // Phase 0 (WI6): the quarantined drift-register fixtures. Their names are used by no other suite.
     typeof(Heddle.Generator.IntegrationTests.Fixtures.DriftContainer.NestedYellExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.DriftBaseExtension),
-    typeof(Heddle.Generator.IntegrationTests.Fixtures.DriftInheritedExtension))]
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.DriftInheritedExtension),
+    // Q8.4: these nine were declared in this assembly and exercised by its tests, but never exported — so the
+    // runtime never registered them while the generator bound them anyway. Closing the discovery-scope gap made the
+    // omission load-bearing: the export list is now the single declaration of what this fixture assembly
+    // contributes, and both tiers read it. (Registration is inert for a malformed [Prop] set — the declaration
+    // faults are raised when a template calls the extension, not when it registers.)
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.HookedExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.MalformedDupExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.MalformedReservedExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.MalformedNullNameExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.MalformedDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.MalformedTypeExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.WideningItemExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableIfaceItemExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableWidenItemExtension))]
 
 namespace Heddle.Generator.IntegrationTests.Fixtures
 {

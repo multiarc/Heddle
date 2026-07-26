@@ -7,6 +7,7 @@ using Heddle.Data;
 using Heddle.Exceptions;
 using Heddle.Helpers;
 using Heddle.Language;
+using Heddle.Language.Binding;
 using Heddle.Strings.Core;
 
 using Heddle.Native;
@@ -81,6 +82,16 @@ namespace Heddle.Runtime {
             return LoadExtensions(assembly);
         }
 
+        /// <summary>
+        /// Registers extension types, resolving name collisions through the <b>shared</b>
+        /// <see cref="ExtensionRegistrationRules"/> — the same rule the source generator's <c>ExtensionBinder</c>
+        /// applies at build time (Q8.3).
+        /// <para>The rule used to be inlined here <em>and</em> transcribed into the shared file, so mutating the
+        /// shared copy reddened no runtime test: it read as a source of truth and was not one. Behaviour is
+        /// unchanged — <c>[ExtensionReplace]</c> candidates still come last, a candidate the incumbent is
+        /// assignable from still overrides, and an unrelated claimant still raises
+        /// <see cref="TemplateOverrideException"/>.</para>
+        /// </summary>
         public static void AddExtensions(IEnumerable<ExtensionType> toAdd)
         {
             if (toAdd == null) throw new ArgumentNullException(nameof(toAdd));
@@ -90,25 +101,23 @@ namespace Heddle.Runtime {
                 if (type.Type == null || type.Name == null )
                     throw new ArgumentException();
 
-                if (Heddle.ContainsKey(type.Name))
+                bool hasIncumbent = Heddle.TryGetValue(type.Name, out var incumbent);
+                var verdict = ExtensionRegistrationRules.Resolve(hasIncumbent, type.Replace,
+                    hasIncumbent && incumbent.IsAssignableFrom(type.Type));
+
+                switch (verdict)
                 {
-                    if (type.Replace)
-                    {
+                    case ExtensionRegistrationVerdict.Register:
+                        Heddle.Add(type.Name, type.Type);
+                        break;
+                    case ExtensionRegistrationVerdict.Replace:
                         Heddle[type.Name] = type.Type;
-                    }
-                    else if (Heddle[type.Name].IsAssignableFrom(type.Type))
-                    {
-                        Heddle[type.Name] = type.Type;
-                    }
-                    else
-                    {
+                        break;
+                    default:
+                        // Resolve never returns KeepIncumbent — that verdict is the build tier's
+                        // order-insensitivity relaxation (ResolveForBuild) and cannot arise here.
                         throw new TemplateOverrideException(
-                            $"Cannot override <{type.Name}> Extension, <{type.Type}> is not inherited from <{Heddle[type.Name]}>");
-                    }
-                }
-                else
-                {
-                    Heddle.Add(type.Name, type.Type);
+                            $"Cannot override <{type.Name}> Extension, <{type.Type}> is not inherited from <{incumbent}>");
                 }
             }
         }
@@ -201,13 +210,14 @@ namespace Heddle.Runtime {
 
         internal static IEnumerable<ExtensionType> LoadExtensions(IEnumerable<Type> extensions)
         {
+            // The discovery predicate and the pre-registration ordering key both come from the shared rule-core
+            // (Q8.3): `OrderingKey` is the one expression that decides which candidate becomes the incumbent, and
+            // the generator sorts its candidates by the same call.
             var types =
                 extensions.Where(t => t.IsImplement<IExtension>() && t.IsHaveAttribute<ExtensionNameAttribute>(true))
-                    .OrderBy
-                        (t => t.GetAttributes<DataTypeAttribute>(true).Any(p => p.DataType.GetTypeInfo().IsInterface))
-                    .ThenBy
-                    (t => t.GetAttributes<ChainedTypeAttribute>(true)
-                        .Any(p => p.DataType.GetTypeInfo().IsInterface));
+                    .OrderBy(t => ExtensionRegistrationRules.OrderingKey(
+                        t.GetAttributes<DataTypeAttribute>(true).Any(p => p.DataType.GetTypeInfo().IsInterface),
+                        t.GetAttributes<ChainedTypeAttribute>(true).Any(p => p.DataType.GetTypeInfo().IsInterface)));
             foreach (var type in types)
             {
                 var extensionNames = type.GetAttributes<ExtensionNameAttribute>(true);

@@ -57,6 +57,14 @@ namespace Heddle.Tests
             };
             yield return new object[] { "(int, string)", new string[0],
                 "System.ValueTuple`2[System.Int32,System.String]" };
+            // Q8.3: a one-element tuple IS legal — `(int)` is ValueTuple<int>. The shared parser required two
+            // elements when it was written, so the build tier refused a spelling the run tier accepted; folding the
+            // runtime onto the parser is what surfaced it. An empty element is still rejected.
+            yield return new object[] { "(int)", new string[0], "System.ValueTuple`1[System.Int32]" };
+            yield return new object[] { "()", new string[0], "UNRESOLVED" };
+            // Surrounding whitespace on a top-level spelling is tolerated by the shared parser (it trims every
+            // recursion), where the runtime's own dispatch used to throw. A widening, and the two tiers now agree.
+            yield return new object[] { " int ", new string[0], "System.Int32" };
 
             // The short-name tie. One import settles it; two do not.
             yield return new object[] { "TieProbe", new[] { "Heddle.Tests.TieAlpha" },
