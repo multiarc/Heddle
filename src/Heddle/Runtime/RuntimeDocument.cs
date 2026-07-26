@@ -221,6 +221,7 @@ namespace Heddle.Runtime {
                 _processor = processor;
             }
 
+            //This rendering protection is deliberate. If underlying extension cannot produce string then output is empty.
             public string Execute(in Scope scope) => _processor.ProcessData(scope) as string ?? string.Empty;
 
             public void Render(in Scope scope)

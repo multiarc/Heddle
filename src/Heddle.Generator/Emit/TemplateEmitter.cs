@@ -457,7 +457,34 @@ namespace Heddle.Generator.Emit
 
             // The piece walk itself is shared with RuntimeDocument.GetDocumentPieces (plan phase 2 D6), so the
             // P0..Pn constants below are the same strings the dynamic tier slices.
+            // Q8.19 (ruled user, 2026-07-26): the element walk COLLECTS refusals rather than abandoning at the first
+            // one, so a template with two provably illegal calls reports both instead of making the author fix one,
+            // rebuild, and meet the next. This is sound only because sibling elements are independent — they share the
+            // same immutable BodyContext, and nothing a refused element touches can make a later legal element
+            // illegal — so skipping one and continuing cannot manufacture a refusal (or a green) that a fresh walk
+            // would not reach. The refusal itself still propagates: `refused` survives the loop, this method returns
+            // false, BuildBody returns a null body, and Emit's `root == null` arm still means NO .g.cs and NO manifest
+            // row. Collecting is about how many diagnostics one build surfaces, never about emitting past a refusal —
+            // a partial emit would be far worse than one-at-a-time reporting.
+            //
+            // Only the FIRST reason is kept: `reason` is the template-level UnsupportedReason, a single string, and the
+            // first construct that gave up is the honest answer to "why is this not precompiled".
+            //
+            // Stated plainly rather than dressed up as covered behaviour: WHICH reason is kept is currently
+            // unobservable, so no test pins it (mutation-verified 2026-07-26 — both `firstReason = localReason` and
+            // `reason = localReason` survive the whole suite). Result.UnsupportedReason is write-only: the generator
+            // reads it in prose at HeddleTemplateGenerator.cs:418 and nowhere in code, and it reaches no diagnostic and
+            // no manifest field. First-reason is chosen anyway because it is the answer that stays correct if the field
+            // ever becomes observable; closing the mutants would mean inventing an observable, which is scope Q8.19
+            // does not carry. The refusal ITSELF — the part that decides whether anything is emitted — is pinned.
+            //
+            // The expression walk deliberately does NOT do this (Q8.19's other half): NativeExpressionWriter.Write is
+            // string-or-null composition, where a parent has nothing to compose once a child returns null, so
+            // continuing there would mean fabricating placeholder text and discarding it. That is the restructuring the
+            // ruling says to stop at, so two refusals inside ONE expression still report once.
             string localReason = null;
+            string firstReason = null;
+            var refused = false;
             var completed = DocumentShaping.SlicePieces(shape.Elements, element => element.Position, working,
                 piece => AddPiece(body, piece),
                 element =>
@@ -480,7 +507,13 @@ namespace Heddle.Generator.Emit
 
                     var seg = BuildCall(element.Chain, ctx, bctx, out localReason);
                     if (seg == null)
-                        return false;
+                    {
+                        // Record and keep walking (Q8.19). The element contributes no segment; the body is discarded
+                        // wholesale below, so the half-built segment list is never rendered.
+                        refused = true;
+                        firstReason ??= localReason;
+                        return true;
+                    }
 
                     body.Segments.Add(seg);
                     if (seg is Call call)
@@ -497,15 +530,11 @@ namespace Heddle.Generator.Emit
                     return true;
                 });
 
-            reason = localReason;
-            if (!completed)
-            {
-                _profileHtml = savedProfile;
-                return false;
-            }
-
+            // `completed` can still be false: SlicePieces' contract keeps the abandon channel, and a future callback
+            // arm may use it. Either signal refuses the body.
+            reason = firstReason ?? localReason;
             _profileHtml = savedProfile;
-            return true;
+            return completed && !refused;
         }
 
         /// <summary>Precomputes the running output profile at each rendering chain of this body, from the body's

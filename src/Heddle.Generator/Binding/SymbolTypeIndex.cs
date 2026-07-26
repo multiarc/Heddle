@@ -27,30 +27,20 @@ namespace Heddle.Generator.Binding
 
         private SymbolTypeIndex() { }
 
-        private static readonly Dictionary<Compilation, SymbolTypeIndex> Cache =
-            new Dictionary<Compilation, SymbolTypeIndex>();
-
         /// <summary>One index per compilation — the walk is the same shape <c>ExtensionBinder</c> already makes,
-        /// and every model-type resolution in a compilation asks the same question of the same universe.</summary>
-        internal static SymbolTypeIndex For(Compilation compilation)
-        {
-            if (compilation == null)
-                return new SymbolTypeIndex();
+        /// and every model-type resolution in a compilation asks the same question of the same universe. The
+        /// retention policy (occupancy bound, staleness eviction) lives in
+        /// <see cref="SymbolTypeIndexCache"/>; this stays the one call site the binder knows about.</summary>
+        internal static SymbolTypeIndex For(Compilation compilation) => SymbolTypeIndexCache.Shared.Get(compilation);
 
-            lock (Cache)
-            {
-                if (Cache.TryGetValue(compilation, out var cached))
-                    return cached;
-
-                var index = Build(compilation);
-                Cache[compilation] = index;
-                return index;
-            }
-        }
-
-        private static SymbolTypeIndex Build(Compilation compilation)
+        /// <summary>Builds the index from scratch. A <c>null</c> compilation yields an empty index, so a caller
+        /// with no compilation resolves nothing rather than throwing.</summary>
+        internal static SymbolTypeIndex Build(Compilation compilation)
         {
             var index = new SymbolTypeIndex();
+            if (compilation == null)
+                return index;
+
             var assemblies = new List<IAssemblySymbol> { compilation.Assembly };
             assemblies.AddRange(compilation.SourceModule.ReferencedAssemblySymbols);
             foreach (var assembly in assemblies)

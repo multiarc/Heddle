@@ -52,6 +52,13 @@ namespace Heddle.Tests
         /// reintroduces its own <c>&lt;Version&gt;</c> is named in the failure message. The three non-shipping
         /// projects carried one too — overridden by CI, read by nobody — so "it is only documentation" was never a
         /// reason to keep them.</summary>
+        /// <summary>Build output and nested checkouts are not repository source. The dot-directory arm matters
+        /// as much as bin/obj: a git worktree under <c>.claude/</c> is a whole second copy of the tree, so without
+        /// it this gate reports every project twice and fails on files no release ever ships.</summary>
+        private static bool IsNotSource(string relative) =>
+            relative.Split(Path.DirectorySeparatorChar)
+                .Any(s => s == "bin" || s == "obj" || s.StartsWith("."));
+
         [Fact]
         public void NoProjectStatesItsOwnVersion()
         {
@@ -59,7 +66,7 @@ namespace Heddle.Tests
             foreach (var project in Directory.EnumerateFiles(RepoRoot, "*.csproj", SearchOption.AllDirectories))
             {
                 var relative = project.Substring(RepoRoot.Length + 1);
-                if (relative.Split(Path.DirectorySeparatorChar).Any(s => s == "bin" || s == "obj"))
+                if (IsNotSource(relative))
                     continue;
                 foreach (Match m in Regex.Matches(File.ReadAllText(project),
                     @"<(Version|VersionPrefix|VersionSuffix|AssemblyVersion|FileVersion|PackageVersion)>"))
@@ -212,7 +219,7 @@ namespace Heddle.Tests
             foreach (var project in Directory.EnumerateFiles(src, "*.csproj", SearchOption.AllDirectories))
             {
                 var relative = project.Substring(RepoRoot.Length + 1);
-                if (relative.Split(Path.DirectorySeparatorChar).Any(s => s == "bin" || s == "obj"))
+                if (IsNotSource(relative))
                     continue;
                 if (accepted.Contains(Path.GetFileName(project)))
                     continue;
@@ -242,7 +249,7 @@ namespace Heddle.Tests
                 SearchOption.AllDirectories).Concat(new[] { Path.Combine(RepoRoot, "Directory.Build.props") }))
             {
                 var relative = project.Substring(RepoRoot.Length + 1);
-                if (relative.Split(Path.DirectorySeparatorChar).Any(s => s == "bin" || s == "obj"))
+                if (IsNotSource(relative))
                     continue;
                 var withoutComments = Regex.Replace(File.ReadAllText(project), @"<!--.*?-->", string.Empty,
                     RegexOptions.Singleline);

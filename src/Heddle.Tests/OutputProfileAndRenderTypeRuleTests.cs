@@ -1,3 +1,5 @@
+using System;
+using Heddle.Attributes;
 using Heddle.Data;
 using Xunit;
 
@@ -73,6 +75,33 @@ namespace Heddle.Tests
         public void DeriveCoversTheWholeTruthTable(bool hasEncodeOutput, bool hasNotEncode, RenderType expected)
         {
             Assert.Equal(expected, RenderTypeRules.Derive(hasEncodeOutput, hasNotEncode));
+        }
+
+        /// <summary>Q8.14 — the veto row's reachability, pinned. <c>[NotEncode]</c> is
+        /// <see cref="AttributeTargets.Property"/> while <c>[EncodeOutput]</c> is <see cref="AttributeTargets.Class"/>,
+        /// so an extension <em>type</em> carrying both is not a state any C# (or VB/F#) declaration can express — the
+        /// compiler rejects the application outright (CS0592), which the build tier's
+        /// <c>ContradictoryEncodingAttributeTests</c> pins from the other side. The row is therefore reachable only
+        /// from forged/IL-authored metadata, and there both tiers evaluate this same function and get
+        /// <see cref="RenderType.Raw"/> — indistinguishable from an extension carrying neither attribute, so no tier
+        /// diverges and there is nothing to diagnose. Widening the attribute's targets makes the contradiction
+        /// declarable and reopens Q8.14's two diagnostics; this test is what says so out loud.</summary>
+        [Fact]
+        public void TheNotEncodeVetoRowIsUnreachableFromAnyDeclaration()
+        {
+            var notEncode = (AttributeUsageAttribute) Attribute.GetCustomAttribute(
+                typeof(NotEncodeAttribute), typeof(AttributeUsageAttribute));
+            var encodeOutput = (AttributeUsageAttribute) Attribute.GetCustomAttribute(
+                typeof(EncodeOutputAttribute), typeof(AttributeUsageAttribute));
+
+            Assert.NotNull(notEncode);
+            Assert.NotNull(encodeOutput);
+            Assert.Equal(AttributeTargets.Property, notEncode.ValidOn);
+            Assert.Equal(AttributeTargets.Class, encodeOutput.ValidOn);
+            Assert.Equal((AttributeTargets) 0, notEncode.ValidOn & encodeOutput.ValidOn);
+
+            // The one observable state of the pair is behaviourally identical to carrying neither attribute.
+            Assert.Equal(RenderTypeRules.Derive(false, false), RenderTypeRules.Derive(true, true));
         }
 
         /// <summary>The valid-values fragment both tiers quote in their unknown-profile message is built from the
