@@ -49,6 +49,9 @@ namespace Heddle.Generator.IntegrationTests
             Replace(manifest, "\"Heddle.Extensions.IfExtension, Heddle\"", null,
                 "\"Heddle.Extensions.NotTheIfExtension, Heddle\"", "if-extension AQN");
 
+        private static string SeedWrongOptionsFingerprint(string manifest) =>
+            Replace(manifest, "OutputProfile.Html", null, "OutputProfile.Text", "options fingerprint profile");
+
         private static string Replace(string manifest, string prefix, string terminator, string replacement,
             string what)
         {
@@ -212,6 +215,64 @@ namespace Heddle.Generator.IntegrationTests
                 PrecompiledTemplates.ResetForTests();
                 Register(SeedWrongExtensionAqn);
                 var degraded = RenderThroughResolver(stageDir, PrecompiledMismatchPolicy.Fallback, fileBacked: false);
+                Assert.Equal(precompiled, degraded);
+            }
+            finally
+            {
+                DifferentialHarness.TryDeleteDirectory(stageDir);
+            }
+        }
+
+        // ---------------------------------------------------------------------------------------------------
+        // Seeded options-fingerprint mismatch — gauntlet step 1, the earliest check, and the third distinct
+        // failure class. D7 names this seed "wrong fingerprint arity"; a literal arity change would not compile
+        // the manifest, so what is seeded is a wrong fingerprint *value* — the observable form of the same
+        // condition, and the one a real options drift would take.
+        // ---------------------------------------------------------------------------------------------------
+
+        [Fact]
+        public void SeededOptionsFingerprintMismatch_Strict_ThrowsOptionsMismatch()
+        {
+            Register(SeedWrongOptionsFingerprint);
+            var stageDir = DifferentialHarness.NonexistentRoot();
+            var ex = Assert.Throws<PrecompiledMismatchException>(() =>
+                RenderThroughResolver(stageDir, PrecompiledMismatchPolicy.Strict, fileBacked: false));
+            Assert.Equal(PrecompiledFallbackReason.OptionsMismatch, ex.Reason);
+            Assert.Contains("OutputProfile", ex.Detail);
+        }
+
+        [Fact]
+        public void SeededOptionsFingerprintMismatch_SentinelOnly_FailsViaFallbackGuard()
+        {
+            Register(SeedWrongOptionsFingerprint);
+            var stageDir = DifferentialHarness.StageCorpus(Corpus);
+            try
+            {
+                using var guard = FallbackGuard.Install();
+                RenderThroughResolver(stageDir, PrecompiledMismatchPolicy.Fallback, fileBacked: false);
+                var ex = Assert.Throws<FallbackGuardException>(() => guard.Verify());
+                Assert.Contains("OptionsMismatch", ex.Message);
+            }
+            finally
+            {
+                DifferentialHarness.TryDeleteDirectory(stageDir);
+            }
+        }
+
+        [Fact]
+        public void SeededOptionsFingerprintMismatch_Unguarded_SilentlyRendersIdenticalBytes()
+        {
+            var stageDir = DifferentialHarness.StageCorpus(Corpus);
+            try
+            {
+                Register(null);
+                var precompiled = RenderThroughResolver(stageDir, PrecompiledMismatchPolicy.Fallback,
+                    fileBacked: false);
+
+                PrecompiledTemplates.ResetForTests();
+                Register(SeedWrongOptionsFingerprint);
+                var degraded = RenderThroughResolver(stageDir, PrecompiledMismatchPolicy.Fallback,
+                    fileBacked: false);
                 Assert.Equal(precompiled, degraded);
             }
             finally
