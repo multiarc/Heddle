@@ -37,7 +37,7 @@ metadata are read:
 
 | Metadata | Effect |
 | --- | --- |
-| `Key` | Sets both the lookup key **and** the generated class name (via `SanitizeName`). Also the remedy for a template outside `HeddleTemplateRoot` (`HED7018`). |
+| `Key` / `Name` | Two spellings of one setting: the item's explicit registration key, overriding the path‑derived one. It sets both the lookup key **and** the generated class name (via `SanitizeName`), and it is the remedy for a template outside `HeddleTemplateRoot` — an explicit key suppresses `HED7018`, because the flattened key is then what you asked for. Both values normalize through the shared key rule and both take part in `HED7002`/`HED7003`. Setting *both* is fine only when they normalize to the same key; two different keys is `HED7004`, as is either value the normalizer refuses. |
 | `Precompile` | `false` opts the file out of pre‑compilation: no entry point, no manifest entry — but it **stays available to `@<<` imports**, which `Remove` cannot do. Absent or any other value means "precompile". |
 
 ```xml
@@ -50,13 +50,15 @@ metadata are read:
   <HeddleTemplate Remove="Templates/scratch.heddle" />
   <!-- override the key (this also renames the generated class to `Home`) -->
   <HeddleTemplate Update="Templates/Home.heddle" Key="home" />
+  <!-- `Name` is the same setting under a second spelling -->
+  <HeddleTemplate Update="Templates/report.heddle" Name="BuildReport" />
 </ItemGroup>
 <PropertyGroup>
   <EnableDefaultHeddleTemplates>false</EnableDefaultHeddleTemplates>
 </PropertyGroup>
 ```
 
-A template whose path is **not** under `HeddleTemplateRoot` and that carries no explicit `Key`
+A template whose path is **not** under `HeddleTemplateRoot` and that carries no explicit `Key`/`Name`
 registers under its bare filename — the directory is dropped — and the build reports `HED7018`
 naming the file, the root, and the flattened key it used.
 
@@ -257,7 +259,7 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 | `HED7001` | An `AdditionalFiles` `.heddle` source could not be read. |
 | `HED7002` | Two templates normalize to the same key. |
 | `HED7003` | Two keys differ only by case (warning). |
-| `HED7004` | Invalid explicit `Key` metadata. |
+| `HED7004` | Unusable explicit key metadata on an item: a `Key` or `Name` value the key normalizer refuses, or a `Key` and a `Name` that name two different keys. |
 | `HED7005` | Unpaired surrogate in static text — the `"…"u8` twin is suppressed (warning). |
 | `HED7006` | A named extension resolves to no `[ExtensionName]` type in any reference **under the runtime's own discovery rule** (implements `IExtension` and carries an inherited `[ExtensionName]`). A name the runtime *would* find but the generator cannot bind — an `IExtension`-direct implementor, or a collision between unrelated types — degrades to the dynamic tier with a recorded reason instead (phase 3, F3). |
 | `HED7007` | The `@model`/`::` type does not resolve (milestone‑2 native diagnostic). |
@@ -270,13 +272,14 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 | `HED7015` | A bound extension overrides a compile‑time hook — unevaluable at build. |
 | `HED7016` | A branch continuation/terminal (`[BranchRole]`) omits `[ScopeChannel]`, so it can never read the branch state at run time (warning). |
 | `HED7017` | An extension declares a malformed `[Prop]` parameter — the build‑tier twin of the dynamic tier's declaration diagnostics. |
-| `HED7018` | A template is outside `HeddleTemplateRoot` and has no explicit `Key`, so its directory is dropped and it registers under a flattened filename key (warning). |
+| `HED7018` | A template is outside `HeddleTemplateRoot` and has no explicit `Key`/`Name`, so its directory is dropped and it registers under a flattened filename key (warning). |
 | `HED7019` | The `Heddle` engine assembly is not visible among the compilation's references, so the manifest records the generator's own version as `engineVersion` (warning). |
 | `HED7020` | The template emitter threw — a generator defect, not a template error. That one template emits nothing; the rest of the pass and the manifest are unaffected. |
 | `HED7021` | An `[assembly: ExportFunctions(...)]` container is not a public static class. The runtime throws when the host assembly is registered, so the build errors rather than skipping the container silently. |
 | `HED7022` | An `@profile(){{…}}` value is neither `text` nor `html`. The runtime rejects the template with `HED2001`, so the build reports it rather than pre-compiling output the dynamic tier would never produce. |
 | `HED7023` | A model/prop/slot type name is ambiguous — several types answer to it and the `@using` imports do not settle it. The runtime raises the same ambiguity, so the build errors rather than binding one candidate. |
 | `HED7024` | A call-site fill overrides a region the definition declares private. The runtime raises `HED5019` for the same template, so the build reports the matching error at the override's position. |
+| `HED7025` | A function call the shared overload ranker proved illegal — ambiguous under Heddle's flat Pareto rank (`HED1013`), or no applicable overload (`HED1012`). Fires only when every argument estimate is typed: an argument the generator cannot describe proves nothing about the runtime and still degrades silently. |
 
 Member/type errors in milestone 1 arrive as C# errors remapped to the template span via
 `#line`; milestone 2 replaces the covered ones with native `HED7007`/`HED7008`.

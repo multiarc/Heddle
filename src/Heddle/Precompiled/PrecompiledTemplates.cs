@@ -14,10 +14,10 @@ namespace Heddle.Precompiled
     {
         internal const string Hed7102 = Data.HeddleDiagnosticIds.PrecompiledManifestRejected;
         internal const string Hed7103 = Data.HeddleDiagnosticIds.PrecompiledKeyCaseMismatch;
-        // Phase 8 D7: the engine accepts schemaVersion 1 (phase 7 generator) and 2 (phase 8 generator, u8 twins +
-        // WritePiece piece routing). A schema-1 assembly keeps registering and renders on all three sinks — its pieces
-        // simply transcode via the sink adapters, exactly as a schema-2 template built without the u8 opt-in.
-        // The window itself lives in the shared PrecompiledSchema (phase 5 D5), which the generator also emits from.
+        // The accepted schema window lives in the shared PrecompiledSchema (phase 5 D5), which the generator also
+        // emits from; see MinSupportedSchemaVersion for why 2.1 raised the floor to 4 (Q8.2 — schema 1–3 manifests
+        // reference a PrecompiledExtensionBinding constructor that no longer exists, so accepting them faulted here
+        // instead of falling back). This comment used to describe a {1, 2} window and was four schema bumps stale.
 
         private sealed class Snapshot
         {

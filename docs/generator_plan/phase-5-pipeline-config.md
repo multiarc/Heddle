@@ -824,3 +824,68 @@ Nothing from the work-item table. Two items deliberately remain proposals rather
 behavior, as the plan requires: D12b's default-policy flip (filed in the next-window candidate register, runtime behavior
 unchanged) and the provisional classification of the two binding-mismatch classes, which phase 3
 co-owns and finalizes.
+
+## Post-audit work items (2026-07-26) — Q8.2, Q8.11, Q8.12
+
+Three ruled items, landed together because the version bump and the gate are only correct as a pair: a
+version that advertises a break the metadata does not enforce is a lie in one direction, and a gate that
+enforces one the version does not declare is a lie in the other. Full rulings, evidence and mutation
+results in the [register](open-questions.md); what follows is what changed here.
+
+### Q8.12 — `Name` restored as the optional custom key mapping, and the metadata made to work at all
+
+`Name` is a **second spelling of `Key`** — one setting, one set of downstream rules. Phase 5 had *removed*
+the metadata on a review record reading "`Name` removed per the recommendation"; removal was never the ask
+(the ask was to wire `Precompile`), and this plan's own record carried the overreach. The record is
+corrected in the register rather than edited away.
+
+**`HED7028` was not claimed.** A malformed value and a `Key`/`Name` pair naming two different keys are both
+instances of the fault class `HED7004` already names — "this item's explicit key metadata is unusable" —
+with the same severity, position, remediation and call site. `HED7004`'s message is generalised to carry the
+offending metadatum and the reason; `HED7028` remains free.
+
+**The defect underneath.** Wiring the feature revealed that **none** of the three metadata worked from a real
+project. `Heddle.Generator.targets` restated each as `<Key>%(HeddleTemplate.Key)</Key>` inside an
+`Include="@(HeddleTemplate)"` transform. The transform already copies every metadatum; outside a target a
+cross-item `%()` reference evaluates to the empty string — so each element *overwrote* the copied value with
+`""`. `Key` and `Precompile="false"` were therefore inert too, and no test crossed the file: every suite
+injects `build_metadata.*` directly. That is the same shape as this program's central finding one level down —
+a mapping that reads as fixed and is not, with the only coverage on the side of the seam that cannot fail.
+
+**Fallout, both handled here rather than deferred.** (a) `samples/codegen-t4-successor`'s
+`Name="BuildReport"` becomes correct, so its key, generated class and `Program.cs` call change and its golden
+changes by exactly that one line. (b) The emitted `#line` directives named the *registration key*, which is
+indistinguishable from the file path only while every key is path-derived; with `Name` set they pointed at a
+path that exists nowhere. `#line` now names the template's root-relative path — byte-identical wherever no
+explicit key is set, which is why no snapshot moved.
+
+### Q8.2 — `MinSupportedSchemaVersion` 1 → 4, and a manifest fixture that is genuinely old
+
+The break had already shipped in 2.0.0: schema 4 put the prop-layout fingerprint on
+`PrecompiledExtensionBinding` as an optional third constructor parameter, removing the two-argument
+constructor every schema 1–3 manifest's IL names. `Min = 1` then *accepted* precisely the manifests that
+cannot run, and the fault landed as a `MissingMethodException` out of `PrecompiledTemplates.Register` at host
+startup. `4` excludes exactly the faulting set.
+
+The demonstration is the deliverable. `OldSchemaManifestFixture` compiles a manifest against a **reference
+facade** carrying the pre-schema-4 surface under the real assembly's identity (name, version, public key),
+with the real `Heddle` excluded from the reference set — so the emitted IL genuinely names
+`.ctor(string, string)` and *cannot* bind to the current form. This is the one thing the superseded pin could
+not do: `new PrecompiledExtensionBinding("a", "b")` compiles against today's assembly and silently binds to
+the three-parameter constructor, so it exercised a new-schema call wearing an old-schema shape — the
+substitution through which the break reached release behind a green suite.
+
+### Q8.11 — one `<VersionPrefix>`, every first-party assembly signed, and a gate
+
+Nine `<Version>` elements become one `<VersionPrefix>` in `Directory.Build.props`. The statements that cannot
+live there — four npm manifests, the VS Code extension's pinned tool version, the LSP workflow's
+`--version`, four prose release-line sentences, the CHANGELOG section — are held in step by
+`VersionConsistencyTests`. One statement was **deleted rather than gated**: the language server's
+`InformationalVersion`, a hand-maintained `"1.0.0"` that `heddle-lsp --version` and the LSP `initialize`
+response reported for the whole 2.0 line, is now read off the assembly.
+
+`Heddle.Demo.Models`, `Heddle.Demo.Wasm` and `Heddle.LanguageServices.Tests.Corpus` are strong-named: eight
+`CS8002` → zero. Scriban is third-party; its warning is accepted through a **declared list** in a new root
+`Directory.Build.targets`, keyed on the named assembly and applied only to signed projects. Stated plainly
+because it bounds the claim: Roslyn has no per-reference suppression for `CS8002`, so the mechanism is keyed
+*on* the reference rather than scoped to it.

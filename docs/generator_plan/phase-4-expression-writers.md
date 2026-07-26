@@ -1091,6 +1091,43 @@ should follow, with the same side condition. The fixture then asserts the build 
 a cross-cutting-decisions registry change (it needs an ID allocation, a docs row and a spec entry), not
 an audit edit.
 
+**Landed as ruled, 2026-07-26 — `HED7025` (Q8.1).** Both binders now return a `BindRefusal`
+(`Bound` / `Unproven` / `ProvenIllegal`) alongside the binding instead of collapsing every refusal to
+`null`; `NativeExpressionWriter.UnbindableFunctionCalls` carries the proven-illegal ones with their
+`.heddle` position, and `TemplateEmitter.DrainUnresolvable` reports them at Error, deduplicated per
+call site, in every result branch — the `HED7008` channel, not a new one. The message is the
+runtime's own sentence for the same input (candidates included, spelled through the shared alias
+table) plus the run-tier id it twins, so the tiers say the same thing about the same template.
+`BindOutcome.None` followed `Ambiguous`, as proposed. The refusal is unchanged, so **no rendered byte
+moves**: the template still degrades, and what ended is the silence.
+
+The **side condition** is an early return placed *before* `OverloadRank.Bind` runs, in both binders:
+an `Unknown` operand estimate has no rank token at all, so no front is ever computed and there is
+nothing to report. That placement is deliberate — a post-hoc filter on the outcome would leave a
+computed-but-suppressed verdict one edit away from being reported. It is pinned by three cases in
+`AmbiguousOverloadDiagnosticTests` (direct, nested-call-inherited, export) and mutation-verified by
+handing `Unknown` a rank token, which reddens exactly those cases and nothing else.
+
+One residue is recorded rather than hidden: the name-keyed rank model answers `IsReferenceAssignable`
+**false** by construction and its `?reference`/`?enum`/`?struct` placeholders deliberately
+under-rank. Under-ranking was harmless while it could only *degrade*; now that it can raise an error
+it is sound only because no shipped built-in parameter type is a reference type other than `String`
+or `Object` — so there is no conversion for the model to miss.
+`AmbiguousOverloadDiagnosticTests.NoBuiltInParameterTypeIsAReferenceTypeTheNameModelCannotDecide`
+pins that property exhaustively over `DefaultFunctionTable`, so adding an interface or class
+parameter reddens a test instead of shipping a false build error. A placeholder-typed argument that
+*is* correctly reported (`min(1, Maker)` — both tiers reach `None`) prints as "a reference type"
+rather than leaking the internal `?reference` token, and has its own case. The export path needs no such pin:
+`ToSymbol` already maps only the precisely-typed categories, and its rank model answers the
+reference-conversion arm properly through the Roslyn facts.
+
+Two questions were opened by the landing: **Q8.18** (the proof is relative to the *build-time*
+function inventory, and a host can add overloads at run time through
+`TemplateOptions.Functions.Register`) and **Q8.19** (the body build abandons at the first unwritable
+construct, so two illegal calls in one template report once). The breaking-window disposition —
+**defect repair, not window-gated** — is argued in
+[breaking-windows.md](../spec/common/breaking-windows.md#explicit-not-window-gated-rulings).
+
 ### Suite
 
 `dotnet build Heddle.sln -c Debug` green. `dotnet test Heddle.sln -c Debug`: **5108 passed, 0 failed,

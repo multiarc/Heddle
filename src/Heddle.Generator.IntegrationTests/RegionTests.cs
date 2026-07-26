@@ -5,6 +5,7 @@ using Heddle.Data;
 using Heddle.Generator.IntegrationTests.Fixtures;
 using Heddle.Runtime;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Text;
 using Xunit;
 
 namespace Heddle.Generator.IntegrationTests
@@ -191,7 +192,7 @@ namespace Heddle.Generator.IntegrationTests
             var runtimeError = Assert.Single(dynamic.CompileResult.ErrorList.Where(e => e.DiagnosticId == "HED5019"));
             // Same anchoring: both tiers point at the override declaration.
             Assert.Equal(runtimeError.Position.StartIndex,
-                build.Location.SourceSpan.Start - LocationOffsetOf(t, build));
+                TemplateOffsetOf(t, "views/region-private.heddle", build));
         }
 
         [Fact] // region_dangling_override — build forwards the same base-not-found error the dynamic compile keeps
@@ -209,14 +210,43 @@ namespace Heddle.Generator.IntegrationTests
 
             var dynamic = new HeddleTemplate(t, new CompileContext(new TemplateOptions(), typeof(RegionFeed)));
             Assert.False(dynamic.CompileResult.Success);
-            Assert.Contains(dynamic.CompileResult.ErrorList,
-                e => e.Error == "Base definition ghost couldn't be found");
-            Assert.NotNull(build);
+            var runtimeError = Assert.Single(dynamic.CompileResult.ErrorList.Where(
+                e => e.Error == "Base definition ghost couldn't be found"));
+            // Q8.16: this used to be `Assert.NotNull(build)` — which Assert.Single had already guaranteed, so it
+            // could not fail. The twin relationship this fixture exists to pin includes the anchor, so assert it:
+            // same offset on both tiers, exactly as the private-override twin above.
+            Assert.Equal(runtimeError.Position.StartIndex,
+                TemplateOffsetOf(t, "views/region-dangling.heddle", build));
         }
 
-        /// <summary>Zero — the harness maps the template offset straight onto the single-file source span; the
-        /// helper exists so the assertion above reads as "same offset" rather than hiding the identity.</summary>
-        private static int LocationOffsetOf(string template, Diagnostic diagnostic) => 0;
+        /// <summary>
+        /// The build diagnostic's anchor, as an offset into <paramref name="template"/> — recomputed from what the
+        /// diagnostic <i>reports</i> (its file path and its line/character position) rather than read off its raw
+        /// <c>SourceSpan</c>. Callers compare the result with the dynamic tier's <c>Position.StartIndex</c>, so the
+        /// comparison constrains the whole anchoring chain: the diagnostic must be attached to <b>this template's
+        /// file</b> (not <c>Location.None</c> and not a generated <c>.g.cs</c>), its line/character mapping must
+        /// agree with its span, and the resulting offset must be the one the runtime reports.
+        /// <para>Q8.16: this used to <c>return 0</c>. That made the caller's subtraction a no-op and the whole
+        /// helper decorative — the file identity and the line/column mapping were asserted nowhere, so the
+        /// generator could have anchored the error in the wrong file, or emitted a line span inconsistent with its
+        /// span, and every assertion here would still have been green.</para>
+        /// </summary>
+        private static int TemplateOffsetOf(string template, string key, Diagnostic diagnostic)
+        {
+            var lineSpan = diagnostic.Location.GetLineSpan();
+            Assert.True(lineSpan.IsValid, "the build diagnostic is not anchored in any file");
+            Assert.Equal(key, lineSpan.Path);
+
+            // Independent derivation: line start + character, over the same bytes the generator was handed.
+            var text = SourceText.From(template);
+            var start = lineSpan.StartLinePosition;
+            Assert.InRange(start.Line, 0, text.Lines.Count - 1);
+            var offset = text.Lines[start.Line].Start + start.Character;
+
+            // The reported line/character and the reported span must describe the same point.
+            Assert.Equal(diagnostic.Location.SourceSpan.Start, offset);
+            return offset;
+        }
 
         [Fact] // patterns_sibling_shell — the sibling-override idiom keeps the silent degrade (D11)
         public void SiblingOverrideIdiomStaysUnprecompiledAndCorrectDynamically()

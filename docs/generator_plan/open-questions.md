@@ -4,7 +4,7 @@ The consolidated Q&A register for the seven phases. Numbering is `Q<phase>.<n>`,
 phase plan's own Open-questions section.
 
 **Pre-authoring questions (Q0.1–Q6.3): all resolved (user, 2026-07-25) and folded into the phases.**
-**Post-implementation questions (Q7.1–Q8.17):** opened after the phases landed, by the two
+**Post-implementation questions (Q7.1–Q8.27):** opened after the phases landed, by the two
 post-implementation reviews, the six phase audits, and the phase-8 docs sweep authored from
 the Q8.7 ruling — see
 [the section below](#post-implementation-questions-opened-2026-07-26). **Q7.4 and Q8.1–Q8.5 are
@@ -223,6 +223,23 @@ question, the ruling or default, and where it is folded.
   mandatory: report only when no argument estimate is `Unknown`. Phase 4's quarantine fixture must
   stop pinning the silence. *Folded into:* a post-audit work item; `HED7025` claimed in registry
   order with rows in `cross-cutting-decisions.md` and `precompilation.md`.
+  **Implemented (2026-07-26).** `BindOutcome` is propagated out of both binders as a `BindRefusal`
+  (`Bound` / `Unproven` / `ProvenIllegal`) instead of collapsing to `null`; `NativeExpressionWriter`
+  records a proven-illegal call at its `.heddle` position and `TemplateEmitter.DrainUnresolvable`
+  reports `HED7025` at Error, deduplicated per call site, in every result branch — the same channel
+  `HED7008` uses. The refusal itself is unchanged: the template still degrades, so no rendered byte
+  moves on either tier; what changed is that the build stops being silent about it. The message is
+  the runtime's own sentence for the same input (candidate signatures included, spelled through the
+  shared alias table) plus the run-tier id it is the twin of, so the two tiers say the same thing.
+  **The side condition is implemented as an early return before `OverloadRank.Bind` runs**, in both
+  binders: an argument the estimator returns `Unknown` for has no rank token at all, so no front is
+  ever computed for it and there is nothing to report — pinned by
+  `AmbiguousOverloadDiagnosticTests.AnUnknownArgumentEstimateStaysASilentDegrade` (and its nested and
+  export twins), and mutation-verified by making `TryDescribe` hand `Unknown` a token, which reddens
+  exactly those cases. `BindOutcome.None` follows `Ambiguous` as the audit proposed. Exports behave
+  identically (phase 3 made them rankable) and are covered on both arms. Breaking-window disposition
+  recorded in [breaking-windows.md](../spec/common/breaking-windows.md#explicit-not-window-gated-rulings)
+  as **defect repair, not window-gated**, with the residue in Q8.18.
 - **Q8.2 — The P1 binary break: which mechanism?** *(Partially ruled: the user has ruled "bump to
   2.1 and resolve as a binary breaking change".)* What remains open is the **gate**:
   `PrecompiledExtensionBinding`'s 2-arg `.ctor` no longer exists in metadata, while
@@ -237,6 +254,23 @@ question, the ruling or default, and where it is folded.
   (version 2.1); no compatibility shim. The gate must reject cleanly rather than advertise a support
   window the metadata cannot honour, and the rejection must be demonstrated by a manifest fixture
   built at the old schema — not asserted. *Folded into:* a post-audit work item.
+  **Implemented (2026-07-26):** `MinSupportedSchemaVersion = 4`, landed atomically with Q8.11's 2.1 bump.
+  The demonstration is `OldSchemaManifestRejectionTests` over `OldSchemaManifestFixture`, which compiles a
+  manifest against a **reference facade** carrying the pre-schema-4 surface under the real assembly's
+  identity (name, version, public key), with the real `Heddle` excluded from the reference set — so the
+  emitted IL genuinely names `.ctor(string, string)` and cannot bind to the current three-parameter form.
+  Three assertions: the 2-arg constructor is absent from metadata; the fixture declaring schema 3 is
+  rejected cleanly (`SchemaVersionUnsupported`/`HED7102`, no throw, nothing registered); and the *same
+  bytes* declaring schema `Min` are admitted and fault with `MissingMethodException` — the control arm that
+  makes "the gate prevents a startup crash" evidence rather than narration, and that shows 4 is exactly
+  where the boundary belongs. Mutating the facade to declare the optional third parameter — reproducing the
+  substitution the ruling forbade — reddens the suite.
+  `PropLayoutFingerprintTests.AManifestPredatingTheRowStillPasses` is renamed
+  `ARowWithNoFingerprintIsCheckedVacuously` with its schema claim removed, because it could never have been
+  evidence for it; `PrecompiledRegistryTests`' five schema-1 registrations now ask for
+  `MinSupportedSchemaVersion` (none of them was ever about a number) and its unsupported-schema test became
+  a `[Theory]` covering **both** edges — the below-floor case had no coverage at all, which is how the
+  faulting set stayed accepted. Reason-code fallout registered as Q8.24.
 - **Q8.3 — Fold the runtime onto the two remaining generator-only "shared" cores?**
   `Language/Binding/ExtensionRegistrationRules.cs` and `Language/Binding/TypeSpelling.cs` are called
   **only** by the generator; the runtime still hand-inlines both rules
@@ -337,6 +371,76 @@ question, the ruling or default, and where it is folded.
   **every mutation result in these audits rested on "this test went red because of my change"**, and
   flakiness poisons that inference — an intermittently-red suite is how a real surviving mutant goes
   unnoticed. **Ruling (user, 2026-07-26): root-cause it and decide — do not paper over it.** Identify the actual mechanism (shared mutable state across TFM legs, xUnit parallelism, the process-global precompiled registry, an ordering dependency) rather than adding tolerance. Legitimate outcomes include serialising the affected collection, isolating the shared artifact, or removing a dependency on something genuinely non-deterministic. **A retry attribute is not an acceptable resolution** — it preserves exactly the property that makes a surviving mutant invisible.
+- **Q8.15 investigation record (2026-07-26) — reproduced flakiness, but NOT the two named tests; root
+  cause of those two remains unestablished.** Recorded in full because the negative results are the
+  valuable part.
+  **Pressure applied:** 30 × full-solution runs in the working tree (failures on iterations 7, 9 and
+  16–29); 25 × full-solution runs in an isolated `git archive HEAD` copy (**all clean**); 50 legs of
+  `Heddle.Generator.Tests` with both TFMs concurrent at `maxParallelThreads=32` (clean); 150
+  cold-start processes × 32 threads rendering the `BodyModelRuleTableTests` rows (clean); 6 solution
+  runs against a deliberate concurrent builder (clean).
+  **What the working-tree failures actually were:** not the named tests. A concurrent MSBuild
+  invocation rewriting the test projects' `bin/**` while test hosts read from it — triggered by other
+  agents editing `.csproj` files, which makes MSBuild's `IncrementalClean` delete and re-copy the
+  whole content-file set. **That is an artifact of running several agents against one working tree,
+  not a product defect**, and the 25 clean isolated runs confirm it.
+  **Hypotheses positively ruled out, with evidence, so they need not be re-tested:** the
+  process-global precompiled registry (every class touching it is already in the serialized
+  `[Collection("PrecompiledRegistry")]` — the discipline is complete); in-process class parallelism in
+  `Heddle.Generator.Tests`; ANTLR's process-static prediction caches (real shared mutable state, but
+  0 failures in 150 cold-start 32-thread bursts — see Q8.22); `ReflectionHelper.Reconfigure`'s
+  unlocked dictionary rebuild (a genuine race in the code, unreachable here — `_configured`-guarded,
+  and the caller lives in another process); an order dependency in `BodyModelRuleTableTests` (it is
+  the one class of ~60 that does not call `HeddleTemplate.Configure`; 14/14 green in isolation); and a
+  Roslyn metadata race (impossible — default `ExpressionMode` is `Native`, so that test never enters
+  the C# tier).
+  **No code change was made**, deliberately: with neither named test reproduced, any change would be
+  tolerance dressed as a fix — what the ruling forbids. In particular `Heddle.Generator.Tests` was
+  **not** blanket-serialised, because serialising without a demonstrated race is the same defect in a
+  different costume.
+  **Q8.15 stays OPEN.** The blocker is diagnostic, not analytic: the original observation captured
+  test *names* but not failure *messages*, and for `BodyModelRuleTableTests` "expected Ada, got null"
+  (a type/extension-resolution fault) and "expected Ada, got Ada0" (a chained-channel fault) have
+  disjoint root causes. **Whoever next observes either failure must capture the assertion text.**
+- **Q8.20 — Should a test ever read another project's build output?** `CorpusResolverSweepTests`
+  (`:50-84`) string-substitutes its own assembly path to reach
+  `src/Heddle.Tests/bin/Debug/<tfm>/Heddle.Tests.dll`, loads it as a `MetadataReference`, and reads
+  the corpus from `src/Heddle.Tests/TestTemplate` — while
+  `Heddle.Generator.IntegrationTests.csproj` references only `Heddle.Generator` and `Heddle`, so
+  **nothing orders it after `Heddle.Tests`**. Under `dotnet test Heddle.sln` MSBuild may run its
+  `VSTest` before or during that build; this was *reproduced* (the iteration-7 failure). Three tests
+  are exposed, and to their credit they fail loudly rather than skipping.
+  **Default:** add the missing `ProjectReference` as the narrow fix now, and treat the general
+  pattern (cross-project output reads) as something phase 7's shared corpus location should remove
+  rather than formalise.
+  **Implemented (2026-07-26, phase 5's landing):** the `ProjectReference` is added with
+  `ReferenceOutputAssembly="false"` — build order only, and deliberately not a compile-time reference.
+  This suite hands hand-filtered reference sets to the compilations it creates (it already strips
+  `Heddle.Generator` to avoid `CS0433` on the phase-5 linked types), so pulling `Heddle.Tests` and its
+  transitive graph into its own compile would put a second set of names in scope for no benefit: the DLL is
+  loaded **by path at run time**, not bound at compile time. No cycle (`Heddle.Tests` references only
+  `Heddle`) and no duplicate-type or reference-set problem — the suite builds clean on both TFMs. The
+  general question stands: the fix orders the build, it does not stop a test reading another project's
+  output.
+- **Q8.21 — Should the generator test projects carry `DisableTestParallelization`?**
+  `Heddle.Tests` and `Heddle.LanguageServices.Tests` both do, justified in `AssemblyInfo.cs` by
+  "Heddle uses process-global static state"; `Heddle.Generator.Tests` and
+  `Heddle.Generator.IntegrationTests` do not, though they link the same front-end sources. No race
+  was found, so this is about **stating an invariant**, not fixing a defect. **Default:** document the
+  asymmetry deliberately rather than changing it, since serialising without a demonstrated race costs
+  suite time for no evidence.
+- **Q8.22 — ANTLR's process-static prediction caches.** `HeddleLexer`/`HeddleParser` share
+  `decisionToDFA` and `sharedContextCache` across every parse in the process, mutated during
+  `AdaptivePredict` under `PredictionMode.SLL`. 150 cold-start 32-thread bursts produced no
+  misbehaviour, but the runtime *is* used concurrently in production (`BranchConcurrencyTests`,
+  file-watcher reloads on background threads) and `Antlr4.Runtime.Standard`'s thread-safety guarantee
+  for this is documented nowhere in the repo. **Default:** record the reliance explicitly in the
+  concurrency section of the spec, and revisit if any concurrent-parse fault is ever observed.
+- **Q8.23 — `PipelineContractTests` uses fixed shared temp paths** (`Path.GetTempPath()/heddle-root`,
+  `.../elsewhere/shared/banner.heddle`) where every other test uses a `Guid`-suffixed directory.
+  Harmless today because they are pure path arithmetic never materialised on disk, but it is the one
+  place the convention is broken, and a future test that *creates* that path would collide across the
+  two TFM legs. **Default:** convert to the `Guid`-suffixed convention.
 - **Q8.16 — `RegionTests.LocationOffsetOf` returns a hard-coded `0`.** Reported by phase 1's audit,
   not its artifact, so it was left. A helper that reads as a position assertion and asserts nothing
   is worse than an absent assertion, because it looks like coverage. **Ruling (user, 2026-07-26): fix it.** Compute the real offset, so assertions that read as position assertions actually are ones.
@@ -365,6 +469,30 @@ question, the ruling or default, and where it is folded.
   13 files must change for 2.0.0→2.1.0 and five more are coupled, the riskiest being
   `editors/vscode/src/extension.ts`'s `PINNED_VERSION`, which pins a NuGet tool version outside any
   consistency check. **Ruling (user, 2026-07-26): yes — centralise versioning, and additionally sign all of our own assemblies** so the strong-name warnings stop. Two deliverables: one `<VersionPrefix>` (or equivalent) in `Directory.Build.props` replacing the per-project `<Version>` elements, and strong-naming for every first-party assembly currently unsigned (the `CS8002` sources — `Heddle.Demo.Models`, `Heddle.Demo.Wasm`). Third-party unsigned references (Scriban) are not ours to sign; handle those explicitly rather than by blanket suppression, and say which mechanism was used. Both land with Q8.2's 2.1 bump.
+  **Implemented (2026-07-26):** one `<VersionPrefix>2.1.0</VersionPrefix>` in `Directory.Build.props`; all nine
+  `<Version>` elements deleted, including `Heddle.Performance`'s — a single-line deletion needing no other
+  change to that project, which is Q7.2's stated boundary. The real inventory was **fourteen kinds** of
+  statement: the nine elements, four npm manifest/lockfile pairs, `PINNED_VERSION` in
+  `editors/vscode/src/extension.ts`, an `lsp.yml` `--version`, four prose release-line sentences, two
+  `engineVersion` test assertions plus eight `Verify` snapshots, and — the live drift nobody had found —
+  `LspServer.InformationalVersion = "1.0.0"`, which is what `heddle-lsp --version` printed and what the LSP
+  `initialize` response reported for the whole 2.0 line, guarded only by a test comparing it against itself.
+  That one is now *derived* from the assembly rather than gated, so the statement no longer exists. Also
+  load-bearing and easy to miss: the CI beta job's `--version-suffix "-beta.N"` had to lose its leading dash,
+  because a composed `VersionPrefix`/`VersionSuffix` is joined with one and would otherwise produce
+  `2.1.0--beta.N`. **Signing:** `Heddle.Demo.Models`, `Heddle.Demo.Wasm`, and — found by the gate rather than
+  by the warning — `Heddle.LanguageServices.Tests.Corpus`, whose csproj already carried a comment claiming it
+  was signed. Eight `CS8002` → zero. **Scriban:** a declared accepted-unsigned-reference list in a new root
+  `Directory.Build.targets`, keyed on the named assembly and applied only to signed projects — stated there
+  rather than inside `Heddle.Performance`, which is untouchable. Recorded honestly: Roslyn has **no**
+  per-reference suppression for `CS8002` (the warning carries no source location and `Csc` takes only a
+  project-wide list; `NoWarn` metadata on a `PackageReference` was *measured* to have no effect), so the
+  mechanism is keyed *on* the reference rather than scoped to it, and a project referencing both a listed and
+  an unlisted unsigned assembly would silence both. **The gate** is `VersionConsistencyTests` (17 cases):
+  exactly one `<VersionPrefix>`, no project restating a version, the built assembly agreeing, the four npm
+  manifests, the VS Code pin, the workflow `--version`, the suffix's shape, the four prose sentences, the
+  CHANGELOG section and its compare link, no version literal in `LspServer.cs`, every `src/` project signed,
+  and no blanket `CS8002` suppression. Warning-regression gating in general is out of scope: Q8.26.
 - **Q8.12 — Who fixes the sample that still passes the removed `Name` item metadata?**
   `samples/codegen-t4-successor/CodegenT4Successor.csproj` carries
   `<HeddleTemplate Include="templates\report.heddle" Name="BuildReport" />`, and
@@ -377,3 +505,114 @@ question, the ruling or default, and where it is folded.
   **The record overreached.** Q5.1 above reads *"`Name` removed per the recommendation"*, and phase 5 implemented that removal. Whatever the recommendation said, removal was not the ask — the ask was to wire `Precompile`. `Name` was dead code (declared as `CompilerVisibleItemMetadata`, never read), so removing it changed no behaviour and the sample's `Name="BuildReport"` was always ignored; the defect was that the *feature was never wired*, not that the metadata existed. Restoring it as a real optional key mapping is the smaller, better fix and closes Q8.12 as a side effect.
 
   Scope: `Name` sets the template's registration key, overriding the path-derived key; it must interact correctly with `TemplateKey` normalisation, the duplicate-key check (`HED7002`), the case-only-twin check (`HED7003`), and the out-of-root warning (`HED7018`). A malformed or colliding `Name` needs a diagnostic — claim `HED7028` if a new one is required rather than reusing `HED7004`.
+
+  **Implemented (2026-07-26).** `Name` is a **second spelling of `Key`** — one setting, so it shares every
+  downstream rule instead of acquiring parallel ones: the same `TemplateKey` normalisation, the same `HED7002`
+  and `HED7003` participation, and the same `HED7018` suppression, now stated as a deliberate decision rather
+  than inherited by accident (that warning's premise is that the flattened key was *not* asked for, and an
+  explicit key asks for exactly the key it names). **`HED7028` was not claimed.** The fault class `HED7004`
+  already names is "this item's explicit key metadata is unusable", and both new faults are instances of it —
+  a value the normalizer refuses, and two spellings of one setting naming two different keys — at the same
+  severity, the same position, with the same remediation and one call site. Its message was generalised to
+  carry the offending metadatum and the reason, so a further spelling or reason needs no further descriptor.
+  `HED7028` remains unclaimed and free.
+
+  **The larger defect this uncovered.** `Name` was not merely unread: **none** of the three metadata worked
+  from a real project. `Heddle.Generator.targets` restated each as `<Key>%(HeddleTemplate.Key)</Key>` inside
+  an `Include="@(HeddleTemplate)"` transform — and since the transform already copies every metadatum, while
+  a cross-item `%()` reference outside a target evaluates to the empty string, each element *overwrote* the
+  copied value with `""`. So `Key` and `Precompile="false"` were inert too, and nothing noticed because every
+  test injects `build_metadata.*` directly and so never crosses this file. Fixed by deleting the elements.
+  Two gates stand behind it now: a structural set-equality pin
+  (`PipelineContractTests.EveryDeclaredItemMetadataIsReadByTheGeneratorAndNotNulledByTheTargets`, which also
+  refuses any restatement) and the behavioural one — `samples/codegen-t4-successor`, whose generated entry
+  class is *named by* its `Name` metadatum and called by name, so a metadatum that stops flowing fails that
+  build in CI.
+
+  **The sample's golden changed, by exactly one line.** `Name="BuildReport"` is now correct, so the key is
+  `BuildReport.heddle`, the entry class is `Heddle.Generated.BuildReport`, and `Program.cs` plus the README
+  call it. A second change was needed to keep that golden honest: the emitted `#line` directives named the
+  *key*, indistinguishable from the file path only while every key is path-derived — with `Name` set they
+  pointed at `BuildReport.heddle`, a path that exists nowhere. The `#line` file is now the template's
+  root-relative path, byte-identical wherever no explicit key is set, which is why no snapshot moved. Import-map
+  fallout registered as Q8.25; the `#line` path form as Q8.27.
+
+## Opened by the Q8.1 landing (2026-07-26)
+
+- **Q8.18 — `HED7025` proves illegality against the *build-time* function inventory. Is that the
+  right scope?** Q8.1's build error rests on a proof, and the proof is relative to the overload set
+  the generator can see: the shipped built-in table plus every `[assembly: ExportFunctions(...)]`
+  method. A host may add an overload at run time through `TemplateOptions.Functions.Register`, whose
+  documented rule is "same name + identical parameter types replaces; otherwise **adds an
+  overload**". Such an addition can make an ambiguous set unambiguous (`min(uint, uint)` would resolve
+  `min(1, 2u)`) or an inapplicable set applicable (`min(int, int, int)` would resolve `min(1, 2, 3)`) —
+  so a template that is legal *for that host* now fails the build, and unlike the emitted-code case
+  the gauntlet's `FunctionBindings` overload-count check cannot rescue it. A delegate registration is
+  invisible in assembly metadata, which is precisely the blindness `HED7014` exists for — and
+  `HED7014` chose *warning + degrade* for it. **Default if unruled:** keep the error as ruled and
+  keep `Precompile="false"` as the escape hatch; the scenario needs a host that both registers extra
+  overloads of a name the generator already knows *and* writes a template call that only those extra
+  overloads satisfy, which no first-party or sample code does. Candidate refinements, in increasing
+  cost: (a) restrict the error to `Ambiguous` and let `None` degrade with a warning, since `None` is
+  the arm a *single* added overload most easily rescues; (b) suppress the error for any name the
+  compilation cannot prove closed, which in practice means every name — i.e. withdraw the fix; (c) give
+  the host a build-time declaration of its run-time registrations, which is a new surface. *Related:*
+  Q8.1, and `HED7014`'s legitimacy argument in
+  [precompilation.md](../precompilation.md#which-fallbacks-are-legitimate).
+
+- **Q8.19 — Two illegal calls in one template report once. Should the emitter continue past an
+  unwritable construct to collect the rest?** `BuildBody` abandons at the first construct it cannot
+  write, so `@(min(1, 2u)) @(max(1, 2u))` yields one `HED7025`, not two; the author fixes one, rebuilds,
+  and meets the next. This is pre-existing emitter shape rather than anything Q8.1 introduced (it is
+  equally true of `HED7008`), but Q8.1 is the first error where the one-at-a-time surfacing is the
+  *whole* user experience, so it is now worth asking. **Default if unruled:** leave it — collecting
+  the remainder means continuing a body build whose result is discarded, and the dynamic tier reports
+  one error at a time too (`Fail` returns null and unwinds), so today's behaviour *matches*. Pinned as
+  a fact, not a bug, by
+  `AmbiguousOverloadDiagnosticTests.TwoCallSitesInOneTemplateReportOnceBecauseTheBodyBuildAbandonsAtTheFirst`,
+  which reddens if a later change makes the emitter continue.
+
+## Opened by the Q8.2 / Q8.11 / Q8.12 landing (2026-07-26)
+
+- **Q8.24 — A 1.x manifest's rejection reason changed from `EngineVersionIncompatible` to
+  `SchemaVersionUnsupported`.** The 2.0 window's as-shipped record and the CHANGELOG both state that
+  1.x precompiled assemblies fall back because "the engine-version gate rejects 1.x manifests". With
+  `MinSupportedSchemaVersion = 4` that is no longer the gate that fires: `Register` runs the **schema**
+  check first, and every 1.x manifest declares schema 1, so it is now rejected as
+  `SchemaVersionUnsupported` (`HED7102`) before the engine-version check is reached. The observable
+  outcome is identical — one callback, whole-assembly fallback, `Strict` throws — but a host that
+  branches on `PrecompiledFallbackEvent.Reason` (a public enum) sees a different member, and two shipped
+  documents name the wrong one. **Default if unruled:** treat it as a documentation correction owned by
+  phase 8's sweep, not a behaviour change: both reasons are in the same "must surface / packaging defect"
+  row of the fallback taxonomy, and the ordering of two gates that both reject the same input is not a
+  contract. Worth a ruling because the alternative — checking engine version first so the *older* and
+  more specific diagnosis wins — is defensible and cheap.
+
+- **Q8.25 — An explicit `Key`/`Name` makes a template unimportable by its path.** The `@<<` import map
+  is keyed by the same derived key as the registry, so `@<<{{ templates/report.heddle }}` no longer
+  resolves once that item carries `Name="BuildReport"` — the importer draws `HED7011`, and the fix is to
+  import the *key*. This is pre-existing for `Key` and was simply unreachable while the metadata was
+  inert (Q8.12), so wiring the feature made it reachable for the first time. **Default if unruled:**
+  leave it and document the import path as key-relative, since the runtime's own `ImportReader` is
+  key-based and a second, path-based lookup would be a second rule. Worth a ruling because the intuitive
+  reading of `@<<{{ some/path }}` is a path, and the failure is a build error rather than a fallback.
+
+- **Q8.26 — Warning regressions are not gated.** `Q8.11` removed the eight `CS8002` warnings and the
+  build has no `TreatWarningsAsErrors`, so nothing prevents them — or any other warning class — from
+  coming back. The signing half is now held by
+  `VersionConsistencyTests.EveryFirstPartyProjectUnderSrcIsStrongNamed`, but that gates the *cause* for
+  one warning, not warnings in general; the tree currently carries fourteen xUnit-analyzer warnings and
+  four `NU1510`s that no gate mentions. **Default if unruled:** leave it. `TreatWarningsAsErrors` on a
+  tree with eighteen live warnings is a landing of its own, and the two candidate mechanisms
+  (`TreatWarningsAsErrors` plus a `NoWarn` allow-list, or a CI step asserting a warning census) differ in
+  who pays: the first reds local builds, the second only CI. Recorded so "the warnings stopped" is known
+  to be a state rather than a property.
+
+- **Q8.27 — Should `#line` name a path the compiler can open, rather than a repo-relative one?** Q8.12
+  separated the `#line` file from the registration key, and the value it now emits is the template's path
+  relative to `HeddleTemplateRoot` — resolvable when the compiler's working directory is the project
+  directory, which is the normal case, and not otherwise. The alternative is the absolute
+  `AdditionalText.Path`, which is what a `#line` is really for, but it would put machine-specific
+  absolute paths into eight `Verify` snapshots and every generated-source golden. **Default if unruled:**
+  keep the relative path; it is what shipped, it is golden-stable, and it is correct for the working
+  directory MSBuild actually uses. Revisit if a debugger or error-list mis-resolution is ever observed.

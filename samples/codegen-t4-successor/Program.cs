@@ -26,7 +26,7 @@ namespace Heddle.Samples.Codegen
             var model = new BuildInfo { Project = "Heddle", Version = "2.0.0", Commit = "deadbeef" };
 
             // The generated typed entry point — no runtime parse or compile of the template.
-            var rendered = global::Heddle.Generated.Templates_Report.Generate(model);
+            var rendered = global::Heddle.Generated.BuildReport.Generate(model);
 
             // Structural check: the code generator is a build-time tool, so its assembly must NOT ship at runtime.
             var binDir = AppContext.BaseDirectory;
@@ -63,7 +63,7 @@ namespace Heddle.Samples.Codegen
         {
             // The generator emits under obj/…/generated when no explicit output path is set.
             var searchRoot = SampleCapture.SampleRoot();
-            var file = Directory.EnumerateFiles(searchRoot, "Templates_Report.g.cs", SearchOption.AllDirectories)
+            var file = Directory.EnumerateFiles(searchRoot, "BuildReport.g.cs", SearchOption.AllDirectories)
                 .FirstOrDefault();
             if (file == null)
                 return "// generated entry point not found on disk\n";

@@ -101,7 +101,7 @@ namespace Heddle.Generator.Tests
 
             Assert.DoesNotContain(run.GeneratorDiagnostics, d => d.Id == "HED7019");
             var manifest = run.GeneratedSourceTexts.First(s => s.Contains("__HeddleManifest"));
-            Assert.Contains("engineVersion: \"2.0.0\"", manifest);
+            Assert.Contains("engineVersion: \"2.1.0\"", manifest);
         }
 
         /// <summary>Without the engine reference the generator no longer fabricates a literal: it emits its own

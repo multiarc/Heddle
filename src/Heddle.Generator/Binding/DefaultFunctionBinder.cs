@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Heddle.Data;
 using Heddle.Language.Expressions;
 using Heddle.Precompiled;
 
@@ -98,15 +99,25 @@ namespace Heddle.Generator.Binding
 
         /// <summary>Resolves <paramref name="name"/> against the shared candidate rows with the shared ranker, or
         /// returns null when the ranker reports ambiguity, no applicable overload, or an argument the generator
-        /// cannot describe — every one of which degrades the template rather than guessing.</summary>
-        public static Binding TryBind(string name, IReadOnlyList<OperandKind> arguments)
+        /// cannot describe — every one of which degrades the template rather than guessing.
+        /// <para>Q8.1: the two refusals are <b>not</b> the same thing, so <paramref name="refusal"/> distinguishes
+        /// them instead of letting the bare <c>null</c> conflate them. An ambiguous or inapplicable front over
+        /// arguments the estimator typed is a <i>proof</i> that the runtime will refuse the call, and the build
+        /// reports <c>HED7025</c>; an argument it could not describe is a generator limitation and still degrades
+        /// silently, because nothing has been proved.</para></summary>
+        public static Binding TryBind(string name, IReadOnlyList<OperandKind> arguments, out BindRefusal refusal)
         {
+            refusal = BindRefusal.Unproven;
             if (!RowsByName.TryGetValue(name, out var rows))
                 return null;
 
             var args = new RankArgument<GenTypeRef>[arguments.Count];
             for (int i = 0; i < arguments.Count; i++)
             {
+                // THE SIDE CONDITION (Q8.1). An OperandCategory.Unknown argument has no rank token at all, so the
+                // ranker would be ranking against nothing: whatever front it produced would be an artefact of the
+                // generator's ignorance, never a statement about the runtime — which binds on the expression's real
+                // static type. Leaving here, before Bind runs, is what keeps the Unknown case a silent degrade.
                 if (!TryDescribe(arguments[i], out var described))
                     return null;
                 args[i] = described;
@@ -118,7 +129,12 @@ namespace Heddle.Generator.Binding
 
             var binding = OverloadRank.Bind(NameRankModel.Instance, candidates, args);
             if (binding.Outcome != BindOutcome.Bound)
+            {
+                // Every argument was describable and the shared core still reached Ambiguous/None: the runtime,
+                // running the identical core, reaches the same verdict and fails its compile.
+                refusal = Refuse(name, binding.Outcome, rows, args);
                 return null;
+            }
 
             var row = rows[binding.Index];
             var casts = new string[arguments.Count];
@@ -134,7 +150,77 @@ namespace Heddle.Generator.Binding
                     return null;   // no spelling for the cast target — degrade rather than emit unpinned
             }
 
+            refusal = BindRefusal.Bound;
             return new Binding { Row = row, Expanded = binding.Expanded, ArgumentCasts = casts };
+        }
+
+        /// <summary>The <c>HED7025</c> payload for a proven-illegal built-in call: the runtime's own sentence for the
+        /// same input, so the two tiers say the same thing about the same template. The candidate list is every
+        /// overload of the name (not just the non-dominated front), matching <c>NativeExpressionCompiler</c>.</summary>
+        private static BindRefusal Refuse(string name, BindOutcome outcome, IReadOnlyList<DefaultFunctionRow> rows,
+            IReadOnlyList<RankArgument<GenTypeRef>> args)
+        {
+            var candidates = new List<string>(rows.Count);
+            foreach (var row in rows)
+                candidates.Add(SignatureText(name, row));
+            var candidateText = string.Join(", ", candidates);
+
+            if (outcome == BindOutcome.Ambiguous)
+                return BindRefusal.ProvenIllegal(
+                    "The call to function '" + name + "' is ambiguous between: " + candidateText + ".",
+                    HeddleDiagnosticIds.AmbiguousFunctionCall);
+
+            var argTexts = new List<string>(args.Count);
+            foreach (var arg in args)
+                argTexts.Add(DisplayName(arg));
+            return BindRefusal.ProvenIllegal(
+                "No overload of function '" + name + "' takes (" + string.Join(", ", argTexts) + "). Candidates: " +
+                candidateText + ".",
+                HeddleDiagnosticIds.NoFunctionOverload);
+        }
+
+        private static string SignatureText(string name, in DefaultFunctionRow row)
+        {
+            var parts = new string[row.ParameterTypeNames.Length];
+            for (int i = 0; i < parts.Length; i++)
+                parts[i] = FriendlyName(row.ParameterTypeNames[i]);
+            return name + "(" + string.Join(", ", parts) + ")";
+        }
+
+        private static string DisplayName(in RankArgument<GenTypeRef> arg) =>
+            arg.IsNullLiteral ? "null" : FriendlyName(arg.Type.Name);
+
+        /// <summary>Signature-text spelling for one CLR metadata name. The alias half is the <b>shared</b> table
+        /// (<see cref="CSharpName"/>), so a signature the author reads in a build error is spelled the way the
+        /// runtime's <c>HED1013</c> spells it; everything else degrades to the bare type name, which is the
+        /// runtime's own fallback too. The estimator's placeholder tokens are spelled in plain English rather than
+        /// leaked verbatim — the author never wrote <c>?reference</c>, and the candidate list beside it is what
+        /// actually explains the error.</summary>
+        private static string FriendlyName(string clrName)
+        {
+            if (clrName == null)
+                return "?";
+            switch (clrName)
+            {
+                case "?reference": return "a reference type";
+                case "?enum": return "an enum";
+                case "?struct": return "a struct";
+            }
+
+            var alias = CSharpName(clrName);
+            if (alias != null)
+                return alias;
+            if (clrName.StartsWith("System.Nullable`1[", System.StringComparison.Ordinal) && clrName.EndsWith("]",
+                    System.StringComparison.Ordinal))
+                return FriendlyName(clrName.Substring(18, clrName.Length - 19)) + "?";
+            bool isArray = clrName.EndsWith("[]", System.StringComparison.Ordinal);
+            var core = isArray ? clrName.Substring(0, clrName.Length - 2) : clrName;
+            var aliasCore = CSharpName(core);
+            if (aliasCore != null)
+                return aliasCore + (isArray ? "[]" : string.Empty);
+            int dot = core.LastIndexOf('.');
+            var shortName = dot >= 0 ? core.Substring(dot + 1) : core;
+            return shortName + (isArray ? "[]" : string.Empty);
         }
 
         /// <summary>The chosen row's return type as an operand kind, so an enclosing operator can be guarded against

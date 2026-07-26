@@ -179,6 +179,17 @@ fire. Findings that survived orchestrator verification, most severe first:
    overloads. **Fix:** add a real 2-arg overload, or raise `MinSupportedSchemaVersion` so the gate
    rejects what would fault; then check in a binary manifest fixture built at an older schema, so
    the support window is *demonstrated* rather than asserted.
+   (**closed 2026-07-26** by phase 5's Q8.2 landing.) `MinSupportedSchemaVersion` is **4** — the exact
+   boundary of the faulting set — so a 2.0.x-precompiled assembly now degrades with one `HED7102`
+   (`SchemaVersionUnsupported`) instead of crashing at startup, and the break ships as declared at 2.1 with
+   no shim. The window is *demonstrated*: `OldSchemaManifestFixture` compiles a manifest against a reference
+   facade carrying the pre-schema-4 surface under the real assembly's identity, with the real `Heddle`
+   excluded from the reference set, so its IL genuinely names the absent `.ctor(string, string)`. It is built
+   at test time rather than checked in, because a committed `.dll` cannot be re-derived or reviewed and the
+   construction *is* the evidence. Note what the superseded pin could not be: `new
+   PrecompiledExtensionBinding("a", "b")` binds to the three-parameter constructor against today's assembly,
+   so it exercised a new-schema call wearing an old-schema shape — the substitution through which this break
+   reached release behind a green suite.
 2. **Three "shared" cores have no runtime caller** — `ExtensionRegistrationRules` (runtime keeps its
    own copy in `TemplateFactory.AddExtensions`), `TypeSpelling` (a re-implementation; the original
    survives in `ReflectionHelper`), and ~~the numeric widening table (a live second copy in
@@ -226,7 +237,15 @@ fire. Findings that survived orchestrator verification, most severe first:
    silently. Five corpus tests carry `if (dir == null) return;` — a silent no-op if layout changes.
    **Owned by [phase 7](phase-7-shared-test-corpus.md)** (proposed): the floor and the traversal are
    fixed by its stage 0, and the inline-string residue by its migration stages.
-8. **Phase 4's reshaped overload-tie fixture pins a policy violation.** It asserts *no build
+8. ~~**Phase 4's reshaped overload-tie fixture pins a policy violation.**~~ (**closed 2026-07-26** by
+   the Q8.1 ruling — `HED7025`. `BindOutcome` is propagated out of both binders as a `BindRefusal`, and
+   an `Ambiguous`/`None` front over arguments the estimator typed is now a build **error**; the fixture
+   was reshaped a second time and pins the build error together with the runtime `HED1013`, so tier
+   agreement is still pinned but on the corrected verdict. The side condition — report only when no
+   argument estimate is `Unknown` — is an early return before the ranker runs, pinned by three cases
+   and mutation-verified. No rendered byte moves; the refusal is unchanged and the silence is what
+   ended. Window disposition: defect repair, not window-gated, argued in `breaking-windows.md`.
+   Residue: Q8.18/Q8.19.) It asserted *no build
    diagnostic* is emitted, so an ambiguous overload call yields a green build and a hard `HED1013`
    at first render — contrary to both the match principle and the fallback-legitimacy ruling.
    **Confirmed by the phase-4 audit (2026-07-26); behaviour deliberately unchanged, fix queued.** The

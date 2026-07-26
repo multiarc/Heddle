@@ -7,11 +7,21 @@
     <HeddleTemplate Include="**\*.heddle" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder);bin\**;obj\**" />
   </ItemGroup>
 
-  <!-- Map HeddleTemplate items to AdditionalFiles carrying the per-item metadata the generator reads. -->
+  <!-- Map HeddleTemplate items to AdditionalFiles carrying the per-item metadata the generator reads.
+       `Include="@(HeddleTemplate)"` is an item *transform*, so it already copies every metadatum HeddleTemplate
+       carries — Key, Name and Precompile arrive here for free. This block used to restate them as
+       `<Key>%(HeddleTemplate.Key)</Key>` etc., and that was actively destructive: outside a target a cross-item
+       `%(Other.Metadata)` reference evaluates to the empty string, so each element *overwrote* the metadatum the
+       transform had just copied with "". Every per-item metadatum was therefore inert from a real csproj — not only
+       `Name` (Q8.12's subject) but `Key` and `Precompile` too, neither of which any test reached through this file:
+       the generator suites inject `build_metadata.*` directly. Do not reintroduce the elements; there is nothing to
+       map, and mapping it explicitly is what unmapped it. Two gates stand behind that: the structural half is
+       `PipelineContractTests.EveryDeclaredItemMetadataIsReadByTheGeneratorAndNotNulledByTheTargets`, and the
+       behavioural half is the `samples/codegen-t4-successor` sample, whose `Name="BuildReport"` renames the generated
+       entry class its `Program.cs` calls by name — so a metadatum that stops flowing fails that sample's build
+       outright, in CI, rather than degrading quietly. -->
   <ItemGroup>
     <AdditionalFiles Include="@(HeddleTemplate)">
-      <Key>%(HeddleTemplate.Key)</Key>
-      <Precompile>%(HeddleTemplate.Precompile)</Precompile>
       <HeddleTemplate>true</HeddleTemplate>
     </AdditionalFiles>
   </ItemGroup>

@@ -35,7 +35,7 @@ dotnet test               # runs all test projects, as CI does
 
 All shipping projects use `LangVersion=latest` and are **strong‑name signed** with
 `heddle.snk` (`SignAssembly=true`, `AssemblyOriginatorKeyFile=..\..\heddle.snk`).
-The current release line is **2.0.0**; the published version is set from the release tag
+The current release line is **2.1.0**; the published version is set from the release tag
 (`vX.Y.Z`) at publish time, so the version in the source tree is just a placeholder.
 
 ### Key dependencies

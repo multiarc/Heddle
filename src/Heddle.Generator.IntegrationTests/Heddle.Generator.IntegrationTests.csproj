@@ -28,6 +28,18 @@
          use in this suite bound to the runtime copy; DifferentialHarness reaches the generator through it. -->
     <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.csproj" Aliases="generator" />
     <ProjectReference Include="..\Heddle\Heddle.csproj" />
+    <!-- Q8.20 — build ORDER only, deliberately not a compile-time reference. `CorpusResolverSweepTests` reaches into
+         Heddle.Tests' own build output (it substitutes this assembly's path to find Heddle.Tests.dll, loads it as a
+         MetadataReference, and reads the corpus from src/Heddle.Tests/TestTemplate), and nothing ordered this project
+         after that one — so under `dotnet test Heddle.sln` its VSTest run could start before or during that build.
+         Reproduced, not theorised: 1 of 30 solution runs failed three sweep cases on the "corpus was not found for
+         this TFM" hard failure.
+         `ReferenceOutputAssembly="false"` is the point of the shape, not a detail: this suite hands hand-filtered
+         reference sets to the compilations it creates (it already strips Heddle.Generator to avoid CS0433 on the
+         phase-5 linked types), and pulling Heddle.Tests and its transitive graph into its own compile would put a
+         second set of names in scope for no benefit — the test loads the DLL by path at run time, not by reference.
+         A stopgap: phase 7's shared corpus is expected to remove the cross-project read entirely. -->
+    <ProjectReference Include="..\Heddle.Tests\Heddle.Tests.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

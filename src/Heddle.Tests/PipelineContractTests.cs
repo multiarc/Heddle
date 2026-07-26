@@ -114,26 +114,34 @@ namespace Heddle.Tests
             Assert.True(PrecompiledSchema.IsSupported(PrecompiledSchema.CurrentSchemaVersion));
         }
 
-        /// <summary>The shipped constants, pinned. Phase 4 D11 bumped the emitted schema to 3 and widened the
-        /// window to {1, 2, 3}: generated dynamic member hops now call <c>PrecompiledRuntime.DynamicMember</c>, an
-        /// API an older engine does not carry, so the version is what makes an older engine fall back at
-        /// registration instead of faulting mid-render.</summary>
+        /// <summary>The shipped constants, pinned. Phase 4 D11 bumped the emitted schema to 3, phase 3 (OQ4) to 4 for
+        /// the additive prop-layout row, and phase 1 (D2) to 5 for the per-carrier <c>BindDefinition</c> overload.
+        /// <b>2.1 (Q8.2) narrowed the floor 1 → 4</b> — the only narrowing this window has had, and a declared binary
+        /// break: schema 1–3 manifests reference a <c>PrecompiledExtensionBinding</c> constructor that no longer exists
+        /// in metadata, so accepting them faulted at <c>Register</c> instead of falling back. The floor is now exactly
+        /// the schema at which the three-argument constructor became the only one, which is why it equals
+        /// <see cref="PrecompiledSchema.PropLayoutFingerprintSchemaVersion"/> and is asserted as that identity rather
+        /// than as a coincidence of two literals.</summary>
         [Fact]
         public void SchemaConstantsAreUnchangedByTheConsolidation()
         {
-            // Phase 3 (OQ4) bumped Max/Current 3→4 for the additive extension prop-layout fingerprint row;
-            // phase 1 (D2) bumped them 4→5 for the per-carrier BindDefinition overload generated code now calls.
-            Assert.Equal(1, PrecompiledSchema.MinSupportedSchemaVersion);
+            Assert.Equal(4, PrecompiledSchema.MinSupportedSchemaVersion);
             Assert.Equal(5, PrecompiledSchema.MaxSupportedSchemaVersion);
             Assert.Equal(5, PrecompiledSchema.CurrentSchemaVersion);
             Assert.Equal(4, PrecompiledSchema.PropLayoutFingerprintSchemaVersion);
             Assert.Equal(5, PrecompiledSchema.PerCarrierLocalsSchemaVersion);
+
+            // The floor is the prop-layout schema *because* that is where the constructor arity changed. Stated as an
+            // identity so a future bump of one without the other has to justify itself.
+            Assert.Equal(PrecompiledSchema.PropLayoutFingerprintSchemaVersion,
+                PrecompiledSchema.MinSupportedSchemaVersion);
+
             Assert.False(PrecompiledSchema.IsSupported(0));
             Assert.False(PrecompiledSchema.IsSupported(6));
-            // The row is additive: every schema in the window is still accepted, so no manifest is forced to
-            // re-precompile by its arrival.
-            Assert.True(PrecompiledSchema.IsSupported(1));
-            Assert.True(PrecompiledSchema.IsSupported(3));
+            // Below the new floor: the manifests the 2.1 break excludes.
+            Assert.False(PrecompiledSchema.IsSupported(1));
+            Assert.False(PrecompiledSchema.IsSupported(3));
+            Assert.True(PrecompiledSchema.IsSupported(4));
             Assert.True(PrecompiledSchema.IsSupported(5));
         }
 
@@ -292,6 +300,65 @@ namespace Heddle.Tests
         {
             Assert.Equal(ok, HeddleBuildOptions.TryReadPositiveInt(raw, 100, out var value));
             Assert.Equal(expected, value);
+        }
+
+        /// <summary>
+        /// <para>Q8.12's structural gate. The per-item metadata names live in three physical places —
+        /// <c>Heddle.Generator.props</c> declares them <c>CompilerVisibleItemMetadata</c> (without which Roslyn does
+        /// not surface them at all), <c>Heddle.Generator.targets</c> carries <c>HeddleTemplate</c> onto
+        /// <c>AdditionalFiles</c>, and the generator reads <c>build_metadata.AdditionalFiles.&lt;name&gt;</c> — and a
+        /// name absent from any one of the three is silently inert. That is what happened to <c>Name</c>: declared in
+        /// props since 2.0, never read, so <c>samples/codegen-t4-successor</c>'s <c>Name="BuildReport"</c> did nothing
+        /// for a whole release and the review that noticed it concluded the metadata should be deleted rather than
+        /// wired.</para>
+        /// <para><b>The second, worse half, found while wiring it (Q8.12).</b> The targets' <c>AdditionalFiles</c>
+        /// item restated each metadatum as <c>&lt;Key&gt;%(HeddleTemplate.Key)&lt;/Key&gt;</c>. An
+        /// <c>Include="@(HeddleTemplate)"</c> transform already copies every metadatum; outside a target a cross-item
+        /// <c>%(Other.Metadata)</c> reference evaluates to the empty string, so each element <em>overwrote</em> the
+        /// copied value with <c>""</c>. <b>All three</b> metadata were therefore inert from a real csproj — not just
+        /// <c>Name</c> but <c>Key</c> and <c>Precompile</c>, whose only coverage injects
+        /// <c>build_metadata.*</c> directly and so never crossed this file. This test pins both halves: every declared
+        /// name is read, and no metadatum is nulled by a restatement.</para>
+        /// <para>Asserted as <b>set equality</b>, not as a count: a count is made green by editing one digit, whereas
+        /// set equality can only be made green by naming the metadatum whose wiring changed. The behavioural half of
+        /// the gate is the <c>codegen-t4-successor</c> sample, whose generated entry class is named by its
+        /// <c>Name</c> metadatum and called by name from <c>Program.cs</c> — so a metadatum that stops flowing fails
+        /// that build outright.</para>
+        /// </summary>
+        [Fact]
+        public void EveryDeclaredItemMetadataIsReadByTheGeneratorAndNotNulledByTheTargets()
+        {
+            var propsXml = File.ReadAllText(FindRepoFile(
+                Path.Combine("src", "Heddle.Generator", "build", "Heddle.Generator.props")));
+            var targetsXml = File.ReadAllText(FindRepoFile(
+                Path.Combine("src", "Heddle.Generator", "build", "Heddle.Generator.targets")));
+            var generatorCs = File.ReadAllText(FindRepoFile(
+                Path.Combine("src", "Heddle.Generator", "HeddleTemplateGenerator.cs")));
+
+            var declared = new SortedSet<string>(StringComparer.Ordinal);
+            foreach (Match m in Regex.Matches(propsXml,
+                @"<CompilerVisibleItemMetadata\s+Include=""AdditionalFiles""\s+MetadataName=""(?<name>\w+)"""))
+                declared.Add(m.Groups["name"].Value);
+
+            var read = new SortedSet<string>(StringComparer.Ordinal);
+            foreach (Match m in Regex.Matches(generatorCs,
+                @"""build_metadata\.AdditionalFiles\.(?<name>\w+)"""))
+                read.Add(m.Groups["name"].Value);
+
+            // The shipped set, spelled out — so a name added everywhere at once is still a reviewed change.
+            Assert.Equal(new[] { "Key", "Name", "Precompile" }, declared.ToArray());
+            Assert.Equal(declared.ToArray(), read.ToArray());
+
+            // Nothing restates a metadatum the transform already carries: any such element evaluates to "" and
+            // silently deletes the value. Strip the XML comments first — the comment there explains the trap.
+            var withoutComments = Regex.Replace(targetsXml, @"<!--.*?-->", string.Empty, RegexOptions.Singleline);
+            var nulled = Regex.Matches(withoutComments, @"%\(HeddleTemplate\.(?<name>\w+)\)")
+                .Cast<Match>()
+                .Select(m => m.Groups["name"].Value)
+                .ToList();
+            Assert.True(nulled.Count == 0,
+                "Heddle.Generator.targets restates item metadata the @(HeddleTemplate) transform already carries; " +
+                "outside a target that evaluates to \"\" and deletes the value: " + string.Join(", ", nulled));
         }
 
         private static Dictionary<string, string> ReadPropsDefaults()

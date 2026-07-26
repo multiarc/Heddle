@@ -27,12 +27,13 @@ namespace Heddle.Generator
     {
         private sealed class TemplateFile
         {
-            public TemplateFile(AdditionalText text, string content, string keyMetadata, bool precompile,
-                bool readable, string readError)
+            public TemplateFile(AdditionalText text, string content, string keyMetadata, string nameMetadata,
+                bool precompile, bool readable, string readError)
             {
                 Text = text;
                 Content = content;
                 KeyMetadata = keyMetadata;
+                NameMetadata = nameMetadata;
                 Precompile = precompile;
                 Readable = readable;
                 ReadError = readError;
@@ -40,7 +41,16 @@ namespace Heddle.Generator
 
             public AdditionalText Text { get; }
             public string Content { get; }
+
+            /// <summary>The <c>Key</c> item metadata: the item's explicit registration key.</summary>
             public string KeyMetadata { get; }
+
+            /// <summary>The <c>Name</c> item metadata (Q8.12): the <b>same</b> setting as <see cref="KeyMetadata"/>
+            /// under a second spelling, restored after phase 5 removed it on a record that overreached its ask. Both
+            /// normalize through <c>TemplateKey</c> and both participate in every downstream key rule; naming the one
+            /// setting twice with two values that mean two keys is a HED7004 fault, because there is no defensible
+            /// precedence between two equally explicit requests.</summary>
+            public string NameMetadata { get; }
 
             /// <summary>The <c>Precompile</c> item metadata (phase 5, Q5.1 ruling). <c>false</c> is the per-item
             /// opt-out: the file still serves <c>@&lt;&lt;</c> imports, but emits no entry point and no manifest
@@ -61,6 +71,7 @@ namespace Heddle.Generator
                 {
                     var options = pair.Right.GetOptions(pair.Left);
                     options.TryGetValue("build_metadata.AdditionalFiles.Key", out var key);
+                    options.TryGetValue("build_metadata.AdditionalFiles.Name", out var name);
                     options.TryGetValue("build_metadata.AdditionalFiles.Precompile", out var precompileMetadata);
                     var precompile = !(bool.TryParse(precompileMetadata, out var optIn) && !optIn);
                     string content = string.Empty;
@@ -85,7 +96,7 @@ namespace Heddle.Generator
                         readError = ex.Message;
                     }
 
-                    return new TemplateFile(pair.Left, content, key, precompile, readable, readError);
+                    return new TemplateFile(pair.Left, content, key, name, precompile, readable, readError);
                 })
                 .Collect();
 
@@ -182,20 +193,24 @@ namespace Heddle.Generator
                 if (!template.Precompile)
                     continue;
 
-                var key = DeriveKey(template, config.TemplateRoot, out var outOfRoot);
+                var key = DeriveKey(template, config.TemplateRoot, out var outOfRoot, out var keyFault);
                 if (key == null)
                 {
-                    // HED7004: an explicit Key metadata that is empty/whitespace or normalizes to an invalid key.
-                    // A path-derived key that fails normalization is left un-precompiled silently (no user-set key).
-                    if (!string.IsNullOrEmpty(template.KeyMetadata))
+                    // HED7004: explicit key metadata (Key and/or Name) the generator cannot use — a value the
+                    // normalizer rejects, or two values that name two different keys. A path-derived key that fails
+                    // normalization is left un-precompiled silently (the user set no key, so there is nothing to
+                    // report back at them).
+                    if (keyFault != null)
                         spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.InvalidKeyMetadata,
-                            Location.None, template.KeyMetadata, template.Text.Path));
+                            Location.None, template.Text.Path, keyFault));
                     continue;
                 }
 
-                // HED7018 (D3): the template is not under HeddleTemplateRoot and carries no explicit Key, so its
-                // directory silently vanished from the key. Behavior is unchanged — the flattened key still
-                // registers — but the condition is now visible, and it explains any HED7002 that follows.
+                // HED7018 (D3): the template is not under HeddleTemplateRoot and carries no explicit key metadata, so
+                // its directory silently vanished from the key. Behavior is unchanged — the flattened key still
+                // registers — but the condition is now visible, and it explains any HED7002 that follows. An explicit
+                // Key or Name suppresses it (Q8.12, decided deliberately): the warning's whole premise is that the
+                // flattened key was NOT asked for, and an explicit key is asking for exactly the key it names.
                 if (outOfRoot)
                     spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.TemplateOutsideRoot, Location.None,
                         template.Text.Path,
@@ -235,7 +250,13 @@ namespace Heddle.Generator
 
                 try
                 {
-                    var emitter = new TemplateEmitter(key, sanitized, ns, cleanDocument, template.Content, parsed, config, compilation, exports, template.Text.Path);
+                    // The `#line` file is the template's own path, not its registration key: for a path-derived key
+                    // the two strings are identical (so nothing existing moves), but an explicit Key/Name names a
+                    // registration and not a file, and emitting it here pointed every mapped span at a path that does
+                    // not exist. Q8.12 made that observable by wiring the metadata; the two concepts are separated
+                    // here rather than left conflated because they usually agree.
+                    var lineFile = LineDirectiveFile(template, config.TemplateRoot);
+                    var emitter = new TemplateEmitter(key, sanitized, ns, cleanDocument, template.Content, parsed, config, compilation, exports, template.Text.Path, lineFile);
                     var result = emitter.Emit(ContentHash.HashText(template.Content));
 
                     // Emitter-produced Roslyn diagnostics (HED7005 surrogate, HED7006/HED7015 extension binding),
@@ -517,32 +538,75 @@ namespace Heddle.Generator
         }
 
         private static string DeriveKey(TemplateFile template, string templateRoot) =>
-            DeriveKey(template, templateRoot, out _);
+            DeriveKey(template, templateRoot, out _, out _);
 
-        /// <summary>The key↔path derivation, on the shared <see cref="TemplateKey"/> rules (phase 5 D2). Explicit
-        /// <c>Key</c> metadata wins; otherwise the path is made relative to <c>HeddleTemplateRoot</c>. A template
-        /// outside the root keeps the historical flattened-filename key — removing it would un-precompile projects
-        /// that rely on flat lookups — but sets <paramref name="outOfRoot"/> so the caller can report HED7018 (D3);
-        /// the silent directory-drop is the bug (05 F3).</summary>
-        private static string DeriveKey(TemplateFile template, string templateRoot, out bool outOfRoot)
+        /// <summary>The file name the emitted <c>#line</c> directives carry: the template's path relative to
+        /// <c>HeddleTemplateRoot</c>, falling back to its bare filename when it is outside the root — i.e. the
+        /// path-derived key with explicit <c>Key</c>/<c>Name</c> metadata deliberately ignored. Identical to the
+        /// registration key whenever no explicit metadata is set, which is every existing snapshot and golden.</summary>
+        private static string LineDirectiveFile(TemplateFile template, string templateRoot) =>
+            TemplateKey.TryMakeRelative(template.Text.Path, templateRoot, out var rooted)
+                ? rooted
+                : System.IO.Path.GetFileName(template.Text.Path);
+
+        /// <summary>The rejection text for an explicit key metadata value the shared normalizer refuses. Stated once
+        /// so the <c>Key</c> and <c>Name</c> arms cannot describe the same rule differently.</summary>
+        private const string KeyShapeRule =
+            "keys must be non-empty relative paths without '.' or '..' segments";
+
+        /// <summary>The key↔path derivation, on the shared <see cref="TemplateKey"/> rules (phase 5 D2). Explicit key
+        /// metadata wins; otherwise the path is made relative to <c>HeddleTemplateRoot</c>. A template outside the
+        /// root keeps the historical flattened-filename key — removing it would un-precompile projects that rely on
+        /// flat lookups — but sets <paramref name="outOfRoot"/> so the caller can report HED7018 (D3); the silent
+        /// directory-drop is the bug (05 F3).
+        /// <para>Q8.12: "explicit key metadata" means <c>Key</c> <b>or</b> <c>Name</c> — one setting, two spellings.
+        /// Empty is absent, not malformed, because MSBuild materializes unset metadata as <c>""</c> on every item. A
+        /// value the normalizer refuses, and two values that name two different keys, both return <c>null</c> with
+        /// <paramref name="fault"/> set: the caller reports HED7004 rather than guessing, since choosing between two
+        /// equally explicit requests would be the silent-degrade failure mode this program exists to remove.</para>
+        /// </summary>
+        private static string DeriveKey(TemplateFile template, string templateRoot, out bool outOfRoot,
+            out string fault)
         {
             outOfRoot = false;
-            string raw;
-            if (!string.IsNullOrEmpty(template.KeyMetadata))
+            fault = null;
+
+            var hasKey = !string.IsNullOrEmpty(template.KeyMetadata);
+            var hasName = !string.IsNullOrEmpty(template.NameMetadata);
+            if (hasKey || hasName)
             {
-                raw = template.KeyMetadata;
-            }
-            else if (TemplateKey.TryMakeRelative(template.Text.Path, templateRoot, out var rooted))
-            {
-                return rooted;
-            }
-            else
-            {
-                outOfRoot = true;
-                raw = System.IO.Path.GetFileName(template.Text.Path);
+                string fromKey = null;
+                if (hasKey && !TemplateKey.TryNormalize(template.KeyMetadata, out fromKey))
+                {
+                    fault = "Key=\"" + template.KeyMetadata + "\" is not a usable key — " + KeyShapeRule;
+                    return null;
+                }
+
+                string fromName = null;
+                if (hasName && !TemplateKey.TryNormalize(template.NameMetadata, out fromName))
+                {
+                    fault = "Name=\"" + template.NameMetadata + "\" is not a usable key — " + KeyShapeRule;
+                    return null;
+                }
+
+                if (hasKey && hasName && !string.Equals(fromKey, fromName, StringComparison.Ordinal))
+                {
+                    fault = "Key=\"" + template.KeyMetadata + "\" and Name=\"" + template.NameMetadata +
+                        "\" are two spellings of one setting but name two different keys ('" + fromKey + "' and '" +
+                        fromName + "'). Set only one, or make them agree.";
+                    return null;
+                }
+
+                return fromKey ?? fromName;
             }
 
-            return TemplateKey.TryNormalize(raw, out var key) ? key : null;
+            if (TemplateKey.TryMakeRelative(template.Text.Path, templateRoot, out var rooted))
+                return rooted;
+
+            outOfRoot = true;
+            return TemplateKey.TryNormalize(System.IO.Path.GetFileName(template.Text.Path), out var flat)
+                ? flat
+                : null;
         }
 
         /// <summary>The manifest's <c>engineVersion</c> (phase 5 D6). Primary source: the referenced <c>Heddle</c>

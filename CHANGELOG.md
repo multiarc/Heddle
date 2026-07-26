@@ -5,6 +5,67 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0]
+
+Additive at the language and rendering level — **no rendered byte changes on either tier** — with one
+declared **binary** break in the precompiled-manifest contract and three build-time behaviours that
+begin to occur because they were never wired. Each item's window judgement is recorded in
+[breaking-windows.md](docs/spec/common/breaking-windows.md#explicit-not-window-gated-rulings).
+
+### Changed (breaking)
+
+- **Precompiled assemblies built by a 2.0.x generator are no longer accepted.**
+  `PrecompiledSchema.MinSupportedSchemaVersion` rises `1` → `4`. Schema 4 moved the extension
+  prop-layout fingerprint onto `PrecompiledExtensionBinding` as an optional third constructor
+  parameter, which removed the two-argument `.ctor(string, string)` that every schema 1–3 manifest
+  calls — so those manifests have been unrunnable since 2.0.0, and the old floor of `1` *accepted*
+  them and then crashed with a `MissingMethodException` out of `PrecompiledTemplates.Register` at host
+  startup. The gate now rejects them cleanly instead.
+  **What to do:** rebuild with the 2.1 `Heddle.Generator`. `Heddle.Generator` and `Heddle` are
+  version-locked — pair the matching versions.
+  **If you do not:** registration raises one `PrecompiledFallbackReason.SchemaVersionUnsupported`
+  callback (`HED7102`) per assembly and every template renders through the byte-identical dynamic
+  path; under `TemplateOptions.PrecompiledMismatchPolicy.Strict` it throws instead, which is that
+  option's purpose. No compatibility shim: restoring the two-argument constructor would keep the
+  unrunnable manifests accepted, which is the defect.
+
+- **`<HeddleTemplate>` per-item metadata now takes effect.** `Key`, `Name` and `Precompile` were all
+  inert from a real project — the targets file overwrote each with the empty string while appearing to
+  map it — so only projects that never used them were unaffected. If you set `Key` or `Name`, the
+  template's registration key **and its generated entry-class name** now follow it, so a call to the old
+  path-derived class name must be renamed. If you set `Precompile="false"`, that file now really stops
+  precompiling (it remains available to `@<<` imports) and renders through the dynamic path.
+
+### Added
+
+- **`Name` item metadata** as a second spelling of `Key`: `<HeddleTemplate Update="t/report.heddle"
+  Name="BuildReport" />` registers the template as `BuildReport.heddle` and generates
+  `Heddle.Generated.BuildReport`. Both spellings normalize through the same key rule, participate in the
+  duplicate (`HED7002`) and case-only-twin (`HED7003`) checks, and suppress the out-of-root warning
+  (`HED7018`), since an explicit key makes the flattened key intentional. Setting both is accepted only
+  when they normalize to the same key; two different keys, or a value the normalizer refuses, is
+  `HED7004`.
+
+### Fixed
+
+- **`#line` directives in generated code name the template file, not its registration key.** The two
+  were always equal for a path-derived key; an explicit `Key`/`Name` made the difference observable and
+  would have pointed every mapped span at a path that does not exist.
+- **`heddle-lsp --version` and the LSP `initialize` response reported `1.0.0`** for the whole 2.0 line.
+  The value is now read off the assembly rather than hand-maintained.
+- **`HED7004`'s message** names the offending metadata and the reason, covering the new
+  `Key`-and-`Name`-disagree case as well as a malformed value.
+
+### Build and packaging
+
+- The release line is stated once, as `<VersionPrefix>` in `Directory.Build.props`, replacing nine
+  per-project `<Version>` elements; a version-consistency test holds the statements that cannot live
+  there (the npm manifests, the VS Code extension's pinned tool version, the LSP workflow's
+  `--version`, the prose release-line sentences, the CHANGELOG section) in step with it.
+- `Heddle.Demo.Models` and `Heddle.Demo.Wasm` are strong-named, so the build is `CS8002`-clean. The one
+  remaining unsigned reference is third-party (Scriban) and is suppressed at the reference rather than
+  by a blanket `NoWarn`.
+
 ## [2.0.0] - 2026-07-19
 
 The **2.0** release is a single breaking window: almost everything below is additive and the dynamic
@@ -131,5 +192,6 @@ engine's rendered bytes are unchanged, except for the items under **Changed (bre
 
 Initial public release.
 
+[2.1.0]: https://github.com/multiarc/Heddle/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/multiarc/Heddle/compare/v1.0.1...v2.0.0
 [1.0.0]: https://github.com/multiarc/Heddle/releases/tag/v1.0.0

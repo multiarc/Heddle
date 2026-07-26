@@ -39,6 +39,18 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         /// <summary>Eligible, only in this container.</summary>
         public static string Twice(string value) => (value ?? string.Empty) + (value ?? string.Empty);
 
+        /// <summary>Q8.1 / HED7025: a <b>host</b> overload set with the collision shape the shipped built-in table
+        /// has for <c>min</c> — <c>(int, uint)</c> ranks <c>(1, 1)</c> against both signatures, so the flat Pareto
+        /// front has two members and the call is ambiguous on both tiers. Phase 3 routed arbitrary export signatures
+        /// through the shared ranker, and phase 4's WI10 measurement (0-of-480 winner changes) explicitly does not
+        /// carry to host-registered sets, so the build error is exercised here and not only over the built-ins.
+        /// Both overloads live in one container, so no other function's manifest row is affected.</summary>
+        public static string Blend(long left, long right) => "long:" + (left + right);
+
+        /// <summary>The ambiguous twin of <see cref="Blend(long, long)"/>.</summary>
+        public static string Blend(double left, double right) =>
+            "double:" + (left + right).ToString(CultureInfo.InvariantCulture);
+
         /// <summary>Skipped as a special name — a property accessor, not a function. Both tiers must exclude it
         /// from the overload count, which the gauntlet compares exactly.</summary>
         public static string Version => "1";

@@ -74,6 +74,41 @@ unrecorded breaking change.
   bytes. Hosts that intended those extensions to be live were always required to export them; the
   fix makes the build say so.
 
+- **The overload-ambiguity silent degrade became a build error** (phase 4, Q8.1; `HED7025`,
+  `DefaultFunctionBinder`/`ExportFunctionBinder`, 2026-07-26). A template calling an ambiguous or
+  inapplicable function overload — `@(min(1, 2u))` — used to build **green with zero diagnostics**
+  and fail at first render with `HED1013`. The generator had already *computed* the illegality
+  (`BindOutcome.Ambiguous` out of the shared `OverloadRank` core) and then reported nothing. It now
+  raises `HED7025` at Error. **This is a build-surface change: a project that builds today will
+  start failing its build**, which is why it is argued here rather than assumed away by the ruling.
+  **Judgement: defect repair, not window-gated**, on four grounds.
+  (a) The [policy](#policy-applies-to-every-window)'s test is whether a user could *correctly*
+  depend on the old behaviour. No one could: the affected template **has never rendered**. The
+  build produced no precompiled entry for it, the dynamic tier compiled it, and the dynamic compile
+  fails with `HED1013`. The only thing the old behaviour delivered was the *timing* of the failure —
+  first render instead of build — and later, less informative failure is not a contract.
+  (b) It changes **no rendered byte**, for any template, on either tier. The refusal is unchanged
+  (the template still degrades); what changed is that the build now says why. This is exactly the
+  argument phase 3's Q8.4 row makes for its `HED7006` half: "converting a first-render failure into
+  a build failure is the match principle… no *correct* build regresses."
+  (c) It **narrows**, so the register's widening test does not apply. The widening in this area —
+  C# betterness in the runtime binder, which would make 82 today-ambiguous combinations *bind* — is
+  a separate, still-unratified [candidate](#next-window-candidate-register) and is unaffected: it
+  remains a joint-land change inside a window, and when it lands the same templates stop being
+  ambiguous on both tiers at once, so `HED7025` simply stops firing for them.
+  (d) The alternative — a *warning* — was considered and rejected on the ratified rulings rather
+  than on taste. `HED7014`'s warning is legitimate because the build refuses something it cannot
+  *decide*; here the build has a proof. The match principle says errors always match, and this is
+  an error on the run tier.
+  **The bounded residue, recorded rather than glossed:** the proof is relative to the function
+  inventory visible at build time. A host may add an overload at run time through
+  `TemplateOptions.Functions.Register`, which can turn an ambiguous set unambiguous or an
+  inapplicable one applicable — so a template that is legal *for that host* now fails the build.
+  The generator has no way to see a delegate registration (the same blindness `HED7014` exists
+  for), and the gauntlet's `FunctionBindings` overload-count check, which catches this skew for
+  *emitted* code, cannot rescue a build error. Filed as an open question (Q8.18) rather than
+  treated as settled; the escape hatch today is `Precompile="false"` on the item.
+
 - **Type-spelling parity from folding the runtime onto the shared parser** (phase 3, Q8.3;
   `ReflectionHelper.ResolveType` / `TypeSpelling`, 2026-07-26). Two spellings changed, both
   **widenings**, neither window-gated. (a) `(int)` — a one-element tuple — now resolves on the
@@ -83,6 +118,56 @@ unrecorded breaking change.
   where its own dispatch used to throw, because the shared parser trims every recursion. No resolved
   type changes on either tier, and depending on `ResolveType` *throwing* for padded input is not a
   dependency the contract offers.
+
+- **The precompiled schema floor rose 1 → 4** (phase 5, Q8.2; `PrecompiledSchema.MinSupportedSchemaVersion`,
+  shipped 2.1.0). A manifest built by a 2.0.x generator at schema 1–3 is no longer accepted: registration
+  reports `SchemaVersionUnsupported` (`HED7102`) once and every template in that assembly renders through the
+  dynamic path. **Judgement: defect repair, not window-gated**, and rule 1's "one window per major" is not
+  engaged — on three grounds.
+  (a) **The break already shipped, in 2.0.0.** Schema 4 added the prop-layout fingerprint to
+  `PrecompiledExtensionBinding` as an *optional third constructor parameter*, which removes the two-argument
+  `.ctor(string, string)` from metadata. Every schema 1–3 manifest's IL names that constructor. So those
+  manifests have been unrunnable since 2.0.0 regardless of the window; what 2.1 changes is only whether the
+  engine *says so* or crashes.
+  (b) **The old behaviour was a `MissingMethodException` at host startup**, thrown out of
+  `PrecompiledTemplates.Register` — neither a degrade nor a render, and not something a user could correctly
+  depend on, which is the [policy](#policy-applies-to-every-window)'s test. `Min = 1` advertised a support
+  window the metadata could not honour; the fix retracts a false claim rather than withdrawing a working
+  capability. `4` is exactly the boundary (1–3 were built against two arguments, 4+ against three), so no
+  runnable manifest is excluded.
+  (c) **No rendered byte changes, on either tier.** A rejected assembly falls back to the dynamic engine,
+  which is byte-identical by design. Under `PrecompiledMismatchPolicy.Strict` a deployment that must never
+  pay dynamic-compile cost throws instead — the documented, chosen posture for exactly this case, and the
+  same treatment 1.x manifests received in the 2.0 window.
+  **Accepted consequence, recorded rather than argued away:** a project precompiled by a 2.0.x generator and
+  not rebuilt loses precompilation (or throws under `Strict`). `Heddle.Generator` and `Heddle` were already
+  documented as version-locked. No compatibility shim: adding a real two-argument overload back would keep
+  the faulting set *accepted*, which is the state being fixed. Demonstrated by
+  `OldSchemaManifestRejectionTests`, which builds a manifest whose IL genuinely names the absent constructor —
+  the earlier "old manifest" test constructed one through the optional parameter, so it exercised a
+  *new*-schema call and could never have caught this.
+
+- **The per-item `HeddleTemplate` metadata started working** (phase 5, Q8.12; `Heddle.Generator.targets`,
+  shipped 2.1.0). `Key`, `Name` and `Precompile` were all inert from a real project: the targets restated each
+  one as `<Key>%(HeddleTemplate.Key)</Key>` inside an `Include="@(HeddleTemplate)"` transform, and outside a
+  target a cross-item `%()` reference evaluates to the empty string — so each element overwrote the value the
+  transform had just copied. Only the generator suites, which inject `build_metadata.*` directly, ever saw the
+  metadata at all. **Judgement: defect repair, not window-gated.** (a) No documented behaviour is withdrawn;
+  three documented behaviours begin to occur. (b) No rendered byte changes: `Key`/`Name` change a registration
+  key and the generated class name, `Precompile="false"` moves a file to the dynamic path, and the dynamic and
+  precompiled tiers are byte-identical. (c) **A build can newly fail, and that is stated, not glossed:** a
+  project that set `Key`/`Name` and called the generated entry class by its old path-derived name will not
+  compile until the call is renamed — which is what `samples/codegen-t4-successor` needed, and its golden
+  changed accordingly. A project relying on documented metadata being *ignored* is not a dependency the
+  contract offers.
+
+- **The release line is stated once, and every first-party assembly is signed** (phase 5, Q8.11;
+  `Directory.Build.props`, `Directory.Build.targets`, shipped 2.1.0). Not a behavioural change and recorded
+  only because it moves a shipped surface: nine per-project `<Version>` elements collapse into one
+  `<VersionPrefix>`, the CI beta job's `--version-suffix` loses a leading dash it could no longer carry, and
+  `Heddle.Demo.Models`/`Heddle.Demo.Wasm` gain strong names. Public-API and byte impact: none. The one
+  user-visible correction is that `heddle-lsp --version` and the LSP `initialize` response stop reporting
+  `1.0.0`, which they had done for the whole 2.0 line.
 
 ## Next-window candidate register
 

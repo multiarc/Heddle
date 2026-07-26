@@ -300,6 +300,15 @@ namespace Heddle.Data
         /// at build instead of waiting for the first dynamic render.</summary>
         public const string BuildRegionNotPublic = "HED7024";
 
+        /// <summary>A function call the shared overload ranker <b>proved</b> illegal — an ambiguous flat-Pareto
+        /// front (<see cref="AmbiguousFunctionCall"/>, HED1013) or no applicable overload
+        /// (<see cref="NoFunctionOverload"/>, HED1012) — over arguments the generator could type. Q8.1's ruling:
+        /// the generator had already computed the illegality and then reported nothing, so a provably illegal
+        /// template got a green build and a hard run-time error at first render. Reported only when no argument
+        /// estimate is <c>Unknown</c>; an argument the estimator cannot type proves nothing and still degrades
+        /// silently.</summary>
+        public const string BuildFunctionCallNotBindable = "HED7025";
+
         /// <summary>A precompiled entry failed the run-time gauntlet, so the render degrades to the dynamic
         /// tier (carried on <c>PrecompiledFallbackEvent.DiagnosticId</c>).</summary>
         public const string PrecompiledGauntletFallback = "HED7101";

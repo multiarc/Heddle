@@ -14,8 +14,26 @@ namespace Heddle.Precompiled
     /// </summary>
     public static class PrecompiledSchema
     {
-        /// <summary>Oldest manifest schema this engine accepts (phase 7 generator).</summary>
-        public const int MinSupportedSchemaVersion = 1;
+        /// <summary>
+        /// <para>Oldest manifest schema this engine accepts. <b>Raised 1 → 4 in 2.1 (Q8.2), the one narrowing this
+        /// constant has ever had.</b> It is not a policy change: it is the gate catching up with a binary break that
+        /// had already happened.</para>
+        /// <para>The schema-4 prop-layout fingerprint landed on
+        /// <see cref="PrecompiledExtensionBinding"/> as an <em>optional third constructor parameter</em> rather than as
+        /// a real overload, so the two-argument <c>.ctor(string, string)</c> that every schema 1–3 manifest's IL calls
+        /// stopped existing in metadata. With <c>Min = 1</c> the gate <em>accepted</em> exactly those manifests, and
+        /// the fault then landed as a <see cref="MissingMethodException"/> from <c>Activator.CreateInstance</c>/
+        /// <c>GetTemplates</c> inside <c>PrecompiledTemplates.Register</c> — a host-startup crash, not the clean
+        /// per-manifest fallback the taxonomy promises. Advertising a support window the metadata cannot honour is
+        /// worse than declaring the break: <c>4</c> excludes exactly the faulting set (1–3 were built against the
+        /// two-argument constructor, 4+ against the three-argument one), so an older precompiled assembly now
+        /// degrades to the dynamic path with one <c>HED7102</c> callback.</para>
+        /// <para>Consequence, accepted and shipped as declared at 2.1 with no compatibility shim: a project
+        /// precompiled by a 2.0.x generator must be rebuilt to stay precompiled. Demonstrated — not asserted — by
+        /// <c>OldSchemaManifestRejectionTests</c>, which builds a manifest whose IL genuinely names the absent
+        /// constructor and shows the rejection at 3 and the fault at 4.</para>
+        /// </summary>
+        public const int MinSupportedSchemaVersion = 4;
 
         /// <summary>Newest manifest schema this engine accepts (schema 5: the per-carrier
         /// <c>BindDefinition</c> locals overload, phase 1 D2).</summary>

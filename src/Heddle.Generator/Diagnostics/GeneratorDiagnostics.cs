@@ -209,5 +209,19 @@ namespace Heddle.Generator.Diagnostics
         /// same error at the same position. Position: the override declaration.</summary>
         public static readonly DiagnosticDescriptor RegionNotPublic =
             FromCatalog(HeddleDiagnosticIds.BuildRegionNotPublic);
+
+        /// <summary>Q8.1 (ruled 2026-07-26): a function call the <b>shared</b> overload ranker proved illegal —
+        /// <c>BindOutcome.Ambiguous</c> (the runtime's HED1013) or <c>BindOutcome.None</c> (HED1012) — over
+        /// arguments the estimator could type. Until this landed the generator computed that verdict and then
+        /// reported nothing, so a provably illegal template built green and failed at first render: a silence
+        /// against both the match principle and the fallback-legitimacy principle, and the exact shape
+        /// <see cref="IneligibleExportContainer"/> (HED7021) was created to fix on the phase-3 side.
+        /// <para><b>The side condition is load-bearing.</b> It fires only when every argument estimate is
+        /// describable; an <c>Unknown</c> estimate leaves the ranker with nothing to rank, so the refusal is a
+        /// generator limitation rather than a proof and still degrades silently. <c>{0}</c> is the runtime-shaped
+        /// sentence naming the call and its candidate signatures, <c>{1}</c> the runtime id the build is the twin
+        /// of. Position: the call in the <c>.heddle</c> file.</para></summary>
+        public static readonly DiagnosticDescriptor FunctionCallNotBindable =
+            FromCatalog(HeddleDiagnosticIds.BuildFunctionCallNotBindable);
     }
 }
