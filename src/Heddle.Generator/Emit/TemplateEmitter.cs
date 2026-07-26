@@ -26,6 +26,14 @@ namespace Heddle.Generator.Emit
     internal sealed class TemplateEmitter
     {
         private readonly string _key;
+
+        /// <summary>The file name written into the emitted <c>#line</c> directives. Normally equal to
+        /// <see cref="_key"/> — for a path-derived key they are the same string — but the two are different concepts
+        /// and Q8.12 made the difference observable: an item with explicit <c>Key</c>/<c>Name</c> metadata registers
+        /// under a key that names no file, and emitting that as the <c>#line</c> file pointed every mapped span at a
+        /// path that does not exist. The key names the <em>registration</em>; this names the <em>file</em>. Callers
+        /// that pass nothing keep the historical value, so every existing snapshot and golden is byte-identical.</summary>
+        private readonly string _lineDirectiveFile;
         private readonly string _sanitizedName;
         private readonly string _namespace;
         private readonly string _cleanDocument;
@@ -89,9 +97,10 @@ namespace Heddle.Generator.Emit
 
         public TemplateEmitter(string key, string sanitizedName, string generatedNamespace, string cleanDocument,
             string originalDocument, ParseContext parse, GlobalConfig config, Compilation compilation,
-            FunctionExportResolver exports = null, string sourcePath = null)
+            FunctionExportResolver exports = null, string sourcePath = null, string lineDirectiveFile = null)
         {
             _key = key;
+            _lineDirectiveFile = lineDirectiveFile ?? key;
             _sanitizedName = sanitizedName;
             _namespace = generatedNamespace;
             _cleanDocument = cleanDocument;
@@ -2330,7 +2339,8 @@ namespace Heddle.Generator.Emit
 
         /// <summary>Copies the writer's recorded remainders into the template-level channels: unresolvable
         /// (delegate-only) function names turn the template into a HED7014 fallback marker (D21); genuine member-path
-        /// failures become HED7008 diagnostics (milestone 2). Both are drained after every native-expression write.</summary>
+        /// failures become HED7008 diagnostics (milestone 2); a call the shared ranker proved illegal becomes a
+        /// HED7025 error (Q8.1). All three are drained after every native-expression write.</summary>
         private void DrainUnresolvable(NativeExpressionWriter writer)
         {
             foreach (var fn in writer.UnresolvableFunctions)
@@ -2342,9 +2352,28 @@ namespace Heddle.Generator.Emit
                     _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.UnresolvableMember,
                         mf.Position, mf.ReceiverType, mf.Member, mf.Path));
             }
+
+            // HED7025 (Q8.1). The template still degrades — the error replaces the *silence*, not the refusal — so
+            // this is reported exactly like HED7008: recorded here, drained in every result branch.
+            // On the seen-set: one report per call site is already guaranteed one level down, because the writer
+            // records only on its per-CallNode memo miss, and no shape found so far routes one call through two
+            // writers (a definition body called twice does not — ADefinitionBodyCalledTwiceReportsItsCallOnce). So
+            // this set is a DEFENSIVE guard with no reachable trigger today, stated as such rather than dressed up
+            // as covered behaviour: deleting it reddens nothing (mutation-verified 2026-07-26). It is kept because
+            // its failure mode is asymmetric — a duplicate squawk is noise, and the alternative to noise here would
+            // be discovering it in a consumer's build log.
+            foreach (var call in writer.UnbindableFunctionCalls)
+            {
+                var seenKey = call.Name + "@" + call.Position.StartIndex;
+                if (_seenUnbindableCalls.Add(seenKey))
+                    _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.FunctionCallNotBindable,
+                        call.Position, call.Detail, call.RuntimeDiagnosticId));
+            }
         }
 
         private readonly HashSet<string> _seenMemberFailures = new HashSet<string>(System.StringComparer.Ordinal);
+
+        private readonly HashSet<string> _seenUnbindableCalls = new HashSet<string>(System.StringComparer.Ordinal);
 
         /// <summary>True when member access off <paramref name="type"/> is effectively untyped — <c>System.Object</c>
         /// or <c>dynamic</c> — where the runtime resolves members dynamically and a "missing member" is never a typo,
@@ -2605,12 +2634,12 @@ namespace Heddle.Generator.Emit
 
         private void EmitLineSpanRaw(CodeWriter w, int sl, int sc, int el, int ec)
         {
-            w.Raw($"#line ({sl}, {sc}) - ({el}, {ec}) \"{_key}\"");
+            w.Raw($"#line ({sl}, {sc}) - ({el}, {ec}) \"{_lineDirectiveFile}\"");
         }
 
         private void EmitLineSpan(CodeWriter w, Call c)
         {
-            w.Raw($"#line ({c.SpanStartLine}, {c.SpanStartCol}) - ({c.SpanEndLine}, {c.SpanEndCol}) \"{_key}\"");
+            w.Raw($"#line ({c.SpanStartLine}, {c.SpanStartCol}) - ({c.SpanEndLine}, {c.SpanEndCol}) \"{_lineDirectiveFile}\"");
         }
 
         // ---- Manifest entry ----

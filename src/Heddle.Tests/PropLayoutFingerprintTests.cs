@@ -149,13 +149,26 @@ namespace Heddle.Tests
             Assert.Null(PrecompiledGauntlet.Validate(entry, new TemplateOptions(), (binding, type) => true));
         }
 
+        /// <summary>
+        /// <para>A binding row carrying <b>no</b> fingerprint is checked vacuously, so the layout check cannot
+        /// invalidate a row that predates it. That is the property this test is for, and it still holds.</para>
+        /// <para><b>What it must no longer be read as claiming (Q8.2).</b> It used to be named
+        /// <c>AManifestPredatingTheRowStillPasses</c> and cited "schema 1–3" as evidence that the row's arrival forced
+        /// no re-precompilation. It could never be that evidence: <c>new PrecompiledExtensionBinding("fpbase", aqn)</c>
+        /// compiles against <em>today's</em> assembly, so the compiler binds it to the three-parameter constructor and
+        /// passes <c>null</c>. A real schema 1–3 manifest calls a two-parameter constructor that no longer exists in
+        /// metadata, and would throw <see cref="MissingMethodException"/> long before reaching the gauntlet. The
+        /// optional parameter made a *new*-schema call look like an old one, and that substitution is how the binary
+        /// break shipped behind a green suite. The claim about real old manifests now lives in
+        /// <c>OldSchemaManifestRejectionTests</c>, which builds one; this test is scoped back to the null-fingerprint
+        /// rule it actually exercises.</para>
+        /// </summary>
         [Fact]
-        public void AManifestPredatingTheRowStillPasses()
+        public void ARowWithNoFingerprintIsCheckedVacuously()
         {
-            // The additive-schema contract: a binding row with no fingerprint (schema 1–3) is checked vacuously,
-            // so no existing precompiled assembly is forced to re-precompile by the row's arrival.
             var live = typeof(FingerprintFixtures.FingerprintBaseExtension);
             var entry = Entry(new PrecompiledExtensionBinding("fpbase", PrecompiledGauntlet.AqnSansVersion(live)));
+            Assert.Null(entry.ExtensionBindings[0].PropLayoutFingerprint);
 
             Assert.Null(PrecompiledGauntlet.Validate(entry, new TemplateOptions(), (binding, type) => true));
         }

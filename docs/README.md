@@ -16,7 +16,7 @@ The engine is published as a set of NuGet packages:
 | `Heddle.LanguageServer` | [src/Heddle.LanguageServer](../src/Heddle.LanguageServer) | LSP server for editors, shipped as a `dotnet tool` (`heddle-lsp`). |
 | `Heddle.Tool` | [src/Heddle.Tool](../src/Heddle.Tool) | The `heddle` CLI — a `dotnet tool` for rendering templates and build‑time code generation (the T4 successor). |
 
-Current release line: **2.0.0**. The published version is set from the latest
+Current release line: **2.1.0**. The published version is set from the latest
 [release tag](https://github.com/multiarc/Heddle/releases) (`vX.Y.Z`) at publish time —
 see [nuget.org](https://www.nuget.org/packages/Heddle) — so the version in the source
 tree is just a placeholder.

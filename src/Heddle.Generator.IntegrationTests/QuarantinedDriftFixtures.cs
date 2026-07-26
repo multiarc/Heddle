@@ -28,7 +28,8 @@ namespace Heddle.Generator.IntegrationTests
     /// phase 1 (WI1/WI4); un-skipped and reshaped (the drift is latent on the precompiled tier — see the
     /// fixture's own note).</description></item>
     /// <item><term>phase 4 F3</term><description>overload-rank tie (<c>min(1, 2u)</c>) — <b>fixed</b> by phase 4
-    /// WI8, un-skipped.</description></item>
+    /// WI8, un-skipped; reshaped twice (phase 4 WI8, then Q8.1 which replaced the pinned build-tier <i>silence</i>
+    /// with the HED7025 error — see the fixture's own note).</description></item>
     /// </list>
     /// </summary>
     [Collection("PrecompiledRegistry")]
@@ -203,9 +204,24 @@ namespace Heddle.Generator.IntegrationTests
         // *stronger* rather than weaker: the drift was "one tier renders, the other rejects", so the post-fix
         // property is verdict identity — and a template both tiers reject has no rendered bytes for the original
         // Assert.Equal(dyn, precompiled) to compare. It is asserted here as the conjunction the drift actually
-        // needed: the ambiguous call degrades at build time *and* the dynamic tier raises HED1013 (identical
+        // needed: the ambiguous call is refused at build time *and* the dynamic tier raises HED1013 (identical
         // verdicts), while the resolvable tie next to it still precompiles and renders byte-identically (proving
         // the guard resolves rather than blanket-degrades).
+        //
+        // RESHAPED A SECOND TIME by Q8.1 (ruled user, 2026-07-26) — stated here rather than overwritten, because
+        // this fixture's history is now two reshapes deep and the second one *reverses* an assertion the first one
+        // added. Phase 4's reshape wrote `Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == Error)`, which
+        // pinned the build tier's SILENCE as if silence were the fix. It was not: both post-implementation reviewers
+        // and phase 4's own audit independently found that a green build for a template the generator has already
+        // PROVED illegal (BindOutcome.Ambiguous out of the shared core) violates the match principle ("errors always
+        // match" — the tiers agreed on legality and disagreed only on when the author learns) and the
+        // fallback-legitimacy principle ("everything else surfaces as an error" — the refusal was legitimate, the
+        // silence was not). The ruling made it HED7025.
+        //
+        // So the same conjunction is pinned, on the corrected verdict: the build reports HED7025 at Error *and* the
+        // dynamic tier raises HED1013, which is still verdict identity — now identity of the *error*, not of the
+        // shrug. The resolvable-neighbour clause is unchanged and still load-bearing: it is what rules out a blanket
+        // degradation masquerading as a fix, and it now also rules out a blanket *error*.
         // ---------------------------------------------------------------------------------------------------
         [Fact]
         public void OverloadTie_ResolvesIdenticallyOnBothTiers()
@@ -213,13 +229,17 @@ namespace Heddle.Generator.IntegrationTests
             const string key = "drift-overload.heddle";
             const string content = "@model(){{System.String}}@\\\n@(min(1, 2u))\n";
 
-            // Build tier: the shared ranker reports the same three-way non-dominated front the runtime does, so the
-            // template degrades instead of emitting C#'s Min(long, long).
+            // Build tier: the shared ranker reports the same three-way non-dominated front the runtime does. The
+            // template is not precompiled AND the build says why — HED7025, at Error, naming the collided candidates.
             var gen = DifferentialHarness.Generate(new[] { (key, content) });
-            Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
+            var reported = Assert.Single(gen.Diagnostics,
+                d => d.Id == HeddleDiagnosticIds.BuildFunctionCallNotBindable);
+            Assert.Equal(Microsoft.CodeAnalysis.DiagnosticSeverity.Error, reported.Severity);
+            Assert.Contains("min(long, long)", reported.GetMessage());
             DifferentialHarness.ExpectDegrade(gen, key);
 
-            // Run tier: the same call is the runtime's ambiguity error — the verdict both tiers now share.
+            // Run tier: the same call is the runtime's ambiguity error — the verdict both tiers now share, at the
+            // same severity, on the same template.
             var ambiguous = new HeddleTemplate(content, new CompileContext(new TemplateOptions(), typeof(string)));
             Assert.False(ambiguous.CompileResult.Success);
             Assert.Contains(ambiguous.CompileResult.ErrorList,

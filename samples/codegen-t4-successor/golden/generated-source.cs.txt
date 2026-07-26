@@ -4,7 +4,7 @@ using Heddle.Samples.Codegen;
 
 namespace Heddle.Generated
 {
-    public static class Templates_Report
+    public static class BuildReport
     {
         /// <summary>Typed entry point — the recommended host API (phase 7 D11).</summary>
         public static string Generate(global::Heddle.Samples.Codegen.BuildInfo model, object chained = null, object callerData = null)

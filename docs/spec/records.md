@@ -44,6 +44,33 @@ additively at the grammar level).
 dynamic differential against the 2.0 defaults proving engine and generator flipped
 together.
 
+## The 2.1 release — as-shipped record
+
+Not a breaking window. **2.1 opens no window**: each item below is dispositioned as defect repair in
+[breaking-windows.md](common/breaking-windows.md#explicit-not-window-gated-rulings), so policy rule 1
+("one window per major") is untouched. The record exists because 2.1 nonetheless *ships a binary break*
+that had already occurred in 2.0.0's metadata, and policy rule 5's as-shipped reconciliation is the only
+mechanism that keeps such a thing from being assumed rather than verified.
+
+**Window status: n/a (no window opened). Release status: pending** — recorded at implementation time;
+reconcile against the shipped source when `v2.1.0` is tagged.
+
+| # | Change | 2.0.0 state | As implemented for 2.1.0 |
+| --- | --- | --- | --- |
+| 1 | Precompiled manifest schema floor (Q8.2) | `MinSupportedSchemaVersion = 1`, so schema 1–3 manifests were accepted and then faulted with `MissingMethodException` out of `PrecompiledTemplates.Register` — the two-argument `PrecompiledExtensionBinding` constructor their IL names had already been removed from metadata by schema 4's optional third parameter | ✅ `4` ([PrecompiledSchema.cs](../../src/Heddle/Precompiled/PrecompiledSchema.cs)) — the exact boundary of the faulting set. A 2.0.x-precompiled assembly now degrades cleanly with one `HED7102` (`SchemaVersionUnsupported`) callback, or throws under `PrecompiledMismatchPolicy.Strict`. No compatibility shim, by ruling. Demonstrated by `OldSchemaManifestRejectionTests`, which builds a manifest whose IL genuinely names the absent constructor against a reference facade under the real assembly's identity — the superseded pin constructed one through the optional parameter and therefore exercised a *new*-schema call |
+| 2 | `<HeddleTemplate>` per-item metadata (Q8.12) | `Key`, `Name` and `Precompile` all inert from a real project: the targets restated each inside an `Include="@(HeddleTemplate)"` transform, and outside a target a cross-item `%()` reference evaluates to `""`, so each element overwrote the value the transform had copied. `Name` had additionally been *deleted* from the props by phase 5, on a review record that overreached its ask | ✅ All three effective ([Heddle.Generator.targets](../../src/Heddle.Generator/build/Heddle.Generator.targets)); `Name` restored as a second spelling of `Key` with full participation in `HED7002`/`HED7003`/`HED7004` and `HED7018` suppression. `samples/codegen-t4-successor`'s long-ignored `Name="BuildReport"` becomes correct; its generated class is renamed and its golden changed by exactly that line |
+| 3 | Generated `#line` file (Q8.12, fallout) | The registration key, indistinguishable from the file path while every key was path-derived | ✅ The template's root-relative path. Byte-identical for every existing snapshot and golden; only an explicit `Key`/`Name` moves it, and there it stops naming a nonexistent path |
+| 4 | Release-line statements (Q8.11) | Nine per-project `<Version>` elements (four on non-shipping projects), plus four npm manifests, `PINNED_VERSION` in the VS Code extension, an `lsp.yml` `--version`, four prose sentences, and a `1.0.0` const in the language server — eighteen statements, no lockstep test | ✅ One `<VersionPrefix>` in [Directory.Build.props](../../Directory.Build.props); the un-centralisable statements gated by `VersionConsistencyTests`; the language server's version derived from its assembly. The CI beta job's `--version-suffix` lost a leading dash that a composed `VersionPrefix` can no longer carry |
+| 5 | Strong naming (Q8.11) | `Heddle.Demo.Models` and `Heddle.Demo.Wasm` unsigned, drawing `CS8002` in the signed `Heddle.LanguageServices.Tests` | ✅ Both signed with `heddle.snk`. The remaining unsigned reference is third-party (Scriban) and is accepted at the reference through a declared list in [Directory.Build.targets](../../Directory.Build.targets), not by a project-level `NoWarn` |
+
+**Accepted residue, recorded rather than glossed.** (a) Roslyn has no per-reference suppression for
+`CS8002` — the warning carries no source location and the `Csc` task takes only a project-wide disabled
+list — so item 5's mechanism is *keyed on* the named third-party assembly rather than scoped to it: a
+project referencing both a listed and an unlisted unsigned assembly would silence both. No project does.
+(b) `src/Heddle.Performance` is under a change-nothing ruling (Q7.2); the only edit made there is the
+deletion of its dead `<Version>` element, which item 4 requires and which needs no other change to that
+project.
+
 ## Diagnostic registry corrections
 
 - **2026-07:** `HED3005` (branch continuation/terminal missing `[ScopeChannel]` drift

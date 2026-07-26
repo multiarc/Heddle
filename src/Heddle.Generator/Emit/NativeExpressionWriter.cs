@@ -45,6 +45,10 @@ namespace Heddle.Generator.Emit
         private readonly List<SymbolMemberResolver.MemberFailure> _memberFailures =
             new List<SymbolMemberResolver.MemberFailure>();
 
+        private readonly List<(string Name, Heddle.Strings.Core.BlockPosition Position, string Detail,
+            string RuntimeDiagnosticId)> _unbindableCalls =
+            new List<(string, Heddle.Strings.Core.BlockPosition, string, string)>();
+
         private readonly SymbolTypeFacts _typeFacts;
 
         public NativeExpressionWriter(SymbolTypeResolver resolver, ITypeSymbol modelType, string modelLocal,
@@ -80,6 +84,16 @@ namespace Heddle.Generator.Emit
         /// <summary>Genuine member-path failures in this expression (a property not found on a resolved, non-dynamic
         /// receiver — milestone 2 / HED7008). Drained by the emitter and reported at the <c>.heddle</c> span.</summary>
         public IReadOnlyList<SymbolMemberResolver.MemberFailure> MemberFailures => _memberFailures;
+
+        /// <summary>Q8.1 / HED7025: function calls the <b>shared</b> overload ranker <i>proved</i> illegal — an
+        /// ambiguous flat-Pareto front or no applicable overload, over arguments the estimator typed — each with its
+        /// <c>.heddle</c> position, the runtime-shaped sentence naming the candidates, and the run-tier id the build
+        /// error is the twin of. Drained by the emitter and reported at Error.
+        /// <para>Refusals the generator could <b>not</b> prove (an <c>Unknown</c> argument estimate, an unspellable
+        /// cast target, a params-expanded bind) never land here: they stay the silent degrade they always were,
+        /// because the generator has established nothing about what the runtime will do.</para></summary>
+        public IReadOnlyList<(string Name, Heddle.Strings.Core.BlockPosition Position, string Detail,
+            string RuntimeDiagnosticId)> UnbindableFunctionCalls => _unbindableCalls;
 
         public static bool IsDefaultFunction(string name) => DefaultShims.ContainsKey(name);
 
@@ -393,11 +407,22 @@ namespace Heddle.Generator.Emit
                 var argKinds = new OperandKind[call.Arguments.Count];
                 for (int i = 0; i < argKinds.Length; i++)
                     argKinds[i] = Estimate(call.Arguments[i]);
-                binding = ExportFunctionBinder.TryBind(_typeFacts, entry.Overloads, argKinds);
+                binding = ExportFunctionBinder.TryBind(_typeFacts, call.Name, entry.Overloads, argKinds,
+                    out var refusal);
+                RecordIfProvenIllegal(call, refusal);
             }
 
             _exportBindings[call] = binding;
             return binding;
+        }
+
+        /// <summary>Records a proven-illegal call once per call site (Q8.1). Called from the memo-miss arm of each
+        /// binder so the two consumers — the operand-kind estimator that guards an enclosing operator, and the
+        /// emission walk — cannot report the same span twice.</summary>
+        private void RecordIfProvenIllegal(CallNode call, in Binding.BindRefusal refusal)
+        {
+            if (refusal.Kind == Binding.BindRefusalKind.ProvenIllegal)
+                _unbindableCalls.Add((call.Name, call.Position, refusal.Detail, refusal.RuntimeDiagnosticId));
         }
 
         private DefaultFunctionBinder.Binding BindDefaultCall(CallNode call)
@@ -412,7 +437,8 @@ namespace Heddle.Generator.Emit
                 var argKinds = new OperandKind[call.Arguments.Count];
                 for (int i = 0; i < argKinds.Length; i++)
                     argKinds[i] = Estimate(call.Arguments[i]);
-                binding = DefaultFunctionBinder.TryBind(call.Name, argKinds);
+                binding = DefaultFunctionBinder.TryBind(call.Name, argKinds, out var refusal);
+                RecordIfProvenIllegal(call, refusal);
             }
 
             _bindings[call] = binding;

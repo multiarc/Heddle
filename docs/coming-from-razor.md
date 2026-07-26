@@ -5,7 +5,7 @@ markup is just text — but a handful of core ideas are deliberately different. 
 Razor habits that trip people up to their Heddle equivalents. For the full picture read the
 [Language Reference](language-reference.md).
 
-> Every Heddle snippet below is a complete template, verified to compile against **Heddle 2.0.0**
+> Every Heddle snippet below is a complete template, verified to compile against **Heddle 2.1.0**
 > under the default `ExpressionMode` — with one exception: the embedded‑C# line in
 > [Where C# runs](#where-c-runs-three-tiers-not-everywhere) (`@(@model.Title.ToUpper())`) requires
 > `ExpressionMode.FullCSharp`, as noted inline. Where a snippet reads model members it declares a

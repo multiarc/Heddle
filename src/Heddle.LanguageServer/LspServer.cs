@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,7 +20,24 @@ namespace Heddle.LanguageServer
     /// </summary>
     internal sealed class LspServer
     {
-        internal const string InformationalVersion = "1.0.0";
+        /// <summary>The version <c>heddle-lsp --version</c> prints and the LSP <c>initialize</c> response reports as
+        /// <c>serverInfo.version</c>. Q8.11: this was a hand-maintained <c>const "1.0.0"</c> while the package shipped
+        /// 2.0.0, and the one test that touched it compared it against itself, so nothing could notice. It is now read
+        /// off this assembly — whose version is the single <c>VersionPrefix</c> in <c>Directory.Build.props</c> — with
+        /// the source-revision suffix Source Link appends (<c>2.1.0+&lt;sha&gt;</c>) trimmed. Derived, not stated, so
+        /// there is no second statement of the release line left here to drift.</summary>
+        internal static readonly string InformationalVersion = ReadInformationalVersion();
+
+        private static string ReadInformationalVersion()
+        {
+            var raw = typeof(LspServer).Assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (string.IsNullOrEmpty(raw))
+                return typeof(LspServer).Assembly.GetName().Version?.ToString() ?? "unknown";
+            var plus = raw.IndexOf('+');
+            return plus < 0 ? raw : raw.Substring(0, plus);
+        }
+
         private const int DebounceMs = 300;
 
         private readonly ConcurrentDictionary<string, (string Text, int Version)> _buffers =

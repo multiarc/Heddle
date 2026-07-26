@@ -15,7 +15,6 @@
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
 
-    <Version>2.0.0$(VersionSuffix)</Version>
     <PackageId>Heddle.Generator</PackageId>
     <Description>Build-time template pre-compilation for Heddle (phase 7 incremental source generator).</Description>
 

@@ -276,9 +276,12 @@ namespace Heddle.Data
             Add(HeddleDiagnosticIds.BuildCaseOnlyKeyTwin, "Case-only template key twin", warning,
                 "Templates '{0}' and '{1}' differ only by case; ordinal-case-sensitive keys make one shadow the " +
                 "other");
-            Add(HeddleDiagnosticIds.BuildInvalidKeyMetadata, "Invalid Heddle template Key metadata", error,
-                "Invalid Key metadata '{0}' on Heddle template '{1}': keys must be non-empty relative paths " +
-                "without '.' or '..' segments");
+            // Q8.12 generalized the message: the fault class is "this item's explicit key metadata is unusable", and
+            // the metadata is now spellable two ways (Key, Name) with a third instance of the same fault — two
+            // spellings naming two different keys. One id, one call site; {1} names the offending metadata and says
+            // why, so a new spelling or a new reason needs no new descriptor.
+            Add(HeddleDiagnosticIds.BuildInvalidKeyMetadata, "Invalid Heddle template key metadata", error,
+                "Invalid Heddle template key metadata on '{0}': {1}");
             Add(HeddleDiagnosticIds.BuildSurrogatePiece, "Unpaired surrogate in static text", warning,
                 "Static text in '{0}' contains an unpaired surrogate; UTF-8 pre-encoded pieces are disabled for " +
                 "this template. Byte-sink renders will transcode at run time.");
@@ -341,6 +344,10 @@ namespace Heddle.Data
                 "Region '{0}' of definition '{1}' is private and cannot be overridden from a call site. Mark it " +
                 "public with '<:{0}>' in the definition, or remove this override. The Heddle runtime raises the " +
                 "same error (HED5019) when it compiles this template.");
+            Add(HeddleDiagnosticIds.BuildFunctionCallNotBindable, "Function call cannot be bound", error,
+                "{0} The Heddle runtime rejects the same call with {1} when it compiles this template, so the " +
+                "build reports it here rather than pre-compiling a call it has already proved illegal. Cast an " +
+                "argument to one candidate's parameter type, or change the argument list to match one candidate.");
             Add(HeddleDiagnosticIds.BuildEmitterFault, "Heddle template emitter fault", error,
                 "The Heddle template emitter failed on '{0}': {1}: {2}. This is a generator defect rather than a " +
                 "template error — please report it; setting Precompile=\"false\" on the item unblocks the build " +

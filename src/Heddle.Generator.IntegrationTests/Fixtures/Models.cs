@@ -163,6 +163,17 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         internal string Secret { get; set; }
     }
 
+    /// <summary>Q8.1 / HED7025 fixture: <see cref="Payload"/> is <c>object</c>-typed, which the operand estimator
+    /// classifies as <c>Unknown</c> on purpose (an object-typed operand carries no usable static facts). The path
+    /// still *writes*, so the overload binder is reached with an argument it cannot describe — the side condition's
+    /// case, which must stay a silent degrade because the generator has proved nothing about the runtime.</summary>
+    public sealed class OverloadPayload
+    {
+        public object Payload { get; set; }
+
+        public int Count { get; set; }
+    }
+
     // Phase 8 (post-2.0) extension-parameter fixture model.
     public sealed class GridModel
     {

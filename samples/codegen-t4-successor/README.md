@@ -11,7 +11,7 @@ dotnet run --project samples/codegen-t4-successor
 ```
 
 `Heddle.Generator` is referenced as an **analyzer** (`ReferenceOutputAssembly="false"`) — a build-time-only tool.
-It turns the template into `Heddle.Generated.Templates_Report` (emitted under `generated/` via
+It turns the template into `Heddle.Generated.BuildReport` (emitted under `generated/` via
 `EmitCompilerGeneratedFiles`), which `Program.cs` invokes to render the report.
 
 The program also runs a **structural dependency check**: `Heddle.Generator.dll` (the code generator) must not be
@@ -31,7 +31,7 @@ bash samples/tools/compare-golden.sh samples/codegen-t4-successor
 ```
 
 Writes `codegen-output.txt` (the rendered report), `dependency-report.txt` (the structural check result), and
-`generated/Templates_Report.g.cs` (the emitted entry-point source, with non-deterministic manifest hashes stripped).
+`generated/BuildReport.g.cs` (the emitted entry-point source, with non-deterministic manifest hashes stripped).
 
 ## What the golden pins
 

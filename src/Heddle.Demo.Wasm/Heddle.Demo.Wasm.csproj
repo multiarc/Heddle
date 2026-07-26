@@ -9,6 +9,10 @@
     <PublishTrimmed>true</PublishTrimmed>                 <!-- wasm default, stated explicitly -->
     <IsPackable>false</IsPackable>
     <WasmMainJSPath>wwwroot/main.js</WasmMainJSPath>
+    <!-- Q8.11: strong-named like every other first-party assembly. Unsigned, it drew CS8002 in
+         Heddle.LanguageServices.Tests, which is signed and references it. -->
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
   <ItemGroup>

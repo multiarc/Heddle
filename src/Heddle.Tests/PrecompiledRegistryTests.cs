@@ -75,6 +75,12 @@ namespace Heddle.Tests
         private static string CompatibleVersion =>
             $"{RuntimeVersion.Major}.{Math.Max(RuntimeVersion.Minor, 0)}.{Math.Max(RuntimeVersion.Build, 0)}";
 
+        /// <summary>Any schema inside the accepted window. Q8.2 raised <c>MinSupportedSchemaVersion</c> 1 → 4, and
+        /// these tests were written against a literal <c>1</c> — which is now *outside* the window, so they would have
+        /// exercised the rejection path while claiming to test registration. They ask for "the oldest schema this
+        /// engine accepts" instead, which is what they always meant: none of them is about a schema number.</summary>
+        private static int SupportedSchema => PrecompiledSchema.MinSupportedSchemaVersion;
+
         private static Assembly BuildAssembly(Type manifestType, int schema, string engineVersion, string name)
         {
             var ab = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
@@ -88,7 +94,7 @@ namespace Heddle.Tests
         [Fact]
         public void RegisterThenTryGet()
         {
-            var asm = BuildAssembly(typeof(RegManifestOne), 1, CompatibleVersion, "HeddleTestAsm_One_" + Guid.NewGuid().ToString("N"));
+            var asm = BuildAssembly(typeof(RegManifestOne), SupportedSchema, CompatibleVersion, "HeddleTestAsm_One_" + Guid.NewGuid().ToString("N"));
             PrecompiledTemplates.Register(asm);
 
             Assert.True(PrecompiledTemplates.TryGet("reg/one.heddle", out var entry));
@@ -100,7 +106,7 @@ namespace Heddle.Tests
         [Fact]
         public void RegisterIsIdempotentPerAssembly()
         {
-            var asm = BuildAssembly(typeof(RegManifestOne), 1, CompatibleVersion, "HeddleTestAsm_Idem_" + Guid.NewGuid().ToString("N"));
+            var asm = BuildAssembly(typeof(RegManifestOne), SupportedSchema, CompatibleVersion, "HeddleTestAsm_Idem_" + Guid.NewGuid().ToString("N"));
             PrecompiledTemplates.Register(asm);
             PrecompiledTemplates.Register(asm); // no throw, no duplicate
             Assert.Single(PrecompiledTemplates.Entries);
@@ -109,8 +115,8 @@ namespace Heddle.Tests
         [Fact]
         public void DuplicateKeyAcrossAssembliesThrows()
         {
-            var a = BuildAssembly(typeof(RegManifestDup), 1, CompatibleVersion, "HeddleTestAsm_DupA_" + Guid.NewGuid().ToString("N"));
-            var b = BuildAssembly(typeof(RegManifestDup), 1, CompatibleVersion, "HeddleTestAsm_DupB_" + Guid.NewGuid().ToString("N"));
+            var a = BuildAssembly(typeof(RegManifestDup), SupportedSchema, CompatibleVersion, "HeddleTestAsm_DupA_" + Guid.NewGuid().ToString("N"));
+            var b = BuildAssembly(typeof(RegManifestDup), SupportedSchema, CompatibleVersion, "HeddleTestAsm_DupB_" + Guid.NewGuid().ToString("N"));
             PrecompiledTemplates.Register(a);
             var ex = Assert.Throws<PrecompiledRegistrationException>(() => PrecompiledTemplates.Register(b));
             Assert.Equal("reg/dup.heddle", ex.Key);
@@ -119,18 +125,24 @@ namespace Heddle.Tests
             Assert.Contains("already registered", ex.Message);
         }
 
-        [Fact]
-        public void UnsupportedSchemaIgnoresManifest()
+        /// <summary>Both edges of the window. The <b>below</b>-window case is Q8.2's whole point and had no test:
+        /// until 2.1 the window's floor was 1, so "a manifest too old to run" was unrepresentable here, and the
+        /// manifests that were too old to run were the ones being accepted.</summary>
+        [Theory]
+        [InlineData(3)]   // below the floor: a 2.0-generated manifest, whose IL calls a constructor that is now gone
+        [InlineData(6)]   // above the ceiling: a manifest from a newer generator
+        public void UnsupportedSchemaIgnoresManifest(int schema)
         {
             PrecompiledFallbackEvent? captured = null;
             PrecompiledTemplates.OnFallback = e => captured = e;
-            // Phase 1 (D2): the engine now accepts {1, 2, 3, 4, 5}; an unsupported version is one outside that range.
-            var asm = BuildAssembly(typeof(RegManifestOne), 6, CompatibleVersion, "HeddleTestAsm_Schema_" + Guid.NewGuid().ToString("N"));
+            var asm = BuildAssembly(typeof(RegManifestOne), schema, CompatibleVersion, "HeddleTestAsm_Schema_" + Guid.NewGuid().ToString("N"));
             PrecompiledTemplates.Register(asm);
             Assert.False(PrecompiledTemplates.TryGet("reg/one.heddle", out _));
             Assert.NotNull(captured);
             Assert.Equal(PrecompiledFallbackReason.SchemaVersionUnsupported, captured.Value.Reason);
-            Assert.Equal("SchemaVersion: manifest=6 supported=1-5", captured.Value.Detail);
+            Assert.Equal($"SchemaVersion: manifest={schema} supported=" +
+                $"{PrecompiledSchema.MinSupportedSchemaVersion}-{PrecompiledSchema.MaxSupportedSchemaVersion}",
+                captured.Value.Detail);
             Assert.Equal("HED7102", captured.Value.DiagnosticId);
         }
 
@@ -140,7 +152,7 @@ namespace Heddle.Tests
             PrecompiledFallbackEvent? captured = null;
             PrecompiledTemplates.OnFallback = e => captured = e;
             var newer = $"{RuntimeVersion.Major + 1}.0.0";
-            var asm = BuildAssembly(typeof(RegManifestOne), 1, newer, "HeddleTestAsm_Engine_" + Guid.NewGuid().ToString("N"));
+            var asm = BuildAssembly(typeof(RegManifestOne), SupportedSchema, newer, "HeddleTestAsm_Engine_" + Guid.NewGuid().ToString("N"));
             PrecompiledTemplates.Register(asm);
             Assert.False(PrecompiledTemplates.TryGet("reg/one.heddle", out _));
             Assert.NotNull(captured);
@@ -152,7 +164,7 @@ namespace Heddle.Tests
         {
             PrecompiledFallbackEvent? captured = null;
             PrecompiledTemplates.OnFallback = e => captured = e;
-            var asm = BuildAssembly(typeof(RegManifestCase), 1, CompatibleVersion, "HeddleTestAsm_Case_" + Guid.NewGuid().ToString("N"));
+            var asm = BuildAssembly(typeof(RegManifestCase), SupportedSchema, CompatibleVersion, "HeddleTestAsm_Case_" + Guid.NewGuid().ToString("N"));
             PrecompiledTemplates.Register(asm);
 
             // Exact case hits.

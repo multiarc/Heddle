@@ -64,8 +64,11 @@ jobs:
     # .NET tools (PackAsTool + multiple RuntimeIdentifiers), so `dotnet pack` must publish each RID.
     # A RID-less `dotnet build` never produces those per-RID outputs, so `--no-build` fails with
     # MSB3030 (missing per-RID assemblies) / NETSDK1085. Let pack build+publish, like the release job.
+    # The suffix carries NO leading dash: since Q8.11 the version is one <VersionPrefix> in Directory.Build.props and
+    # the SDK joins prefix and suffix with a single '-', so "-beta.N" would compose 2.1.0--beta.N. It was harmless only
+    # while every project spelled `2.0.0$(VersionSuffix)` by hand. Pinned by VersionConsistencyTests.
     - name: Pack beta packages
-      run: dotnet pack -c Release -o ${{ runner.temp }}/pkg --version-suffix "-beta.${{ github.run_number }}"
+      run: dotnet pack -c Release -o ${{ runner.temp }}/pkg --version-suffix "beta.${{ github.run_number }}"
     - name: NuGet login (OIDC -> short-lived API key)
       uses: NuGet/login@v1
       id: nuget-login

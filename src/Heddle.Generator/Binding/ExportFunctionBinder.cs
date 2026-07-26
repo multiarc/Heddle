@@ -56,10 +56,18 @@ namespace Heddle.Generator.Binding
         /// argument cannot be given a precise static type, when no overload is applicable, or when the flat Pareto
         /// front has more than one member (the runtime's <c>HED1013</c> verdict, which the build tier must reach
         /// too rather than letting C# betterness pick a winner the runtime would refuse).
+        /// <para>Q8.1: <paramref name="refusal"/> separates the last two from the first. An ambiguous or
+        /// inapplicable front over arguments the estimator <i>typed</i> is a proof that the host's own registry will
+        /// refuse the call, so the build reports <c>HED7025</c>; an untypeable argument proves nothing and still
+        /// degrades in silence. This path carries arbitrary host signatures — phase 4's WI10 measurement (0-of-480
+        /// winner changes over the shipped built-in table) explicitly does not carry here — so the distinction
+        /// matters more, not less, than it does for the built-ins.</para>
         /// </summary>
-        internal static Binding TryBind(SymbolTypeFacts facts,
-            IReadOnlyList<FunctionExportResolver.ExportOverloadInfo> overloads, IReadOnlyList<OperandKind> argKinds)
+        internal static Binding TryBind(SymbolTypeFacts facts, string name,
+            IReadOnlyList<FunctionExportResolver.ExportOverloadInfo> overloads, IReadOnlyList<OperandKind> argKinds,
+            out BindRefusal refusal)
         {
+            refusal = BindRefusal.Unproven;
             if (facts?.Compilation == null || overloads == null || overloads.Count == 0)
                 return null;
 
@@ -68,12 +76,15 @@ namespace Heddle.Generator.Binding
             // cannot type, e.g. `this`) while the ranker governs exactly the case it exists for: a merged or
             // overloaded name where the runtime and C# betterness could disagree.
             if (overloads.Count == 1 && overloads[0].Method.Parameters.Length == argKinds.Count)
+            {
+                refusal = BindRefusal.Bound;
                 return new Binding
                 {
                     Overload = overloads[0],
                     ArgumentCasts = new string[argKinds.Count],
                     ReturnType = overloads[0].Method.ReturnType
                 };
+            }
 
             var args = new RankArgument<ITypeSymbol>[argKinds.Count];
             for (int i = 0; i < argKinds.Count; i++)
@@ -86,7 +97,10 @@ namespace Heddle.Generator.Binding
 
                 var type = ToSymbol(facts.Compilation, argKinds[i]);
                 if (type == null)
-                    return null;   // degrade-on-doubt: an untypeable argument cannot be ranked
+                    // THE SIDE CONDITION (Q8.1). Degrade-on-doubt: an untypeable argument cannot be ranked, so any
+                    // front computed past this point would describe the generator's ignorance rather than the host
+                    // registry's verdict. Leaving before Bind runs is what keeps this a silent degrade.
+                    return null;
                 args[i] = RankArgument<ITypeSymbol>.Of(type);
             }
 
@@ -111,8 +125,15 @@ namespace Heddle.Generator.Binding
             }
 
             var binding = OverloadRank.Bind(new SymbolRankModel(facts), candidates, args);
-            if (binding.Outcome != BindOutcome.Bound || binding.Expanded)
-                return null;   // ambiguous / inapplicable / params-expanded (not emitted cast-pinned)
+            if (binding.Outcome != BindOutcome.Bound)
+            {
+                // Ambiguous / inapplicable over fully typed arguments — the host registry's own verdict (Q8.1).
+                refusal = Refuse(name, binding.Outcome, overloads, args);
+                return null;
+            }
+
+            if (binding.Expanded)
+                return null;   // params-expanded: bound, but not a shape this writer emits cast-pinned
 
             var winner = overloads[binding.Index];
             var casts = new string[argKinds.Count];
@@ -125,8 +146,45 @@ namespace Heddle.Generator.Binding
                     : parameterType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             }
 
+            refusal = BindRefusal.Bound;
             return new Binding { Overload = winner, ArgumentCasts = casts, ReturnType = winner.Method.ReturnType };
         }
+
+        /// <summary>The <c>HED7025</c> payload for a proven-illegal export call, shaped like the runtime's own
+        /// sentence for the same input so the two tiers say the same thing. Candidates are every discovered
+        /// overload of the name across every container, which is the merged set the runtime registry holds.</summary>
+        private static BindRefusal Refuse(string name, BindOutcome outcome,
+            IReadOnlyList<FunctionExportResolver.ExportOverloadInfo> overloads,
+            IReadOnlyList<RankArgument<ITypeSymbol>> args)
+        {
+            var candidates = new List<string>(overloads.Count);
+            foreach (var overload in overloads)
+            {
+                var parts = new List<string>(overload.Method.Parameters.Length);
+                foreach (var parameter in overload.Method.Parameters)
+                    parts.Add(Display(parameter.Type));
+                candidates.Add(name + "(" + string.Join(", ", parts) + ")");
+            }
+
+            var candidateText = string.Join(", ", candidates);
+            if (outcome == BindOutcome.Ambiguous)
+                return BindRefusal.ProvenIllegal(
+                    "The call to function '" + name + "' is ambiguous between: " + candidateText + ".",
+                    Heddle.Data.HeddleDiagnosticIds.AmbiguousFunctionCall);
+
+            var argTexts = new List<string>(args.Count);
+            foreach (var arg in args)
+                argTexts.Add(arg.IsNullLiteral ? "null" : Display(arg.Type));
+            return BindRefusal.ProvenIllegal(
+                "No overload of function '" + name + "' takes (" + string.Join(", ", argTexts) + "). Candidates: " +
+                candidateText + ".",
+                Heddle.Data.HeddleDiagnosticIds.NoFunctionOverload);
+        }
+
+        /// <summary>Signature-text spelling for a parameter/argument type: the C# alias where one exists (so the
+        /// build error reads the way the runtime's <c>HED1013</c> reads), else the minimally-qualified name.</summary>
+        private static string Display(ITypeSymbol type) =>
+            type == null ? "?" : type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
 
         /// <summary>Maps the estimator's <see cref="OperandKind"/> back onto a compilation type symbol. Only the
         /// categories the estimator can type precisely are mapped; everything else answers null, which degrades.</summary>
