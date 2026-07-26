@@ -1,7 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using Heddle.Data;
 using Heddle.LanguageServices;
 using Heddle.Precompiled;
@@ -100,6 +104,91 @@ namespace Heddle.LanguageServices.Tests
             Assert.Equal(Wired.Values.OrderBy(v => v, StringComparer.Ordinal).ToList(),
                 declared.OrderBy(v => v, StringComparer.Ordinal).ToList());
             Assert.DoesNotContain(WorkspaceConfig.AssembliesKey, declared);
+        }
+
+        /// <summary>
+        /// The documented surface is the wired surface. <c>editor-support.md</c>'s settings table must carry a row
+        /// for every wired key plus <c>assemblies</c>, and no row for anything else — a key wired without its row is
+        /// a feature nobody can find, and a row for a key the reader does not read is an instruction that silently
+        /// does nothing.
+        /// </summary>
+        [Fact]
+        public void TheDocumentedSettingsTableIsExactlyTheWiredSet()
+        {
+            var table = SettingsTableKeys(ReadDoc("editor-support.md"));
+            var expected = Wired.Values.Concat(new[] { WorkspaceConfig.AssembliesKey })
+                .OrderBy(v => v, StringComparer.Ordinal).ToList();
+
+            Assert.Equal(expected, table.OrderBy(v => v, StringComparer.Ordinal).ToList());
+        }
+
+        /// <summary>
+        /// The VS Code extension's <c>contributes.configuration</c> mirrors the same keys, and its defaults agree
+        /// with the shared table. A default that drifts is the worst kind: the editor reports diagnostics the host
+        /// would not, and nothing fails.
+        /// </summary>
+        [Fact]
+        public void TheExtensionSettingsMirrorTheWiredKeysAndTheirDefaults()
+        {
+            var manifest = ReadRepoFile("editors", "vscode", "package.json");
+
+            foreach (var key in Wired.Values.Concat(new[] { WorkspaceConfig.AssembliesKey }))
+                Assert.True(ExtensionSettingNames(manifest).Any(name => name.EndsWith("." + key, StringComparison.Ordinal)),
+                    "editors/vscode/package.json contributes no setting for the wired key '" + key + "'.");
+
+            AssertExtensionDefault(manifest, "heddle.compile.outputProfile", "\"html\"");
+            AssertExtensionDefault(manifest, "heddle.compile.expressionMode", "\"native\"");
+            AssertExtensionDefault(manifest, "heddle.compile.trimDirectiveLines", "true");
+            AssertExtensionDefault(manifest, "heddle.compile.maxRecursionCount",
+                HeddleBuildOptions.DefaultMaxRecursionCount.ToString(CultureInfo.InvariantCulture));
+
+            // The engine's own defaults, so a flip on either side reddens rather than diverging quietly.
+            Assert.Equal(OutputProfile.Html, new TemplateOptions().OutputProfile);
+            Assert.True(new TemplateOptions().TrimDirectiveLines);
+            Assert.Equal(ExpressionMode.Native, new TemplateOptions().ExpressionMode);
+        }
+
+        /// <summary>Setting names contributed under <c>contributes.configuration.properties</c>.</summary>
+        private static IEnumerable<string> ExtensionSettingNames(string manifest)
+        {
+            return Regex.Matches(manifest, @"""(?<name>heddle\.[a-zA-Z.]+)"":\s*\{")
+                .Cast<Match>()
+                .Select(m => m.Groups["name"].Value);
+        }
+
+        private static void AssertExtensionDefault(string manifest, string setting, string expected)
+        {
+            var at = manifest.IndexOf("\"" + setting + "\"", StringComparison.Ordinal);
+            Assert.True(at >= 0, "Setting '" + setting + "' not found in editors/vscode/package.json.");
+            var end = manifest.IndexOf('}', at);
+            var block = manifest.Substring(at, end - at);
+            var match = Regex.Match(block, @"""default"":\s*(?<value>[^,\r\n]+)");
+            Assert.True(match.Success, "Setting '" + setting + "' declares no default.");
+            Assert.Equal(expected, match.Groups["value"].Value.Trim());
+        }
+
+        /// <summary>The keys of <c>editor-support.md</c>'s settings table — its rows are <c>| `key` | … | … |</c>.</summary>
+        private static List<string> SettingsTableKeys(string markdown)
+        {
+            var keys = Regex.Matches(markdown, @"^\| `(?<key>[a-zA-Z]+)` \| (?<desc>[^|]*)\|", RegexOptions.Multiline)
+                .Cast<Match>()
+                .Select(m => m.Groups["key"].Value)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            Assert.True(keys.Count > 0, "No settings-table rows parsed from editor-support.md — the table shape changed.");
+            return keys;
+        }
+
+        private static string ReadDoc(string name) => ReadRepoFile("docs", name);
+
+        /// <summary>Reads a repository file from this test source's own path, so the gate needs no output-directory copy.</summary>
+        private static string ReadRepoFile(params string[] parts) => ReadRepoFileCore(parts);
+
+        private static string ReadRepoFileCore(string[] parts, [CallerFilePath] string here = null)
+        {
+            var repo = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here), "..", ".."));
+            return File.ReadAllText(Path.Combine(new[] { repo }.Concat(parts).ToArray()));
         }
 
         /// <summary>MSBuild property names agree per the camelCase rule, except <c>rootPath</c> which uses the <see cref="TemplateOptions"/> spelling.</summary>
