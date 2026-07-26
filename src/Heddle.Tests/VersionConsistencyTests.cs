@@ -9,7 +9,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// <para>Q8.11's gate. Before this test, the release line was hand-maintained in <b>nine</b>
+    /// <para>Before this gate, the release line was hand-maintained in <b>nine</b>
     /// <c>&lt;Version&gt;</c> elements plus four npm manifests, a TypeScript constant, a workflow argument and a C#
     /// const — eighteen statements of one fact, with nothing forcing them to agree. They did not: the language
     /// server's own <c>InformationalVersion</c> still read <c>1.0.0</c> at 2.0, which is what
@@ -74,7 +74,7 @@ namespace Heddle.Tests
             }
 
             Assert.True(offenders.Count == 0,
-                "Version elements outside Directory.Build.props (Q8.11 centralised these): " +
+                "Version elements outside Directory.Build.props (the version is centralised there): " +
                 string.Join(", ", offenders));
         }
 
@@ -195,7 +195,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// <para>The signing half of Q8.11. The build has no <c>TreatWarningsAsErrors</c>, so "the <c>CS8002</c>
+        /// <para>The signing half. The build has no <c>TreatWarningsAsErrors</c>, so "the <c>CS8002</c>
         /// warnings stopped" is not a property any gate held — an unsigned first-party project would simply start
         /// warning again and nothing would fail. This is that gate, expressed the way the warning arises: <b>every</b>
         /// project under <c>src/</c> that produces an assembly is signed, unless it is named below with a reason.</para>
@@ -258,7 +258,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>The release line has a CHANGELOG section and a compare link. Keeping this in the gate is what
-        /// stops a version bump from shipping with no record of what changed — the CHANGELOG entry Q8.2's binary
+        /// stops a version bump from shipping with no record of what changed — the CHANGELOG entry the binary
         /// break requires is then structurally impossible to forget.</summary>
         [Fact]
         public void TheChangelogHasASectionForTheCanonicalVersion()

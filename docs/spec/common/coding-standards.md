@@ -49,6 +49,40 @@ the lines the change needs. Concretely, the established style is:
   `src/Heddle.Language/generated/` comes from `generate_cs.cmd` (ANTLR 4.13.1) and is
   committed as generated. A grammar change is always `.g4` edit → regen → commit both.
 
+## Comments: brief, meaningful, and never a citation
+
+**A comment explains the code. It never cites a document.** No comment — inline, XML doc, or test
+doc — may reference a spec, a plan, a phase, a decision id, an open-question number, a ledger entry,
+a commit, or a ticket. Not `(phase 3 D2)`, not `Q8.25 —`, not `per testing-standards E9`, not
+"generator plan phase 6 D12.3". Write what the code does and why it has to; if the reason needs a
+name, name the *behaviour*, not the document that ratified it.
+
+```csharp
+// Good — says why, so the guard survives a reader who has never seen a plan.
+// Rendering protection: an extension that cannot produce a string contributes nothing.
+public string Execute(in Scope scope) => _processor.ProcessData(scope) as string ?? string.Empty;
+
+// Bad — a citation is not a reason, and it rots the moment the document is renumbered.
+// Phase 2 D6 / Q1.2: the coercion rail (see docs/spec/common/cross-cutting-decisions.md).
+```
+
+**The reference direction is one-way: specs point at code, code never points back.** A spec citing
+`SymbolTypeIndexCache.cs` or a test name is useful — it makes the rule findable from the document.
+The reverse duplicates the decision into a second place that nothing keeps in sync, and re-states in
+every consumer what one document already owns. When the numbering changes, every stale citation
+becomes a small lie.
+
+**Brevity is part of the rule.** A comment that restates the line below it, or narrates a decision at
+paragraph length, is noise. Prefer none over ceremonial. The exceptions that earn their length:
+
+- a non-obvious **why** (a guard against a real failure, an ordering that matters, a deliberate
+  omission that reads like a bug);
+- a **test doc comment** naming the scenario the test pins — the scenario, not its provenance;
+- an XML `<summary>` on public API, describing the contract to a caller who cannot see the spec.
+
+**Applies to existing code too.** When touching a file, strip the citations you find; do not preserve
+them for symmetry, and do not add new ones to match neighbours that still carry them.
+
 ## Language and target frameworks
 
 - Libraries ([Heddle](../../../src/Heddle/Heddle.csproj),
