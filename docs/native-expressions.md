@@ -38,9 +38,9 @@ C# precedence, verbatim. Highest to lowest:
 | unary | `!` `-` `+` `~` | right | `Not`, `Negate`, `UnaryPlus`, `OnesComplement` |
 | multiplicative | `*` `/` `%` | left | |
 | additive | `+` `-` | left | `+` is string concatenation when an operand is a string |
-| shift | `<<` `>>` | left | integral left operand; `int` right operand |
+| shift | `<<` `>>` | left | integral left operand; **any** integral right operand, converted to `int` (a [deviation](#deviations-from-c)) |
 | relational | `<` `<=` `>` `>=` | left | null operands compare `false` (lifted, non‑null result) |
-| equality | `==` `!=` | left | `object.Equals` fallback for unrelated reference/mixed types |
+| equality | `==` `!=` | left | `object.Equals` fallback when **both** operands are reference types or `Nullable<T>`; a reference/value mix is `HED1008` |
 | bitwise AND | `&` | left | ints, same‑enum, and `bool` |
 | bitwise XOR | `^` | left | |
 | bitwise OR | `\|` | left | |
@@ -59,8 +59,25 @@ signed operand becomes `long`) → `uint` → `int`. Mixing `decimal` with `floa
 ### Lifted (nullable) operands
 
 When either operand is `Nullable<T>`, arithmetic and bitwise operators produce a nullable result
-(`null` in → `null` out). Relational and equality operators produce a plain `bool`: any `null`
-operand compares `false`, and `null == null` is `true` — exactly as C#.
+(`null` in → `null` out). Relational and equality operators produce a plain `bool`: a `null` operand
+compares `false`, and `null == null` is a constant `true`.
+
+**Lifting is numeric-path only.** A mixed-nullability pair of a *non-numeric* type does not lift, so
+where C# has a lifted operator this tier has none:
+
+| Expression | C# | Here |
+| --- | --- | --- |
+| `@(FlagNullable == Flag)` (`bool?` vs `bool`) | lifted, compiles | `HED1008` |
+| `@(FlagNullable & Flag)` (`bool?` vs `bool`) | lifted, compiles | **no diagnostic** — an id‑less *"Error while compiling"* |
+| `@(N < 3)` (`int?` vs `int`) | lifted, compiles | lifted, compiles |
+
+The bitwise row is a **known defect, not a deviation**: every comparable illegality in this tier is a
+positioned `HED1008`, and that one shape reaches `Expression.And` unguarded. Both tiers agree on
+refusing it, so it is not drift — it is a missing diagnostic, and it is filed rather than papered
+over here. `NativeOperatorRules.ClassifyBitwise` carries the same verdict at build time.
+
+The `null` **literal** is separate from a `null`-valued `Nullable<T>`: `@(x < null)` and
+`@(3 == null)` are `HED1008`, exactly as C# rejects them.
 
 ### Why there is no `?.`
 
@@ -195,16 +212,31 @@ returns whether the mode is `FullCSharp`. It is retained for compatibility and m
 
 Native expressions match C# except for a small, deliberate set of ergonomic choices:
 
-1. `==`/`!=` on unrelated reference/mixed types compiles to a total, null‑safe `object.Equals`
-   instead of a compile error.
+1. `==`/`!=` on **unrelated reference types** compiles to a total, null‑safe `object.Equals`
+   instead of a compile error — `@(Maker == Where)` renders `False` rather than failing to compile.
+   The fallback requires **both** operands to be a reference type or `Nullable<T>`; a
+   reference/value mix such as `@(Name == Count)` is a positioned `HED1008` on **both** tiers, which
+   is what `NativeExpressionCompiler`'s `IsReferenceish(left) && IsReferenceish(right)` guard decides
+   and what `OperatorGuardDifferentialTests.MixedTypeEquality_CompilesTheConsumerProject_AndDegrades`
+   pins. **Do not widen the guard to match a looser reading of this rule:** doing so turns a compile
+   error into a silent `false`, which is a breaking change and window‑gated.
 2. `.` hops (and indexer targets) are null‑safe, yielding `default(T)`.
 3. `-2147483648` types as `long` (first‑fit literal typing, without C#'s lexer special case); the
    value is identical.
 4. Enum arithmetic (`enum + int`) is not supported.
 5. The `enum & 0`‑literal special case is not carried over.
-6. User‑defined *operators* are honored (e.g. `DateTime`/`TimeSpan`), but user‑defined *implicit
-   conversions* are not consulted during promotion or arm unification.
+6. User‑defined *operators* are honored for **arithmetic, relational, equality and `??`** (e.g.
+   `DateTime`/`TimeSpan`), and **not at all** for `&`/`^`/`|`, `<<`/`>>`, or any unary operator —
+   those arms refuse a non‑numeric, non‑`bool`, non‑enum operand before an operator method could be
+   found. User‑defined *implicit conversions* are never consulted, in any arm, during promotion or
+   arm unification.
 7. `&&`/`||` reject `bool?` with a targeted error instead of C#'s wording.
+8. `<<`/`>>` accept **any** integral right operand and convert it to `int`, so `@(I << L)` compiles
+   here and is `CS0019` in C#. **Do not narrow this to match C#:** it would break templates that
+   compile today, so it is window‑gated.
+9. Mixed nullability does not lift outside the numeric paths — see
+   [Lifted (nullable) operands](#lifted-nullable-operands) for the two shapes and which of them is a
+   deviation and which is a defect.
 
 ## The sandbox
 
