@@ -122,8 +122,14 @@ unrecorded breaking change.
   inapplicable one applicable — so a template that is legal *for that host* now fails the build.
   The generator has no way to see a delegate registration (the same blindness `HED7014` exists
   for), and the gauntlet's `FunctionBindings` overload-count check, which catches this skew for
-  *emitted* code, cannot rescue a build error. Filed as an open question (Q8.18) rather than
-  treated as settled; the escape hatch today is `Precompile="false"` on the item.
+  *emitted* code, cannot rescue a build error. The escape hatch is `Precompile="false"` on the item.
+  **The residue is bounded, and the question it was filed as (Q8.18) is closed rather than
+  outstanding:** precompiled function calls are **statically bound at build time** — the emitted call
+  names the chosen method directly and nothing in `PrecompiledRuntime` consults `options.Functions` at
+  render — so the build-time inventory is not merely *a* scope for the proof, it is the only scope
+  that can be correct for what precompiles. A host that registers extra overloads is served by the
+  dynamic tier through the gauntlet's function-binding check. See
+  [precompilation.md](../../precompilation.md#functions-in-precompiled-templates).
 
 - **Type-spelling parity from folding the runtime onto the shared parser** (phase 3, Q8.3;
   `ReflectionHelper.ResolveType` / `TypeSpelling`, 2026-07-26). Two spellings changed, both

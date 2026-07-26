@@ -185,6 +185,46 @@ and the part that was previously spread across a registry column, a plan bullet,
 convention. A reader aligning drift has to know which sentence is allowed to win *before* deciding
 what to change.
 
+## D11 — The engine does not decide which assemblies are loaded
+
+**Decision.** Choosing *which* assemblies exist, and *when* they are registered, belongs to the
+integration layer, never to the engine. Concretely, in order of force:
+
+- **The engine must not load or scan assemblies by default.** No discovery walk, no module
+  initializer, no `AppDomain`/`DependencyContext` enumeration on any render or registration path.
+  Whatever the engine consults, the host handed it — the shape
+  `PrecompiledTemplates.Register(assembly)` already has.
+- **The engine may report.** A registration that creates a potential conflict draws a diagnostic —
+  a warning, or an exception where the situation is genuinely unresolvable. Reporting is the
+  engine's business; deciding for the host is not.
+- **The engine may suggest, in documentation only.** A host that wants ordering guarantees can be
+  offered an architectural pattern in prose, and nothing stronger.
+
+A question of the form "is this a host configuration error or a legitimate late-binding outcome?"
+is therefore not the engine's to answer: answering it means deciding for the host in what order
+assemblies may register. Where removing a discovery walk leaves a real need with no API, that is a
+**missing extension point to add**, not a reason to keep the walk.
+
+**Rationale.** Maintainer ruling, 2026-07-26 (Q8.34), on the Razor precedent: discovery-by-default
+is how a library acquires a framework's worth of coupling to one hosting model. It also bounds the
+observability question that raised it — a registered `Name` that stops resolving because an
+unrelated assembly loaded is reported once through `OnFallback` (`HED7104`) and no further:
+`PrecompiledMismatchPolicy.Strict` deliberately does not extend here, because `Strict`'s subject is
+degradation to the dynamic tier and no degradation occurs.
+
+**Known violation, recorded rather than assumed away.** `AssemblyHelper`'s **static constructor**
+force-loads the entry assembly's whole transitive `GetReferencedAssemblies()` closure (loader
+failures swallowed) plus every `DependencyContext.GetDefaultAssemblyNames()` entry, and
+`TemplateFactory`'s static constructor scans that set for `[ExportExtensions]`. The precompiled path
+reaches both through gauntlet step 2 (`PrecompiledTemplates.TryResolve` → `CheckExtensions` →
+`TemplateFactory.TryGetExtensionType`), so effectively every precompiled template triggers it. Because
+the scanned set decides extension **name ownership**, an assembly the integration layer never chose to
+load can win a name or throw `TemplateOverrideException` out of a type initializer. Ruled for removal
+in 2.1, together with the explicit registration API that replaces it — recorded as **Q8.37** in the
+[open-questions register](../../generator_plan/open-questions.md), whose window disposition is
+blocked on **Q8.39**. `PrecompiledTemplates.Register` is already clean: explicit, one assembly, no
+scan-all overload, and there is no module initializer anywhere in `src/`.
+
 ## Claimed diagnostic IDs (registry)
 
 The live allocation state of the [D1](#d1--stable-diagnostic-ids-hedxxxx) blocks. A spec
@@ -220,7 +260,9 @@ silently.
 | `HED7023` | [precompilation.md](../../precompilation.md) | Generator build-time **error** — a type name several types answer to, unsettled by the template's `@using` imports: the runtime raises "the type name is ambigous" for the same input, so the build tier matches instead of picking a candidate (generator↔engine code-sharing program, phase 3 / Q3.5) |
 | `HED7024` | [precompilation.md](../../precompilation.md) | Generator build-time **error** — a call-site fill of a region the definition declares private: the build-tier twin of `HED5019`, reproducing the runtime's retract-and-raise reaction to the `Private` region-fill verdict (generator↔engine code-sharing program, phase 1 D7 / Q1.3) |
 | `HED7025` | [precompilation.md](../../precompilation.md) | Generator build-time **error** — a function call the shared overload ranker **proved** illegal: an ambiguous flat-Pareto front (`HED1013`) or no applicable overload (`HED1012`), over arguments the operand estimator could type. The generator used to compute that verdict and report nothing, so a provably illegal template built green and failed at first render. Reported only when no argument estimate is `Unknown` — an argument the generator cannot describe proves nothing and still degrades silently (generator↔engine code-sharing program, phase 4 D10 / Q8.1) |
+| `HED7026`–`HED7027` | — **deliberately unclaimed**, ids stay free | Claimed on paper by a ruling that was then withdrawn on assessment (Q8.14): a use-site error and a declaration-site analyzer warning for an extension carrying both `[EncodeOutput]` and `[NotEncode]`. The combination is **not declarable** — `NotEncodeAttribute` is `AttributeTargets.Property` and `EncodeOutputAttribute` is `AttributeTargets.Class`, so co-declaring them on one type is `CS0592`, a C# compiler *error* in the extension author's own build, which is the surface the analyzer was to occupy at a stronger severity. In forged or IL-authored metadata both tiers evaluate the same `RenderTypeRules.Derive` and both answer `RenderType.Raw`, so no tier disagrees and there is nothing for a use-site error to close. **Reopening condition:** if `NotEncodeAttribute`'s targets ever widen, the contradiction becomes declarable and both ids become required; `ContradictoryEncodingAttributeTests` (build tier) and `TheNotEncodeVetoRowIsUnreachableFromAnyDeclaration` (run tier) are written to redden at that moment |
 | `HED7028` | [precompilation.md](../../precompilation.md) | Generator build-time **warning** — an `@<<` import names a template by its registration key while that template also carries a `Name` item metadatum. `Name` is *additive* (Q8.25), so both spellings resolve and this is advice on the preferred one, not a fault: the first implementation made `Name` an override and broke path imports outright. A genuinely new fault class — every other `HED70xx` key diagnostic reports something unusable, this one reports something that works (generator↔engine code-sharing program, phase 5 / Q8.25) |
+| `HED7029` | — **deliberately unclaimed**, id stays free | Reserved by the Q8.28 ruling for faults exposed by validating a `Precompile="false"` item's key/name metadata, then not needed: a malformed `Key`, a malformed `Name` and an already-taken `Name` are all instances of `HED7004`'s "this item's explicit key metadata is unusable" class, and the import advisory is `HED7028`. Two further candidates were considered and declined — "this item declares `Name` but is opted out, so the name is a build-time import spelling only" (that pairing is the feature's *intended* shape, so a warning on it is noise) and the cross-assembly name/key collision, which the build tier structurally cannot see and which took the **runtime** id `HED7104` instead |
 | `HED7101`–`HED7103` | [precompilation.md](../../precompilation.md) | Runtime registration/fallback |
 | `HED7104` | [precompilation.md](../../precompilation.md) | Precompiled-runtime registration **warning** — a template's registered `Name` could not become a lookup spelling: another *registered* template already answers to it (as its key or as its own name), or the name is not a spelling the shared `TemplateKey` rule accepts at all (Q8.32(b) — one id for both, because from the host's side they are one situation and the remedy is the same). Reported through `OnFallback` (`PrecompiledFallbackReason.RegisteredNameUnavailable`), never a throw: the template stays registered under its key and only the addition is lost. A **runtime** id because the collision spans assemblies — within one compilation the build tier reports the same fault as `HED7004`, but a referenced assembly's manifest rows live in a `GetTemplates` method body, i.e. IL rather than symbol metadata, so nothing at build time can see them (generator↔engine code-sharing program, phase 5 / Q8.30) |
 | `HED8xxx` | — reserved, none claimed | Sink APIs throw host errors, no compile diagnostics |
