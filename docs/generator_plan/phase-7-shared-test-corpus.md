@@ -78,11 +78,16 @@ concrete consequences follow, each of which the tree needs:
 - **No new gauntlet checks, manifest rows, or diagnostics.**
 - **Not a wholesale migration.** Trivial one-line probes and parse-position negative probes stay
   inline (D4). Roughly 190 native-expression / lint / parse literals are explicitly out of scope.
-- **Other corpora are out of scope.** `src/Heddle.Performance/TestTemplates` (9),
-  `src/Heddle.Performance/ThirdParty` (1), `benchmarks/dotnet/templates/**` (18),
-  `samples/**/templates` (9) and `src/Heddle.LanguageServices.Tests/Corpus` (3) are separate asset
-  sets with their own contracts (the parity contract, the golden-corpus spec, per-sample golden
-  jobs). Merging any of them is a later question, named in [Open questions](#open-questions).
+- **Other corpora are out of scope**, now by ruling rather than by default (OQ7.1, OQ7.2).
+  `src/Heddle.Performance/TestTemplates` (9), `src/Heddle.Performance/ThirdParty` (1),
+  `benchmarks/dotnet/templates/**` (18), `samples/**/templates` (9) and
+  `src/Heddle.LanguageServices.Tests/Corpus` (3) are separate asset sets with their own contracts
+  (the parity contract, the golden-corpus spec, per-sample golden jobs).
+- **`src/Heddle.Performance` is not touched at all** (OQ7.2 ruling). A benchmark effort is
+  mid-flight in that project; the shared props file serves the four **test** projects only, and the
+  benchmark project keeps its own path-traversal helper. That is **accepted residue**, recorded so
+  nobody later reads it as an oversight and "fixes" it: the failure class D2 eliminates is gone from
+  the test suites and survives in the benchmark project until the benchmark work settles.
 - **`src/Heddle.LanguageServices.Tests.Corpus` is not a precedent and is not touched.** Despite the
   name it holds **no** `.heddle` files: it is a 74-line satellite *export assembly* (`Corpus.cs`,
   `[assembly: ExportExtensions]` / `[ExportFunctions]` plus two POCOs) that exists so the language
@@ -515,24 +520,31 @@ finds out.
 
 Recorded rather than defaulted, because each needs a maintainer ruling and none blocks stage 0:
 
+**All four are resolved (user, 2026-07-26).** The register in
+[open-questions.md](open-questions.md#post-implementation-questions-opened-2026-07-26) is
+authoritative; the rulings are restated here because two of them changed this plan.
+
 - **OQ7.1 — Does `src/Heddle.LanguageServices.Tests/Corpus` (3 `.heddle`) join?** Those templates
-  serve editor-tier completion/hover/diagnostics, whose "renders correctly" axis is absent. They
-  could join with a fourth `Tier` value (`EditorOnly`) or stay separate. Default if unruled: stay
-  separate, revisit if the editor tier ever needs a shape the corpus already has.
-- **OQ7.2 — Do the benchmark and sample corpora eventually converge?**
-  `src/Heddle.Performance/TestTemplates` (9), `benchmarks/dotnet/templates/**` (18) and
-  `samples/**/templates` (9) are governed by the parity contract and the golden-corpus spec, whose
-  byte requirements are stricter and differently motivated (`-text`, no trailing newline). Default:
-  no. But `src/Heddle.Performance` has its **own third path-traversal helper**
-  (`TemplateParseBenchmarks.cs`, walking up from the assembly location) — the same failure class,
-  in a fourth place. Whether D1's props file should serve it is a real question even if the
-  template sets never merge.
-- **OQ7.3 — Should the six checked-in written artifacts (`test-*.html`, `test.html`) be deleted
-  outright** rather than relocated (D7.3)? They look like debugging aids rather than assertions, but
-  confirming that requires ruling that nothing reads them.
-- **OQ7.4 — How far does the migration go past stage 3?** Stages 4–5 are scoped by D4's criteria,
-  but "the feature-shape families" has a soft edge. A ruling on whether stage 5 is in this phase or
-  a follow-on would let stages 0–4 be sized definitively.
+  serve editor-tier completion/hover/diagnostics, whose "renders correctly" axis is absent.
+  **Ruling: keep them separate.** No `EditorOnly` tier; D3's three-value `Tier` axis stands
+  unchanged. Revisit only if the editor tier needs a shape the corpus already has.
+- **OQ7.2 — Do the benchmark and sample corpora converge, and should D1's props file serve
+  `src/Heddle.Performance`?** **Ruling: leave `Heddle.Performance` alone entirely — change nothing
+  within it.** A new benchmark effort is mid-flight there and must not be disturbed. The shared props
+  file serves the four **test** projects only.
+  **Accepted residue, recorded deliberately:** `TemplateParseBenchmarks.cs` keeps its own
+  path-traversal helper walking up from the assembly location. So the failure class D2 eliminates is
+  gone from the test suites but survives in the benchmark project — accepted, not overlooked, and
+  revisited once the benchmark work settles. Do not "helpfully" fix it.
+- **OQ7.3 — Delete or relocate the six checked-in written artifacts** (`test-<name>.html` × 5,
+  `test.html`)? **Ruling: relocate, do not delete.** WI4 moves them outside the shared corpus glob
+  and repoints the writing tests at the new location, so no file inside the glob is written by a
+  test — but the artifacts themselves are preserved.
+- **OQ7.4 — How far does the migration go past stage 3?** **Ruling: all stages, including 5, land
+  inside this phase.** The D4 coverage residue is closed completely rather than left as a tail.
+  WI9's stage 5 is promoted from conditional to committed; the open-ended scope is bounded by
+  per-stage acceptance (byte-neutral gate plus suite-time measurement per stage), not by stopping
+  early.
 
 ## External grounding
 
@@ -629,9 +641,11 @@ docs):
   (5) and the differential suite's marker/fallback classification (17), with each block comment in
   `CorpusDifferentialTests` becoming the relevant rows' `Why`. **Done when** criterion 3 holds and
   both unclassified-template scenarios fail with the filename in the message.
-- **WI4 — Written artifacts leave the corpus (D7.3, OQ7.3).** Relocate or delete
-  `test-<name>.html` × 5 and `test.html`; if relocated, exclude the path from the glob. **Done
-  when** no file inside the shared corpus glob is written by any test, and the suite is green.
+- **WI4 — Written artifacts leave the corpus (D7.3, OQ7.3 — ruled: *relocate*).** Move
+  `test-<name>.html` × 5 and `test.html` out of the shared corpus tree, exclude the new path from
+  the glob, and repoint the writing tests at it. They are **preserved, not deleted** — the ruling is
+  relocation. **Done when** no file inside the shared corpus glob is written by any test, the
+  artifacts still exist at their new location, and the suite is green.
 - **WI5 — Per-entry render and per-entry staging encoding (D3 `Render`, D7 `Bom`).** Replace
   `SweepViaResolver`'s blanket `render: false` with the per-entry `Render` axis; teach
   `StageCorpus` to honor `Bom`. **Done when** the `Standalone` set is byte-compared in the sweep,

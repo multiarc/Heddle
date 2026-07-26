@@ -170,19 +170,28 @@ question, the ruling or default, and where it is folded.
 - **Q7.1 — Do `src/Heddle.LanguageServices.Tests/Corpus`' three `.heddle` templates join the shared
   corpus?** They serve editor-tier completion/hover/diagnostics, for which the "renders correctly"
   axis does not exist; joining would need a fourth `Tier` value (`EditorOnly`).
-  **Default if unruled:** stay separate; revisit if the editor tier ever needs a shape the corpus
-  already has.
+  **Ruling (user, 2026-07-26): keep them separate.** *Folded into:* phase 7 (no `EditorOnly` tier;
+  the intent table's three-value `Tier` axis stands). Revisit only if the editor tier ever needs a
+  shape the corpus already has.
 - **Q7.2 — Do the benchmark and sample corpora converge, and should `TestCorpus.props` serve
   `Heddle.Performance` regardless?** `src/Heddle.Performance/TestTemplates` (9),
   `benchmarks/dotnet/templates/**` (18) and `samples/**/templates` (9) are governed by the parity
   contract and the golden-corpus spec, whose byte requirements are stricter and differently
   motivated. Separately, `Heddle.Performance` carries a **fourth copy of the path-traversal helper**
-  — the same failure class phase 7 D2 deletes. **Default if unruled:** template sets do *not*
-  converge, but the props file serves `Heddle.Performance` so the traversal dies everywhere.
+  — the same failure class phase 7 D2 deletes. **Ruling (user, 2026-07-26): leave
+  `Heddle.Performance` alone entirely — change nothing within it.** A new benchmark effort is
+  mid-flight there and must not be disturbed. *Folded into:* phase 7 (the shared props file serves
+  the four *test* projects only; `Heddle.Performance` is explicitly out of scope). **Accepted
+  residue:** its path-traversal helper survives, so the failure class phase 7 D2 eliminates is
+  removed from the test suites but not from the benchmark project. Recorded as accepted, not as an
+  oversight — revisit once the benchmark work settles.
 - **Q7.3 — Delete or relocate the six checked-in written artifacts** (`test-<name>.html` × 5,
   `test.html`)? They sit inside the corpus directory and are written by tests via
   `File.WriteAllText` into a tree three projects would copy from. They look like debugging aids, but
-  confirming that requires ruling that nothing reads them. **Default if unruled:** delete.
+  confirming that requires ruling that nothing reads them. **Ruling (user, 2026-07-26):
+  relocate**, do not delete. *Folded into:* phase 7 WI4 — they move outside the shared corpus glob
+  so no file inside it is written by a test, and the writing tests are repointed at the new
+  location.
 - **Q7.4 — Is migration stage 5 ("the remaining feature-shape families") in phase 7 or a
   follow-on?** D4's criteria scope stages 1–4 definitively; stage 5's edge is soft, and a ruling
   lets stages 0–4 be sized. **Ruling (user, 2026-07-26): all stages, including 5, land inside
