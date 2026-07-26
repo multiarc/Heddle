@@ -1043,3 +1043,66 @@ describes that work's API.
   concept with no members, and whoever finds an id that genuinely cannot be documented adds the
   mechanism together with the reason. The same reasoning that populated the marker tier rather than
   pinning it empty.
+
+## Independent review (2026-07-27)
+
+Two reviewers ran over the whole program with deliberately opposed briefs — a **verifier** confirming
+each claim against source and by execution, and an **adversary** whose only job was to break it. Both
+were read-only and independent of each other. They found **17 real defects between them**, and the
+implementation record above was wrong in one place. Everything below is fixed and pinned.
+
+### The three that mattered
+
+1. **A reachable data race, reproduced 3/3 runs.** Making `Register` the mandatory, repeatable host
+   call — and documenting that registering after rendering has begun is legal — turned a latent race
+   into a reachable one. `ReflectionHelper` assigned each name map a fresh empty dictionary and then
+   filled it while unlocked readers looked them up; `TemplateFactory` mutated its registry in place with
+   no lock. The symptom was a **phantom diagnostic** — `Couldn't resolve type <System.DateTime>` on a
+   template that had just compiled, `HED3003` on a valid `@else` — which is worse than a crash, because
+   the host sees a template error that is not there. Fixed by atomic publication and copy-on-write;
+   pinned by `RegistrationConcurrencyTests`, whose type-map scenario reddens within 28 compiles against
+   the pre-fix shape.
+2. **Single-file publish observed nothing.** The filter keyed on `Assembly.Location`, which is empty for
+   the *entire application* in a single-file or WASM publish — so the engine saw no assemblies at all,
+   and `Register(yourAssembly)`, the documented migration step, did not repair it. Reproduced against a
+   real `PublishSingleFile` host. The SDK had been emitting `IL3000` on that line throughout.
+3. **Load order decided what resolved.** Observation never rebuilt the type maps, so an assembly loaded
+   after the first resolution was permanently invisible, and the same host with the same template
+   resolved or failed depending on whether an unrelated earlier compile had happened. This falsified,
+   in the same words, four documents landed by this phase.
+
+### What that says about the process
+
+Every one of the three was **invisible to a green suite**, and two were invisible to the gates this
+phase built. The pattern is the same in each: the tests pinned the *mechanism* a defect had used, not
+the *behaviour* the fix promised. `AssemblyRegistrationTests` pinned "no static constructor" and "no
+DependencyModel", so restoring the identical discovery walk **lazily** passed all 1,826 tests. That is
+the generalisable lesson, and it is the one this program keeps re-learning: a pin on the shape of
+yesterday's defect is not a pin on the property you claimed.
+
+Recorded here rather than smoothed over, because the phase's own success criteria were reported met
+while three of them were not.
+
+### The rest, fixed
+
+The published `HED1005` row lost its whole description to unescaped pipes. The new startup-order sample
+called `RegisterFrom` on `TemplateOptions.Functions`, which defaults to `null`, so it threw. A document
+rewritten one commit after a module initializer was added re-asserted that none exists. `HED7104` was
+described by two of its three causes. A corpus row promised a byte assertion nothing makes. The
+generator-side `ClaimedIds` helper was unanchored, leaving the plan's own "registry cross-reference
+hole" scenario open. `DiagnosticIdTests` matched ids by substring. The link gate skipped every
+same-directory link — 435 of 803 — and checked only the first number of a range, which is precisely the
+defect that prompted it. The public-API gate could not see a documented call with arguments, so this
+window's entire new API was invisible to it. `editor-support.md` named 6 of the 11 excluded options
+under a claim only checkable if all are listed. Two test names claimed more than they checked.
+
+### Corrections to the record above
+
+- **"all suites and all ten sample goldens are green"** (in the emitted-comment commit) was **false**.
+  `samples/codegen-t4-successor`'s generated-source golden still held the stripped citations, and CI runs
+  `compare-golden`, so the branch was red. The check that reported green was reading stale bytes: the
+  capture path resolves against the sample's own directory, so a repo-relative `--capture samples/x/out`
+  writes to `samples/x/samples/x/out` while the comparison reads `samples/x/out`. Golden re-ratified;
+  the correct invocation is `--capture out` after deleting the directory.
+- **WI6 was reported met and was not**, on both halves of its own done-when. Both are now done.
+- **WI7/WI12's "the surface was already correct"** understated a gap D5 had itself named.
