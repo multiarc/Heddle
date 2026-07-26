@@ -1338,6 +1338,29 @@ so the outstanding set is complete in one place.
   assemblies while the runtime scans only `[ExportExtensions]`-carrying ones is the other half of this seam;
   fixing one side alone widens the drift, which the entry above already states.
 
+- **Q8.39 — Does 2.1 open a breaking window, or not? Two ratified records now say different things.**
+  Raised by consolidating the decisions into the specs, which is where the two met.
+  [records.md](../spec/records.md#the-21-release--as-shipped-record) states plainly: *"Not a breaking
+  window. **2.1 opens no window**: each item below is dispositioned as defect repair … so policy rule 1
+  ('one window per major') is untouched."* The **Q8.37 ruling** (user, 2026-07-26) instead calls 2.1
+  *"the current breaking window"* and schedules the removal of assembly auto-loading into it — and that
+  removal is not defect repair by the policy's own test: a host that declares `[ExportExtensions]` and
+  registers nothing works today and would stop, which is a behaviour users can correctly depend on.
+
+  The conflict is not cosmetic, because the two readings license different things. If 2.1 opens no
+  window, the auto-load removal needs a per-item not-window-gated disposition and every *other* break
+  wanting in has to argue separately. If 2.1 does open one, then policy rule 1 — one window per **major**
+  — is what needs amending, since 2.1 is a minor, and the window then has a consolidated contents table
+  and a migration note as deliverables (rules 2 and 4), neither of which exists.
+
+  Three ways out, and they are genuinely different: **(a)** 2.1 opens a window, policy rule 1 is amended
+  to "one window per ratified opening" and the release gets its planning document; **(b)** 2.1 stays
+  window-less and the auto-load removal is dispositioned individually, accepting that it is a break
+  landing outside a window; **(c)** the auto-load removal moves to 3.0 and 2.1 ships the explicit
+  registration API additively, with discovery deprecated but still working. Recorded rather than
+  resolved: whichever is chosen changes what else may land in 2.1, so it is a maintainer decision, not
+  an implementation detail.
+
 - **Q8.38 — A post-configuration validation pass has to be told which `TemplateOptions` it is validating
   against, and nothing says which.** Raised by Q8.32's feasibility assessment, which recommends the
   validation-only subset. Four of the gauntlet's inputs are **per-request**, not per-configuration:
