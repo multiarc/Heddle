@@ -45,11 +45,14 @@ namespace Heddle.Generator
             /// <summary>The <c>Key</c> item metadata: the item's explicit registration key.</summary>
             public string KeyMetadata { get; }
 
-            /// <summary>The <c>Name</c> item metadata (Q8.12): the <b>same</b> setting as <see cref="KeyMetadata"/>
-            /// under a second spelling, restored after phase 5 removed it on a record that overreached its ask. Both
-            /// normalize through <c>TemplateKey</c> and both participate in every downstream key rule; naming the one
-            /// setting twice with two values that mean two keys is a HED7004 fault, because there is no defensible
-            /// precedence between two equally explicit requests.</summary>
+            /// <summary>The <c>Name</c> item metadata (Q8.12, corrected by Q8.25): an <b>additional</b> spelling the
+            /// <c>@&lt;&lt;</c> import map answers to — <b>not</b> an override of <see cref="KeyMetadata"/>. The
+            /// template keeps its path-derived (or explicit <c>Key</c>) registration key and *gains* this name, so
+            /// both spellings resolve and nothing that resolved before stops resolving. It normalizes through the same
+            /// <c>TemplateKey</c> rule as a key, because it occupies the same import-path namespace.
+            /// <para>The first implementation of Q8.12 made this an override (one setting, two spellings) and that was
+            /// wrong: it silently broke every existing <c>@&lt;&lt;</c> that named the file. Importing a named template
+            /// by its key draws the HED7028 advisory instead.</para></summary>
             public string NameMetadata { get; }
 
             /// <summary>The <c>Precompile</c> item metadata (phase 5, Q5.1 ruling). <c>false</c> is the per-item
@@ -147,12 +150,46 @@ namespace Heddle.Generator
             }
 
             // Import map for the shared front end's ImportReader (@<< served from AdditionalFiles, D4/D16).
+            //
+            // Two passes, and the order is load-bearing (Q8.25). Pass 1 registers every template's *key* — the
+            // spelling that has always resolved. Pass 2 adds the optional `Name` alias on top. Because keys go first,
+            // a registered name can never displace a real key spelling, which is what makes `Name` additive rather
+            // than an override: whatever resolved before still resolves, and the name resolves as well.
             var importMap = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (var template in templates)
             {
                 var key = DeriveKey(template, config.TemplateRoot);
                 if (key != null && !importMap.ContainsKey(key))
                     importMap[key] = template.Content;
+            }
+
+            // The spellings a registered name is reachable by, and the advisory index. `nameByKeySpelling` maps a
+            // named template's KEY onto its registered NAME: an @<< that resolves through such an entry has picked
+            // the resolvable-but-non-preferred spelling, which is exactly HED7028's population.
+            var aliasOwners = new Dictionary<string, string>(StringComparer.Ordinal);
+            var nameByKeySpelling = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var template in templates)
+            {
+                var alias = DeriveName(template, out _);
+                if (alias == null)
+                    continue;
+
+                var key = DeriveKey(template, config.TemplateRoot);
+
+                // Name == key: the name asks for the spelling the template already answers to. Nothing is added and
+                // nothing is advised — the "preferred" spelling and the path spelling are the same string.
+                if (string.Equals(alias, key, StringComparison.Ordinal))
+                    continue;
+
+                // The spelling is taken by another template's key or another template's name. Registering it would be
+                // the override this correction exists to remove, so the alias is dropped and loop 2 reports HED7004.
+                if (importMap.ContainsKey(alias))
+                    continue;
+
+                importMap[alias] = template.Content;
+                aliasOwners[alias] = template.Text.Path;
+                if (key != null)
+                    nameByKeySpelling[key] = alias;
             }
 
             var seenKeys = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -196,26 +233,54 @@ namespace Heddle.Generator
                 var key = DeriveKey(template, config.TemplateRoot, out var outOfRoot, out var keyFault);
                 if (key == null)
                 {
-                    // HED7004: explicit key metadata (Key and/or Name) the generator cannot use — a value the
-                    // normalizer rejects, or two values that name two different keys. A path-derived key that fails
-                    // normalization is left un-precompiled silently (the user set no key, so there is nothing to
-                    // report back at them).
+                    // HED7004: explicit `Key` metadata the generator cannot use — a value the normalizer rejects. A
+                    // path-derived key that fails normalization is left un-precompiled silently (the user set no key,
+                    // so there is nothing to report back at them).
                     if (keyFault != null)
                         spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.InvalidKeyMetadata,
                             Location.None, template.Text.Path, keyFault));
                     continue;
                 }
 
+                // HED7004, the `Name` arm (Q8.25). A name that cannot be registered is reported here but does NOT
+                // un-precompile the template: `Name` is additive, so a broken addition costs the addition and nothing
+                // else — the key still registers and every existing import still resolves. Two faults reach this:
+                // a value the normalizer refuses, and a spelling another template's key or name already owns.
+                var registeredName = DeriveName(template, out var nameFault);
+                if (nameFault != null)
+                {
+                    spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.InvalidKeyMetadata,
+                        Location.None, template.Text.Path, nameFault));
+                }
+                else if (registeredName != null && !string.Equals(registeredName, key, StringComparison.Ordinal) &&
+                    (!aliasOwners.TryGetValue(registeredName, out var aliasOwner) ||
+                        !string.Equals(aliasOwner, template.Text.Path, StringComparison.Ordinal)))
+                {
+                    spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.InvalidKeyMetadata,
+                        Location.None, template.Text.Path,
+                        "Name=\"" + template.NameMetadata + "\" registers the import spelling '" + registeredName +
+                        "', which another template already answers to. Registered names share the import-path " +
+                        "namespace with template keys, so the name must be free."));
+                }
+
                 // HED7018 (D3): the template is not under HeddleTemplateRoot and carries no explicit key metadata, so
                 // its directory silently vanished from the key. Behavior is unchanged — the flattened key still
-                // registers — but the condition is now visible, and it explains any HED7002 that follows. An explicit
-                // Key or Name suppresses it (Q8.12, decided deliberately): the warning's whole premise is that the
-                // flattened key was NOT asked for, and an explicit key is asking for exactly the key it names.
+                // registers — but the condition is now visible, and it explains any HED7002 that follows. Only an
+                // explicit `Key` suppresses it (Q8.25 re-derivation): that warning's premise is that the flattened key
+                // was not asked for, and a `Key` asks for exactly the key it names — but an additive `Name` does not
+                // replace the key at all, so the flattened key still exists, is still unasked-for, and is still what
+                // the registry and the staleness check use. The warning is about something real, so it stands.
                 if (outOfRoot)
                     spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.TemplateOutsideRoot, Location.None,
                         template.Text.Path,
                         string.IsNullOrEmpty(config.TemplateRoot) ? "<unset>" : config.TemplateRoot, key));
 
+                // HED7002 / HED7003 (Q8.25 re-derivation): both checks are over registration KEYS only, which is the
+                // population they had before `Name` was wired. A registered name is not a key — it registers no
+                // manifest row, sanitizes to no entry class and is never looked up by the runtime registry — so it
+                // cannot duplicate one, and case-shadowing among names is not a registry hazard. The alias namespace
+                // has its own collision rule, above, reported at HED7004 against the name that could not be taken.
+                //
                 // HED7002: two templates in one compilation normalize to the same key (position: the second file).
                 if (seenKeys.TryGetValue(key, out var firstPath))
                 {
@@ -244,19 +309,21 @@ namespace Heddle.Generator
                 }
                 sanitizedOwners[sanitized] = key;
 
-                var parsed = ParseAndReport(spc, template, importMap, out var cleanDocument, out var hadErrors);
+                var parsed = ParseAndReport(spc, template, importMap, nameByKeySpelling,
+                    out var cleanDocument, out var hadErrors);
                 if (parsed == null || hadErrors)
                     continue;
 
                 try
                 {
                     // The `#line` file is the template's own path, not its registration key: for a path-derived key
-                    // the two strings are identical (so nothing existing moves), but an explicit Key/Name names a
+                    // the two strings are identical (so nothing existing moves), but an explicit Key names a
                     // registration and not a file, and emitting it here pointed every mapped span at a path that does
                     // not exist. Q8.12 made that observable by wiring the metadata; the two concepts are separated
-                    // here rather than left conflated because they usually agree.
-                    var lineFile = LineDirectiveFile(template, config.TemplateRoot);
-                    var emitter = new TemplateEmitter(key, sanitized, ns, cleanDocument, template.Content, parsed, config, compilation, exports, template.Text.Path, lineFile);
+                    // here rather than left conflated because they usually agree. `rootRelative` carries Q8.27's
+                    // relativity marking through to the generated file's header.
+                    var lineFile = LineDirectiveFile(template, config.TemplateRoot, out var lineFileIsRootRelative);
+                    var emitter = new TemplateEmitter(key, sanitized, ns, cleanDocument, template.Content, parsed, config, compilation, exports, template.Text.Path, lineFile, lineFileIsRootRelative);
                     var result = emitter.Emit(ContentHash.HashText(template.Content));
 
                     // Emitter-produced Roslyn diagnostics (HED7005 surrogate, HED7006/HED7015 extension binding),
@@ -339,7 +406,8 @@ namespace Heddle.Generator
         }
 
         private static ParseContext ParseAndReport(SourceProductionContext spc, TemplateFile template,
-            Dictionary<string, string> importMap, out string cleanDocument, out bool hadErrors)
+            Dictionary<string, string> importMap, Dictionary<string, string> nameByKeySpelling,
+            out string cleanDocument, out bool hadErrors)
         {
             cleanDocument = template.Content;
             hadErrors = false;
@@ -348,6 +416,12 @@ namespace Heddle.Generator
             // each miss (raw path as written); after the parse we report one diagnostic per distinct missing import
             // at its @<<{{…}} block in this template.
             var missingImports = new List<string>();
+
+            // HED7028 (Q8.25): the import RESOLVED, through the key spelling of a template that also has a registered
+            // name. Both spellings work — this is an advisory that the name-first spelling is the preferred one for a
+            // named template, not a fault. Keyed by the raw path as written so the report lands on the block the
+            // author typed; the value is the name to prefer.
+            var nonPreferredImports = new List<KeyValuePair<string, string>>();
             var settings = new ParserSettings
             {
                 RootPath = string.Empty,
@@ -355,7 +429,16 @@ namespace Heddle.Generator
                 ImportReader = importPath =>
                 {
                     if (TemplateKey.TryNormalize(importPath, out var k) && importMap.TryGetValue(k, out var content))
+                    {
+                        if (nameByKeySpelling.TryGetValue(k, out var preferred) &&
+                            !nonPreferredImports.Exists(p => string.Equals(p.Key, importPath, StringComparison.Ordinal)))
+                        {
+                            nonPreferredImports.Add(new KeyValuePair<string, string>(importPath, preferred));
+                        }
+
                         return content;
+                    }
+
                     if (!missingImports.Contains(importPath))
                         missingImports.Add(importPath);
                     return string.Empty;
@@ -383,6 +466,15 @@ namespace Heddle.Generator
                 var position = FindImportBlock(template.Content, missing);
                 spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.ImportNotIncluded,
                     ToLocation(template.Text, sourceText, position), missing));
+            }
+
+            // HED7028: guidance only, and deliberately not gated on `hadErrors` — the import resolved, so the advice
+            // is valid regardless of what else the template got wrong.
+            foreach (var advised in nonPreferredImports)
+            {
+                spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.NamedTemplateImportedByKey,
+                    ToLocation(template.Text, sourceText, FindImportBlock(template.Content, advised.Key)),
+                    advised.Key, advised.Value));
             }
             // Phase 7 D5 (emit-then-retract, generator side): a base-not-found error captured on a region-fill
             // candidate is tentative — a matched public fill retracts it on the dynamic tier, and the emitter
@@ -540,30 +632,45 @@ namespace Heddle.Generator
         private static string DeriveKey(TemplateFile template, string templateRoot) =>
             DeriveKey(template, templateRoot, out _, out _);
 
-        /// <summary>The file name the emitted <c>#line</c> directives carry: the template's path relative to
-        /// <c>HeddleTemplateRoot</c>, falling back to its bare filename when it is outside the root — i.e. the
-        /// path-derived key with explicit <c>Key</c>/<c>Name</c> metadata deliberately ignored. Identical to the
-        /// registration key whenever no explicit metadata is set, which is every existing snapshot and golden.</summary>
-        private static string LineDirectiveFile(TemplateFile template, string templateRoot) =>
-            TemplateKey.TryMakeRelative(template.Text.Path, templateRoot, out var rooted)
-                ? rooted
-                : System.IO.Path.GetFileName(template.Text.Path);
+        /// <summary>The file name the emitted <c>#line</c> directives carry. Always the template's <b>file</b>, never
+        /// its registration key: for a path-derived key the two strings are identical, but an explicit <c>Key</c> names
+        /// a registration and not a file, and emitting it pointed every mapped span at a path that does not exist.
+        /// <para>Q8.27, the absolute-vs-relative form. <b>Outside the root</b> there is no anchor to be relative to, so
+        /// the template's own <see cref="AdditionalText.Path"/> is emitted verbatim — absolute in a real build, which is
+        /// what a <c>#line</c> is for. This replaces the old bare-filename fallback, which named no openable file and
+        /// collided across directories. <b>Inside the root</b> the form stays root-relative and is <em>labelled</em> as
+        /// such by <see cref="Emit.TemplateEmitter"/>'s header line: an absolute path here would be correct for one
+        /// machine and would put that machine's layout into every checked-in generated-source golden and Verify
+        /// snapshot, making the pinned artifacts unreproducible. Relative-and-marked is the honest trade; the marker is
+        /// what lets a reader tell which of the two forms a given <c>#line</c> is in.</para></summary>
+        private static string LineDirectiveFile(TemplateFile template, string templateRoot, out bool rootRelative)
+        {
+            if (TemplateKey.TryMakeRelative(template.Text.Path, templateRoot, out var rooted))
+            {
+                rootRelative = true;
+                return rooted;
+            }
+
+            rootRelative = false;
+            return template.Text.Path;
+        }
 
         /// <summary>The rejection text for an explicit key metadata value the shared normalizer refuses. Stated once
         /// so the <c>Key</c> and <c>Name</c> arms cannot describe the same rule differently.</summary>
         private const string KeyShapeRule =
             "keys must be non-empty relative paths without '.' or '..' segments";
 
-        /// <summary>The key↔path derivation, on the shared <see cref="TemplateKey"/> rules (phase 5 D2). Explicit key
-        /// metadata wins; otherwise the path is made relative to <c>HeddleTemplateRoot</c>. A template outside the
-        /// root keeps the historical flattened-filename key — removing it would un-precompile projects that rely on
-        /// flat lookups — but sets <paramref name="outOfRoot"/> so the caller can report HED7018 (D3); the silent
-        /// directory-drop is the bug (05 F3).
-        /// <para>Q8.12: "explicit key metadata" means <c>Key</c> <b>or</b> <c>Name</c> — one setting, two spellings.
-        /// Empty is absent, not malformed, because MSBuild materializes unset metadata as <c>""</c> on every item. A
-        /// value the normalizer refuses, and two values that name two different keys, both return <c>null</c> with
-        /// <paramref name="fault"/> set: the caller reports HED7004 rather than guessing, since choosing between two
-        /// equally explicit requests would be the silent-degrade failure mode this program exists to remove.</para>
+        /// <summary>The key↔path derivation, on the shared <see cref="TemplateKey"/> rules (phase 5 D2). Explicit
+        /// <c>Key</c> metadata wins; otherwise the path is made relative to <c>HeddleTemplateRoot</c>. A template
+        /// outside the root keeps the historical flattened-filename key — removing it would un-precompile projects
+        /// that rely on flat lookups — but sets <paramref name="outOfRoot"/> so the caller can report HED7018 (D3);
+        /// the silent directory-drop is the bug (05 F3).
+        /// <para>Q8.25: <c>Name</c> is deliberately <b>not</b> consulted here. Q8.12's first implementation treated it
+        /// as a second spelling of <c>Key</c>, which made a named template unreachable by its path; the correction is
+        /// that a name is an <em>additional</em> import spelling (see <see cref="DeriveName"/>) and the key derivation
+        /// is exactly what it was before <c>Name</c> was wired. Empty <c>Key</c> is absent, not malformed, because
+        /// MSBuild materializes unset metadata as <c>""</c> on every item; a value the normalizer refuses returns
+        /// <c>null</c> with <paramref name="fault"/> set and the caller reports HED7004.</para>
         /// </summary>
         private static string DeriveKey(TemplateFile template, string templateRoot, out bool outOfRoot,
             out string fault)
@@ -571,33 +678,15 @@ namespace Heddle.Generator
             outOfRoot = false;
             fault = null;
 
-            var hasKey = !string.IsNullOrEmpty(template.KeyMetadata);
-            var hasName = !string.IsNullOrEmpty(template.NameMetadata);
-            if (hasKey || hasName)
+            if (!string.IsNullOrEmpty(template.KeyMetadata))
             {
-                string fromKey = null;
-                if (hasKey && !TemplateKey.TryNormalize(template.KeyMetadata, out fromKey))
+                if (!TemplateKey.TryNormalize(template.KeyMetadata, out var fromKey))
                 {
                     fault = "Key=\"" + template.KeyMetadata + "\" is not a usable key — " + KeyShapeRule;
                     return null;
                 }
 
-                string fromName = null;
-                if (hasName && !TemplateKey.TryNormalize(template.NameMetadata, out fromName))
-                {
-                    fault = "Name=\"" + template.NameMetadata + "\" is not a usable key — " + KeyShapeRule;
-                    return null;
-                }
-
-                if (hasKey && hasName && !string.Equals(fromKey, fromName, StringComparison.Ordinal))
-                {
-                    fault = "Key=\"" + template.KeyMetadata + "\" and Name=\"" + template.NameMetadata +
-                        "\" are two spellings of one setting but name two different keys ('" + fromKey + "' and '" +
-                        fromName + "'). Set only one, or make them agree.";
-                    return null;
-                }
-
-                return fromKey ?? fromName;
+                return fromKey;
             }
 
             if (TemplateKey.TryMakeRelative(template.Text.Path, templateRoot, out var rooted))
@@ -607,6 +696,25 @@ namespace Heddle.Generator
             return TemplateKey.TryNormalize(System.IO.Path.GetFileName(template.Text.Path), out var flat)
                 ? flat
                 : null;
+        }
+
+        /// <summary>The optional registered <b>name</b> (Q8.25): the additional spelling the <c>@&lt;&lt;</c> import
+        /// map answers to, normalized by the same <see cref="TemplateKey"/> rule as a key because it lives in the same
+        /// import-path namespace. <c>null</c> when the item declares no <c>Name</c> (empty is absent, as for
+        /// <c>Key</c>) or when the value is unusable, in which case <paramref name="fault"/> is set and the caller
+        /// reports HED7004 — against the name only. It never affects the registration key, the manifest row, the
+        /// generated entry-class identifier, or the emitted <c>#line</c> file.</summary>
+        private static string DeriveName(TemplateFile template, out string fault)
+        {
+            fault = null;
+            if (string.IsNullOrEmpty(template.NameMetadata))
+                return null;
+
+            if (TemplateKey.TryNormalize(template.NameMetadata, out var name))
+                return name;
+
+            fault = "Name=\"" + template.NameMetadata + "\" is not a usable import name — " + KeyShapeRule;
+            return null;
         }
 
         /// <summary>The manifest's <c>engineVersion</c> (phase 5 D6). Primary source: the referenced <c>Heddle</c>

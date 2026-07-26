@@ -4,7 +4,7 @@ The consolidated Q&A register for the seven phases. Numbering is `Q<phase>.<n>`,
 phase plan's own Open-questions section.
 
 **Pre-authoring questions (Q0.1–Q6.3): all resolved (user, 2026-07-25) and folded into the phases.**
-**Post-implementation questions (Q7.1–Q8.27):** opened after the phases landed, by the two
+**Post-implementation questions (Q7.1–Q8.31):** opened after the phases landed, by the two
 post-implementation reviews, the six phase audits, and the phase-8 docs sweep authored from
 the Q8.7 ruling — see
 [the section below](#post-implementation-questions-opened-2026-07-26). **Q7.4 and Q8.1–Q8.5 are
@@ -506,16 +506,28 @@ question, the ruling or default, and where it is folded.
 
   Scope: `Name` sets the template's registration key, overriding the path-derived key; it must interact correctly with `TemplateKey` normalisation, the duplicate-key check (`HED7002`), the case-only-twin check (`HED7003`), and the out-of-root warning (`HED7018`). A malformed or colliding `Name` needs a diagnostic — claim `HED7028` if a new one is required rather than reusing `HED7004`.
 
-  **Implemented (2026-07-26).** `Name` is a **second spelling of `Key`** — one setting, so it shares every
+  **Implemented (2026-07-26), then CORRECTED the same day (Q8.25). Both landings are recorded, because the
+  first one shipped and was wrong.**
+
+  *Landing 1 — superseded.* `Name` was a **second spelling of `Key`** — one setting, so it shared every
   downstream rule instead of acquiring parallel ones: the same `TemplateKey` normalisation, the same `HED7002`
-  and `HED7003` participation, and the same `HED7018` suppression, now stated as a deliberate decision rather
-  than inherited by accident (that warning's premise is that the flattened key was *not* asked for, and an
-  explicit key asks for exactly the key it names). **`HED7028` was not claimed.** The fault class `HED7004`
-  already names is "this item's explicit key metadata is unusable", and both new faults are instances of it —
-  a value the normalizer refuses, and two spellings of one setting naming two different keys — at the same
-  severity, the same position, with the same remediation and one call site. Its message was generalised to
-  carry the offending metadatum and the reason, so a further spelling or reason needs no further descriptor.
-  `HED7028` remains unclaimed and free.
+  and `HED7003` participation, the same `HED7018` suppression (stated as deliberate: "that warning's premise is
+  that the flattened key was *not* asked for, and an explicit key asks for exactly the key it names"), and a
+  `Key`+`Name` disagreement reported as `HED7004`. `HED7028` was declined on the reasoning that both new faults
+  were instances of `HED7004`'s "this item's explicit key metadata is unusable" class. **That reading was an
+  override**, and it silently broke every `@<<` that named a file by its path on a named item — the defect
+  Q8.25 opened and ruled on.
+
+  *Landing 2 — what shipped.* `Name` is **additive**: the template keeps its path-derived (or explicit `Key`)
+  key **and** gains the name; both spellings resolve. Every rule above was re-derived rather than adjusted, and
+  four of them changed. `HED7018` is suppressed by `Key` **only** (an additive name leaves the flattened key in
+  place, so the warning is still about something real). `HED7002`/`HED7003` are over keys **only** (a name
+  registers no manifest row and is never a registry lookup, so it can neither duplicate nor case-shadow a key);
+  an unusable name — a value the normalizer refuses, or a spelling another template already answers to — is
+  still `HED7004`, but against the name alone and without un-precompiling the template. `Key`+`Name` is **not a
+  conflict**: it is two names for one template, which is the point, so that `HED7004` arm is gone. `HED7028`
+  **is** claimed, for the new advisory. `HED7004`'s generalised message stays — it is still carrying two reasons.
+  The full re-derivation table is in the [phase 5 record](phase-5-pipeline-config.md).
 
   **The larger defect this uncovered.** `Name` was not merely unread: **none** of the three metadata worked
   from a real project. `Heddle.Generator.targets` restated each as `<Key>%(HeddleTemplate.Key)</Key>` inside
@@ -529,13 +541,19 @@ question, the ruling or default, and where it is folded.
   class is *named by* its `Name` metadatum and called by name, so a metadatum that stops flowing fails that
   build in CI.
 
-  **The sample's golden changed, by exactly one line.** `Name="BuildReport"` is now correct, so the key is
-  `BuildReport.heddle`, the entry class is `Heddle.Generated.BuildReport`, and `Program.cs` plus the README
-  call it. A second change was needed to keep that golden honest: the emitted `#line` directives named the
-  *key*, indistinguishable from the file path only while every key is path-derived — with `Name` set they
-  pointed at `BuildReport.heddle`, a path that exists nowhere. The `#line` file is now the template's
-  root-relative path, byte-identical wherever no explicit key is set, which is why no snapshot moved. Import-map
-  fallout registered as Q8.25; the `#line` path form as Q8.27.
+  **The sample, twice.** Landing 1 made `Name="BuildReport"` rename the key, the entry class and the
+  `Program.cs` call, changing the golden by one line. Landing 2 makes the class name stop moving, so that gate
+  evaporated and was replaced with a real use of the feature: `templates/_banner.heddle`
+  (`Precompile="false"`, `Name="Banner"`) imported as `@<<{{Banner}}`, which fails the sample's build with
+  `HED7011` if the metadata stops flowing from a real csproj. The entry class is back to `Templates_Report`, the
+  rendered output is byte-identical (the import line carries `@\` so it emits nothing), and only the
+  generated-source golden moves.
+
+  **The `#line` separation stands.** The emitted `#line` directives named the *key*, indistinguishable from the
+  file path only while every key is path-derived; landing 1 exposed that through `Name`, and with `Name`
+  additive only `Key` can still reach it — the separation is the same separation and is still needed. The
+  `#line` path *form* is Q8.27, ruled and landed. Import-map fallout was registered as Q8.25 and is the
+  correction above.
 
 ## Opened by the Q8.1 landing (2026-07-26)
 
@@ -615,6 +633,35 @@ question, the ruling or default, and where it is folded.
   Note this also changes the `HED7018` interaction recorded under Q8.12: an explicit `Name` no longer
   replaces the key, so it cannot suppress an out-of-root warning about the path-derived key. Only an
   explicit `Key` does. Re-derive that rather than assuming it carries over.
+
+  **Landed (2026-07-26).** The resolution model is **two passes over the import map, keys first, names
+  second** — so additivity is structural rather than conditional: a registered name cannot displace a key
+  spelling, because every key is already in the map when the first name is considered. A name that finds its
+  spelling taken (by another template's key, or by another name) is dropped and reported at `HED7004` against
+  the name; the template's own key is unaffected, because a broken addition must cost the addition and nothing
+  more. A name equal to the template's own key adds nothing and advises nothing.
+
+  `HED7028` — *"Named Heddle template imported by key rather than by its registered name"*, **Warning** —
+  fires in `ParseAndReport`, at the importer's `@<<{{…}}` block, once per distinct import spelling, when the
+  import **resolved** through the key of a template that also has a registered name. It is not gated on the
+  template being otherwise clean: the import resolved, so the advice is valid regardless. It stays silent for
+  an unnamed template (every pre-existing project), for an import that already uses the name, and for a name
+  that could not be registered. Claiming a new id was right here where landing 1 was right to decline one:
+  every other `HED70xx` key diagnostic reports something *unusable*, and this reports something that *works*.
+
+  **The re-derivations.** `HED7018`: only `Key` suppresses — verified with a three-arm test (bare warns,
+  `Key` silences, `Name` still warns and names the flattened key that really registered), not assumed.
+  `HED7002`/`HED7003`: keys only, which is the population they had before `Name` was wired; the alias namespace
+  has its own collision rule at `HED7004`. `Key`+`Name`: **not a conflict** — landing 1's "no defensible
+  precedence between two equally explicit requests" dissolves, because additive `Name` and `Key` are not
+  competing for one slot. `#line`: the key↔file separation stands (only `Key` can now diverge from the file);
+  the *form* is Q8.27. The sample: entry class back to `Templates_Report`, `Name` demonstrated by a named
+  import-only partial instead of by a rename. The `breaking-windows.md` disposition is corrected in place — its
+  rename clause now applies to `Key` alone, and `Name` moves nothing.
+
+  The gate is `TemplateNameMetadataTests` (33 cases, up from 15), whose fixture doc states plainly that the
+  first implementation was an override and was corrected. The correction itself landed TDD: a test importing a
+  named template by path, red with exactly `HED7011`, before any fix.
 - **Q8.26 — Warning regressions are not gated.** `Q8.11` removed the eight `CS8002` warnings and the
   build has no `TreatWarningsAsErrors`, so nothing prevents them — or any other warning class — from
   coming back. The signing half is now held by
@@ -635,3 +682,63 @@ question, the ruling or default, and where it is folded.
   where a single absolute anchor cannot express the mapping — keep it and **mark the relativity
   explicitly** so a reader knows which form a given `#line` is in. Explicitly not a mandate to convert
   everything: the instruction is to be reasonable and label, not to fixate on rewriting.
+
+  **Landed (2026-07-26): absolute where it costs nothing, relative-and-labelled where it does.**
+
+  *Made absolute.* **Outside `HeddleTemplateRoot`** no anchor exists, and the old fallback was the template's
+  *bare filename* — a name no compiler can open and one that collides across directories. It is now the
+  template's own `AdditionalText.Path`, which is absolute in any real build. Snapshot cost: zero
+  machine-specific text, because the five affected `Verify` snapshots use synthetic relative paths
+  (`views/version.heddle`), so they simply gained the `views/` prefix they should always have had.
+
+  *Kept relative, and marked.* **Under the root** the form stays root-relative. Absolute here was weighed and
+  rejected on a real cost: `HeddleTemplateRoot` is an absolute machine path, so an absolute `#line` would put
+  this machine's layout into `samples/codegen-t4-successor/golden/generated-source.cs.txt` and into any rooted
+  snapshot, and the pinned artifacts would stop being comparable at all. Scrubbing the paths back out would pin
+  a placeholder instead of the value, which is worse than pinning a relative path honestly. So the relativity
+  is **marked**: every generated file now carries, directly under `// <auto-generated/>`, either
+  `// #line file names below are RELATIVE to HeddleTemplateRoot.` or
+  `// #line file names below are the template's own path (no HeddleTemplateRoot anchor applies).` A reader can
+  now tell which form a given `#line` is in without knowing the project's configuration — which is the whole of
+  what the ruling asked for. Cost: one line per generated template file (five snapshots plus the sample
+  golden; the three manifest-only snapshots carry no `#line` and no header).
+
+  **Not converted:** everything else. `#line` is emitted from exactly one place, both forms are now correct for
+  their case, and no third form was introduced.
+
+## Opened by the Q8.25 / Q8.27 landing (2026-07-26)
+
+- **Q8.28 — A `Precompile="false"` item's key/name metadata faults are never reported.** The
+  diagnostics loop `continue`s on `!template.Precompile` *before* key derivation, so a malformed
+  `Key`, a malformed `Name` or an already-taken `Name` on an import-only item produces **no
+  diagnostic at all** — the name silently fails to register and every `@<<` that used it draws
+  `HED7011` somewhere else, pointing at the importer rather than at the item that is actually
+  wrong. This is pre-existing for `Key` (and deliberate there: an opted-out item registers nothing,
+  so an unusable registration key costs nothing), but Q8.25 changes the calculus for `Name`: an
+  import-only partial under a friendly name is the *primary* use case for the pair, and it is
+  exactly the case whose faults are unreportable. The fix is small — derive and report the name for
+  every readable item, before the `Precompile` gate — but it is a new diagnostic population on a
+  previously silent path, so it is a ruling and not a tidy-up.
+- **Q8.29 — `HED7028` cannot fire for an import-only *named* template, which is the case it is most
+  for.** The advisory is raised from `ParseAndReport`, which only runs for items that reach the
+  emit loop; the *importer* is what raises it, so a named `Precompile="false"` partial imported by
+  path **is** advised (the importer is precompiled). But a named partial imported by path *from
+  another* `Precompile="false"` partial is not, because that importer never parses. Whether the
+  advisory should reach imports inside opted-out files is the same question as Q8.28 from the other
+  end, and the answer probably has to be the same one.
+- **Q8.30 — Nothing pins that a registered `Name` is *not* a runtime registry key.** Q8.25 scopes
+  `Name` to `@<<` import resolution on the user's words ("an optional additional name register for
+  import to use"). The generator honours that — the manifest carries only keys — and
+  `NameDoesNotChangeTheRegistrationKeyOrTheEntryClass` pins the manifest side. What is **not**
+  pinned is the runtime: no test asserts that `TemplateOptions`/`PrecompiledTemplates` lookup by a
+  registered name *misses*. If a future change registers aliases in the manifest "for symmetry",
+  nothing reddens, and the two surfaces would silently disagree about what a name is. A one-line
+  negative assertion would close it; whether the runtime *should* answer to names at all is the
+  larger question underneath, and is a ruling.
+- **Q8.31 — The `#line` relativity marker is prose in generated code, not a machine-readable
+  form.** Q8.27's marking is a comment line. That is exactly what the ruling asked for (a reader
+  can tell which form a `#line` is in) and it is what the snapshots pin, but a *tool* — a stack-trace
+  symbolizer, an IDE, the LSP — cannot act on a comment. If any consumer ever needs the anchor
+  programmatically, the honest carrier is the manifest (which already records per-template
+  metadata), not a comment. Recorded so the choice is visible rather than discovered later; no
+  consumer needs it today.

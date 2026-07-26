@@ -69,7 +69,7 @@ namespace Heddle.Tests
                 "HED7001", "HED7002", "HED7003", "HED7004", "HED7005", "HED7006", "HED7007",
                 "HED7008", "HED7009", "HED7010", "HED7011", "HED7012", "HED7013", "HED7014",
                 "HED7015", "HED7016", "HED7017", "HED7018", "HED7019", "HED7020", "HED7021", "HED7022",
-                "HED7023", "HED7024", "HED7025",
+                "HED7023", "HED7024", "HED7025", "HED7028",
                 "HED7101", "HED7102", "HED7103"
             };
 

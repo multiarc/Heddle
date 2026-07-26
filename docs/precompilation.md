@@ -32,13 +32,14 @@ package stays runtime‑only and unrestricted):
 ```
 
 By default every `**/*.heddle` file in the project (excluding `bin`/`obj`) is picked up as a
-template. Opt individual files out, or add extra ones, with the `HeddleTemplate` item. Two item
+template. Opt individual files out, or add extra ones, with the `HeddleTemplate` item. Three item
 metadata are read:
 
 | Metadata | Effect |
 | --- | --- |
-| `Key` / `Name` | Two spellings of one setting: the item's explicit registration key, overriding the path‑derived one. It sets both the lookup key **and** the generated class name (via `SanitizeName`), and it is the remedy for a template outside `HeddleTemplateRoot` — an explicit key suppresses `HED7018`, because the flattened key is then what you asked for. Both values normalize through the shared key rule and both take part in `HED7002`/`HED7003`. Setting *both* is fine only when they normalize to the same key; two different keys is `HED7004`, as is either value the normalizer refuses. |
-| `Precompile` | `false` opts the file out of pre‑compilation: no entry point, no manifest entry — but it **stays available to `@<<` imports**, which `Remove` cannot do. Absent or any other value means "precompile". |
+| `Key` | The item's explicit **registration key**, replacing the path‑derived one. It sets both the lookup key **and** the generated class name (via `SanitizeName`), and it is the remedy for a template outside `HeddleTemplateRoot` — an explicit key suppresses `HED7018`, because the flattened key is then what you asked for. It normalizes through the shared key rule and takes part in `HED7002`/`HED7003`. A value the normalizer refuses is `HED7004`. |
+| `Name` | An **additional** name the `@<<` import map answers to — *not* a rename. The template keeps its key (path‑derived, or `Key`) **and** answers to the name, so both spellings resolve and nothing that resolved before stops resolving. It does not touch the key, the manifest row, the generated class name, the `#line` file or `HED7018`, and it is never a registry lookup, so it takes no part in `HED7002`/`HED7003`. Setting `Key` *and* `Name` is two names for one template, not a conflict. Importing a named template by its key resolves and warns (`HED7028`); a name the normalizer refuses, or one another template already answers to, is `HED7004` against the name — the key is unaffected. |
+| `Precompile` | `false` opts the file out of pre‑compilation: no entry point, no manifest entry — but it **stays available to `@<<` imports**, which `Remove` cannot do. Absent or any other value means "precompile". This pairs naturally with `Name`: an import‑only partial under a friendly name. |
 
 ```xml
 <ItemGroup>
@@ -50,7 +51,8 @@ metadata are read:
   <HeddleTemplate Remove="Templates/scratch.heddle" />
   <!-- override the key (this also renames the generated class to `Home`) -->
   <HeddleTemplate Update="Templates/Home.heddle" Key="home" />
-  <!-- `Name` is the same setting under a second spelling -->
+  <!-- ADD an import name: `@<<{{BuildReport}}` and `@<<{{Templates/report.heddle}}` both resolve.
+       The key, and so the generated class, are unchanged. -->
   <HeddleTemplate Update="Templates/report.heddle" Name="BuildReport" />
 </ItemGroup>
 <PropertyGroup>
@@ -280,6 +282,8 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 | `HED7023` | A model/prop/slot type name is ambiguous — several types answer to it and the `@using` imports do not settle it. The runtime raises the same ambiguity, so the build errors rather than binding one candidate. |
 | `HED7024` | A call-site fill overrides a region the definition declares private. The runtime raises `HED5019` for the same template, so the build reports the matching error at the override's position. |
 | `HED7025` | A function call the shared overload ranker proved illegal — ambiguous under Heddle's flat Pareto rank (`HED1013`), or no applicable overload (`HED1012`). Fires only when every argument estimate is typed: an argument the generator cannot describe proves nothing about the runtime and still degrades silently. |
+
+| `HED7028` | An `@<<` import names a template by its registration key while the template also carries a `Name`. Both spellings resolve — `Name` adds an import name, it never replaces the key — so this is a warning recommending the name-first spelling for a named template. |
 
 Member/type errors in milestone 1 arrive as C# errors remapped to the template span via
 `#line`; milestone 2 replaces the covered ones with native `HED7007`/`HED7008`.

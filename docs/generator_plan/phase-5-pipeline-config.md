@@ -832,17 +832,42 @@ version that advertises a break the metadata does not enforce is a lie in one di
 enforces one the version does not declare is a lie in the other. Full rulings, evidence and mutation
 results in the [register](open-questions.md); what follows is what changed here.
 
-### Q8.12 — `Name` restored as the optional custom key mapping, and the metadata made to work at all
+### Q8.12 — `Name` restored as an optional additional import name, and the metadata made to work at all
 
-`Name` is a **second spelling of `Key`** — one setting, one set of downstream rules. Phase 5 had *removed*
-the metadata on a review record reading "`Name` removed per the recommendation"; removal was never the ask
-(the ask was to wire `Precompile`), and this plan's own record carried the overreach. The record is
-corrected in the register rather than edited away.
+**This section records two landings, because the first was wrong.** The history is kept legible rather than
+rewritten, the same way the twice-reshaped quarantine fixture is.
 
-**`HED7028` was not claimed.** A malformed value and a `Key`/`Name` pair naming two different keys are both
-instances of the fault class `HED7004` already names — "this item's explicit key metadata is unusable" —
-with the same severity, position, remediation and call site. `HED7004`'s message is generalised to carry the
-offending metadatum and the reason; `HED7028` remains free.
+**Landing 1 (superseded).** `Name` shipped as a **second spelling of `Key`** — one setting, one set of
+downstream rules: the same normalisation, the same `HED7002`/`HED7003` participation, the same `HED7018`
+suppression, and a `Key`+`Name` disagreement reported as `HED7004`. That is an **override**. It replaced the
+path-derived key, so `@<<{{ templates/report.heddle }}` stopped resolving on a named item and the importer
+drew `HED7011` — a silent break of every existing import that named a file. Phase 5 had *removed* the
+metadata on a review record reading "`Name` removed per the recommendation"; removal was never the ask (the
+ask was to wire `Precompile`), and this plan's own record carried that overreach. Landing 1 then carried a
+second one.
+
+**Landing 2 (Q8.25's correction, shipped).** `Name` is **additive**. A template keeps its path-derived (or
+explicit `Key`) registration key **and** gains the registered name; both spellings resolve, and nothing that
+resolved before stops resolving. Concretely:
+
+| Concern | `Key` | `Name` |
+| --- | --- | --- |
+| Registration key / manifest row / entry class / `#line` file | sets it | **untouched** |
+| `@<<` import resolution | resolves | resolves, **in addition to** the key |
+| `HED7002` duplicate, `HED7003` case-only twin | participates | **does not** — a name is not a key, registers no manifest row and is never a registry lookup |
+| `HED7018` out-of-root | suppresses | **does not** — the flattened key still exists and is still unasked-for |
+| Both set together | key is `Key` | name is `Name` — **two names for one template, not a conflict** |
+| Unusable value | `HED7004`, item un-precompiled | `HED7004`, **key unaffected**: a broken addition costs the addition |
+
+The import map is built keys-first, names-second, which is what makes the additivity structural rather than
+conditional: a registered name can never displace a real key spelling.
+
+**`HED7028` is claimed** (landing 2 reversed landing 1 here too). Landing 1 declined it because both of its
+new faults were instances of `HED7004`'s "this item's explicit key metadata is unusable" — true, and that
+generalised `HED7004` message stays. Landing 2's diagnostic is not of that class: it fires where an import
+**resolved**, through the key spelling of a template that also has a name, and advises the name-first
+spelling. Nothing is unusable, the severity is Warning rather than Error, and the position is the importer's
+`@<<{{…}}` block rather than the item — a genuinely new fault class, so a new descriptor.
 
 **The defect underneath.** Wiring the feature revealed that **none** of the three metadata worked from a real
 project. `Heddle.Generator.targets` restated each as `<Key>%(HeddleTemplate.Key)</Key>` inside an
@@ -852,12 +877,39 @@ cross-item `%()` reference evaluates to the empty string — so each element *ov
 injects `build_metadata.*` directly. That is the same shape as this program's central finding one level down —
 a mapping that reads as fixed and is not, with the only coverage on the side of the seam that cannot fail.
 
-**Fallout, both handled here rather than deferred.** (a) `samples/codegen-t4-successor`'s
-`Name="BuildReport"` becomes correct, so its key, generated class and `Program.cs` call change and its golden
-changes by exactly that one line. (b) The emitted `#line` directives named the *registration key*, which is
-indistinguishable from the file path only while every key is path-derived; with `Name` set they pointed at a
-path that exists nowhere. `#line` now names the template's root-relative path — byte-identical wherever no
-explicit key is set, which is why no snapshot moved.
+**Fallout, all handled here rather than deferred.** (a) The emitted `#line` directives named the
+*registration key*, which is indistinguishable from the file path only while every key is path-derived; an
+explicit key pointed them at a path that exists nowhere. `#line` now names the template's own file. Landing 1
+found this through `Name`; landing 2 made `Name` additive, so only `Key` can reach it now — the separation is
+the same separation and is still needed. (b) `samples/codegen-t4-successor` is where the metadata is gated
+behaviourally, and the gate had to move with the semantics. Landing 1 used `Name="BuildReport"` to rename the
+generated entry class, which `Program.cs` then called by name; with `Name` additive the class name no longer
+moves, so that gate evaporated. It is replaced by a real use of the feature: an import-only partial
+(`templates/_banner.heddle`, `Precompile="false"`) carrying `Name="Banner"`, imported as `@<<{{Banner}}`. A
+metadatum that stops flowing from a real csproj now fails the sample's build with `HED7011`. The entry class
+reverts to `Templates_Report` and the rendered output is byte-identical; only the generated-source golden
+moves. (c) The `#line` path *form* is Q8.27, below.
+
+### Q8.27 — the `#line` path form: absolute where it costs nothing, relative-and-labelled where it does
+
+The ruling prefers absolute paths and asks that a relative form be **marked** rather than churned. Both halves
+landed:
+
+- **Outside `HeddleTemplateRoot` there is no anchor**, and the old fallback was the template's *bare filename* —
+  a name the compiler cannot open and that collides across directories. It is now the template's own
+  `AdditionalText.Path`, which in a real build is absolute. This is the "absolute where it costs nothing" half:
+  the five affected `Verify` snapshots use synthetic relative paths (`views/version.heddle`), so accepting them
+  introduced no machine-specific text.
+- **Under the root the form stays root-relative**, because an absolute path there is correct for exactly one
+  machine and would bake that machine's layout into `samples/codegen-t4-successor`'s generated-source golden
+  and into any rooted snapshot — the pinned artifacts would stop being comparable. Instead every generated file
+  now **states which form its `#line` names are in**, as a header comment directly under `// <auto-generated/>`:
+  `RELATIVE to HeddleTemplateRoot`, or `the template's own path`. That is the flag the ruling asked for, and it
+  costs one line per generated file with no machine-dependence.
+
+Cost paid: five of the eight generator snapshots moved (header line plus the `views/` prefix on the `#line`
+file), and the sample's generated-source golden gained the header line. Three snapshots emit only the manifest,
+which carries no `#line` and no header.
 
 ### Q8.2 — `MinSupportedSchemaVersion` 1 → 4, and a manifest fixture that is genuinely old
 

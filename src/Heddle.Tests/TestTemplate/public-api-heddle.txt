@@ -129,6 +129,7 @@ TYPE Heddle.Data.HeddleDiagnosticIds
   FIELD System.String BuildIneligibleExportContainer
   FIELD System.String BuildInvalidKeyMetadata
   FIELD System.String BuildMalformedExtensionParameter
+  FIELD System.String BuildNamedTemplateImportedByKey
   FIELD System.String BuildOptionParseError
   FIELD System.String BuildRegionNotPublic
   FIELD System.String BuildSurrogatePiece

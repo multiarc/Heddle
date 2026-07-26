@@ -14,13 +14,19 @@
   <!-- Per-item metadata surfaced as build_metadata.AdditionalFiles.*.
        `Precompile` is the per-item opt-out (phase 5, Q5.1): the file stays in the @<< import map, but emits no entry
        point and no manifest entry.
-       `Key` and `Name` are two spellings of ONE setting — the item's explicit registration key, overriding the
-       path-derived one (Q8.12; phase 5 deleted `Name` on an overreaching record and it is restored here as the real
-       feature it was always meant to be). Both go through TemplateKey normalisation and both participate in HED7002 /
-       HED7003 / HED7004; either one suppresses HED7018, because an explicit key makes the flattened out-of-root key
-       intentional. Every name declared here is mapped onto AdditionalFiles by Heddle.Generator.targets and read by
-       the generator; the props↔targets↔code set-equality gate in PipelineContractTests is what makes a
-       declared-but-never-wired metadata name — exactly what `Name` was — a red test instead of dead XML. -->
+       `Key` is the item's explicit REGISTRATION key, replacing the path-derived one: it names the manifest row, the
+       generated entry class and the runtime registry lookup, participates in HED7002 / HED7003 / HED7004, and
+       suppresses HED7018 (an explicit key makes the flattened out-of-root key intentional).
+       `Name` is an ADDITIONAL import name, not an override (Q8.12 restored the metadatum phase 5 deleted on an
+       overreaching record; Q8.25 corrected its semantics after the first implementation shipped it as a second
+       spelling of `Key`, which silently broke every @<< that named a file by its path). A named template keeps its
+       key AND answers to the name, so both spellings resolve; importing one by its key draws the HED7028 advisory.
+       A `Name` that the normaliser refuses, or that another template already answers to, is HED7004 against the name
+       only — the key is unaffected. It does NOT touch the key, the manifest, the entry class or the #line file, and
+       it does not suppress HED7018.
+       Every name declared here is mapped onto AdditionalFiles by Heddle.Generator.targets and read by the generator;
+       the props↔targets↔code set-equality gate in PipelineContractTests is what makes a declared-but-never-wired
+       metadata name — exactly what `Name` was — a red test instead of dead XML. -->
   <ItemGroup>
     <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Key" />
     <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Name" />

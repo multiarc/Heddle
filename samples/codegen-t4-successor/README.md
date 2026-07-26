@@ -11,8 +11,16 @@ dotnet run --project samples/codegen-t4-successor
 ```
 
 `Heddle.Generator` is referenced as an **analyzer** (`ReferenceOutputAssembly="false"`) — a build-time-only tool.
-It turns the template into `Heddle.Generated.BuildReport` (emitted under `generated/` via
+It turns the template into `Heddle.Generated.Templates_Report` (emitted under `generated/` via
 `EmitCompilerGeneratedFiles`), which `Program.cs` invokes to render the report.
+
+It also demonstrates the two per-item `<HeddleTemplate>` metadata that only work end to end from a real project.
+`templates/_banner.heddle` carries `Precompile="false"` (import-only: no entry point, no manifest row) and
+`Name="Banner"`, an **additional** import name — the partial keeps its path-derived key *and* answers to `Banner`,
+so `report.heddle`'s `@<<{{Banner}}` and `@<<{{templates/_banner.heddle}}` both resolve. `Name` is not a rename:
+the generated entry class is still `Templates_Report`. This sample is the **behavioural gate** for that wiring —
+the generator's own test suites inject the metadata directly and never cross `Heddle.Generator.targets`, so if a
+metadatum stops flowing from MSBuild again the import stops resolving and this build fails with `HED7011`.
 
 The program also runs a **structural dependency check**: `Heddle.Generator.dll` (the code generator) must not be
 present in the runtime output — it is a build-time dependency only.
@@ -31,7 +39,7 @@ bash samples/tools/compare-golden.sh samples/codegen-t4-successor
 ```
 
 Writes `codegen-output.txt` (the rendered report), `dependency-report.txt` (the structural check result), and
-`generated/BuildReport.g.cs` (the emitted entry-point source, with non-deterministic manifest hashes stripped).
+`generated/Templates_Report.g.cs` (the emitted entry-point source, with non-deterministic manifest hashes stripped).
 
 ## What the golden pins
 

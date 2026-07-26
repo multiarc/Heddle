@@ -309,6 +309,13 @@ namespace Heddle.Data
         /// silently.</summary>
         public const string BuildFunctionCallNotBindable = "HED7025";
 
+        /// <summary>An <c>@&lt;&lt;</c> import names a template by its registration key while that template also
+        /// carries a <c>Name</c> item metadatum. Q8.25: <c>Name</c> is <b>additive</b>, so both spellings resolve and
+        /// the import is not a fault — this is an advisory that the name-first spelling is the preferred one for a
+        /// named template. A genuinely new fault class: every other HED70xx key diagnostic reports something
+        /// unusable, and this one reports something that works.</summary>
+        public const string BuildNamedTemplateImportedByKey = "HED7028";
+
         /// <summary>A precompiled entry failed the run-time gauntlet, so the render degrades to the dynamic
         /// tier (carried on <c>PrecompiledFallbackEvent.DiagnosticId</c>).</summary>
         public const string PrecompiledGauntletFallback = "HED7101";

@@ -74,10 +74,17 @@ namespace Heddle.Generator.Diagnostics
         public static readonly DiagnosticDescriptor DuplicateKey =
             FromCatalog(HeddleDiagnosticIds.BuildDuplicateKey);
 
-        /// <summary>Explicit <c>Key</c> metadata is empty/whitespace, contains a <c>.</c>/<c>..</c> segment, or
-        /// normalizes to an empty string.</summary>
+        /// <summary>Explicit <c>Key</c> or <c>Name</c> metadata the generator cannot use: a value that is
+        /// empty/whitespace, carries a <c>.</c>/<c>..</c> segment, or normalizes to an empty string — or (the
+        /// <c>Name</c> arm, Q8.25) an import name another template already answers to.</summary>
         public static readonly DiagnosticDescriptor InvalidKeyMetadata =
             FromCatalog(HeddleDiagnosticIds.BuildInvalidKeyMetadata);
+
+        /// <summary>Q8.25: an <c>@&lt;&lt;</c> import names a template by its registration key while that template also
+        /// carries a registered <c>Name</c>. Both spellings resolve — <c>Name</c> is additive — so this is advice on
+        /// the preferred spelling, never a break. Reported at the <c>@&lt;&lt;{{…}}</c> block in the importer.</summary>
+        public static readonly DiagnosticDescriptor NamedTemplateImportedByKey =
+            FromCatalog(HeddleDiagnosticIds.BuildNamedTemplateImportedByKey);
 
         /// <summary>A static piece contains an unpaired surrogate; the u8 twin is suppressed for the template
         /// (string output unaffected — D15).</summary>
