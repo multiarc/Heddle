@@ -10,10 +10,10 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The run-tier arm of the projection-equivalence corpus (generator plan phase 6 D12.5). Asserts the shared
-    /// drain against <see cref="DiagnosticCorpusVectors"/>, which the editor suite and the build-tier suite assert
-    /// against too — so the three hosts are compared to one another through one table instead of three sets of
-    /// hand-written expectations that can drift apart in exactly the way this phase exists to stop.
+    /// The run-tier arm of the projection-equivalence corpus. Asserts the shared drain against
+    /// <see cref="DiagnosticCorpusVectors"/>, which the editor suite and the build-tier suite assert against too —
+    /// so the three hosts are compared to one another through one table instead of three sets of hand-written
+    /// expectations that can drift apart.
     /// </summary>
     public class DiagnosticProjectionCorpusTests
     {

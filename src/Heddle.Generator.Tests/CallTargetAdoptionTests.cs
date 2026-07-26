@@ -5,12 +5,11 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Generator plan phase 1 WI7 (D8), build-tier half. The implementation record says the shared classifier
-    /// "fixed a real inversion found during the work: the emitter tried the function tier BEFORE the extension
-    /// binder, so a host-exported function sharing a name with a registered extension bound as a function at build
-    /// and as the extension at run." That fix had no test of its own — <c>CallTargetRulesTests</c> pins the shared
-    /// classifier in isolation and the run tier, but nothing exercised the emitter's dispatch over a real collision.
-    /// This does, over a synthetic compilation so the collision cannot leak into the shared function fixtures.
+    /// The build-tier half of the shared call-target classifier. The emitter once tried the function tier BEFORE
+    /// the extension binder, so a host-exported function sharing a name with a registered extension bound as a
+    /// function at build and as the extension at run. <c>CallTargetRulesTests</c> pins the shared classifier in
+    /// isolation and the run tier, but nothing exercised the emitter's dispatch over a real collision. This does,
+    /// over a synthetic compilation so the collision cannot leak into the shared function fixtures.
     /// </summary>
     public class CallTargetAdoptionTests
     {

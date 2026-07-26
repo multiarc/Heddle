@@ -193,7 +193,7 @@ namespace Heddle.Language.Expressions
 
         /// <summary>
         /// Decodes a <c>def_literal</c> (a prop default) into its pre-conversion boxed CLR value, reusing the
-        /// same literal-decoding routines the expression builder uses (the D2 DRY move). <paramref name="isNull"/>
+        /// same literal-decoding routines the expression builder uses to avoid duplication. <paramref name="isNull"/>
         /// is true for the <c>null</c> literal (the returned value is then <c>null</c>). Emits the default's
         /// editor tokens through <paramref name="parseContext"/>.
         /// </summary>
@@ -244,8 +244,8 @@ namespace Heddle.Language.Expressions
         }
 
         /// <summary>
-        /// Applies the lexer's sign prefix to a decoded literal. Internal (not private) because it is one third of
-        /// the decoder half of the <c>LiteralFormatter</c> round-trip contract the phase 4 D2 test pins.
+        /// Applies the lexer's sign prefix to a decoded literal. Internal (not private) because it is part of
+        /// the <c>LiteralFormatter</c> round-trip contract verified by tests.
         /// </summary>
         internal static object Negate(object value)
         {

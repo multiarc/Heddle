@@ -6,10 +6,10 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 dynamic-tier family (generated-code.md example 4, body model-typing rule): a model-less template's
-    /// root body is emitted on the C# <c>dynamic</c> tier (<c>((dynamic)m).A?.B</c>) while the runtime backend types
-    /// the same root concretely from the passed model. The C# runtime binder resolves the same members against the
-    /// same runtime types, so rendered bytes are identical — the differential is the gate.
+    /// The dynamic-tier family: a model-less template's root body is emitted on the C# <c>dynamic</c> tier
+    /// (<c>((dynamic)m).A?.B</c>) while the runtime backend types the same root concretely from the passed model.
+    /// The C# runtime binder resolves the same members against the same runtime types, so rendered bytes are
+    /// identical — the differential is the gate.
     /// </summary>
     public class DynamicTierTests
     {

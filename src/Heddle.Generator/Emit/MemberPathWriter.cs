@@ -5,11 +5,11 @@ using Heddle.Language.Members;
 namespace Heddle.Generator.Emit
 {
     /// <summary>
-    /// Emits a member-path accessor as C# reproducing the runtime member tier hop by hop (phase 7 generated-code
-    /// protocol rule 6; <c>ModelParameter.BuildNullSafePropertyChain</c>): a hop off a value-typed receiver accesses
-    /// directly; a hop off a reference receiver yields <c>default(propertyType)</c> when the receiver is null — which
-    /// is <c>?.</c> for a reference/nullable property type and the explicit conditional for a non-nullable value
-    /// property type (where <c>?.</c> would produce <c>Nullable&lt;T&gt;</c>/boxed-null instead of boxed default).
+    /// Emits a member-path accessor as C# reproducing the runtime member tier hop by hop (<c>ModelParameter.BuildNullSafePropertyChain</c>):
+    /// a hop off a value-typed receiver accesses directly; a hop off a reference receiver yields
+    /// <c>default(propertyType)</c> when the receiver is null — which is <c>?.</c> for a reference/nullable property
+    /// type and the explicit conditional for a non-nullable value property type (where <c>?.</c> would produce
+    /// <c>Nullable&lt;T&gt;</c>/boxed-null instead of boxed default).
     /// </summary>
     internal static class MemberPathWriter
     {
@@ -36,8 +36,8 @@ namespace Heddle.Generator.Emit
             var current = rootExpr;
             foreach (var hop in hops)
             {
-                // Phase 4 D8: the branch is MemberHopRule.Form — the same function ModelParameter maps to
-                // Expression shapes — so the two encodings stop being an argument and become shared code.
+                // The branch is MemberHopRule.Form — the same function ModelParameter maps to Expression shapes
+                // — so the two encodings share the same code.
                 switch (MemberHopRule.Form(hop.ReceiverIsValueType, hop.PropertyIsNonNullableValue))
                 {
                     case HopForm.Direct:

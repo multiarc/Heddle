@@ -62,7 +62,7 @@ namespace Heddle.Tests
             Array.Empty<PrecompiledFunctionBinding>(),
             PrecompiledCapabilities.StringOutput, Strategy);
 
-        /// <summary>A D21 fallback marker (no entry point, a delegate-only function row) — fails step 0.</summary>
+        /// <summary>A fallback marker for delegate-only function rows (no entry point) — fails step 0.</summary>
         public static PrecompiledTemplateInfo Marker(string key) => new PrecompiledTemplateInfo(
             key, null, null, false, "0", Array.Empty<PrecompiledImport>(), TextNative,
             Array.Empty<PrecompiledExtensionBinding>(),

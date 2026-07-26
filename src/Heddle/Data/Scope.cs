@@ -19,7 +19,7 @@ namespace Heddle.Data
         internal readonly ScopeLocals Locals;
 
         /// <summary>
-        /// <para>Phase 5 (D7) — the per-invocation props carriage of a props-declaring definition body; a shared
+        /// <para>The per-invocation props carriage of a props-declaring definition body; a shared
         /// frozen array for all-constant call sites (zero alloc) or a per-invocation clone otherwise. <c>null</c>
         /// for every prop-less execution (the common case). Copied unchanged by all transforms; replaced only by
         /// <see cref="WithProps"/>. Never written after construction and never exposed publicly.</para>
@@ -27,18 +27,18 @@ namespace Heddle.Data
         internal readonly object[] PropsData;
 
         /// <summary>
-        /// <para>Phase 5 — the projected-content carrier of a slot-declaring definition body (a
+        /// <para>The projected-content carrier of a slot-declaring definition body (a
         /// <c>SlotContent</c>, typed <see cref="object"/> here to avoid a Core→Data dependency cycle). <c>null</c>
         /// for every non-slot execution. Preserved by all transforms so a slot-mode <c>@out(expr)</c> nested in a
         /// body (e.g. inside <c>@list</c>) can still reach it; installed only by <see cref="WithSlot"/>.</para>
-        /// <para>Amends phase 5 D11's "carrier on the chained channel" — the chained channel is overwritten by
+        /// <para>A dedicated field rather than the chained channel: the chained channel is overwritten by
         /// looping extensions (<c>@list</c>/<c>@for</c> thread the index there), so it cannot reach an
-        /// <c>@out</c> nested in a loop body; a preserved field can (see the amendments ledger).</para>
+        /// <c>@out</c> nested in a loop body; a preserved field can.</para>
         /// </summary>
         internal readonly object SlotCarrier;
 
         /// <summary>
-        /// <para>Phase 8 (D2) — the per-invocation bound values of a parameter-declaring extension's <c>[Prop]</c>
+        /// <para>The per-invocation bound values of a parameter-declaring extension's <c>[Prop]</c>
         /// layout: the shared frozen array for all-constant call sites (zero alloc) or a per-invocation clone.
         /// <c>null</c> for every parameter-less execution (the common case). Copied unchanged by all transforms;
         /// installed only by <see cref="WithExtensionParameters"/>. Separate from <see cref="PropsData"/> so an
@@ -47,7 +47,7 @@ namespace Heddle.Data
         internal readonly object[] ExtensionParameterValues;
 
         /// <summary>
-        /// <para>Phase 8 (D2) — the immutable per-call-site name→index map for
+        /// <para>The immutable per-call-site name→index map for
         /// <see cref="TryGetParameter"/>/<see cref="GetParameter"/>; built once at bind, shared across renders and
         /// threads. <c>null</c> when no parameter frame is active.</para>
         /// </summary>
@@ -121,7 +121,7 @@ namespace Heddle.Data
 
         /// <summary>
         /// Returns a copy with only the props carriage replaced (all other fields carried over). Called only by
-        /// the props-installation point (<c>DefinitionBaseExtension</c>). See D7.
+        /// the props-installation point (<c>DefinitionBaseExtension</c>).
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal readonly Scope WithProps(object[] props)
@@ -131,7 +131,7 @@ namespace Heddle.Data
 
         /// <summary>
         /// Returns a copy with only the slot carrier replaced (all other fields carried over). Called only by
-        /// the slot-installation point (<c>DefinitionBaseExtension</c> in slot mode). See D11.
+        /// the slot-installation point (<c>DefinitionBaseExtension</c> in slot mode).
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal readonly Scope WithSlot(object slot)
@@ -141,7 +141,7 @@ namespace Heddle.Data
 
         /// <summary>
         /// Returns a copy with only the extension-parameter frame replaced (all other fields carried over).
-        /// Called only by the parameter-installation point (<c>ExtensionParameterCarrier</c>). Phase 8 D2.
+        /// Called only by the parameter-installation point (<c>ExtensionParameterCarrier</c>).
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal readonly Scope WithExtensionParameters(object[] values, ExtensionParameterMap map)
@@ -150,7 +150,7 @@ namespace Heddle.Data
         }
 
         /// <summary>
-        /// <para>Reads a declared extension parameter by name (phase 8). Returns <c>false</c> (never throws) when
+        /// <para>Reads a declared extension parameter by name. Returns <c>false</c> (never throws) when
         /// the current scope carries no parameter frame or <paramref name="name"/> was not declared by a
         /// <c>[Prop]</c> on the rendering extension.</para>
         /// </summary>
@@ -172,7 +172,7 @@ namespace Heddle.Data
         }
 
         /// <summary>
-        /// <para>Reads a declared extension parameter by name (phase 8), returning its bound value — which may be
+        /// <para>Reads a declared extension parameter by name, returning its bound value — which may be
         /// <c>null</c> for a null default. Throws <see cref="ArgumentException"/> when <paramref name="name"/> is
         /// not a declared parameter of the extension whose frame is active — an author bug (the name never matched
         /// a <c>[Prop]</c>). The no-frame case (read outside a parameter-declaring extension's render) is one

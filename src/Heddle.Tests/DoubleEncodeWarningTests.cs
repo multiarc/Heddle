@@ -8,10 +8,10 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The double-encode warning HED2003 (phase 2 D9): a bodiless unnamed <c>@(...)</c> under effective
-    /// <c>Html</c> whose parenthesized chain's final producer carries <c>[EncodeOutput]</c> is flagged at the
-    /// producer call. Negatives — named <c>@html()</c>, <c>@out():html()</c>, the inert top-level
-    /// <c>@(V):html()</c>, and the <c>Text</c>-profile nested chain — never warn.
+    /// The double-encode warning HED2003: a bodiless unnamed <c>@(...)</c> under effective <c>Html</c>
+    /// whose parenthesized chain's final producer carries <c>[EncodeOutput]</c> is flagged at the producer call.
+    /// Negatives — named <c>@html()</c>, <c>@out():html()</c>, the inert top-level <c>@(V):html()</c>, and
+    /// the <c>Text</c>-profile nested chain — never warn.
     /// </summary>
     public class DoubleEncodeWarningTests
     {

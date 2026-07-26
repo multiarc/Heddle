@@ -3,7 +3,7 @@ using Heddle.Strings.Core;
 namespace Heddle.Language
 {
     /// <summary>
-    /// <para>Import-provenance marker (phase 6 D25): stamped, only when
+    /// <para>Import-provenance marker: stamped, only when
     /// <see cref="Data.TemplateOptions.ProvideLanguageFeatures"/> is on, onto diagnostics and parse contexts
     /// produced by an imported/partial file's parse or call-site compile. The LSP facade re-anchors such
     /// diagnostics to the import site (a zero-width range) and prefixes their message with the origin path.</para>

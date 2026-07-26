@@ -7,15 +7,15 @@ using Xunit;
 
 namespace Heddle.Tests
 {
-    /// <summary>A top-level model for the D25 imported-definition-body fixture (a simple short name the template
+    /// <summary>A top-level model for the imported-definition-body fixture (a simple short name the template
     /// type parser resolves without the nested-type <c>+</c> separator).</summary>
     public class ImportOriginModel { public string Title { get; set; } }
 
     /// <summary>
-    /// White-box (IVT) coverage of the phase 6 D25 <c>ImportOrigin</c> marker: entries produced by an imported
-    /// file's parse or call-site compile carry the marker (path + site); nested A→B→C imports end site-anchored
-    /// in A's coordinates with C's path (shared-instance re-anchor); the flag-off compile stamps nothing; and the
-    /// D2 scope-map <c>Record</c> is skipped for import-marked compiles (foreign offsets stay out of the map).
+    /// White-box (IVT) coverage of the <c>ImportOrigin</c> marker: entries produced by an imported file's parse
+    /// or call-site compile carry the marker (path + site); nested A→B→C imports end site-anchored in A's
+    /// coordinates with C's path (shared-instance re-anchor); the flag-off compile stamps nothing; and the
+    /// scope-map <c>Record</c> is skipped for import-marked compiles (foreign offsets stay out of the map).
     /// </summary>
     public class ImportOriginTests
     {

@@ -9,7 +9,7 @@ namespace Heddle.Data
 
     public sealed class HeddleCompileResult
     {
-        /// <summary>The shared line rule (phase 6 D6). Replaces this type's own <c>Split('\n')</c> table, whose
+        /// <summary>The shared line rule. Replaces this type's own <c>Split('\n')</c> table, whose
         /// leading-<c>'\r'</c> offset bump made <c>"\n\r"</c> sequences and CRLF blank lines report a line and
         /// column the build tier and the editor disagreed with.</summary>
         private readonly LineIndex _lines;

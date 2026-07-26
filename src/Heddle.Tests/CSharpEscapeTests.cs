@@ -5,10 +5,8 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 4 WI7 (D9) — the unified C# escape set. Three tables became one, so the two things worth pinning are
-    /// (a) the table's rows, and (b) that folding them together did not move a single existing byte: the string
-    /// form must be identical to the pre-fold <c>PieceWriter.Escape</c> for every input that contains no lone
-    /// surrogate — which is every input any golden carries.
+    /// The unified C# escape set: three tables folded into one without changing the string form for
+    /// any valid input, pinned against the pre-fold behavior.
     /// </summary>
     public class CSharpEscapeTests
     {
@@ -88,7 +86,7 @@ namespace Heddle.Tests
         [Fact]
         public void LoneSurrogates_AreEscaped_NotWrittenRaw()
         {
-            // 04 F9: neither generator table guarded a lone surrogate in a *literal* — only the u8 twin was guarded
+            // Neither generator table guarded a lone surrogate in a literal — only the u8 twin was guarded
             // — so an unpaired code unit went raw into generated source.
             Assert.Equal("\"a\\ud800b\"", CSharpEscape.StringLiteral("a\uD800b"));
             Assert.Equal("\"\\udc00\"", CSharpEscape.StringLiteral("\uDC00"));

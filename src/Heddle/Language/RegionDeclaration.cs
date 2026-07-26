@@ -3,7 +3,7 @@ using Heddle.Strings.Core;
 namespace Heddle.Language
 {
     /// <summary>
-    /// One named-content-region declaration of a component body (phase 7 D2/D3): a public
+    /// One named-content-region declaration of a component body: a public
     /// <c>&lt;:name&gt;</c> / <c>&lt;:name :: Type&gt;</c> region or a private inner <c>&lt;name&gt;</c>
     /// definition. Mirrors <see cref="PropDeclaration"/>. Immutable after parse; parse-model-pure
     /// (shared with the generator's compile-linked sources).

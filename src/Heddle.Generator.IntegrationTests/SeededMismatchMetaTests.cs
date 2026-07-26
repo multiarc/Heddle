@@ -10,18 +10,15 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 0 WI7 (D7) — the guard proves itself. A guardrail that has never been observed to fire is untested
-    /// infrastructure, so this meta-suite <b>seeds</b> a manifest mismatch into otherwise-real generator output (one
-    /// rewritten manifest row: a corrupted content hash, a wrong extension AQN) and pins what each mode does:
+    /// The guard proves itself. A guardrail that has never been observed to fire is untested infrastructure, so this
+    /// meta-suite <b>seeds</b> a manifest mismatch into otherwise-real generator output and pins what each mode does:
     /// <list type="bullet">
     /// <item><see cref="PrecompiledMismatchPolicy.Strict"/> throws <see cref="PrecompiledMismatchException"/> carrying
     /// the right <see cref="PrecompiledFallbackReason"/>;</item>
-    /// <item>sentinel-only (default <c>Fallback</c> policy + <see cref="FallbackGuard"/>) fails at
-    /// <c>Verify</c>;</item>
-    /// <item>and — the negative control — the same seeded mismatch under an <b>unguarded</b> render silently succeeds,
-    /// byte-identical to the precompiled output. That last assertion is the executable statement of the threat model:
-    /// it is the pre-phase-0 world, and it is exactly how the content-hash (05 F1) and AQN (03 F1) drifts shipped
-    /// unnoticed.</item>
+    /// <item>sentinel-only (default <c>Fallback</c> policy + <see cref="FallbackGuard"/>) fails at <c>Verify</c>;</item>
+    /// <item>the negative control — the same seeded mismatch under an <b>unguarded</b> render silently succeeds, byte-identical
+    /// to the precompiled output. This assertion is the executable statement of the threat model: it is the pre-detection world,
+    /// and it is exactly how similar drifts shipped unnoticed.</item>
     /// </list>
     /// </summary>
     [Collection("PrecompiledRegistry")]
@@ -97,9 +94,7 @@ namespace Heddle.Generator.IntegrationTests
             return template.Generate(Model());
         }
 
-        // ---------------------------------------------------------------------------------------------------
-        // Seeded content-hash mismatch — the 05 F1 shape. Only reachable under EnableFileChangeCheck (file-backed).
-        // ---------------------------------------------------------------------------------------------------
+        // Seeded content-hash mismatch. Only reachable under EnableFileChangeCheck (file-backed).
 
         [Fact]
         public void SeededHashMismatch_Strict_ThrowsStaleContent()
@@ -166,10 +161,7 @@ namespace Heddle.Generator.IntegrationTests
             }
         }
 
-        // ---------------------------------------------------------------------------------------------------
-        // Seeded extension-AQN mismatch — the 03 F1 shape. Checked at gauntlet step 2, before staleness, so it
-        // fires in registry-only mode too.
-        // ---------------------------------------------------------------------------------------------------
+        // Seeded extension-AQN mismatch. Checked at gauntlet step 2, before staleness, so it fires in registry-only mode too.
 
         [Fact]
         public void SeededExtensionAqnMismatch_Strict_ThrowsExtensionBindingMismatch()
@@ -223,12 +215,9 @@ namespace Heddle.Generator.IntegrationTests
             }
         }
 
-        // ---------------------------------------------------------------------------------------------------
-        // Seeded options-fingerprint mismatch — gauntlet step 1, the earliest check, and the third distinct
-        // failure class. D7 names this seed "wrong fingerprint arity"; a literal arity change would not compile
-        // the manifest, so what is seeded is a wrong fingerprint *value* — the observable form of the same
-        // condition, and the one a real options drift would take.
-        // ---------------------------------------------------------------------------------------------------
+        // Seeded options-fingerprint mismatch. Gauntlet step 1, the earliest check, and the third distinct failure class.
+        // A literal arity change would not compile the manifest, so what is seeded is a wrong fingerprint *value* — the
+        // observable form of the same condition, and the one a real options drift would take.
 
         [Fact]
         public void SeededOptionsFingerprintMismatch_Strict_ThrowsOptionsMismatch()

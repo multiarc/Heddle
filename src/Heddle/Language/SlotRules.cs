@@ -1,7 +1,7 @@
 namespace Heddle.Language
 {
     /// <summary>
-    /// Generator plan phase 1 D6 (area 01 F13) — the two slot rules, written once. Both are pure functions of
+    /// The two slot rules, written once. Both are pure functions of
     /// already-linked parse types, so this is genuinely shared code on both tiers rather than a pinned table:
     /// <list type="bullet">
     /// <item><description><see cref="HasOutValue"/> — the canonical five-way "does this <c>@out</c> carry a

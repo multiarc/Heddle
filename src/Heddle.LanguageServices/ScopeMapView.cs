@@ -5,9 +5,9 @@ using Heddle.Runtime;
 namespace Heddle.LanguageServices
 {
     /// <summary>
-    /// Read-only view over the compiler's retained scope map (phase 6 D2).
+    /// Read-only view over the compiler's retained scope map.
     /// <see cref="GetModelTypesAt"/> returns all model types recorded for the innermost body span containing the
-    /// offset — one entry per compiled call site (D13).
+    /// offset — one entry per compiled call site.
     /// </summary>
     public sealed class ScopeMapView
     {
@@ -26,7 +26,7 @@ namespace Heddle.LanguageServices
 
         /// <summary>
         /// All model types recorded for the innermost body span containing <paramref name="offset"/> — one per
-        /// compiled call site (the artificial-type set of D13). Empty when the offset is in no recorded body.
+        /// compiled call site. Empty when the offset is in no recorded body.
         /// </summary>
         public IReadOnlyList<ExType> GetModelTypesAt(int offset)
         {

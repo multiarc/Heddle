@@ -4,7 +4,7 @@ using System.Text;
 namespace Heddle.Precompiled
 {
     /// <summary>
-    /// Phase 3 (F1): the <b>one</b> implementation of the manifest identity string
+    /// The <b>one</b> implementation of the manifest identity string
     /// <c>"&lt;CLR full type name&gt;, &lt;assembly simple name&gt;"</c> — the AQN sans version the
     /// <c>PrecompiledGauntlet</c> compares between a manifest row and the live registry.
     /// <para>Before this file the string had two unrelated producers: Roslyn's <c>FullyQualifiedFormat</c> minus

@@ -10,12 +10,12 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Phase 3 (F1/F3) — the fix-first group's white-box pins on <see cref="ExtensionBinder"/>:
+    /// White-box pins on <see cref="ExtensionBinder"/>:
     /// <list type="bullet">
     /// <item><description><b>nested-container discovery</b>: the scan descends into nested types, which it never
     /// did (it enumerated <c>INamespaceSymbol.GetTypeMembers()</c> only);</description></item>
     /// <item><description><b>AQN formatting</b>: a nested/generic identity is spelled with <c>+</c> and a backtick
-    /// arity, exactly as reflection spells it — the two halves of F1 are independent and both are pinned;</description></item>
+    /// arity, exactly as reflection spells it;</description></item>
     /// <item><description><b>inherited <c>[ExtensionName]</c></b>: a subclass with no declared name registers under
     /// its base's name and takes it over through the shared registration precedence;</description></item>
     /// <item><description><b>the narrowed <c>HED7006</c> trigger</b>: a name that resolves under the runtime's own
@@ -31,8 +31,8 @@ namespace Heddle.Generator.Tests
             var tpa = (string) AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
             var refs = tpa.Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
-                // Heddle.Generator carries linked copies of runtime types since phase 3 (F9); handing it to a probe
-                // compilation alongside Heddle.dll would make those names ambiguous (CS0433).
+                // Heddle.Generator carries linked copies of runtime types; handing it to a probe compilation
+                // alongside Heddle.dll would make those names ambiguous (CS0433).
                 .Where(p => !string.Equals(Path.GetFileNameWithoutExtension(p), "Heddle.Generator",
                     StringComparison.OrdinalIgnoreCase))
                 .Select(p => (MetadataReference) MetadataReference.CreateFromFile(p))
@@ -293,11 +293,10 @@ namespace Probe
         [Fact]
         public void BranchRoleHasExactlyOneDefinitionInTheRepository()
         {
-            // Phase 3 (F9): the generator's hand-mirrored enum is gone; Heddle.Attributes.BranchRole is compiled
-            // into Heddle.Generator as linked source, so the two assemblies' members are the same declaration.
+            // The generator's hand-mirrored enum is gone; Heddle.Attributes.BranchRole is compiled into
+            // Heddle.Generator as linked source, so the two assemblies' members are the same declaration.
             // (Named by reflection rather than `typeof`: both assemblies now declare the name, and the generator
-            // reference carries the global alias too, so a source-level `typeof` is CS0433 by construction — the
-            // linked-source hazard this project's `gen` alias exists for.)
+            // reference carries the global alias too, so a source-level `typeof` is CS0433 by construction.)
             var runtime = typeof(Heddle.Precompiled.PrecompiledTemplates).Assembly
                 .GetType("Heddle.Attributes.BranchRole", throwOnError: true);
             var linked = typeof(ExtensionBinder).Assembly

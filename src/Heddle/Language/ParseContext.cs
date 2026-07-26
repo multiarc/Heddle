@@ -40,13 +40,12 @@ namespace Heddle.Language {
         }
 
         /// <summary>
-        /// The absolute (document-space) UTF-16 offset this context's tokens are keyed from — the phase 6 D2
-        /// span key for the scope map. Equal to the private <c>_offset</c>.
+        /// The absolute (document-space) UTF-16 offset this context's tokens are keyed from. Equal to the private <c>_offset</c>.
         /// </summary>
         internal int AbsoluteOffset => _offset;
 
         /// <summary>
-        /// The phase 6 D25 import-provenance marker: non-null while this context (or an ancestor) is the parse
+        /// Import-provenance marker: non-null while this context (or an ancestor) is the parse
         /// of an imported/partial file. Inherited by child contexts through the ctor; <c>null</c> outside imports
         /// and always <c>null</c> unless <see cref="ProvideLanguageFeatures"/> is on. Diagnostics compiled under a
         /// context carrying this marker are re-anchored to the import site by the LSP facade.
@@ -54,7 +53,7 @@ namespace Heddle.Language {
         internal ImportOrigin ImportOrigin { get; set; }
 
         /// <summary>
-        /// Phase 7 D5: the stable identity of a caller-content context across isolation copies. Each
+        /// The stable identity of a caller-content context across isolation copies. Each
         /// <c>EnterSubtemplate</c> creates one fresh root context per body; every isolation copy of it (parse-time
         /// <c>IsolateContextWithTree</c> or per-call-site <c>OutputItem</c> isolation) maps back to that root, so
         /// a <see cref="RegionFillCandidate"/> captured while parsing the body matches its call site's
@@ -66,14 +65,14 @@ namespace Heddle.Language {
         internal ParseContext OriginIdentity => IsolationOrigin ?? this;
 
         /// <summary>
-        /// Phase 7 D5: the root-shared region-fill candidate list (initialized the same shared-up-the-chain way
+        /// The root-shared region-fill candidate list (initialized the same shared-up-the-chain way
         /// as <see cref="Errors"/>), so a candidate captured in any sub-context is reachable from the compiler's
         /// call-site fill step without any sub-context sweep.
         /// </summary>
         internal List<RegionFillCandidate> RegionFillCandidates { get; }
 
         /// <summary>
-        /// Phase 7 D2/D3: the regions declared directly in this context (a component body), in declaration order,
+        /// The regions declared directly in this context (a component body), in declaration order,
         /// appended on the <c>EnterDef</c> store-success path only. Transferred to the enclosing component's
         /// <see cref="DefinitionItem.Regions"/> when its body context is attached at <c>ExitSubtemplate</c>.
         /// Per-context (never shared up the chain).
@@ -106,18 +105,15 @@ namespace Heddle.Language {
         internal ParseContext IsolateContext(string definitionName = null)
         {
             var result = IsolateContextFrom(this);
-            //Check if this context already was isolated from other one in the call tree
             if (_isolatedList.Contains(this))
             {
                 return this;
             }
-            //Prevent from stack overflow if child items could have the same context or same subsequent contexts
             if (!_isolatedSet.ContainsKey(this))
             {
                 _isolatedSet.Add(this, result);
                 _isolatedList.Add(result);
             }
-            //Return already isolated context instance
             else
             {
                 return _isolatedSet[this];

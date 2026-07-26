@@ -10,11 +10,11 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Allocation-identity proof (phase 3 D15 / criterion 8). Structural: a document with no
-    /// <c>[ScopeChannel]</c> participant reports <c>NeedsLocals == false</c>, so no frame is ever allocated —
-    /// existing templates (which contain only <c>@if</c>/<c>@ifnot</c>, never participants, per D7) stay
-    /// allocation-identical by construction. Measured: a participating list body costs exactly one
-    /// <c>ScopeLocals</c> per iteration and nothing else — the documented, ratified trade of the new pattern.
+    /// Allocation-identity proof. Structural: a document with no <c>[ScopeChannel]</c> participant reports
+    /// <c>NeedsLocals == false</c>, so no frame is ever allocated — existing templates (which contain only
+    /// <c>@if</c>/<c>@ifnot</c>, never participants) stay allocation-identical by construction. Measured: a
+    /// participating list body costs exactly one <c>ScopeLocals</c> per iteration and nothing else, which is
+    /// the whole price of the branch-set pattern.
     /// </summary>
     public class BranchAllocationTests
     {
@@ -43,7 +43,7 @@ namespace Heddle.Tests
         [Fact]
         public void ExistingTemplateShapesProvisionNoFrame()
         {
-            // @if/@ifnot are deliberately NOT [ScopeChannel] (D7): no existing template ever provisions a frame.
+            // @if/@ifnot are deliberately NOT [ScopeChannel]: no existing template ever provisions a frame.
             Assert.False(RootNeedsLocals(Compile("@(A)", typeof(Flag))));
             Assert.False(RootNeedsLocals(Compile("@if(A){{X}}", typeof(Flag))));
             Assert.False(RootNeedsLocals(Compile("@if(A){{X}}@ifnot(A){{Y}}", typeof(Flag))));
@@ -85,10 +85,10 @@ namespace Heddle.Tests
             long delta = elseAlloc - pairAlloc;
 
             // The participating body's per-iteration cost is bounded by exactly one ScopeLocals frame
-            // (32 B on x64 = 320 000 B for n=10 000) and nothing else — no overflow map, no boxing. The
-            // spec (D15) budgeted that worst case assuming no JIT rescue; on newer runtimes the JIT
-            // stack-allocates part of it, so the real delta is often lower. Either way it must not exceed
-            // the documented one-frame budget, and the @if/@ifnot pair is the frame-free baseline.
+            // (32 B on x64 = 320 000 B for n=10 000) and nothing else — no overflow map, no boxing. That is
+            // the worst case, assuming no JIT rescue; on newer runtimes the JIT stack-allocates part of it,
+            // so the real delta is often lower. Either way it must not exceed the one-frame budget, and the
+            // @if/@ifnot pair is the frame-free baseline.
             Assert.True(delta <= n * 40L, $"per-iteration delta {delta} exceeds the one-frame budget (~{n * 32L})");
             Assert.True(delta >= -n * 8L, $"unexpected negative allocation delta {delta}");
         }

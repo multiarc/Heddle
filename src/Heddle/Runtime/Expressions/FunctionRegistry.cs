@@ -80,7 +80,7 @@ namespace Heddle.Runtime.Expressions
                 throw new ArgumentNullException(nameof(name));
             if (staticMethod == null)
                 throw new ArgumentNullException(nameof(staticMethod));
-            // Phase 3 (F2): the four eligibility rejections are the shared ExportRules predicate — the same one the
+            // The four eligibility rejections are the shared ExportRules predicate — the same one the
             // generator now applies, so its manifest overload counts can no longer include a method this method
             // refuses. The throws (and their exact messages) are unchanged.
             var rejection = ExportRules.Evaluate(DescribeMethod(staticMethod));
@@ -98,10 +98,10 @@ namespace Heddle.Runtime.Expressions
         }
 
         /// <summary>
-        /// <para>Registers every function the assembly exports via <c>[assembly: ExportFunctions(...)]</c> (phase 6
-        /// D24): for each container, each eligible public static method under its lowercase-invariant name, through
+        /// <para>Registers every function the assembly exports via <c>[assembly: ExportFunctions(...)]</c>: for each
+        /// container, each eligible public static method under its lowercase-invariant name, through
         /// the exact <see cref="Register(string, MethodInfo)"/> path (replace-on-exact-signature, overloads ranked
-        /// per phase 1 D12).</para>
+        /// by the shared overload rules).</para>
         /// <para>Throws <see cref="InvalidOperationException"/> when frozen and <see cref="ArgumentException"/> for
         /// an invalid export (non-public/non-static container, or an ineligible method — named in the message).
         /// Idempotent per assembly; not thread-safe pre-freeze (same rule as <see cref="Register(string, MethodInfo)"/>).</para>
@@ -151,7 +151,7 @@ namespace Heddle.Runtime.Expressions
             }
         }
 
-        /// <summary>Phase 3 (F2): the shared eligibility record for one reflected method — the reflection adapter of
+        /// <summary>The shared eligibility record for one reflected method — the reflection adapter of
         /// <see cref="ExportedMethodFacts"/>. <c>ParameterTypeKeys</c> uses <c>Type.FullName</c>, the same spelling
         /// the symbol side produces, so signature identity means the same thing on both tiers.</summary>
         internal static ExportedMethodFacts DescribeMethod(MethodInfo method)
@@ -181,8 +181,8 @@ namespace Heddle.Runtime.Expressions
         }
 
         /// <summary>
-        /// Enumerates every registered overload as <c>(Name, Method, ParameterTypes, ReturnType)</c> (phase 6 D3;
-        /// feeds LSP completion and hover). <c>Method</c> is the static <see cref="MethodInfo"/> for method
+        /// Enumerates every registered overload as <c>(Name, Method, ParameterTypes, ReturnType)</c> (feeds LSP
+        /// completion and hover). <c>Method</c> is the static <see cref="MethodInfo"/> for method
         /// registrations (incl. built-ins) and the delegate's target method for delegate registrations;
         /// <c>ParameterTypes</c>/<c>ReturnType</c> are always populated.
         /// </summary>

@@ -10,10 +10,9 @@ using Heddle.Runtime;
 namespace Heddle.Demo.Wasm
 {
     /// <summary>
-    /// All demo behavior (phase 9 D5/D6/D14). Plain net10.0 code with no browser dependency: the WASM
-    /// <c>[JSExport]</c> shell (DemoInterop) contains only marshalling, and this class is exercised directly on
-    /// CoreCLR by <c>DemoContractTests</c>. Single-threaded by contract (one worker); analyze/render are
-    /// serialized per document by construction.
+    /// Plain net10.0 code with no browser dependency: the WASM <c>[JSExport]</c> shell (DemoInterop) contains
+    /// only marshalling, and this class is exercised directly on CoreCLR by <c>DemoContractTests</c>. Single-threaded
+    /// by contract (one worker); analyze/render are serialized per document by construction.
     /// </summary>
     public sealed class DemoHost
     {
@@ -115,7 +114,7 @@ namespace Heddle.Demo.Wasm
                 if (!template.CompileResult.Success)
                 {
                     // A C#-tier construct declined by ExpressionMode.Native (or any compile error) surfaces here;
-                    // the page shows it in the pane note (D8).
+                    // the page shows it in the pane note.
                     return new RenderResult { Error = FirstError(template.CompileResult) };
                 }
 
@@ -125,7 +124,7 @@ namespace Heddle.Demo.Wasm
             catch (Exception ex)
             {
                 // Render faults (e.g. a :: dynamic template exercising trimmed runtime-binder paths) never crash
-                // the page — the pane shows the message (D8).
+                // the page — the pane shows the message.
                 return new RenderResult { Error = ex.Message };
             }
         }

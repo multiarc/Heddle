@@ -26,7 +26,7 @@ namespace Heddle
         private volatile RuntimeDocument _runtimeDocument;
         private volatile IProcessStrategy _processStrategy;
         private string _document;
-        // Phase 4 D1 disposal state: plain ints accessed only through Interlocked/Volatile (a `volatile` field
+        // Disposal state: plain ints accessed only through Interlocked/Volatile (a `volatile` field
         // passed by ref to Interlocked raises CS0420, and the atomics already provide the fences). Never mix a
         // plain ++/--/read with these fields.
         // 0 = live, 1 = disposal requested (fences new renders out; set once via Interlocked.Exchange).
@@ -36,15 +36,15 @@ namespace Heddle
         // One-shot CAS guard: the actual resource teardown runs exactly once across the explicit-Dispose,
         // deferred-last-exit, and finalizer paths.
         private int _teardownDone;
-        // Phase 1 D5: serializes every publisher (watcher callback / Recompile / first compile) through the store
+        // Serializes every publisher (watcher callback / Recompile / first compile) through the store
         // block's capture-superseded → field-writes → enqueue → drain sequence, and guards every drain site.
         // Renders NEVER take this lock — they read the volatile snapshot only (off the render hot path).
         private readonly object _publishGate = new object();
-        // Phase 1 D5: superseded runtime documents awaiting release. null for every template that never reloads
+        // Superseded runtime documents awaiting release. null for every template that never reloads
         // (zero cost); created and enqueued only under _publishGate; the volatile null-check lets ExitRender
         // skip the lock entirely on the common non-reloading path.
         private volatile ConcurrentQueue<RuntimeDocument> _supersededDocs;
-        // Phase 1 D1/D3: recompile inputs captured at the first file compile so a watcher reload reconstructs a
+        // Recompile inputs captured at the first file compile so a watcher reload reconstructs a
         // from-scratch-equivalent fresh context. _watchModelType is captured PRE-compile (the original ctor
         // RootScopeType) because a root @model reassigns RootScopeType in place during the compile; OutputProfile
         // is deliberately NOT captured — re-derived from _watchOptions + the freshly-parsed @profile each reload.
@@ -52,13 +52,13 @@ namespace Heddle
         private TemplateOptions _watchOptions;
         private ExType _watchModelType;
         private string _watchControllerName;
-        // B2: the effective output encoder (TemplateOptions.Encoder). Resolved once at compile (dynamic tier) or from
+        // The effective output encoder (TemplateOptions.Encoder). Resolved once at compile (dynamic tier) or from
         // the precompiled-adapter ctor, then stamped on each render's sink. null = the legacy WebUtility path.
         private System.Text.Encodings.Web.TextEncoder _encoder;
-        // C1: the effective render budget (TemplateOptions.RenderBudget). Resolved once at compile (dynamic tier) or
+        // The effective render budget (TemplateOptions.RenderBudget). Resolved once at compile (dynamic tier) or
         // carried on the precompiled-adapter ctor. null = unlimited: the budget wrapper is never created (zero cost).
         private RenderBudget _renderBudget;
-        // P4-Q2: the effective TemplateOptions.ValidateModelType (opt-in Release model-type guard). Resolved once
+        // The effective TemplateOptions.ValidateModelType (opt-in Release model-type guard). Resolved once
         // at compile on the store path; read (never written) on the render path. DEBUG always validates.
         private bool _validateModelType;
 #if NET8_0_OR_GREATER
@@ -94,12 +94,9 @@ namespace Heddle
             CompileResult = Compile(new CompileScope(context ?? new CompileContext()), document);
         }
 
-        // Phase 7 D7 — precompiled adapter mode: a resolver hit binds the entry's generated root strategy directly,
-        // with no parse and no Roslyn compile. CompileResult reports success so host code cannot tell the difference;
-        // the strategy self-manages any ScopeLocals frame (WithLocalsFrame is baked into the root, D5).
-        // Read by the model-type guard in Render — always in DEBUG, and in Release by the opt-in
-        // TemplateOptions.ValidateModelType guard (P4-Q2). A precompiled strategy carries no CompileContext
-        // ScopeType to check against, so the guard is skipped on the precompiled path in both configurations.
+        // Precompiled adapter mode: resolvers bind a generated strategy directly (no parse/compile), and CompileResult
+        // reports success to hide this from callers. Model-type validation is skipped on precompiled paths since there's
+        // no CompileContext; non-precompiled templates validate in DEBUG and optionally per TemplateOptions.ValidateModelType.
         private readonly bool _precompiled;
 
         internal HeddleTemplate(IProcessStrategy precompiledStrategy,
@@ -108,8 +105,8 @@ namespace Heddle
             if (precompiledStrategy == null)
                 throw new ArgumentNullException(nameof(precompiledStrategy));
             _processStrategy = precompiledStrategy;
-            _encoder = encoder;   // B2: carry the request's encoder onto the precompiled-adapter render (resolver path)
-            _renderBudget = renderBudget;   // C1: carry the request's budget onto the precompiled-adapter render
+            _encoder = encoder;   // carry the request's encoder onto the precompiled-adapter render (resolver path)
+            _renderBudget = renderBudget;   // carry the request's budget onto the precompiled-adapter render
             _precompiled = true;
             CompileResult = new HeddleCompileResult(true, null, null);
         }
@@ -121,7 +118,7 @@ namespace Heddle
 
         #region IDisposable Members
 
-        // Phase 4 D1: non-blocking, idempotent dispose that is safe to call concurrently with active renders.
+        // Non-blocking, idempotent dispose that is safe to call concurrently with active renders.
         // Setting the flag first orders against EnterRender's increment-then-re-read: any render still executing
         // observed the flag clear after its increment, so that increment precedes the runners read below and
         // Dispose defers teardown to the last ExitRender. No spin, no wait, no drain.
@@ -154,7 +151,7 @@ namespace Heddle
         {
             if (Interlocked.Decrement(ref _runners) == 0)
             {
-                // Phase 1 D5: when the last render exits, release any superseded documents a reload parked.
+                // When the last render exits, release any superseded documents a reload parked.
                 // The volatile null-check keeps non-reloading templates lock-free on this path.
                 if (_supersededDocs != null)
                     lock (_publishGate)
@@ -177,20 +174,20 @@ namespace Heddle
             // acquiring the gate from here on discards its fresh artifact via the store block's guard, and
             // once this Dispose returns no further callback can start.
             _watcher?.Dispose();
-            // Phase 1 D5: the gate makes teardown disposal and the store block's post-Teardown guard mutually
+            // The gate makes teardown disposal and the store block's post-Teardown guard mutually
             // exclusive — a late watcher callback either observes the dispose flag and discards its fresh
             // artifact, or publishes fully before this disposal runs (never a leak, never a resurrection).
             lock (_publishGate)
             {
                 _runtimeDocument?.Dispose();
-                // Drain-dispose the remaining superseded docs. Teardown never runs while a render executes
-                // (Phase 4 proof), so DrainLocked's _runners gate reads 0 here and the queue empties.
+                // Drain-dispose the remaining superseded docs. Teardown never runs while a render executes,
+                // so DrainLocked's _runners gate reads 0 here and the queue empties.
                 DrainLocked();
             }
             GC.SuppressFinalize(this);
         }
 
-        // Phase 1 D5(b): dispose queued superseded documents iff no render can hold one. Caller holds _publishGate,
+        // Dispose queued superseded documents iff no render can hold one. Caller holds _publishGate,
         // so no concurrent publisher can append while the loop runs (the drain-TOCTOU closure).
         private void DrainLocked()
         {
@@ -213,16 +210,15 @@ namespace Heddle
         /// <returns>Generated string</returns>
         public string Generate(object data, object chained = null, object callerData = null)
         {
-            // The string path wraps the shared render core (phase 8 D11/WI3) with what only it needs: a seeded
-            // ScopeRenderer, the adaptive high-water read/update, and ToString/Clear. The core is bit-identical to the
-            // pre-phase inline body; sink renders never read or update the high-water state (D4).
+            // String path wraps render core with string-specific logic: seeded renderer, high-water tracking, ToString/Clear.
+            // Sink renders skip high-water logic.
 #if NET8_0_OR_GREATER
             var renderer = new ScopeRenderer(_maxLength);
 #else
             var renderer = new ScopeRenderer(_maxElementCount);
 #endif
-            renderer.SetOutputEncoder(_encoder);   // B2: stamp the effective encoder on the sink
-            // C1: wrap in the budget seam only when a budget is configured — the null path keeps the bare sink (no
+            renderer.SetOutputEncoder(_encoder);   // stamp the effective encoder on the sink
+            // Wrap in the budget seam only when a budget is configured — the null path keeps the bare sink (no
             // wrapper, no allocation). ToString/Clear/high-water still read the underlying ScopeRenderer directly.
             Render(data, chained, callerData, _renderBudget == null ? (IScopeRenderer)renderer : new BudgetedRenderer(renderer, _renderBudget));
 #if NET8_0_OR_GREATER
@@ -246,7 +242,7 @@ namespace Heddle
         }
 
         /// <summary>
-        /// Renders into a <see cref="TextWriter"/> with no full-output string materialization (phase 8 D3). The caller
+        /// Renders into a <see cref="TextWriter"/> with no full-output string materialization. The caller
         /// owns the writer: nothing is flushed or disposed. Same compile-guard exceptions as the string path;
         /// <see cref="ArgumentNullException"/> when <paramref name="writer"/> is null; a null model remains legal.
         /// </summary>
@@ -255,13 +251,13 @@ namespace Heddle
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
             var renderer = new TextWriterScopeRenderer(writer);
-            renderer.SetOutputEncoder(_encoder);   // B2: stamp the effective encoder on the sink
+            renderer.SetOutputEncoder(_encoder);   // stamp the effective encoder on the sink
             Render(data, chained, callerData, _renderBudget == null ? (IScopeRenderer)renderer : new BudgetedRenderer(renderer, _renderBudget));
         }
 
         /// <summary>
         /// Renders UTF-8 into an <see cref="System.Buffers.IBufferWriter{T}"/> of <see cref="byte"/> (e.g. a
-        /// <c>PipeWriter</c>) with no full-output materialization (phase 8 D3). The caller owns the writer and any
+        /// <c>PipeWriter</c>) with no full-output materialization. The caller owns the writer and any
         /// <c>FlushAsync</c>: nothing is flushed, completed, or disposed. Same compile-guard exceptions as the string
         /// path; <see cref="ArgumentNullException"/> when <paramref name="writer"/> is null; a null model remains legal.
         /// </summary>
@@ -271,17 +267,17 @@ namespace Heddle
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
             var renderer = new Utf8ScopeRenderer(writer);
-            renderer.SetOutputEncoder(_encoder);   // B2: stamp the effective encoder on the sink
+            renderer.SetOutputEncoder(_encoder);   // stamp the effective encoder on the sink
             Render(data, chained, callerData, _renderBudget == null ? (IScopeRenderer)renderer : new BudgetedRenderer(renderer, _renderBudget));
         }
 
         /// <summary>
-        /// The shared render core (phase 8 D11): compile guards, the model-type check (always in DEBUG; in Release
+        /// The shared render core: compile guards, the model-type check (always in DEBUG; in Release
         /// when <see cref="TemplateOptions.ValidateModelType"/> is opted in), the dispose guard, the
         /// runner/dispose bookkeeping, root <see cref="Scope"/> construction over the supplied renderer (including
-        /// phase 3's root-frame provisioning), and <c>_processStrategy.Render</c>. Three callers: the string
+        /// root-frame provisioning), and <c>_processStrategy.Render</c>. Three callers: the string
         /// <see cref="Generate(object,object,object)"/>, the two sink overloads, and <c>PartialExtension.RenderData</c>
-        /// (streaming partials, D11).
+        /// (streaming partials).
         /// </summary>
         internal void Render(object data, object chained, object callerData, IScopeRenderer renderer)
         {
@@ -296,7 +292,7 @@ namespace Heddle
             EnterRender();
             try
             {
-                // Phase 1 D5: the document snapshot is taken AFTER EnterRender's increment so the superseded-doc
+                // The document snapshot is taken AFTER EnterRender's increment so the superseded-doc
                 // drain's _runners gate provably covers every render that could hold it. One volatile read of the
                 // document yields a coherent (Strategy, NeedsLocals) pair; _context is read once so the model-type
                 // guard and the render share one coherent context.
@@ -347,15 +343,14 @@ namespace Heddle
             {
                 _reader = new FileReader(context.Options);
                 document = _reader.ReadEntireFile();
-                // Phase 1 D3: capture the ORIGINAL root model type BEFORE the first compile — a root @model
-                // directive reassigns RootScopeType in place during the compile (ModelExtension), and a reload
-                // must re-derive the directive from the freshly-parsed source, not carry the flipped type.
+                // Capture RootScopeType before compile; a root @model directive flips it during compilation.
+                // Reloads must re-parse the directive, not reuse the flipped type.
                 if (context.Options.EnableFileChangeCheck)
                     _watchModelType = context.RootScopeType;
                 CompileResult = Compile(new CompileScope(context), document);
                 if (context.Options.EnableFileChangeCheck)
                 {
-                    // Phase 1 D1: the watch filter derives from the SAME name the reader reads
+                    // The watch filter derives from the SAME name the reader reads
                     // (RootPath / (TemplateName + FileNamePostfix)) so the two can never diverge again.
                     var watchedFile = _reader.GetFileName();
                     var directory = Path.GetDirectoryName(watchedFile);
@@ -371,7 +366,7 @@ namespace Heddle
                     _watcher.Created += FileCreated;
                     _watcher.Deleted += FileDeleted;
                     _watcher.Renamed += FileRenamed;
-                    // Phase 1 D2: arm the watcher (it raises nothing until enabled). Armed even when the first
+                    // Arm the watcher (it raises nothing until enabled). Armed even when the first
                     // compile soft-failed (template errors) so an edit-to-fix save recovers the template; a
                     // thrown read failure lands in the catch below and never reaches this statement.
                     _watcher.EnableRaisingEvents = true;
@@ -408,12 +403,9 @@ namespace Heddle
                 throw new TemplateInitException("Template already compiled.");
             var reader = new FileReader(context.Options);
             var document = reader.ReadEntireFile();
-            // Isolate the dry run (P4-Q1): reconstruct from the caller's options + root model type (+ ControllerName),
-            // and mirror the caller's *current* ScopeType and OutputProfile so the probe compiles the same context
-            // state a real Compile(context) would — even if the caller mutated ScopeType (so it diverges from
-            // RootScopeType) or flipped OutputProfile after construction. The caller's own CompileContext is never
-            // mutated (Compiled / DelayedTemplates / CompileErrors), so a subsequent real Compile of that context
-            // finalizes from scratch.
+            // Dry-run isolation: mirror caller's current ScopeType/OutputProfile to compile the same context
+            // as Compile(context) would, even if caller mutated them. Caller's CompileContext never mutates,
+            // so a real Compile finalizes from scratch.
             var probe = new CompileContext(context.Options, context.RootScopeType)
             {
                 ScopeType = context.ScopeType,          // mirror a caller-mutated model type; setter leaves the already-non-null RootScopeType intact
@@ -449,7 +441,7 @@ namespace Heddle
                             result.Errors.AddRange(compileScope.CompileErrors);
                             return result;                       // finally disposes compileScope + rtdoc
                         }
-                        compileScope.Compile();                  // P4-Q1 parity: CompleteInit + FullCSharp Roslyn, in dry runs too — MAY THROW
+                        compileScope.Compile();                  // parity: CompleteInit + FullCSharp Roslyn, in dry runs too — MAY THROW
                         if (compileScope.CompileErrors.Count > 0)
                         {
                             var result = new HeddleCompileResult(false, document, parseContext);
@@ -458,7 +450,7 @@ namespace Heddle
                         }
                         if (!simulate)
                         {
-                            // Phase 1 D5(a): serialize all publishers (watcher callbacks, Recompile, first
+                            // Serialize all publishers (watcher callbacks, Recompile, first
                             // compile) so the field group publishes coherently and each superseded document is
                             // enqueued exactly once. Renders never take this lock.
                             lock (_publishGate)
@@ -477,9 +469,9 @@ namespace Heddle
                                 _document = optimizedDocument;
                                 _runtimeDocument = rtdoc;            // volatile publish — document first
                                 _processStrategy = rtdoc?.Strategy;  // volatile publish — then strategy
-                                _encoder = compileScope.CompileContext.Options.Encoder;   // B2: resolve the effective encoder once
-                                _renderBudget = compileScope.CompileContext.Options.RenderBudget;   // C1: resolve the budget once
-                                _validateModelType = compileScope.CompileContext.Options.ValidateModelType;   // P4-Q2: resolve the opt-in guard once
+                                _encoder = compileScope.CompileContext.Options.Encoder;   // resolve the effective encoder once
+                                _renderBudget = compileScope.CompileContext.Options.RenderBudget;   // resolve the budget once
+                                _validateModelType = compileScope.CompileContext.Options.ValidateModelType;   // resolve the opt-in guard once
                                 if (superseded != null)
                                 {
                                     _supersededDocs = _supersededDocs ?? new ConcurrentQueue<RuntimeDocument>();
@@ -533,12 +525,11 @@ namespace Heddle
 
         public event FileSystemEventHandler OnFileChanged;
 
-        // Phase 1 D4: sender is the template on every public event (never the internal watcher). Delete keeps the
-        // last-good document renderable (no reload); a rename recompiles only when it lands ON the watched name
-        // (the atomic-save idiom); a create/re-create raises OnFileChanged (no OnFileCreated exists) and reloads.
+        // Public events use template as sender (not the watcher). Delete keeps last-good renderable (no reload);
+        // rename recompiles if it lands on watched name (atomic-save); create/recreate raises OnFileChanged (no OnFileCreated) and reloads.
         private void FileDeleted(object sender, FileSystemEventArgs e)
         {
-            OnFileDeleted?.Invoke(this, e);     // keep the last-good document renderable; do not reload (P1-Q2)
+            OnFileDeleted?.Invoke(this, e);     // keep the last-good document renderable; do not reload
         }
 
         private void FileRenamed(object sender, RenamedEventArgs e)
@@ -560,12 +551,8 @@ namespace Heddle
             Reload();
         }
 
-        // Phase 1 D3 + D5: recompile the watched file into a FRESH context reconstructed from the captured
-        // original options + pre-@model root model type (+ ControllerName, which the public ctor drops), exactly
-        // as a from-scratch compile would. OutputProfile is re-derived from _watchOptions + the freshly-parsed
-        // @profile directive — never carried across a reload. An empty/whitespace read is a mid-write-truncation
-        // no-op that keeps last-good published; a failed compile or read keeps last-good and surfaces on
-        // CompileResult.
+        // Recompile from a fresh context (captured options + pre-@model type); OutputProfile re-derives each reload.
+        // Empty/failed reads keep last-good published.
         private void Reload()
         {
             string document = null;
@@ -578,7 +565,7 @@ namespace Heddle
                         {
                             ControllerName = _watchControllerName,
                         }), document);
-                // else: empty/whitespace save — no-op, last-good stays published (D4 empty-content policy)
+                // else: empty/whitespace save — no-op, last-good stays published
             }
             catch (Exception ex)
             {

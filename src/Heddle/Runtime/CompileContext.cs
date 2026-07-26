@@ -52,8 +52,7 @@ namespace Heddle.Runtime {
     }
 
     /// <summary>
-    /// Compile Context class. Doing all work to compile extensions, saving type for each context level extension, import namespace/assembly. 
-    /// By loading assembly you can add or override existing extensions or add some extra funtionality parts to template.
+    /// By loading assemblies in this context, you can add or override extensions available during compilation.
     /// </summary>
     public class CompileContext: IDisposable {
 
@@ -66,7 +65,7 @@ namespace Heddle.Runtime {
         internal Dictionary<OutputItem, CompiledElement> CompiledItems { get; }
 
         /// <summary>
-        /// The phase 6 D2 position-indexed scope map: non-null only when
+        /// The position-indexed scope map: non-null only when
         /// <see cref="Data.TemplateOptions.ProvideLanguageFeatures"/> is true (created in the two root ctors,
         /// reference-copied through the private copy ctor so all child compiles share one). Recorded at the single
         /// body-compile funnel <c>HeddleCompiler.Compile</c>; null on production compiles (one null check per body,
@@ -75,29 +74,29 @@ namespace Heddle.Runtime {
         internal ScopeMap ScopeMap { get; }
 
         /// <summary>
-        /// The once-per-definition-per-compile prop-layout cache (D6). Shared through the private copy ctor
+        /// The once-per-definition-per-compile prop-layout cache. Shared through the private copy ctor
         /// exactly like <see cref="CompiledItems"/> — one compile, one cache. Keyed by a stable definition
         /// identity (name + declaration position) rather than the <see cref="DefinitionItem"/> instance, because
         /// context isolation copies definitions per body: two call sites of one definition therefore share the
-        /// same resolved <see cref="PropLayout"/> instance (the D6 two-site invariant).
+        /// same resolved <see cref="PropLayout"/> instance (the two-site invariant).
         /// </summary>
         internal Dictionary<string, PropLayout> ResolvedPropLayouts { get; }
 
         /// <summary>
-        /// The active prop layout while compiling a definition body (D12). <c>null</c> outside a props-declaring
+        /// The active prop layout while compiling a definition body. <c>null</c> outside a props-declaring
         /// definition body. Copied by the child-context copy ctor so nested bodies keep the layout;
         /// save/set/restore around each definition-body compile in <c>CreateExtension</c>.
         /// </summary>
         internal PropLayout ActivePropLayout { get; set; }
 
         /// <summary>
-        /// The active slot parameter type while compiling a slot-declaring definition body (D12). <c>null</c>
+        /// The active slot parameter type while compiling a slot-declaring definition body. <c>null</c>
         /// otherwise. Same threading rules as <see cref="ActivePropLayout"/>.
         /// </summary>
         internal ExType SlotParameterType { get; set; }
 
         /// <summary>
-        /// Phase 7 D4: the call-scoped region fill scope active while compiling a definition body whose call site
+        /// The call-scoped region fill scope active while compiling a definition body whose call site
         /// matched region-fill candidates. <c>null</c> outside such a body. Copied by the child-context copy ctor
         /// (the proven <see cref="ActivePropLayout"/> propagation seam) so a fill reaches nested region calls at
         /// any depth; save/set/restore around each definition-body compile in <c>HeddleCompiler.CreateExtension</c>.
@@ -105,7 +104,7 @@ namespace Heddle.Runtime {
         internal RegionFillScope RegionFillScope { get; set; }
 
         /// <summary>
-        /// Phase 7 D3: the once-per-component-per-compile region-layout cache, mirroring
+        /// The once-per-component-per-compile region-layout cache, mirroring
         /// <see cref="ResolvedPropLayouts"/> (same stable name+position key; shared through the copy ctor).
         /// </summary>
         internal Dictionary<string, RegionLayout> ResolvedRegionLayouts { get; }

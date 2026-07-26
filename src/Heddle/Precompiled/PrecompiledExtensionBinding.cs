@@ -1,6 +1,6 @@
 namespace Heddle.Precompiled
 {
-    /// <summary>A named registry extension bound at generation time (phase 7 D9): the call name and the extension's
+    /// <summary>A named registry extension bound at generation time: the call name and the extension's
     /// assembly-qualified type name <b>without version</b>. Extension logic is never inlined, so the manifest records
     /// only <i>what</i> to bind; the per-request gauntlet compares this against the live <c>TemplateFactory</c>
     /// registry so an <c>[ExtensionReplace]</c> override is a detected divergence rather than a silent one.</summary>
@@ -19,7 +19,7 @@ namespace Heddle.Precompiled
         public string ExtensionTypeName { get; }
 
         /// <summary>
-        /// Phase 3 (OQ4): a fingerprint of the extension's resolved <c>[Prop]</c> slot layout — the ordered
+        /// A fingerprint of the extension's resolved <c>[Prop]</c> slot layout — the ordered
         /// <c>name:&lt;slot type AQN&gt;</c> pairs, joined with <c>|</c> — or <c>null</c> for an extension that
         /// declares no parameters — the row is then omitted entirely rather than emitted empty.
         /// <para>Slot <b>indices</b> are the wire format between the generator's frozen <c>object[]</c> prototype
@@ -30,7 +30,7 @@ namespace Heddle.Precompiled
         /// <i>visible</i> when one happens anyway (a referenced extension package changing its <c>[Prop]</c> set
         /// without the templates being regenerated is the live case).</para>
         /// <para>The check is vacuous when the value is <c>null</c>, so older manifests keep passing — the schema
-        /// evolution stays inside phase 5's <c>Min</c>/<c>Max</c> compatibility predicate and no
+        /// evolution stays inside the <c>Min</c>/<c>Max</c> compatibility predicate and no
         /// re-precompilation is forced.</para>
         /// </summary>
         public string PropLayoutFingerprint { get; }

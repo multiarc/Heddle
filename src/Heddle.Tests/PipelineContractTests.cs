@@ -11,15 +11,13 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 5 (pipeline &amp; configuration) contract pins: the shared key↔path pair (D2), the schema/engine
-    /// version constants (D5), the options fingerprint's arity (D7), and the props↔code↔runtime defaults lockstep
-    /// (D8). Each of these rules used to exist two-to-four times; these tests are what makes a future divergence a
+    /// Contract pins for pipeline configuration: the shared key↔path pair, the schema/engine
+    /// version constants, the options fingerprint's arity, and the props↔code↔runtime defaults lockstep.
+    /// Each of these rules used to exist two-to-four times; these tests are what makes a future divergence a
     /// red build instead of a silent precompiled→dynamic fallback.
     /// </summary>
     public class PipelineContractTests
     {
-        // ---- D2: key ↔ path -------------------------------------------------------------------------------
-
         public static IEnumerable<object[]> RoundTripVectors => new[]
         {
             new object[] { "index.heddle" },
@@ -41,7 +39,7 @@ namespace Heddle.Tests
             Assert.Equal(key, derived);
         }
 
-        /// <summary>The fix for 05 F3: the shared helper never invents a flattened filename key for a path outside
+        /// <summary>The shared helper never invents a flattened filename key for a path outside
         /// the root. The generator still registers one (behavior preserved) but must ask for it explicitly, which is
         /// where HED7018 is raised.</summary>
         [Fact]
@@ -61,7 +59,7 @@ namespace Heddle.Tests
             Assert.False(TemplateKey.TryMakeRelative("/anywhere/x.heddle", null, out _));
         }
 
-        /// <summary>The two case domains (D2): the root <i>prefix</i> test is case-insensitive because it compares
+        /// <summary>The two case domains: the root <i>prefix</i> test is case-insensitive because it compares
         /// filesystem paths, while the key it yields preserves case exactly.</summary>
         [Theory]
         [InlineData("/repo/Templates", "/repo/templates/Views/Home.heddle", "Views/Home.heddle")]
@@ -73,8 +71,6 @@ namespace Heddle.Tests
             Assert.True(TemplateKey.TryMakeRelative(path, root, out var key));
             Assert.Equal(expected, key);
         }
-
-        // ---- D4: the .heddle extension rule ---------------------------------------------------------------
 
         [Theory]
         [InlineData("a.heddle", true)]

@@ -15,11 +15,11 @@ using Microsoft.CodeAnalysis.Text;
 namespace Heddle.Generator
 {
     /// <summary>
-    /// The Heddle build-time pre-compilation generator (phase 7). Discovers <c>.heddle</c> <c>AdditionalFiles</c>,
-    /// reads the compilation-wide options, parses each template through the shared front end (D4), surfaces template
+    /// The Heddle build-time pre-compilation generator. Discovers <c>.heddle</c> <c>AdditionalFiles</c>,
+    /// reads the compilation-wide options, parses each template through the shared front end, surfaces template
     /// errors at their <c>.heddle</c> span, emits a per-template <c>{SanitizedName}.g.cs</c> structural body through
     /// <see cref="TemplateEmitter"/> for every supported template, and emits the two-layer discovery metadata (the
-    /// <c>[HeddleCompiledTemplates]</c> attribute + typed manifest, D6). A template using a construct the emitter does
+    /// <c>[HeddleCompiledTemplates]</c> attribute + typed manifest). A template using a construct the emitter does
     /// not yet cover is left un-precompiled — no entry, the render takes the byte-identical dynamic path.
     /// </summary>
     [Generator(LanguageNames.CSharp)]
@@ -45,17 +45,17 @@ namespace Heddle.Generator
             /// <summary>The <c>Key</c> item metadata: the item's explicit registration key.</summary>
             public string KeyMetadata { get; }
 
-            /// <summary>The <c>Name</c> item metadata (Q8.12, corrected by Q8.25): an <b>additional</b> spelling the
+            /// <summary>The <c>Name</c> item metadata: an <b>additional</b> spelling the
             /// <c>@&lt;&lt;</c> import map answers to — <b>not</b> an override of <see cref="KeyMetadata"/>. The
             /// template keeps its path-derived (or explicit <c>Key</c>) registration key and *gains* this name, so
             /// both spellings resolve and nothing that resolved before stops resolving. It normalizes through the same
             /// <c>TemplateKey</c> rule as a key, because it occupies the same import-path namespace.
-            /// <para>The first implementation of Q8.12 made this an override (one setting, two spellings) and that was
+            /// <para>An earlier implementation made this an override (one setting, two spellings) and that was
             /// wrong: it silently broke every existing <c>@&lt;&lt;</c> that named the file. Importing a named template
             /// by its key draws the HED7028 advisory instead.</para></summary>
             public string NameMetadata { get; }
 
-            /// <summary>The <c>Precompile</c> item metadata (phase 5, Q5.1 ruling). <c>false</c> is the per-item
+            /// <summary>The <c>Precompile</c> item metadata. <c>false</c> is the per-item
             /// opt-out: the file still serves <c>@&lt;&lt;</c> imports, but emits no entry point and no manifest
             /// entry. Absent, empty, or unparsable metadata means <c>true</c> — today's behavior.</summary>
             public bool Precompile { get; }
@@ -113,8 +113,8 @@ namespace Heddle.Generator
 
             // Milestone 1 uses the compilation's symbol metadata to type member paths (value- vs reference-typed
             // hops decide the null-safety form) — symbol inspection of the compilation's own/referenced types, which
-            // is available at build (D3's "reflection is impossible" is about System.Reflection over the not-yet-built
-            // assembly, not ISymbol). The symbol-diagnostics stage (HED7007/7008) is the deferred milestone-2 add.
+            // is available at build. Unlike System.Reflection over the not-yet-built assembly, ISymbol access is
+            // possible here. The symbol-diagnostics stage (HED7007/7008) is the deferred milestone-2 add.
             var combined = templates.Combine(globalConfig).Combine(context.CompilationProvider);
             context.RegisterSourceOutput(combined, static (spc, data) =>
                 Emit(spc, data.Left.Left, data.Left.Right, data.Right));
@@ -149,9 +149,9 @@ namespace Heddle.Generator
                 return;
             }
 
-            // Import map for the shared front end's ImportReader (@<< served from AdditionalFiles, D4/D16).
+            // Import map for the shared front end's ImportReader (@<< served from AdditionalFiles).
             //
-            // Two passes, and the order is load-bearing (Q8.25). Pass 1 registers every template's *key* — the
+            // Two passes, and the order is load-bearing. Pass 1 registers every template's *key* — the
             // spelling that has always resolved. Pass 2 adds the optional `Name` alias on top. Because keys go first,
             // a registered name can never displace a real key spelling, which is what makes `Name` additive rather
             // than an override: whatever resolved before still resolves, and the name resolves as well.
@@ -197,10 +197,10 @@ namespace Heddle.Generator
             var manifestEntries = new List<string>();
             var usedHintNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            // D21 discovery: [ExportFunctions] over the compilation's own + referenced assemblies, computed once.
+            // [ExportFunctions] attributes discovery from the compilation's own + referenced assemblies, computed once.
             var exports = Heddle.Generator.Binding.FunctionExportResolver.Build(compilation);
 
-            // HED7021 (phase 3 / Q3.6): an [ExportFunctions] container the runtime's RegisterFrom would throw on.
+            // HED7021: an [ExportFunctions] container the runtime's RegisterFrom would throw on.
             // Once per compilation, at Location.None — the attribute lives in the consuming assembly, not in a
             // template — and at Error severity, because the runtime errors and the build must not mask a host
             // configuration mistake until first render.
@@ -208,8 +208,8 @@ namespace Heddle.Generator
                 spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.IneligibleExportContainer,
                     Location.None, container.Reason));
 
-            // D-ROLE-5 drift (§6.5): report HED7016 once per compilation for any branch Continuation/Terminal that
-            // lacks [ScopeChannel]. Additive — empty for engine-only compilations (no built-in violates R11).
+            // Report HED7016 once per compilation for any branch Continuation/Terminal that
+            // lacks [ScopeChannel]. Empty for engine-only compilations.
             foreach (var driftType in ExtensionBinder.Build(compilation).DriftTypes)
                 spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.BranchRoleMissingScopeChannel,
                     Location.None, driftType));
@@ -224,13 +224,9 @@ namespace Heddle.Generator
                     continue;
                 }
 
-                // Key and name derivation, and their diagnostics, run BEFORE the Precompile gate (Q8.28). They used to
-                // run after it, so a malformed `Key`, a malformed `Name` or an already-taken `Name` on an
-                // import-only item produced no diagnostic at all: the name silently failed to register and every @<<
-                // that used it drew HED7011 at the *importer*, pointing at the wrong file. That population — a named
-                // import-only partial — is the primary use case for the `Name`/`Precompile` pair, so it was exactly
-                // the case whose faults were unreportable. An opted-out item now raises the same key/name faults an
-                // included one would; what it still contributes is nothing: no entry point and no manifest entry.
+                // Key and name derivation, and their diagnostics, run before the Precompile gate.
+                // This ensures errors on opt-out items are reported even though they don't contribute
+                // entries or manifest rows.
                 var key = DeriveKey(template, config.TemplateRoot, out var outOfRoot, out var keyFault);
                 if (key == null)
                 {
@@ -243,7 +239,7 @@ namespace Heddle.Generator
                     continue;
                 }
 
-                // HED7004, the `Name` arm (Q8.25). A name that cannot be registered is reported here but does NOT
+                // HED7004, the `Name` arm. A name that cannot be registered is reported here but does NOT
                 // un-precompile the template: `Name` is additive, so a broken addition costs the addition and nothing
                 // else — the key still registers and every existing import still resolves. Two faults reach this:
                 // a value the normalizer refuses, and a spelling another template's key or name already owns.
@@ -257,7 +253,6 @@ namespace Heddle.Generator
                 else if (registeredName == null ||
                     string.Equals(registeredName, key, StringComparison.Ordinal))
                 {
-                    // No name, or a name that spells this template's own key: nothing is added, nothing is reported.
                 }
                 else if (aliasOwners.TryGetValue(registeredName, out var aliasOwner) &&
                     string.Equals(aliasOwner, template.Text.Path, StringComparison.Ordinal))
@@ -273,39 +268,32 @@ namespace Heddle.Generator
                         "namespace with template keys, so the name must be free."));
                 }
 
-                // Q8.30: only a name that actually registered travels to the manifest, so the runtime name index and
+                // Only a name that actually registered travels to the manifest, so the runtime name index and
                 // the build-time import map hold the same set of spellings for the same templates.
                 var registeredNameForManifest = nameRegistered ? registeredName : null;
 
-                // Precompile="false" (Q5.1 ruling): the per-item opt-out. The file is already in the import map built
+                // Precompile="false" is the per-item opt-out. The file is already in the import map built
                 // above, so every @<< that references it still resolves (no HED7011 on importers) — it simply
                 // contributes no entry point and no manifest entry, which is what `Remove` could never express.
                 //
-                // Q8.29: it is still a participant in the import graph, so it is parsed far enough to advise on its
-                // own imports. HED7028 is raised by the *importer*, and an opted-out importer never parsed, so a
-                // named partial imported by path from another opted-out partial could not be advised — the same
-                // defect as Q8.28 seen from the other end, and it gets the same answer. Advisory-only: see
-                // ParseAndReport's `advisoryOnly` for why a missing import inside an opted-out file is still not an
-                // error here.
+                // The file still participates in the import graph and is parsed to advise on its
+                // own imports. This allows HED7028 to be raised even for opted-out files. A missing import inside
+                // an opted-out file is not an error (see ParseAndReport's `advisoryOnly` parameter).
                 if (!template.Precompile)
                 {
                     ParseAndReport(spc, template, importMap, nameByKeySpelling, out _, out _, advisoryOnly: true);
                     continue;
                 }
 
-                // HED7018 (D3): the template is not under HeddleTemplateRoot and carries no explicit key metadata, so
+                // HED7018: the template is not under HeddleTemplateRoot and carries no explicit key metadata, so
                 // its directory silently vanished from the key. Behavior is unchanged — the flattened key still
-                // registers — but the condition is now visible, and it explains any HED7002 that follows. Only an
-                // explicit `Key` suppresses it (Q8.25 re-derivation): that warning's premise is that the flattened key
-                // was not asked for, and a `Key` asks for exactly the key it names — but an additive `Name` does not
-                // replace the key at all, so the flattened key still exists, is still unasked-for, and is still what
-                // the registry and the staleness check use. The warning is about something real, so it stands.
+                // registers — but the condition is now visible, and it explains any HED7002 that follows.
                 if (outOfRoot)
                     spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.TemplateOutsideRoot, Location.None,
                         template.Text.Path,
                         string.IsNullOrEmpty(config.TemplateRoot) ? "<unset>" : config.TemplateRoot, key));
 
-                // HED7002 / HED7003 (Q8.25 re-derivation): both checks are over registration KEYS only, which is the
+                // HED7002 / HED7003: both checks are over registration KEYS only, which is the
                 // population they had before `Name` was wired. A registered name is not a key — it registers no
                 // manifest row, sanitizes to no entry class and is never looked up by the runtime registry — so it
                 // cannot duplicate one, and case-shadowing among names is not a registry hazard. The alias namespace
@@ -349,12 +337,10 @@ namespace Heddle.Generator
                     // The `#line` file is the template's own path, not its registration key: for a path-derived key
                     // the two strings are identical (so nothing existing moves), but an explicit Key names a
                     // registration and not a file, and emitting it here pointed every mapped span at a path that does
-                    // not exist. Q8.12 made that observable by wiring the metadata; the two concepts are separated
-                    // here rather than left conflated because they usually agree. `rootRelative` carries Q8.27's
-                    // relativity marking through to the generated file's header.
+                    // not exist. `rootRelative` carries the relativity marking through to the generated file's header.
                     var lineFile = LineDirectiveFile(template, config.TemplateRoot, out var lineFileIsRootRelative);
                     var emitter = new TemplateEmitter(key, sanitized, ns, cleanDocument, template.Content, parsed, config, compilation, exports, template.Text.Path, lineFile, lineFileIsRootRelative,
-                        // Q8.30: the name goes onto the manifest row only if it actually registered. A name that lost
+                        // The name goes onto the manifest row only if it actually registered. A name that lost
                         // its spelling (reported at HED7004 above) must not reach the runtime index, or the two tiers
                         // would disagree about which template answers to it.
                         registeredName: registeredNameForManifest);
@@ -370,13 +356,13 @@ namespace Heddle.Generator
                                 ToLocation(template.Text, text, d.Position), d.Args));
                     }
 
-                    // Phase 1 D7/WI6 (Q1.3's match principle): the tentative base-not-found error a region-fill
-                    // candidate carries is filtered out of the parse-channel drain above, because whether it stands
-                    // is only known once the emitter has matched the call sites. Now that the emit has run, forward
-                    // every candidate error it did NOT retract — the exact set the dynamic compile leaves in its
-                    // error list for the same template. Gated on a completed body build: when the emitter degraded
-                    // for an unrelated reason it never visited the call sites, so it has no verdict to report and
-                    // the dynamic tier stays the one that raises (the pre-phase-1 behavior, unchanged).
+                    // Tentative base-not-found errors on region-fill candidates are filtered out of
+                    // the parse-channel drain above, because whether they should stand is only known once the
+                    // emitter has matched the call sites. Now that the emit has run, forward every candidate error
+                    // it did NOT retract — the exact set the dynamic compile leaves in its error list for the same
+                    // template. Gated on a completed body build: when the emitter degraded for an unrelated reason
+                    // it never visited the call sites, so it has no verdict to report and the dynamic tier stays
+                    // the one that raises.
                     if (result.RetractedCandidateErrors != null)
                     {
                         var candidateText = template.Text.GetText();
@@ -402,7 +388,7 @@ namespace Heddle.Generator
                     }
                     else if (result.IsMarker)
                     {
-                        // OQ1 remainder (D21): a delegate-only function makes this template un-precompilable. Report
+                        // A delegate-only function makes this template un-precompilable. Report
                         // one HED7014 warning per unresolvable name at its .heddle span and record a fallback-marker
                         // manifest entry (no .g.cs) — the runtime gauntlet short-circuits the marker to the dynamic path.
                         var sourceText = template.Text.GetText();
@@ -415,22 +401,17 @@ namespace Heddle.Generator
 
                         manifestEntries.Add(result.ManifestEntry);
                     }
-                    // A template the emitter does not yet cover (result.UnsupportedReason) is simply left
-                    // un-precompiled: no entry, no source — the render takes the byte-identical dynamic path.
                 }
                 catch (Exception ex)
                 {
-                    // Fallback-legitimacy ruling (Q2.2 → D12a): catch-and-degrade is legitimate only for a
-                    // researched set of conditions, and an exception out of the emitter is not one of them. Every
-                    // *intentional* refusal already leaves through a return path — result.IsMarker (HED7014
-                    // fallback marker) or result.UnsupportedReason (unsupported construct) — so an exception here
-                    // is a defect and must surface.
+                    // Exceptions from the emitter are defects that must surface.
+                    // Intentional refusals already leave through result.IsMarker or result.UnsupportedReason,
+                    // so an exception indicates a bug.
                     //
-                    // Reported per template rather than rethrown: letting it escape downgrades the failure to the
-                    // compiler's CS8785 *warning* and discards the generator's entire contribution — every other
-                    // template's source and the manifest with it. An error diagnostic reds the build reliably while
-                    // the pass continues, so one defective template neither hides itself nor un-precompiles the
-                    // rest.
+                    // Report per template rather than rethrow: letting an exception escape downgrades the
+                    // failure to the compiler's CS8785 warning and discards the generator's entire contribution.
+                    // An error diagnostic reds the build while the pass continues, so one defective template
+                    // neither hides itself nor un-precompiles the rest.
                     spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.EmitterFault, Location.None,
                         template.Text.Path, ex.GetType().Name, ex.Message));
                 }
@@ -440,11 +421,11 @@ namespace Heddle.Generator
         }
 
         /// <summary>Parses the template through the shared front end and reports what the build tier owes the author.
-        /// <para><paramref name="advisoryOnly"/> is the <c>Precompile="false"</c> mode (Q8.29): the parse runs so the
+        /// <para><paramref name="advisoryOnly"/> is the <c>Precompile="false"</c> mode: the parse runs so the
         /// import reader can raise HED7028 for this file's own imports, and <b>nothing else is reported</b>. The
         /// missing-import error and the drained parse channels stay silent for an opted-out item, deliberately and
-        /// narrowly: the ruling asks for validation of the item's metadata and advice on its imports, and turning
-        /// every opted-out file's template errors into build errors is a different and much larger change — it would
+        /// narrowly: the purpose is validation of the item's metadata and advice on its imports. Turning every opted-out
+        /// file's template errors into build errors would be a different and much larger change — it would
         /// red previously-green builds over templates that, by the author's explicit instruction, this build does not
         /// compile. Those faults are unchanged, not forgiven: the moment a precompiled template imports the file, the
         /// importer's own parse pulls the same content through the same channels and raises them.</para></summary>
@@ -460,7 +441,7 @@ namespace Heddle.Generator
             // at its @<<{{…}} block in this template.
             var missingImports = new List<string>();
 
-            // HED7028 (Q8.25): the import RESOLVED, through the key spelling of a template that also has a registered
+            // HED7028: the import resolved through the key spelling of a template that also has a registered
             // name. Both spellings work — this is an advisory that the name-first spelling is the preferred one for a
             // named template, not a fault. Keyed by the raw path as written so the report lands on the block the
             // author typed; the value is the name to prefer.
@@ -523,20 +504,18 @@ namespace Heddle.Generator
                     advised.Key, advised.Value));
             }
 
-            // An opted-out item is here for the advisory above and nothing else: no error channel, and no parse
-            // context to hand back, because no emit follows.
             if (advisoryOnly)
                 return null;
 
-            // Phase 7 D5 (emit-then-retract, generator side): a base-not-found error captured on a region-fill
-            // candidate is tentative — a matched public fill retracts it on the dynamic tier, and the emitter
-            // decides matched vs unmatched during Emit. Never report it as a build error here; an unmatched
-            // candidate un-precompiles the template silently and the DYNAMIC tier raises the error (review C).
+            // A base-not-found error captured on a region-fill candidate is tentative — a matched public fill
+            // retracts it on the dynamic tier, and the emitter decides matched vs unmatched during Emit. Never report
+            // it as a build error here; an unmatched candidate un-precompiles the template silently and the DYNAMIC
+            // tier raises the error.
             var candidateErrors = new HashSet<Heddle.Data.HeddleCompileError>();
             foreach (var candidate in parseContext.RegionFillCandidates)
                 candidateErrors.Add(candidate.Error);
 
-            // Phase 6 D5: one drain rule, shared with the language server and the runtime's CompileResult. The
+            // One drain rule, shared with the language server and the runtime's CompileResult. The
             // generator's own policy is the retract pre-filter above and the Roslyn location mapping below;
             // everything else — which channels, severity by subtype, id and Fix passthrough, reference dedupe —
             // is stated once in HeddleDiagnosticProjection. The generator runs no compile-channel stage yet, so

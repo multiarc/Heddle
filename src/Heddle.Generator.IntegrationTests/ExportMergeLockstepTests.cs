@@ -9,10 +9,10 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 3 (F2 / OQ2) — the cross-tier gate on export bookkeeping. The gauntlet compares each manifest
-    /// <c>FunctionBindings</c> row's overload count against the live registry <b>exactly</b>, failing on both
-    /// <c>&gt;</c> and <c>&lt;</c>, so "the generator counted what the runtime registers" is the property that
-    /// decides whether a template touching exports ever stays precompiled.
+    /// The cross-tier gate on export bookkeeping. The gauntlet compares each manifest <c>FunctionBindings</c>
+    /// row's overload count against the live registry <b>exactly</b>, failing on both <c>&gt;</c> and <c>&lt;</c>,
+    /// so "the generator counted what the runtime registers" is the property that decides whether a template
+    /// touching exports ever stays precompiled.
     /// <para><c>shout</c> is exported by two containers here — <c>TemplateFunctions.Shout(string)</c> and
     /// <c>MoreTemplateFunctions.Shout(int)</c> — which is the merge case first-container-wins used to turn into a
     /// permanent <c>FunctionBindingMismatch</c>.</para>

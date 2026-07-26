@@ -58,10 +58,10 @@ namespace Heddle.Runtime.Expressions
     }
 
     /// <summary>
-    /// The reflection fact source for the shared member walk (phase 4 D7). Roslyn's mirror of this adapter lives in
-    /// the generator; both feed the identical <see cref="MemberVisibility"/> policy, so the six divergences the
-    /// research verified between the two hand-written resolvers cannot re-open.
-    /// <para>Two capability choices are deliberate and runtime-normative under OQ1: <see cref="BaseInterfaces"/>
+    /// The reflection fact source for the shared member walk. Roslyn's mirror of this adapter lives in
+    /// the generator; both feed the identical <see cref="MemberVisibility"/> policy, so the six divergences
+    /// verified between the two hand-written resolvers cannot re-open.
+    /// <para>Two capability choices are deliberate and runtime-normative: <see cref="BaseInterfaces"/>
     /// returns nothing (reflection's <c>GetProperty</c> never searched base interfaces, so surfacing them would be a
     /// behavior <i>widening</i> — a breaking-window candidate, not a drift fix), and non-public members declared on a
     /// base class stay invisible, which <see cref="MemberVisibility"/> encodes through its
@@ -138,7 +138,7 @@ namespace Heddle.Runtime.Expressions
 
         /// <summary>
         /// Every visible property of <paramref name="type"/> under the <b>identical</b> member-tier filter
-        /// <see cref="TryResolve"/> applies (phase 6 D3; feeds LSP member completion). Returns nothing for a null
+        /// <see cref="TryResolve"/> applies (feeds LSP member completion). Returns nothing for a null
         /// type. Distinct by name (a hidden/derived duplicate collapses to the most-derived accessible one).
         /// </summary>
         internal static IEnumerable<PropertyInfo> GetVisibleProperties(Type type)

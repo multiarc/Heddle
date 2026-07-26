@@ -14,8 +14,8 @@ using Heddle.Strings.Core;
 namespace Heddle.LanguageServices
 {
     /// <summary>
-    /// Drives the engine pipeline (parse → <c>HeddleCompiler.Compile</c> → optional Roslyn) directly (D9) and
-    /// projects the side channels into an immutable <see cref="DocumentAnalysis"/> (D10). Never uses
+    /// Drives the engine pipeline (parse → <c>HeddleCompiler.Compile</c> → optional Roslyn) directly and
+    /// projects the side channels into an immutable <see cref="DocumentAnalysis"/>. Never uses
     /// <c>HeddleTemplate</c> — the facade wants tokens/errors/warnings/scope map, not the render tree.
     /// </summary>
     internal sealed class DocumentAnalyzer
@@ -89,8 +89,8 @@ namespace Heddle.LanguageServices
                 diagnostics, definitions, imports, scopes, csharpUsed);
         }
 
-        /// <summary>Projects the workspace options onto the engine's own options object. Generator plan phase 6
-        /// D10/WI9 (Q6.2): <b>every</b> analysis-applicable option is carried across — the editor compiles a
+        /// <summary>Projects the workspace options onto the engine's own options object.
+        /// <b>Every</b> analysis-applicable option is carried across — the editor compiles a
         /// document under the same option set the build of record uses, and the fallbacks when no workspace
         /// options exist are the shared <see cref="HeddleBuildOptions"/> defaults rather than a second opinion
         /// about what the defaults are. <c>ProvideLanguageFeatures</c> is hardwired: it <i>is</i> the analyzer's
@@ -112,7 +112,7 @@ namespace Heddle.LanguageServices
             };
         }
 
-        /// <summary>Drains through the shared projection (phase 6 D5) and layers this host's one policy on top:
+        /// <summary>Drains through the shared projection and layers this host's one policy on top:
         /// an entry stamped with import provenance is re-anchored to a zero-width range at the import site and
         /// its message prefixed with the rendered origin path. Which channels are drained, severity by subtype,
         /// id and fix passthrough and the reference dedupe are no longer this file's rules — they are the rules,
@@ -172,7 +172,7 @@ namespace Heddle.LanguageServices
 
         private IReadOnlyList<PropInfo> FlattenProps(DefinitionItem definition, ICollection<string> namespaces)
         {
-            // Inheritance flattening (phase 5 D6): the most-derived declaration of each prop name wins.
+            // Inheritance flattening: the most-derived declaration of each prop name wins.
             var byName = new Dictionary<string, PropInfo>(StringComparer.Ordinal);
             for (var d = definition; d != null; d = d.BaseDefinition)
             {
@@ -190,7 +190,7 @@ namespace Heddle.LanguageServices
             return byName.Values.ToList();
         }
 
-        /// <summary>Phase 7 (WI5): projects the parse-model region declarations — the LSP reads the parse model,
+        /// <summary>Projects the parse-model region declarations — the LSP reads the parse model,
         /// it does not reimplement the region table.</summary>
         private IReadOnlyList<RegionInfo> ProjectRegions(DefinitionItem definition, ICollection<string> namespaces)
         {
@@ -270,10 +270,9 @@ namespace Heddle.LanguageServices
 
         /// <summary>
         /// The display spelling of an import/partial origin: the template key it would have under
-        /// <paramref name="root"/>, or the absolute path in <c>/</c> form when it has none. Generator plan phase 6
-        /// D8/WI10 — the relativization itself is <see cref="TemplateKey.TryMakeRelative"/>, phase 5's shared rule
-        /// with its documented two-case-domain policy, so this is the fourth hand-rolled prefix strip deleted
-        /// rather than the fourth maintained.
+        /// <paramref name="root"/>, or the absolute path in <c>/</c> form when it has none. The relativization
+        /// itself is <see cref="TemplateKey.TryMakeRelative"/>, the shared rule with its two-case-domain policy,
+        /// so this is a hand-rolled prefix strip deleted rather than maintained.
         /// <para>Adopting it fixes a real defect the strip carried: a bare <c>StartsWith(rootFull)</c> matched a
         /// <i>sibling</i> directory whose name began with the root's (<c>/root</c> vs <c>/rootx/a</c>) and rendered
         /// it as the relative key <c>x/a</c>. The shared rule requires a separator after the root.</para>

@@ -6,7 +6,7 @@ using Xunit;
 namespace Heddle.Tests.Streaming
 {
     /// <summary>
-    /// Phase 8 WI8 — the adversarial chunk-boundary suite for <see cref="Utf8ScopeRenderer"/> (D5). Surrogate pairs are
+    /// The adversarial chunk-boundary suite for <see cref="Utf8ScopeRenderer"/>. Surrogate pairs are
     /// positioned to straddle every 16 KB chunk edge; the stateful <c>Encoder.Convert</c> loop must carry the trailing
     /// high surrogate across the boundary so the output equals <c>Encoding.UTF8.GetBytes(input)</c> byte-for-byte.
     /// Run over both a growable and the stingy (exactly-sizeHint) writer.

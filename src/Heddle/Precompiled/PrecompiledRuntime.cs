@@ -11,7 +11,7 @@ using Heddle.Strings.Core;
 namespace Heddle.Precompiled
 {
     /// <summary>
-    /// Support entry points called by generated precompiled-template code (phase 7 D5). Not intended for
+    /// Support entry points called by generated precompiled-template code. Not intended for
     /// hand-written use. Public entry, internal access to the engine-private state the generated code cannot reach
     /// directly (the extension body fields, the internal root <see cref="Scope"/> ctor, <c>PropsData</c>/<c>RootData</c>).
     /// </summary>
@@ -22,7 +22,7 @@ namespace Heddle.Precompiled
         private const int DefaultBufferCapacity = 256;
 
         /// <summary>InitStart-equivalent: installs a generated body on a pre-constructed extension.
-        /// <paramref name="needsLocals"/> routes phase 3's <c>ScopeLocals</c> frame provisioning through the engine's
+        /// <paramref name="needsLocals"/> routes <c>ScopeLocals</c> frame provisioning through the engine's
         /// render protocol. Called only from generated static initializers (thread-safe via CLR type-init); the
         /// extension is never mutated after <c>Bind</c> returns.</summary>
         public static TExtension Bind<TExtension>(TExtension extension, IProcessStrategy body,
@@ -35,15 +35,15 @@ namespace Heddle.Precompiled
             return extension;
         }
 
-        /// <summary>Bind for definition call sites (phase 7 D5/D23). Constructs the engine-internal definition carrier
+        /// <summary>Bind for definition call sites. Constructs the engine-internal definition carrier
         /// itself — <c>DefinitionBaseExtension</c> is internal to <c>Heddle</c>, so generated code never names it (the
         /// same public-entry/internal-access posture as <see cref="Bind{TExtension}"/>) — and returns it as
         /// <see cref="AbstractExtension"/>. The outer carrier's body is the invocation-site caller content; its
         /// <c>DefinitionParameterTemplate</c> is an inner carrier whose body is the definition body. Props are
         /// installed on the definition-body scope (the frozen prototype shared when all-constant; each dynamic setter
-        /// runs against the caller view per phase 5 D8). Both carriers get the baked recursion limit
+        /// runs against the caller view). Both carriers get the baked recursion limit
         /// (<paramref name="maxRecursionCount"/> = the build's <c>HeddleMaxRecursionCount</c>) that <c>InitStart</c>
-        /// would otherwise read from options — build wins over runtime options (D23).</summary>
+        /// would otherwise read from options — build wins over runtime options.</summary>
         public static AbstractExtension BindDefinition(IProcessStrategy body, IProcessStrategy callerContent,
             object[] props, PrecompiledPropSetter[] dynamicSetters, RenderType renderType, bool needsLocals,
             int maxRecursionCount, int line, int column)
@@ -51,8 +51,8 @@ namespace Heddle.Precompiled
                 maxRecursionCount, line, column);
 
         /// <summary>Slot-aware overload: <paramref name="slotMode"/> installs the <c>SlotContent</c> carrier instead
-        /// of pre-rendering the caller content, so a slot-mode <c>@out(expr)</c> projects the caller body lazily
-        /// (phase 5 D11).</summary>
+        /// of pre-rendering the caller content, so a slot-mode <c>@out(expr)</c> projects the caller body
+        /// lazily.</summary>
         public static AbstractExtension BindDefinition(IProcessStrategy body, IProcessStrategy callerContent,
             object[] props, PrecompiledPropSetter[] dynamicSetters, RenderType renderType, bool needsLocals,
             bool slotMode, int maxRecursionCount, int line, int column)
@@ -60,7 +60,7 @@ namespace Heddle.Precompiled
                 slotMode, maxRecursionCount, line, column);
 
         /// <summary>
-        /// Per-carrier locals overload (generator plan phase 1 D2). The two carriers a definition call site builds
+        /// Per-carrier locals overload. The two carriers a definition call site builds
         /// host <b>different</b> documents — the inner carrier the definition body, the outer carrier the invocation
         /// site's caller content — and the dynamic tier derives each one's frame-provisioning flag from its own
         /// <c>RuntimeDocument.NeedsLocals</c> (<c>AbstractExtension.InitStart</c>). The older overloads apply one
@@ -94,13 +94,13 @@ namespace Heddle.Precompiled
             return outer;
         }
 
-        /// <summary>Bind for parameter-declaring extension call sites (phase 8 WI6). Constructs the engine-internal
+        /// <summary>Bind for parameter-declaring extension call sites. Constructs the engine-internal
         /// <c>ExtensionParameterCarrier</c> itself (it is internal to <c>Heddle</c> — the same public-entry/
         /// internal-access posture as <see cref="BindDefinition"/>) and returns it as <see cref="AbstractExtension"/>.
         /// The <paramref name="renderType"/> — the generator-computed <c>Encode</c>/<c>Raw</c> derived from the
         /// extension's <c>[EncodeOutput]</c>/<c>[NotEncode]</c> — is applied to the <b>inner</b> extension via
         /// <c>BindPrecompiled</c>, exactly as the dynamic tier's <c>InitializeTemplate</c> → <c>SetUpRenderType</c>
-        /// lands it before the carrier wraps (D4 carrier-transparency): an <c>[EncodeOutput]</c> inner self-encodes
+        /// lands it before the carrier wraps — the carrier is transparent: an <c>[EncodeOutput]</c> inner self-encodes
         /// on both tiers. Called once from a generated static initializer (thread-safe via CLR type-init); nothing
         /// is mutated after it returns.</summary>
         public static AbstractExtension BindExtension<TExtension>(TExtension extension, object[] props,
@@ -119,7 +119,7 @@ namespace Heddle.Precompiled
             return carrier;
         }
 
-        /// <summary>Binds an <see cref="OutExtension"/> call site (phase 7 slots). <paramref name="slotMode"/> puts
+        /// <summary>Binds an <see cref="OutExtension"/> call site. <paramref name="slotMode"/> puts
         /// the carrier in slot-projection mode — a slot-declaring definition body's <c>@out(value)</c> projects the
         /// invocation-site caller content through the <c>SlotContent</c> carrier instead of splicing the pre-rendered
         /// chained content — reproducing what <c>OutExtension.InitStart</c> derives from
@@ -136,7 +136,7 @@ namespace Heddle.Precompiled
             return extension;
         }
 
-        /// <summary>The engine's <c>ScopeLocals</c>-provisioning decorator (phase 3), for the one body <c>Bind</c>
+        /// <summary>The engine's <c>ScopeLocals</c>-provisioning decorator, for the one body <c>Bind</c>
         /// never sees: a document root hosting branch participants. Wraps <paramref name="body"/> so every
         /// Render/Execute runs under a fresh frame; roots without participants stay unwrapped.</summary>
         public static IProcessStrategy WithLocalsFrame(IProcessStrategy body)
@@ -164,7 +164,7 @@ namespace Heddle.Precompiled
         public static string GenerateString(IProcessStrategy root, object model, object chained, object callerData)
             => GenerateString(root, model, chained, callerData, null);
 
-        /// <summary>Options-carrying overload (phase 7 partials funnel). Establishes the ambient
+        /// <summary>Options-carrying overload. Establishes the ambient
         /// <see cref="TemplateOptions"/> that generated <c>@partial</c> code consults through
         /// <see cref="ResolvePartial(string)"/> for its registry-then-dynamic-compile resolution. A <c>null</c>
         /// <paramref name="options"/> inherits the current ambient (so a partial rendered inside this render keeps the
@@ -182,7 +182,7 @@ namespace Heddle.Precompiled
             try
             {
                 var renderer = new ScopeRenderer(DefaultBufferCapacity);
-                renderer.SetOutputEncoder(_ambientOptions?.Encoder);   // B2: stamp the effective encoder on the sink
+                renderer.SetOutputEncoder(_ambientOptions?.Encoder);   // stamp the effective encoder on the sink
                 var scope = new Scope(model, callerData, model, chained, WithBudget(renderer), null, null);
                 root.Render(scope);
                 var result = renderer.ToString();
@@ -195,16 +195,16 @@ namespace Heddle.Precompiled
             }
         }
 
-        /// <summary>Renders a precompiled root strategy into a <see cref="TextWriter"/> sink (phase 8 D7). Generated
+        /// <summary>Renders a precompiled root strategy into a <see cref="TextWriter"/> sink. Generated
         /// sink entry point. Constructs the matching renderer, builds the root <see cref="Scope"/> exactly as
         /// <see cref="GenerateString(IProcessStrategy,object,object,object)"/> does, and calls <c>root.Render</c> — no
-        /// locals provisioning of its own (the frame rides the strategy, D7). The caller owns the writer: no flush,
-        /// no dispose (D4).</summary>
+        /// locals provisioning of its own (the frame rides the strategy). The caller owns the writer: no flush,
+        /// no dispose.</summary>
         public static void GenerateToWriter(IProcessStrategy root, object model, object chained, object callerData,
             TextWriter writer)
             => GenerateToWriter(root, model, chained, callerData, writer, null);
 
-        /// <summary>Options-carrying overload (phase 7 partials funnel; mirrors <see cref="GenerateString"/>).</summary>
+        /// <summary>Options-carrying overload; mirrors <see cref="GenerateString"/>.</summary>
         internal static void GenerateToWriter(IProcessStrategy root, object model, object chained, object callerData,
             TextWriter writer, TemplateOptions options)
         {
@@ -218,7 +218,7 @@ namespace Heddle.Precompiled
             try
             {
                 var renderer = new TextWriterScopeRenderer(writer);
-                renderer.SetOutputEncoder(_ambientOptions?.Encoder);   // B2: stamp the effective encoder on the sink
+                renderer.SetOutputEncoder(_ambientOptions?.Encoder);   // stamp the effective encoder on the sink
                 var scope = new Scope(model, callerData, model, chained, WithBudget(renderer), null, null);
                 root.Render(scope);
             }
@@ -229,14 +229,14 @@ namespace Heddle.Precompiled
         }
 
         /// <summary>Renders a precompiled root strategy into a UTF-8 <see cref="IBufferWriter{T}"/> of
-        /// <see cref="byte"/> (phase 8 D7). Generated sink entry point. Opted-in u8 pieces flow to the writer through
-        /// <see cref="WritePiece"/>'s zero-transcode branch; everything else transcodes via the renderer (D5). The
-        /// caller owns the writer: no flush, no complete, no dispose (D4).</summary>
+        /// <see cref="byte"/>. Generated sink entry point. Opted-in u8 pieces flow to the writer through
+        /// <see cref="WritePiece"/>'s zero-transcode branch; everything else transcodes via the renderer. The
+        /// caller owns the writer: no flush, no complete, no dispose.</summary>
         public static void GenerateUtf8(IProcessStrategy root, object model, object chained, object callerData,
             IBufferWriter<byte> writer)
             => GenerateUtf8(root, model, chained, callerData, writer, null);
 
-        /// <summary>Options-carrying overload (phase 7 partials funnel; mirrors <see cref="GenerateString"/>).</summary>
+        /// <summary>Options-carrying overload; mirrors <see cref="GenerateString"/>.</summary>
         internal static void GenerateUtf8(IProcessStrategy root, object model, object chained, object callerData,
             IBufferWriter<byte> writer, TemplateOptions options)
         {
@@ -250,7 +250,7 @@ namespace Heddle.Precompiled
             try
             {
                 var renderer = new Utf8ScopeRenderer(writer);
-                renderer.SetOutputEncoder(_ambientOptions?.Encoder);   // B2: stamp the effective encoder on the sink
+                renderer.SetOutputEncoder(_ambientOptions?.Encoder);   // stamp the effective encoder on the sink
                 var scope = new Scope(model, callerData, model, chained, WithBudget(renderer), null, null);
                 root.Render(scope);
             }
@@ -260,18 +260,18 @@ namespace Heddle.Precompiled
             }
         }
 
-        // C1: wrap the sink in the budget seam when the ambient options carry a RenderBudget; otherwise return the
+        // Wrap the sink in the budget seam when the ambient options carry a RenderBudget; otherwise return the
         // bare sink unchanged (null path = no wrapper, no allocation). The wrapper enforces the same limits the
-        // dynamic engine's HeddleTemplate.Generate does, so both backends throw identically (G-R3).
+        // dynamic engine's HeddleTemplate.Generate does, so both backends throw identically.
         private static IScopeRenderer WithBudget(IScopeRenderer sink)
         {
             var budget = _ambientOptions?.RenderBudget;
             return budget == null ? sink : new BudgetedRenderer(sink, budget);
         }
 
-        /// <summary>The single piece-write hook for generated bodies (phase 8 D7): writes the pre-encoded u8 twin when
+        /// <summary>The single piece-write hook for generated bodies: writes the pre-encoded u8 twin when
         /// the scope's renderer is a UTF-8 sink, the string form otherwise — including under encode proxies, which are
-        /// deliberately not <see cref="IUtf8ScopeRenderer"/> (D2/D9), so pre-encoded bytes never bypass an active
+        /// deliberately not <see cref="IUtf8ScopeRenderer"/>, so pre-encoded bytes never bypass an active
         /// proxy. The only u8/string decision point in generated code.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void WritePiece(in Scope scope, string piece, ReadOnlySpan<byte> utf8Piece)
@@ -282,12 +282,12 @@ namespace Heddle.Precompiled
                 scope.Renderer.Render(piece);
         }
 
-        // The ambient options a generated @partial resolves against (phase 7 D7). Thread-static so concurrent renders
+        // The ambient options a generated @partial resolves against. Thread-static so concurrent renders
         // never share it; read only by ResolvePartial, so the dynamic path is untouched.
         [ThreadStatic] private static TemplateOptions _ambientOptions;
 
-        /// <summary>Registry-then-dynamic-compile partial resolution against the ambient options, dynamic child model
-        /// (phase 7 D7). Called from generated <c>@partial</c> code in a dynamic-tier body, memoized once via
+        /// <summary>Registry-then-dynamic-compile partial resolution against the ambient options, dynamic child
+        /// model. Called from generated <c>@partial</c> code in a dynamic-tier body, memoized once via
         /// <c>LazyInitializer</c>.</summary>
         public static IProcessStrategy ResolvePartial(string key)
             => ResolvePartialCore(key, _ambientOptions ?? new TemplateOptions(), null);
@@ -300,7 +300,7 @@ namespace Heddle.Precompiled
             => ResolvePartialCore(key, _ambientOptions ?? new TemplateOptions(),
                 callerModelType == null ? null : new ExType(callerModelType));
 
-        /// <summary>Registry-then-dynamic-compile partial resolution (phase 7 D7): a registered precompiled entry wins
+        /// <summary>Registry-then-dynamic-compile partial resolution: a registered precompiled entry wins
         /// (mixed mode — a precompiled template renders a precompiled partial); otherwise the named template compiles
         /// dynamically under <paramref name="options"/> against the dynamic tier (a precompiled template renders a
         /// runtime-compiled partial). Thread-safe; generated call sites memoize the result. Returns a strategy whose
@@ -343,7 +343,7 @@ namespace Heddle.Precompiled
 
         /// <summary>
         /// One dynamic member hop — the single implementation of the dynamic tier's member access, shared by the
-        /// engine and by generated precompiled code (phase 4 D11 / OQ3).
+        /// engine and by generated precompiled code.
         /// <para>A <c>null</c> receiver propagates <c>null</c>, exactly like the engine's per-hop
         /// <c>Condition(input == null, null, Dynamic(GetMember …))</c>, so a chain of these calls reproduces the
         /// dynamic member path hop for hop.</para>
@@ -352,8 +352,8 @@ namespace Heddle.Precompiled
         /// consumer's context and therefore resolved the consumer's <c>internal</c> members — members the engine's
         /// own dynamic tier cannot see. Routing both tiers through this helper makes that choice exist once.
         /// Note the deliberate asymmetry it preserves: the <i>typed</i> member tier accepts an <c>internal</c>
-        /// getter regardless of assembly, while the dynamic tier does not. Reproducing the engine's behavior is the
-        /// OQ3 ruling; harmonizing the two tiers would widen visibility and is a breaking-window candidate.</para>
+        /// getter regardless of assembly, while the dynamic tier does not. Reproducing the engine's behavior is
+        /// deliberate; harmonizing the two tiers would widen visibility and is a breaking change.</para>
         /// <para>Thread-safe: call sites are cached per member name and the DLR's own polymorphic inline cache
         /// handles the per-receiver-type dispatch.</para>
         /// </summary>

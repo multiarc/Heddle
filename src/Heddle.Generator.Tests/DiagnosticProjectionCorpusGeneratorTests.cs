@@ -7,14 +7,13 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// The build-tier arm of the projection-equivalence corpus (generator plan phase 6 D12.5). Same
-    /// <see cref="DiagnosticCorpusVectors"/> table as the run tier and the editor, asserted against what the
-    /// generator actually reports for the same template bytes.
-    /// <para>The build tier's declared deltas — the two the plan names, now measured per fixture rather than
-    /// described — are: it forwards only the <b>parse</b> channel, because it runs no compile-channel stage
-    /// (the program's recorded scope gap); and where a front-end diagnostic is out of its reach it raises its own
-    /// <c>HED7xxx</c> twin instead. Both are columns in the corpus, so a diagnostic that changes channel, or a
-    /// twin that stops firing, turns this red on the fixture that moved.</para>
+    /// The build-tier arm of the projection-equivalence corpus. Same <see cref="DiagnosticCorpusVectors"/> table
+    /// as the run tier and the editor, asserted against what the generator actually reports for the same template
+    /// bytes.
+    /// <para>The build tier has two deltas, measured per fixture: it forwards only the <b>parse</b> channel, because
+    /// it runs no compile-channel stage; and where a front-end diagnostic is out of its reach it raises its own
+    /// <c>HED7xxx</c> twin instead. Both are columns in the corpus, so a diagnostic that changes channel or a twin
+    /// that stops firing turns this red on the fixture that moved.</para>
     /// </summary>
     public class DiagnosticProjectionCorpusGeneratorTests
     {
@@ -73,8 +72,8 @@ namespace Heddle.Generator.Tests
         }
 
         /// <summary>The gap itself, stated once as an executable fact: everything the run tier reports that the
-        /// build tier does not forward is compile-channel. If some later phase gives the generator
-        /// compile-channel stages, this test is the one that should be deleted — and it names why.</summary>
+        /// build tier does not forward is compile-channel. If the generator ever gains compile-channel stages,
+        /// this test is the one that should be deleted — and it names why.</summary>
         [Fact]
         public void EveryEntryTheBuildTierMissesIsCompileChannel()
         {

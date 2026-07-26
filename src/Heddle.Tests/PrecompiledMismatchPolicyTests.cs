@@ -4,7 +4,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 7 D8: <see cref="PrecompiledMismatchPolicy"/> defaults to <see cref="PrecompiledMismatchPolicy.Fallback"/>,
+    /// <see cref="PrecompiledMismatchPolicy"/> defaults to <see cref="PrecompiledMismatchPolicy.Fallback"/>,
     /// rides the copy constructor (also covered generically by <c>TemplateOptionsCompletenessTests</c>), and stays
     /// out of options identity — it changes failure handling, never output bytes, so it must not perturb the
     /// resolver cache key.

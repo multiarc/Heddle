@@ -3,7 +3,7 @@ using System;
 namespace Heddle.Attributes
 {
     /// <summary>
-    /// <para>Declares one typed, named input parameter on a custom extension class (phase 8). The caller passes it
+    /// <para>Declares one typed, named input parameter on a custom extension class. The caller passes it
     /// by name at the call site (<c>@grid(Photos, columns: 4)</c>) — the identical call shape a definition with
     /// props accepts — and the extension reads its bound value at render time via
     /// <c>Scope.TryGetParameter</c>/<c>Scope.GetParameter</c>.</para>

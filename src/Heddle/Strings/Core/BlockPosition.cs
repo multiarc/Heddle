@@ -3,7 +3,7 @@ using Antlr4.Runtime;
 
 namespace Heddle.Strings.Core {
     /// <summary>
-    /// Represents posision of the template string to replace
+    /// Represents position of the template string to replace
     /// </summary>
     public struct BlockPosition {
         public readonly int Length;

@@ -2,7 +2,7 @@ using System;
 
 namespace Heddle.Data
 {
-    /// <summary>The unnamed carrier a bodiless/bodied <c>@(…)</c> resolves to (generator plan phase 1 D11). The
+    /// <summary>The unnamed carrier a bodiless/bodied <c>@(…)</c> resolves to. The
     /// registry name is the wire form both tiers use — the runtime asks <c>TemplateFactory</c> for it, the
     /// generator records it in the manifest binding row — so the mapping to a name lives here, once.</summary>
     public enum UnnamedCarrierKind
@@ -15,13 +15,13 @@ namespace Heddle.Data
     }
 
     /// <summary>
-    /// <para>Generator plan phase 1 D11 (area 01 F1) — the two <b>encoding-deciding</b> output-profile rules,
+    /// <para>The two <b>encoding-deciding</b> output-profile rules,
     /// written once for the engine, the generator and the language server: how an <c>@profile(){{…}}</c> value
     /// parses, and which unnamed carrier a given profile binds.</para>
     /// <para>Both are pure functions of a string and two enums, so they are genuinely shared code rather than a
     /// pinned table. The <em>plumbing</em> around them stays per-side — the runtime mutates
     /// <c>CompileContext.OutputProfile</c> along its context lineage, the emitter keeps a per-chain map with
-    /// save/restore around each body walk — and that ordering contract is spec text, not code.</para>
+    /// save/restore around each body walk — and that ordering contract is a documented convention, not code.</para>
     /// </summary>
     public static class OutputProfileRules
     {
@@ -63,8 +63,7 @@ namespace Heddle.Data
         /// Parses an <see cref="ExpressionMode"/> option value: trimmed, then matched
         /// ordinal-case-insensitively against the enum member names. Lives beside
         /// <see cref="TryParseProfile"/> because the two are always configured together, and exists so the build
-        /// tier, the runtime host surface and the language server stop each carrying their own parser
-        /// (generator plan phase 6 F8/Q6.2).
+        /// tier, the runtime host surface and the language server stop each carrying their own parser.
         /// </summary>
         public static bool TryParseExpressionMode(string value, out ExpressionMode mode)
         {
@@ -92,7 +91,7 @@ namespace Heddle.Data
         }
 
         /// <summary>
-        /// The unnamed-carrier decision (area 01 F1): a <b>bodiless</b> <c>@(X)</c> under
+        /// The unnamed-carrier decision: a <b>bodiless</b> <c>@(X)</c> under
         /// <see cref="OutputProfile.Html"/> binds the encoding carrier — reusing the proven
         /// <c>[EncodeOutput]</c> pipeline — and stays the raw empty carrier under <see cref="OutputProfile.Text"/>;
         /// a <b>bodied</b> <c>@(X){{…}}</c> is a raw rescoping container and is never redirected, whatever the

@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Heddle.Generator.Tests
 {
-    /// <summary>Generator plan phase 6 D12.6: the <c>#line</c> mapper is a wrapper over the shared
+    /// <summary>The <c>#line</c> mapper is a wrapper over the shared
     /// <c>LineIndex</c>, so it must report the shared golden vectors — the same table
     /// <c>HeddleCompileResult</c> and the LSP's <c>LineMap</c> assert — in the <c>#line</c> convention
     /// (1-based line, 1-based column).</summary>

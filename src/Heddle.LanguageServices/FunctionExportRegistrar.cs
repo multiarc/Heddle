@@ -8,10 +8,10 @@ using Heddle.Runtime.Expressions;
 namespace Heddle.LanguageServices
 {
     /// <summary>
-    /// The D24 function-export half of the scan: probes the retained (default-ALC) assembly handles for
+    /// The function-export half of the workspace scan: probes the retained (default-ALC) assembly handles for
     /// <c>[ExportFunctions]</c> and populates a fresh <see cref="FunctionRegistry"/> via the exact
     /// <c>RegisterFrom</c>/<c>RegisterContainer</c> path — one contract, three readers. Re-run per configuration
-    /// (a fresh, not-yet-frozen registry) without rescanning; an invalid export is logged and skipped (D20).
+    /// (a fresh, not-yet-frozen registry) without rescanning; an invalid export is logged and skipped.
     /// </summary>
     internal static class FunctionExportRegistrar
     {

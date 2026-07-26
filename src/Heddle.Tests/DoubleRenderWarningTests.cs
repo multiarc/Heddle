@@ -10,10 +10,10 @@ using Heddle.TestCorpus;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The double-render warning HED4002 (phase 4 D4/D5): a by-name call to a definition carrying a default
-    /// output (<c>-&gt; chain</c>) warns once per call site, naming the definition and its declaration
-    /// position; the default chain's own self-call is exempt; override layering warns in both directions; a
-    /// derived-name call does not. The corpus scan (D5) pins exactly the two vc-test true positives.
+    /// The double-render warning HED4002: a by-name call to a definition carrying a default output
+    /// (<c>-&gt; chain</c>) warns once per call site, naming the definition and its declaration position;
+    /// the default chain's own self-call is exempt; override layering warns in both directions; a derived-name
+    /// call does not.
     /// </summary>
     public class DoubleRenderWarningTests
     {
@@ -80,7 +80,7 @@ namespace Heddle.Tests
             Assert.Equal(0, WarningCount(Compile("@%\n<a> -> ()\n{{A}}\n<b:a>\n{{B}}\n%@\n@b()")));
         }
 
-        [Fact] // W08 — full-corpus scan (D5)
+        [Fact] // W08 — full-corpus scan
         public void W08_CorpusScanReportsExactlyTheTwoVcTestHits()
         {
             HeddleTemplate.Configure(typeof(DoubleRenderWarningTests).GetTypeInfo().Assembly);
@@ -101,7 +101,7 @@ namespace Heddle.Tests
                     catch
                     {
                         // A fixture that needs specific host setup may throw; warnings collected before the
-                        // throw are still counted. Only vc-test carries the -> + by-name pattern (D5 sweep).
+                        // throw are still counted. Only vc-test carries the -> + by-name pattern.
                     }
 
                     hits = scope.CompileWarnings.Count(w => w.DiagnosticId == HeddleDiagnosticIds.DefinitionRendersTwice);

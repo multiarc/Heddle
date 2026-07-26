@@ -63,8 +63,8 @@ namespace Heddle.Tests
                 "HED5007", "HED5008", "HED5009", "HED5010", "HED5011", "HED5012",
                 "HED5013", "HED5014", "HED5015", "HED5016", "HED5017", "HED5018",
                 "HED5019", "HED5020",
-                // The HED7xxx block gained constants when the generator and engine started sharing rule cores
-                // (D12.1) — the ids already shipped, as Roslyn descriptors and PrecompiledFallbackEvent codes;
+                // The HED7xxx block gained constants when the generator and engine started sharing rule cores —
+                // the ids already shipped, as Roslyn descriptors and PrecompiledFallbackEvent codes;
                 // what they lacked was a reflectable home, so nothing could gate them.
                 "HED7001", "HED7002", "HED7003", "HED7004", "HED7005", "HED7006", "HED7007",
                 "HED7008", "HED7009", "HED7010", "HED7011", "HED7012", "HED7013", "HED7014",

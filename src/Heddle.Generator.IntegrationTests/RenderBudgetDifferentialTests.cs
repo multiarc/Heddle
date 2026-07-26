@@ -5,12 +5,11 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// C1 (G-R3) — the render-budget differential fixture. Budgets are enforced entirely at the renderer seam, which
-    /// both backends write through, so the guarantee is: a budget-completing render is byte-identical on the
-    /// precompiled and dynamic backends, and a budget-breaching render throws the same
-    /// <see cref="TemplateRenderBudgetException.Kind"/> on both. The budget flows to the precompiled side via the
-    /// options-carrying <c>GenerateString</c> overload exactly as it reaches the dynamic engine's
-    /// <c>HeddleTemplate.Generate</c>.
+    /// The render-budget differential fixture. Budgets are enforced entirely at the renderer seam, which both
+    /// backends write through, so a budget-completing render is byte-identical on both backends, and a
+    /// budget-breaching render throws the same <see cref="TemplateRenderBudgetException.Kind"/> on both. The budget
+    /// flows to the precompiled side via the options-carrying <c>GenerateString</c> overload exactly as it reaches
+    /// the dynamic engine's <c>HeddleTemplate.Generate</c>.
     /// </summary>
     public class RenderBudgetDifferentialTests
     {

@@ -7,8 +7,8 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Generator plan phase 6 D2/D3 — build-time forwarding of front-end diagnostics. Until this phase the
-    /// warning path collapsed every forwarded warning into <c>HED7013</c>, discarding both
+    /// Build-time forwarding of front-end diagnostics. The warning path once collapsed every forwarded
+    /// warning into <c>HED7013</c>, discarding both
     /// <c>HeddleCompileError.DiagnosticId</c> and <c>HeddleCompileWarning.Fix</c>, while the error path one loop
     /// above already forwarded real IDs — two rules for one seam, and a suppression surface
     /// (<c>#pragma warning disable</c>, <c>NoWarn</c>) that could not name a single Heddle lint. These pin the
@@ -34,8 +34,7 @@ namespace Heddle.Generator.Tests
             Assert.Equal("{0}", descriptor.MessageFormat.ToString());
         }
 
-        /// <summary>The contract <c>GeneratorDiagnostics</c>' doc comment and <c>docs/precompilation.md</c> have
-        /// always stated: HED7012/HED7013 wrap an entry <b>carrying no id</b> — nothing else.</summary>
+        /// <summary>HED7012/HED7013 wrap an entry <b>carrying no id</b> — nothing else.</summary>
         [Theory]
         [InlineData(null)]
         [InlineData("")]

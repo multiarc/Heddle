@@ -5,7 +5,7 @@ using System.Collections.Generic;
 namespace Heddle.Tests.Streaming
 {
     /// <summary>
-    /// Test-owned <see cref="IBufferWriter{T}"/> implementations (phase 8 WI2). <c>ArrayBufferWriter&lt;byte&gt;</c> is
+    /// Test-owned <see cref="IBufferWriter{T}"/> implementations. <c>ArrayBufferWriter&lt;byte&gt;</c> is
     /// in-box only on netcoreapp3.0+/netstandard2.1 and is <b>not</b> in the System.Memory package — so on the net48
     /// test lane the sink tests run over these writers instead (same assertions, same fixtures).
     /// </summary>
@@ -91,7 +91,7 @@ namespace Heddle.Tests.Streaming
     }
 
     /// <summary>
-    /// A resettable, pool-backed <see cref="IBufferWriter{T}"/> for the allocation guarantee tests (D13): after warm-up
+    /// A resettable, pool-backed <see cref="IBufferWriter{T}"/> for the allocation guarantee tests: after warm-up
     /// its backing array is reused across renders, so a per-render allocation delta reflects only the engine's own
     /// managed allocations, not the sink's buffer growth.
     /// </summary>

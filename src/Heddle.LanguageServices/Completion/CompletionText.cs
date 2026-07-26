@@ -20,11 +20,7 @@ namespace Heddle.LanguageServices.Completion
             if (offset < 0) offset = 0;
             if (offset > text.Length) offset = text.Length;
 
-            // Phase 7 (WI5): a dangling region-override open — '<' (plus an optional partial name) inside a
-            // definition block ('@%' / after a previous '<…>{{…}}') with no header after it — breaks the whole
-            // parse and drops every definition from the analysis. Complete it with a placeholder fill
-            // ('_hcp_:_hcp_>{{x}}' — an unresolved-base override, which parses as a harmless fill candidate) so
-            // the region-override completion context still sees the document's definitions.
+            // Dangling region-override breaks parse and drops definitions; add placeholder fill to keep definitions visible.
             int wordStart = offset;
             while (wordStart > 0 && IsWordChar(text[wordStart - 1]))
                 wordStart--;
@@ -149,7 +145,7 @@ namespace Heddle.LanguageServices.Completion
 
         private static bool IsWordChar(char c) => char.IsLetterOrDigit(c) || c == '_';
 
-        /// <summary>Phase 7 (WI5): true when the '&lt;' at <paramref name="ltIndex"/> sits at an override-anchor
+        /// <summary>True when the '&lt;' at <paramref name="ltIndex"/> sits at an override-anchor
         /// position of a definition block — directly after '@%' (the block open) or '}}' (a previous override's
         /// body close), whitespace allowed — so plain HTML tags in body text never trigger the repair.</summary>
         internal static bool PrecededByOverrideAnchor(string text, int ltIndex)

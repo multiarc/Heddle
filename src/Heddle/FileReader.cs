@@ -32,9 +32,7 @@ namespace Heddle {
             }
         }
 
-        /// <summary>The file this reader opens: <see cref="TemplateOptions.FullPath"/>, which now states the
-        /// composition rule for both of us (generator plan phase 6 D8/WI10). The ctor already guarantees the
-        /// three parts are non-blank.</summary>
+        /// <summary>The composed file path from <see cref="TemplateOptions.FullPath"/>. The constructor guarantees non-blank inputs.</summary>
         public string GetFileName ()
         {
             return _options.FullPath;

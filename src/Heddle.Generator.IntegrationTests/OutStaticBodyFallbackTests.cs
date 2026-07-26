@@ -40,8 +40,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.False(gen.Diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error),
                 "Unexpected generator error: " + string.Join("; ", gen.Diagnostics.Select(d => d.ToString())));
 
-            // Documented tier fallback (phase 0 D5: declared, not inferred): a bodied @out does not precompile —
-            // no bound strategy and no entry class for it.
+            // Documented tier fallback: a bodied @out does not precompile — no bound strategy and no entry class for it.
             DifferentialHarness.ExpectDegrade(gen, "views/bodied-out.heddle");
 
             // The runtime backend renders the corrected output: no chained-value-plus-inert-body double-render.

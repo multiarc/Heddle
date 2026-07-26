@@ -6,10 +6,9 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>
-    /// Generator plan phase 6 D10 / WI9 — how <c>.heddle-lsp.json</c> values reach the analyzer. Token parsing is
-    /// the shared <c>OutputProfileRules</c>/<c>HeddleBuildOptions</c> code (so the accepted spellings are the
-    /// engine's), and the LSP's own reaction to a bad value is pinned here: keep the default, say so in a log
-    /// line, never throw and never stop analyzing.
+    /// Workspace configuration reading: how <c>.heddle-lsp.json</c> values reach the analyzer via shared
+    /// <c>OutputProfileRules</c>/<c>HeddleBuildOptions</c> code. On bad values: keep the default, log a message,
+    /// never throw, and keep analyzing.
     /// </summary>
     public class WorkspaceConfigTests
     {
@@ -108,8 +107,7 @@ namespace Heddle.LanguageServices.Tests
             Assert.Contains(options.ConfigurationMessages, m => m.Contains("assemblies"));
         }
 
-        /// <summary>Whatever the config says, reading it never throws — the editor keeps working on a broken
-        /// workspace file, which is the reaction-policy half of D10.</summary>
+        /// <summary>Whatever the config says, reading it never throws — the editor keeps working on a broken workspace file.</summary>
         [Fact]
         public void EveryComplaintIsALogLineRatherThanAFailure()
         {

@@ -7,9 +7,9 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 — the FullCSharp verbatim tier (generated-code.md example 3): the parser-captured C# expression pastes
-    /// verbatim into the generated body against a local named <c>model</c>, exactly as the runtime's
-    /// <c>CSharpClassTemplate</c> compiles it. Emitted only under <c>ExpressionMode.FullCSharp</c>; differential-gated.
+    /// The FullCSharp verbatim tier: the parser-captured C# expression pastes verbatim into the generated body
+    /// against a local named <c>model</c>, exactly as the runtime's <c>CSharpClassTemplate</c> compiles it. Emitted
+    /// only under <c>ExpressionMode.FullCSharp</c>; differential-gated.
     /// </summary>
     public class CSharpVerbatimTests
     {

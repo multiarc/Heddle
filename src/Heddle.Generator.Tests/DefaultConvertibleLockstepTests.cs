@@ -10,16 +10,14 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Generator plan phase 1 WI3 (D4) — the prop-default conversion table, symbol side against reflection side.
-    /// The emitter's <c>DefaultConvertible</c> is the HED5009 twin of the runtime's
-    /// <c>PropConversion.CanConvertTypes(source, target, allowBoxToObject: true)</c>; every rule branch gets a row
-    /// here, driven through <b>both</b> implementations from one <c>(source, target)</c> pair so a unilateral edit
-    /// to either is a red test naming the pair.
-    /// <para>The row that motivated the work item is <c>Nullable&lt;S&gt; → Nullable&lt;W&gt;</c>: the runtime had
-    /// it, the emitter did not. A missing row is a safe over-<em>refusal</em> — the template falls back rather
-    /// than mis-renders — but an over-refusal is still a divergence about which templates precompile, and it is
-    /// drift #13 in the research program's live list.</para>
-    /// <para>This row set is the seed of phase 3's assignability conformance corpus and is handed to it verbatim.</para>
+    /// The prop-default conversion table, symbol side against reflection side. The emitter's <c>DefaultConvertible</c>
+    /// is the twin of the runtime's <c>PropConversion.CanConvertTypes(source, target, allowBoxToObject: true)</c>;
+    /// every rule branch gets a row here, driven through <b>both</b> implementations from one <c>(source, target)</c>
+    /// pair so a unilateral edit to either is a red test naming the pair.
+    /// <para>The row that motivated this work is <c>Nullable&lt;S&gt; → Nullable&lt;W&gt;</c>: the runtime had it,
+    /// the emitter did not. A missing row is a safe over-<em>refusal</em> — the template falls back rather than
+    /// mis-renders — but an over-refusal is still a divergence about which templates precompile.</para>
+    /// <para>This row set is the seed of the assignability conformance corpus and is handed to it verbatim.</para>
     /// </summary>
     public class DefaultConvertibleLockstepTests
     {

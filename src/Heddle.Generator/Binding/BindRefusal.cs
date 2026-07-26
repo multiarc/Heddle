@@ -15,12 +15,13 @@ namespace Heddle.Generator.Binding
         /// (<c>BindOutcome.Ambiguous</c>) or no candidate was applicable (<c>BindOutcome.None</c>), over arguments
         /// every one of which the estimator typed. The runtime, running the same core over the same facts, reaches
         /// the same verdict and raises a compile error — so the build must raise <c>HED7025</c> rather than stay
-        /// quiet about an illegality it has already computed (Q8.1).</summary>
+        /// quiet about an illegality it has already computed.</summary>
         ProvenIllegal
     }
 
     /// <summary>
-    /// A binder's verdict about *why* it returned no binding — the distinction Q8.1 turns on.
+    /// A binder's verdict about *why* it returned no binding — distinguishing cases that degrade silently from
+    /// cases where the build must report an error.
     /// <para>Both binders used to collapse every refusal to a bare <c>null</c>, which conflated "provably
     /// ambiguous" with "an argument I could not type". Only the first is a proof about the runtime; reporting the
     /// second would fail the build for templates that are perfectly legal, and reporting neither is the silence the

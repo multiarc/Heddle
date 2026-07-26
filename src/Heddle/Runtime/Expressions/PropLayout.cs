@@ -8,7 +8,7 @@ using Heddle.Strings.Core;
 
 namespace Heddle.Runtime.Expressions
 {
-    /// <summary>One resolved layout slot (D6). <see cref="DefaultBoxed"/> is the D2-converted value boxed once at
+    /// <summary>One resolved layout slot. <see cref="DefaultBoxed"/> is the converted value boxed once at
     /// resolution (<c>null</c> for both the null-literal default and a required prop — <see cref="HasDefault"/>
     /// disambiguates).</summary>
     internal sealed class PropSlot
@@ -22,7 +22,7 @@ namespace Heddle.Runtime.Expressions
     }
 
     /// <summary>
-    /// The D6 flattened, index-stable prop table for one definition: base-chain props in declaration order
+    /// The flattened, index-stable prop table for one definition: base-chain props in declaration order
     /// (outermost base first), then this definition's new props. Re-declared inherited names keep their base
     /// index and re-default/narrow. <see cref="TryGet"/> is compile-time only (render never sees a name).
     /// </summary>
@@ -44,7 +44,7 @@ namespace Heddle.Runtime.Expressions
         internal bool TryGet(string name, out PropSlot slot) => _byName.TryGetValue(name, out slot);
 
         /// <summary>
-        /// D9 shadowing: emits HED5011 (warning) when a prop hit also names a readable, visible property of the
+        /// Shadowing: emits HED5011 (warning) when a prop hit also names a readable, visible property of the
         /// current scope type. The prop still wins; the member is reachable via <c>this.&lt;name&gt;</c>.
         /// </summary>
         internal static void WarnIfShadowsMember(CompileScope compileScope, ExType scopeType, string name,
@@ -65,7 +65,7 @@ namespace Heddle.Runtime.Expressions
         }
 
         /// <summary>
-        /// Phase 3 (OQ4): the extension's resolved slot layout as a single string — ordered
+        /// The extension's resolved slot layout as a single string — ordered
         /// <c>name:&lt;slot type AQN&gt;</c> pairs joined with <c>|</c> — for the manifest's prop-layout
         /// fingerprint row and the gauntlet check that compares it against the live extension type.
         /// <para>Built by the same shared <see cref="PropLayoutCore"/> the compile path uses, with faults
@@ -102,7 +102,7 @@ namespace Heddle.Runtime.Expressions
             }
         }
 
-        /// <summary>Phase 8 (D5): true iff <paramref name="extensionType"/> (or a base — <c>[Prop]</c> is
+        /// <summary>True iff <paramref name="extensionType"/> (or a base — <c>[Prop]</c> is
         /// <c>Inherited = true</c>) declares at least one extension parameter. The cheap gate the relaxed
         /// HED5005 check consults without building the full layout.</summary>
         internal static bool DeclaresExtensionParameters(Type extensionType)
@@ -111,7 +111,7 @@ namespace Heddle.Runtime.Expressions
         }
 
         /// <summary>
-        /// Phase 8 (D1/D4/WI2): resolves the prop layout of a parameter-declaring extension from its
+        /// Resolves the prop layout of a parameter-declaring extension from its
         /// <c>[Prop]</c> attributes — the new population source for the one prop contract. Walks the base-type
         /// chain outermost-first (base slots keep their indices, mirroring <see cref="Resolve"/>); re-raises the
         /// declaration-side ids (<c>HED5007</c>/<c>HED5008</c>/<c>HED5009</c>/<c>HED5010</c>/<c>HED5015</c>)
@@ -122,10 +122,9 @@ namespace Heddle.Runtime.Expressions
         internal static PropLayout ResolveFromExtension(Type extensionType, CompileScope compileScope,
             string ownerDisplay, BlockPosition ownerCallPosition)
         {
-            // Phase 3 (F4): the sequencing, indexing and fault ordering now live in the shared
-            // Language/Binding/PropLayoutCore, which the generator's emitter drives over Roslyn symbols. This
-            // method is the reflection adapter: decode the layers into declarations, hand the core an
-            // ITypeFacts<Type> and a sink, and re-shape the resulting slots.
+            // Both reflection and generator sides use the shared core for sequencing and indexing via their
+            // respective adapters, preventing divergence. Decode the layers into declarations, feed through the
+            // core with a reflection adapter, then re-shape the resulting slots.
             var declarations = ReadDeclarations(extensionType);
             var sink = new ReflectionPropSink(compileScope, ownerDisplay, ownerCallPosition);
             var built = PropLayoutCore.Build(declarations, ReflectionTypeFacts.Instance, sink, out _);
@@ -293,8 +292,8 @@ namespace Heddle.Runtime.Expressions
             ApplyDefaultCore(decl.Name, decl.HasDefault, decl.DefaultValue, type, slot, decl.Position, compileScope);
         }
 
-        /// <summary>The D2 default-conversion core shared by the definition path (<see cref="Resolve"/>) and the
-        /// phase 8 extension path (<see cref="ResolveFromExtension"/>) — one conversion rule, one HED5009 site.</summary>
+        /// <summary>The default-conversion core shared by the definition path (<see cref="Resolve"/>) and the
+        /// extension path (<see cref="ResolveFromExtension"/>) — one conversion rule, one HED5009 site.</summary>
         private static void ApplyDefaultCore(string name, bool hasDefault, object defaultValue, ExType type,
             PropSlot slot, BlockPosition position, CompileScope compileScope)
         {

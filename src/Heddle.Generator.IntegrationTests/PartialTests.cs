@@ -13,10 +13,10 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 partials (README D7): a precompiled <c>@partial(){{name}}</c> resolves its child lazily —
-    /// registry first (a precompiled child), dynamic compile second (a runtime-compiled child) — through
-    /// <c>PrecompiledRuntime.ResolvePartial</c>, and splices its output exactly as the runtime
-    /// <c>PartialExtension.InnerTemplate.Generate</c> does. Both mixed-mode directions are differential-gated.
+    /// Precompiled partials: a precompiled <c>@partial(){{name}}</c> resolves its child lazily — registry first (a
+    /// precompiled child), dynamic compile second (a runtime-compiled child) — through <c>PrecompiledRuntime.ResolvePartial</c>,
+    /// and splices its output exactly as the runtime <c>PartialExtension.InnerTemplate.Generate</c> does. Both mixed-mode
+    /// directions are differential-gated.
     /// </summary>
     [Collection("PrecompiledRegistry")]
     public class PartialTests
@@ -29,16 +29,16 @@ namespace Heddle.Generator.IntegrationTests
                 if (!type.IsClass || !type.IsAbstract || !type.IsSealed) continue;
                 if (type.Namespace != DifferentialHarness.GeneratedNamespace) continue;
                 if (type.Name == sanitized)
-                    // Phase 8: three Generate overloads (string + two sinks) — select the string-returning entry.
+                    // Three Generate overloads exist (string + two sinks) — select the string-returning entry.
                     return type.GetMethods(BindingFlags.Public | BindingFlags.Static)
                         .FirstOrDefault(m => m.Name == "Generate" && m.ReturnType == typeof(string));
             }
             return null;
         }
 
-        /// <summary>The generator's own <c>SanitizeName</c> (phase 6 D9). This used to be a simplified,
-        /// already-divergent copy — it dropped the directory-segment handling entirely — which is exactly how a
-        /// hand-synchronized "independent oracle" fails.</summary>
+        /// <summary>The generator's own <c>SanitizeName</c>. This used to be a simplified, already-divergent copy —
+        /// it dropped the directory-segment handling entirely — which is exactly how a hand-synchronized
+        /// "independent oracle" fails.</summary>
         private static string Sanitize(string key) =>
             generator::Heddle.Generator.HeddleTemplateGenerator.SanitizeName(key);
 
@@ -68,7 +68,7 @@ namespace Heddle.Generator.IntegrationTests
         public void PrecompiledParentRendersDynamicChildFromDisk()
         {
             // The child is NOT registered; ResolvePartial dynamic-compiles it from disk under the ambient options the
-            // resolver-style GenerateString overload establishes (mixed mode, README D7).
+            // resolver-style GenerateString overload establishes (mixed mode).
             var parentKey = "ptest-parent-b.heddle";
             var parent = "X@partial(){{ptest-child-b}}Y\n";
             var child = "<dynamic-child>";

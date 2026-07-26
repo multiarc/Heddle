@@ -8,7 +8,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// <para>The phase 2 executable spec, written security-first (WI1): the profile x construct matrix
+    /// <para>The profile x construct matrix
     /// (M01-M15), the XSS corpus (X01-X12), and the encoding-pin rows (E01-E14). Every row asserts exact
     /// output bytes; the E-rows pin the 1.x <c>WebUtility.HtmlEncode</c> baseline so the 2.0 encoder swap's
     /// golden churn is measured, not discovered.</para>
@@ -45,8 +45,6 @@ namespace Heddle.Tests
         {
             return Compile(template, modelType, profile).Generate(model);
         }
-
-        // ---------------- Profile x construct matrix (M01-M15) ----------------
 
         [Fact]
         public void M01_UnnamedMemberPath()
@@ -166,8 +164,6 @@ namespace Heddle.Tests
             Assert.Equal("&lt;b&gt;x&lt;/b&gt;", Render("@(V):html()", m, typeof(VModel), OutputProfile.Html));
         }
 
-        // ---------------- XSS corpus (X01-X12) ----------------
-
         [Fact]
         public void X01_FlagshipDirectiveFlip()
         {
@@ -264,12 +260,10 @@ namespace Heddle.Tests
                 Render("@profile(){{text}}@(UserInput)", m, typeof(UserInputModel), OutputProfile.Html));
         }
 
-        // ---------------- Encoding-pin rows (E01-E14) ----------------
-
         // Each row renders @(V) under Html and asserts the exact 1.x WebUtility.HtmlEncode bytes.
         // Non-ASCII inputs use \u escapes so source encoding cannot perturb the pinned bytes; the
         // E12/E13 control characters are supplied programmatically so line-ending normalization
-        // cannot touch them. See D11 for the 2.0 re-pin budget.
+        // cannot touch them. The 2.0 re-pin budget adjusts for encoder changes.
         [Theory]
         [InlineData("<", "&lt;")]                        // E01
         [InlineData(">", "&gt;")]                        // E02

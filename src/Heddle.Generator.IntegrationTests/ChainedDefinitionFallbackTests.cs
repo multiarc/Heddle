@@ -11,10 +11,10 @@ namespace Heddle.Generator.IntegrationTests
     /// <summary>
     /// Differential coverage for chaining a value INTO a definition call (<c>@box():producer()</c>). The generator
     /// refuses to precompile any multi-item chain (<c>TemplateEmitter.BuildCall</c>: <c>chain.Chain.Count != 1</c> →
-    /// "chained call"), so such a template <b>falls back to the dynamic tier</b>. This pins that documented fallback
-    /// (no precompiled strategy is emitted) — which is what keeps the precompiled and runtime backends in lockstep
-    /// for the chained-into-definition fix (both render through the dynamic engine) — and asserts the runtime renders
-    /// the corrected output: the chained value reaches the definition body's <c>@out()</c>.
+    /// "chained call"), so such a template <b>falls back to the dynamic tier</b>. This pins that fallback (no
+    /// precompiled strategy is emitted) — which is what keeps the precompiled and runtime backends in lockstep for
+    /// chaining into a definition (both render through the dynamic engine) — and asserts the runtime renders the
+    /// corrected output: the chained value reaches the definition body's <c>@out()</c>.
     /// </summary>
     public class ChainedDefinitionFallbackTests
     {
@@ -28,7 +28,7 @@ namespace Heddle.Generator.IntegrationTests
         [Theory]
         // A value chained into a definition: box's @out() emits it.
         [InlineData("@% <box>{{[@out()]}} %@\n@box():string(this)", "Hi", "[Hi]\n")]
-        // The documented @heading():emphasis() wrapper chain, valued through a string producer.
+        // The @heading():emphasis() wrapper chain, valued through a string producer.
         [InlineData("@% <heading>{{<h2>@out()</h2>}} <emphasis>{{<em>@out()</em>}} %@\n@heading():emphasis():string(this)",
             "Hi", "<h2><em>Hi</em></h2>\n")]
         public void ChainedIntoDefinition_FallsBackToDynamicTier_AndRendersCorrectly(string body, string value,
@@ -40,8 +40,8 @@ namespace Heddle.Generator.IntegrationTests
             Assert.False(gen.Diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error),
                 "Unexpected generator error: " + string.Join("; ", gen.Diagnostics.Select(d => d.ToString())));
 
-            // Documented fallback (phase 0 D5: declared, not inferred): a multi-item chain does not precompile,
-            // so the manifest carries no bound strategy and no entry class was generated.
+            // The fallback is declared, not inferred: a multi-item chain does not precompile, so the manifest
+            // carries no bound strategy and no entry class was generated.
             DifferentialHarness.ExpectDegrade(gen, "views/chained-def.heddle");
 
             // The runtime backend renders the corrected output: the chained value reaches the definition's @out().

@@ -8,7 +8,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 3 (F6) — the <b>reflection-side</b> driver of the shared assignability conformance corpus. It proves
+    /// The <b>reflection-side</b> driver of the shared assignability conformance corpus. It proves
     /// two things: that every committed expectation equals the live CLR relation (so the corpus is generated data,
     /// not belief), and that the reflection <see cref="ITypeFacts{TType}"/> adapter answers it row for row.
     /// <para>The symbol-side driver in <c>Heddle.Generator.Tests</c> reads the same file. Corrupting one row turns
@@ -52,7 +52,7 @@ namespace Heddle.Tests
             foreach (var row in AssignabilityCorpus.Rows)
                 families.Add(row.Family);
 
-            // The seed families the phase-3 supplement names. Losing one silently is how a disagreement class
+            // The seed families the corpus must always carry. Losing one silently is how a disagreement class
             // stops being tested.
             foreach (var required in new[]
                      {

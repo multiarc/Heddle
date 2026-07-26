@@ -6,7 +6,7 @@ using System.Linq;
 namespace Heddle.TestCorpus
 {
     /// <summary>
-    /// Phase 7 D2 — the single accessor for the shared test corpus, linked into every consuming test project by
+    /// The single accessor for the shared test corpus, linked into every consuming test project by
     /// <c>src/TestCorpus/TestCorpus.props</c>.
     /// <para>This type replaces the triplicated <c>CorpusDir</c> / <c>HeddleTestsDll</c> / <c>LoadCorpus</c> helpers
     /// that rewrote the running assembly's path to name a sibling project and then climbed <c>../../..</c> out of
@@ -15,9 +15,9 @@ namespace Heddle.TestCorpus
     /// nothing and passed. The fragility was the mechanism, not the missing assert: with the corpus
     /// <c>Content</c>-copied into each consumer's own output directory, locating it is
     /// <see cref="AppContext.BaseDirectory"/> and nothing else, and the assert becomes unnecessary rather than
-    /// load-bearing (testing-standards — <i>Test-input single-sourcing</i>, ledger E9).</para>
-    /// <para>The corpus files themselves stay in <c>src/Heddle.Tests/TestTemplate/</c> (D1 as revised): what each
-    /// consumer holds is a build copy, which is not a second home for the input.</para>
+    /// load-bearing. Test inputs are single-sourced: one on-disk home, many build copies.</para>
+    /// <para>The corpus files themselves stay in <c>src/Heddle.Tests/TestTemplate/</c>: what each consumer holds is
+    /// a build copy, which is not a second home for the input.</para>
     /// </summary>
     internal static class TestCorpusIndex
     {
@@ -27,8 +27,8 @@ namespace Heddle.TestCorpus
         public const string LinkFolder = "TestTemplate";
 
         /// <summary>The folder test-written debug output goes to. Deliberately NOT the corpus folder: the corpus is
-        /// input, and a directory several projects copy from must not also be a directory tests write into
-        /// (Q7.3 / phase 7 WI4). The checked-in historical artifacts live at <c>src/Heddle.Tests/TestOutput/</c>;
+        /// input, and a directory several projects copy from must not also be a directory tests write into.
+        /// The checked-in historical artifacts live at <c>src/Heddle.Tests/TestOutput/</c>;
         /// they are preserved, excluded from the glob, and read by nothing.</summary>
         public const string WrittenArtifactFolder = "TestOutput";
 
@@ -105,7 +105,7 @@ namespace Heddle.TestCorpus
             }
         }
 
-        /// <summary>Every corpus <c>.heddle</c> file name, ordinal-sorted. The observed half of D3's completeness
+        /// <summary>Every corpus <c>.heddle</c> file name, ordinal-sorted. The observed half of the completeness
         /// gates.</summary>
         public static IReadOnlyList<string> Names() =>
             Templates.Select(t => t.Name).OrderBy(n => n, StringComparer.Ordinal).ToList();
@@ -168,8 +168,8 @@ namespace Heddle.TestCorpus
                 .ToList();
 
         /// <summary>
-        /// Where a test writes its rendered output when it wants the artifact on disk for eyeballing. Phase 7 WI4:
-        /// these 25 writes used to land inside the corpus directory, which made the corpus simultaneously input and
+        /// Where a test writes its rendered output when it wants the artifact on disk for eyeballing.
+        /// These writes previously landed inside the corpus directory, which made the corpus simultaneously input and
         /// output and therefore un-checkable for byte neutrality — and, once the corpus is copied into several
         /// consumers' outputs, would have had one project's test run writing files into a directory another
         /// project's gate enumerates. The directory is created on demand in the writer's OWN output.

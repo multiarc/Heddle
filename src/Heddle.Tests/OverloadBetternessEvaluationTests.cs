@@ -9,7 +9,7 @@ using Xunit.Abstractions;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 4 WI10 — the Q4.2(b) evaluation instrument. <b>Analysis only</b>: nothing here changes runtime overload
+    /// The evaluation instrument for overload betterment. <b>Analysis only</b>: nothing here changes runtime overload
     /// behavior, and the shared <see cref="OverloadRank"/> core is the measurement tool, not the subject.
     /// <para>The question the user asked: would adopting C#'s native <i>betterness</i> schema in the runtime binder
     /// (plus extra validations preserving Heddle's documented deviations) make sense, with the generator then

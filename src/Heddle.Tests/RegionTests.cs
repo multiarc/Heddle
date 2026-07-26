@@ -9,10 +9,9 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 7 (post-2.0) — named content regions, dynamic tier. Covers the testing-plan fixture rows that the
-    /// dynamic backend owns: the flagship worked example (with the BLOCKER-A depth trap), call-scoping,
-    /// emit-then-retract additivity (D5/D12), HED5019/HED5020, the reused narrowing/member errors (D7), the
-    /// self-call→base rule (D4 step 5), and the sibling-idiom regression.
+    /// Named content regions for the dynamic tier. Covers fixture scenarios: the flagship worked example
+    /// (with the BLOCKER-A depth trap), call-scoping, emit-then-retract additivity, HED5019/HED5020
+    /// diagnostics, the reused narrowing/member errors, the self-call→base rule, and the sibling-idiom regression.
     /// </summary>
     public class RegionTests
     {
@@ -41,7 +40,7 @@ namespace Heddle.Tests
             ShowHeading = true
         };
 
-        [Fact] // region_feed_defaults
+        [Fact]
         public void DefaultsRenderWhenNoOverrideBlock()
         {
             var t = Compile(Feed + "@feed()", typeof(RegionFeedModel));
@@ -51,7 +50,7 @@ namespace Heddle.Tests
                 t.Generate(Model()).Trim());
         }
 
-        [Fact] // region_feed_full — the ratified worked example incl. the @item(this) fill AT DEPTH
+        [Fact] // The ratified worked example including the @item(this) fill at depth
         public void FillsRenderIncludingTypedFillAtDepth()
         {
             var t = Compile(Feed +
@@ -64,7 +63,7 @@ namespace Heddle.Tests
                 t.Generate(Model()).Trim());
         }
 
-        [Fact] // region_fill_at_depth — minimal isolate: region call nested in an @if body
+        [Fact] // Minimal isolate: region call nested in an @if body
         public void FillReachesRegionCallNestedInBranchBody()
         {
             var t = Compile(
@@ -75,7 +74,7 @@ namespace Heddle.Tests
             Assert.Equal("[filled]", t.Generate(Model()).Trim());
         }
 
-        [Fact] // region_feed_two_calls — call-scoped, no leak
+        [Fact] // Call-scoped, no leak
         public void SecondCallWithoutOverridesRendersDefaults()
         {
             var t = Compile(Feed +
@@ -88,7 +87,7 @@ namespace Heddle.Tests
             Assert.StartsWith("<h2 class=\"light\">Home</h2>", parts[1]);
         }
 
-        [Fact] // region_private_override → HED5019, positioned, single error (candidate error retracted)
+        [Fact] // HED5019, positioned, single error; candidate error is retracted
         public void PrivateRegionOverrideRaisesHed5019AndRetractsBaseNotFound()
         {
             var t = Compile(Feed + "@feed(){{@%<divider:divider>{{<hr class=\"dark\">}}%@}}",
@@ -102,7 +101,7 @@ namespace Heddle.Tests
             Assert.DoesNotContain(errors, e => e.Error.Contains("couldn't be found"));
         }
 
-        [Fact] // region_undeclared_override — base IS in scope (D12): a normal local override, no region routing
+        [Fact] // Base is in scope: a normal local override, no region routing
         public void InScopeBaseStaysANormalOverride()
         {
             var t = Compile(
@@ -113,7 +112,7 @@ namespace Heddle.Tests
             Assert.StartsWith("[page]", t.Generate(Model()).Trim());
         }
 
-        [Fact] // region_dangling_override — no region, base unresolved → the error stays, byte-identical text
+        [Fact] // No region, base unresolved: the error stays, byte-identical text
         public void DanglingOverrideKeepsBaseNotFoundError()
         {
             var t = Compile(Feed + "@feed(){{@%<ghost:ghost>{{x}}%@}}", typeof(RegionFeedModel));
@@ -131,7 +130,7 @@ namespace Heddle.Tests
             Assert.Contains(t.CompileResult.Errors, e => e.Error == "Base definition ghost couldn't be found");
         }
 
-        [Fact] // region_duplicate → HED5020 at the second declaration
+        [Fact] // HED5020 at the second declaration
         public void DuplicatePublicRegionRaisesHed5020()
         {
             var t = Compile(
@@ -145,7 +144,7 @@ namespace Heddle.Tests
             Assert.Contains("head", errors[0].Error);
         }
 
-        [Fact] // region_public_vs_private — public colliding with private keeps the id-less message (F6)
+        [Fact] // Public colliding with private keeps the id-less message
         public void PublicRegionCollidingWithPrivateKeepsIdlessMessage()
         {
             var t = Compile(
@@ -158,7 +157,7 @@ namespace Heddle.Tests
                 e => e.Error.Contains("with the same name already exists"));
         }
 
-        [Fact] // region_docscope_public — a <:x> at document scope is an id-less positioned parse error (F6)
+        [Fact] // A <:x> at document scope is an id-less positioned parse error
         public void DocumentScopePublicRegionIsIdlessError()
         {
             var t = Compile("@%<:x>{{a}}%@text", typeof(RegionFeedModel));
@@ -168,7 +167,7 @@ namespace Heddle.Tests
                      e.DiagnosticId == null);
         }
 
-        [Fact] // region_typed_badmember — typed override body reading a non-Article member → HED0001 (D7)
+        [Fact] // Typed override body reading a non-Article member → HED0001
         public void TypedOverrideBodyBadMemberIsHed0001()
         {
             var t = Compile(Feed + "@feed(){{@%<item:item>{{<li>@(Nope)</li>}}%@}}", typeof(RegionFeedModel));
@@ -177,8 +176,7 @@ namespace Heddle.Tests
                 e => e.DiagnosticId == HeddleDiagnosticIds.PropertyNotFound && e.Error.Contains("Nope"));
         }
 
-        [Fact] // region_typed_narrow — non-assignable narrowing → the pre-existing id-less error, positioned,
-               // fired the pre-existing count (twice, D7/review E)
+        [Fact] // Non-assignable narrowing: pre-existing id-less error, positioned, fired twice
         public void NonAssignableNarrowingFiresPreexistingIdlessError()
         {
             var t = Compile(Feed + "@feed(){{@%<item:item>{{<li>x</li>}} :: PropSite%@}}",
@@ -208,7 +206,7 @@ namespace Heddle.Tests
             Assert.Contains("<li>A/hot</li>", t.Generate(model));
         }
 
-        [Fact] // region_selfcall_to_default — a fill body calling its own region name resolves to the base default
+        [Fact] // A fill body calling its own region name resolves to the base default
         public void SelfCallInsideFillResolvesToBaseDefault()
         {
             var t = Compile(Feed +
@@ -218,7 +216,7 @@ namespace Heddle.Tests
             Assert.StartsWith("[wrap:<h2 class=\"light\">Home</h2>]", t.Generate(Model()).Trim());
         }
 
-        [Fact] // region_sibling_from_fill — a fill body calling a SIBLING region resolves the sibling's scope entry
+        [Fact] // A fill body calling a sibling region resolves the sibling's scope entry
         public void SiblingCallInsideFillResolvesSiblingFill()
         {
             var t = Compile(
@@ -229,7 +227,7 @@ namespace Heddle.Tests
             Assert.Equal("[h:[f-filled]]", t.Generate(Model()).Trim());
         }
 
-        [Fact] // region_props_compose — typed props and named regions compose independently
+        [Fact] // Typed props and named regions compose independently
         public void PropsAndRegionsCompose()
         {
             var t = Compile(Feed +
@@ -241,7 +239,7 @@ namespace Heddle.Tests
             Assert.Contains("<hr class=\"dark\">", output);
         }
 
-        [Fact] // patterns_sibling_shell — the documented sibling-override idiom renders unchanged (regression)
+        [Fact] // The documented sibling-override idiom renders unchanged (regression)
         public void SiblingOverrideIdiomStillRenders()
         {
             var t = Compile(
@@ -256,7 +254,7 @@ namespace Heddle.Tests
                 t.Generate(Model()).Trim());
         }
 
-        [Fact] // region_sibling_selfcall — a self-calling plain sibling override terminates at the base (D11/D12)
+        [Fact] // A self-calling plain sibling override terminates at the base
         public void SelfCallingSiblingOverrideTerminatesAtBase()
         {
             var t = Compile(
@@ -266,7 +264,7 @@ namespace Heddle.Tests
             Assert.Equal("[over:[base]]", t.Generate(Model()).Trim());
         }
 
-        [Fact] // concurrency — region state is compile-time only; concurrent renders are identical
+        [Fact] // Region state is compile-time only; concurrent renders are identical
         public void ConcurrentRendersAreIdentical()
         {
             var t = Compile(Feed +
@@ -281,7 +279,7 @@ namespace Heddle.Tests
             Assert.All(results, r => Assert.Equal(expected, r));
         }
 
-        [Fact] // LSP-facing seam (D5): the retract clears the error from the parse list too (reference removal)
+        [Fact] // LSP-facing seam: the retract clears the error from the parse list too (reference removal)
         public void RetractClearsParseErrorListAsWell()
         {
             HeddleTemplate.Configure(typeof(RegionTests).GetTypeInfo().Assembly);

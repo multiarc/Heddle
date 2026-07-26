@@ -9,16 +9,14 @@ using Microsoft.CodeAnalysis;
 namespace Heddle.Generator.Emit
 {
     /// <summary>
-    /// Maps the phase 1 native-expression AST (<see cref="ExprNode"/>) to C# 1:1 (generated-code.md example 2). The
-    /// native tier is a strict C# subset, so operators, ternary/coalesce, and literals emit verbatim and the
-    /// consumer's compiler applies the identical numeric promotion / lifting / string-concat semantics the runtime
-    /// reconstructs by hand. The one type-sensitive spot is member-path null-safety, resolved through
-    /// <see cref="SymbolTypeResolver"/> (protocol rule 6). A construct the writer can not yet reproduce faithfully
-    /// returns null, so the emitter degrades the template to the dynamic path.
-    /// <para>Phase 4 D6 narrows "strict C# subset" to what it always meant: operators emit verbatim only where the
-    /// shared <see cref="NativeOperatorRules"/> table says C# and the native tier agree. The seven documented
-    /// deviations, and every operand whose static facts the estimator cannot pin down, degrade instead — which is
-    /// what stops the consumer's C# compiler from having an opinion about rendered output.</para>
+    /// Maps the native-expression AST (<see cref="ExprNode"/>) to C# 1:1. The native tier is a strict C# subset, so
+    /// operators, ternary/coalesce, and literals emit verbatim and the consumer's compiler applies the identical
+    /// numeric promotion / lifting / string-concat semantics the runtime reconstructs by hand. The one type-sensitive
+    /// spot is member-path null-safety, resolved through <see cref="SymbolTypeResolver"/>. A construct the writer
+    /// cannot yet reproduce faithfully returns null, so the emitter degrades the template to the dynamic path.
+    /// <para>Operators emit verbatim only where the shared <see cref="NativeOperatorRules"/> table says C# and the
+    /// native tier agree. The documented deviations, and every operand whose static facts the estimator cannot pin down,
+    /// degrade instead — which stops the consumer's C# compiler from having an opinion about rendered output.</para>
     /// </summary>
     internal sealed class NativeExpressionWriter
     {
@@ -64,20 +62,18 @@ namespace Heddle.Generator.Emit
         public bool UsedModel => _usedModel;
 
         /// <summary>Default (built-in) function names bound to the <c>PrecompiledFunctions</c> shim in this
-        /// expression (D21); the emitter records one manifest <c>FunctionBindings</c> row per name.</summary>
+        /// expression; the emitter records one manifest <c>FunctionBindings</c> row per name.</summary>
         public IEnumerable<string> UsedDefaultFunctions => _usedDefaultFunctions;
 
-        /// <summary>Discovered <c>[ExportFunctions]</c> names bound directly to their container in this expression
-        /// (D21): the function name with its container AQN-sans-version target and that container's overload count.
-        /// Phase 3 (OQ2): a name exported by more than one container yields one row <b>per container</b>, matching
-        /// the runtime's merged registry — the gauntlet compares each row's count exactly, and the old
-        /// first-container-wins single row made every merged name a permanent FunctionBindingMismatch.</summary>
+        /// <summary>Discovered <c>[ExportFunctions]</c> names bound directly to their container in this expression:
+        /// the function name with its container AQN-sans-version target and that container's overload count.
+        /// A name exported by more than one container yields one row <b>per container</b>, matching
+        /// the runtime's merged registry — the gauntlet compares each row's count exactly.</summary>
         public IReadOnlyList<(string Name, string Aqn, int OverloadCount)> UsedExports => _usedExports;
 
         /// <summary>Function names in this expression resolvable from neither the default table nor any referenced
-        /// export (the OQ1 delegate-only remainder, D21): each name with its <c>.heddle</c> position. When non-empty,
-        /// the emitter degrades the template to a fallback-marker entry and reports <c>HED7014</c> (never emitted
-        /// code).</summary>
+        /// export; each name with its <c>.heddle</c> position. When non-empty,
+        /// the emitter degrades the template to a fallback-marker entry and reports <c>HED7014</c>.</summary>
         public IReadOnlyList<(string Name, Heddle.Strings.Core.BlockPosition Position)> UnresolvableFunctions =>
             _unresolvableFunctions;
 
@@ -85,10 +81,10 @@ namespace Heddle.Generator.Emit
         /// receiver — milestone 2 / HED7008). Drained by the emitter and reported at the <c>.heddle</c> span.</summary>
         public IReadOnlyList<SymbolMemberResolver.MemberFailure> MemberFailures => _memberFailures;
 
-        /// <summary>Q8.1 / HED7025: function calls the <b>shared</b> overload ranker <i>proved</i> illegal — an
+        /// <summary>Function calls the <b>shared</b> overload ranker <i>proved</i> illegal — an
         /// ambiguous flat-Pareto front or no applicable overload, over arguments the estimator typed — each with its
-        /// <c>.heddle</c> position, the runtime-shaped sentence naming the candidates, and the run-tier id the build
-        /// error is the twin of. Drained by the emitter and reported at Error.
+        /// <c>.heddle</c> position, the runtime-shaped sentence naming the candidates, and the diagnostic id
+        /// HED7025. Drained by the emitter and reported at Error.
         /// <para>Refusals the generator could <b>not</b> prove (an <c>Unknown</c> argument estimate, an unspellable
         /// cast target, a params-expanded bind) never land here: they stay the silent degrade they always were,
         /// because the generator has established nothing about what the runtime will do.</para></summary>
@@ -140,17 +136,13 @@ namespace Heddle.Generator.Emit
 
         private string WriteCall(CallNode call)
         {
-            // Resolution (D21 / OQ1): a discovered [ExportFunctions] name binds directly to its container; a default
+            // Resolution: a discovered [ExportFunctions] name binds directly to its container; a default
             // built-in binds through the public PrecompiledFunctions shim (BuiltInFunctions is internal). A name in
             // *both* a container export and the default table is a merged forwarder group — not yet emitted, so the
             // template degrades to the dynamic path. A name in neither is unsupported here (HED7014 handled by the
-            // emitter).
-            // Phase 4 D10: a default built-in's overload is now selected by the shared OverloadRank core — Heddle's
-            // flat Pareto rank — and emitted cast-pinned to the winning signature, instead of being handed to the
-            // consumer's C# compiler whose betterness rules are a different algorithm. An ambiguous or inapplicable
-            // call degrades, so the two tiers reach the same verdict for min(1, 2u) instead of one rendering and the
-            // other raising HED1013. Export calls carry no parameter-type metadata, so they keep resolving through
-            // the consumer's compiler for now (phase 3 owns export signature discovery).
+            // emitter). A default built-in's overload is selected by the shared OverloadRank core using flat Pareto
+            // rank, and emitted cast-pinned to the winning signature. An ambiguous or inapplicable call degrades.
+            // Export calls carry no parameter-type metadata, so they keep resolving through the consumer's compiler.
             bool isDefault = DefaultShims.TryGetValue(call.Name, out var shim);
             bool hasExport = _exports != null && _exports.TryGet(call.Name, out var export);
 
@@ -175,11 +167,9 @@ namespace Heddle.Generator.Emit
 
             if (hasExport)
             {
-                // Phase 3 (F2): exports now carry full signatures, so the SHARED ranker chooses the overload and the
-                // call is emitted cast-pinned — the same treatment built-ins have had since phase 4. A call the
-                // ranker refuses (ambiguous under the flat Pareto rank, inapplicable, or carrying an argument the
-                // estimator cannot type) degrades, which is the runtime's own verdict rather than whatever C#
-                // betterness would have picked.
+                // Exports carry full signatures, so the SHARED ranker chooses the overload and the call is emitted
+                // cast-pinned — the same treatment built-ins receive. A call the ranker refuses (ambiguous under the
+                // flat Pareto rank, inapplicable, or carrying an argument the estimator cannot type) degrades.
                 var exportBinding = BindExportCall(call);
                 if (exportBinding == null)
                     return null;
@@ -219,10 +209,10 @@ namespace Heddle.Generator.Emit
             var resolution = _resolver.ResolvePath(_modelType, path.Segments);
             if (resolution.Kind != SymbolTypeResolver.PathKind.Resolved)
             {
-                // Milestone 2 (HED7008): a genuine property-not-found on a resolved, non-dynamic receiver — the same
-                // condition the runtime raises as HED0001. A DynamicHop is a legal dynamic member access, never a
-                // failure. Recorded here; the emitter reports it (and still degrades to the dynamic path — same
-                // emitted code, better errors).
+                // A genuine property-not-found on a resolved, non-dynamic receiver — the same condition the runtime
+                // raises as HED0001 (HED7008). A DynamicHop is a legal dynamic member access, never a failure.
+                // Recorded here; the emitter reports it (and still degrades to the dynamic path — same emitted code,
+                // better errors).
                 if (resolution.Kind == SymbolTypeResolver.PathKind.Failed)
                 {
                     var idx = resolution.DynamicIndex;
@@ -309,7 +299,7 @@ namespace Heddle.Generator.Emit
         #region Operand-kind estimation (the generator's facts adapter for the shared rule tables)
 
         /// <summary>
-        /// The static-kind estimate for a sub-expression, as the shared rule tables see it (phase 4 D3/D6). Anything
+        /// The static-kind estimate for a sub-expression, as the shared rule tables see it. Anything
         /// the estimator cannot type confidently is <see cref="OperandKind.Unknown"/>, and every rule degrades on
         /// Unknown — the estimator is only ever allowed to be conservative, never optimistic. Memoized because the
         /// operator guards estimate the same sub-trees the emission walk then re-visits.
@@ -375,8 +365,8 @@ namespace Heddle.Generator.Emit
 
         /// <summary>A built-in contributes the return type of the overload the <b>shared ranker</b> selects, so
         /// <c>len(s) &gt; 0</c> and <c>min(1, 2) &gt; 0</c> both keep precompiling while a call the ranker refuses
-        /// (ambiguous, inapplicable, or carrying an operand the estimator cannot type) contributes nothing. Since
-        /// phase 3 an <b>export</b> call does the same — it now carries the signatures the ranker needs.</summary>
+        /// (ambiguous, inapplicable, or carrying an operand the estimator cannot type) contributes nothing. An
+        /// <b>export</b> call does the same — it carries the signatures the ranker needs.</summary>
         private OperandKind EstimateCall(CallNode call)
         {
             if (_exports != null && _exports.TryGet(call.Name, out _))
@@ -391,11 +381,8 @@ namespace Heddle.Generator.Emit
             return binding == null ? OperandKind.Unknown : DefaultFunctionBinder.ReturnKind(binding.Row);
         }
 
-        /// <summary>Resolves a default built-in call against the shared candidate rows with the shared ranker, or
-        /// null when the name is not a built-in, is shadowed by an export, or the ranker refuses it. Memoized: the
-        /// operator guards and the emission walk both ask.</summary>
-        /// <summary>Resolves an export call against its merged overload set with the shared ranker, memoized like
-        /// the built-in path.</summary>
+        /// <summary>Resolves a call against the shared ranker and candidate rows, or null when the ranker refuses it
+        /// or the name is not a built-in. Memoized: the operator guards and the emission walk both ask.</summary>
         private ExportFunctionBinder.Binding BindExportCall(CallNode call)
         {
             if (_exportBindings.TryGetValue(call, out var cached))
@@ -416,7 +403,7 @@ namespace Heddle.Generator.Emit
             return binding;
         }
 
-        /// <summary>Records a proven-illegal call once per call site (Q8.1). Called from the memo-miss arm of each
+        /// <summary>Records a proven-illegal call once per call site. Called from the memo-miss arm of each
         /// binder so the two consumers — the operand-kind estimator that guards an enclosing operator, and the
         /// emission walk — cannot report the same span twice.</summary>
         private void RecordIfProvenIllegal(CallNode call, in Binding.BindRefusal refusal)

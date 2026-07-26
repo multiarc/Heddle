@@ -6,10 +6,10 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Heddle.Generator.Pipeline
 {
-    /// <summary>Reads the compilation-wide <c>build_property.Heddle*</c> options into a <see cref="GlobalConfig"/>
-    /// (phase 7 D14/D16). Unparsable enum/int values are collected as <c>HED7009</c> candidates (the generator never
+    /// <summary>Reads the compilation-wide <c>build_property.Heddle*</c> options into a <see cref="GlobalConfig"/>.
+    /// Unparsable enum/int values are collected as <c>HED7009</c> candidates (the generator never
     /// guesses a default from a typo).
-    /// <para>Phase 5 D8: this is a thin Roslyn-side adapter — one lookup lambda over
+    /// <para>A thin Roslyn-side adapter — one lookup lambda over
     /// <see cref="AnalyzerConfigOptions"/> feeding <see cref="HeddleBuildOptions"/>'s shared names, defaults and
     /// parse helpers, plus the translation of their parse-failure signal into an <see cref="OptionError"/>.
     /// <c>AnalyzerConfigOptions</c> never crosses into shared code, and no allowed-value list is hand-copied from an

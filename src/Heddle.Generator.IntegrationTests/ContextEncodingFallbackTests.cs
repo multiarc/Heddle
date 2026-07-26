@@ -9,7 +9,7 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// C2-R7 / C2-R8 — the precompile-vs-fallback finding for <c>@attr</c>/<c>@js</c>/<c>@url</c>. Each mirrors
+    /// The precompile-vs-fallback behaviour of <c>@attr</c>/<c>@js</c>/<c>@url</c>. Each mirrors
     /// <c>@string</c>'s value-call shape, which means it overrides <c>InitStart</c> (the step-back default body). The
     /// generator refuses to bind engine extensions that override a compile-time hook (it reproduces only the base
     /// behavior), so — exactly like custom branch sets — a template using these built-ins <b>falls back to the
@@ -37,8 +37,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.False(gen.Diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error),
                 "Unexpected generator error: " + string.Join("; ", gen.Diagnostics.Select(d => d.ToString())));
 
-            // Documented fallback (C2-R7), declared through the phase 0 D5 intent API: the template does not
-            // precompile — no bound strategy and no entry class for it.
+            // Documented fallback: the template does not precompile — no bound strategy and no entry class for it.
             DifferentialHarness.ExpectDegrade(gen, "views/ctx.heddle");
 
             // The runtime backend renders the escaping — the fallback is output-safe.

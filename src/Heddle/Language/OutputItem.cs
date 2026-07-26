@@ -31,8 +31,8 @@ namespace Heddle.Language {
 
         /// <summary>
         /// True for a non-leading item of a chain (<c>@a():b()</c> — <c>b</c> consumes <c>a</c>'s output).
-        /// Phase 5 uses this on <c>@out</c> to fire the slot-projection runtime guard (a slot-mode <c>@out</c>
-        /// cannot take a value after a chained call, D11). Copied on isolation.
+        /// Used on <c>@out</c> to fire the slot-projection runtime guard: a slot-mode <c>@out</c>
+        /// cannot take a value after a chained call. Copied on isolation.
         /// </summary>
         internal bool IsChainedConsumer { get; set; }
 

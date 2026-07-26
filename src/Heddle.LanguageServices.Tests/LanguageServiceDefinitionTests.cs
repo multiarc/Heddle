@@ -5,8 +5,7 @@ using Xunit;
 
 namespace Heddle.LanguageServices.Tests
 {
-    /// <summary>Phase 6 D16/D26 go-to-definition: definition calls → the surviving header span; import sites →
-    /// the resolved file (success criterion 3).</summary>
+    /// <summary>Go-to-definition: definition calls resolve to the header span; import sites resolve to the file.</summary>
     public class LanguageServiceDefinitionTests
     {
         private const string Path = "doc.heddle";

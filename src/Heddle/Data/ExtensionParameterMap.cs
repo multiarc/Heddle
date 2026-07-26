@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace Heddle.Data
 {
     /// <summary>
-    /// Phase 8 (D2): the immutable per-call-site name→index map of a parameter-declaring extension's layout.
+    /// The immutable per-call-site name→index map of a parameter-declaring extension's layout.
     /// Built once at bind from the layout's ordered slot names; shared across renders and threads (never written
     /// after construction). <see cref="Scope.TryGetParameter"/> resolves through it into the carried values array.
     /// </summary>

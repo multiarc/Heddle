@@ -3,9 +3,8 @@ using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
 
-// The corpus export assembly (phase 6 D23/D24): one [ExportExtensions] extension and one [ExportFunctions]
-// container. Loaded by the facade's one-shot scan into the default ALC; also loaded (again) as a model assembly
-// into the collectible ALC for typed completion/hover.
+// Extension and function exports loaded into both the default ALC (facade registration)
+// and the collectible ALC (LSP completion/hover discovery).
 [assembly: ExportExtensions(typeof(Corpus.BadgeExtension), typeof(Corpus.GridCorpusExtension))]
 [assembly: ExportFunctions(typeof(Corpus.CorpusFunctions))]
 
@@ -42,14 +41,14 @@ namespace Corpus
         public Menu Menu { get; set; }
     }
 
-    /// <summary>A public static container whose <c>TitleCase</c> method exports the function <c>titlecase</c> (D24).</summary>
+    /// <summary>A public static container whose <c>TitleCase</c> method exports the function <c>titlecase</c>.</summary>
     public static class CorpusFunctions
     {
         public static string TitleCase(string value) => value;
     }
 
-    /// <summary>Phase 8 (WI7): a parameter-declaring extension exported under <c>gridlsp</c> — the LSP reads its
-    /// <c>[Prop]</c> layout transitively through <c>HeddleCompiler.Compile</c>.</summary>
+    /// <summary>A parameter-declaring extension exported under <c>gridlsp</c> with <c>[Prop]</c> layout
+    /// discovered by the LSP through <c>HeddleCompiler.Compile</c>.</summary>
     [ExtensionName("gridlsp")]
     [Prop("columns", typeof(int), Default = 3)]
     public class GridCorpusExtension : AbstractExtension
@@ -61,7 +60,7 @@ namespace Corpus
         }
     }
 
-    /// <summary>A trivial extension exported under the name <c>badge</c> (D23).</summary>
+    /// <summary>A trivial extension exported under the name <c>badge</c>.</summary>
     [ExtensionName("badge")]
     public class BadgeExtension : AbstractExtension
     {

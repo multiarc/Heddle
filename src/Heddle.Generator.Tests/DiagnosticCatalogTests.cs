@@ -9,7 +9,7 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Generator plan phase 6 D12.2 — the code-side three-way check. Every <c>GeneratorDiagnostics</c> descriptor
+    /// The code-side half of the descriptor/catalog agreement. Every <c>GeneratorDiagnostics</c> descriptor
     /// must equal its <c>HeddleDiagnosticCatalog</c> row on <c>(Id, Title, DefaultSeverity, MessageFormat)</c>.
     /// After the descriptors became catalog projections this holds by construction; the test is what makes it
     /// stay that way — reintroducing a hand-built descriptor with its own title or severity reds the build

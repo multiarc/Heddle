@@ -5,9 +5,9 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>
-    /// The phase 6 D23/D24 one-shot export scan: the corpus <c>[ExportExtensions]</c> extension enters the real
-    /// registry (offered as an extension name), the <c>[ExportFunctions]</c> container populates the workspace
-    /// registry, the scan is one-shot per process, and a bare workspace stays on the default registry.
+    /// The one-shot export scan: <c>[ExportExtensions]</c> extensions enter the real registry as offered names,
+    /// <c>[ExportFunctions]</c> populates the workspace registry, the scan runs once per process, and a bare
+    /// workspace stays on the default registry.
     /// </summary>
     public class ExportScanTests
     {

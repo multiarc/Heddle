@@ -9,7 +9,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// <see cref="FunctionRegistry"/> semantics (D12): overload ranking (exact/widening/object), the
+    /// <see cref="FunctionRegistry"/> semantics: overload ranking (exact/widening/object), the
     /// params-expanded composite <c>format</c> (incl. HED1015), replace-on-exact-signature, freeze-then-throw,
     /// delegate closures, and <see cref="FunctionRegistry.Default"/> immutability.
     /// </summary>

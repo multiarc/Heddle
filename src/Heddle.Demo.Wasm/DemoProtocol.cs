@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace Heddle.Demo.Wasm
 {
-    // The facade-shaped worker protocol DTOs (phase 9 D6 / wasm-demo.md). Absolute UTF-16 offsets, facade
+    // The facade-shaped worker protocol DTOs. Absolute UTF-16 offsets, facade
     // vocabulary — no LSP Position/Range. Serialized by the source-generated DemoJsonContext (camelCase, nulls
     // omitted). These are the .NET mirror of the TypeScript shapes the page and worker use.
 

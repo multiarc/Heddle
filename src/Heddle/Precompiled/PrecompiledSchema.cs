@@ -4,10 +4,10 @@ using System.Globalization;
 namespace Heddle.Precompiled
 {
     /// <summary>
-    /// <para>The manifest contract's version rules (phase 5 D5), stated once and compiled into both <c>Heddle</c>
+    /// <para>The manifest contract's version rules, stated once and compiled into both <c>Heddle</c>
     /// (the registration gate) and the <c>Heddle.Generator</c> analyzer (the emitted attribute). Before this file
     /// the emitted <c>schemaVersion</c> was a literal in the generator and the accepted window was a pair of private
-    /// consts in the runtime — the all-or-nothing hazard of 05 F5, where bumping one side rejects an entire
+    /// consts in the runtime — an all-or-nothing hazard, where bumping one side rejects an entire
     /// assembly behind an opt-in callback.</para>
     /// <para>The engine version travels as a string on the attribute, so parsing stays at the call site; the
     /// predicates here take parsed <see cref="Version"/>s and are trivially testable on both sides.</para>
@@ -15,7 +15,7 @@ namespace Heddle.Precompiled
     public static class PrecompiledSchema
     {
         /// <summary>
-        /// <para>Oldest manifest schema this engine accepts. <b>Raised 1 → 3 in 2.1 (Q8.2, corrected), the one
+        /// <para>Oldest manifest schema this engine accepts. <b>Raised 1 → 3 in 2.1, the one
         /// narrowing this constant has ever had</b> — and a genuine, declared binary break rather than a gate
         /// catching up with one that had already happened.</para>
         /// <para><b>The released facts, verified against the <c>v2.0.0</c> tag.</b> The shipped generator emitted
@@ -40,7 +40,7 @@ namespace Heddle.Precompiled
         /// 5). None of them was ever observable by a user, so carrying three increments would advertise a migration
         /// history that never existed and would leave this window claiming to support manifest shapes no generator
         /// ever emitted. They are collapsed into <b>one</b> increment past the released <c>2</c>: schema
-        /// <b>3</b> carries all of it, plus the registered name (Q8.30) and the <c>#line</c> path form (Q8.31).</para>
+        /// <b>3</b> carries all of it, plus the registered name and the <c>#line</c> path form.</para>
         /// <para>Consequence, declared at 2.1 with no compatibility shim: a project precompiled by a 2.0.x
         /// generator must be rebuilt to stay precompiled. Demonstrated — not asserted — by
         /// <c>OldSchemaManifestRejectionTests</c>, which builds a manifest whose IL genuinely names the absent
@@ -60,7 +60,7 @@ namespace Heddle.Precompiled
         /// <summary>
         /// The schema at which generated dynamic member hops route through
         /// <c>PrecompiledRuntime.DynamicMember</c> instead of an inline <c>(dynamic)</c> cast chain
-        /// (phase 4 D11 / OQ3). The routing depends on a runtime API that must exist at render time, so it is gated
+        /// The routing depends on a runtime API that must exist at render time, so it is gated
         /// on the version rather than emitted unconditionally: an older engine sees a schema it does not accept,
         /// rejects the assembly at registration with
         /// <c>PrecompiledFallbackReason.SchemaVersionUnsupported</c>, and falls back to runtime compilation —
@@ -69,7 +69,7 @@ namespace Heddle.Precompiled
         public const int DynamicMemberRoutingSchemaVersion = 3;
 
         /// <summary>
-        /// The schema at which an extension binding row may carry a <c>PropLayoutFingerprint</c> (phase 3 OQ4).
+        /// The schema at which an extension binding row may carry a <c>PropLayoutFingerprint</c>.
         /// Purely additive <em>within</em> schema 3: the gauntlet's layout check is vacuous when the value is
         /// absent, so a parameter-less extension's row omits it entirely and still passes. The constant exists so
         /// "which schema introduced the row" has one answer both tiers read.
@@ -79,7 +79,7 @@ namespace Heddle.Precompiled
         /// <summary>
         /// The schema at which a generated definition call site binds through the <b>per-carrier</b>
         /// <c>PrecompiledRuntime.BindDefinition(… bodyNeedsLocals, callerContentNeedsLocals …)</c> overload
-        /// (phase 1 D2) instead of the single-flag one. Like
+        /// instead of the single-flag one. Like
         /// <see cref="DynamicMemberRoutingSchemaVersion"/> this depends on a runtime API that must exist where the
         /// generated assembly runs, so the version — not silence — is what an older engine rejects the assembly on
         /// (<c>PrecompiledFallbackReason.SchemaVersionUnsupported</c>).
@@ -88,7 +88,7 @@ namespace Heddle.Precompiled
 
         /// <summary>
         /// The schema at which a template row may carry its <c>PrecompiledTemplateInfo.RegisteredName</c> — the
-        /// <c>Name</c> item metadatum the runtime registry answers to (Q8.30). Additive in the
+        /// <c>Name</c> item metadatum the runtime registry answers to. Additive in the
         /// <see cref="PropLayoutFingerprintSchemaVersion"/> sense: a template that declares no name omits the value
         /// and nothing consults it.
         /// </summary>
@@ -96,13 +96,13 @@ namespace Heddle.Precompiled
 
         /// <summary>
         /// The schema at which a template row records which form its generated <c>#line</c> file names are in
-        /// (<c>PrecompiledTemplateInfo.LinePathForm</c>, Q8.31). Vacuous when absent: the value reads back as
+        /// (<c>PrecompiledTemplateInfo.LinePathForm</c>). Vacuous when absent: the value reads back as
         /// <c>PrecompiledLinePathForm.Unspecified</c>, which claims nothing.
         /// </summary>
         public const int LinePathFormSchemaVersion = 3;
 
         /// <summary>Whether the generator may emit the per-carrier <c>BindDefinition</c> overload at the schema it
-        /// is currently emitting (phase 1 D2). Structurally unbuildable in the unsafe combination, exactly as
+        /// is currently emitting. Structurally unbuildable in the unsafe combination, exactly as
         /// <see cref="EmitsDynamicMemberRouting"/> is.</summary>
         public static bool EmitsPerCarrierLocals =>
             CurrentSchemaVersion >= PerCarrierLocalsSchemaVersion;

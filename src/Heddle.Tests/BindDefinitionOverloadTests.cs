@@ -8,12 +8,12 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Generator plan phase 1 WI1 (D2) — the additive <c>PrecompiledRuntime.BindDefinition</c> overload.
-    /// <para>Two claims are load-bearing and were, until this suite, asserted nowhere: the phase spec's success
-    /// criterion "the existing overloads are binary-unchanged" (the public-API golden covers their <em>signatures</em>,
-    /// not their behavior) and the implementation record's "the 10-arg one now forwards with both flags equal, so it
-    /// is byte-identical to before". Assemblies emitted by older generator versions call those overloads, so a
-    /// forwarding mistake is a silent behavior change for already-shipped output.</para>
+    /// The additive <c>PrecompiledRuntime.BindDefinition</c> overload that takes a per-carrier
+    /// <c>needsLocals</c>.
+    /// <para>Two claims are load-bearing: the existing overloads are behaviourally unchanged (the public-API
+    /// golden covers their <em>signatures</em>, not their behavior), and the 10-arg one forwards with both flags
+    /// equal, so it is byte-identical to before. Assemblies emitted by older generator versions call those
+    /// overloads, so a forwarding mistake is a silent behavior change for already-shipped output.</para>
     /// <para>Frame provisioning is read off each carrier by reflection because that is the only observable the
     /// binding produces — <c>AbstractExtension._needsLocals</c> is what <c>GetInnerResult</c> reads to decide between
     /// a fresh frame, a cleared one and a passthrough.</para>
@@ -67,7 +67,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>The 10-argument (slot-aware) legacy overload: one <c>needsLocals</c> reaches both carriers, which
-        /// is exactly the pre-phase-1 behavior, and equals the per-carrier overload called with both flags equal.
+        /// is exactly the behavior it always had, and equals the per-carrier overload called with both flags equal.
         /// </summary>
         [Theory]
         [InlineData(false)]

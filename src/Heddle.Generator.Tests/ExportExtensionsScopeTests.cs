@@ -10,14 +10,13 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Q8.4 — the generator's extension-discovery <b>scope</b>.
+    /// The generator's extension-discovery <b>scope</b>.
     /// <para>The runtime registers the engine's own extensions unconditionally
     /// (<c>TemplateFactory.LoadBaseExtensions</c>) and then, for every other loaded assembly, only what an
-    /// <c>[assembly: ExportExtensions(...)]</c> attribute names — or everything, for the parameterless
-    /// <c>All</c> form. <c>ExtensionBinder.CollectTypes</c> scanned every referenced assembly unconditionally, so
-    /// the build tier bound and precompiled extensions the runtime will never register. The gauntlet's
-    /// extension-identity check then finds the name <c>&lt;unresolved&gt;</c> and every render of every such
-    /// template falls back — silently, permanently.</para>
+    /// <c>[assembly: ExportExtensions(...)]</c> attribute names — or everything, for the parameterless <c>All</c> form.
+    /// <c>ExtensionBinder.CollectTypes</c> scanned every referenced assembly unconditionally, so the build tier bound
+    /// and precompiled extensions the runtime will never register. The gauntlet's extension-identity check then finds
+    /// the name <c>&lt;unresolved&gt;</c> and every render of every such template falls back — silently, permanently.</para>
     /// <para>No test used an assembly without the attribute, which is exactly why nothing caught it. These probe
     /// compilations are those assemblies.</para>
     /// </summary>

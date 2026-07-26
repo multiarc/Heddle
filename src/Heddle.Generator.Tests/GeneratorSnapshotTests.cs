@@ -10,13 +10,12 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Phase 7 D19 — snapshot goldens for the seven <c>generated-code.md</c> example families: static text + typed
-    /// member paths, native expressions, embedded C# verbatim, <c>:: dynamic</c>, a phase 5 props definition, a
-    /// phase 3 branch set, and function calls (shim-bound built-in + the OQ1 unresolvable negative). Each snapshots
-    /// the generator's actual output (every generated source, in hint-name order, plus the reported diagnostics) so
-    /// the emitted shape is pinned; a shape regression fails the snapshot. Rendered through
-    /// <c>Verify</c>/<c>Verify.SourceGenerators</c> (D19) over <c>CSharpGeneratorDriver</c>. The generated text is
-    /// deterministic and produced by the netstandard2.0 generator, so one golden serves every test TFM.
+    /// Snapshot goldens for the seven <c>generated-code.md</c> example families: static text + typed member paths,
+    /// native expressions, embedded C# verbatim, <c>:: dynamic</c>, a props definition, a branch set, and function
+    /// calls (shim-bound built-in + unresolvable cases). Each snapshots the generator's actual output (every generated
+    /// source, in hint-name order, plus the reported diagnostics) so the emitted shape is pinned; a shape regression
+    /// fails the snapshot. Rendered through <c>Verify</c>/<c>Verify.SourceGenerators</c> over <c>CSharpGeneratorDriver</c>.
+    /// The generated text is deterministic and produced by the netstandard2.0 generator, so one golden serves every test TFM.
     /// </summary>
     public class GeneratorSnapshotTests
     {

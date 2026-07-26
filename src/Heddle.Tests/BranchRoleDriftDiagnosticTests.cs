@@ -12,10 +12,9 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// WI7 / D-ROLE-5 (§6.5): the optional runtime drift diagnostic <c>HED3005</c> warns when a branch
-    /// <c>Continuation</c>/<c>Terminal</c> extension omits <c>[ScopeChannel]</c> — it can never read the branch
-    /// state at render time (R11). Additive: it never fires for the compliant built-ins and does not perturb the
-    /// existing HED3001–HED3004 diagnostics.
+    /// The optional runtime drift diagnostic <c>HED3005</c> warns when a branch <c>Continuation</c>/<c>Terminal</c>
+    /// extension omits <c>[ScopeChannel]</c> — it can never read the branch state at render time. Additive: it never
+    /// fires for the compliant built-ins and does not perturb the existing HED3001–HED3004 diagnostics.
     /// </summary>
     public class BranchRoleDriftDiagnosticTests
     {

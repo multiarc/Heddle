@@ -1,7 +1,6 @@
 namespace Heddle.Language.Expressions
 {
-    /// <summary>What the shared operator table says about one operator applied to one pair of operand kinds
-    /// (phase 4 D6).</summary>
+    /// <summary>What the shared operator table says about one operator applied to one pair of operand kinds.</summary>
     internal enum OperatorVerdict
     {
         /// <summary>Verbatim C# emission is provably byte-equivalent to the runtime result — the generator may
@@ -19,13 +18,13 @@ namespace Heddle.Language.Expressions
     }
 
     /// <summary>
-    /// The "deviations from C#" set as a decision table over operand kinds (phase 4 D6 / 04 F2). Before this file
-    /// the runtime implemented all seven deviations by hand while the generator emitted <c>(left op right)</c>
-    /// unconditionally, consulting no operand types at all — so mixed-type equality produced <b>CS0019 in the
-    /// consumer's build</b> for a template the runtime accepts, while enum arithmetic and <c>enum &amp; 0</c>
-    /// produced valid C# that renders where the runtime raises a positioned error. Opposite verdicts, silently.
+    /// A decision table encoding how the native tier handles the seven documented deviations from C# semantics.
+    /// Before this file the runtime implemented them by hand while the generator emitted <c>(left op right)</c>
+    /// unconditionally, consulting no operand types — so mixed-type equality produced <b>CS0019 in the consumer's
+    /// build</b> for a template the runtime accepts, while enum arithmetic produced valid C# that renders where the
+    /// runtime raises a positioned error. Opposite verdicts, silently.
     /// <para>The generator emits only on <see cref="OperatorVerdict.Supported"/>; both other verdicts degrade to the
-    /// dynamic tier. The runtime keeps building <c>Expression</c> trees and gains a lockstep sweep asserting that
+    /// dynamic tier. The runtime builds <c>Expression</c> trees and gains a lockstep sweep asserting that
     /// <see cref="OperatorVerdict.Supported"/> really compiles and <see cref="OperatorVerdict.NotDefined"/> really
     /// raises a positioned error.</para>
     /// <para><b>Exactness boundary.</b> The verdicts are exact over the decidable categories — <c>Numeric</c>,
@@ -100,8 +99,8 @@ namespace Heddle.Language.Expressions
             if (IsUndecidable(left) || IsUndecidable(right))
                 return OperatorVerdict.RequiresRuntimeSemantics;
 
-            // Dev 4: enum arithmetic is not supported by the native tier — the runtime raises a positioned error
-            // while the generated C# would happily render.
+            // Enum arithmetic is not supported by the native tier — the runtime raises a positioned error
+            // while generated C# would happily render.
             if (left.Category == OperandCategory.Enum || right.Category == OperandCategory.Enum)
                 return OperatorVerdict.NotDefined;
 
@@ -125,8 +124,8 @@ namespace Heddle.Language.Expressions
             if (!leftShiftable || !rightIntegral)
                 return OperatorVerdict.NotDefined;
 
-            // C# accepts only an int-typed (or implicitly-int) shift count and no lifted form here; the runtime
-            // converts any integral count to int and lifts freely, so everything outside that intersection degrades.
+            // C# accepts only an int-typed (or implicitly-int) shift count and no lifted form; the runtime converts
+            // any integral count to int and lifts freely, so everything outside that intersection degrades.
             bool countIsInt = right.Kind == NumericKind.Int32 || NumericTable.IsImplicit(right.Kind, NumericKind.Int32);
             if (left.IsNullable || right.IsNullable || !countIsInt)
                 return OperatorVerdict.RequiresRuntimeSemantics;
@@ -158,7 +157,7 @@ namespace Heddle.Language.Expressions
             bool leftNull = left.Category == OperandCategory.NullLiteral;
             bool rightNull = right.Category == OperandCategory.NullLiteral;
             if (leftNull && rightNull)
-                return OperatorVerdict.RequiresRuntimeSemantics;   // runtime folds to a constant; C# is CS0019
+                return OperatorVerdict.RequiresRuntimeSemantics;   // Runtime folds this to a constant; C# would report CS0019
             if (leftNull || rightNull)
             {
                 var other = leftNull ? right : left;
@@ -174,8 +173,7 @@ namespace Heddle.Language.Expressions
 
             if (left.Category == OperandCategory.Bool && right.Category == OperandCategory.Bool)
             {
-                // bool vs bool? has no lifted equality in the native tier — the compiler hands the mismatched pair
-                // straight to Expression.Equal and reports HED1008. Only a matched pair is emittable.
+                // bool vs bool? has no lifted equality in the native tier — mismatched nullability degrades.
                 return left.IsNullable == right.IsNullable
                     ? OperatorVerdict.Supported
                     : OperatorVerdict.NotDefined;
@@ -184,9 +182,8 @@ namespace Heddle.Language.Expressions
             if (left.Category == OperandCategory.String && right.Category == OperandCategory.String)
                 return OperatorVerdict.Supported;
 
-            // Dev 1: mixed/unrelated operands compile to a total, null-safe object.Equals in the runtime, where
-            // emitted C# is either CS0019 in the consumer's build or a reference comparison. Same-enum equality
-            // stays conservative until a differential corpus entry proves byte-equivalence.
+            // Mixed/unrelated operands use null-safe object.Equals in the runtime, but emitted C# is either CS0019
+            // or a reference comparison. Same-enum equality stays conservative without corpus proof of byte-equivalence.
             return OperatorVerdict.RequiresRuntimeSemantics;
         }
 
@@ -197,9 +194,7 @@ namespace Heddle.Language.Expressions
 
             if (left.Category == OperandCategory.Bool && right.Category == OperandCategory.Bool)
             {
-                // Same story as equality, and worse: the runtime hands a bool/bool? pair to Expression.And with no
-                // guard at all, so the mismatch surfaces as an unpositioned "Error while compiling" rather than a
-                // HED1008. Not emittable either way.
+                // bool vs bool? mismatched nullability degrades — the runtime would surface it as an unpositioned error.
                 return left.IsNullable == right.IsNullable
                     ? OperatorVerdict.Supported
                     : OperatorVerdict.NotDefined;
@@ -208,9 +203,8 @@ namespace Heddle.Language.Expressions
             bool leftEnum = left.Category == OperandCategory.Enum;
             bool rightEnum = right.Category == OperandCategory.Enum;
             if (leftEnum && rightEnum)
-                return OperatorVerdict.RequiresRuntimeSemantics;   // same-enum bitwise is runtime-owned
-            // Dev 5: the mixed enum forms — including the `enum & 0` literal special case C# carries and the
-            // native tier deliberately does not.
+                return OperatorVerdict.RequiresRuntimeSemantics;   // Same-enum bitwise is runtime-owned.
+            // Mixed enum forms — including the `enum & 0` special case C# carries — are not emittable.
             if (leftEnum || rightEnum)
                 return OperatorVerdict.NotDefined;
 
@@ -232,7 +226,7 @@ namespace Heddle.Language.Expressions
                 return OperatorVerdict.RequiresRuntimeSemantics;
             if (left.Category != OperandCategory.Bool || right.Category != OperandCategory.Bool)
                 return OperatorVerdict.NotDefined;
-            // Dev 7: bool? is rejected with a targeted error rather than C#'s wording.
+            // Nullable bool degrades rather than using C#'s lifted form.
             return left.IsNullable || right.IsNullable ? OperatorVerdict.NotDefined : OperatorVerdict.Supported;
         }
 

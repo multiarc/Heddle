@@ -8,11 +8,11 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 3 (F4) — the <b>reflection-side</b> driver of the shared <see cref="PropLayoutCore"/>. Its twin in
+    /// The <b>reflection-side</b> driver of the shared <see cref="PropLayoutCore"/>. Its twin in
     /// <c>Heddle.Generator.Tests</c> feeds the identical declaration lists through the Roslyn adapter and asserts
     /// the same slot order and the same ordered fault sequence; the two files together are what "one wire format,
     /// one implementation" means operationally.
-    /// <para>The shapes are the differential set the plan names: a deep chain past <c>object</c>, a multi-fault
+    /// <para>The shapes are the differential set: a deep chain past <c>object</c>, a multi-fault
     /// declaration list, an inherited re-declaration with default re-application, and the unusable-type variants
     /// including by-ref (the arm the build tier's local predicate never had).</para>
     /// </summary>

@@ -137,17 +137,16 @@ namespace Heddle.Tests
     }
 
     /// <summary>
-    /// Phase 1 D1/D2 — the watcher filter is built from the same file name the reader reads
-    /// (<c>TemplateName + FileNamePostfix</c>) and the watcher is armed (<c>EnableRaisingEvents</c>);
-    /// non-file and flag-off compiles install no watcher at all.
+    /// The watcher filter is built from the same file name the reader reads (<c>TemplateName + FileNamePostfix</c>)
+    /// and the watcher is armed (<c>EnableRaisingEvents</c>); non-file and flag-off compiles install no watcher at all.
     /// </summary>
     public class FileWatcherFilterAndArmingTests
     {
         // Per-test watched-file stem: isolates this test from concurrent tests and parallel TFM hosts.
         private readonly string _stem = FileWatcherTestSupport.NewStem();
 
-        /// <summary>D1 + D2: a file compile of <c>home</c> + <c>.heddle</c> with the flag on watches
-        /// <c>home.heddle</c> (not the postfix-less <c>home</c> of the old bug) and is armed.</summary>
+        /// <summary>A file compile of <c>home</c> + <c>.heddle</c> with the flag on watches <c>home.heddle</c>
+        /// (not the postfix-less <c>home</c> of the old bug) and is armed.</summary>
         [Fact]
         public void FilterEqualsTemplateNamePlusPostfix()
         {

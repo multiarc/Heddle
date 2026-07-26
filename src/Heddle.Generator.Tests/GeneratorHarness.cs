@@ -92,14 +92,13 @@ namespace Heddle.Generator.Tests
     internal static class GeneratorHarness
     {
         /// <summary>
-        /// Q8.4: adds the assembly-level export declaration a probe compilation needs to be a <b>realistic</b> host
-        /// assembly. Since the generator honours <c>[ExportExtensions]</c> — because the runtime does — a probe that
-        /// declares extension types and no attribute declares extensions the runtime would never register, and the
-        /// binder correctly ignores them. Probes that exist to exercise discovery therefore export everything, which
-        /// is the parameterless <c>All</c> form.
-        /// <para>The attribute is inserted after the source's <c>using</c> directives (C# requires that) and is
-        /// declared here once rather than repeated per probe: a duplicated test input is a duplicate rule one level
-        /// up (testing standards, §Test-input single-sourcing).</para>
+        /// Adds the assembly-level export declaration a probe compilation needs to be a <b>realistic</b> host assembly.
+        /// Since the generator honours <c>[ExportExtensions]</c> — because the runtime does — a probe that declares
+        /// extension types and no attribute declares extensions the runtime would never register, and the binder
+        /// correctly ignores them. Probes that exist to exercise discovery therefore export everything, which is the
+        /// parameterless <c>All</c> form.
+        /// <para>The attribute is inserted after the source's <c>using</c> directives (C# requires that) and is declared
+        /// here once rather than repeated per probe: a duplicated test input is a duplicate rule one level up.</para>
         /// </summary>
         public static string WithAllExtensionsExported(string source)
         {
@@ -123,8 +122,8 @@ namespace Heddle.Generator.Tests
             var tpa = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
             var refs = tpa.Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
-                // The generator is an analyzer, not a reference; since phase 5 links the runtime's option types into
-                // it (D7), referencing both would make those names ambiguous (CS0433) in the generated code.
+                // The generator is an analyzer, not a reference; it links the runtime's option types into it,
+                // so referencing both would make those names ambiguous (CS0433) in the generated code.
                 .Where(p => !string.Equals(Path.GetFileNameWithoutExtension(p), "Heddle.Generator",
                     StringComparison.OrdinalIgnoreCase))
                 .Select(p => (MetadataReference)MetadataReference.CreateFromFile(p))
@@ -159,10 +158,10 @@ namespace Heddle.Generator.Tests
                 globalOptions, perFileOptions, syntaxTrees: trees);
         }
 
-        /// <summary>Phase 5 D6: a compilation in which the <c>Heddle</c> assembly is not visible among
-        /// <c>ReferencedAssemblySymbols</c> — the aliased/embedded/ILMerged shape that used to make the generator
-        /// fabricate a <c>"2.0.0"</c> engine version. The generated manifest is not compiled here (it cannot be,
-        /// without the runtime types); only the generator's own output and diagnostics are under test.</summary>
+        /// <summary>A compilation in which the <c>Heddle</c> assembly is not visible among
+        /// <c>ReferencedAssemblySymbols</c> — the aliased/embedded/ILMerged shape. The generated manifest is not
+        /// compiled here (it cannot be, without the runtime types); only the generator's own output and diagnostics
+        /// are under test.</summary>
         public static GeneratorRun RunWithoutHeddleReference(
             IReadOnlyList<(string path, string content)> templates,
             Dictionary<string, string> globalOptions = null,
@@ -203,7 +202,7 @@ namespace Heddle.Generator.Tests
             return new GeneratorRun(output, diagnostics, updated.GetRunResult());
         }
 
-        /// <summary>Runs the generator and returns the driver (D19) for a <c>Verify.SourceGenerators</c> snapshot of
+        /// <summary>Runs the generator and returns the driver for a <c>Verify.SourceGenerators</c> snapshot of
         /// the generated sources and diagnostics.</summary>
         public static GeneratorDriver RunDriver(
             IReadOnlyList<(string path, string content)> templates,

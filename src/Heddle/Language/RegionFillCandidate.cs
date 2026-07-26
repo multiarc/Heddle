@@ -4,7 +4,7 @@ using Heddle.Strings.Core;
 namespace Heddle.Language
 {
     /// <summary>
-    /// A call-body <c>&lt;x:x&gt;</c> override whose base is unresolved at the override — the phase 7 D5/D12
+    /// A call-body <c>&lt;x:x&gt;</c> override whose base is unresolved at the override — a
     /// region-fill candidate. Captured at parse alongside the emitted base-not-found error (emit-then-retract):
     /// a compile-time match against a callee's <b>public</b> region retracts the error and materializes the fill;
     /// a <b>private</b> match retracts and raises HED5019; no match keeps the error byte-identical to today.
@@ -35,10 +35,10 @@ namespace Heddle.Language
         /// region's declared type.</summary>
         internal string NarrowingTypeName { get; }
 
-        /// <summary>The override declaration's absolute span (HED5019 / narrowing-error anchoring, D4 step 4).</summary>
+        /// <summary>The override declaration's absolute span (HED5019 / narrowing-error anchoring).</summary>
         internal BlockPosition Position { get; }
 
-        /// <summary>The base-not-found error object emitted at parse. The D5 retract removes this exact reference
+        /// <summary>The base-not-found error object emitted at parse. The retract removes this exact reference
         /// from BOTH <c>CompileContext.CompileErrors</c> and <see cref="Origin"/>.<c>Errors</c>.</summary>
         internal HeddleCompileError Error { get; }
 

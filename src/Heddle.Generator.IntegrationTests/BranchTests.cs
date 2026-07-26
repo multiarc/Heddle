@@ -5,7 +5,7 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 WI6/WI6a differential (D20): branch sets (generated-code.md example 6). Bound If/IfNot/Elif/Else
+    /// Branch sets: bound If/IfNot/Elif/Else
     /// instances (never inlined), branch bodies executing under the enclosing model, the strip machine removing
     /// inter-block whitespace, and the ScopeLocals frame provisioning for participant-hosting bodies. Rendered
     /// byte-identically to the dynamic engine across true/false/null models.

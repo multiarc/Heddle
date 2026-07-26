@@ -13,7 +13,7 @@ namespace Heddle.Language.Binding
     }
 
     /// <summary>
-    /// Phase 3 (F2): the facts the shared export rule-core evaluates — deliberately a pure record with no type
+    /// The facts the shared export rule-core evaluates — deliberately a pure record with no type
     /// system in it, so neither side re-transcribes the eligibility predicate.
     /// </summary>
     internal struct ExportedMethodFacts
@@ -40,7 +40,7 @@ namespace Heddle.Language.Binding
     }
 
     /// <summary>
-    /// Phase 3 (F2): the <c>[ExportFunctions]</c> eligibility, naming and merge rules, stated once.
+    /// The <c>[ExportFunctions]</c> eligibility, naming and merge rules, stated once.
     /// <para>Runtime authority is <c>FunctionRegistry.RegisterContainer</c>/<c>Register</c>/<c>AddOrReplace</c>. The
     /// generator's transcription silently skipped ineligible containers, counted methods the runtime <em>refuses</em>
     /// (its per-function overload count included <c>void</c>, open-generic and by-ref methods), and gave a function
@@ -104,9 +104,7 @@ namespace Heddle.Language.Binding
 
         /// <summary>The runtime's <c>RegisterContainer</c> wrapper around a rejected method — the message an
         /// <c>[ExportFunctions]</c> host sees at startup, and the one the build tier's <c>HED7021</c> quotes for the
-        /// same method. (The plan framed method ineligibility as a silent over-count on the build tier; the runtime
-        /// in fact <b>throws</b>, so the container never registers at all and the match principle makes it a build
-        /// error rather than an excluded row.)</summary>
+        /// same method.</summary>
         internal static string MethodIneligibleMessage(string containerFullName, string methodName,
             ExportRejection rejection) =>
             "[ExportFunctions] method '" + containerFullName + "." + methodName +

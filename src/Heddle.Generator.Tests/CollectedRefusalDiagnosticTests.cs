@@ -6,20 +6,17 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Q8.19 (ruled user, 2026-07-26) — <b>the element walk collects refusals instead of abandoning at the first
-    /// one</b>. <c>TemplateEmitter.PopulateBody</c> used to return <c>false</c> the moment <c>BuildCall</c> refused an
-    /// element, so a template with two provably illegal calls reported one <c>HED7025</c>; the author fixed it,
-    /// rebuilt, and met the second. Sibling elements are independent — they share the same immutable
-    /// <c>BodyContext</c>, and nothing a refused element touches can make a later legal element illegal — so the walk
-    /// records the first reason, skips the refusing element and keeps going, reporting each refusal at its own span.
-    /// <para><b>Refusal still propagates.</b> The walk returns <c>false</c> at the end, so the body is still
-    /// <c>null</c>, and <c>Emit</c> still produces no <c>.g.cs</c> and no manifest row. That guard is the companion
-    /// test below and is the more important half: a partial emit — a template compiled with its illegal elements
-    /// quietly dropped — would be far worse than one diagnostic at a time.</para>
-    /// <para><b>Match principle.</b> The dynamic engine raises the first such error and stops, so a build reporting
-    /// two <c>HED7025</c>s reports a set no single dynamic compile produces. That is a difference in <i>how many</i>
-    /// errors surface per build, never in <i>which</i> verdict either tier reaches: every collected report is one the
-    /// runtime would raise once the earlier was fixed.</para>
+    /// <b>The element walk collects refusals instead of abandoning at the first one.</b> <c>TemplateEmitter.PopulateBody</c>
+    /// used to return <c>false</c> the moment <c>BuildCall</c> refused an element, so a template with two provably illegal
+    /// calls reported one <c>HED7025</c>; now it records the first reason, skips the refusing element and keeps going, reporting
+    /// each refusal at its own span. Sibling elements are independent — they share the same immutable <c>BodyContext</c>, and
+    /// nothing a refused element touches can make a later legal element illegal.
+    /// <para><b>Refusal still propagates.</b> The walk returns <c>false</c> at the end, so the body is still <c>null</c>, and
+    /// <c>Emit</c> still produces no <c>.g.cs</c> and no manifest row. A partial emit — a template compiled with its illegal
+    /// elements quietly dropped — would be far worse than one diagnostic at a time.</para>
+    /// <para><b>Match principle.</b> The dynamic engine raises the first such error and stops. The build may report multiple
+    /// <c>HED7025</c>s the runtime does not raise all at once, but every collected report is one the runtime would raise once the
+    /// earlier was fixed.</para>
     /// </summary>
     public class CollectedRefusalDiagnosticTests
     {
@@ -42,7 +39,6 @@ namespace Heddle.Generator.Tests
             Assert.Equal(2, reported.Length);
             Assert.All(reported, d => Assert.Equal(DiagnosticSeverity.Error, d.Severity));
 
-            // Each refusal is positioned at its own call, not both at the first.
             var spans = reported.Select(d => d.Location.SourceSpan.Start).Distinct().ToArray();
             Assert.Equal(2, spans.Length);
 
@@ -66,23 +62,19 @@ namespace Heddle.Generator.Tests
 
             Assert.Contains(run.GeneratorDiagnostics, d => d.Id == "HED7025");
 
-            // No generated template class for this template.
             Assert.DoesNotContain(run.GeneratedSourceTexts,
                 s => s.Contains("second: ") || s.Contains("refused_heddle"));
 
-            // No manifest row for the key.
             foreach (var manifest in run.GeneratedSourceTexts.Where(s => s.Contains("__HeddleManifest")))
                 Assert.DoesNotContain("key: \"refused.heddle\"", manifest);
         }
 
-        /// <summary>The one behavioural consequence of collecting, pinned deliberately rather than discovered later.
-        /// A delegate-only function <i>after</i> the first unwritable construct is now reached, so it reaches
-        /// <c>_unresolvableFunctions</c> and <c>Emit</c> takes the <c>HED7014</c> fallback-marker arm instead of
-        /// returning a plain unsupported result: the build gains a warning and a <b>marker</b> manifest row (null
-        /// entry point) where before there was no row at all. That is the correct outcome — the template really does
-        /// call a function no metadata can represent, and the marker is how the registry records "known, deliberately
-        /// not precompiled". Walk order was the only reason it stayed hidden. The row is still a marker, never
-        /// executable code: <c>entryPointType: null</c> is asserted so a partial emit could not pass as this.</summary>
+    /// <summary>A delegate-only function <i>after</i> the first unwritable construct is now reached because collection
+    /// continues past refusals. It reaches <c>_unresolvableFunctions</c> and <c>Emit</c> takes the <c>HED7014</c>
+    /// fallback-marker arm: the build gains a warning and a <b>marker</b> manifest row (null entry point) where before
+    /// there was no row. That is correct — the template really does call a function no metadata can represent, and the
+    /// marker is how the registry records "known, deliberately not precompiled". Walk order was the only reason it stayed
+    /// hidden. The row is still a marker, never executable code: <c>entryPointType: null</c> is asserted.</summary>
         [Fact]
         public void ADelegateOnlyFunctionAfterTheFirstRefusalNowReachesTheHed7014MarkerArm()
         {

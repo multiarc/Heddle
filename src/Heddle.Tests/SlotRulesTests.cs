@@ -7,12 +7,12 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Generator plan phase 1 WI5 (D6) — the two slot rules, now shared. The five-way <see cref="SlotRules.HasOutValue"/>
-    /// theory is the important half: the emitter used to approximate it as
-    /// <c>!IsModelTypeParameter || first-segment-non-empty || any-prop-arguments</c>, which agreed with the
-    /// canonical test on every shape that exists <em>today</em> and would have stopped agreeing the moment a
-    /// sixth carrier was added to <see cref="CallParameter"/>. The rows below enumerate all five carriers plus the
-    /// "nothing" case, so the shared implementation is the thing under test rather than the agreement.
+    /// The two slot rules, now shared. The five-way <see cref="SlotRules.HasOutValue"/> theory is the important
+    /// half: the emitter used to approximate it as <c>!IsModelTypeParameter || first-segment-non-empty ||
+    /// any-prop-arguments</c>, which agreed with the canonical test on every shape that exists <em>today</em> and
+    /// would have stopped agreeing the moment a sixth carrier was added to <see cref="CallParameter"/>. The rows
+    /// below enumerate all five carriers plus the "nothing" case, so the shared implementation is the thing under
+    /// test rather than the agreement.
     /// </summary>
     public class SlotRulesTests
     {

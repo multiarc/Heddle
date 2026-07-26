@@ -9,10 +9,9 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 7 D21 lockstep gate: the shared-sourced <see cref="DefaultFunctionTable"/> must equal
-    /// <see cref="FunctionRegistry.Default"/>'s overload set both ways, and the public
-    /// <see cref="PrecompiledFunctions"/> shim must carry exactly one matching public static method per table row.
-    /// "The table forgot a built-in" (or the shim did) is a red build.
+    /// The shared-sourced <see cref="DefaultFunctionTable"/> must equal <see cref="FunctionRegistry.Default"/>'s
+    /// overload set both ways, and the public <see cref="PrecompiledFunctions"/> shim must carry exactly one
+    /// matching public static method per table row. "The table forgot a built-in" is a red build.
     /// </summary>
     public class DefaultFunctionLockstepTests
     {

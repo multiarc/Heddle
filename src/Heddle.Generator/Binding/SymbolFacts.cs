@@ -4,9 +4,9 @@ using Microsoft.CodeAnalysis;
 namespace Heddle.Generator.Binding
 {
     /// <summary>
-    /// The generator-side facts adapter for the shared expression rule tables (phase 4 D4): Roslyn symbols in,
-    /// Roslyn-free <see cref="NumericKind"/>/<see cref="OperandKind"/> out. Roslyn types are allowed here and
-    /// nowhere in <c>src/Heddle/Language/**</c>; the runtime's mirror of this file is the <c>Type</c>-keyed
+    /// The generator-side facts adapter for the shared expression rule tables: Roslyn symbols in, Roslyn-free
+    /// <see cref="NumericKind"/>/<see cref="OperandKind"/> out. Roslyn types are allowed here and nowhere in
+    /// <c>src/Heddle/Language/**</c>; the runtime's mirror of this file is the <c>Type</c>-keyed
     /// <c>NumericTable.FromClrType</c> plus <c>RuntimeOperandFacts</c>.
     /// </summary>
     internal static class SymbolFacts

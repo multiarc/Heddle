@@ -14,17 +14,14 @@ using RenderTypeRules = gen::Heddle.Data.RenderTypeRules;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Q8.14 — the build-tier half of the finding that <c>[EncodeOutput]</c> + <c>[NotEncode]</c> on one extension
-    /// is <b>not a declarable state</b>. <c>NotEncodeAttribute</c> is <c>AttributeTargets.Property</c>, so
-    /// co-declaring it with the class-targeted <c>[EncodeOutput]</c> is <b>CS0592</b> — a C# compiler <em>error</em>,
-    /// raised in the extension author's own project, which is exactly the surface and stronger than the severity a
-    /// declaration-side analyzer warning was to occupy. The one state the pair can be observed in is forged/IL-authored
-    /// metadata, and there both tiers already agree (the shared <see cref="RenderTypeRules.Derive"/> answers
-    /// <see cref="RenderType.Raw"/> — indistinguishable from carrying neither attribute), so there is no
-    /// tier divergence for a use-site error to close either.
-    /// <para>These are the executable form of that finding. If either goes red because
-    /// <c>NotEncodeAttribute</c>'s targets widened, the contradiction becomes declarable and Q8.14's two
-    /// diagnostics become implementable and required — re-open the register entry.</para>
+    /// <c>[EncodeOutput]</c> + <c>[NotEncode]</c> on one extension is <b>not a declarable state</b>. <c>NotEncodeAttribute</c>
+    /// is <c>AttributeTargets.Property</c>, so co-declaring it with the class-targeted <c>[EncodeOutput]</c> is <b>CS0592</b> —
+    /// a C# compiler <em>error</em>, raised in the extension author's own project. The one state the pair can be observed in is
+    /// forged/IL-authored metadata, and there both tiers already agree (the shared <see cref="RenderTypeRules.Derive"/> answers
+    /// <see cref="RenderType.Raw"/> — indistinguishable from carrying neither attribute), so there is no tier divergence for a
+    /// use-site error to close either.
+    /// <para>If <c>NotEncodeAttribute</c>'s targets widen, the contradiction becomes declarable and new diagnostics would become
+    /// implementable and required — re-open the register entry if that changes.</para>
     /// </summary>
     public class ContradictoryEncodingAttributeTests
     {
@@ -92,9 +89,9 @@ namespace Contradiction
                 new[] { CSharpSyntaxTree.ParseText(source) }, References,
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        /// <summary>The declaration-side surface Q8.14's HED7027 was to occupy is already occupied, by the C#
-        /// compiler, at error severity: CS0592 is the <b>only</b> error the contradictory declaration produces, and
-        /// removing the impossible attribute makes the same declaration compile clean.</summary>
+        /// <summary>The declaration-side surface is already occupied by the C# compiler at error severity: CS0592 is the
+        /// <b>only</b> error the contradictory declaration produces, and removing the impossible attribute makes the same
+        /// declaration compile clean.</summary>
         [Fact]
         public void TheContradictoryDeclarationIsAlreadyACSharpCompilerError()
         {

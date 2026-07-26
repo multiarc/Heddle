@@ -8,10 +8,10 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 D21 / OQ1 — declaratively exported host functions bind <b>directly</b> to their discovered container
-    /// (no shim, no runtime registry). The generator discovers <c>[ExportFunctions]</c> over the compilation's
-    /// reference to this test assembly; the dynamic backend renders the same <c>MethodInfo</c> after a
-    /// <c>RegisterFrom</c> at startup — differential-gated byte-for-byte.
+    /// Declaratively exported host functions bind <b>directly</b> to their discovered container (no shim, no runtime
+    /// registry). The generator discovers <c>[ExportFunctions]</c> over the compilation's reference to this test
+    /// assembly; the dynamic backend renders the same <c>MethodInfo</c> after a <c>RegisterFrom</c> at startup —
+    /// differential-gated byte-for-byte.
     /// </summary>
     public class ExportFunctionTests
     {

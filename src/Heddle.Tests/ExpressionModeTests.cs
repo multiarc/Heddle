@@ -8,8 +8,8 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The <c>AllowCSharp</c> bridge over <see cref="ExpressionMode"/> (D6), the copy-ctor propagation of the
-    /// new options, and the <see cref="ExpressionMode.MemberPathsOnly"/> enforcement (HED1014).
+    /// The <c>AllowCSharp</c> bridge over <see cref="ExpressionMode"/>, the copy-ctor propagation of the
+    /// new options, and the <see cref="ExpressionMode.MemberPathsOnly"/> enforcement.
     /// </summary>
     public class ExpressionModeTests
     {

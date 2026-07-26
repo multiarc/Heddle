@@ -71,9 +71,9 @@ namespace Heddle.Runtime {
         }
 
         /// <summary>
-        /// Loads all templates are in assembly
+        /// Loads and registers all extensions from an assembly.
         /// </summary>
-        /// <param name="assembly"></param>
+        /// <param name="assembly">Assembly to load extensions from.</param>
         public static IEnumerable<ExtensionType> LoadAddExtensionsFromAssembly(Assembly assembly)
         {
             if (assembly == null)
@@ -85,7 +85,7 @@ namespace Heddle.Runtime {
         /// <summary>
         /// Registers extension types, resolving name collisions through the <b>shared</b>
         /// <see cref="ExtensionRegistrationRules"/> — the same rule the source generator's <c>ExtensionBinder</c>
-        /// applies at build time (Q8.3).
+        /// applies at build time.
         /// <para>The rule used to be inlined here <em>and</em> transcribed into the shared file, so mutating the
         /// shared copy reddened no runtime test: it read as a source of truth and was not one. Behaviour is
         /// unchanged — <c>[ExtensionReplace]</c> candidates still come last, a candidate the incumbent is
@@ -142,8 +142,8 @@ namespace Heddle.Runtime {
             }
             catch (KeyNotFoundException)
             {
-                // Phase 3: HED0002's documented trigger is exactly this — "an extension name could not be resolved
-                // by TemplateFactory.Create" — but the raise site carried no id, so the constant and its registry
+                // HED0002 means exactly this — an extension name could not be resolved
+                // by TemplateFactory.Create — but the raise site carried no id, so the constant and its registry
                 // row had no producer anywhere in src/. The id is kept and made to fire rather than retired: the
                 // condition is real and reachable (a name the compiler classified as an extension that the live
                 // registry does not hold), and it is narrower than HED1001, which covers "neither an extension nor
@@ -166,8 +166,8 @@ namespace Heddle.Runtime {
         }
 
         /// <summary>
-        /// Snapshot of the registered extension names — one entry per <c>[ExtensionName]</c> alias (phase 6 D3;
-        /// feeds LSP extension-name completion). Ordinal, case-sensitive; includes the unnamed
+        /// Snapshot of the registered extension names — one entry per <c>[ExtensionName]</c> alias (feeds LSP
+        /// extension-name completion). Ordinal, case-sensitive; includes the unnamed
         /// <see cref="Heddle.Extensions.EmptyExtension"/> alias (<c>""</c>), which completion filters out.
         /// </summary>
         internal static IReadOnlyCollection<string> RegisteredNames()
@@ -190,19 +190,19 @@ namespace Heddle.Runtime {
         #region Helper Methods
 
         /// <summary>
-        /// Loads all base templates
+        /// Loads all built-in extensions from this assembly.
         /// </summary>
-        /// <returns>List of all template types</returns>
+        /// <returns>All discovered extensions.</returns>
         private static IEnumerable<ExtensionType> LoadBaseExtensions ()
         {
             return LoadExtensions(typeof(TemplateFactory).GetTypeInfo().Assembly);
         }
 
         /// <summary>
-        /// Loads all templates in Assembly
+        /// Loads all extensions from an assembly.
         /// </summary>
-        /// <param name="assembly">Assembly to get from</param>
-        /// <returns>List of all template types</returns>
+        /// <param name="assembly">Assembly to load extensions from.</param>
+        /// <returns>All discovered extensions.</returns>
         internal static IEnumerable<ExtensionType> LoadExtensions (Assembly assembly)
         {
             return LoadExtensions(assembly.GetTypes());
@@ -210,8 +210,8 @@ namespace Heddle.Runtime {
 
         internal static IEnumerable<ExtensionType> LoadExtensions(IEnumerable<Type> extensions)
         {
-            // The discovery predicate and the pre-registration ordering key both come from the shared rule-core
-            // (Q8.3): `OrderingKey` is the one expression that decides which candidate becomes the incumbent, and
+            // The discovery predicate and the pre-registration ordering key both come from the shared rule-core.
+            // `OrderingKey` is the one expression that decides which candidate becomes the incumbent, and
             // the generator sorts its candidates by the same call.
             var types =
                 extensions.Where(t => t.IsImplement<IExtension>() && t.IsHaveAttribute<ExtensionNameAttribute>(true))
@@ -230,10 +230,10 @@ namespace Heddle.Runtime {
         }
 
         /// <summary>
-        /// Creates Template Instance
+        /// Instantiates an extension type.
         /// </summary>
-        /// <param name="templateType">Type of template <see cref="Type"/></param>
-        /// <returns></returns>
+        /// <param name="templateType">Extension type to instantiate.</param>
+        /// <returns>A new instance of the extension.</returns>
         private static IExtension CreateExtension (Type templateType)
         {
             try {

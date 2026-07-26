@@ -5,10 +5,9 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The phase 7 D1 key-normalization gate: the pinned cross-OS round-trip table from
-    /// identity-and-metadata.md § normalization test table. <see cref="TemplateKey.Normalize"/> is a pure
-    /// function, so these rows hold identically on every OS by construction — the table proves it stays that
-    /// way. Each row's rationale names the algorithm step(s) it exercises.
+    /// The key-normalization gate: the pinned cross-OS round-trip table from normalization rules.
+    /// <see cref="TemplateKey.Normalize"/> is a pure function, so these rows hold identically on every OS by
+    /// construction — the table proves it stays that way. Each row's rationale names the algorithm step(s) it exercises.
     /// </summary>
     public class TemplateKeyNormalizationTests
     {

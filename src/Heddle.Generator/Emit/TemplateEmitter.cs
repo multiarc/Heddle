@@ -16,11 +16,11 @@ using Microsoft.CodeAnalysis;
 namespace Heddle.Generator.Emit
 {
     /// <summary>
-    /// The per-template structural emitter (phase 7 WI4/WI6): turns a parsed <see cref="ParseContext"/> into the
+    /// The per-template structural emitter: turns a parsed <see cref="ParseContext"/> into the
     /// <c>{SanitizedName}.g.cs</c> compilation unit — a public entry class, the piece table, the pre-constructed
     /// bound extension instances, and one <c>IProcessStrategy</c> body per compiled body — in the exact shape the
-    /// runtime funnel (<c>PrecompiledRuntime</c>) renders, so both backends produce byte-identical output
-    /// (D20). Constructs it can not yet emit make the template "unsupported": no <c>.g.cs</c>, no manifest entry,
+    /// runtime funnel (<c>PrecompiledRuntime</c>) renders, so both backends produce byte-identical output.
+    /// Constructs it cannot yet emit make the template "unsupported": no <c>.g.cs</c>, no manifest entry,
     /// the render takes the unchanged dynamic path (safe incremental growth of the supported family).
     /// </summary>
     internal sealed class TemplateEmitter
@@ -28,27 +28,22 @@ namespace Heddle.Generator.Emit
         private readonly string _key;
 
         /// <summary>The file name written into the emitted <c>#line</c> directives. Normally equal to
-        /// <see cref="_key"/> — for a path-derived key they are the same string — but the two are different concepts
-        /// and Q8.12 made the difference observable: an item with explicit <c>Key</c>/<c>Name</c> metadata registers
-        /// under a key that names no file, and emitting that as the <c>#line</c> file pointed every mapped span at a
-        /// path that does not exist. The key names the <em>registration</em>; this names the <em>file</em>. Callers
-        /// that pass nothing keep the historical value, so every existing snapshot and golden is byte-identical.
-        /// <para>Q8.12's example was an explicit <c>Name</c>; Q8.25 made <c>Name</c> additive so only <c>Key</c> can
-        /// diverge from the file now, but the separation is the same separation and is still needed.</para></summary>
+        /// <see cref="_key"/> — for a path-derived key they are the same string — but the two are different concepts:
+        /// an item with explicit <c>Key</c>/<c>Name</c> metadata registers under a key that names no file, and
+        /// emitting that as the <c>#line</c> file pointed every mapped span at a path that does not exist. The key
+        /// names the <em>registration</em>; this names the <em>file</em>. Callers that pass nothing keep the
+        /// historical value, so every existing snapshot and golden is byte-identical. The separation between key
+        /// and file name is necessary whenever they diverge.</summary>
         private readonly string _lineDirectiveFile;
 
-        /// <summary>Q8.27: whether <see cref="_lineDirectiveFile"/> is relative to <c>HeddleTemplateRoot</c> (it is,
-        /// for any template under the root) or the template's own path (outside the root, where no anchor exists — and
-        /// absolute in a real build). Something must state which, because a reader of a <c>#line</c> otherwise cannot
-        /// tell and the two forms resolve against different working directories.
-        /// <para>Q8.31 moved that statement out of the generated file and into the manifest row
-        /// (<c>PrecompiledTemplateInfo.LinePathForm</c>). Q8.27 had emitted it as a comment under
-        /// <c>// &lt;auto-generated/&gt;</c>, which a human could act on and a symbolizer, an IDE or the LSP could
-        /// not; the manifest already carries per-template metadata and is the honest carrier. The comment is
-        /// gone.</para></summary>
+        /// <summary>Whether <see cref="_lineDirectiveFile"/> is relative to <c>HeddleTemplateRoot</c> (for templates
+        /// under the root) or the template's own path (outside the root, where no anchor exists — absolute in a real
+        /// build). Something must state which, because a reader of a <c>#line</c> otherwise cannot tell and the two
+        /// forms resolve against different working directories. This metadata lives in the manifest row
+        /// (<c>PrecompiledTemplateInfo.LinePathForm</c>) rather than the generated file.</summary>
         private readonly bool _lineDirectiveFileIsRootRelative;
 
-        /// <summary>The template's optional registered <c>Name</c>, already normalized (Q8.30), or null. Emitted onto
+        /// <summary>The template's optional registered <c>Name</c>, already normalized, or null. Emitted onto
         /// the manifest row so the runtime registry can answer to it; it affects nothing else the emitter produces —
         /// not the entry-class identifier, not the <c>#line</c> file, not the key.</summary>
         private readonly string _registeredName;
@@ -60,9 +55,9 @@ namespace Heddle.Generator.Emit
         private readonly ParseContext _parse;
         private readonly GlobalConfig _config;
         private readonly LineMapper _map;
-        private readonly Compilation _compilation;   // phase 8 WI5: ClassifyConversion for the HED5008 twin
+        private readonly Compilation _compilation;   // ClassifyConversion for the HED5008 twin
 
-        /// <summary>Phase 3 (F6): the generator's single Roslyn <c>ITypeFacts</c> adapter — the CLR assignability
+        /// <summary>The generator's single Roslyn <c>ITypeFacts</c> adapter — the CLR assignability
         /// relation with its two nullable corrections, the unusable-prop-type predicate, and the shared AQN
         /// formatting, all stated once. The shared rule-cores ask their type questions through this.</summary>
         internal SymbolTypeFacts TypeFacts { get; private set; }
@@ -85,13 +80,13 @@ namespace Heddle.Generator.Emit
         // Extension-field allocation, document order.
         private readonly List<string> _extensionFields = new List<string>();
         private readonly StringBuilder _fieldDecls = new StringBuilder();
-        private readonly StringBuilder _methodDecls = new StringBuilder();   // dynamic prop-arg evaluators (phase 5 D8)
+        private readonly StringBuilder _methodDecls = new StringBuilder();   // dynamic prop-arg evaluators
         private int _extensionCounter;
         private int _dynEvalCounter;
         private int _dynSettersCounter;
 
-        // OQ1 delegate-only remainder (D21): function names resolvable at build from neither the default table nor
-        // a referenced export. Their presence degrades the template to a HED7014 fallback-marker entry.
+        // Function names resolvable at build from neither the default table nor a referenced export.
+        // Their presence degrades the template to a HED7014 fallback-marker entry.
         private readonly List<(string Name, BlockPosition Position)> _unresolvableFunctions =
             new List<(string, BlockPosition)>();
 
@@ -156,7 +151,7 @@ namespace Heddle.Generator.Emit
             /// span; reported by the generator in every result branch.</summary>
             public IReadOnlyList<EmitDiagnostic> Diagnostics { get; set; }
 
-            /// <summary>Phase 1 D7: the region-fill candidate errors this emit <b>retracted</b> — matched public
+            /// <summary>The region-fill candidate errors this emit <b>retracted</b> — matched public
             /// fills and private-region overrides (whose HED7024 replaces the tentative error). Every other
             /// candidate error survives and the generator forwards it, exactly as the dynamic compile leaves it in
             /// its error list. Non-null only when a full body build completed.</summary>
@@ -165,14 +160,13 @@ namespace Heddle.Generator.Emit
 
         private bool IsHtml => _config.OutputProfile == Heddle.Data.OutputProfile.Html;
 
-        // The running output profile (phase 2 D4): starts at the compile-time OutputProfile and flips in document
+        // The running output profile: starts at the compile-time OutputProfile and flips in document
         // order at each @profile(){{html|text}} directive, per compile context (body). Drives which unnamed carrier
-        // (EmptyExtension / EmptyHtmlExtension) subsequent output binds — the emitter's reimplementation of
-        // ProfileExtension.InitStart's context.OutputProfile flip (README D22). The options fingerprint keeps the
+        // (EmptyExtension / EmptyHtmlExtension) subsequent output binds. The options fingerprint keeps the
         // compile-time profile (never the post-flip value).
         private bool _profileHtml;
 
-        /// <summary>Test-only fault injection (phase 5 WI10 / D12a): invoked with the template key at the top of
+        /// <summary>Test-only fault injection: invoked with the template key at the top of
         /// <see cref="Emit"/> so the emitter-defect error path can be exercised without a real defect. Never
         /// assigned by the generator — the field is <c>internal</c> and only the white-box test project sets it.</summary>
         internal static System.Action<string> FaultInjector;
@@ -191,17 +185,17 @@ namespace Heddle.Generator.Emit
                 if (_modelSymbol != null)
                     modelType = SymbolTypeResolver.FullyQualified(_modelSymbol);
                 else if (_resolver.LastFault == Heddle.Language.Binding.TypeSpellingFault.Ambiguous)
-                    // HED7023 (phase 3 / Q3.5): the name resolves to SEVERAL types and the imports do not settle
-                    // it. The runtime raises its "the type name is ambigous" error for the same input, so the build
+                    // HED7023: the name resolves to SEVERAL types and the imports do not settle it.
+                    // The runtime raises its "the type name is ambiguous" error for the same input, so the build
                     // must not quietly pick one and emit typed code off a type the runtime might not choose.
                     _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.AmbiguousTypeName,
                         _modelDirectivePosition, _modelTypeText));
                 else if (IsPlainTypeName(_modelTypeText) && !_resolver.TypeNameExistsAnywhere(_modelTypeText))
-                    // Milestone 2 (HED7007): a declared @model type that resolves as no symbol AND matches no type name
-                    // anywhere in the reference closure is a genuine typo/unresolvable symbol. The existence guard is
-                    // the reconciliation the milestone requires: a bare name the runtime resolves by assembly scan
-                    // (namespace-less, no @using) still degrades safely to the dynamic path rather than false-erroring.
-                    // Gated to plain type-name syntax so exotic forms (open generics, arrays) never false-error either.
+                    // HED7007: a declared @model type that resolves as no symbol AND matches no type name
+                    // anywhere in the reference closure is a genuine typo/unresolvable symbol. A bare name the
+                    // runtime resolves by assembly scan (namespace-less, no @using) still degrades safely to the
+                    // dynamic path rather than false-erroring. Gated to plain type-name syntax so exotic forms
+                    // (open generics, arrays) never false-error either.
                     _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.UnresolvableModelType,
                         _modelDirectivePosition, _modelTypeText));
             }
@@ -211,7 +205,7 @@ namespace Heddle.Generator.Emit
             var root = BuildBody(_cleanDocument, _parse, rootCtx, out var reason);
             if (root == null)
             {
-                // OQ1 remainder (D21): the build failed on a function resolvable from neither the default table nor a
+                // The build failed on a function resolvable from neither the default table nor a
                 // referenced export — degrade to a HED7014 fallback marker (warning + marker manifest entry, no code).
                 if (_unresolvableFunctions.Count != 0)
                 {
@@ -227,13 +221,12 @@ namespace Heddle.Generator.Emit
                 return new Result { Emitted = false, UnsupportedReason = reason, Diagnostics = _diagnostics };
             }
 
-            // Phase 1 D7/WI6 (Q1.3's match principle) replaced review C's blanket refusal here: an unconsumed
-            // region-fill candidate is no longer a reason to un-precompile the template silently. Each candidate
-            // now gets the runtime's own reaction inside TryBuildGeneratorFillScope — matched fills retract their
-            // tentative error, dangling ones keep it (and it is forwarded as a build error), a private one raises
-            // HED7024 — so the two tiers report the same errors instead of one of them going quiet.
+            // An unconsumed region-fill candidate is no longer a reason to un-precompile the template silently.
+            // Each candidate now gets the runtime's own reaction inside TryBuildGeneratorFillScope — matched fills
+            // retract their tentative error, dangling ones keep it (and it is forwarded as a build error), a private
+            // one raises HED7024 — so the two tiers report the same errors instead of one of them going quiet.
 
-            // D15 / HED7005: a static piece with an unpaired surrogate stays legal for string output (the char is
+            // HED7005: a static piece with an unpaired surrogate stays legal for string output (the char is
             // preserved), but the compiler rejects it in a "…"u8 literal — warn and suppress the u8 twin (PieceWriter
             // already omits it). Validation runs regardless of the HeddleEmitUtf8Pieces toggle. Position = the first
             // lone surrogate in the source document (static text is preserved verbatim into the pieces).
@@ -261,7 +254,7 @@ namespace Heddle.Generator.Emit
         private static bool IsDirectiveName(string name) =>
             name == "model" || name == "using" || name == "import" || name == "profile";
 
-        /// <summary>Phase 1 D10: an extension is zero-output when it declares <c>[ZeroOutput]</c> — the
+        /// <summary>An extension is zero-output when it declares <c>[ZeroOutput]</c> — the
         /// symbol-readable form of the runtime's null-<c>InitStart</c> protocol, which the generator has no way to
         /// evaluate. A block whose leftmost call is zero-output is removed from the piece stream on both tiers.</summary>
         private bool IsZeroOutput(OutputChain chain)
@@ -320,23 +313,23 @@ namespace Heddle.Generator.Emit
             public ITypeSymbol ModelSymbol { get; }    // for member-path typing; null on the dynamic tier
             public bool IsDynamic { get; }
 
-            /// <summary>The active prop layout (phase 5 D9): a body prop read wins over the model on the first path
+            /// <summary>The active prop layout: a body prop read wins over the model on the first path
             /// segment. Null outside a definition body with props. Prop-first resolution is syntactic, so both
-            /// backends resolve identically by rule (README D22, differential-gated).</summary>
+            /// backends resolve identically.</summary>
             public PropLayoutInfo Props { get; }
 
             /// <summary>True inside a slot-declaring definition body: <c>@out(value)</c> projects the caller content
             /// (slot mode); outside a slot definition, an <c>@out</c> value is a runtime error the emitter refuses.</summary>
             public bool InSlot { get; }
 
-            /// <summary>Phase 7 D4/D8: the ambient region fill scope — <c>regionName → materialized-fill
-            /// DefinitionItem</c> — the generator's parallel to the dynamic tier's <c>RegionFillScope</c> on
-            /// <c>CompileContext</c>. Threaded through every nested body build (branch/list/for bodies and the
-            /// definition-body contexts) so a fill resolves at any depth. Null outside a filled component body.</summary>
+            /// <summary>The ambient region fill scope — <c>regionName → materialized-fill DefinitionItem</c> —
+            /// the generator's parallel to the dynamic tier's <c>RegionFillScope</c> on <c>CompileContext</c>.
+            /// Threaded through every nested body build (branch/list/for bodies and the definition-body contexts)
+            /// so a fill resolves at any depth. Null outside a filled component body.</summary>
             public Dictionary<string, DefinitionItem> Fills { get; }
 
-            /// <summary>Phase 7 D6 (symbol twin): the enclosing component's prop layout, carried through nested
-            /// bodies so a region body borrows the component's props (a region declares none of its own).</summary>
+            /// <summary>The enclosing component's prop layout, carried through nested bodies so a region body
+            /// borrows the component's props (a region declares none of its own).</summary>
             public PropLayoutInfo RegionHostProps { get; }
 
             public BodyContext WithProps(PropLayoutInfo props) =>
@@ -350,11 +343,9 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>
-        /// <para>Phase 1 D12 (WI10) — the nested body's model context is <b>derived from</b>
-        /// <see cref="BodyModelRules"/>' row for the host name, not chosen per emission branch. This is the
-        /// emitter's real dependency on the table: the row decides which context the body is built in, so the table
-        /// is load-bearing rather than a comment with a <c>Debug.Assert</c> beside it (which was
-        /// Release-unenforced).</para>
+        /// <para>The nested body's model context is <b>derived from</b> <see cref="BodyModelRules"/>' row for the
+        /// host name, not chosen per emission branch. This is the emitter's real dependency on the table: the row
+        /// decides which context the body is built in, so the table is load-bearing.</para>
         /// <list type="bullet">
         /// <item><description><see cref="BodyModelSource.Parent"/> (the branch trio, <c>@for</c>) — the body keeps
         /// the enclosing typed context, because it executes under <c>scope.Parent()</c>.</description></item>
@@ -455,33 +446,21 @@ namespace Heddle.Generator.Emit
                 chain => IsZeroOutput(chain), ctx.DefenitionExists, RoleOf, HasScopeChannel);
             var working = shape.WorkingDocument;
 
-            // The piece walk itself is shared with RuntimeDocument.GetDocumentPieces (plan phase 2 D6), so the
+            // The piece walk itself is shared with RuntimeDocument.GetDocumentPieces, so the
             // P0..Pn constants below are the same strings the dynamic tier slices.
-            // Q8.19 (ruled user, 2026-07-26): the element walk COLLECTS refusals rather than abandoning at the first
-            // one, so a template with two provably illegal calls reports both instead of making the author fix one,
-            // rebuild, and meet the next. This is sound only because sibling elements are independent — they share the
-            // same immutable BodyContext, and nothing a refused element touches can make a later legal element
-            // illegal — so skipping one and continuing cannot manufacture a refusal (or a green) that a fresh walk
-            // would not reach. The refusal itself still propagates: `refused` survives the loop, this method returns
-            // false, BuildBody returns a null body, and Emit's `root == null` arm still means NO .g.cs and NO manifest
-            // row. Collecting is about how many diagnostics one build surfaces, never about emitting past a refusal —
-            // a partial emit would be far worse than one-at-a-time reporting.
-            //
-            // Only the FIRST reason is kept: `reason` is the template-level UnsupportedReason, a single string, and the
-            // first construct that gave up is the honest answer to "why is this not precompiled".
-            //
-            // Stated plainly rather than dressed up as covered behaviour: WHICH reason is kept is currently
-            // unobservable, so no test pins it (mutation-verified 2026-07-26 — both `firstReason = localReason` and
-            // `reason = localReason` survive the whole suite). Result.UnsupportedReason is write-only: the generator
-            // reads it in prose at HeddleTemplateGenerator.cs:418 and nowhere in code, and it reaches no diagnostic and
-            // no manifest field. First-reason is chosen anyway because it is the answer that stays correct if the field
-            // ever becomes observable; closing the mutants would mean inventing an observable, which is scope Q8.19
-            // does not carry. The refusal ITSELF — the part that decides whether anything is emitted — is pinned.
-            //
-            // The expression walk deliberately does NOT do this (Q8.19's other half): NativeExpressionWriter.Write is
-            // string-or-null composition, where a parent has nothing to compose once a child returns null, so
-            // continuing there would mean fabricating placeholder text and discarding it. That is the restructuring the
-            // ruling says to stop at, so two refusals inside ONE expression still report once.
+            // The element walk COLLECTS refusals rather than abandoning at the first one, so a template with two
+            // provably illegal calls reports both instead of making the author fix one, rebuild, and meet the next.
+            // This is sound only because sibling elements are independent — they share the same immutable BodyContext,
+            // and nothing a refused element touches can make a later legal element illegal — so skipping one and
+            // continuing cannot manufacture a refusal (or a green) that a fresh walk would not reach. The refusal
+            // itself still propagates: `refused` survives the loop, this method returns false, BuildBody returns a null
+            // body, and Emit's `root == null` arm still means NO .g.cs and NO manifest row. Collecting is about how
+            // many diagnostics one build surfaces, never about emitting past a refusal — a partial emit would be far
+            // worse than one-at-a-time reporting. Only the FIRST reason is kept to provide the template-level
+            // UnsupportedReason.
+            // The expression walk deliberately does NOT do this: NativeExpressionWriter.Write is string-or-null
+            // composition, where a parent has nothing to compose once a child returns null, so continuing there would
+            // mean fabricating placeholder text and discarding it. Two refusals inside ONE expression still report once.
             string localReason = null;
             string firstReason = null;
             var refused = false;
@@ -558,7 +537,7 @@ namespace Heddle.Generator.Emit
                 var lm = chain.Chain != null && chain.Chain.Count > 0 ? chain.Chain[0] : null;
                 if (lm != null && lm.ExtensionName == "profile")
                 {
-                    // Phase 1 D11: the parse is the shared OutputProfileRules rule ProfileExtension.InitStart runs.
+                    // The parse is the shared OutputProfileRules rule ProfileExtension.InitStart runs.
                     var v = (lm.ParameterTemplate ?? string.Empty).Trim();
                     if (OutputProfileRules.TryParseProfile(v, out var parsed))
                     {
@@ -567,9 +546,9 @@ namespace Heddle.Generator.Emit
                     }
                     else if (_reportedUnknownProfiles.Add(lm.Position.StartIndex))
                     {
-                        // Phase 1 D3 (F1): the runtime raises HED2001 for this template and never compiles it. The
-                        // emitter used to fall through with a comment claiming "the template falls back" — it does
-                        // not: nothing else refuses, so the template precompiled with the flip silently ignored and
+                        // The runtime raises HED2001 for this template and never compiles it. The emitter
+                        // used to fall through with a comment claiming "the template falls back" — it does not:
+                        // nothing else refuses, so the template precompiled with the flip silently ignored and
                         // rendered output the dynamic tier would never produce. The options fingerprint keeps the
                         // COMPILE-TIME profile, so the gauntlet cannot catch it either. HED7022, at the directive.
                         _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.UnknownOutputProfile,
@@ -592,8 +571,8 @@ namespace Heddle.Generator.Emit
             body.Segments.Add(new Piece { Index = idx });
         }
 
-        /// <summary>True when the piece has an emitted <c>PnU8</c> twin (phase 8 D7): the opt-in is on and the piece
-        /// carries no unpaired surrogate (the HED7005 downgrade, per-piece, mirroring <see cref="PieceWriter"/>).</summary>
+        /// <summary>True when the piece has an emitted <c>PnU8</c> twin: the opt-in is on and the piece
+        /// carries no unpaired surrogate (HED7005 downgrade, per-piece, mirroring <see cref="PieceWriter"/>).</summary>
         private bool HasU8Twin(int pieceIndex) =>
             _config.EmitUtf8Pieces && !CSharpEscape.HasLoneSurrogate(_pieces[pieceIndex]);
 
@@ -603,8 +582,7 @@ namespace Heddle.Generator.Emit
             => _extensionBinder.TryResolve(name, out var i) ? i.Role : null;
 
         /// <summary>Whether an extension carries <c>[ScopeChannel]</c> — the branch classifier's Participant
-        /// mapping (plan phase 2 D5), matching the runtime's <c>IsHaveAttribute&lt;ScopeChannelAttribute&gt;</c>
-        /// arm.</summary>
+        /// mapping, matching the runtime's <c>IsHaveAttribute&lt;ScopeChannelAttribute&gt;</c> arm.</summary>
         private bool HasScopeChannel(string name)
             => _extensionBinder.TryResolve(name, out var i) && i.HasScopeChannel;
 
@@ -650,16 +628,16 @@ namespace Heddle.Generator.Emit
             }
 
             // Definition invocation wins over extension/function name resolution (matches HeddleCompiler.CompileItem's
-            // definition-first precedence), so a definition may shadow a branch keyword. Phase 7 D8 (F1):
-            // resolution is context-aware — the ambient fill scope first (the dynamic tier's RegionFillScope
-            // precedence), then the ENCLOSING body's parse context (so inner-definition calls — region defaults —
-            // resolve), not only the flat document root.
+            // definition-first precedence), so a definition may shadow a branch keyword. Resolution is context-aware
+            // — the ambient fill scope first (the dynamic tier's RegionFillScope precedence), then the ENCLOSING
+            // body's parse context (so inner-definition calls — region defaults — resolve), not only the flat
+            // document root.
             var resolutionCtx = chain.Context ?? ctx ?? _parse;
-            // Phase 1 D8: the precedence is the shared CallTargetRules classifier the runtime's CompileItem also
-            // runs — fill → definition → extension → registered function → unknown. The emission per kind stays
-            // this file's own; only the *decision* is shared. This also fixed a real inversion: the emitter used to
-            // try the function tier BEFORE the extension binder, so a host-exported function sharing a name with a
-            // registered extension bound as a function at build and as the extension at run.
+            // The precedence is the shared CallTargetRules classifier the runtime's CompileItem also runs —
+            // fill → definition → extension → registered function → unknown. The emission per kind stays this
+            // file's own; only the *decision* is shared. This avoids an inversion where the emitter would try the
+            // function tier BEFORE the extension binder, so a host-exported function sharing a name with a
+            // registered extension would bind as a function at build and as the extension at run.
             var callTarget = CallTargetRules.ResolveCallTarget(name, cp,
                 n => bctx.Fills != null && bctx.Fills.ContainsKey(n),
                 resolutionCtx.DefenitionExists,
@@ -677,16 +655,16 @@ namespace Heddle.Generator.Emit
             if (name == "partial")
                 return BuildPartialCall(item, cp, bctx, out reason);
 
-            // Engine-assembly branch-role extensions (@if/@ifnot/@elif/@elseif/@else) → pinned branch emission (§6.3.1):
+            // Engine-assembly branch-role extensions (@if/@ifnot/@elif/@elseif/@else) use pinned branch emission:
             // the emitter's parent-model body typing is the built-ins' verified contract, so bytes are unchanged.
-            // Non-engine role extensions deliberately fall through to the generic custom path (§6.3.2).
+            // Non-engine role extensions deliberately fall through to the generic custom path.
             if (_extensionBinder.TryResolve(name, out var branchInfo) && branchInfo.Role.HasValue &&
                 branchInfo.IsEngineAssembly)
             {
                 // Branch bodies execute under scope.Parent(): the model stays the enclosing body's model. The rule
                 // is BodyModelRules' row for this name — (Parent, None) — and it is *consumed*, not asserted: the
-                // row picks the context the body is built in (phase 1 D12). A row that stopped saying Parent would
-                // change these bytes, which is what makes the table load-bearing in Release too.
+                // row picks the context the body is built in. A row that stopped saying Parent would change these
+                // bytes, which is what makes the table load-bearing.
                 if (!TryNestedBodyContext(name, bctx, out var branchBodyCtx))
                 {
                     reason = "no pinned body model-typing row for branch '" + name + "'";

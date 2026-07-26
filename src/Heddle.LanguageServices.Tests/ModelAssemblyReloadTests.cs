@@ -6,9 +6,9 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>
-    /// The phase 6 D14 collectible-ALC reload: load → analyze → reload → the old model context's
-    /// <see cref="WeakReference"/> collects within the GC polling loop (the leak-root proof — the engine's
-    /// register/unregister seam drops the static references that would otherwise pin it).
+    /// Collectible AssemblyLoadContext reload: load → analyze → reload → the old model context's
+    /// <see cref="WeakReference"/> collects within the GC polling loop. The engine's register/unregister seam
+    /// drops the static references that would otherwise pin the context.
     /// </summary>
     public class ModelAssemblyReloadTests
     {
@@ -42,7 +42,7 @@ namespace Heddle.LanguageServices.Tests
                 GC.Collect();
             }
 
-            Assert.False(weak.IsAlive, "the previous model AssemblyLoadContext should collect after reload (D14)");
+            Assert.False(weak.IsAlive, "the previous model AssemblyLoadContext should collect after reload");
         }
     }
 }

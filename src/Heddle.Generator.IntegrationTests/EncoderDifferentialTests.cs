@@ -6,13 +6,13 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// B2-R7 — the fold-site verification. A <see cref="TemplateOptions.Encoder"/> only stays out of the precompiled
-    /// options fingerprint if the generator never constant-folds an *encoded* value into a literal. This suite renders
+    /// The fold-site verification. A <see cref="TemplateOptions.Encoder"/> only stays out of the precompiled options
+    /// fingerprint if the generator never constant-folds an *encoded* value into a literal. This suite renders
     /// encode-bearing templates through BOTH backends under a marker encoder (which wraps every HTML-special as
-    /// <c>[E:name]</c>) and asserts byte-identical output: if the generator baked a WebUtility-encoded value at compile
-    /// time, the precompiled side would show HTML entities where the runtime side shows markers, and these would
-    /// diverge. They do not — value encoding is deferred to render on both backends (the <c>RenderType.Encode</c>
-    /// marker), so <c>Encoder</c> correctly stays out of the fingerprint.
+    /// <c>[E:name]</c>) and asserts byte-identical output: if the generator baked a WebUtility-encoded value at
+    /// compile time, the precompiled side would show HTML entities where the runtime side shows markers, and these
+    /// would diverge. They do not — value encoding is deferred to render on both backends (the
+    /// <c>RenderType.Encode</c> marker), so <c>Encoder</c> correctly stays out of the fingerprint.
     /// </summary>
     public class EncoderDifferentialTests
     {
@@ -63,7 +63,7 @@ namespace Heddle.Generator.IntegrationTests
             var (precompiled, dyn) = DifferentialHarness.RenderWithOptions(
                 "views/encoder-bare.heddle", content, typeof(string), hostile, options);
 
-            Assert.Equal(dyn, precompiled);                 // B2-R7 / G-R3: byte-identical on both backends
+            Assert.Equal(dyn, precompiled);                 // Byte-identical on both backends
             Assert.Contains("[E:lt]", precompiled);          // the marker encoder actually ran (not WebUtility)
             Assert.DoesNotContain("&lt;", precompiled);      // no compile-time WebUtility fold leaked through
         }

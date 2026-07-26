@@ -5,7 +5,7 @@ using Heddle.Runtime;
 
 namespace Heddle.Language
 {
-    /// <summary>The compile-channel half of the drain (phase 6 D5), split out of the shared file because
+    /// <summary>The compile-channel half of the drain, split out of the shared file because
     /// <see cref="CompileContext"/> lives in the runtime rather than in the linked front-end closure — the same
     /// split <c>DocumentParser.Runtime.cs</c> uses, so the source generator links the parse-channel rule and
     /// nothing it cannot compile.</summary>

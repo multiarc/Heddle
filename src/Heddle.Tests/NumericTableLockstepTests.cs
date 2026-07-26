@@ -7,12 +7,12 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 4 WI4 (D5) — the characterization pin for the <see cref="NumericTable"/> extraction, and the transition
+    /// The characterization pin for the <see cref="NumericTable"/> extraction, and the transition
     /// scaffolding that keeps <c>NumericPromotion</c>'s public behavior identical while it delegates.
     /// <para><b>Legacy*</b> below is the pre-extraction body, transcribed verbatim from
     /// <c>NumericPromotion.cs</c> before the tables moved (captured first, moved second). The sweeps are exhaustive
     /// over all 13 × 13 kind pairs — nothing is sampled — so a single wrong row anywhere in the shared table fails
-    /// here. The test retires with the delegation, once phases 1 and 3 have adopted the shared table and no private
+    /// here. The test retires with the delegation, once the shared table has been adopted elsewhere and no private
     /// copy is left to compare against.</para>
     /// </summary>
     public class NumericTableLockstepTests

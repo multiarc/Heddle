@@ -3,9 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace Heddle.LanguageServer.Protocol
 {
-    // The phase 6 hand-written LSP 3.17 DTO subset (protocol.md): exactly the fields the server reads or writes.
-    // camelCase policy + nulls omitted are configured on the serializer context; unknown incoming properties are
-    // ignored by default. Records are immutable value carriers.
+    // Minimal subset: only fields the server reads or writes. Unknown incoming properties are ignored.
 
     public sealed record Position(int Line, int Character);
 
@@ -23,7 +21,6 @@ namespace Heddle.LanguageServer.Protocol
 
     public sealed record TextDocumentPositionParams(TextDocumentIdentifier TextDocument, Position Position);
 
-    // Lifecycle
     public sealed record InitializeParams
     {
         public int? ProcessId { get; init; }
@@ -72,7 +69,6 @@ namespace Heddle.LanguageServer.Protocol
         public string[] TokenModifiers { get; init; }
     }
 
-    // Document sync
     public sealed record DidOpenTextDocumentParams(TextDocumentItem TextDocument);
 
     public sealed record DidChangeTextDocumentParams(VersionedTextDocumentIdentifier TextDocument,
@@ -89,7 +85,6 @@ namespace Heddle.LanguageServer.Protocol
 
     public sealed record DidSaveTextDocumentParams(TextDocumentIdentifier TextDocument);
 
-    // Diagnostics
     public sealed record PublishDiagnosticsParams
     {
         public string Uri { get; init; }
@@ -106,7 +101,6 @@ namespace Heddle.LanguageServer.Protocol
         public string Message { get; init; }
     }
 
-    // Completion
     public sealed record CompletionParams
     {
         public TextDocumentIdentifier TextDocument { get; init; }
@@ -128,7 +122,6 @@ namespace Heddle.LanguageServer.Protocol
         public string InsertText { get; init; }
     }
 
-    // Hover / definition
     public sealed record HoverParams(TextDocumentIdentifier TextDocument, Position Position);
 
     public sealed record Hover(MarkupContent Contents, Range Range);
@@ -137,12 +130,10 @@ namespace Heddle.LanguageServer.Protocol
 
     public sealed record DefinitionParams(TextDocumentIdentifier TextDocument, Position Position);
 
-    // Semantic tokens
     public sealed record SemanticTokensParams(TextDocumentIdentifier TextDocument);
 
     public sealed record SemanticTokens(int[] Data);
 
-    // Workspace / window
     public sealed record DidChangeConfigurationParams(JsonElement Settings);
 
     public sealed record LogMessageParams(int Type, string Message);

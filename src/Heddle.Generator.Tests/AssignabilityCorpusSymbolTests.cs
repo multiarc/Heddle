@@ -13,7 +13,7 @@ using SymbolTypeFacts = gen::Heddle.Generator.Binding.SymbolTypeFacts;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Phase 3 (F6) — the <b>symbol-side</b> driver of the shared assignability conformance corpus. Same data file
+    /// The <b>symbol-side</b> driver of the shared assignability conformance corpus. Same data file
     /// as the reflection-side driver in <c>Heddle.Tests</c>; this one asserts that the Roslyn
     /// <c>ITypeFacts</c> adapter's two nullable corrections land it on the CLR's answer, row for row.
     /// <para>Spellings are resolved through a probe compilation's <c>typeof</c> expressions, so the corpus can use

@@ -3,10 +3,9 @@ using System.Collections.Generic;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// <para>The projection-equivalence corpus (generator plan phase 6 D12.5). One template per diagnostic block
-    /// plus a clean control, each with the <c>(Id, IsWarning, Offset, Length)</c> multiset the shared
-    /// <c>HeddleDiagnosticProjection</c> drain produces — and the per-host deltas each host <b>declares</b>
-    /// rather than merely exhibits.</para>
+    /// <para>The projection-equivalence corpus: one template per diagnostic block plus a clean control, each with
+    /// the <c>(Id, IsWarning, Offset, Length)</c> multiset the shared <c>HeddleDiagnosticProjection</c> drain
+    /// produces — and the per-host deltas each host <b>declares</b> rather than merely exhibits.</para>
     /// <para>Three suites assert against this one table, so the hosts are compared to each other transitively and
     /// a host that silently drops a channel turns the suite red: <c>Heddle.Tests</c> (the drain itself, the
     /// parse-channel subset, and <c>HeddleCompileResult</c>), <c>Heddle.LanguageServices.Tests</c> (the editor),
@@ -79,14 +78,13 @@ namespace Heddle.Tests
                 new[] { "HED1001/E@2,13" }, null,
                 None, new[] { "HED7014" }),
 
-            // HED2xxx — an unknown @profile value. Compile channel; the build tier raises HED7022 (phase 1 D3).
+            // HED2xxx — an unknown @profile value. Compile channel; the build tier raises HED7022.
             new Case("unknownProfile", "@profile(){{xml}}\nhi\n",
                 new[] { "HED2001/E@1,9" }, null,
                 None, new[] { "HED7022" }),
 
             // HED2004 — the encoding lint, and the only fixture whose verdict depends on the profile. Under Text
-            // it is silent; under Html it fires. This is the row the phase 6 second pass's default flip turns on
-            // in the editor (Q6.2) — it is here so "the editor lints like the build of record" is a test.
+            // it is silent; under Html it fires. It is here so "the editor lints like the build of record" is a test.
             new Case("encodingLint", "<a href=\"@(1)\">t</a>",
                 new[] { "HED2004/W@10,3" }, None,
                 None, None),

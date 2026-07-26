@@ -11,12 +11,12 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Phase 3 (F8 / Q3.5) — the <b>symbol-side</b> driver of the type-name corpus. It resolves the same spellings
-    /// under the same imports and asserts the same outcomes as <c>Heddle.Tests.TypeSpellingLockstepTests</c>, which
-    /// is what "the generator reproduces the runtime's resolution semantics and outcomes" means operationally.
+    /// The <b>symbol-side</b> driver of the type-name corpus, resolving the same spellings under the same imports
+    /// and asserting the same outcomes as <c>Heddle.Tests.TypeSpellingLockstepTests</c>. This validates that the
+    /// generator reproduces the runtime's type-resolution semantics and verdicts.
     /// <para>The tie probes are declared in this compilation rather than referenced, so the two drivers exercise
-    /// their own universes — the point being that identical <i>rules</i> produce identical <i>verdicts</i>, not
-    /// that the two universes are the same set of assemblies.</para>
+    /// their own universes — identical <i>rules</i> must produce identical <i>verdicts</i>, even when the assembly
+    /// universes differ.</para>
     /// </summary>
     public class TypeSpellingSymbolLockstepTests
     {
@@ -65,7 +65,7 @@ namespace Probe.Nest { public class Outer { public class Inner { } } }";
         [InlineData("System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<int>>",
             "System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<int>>")]
         [InlineData("(int, string)", "(int, string)")]
-        // Q8.3: the one-element tuple the shared parser used to refuse — now resolved on both tiers.
+        // One-element tuples are now resolved on both tiers (previously refused only on the shared parser).
         [InlineData("(int)", "System.ValueTuple<int>")]
         [InlineData("()", "UNRESOLVED")]
         [InlineData(" int ", "int")]
@@ -89,7 +89,7 @@ namespace Probe.Nest { public class Outer { public class Inner { } } }";
         [Fact]
         public void ShortNameTieUnsettledByImportsIsTheAmbiguityErrorNotAPick()
         {
-            // The build-tier half of the Q3.5 lockstep fix: the same input the runtime now throws "ambigous" for.
+            // The build tier now matches the runtime's ambiguity handling: the same input that throws "ambiguous".
             Assert.Equal("AMBIGUOUS", Resolve("TieProbe", "Probe.Alpha", "Probe.Beta"));
             Assert.Equal("AMBIGUOUS", Resolve("TieProbe", "Probe", "Probe.Alpha"));
         }

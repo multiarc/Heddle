@@ -3,17 +3,14 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Generator plan phase 1 WI9 (D10 / area 01 F17) — zero-output classification. The runtime's rule is
-    /// behavioral (a directive's <c>InitStart</c> returns <c>null</c>, and that is what drops the block); the
-    /// generator can only read symbols, so <c>[ZeroOutput]</c> is the declarative twin. Before it, the emitter
-    /// classified zero-output by a hard-coded list of the four built-in directive names — so a CUSTOM zero-output
-    /// extension had its block removed on the dynamic tier and kept as rendered output on the precompiled one.
+    /// Verifies that <c>[ZeroOutput]</c> classification works identically on both the dynamic and precompiled
+    /// compilation tiers, matching the runtime's behavioral rule (when a directive's <c>InitStart</c> returns
+    /// <c>null</c>, that block is dropped).
     /// </summary>
     public class ZeroOutputDifferentialTests
     {
         private const string Header = "@model(){{System.String}}@\\\n";
 
-        /// <summary>zero-output-custom — a <c>[ZeroOutput]</c> block mid-document is removed on both tiers.</summary>
         [Fact]
         public void CustomZeroOutputBlockIsRemovedOnBothTiers()
         {
@@ -30,7 +27,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("after", precompiled);
         }
 
-        /// <summary>The built-ins classify identically through the binder — the byte-neutrality half of D10.</summary>
+        /// <summary>Built-in directives classify identically through the binder, maintaining byte-for-byte compatibility.</summary>
         [Fact]
         public void BuiltInDirectivesStillClassifyAsZeroOutput()
         {

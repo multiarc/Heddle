@@ -31,8 +31,6 @@ namespace Heddle.Tests
             return path;
         }
 
-        // ---- P01–P03: coexistence (alternatives 1–3 unchanged) ----
-
         [Fact]
         public void P01_MemberPathUnchanged()
         {
@@ -56,8 +54,6 @@ namespace Heddle.Tests
             Assert.Null(p.NativeExpression);
             Assert.False(string.IsNullOrEmpty(p.CSharpExpression));
         }
-
-        // ---- P04–P24: native-expression AST shapes ----
 
         [Fact]
         public void P04_Comparison()
@@ -261,8 +257,6 @@ namespace Heddle.Tests
             Assert.Equal(0, Assert.IsType<LiteralNode>(ternary.WhenFalse).Value);
         }
 
-        // ---- N01–N14: rejected constructs (positioned HED0003) ----
-
         [Theory]
         [InlineData("@(X = 1)")]        // N01 assignment
         [InlineData("@(X += 1)")]       // N02 compound assignment
@@ -285,8 +279,6 @@ namespace Heddle.Tests
             Assert.NotEmpty(ctx.Errors);
             Assert.Contains(ctx.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.SyntaxError);
         }
-
-        // ---- Editor-token classification ----
 
         private static List<HeddleTokenType> Tokens(string template)
         {

@@ -6,7 +6,7 @@ using Heddle.Data;
 namespace Heddle.Extensions
 {
     /// <summary>
-    /// <para>HTML-attribute context encoder (C2-R2). <c>@attr(value)</c> escapes its value for use inside an HTML
+    /// <para>HTML-attribute context encoder. <c>@attr(value)</c> escapes its value for use inside an HTML
     /// attribute (<c>&amp;</c>, <c>&lt;</c>, <c>&gt;</c>, <c>"</c>, <c>'</c>): it escapes the attribute-significant
     /// characters including both quote styles, so the result is safe in single- and double-quoted attributes alike.
     /// It is not a strict superset of the default HTML encoder — that encoder also escapes <c>'</c> and the Latin-1

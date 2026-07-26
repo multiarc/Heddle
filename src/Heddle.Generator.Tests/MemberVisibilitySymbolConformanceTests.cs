@@ -10,11 +10,11 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Phase 3 (F7 / WI6 adoption) — the <b>symbol-side</b> driver of phase 4's member-visibility conformance
-    /// corpus. The rows are the same as <c>Heddle.Tests.MemberVisibilityConformanceTests</c>'s, and the model type
-    /// is the same shape; this is what turns "the two resolvers happen to agree" into "a divergent policy is
-    /// structurally impossible", because both now run the one <c>MemberVisibility</c> decision table.
-    /// <para>Three rows are the F7 divergences this adoption closed. Each ran the dangerous direction — the
+    /// The <b>symbol-side</b> driver of member-visibility conformance corpus. The rows are the same as
+    /// <c>Heddle.Tests.MemberVisibilityConformanceTests</c>'s, and the model type is the same shape; this turns
+    /// "the two resolvers happen to agree" into "a divergent policy is structurally impossible", because both now
+    /// run the one <c>MemberVisibility</c> decision table.
+    /// <para>Three rows are the known divergences this adoption closed. Each ran the dangerous direction — the
     /// generator was <i>more</i> permissive, and the same resolver drives emission, so the extra permissiveness
     /// became emitted typed code the dynamic tier rejects.</para>
     /// </summary>

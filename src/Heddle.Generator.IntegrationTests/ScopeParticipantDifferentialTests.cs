@@ -3,18 +3,16 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Generator plan phase 1 WI1 (D2) — the <c>needsLocals</c> parity fixtures.
-    /// <para>A definition call site builds <b>two</b> carriers that host two different documents: the inner one
-    /// holds the definition body, the outer one holds this invocation site's caller content. The dynamic tier
-    /// derives each carrier's frame-provisioning flag from its own document
-    /// (<c>AbstractExtension.InitStart</c> → <c>RuntimeDocument.NeedsLocals</c>). The emitter used to OR the two
-    /// flags together and hand the result to both carriers, which is not a harmless over-provision: under
-    /// <c>AbstractExtension.GetInnerResult</c>, <c>needsLocals: false</c> is the instruction to hand a
-    /// <em>cleared</em> frame to a non-participating body, and the OR replaced that with a fresh one.</para>
-    /// <para>The fixtures are written the way the plan requires — asserting the <b>dynamic</b> tier's bytes, which
-    /// is why they failed on the precompiled tier before the fix. <c>@flag</c> publishes opportunistically and
-    /// <c>@peek</c> reads, and neither carries <c>[ScopeChannel]</c>, so a body holding only those two is
-    /// non-participating on both tiers and its rendered text reports whether it was given a frame regardless.</para>
+    /// The <c>needsLocals</c> parity fixtures.
+    /// <para>A definition call site builds <b>two</b> carriers that host two different documents: the inner one holds
+    /// the definition body, the outer one holds the invocation site's caller content. The dynamic tier derives each
+    /// carrier's frame-provisioning flag from its own document (<c>AbstractExtension.InitStart</c> →
+    /// <c>RuntimeDocument.NeedsLocals</c>). The emitter used to OR the two flags together and hand the result to both
+    /// carriers, which is not a harmless over-provision: <c>needsLocals: false</c> instructs <c>AbstractExtension.GetInnerResult</c>
+    /// to hand a <em>cleared</em> frame to a non-participating body, and the OR replaced that with a fresh one.</para>
+    /// <para>The fixtures assert the <b>dynamic</b> tier's bytes. <c>@flag</c> publishes opportunistically and <c>@peek</c>
+    /// reads, and neither carries <c>[ScopeChannel]</c>, so a body holding only those two is non-participating on both tiers
+    /// and its rendered text reports whether it was given a frame.</para>
     /// </summary>
     public class ScopeParticipantDifferentialTests
     {

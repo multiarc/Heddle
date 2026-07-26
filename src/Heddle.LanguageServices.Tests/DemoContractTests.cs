@@ -10,10 +10,9 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>
-    /// Phase 9 D14 — the cross-host facade contract. One shared fixture set
-    /// (<c>src/Heddle.Demo.Wasm/contract-fixtures/*.json</c>) asserted against <see cref="DemoHost"/> on ordinary
-    /// CoreCLR; the same fixtures are asserted browser-side by the Playwright S3/S4 scenarios. Facade drift between
-    /// the LSP server and the browser host now breaks a test on both sides of the boundary.
+    /// Tests the cross-host facade contract: a shared fixture set
+    /// (<c>src/Heddle.Demo.Wasm/contract-fixtures/*.json</c>) is asserted against <see cref="DemoHost"/> on CoreCLR
+    /// and browser-side. Facade drift between the LSP server and browser host breaks tests on both sides.
     /// </summary>
     public class DemoContractTests
     {
@@ -89,7 +88,6 @@ namespace Heddle.LanguageServices.Tests
                 Assert.Equal(expectedPropArgs, actualPropArgs);
             }
 
-            // Keyword items matched exactly as a set.
             var actualKeywords = byKind.Where(i => i.Kind == "keyword").Select(i => i.Label)
                 .OrderBy(l => l, StringComparer.Ordinal).ToList();
             var expectedKeywords = (fixture.ExpectKeywords ?? new List<string>())

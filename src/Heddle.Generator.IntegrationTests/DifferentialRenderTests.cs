@@ -6,9 +6,9 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 WI9 / D20 — the full-corpus differential gate, grown family by family. Each fixture is rendered by the
-    /// compiled precompiled backend and the dynamic engine and asserted byte-identical. Family 1: static text and
-    /// reference-typed member paths (generated-code.md example 1).
+    /// The full-corpus differential gate, grown family by family. Each fixture is rendered by the compiled
+    /// precompiled backend and the dynamic engine and asserted byte-identical. Family 1: static text and
+    /// reference-typed member paths.
     /// </summary>
     public class DifferentialRenderTests
     {

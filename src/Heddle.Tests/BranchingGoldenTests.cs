@@ -99,8 +99,8 @@ namespace Heddle.Tests
         [Fact]
         public void OutProjectionSetPersistsAcrossOutCallerContentIndependent()
         {
-            // D11 / E9: the def-body @else (Z) binds to the def-body set state that PERSISTED across the
-            // non-branch @out() block; the caller-content set (CIN/COUT) is fully independent.
+            // The def-body @else (Z) binds to the def-body set state that persisted across the non-branch @out() block;
+            // the caller-content set (CIN/COUT) is fully independent.
             var t = Compile("branching-out-projection", typeof(OutModel));
             Assert.Equal("XCIN", t.Generate(new OutModel { A = true, B = true }));   // A satisfied -> X + caller CIN; def @else silent
             Assert.Equal("COUTZ", t.Generate(new OutModel { A = false, B = false })); // caller COUT + def @else Z
@@ -110,7 +110,7 @@ namespace Heddle.Tests
         [Fact]
         public void PartialGetsFreshRootFrameParentSetBindsAcrossIt()
         {
-            // E13: the @partial is a non-branch (Other) block — the parent set binds across it (P-ELSE),
+            // The @partial is a non-branch (Other) block — the parent set binds across it (P-ELSE),
             // while the child renders by its own condition under a fresh root frame (C-IF).
             HeddleTemplate.Configure(typeof(BranchingGoldenTests).GetTypeInfo().Assembly);
             BranchTestExtensions.Register();

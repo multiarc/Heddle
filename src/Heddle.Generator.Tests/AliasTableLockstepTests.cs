@@ -7,7 +7,7 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Generator plan phase 6 D7 — the build tier's alias adapter stays keyed in lockstep with the shared table.
+    /// The build tier's alias adapter stays keyed in lockstep with the shared table.
     /// <c>SymbolTypeResolver</c> must map <see cref="Microsoft.CodeAnalysis.SpecialType"/> rather than
     /// <see cref="Type"/>, so it cannot share the table's values; sharing the <b>keys</b> is what stops
     /// "what a template may write", "what the build tier binds" and "what an error message displays" from
@@ -28,7 +28,7 @@ namespace Heddle.Generator.Tests
             Assert.Equal(shared, symbolSide);
         }
 
-        /// <summary>Phase 3 (Q3.5) — the third arm: the two projections must agree on <b>what each alias means</b>,
+        /// <summary>The third arm: the two projections must agree on <b>what each alias means</b>,
         /// not merely on the key set. <c>dynamic</c> is the row that made the difference: it used to be a named
         /// exclusion on the symbol side, so a template writing <c>:: dynamic</c> bound on the run tier (the shared
         /// table maps it to <c>typeof(object)</c>) and not on the build tier. "Match the runtime exactly" leaves no
@@ -55,8 +55,8 @@ namespace Heddle.Generator.Tests
             Assert.Equal(typeof(object), gen::Heddle.Helpers.CSharpTypeNames.Aliases[dynamicAlias]);
         }
 
-        /// <summary>Phase 6 second pass — the fourth arm, closing the boundary between this table and phase 4's
-        /// <c>NumericKind</c> lattice. An alias is either numeric on <b>both</b> the reflection side
+        /// <summary>The fourth arm, closing the boundary between this table and the <c>NumericKind</c> lattice.
+        /// An alias is either numeric on <b>both</b> the reflection side
         /// (<c>NumericTable.FromClrType</c>) and the Roslyn side (<c>SymbolFacts.ToNumericKind</c>), or on neither,
         /// and the two must name the same kind. Adding <c>nint</c>/<c>nuint</c> to the alias table without adding
         /// the kind — or the reverse — is what this goes red on.</summary>
@@ -97,7 +97,6 @@ namespace Heddle.Generator.Tests
 
         private static string SpecialTypeFullName(Microsoft.CodeAnalysis.SpecialType special)
         {
-            // SpecialType member names are the metadata names with '_' for '.' — System_Int32 → System.Int32.
             return special.ToString().Replace('_', '.');
         }
     }

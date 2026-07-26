@@ -49,7 +49,7 @@ namespace Heddle.Language {
                     "Cannot create definition".ToError(CurrentParseContext.GetBlockPosition(context)));
                 return;
             }
-            // Phase 7 D5: a region-fill candidate (<x:x> with an unresolved base) is captured at parse and never
+            // A region-fill candidate (<x:x> with an unresolved base) is captured at parse and never
             // registered — it must not self-shadow the region default a self-call resolves to, and its error is
             // already emitted (emit-then-retract). CurrentDefenition stays non-null so ExitSubtemplate can attach
             // the override body's context to the candidate item.
@@ -61,9 +61,9 @@ namespace Heddle.Language {
             {
                 if (CurrentParseContext.DefinitionsBlock.Definitions.ContainsKey(CurrentParseContext.CurrentDefenition.Name))
                 {
-                    // Phase 7 D10 (HED5020): upgrade the id-less duplicate error only when BOTH the stored entry
+                    // Upgrade the id-less duplicate error to HED5020 only when BOTH the stored entry
                     // and the incoming declaration are public regions. A public region colliding with a private or
-                    // document-scope <name> keeps the id-less message (F6).
+                    // document-scope <name> keeps the id-less message.
                     var stored = CurrentParseContext.DefinitionsBlock.Definitions[CurrentParseContext.CurrentDefenition.Name];
                     if (stored.IsPublicRegion && CurrentParseContext.CurrentDefenition.IsPublicRegion)
                     {
@@ -87,7 +87,7 @@ namespace Heddle.Language {
             }
         }
 
-        /// <summary>Phase 7 D3 (append ordering): records a region declaration into the declaring context's
+        /// <summary>Records a region declaration into the declaring context's
         /// <see cref="ParseContext.DeclaredRegions"/> on the store-success path only, so a rejected duplicate
         /// never lands in the enclosing component's <see cref="DefinitionItem.Regions"/>.</summary>
         private void RecordRegionDeclaration(DefinitionItem definition)
@@ -136,7 +136,7 @@ namespace Heddle.Language {
                                     CurrentParseContext.GetBlockPosition(context)));
                             return;
                         }
-                        // Phase 7 (WI2): a within-component <region:region> replace preserves region-ness — the
+                        // A within-component <region:region> replace preserves region-ness — the
                         // replaced entry's visibility carries onto the replacing layer (the model type already
                         // inherits via CreateDefinition's `modelType ?? baseDefenition?.ModelType`).
                         if (definition.IsRegion)
@@ -238,7 +238,7 @@ namespace Heddle.Language {
                 if (CurrentParseContext.InDefinition)
                 {
                     CurrentParseContext.CurrentDefenition.Context = parserContext;
-                    // Phase 7 D3: transfer the body's directly-declared regions (store-success entries only,
+                    // Transfer the body's directly-declared regions (store-success entries only,
                     // declaration order) onto the enclosing component.
                     if (parserContext.DeclaredRegions.Count != 0)
                         CurrentParseContext.CurrentDefenition.Regions = parserContext.DeclaredRegions;
@@ -306,9 +306,9 @@ namespace Heddle.Language {
             {
                 string document = _settings.ReadImport(path);
 
-                // Phase 6 D25 (stamp site 1): mark the imported parse's diagnostics with a shared ImportOrigin so
+                // Mark the imported parse's diagnostics with a shared ImportOrigin so
                 // the LSP facade re-anchors them to this @<< site. Flag-gated — production compiles take one bool
-                // check and allocate nothing. Post-D4 seam: all front-end diagnostics live on the ParseContext,
+                // check and allocate nothing. All front-end diagnostics live on the ParseContext,
                 // so the two ParseContext ranges are the only ones stamped (the runtime adapter copies them into
                 // the compile context after the whole parse completes).
                 bool markProvenance = CurrentParseContext.ProvideLanguageFeatures;
@@ -356,7 +356,7 @@ namespace Heddle.Language {
                     StampImportedRange(CurrentParseContext.Errors, peMark, origin);
                     StampImportedRange(CurrentParseContext.Warnings, pwMark, origin);
                     // Attach the origin to purely-imported definitions so their call-site-compiled bodies
-                    // re-anchor via the D2/D25 funnel bracket (stamp site 4). Definitions copied from the
+                    // re-anchor to this import site too. Definitions copied from the
                     // pre-import local set keep their own (null) provenance.
                     foreach (var pair in CurrentParseContext.DefinitionsBlock.Definitions)
                     {
@@ -369,7 +369,7 @@ namespace Heddle.Language {
         }
 
         /// <summary>
-        /// Phase 6 D25: stamps every entry appended after <paramref name="mark"/> with <paramref name="origin"/>.
+        /// Stamps every entry appended after <paramref name="mark"/> with <paramref name="origin"/>.
         /// A null-marker entry (a diagnostic of the imported document itself) takes the shared instance; an entry
         /// already carrying a marker (a nested import's) has only its <see cref="ImportOrigin.Site"/> re-anchored
         /// to this site — the shared instance keeps the deepest <see cref="ImportOrigin.Path"/>.
@@ -387,7 +387,7 @@ namespace Heddle.Language {
             }
         }
 
-        /// <summary>Phase 6 D25: attaches an import origin to a purely-imported definition's context lineage so
+        /// <summary>Attaches an import origin to a purely-imported definition's context lineage so
         /// its call-site-compiled body re-anchors (idempotent; recurses base layers).</summary>
         private static void AttachImportOrigin(DefinitionItem definition, ImportOrigin origin)
         {

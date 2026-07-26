@@ -93,7 +93,7 @@ namespace Heddle.Runtime {
             return resultTree;
         }
 
-        /// <summary>The static-piece walk (generator plan phase 2 D6): the segmentation itself lives once in
+        /// <summary>The static-piece walk: the segmentation itself lives once in
         /// <see cref="DocumentShaping.SlicePieces{T}"/>, shared with the emitter's body walk so the precompiled
         /// <c>P0..Pn</c> constants are the same strings this method produces. The pair-building is the only
         /// runtime-specific part.</summary>
@@ -113,7 +113,7 @@ namespace Heddle.Runtime {
         /// <summary>
         /// <para>Whether a body execution of this document must be provisioned with a
         /// <see cref="ScopeLocals"/> frame: <c>true</c> iff the compiled document statically contains a
-        /// <c>[ScopeChannel]</c> participant (phase 3 D2). Nested bodies are separate documents and do not
+        /// <c>[ScopeChannel]</c> participant. Nested bodies are separate documents and do not
         /// contribute — the flag is strictly per body level.</para>
         /// <para>Computed once in the constructor over the pre-optimization element tree (recursing nested
         /// chain parameters); immutable afterwards — safe to read from concurrent renders.</para>
@@ -150,7 +150,7 @@ namespace Heddle.Runtime {
         {
             if (item == null)
                 return false;
-            // Phase 8 (D4 carrier-transparency): a parameter-declaring [ScopeChannel] extension stands behind the
+            // Carrier transparency: a parameter-declaring [ScopeChannel] extension stands behind the
             // attribute-less ExtensionParameterCarrier — unwrap so its body still provisions a locals frame.
             var extension = (item.Extension as Core.ExtensionParameterCarrier)?.Inner ?? item.Extension;
             if (extension != null &&

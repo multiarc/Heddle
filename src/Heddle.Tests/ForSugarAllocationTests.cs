@@ -9,11 +9,11 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Allocation proof for the int-<c>@for</c> loop (phase 4 D1 / criterion): the <c>is int</c> normalization
-    /// produces three stack locals and never boxes a <see cref="Heddle.Models.Range"/>. Rendered
-    /// against the C#-tier <c>Heddle.Models.Range</c> path — which boxes one <c>Range</c> per render — through the
-    /// identical loop body, the int path must allocate no more (the spec's "allocated bytes must not increase"
-    /// acceptance). The Range arm stays first, so existing templates keep their exact type-test sequence.
+    /// Allocation proof for the int-<c>@for</c> loop: the <c>is int</c> normalization produces three stack
+    /// locals and never boxes a <see cref="Heddle.Models.Range"/>. Rendered against the C#-tier
+    /// <c>Heddle.Models.Range</c> path — which boxes one <c>Range</c> per render — through the identical loop
+    /// body, the int path must allocate no more. The Range arm stays first, so existing templates keep their
+    /// exact type-test sequence.
     /// </summary>
     public class ForSugarAllocationTests
     {

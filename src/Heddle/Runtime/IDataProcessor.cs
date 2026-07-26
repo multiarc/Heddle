@@ -6,10 +6,10 @@ namespace Heddle.Runtime
 {
     public interface IDataProcessor: IDisposable {
         /// <summary>
-        /// Processes template file with existing input data and additional data
+        /// Returns the generated value for this element.
         /// </summary>
-        /// <param name="scope"></param>
-        /// <returns>Generated string to be inserted in template instead of template</returns>
+        /// <param name="scope">The current render scope.</param>
+        /// <returns>Generated string to be inserted for this element.</returns>
         object ProcessData(in Scope scope);
 
         void RenderData(in Scope scope);

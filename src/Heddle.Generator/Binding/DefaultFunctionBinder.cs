@@ -27,7 +27,7 @@ namespace Heddle.Generator.Binding
     }
 
     /// <summary>
-    /// The generator's half of the shared overload rule (phase 4 D10 / 04 F3). The candidate set was already shared
+    /// The generator's half of the shared overload rule. The candidate set was already shared
     /// — <c>DefaultFunctionTable</c> mirrors the runtime registry row for row — but the <b>selection</b> used to be
     /// delegated to the consumer's C# compiler, whose betterness rules are not Heddle's flat Pareto rank. This type
     /// resolves a built-in call with <see cref="OverloadRank"/> instead, so the generator reaches the runtime's
@@ -100,7 +100,7 @@ namespace Heddle.Generator.Binding
         /// <summary>Resolves <paramref name="name"/> against the shared candidate rows with the shared ranker, or
         /// returns null when the ranker reports ambiguity, no applicable overload, or an argument the generator
         /// cannot describe — every one of which degrades the template rather than guessing.
-        /// <para>Q8.1: the two refusals are <b>not</b> the same thing, so <paramref name="refusal"/> distinguishes
+        /// <para>The two refusals are <b>not</b> the same thing, so <paramref name="refusal"/> distinguishes
         /// them instead of letting the bare <c>null</c> conflate them. An ambiguous or inapplicable front over
         /// arguments the estimator typed is a <i>proof</i> that the runtime will refuse the call, and the build
         /// reports <c>HED7025</c>; an argument it could not describe is a generator limitation and still degrades
@@ -114,10 +114,10 @@ namespace Heddle.Generator.Binding
             var args = new RankArgument<GenTypeRef>[arguments.Count];
             for (int i = 0; i < arguments.Count; i++)
             {
-                // THE SIDE CONDITION (Q8.1). An OperandCategory.Unknown argument has no rank token at all, so the
-                // ranker would be ranking against nothing: whatever front it produced would be an artefact of the
-                // generator's ignorance, never a statement about the runtime — which binds on the expression's real
-                // static type. Leaving here, before Bind runs, is what keeps the Unknown case a silent degrade.
+                // An OperandCategory.Unknown argument has no rank token at all, so the ranker would be ranking
+                // against nothing: whatever front it produced would be an artefact of the generator's ignorance,
+                // never a statement about the runtime — which binds on the expression's real static type. Leaving
+                // here, before Bind runs, is what keeps the Unknown case a silent degrade.
                 if (!TryDescribe(arguments[i], out var described))
                     return null;
                 args[i] = described;

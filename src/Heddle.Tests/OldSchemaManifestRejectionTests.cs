@@ -6,7 +6,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// <para>Q8.2, the binary break, <b>demonstrated</b> rather than asserted. The prop-layout fingerprint landed as
+    /// <para>The binary break, <b>demonstrated</b> rather than asserted. The prop-layout fingerprint landed as
     /// an optional third constructor parameter on <see cref="PrecompiledExtensionBinding"/>, so the two-argument
     /// <c>.ctor(string, string)</c> that every <b>released</b> manifest calls no longer exists in metadata.
     /// <c>MinSupportedSchemaVersion</c> was still <c>1</c>, so the registration gate <em>accepted</em> exactly the

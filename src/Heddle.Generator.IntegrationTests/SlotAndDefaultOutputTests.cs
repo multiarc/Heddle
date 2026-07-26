@@ -6,8 +6,8 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 — slot-mode definitions (<c>&lt;name(out:: T)&gt;</c> + <c>@out(value)</c>) and definition default
-    /// output (<c>-&gt; chain</c> rendered at document end via <c>ParseContext.DefaultChains</c>). Both bind the same
+    /// Slot-mode definitions (<c>&lt;name(out:: T)&gt;</c> + <c>@out(value)</c>) and definition default output
+    /// (<c>-&gt; chain</c> rendered at document end via <c>ParseContext.DefaultChains</c>). Both bind the same
     /// engine-internal carriers the runtime backend builds; differential-gated byte-for-byte.
     /// </summary>
     public class SlotAndDefaultOutputTests

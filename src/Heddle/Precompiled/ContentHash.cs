@@ -6,7 +6,7 @@ using System.Text;
 namespace Heddle.Precompiled
 {
     /// <summary>
-    /// <para>The shared content-hash rule for precompiled templates (phase 5 D1). One pure, IO-free source file,
+    /// <para>The shared content-hash rule for precompiled templates. One pure, IO-free source file,
     /// compiled into both <c>Heddle</c> (runtime staleness check) and the <c>Heddle.Generator</c> analyzer
     /// (build-time manifest emission) so the two sides cannot hash different things.</para>
     /// <para><b>The staleness identity of a template is the lowercase-hex SHA-256 of its decoded text re-encoded
@@ -24,7 +24,7 @@ namespace Heddle.Precompiled
     {
         private static readonly UTF8Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
-        /// <summary>Hashes decoded template text — the canonical staleness identity (D1).</summary>
+        /// <summary>Hashes decoded template text — the canonical staleness identity.</summary>
         /// <param name="text">The template's decoded text (no BOM character).</param>
         /// <returns>The lowercase hex SHA-256 of the text's UTF-8 (BOM-less) encoding.</returns>
         public static string HashText(string text)

@@ -5,11 +5,10 @@ using Microsoft.CodeAnalysis;
 namespace Heddle.Generator.Binding
 {
     /// <summary>
-    /// Phase 3 (F1): the <b>Roslyn</b> adapter of the shared <see cref="AqnFormatter"/> — the build-tier half of the
-    /// manifest identity contract. Replaces four hand-typed copies of "<c>FullyQualifiedFormat</c> minus
-    /// <c>global::</c>, plus the assembly name" (<c>ExtensionBinder</c>, <c>FunctionExportResolver</c> and twice in
-    /// <c>TemplateEmitter</c>), each of which spelled a nested type <c>Ns.Outer.Inner</c> where reflection spells
-    /// <c>Ns.Outer+Inner</c> and a generic container <c>Ns.C&lt;T&gt;</c> where reflection spells <c>Ns.C`1</c>.
+    /// The <b>Roslyn</b> adapter of the shared <see cref="AqnFormatter"/> — the build-tier half of the
+    /// manifest identity contract. Replaces hand-typed copies of the <c>FullyQualifiedFormat</c> formatting rule,
+    /// ensuring nested types like <c>Ns.Outer.Inner</c> match reflection's <c>Ns.Outer+Inner</c> and generics
+    /// like <c>Ns.C&lt;T&gt;</c> match reflection's <c>Ns.C`1</c>.
     /// </summary>
     internal static class SymbolTypeIdentity
     {

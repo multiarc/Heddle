@@ -8,7 +8,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// White-box (IVT) coverage of the phase 6 D2 scope map: spans + effective types recorded for nested bodies
+    /// White-box (IVT) coverage of the scope map: spans + effective types recorded for nested bodies
     /// (<c>@list</c> narrowing, <c>@if</c> step-back — the body records the <i>caller's</i> model, not
     /// <see cref="bool"/>), one entry per compiled call site for abstract definitions, and the <c>null</c> map
     /// when <see cref="TemplateOptions.ProvideLanguageFeatures"/> is off (the null-cost guarantee's source).

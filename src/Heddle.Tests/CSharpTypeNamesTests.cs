@@ -6,9 +6,8 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Generator plan phase 6 D7 — the C# alias table exists once. It used to exist as five tables across four
-    /// projects whose key sets already differed, so adding an alias could change what a template may write
-    /// without changing what the build tier binds or what an error message displays. These pin the shared table
+    /// The C# alias table exists once. Five tables across four projects used to differ, so adding an alias
+    /// could change what a template may write without changing what the build tier binds. These pin the shared table
     /// and the two projections taken from it.
     /// </summary>
     public class CSharpTypeNamesTests

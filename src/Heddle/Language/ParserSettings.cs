@@ -4,7 +4,7 @@ using System.IO;
 namespace Heddle.Language
 {
     /// <summary>
-    /// <para>The parse-time configuration seam (phase 7 D4). Abstracts the two couplings the shared front end
+    /// <para>The parse-time configuration seam. Abstracts the two couplings the shared front end
     /// had on the runtime <c>CompileContext</c>: the import root path and the <c>@&lt;&lt;</c> file IO. The runtime
     /// path builds one of these from <see cref="Heddle.Data.TemplateOptions"/> (via the
     /// <see cref="DocumentParser.Parse(string, CompileContext, out string)"/> adapter); the build-time generator
@@ -20,7 +20,7 @@ namespace Heddle.Language
         public string RootPath { get; set; } = string.Empty;
 
         /// <summary>Mirrors <see cref="Heddle.Data.TemplateOptions.ProvideLanguageFeatures"/>: enables editor
-        /// token capture, prediction-mode diagnostics, and import provenance stamping (D25).</summary>
+        /// token capture, prediction-mode diagnostics, and import provenance stamping.</summary>
         public bool ProvideLanguageFeatures { get; set; }
 
         /// <summary>

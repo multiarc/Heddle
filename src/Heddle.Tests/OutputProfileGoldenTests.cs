@@ -9,9 +9,9 @@ using Heddle.TestCorpus;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Generative goldens for the profile phase (WI8): the flagship fixture pinned both ways (roadmap
-    /// criterion 1), the <c>@profile()</c> directive fixture, and the partial-lineage fixture pair where an
-    /// Html parent's profile is inherited by the compiled child (X05). Line endings are normalized per the
+    /// Generative goldens for profile encoding: the flagship fixture pinned in both text and html profiles,
+    /// the <c>@profile()</c> directive fixture, and the partial-lineage fixture pair where an
+    /// Html parent's profile is inherited by the compiled child. Line endings are normalized per the
     /// testing standards.
     /// </summary>
     public class OutputProfileGoldenTests

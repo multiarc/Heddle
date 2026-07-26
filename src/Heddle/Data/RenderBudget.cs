@@ -3,8 +3,8 @@ using System;
 namespace Heddle.Data
 {
     /// <summary>
-    /// <para>Per-render resource limits for a single <c>Generate</c> call (C1). Every limit is nullable; a
-    /// <c>null</c> limit is unbounded, and a <c>RenderBudget</c> with all-null limits imposes no cap. Attach it to
+    /// <para>Per-render resource limits for a single <c>Generate</c> call. Every limit is nullable; a <c>null</c>
+    /// limit is unbounded, and a <c>RenderBudget</c> with all-null limits imposes no cap. Attach it to
     /// <see cref="TemplateOptions.RenderBudget"/> — a <c>null</c> budget (the default) is today's unlimited behavior
     /// with zero render-path cost (no wrapper is created).</para>
     /// <para>Budgets are enforced at the renderer seam, not at the language level: they bound the untrusted-template

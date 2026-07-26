@@ -13,10 +13,10 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 1 D5 — the live-document swap under concurrent renders/publishers: coherent old-or-new
-    /// output, no use-after-release, exactly-once release of every superseded document, post-Teardown
-    /// publishes discarded not resurrected. Modeled on <see cref="BranchConcurrencyTests"/>; the D5
-    /// correctness proof carries the guarantee, the green runs corroborate it.
+    /// The live-document swap under concurrent renders/publishers: coherent old-or-new output, no
+    /// use-after-release, exactly-once release of every superseded document, post-Teardown publishes
+    /// discarded not resurrected. Modeled on <see cref="BranchConcurrencyTests"/>; the correctness
+    /// argument carries the guarantee, the green runs corroborate it.
     /// </summary>
     public class FileWatcherSwapConcurrencyTests
     {
@@ -110,7 +110,7 @@ namespace Heddle.Tests
             Assert.Equal(DisposalWitnessExtension.CreatedCount, DisposalWitnessExtension.DisposedCount);
         }
 
-        /// <summary>Blocker-2 drain-TOCTOU witness (deterministic interleaving via an in-render publisher):
+        /// <summary>Drain-TOCTOU witness (deterministic interleaving via an in-render publisher):
         /// while a render of doc₁ is in flight, its extension publishes doc₂ (superseding doc₁, whose drain
         /// must defer on <c>_runners</c>) and then a NEW render on another thread snapshots and renders doc₂
         /// to completion. Neither render throws, both outputs match their snapshotted document, and the
@@ -149,7 +149,7 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>Blocker-1 ordering regression (deterministic): a reload triggered from INSIDE a render of
+        /// <summary>Ordering regression (deterministic): a reload triggered from INSIDE a render of
         /// the superseded document leaves the in-flight render's snapshot alive — the snapshot is taken after
         /// <c>EnterRender</c>'s increment, so the drain's <c>_runners</c> gate provably covers it.</summary>
         [Fact]
@@ -180,7 +180,7 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>Blocker-3 post-teardown path (deterministic): a watcher callback landing after
+        /// <summary>Post-teardown path (deterministic): a watcher callback landing after
         /// <c>Dispose()</c> compiles, hits the store block's dispose guard, and releases the fresh artifact
         /// instead of publishing onto (resurrecting) the torn-down template.</summary>
         [Fact]
@@ -220,7 +220,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>The leak fix (deterministic): one idle reload (no concurrent render) disposes the
-        /// superseded document at the publish drain — it is never orphaned as before this phase.</summary>
+        /// superseded document at the publish drain — it is never orphaned.</summary>
         [Fact]
         public void SupersededDocumentIsDisposedAfterReloadWhenIdle()
         {
@@ -253,7 +253,7 @@ namespace Heddle.Tests
     }
 
     /// <summary>
-    /// Phase 1 disposal witness: one instance per compiled document occurrence; counts constructions and
+    /// Disposal witness: one instance per compiled document occurrence; counts constructions and
     /// <c>Dispose(true)</c> calls (finalizer passes are ignored so background GC cannot skew the counts),
     /// flagging any instance disposed twice. The exactly-once-release assertions read these counters.
     /// </summary>
@@ -322,7 +322,7 @@ namespace Heddle.Tests
     }
 
     /// <summary>
-    /// Phase 1 reentrancy hook: on render it runs the test-supplied callback once (e.g. a
+    /// Reentrancy hook: on render it runs the test-supplied callback once (e.g. a
     /// <c>Recompile</c> that supersedes the very document this render was invoked from) — the deterministic
     /// driver for the snapshot-after-<c>EnterRender</c> and drain-gate regressions.
     /// </summary>

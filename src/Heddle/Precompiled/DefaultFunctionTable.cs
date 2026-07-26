@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace Heddle.Precompiled
 {
-    /// <summary>One default built-in overload as pure strings (phase 7 D21): the registered function name, the
+    /// <summary>One default built-in overload as pure strings: the registered function name, the
     /// <see cref="PrecompiledFunctions"/> shim method that binds it, and the parameter/return CLR type names. Value
     /// data only — safe to hold in an incremental-generator pipeline model.</summary>
     internal readonly struct DefaultFunctionRow
@@ -27,8 +27,8 @@ namespace Heddle.Precompiled
 
     /// <summary>
     /// The shared-sourced table of the 18 default built-in function names (35 overloads) that a fresh
-    /// <c>FunctionRegistry</c> starts with (phase 1 D12 + phase 4 D2's <c>range</c>). Compiled into <b>both</b>
-    /// <c>Heddle</c> and the <c>Heddle.Generator</c> analyzer (like <see cref="TemplateKey"/>, D1/D12): the generator
+    /// <c>FunctionRegistry</c> starts with. Compiled into <b>both</b>
+    /// <c>Heddle</c> and the <c>Heddle.Generator</c> analyzer (like <see cref="TemplateKey"/>): the generator
     /// seeds its merged function table from these rows and emits <see cref="PrecompiledFunctions"/> shim calls for
     /// default-bound names; the engine's <c>DefaultFunctionLockstepTests</c> gate this table against
     /// <c>FunctionRegistry.Default</c> and the shim in both directions.
@@ -36,7 +36,7 @@ namespace Heddle.Precompiled
     internal static class DefaultFunctionTable
     {
         /// <summary>The assembly-qualified type name (without version) the shim forwards to — the target recorded on
-        /// every shim-bound <see cref="PrecompiledFunctionBinding"/> row (D21).</summary>
+        /// every shim-bound <see cref="PrecompiledFunctionBinding"/> row.</summary>
         public const string ShimTargetTypeName = "Heddle.Runtime.Expressions.BuiltInFunctions, Heddle";
 
         private const string Str = "System.String";

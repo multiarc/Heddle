@@ -8,9 +8,9 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 4 WI7/WI9 differential entries: the lone-surrogate literal that used to be written raw into generated
-    /// source (04 F9), and the dynamic member hop that used to bind in the <b>consumer's</b> assembly context
-    /// instead of <c>Heddle</c>'s (04 F8 / OQ3).
+    /// Differential entries: the lone-surrogate literal that used to be written raw into generated
+    /// source, and the dynamic member hop that used to bind in the <b>consumer's</b> assembly context
+    /// instead of <c>Heddle</c>'s.
     /// </summary>
     public class LiteralAndDynamicHopTests
     {
@@ -49,7 +49,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void DynamicHop_RoutesThroughTheRuntimeHelper_NotAnInlineDynamicCast()
         {
-            // The shape change D11 gates on the schema bump: one binder context for both tiers, chosen once.
+            // The shape change gates on the schema bump: one binder context for both tiers, chosen once.
             var key = "views/dyn-hop.heddle";
             var content = "@model(){{dynamic}}@\\\n@(Name) @(Nested.Amount)\n";
             var gen = DifferentialHarness.Generate(new[] { (key, content) });
@@ -73,13 +73,11 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// The OQ3 entry the plan's success criteria and validation-scenario row actually asked for, added by the
-        /// phase-4 audit (2026-07-26): an <b>internal</b> property of a *consumer-assembly* type reached through a
-        /// dynamic hop. The landing shipped the <c>Order.Secret</c> fixture for exactly this and then no test used
-        /// it, so the criterion rested on <c>DynamicMemberTests</c>' unit pin over a <c>Heddle.Tests</c>-internal
-        /// type — a different accessibility situation from generated code in a third assembly, which is the one the
-        /// divergence lived in.
-        /// <para>Pre-WI9 the generated <c>(dynamic)</c> cast chain bound in the <i>consumer's</i> context and read
+        /// An <b>internal</b> property of a *consumer-assembly* type reached through a dynamic hop. This is a
+        /// different accessibility situation from <c>DynamicMemberTests</c>' unit pin over a
+        /// <c>Heddle.Tests</c>-internal type, and it is the one the divergence lived in: generated code sitting in a
+        /// third assembly.
+        /// <para>Formerly the generated <c>(dynamic)</c> cast chain bound in the <i>consumer's</i> context and read
         /// <c>Secret</c> happily while the runtime tier could not see it at all: one tier rendered a value, the other
         /// failed. Both tiers now route through one binder context, so both fail identically. Asserted through the
         /// deferred form because the byte-identical tuple short-circuits on the first backend's throw and would hide
@@ -102,8 +100,8 @@ namespace Heddle.Generator.IntegrationTests
             Assert.IsType<RuntimeBinderException>(Unwrap(precompiledFailure));
             Assert.IsType<RuntimeBinderException>(Unwrap(dynamicFailure));
 
-            // And the typed tier still accepts the same getter — the deliberate asymmetry OQ3 preserved and filed as
-            // a window candidate. If a future harmonization changes either half, this row moves with it.
+            // And the typed tier still accepts the same getter — a deliberate asymmetry between the typed and dynamic
+            // tiers. If a future harmonization changes either half, this row moves with it.
             var typed = new HeddleTemplate("[@(Secret)]",
                 new CompileContext(new TemplateOptions(), typeof(Order)));
             Assert.True(typed.CompileResult.Success, typed.CompileResult.ToString());

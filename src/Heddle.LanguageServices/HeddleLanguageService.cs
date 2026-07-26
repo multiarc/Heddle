@@ -8,10 +8,10 @@ using Heddle.Runtime.Expressions;
 namespace Heddle.LanguageServices
 {
     /// <summary>
-    /// Document manager and analysis entry point (phase 6). One instance per workspace; thread-safe: public
+    /// Document manager and analysis entry point. One instance per workspace; thread-safe: public
     /// members may be called from any thread, analyses are serialized per document, results are immutable
-    /// snapshots. Runs the engine pipeline directly (D9) and projects it (D10); model typing and host-registration
-    /// knowledge come from the configured assemblies (D14 model ALC, D23 extension scan, D24 function exports).
+    /// snapshots. Runs the engine pipeline directly and projects it; model typing and host-registration
+    /// knowledge come from the configured assemblies (model ALC, extension scan, function exports).
     /// </summary>
     public sealed class HeddleLanguageService : IDisposable
     {
@@ -35,13 +35,13 @@ namespace Heddle.LanguageServices
             InitializeWorkspace();
         }
 
-        /// <summary>Optional sink for operational/user-actionable messages (D20). Set by the server or tests.</summary>
+        /// <summary>Optional sink for operational/user-actionable messages. Set by the server or tests.</summary>
         internal Action<string> LogSink { get; set; }
 
-        /// <summary>The current workspace function registry (the D24 scan result, or null = Default).</summary>
+        /// <summary>The current workspace function registry (the export-scan result, or null = Default).</summary>
         internal FunctionRegistry Functions => _functions;
 
-        /// <summary>A weak reference to the last-unloaded model context (D14 collection check).</summary>
+        /// <summary>A weak reference to the last-unloaded model context, for the collection check.</summary>
         internal WeakReference LastUnloadedModelContext => _modelManager.LastUnloaded;
 
         private void InitializeWorkspace()
@@ -65,7 +65,7 @@ namespace Heddle.LanguageServices
         }
 
         /// <summary>Analyzes a document version; returns the immutable analysis. Cancellation is honored between
-        /// pipeline stages (D8).</summary>
+        /// pipeline stages.</summary>
         public DocumentAnalysis Analyze(string path, string text, int version,
             CancellationToken cancellationToken = default)
         {
@@ -104,7 +104,7 @@ namespace Heddle.LanguageServices
             _locks.TryRemove(path, out _);
         }
 
-        /// <summary>Completion items for the UTF-16 offset (D12/D13 semantics).</summary>
+        /// <summary>Completion items for the UTF-16 offset.</summary>
         public CompletionResult GetCompletions(string path, int offset,
             CancellationToken cancellationToken = default)
         {
@@ -116,8 +116,8 @@ namespace Heddle.LanguageServices
                 functions = _functions;
 
             // Completion runs against a repaired copy of the buffer so the enclosing body parses and records its
-            // narrowed model type (the offset is unchanged). This is the synchronous, request-forced analysis D8
-            // describes — it is not cached and never republished.
+            // narrowed model type (the offset is unchanged). This analysis is synchronous and request-forced —
+            // it is not cached and never republished.
             var (repairedText, repairedOffset) = CompletionText.Repair(analysis.Text, offset);
             DocumentAnalysis completionAnalysis;
             if (string.Equals(repairedText, analysis.Text, StringComparison.Ordinal))
@@ -129,7 +129,7 @@ namespace Heddle.LanguageServices
             return CompletionProvider.GetCompletions(completionAnalysis, repairedOffset, functions);
         }
 
-        /// <summary>Hover content for the offset, or null (D15).</summary>
+        /// <summary>Hover content for the offset, or null.</summary>
         public HoverResult GetHover(string path, int offset)
         {
             var analysis = GetAnalysis(path);
@@ -141,25 +141,25 @@ namespace Heddle.LanguageServices
             return HoverProvider.GetHover(analysis, offset, functions);
         }
 
-        /// <summary>Definition target for the offset, or null (D16).</summary>
+        /// <summary>Definition target for the offset, or null.</summary>
         public DefinitionTarget GetDefinition(string path, int offset)
         {
             var analysis = GetAnalysis(path);
             return analysis == null ? null : DefinitionProvider.GetDefinition(analysis, offset);
         }
 
-        /// <summary>Runs the D14 reload protocol; invalidates existing analyses — open documents must be
+        /// <summary>Runs the model-assembly reload protocol; invalidates existing analyses — open documents must be
         /// re-analyzed by the caller.</summary>
         public void ReloadModelAssemblies()
         {
             lock (_writerGate)
             {
-                _analyses.Clear();                                  // drop every type-derived cache (D14 step 2)
-                _modelManager.Unload();                             // unregister + Unload (steps 3–4)
+                _analyses.Clear();                                  // drop every type-derived cache
+                _modelManager.Unload();                             // unregister + Unload
                 if (_options.AssemblyPaths != null && _options.AssemblyPaths.Count > 0)
-                    _modelManager.Load(_options.AssemblyPaths);     // load the new generation (step 5)
+                    _modelManager.Load(_options.AssemblyPaths);     // load the new generation
                 // The extension registry is process-append-only and untouched; the function registry re-applies
-                // from the retained scan handles without rescanning (D24).
+                // from the retained scan handles without rescanning.
                 _functions = FunctionExportRegistrar.BuildRegistry(_retainedHandles, Log);
             }
         }

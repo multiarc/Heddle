@@ -97,8 +97,8 @@ namespace Heddle.Runtime
             if (context.CompileContext.Options.ExpressionMode == ExpressionMode.FullCSharp && context.CSharpContext.Methods.Count > 0 &&
                 !context.CSharpContext.Compiled)
             {
-                // Phase 9 D4 — the single Roslyn entry. When the trim-time feature switch is off, the
-                // guard below is a constant-true early return (via ILLink.Substitutions.xml), so CompileCSharp
+                // The single Roslyn entry. When the trim-time feature switch is off, the
+                // guard below is a constant-true early return, so CompileCSharp
                 // and every Microsoft.CodeAnalysis-typed member it reaches become dead code the linker removes.
                 // A misconfigured runtime host (FullCSharp + switch off) collects HED9001 rather than silently
                 // skipping the pass; the browser demo compiles Native so this never fires there.

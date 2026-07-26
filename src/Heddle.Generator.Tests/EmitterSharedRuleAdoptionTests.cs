@@ -12,13 +12,11 @@ using TemplateEmitter = gen::Heddle.Generator.Emit.TemplateEmitter;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Generator plan phase 1 — the build-tier half of the extraction acceptance. Each extraction's done-when is
-    /// "the generator-side copy is deleted", which is a claim about the emitter's <em>shape</em> rather than about
-    /// any rendered byte, so it is asserted here structurally. The byte-neutrality half is the unchanged
-    /// snapshot/golden/differential suites.
-    /// <para>Also carries the build-tier side of the WI10 body-model-typing conformance: the emitter's pinned
-    /// emission branches must declare the same rows the runtime conforms to, asserted over the table rather than
-    /// over emitted text.</para>
+    /// The build-tier half of the extraction acceptance. Each extraction's done-when is "the generator-side copy is
+    /// deleted", which is a claim about the emitter's <em>shape</em> rather than about any rendered byte, so it is
+    /// asserted here structurally. The byte-neutrality half is the unchanged snapshot/golden/differential suites.
+    /// <para>Also carries the build-tier side of body-model-typing conformance: the emitter's pinned emission branches
+    /// must declare the same rows the runtime conforms to, asserted over the table rather than over emitted text.</para>
     /// </summary>
     public class EmitterSharedRuleAdoptionTests
     {
@@ -54,11 +52,10 @@ namespace Heddle.Generator.Tests
         private static string[] EmitterStatements() => EmitterSource().Split(';');
 
         /// <summary>
-        /// WI4, name-independently: the scope-channel predicate — the <em>only</em> input a participant scan can be
-        /// written from — is read off the binder in exactly one place, and every use of it is either the shared
-        /// <see cref="ParticipantScan"/> or the <c>DocumentShaper</c> hand-off (phase 2's, which forwards it into the
-        /// same shared scan). A private re-implementation under any name would have to appear here as a third
-        /// consumer, or as a second read of <c>Info.HasScopeChannel</c>.
+        /// The scope-channel predicate — the <em>only</em> input a participant scan can be written from — is read off
+        /// the binder in exactly one place, and every use of it is either the shared <see cref="ParticipantScan"/> or
+        /// the <c>DocumentShaper</c> hand-off, which forwards it into the same shared scan. A private re-implementation
+        /// under any name would have to appear here as a third consumer, or as a second read of <c>Info.HasScopeChannel</c>.
         /// </summary>
         [Fact]
         public void TheEmitterHasNoPrivateParticipantScan()
@@ -83,10 +80,10 @@ namespace Heddle.Generator.Tests
         }
 
         /// <summary>
-        /// WI5, name-independently: a slot-type base-chain walk needs <c>DefinitionItem.SlotTypeName</c>, and an
-        /// <c>@out</c>-value approximation needs <c>CallParameter.IsModelTypeParameter</c> as its first term. The
-        /// emitter reads <c>SlotTypeName</c> nowhere — only <c>SlotRules.SlotTypeName</c> exists — and every
-        /// <c>IsModelTypeParameter</c> read belongs to a call-shape decision, not to an out-value test.
+        /// A slot-type base-chain walk needs <c>DefinitionItem.SlotTypeName</c>, and an <c>@out</c>-value approximation
+        /// needs <c>CallParameter.IsModelTypeParameter</c> as its first term. The emitter reads <c>SlotTypeName</c>
+        /// nowhere — only <c>SlotRules.SlotTypeName</c> exists — and every <c>IsModelTypeParameter</c> read belongs to
+        /// a call-shape decision, not to an out-value test.
         /// </summary>
         [Fact]
         public void TheEmitterHasNoPrivateSlotWalk()
@@ -108,14 +105,12 @@ namespace Heddle.Generator.Tests
         }
 
         /// <summary>
-        /// D14 (F20) / post-implementation review finding 4: a manifest binding row's type and assembly come from
-        /// <c>ExtensionBinder.Info</c> — <c>BareTypeName</c> carries the metadata <c>+</c> for a nested type and
-        /// <c>AssemblyName</c> the real assembly — never from stripping <c>global::</c> off a display name with the
-        /// assembly defaulted to the literal <c>"Heddle"</c>. That spelling produced <c>Ns.Outer.Inner, Heddle</c>
-        /// where the gauntlet computes <c>Ns.Outer+Inner, &lt;asm&gt;</c>; it was unreachable only because the four
-        /// engine branch-role extensions are top-level, which is not a property anyone maintains on purpose. The
-        /// helper is deleted, and this keeps it deleted — the defect is a *shape*, so the source is where it is
-        /// visible.
+        /// A manifest binding row's type and assembly come from <c>ExtensionBinder.Info</c> — <c>BareTypeName</c>
+        /// carries the metadata <c>+</c> for a nested type and <c>AssemblyName</c> the real assembly — never from
+        /// stripping <c>global::</c> off a display name with the assembly defaulted to <c>"Heddle"</c>. That spelling
+        /// produces <c>Ns.Outer.Inner, Heddle</c> where the gauntlet computes <c>Ns.Outer+Inner, &lt;asm&gt;</c>;
+        /// it was unreachable only because the four engine branch-role extensions are top-level. The helper is deleted,
+        /// and this keeps it deleted — the defect is a *shape*, so the source is where it is visible.
         /// </summary>
         [Fact]
         public void ManifestTypeNamesComeFromTheBinderNotFromStringSurgery()
@@ -135,7 +130,7 @@ namespace Heddle.Generator.Tests
             return n;
         }
 
-        /// <summary>WI7: the precedence classifier is linked into the generator and reachable from it — the
+        /// <summary>The precedence classifier is linked into the generator and reachable from it — the
         /// no-Roslyn/netstandard2.0 constraint is enforced by this project compiling at all.</summary>
         [Fact]
         public void TheClassifierIsLinkedIntoTheGenerator()
@@ -242,9 +237,8 @@ namespace Heddle.Generator.Tests
             Assert.Equal(BodyModelSource.DeclaredOrParent, BodyModelRules.RegionBody);
         }
 
-        /// <summary>WI9: zero-output classification runs through the binder, so a custom <c>[ZeroOutput]</c>
-        /// extension is classified too; the hard-coded directive-name list survives only as the unresolvable-name
-        /// fallback.</summary>
+        /// <summary>Zero-output classification runs through the binder, so a custom <c>[ZeroOutput]</c> extension is
+        /// classified too; the hard-coded directive-name list survives only as the unresolvable-name fallback.</summary>
         [Fact]
         public void ZeroOutputClassificationIsBinderBacked()
         {

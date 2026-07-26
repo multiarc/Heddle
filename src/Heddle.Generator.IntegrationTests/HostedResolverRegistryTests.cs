@@ -10,8 +10,8 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 5 WI9 (D11, Q5.2 ruling): the <c>View</c>/<c>PartialView</c>/<c>Master</c> arms consult the precompiled
-    /// registry, which until now only the <see cref="TemplatePathType.None"/> arm did — hosted MVC-style lookups
+    /// The <c>View</c>/<c>PartialView</c>/<c>Master</c> arms consult the precompiled registry, which previously only
+    /// the <see cref="TemplatePathType.None"/> arm did — hosted MVC-style lookups
     /// bypassed precompilation entirely no matter how well the keys agreed. The ladder is three tiers now:
     /// registry, then cache, then disk, each in location order.
     /// <para>Every hit is asserted to be the precompiled <i>adapter</i>, not a dynamically-compiled twin: the two
@@ -123,7 +123,7 @@ namespace Heddle.Generator.IntegrationTests
             guard.Verify();
         }
 
-        /// <summary>Tier order beats location order — the precedence question D11 pins. The registry entry sits at
+        /// <summary>Tier order beats location order. The registry entry sits at
         /// the arm's <i>second</i> location while a real file sits at the first; the registry still wins, exactly as
         /// a cached location-2 template has always beaten a location-1 file on disk.</summary>
         [Fact]

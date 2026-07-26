@@ -11,7 +11,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// C1-R11 — render-budget enforcement, exercised per budget kind × per sink path (string / <see cref="TextWriter"/>
+    /// Render-budget enforcement, exercised per budget kind × per sink path (string / <see cref="TextWriter"/>
     /// / <c>IBufferWriter&lt;byte&gt;</c>) × breach and just-under-limit, plus the empty-loop deadline, recursion
     /// interplay, and the zero-cost-when-off (null budget) behavior. The wrapper is per-<c>Generate</c> and enforces at
     /// the renderer seam, so all three sinks share one counting site — every sink is expected to behave identically.
@@ -55,8 +55,6 @@ namespace Heddle.Tests
             }
         }
 
-        // ---- MaxOutputChars ---------------------------------------------------------------------------------
-
         [Theory]
         [MemberData(nameof(Sinks))]
         public void OutputChars_Breach_Throws(SinkKind sink)
@@ -77,8 +75,6 @@ namespace Heddle.Tests
             Assert.Equal("abcdefghij", Render(t, sink));
         }
 
-        // ---- MaxRenderOps -----------------------------------------------------------------------------------
-
         [Theory]
         [MemberData(nameof(Sinks))]
         public void RenderOps_Breach_Throws(SinkKind sink)
@@ -96,8 +92,6 @@ namespace Heddle.Tests
             var t = Compile("@for(10){{x}}", new RenderBudget { MaxRenderOps = 1000 });
             Assert.Equal("xxxxxxxxxx", Render(t, sink));
         }
-
-        // ---- MaxRenderTime ----------------------------------------------------------------------------------
 
         [Theory]
         [MemberData(nameof(Sinks))]
@@ -117,8 +111,7 @@ namespace Heddle.Tests
             Assert.Equal("xxxxxxxxxx", Render(t, sink));
         }
 
-        // ---- Empty-loop deadline backstop (C1-R4) -----------------------------------------------------------
-
+        // Empty-loop deadline backstop
         [Fact]
         public void EmptyLoop_ZeroOutput_TerminatesViaDeadline()
         {
@@ -130,12 +123,11 @@ namespace Heddle.Tests
             Assert.Equal(RenderBudgetKind.RenderTime, ex.Kind);
         }
 
-        // ---- Empty-loop deadline under an encode proxy (Obs-1 / C1-R4 universality) --------------------------
-
+        // Empty-loop deadline under an encode proxy (universality check)
         [Fact]
         public void EmptyLoop_NestedInValueExtensionBody_TerminatesViaDeadline()
         {
-            // Obs-1: a zero-output loop nested inside a DirectRender value-extension body (@html's encoded body).
+            // A zero-output loop nested inside a DirectRender value-extension body (@html's encoded body).
             // There, the loop's `scope.Renderer` is the HtmlEncodedRenderer encode proxy, not the BudgetedRenderer.
             // The proxy must forward IBudgetProbe to the inner budgeted renderer so the per-iteration MaxRenderTime
             // backstop still fires — otherwise the empty loop performs no render op and runs unbounded.
@@ -154,8 +146,7 @@ namespace Heddle.Tests
             Assert.Equal(string.Empty, t.Generate(null));
         }
 
-        // ---- Recursion interplay (C1-R11) -------------------------------------------------------------------
-
+        // Recursion interplay
         [Fact]
         public void Budget_Fires_IndependentOf_MaxRecursionCount()
         {
@@ -175,8 +166,7 @@ namespace Heddle.Tests
             Assert.Equal(RenderBudgetKind.OutputChars, ex.Kind);
         }
 
-        // ---- Zero cost when off (C1-R11 behavioral leg) -----------------------------------------------------
-
+        // Zero cost when off (behavioral leg)
         [Theory]
         [MemberData(nameof(Sinks))]
         public void NullBudget_NeverThrows_AndRendersNormally(SinkKind sink)
@@ -185,8 +175,7 @@ namespace Heddle.Tests
             Assert.Equal(new string('x', 500), Render(t, sink));
         }
 
-        // ---- Exception shape (C1-R5) ------------------------------------------------------------------------
-
+        // Exception shape
         [Fact]
         public void Exception_Message_MatchesPattern()
         {

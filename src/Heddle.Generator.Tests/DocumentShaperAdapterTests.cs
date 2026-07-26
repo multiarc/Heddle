@@ -16,9 +16,9 @@ using BlockPosition = gen::Heddle.Strings.Core.BlockPosition;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Generator plan phase 2 — adapter-level tests for the emitter's shaping driver: the WI1 clamp fix at
-    /// template granularity, the WI4 <c>Participant</c> classification, and the WI8 empty-default-chain alignment
-    /// (Q2.1). The machine-level pins live in <see cref="DocumentShapingCharacterizationTests"/>.
+    /// Adapter-level tests for the emitter's shaping driver: the clamp fix at template granularity,
+    /// <c>Participant</c> classification, and empty-default-chain alignment. The machine-level pins live in
+    /// <see cref="DocumentShapingCharacterizationTests"/>.
     /// </summary>
     public class DocumentShaperAdapterTests
     {
@@ -27,8 +27,6 @@ namespace Heddle.Generator.Tests
             var leftmost = chain.Chain != null && chain.Chain.Count > 0 ? chain.Chain[0].ExtensionName : null;
             return leftmost == "model" || leftmost == "using" || leftmost == "import" || leftmost == "profile";
         };
-
-        // ---- WI1: the overshoot input class ----
 
         /// <summary>
         /// <para>The input class the runtime's clamp was added for, reproduced end to end through the parser: an
@@ -54,8 +52,6 @@ namespace Heddle.Generator.Tests
 
             Assert.Equal(expectedWorking, shape.WorkingDocument);
         }
-
-        // ---- WI4: Participant classification ----
 
         [Fact]
         public void ScopeChannelNonRoleExtensionClassifiesParticipantAndDisarmsTheStrip()
@@ -93,8 +89,6 @@ namespace Heddle.Generator.Tests
             Assert.Equal(DocumentShaping.BranchKind.Participant, classifier(parse.OutputChains[0]));
         }
 
-        // ---- WI8 / pin 10: the empty-default-chain alignment (Q2.1) ----
-
         /// <summary>
         /// The runtime models an empty default chain as a zero-length <c>DocumentElement</c> with an empty call
         /// chain at document end (<c>HeddleCompiler.CompileBody</c>); the generator used to skip it outright.
@@ -123,8 +117,6 @@ namespace Heddle.Generator.Tests
 
             Assert.Equal(new[] { "HELLO" }, pieces.ToArray());
         }
-
-        // ---- WI7 mirror: the emitter's directive list is what Heddle.Tests pins against runtime ground truth ----
 
         [Fact]
         public void EmitterDirectiveListMatchesTheLocksteppedMirror()

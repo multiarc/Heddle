@@ -9,8 +9,8 @@ using Xunit;
 namespace Heddle.Tests.Streaming
 {
     /// <summary>
-    /// Phase 8 WI5 — the formatter built-ins render byte-identically to <c>ToString(format, provider)</c> after the
-    /// span-funnel migration (D10), on every TFM (net6+ uses the span/UTF-8 tiers; net48/netstandard the string tier),
+    /// The formatter built-ins render byte-identically to <c>ToString(format, provider)</c> after the
+    /// span-funnel migration, on every TFM (net6+ uses the span/UTF-8 tiers; net48/netstandard the string tier),
     /// through all three sinks. Includes the &gt; 256-char format row exercising the tier-3 fallback (stackalloc
     /// overflow → ToString).
     /// </summary>
@@ -67,7 +67,7 @@ namespace Heddle.Tests.Streaming
         public void MoneyDefaultLocale_UsesThreadCurrentCulture_ThreeSinkParity()
         {
             // The no-locale branch resolves NumberFormatInfo.CurrentInfo in both ToString("c") and TryFormat — the
-            // per-type current-culture quirk preserved by D10. Pin the thread culture to a fixed, encoding-stable one
+            // per-type current-culture quirk. Pin the thread culture to a fixed, encoding-stable one
             // (en-US: '$' passes HtmlEncode unchanged) so the assertion is deterministic on CI runners, which default
             // to the invariant culture (currency symbol U+00A4 '¤', numeric-encoded to "&#164;"). The test still proves
             // the extension reads the *current* culture — an invariant-symbol regression would fail against "$…".
@@ -107,7 +107,7 @@ namespace Heddle.Tests.Streaming
         [Fact]
         public void FormattersUnderHtml_ByteIdenticalAcrossSinks()
         {
-            // Encode-carrier formatters bridge through one string under the proxy (D9/D10); guid takes the full fast
+            // Encode-carrier formatters bridge through one string under the proxy; guid takes the full fast
             // path on every profile (not [EncodeOutput]). All byte-identical across sinks.
             SinkTestHarness.AssertThreeSinkParity(
                 "i=@int(I){{N0}} d=@date(T){{yyyy}} m=@money(D){{en-US}} g=@guid(G)", Model(), typeof(FM),

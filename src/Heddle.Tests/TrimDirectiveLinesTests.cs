@@ -58,7 +58,7 @@ namespace Heddle.Tests
             Assert.Equal(expectedOn, Render(template, typeof(object), null, trim: true));
         }
 
-        [Fact] // T12 — parse-time import line (output-free target, see the phase 4 ledger correction)
+        [Fact] // T12 — parse-time import line (output-free target)
         public void T12_ImportLineTrims()
         {
             const string template = "@<<{{ergo-import-empty.heddle}}\nX";
@@ -66,7 +66,7 @@ namespace Heddle.Tests
             Assert.Equal("X", Render(template, typeof(object), null, trim: true));
         }
 
-        [Fact] // T13 — phase 2 body-form @profile() directive trims; @(V) encodes under Html
+        [Fact] // T13 — body-form @profile() directive trims; @(V) encodes under Html
         public void T13_ProfileBodyFormTrims()
         {
             const string template = "@profile(){{html}}\n@(V)";
@@ -103,7 +103,7 @@ namespace Heddle.Tests
             Assert.Equal("\n  body", Render(template, typeof(FModel), model, trim: true));
         }
 
-        [Fact] // ergo-trim-preamble golden pair (roadmap criterion 3)
+        [Fact]
         public void ErgoTrimPreambleGoldenPair()
         {
             HeddleTemplate.Configure(typeof(TrimDirectiveLinesTests).GetTypeInfo().Assembly);

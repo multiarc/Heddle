@@ -26,19 +26,18 @@ namespace Heddle.Language.Members
         bool IsInterface(TType type);
 
         /// <summary>The base-interface closure of an interface root. The reflection adapter deliberately returns
-        /// nothing: <c>Type.GetProperty</c> on an interface does not search base interfaces, and under the OQ1
-        /// ruling that narrower runtime behavior is normative until a breaking window widens it.</summary>
+        /// nothing: <c>Type.GetProperty</c> on an interface does not search base interfaces, and this narrower
+        /// behavior is normative.</summary>
         IEnumerable<TType> BaseInterfaces(TType type);
     }
 
     /// <summary>
-    /// The member-path walk order, stated once (phase 4 D7 / 04 F1). Before this file the generator and the runtime
-    /// each carried a hand-written resolver, and the runtime's own doc comment claimed to be "the single source of
-    /// member-path resolution semantics" while the generator was a second source with six verified divergences.
+    /// The member-path walk order, stated once to prevent divergence. Previously the generator and runtime each
+    /// carried a hand-written resolver with verified divergences.
     /// <para>Order: the receiver type, then its base chain most-derived-first, taking the <b>first</b> accessible
     /// property with the requested name — which makes <c>new</c>-shadowing resolve deterministically to the
-    /// most-derived accessible member instead of throwing <c>AmbiguousMatchException</c>. For an interface root the
-    /// interface itself is searched, then whatever base-interface closure the adapter chooses to supply.</para>
+    /// most-derived accessible member instead of throwing <c>AmbiguousMatchException</c>. For an interface root,
+    /// search the interface itself, then whatever base-interface closure the adapter supplies.</para>
     /// </summary>
     internal static class MemberPathWalk
     {

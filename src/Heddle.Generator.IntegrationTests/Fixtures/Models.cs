@@ -40,7 +40,7 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public System.Collections.Generic.List<Product> Products { get; set; }
     }
 
-    // Definition-invocation fixtures (phase 7 keystone).
+    // Definition-invocation fixtures.
     public sealed class GreetingModel
     {
         public UserPayload Payload { get; set; }
@@ -63,14 +63,14 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public TreeNode Next { get; set; }
     }
 
-    // Props/slots fixture (generated-code.md example 5).
+    // Props/slots fixture.
     public sealed class Article
     {
         public string Title { get; set; }
         public string Summary { get; set; }
     }
 
-    // Slot fixtures (phase 7 slots): a definition projects caller content through @out(value).
+    // Slot fixtures: a definition projects caller content through @out(value).
     public sealed class Menu
     {
         public System.Collections.Generic.List<MenuOption> Options { get; set; }
@@ -83,9 +83,9 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
     }
 
     // ---------------------------------------------------------------------------------------------------------
-    // Phase 4 (generator plan) — the operator-guard differential corpus. One model carrying an operand of every
-    // category the shared classification table distinguishes, so each of the seven documented deviations from C#
-    // gets a named template rather than being covered "by not happening to appear in the corpus".
+    // The operator-guard differential corpus. One model carrying an operand of every category the shared
+    // classification table distinguishes, so each of the seven documented deviations from C# gets a named
+    // template rather than being covered "by not happening to appear in the corpus".
     // ---------------------------------------------------------------------------------------------------------
     public enum OrderStatus
     {

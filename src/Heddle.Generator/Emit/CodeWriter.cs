@@ -2,7 +2,7 @@ using System.Text;
 
 namespace Heddle.Generator.Emit
 {
-    /// <summary>A minimal indentation-aware source builder for the emitter (phase 7 WI4). Deterministic — no
+    /// <summary>A minimal indentation-aware source builder for the emitter. Deterministic — no
     /// culture-sensitive formatting; every emitter uses this one writer so generated output is byte-stable.</summary>
     internal sealed class CodeWriter
     {

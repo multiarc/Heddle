@@ -56,7 +56,7 @@ namespace Heddle.Extensions
         {
             if (!(scope.ModelData is IEnumerable))
                 return string.Empty;
-            // C1-R4: same one-time probe type-test for the value-building path — a giant loop in value context
+            // Same one-time probe type-test for the value-building path — a giant loop in value context
             // accumulates before it ever reaches the sink, so the deadline is its only bound.
             var probe = scope.Renderer as IBudgetProbe;
             var enumerable = (IEnumerable) scope.ModelData;
@@ -107,7 +107,7 @@ namespace Heddle.Extensions
             if (!(scope.ModelData is IEnumerable))
                 return;
 
-            // C1-R4: type-test the held renderer for the budget probe once, before the loop, then enforce the
+            // Type-test the held renderer for the budget probe once, before the loop, then enforce the
             // wall-clock deadline per iteration so a zero-output loop (no render op) still terminates.
             var probe = scope.Renderer as IBudgetProbe;
             var enumerable = (IEnumerable) scope.ModelData;

@@ -32,7 +32,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void CorpusClassificationIsPinnedAndPrecompiledCodeCompiles()
         {
-            // Phase 7 WI2: no assembly-path rewrite, no `../../..` climb out of bin/<cfg>/<tfm>, and therefore no
+            // No assembly-path rewrite, no `../../..` climb out of bin/<cfg>/<tfm>, and therefore no
             // "the corpus was not found for this TFM" assert to bolt on top of one. The corpus is Content-copied
             // into this project's own output; a miss throws from the accessor with the path in the message.
             var templates = TestCorpusIndex.Load();

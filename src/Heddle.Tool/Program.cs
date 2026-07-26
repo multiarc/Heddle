@@ -4,7 +4,7 @@ using System.IO;
 namespace Heddle.Tool
 {
     /// <summary>
-    /// The <c>heddle</c> CLI entry point (WI12). Usage:
+    /// The <c>heddle</c> CLI entry point. Usage:
     /// <code>heddle render &lt;template&gt; [--model-json &lt;file&gt;] [--out &lt;file&gt;] [--root &lt;dir&gt;]</code>
     /// Hosts the full dynamic engine (the T4-successor story): invoked from an MSBuild <c>Exec</c> step it turns data
     /// into generated source, and the resulting artifact carries no runtime Heddle dependency.

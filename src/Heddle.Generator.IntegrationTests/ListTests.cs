@@ -6,7 +6,7 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 <c>@list</c> family (generated-code.md example 3): <c>ListExtension</c> bound with an element body on
+    /// The <c>@list</c> family: <c>ListExtension</c> bound with an element body on
     /// the dynamic tier (the element type is discoverable only by reflection in-runtime; the C# runtime binder
     /// resolves the same members, differential-gated). The collection parameter rides the typed member tier.
     /// </summary>

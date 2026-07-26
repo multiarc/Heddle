@@ -109,32 +109,17 @@ namespace Heddle.Helpers
             },
         };
 
-        /// <summary>The reflection-free C# spelling of a type's own name (nested types joined with <c>.</c>,
-        /// generic arity expanded, identifiers verbatim-escaped where they collide with a keyword).
-        /// <para>Phase 6 D7 note: this method used to open with a <c>switch</c> mapping <c>"system.int32"</c> and
-        /// friends to their C# keywords — the repo's fifth alias table. It was unreachable: the subject is
-        /// <see cref="Type.Name"/>, which is never namespace-qualified, so <c>typeof(int)</c> always fell to the
-        /// default branch and spelled itself <c>Int32</c>. The dead branch is gone rather than repaired: this
-        /// spelling feeds <c>ExType.ToString()</c> across error text and generated code, so turning it into a
-        /// keyword mapping is a behavior change for a different owner to make deliberately. The live alias table
-        /// is <see cref="CSharpTypeNames"/>.</para>
-        /// <para><b>Phase 3 ruling (the owner deciding, as phase 6 asked):</b> the removal stands — this method is
-        /// <b>not</b> becoming a keyword mapping. Three reasons. (1) The display direction already has exactly one
-        /// owner, <c>CSharpTypeNames.TryGetDisplayName</c>; reinstating a mapping here would recreate the fifth
-        /// alias table the program exists to remove. (2) The rest of this spelling is namespace-qualified
-        /// (<c>Ns.Type&lt;Arg&gt;</c>), so aliasing only the fifteen primitives would make one string internally
-        /// inconsistent. (3) <c>ExType.ToString()</c> is compared as a <i>string</i> on at least one compiler path
-        /// and quoted in pinned error text, and phase 3's own build-tier diagnostic spelling was deliberately
-        /// aligned <i>to</i> the non-aliased form (<c>SymbolTypeFacts.Display</c>) so the two tiers' shared
-        /// messages agree — aliasing here would re-open that gap for no functional gain. A caller that wants
-        /// keyword display should ask <see cref="CSharpTypeNames"/> for it.</para></summary>
+        /// <summary>
+        /// The reflection-free C# spelling of a type's name: nested types joined with <c>.</c>, generic arity
+        /// expanded, identifiers escaped where they collide with keywords. Does not use keyword aliases—that
+        /// responsibility is <see cref="CSharpTypeNames"/>'s alone. Used in error and generated code which is
+        /// string-compared, so it must stay consistent.
+        /// </summary>
         public static string GetBaseTypeOutput(Type typeRef)
         {
             if (typeRef.Name.Length == 0)
                 return "void";
 
-            // replace + with . for nested classes.
-            //
             ExStringBuilder sb = new ExStringBuilder();
 
             string baseType = typeRef.Name;

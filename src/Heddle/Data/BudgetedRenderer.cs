@@ -5,20 +5,19 @@ using Heddle.Exceptions;
 namespace Heddle.Data
 {
     /// <summary>
-    /// <para>The render-budget enforcement seam (C1-R2/R3). Wraps the innermost sink and is installed as the render's
-    /// renderer <b>only when <c>TemplateOptions.RenderBudget</c> is non-null</b>, so the unbudgeted path allocates no
-    /// wrapper and pays nothing (C1-R11). Positioned <i>inside</i> any <see cref="HtmlEncodedRenderer"/> proxy (the
-    /// proxy wraps the scope's renderer, which is this), so the budget counts post-encoding characters — what actually
-    /// lands in output.</para>
-    /// <para><b>Bypass-proofing (C1-R3).</b> This deliberately implements only <see cref="IScopeRenderer"/> (plus the
+    /// <para>Wraps the innermost sink and is installed as the render's renderer <b>only when
+    /// <c>TemplateOptions.RenderBudget</c> is non-null</b>, so the unbudgeted path allocates no wrapper and pays
+    /// nothing. Positioned <i>inside</i> any <see cref="HtmlEncodedRenderer"/> proxy (the proxy wraps the scope's
+    /// renderer, which is this), so the budget counts post-encoding characters — what actually lands in output.</para>
+    /// <para><b>Bypass-proofing.</b> This deliberately implements only <see cref="IScopeRenderer"/> (plus the
     /// internal carrier/probe), <b>not</b> <see cref="ISpanScopeRenderer"/> or <see cref="IUtf8ScopeRenderer"/>. Every
     /// engine write path capability-tests the renderer and falls back to <c>Render(string)</c> when those interfaces
     /// are absent — including generated <c>WritePiece</c>, whose <c>is IUtf8ScopeRenderer</c> test fails here so
     /// pre-encoded u8 pieces route through the counted string method instead of bypassing it. One counting site,
     /// uniform UTF-16-char accounting across all three sinks, and no path reaches the wrapped sink without passing the
     /// check.</para>
-    /// <para><b>Per-render state (C1-R7).</b> Counters live on this instance, which is constructed per
-    /// <c>Generate</c> call and never shared; concurrent renders each get their own.</para>
+    /// <para><b>Per-render state.</b> Counters live on this instance, which is constructed per <c>Generate</c> call
+    /// and never shared; concurrent renders each get their own.</para>
     /// </summary>
     internal sealed class BudgetedRenderer : IScopeRenderer, IEncoderCarrier, IBudgetProbe
     {
@@ -41,7 +40,7 @@ namespace Heddle.Data
         internal BudgetedRenderer(IScopeRenderer inner, RenderBudget budget)
         {
             _inner = inner;
-            // Forward the wrapped sink's effective encoder (B2) so an HtmlEncodedRenderer proxy wrapping this instance
+            // Forward the wrapped sink's effective encoder so an HtmlEncodedRenderer proxy wrapping this instance
             // resolves the configured TemplateOptions.Encoder through IEncoderCarrier exactly as it would off the sink.
             _encoder = (inner as IEncoderCarrier)?.Encoder;
 
@@ -73,8 +72,8 @@ namespace Heddle.Data
 
         public void Render(string data)
         {
-            // Count every render-write op (C1-R2). Empty strings are the sink's own no-op, but still count as an op
-            // per the literal contract; they add zero chars.
+            // Count every render-write op: empty strings are the sink's own no-op, but still count as an op per the
+            // literal contract; they add zero chars.
             _ops++;
             if (_hasOpBudget && _ops > _maxOps)
                 throw new TemplateRenderBudgetException(RenderBudgetKind.RenderOps, _maxOps, _ops);

@@ -7,18 +7,18 @@ using Microsoft.CodeAnalysis;
 namespace Heddle.Generator.Emit
 {
     /// <summary>
-    /// Build-time custom-extension binder (phase 7 D9 / WI6): scans the compilation's own and referenced assemblies
-    /// for <c>[Heddle.Attributes.ExtensionName]</c> types deriving from <c>AbstractExtension</c>, mapping each name to
-    /// the concrete type the generated code constructs. Extensions are <b>bound, never inlined</b> (D9) — a logic or
+    /// Build-time custom-extension binder: scans the compilation's own and referenced assemblies for
+    /// <c>[Heddle.Attributes.ExtensionName]</c> types deriving from <c>AbstractExtension</c>, mapping each name to
+    /// the concrete type the generated code constructs. Extensions are <b>bound, never inlined</b> — a logic or
     /// security fix in the extension package reaches precompiled templates by updating the reference, no regeneration.
-    /// <para>Two refusals are recorded per D22: a bound extension <b>outside the engine assembly</b> that overrides
+    /// <para>Two refusals are recorded: a bound extension <b>outside the engine assembly</b> that overrides
     /// the compile-time hooks <c>InitStart</c>/<c>CompleteInit</c> cannot be reproduced by <c>Bind</c> (which
     /// reproduces the <i>base</i> behavior only) → <c>HED7015</c>; and an engine-assembly extension with such an
     /// override that the emitter has no pinned knowledge of stays a safe dynamic fallback (never a mis-emit).</para>
     /// </summary>
     internal sealed class ExtensionBinder
     {
-        /// <summary>Phase 8 (WI5): one decoded <c>[Prop]</c> declaration of a parameter-declaring extension,
+        /// <summary>One decoded <c>[Prop]</c> declaration of a parameter-declaring extension,
         /// read over the base-type chain (outermost base first — <c>[Prop]</c> is <c>Inherited = true</c> and
         /// Roslyn does not surface inherited attributes). The emitter's <c>ResolveExtensionPropLayout</c> builds
         /// its parallel layout (and detects every malformed condition → HED7017) from these.</summary>
@@ -33,7 +33,7 @@ namespace Heddle.Generator.Emit
             /// <see cref="Heddle.Data.PropFault.TypeUnusable"/>.</summary>
             public ITypeSymbol Type;
 
-            /// <summary>Derived optionality (D3): <c>Default != null || Optional</c>.</summary>
+            /// <summary>Derived optionality: <c>Default != null || Optional</c>.</summary>
             public bool HasDefault;
 
             /// <summary>The decoded <c>Default</c> named-argument value (boxed primitive/string/enum-underlying;
@@ -84,7 +84,7 @@ namespace Heddle.Generator.Emit
             /// <summary><c>global::</c>-qualified type name for the generated <c>new …()</c>.</summary>
             public string GlobalName { get; }
 
-            /// <summary>Phase 3 (F1): the CLR full type name (<c>Ns.Outer+Inner</c>) from the shared
+            /// <summary>The CLR full type name (<c>Ns.Outer+Inner</c>) from the shared
             /// <see cref="Heddle.Precompiled.AqnFormatter"/> — the manifest binding row's type half. It is
             /// <b>not</b> the <c>global::</c>-stripped display string, which spells a nested type with a dot and a
             /// generic container with angle brackets, neither of which reflection ever produces.</summary>
@@ -106,23 +106,23 @@ namespace Heddle.Generator.Emit
             /// <summary>The type (or a base) carries <c>[ScopeChannel]</c>.</summary>
             public bool HasScopeChannel { get; }
 
-            /// <summary>Phase 8 (WI5/WI5b): the type (or a base) carries <c>[EncodeOutput]</c> — the symbolic
+            /// <summary>The type (or a base) carries <c>[EncodeOutput]</c> — the symbolic
             /// mirror of <c>InitializeTemplate</c>'s <c>IsHaveAttribute&lt;EncodeOutputAttribute&gt;(true)</c>.
             /// Feeds the derived render type of both the parameterized and the plain custom bind.</summary>
             public bool HasEncodeOutput { get; }
 
-            /// <summary>Phase 8 (WI5/WI5b): the type (or a base) carries <c>[NotEncode]</c>. Structurally dead
+            /// <summary>The type (or a base) carries <c>[NotEncode]</c>. Structurally dead
             /// (the attribute targets properties only) — retained to mirror the dynamic tier's expression
             /// verbatim; both dead branches agree.</summary>
             public bool HasNotEncode { get; }
 
-            /// <summary>Phase 1 (D10 / F17): the type (or a base) carries <c>[ZeroOutput]</c> — it emits nothing
+            /// <summary>The type (or a base) carries <c>[ZeroOutput]</c> — it emits nothing
             /// and its block is removed from the piece stream, the declarative form of the runtime's
             /// null-<c>InitStart</c> protocol. False against an older engine reference that predates the
             /// attribute, which keeps the emitter on its built-in name list.</summary>
             public bool IsZeroOutput { get; }
 
-            /// <summary>Phase 8 (WI5): the decoded <c>[Prop]</c> declarations, base-chain outermost-first;
+            /// <summary>The decoded <c>[Prop]</c> declarations, base-chain outermost-first;
             /// empty for a parameter-less extension (or against an older engine reference).</summary>
             public IReadOnlyList<PropParameter> Parameters { get; }
 
@@ -145,7 +145,7 @@ namespace Heddle.Generator.Emit
 
         public bool TryResolve(string name, out Info info) => _byName.TryGetValue(name, out info);
 
-        /// <summary>Phase 3 (F3): the name resolves to a type under the <b>runtime's</b> discovery predicate
+        /// <summary>The name resolves to a type under the <b>runtime's</b> discovery predicate
         /// (implements <c>IExtension</c> and carries an inherited <c>[ExtensionName]</c>) but the generator cannot
         /// reproduce its render protocol, or two unrelated types claim it. The recorded reason feeds the degrade
         /// message; such a call is never <c>HED7006</c>, because the runtime <em>will</em> find it.</summary>
@@ -157,12 +157,12 @@ namespace Heddle.Generator.Emit
         public bool IsKnownToRuntime(string name) =>
             name != null && (_byName.ContainsKey(name) || _unbindable.ContainsKey(name));
 
-        /// <summary>D-ROLE-5 drift (§6.5): display names of extension types classified as
+        /// <summary>Display names of extension types classified as
         /// <see cref="BranchRole.Continuation"/>/<see cref="BranchRole.Terminal"/> that do <b>not</b> carry
         /// <c>[ScopeChannel]</c> — they cannot read the branch state at render time (HED7016).</summary>
         public IReadOnlyList<string> DriftTypes => _driftTypes;
 
-        /// <summary>Phase 3 (F3): one type that satisfies the <b>runtime's</b> discovery predicate — implements
+        /// <summary>One type that satisfies the <b>runtime's</b> discovery predicate — implements
         /// <c>IExtension</c> and carries an <c>[ExtensionName]</c> read with <c>inherit: true</c>. Discovery and
         /// <i>bindability</i> are two independent axes: the generator can only reproduce the render protocol of a
         /// non-abstract class deriving from <c>AbstractExtension</c>, so a candidate that fails that test is
@@ -241,8 +241,8 @@ namespace Heddle.Generator.Emit
             return new ExtensionBinder(byName, unbindable, driftTypes);
         }
 
-        /// <summary>A stable order-by over a small integer key — <c>List.Sort</c> is unstable and LINQ is not
-        /// available to this file's netstandard2.0 shape without pulling the whole namespace in for one call.</summary>
+        /// <summary>Stable order by a small integer key — <c>List.Sort</c> is unstable and LINQ is not
+        /// available to netstandard2.0 without pulling in the whole namespace.</summary>
         private static List<Candidate> StableOrderBy(List<Candidate> source, System.Func<Candidate, int> key)
         {
             var indexed = new List<KeyValuePair<int, Candidate>>(source.Count);
@@ -284,8 +284,8 @@ namespace Heddle.Generator.Emit
                     info = BuildInfo(candidate.Type, symbols);
                     built = true;
 
-                    // D-ROLE-5 drift (§6.5): a Continuation/Terminal that cannot read the channel it depends on.
-                    // Additive; no built-in violates R11, so this is empty for engine-only compilations.
+                    // A Continuation/Terminal that cannot read the channel it depends on.
+                    // Additive; no built-in violates this constraint, so this is empty for engine-only compilations.
                     if (info.IsBranchParticipant && !info.HasScopeChannel)
                         driftTypes.Add(info.GlobalName);
                 }
@@ -339,8 +339,7 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>
-        /// Q8.4: the <b>discovery scope</b> of one assembly, as the runtime's
-        /// <c>TemplateFactory.ObtainExtensions</c> defines it.
+        /// The <b>discovery scope</b> of one assembly, as the runtime's <c>TemplateFactory.ObtainExtensions</c> defines it.
         /// <list type="bullet">
         /// <item><description>The <b>engine</b> assembly is scanned whole and unconditionally — that is
         /// <c>LoadBaseExtensions</c>, and <c>Heddle</c> carries no <c>[ExportExtensions]</c> on
@@ -351,10 +350,9 @@ namespace Heddle.Generator.Emit
         /// <c>break</c>.</description></item>
         /// <item><description>An assembly with <b>no</b> such attribute contributes nothing.</description></item>
         /// </list>
-        /// <para>The scan used to be unconditional, so the build tier bound extensions the runtime would never
-        /// register: the manifest recorded a name the live registry cannot resolve, and the gauntlet's
-        /// extension-identity check turned every render of every such template into a silent, permanent
-        /// fallback.</para>
+        /// <para>Unconditional scans (used previously) bound extensions the runtime would never register: the
+        /// manifest recorded a name the live registry cannot resolve, and the gauntlet's extension-identity check
+        /// turned every render of every such template into a silent, permanent fallback.</para>
         /// </summary>
         private static void CollectExported(IAssemblySymbol assembly, bool isEngine, INamedTypeSymbol exportAttr,
             AttrSymbols symbols, List<Candidate> candidates)
@@ -408,7 +406,7 @@ namespace Heddle.Generator.Emit
             }
         }
 
-        /// <summary>Phase 3 (F1): walks namespaces <b>and nested types</b>. The old scan enumerated
+        /// <summary>Walks namespaces <b>and nested types</b>. The old scan enumerated
         /// <c>INamespaceSymbol.GetTypeMembers()</c> only, so an extension declared inside a container class was
         /// invisible to the build tier while the runtime's <c>Assembly.GetTypes()</c> registered it — the template
         /// degraded before the two identity spellings could even be compared.</summary>
@@ -492,11 +490,10 @@ namespace Heddle.Generator.Emit
             return false;
         }
 
-        /// <summary>Phase 3 (F3): reads <c>[ExtensionName]</c> over the base-type chain — the attribute is
+        /// <summary>Reads <c>[ExtensionName]</c> over the base-type chain — the attribute is
         /// <c>Inherited = true</c> and the runtime reads it with <c>inherit: true</c>, so
-        /// <c>class MyIf : IfExtension</c> registers under <c>"if"</c>. The declared-only <c>GetAttributes()</c>
-        /// loop this replaces was the false-<c>HED7006</c> / <c>ExtensionBindingMismatch</c> bug: the same file
-        /// already base-chain-walked for <c>[BranchRole]</c>, <c>[ScopeChannel]</c> and <c>[Prop]</c>.
+        /// <c>class MyIf : IfExtension</c> registers under <c>"if"</c>. The base-chain walk unifies the reading of
+        /// <c>[ExtensionName]</c>, <c>[BranchRole]</c>, <c>[ScopeChannel]</c> and <c>[Prop]</c>.
         /// <para>Most-derived layer first, matching reflection's <c>inherit: true</c> enumeration order for a
         /// class-targeted attribute; the runtime's own dictionary keys the names, so order affects only the
         /// sequence in which one type's several names are offered.</para></summary>
@@ -582,7 +579,7 @@ namespace Heddle.Generator.Emit
             return false;
         }
 
-        /// <summary>Phase 8 (WI5): decodes the extension's <c>[Prop]</c> declarations over the base-type chain,
+        /// <summary>Decodes the extension's <c>[Prop]</c> declarations over the base-type chain,
         /// outermost base first ([Prop] is <c>Inherited = true</c>; Roslyn surfaces no inherited attributes) —
         /// the same layer order <c>PropLayout.ResolveFromExtension</c> walks on the dynamic tier. Degrades to an
         /// empty list when the attribute symbol is unresolvable (older engine reference).</summary>
@@ -592,7 +589,7 @@ namespace Heddle.Generator.Emit
             if (propAttr == null)
                 return EmptyParameters;
 
-            // Phase 3 (F4): the walk stops AT System.Object, matching PropLayoutCore.StopsAtObject and the
+            // The walk stops AT System.Object, matching PropLayoutCore.StopsAtObject and the
             // runtime's `t != typeof(object)` guard. The old unconditional `t != null` walk read [Prop]
             // declarations off object itself — harmless today (object declares none) but a silent layer-count
             // divergence from the tier that owns the slot indices.
@@ -615,10 +612,8 @@ namespace Heddle.Generator.Emit
                     // diagnoses it as HED7017 (the dynamic tier's HED5015 name-validity twin).
                     var name = attr.ConstructorArguments[0].Value as string;
 
-                    // Phase 3 (F4): the unusable-type verdict is no longer decided here. It is
-                    // SymbolTypeFacts.IsUsableAsPropType — the shared predicate expressed over ITypeFacts — so the
-                    // build tier stops under-implementing the runtime's rule (its local variant had no by-ref arm
-                    // and tested IsUnboundGenericType, strictly narrower than ContainsGenericParameters).
+                    // The unusable-type verdict is decided by SymbolTypeFacts.IsUsableAsPropType — the shared
+                    // predicate expressed over ITypeFacts — so the build tier and runtime share the same rule.
                     var typeSymbol = attr.ConstructorArguments[1].Value as ITypeSymbol;
 
                     var parameter = new PropParameter

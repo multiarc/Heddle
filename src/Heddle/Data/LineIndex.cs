@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace Heddle.Data
 {
     /// <summary>
-    /// <para>The one line-start index behind every Heddle position surface (generator plan phase 6 D6): the
+    /// <para>The one line-start index behind every Heddle position surface: the
     /// generator's <c>#line</c> mapper, the language server's LSP positions, and the <see cref="LinePosition"/>
     /// <see cref="HeddleCompileResult"/> attaches to a diagnostic. Before this type they were three indexes with
     /// two different <c>'\r'</c> rules, so one offset could render as three different columns.</para>

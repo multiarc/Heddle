@@ -49,7 +49,7 @@ namespace Heddle.Language
     }
 
     /// <summary>
-    /// <para>The one drain rule (generator plan phase 6 D5). A host surfaces Heddle diagnostics by draining the
+    /// <para>The one drain rule. A host surfaces Heddle diagnostics by draining the
     /// front end's four channels — <c>CompileContext.CompileErrors</c>/<c>CompileWarnings</c> and
     /// <c>ParseContext.Errors</c>/<c>Warnings</c> — mapping <see cref="HeddleCompileWarning"/> to warning
     /// severity and everything else to error, carrying the diagnostic id and the fix, positioned at the entry's

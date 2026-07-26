@@ -6,9 +6,9 @@ namespace Heddle.Precompiled
 {
     /// <summary>
     /// <para>The result of <see cref="PrecompiledTemplates.ValidateAll"/> — the aggregate post-configuration
-    /// validation pass (Q8.32 subset A). It carries <b>every</b> entry that failed the gauntlet, not the first,
+    /// validation pass. It carries <b>every</b> entry that failed the gauntlet, not the first,
     /// which is the whole difference between this pass and the per-request gate.</para>
-    /// <para><b>The verdict is scoped, and the report says to what (Q8.38).</b> Four of the gauntlet's inputs are
+    /// <para><b>The verdict is scoped, and the report says to what.</b> Four of the gauntlet's inputs are
     /// per-request, not per-configuration: the fingerprint triple <c>(OutputProfile, ExpressionMode,
     /// TrimDirectiveLines)</c> that step 1 compares, and the effective <c>Functions</c> registry that step 3
     /// compares against. A pass run once "after the host has finished configuring" can therefore only be complete

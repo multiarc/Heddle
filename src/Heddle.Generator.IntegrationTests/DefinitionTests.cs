@@ -6,10 +6,10 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 keystone — definition invocation (generated-code.md examples 4/5, minus props/slots/layering). A
-    /// definition compiles once into a shared body class; each call site binds an engine-internal carrier through
-    /// <c>PrecompiledRuntime.BindDefinition</c> (outer carrier = caller content, inner carrier = the definition body,
-    /// recursion limit baked). Differential-gated byte-for-byte against the runtime backend.
+    /// Definition invocation. A definition compiles once into a shared body class; each call site binds an
+    /// engine-internal carrier through <c>PrecompiledRuntime.BindDefinition</c> (outer carrier = caller content,
+    /// inner carrier = the definition body, recursion limit baked). Differential-gated byte-for-byte against the
+    /// runtime backend.
     /// </summary>
     public class DefinitionTests
     {

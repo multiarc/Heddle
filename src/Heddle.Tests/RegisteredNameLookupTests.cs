@@ -11,47 +11,24 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// <para><b>Q8.30: the engine answers to a registered name.</b> The <c>Name</c> item metadatum has now changed
-    /// scope three times, and the history is worth stating because each step invalidated the previous step's rules
-    /// rather than extending them:</para>
-    /// <list type="number">
-    /// <item><b>Override</b> (Q8.12, landing 1) — <c>Name</c> was a second spelling of <c>Key</c>. It replaced the
-    /// path-derived key, so every <c>@&lt;&lt;</c> that named a file by its path stopped resolving. Wrong.</item>
-    /// <item><b>Additive, import-only</b> (Q8.25) — the template keeps its key <em>and</em> gains the name; both
-    /// spellings resolve. Scoped to build-time import resolution on the ruling's words, so the manifest carried keys
-    /// only and a name was invisible at run time.</item>
-    /// <item><b>Additive, plus runtime</b> (Q8.30, this fixture) — the import-only boundary was an artifact of the
-    /// wiring, not a design: if a name is a useful key for an import it is a useful key full stop. The manifest
-    /// carries the name and the registry answers to it.</item>
-    /// </list>
+    /// <para><b>The engine answers to a registered name.</b> The <c>Name</c> item metadatum has evolved through
+    /// three phases: first as a key override (wrong), then as build-time only (incomplete), and finally as a
+    /// runtime-accessible registration that works alongside keys.</para>
     ///
-    /// <para><b>The resolution-order decision, which this fixture is mostly about.</b> A lookup string can match one
-    /// template's key and another's registered name. <b>The key wins</b>, always, and independently of the order the
-    /// assemblies registered in. Three reasons, in order of weight:</para>
-    /// <list type="bullet">
-    /// <item><b>Additivity.</b> A name is an addition. An addition that displaces a spelling which already resolved
-    /// is precisely the override Q8.25 corrected, and re-introducing it at the runtime tier would undo that
-    /// correction on the surface where it is hardest to see.</item>
-    /// <item><b>The match principle.</b> The build tier's import map is already two passes, keys first, names second
-    /// (<c>HeddleTemplateGenerator.Emit</c>). The runtime uses the same order, so the two tiers cannot disagree about
-    /// which template a spelling means — which is the whole point of the shared <see cref="TemplateKey"/> rule.</item>
-    /// <item><b>Determinism.</b> Keys and names in one dictionary would make the winner depend on which assembly
-    /// registered first, and registration order is the host's business. Two indexes consulted in a fixed order have
-    /// no such dependency, which is why the invariant below is structural rather than a check.</item>
-    /// </list>
+    /// <para><b>The resolution-order decision.</b> A lookup string can match one template's key and another's
+    /// registered name. <b>The key wins</b>, always, and independently of the order the assemblies registered in.
+    /// This follows from additivity (a name is an addition and cannot displace existing spellings), the match
+    /// principle (build and runtime tiers must agree on resolution order), and determinism (two indexes consulted
+    /// in fixed order, not one dictionary with registration-order dependency).</para>
     ///
-    /// <para><b>The invariant:</b> a spelling that is a key is never present in the name index. It is enforced from
-    /// both directions, because either can happen first across assemblies — a name that finds its spelling already
-    /// taken by a key is not registered, and a key that arrives later evicts the name that was shadowing its
-    /// spelling. Both report <c>HED7104</c>.</para>
+    /// <para><b>The invariant:</b> a spelling that is a key is never present in the name index. Both directions
+    /// are enforced: a name that finds its spelling already taken by a key is not registered, and a key that
+    /// arrives later evicts the name that was shadowing its spelling. Both report <c>HED7104</c>.</para>
     ///
     /// <para><b>Why a collision does not throw.</b> Duplicate <em>keys</em> throw
     /// (<see cref="PrecompiledRegistrationException"/>) because two templates claiming one registration is
-    /// unresolvable — either could be the one the host meant, and picking silently is exactly the illegitimate
-    /// fallback the taxonomy forbids. A name colliding with a key is fully resolved by the ordering rule with no
-    /// ambiguity about which template renders, so there is nothing to refuse. And Q8.25's principle applies at both
-    /// tiers: <b>a broken addition costs the addition and nothing more</b> — throwing would take a whole assembly's
-    /// registration down over an alias.</para>
+    /// unresolvable. A name colliding with a key is fully resolved by the ordering rule with no ambiguity,
+    /// so there is nothing to refuse. A broken addition costs the addition and nothing more.</para>
     /// </summary>
     [Collection("PrecompiledRegistrySerial")]
     public class RegisteredNameLookupTests : IDisposable

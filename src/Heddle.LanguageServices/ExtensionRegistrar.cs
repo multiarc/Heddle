@@ -11,11 +11,11 @@ using Heddle.Runtime;
 namespace Heddle.LanguageServices
 {
     /// <summary>
-    /// The one-shot workspace export scan (phase 6 D23): byte-loads the configured assemblies into the
+    /// The one-shot workspace export scan: byte-loads the configured assemblies into the
     /// <b>default</b> (non-collectible) ALC, reads assembly-level <c>[ExportExtensions]</c> and registers the
     /// extensions into the real <see cref="TemplateFactory"/> — the same two branches the engine's own
     /// <c>ObtainExtensions</c> runs. Runs exactly once per process; the retained <see cref="Assembly"/> handles
-    /// also feed the D24 function-export probe. Staleness is documented: a post-scan change requires a restart.
+    /// also feed the function-export probe. A post-scan change requires a restart.
     /// </summary>
     internal static class ExtensionRegistrar
     {
@@ -31,7 +31,7 @@ namespace Heddle.LanguageServices
             get { lock (Gate) return _scanned; }
         }
 
-        /// <summary>The assembly handles retained from the one-shot scan (input of the D24 function probe).</summary>
+        /// <summary>The assembly handles retained from the one-shot scan (input of the function probe).</summary>
         internal static IReadOnlyList<Assembly> RetainedHandles
         {
             get { lock (Gate) return _handles.ToArray(); }
@@ -143,7 +143,7 @@ namespace Heddle.LanguageServices
         }
 
         /// <summary>Test hook: clears the one-shot latch so a fresh corpus can be scanned. Cannot un-register the
-        /// process-global <see cref="TemplateFactory"/> entries (there is no engine unregister API — D23).</summary>
+        /// process-global <see cref="TemplateFactory"/> entries — there is no engine unregister API.</summary>
         internal static void ResetForTests()
         {
             lock (Gate)

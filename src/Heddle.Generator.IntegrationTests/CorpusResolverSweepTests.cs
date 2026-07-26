@@ -10,20 +10,21 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 0 WI4 (D4) — the posture carrier. The direct-invoke suites prove the emitter; this suite proves the
-    /// <b>tier</b>: every golden-corpus template that precompiles is registered into the process-global registry and
-    /// resolved through a real <see cref="Heddle.Runtime.TemplateResolver"/>, so the render crosses
-    /// <c>ConsultPrecompiled</c> → <c>TryResolve</c> → the full <c>PrecompiledGauntlet</c> before any byte is
-    /// produced — with <see cref="Heddle.Data.PrecompiledMismatchPolicy.Strict"/> on the request and a
-    /// <see cref="FallbackGuard"/> around the sweep, so an unintended precompiled→dynamic fallback cannot pass.
+    /// The posture carrier. The direct-invoke suites prove the emitter; this suite proves the <b>tier</b>: every
+    /// golden-corpus template that precompiles is registered into the process-global registry and resolved through
+    /// a real <see cref="Heddle.Runtime.TemplateResolver"/>, so the render crosses <c>ConsultPrecompiled</c> →
+    /// <c>TryResolve</c> → the full <c>PrecompiledGauntlet</c> before any byte is produced — with
+    /// <see cref="Heddle.Data.PrecompiledMismatchPolicy.Strict"/> on the request and a <see cref="FallbackGuard"/>
+    /// around the sweep, so an unintended precompiled→dynamic fallback cannot pass.
     /// <para>The seam this closes is the one the research found unguarded: real generator output never met the
-    /// gauntlet in any test, which is how the content-hash (05 F1) and nested/generic AQN (03 F1) drifts shipped.</para>
-    /// <para><b>Phase 7 WI2/WI5/WI6.</b> Three things changed and each deleted a defect rather than covering one.
-    /// (1) The corpus is Content-copied into this project's own output, so the assembly-path rewrite and
-    /// <c>../../..</c> climb — plus the three "corpus was not found for this TFM" asserts bolted on top of them —
-    /// are gone. (2) The byte-compared set is no longer nine hand-listed names: it is every entry the intent table
-    /// declares <see cref="CorpusRender.Standalone"/>, which is <b>32</b> of the 40 precompiling entries.
-    /// (3) The <c>precompiledKeys.Count == 40</c> literal is set equality against the table.</para>
+    /// gauntlet in any test, which is how content-hash drifts and nested/generic assembly-qualified-name drifts
+    /// shipped.</para>
+    /// <para>Three things changed and each deleted a defect rather than covering one. (1) The corpus is
+    /// Content-copied into this project's own output, so the assembly-path rewrite and <c>../../..</c> climb —
+    /// plus the three "corpus was not found for this TFM" asserts bolted on top of them — are gone. (2) The
+    /// byte-compared set is no longer nine hand-listed names: it is every entry the intent table declares
+    /// <see cref="CorpusRender.Standalone"/>, which is <b>32</b> of the 40 precompiling entries. (3) The
+    /// <c>precompiledKeys.Count == 40</c> literal is set equality against the table.</para>
     /// </summary>
     [Collection("PrecompiledRegistry")]
     public class CorpusResolverSweepTests : PrecompiledRegistryTestBase
@@ -77,15 +78,15 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// Success criterion 2, file-backed half (D2's second sub-mode / the mitigation for "false confidence from
-        /// registry-only mode"): the same sweep with the corpus staged on disk and <c>EnableFileChangeCheck</c> on, so
+        /// Success criterion 2, file-backed half (the mitigation for "false confidence from registry-only mode"):
+        /// the same sweep with the corpus staged on disk and <c>EnableFileChangeCheck</c> on, so
         /// <c>PrecompiledGauntlet.CheckStaleness</c>/<c>HashFile</c> runs against the generator-emitted content hashes
         /// for the template <b>and</b> each of its imports. This is the only path on which content-hash rule drift
-        /// (05 F1) can ever be caught by a test.
-        /// <para>Phase 7 WI5: the staged tree now reproduces each entry's <b>declared encoding</b>, so BOM-bearing
-        /// entries reach <c>HashFile</c> as BOM-bearing files. Until then <c>StageCorpus</c> wrote everything
-        /// BOM-free, which meant the one sub-mode written to exercise <c>HashFile</c>'s decode-then-hash BOM path
-        /// never once staged a BOM. <see cref="AtLeastOneStandaloneEntryCarriesADeclaredBom"/> keeps that true.</para>
+        /// can ever be caught by a test.
+        /// <para>The staged tree now reproduces each entry's <b>declared encoding</b>, so BOM-bearing entries reach
+        /// <c>HashFile</c> as BOM-bearing files. Until then <c>StageCorpus</c> wrote everything BOM-free, which meant
+        /// the one sub-mode written to exercise <c>HashFile</c>'s decode-then-hash BOM path never once staged a BOM.
+        /// <see cref="AtLeastOneStandaloneEntryCarriesADeclaredBom"/> keeps that true.</para>
         /// </summary>
         [Fact]
         public void ModelLessCorpusTemplatesRenderIdenticallyThroughTheResolver_FileBacked()

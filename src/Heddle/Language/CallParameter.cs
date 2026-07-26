@@ -5,16 +5,10 @@ namespace Heddle.Language
 {
     public class CallParameter
     {
-        /// <summary>
-        /// Use directly the ModelParameter or ChainParameter
-        /// </summary>
         public string[] ModelParameter { get; set; }
 
         public bool RootReference { get; set; }
 
-        /// <summary>
-        /// Use directly the ModelParameter or ChainParameter
-        /// </summary>
         public List<OutputItem> ChainParameter { get; set; }
 
         public bool IsModelTypeParameter =>

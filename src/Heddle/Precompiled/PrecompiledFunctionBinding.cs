@@ -1,7 +1,7 @@
 namespace Heddle.Precompiled
 {
-    /// <summary>One called function name and its actual build-time binding target (phase 7 D21, per the OQ1
-    /// resolution): the discovered exporting container as AQN sans version (e.g.
+    /// <summary>One called function name and its actual build-time binding target: the discovered exporting
+    /// container as AQN sans version (e.g.
     /// <c>"Acme.Web.TemplateFunctions, Acme.Web"</c>), or the shim's forwarding-target type
     /// (<c>"Heddle.Runtime.Expressions.BuiltInFunctions, Heddle"</c>) for shim-bound defaults. One row per distinct
     /// <c>(name, target)</c> pair the generated code calls; a merged overload set spanning targets carries one row

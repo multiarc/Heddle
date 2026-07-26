@@ -6,9 +6,9 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 WI6a differential (D22): directive-line trimming (<c>HeddleTrimDirectiveLines</c>). The emitter's
-    /// DocumentShaper reproduces the phase 4 D6 whole-line widening (<c>WidenToWholeLine</c>) and remnant-line
-    /// trimming, so directive lines are removed byte-identically under both trim settings.
+    /// Directive-line trimming (<c>HeddleTrimDirectiveLines</c>). The emitter's DocumentShaper reproduces the
+    /// whole-line widening (<c>WidenToWholeLine</c>) and remnant-line trimming, so directive lines are removed
+    /// byte-identically under both trim settings.
     /// </summary>
     public class TrimTests
     {

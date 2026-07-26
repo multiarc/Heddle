@@ -11,10 +11,9 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The phase 6 D1 binary-compatibility gate: a sorted, normalized reflection dump of the public surface of
-    /// <c>Heddle</c> and <c>Heddle.Language</c>, pinned as golden files. The zero-breaking-change proof for the
-    /// <c>Heddle.LanguageServices</c> extraction — any public removal or signature change fails this test. The
-    /// <c>Heddle</c> golden includes phase 6 D24's two additive members (<c>ExportFunctionsAttribute</c>,
+    /// A binary-compatibility gate: a sorted, normalized reflection dump of the public surface of
+    /// <c>Heddle</c> and <c>Heddle.Language</c>, pinned as golden files. Any public removal or signature change
+    /// fails this test. The <c>Heddle</c> golden includes two additive members (<c>ExportFunctionsAttribute</c>,
     /// <c>FunctionRegistry.RegisterFrom</c>); <c>Heddle.Language</c> gains nothing.
     /// </summary>
     public class PublicApiSurfaceTests

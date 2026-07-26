@@ -11,10 +11,9 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>
-    /// Phase 6 D4–D8/D17 contract tests: the real <c>LspServer</c> driven over an in-proc
-    /// <c>FullDuplexStream.CreatePair()</c> (no process, no editor). Initialize handshake, didOpen →
-    /// publishDiagnostics with the <c>HED*</c> code, didClose clears, completion, the semantic-token walkthrough,
-    /// and shutdown/exit.
+    /// LSP protocol contract: the real <c>LspServer</c> driven over an in-proc <c>FullDuplexStream.CreatePair()</c>.
+    /// Tests initialize handshake, didOpen → publishDiagnostics with <c>HED*</c> codes, didClose clears diagnostics,
+    /// completion, semantic-token output, and shutdown/exit.
     /// </summary>
     public class ProtocolContractTests : IAsyncLifetime
     {
