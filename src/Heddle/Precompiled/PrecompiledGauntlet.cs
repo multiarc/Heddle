@@ -16,7 +16,7 @@ namespace Heddle.Precompiled
     /// <c>null</c> when every check passes. Pure apart from the optional staleness step's file reads.</summary>
     internal static class PrecompiledGauntlet
     {
-        internal const string Hed7101 = "HED7101";
+        internal const string Hed7101 = Data.HeddleDiagnosticIds.PrecompiledGauntletFallback;
 
         internal static PrecompiledFallbackEvent? Validate(PrecompiledTemplateInfo entry, TemplateOptions options,
             Func<PrecompiledExtensionBinding, Type, bool> bindingResolver)
@@ -178,7 +178,7 @@ namespace Heddle.Precompiled
         private static PrecompiledFallbackEvent? CheckStaleness(PrecompiledTemplateInfo entry, TemplateOptions options)
         {
             var rootPath = options.RootPath ?? string.Empty;
-            var contentPath = Path.Combine(rootPath, entry.Key.Replace('/', Path.DirectorySeparatorChar));
+            var contentPath = TemplateKey.ToPath(entry.Key, rootPath);
             if (!File.Exists(contentPath))
                 return Fail(entry.Key, PrecompiledFallbackReason.StaleContent, $"Content: '{entry.Key}' missing");
             if (!string.Equals(HashFile(contentPath), entry.ContentHash, StringComparison.Ordinal))
@@ -186,7 +186,7 @@ namespace Heddle.Precompiled
 
             foreach (var import in entry.Imports)
             {
-                var importPath = Path.Combine(rootPath, import.Key.Replace('/', Path.DirectorySeparatorChar));
+                var importPath = TemplateKey.ToPath(import.Key, rootPath);
                 if (!File.Exists(importPath))
                     return Fail(entry.Key, PrecompiledFallbackReason.StaleImport, $"Import: '{import.Key}' missing");
                 if (!string.Equals(HashFile(importPath), import.ContentHash, StringComparison.Ordinal))
