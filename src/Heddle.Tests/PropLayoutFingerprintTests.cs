@@ -56,7 +56,8 @@ namespace Heddle.Tests
             // rule F3 is about) and registering them all would collide under the runtime's precedence.
             Heddle.Runtime.TemplateFactory.AddExtensions(Heddle.Runtime.TemplateFactory.LoadExtensions(new[]
             {
-                typeof(FingerprintFixtures.FingerprintBaseExtension)
+                typeof(FingerprintFixtures.FingerprintBaseExtension),
+                typeof(FingerprintFixtures.NoPropsExtension)
             }));
         }
 
@@ -108,7 +109,34 @@ namespace Heddle.Tests
 
             Assert.NotNull(failure);
             Assert.Equal(PrecompiledFallbackReason.ExtensionBindingMismatch, failure.Value.Reason);
-            Assert.Contains("prop layout", failure.Value.Detail);
+            // The detail string is pinned in full, not probed for a substring. Every Fail() in the gauntlet spells
+            // its detail "<Thing> 'name': manifest=X live=Y", and telemetry consumers read these; a substring
+            // assertion let a hand-restored version of this check drift to a different shape unnoticed.
+            Assert.Equal(
+                "Extension 'fpbase': prop layout " +
+                "manifest=" + PropLayout.Fingerprint(typeof(FingerprintFixtures.FingerprintAddedExtension)) + " " +
+                "live=" + PropLayout.Fingerprint(live),
+                failure.Value.Detail);
+        }
+
+        [Fact]
+        public void ALiveExtensionThatDroppedAllItsPropsReportsTheAbsentSentinel()
+        {
+            // The live fingerprint is null when the extension no longer declares any [Prop] at all — the package
+            // removed them. Interpolating a null there would render "live=" and read as a formatting bug on the
+            // single most diagnostic case, so it uses the same angle-bracket sentinel as this file's
+            // <unresolved>/<missing>/<delegate>/<overloads added> details.
+            var live = typeof(FingerprintFixtures.NoPropsExtension);
+            Assert.Null(PropLayout.Fingerprint(live));
+
+            var entry = Entry(new PrecompiledExtensionBinding("fpnone",
+                PrecompiledGauntlet.AqnSansVersion(live),
+                PropLayout.Fingerprint(typeof(FingerprintFixtures.FingerprintBaseExtension))));
+
+            var failure = PrecompiledGauntlet.Validate(entry, new TemplateOptions(), (binding, type) => true);
+
+            Assert.NotNull(failure);
+            Assert.EndsWith("live=<none>", failure.Value.Detail);
         }
 
         [Fact]
