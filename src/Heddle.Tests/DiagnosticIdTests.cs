@@ -102,7 +102,8 @@ namespace Heddle.Tests
         [Fact]
         public void ConstantsAndTheClaimedIdRegistryAgree()
         {
-            var claimed = ClaimedIds(ReadSpec("cross-cutting-decisions.md"));
+            var deliberatelyUnclaimed = new HashSet<string>(StringComparer.Ordinal);
+            var claimed = ClaimedIds(ReadSpec("cross-cutting-decisions.md"), deliberatelyUnclaimed);
             var constants = new HashSet<string>(typeof(HeddleDiagnosticIds)
                 .GetFields()
                 .Where(f => f.IsLiteral && f.FieldType == typeof(string))
@@ -118,6 +119,18 @@ namespace Heddle.Tests
                 .ToList();
             Assert.True(missing.Count == 0,
                 "Claimed registry rows with no HeddleDiagnosticIds constant: " + string.Join(", ", missing));
+
+            // The inverse, so a "deliberately unclaimed" row is a gate and not a comment: taking one of those ids
+            // without first rewriting its row reddens here, at the moment the decision is being reversed.
+            var takenAnyway = deliberatelyUnclaimed
+                .Where(constants.Contains)
+                .OrderBy(id => id, StringComparer.Ordinal)
+                .ToList();
+            Assert.True(takenAnyway.Count == 0,
+                "Registry rows marked '" + UnclaimedMarker + "' whose id now has a constant: " +
+                string.Join(", ", takenAnyway));
+            Assert.True(deliberatelyUnclaimed.Count > 0,
+                "No '" + UnclaimedMarker + "' rows parsed — the marker or the row shape changed.");
         }
 
         /// <summary>Claimed IDs the runtime deliberately does not surface as a public constant, each named here
@@ -134,7 +147,23 @@ namespace Heddle.Tests
         /// cell is <c>`HEDaaaa`</c> or <c>`HEDaaaa`–`HEDbbbb`</c>; IDs named in the Owner/Notes cells are
         /// deliberately ignored, so a cross-reference never silently claims an ID.
         /// </summary>
-        private static HashSet<string> ClaimedIds(string markdown)
+        /// <summary>A registry row may record an id the program decided <em>not</em> to take — a ruling withdrawn
+        /// on assessment, or a reservation that turned out to have an existing home. Such a row is documentation of
+        /// a decision, not a claim, so it must not demand a constant. The marker makes the distinction machine-read
+        /// rather than left to a whitelist that would grow silently.</summary>
+        private const string UnclaimedMarker = "deliberately unclaimed";
+
+        private static void AddRange(HashSet<string> into, Match match)
+        {
+            var from = int.Parse(match.Groups["from"].Value, CultureInfo.InvariantCulture);
+            var to = match.Groups["to"].Success
+                ? int.Parse(match.Groups["to"].Value, CultureInfo.InvariantCulture)
+                : from;
+            for (var i = from; i <= to; i++)
+                into.Add("HED" + i.ToString("D4", CultureInfo.InvariantCulture));
+        }
+
+        private static HashSet<string> ClaimedIds(string markdown, HashSet<string> unclaimed = null)
         {
             // The registry section only: D1's block-allocation table above it states ranges (HED0001-HED0999)
             // in the same row shape, and a block reservation is not an ID claim.
@@ -146,14 +175,17 @@ namespace Heddle.Tests
 
             var ids = new HashSet<string>(StringComparer.Ordinal);
             foreach (Match match in Regex.Matches(markdown,
-                         @"^\| `HED(?<from>\d{4})`(?:[–-]`HED(?<to>\d{4})`)? \|", RegexOptions.Multiline))
+                         @"^\| `HED(?<from>\d{4})`(?:[–-]`HED(?<to>\d{4})`)? \|(?<rest>[^\n]*)",
+                         RegexOptions.Multiline))
             {
-                var from = int.Parse(match.Groups["from"].Value, CultureInfo.InvariantCulture);
-                var to = match.Groups["to"].Success
-                    ? int.Parse(match.Groups["to"].Value, CultureInfo.InvariantCulture)
-                    : from;
-                for (var i = from; i <= to; i++)
-                    ids.Add("HED" + i.ToString("D4", CultureInfo.InvariantCulture));
+                if (match.Groups["rest"].Value.IndexOf(UnclaimedMarker, StringComparison.Ordinal) >= 0)
+                {
+                    if (unclaimed != null)
+                        AddRange(unclaimed, match);
+                    continue;
+                }
+
+                AddRange(ids, match);
             }
 
             Assert.True(ids.Count > 0,

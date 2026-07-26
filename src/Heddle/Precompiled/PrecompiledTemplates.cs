@@ -277,6 +277,54 @@ namespace Heddle.Precompiled
             return PrecompiledGauntlet.Validate(entry, options, BindingResolver);
         }
 
+        /// <summary>
+        /// <para>The aggregate <b>post-configuration</b> validation pass (Q8.32 subset A): runs the same gauntlet
+        /// <see cref="Validate"/> runs over <b>every</b> registered entry and returns all failures together, before
+        /// any render. Call it once the host has finished configuring — assemblies registered, extensions bound,
+        /// functions registered — and log or fail the startup on the report.</para>
+        /// <para>It exists because the recommended host API never reaches the gate. A typed entry point
+        /// (<c>Templates_X.Generate(model)</c>) goes straight to <c>PrecompiledRuntime.GenerateString</c>: no
+        /// lookup, no gauntlet, and — this being the point — <b>no fallback either</b>, so an extension- or
+        /// function-binding mismatch on that path is not a silent degrade but a render against a stale binding. The
+        /// gauntlet is reached only through <see cref="TryResolve"/>, i.e. only by dynamic call sites.</para>
+        /// <para><b>It changes nothing per request.</b> The gauntlet still runs exactly where it ran before; this
+        /// is an additional check the host asks for, not a moved one. It is a report and not a gate: it never
+        /// raises <see cref="OnFallback"/> (nothing degraded — no render happened) and it does not throw under
+        /// <see cref="PrecompiledMismatchPolicy.Strict"/>, which polices requests. Deciding what a failure costs is
+        /// the caller's.</para>
+        /// <para><b>The answer is scoped to <paramref name="options"/></b> and the report says so — see
+        /// <see cref="PrecompiledValidationReport"/>. Four gauntlet inputs are per-request, so one pass cannot
+        /// speak for a host that renders under several shapes; such a host calls this once per shape.</para>
+        /// </summary>
+        /// <param name="options">The options shape to validate against. Required: a verdict with no options to
+        /// scope it would be unreadable, so there is no parameterless form.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
+        public static PrecompiledValidationReport ValidateAll(TemplateOptions options)
+        {
+            if (options == null)
+                throw new ArgumentNullException(nameof(options));
+
+            // Entries is already a snapshot array; ordering is by key so the report does not inherit the
+            // registry dictionary's enumeration order, which is an implementation accident.
+            var entries = Entries.OrderBy(e => e.Key, StringComparer.Ordinal).ToList();
+
+            List<PrecompiledFallbackEvent> failures = null;
+            foreach (var entry in entries)
+            {
+                var failure = PrecompiledGauntlet.Validate(entry, options, BindingResolver);
+                if (failure != null)
+                    (failures ?? (failures = new List<PrecompiledFallbackEvent>())).Add(failure.Value);
+            }
+
+            return new PrecompiledValidationReport(
+                new PrecompiledOptionsFingerprint(options.OutputProfile, options.ExpressionMode,
+                    options.TrimDirectiveLines),
+                options.Functions,
+                options.EnableFileChangeCheck,
+                entries.Count,
+                (IReadOnlyList<PrecompiledFallbackEvent>)failures ?? Array.Empty<PrecompiledFallbackEvent>());
+        }
+
         /// <summary>Resolves a precompiled entry for a request (phase 7 D7/D8): normalized lookup, then the
         /// per-request gauntlet under the request's <see cref="TemplateOptions"/>. On a gauntlet pass returns true
         /// with the entry; on a registry miss returns false (the dynamic path proceeds untouched). On a gauntlet
