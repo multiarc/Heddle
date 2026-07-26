@@ -1,0 +1,75 @@
+<!--
+  Phase 7 D1 (revised 2026-07-26) — the shared test corpus: the SHARING MECHANISM, not a second home.
+
+  The corpus itself does NOT live here. It stays exactly where it has always been, in
+  `src/Heddle.Tests/TestTemplate/`. An earlier attempt relocated all 112 files into this directory on
+  the reasoning that a shared input should not sit inside one consumer; that was reverted (ac1d0b4,
+  preserved at branch wip/phase7-corpus-move) and the decision reversed by ruling:
+
+      "Build artifacts and build related copies does not conflict logically with the fact that input
+       is stored elsewhere — it's just a build copy, not a logical issue."
+
+  Copying an input into a consumer's output directory so a test can read it is a BUILD COPY. It is not
+  a second home for that input, and it raises no ownership question that moving the files would solve.
+  Which project directory holds a git-tracked test input is a filing detail, not a correctness property.
+
+  What this directory holds is therefore only the wiring, and it deliberately belongs to no project:
+  no csproj's default Compile/None glob reaches `src/TestCorpus/`, so all four consuming test projects
+  import the same file on identical terms.
+
+  WHAT THIS BUYS (the actual point of phase 7):
+
+    * Every consumer gets its OWN copy of the corpus in its OWN output directory, under `TestTemplate/`.
+      So no test needs to rewrite its assembly path to name a sibling project and climb `../../..` out
+      of `bin/<cfg>/<tfm>` to find an input — the failure class E9 names, and the shape that silently
+      no-op'd five integration tests until 45154fd. Locating the corpus becomes
+      `Path.Combine(AppContext.BaseDirectory, "TestTemplate")` and nothing else (D2, TestCorpusIndex).
+
+    * The generator suites become consumers of the SAME FILES the engine suites already read. That is
+      what lets a feature template written as an inline string be migrated into the corpus and thereby
+      cross the precompiled gauntlet — roughly 130 feature tests never did. That gap, not the folder
+      layout, is why this phase exists.
+
+    * It replaces Heddle.Tests.csproj's 112 hand-listed `<None Update="TestTemplate\…">` rows with one
+      glob. The hand-listing was itself an instance of the defect this phase removes: a corpus file
+      added without its row silently never reached any output directory.
+
+  The link folder name is `TestTemplate` deliberately: every existing read path
+  (`File.ReadAllText("TestTemplate/…")`, `options.RootPath = "TestTemplate"`) is unchanged.
+
+  WHAT IS NOT GLOBBED. `src/Heddle.Tests/TestOutput/` — the six checked-in artifacts that tests once
+  WROTE back into the corpus directory (Q7.3, ruled: relocate, do not delete). The corpus is input; a
+  directory several projects copy from must not also be a directory tests write into, because
+  "the corpus is input" is what makes byte-neutrality checkable at all. Test writes now go to
+  `TestOutput/` in the writer's own output directory — see TestCorpusIndex.WrittenArtifactPath.
+
+  OUT OF SCOPE BY RULING. `src/Heddle.Performance` (Q7.2 — change nothing there; a benchmark effort is
+  mid-flight, and its own path-traversal helper is ACCEPTED RESIDUE, not an oversight: do not
+  "helpfully" fix it). `benchmarks/**` and `samples/**` (their own contracts).
+  `src/Heddle.LanguageServices.Tests/Corpus` (Q7.1 — the editor-tier templates stay separate).
+-->
+<Project>
+
+  <PropertyGroup>
+    <!-- The one place the corpus's physical location is written down. Everything else — every consumer,
+         every test — reaches it through its own output directory. -->
+    <TestCorpusSourceDir>$(MSBuildThisFileDirectory)..\Heddle.Tests\TestTemplate\</TestCorpusSourceDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="$(TestCorpusSourceDir)**\*"
+             Link="TestTemplate\%(RecursiveDir)%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             Visible="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Phase 7 D2/D3 — the single accessor and the single intent table, compiled into every consumer rather
+         than triplicated per suite. Same shape as Heddle.Generator.Tests' Shared\ links of LineIndexVectors /
+         DiagnosticCorpusVectors / PropDefaultConversionVectors: shared test VECTORS were already solved this
+         way; shared test TEMPLATES were not. -->
+    <Compile Include="$(MSBuildThisFileDirectory)TestCorpusIndex.cs" Link="TestCorpus\TestCorpusIndex.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)CorpusIntent.cs" Link="TestCorpus\CorpusIntent.cs" />
+  </ItemGroup>
+
+</Project>

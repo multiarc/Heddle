@@ -5,6 +5,7 @@ using System.Reflection;
 using Heddle.Data;
 using Heddle.Runtime;
 using Xunit;
+using Heddle.TestCorpus;
 
 namespace Heddle.Tests
 {
@@ -133,7 +134,7 @@ namespace Heddle.Tests
             var t = new HeddleTemplate(document, new CompileContext(new TemplateOptions(), typeof(object)));
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             var actual = t.Generate(null);
-            File.WriteAllText("TestTemplate/test-at-escape.html", actual);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath("test-at-escape.html"), actual);
             var expected = File.ReadAllText("TestTemplate/generated-at-escape.html").Replace("\r\n", "\n");
             Assert.Equal(expected, actual);
         }
@@ -148,7 +149,7 @@ namespace Heddle.Tests
             var t = new HeddleTemplate(document, new CompileContext(new TemplateOptions(), typeof(object)));
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             var actual = t.Generate(null);
-            File.WriteAllText("TestTemplate/test-at-escape-comment-adjacent.html", actual);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath("test-at-escape-comment-adjacent.html"), actual);
             var expected = File.ReadAllText("TestTemplate/generated-at-escape-comment-adjacent.html").Replace("\r\n", "\n");
             Assert.Equal(expected, actual);
         }

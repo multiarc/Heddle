@@ -5,6 +5,7 @@ using Heddle.Data;
 using Heddle.Runtime;
 using Heddle.Tests.Data;
 using Xunit;
+using Heddle.TestCorpus;
 
 namespace Heddle.Tests
 {
@@ -109,11 +110,11 @@ namespace Heddle.Tests
             var document = File.ReadAllText("TestTemplate/ergo-trim-preamble.heddle").Replace("\r\n", "\n");
 
             var off = Render(document, typeof(TestDataStructure), new TestDataStructure(), trim: false);
-            File.WriteAllText("TestTemplate/test-ergo-trim-off.html", off);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath("test-ergo-trim-off.html"), off);
             Assert.Equal(File.ReadAllText("TestTemplate/generated-ergo-trim-off.html").Replace("\r\n", "\n"), off);
 
             var on = Render(document, typeof(TestDataStructure), new TestDataStructure(), trim: true);
-            File.WriteAllText("TestTemplate/test-ergo-trim-on.html", on);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath("test-ergo-trim-on.html"), on);
             Assert.Equal(File.ReadAllText("TestTemplate/generated-ergo-trim-on.html").Replace("\r\n", "\n"), on);
         }
 

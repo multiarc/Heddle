@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Heddle.TestCorpus;
 using Microsoft.CodeAnalysis;
 using Xunit;
 
@@ -16,31 +17,6 @@ namespace Heddle.Generator.IntegrationTests
     /// </summary>
     public class CorpusRenderParityTests
     {
-        private static string CorpusDir()
-        {
-            var self = typeof(DifferentialHarness).Assembly.Location;
-            var candidate = self.Replace("Heddle.Generator.IntegrationTests", "Heddle.Tests");
-            if (!File.Exists(candidate))
-                return null;
-            var tfmDir = Path.GetDirectoryName(candidate);
-            var projDir = Path.GetFullPath(Path.Combine(tfmDir, "..", "..", ".."));
-            var corpus = Path.Combine(projDir, "TestTemplate");
-            return Directory.Exists(corpus) ? corpus : null;
-        }
-
-        private static List<(string key, string content)> LoadCorpus(string dir)
-        {
-            var list = new List<(string, string)>();
-            foreach (var path in Directory.EnumerateFiles(dir, "*.heddle", SearchOption.AllDirectories)
-                         .OrderBy(p => p, StringComparer.Ordinal))
-            {
-                var rel = path.Substring(dir.Length).TrimStart('\\', '/').Replace('\\', '/');
-                list.Add((rel, File.ReadAllText(path)));
-            }
-
-            return list;
-        }
-
         [Theory]
         [InlineData("optimized-document.heddle")]
         [InlineData("ergo-double-render.heddle")]
@@ -65,32 +41,21 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("shaper-clamp-overshoot.heddle")]
         public void ModelLessCorpusTemplateRendersIdentically(string name)
         {
-            var dir = CorpusDir();
-            // A missing corpus must fail, not skip. The silent `return` this replaces turned the whole gate into
-            // a no-op if the build layout ever changed -- zero signal, reported as a pass.
-            Assert.True(dir != null,
-                "The Heddle.Tests TestTemplate corpus was not found for this TFM. Build the full solution "
-                + "(dotnet build Heddle.sln) so the corpus is on disk; this gate must not be skipped.");
-
-            // Diagnostic-fixture templates carry deliberate front-end errors; exclude them so the rest of the corpus
-            // generates cleanly (imports still resolve from the remaining set).
-            var diagnosticFixtures = new HashSet<string>(StringComparer.Ordinal)
-            {
-                "ergo-import-broken.heddle", "import-origin-a.heddle", "import-origin-b.heddle",
-                "import-origin-broken.heddle", "import-origin-c.heddle",
-            };
-            var corpus = LoadCorpus(dir).Where(t => !diagnosticFixtures.Contains(Path.GetFileName(t.key))).ToList();
+            // Phase 7 WI2: the corpus is in THIS project's own output directory (TestCorpus.props), so locating it
+            // is AppContext.BaseDirectory and nothing else. The assembly-path rewrite + `../../..` climb that stood
+            // here, and the hard assert that had to be bolted on top of it, are both gone — the assert was a stopgap
+            // for a fragility that no longer exists rather than a gate anyone wanted.
+            var dir = TestCorpusIndex.CorpusDir;
+            // FrontEndError entries carry deliberate parse errors; excluded so the rest of the corpus generates
+            // cleanly (imports still resolve from what remains). The set is read from the intent table, not
+            // hand-copied into a third HashSet as it was here.
+            var corpus = TestCorpusIndex.Load(includeFrontEndErrorFixtures: false);
             var target = corpus.FirstOrDefault(t => Path.GetFileName(t.key) == name);
             Assert.False(target.content == null, "Corpus template not found: " + name);
 
-            var self = typeof(DifferentialHarness).Assembly.Location;
-            var testsDll = self.Replace("Heddle.Generator.IntegrationTests", "Heddle.Tests");
-            var extra = File.Exists(testsDll)
-                ? new[] { MetadataReference.CreateFromFile(testsDll) }
-                : Array.Empty<MetadataReference>();
-
             var (precompiled, dyn) = DifferentialHarness.RenderInCorpus(
-                corpus, target.key, target.content, typeof(object), null, dir, extraReferences: extra);
+                corpus, target.key, target.content, typeof(object), null, dir,
+                extraReferences: DifferentialHarness.EngineTestModelReferences());
             Assert.Equal(dyn, precompiled);
         }
     }

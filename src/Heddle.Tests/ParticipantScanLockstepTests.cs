@@ -9,6 +9,7 @@ using Heddle.Helpers;
 using Heddle.Language;
 using Heddle.Runtime;
 using Xunit;
+using Heddle.TestCorpus;
 
 namespace Heddle.Tests
 {
@@ -185,14 +186,19 @@ namespace Heddle.Tests
         [Fact]
         public void TheSharedScanAgreesWithTheRuntimeOverTheWholeCorpus()
         {
-            var dir = Path.GetFullPath("TestTemplate");
-            Assert.True(Directory.Exists(dir),
-                "The TestTemplate corpus was not found next to the test assembly. Build the solution; this sweep "
-                + "must fail rather than skip.");
+            var dir = TestCorpusIndex.CorpusDir;
 
             var files = Directory.GetFiles(dir, "*.heddle")
                 .OrderBy(p => p, StringComparer.Ordinal).ToList();
-            Assert.Equal(62, files.Count);   // the same exact count CorpusDifferentialTests pins
+            // Phase 7 D5: SET equality against the declared intent table, not the `Assert.Equal(62, …)` count that
+            // stood here. The count was the right instinct and the wrong instrument — it goes green again the moment
+            // somebody edits the digit, and it never names the file that left. This sweep going vacuous while still
+            // passing is the exact failure mode its own comment says it exists to prevent, so the pin has to be the
+            // kind that cannot be satisfied without naming what changed.
+            var observed = files.Select(Path.GetFileName).ToList();
+            var declared = CorpusIntent.DeclaredNames();
+            Assert.True(new HashSet<string>(observed, StringComparer.Ordinal).SetEquals(declared),
+                CorpusIntent.Describe("The participant-scan sweep corpus", declared, observed));
 
             var settings = new ParserSettings { RootPath = dir + Path.DirectorySeparatorChar };
             var options = new TemplateOptions { RootPath = dir, FileNamePostfix = ".heddle" };

@@ -11,6 +11,7 @@ using Heddle;
 using Heddle.Data;
 using Heddle.Precompiled;
 using Heddle.Runtime;
+using Heddle.TestCorpus;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -29,6 +30,33 @@ namespace Heddle.Generator.IntegrationTests
         internal const string GeneratedNamespace = "Heddle.Precompiled.Generated";
 
         private static readonly IReadOnlyList<MetadataReference> References = BuildReferences();
+
+        /// <summary>
+        /// Phase 7 WI2 — the engine test models (<c>Heddle.Tests.dll</c>), which the corpus runs hand to the
+        /// compilations they create so a template declaring <c>:: PropArticle</c> can bind.
+        /// <para>This replaces <c>HeddleTestsDll()</c>, which was triplicated across the three corpus suites and
+        /// worked by taking <b>this</b> assembly's location and string-replacing the project name inside the path to
+        /// guess where a sibling project's build output sat. That encoded the configuration name, the TFM directory
+        /// and the project nesting as assumptions, and returned <c>null</c> on a miss — which is how five tests came
+        /// to silently <c>return</c> and report a pass. The .csproj now copies the DLL into this project's own
+        /// output (<c>OutputItemType="Content"</c>), so the lookup is <see cref="AppContext.BaseDirectory"/> and a
+        /// miss throws.</para>
+        /// </summary>
+        internal static string EngineTestModelsDll()
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "Heddle.Tests.dll");
+            if (!File.Exists(path))
+                throw new InvalidOperationException(
+                    "Heddle.Tests.dll is not in this project's output directory (" + path +
+                    "). It is copied there by the ProjectReference in Heddle.Generator.IntegrationTests.csproj. " +
+                    "This is a build-wiring failure, not a skippable condition.");
+            return path;
+        }
+
+        /// <summary>The engine test models as a single-element reference set — what every corpus suite passes as
+        /// <c>extraReferences</c>.</summary>
+        internal static IReadOnlyList<MetadataReference> EngineTestModelReferences() =>
+            new[] { MetadataReference.CreateFromFile(EngineTestModelsDll()) };
 
         // Phase 0 WI4: the direct-invoke paths only ever *compile* against the extra references (Heddle.Tests for the
         // corpus models/extensions), so those assemblies never had to load. Registering generated output does load
@@ -388,8 +416,9 @@ namespace Heddle.Generator.IntegrationTests
         /// <summary>One template to render on the resolver path (WI4's corpus sweep unit).</summary>
         internal sealed class ResolverTarget
         {
-            public ResolverTarget(string key, string content, Type modelType, object model)
+            public ResolverTarget(string key, string content, Type modelType, object model, bool render = true)
             {
+                Render = render;
                 Key = key;
                 Content = content;
                 ModelType = modelType;
@@ -400,6 +429,17 @@ namespace Heddle.Generator.IntegrationTests
             public string Content { get; }
             public Type ModelType { get; }
             public object Model { get; }
+
+            /// <summary>Phase 7 WI5 (D3 <c>Render</c>) — whether THIS target is rendered after it resolves.
+            /// <para>Per target, not per sweep. The sweep-wide <c>render: false</c> this replaces was a blanket:
+            /// because a handful of corpus entries genuinely cannot render standalone (a bare <c>@else</c>
+            /// continuation has no matching opener in its own scope), EVERY entry lost its byte assertion. Declaring
+            /// it per entry means the sweep renders the <c>Standalone</c> set and skips only what genuinely cannot
+            /// be rendered — a strict coverage gain that falls out of the taxonomy rather than needing its own
+            /// work.</para>
+            /// <para><c>render: false</c> still proves the entry crossed the gauntlet: the verdict lands at
+            /// <c>TryResolve</c>, before any byte is produced.</para></summary>
+            public bool Render { get; }
         }
 
         /// <summary>The result of one swept target: the precompiled-adapter output and (unless the caller opted out)
@@ -467,7 +507,7 @@ namespace Heddle.Generator.IntegrationTests
                             // render: false resolves without rendering — the gauntlet runs at TryResolve, before any
                             // byte is produced, so a corpus fragment that is only meaningful when imported (a bare
                             // @else continuation, say) still proves it crossed the gauntlet on the precompiled tier.
-                            Precompiled = render ? template.Generate(target.Model) : null,
+                            Precompiled = render && target.Render ? template.Generate(target.Model) : null,
                         });
                     }
 
@@ -494,6 +534,8 @@ namespace Heddle.Generator.IntegrationTests
                 var dynamicOptions = new TemplateOptions { RootPath = rooted, FileNamePostfix = ".heddle" };
                 var dynamicTemplate = new HeddleTemplate(target.Content,
                     new CompileContext(dynamicOptions, ToExType(target.ModelType)));
+                if (!target.Render)
+                    continue;   // nothing to compare against: the precompiled half was resolve-only by declaration.
                 if (!dynamicTemplate.CompileResult.Success)
                     throw new InvalidOperationException("Dynamic compile failed: " + dynamicTemplate.CompileResult);
                 results[i].Dynamic = dynamicTemplate.Generate(target.Model);
@@ -575,19 +617,33 @@ namespace Heddle.Generator.IntegrationTests
         internal static string NonexistentRoot() =>
             Path.Combine(Path.GetTempPath(), "heddle-registry-only-" + Guid.NewGuid().ToString("N"));
 
-        /// <summary>Writes the corpus to a fresh temp directory as raw UTF-8 without a BOM. Since phase 5 D1 both
-        /// sides hash <em>decoded text</em> (<c>ContentHash.HashText</c>), so any BOM'd/UTF-16 staging would hash
-        /// identically too; UTF-8-without-BOM stays the default because it is the shape templates ship in.</summary>
+        /// <summary>
+        /// Writes the corpus to a fresh temp directory, each entry <b>at its declared encoding</b>.
+        /// <para><b>Phase 7 WI5 (D7) — this used to write <c>new UTF8Encoding(false)</c> unconditionally, and that
+        /// was a real hole.</b> The file-backed sub-mode exists precisely to exercise
+        /// <c>PrecompiledGauntlet.HashFile</c>, which opens a <c>FileStream</c> and decodes with
+        /// <c>detectEncodingFromByteOrderMarks: true</c> — the BOM path. Eight corpus templates carry a UTF-8 BOM,
+        /// and not one of them ever reached the staged tree with it, so the only sub-mode that can catch content-hash
+        /// rule drift never staged the shape phase 5's F1 fix was written for.</para>
+        /// <para>The old doc comment argued the encoding was immaterial because both sides hash DECODED text. That is
+        /// true, and it is exactly why hashing decoded text is the fix — but a test that only ever stages the shape
+        /// which works is not evidence that the other shape works. The declared <see cref="CorpusIntent"/> BOM flag
+        /// is what lets the staged tree reproduce each entry's real encoding; entries with no declared row (ad-hoc
+        /// fixtures from other suites) keep the no-BOM default, which is the shape templates ship in.</para>
+        /// </summary>
         internal static string StageCorpus(IReadOnlyList<(string key, string content)> corpus)
         {
             var dir = Path.Combine(Path.GetTempPath(), "heddle-file-backed-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(dir);
             var utf8NoBom = new UTF8Encoding(false);
+            var utf8Bom = new UTF8Encoding(true);
             foreach (var (key, content) in corpus)
             {
                 var path = Path.Combine(dir, key.Replace('/', Path.DirectorySeparatorChar));
                 Directory.CreateDirectory(Path.GetDirectoryName(path));
-                File.WriteAllBytes(path, utf8NoBom.GetBytes(content));
+                var declaresBom = CorpusIntent.TryGet(Path.GetFileName(key), out var row) && row.Bom;
+                var encoding = declaresBom ? utf8Bom : utf8NoBom;
+                File.WriteAllBytes(path, encoding.GetPreamble().Concat(encoding.GetBytes(content)).ToArray());
             }
 
             return dir;

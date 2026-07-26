@@ -148,8 +148,10 @@ than a test-count ratio.
 > the standing rule D8 records in [testing-standards](../spec/common/testing-standards.md) — it is
 > how new areas are supposed to arrive, not a backfill anyone has done.
 >
-> **Residue owner: [phase 7 — shared test corpus](phase-7-shared-test-corpus.md)** (proposed, not
-> started). Its diagnosis is that D8's rule was recorded as prose with no mechanism behind it:
+> **Residue owner: [phase 7 — shared test corpus](phase-7-shared-test-corpus.md)** (stage 0
+> implemented 2026-07-26; the migration stages that would close *this* residue are stopped with cause
+> — see its [implementation record](phase-7-shared-test-corpus.md#implementation-record-2026-07-26)
+> and **Q8.42**. The mechanism exists; the backfill does not, so this residue is still open). Its diagnosis is that D8's rule was recorded as prose with no mechanism behind it:
 > contributing a template means hand-adding a row to `Heddle.Tests.csproj`'s 112-file list and
 > reaching it from another project by assembly-path traversal, so the rule cannot bind. Phase 7
 > supplies the mechanism — one shared corpus home with declared per-entry intent, membership gated

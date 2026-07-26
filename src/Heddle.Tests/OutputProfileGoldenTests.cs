@@ -4,6 +4,7 @@ using Heddle;
 using Heddle.Data;
 using Heddle.Runtime;
 using Xunit;
+using Heddle.TestCorpus;
 
 namespace Heddle.Tests
 {
@@ -27,7 +28,7 @@ namespace Heddle.Tests
 
         private static void AssertGolden(string name, string actual)
         {
-            File.WriteAllText($"TestTemplate/test-{name}.html", actual);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath($"test-{name}.html"), actual);
             var expected = File.ReadAllText($"TestTemplate/generated-{name}.html").Replace("\r\n", "\n");
             Assert.Equal(expected, actual.Replace("\r\n", "\n"));
         }

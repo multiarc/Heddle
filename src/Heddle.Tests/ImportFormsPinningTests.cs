@@ -4,6 +4,7 @@ using System.Reflection;
 using Heddle.Data;
 using Heddle.Runtime;
 using Xunit;
+using Heddle.TestCorpus;
 
 namespace Heddle.Tests
 {
@@ -50,7 +51,7 @@ namespace Heddle.Tests
             // which are CRLF on a Windows checkout unless pinned — this test compares composition semantics,
             // not newline bytes (the .heddle files are also pinned to LF in .gitattributes).
             var actual = t.Generate(null).Replace("\r\n", "\n");
-            File.WriteAllText("TestTemplate/test-ergo-import-composition.html", actual);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath("test-ergo-import-composition.html"), actual);
             var expected = File.ReadAllText("TestTemplate/generated-ergo-import-composition.html").Replace("\r\n", "\n");
             Assert.Equal(expected, actual);
             Assert.DoesNotContain("STATIC-IN-LIB", actual); // I03: imported static text never transfers

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Heddle.Precompiled;
+using Heddle.TestCorpus;
 using Microsoft.CodeAnalysis;
 using Xunit;
 
@@ -17,100 +18,58 @@ namespace Heddle.Generator.IntegrationTests
     /// <see cref="FallbackGuard"/> around the sweep, so an unintended precompiled→dynamic fallback cannot pass.
     /// <para>The seam this closes is the one the research found unguarded: real generator output never met the
     /// gauntlet in any test, which is how the content-hash (05 F1) and nested/generic AQN (03 F1) drifts shipped.</para>
+    /// <para><b>Phase 7 WI2/WI5/WI6.</b> Three things changed and each deleted a defect rather than covering one.
+    /// (1) The corpus is Content-copied into this project's own output, so the assembly-path rewrite and
+    /// <c>../../..</c> climb — plus the three "corpus was not found for this TFM" asserts bolted on top of them —
+    /// are gone. (2) The byte-compared set is no longer nine hand-listed names: it is every entry the intent table
+    /// declares <see cref="CorpusRender.Standalone"/>, which is <b>32</b> of the 40 precompiling entries.
+    /// (3) The <c>precompiledKeys.Count == 40</c> literal is set equality against the table.</para>
     /// </summary>
     [Collection("PrecompiledRegistry")]
     public class CorpusResolverSweepTests : PrecompiledRegistryTestBase
     {
-        // The model-less corpus templates whose render parity CorpusRenderParityTests already pins on the
-        // direct-invoke path — swept here through the resolver instead, so the same bytes are proven to come from
-        // the precompiled tier as the resolver serves it.
-        private static readonly string[] ModelLessParityTemplates =
-        {
-            "optimized-document.heddle",
-            "ergo-double-render.heddle",
-            "ergo-import-library.heddle",
-            "ergo-import-composition.heddle",
-            "branching-partial-parent.heddle",
-            "profile-partial-parent.heddle",
-            "profile-flagship.heddle",
-            "profile-directive.heddle",
-            "regr-def-inner-comment.heddle",
-        };
+        /// <summary>The corpus minus the deliberate front-end-error fixtures, so the rest generates cleanly (imports
+        /// still resolve from what remains). Read from the intent table rather than from a fourth hand-copied
+        /// <c>HashSet</c> of fixture names.</summary>
+        private static List<(string key, string content)> Corpus() =>
+            TestCorpusIndex.Load(includeFrontEndErrorFixtures: false);
 
-        // Diagnostic-fixture templates carry deliberate front-end errors; excluded so the rest of the corpus
-        // generates cleanly (imports still resolve from the remaining set). Same set as CorpusRenderParityTests.
-        private static readonly HashSet<string> DiagnosticFixtures = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "ergo-import-broken.heddle", "import-origin-a.heddle", "import-origin-b.heddle",
-            "import-origin-broken.heddle", "import-origin-c.heddle",
-        };
-
-        private static string HeddleTestsDll()
-        {
-            var self = typeof(DifferentialHarness).Assembly.Location;
-            var candidate = self.Replace("Heddle.Generator.IntegrationTests", "Heddle.Tests");
-            return File.Exists(candidate) ? candidate : null;
-        }
-
-        private static string CorpusDir()
-        {
-            var dll = HeddleTestsDll();
-            if (dll == null)
-                return null;
-            var projDir = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(dll), "..", "..", ".."));
-            var corpus = Path.Combine(projDir, "TestTemplate");
-            return Directory.Exists(corpus) ? corpus : null;
-        }
-
-        private static List<(string key, string content)> LoadCorpus(string dir)
-        {
-            var list = new List<(string, string)>();
-            foreach (var path in Directory.EnumerateFiles(dir, "*.heddle", SearchOption.AllDirectories)
-                         .OrderBy(p => p, StringComparer.Ordinal))
-            {
-                var rel = path.Substring(dir.Length).TrimStart('\\', '/').Replace('\\', '/');
-                list.Add((rel, File.ReadAllText(path)));
-            }
-
-            return list.Where(t => !DiagnosticFixtures.Contains(Path.GetFileName(t.Item1))).ToList();
-        }
-
-        private static IReadOnlyList<MetadataReference> Extra()
-        {
-            var dll = HeddleTestsDll();
-            return dll == null
-                ? Array.Empty<MetadataReference>()
-                : new[] { MetadataReference.CreateFromFile(dll) };
-        }
+        /// <summary>
+        /// The entries the sweep byte-compares: declared <see cref="CorpusRender.Standalone"/> <b>and</b> declared to
+        /// precompile. Standalone means "model-less, and both backends render it" — measured, not assumed.
+        /// <para>This replaces a nine-name hand-list. The nine were not wrong, they were just the ones somebody had
+        /// got around to; nothing said the other twenty-three were unchecked, and nothing would have said so if a
+        /// tenth had quietly stopped rendering.</para>
+        /// </summary>
+        private static IReadOnlyList<string> StandaloneRenderable() =>
+            CorpusIntent.Rows
+                .Where(r => r.Tier == CorpusTier.Precompiles && r.Render == CorpusRender.Standalone)
+                .Select(r => r.Name)
+                .OrderBy(n => n, StringComparer.Ordinal)
+                .ToList();
 
         private static List<DifferentialHarness.ResolverTarget> Targets(
-            IReadOnlyList<(string key, string content)> corpus, Func<string, bool> select) =>
+            IReadOnlyList<(string key, string content)> corpus, Func<string, bool> select, bool render = true) =>
             corpus.Where(t => select(t.key))
-                .Select(t => new DifferentialHarness.ResolverTarget(t.key, t.content, typeof(object), null))
+                .Select(t => new DifferentialHarness.ResolverTarget(t.key, t.content, typeof(object), null, render))
                 .ToList();
 
         /// <summary>
-        /// Success criterion 2, byte half: every model-less corpus template that <see cref="CorpusRenderParityTests"/>
-        /// renders on the direct-invoke path renders byte-identically when the <b>resolver</b> serves it from the
-        /// registry — registry-only mode, so a fallback could not even fake the output (the resolver root does not
-        /// exist, leaving the dynamic re-compile nothing to read).
+        /// Success criterion 2, byte half: every corpus template declared <c>Standalone</c> renders byte-identically
+        /// when the <b>resolver</b> serves it from the registry — registry-only mode, so a fallback could not even
+        /// fake the output (the resolver root does not exist, leaving the dynamic re-compile nothing to read).
         /// </summary>
         [Fact]
         public void ModelLessCorpusTemplatesRenderIdenticallyThroughTheResolver()
         {
-            var dir = CorpusDir();
-            // A missing corpus must fail, not skip. The silent `return` this replaces turned the whole gate into
-            // a no-op if the build layout ever changed -- zero signal, reported as a pass.
-            Assert.True(dir != null,
-                "The Heddle.Tests TestTemplate corpus was not found for this TFM. Build the full solution "
-                + "(dotnet build Heddle.sln) so the corpus is on disk; this gate must not be skipped.");
-            var corpus = LoadCorpus(dir);
-            var names = new HashSet<string>(ModelLessParityTemplates, StringComparer.Ordinal);
+            var corpus = Corpus();
+            var names = new HashSet<string>(StandaloneRenderable(), StringComparer.Ordinal);
             var targets = Targets(corpus, k => names.Contains(Path.GetFileName(k)));
-            Assert.Equal(ModelLessParityTemplates.Length, targets.Count);
+            Assert.Equal(names.Count, targets.Count);
 
-            var swept = DifferentialHarness.SweepViaResolver(corpus, targets, dir, fileBacked: false,
-                renderDynamicReference: true, globalOptions: null, extraReferences: Extra());
+            var swept = DifferentialHarness.SweepViaResolver(corpus, targets, TestCorpusIndex.CorpusDir,
+                fileBacked: false, renderDynamicReference: true, globalOptions: null,
+                extraReferences: DifferentialHarness.EngineTestModelReferences());
 
             foreach (var result in swept)
                 Assert.True(result.Dynamic == result.Precompiled,
@@ -119,26 +78,25 @@ namespace Heddle.Generator.IntegrationTests
 
         /// <summary>
         /// Success criterion 2, file-backed half (D2's second sub-mode / the mitigation for "false confidence from
-        /// registry-only mode"): the same sweep with the corpus staged on disk and
-        /// <c>EnableFileChangeCheck</c> on, so <c>PrecompiledGauntlet.CheckStaleness</c>/<c>HashFile</c> runs against
-        /// the generator-emitted content hashes for the template <b>and</b> each of its imports. This is the only
-        /// path on which content-hash rule drift (05 F1) can ever be caught by a test.
+        /// registry-only mode"): the same sweep with the corpus staged on disk and <c>EnableFileChangeCheck</c> on, so
+        /// <c>PrecompiledGauntlet.CheckStaleness</c>/<c>HashFile</c> runs against the generator-emitted content hashes
+        /// for the template <b>and</b> each of its imports. This is the only path on which content-hash rule drift
+        /// (05 F1) can ever be caught by a test.
+        /// <para>Phase 7 WI5: the staged tree now reproduces each entry's <b>declared encoding</b>, so BOM-bearing
+        /// entries reach <c>HashFile</c> as BOM-bearing files. Until then <c>StageCorpus</c> wrote everything
+        /// BOM-free, which meant the one sub-mode written to exercise <c>HashFile</c>'s decode-then-hash BOM path
+        /// never once staged a BOM. <see cref="AtLeastOneStandaloneEntryCarriesADeclaredBom"/> keeps that true.</para>
         /// </summary>
         [Fact]
         public void ModelLessCorpusTemplatesRenderIdenticallyThroughTheResolver_FileBacked()
         {
-            var dir = CorpusDir();
-            // A missing corpus must fail, not skip. The silent `return` this replaces turned the whole gate into
-            // a no-op if the build layout ever changed -- zero signal, reported as a pass.
-            Assert.True(dir != null,
-                "The Heddle.Tests TestTemplate corpus was not found for this TFM. Build the full solution "
-                + "(dotnet build Heddle.sln) so the corpus is on disk; this gate must not be skipped.");
-            var corpus = LoadCorpus(dir);
-            var names = new HashSet<string>(ModelLessParityTemplates, StringComparer.Ordinal);
+            var corpus = Corpus();
+            var names = new HashSet<string>(StandaloneRenderable(), StringComparer.Ordinal);
             var targets = Targets(corpus, k => names.Contains(Path.GetFileName(k)));
 
-            var swept = DifferentialHarness.SweepViaResolver(corpus, targets, dir, fileBacked: true,
-                renderDynamicReference: true, globalOptions: null, extraReferences: Extra());
+            var swept = DifferentialHarness.SweepViaResolver(corpus, targets, TestCorpusIndex.CorpusDir,
+                fileBacked: true, renderDynamicReference: true, globalOptions: null,
+                extraReferences: DifferentialHarness.EngineTestModelReferences());
 
             foreach (var result in swept)
                 Assert.True(result.Dynamic == result.Precompiled,
@@ -146,24 +104,44 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// Success criterion 2, coverage half: <b>every</b> corpus entry the manifest reports as precompiled — not
-        /// only the model-less parity subset — is resolved and rendered through the gauntlet with zero fallback
-        /// events. Byte parity for the model-carrying families stays with their own differential suites (D4); what is
-        /// asserted here is the invariant the phase exists for: no corpus template is silently served by the dynamic
-        /// tier. The precompiled set is read from the manifest rather than hard-coded, so a template that starts
-        /// precompiling joins the sweep automatically.
+        /// The file-backed pass above is only evidence for phase 5's F1 fix if a BOM'd entry is actually in it. Making
+        /// that a standing assertion rather than a fact someone once checked: at least one entry that the file-backed
+        /// sweep stages and crosses <c>HashFile</c> with is declared <c>Bom = true</c>.
+        /// </summary>
+        [Fact]
+        public void AtLeastOneStandaloneEntryCarriesADeclaredBom()
+        {
+            var swept = new HashSet<string>(StandaloneRenderable(), StringComparer.Ordinal);
+            var bomInSweep = CorpusIntent.BomNames().Where(swept.Contains).ToList();
+            Assert.True(bomInSweep.Count > 0,
+                "No BOM-bearing corpus entry is in the file-backed sweep, so PrecompiledGauntlet.HashFile's " +
+                "decode-then-hash BOM path — the shape phase 5's F1 fix was written for — is not exercised by any " +
+                "test. Declared Bom entries: " + string.Join(", ", CorpusIntent.BomNames()));
+        }
+
+        /// <summary>
+        /// Success criterion 2, coverage half: <b>every</b> corpus entry the manifest reports as precompiled is
+        /// resolved through the gauntlet with zero fallback events, and the observed precompiled set is pinned by
+        /// <b>set equality against the intent table</b>, reported as a symmetric difference naming the drifting files.
+        /// <para>D5, and the reason the count it replaces had to go: <c>precompiledKeys.Count == 40</c> was already an
+        /// improvement on the <c>&gt;= 25</c> floor it replaced (which sat against an actual 40 and let fifteen
+        /// templates stop precompiling in silence). But an exact count is still rubber-stampable — a change of
+        /// classification is made green by editing one digit, and the commit looks the same either way. Set equality
+        /// cannot be: making it green requires naming the file whose classification changed and writing why in its
+        /// row. It is also a strictly better message: "props-inherit.heddle stopped precompiling" rather than
+        /// "expected 40, got 39".</para>
+        /// <para>The sweep is symmetric on purpose. A deliberate-degrade template that quietly <i>starts</i>
+        /// precompiling reddens this gate exactly as loudly as one that stops — which is the mitigation for the
+        /// migration risk that a <c>DegradesToMarker</c> shape silently joins the precompiled set.</para>
         /// </summary>
         [Fact]
         public void EveryPrecompiledCorpusEntryCrossesTheGauntlet()
         {
-            var dir = CorpusDir();
-            // A missing corpus must fail, not skip. The silent `return` this replaces turned the whole gate into
-            // a no-op if the build layout ever changed -- zero signal, reported as a pass.
-            Assert.True(dir != null,
-                "The Heddle.Tests TestTemplate corpus was not found for this TFM. Build the full solution "
-                + "(dotnet build Heddle.sln) so the corpus is on disk; this gate must not be skipped.");
-            var corpus = LoadCorpus(dir);
-            var gen = DifferentialHarness.Generate(corpus, globalOptions: null, extraReferences: Extra());
+            CorpusDifferentialTests.AssertIntentIsTotal();
+
+            var corpus = Corpus();
+            var extra = DifferentialHarness.EngineTestModelReferences();
+            var gen = DifferentialHarness.Generate(corpus, globalOptions: null, extraReferences: extra);
             Assert.False(gen.Diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
 
             var precompiledKeys = corpus
@@ -171,19 +149,26 @@ namespace Heddle.Generator.IntegrationTests
                             DifferentialHarness.ManifestState.Precompiled)
                 .Select(t => t.key)
                 .ToList();
-            // An exact count, not a floor. The floor this replaced (>= 25, against an actual 40) let fifteen
-            // templates stop precompiling without reddening anything — a silent coverage loss of exactly the kind
-            // phase 0 exists to make impossible. A template joining or leaving the precompiled set is a deliberate
-            // act: update this number in the same change and say why.
-            Assert.True(precompiledKeys.Count == 40,
-                "The corpus's precompiled set should be exactly 40 templates; got " + precompiledKeys.Count +
-                ". If a template legitimately started or stopped precompiling, update this count deliberately.");
 
-            var targets = Targets(corpus, k => precompiledKeys.Contains(k));
-            // Resolve-only: the gauntlet's verdict lands at TryResolve, before a byte is rendered, and a handful of
-            // corpus entries are import fragments (a bare @else continuation) that no tier can render standalone.
-            var swept = DifferentialHarness.SweepViaResolver(corpus, targets, dir, fileBacked: false,
-                renderDynamicReference: false, render: false, globalOptions: null, extraReferences: Extra());
+            var declared = CorpusIntent.NamesWithTier(CorpusTier.Precompiles);
+            var observed = precompiledKeys.Select(Path.GetFileName).ToList();
+            Assert.True(new HashSet<string>(observed, StringComparer.Ordinal).SetEquals(declared),
+                CorpusIntent.Describe("The precompiled set", declared, observed));
+
+            // Per-entry render (WI5), not the blanket `render: false` this replaces. Declared-Standalone entries are
+            // rendered; the rest resolve only — which still proves they crossed the gauntlet, because the gauntlet's
+            // verdict lands at TryResolve, before a byte is produced. That is what a bare @else continuation, which
+            // no tier can render standalone, actually needs, and it is no longer a reason to strip the byte
+            // assertion off the other 32.
+            var standalone = new HashSet<string>(StandaloneRenderable(), StringComparer.Ordinal);
+            var keys = new HashSet<string>(precompiledKeys, StringComparer.Ordinal);
+            var targets = corpus.Where(t => keys.Contains(t.key))
+                .Select(t => new DifferentialHarness.ResolverTarget(t.key, t.content, typeof(object), null,
+                    render: standalone.Contains(Path.GetFileName(t.key))))
+                .ToList();
+
+            var swept = DifferentialHarness.SweepViaResolver(corpus, targets, TestCorpusIndex.CorpusDir,
+                fileBacked: false, renderDynamicReference: false, globalOptions: null, extraReferences: extra);
 
             Assert.Equal(precompiledKeys.Count, swept.Count);
             // Every entry was served by the precompiled adapter (SweepViaResolver asserts that per target) and the
