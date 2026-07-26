@@ -8,8 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.1.0]
 
 Additive at the language and rendering level — **no rendered byte changes on either tier** — with one
-declared **binary** break in the precompiled-manifest contract and three build-time behaviours that
-begin to occur because they were never wired. Each item's window judgement is recorded in
+declared **binary** break in the precompiled-manifest contract, the removal of assembly auto-loading,
+and three build-time behaviours that begin to occur because they were never wired. **2.1 is a ratified
+breaking window**, scoped to binary changes and minor API changes or additions; the as-shipped record
+is in [records.md](docs/spec/records.md#the-21-breaking-window--as-shipped-record) and the per-item
+judgements that predate the window's ratification remain in
 [breaking-windows.md](docs/spec/common/breaking-windows.md#explicit-not-window-gated-rulings).
 
 ### Changed (breaking)
@@ -33,6 +36,36 @@ begin to occur because they were never wired. Each item's window judgement is re
   path; under `TemplateOptions.PrecompiledMismatchPolicy.Strict` it throws instead, which is that
   option's purpose. No compatibility shim: restoring the two-argument constructor would keep the
   unrunnable manifests accepted, which is the defect.
+
+- **`PrecompiledFallbackEvent.Key` is removed**, replaced by `TemplateKey` and `AssemblyName` with
+  exactly one populated. The single `Key` carried two different kinds of string — a template key for
+  the per-request reasons, an assembly name for the registration-time ones — with no discriminator, so
+  a host had to re-derive from `Reason` which of the two it held. Removal rather than narrowing is
+  deliberate: narrowing would leave a 2.0 host silently reading `null` off the channel whose entire
+  purpose is that failures are not silent, while removal is a compile error at the one line that has
+  to change. Events are constructed through `ForTemplate`/`ForAssembly`, which each refuse the other's
+  reasons, and the reason → carrier mapping is enforced by an exhaustive classifier that throws on an
+  unclassified reason — so a reason added later cannot be raised until it is mapped.
+
+- **The engine no longer loads or scans assemblies on its own.** It used to `Assembly.Load` the entry
+  assembly's entire transitive reference closure — plus every `DependencyContext` default assembly
+  name, loader failures swallowed — from a static constructor, and then scan all of it for
+  `[assembly: ExportExtensions]`. Because that scanned set decided extension **name ownership**, an
+  assembly you never chose to load could take a name, or collide with an unrelated claimant and throw
+  `TemplateOverrideException` out of a type initializer.
+  The set is now what your host has already loaded from disk into the default load context, plus what
+  you register. `[ExportExtensions]` is read **per assembly, at registration**.
+  **What to do:** call `HeddleTemplate.Register(assembly)` for your application assembly and for every
+  extension library you use. Registration is **not transitive** — an extension library you merely
+  reference is not discovered. `HeddleTemplate.Configure(assembly)` is the same call under its older
+  name and keeps working; its one-shot latch is gone, so a second call now takes effect instead of
+  being silently dropped.
+  **If you do not:** a template calling an unregistered extension reports `Cannot find extension
+  <name>` (`HED0002`); a precompiled one degrades per request with an `ExtensionBindingMismatch`
+  naming it. A template that names a model type by string in an assembly your host has never touched
+  no longer resolves either — register that assembly too.
+  The `Microsoft.Extensions.DependencyModel` package reference is **removed** along with the walk that
+  was its only consumer, so the engine's dependency surface shrinks by one.
 
 - **`<HeddleTemplate>` per-item metadata now takes effect.** `Key`, `Name` and `Precompile` were all
   inert from a real project — the targets file overwrote each with the empty string while appearing to
@@ -67,6 +100,15 @@ begin to occur because they were never wired. Each item's window judgement is re
   as its key or as its own name. Never a throw — the template stays reachable by its key, and only the
   addition is lost. This collision is only detectable at registration, since the build tier cannot read a
   referenced assembly's manifest rows; within one build the same fault is `HED7004`.
+- **`HeddleTemplate.Register(Assembly)`** — the explicit registration seam described under *Changed*.
+  Idempotent per assembly and repeatable, so a host chooses its own order of precedence. Throws
+  `ArgumentNullException` on null and `TemplateOverrideException` when two unrelated types claim one
+  extension name — at the registering call, rather than out of a type initializer.
+- **`PrecompiledTemplates.ValidateAll(TemplateOptions)`** and `PrecompiledValidationReport` — one
+  post-configuration pass that runs the gauntlet over every registered entry and collects **all**
+  failures, so a binding that drifted between build and deployment fails your startup once instead of
+  degrading on every request. `PassedForValidatedOptions` is the green property; the report names the
+  options shape it validated, because four of the gauntlet's inputs are per-request.
 - **`PrecompiledTemplateInfo.LinePathForm`** records which form a template's generated `#line` file names
   are in — `RootRelative`, `TemplatePath`, or `Unspecified` for a fallback-marker row that has no
   generated source. Machine-readable, for stack-trace symbolizers and editor tooling.

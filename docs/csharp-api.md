@@ -224,11 +224,12 @@ Controls where templates are read from and which features are enabled
 | `ProvideLanguageFeatures` | `false` | Parse in a tooling mode that emits a token list for editors/highlighters (used by the IDE integrations). |
 | `Data` | `null` | Optional ambient data carried on the options. |
 
-The file actually read is `Path.Combine(RootPath, TemplateName + FileNamePostfix)`. The
-`FullPath` property is a plain string concatenation (`RootPath + TemplateName + FileNamePostfix`,
-with no path separator) and is not the resolved read path. A non‑empty `FileNamePostfix` is
-**required** for a file compile — `FileReader` throws if it is empty, so the `""` default cannot
-be used to compile from a file.
+The file actually read is `Path.Combine(RootPath, TemplateName + FileNamePostfix)`, and `FullPath`
+now composes exactly that — the same `Path.Combine`, so it **is** the resolved read path. It
+previously concatenated the three parts with no separator and was therefore not the path anything
+opened; both halves of that description were corrected when the property was fixed. A non‑empty
+`FileNamePostfix` is **required** for a file compile — `FileReader` throws if it is empty, so the
+`""` default cannot be used to compile from a file.
 
 ```csharp
 var options = new TemplateOptions("home")
