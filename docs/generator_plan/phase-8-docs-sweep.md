@@ -934,15 +934,19 @@ latent-bug fix is never reviewed in the same diff as a wording improvement.**
   so the 2.0 record is **corrected by an appended note, never rewritten**; the CHANGELOG is editable
   directly. **Done when** no shipped document asserts a rejection path for a manifest version that never
   existed, and the correction says why the claim was wrong rather than quietly deleting it.
-- **WI17 — The registration-ordering pattern D11 permits documentation to suggest.**
+- ~~**WI17 — The registration-ordering pattern D11 permits documentation to suggest.**~~
+  (**closed 2026-07-26**, landed with Q8.37 rather than in this phase, because it documents the API that
+  work added and separating them would have shipped a description of a seam that did not yet exist.)
   [D11](../spec/common/cross-cutting-decisions.md) says the engine must not decide which assemblies are
   loaded, may report a conflict, and may **suggest an architectural pattern — in documentation, and nothing
-  more**. That third consequence has no home in any plan. It belongs in `custom-extensions.md` beside
-  extension registration: a host wanting ordering guarantees registers explicitly, in an order it chooses,
-  before first render. **Done when** the pattern is documented as a host-side recommendation and is
-  unmistakably not a rule the engine enforces — the distinction D11 exists to protect, and the one the
-  Razor/ASP.NET precedent shows is easy to lose. **Sequencing:** this documents the API Q8.37 lands, so it
-  follows that work rather than preceding it.
+  more**. The pattern is [precompilation.md's startup-order section](../precompilation.md#startup-order-a-suggestion-not-a-rule),
+  placed there rather than in `custom-extensions.md` because the consequence a host actually feels is a
+  precompiled template degrading when its extension assembly was not registered first; the registration
+  rules themselves live in
+  [custom-extensions.md](../custom-extensions.md#registering-your-extensions). It states what the engine
+  will not do — load an assembly to satisfy a binding, or defer a render waiting for one — so the
+  recommendation cannot be misread as enforcement, and points at `ValidateAll` as the way to turn a
+  per-request report into a startup failure.
 - **WI15 — Documentation-currency rule + bookkeeping (D11).** The additive testing-standards section
   and its ledger entry; this phase's README row and `records.md` entries; the not-delivered items (if
   any) recorded explicitly rather than dropped. **Done when** criterion 12 holds and every criterion

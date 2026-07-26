@@ -108,7 +108,7 @@ Roslyn code generation, lexer modes) and **[Building & Testing](building.md)**.
 ```
 
 ```csharp
-HeddleTemplate.Configure(typeof(Program).Assembly);
+HeddleTemplate.Register(typeof(Program).Assembly);
 
 var source = "@model(){{dynamic}}\n<p>Hi @(Name) — you have @int(Count) new comments.</p>";
 using var template = new HeddleTemplate(source, new CompileContext(new TemplateOptions()));

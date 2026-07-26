@@ -28,22 +28,22 @@ To build the engine from source, see [Building & Testing](building.md).
 
 Using the engine always follows the same shape:
 
-1. **Configure** — register the extensions found in your assemblies (once per process).
+1. **Register** — hand the engine each assembly that exports extensions (once per process).
 2. **Compile** — parse a template string or file into a `HeddleTemplate`.
 3. **Generate** — render the compiled template against a data object, as many times as you like.
 
-### 1. Configure (register extensions)
+### 1. Register (declare your extensions)
 
-`HeddleTemplate.Configure` scans the given assembly (and assemblies it references) for exported
-extensions. The built‑in extensions in the `Heddle` assembly are picked up automatically;
-call `Configure` with *your* startup assembly so any custom extensions you wrote are
-discovered too.
+`HeddleTemplate.Register` reads one assembly's exported extensions. The built‑in extensions in the
+`Heddle` assembly are always present; register *your* assembly so the custom extensions you wrote are
+too. Registration is per assembly and not transitive — the engine loads and scans nothing on its own,
+so an extension library you only *reference* needs its own call.
 
 ```csharp
 using System.Reflection;
 using Heddle;
 
-HeddleTemplate.Configure(typeof(Program).GetTypeInfo().Assembly);
+HeddleTemplate.Register(typeof(Program).GetTypeInfo().Assembly);
 ```
 
 See [Writing Custom Extensions](custom-extensions.md) for how extensions are exported with

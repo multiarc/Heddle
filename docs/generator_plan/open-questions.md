@@ -962,8 +962,9 @@ which is the bookkeeping failure this section exists to correct.
   initializer anywhere in `src/` or in generated code, the LSP never calls `Register` and loads
   through a collectible tracked context, and the typed entry point does not trigger the walk at all.
   *Where it lives:* [D11](../spec/common/cross-cutting-decisions.md#d11--the-engine-does-not-decide-which-assemblies-are-loaded).
-  Residue: the documentation pattern D11 permits is **not yet an item in any phase-8 plan**.
-  D11's third consequence — the ordering pattern documentation may *suggest* — is now **phase 8 WI17**, sequenced after Q8.37 lands the API it would describe.
+  Residue closed: the ordering pattern D11 permits documentation to *suggest* — carried for a while as
+  phase 8 WI17, waiting on the API it would describe — landed with Q8.37 as
+  [precompilation.md's startup-order section](../precompilation.md#startup-order-a-suggestion-not-a-rule).
 - **Q8.35 — `Min == Max == Current` makes the support window a single point.** Every future manifest
   change would then be a whole-assembly rejection until rebuilt — correct when a change is genuinely
   binary-breaking, unnecessarily severe when it is purely additive.
@@ -984,7 +985,7 @@ which is the bookkeeping failure this section exists to correct.
   placed with the other six because it governs how every future window is *composed*.
 
 - **Q8.37 — The engine auto-loads and auto-scans assemblies by default, which D11 forbids (defect;
-  ruled, NOT implemented).** `AssemblyHelper`'s **static constructor** `Assembly.Load`s the entry
+  ruled and implemented).** `AssemblyHelper`'s **static constructor** `Assembly.Load`s the entry
   assembly's entire transitive reference closure plus every `DependencyContext` default assembly name,
   unconditionally and with loader failures swallowed; `TemplateFactory`'s static constructor scans
   that set for `[ExportExtensions]`; the precompiled path reaches both through gauntlet step 2's
@@ -1005,9 +1006,30 @@ which is the bookkeeping failure this section exists to correct.
   generator scans *all referenced* assemblies while the runtime scans only
   `[ExportExtensions]`-carrying ones (Q8.4 aligned the generator to the runtime's *rule*, not to a
   host-chosen *set*), and the two are halves of one seam, so fixing one side alone widens the drift.
-  **Blocked:** the disposition depends on whether 2.1 opens a window — Q8.39.
-  *Where it lives:* [D11's known-violation paragraph](../spec/common/cross-cutting-decisions.md#d11--the-engine-does-not-decide-which-assemblies-are-loaded);
-  not yet implemented, and no window disposition written.
+
+  **Implemented (2026-07-26).** The engine loads nothing: the static-constructor walk, the
+  dependency-context enumeration and the scan-all discovery are deleted, and the assembly set is what
+  the host has already loaded from disk into the default load context (observed, never loaded) plus
+  what it registers through the added `HeddleTemplate.Register(Assembly)`. `[ExportExtensions]` is read
+  per assembly at registration time, so name ownership is decided only by assemblies a host names.
+  `Configure` survives as the alias, minus its one-shot latch, so a repeated call now takes effect
+  instead of being dropped. The `Microsoft.Extensions.DependencyModel` package reference went with the
+  walk that was its only consumer.
+  Both accompanying obligations are discharged. The **README's finding 3** is closed in two parts: its
+  generator half was already false when written (Q8.4 had aligned `ExtensionBinder` to
+  `[ExportExtensions]`, pinned by `ExportExtensionsScopeTests`), and the residue that remains — build
+  binds what the compilation references, run binds what the host registered — is irreducible by D11
+  rather than drift, reconciled per request by gauntlet step 2 with a reported
+  `ExtensionBindingMismatch` (`live=<unresolved>`), not a silent one. The **window disposition** is
+  [2.1 record row 10](../spec/records.md#the-21-breaking-window--as-shipped-record) rather than
+  `breaking-windows.md`: the ruling named that document while 2.1 was believed window-less, and it is
+  instruction-only, so a landed item belongs with the window it landed in.
+  D11's third consequence — documentation *may* suggest an ordering pattern — is landed with it, as
+  [precompilation.md's startup-order section](../precompilation.md#startup-order-a-suggestion-not-a-rule),
+  which closes what had been deferred as phase 8 WI17.
+  *Where it lives:* [D11](../spec/common/cross-cutting-decisions.md#d11--the-engine-does-not-decide-which-assemblies-are-loaded)
+  (how the engine obtains its assembly set); [2.1 record row 10](../spec/records.md#the-21-breaking-window--as-shipped-record);
+  pinned by `AssemblyRegistrationTests`.
 
 - **Q8.38 — Which `TemplateOptions` does a post-configuration validation pass validate against?**
   **Resolution.** Closed as **not a question**: the entry described a constraint at length and then

@@ -538,14 +538,30 @@ Two steps:
    // [assembly: ExportExtensions]
    ```
 
-2. **Configure** the engine with your startup assembly so the export is discovered:
+2. **Register** each assembly that exports extensions:
 
    ```csharp
-   HeddleTemplate.Configure(typeof(Program).GetTypeInfo().Assembly);
+   HeddleTemplate.Register(typeof(Program).GetTypeInfo().Assembly);
+   HeddleTemplate.Register(typeof(SomeLibrary.WidgetExtension).GetTypeInfo().Assembly);
    ```
 
-`Configure` walks the given assembly and its references, so exporting from any referenced
-assembly is sufficient as long as that assembly is reachable from the one you pass.
+Registration is per assembly and is **not** transitive: the engine loads nothing and scans nothing on
+its own, so an extension library you merely *reference* is not discovered — register it too. This is
+deliberate. Extension names are a shared namespace, and the set of assemblies allowed to claim a name
+is the host's decision, not a consequence of which packages happened to be in the dependency graph.
+
+Registration is idempotent per assembly and repeatable, so you may register in whatever order
+establishes the precedence you want — a later `[ExtensionReplace]` extension displaces an earlier
+incumbent of the same name, and two unrelated types claiming one name throw
+`TemplateOverrideException` at the registering call rather than out of a type initializer.
+
+`HeddleTemplate.Configure(assembly)` is the same call under its older name, kept working.
+
+> **Migrating from 2.0.** 2.0 loaded the entry assembly's whole reference closure and scanned all of it,
+> so exporting from any referenced assembly was enough and `Configure` was optional. Both are gone:
+> export **and** register. A template calling an unregistered extension reports
+> `Cannot find extension <name>` (`HED0002`); a precompiled one degrades per request with an
+> `ExtensionBindingMismatch` naming it.
 
 ## Precompiled mode
 
