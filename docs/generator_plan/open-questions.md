@@ -11,10 +11,11 @@ the Q8.7 ruling, and the landings themselves — see
 ruled (user, 2026-07-26); the remainder stand at their stated defaults**, which are the operative
 decision until revisited.
 
-**Awaiting a ruling right now: Q8.32–Q8.35**, opened by the Q8.28–Q8.31 landing
+**Q8.32–Q8.35 are ruled (user, 2026-07-26)**
 ([section](#opened-by-the-q828q831-landing-2026-07-26--awaiting-rulings)). **Ruled but
-unimplemented: Q8.13, Q8.14, Q8.17, Q8.19** — Q8.19's ruling is conditional on a cost assessment
-that has not been made.
+unimplemented: Q8.13, Q8.14, Q8.17, Q8.19, Q8.32, Q8.33, Q8.35** — two of those are conditional on a
+feasibility assessment that has not been made (Q8.19's emitter-walk cost, Q8.32's late-binding
+stage). Q8.34 requires no behavioural change and closes with one verification and a phase-8 item.
 
 Each resolved entry below records the question, the ruling, and the folding target. Two rulings
 carry a program-wide principle referenced by several phases:
@@ -947,6 +948,40 @@ so the outstanding set is complete in one place.
   name (it emits only names that registered at build time), so the population is exactly the
   non-generator manifests, which is also the population sub-question (a) is about.
 
+  **Ruling (user, 2026-07-26) — sub-question (a) is rejected as over-engineering, and the question is
+  reframed.** *"How the fuck we can check that? It's just a template pointer."* Correct: a registered
+  name resolves to an entry, and that entry's every row is already gauntleted per request, so a
+  per-request name check re-validates nothing and buys nothing. **No per-request gauntlet arm for
+  `RegisteredName`.** Sub-question (b) stands separately — a wholly silent drop is not acceptable
+  regardless, so an unnormalizable `RegisteredName` must report through the same `HED7104` channel the
+  two collision arms use.
+
+  **What the ruling asks for instead is a different validation stage, and it generalizes past names.**
+  The user's words: *"we can delay function connection (e.g. create a function pointer and then replace
+  the pointer at runtime even though build time artifact is the same). If this is even possible at
+  dynamic runtime today then let's match it in generator by using fake function pointers + additional
+  validation layer that can be done pre-run but after all configured and ready for runtime (assemblies
+  loaded and all function pointers resolved and linked as well as extensions and everything else in the
+  engine)."*
+
+  So: the generator's difficulty is not that it cannot validate, it is that it validates at the wrong
+  *time* — build time, when the host's configuration does not exist yet. The proposal is a **third
+  stage** between build and render: generated code binds through indirection rather than to a resolved
+  target, and once the host has finished configuring (assemblies loaded, functions registered,
+  extensions bound), one validation pass resolves every indirection and reports everything wrong at
+  once — before any render, rather than per request. That is where a whole class of currently-awkward
+  checks belongs, and it is the *opposite* of adding gauntlet arms: work moves **out** of the
+  per-request path.
+
+  **This is subject to a feasibility assessment first, on the Q8.19 pattern, and the ruling explicitly
+  conditions on it** (*"if this is even possible at dynamic runtime today"*). Two things to establish
+  and report honestly before any code: whether the dynamic runtime already late-binds function
+  connection in this way (if it does not, matching it means changing the source of truth, which is a
+  much larger change than was ruled), and whether generated code can carry indirection without
+  regressing the precompiled tier's reason for existing — a delegate hop per call site would trade the
+  tier's whole advantage for validation timing. If it does not come out contained, stop and report the
+  cost rather than half-doing it. **Recorded as a distinct piece of work, not folded into a phase.**
+
 - **Q8.33 — `PrecompiledFallbackEvent.Key` carries two different kinds of string and a host cannot
   tell which it has.** For per-request reasons `Key` is a template key; for the registration-time
   reasons (`SchemaVersionUnsupported`, `EngineVersionIncompatible`, and now
@@ -958,6 +993,21 @@ so the outstanding set is complete in one place.
   (documented ambiguity, zero break); add a discriminator property (`KeyKind`, additive, no break);
   or add the contested spelling and its owner as their own properties. Nothing forces this today —
   no shipped host branches on it — so it is recorded as a design question, not a defect.
+
+  **Ruling (user, 2026-07-26): split it. One field must not carry two kinds of key.** *"Why don't we
+  have two separate collections for two separate keys?"* The "documented ambiguity, zero break" option
+  is rejected: documenting an overload does not make a host able to branch on it, and `Detail` is a
+  human-readable format string, not an API. The event gets **separate carriers for separate things** —
+  a template key where there is one, an assembly name where the event is about an assembly — so a host
+  reads the field it means instead of inferring which meaning it got from the `Reason`.
+
+  Notes for the implementer, since the ruling settles the shape and not the compatibility mechanics.
+  `PrecompiledFallbackEvent` is **shipped 2.0 public API** and `Key` is a public property; removing it
+  is a binary break and needs a breaking-window disposition, whereas adding a second property and
+  narrowing `Key`'s *meaning* is a behavioural break with no compile-time signal — the worse of the
+  two, because a 2.0 host reading `Key` for an assembly name would silently start reading null. Decide
+  it as a 2.1 break either way, record it, and pin the reason→populated-carrier mapping from both
+  sides so no reason can be added later that populates neither.
 
 - **Q8.34 — A name that resolved can stop resolving because an unrelated assembly loaded, and the
   only notice is `OnFallback`.** The eviction half of the disjointness invariant is what makes key
@@ -972,6 +1022,27 @@ so the outstanding set is complete in one place.
   spelling, arguably worth throwing or at least honouring `Strict`) or a *legitimate late-binding
   outcome* (the ordering rule working as designed, worth only a callback).
 
+  **Ruling (user, 2026-07-26): this is an integration-layer question and the engine must not answer it.**
+  The reasoning, in the user's words: *"engine should not suggest a solution to that (e.g. Razor mistake
+  and how we ended up with ASP.NET dependency). We are not responsible of how each assembly is
+  configured and when configured."* The framing in the question — configuration error *versus* legitimate
+  late binding — is the wrong dichotomy, because deciding which it is means deciding for the host when
+  and in what order assemblies may register. That is the coupling that turns a library into a framework.
+
+  Three concrete consequences, all of them bounded:
+  - **Registration may report the potential conflict** — a warning diagnostic, or an exception where the
+    situation is genuinely unresolvable — because reporting is the engine's business.
+  - **The engine must not load assemblies by default.** Discovery-by-default would take the ordering
+    decision away from the integration layer, which is exactly what the ruling forbids. If anything
+    currently auto-loads or auto-scans on the precompiled path, that is a defect to find and record,
+    not a feature to keep. **Verify this rather than assume it.**
+  - **The engine may suggest an architectural pattern**, in documentation, for a host that wants
+    ordering guarantees — and nothing more than suggest. Where that lands is a phase-8 item.
+
+  So `HED7104`-through-`OnFallback` is the right ceiling, not a gap: `Strict` deliberately does not
+  extend here, because `Strict`'s subject is degradation to the dynamic tier and no degradation occurs.
+  **No behavioural change to the eviction path.**
+
 - **Q8.35 — `Min == Max == Current` makes the support window a single point.** The Q8.2 collapse was
   right — schemas 3, 4 and 5 were never released, so there was no window to preserve. But the
   constants now say something stronger than "we collapsed unreleased churn": they say this engine
@@ -984,3 +1055,23 @@ so the outstanding set is complete in one place.
   simply carries no value for it. The question is whether the floor should trail `Current` whenever
   the delta is additive, and if so what test proves a candidate change *is* additive rather than
   asserting it. Wanted before 2.2, not before 2.1 — 2.1 ships one schema and one window either way.
+
+  **Ruling (user, 2026-07-26): the schema number tracks breakage, not releases.** *"Let's keep the same
+  manifest version if the change is non-breaking but let's keep version increment to 2.1 as already
+  started."* Two separate versions, decoupled deliberately:
+  - **Manifest schema** — bumped only when a change is genuinely breaking, i.e. when an
+    already-emitted manifest's IL can no longer bind or can no longer be read correctly. A purely
+    additive change reads through a per-feature `PrecompiledSchema.<Feature>SchemaVersion` gate (the
+    pattern `RegisteredNameSchemaVersion` already establishes) and the number **stays put**. This is
+    the same correction the Q8.2 collapse made, promoted from a one-off cleanup to the standing rule:
+    schemas 3, 4 and 5 existed because internal churn was being numbered.
+  - **Assembly/package version** — 2.1 stands as already started, independent of the above. A release
+    with no schema change is normal, not a contradiction.
+
+  What this does *not* license: relaxing `Min` retroactively for the schema-3 break, which stays a
+  real break by the Q8.2 ruling and its demonstrated `MissingMethodException`. The rule applies to
+  changes from here on. And the additivity claim must be **proved per change, not asserted** — the test
+  that a change is additive is that a manifest emitted before it still reads correctly afterwards,
+  which means a fixture holding a pre-change manifest, not a reviewer's judgement. Fold into
+  `docs/spec/common/breaking-windows.md` as a named rule so future landings apply it without
+  re-deriving it.
