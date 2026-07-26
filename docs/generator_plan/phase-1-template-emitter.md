@@ -10,7 +10,7 @@
   Two diagnostics are claimed to this phase in the
   [registry](../spec/common/cross-cutting-decisions.md#claimed-diagnostic-ids-registry): `HED7022`
   (unknown `@profile` value, Error, D3) and `HED7024` (call-site fill of a private region, Error,
-  D7/Q1.3). `PrecompiledSchema` is bumped 4→5 for the per-carrier `BindDefinition` overload.
+  D7/Q1.3). The per-carrier `BindDefinition` overload rides schema **3**. This line originally read "bumped 4→5"; schemas 4 and 5 never shipped and were collapsed into 3 by Q8.2, which found that the only released schemas were 1 and 2.
 - **Goal (one line):** Resolve research area 01's drift between `TemplateEmitter` and the runtime
   compile/render pipeline — three live bugs fixed first, then the area's genuinely-sharable rules
   extracted into linked shared sources and its spec-only rules pinned as data tables plus
