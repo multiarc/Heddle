@@ -10,7 +10,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Shared plumbing for the phase 1 file-watcher fixtures: a fresh temp directory per test (the
+    /// Shared plumbing for the file-watcher fixtures: a fresh temp directory per test (the
     /// committed <c>TestTemplate/</c> fixtures are read-only inputs and are never rewritten), reflection
     /// access to the private watcher/handler members (the deterministic tests drive the exact production
     /// <c>Reload()</c> path synchronously), and a polling <c>WaitFor</c> for the FSW-timed tests.

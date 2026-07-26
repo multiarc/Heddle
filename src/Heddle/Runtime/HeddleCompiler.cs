@@ -1169,7 +1169,7 @@ namespace Heddle.Runtime
 
                 CheckTypes(dataType, definition.Position, compileScope, acceptType);
 
-                // Phase 5: resolve the layout + slot type (cached), bind named arguments, install the binder.
+                // Resolve the layout + slot type (cached), bind named arguments, install the binder.
                 var layout = ResolveLayoutCached(definition, compileScope);
                 var slotType = ResolveSlotType(definition, compileScope);
                 def.SlotMode = slotType != null;
@@ -1187,10 +1187,10 @@ namespace Heddle.Runtime
                         compileScope, parseContext);
                 }
 
-                // Phase 7 D4/D5/D6: determine the fill scope the definition BODY compiles under.
+                // Determine the fill scope the definition BODY compiles under.
                 //  - A region body (default or materialized fill) inherits the ambient scope so sibling region
-                //    calls keep resolving their fills (D6); when the region being compiled IS the fill, its own
-                //    name rebinds to the base default so a self-call terminates (D4 step 5).
+                //    calls keep resolving their fills; when the region being compiled IS the fill, its own
+                //    name rebinds to the base default so a self-call terminates.
                 //  - A non-region definition call builds a fresh call-scoped scope from this call site's matched
                 //    fill candidates (empty/null when none) — a second call with no fills renders defaults.
                 var compileContext = compileScope.CompileContext;

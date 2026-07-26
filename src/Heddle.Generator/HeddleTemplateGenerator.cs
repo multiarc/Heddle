@@ -611,7 +611,7 @@ namespace Heddle.Generator
             spc.AddSource("__HeddleManifest.g.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
         }
 
-        /// <summary>D11 naming: the key's segments PascalCased, identifier-invalid characters mapped to <c>_</c>,
+        /// <summary>Derives an identifier from the key: the key's segments PascalCased, identifier-invalid characters mapped to <c>_</c>,
         /// joined by <c>_</c>, extension dropped. <c>views/home/index.heddle</c> → <c>Views_Home_Index</c>.</summary>
         internal static string SanitizeName(string key)
         {
@@ -666,7 +666,7 @@ namespace Heddle.Generator
         /// <summary>The file name the emitted <c>#line</c> directives carry. Always the template's <b>file</b>, never
         /// its registration key: for a path-derived key the two strings are identical, but an explicit <c>Key</c> names
         /// a registration and not a file, and emitting it pointed every mapped span at a path that does not exist.
-        /// <para>Q8.27, the absolute-vs-relative form. <b>Outside the root</b> there is no anchor to be relative to, so
+        /// <para>The absolute-vs-relative form. <b>Outside the root</b> there is no anchor to be relative to, so
         /// the template's own <see cref="AdditionalText.Path"/> is emitted verbatim — absolute in a real build, which is
         /// what a <c>#line</c> is for. This replaces the old bare-filename fallback, which named no openable file and
         /// collided across directories. <b>Inside the root</b> the form stays root-relative and is <em>labelled</em> as
@@ -691,12 +691,12 @@ namespace Heddle.Generator
         private const string KeyShapeRule =
             "keys must be non-empty relative paths without '.' or '..' segments";
 
-        /// <summary>The key↔path derivation, on the shared <see cref="TemplateKey"/> rules (phase 5 D2). Explicit
+        /// <summary>The key↔path derivation, on the shared <see cref="TemplateKey"/> rules. Explicit
         /// <c>Key</c> metadata wins; otherwise the path is made relative to <c>HeddleTemplateRoot</c>. A template
         /// outside the root keeps the historical flattened-filename key — removing it would un-precompile projects
-        /// that rely on flat lookups — but sets <paramref name="outOfRoot"/> so the caller can report HED7018 (D3);
-        /// the silent directory-drop is the bug (05 F3).
-        /// <para>Q8.25: <c>Name</c> is deliberately <b>not</b> consulted here. Q8.12's first implementation treated it
+        /// that rely on flat lookups — but sets <paramref name="outOfRoot"/> so the caller can report HED7018;
+        /// the silent directory-drop is the bug.
+        /// <para><c>Name</c> is deliberately <b>not</b> consulted here. An earlier implementation treated it
         /// as a second spelling of <c>Key</c>, which made a named template unreachable by its path; the correction is
         /// that a name is an <em>additional</em> import spelling (see <see cref="DeriveName"/>) and the key derivation
         /// is exactly what it was before <c>Name</c> was wired. Empty <c>Key</c> is absent, not malformed, because
@@ -729,7 +729,7 @@ namespace Heddle.Generator
                 : null;
         }
 
-        /// <summary>The optional registered <b>name</b> (Q8.25): the additional spelling the <c>@&lt;&lt;</c> import
+        /// <summary>The optional registered <b>name</b>: the additional spelling the <c>@&lt;&lt;</c> import
         /// map answers to, normalized by the same <see cref="TemplateKey"/> rule as a key because it lives in the same
         /// import-path namespace. <c>null</c> when the item declares no <c>Name</c> (empty is absent, as for
         /// <c>Key</c>) or when the value is unusable, in which case <paramref name="fault"/> is set and the caller
@@ -748,12 +748,12 @@ namespace Heddle.Generator
             return null;
         }
 
-        /// <summary>The manifest's <c>engineVersion</c> (phase 5 D6). Primary source: the referenced <c>Heddle</c>
+        /// <summary>The manifest's <c>engineVersion</c>. Primary source: the referenced <c>Heddle</c>
         /// assembly's own identity. When it is not visible — an extern alias, an embedded or ILMerged engine — the
         /// generator falls back to <b>its own</b> assembly version and says so (HED7019): the generator versions in
-        /// lockstep with the engine, so the fallback tracks reality, where the previous hardcoded <c>"2.0.0"</c>
+        /// lockstep with the engine, so the fallback tracks reality, where a hardcoded version
         /// literal would have gone stale the release after it was written while the runtime's compatibility gate
-        /// decided whole-assembly registration on it (05 F5).</summary>
+        /// decides whole-assembly registration on it.</summary>
         private static string ResolveEngineVersion(SourceProductionContext spc, Compilation compilation)
         {
             foreach (var reference in compilation.SourceModule.ReferencedAssemblySymbols)

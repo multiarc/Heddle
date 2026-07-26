@@ -144,7 +144,7 @@ namespace Heddle.Generator.Tests
             return RunTexts(texts, globalOptions, perFileOptions);
         }
 
-        /// <summary>Phase 3: a run whose compilation carries C# sources — needed by anything that depends on an
+        /// <summary>A run whose compilation carries C# sources — needed by anything that depends on an
         /// assembly-level attribute (<c>[assembly: ExportFunctions(...)]</c>) or on source-declared extension
         /// types, which an empty compilation cannot express.</summary>
         public static GeneratorRun RunWithSources(
