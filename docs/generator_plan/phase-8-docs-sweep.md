@@ -714,6 +714,19 @@ non-deterministic gate, no stable failure, and this repo's gates are all determi
 - **Undocumented-ID gate.** Delete `HED5019`'s mention from `language-reference.md` → the D4 gate
   reddens naming `HED5019` and the owning document. Add a registry row for a fictional `HED1099`
   with `native-expressions.md` as owner → the gate reddens naming the missing doc row.
+
+  **Executed 2026-07-26, and the scenario's premise was half wrong.** Removing `HED5019` from
+  `language-reference.md` does **not** redden, correctly: the registry row for `HED5019`–`HED5020`
+  reads *"this registry row is the live normative home"* and links no owning document, and the id is
+  still named in `patterns.md` and `precompilation.md`, so the any-document leg is satisfied. The
+  fictional-`HED1099` half is already covered by the sibling `ConstantsAndTheClaimedIdRegistryAgree`,
+  which reddens on a registry row with no constant — the doc gate deliberately ranges over shipped
+  constants only.
+  The gate's falsifiability was demonstrated twice instead. **Organically, on its first run:** it
+  reddened naming `HED3005` and `HED4002` as absent from `built-in-extensions.md`, the document the
+  registry *does* link as their owner — two real gaps that every existing green gate had missed. And
+  **by mutation:** removing `HED1010`'s single mention reddens with *"Shipped diagnostic ids named in
+  no published document: HED1010"*.
 - **Registry cross-reference hole (the gate defect).** Add `` `HED7099` `` as a *prose mention* in
   `cross-cutting-decisions.md` with no table row → today the generator-side gate accepts it as
   claimed; after the anchoring fix it does not.

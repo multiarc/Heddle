@@ -123,6 +123,86 @@ namespace Heddle.Tests
                 "No '" + UnclaimedMarker + "' rows parsed — the marker or the row shape changed.");
         }
 
+        /// <summary>
+        /// Every shipped diagnostic id is named in at least one published document, and where the registry's owner
+        /// column names an owning document, the id is named in <b>that</b> one. Before this gate, 16 of 85 shipped ids
+        /// appeared in no user-facing page at all — worst of them the native-expression block, whose registry-designated
+        /// home named 4 of its 17 — and every existing gate was green, because none of them read published prose.
+        /// <para>There is deliberately no exemption set. An empty one would be a concept with no members; whoever finds
+        /// an id that genuinely cannot be documented adds the mechanism together with the reason.</para>
+        /// </summary>
+        [Fact]
+        public void EveryShippedIdIsNamedInAPublishedDocument()
+        {
+            var published = PublishedDocs();
+            var constants = new HashSet<string>(typeof(HeddleDiagnosticIds)
+                .GetFields()
+                .Where(f => f.IsLiteral && f.FieldType == typeof(string))
+                .Select(f => (string)f.GetRawConstantValue()));
+
+            var undocumented = constants
+                .Where(id => !published.Values.Any(text => text.Contains(id)))
+                .OrderBy(id => id, StringComparer.Ordinal)
+                .ToList();
+            Assert.True(undocumented.Count == 0,
+                "Shipped diagnostic ids named in no published document: " + string.Join(", ", undocumented) +
+                ". Document each one in the page the claimed-ID registry names as its owner.");
+
+            var misfiled = new List<string>();
+            foreach (var pair in RegistryOwners())
+            {
+                if (!constants.Contains(pair.Key))
+                    continue;
+                if (!published.TryGetValue(pair.Value, out var text))
+                {
+                    misfiled.Add(pair.Key + " → " + pair.Value + " (owning document not found)");
+                    continue;
+                }
+
+                if (!text.Contains(pair.Key))
+                    misfiled.Add(pair.Key + " → " + pair.Value);
+            }
+
+            Assert.True(misfiled.Count == 0,
+                "Diagnostic ids absent from the document the registry names as their owner: " +
+                string.Join(", ", misfiled.OrderBy(m => m, StringComparer.Ordinal)));
+        }
+
+        /// <summary>Every published page, keyed by file name — <c>docs/*.md</c> only. The spec, plan and research
+        /// trees are excluded on purpose: they are not what a user reads.</summary>
+        private static Dictionary<string, string> PublishedDocs([CallerFilePath] string here = null)
+        {
+            var dir = Path.Combine(RepoRoot(here), "docs");
+            var docs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var file in Directory.GetFiles(dir, "*.md"))
+                docs[Path.GetFileName(file)] = File.ReadAllText(file);
+
+            Assert.True(docs.Count > 5, "Published document set looks wrong: " + docs.Count + " files under " + dir);
+            return docs;
+        }
+
+        /// <summary>Registry id → owning document file name, for the rows whose owner cell links to a published page.
+        /// Rows whose owner is prose ("Core engine", "this registry row is the live normative home") have no owning
+        /// document and are covered by the any-document leg alone.</summary>
+        private static List<KeyValuePair<string, string>> RegistryOwners()
+        {
+            var markdown = RegistrySection(ReadSpec("cross-cutting-decisions.md"));
+            var owners = new List<KeyValuePair<string, string>>();
+            foreach (Match match in Regex.Matches(markdown,
+                         @"^\| `HED(?<from>\d{4})`(?:[–-]`HED(?<to>\d{4})`)? \| \[[^\]]+\]\((?<link>[^)#]+)",
+                         RegexOptions.Multiline))
+            {
+                var ids = new HashSet<string>(StringComparer.Ordinal);
+                AddRange(ids, match);
+                var doc = Path.GetFileName(match.Groups["link"].Value);
+                foreach (var id in ids)
+                    owners.Add(new KeyValuePair<string, string>(id, doc));
+            }
+
+            Assert.True(owners.Count > 0, "No owner-linked registry rows parsed — the row shape changed.");
+            return owners;
+        }
+
         /// <summary>Claimed IDs not surfaced as public constants (e.g., HED9001, the feature-switch guard).</summary>
         private static readonly HashSet<string> RegistryOnly = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -142,14 +222,19 @@ namespace Heddle.Tests
                 into.Add("HED" + i.ToString("D4", CultureInfo.InvariantCulture));
         }
 
-        private static HashSet<string> ClaimedIds(string markdown, HashSet<string> unclaimed = null)
+        /// <summary>The registry table alone — block reservations elsewhere in the document are not id claims.</summary>
+        private static string RegistrySection(string markdown)
         {
-            // Registry section only (block reservations are not ID claims).
             const string heading = "## Claimed diagnostic IDs (registry)";
             var start = markdown.IndexOf(heading, StringComparison.Ordinal);
             Assert.True(start >= 0, "Claimed-ID registry section '" + heading + "' not found.");
             var end = markdown.IndexOf("\n## ", start + heading.Length, StringComparison.Ordinal);
-            markdown = end < 0 ? markdown.Substring(start) : markdown.Substring(start, end - start);
+            return end < 0 ? markdown.Substring(start) : markdown.Substring(start, end - start);
+        }
+
+        private static HashSet<string> ClaimedIds(string markdown, HashSet<string> unclaimed = null)
+        {
+            markdown = RegistrySection(markdown);
 
             var ids = new HashSet<string>(StringComparer.Ordinal);
             foreach (Match match in Regex.Matches(markdown,
@@ -172,12 +257,16 @@ namespace Heddle.Tests
             return ids;
         }
 
-        /// <summary>Locates a spec file from this test source's own path, so the gate works on every TFM
+        /// <summary>The repository root, from this test source's own path, so the gates work on every TFM
         /// (including net48) without probing the output directory.</summary>
+        private static string RepoRoot(string here)
+        {
+            return Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here), "..", ".."));
+        }
+
         private static string ReadSpec(string name, [CallerFilePath] string here = null)
         {
-            var repo = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here), "..", ".."));
-            return File.ReadAllText(Path.Combine(repo, "docs", "spec", "common", name));
+            return File.ReadAllText(Path.Combine(RepoRoot(here), "docs", "spec", "common", name));
         }
     }
 }

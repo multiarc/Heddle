@@ -33,6 +33,11 @@ This is the number-one misread. In Liquid and Jinja `{{ x }}` interpolates a val
 `{{ Title }}` in text emits the literal braces, not the value. To output a value, use the
 `@(…)` [output block](language-reference.md#output-blocks).
 
+The compiler warns rather than letting it pass silently: a bare `{{ identifier }}` or
+`{{ dotted.path }}` in literal text raises **HED4005**, positioned at the braces and suggesting
+`@(…)`. It is a warning, not an error — the literal braces are legal output, so the template still
+compiles and renders them.
+
 ## Filters → chains, composed right-to-left
 
 ```text

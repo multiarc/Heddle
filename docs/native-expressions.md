@@ -253,6 +253,38 @@ Native expressions match C# except for a small, deliberate set of ergonomic choi
    [Lifted (nullable) operands](#lifted-nullable-operands) for the two shapes and which of them is a
    deviation and which is a defect.
 
+## Diagnostics
+
+Every diagnostic the native tier raises. All are **compile-time** and positioned at the offending
+construct, so none of them can reach render. The build tier raises the same id for the same input —
+that is the match requirement — and where it cannot prove the refusal it degrades the call to the
+dynamic tier instead of guessing.
+
+| ID | Severity | Raised when |
+| --- | --- | --- |
+| `HED1001` | error | A function name matches neither the registry nor an extension/definition. |
+| `HED1002` | error | An in‑expression call names an extension or definition rather than a registered function. Call it standalone, or register a function. |
+| `HED1003` | error | Method‑call syntax (`x.Foo(...)`) appears in an expression. Only registered functions are callable. |
+| `HED1004` | error | An operand is a dynamic scope, or a path crosses a `[Dynamic]` property. Declare a typed `@model`, or use the `@` C# tier. |
+| `HED1005` | error | `&&`/`||` applied to a non‑`bool` operand — including `bool?`, which C# would accept. |
+| `HED1006` | error | `??` applied to a left operand that is a non‑nullable value type. |
+| `HED1007` | error | The `?:` arms have no common type. Also raised for a `??` pair with no common type. |
+| `HED1008` | error | A binary operator has no rule for its operand types — a reference/value equality mix, a promotion with no common type, enum arithmetic, a `null` literal in a relational position — or a numeric literal overflows its type. |
+| `HED1009` | error | A unary operator is not defined for its operand type (`-` on `ulong` or a non‑numeric, `~` on a non‑integral, `!` on a non‑`bool`). |
+| `HED1010` | error | An indexer target has no accessible indexer matching the argument types. |
+| `HED1011` | error | The `?:` condition is not `bool`. |
+| `HED1012` | error | No overload of a registered function binds to the supplied argument types. |
+| `HED1013` | error | A registered‑function call is ambiguous — two candidates tie under the flat rank. `floor(3)` is the canonical case; see [Registering your own](#registering-your-own). |
+| `HED1014` | error | An expression beyond a bare member path is used while `ExpressionMode` is `MemberPathsOnly`. |
+| `HED1015` | error | A composite `format` literal references an argument index beyond the supplied count. |
+| `HED1016` | warning | A standalone `@name(...)` resolved to an extension that shadows a registered function of the same name. Write `@( name(...) )` to reach the function. |
+| `HED1017` | error | A standalone registry hit was given a chain or C#‑parameter shape rather than a single expression. |
+
+A member‑path segment that fails resolution is **`HED0001`**, not a `HED1xxx`: the member tier is
+shared with the C# tier and the dynamic path, so its diagnostic is shared too. It fires when a segment
+is missing, non‑readable, `[Hidden]`, or has an inaccessible getter — see
+[Exposing models to untrusted templates](patterns.md#exposing-models-to-untrusted-templates).
+
 ## The sandbox
 
 The compiler can only ever emit invocations of: property/indexer getters that pass the member‑tier
