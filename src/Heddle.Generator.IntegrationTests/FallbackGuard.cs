@@ -17,7 +17,11 @@ namespace Heddle.Generator.IntegrationTests
     /// Phase 0 WI1 (D1) — the fallback sentinel. Hooks <see cref="PrecompiledTemplates.OnFallback"/> for the lifetime
     /// of a guarded region, records every raised <see cref="PrecompiledFallbackEvent"/>, and restores the previous
     /// hook on dispose (the save/restore pattern the existing <c>OnFallback</c> tests already prove). Any event whose
-    /// (key, reason) pair was not declared through <see cref="Expect"/> fails the test at <see cref="Verify"/>.
+    /// (subject, reason) pair was not declared through <see cref="Expect"/> fails the test at <see cref="Verify"/>.
+    /// <para>The subject is whichever of the event's two carriers is populated (Q8.33): a template key for the
+    /// per-request reasons, an assembly name for the registration-time ones. The guard matches on both because it
+    /// polices <em>every</em> fallback, and collapsing them here is a test-side display choice — the engine keeps
+    /// them apart, which is the whole point of the split.</para>
     /// <para>The sentinel deliberately does <b>not</b> throw from inside the callback: <c>TryResolve</c> raises the
     /// event *before* the <see cref="PrecompiledMismatchPolicy.Strict"/> throw, so a throwing callback would replace
     /// the sharper typed <see cref="PrecompiledMismatchException"/> that <see cref="GuardedOptions"/> exists to
@@ -77,7 +81,7 @@ namespace Heddle.Generator.IntegrationTests
                 var unexpected = new List<PrecompiledFallbackEvent>();
                 foreach (var evt in _events)
                 {
-                    var at = outstanding.FindIndex(e => e.key == evt.Key && e.reason == evt.Reason);
+                    var at = outstanding.FindIndex(e => e.key == Subject(evt) && e.reason == evt.Reason);
                     if (at < 0)
                         unexpected.Add(evt);
                     else
@@ -87,13 +91,17 @@ namespace Heddle.Generator.IntegrationTests
                 if (unexpected.Count != 0)
                     throw new FallbackGuardException(
                         "Undeclared precompiled→dynamic fallback (the render did not stay on the precompiled tier): " +
-                        string.Join("; ", unexpected.Select(e => $"{e.Key} [{e.Reason}] {e.Detail} ({e.DiagnosticId})")));
+                        string.Join("; ",
+                            unexpected.Select(e => $"{Subject(e)} [{e.Reason}] {e.Detail} ({e.DiagnosticId})")));
                 if (outstanding.Count != 0)
                     throw new FallbackGuardException(
                         "Declared fallback never fired: " +
                         string.Join("; ", outstanding.Select(e => $"{e.key} [{e.reason}]")));
             }
         }
+
+        /// <summary>Whichever carrier the event's reason populates — see the class remark.</summary>
+        private static string Subject(PrecompiledFallbackEvent evt) => evt.TemplateKey ?? evt.AssemblyName;
 
         private void Record(PrecompiledFallbackEvent evt)
         {

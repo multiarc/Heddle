@@ -92,7 +92,7 @@ namespace Heddle.Generator.IntegrationTests
     {
         private static void Raise(string key, PrecompiledFallbackReason reason) =>
             PrecompiledTemplates.OnFallback?.Invoke(
-                new PrecompiledFallbackEvent(key, reason, "detail", "HED7101"));
+                PrecompiledFallbackEvent.ForTemplate(key, reason, "detail", "HED7101"));
 
         [Fact]
         public void InstallAndDispose_RestoresThePreviousHook()

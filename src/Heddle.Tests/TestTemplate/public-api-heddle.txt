@@ -733,11 +733,13 @@ TYPE Heddle.Precompiled.PrecompiledExtensionBinding : System.ValueType
   PROP System.String Name {get;}
   PROP System.String PropLayoutFingerprint {get;}
 TYPE Heddle.Precompiled.PrecompiledFallbackEvent : System.ValueType
-  CTOR(System.String, Heddle.Precompiled.PrecompiledFallbackReason, System.String, System.String)
+  METHOD Heddle.Precompiled.PrecompiledFallbackEvent ForAssembly(System.String, Heddle.Precompiled.PrecompiledFallbackReason, System.String, System.String)
+  METHOD Heddle.Precompiled.PrecompiledFallbackEvent ForTemplate(System.String, Heddle.Precompiled.PrecompiledFallbackReason, System.String, System.String)
   PROP Heddle.Precompiled.PrecompiledFallbackReason Reason {get;}
+  PROP System.String AssemblyName {get;}
   PROP System.String Detail {get;}
   PROP System.String DiagnosticId {get;}
-  PROP System.String Key {get;}
+  PROP System.String TemplateKey {get;}
 TYPE Heddle.Precompiled.PrecompiledFallbackReason : System.Enum
   FIELD Heddle.Precompiled.PrecompiledFallbackReason CaseMismatch
   FIELD Heddle.Precompiled.PrecompiledFallbackReason EngineVersionIncompatible

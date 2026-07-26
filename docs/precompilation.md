@@ -133,6 +133,29 @@ stays fully reachable by its key. Contrast a duplicate **key**, which does throw
 `PrecompiledRegistrationException`: two templates claiming one registration has no resolvable answer,
 while a name/key collision already has one.
 
+`HED7104` also covers a manifest `Name` the shared key rule refuses outright — a `..` segment, a
+trailing separator, whitespace. The generator cannot emit one (that is `HED7004` at build time), so the
+population is manifests no build tier vetted: hand‑written, third‑party, or emitted by a tool that
+skipped the rule. It is reported rather than dropped in silence, through the same reason and id as a
+collision, because from the host's side the outcome is identical — a name it expected to resolve does
+not, and the template is still reachable by its key.
+
+### What a fallback event names
+
+`PrecompiledFallbackEvent` carries **two carriers and populates exactly one**:
+
+| Carrier | Populated for | Reasons |
+| --- | --- | --- |
+| `TemplateKey` | a per‑request event, which is about one resolved template | `UnsupportedFunction`, `OptionsMismatch`, `ExtensionBindingMismatch`, `FunctionBindingMismatch`, `StaleContent`, `StaleImport`, `CaseMismatch` |
+| `AssemblyName` | a registration‑time event, which is about an assembly and has no one template to name | `SchemaVersionUnsupported`, `EngineVersionIncompatible`, `RegisteredNameUnavailable` |
+
+Branch on the carrier, not on the reason. The 2.0 event had a single `Key` property holding either
+meaning, so a host had to re‑derive from `Reason` which of the two it had; that property is **removed in
+2.1** rather than narrowed, so the change surfaces as a compile error at the reading site instead of a
+null at run time. Events are constructed through `PrecompiledFallbackEvent.ForTemplate` /
+`ForAssembly`, each of which refuses a reason belonging to the other carrier — the mapping above is
+enforced, not documented.
+
 Name lookup is ordinal, exactly as key lookup is, so a case‑sloppy spelling misses rather than serving
 the wrong template.
 
@@ -216,7 +239,7 @@ saw hides a packaging bug behind identical output. The classification:
 | `SchemaVersionUnsupported` | **must surface** | A manifest outside the engine's schema window means the deployable pairs generator and engine packages out of contract — a packaging defect that today silently un‑precompiles an entire assembly. |
 | `EngineVersionIncompatible` | **must surface** | The same argument for engine skew; whole‑assembly silent rejection is the worst place to be quiet. |
 | `CaseMismatch` | informational | Never a gauntlet failure — a registry lookup miss is contractually never a failure; the `HED7103` event is a diagnostic aid. |
-| `RegisteredNameUnavailable` | informational | Never a gauntlet failure and never a throw (`HED7104`): a registered `Name` is an *addition*, and an addition whose spelling is already taken costs the addition and nothing more — the template stays registered under its key, so no resolution that worked before changes meaning. Unlike a duplicate key there is nothing unresolvable to refuse, because key precedence already decides which template the spelling means. |
+| `RegisteredNameUnavailable` | informational | Never a gauntlet failure and never a throw (`HED7104`): a registered `Name` is an *addition*, and an addition whose spelling is already taken — or that the key rule refuses outright — costs the addition and nothing more — the template stays registered under its key, so no resolution that worked before changes meaning. Unlike a duplicate key there is nothing unresolvable to refuse, because key precedence already decides which template the spelling means. |
 | duplicate key at registration | already surfaces | `PrecompiledTemplates.Register` throws `PrecompiledRegistrationException` — the precedent that registration defects throw. |
 
 **Today's behavior is unchanged**: under the default `Fallback` policy every class above still

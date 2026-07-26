@@ -88,11 +88,13 @@ namespace Heddle.Precompiled
             if (attribute == null)
                 return;
 
-            var assemblyName = assembly.GetName().Name ?? assembly.FullName;
+            // Never null in practice; defaulted rather than left null because the fallback event's assembly carrier
+            // is now required to be populated (Q8.33) and a diagnostic must not become a throw.
+            var assemblyName = assembly.GetName().Name ?? assembly.FullName ?? "<unknown assembly>";
 
             if (!PrecompiledSchema.IsSupported(attribute.SchemaVersion))
             {
-                RaiseFallback(new PrecompiledFallbackEvent(assemblyName,
+                RaiseFallback(PrecompiledFallbackEvent.ForAssembly(assemblyName,
                     PrecompiledFallbackReason.SchemaVersionUnsupported,
                     $"SchemaVersion: manifest={attribute.SchemaVersion} supported={PrecompiledSchema.MinSupportedSchemaVersion}-{PrecompiledSchema.MaxSupportedSchemaVersion}",
                     Hed7102));
@@ -101,7 +103,7 @@ namespace Heddle.Precompiled
 
             if (!IsEngineCompatible(attribute.EngineVersion, out var runtimeVersion))
             {
-                RaiseFallback(new PrecompiledFallbackEvent(assemblyName,
+                RaiseFallback(PrecompiledFallbackEvent.ForAssembly(assemblyName,
                     PrecompiledFallbackReason.EngineVersionIncompatible,
                     $"EngineVersion: manifest={attribute.EngineVersion} runtime={runtimeVersion}", Hed7102));
                 return;
@@ -147,7 +149,7 @@ namespace Heddle.Precompiled
                         byName.Remove(key);
                         nameOwner.Remove(key);
                         (lostNames ?? (lostNames = new List<PrecompiledFallbackEvent>())).Add(
-                            new PrecompiledFallbackEvent(assemblyName,
+                            PrecompiledFallbackEvent.ForAssembly(assemblyName,
                                 PrecompiledFallbackReason.RegisteredNameUnavailable,
                                 $"Name: '{key}' registered by '{displaced}' is now the template key of '{assemblyName}'; " +
                                 "the key wins and the name no longer resolves", Hed7104));
@@ -162,10 +164,25 @@ namespace Heddle.Precompiled
                 {
                     if (string.IsNullOrEmpty(template.RegisteredName))
                         continue;
-                    if (!TemplateKey.TryNormalize(template.RegisteredName, out var name))
-                        continue;
 
                     var key = TemplateKey.Normalize(template.Key);
+
+                    // A name the shared key rule refuses (Q8.32(b)). The generator cannot emit one — a malformed
+                    // `Name` is HED7004 at build time and never reaches a manifest — so this arm is reached only by a
+                    // manifest no build tier vetted, which is exactly the population that most needs telling. It used
+                    // to `continue` in silence, the one wholly silent drop in registration; it now reports through the
+                    // same HED7104 channel as the two collision arms, because from the host's side the outcome is the
+                    // same: a name it expected to resolve does not, and the template is still reachable by its key.
+                    if (!TemplateKey.TryNormalize(template.RegisteredName, out var name))
+                    {
+                        (lostNames ?? (lostNames = new List<PrecompiledFallbackEvent>())).Add(
+                            PrecompiledFallbackEvent.ForAssembly(assemblyName,
+                                PrecompiledFallbackReason.RegisteredNameUnavailable,
+                                $"Name: '{template.RegisteredName}' requested by '{key}' is not a usable key " +
+                                "spelling; the name is not registered and the template stays reachable by its key",
+                                Hed7104));
+                        continue;
+                    }
 
                     // The name spells the template's own key: it asks for the spelling that already resolves to it, so
                     // there is nothing to add and nothing to report.
@@ -184,7 +201,7 @@ namespace Heddle.Precompiled
                     if (owner != null)
                     {
                         (lostNames ?? (lostNames = new List<PrecompiledFallbackEvent>())).Add(
-                            new PrecompiledFallbackEvent(assemblyName,
+                            PrecompiledFallbackEvent.ForAssembly(assemblyName,
                                 PrecompiledFallbackReason.RegisteredNameUnavailable,
                                 $"Name: '{name}' requested by '{key}' is already {owner}; the name is not registered " +
                                 "and the template stays reachable by its key", Hed7104));
@@ -238,7 +255,8 @@ namespace Heddle.Precompiled
             if (snapshot.Shadow.TryGetValue(normalized, out var actual) &&
                 !string.Equals(actual, normalized, StringComparison.Ordinal))
             {
-                RaiseFallback(new PrecompiledFallbackEvent(normalized, PrecompiledFallbackReason.CaseMismatch,
+                RaiseFallback(PrecompiledFallbackEvent.ForTemplate(normalized,
+                    PrecompiledFallbackReason.CaseMismatch,
                     $"Key: requested '{normalized}' registered '{actual}'", Hed7103));
             }
 
