@@ -15,7 +15,7 @@ using BranchRole = gen::Heddle.Attributes.BranchRole;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// WI3 binder unit tests (§8.3): <see cref="ExtensionBinder"/> is the single role source. It resolves
+    /// Binder unit tests: <see cref="ExtensionBinder"/> is the single role source. It resolves
     /// <c>Role</c>/<c>HasScopeChannel</c>/<c>IsBranchParticipant</c> for the four engine built-ins from the
     /// referenced <c>Heddle</c> assembly, reads <c>[BranchRole]</c> from source-declared types (including a
     /// base-type-chain walk for inheritance), and degrades a future/out-of-range value to <c>null</c>.

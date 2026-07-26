@@ -181,8 +181,8 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// The one runtime defect this phase found and deliberately left in place, pinned as a defect
-        /// (phase-4 audit, 2026-07-26). `bool &amp; bool?` reaches <c>Expression.And</c> with no guard — the
+        /// A known runtime defect, deliberately left in place and pinned as a defect.
+        /// `bool &amp; bool?` reaches <c>Expression.And</c> with no guard — the
         /// bitwise path's bool arm tests the <b>underlying</b> types, so a mismatched lifted pair walks straight
         /// into the factory — and the throw is contained by the compile-item catch, surfacing as an
         /// <c>Error while compiling</c> with an exception attached instead of the positioned HED1008 the sibling
@@ -191,7 +191,7 @@ namespace Heddle.Tests
         /// the throw escaping compilation, or reaching render — this reddens. Fixing the shape (a real HED1008)
         /// also reddens it, which is the intended prompt to move the row deliberately rather than by accident.
         /// The table already answers <see cref="OperatorVerdict.NotDefined"/> for the pair, so no generated code
-        /// can reach it; before phase 4 the generator emitted C#'s lifted `&amp;` and rendered.</para>
+        /// can reach it.</para>
         /// </summary>
         [Fact]
         public void NullableBoolBitwise_IsAContainedRuntimeDefect_NotAPositionedError()

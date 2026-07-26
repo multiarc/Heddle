@@ -649,7 +649,7 @@ namespace Heddle.Language {
         }
 
         /// <summary>
-        /// Reads the 5th <c>call</c> alternative (named arguments, phase 5 D4). Classifies the optional leading
+        /// Reads the 5th <c>call</c> alternative (named arguments). Classifies the optional leading
         /// positional <c>expr</c>: a pure <see cref="PathNode"/> (no target) maps to the member-path shape (bit
         /// identical to alternative 2); a <see cref="ThisNode"/> maps to the empty model parameter; anything
         /// else becomes a native expression. Returns <see cref="Alt5Info.IsAlt5"/> false when the call carries no

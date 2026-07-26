@@ -48,8 +48,8 @@ namespace Heddle.Tests.MemberConformance
 namespace Foreign
 {
     /// <summary>A <b>different</b> <c>HiddenAttribute</c>. The runtime matches <c>[Hidden]</c> by real attribute
-    /// type, so this one hides nothing; the generator's unqualified-name match used to hide the member (phase 3
-    /// corrects that adapter against this row).</summary>
+    /// type, so this one hides nothing; the generator's unqualified-name match used to hide the member, which this
+    /// row guards against.</summary>
     [AttributeUsage(AttributeTargets.Property)]
     public sealed class HiddenAttribute : Attribute { }
 }

@@ -137,7 +137,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>Both edges of the window (see <see cref="OutOfWindowSchemas"/> for why they are derived, not
-        /// literal). The <b>below</b>-window case is Q8.2's whole point and had no test: until 2.1 the window's floor
+        /// literal). The <b>below</b>-window case had no test: until 2.1 the window's floor
         /// was 1, so "a manifest too old to run" was unrepresentable here, and the manifests that were too old to run
         /// were the ones being accepted.</summary>
         [Theory]

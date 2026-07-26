@@ -41,7 +41,7 @@ namespace Heddle.Generator.Tests
         /// </summary>
         [Theory]
         [InlineData("X\n   @<<{{inc.heddle}}\n", "X\n")]   // the overshoot: widened start (2) < chain start (5)
-        [InlineData("X\n@<<{{inc.heddle}}\n", "X\n")]      // same shape, no indent — in bounds even before WI1
+        [InlineData("X\n@<<{{inc.heddle}}\n", "X\n")]      // same shape, no indent — in bounds even before the clamp fix
         [InlineData("   @<<{{inc.heddle}}\nTail\n", "Tail\n")]
         public void OvershootingImportChainsShapeWithoutThrowing(string document, string expectedWorking)
         {
@@ -92,7 +92,7 @@ namespace Heddle.Generator.Tests
         /// <summary>
         /// The runtime models an empty default chain as a zero-length <c>DocumentElement</c> with an empty call
         /// chain at document end (<c>HeddleCompiler.CompileBody</c>); the generator used to skip it outright.
-        /// After WI8 both model the same element. This turns red if either side reintroduces the skip.
+        /// Now both model the same element. This turns red if either side reintroduces the skip.
         /// </summary>
         [Fact]
         public void EmptyDefaultChainIsModelledAsAZeroLengthElementAtDocumentEnd()

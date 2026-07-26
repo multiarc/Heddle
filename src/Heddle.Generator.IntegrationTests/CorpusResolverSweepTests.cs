@@ -116,7 +116,7 @@ namespace Heddle.Generator.IntegrationTests
             var bomInSweep = CorpusIntent.BomNames().Where(swept.Contains).ToList();
             Assert.True(bomInSweep.Count > 0,
                 "No BOM-bearing corpus entry is in the file-backed sweep, so PrecompiledGauntlet.HashFile's " +
-                "decode-then-hash BOM path — the shape phase 5's F1 fix was written for — is not exercised by any " +
+                "decode-then-hash BOM path is not exercised by any " +
                 "test. Declared Bom entries: " + string.Join(", ", CorpusIntent.BomNames()));
         }
 

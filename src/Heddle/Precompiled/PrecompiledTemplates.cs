@@ -7,7 +7,7 @@ using Heddle.Data;
 
 namespace Heddle.Precompiled
 {
-    /// <summary>Process-wide precompiled template registry (phase 7 D7). Registration is lock-guarded with
+    /// <summary>Process-wide precompiled template registry. Registration is lock-guarded with
     /// copy-on-write publication; lookups are lock-free volatile reads. A registry <b>miss</b> is never a failure —
     /// the dynamic path proceeds untouched.</summary>
     public static class PrecompiledTemplates

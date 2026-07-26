@@ -45,7 +45,7 @@ namespace Heddle.Tests
             public string Template { get; }
 
             /// <summary>What the full drain reports under the <c>Html</c> profile — the default the engine, the
-            /// build tier and (since the phase 6 second pass) the editor all share.</summary>
+            /// build tier and the editor all share.</summary>
             public string[] Entries { get; }
 
             /// <summary>The same under <c>Text</c>. Differs only for the encoding lint, which is what makes the

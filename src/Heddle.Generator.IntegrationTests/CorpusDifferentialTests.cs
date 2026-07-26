@@ -73,9 +73,8 @@ namespace Heddle.Generator.IntegrationTests
                 CorpusIntent.Describe("The precompiled set", declaredPrecompiled, precompiled));
 
             // Asserted POSITIVELY, not by exclusion, and this is the point of the symmetric difference: a template
-            // JOINING the precompiled set reddens the gate exactly as loudly as one leaving it. Before phase 7 this
-            // bucket was computed into a SortedSet and then never asserted at all — a dead computation. It is empty
-            // today (the phase-7 re-check found every non-precompiling corpus entry is ABSENT from the manifest, not
+            // JOINING the precompiled set reddens the gate exactly as loudly as one leaving it. It is empty
+            // today (every non-precompiling corpus entry is ABSENT from the manifest, not
             // a marker), and an empty set is still a pinned set: the first template that starts emitting a HED7014
             // marker must redden something rather than pass unnoticed.
             var declaredMarkers = CorpusIntent.NamesWithTier(CorpusTier.DegradesToMarker);
@@ -99,7 +98,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.True(new HashSet<string>(onDisk, StringComparer.Ordinal).SetEquals(declared),
                 CorpusIntent.Describe("The corpus intent table", declared, onDisk));
 
-            // The one surviving literal (D5). Deliberate, and not a floor: it makes "this stage added N entries" a
+            // The one surviving literal. Deliberate, and not a floor: it makes "this stage added N entries" a
             // one-line reviewable diff a reviewer can check against the stage's stated scope, so a stage cannot
             // smuggle extra templates in alongside the ones it claims.
             Assert.Equal(CorpusIntent.DeclaredRowCount, CorpusIntent.Rows.Count);

@@ -157,10 +157,10 @@ namespace Heddle.Tests
         [InlineData("  ab z\nX", 2, 2, 2, 2)]        // content on the right — rejected
         [InlineData("A\n  \nB", 2, 0, 2, 3)]         // zero-length probe on a whitespace-only line
         [InlineData("A\nxy\nB", 2, 0, 2, 0)]         // zero-length probe on a line with content
-        [InlineData("ab", 7, 0, 2, 0)]               // start past end — clamped (WI1)
-        [InlineData("  ab", 2, 99, 0, 4)]            // length past end — clamped (WI1)
+        [InlineData("ab", 7, 0, 2, 0)]               // start past end — clamped
+        [InlineData("  ab", 2, 99, 0, 4)]            // length past end — clamped
         [InlineData("", 0, 0, 0, 0)]                 // empty document
-        [InlineData("X\n", 5, 0, 2, 0)]              // start past end, terminator-adjacent — clamped (WI1)
+        [InlineData("X\n", 5, 0, 2, 0)]              // start past end, terminator-adjacent — clamped
         [InlineData("ab\ncd", 0, 2, 0, 3)]           // BOF counts as a left terminator
         public void Pin3_WidenToWholeLine(string document, int start, int length, int expectedStart,
             int expectedLength)
