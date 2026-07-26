@@ -315,29 +315,19 @@ question, the ruling or default, and where it is folded.
   never run on this box; `net6.0` aborts with `MSB4181`. **Drift #9 (`ToString("R")`) can only be
   observed on `net48`** — `"R"` genuinely is shortest-round-trippable on CoreCLR, so the fix's
   *sufficiency* is unverified even though a revert is now caught by 23 cases. The user has said
-  Windows will be checked separately. **Default if unruled:** treat drift #9 as unclosed until that
-  run happens.
-
-## Opened by the phase-8 docs sweep (2026-07-26)
-
-Recorded when [phase 8](phase-8-docs-sweep.md) was authored. None blocks its stages 0–3.
-
+  Windows will be checked separately. **Ruling (user, 2026-07-26): take the default** — drift #9 is formally **unclosed** until the Windows `net48` run. No work on this box can close it; the guard here is a revert-detector (23 cases), not proof of the fix's sufficiency.
 - **Q8.13 — Does the value-path coercion rail need a byte-level fixture?** `native-expressions.md`
   §4 is normative: a boxed non-string reaching the value path is dropped to empty while the render
   path stringifies it. Phase 1's audit found this is pinned as emitted *shape* plus render-path
   behaviour, with **no byte-level fixture on either tier**. Closing it needs new fixture machinery —
   a host extension whose `ProcessData` consumes its body's `Execute` result and returns a
-  non-string. **Default if unruled:** leave the shape pin. The rail is slated to change (Q1.2's
-  joint-land rule means the runtime and generator move together when it does), so building fixture
-  machinery for a contract about to be rewritten is likely wasted — but the gap is real and now
-  recorded rather than implied.
+  non-string. **Ruling (user, 2026-07-26): implement it.** Build the machinery — a host extension whose `ProcessData` consumes its body's `Execute` result and returns a non-string — and pin §4 at byte level on both tiers. The joint-land rule may rewrite the rail later; a byte-level pin is what makes that rewrite safe, not a reason to skip it.
 - **Q8.14 — Should `[EncodeOutput]` + `[NotEncode]` on one extension be an error?**
   `RenderTypeRules.Derive`'s fourth truth-table row ("`[NotEncode]` vetoes") is **unreachable from
   any real extension** — nothing in the tree carries both attributes, so the row is exercised only
   by the truth-table theory. Either the combination is meaningful and deserves a fixture, or it is
   incoherent and should be a registration/build **error on both tiers** under the match principle.
-  **Default if unruled:** leave the row and its theory; it is a silently-`Raw` outcome that harms
-  nobody today.
+  **Ruling (user, 2026-07-26): make it a diagnostic, on two surfaces.** The combination is incoherent, so (a) at the **use site**, a compile-time **error** when a template uses such an extension, and (b) at the extension's **own** project build, a **warning** raised by an analyzer where the extension is declared — so the author who wrote the contradiction sees it in their own build instead of only their consumers seeing it in theirs. Two IDs: `HED7026` (use-site error), `HED7027` (declaration-site analyzer warning). This is Q6.1's early-surfacing principle applied to extension *authorship*, and the program's first declaration-side analyzer — a new surface, to be treated as such rather than as a rule-table tweak.
 - **Q8.15 — Stabilise the two intermittently-failing tests?** Phase 3's audit observed
   `Heddle.Tests.BodyModelRuleTableTests` (a *different* row failing on each of two consecutive
   solution runs; passes in isolation and in its leg alone) and
@@ -346,18 +336,14 @@ Recorded when [phase 8](phase-8-docs-sweep.md) was authored. None blocks its sta
   Both go through the generator, under concurrent multi-TFM execution. This matters beyond tidiness:
   **every mutation result in these audits rested on "this test went red because of my change"**, and
   flakiness poisons that inference — an intermittently-red suite is how a real surviving mutant goes
-  unnoticed. **Default if unruled:** stabilise both before any further mutation work, treating a
-  flaky gate as a broken gate.
+  unnoticed. **Ruling (user, 2026-07-26): root-cause it and decide — do not paper over it.** Identify the actual mechanism (shared mutable state across TFM legs, xUnit parallelism, the process-global precompiled registry, an ordering dependency) rather than adding tolerance. Legitimate outcomes include serialising the affected collection, isolating the shared artifact, or removing a dependency on something genuinely non-deterministic. **A retry attribute is not an acceptable resolution** — it preserves exactly the property that makes a surviving mutant invisible.
 - **Q8.16 — `RegionTests.LocationOffsetOf` returns a hard-coded `0`.** Reported by phase 1's audit,
   not its artifact, so it was left. A helper that reads as a position assertion and asserts nothing
-  is worse than an absent assertion, because it looks like coverage. **Default if unruled:** fix it
-  to compute the real offset, or delete it and the assertions that call it, in the next pass over
-  that suite.
+  is worse than an absent assertion, because it looks like coverage. **Ruling (user, 2026-07-26): fix it.** Compute the real offset, so assertions that read as position assertions actually are ones.
 - **Q8.17 — `SymbolTypeIndex.Cache` is an unbounded static `Dictionary<Compilation, …>`.** Phase 3's
   own artifact, correct and lock-guarded, but it pins every `Compilation` it has ever seen for the
   process lifetime. Fine for a one-shot build; questionable for a long-lived IDE session where the
-  analyzer sees a new `Compilation` per keystroke-batch. **Default if unruled:** leave it, and
-  revisit if editor memory is ever reported as a problem.
+  analyzer sees a new `Compilation` per keystroke-batch. **Ruling (user, 2026-07-26): give the cache a real operational contract**, in three parts: (a) a **clear operation API** rather than a bare static dictionary; (b) **observable capacity/occupancy**; (c) **genuine staleness eviction** — the motivating case is that editing a template and editing it back restores an entry that is *identical yet old*, and retaining it has no value, so **age must participate in eviction, not just identity**. Design the eviction rule explicitly and record it; do not merely cap the size.
 - **Q8.9 — Where does the narrowed authority convention live, and is it retroactive?** Phase 8 D3
   narrows the convention (*"expression semantics defer first to `docs/native-expressions.md`"*) so
   that a normative document outranks the implementations **only for claims that carry a verification
@@ -366,19 +352,11 @@ Recorded when [phase 8](phase-8-docs-sweep.md) was authored. None blocks its sta
   [cross-cutting-decisions.md](../spec/common/cross-cutting-decisions.md) (outliving this program) or
   stays in the program README. The sharper half is retroactivity: several landed phase D-items
   resolved drift *by citing* that document, and narrowing the convention makes those citations weaker
-  evidence than they were when ratified. **Default if unruled:** land it as a new cross-cutting
-  decision with a ledger entry, README bullet becomes a pointer, and treat it as
-  **non-retroactive** — already-ratified D-items stand, and the narrowing governs future alignments
-  only. Re-auditing seven phases' evidence chains costs far more than the anchor defect warrants, and
-  each of those D-items also carries independent source evidence.
+  evidence than they were when ratified. **Ruling (user, 2026-07-26): put it in [cross-cutting-decisions.md](../spec/common/cross-cutting-decisions.md)** — record there whatever matters to the *global* context, and the **documentation mapping** in particular (which document is normative for which claim block, and therefore which claims can be relied on when aligning drift). That mapping is the part a future reader most needs and the part currently spread across a registry column, a plan bullet and an implicit convention. Non-retroactive as proposed: already-ratified D-items stand.
 - **Q8.10 — If phase 7 has not landed when phase 8's stages 0–4 are done, does D9 ship, slip, or
   transcribe?** D9 makes qualifying doc examples executable by **single-sourcing** them from phase 7's
   shared corpus and including them into the page, so the doc and the test read the same bytes. That
-  needs phase 7 stage 0 to exist. **Default if unruled: slip** — D9's work item moves to a phase-7
-  follow-on and phase 8 closes with the omission recorded as not-delivered (the posture phase 2's WI9
-  and phase 6's D5 established). Hand-transcription is explicitly **not** the fallback: it is the
-  defect D9 exists to remove (`ScopeChannelDocExampleTests` is the in-tree example, comment and all),
-  and shipping it would leave a second copy for phase 7 to clean up.
+  needs phase 7 stage 0 to exist. **Ruling (user, 2026-07-26): keep the docs as refined, separate prose — do not single-source them from the corpus.** Documentation has a *different job* from a test fixture: it explains, and byte-identity with a corpus entry is not a property worth buying. So phase 8's D9 is **rejected as designed**: no `@include:` from corpus templates, no corpus intent rows added for doc examples, and phase 8 no longer blocks on phase 7. Doc examples stay hand-written and are kept honest by review, not by transcription-equality. (The `ScopeChannelDocExampleTests` anti-pattern is still an anti-pattern — the answer is to delete the false coupling, not to formalise it.)
 - **Q8.11 — Should the nine `<Version>` elements be centralised as part of the 2.1 bump?** Four of
   the nine sit on non-shipping projects, all nine are overridden by CI from the git tag
   (`.github/workflows/dotnet.yml`), and `Directory.Build.props` excludes `Version` *by an explicit
@@ -386,11 +364,7 @@ Recorded when [phase 8](phase-8-docs-sweep.md) was authored. None blocks its sta
   the duplication class phase 6 spent its WI7 deleting from source. The wider surface matters too:
   13 files must change for 2.0.0→2.1.0 and five more are coupled, the riskiest being
   `editors/vscode/src/extension.ts`'s `PINNED_VERSION`, which pins a NuGet tool version outside any
-  consistency check. **Default if unruled: yes** — hoist one `<VersionPrefix>`, delete the four
-  non-shipping elements, and point phase 8's version-consistency gate at the single property. It is a
-  build change, so it lands inside **Q8.2's** work item (which owns the 2.1 declaration and must ship
-  it atomically with `MinSupportedSchemaVersion = 4`), not inside the docs sweep; if that work item
-  declines it, the gate simply asserts the nine agree.
+  consistency check. **Ruling (user, 2026-07-26): yes — centralise versioning, and additionally sign all of our own assemblies** so the strong-name warnings stop. Two deliverables: one `<VersionPrefix>` (or equivalent) in `Directory.Build.props` replacing the per-project `<Version>` elements, and strong-naming for every first-party assembly currently unsigned (the `CS8002` sources — `Heddle.Demo.Models`, `Heddle.Demo.Wasm`). Third-party unsigned references (Scriban) are not ours to sign; handle those explicitly rather than by blanket suppression, and say which mechanism was used. Both land with Q8.2's 2.1 bump.
 - **Q8.12 — Who fixes the sample that still passes the removed `Name` item metadata?**
   `samples/codegen-t4-successor/CodegenT4Successor.csproj` carries
   `<HeddleTemplate Include="templates\report.heddle" Name="BuildReport" />`, and
@@ -398,6 +372,8 @@ Recorded when [phase 8](phase-8-docs-sweep.md) was authored. None blocks its sta
   under its filename key rather than its intended name — and the sample is golden-checked, so the
   golden currently encodes the wrong outcome. It is a live user-facing artifact, not prose, so phase 8
   records it rather than editing it (its D2 rule: the sweep corrects documents, never code).
-  **Default if unruled:** fold into the post-audit work-item queue beside Q8.1/Q8.5 — a one-line
-  csproj fix plus a golden re-ratification. The only real risk here is forgetting it, which is what
-  this entry prevents.
+  **Ruling (user, 2026-07-26) — with a correction to the record.** The user's instruction: *"I didn't ask to remove `Name`, I only asked to wire `Precompile` true/false."* So **implement optional custom name mapping** via `Name`, and the sample that still passes it becomes correct rather than stale.
+
+  **The record overreached.** Q5.1 above reads *"`Name` removed per the recommendation"*, and phase 5 implemented that removal. Whatever the recommendation said, removal was not the ask — the ask was to wire `Precompile`. `Name` was dead code (declared as `CompilerVisibleItemMetadata`, never read), so removing it changed no behaviour and the sample's `Name="BuildReport"` was always ignored; the defect was that the *feature was never wired*, not that the metadata existed. Restoring it as a real optional key mapping is the smaller, better fix and closes Q8.12 as a side effect.
+
+  Scope: `Name` sets the template's registration key, overriding the path-derived key; it must interact correctly with `TemplateKey` normalisation, the duplicate-key check (`HED7002`), the case-only-twin check (`HED7003`), and the out-of-root warning (`HED7018`). A malformed or colliding `Name` needs a diagnostic — claim `HED7028` if a new one is required rather than reusing `HED7004`.
