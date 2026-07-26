@@ -55,8 +55,8 @@ namespace Heddle.Performance.Runners
             var appDirectory = Directory.GetCurrentDirectory();
             var fileProvider = new PhysicalFileProvider(appDirectory);
             services.AddSingleton<IWebHostEnvironment>(new BenchmarkHostingEnvironment(fileProvider, appDirectory));
-            AssemblyHelper.Configure(typeof(Program).GetTypeInfo().Assembly);
-            AssemblyHelper.Configure(typeof(IHtmlContent).GetTypeInfo().Assembly);
+            AssemblyHelper.Register(typeof(Program).GetTypeInfo().Assembly);
+            AssemblyHelper.Register(typeof(IHtmlContent).GetTypeInfo().Assembly);
         }
 
         private sealed class BenchmarkHostingEnvironment : IWebHostEnvironment

@@ -1,89 +1,96 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using Microsoft.CSharp.RuntimeBinder;
-using Microsoft.Extensions.DependencyModel;
 using Heddle.Helpers;
+#if !NETSTANDARD2_0
+using System.Runtime.Loader;
+#endif
 
 namespace Heddle.Native
 {
+    /// <summary>
+    /// The assembly set engine type resolution and the C# tier see. The engine loads nothing: it observes what the
+    /// host has already loaded from disk into the default context, and takes anything else — in-memory assemblies,
+    /// collectible contexts, extension providers — only by explicit registration.
+    /// </summary>
     internal static class AssemblyHelper
     {
-#if NETSTANDARD2_0
-        private static readonly string NetStandardAssemblyFullName =
-            "netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51";
-#endif
-
-        private static volatile DependencyContext _dependencyContext;
-
-        // No Microsoft.CodeAnalysis types here — metadata references moved to RoslynReferenceProvider
-        // (behind feature switch), so trimmer can drop whole Roslyn graph.
         private static readonly ConcurrentDictionary<AssemblyName, Assembly> AssemblyCache =
             new ConcurrentDictionary<AssemblyName, Assembly>(AssemblyNameEqualityComparer.Instance);
 
-        private static readonly List<Assembly> Assemblies;
-
-        private static void WalkReferenceAssemblies(Assembly current)
-        {
-            if (AssemblyCache.TryAdd(current.GetName(), current))
-            {
-                lock (Assemblies)
-                {
-                    Assemblies.Add(current);
-                    foreach (var assemblyName in current.GetReferencedAssemblies())
-                    {
-                        AssemblyLoadSafe(assemblyName, (dependent) =>
-                        {
-                            if (AssemblyCache.TryAdd(dependent.GetName(), dependent))
-                            {
-                                Assemblies.Add(dependent);
-                                WalkReferenceAssemblies(dependent);
-                            }
-                        });
-                    }
-                }
-            }
-        }
-
-        private static void AssemblyLoadSafe(AssemblyName assemblyName, Action<Assembly> continuation)
-        {
-            try
-            {
-                var asm = Assembly.Load(assemblyName);
-                continuation?.Invoke(asm);
-            }
-            catch (FileNotFoundException)
-            {
-            }
-            catch (ReflectionTypeLoadException)
-            {
-            }
-            catch (FileLoadException)
-            {
-            }
-            catch (BadImageFormatException)
-            {
-            }
-        }
-
-        public static IReadOnlyList<Assembly> GetAssemblies()
-        {
-            return Assemblies;
-        }
+        private static readonly List<Assembly> Assemblies = new List<Assembly>();
 
         private static readonly List<Assembly> ModelAssemblies = new List<Assembly>();
         private static readonly List<AssemblyName> ModelNames = new List<AssemblyName>();
 
         /// <summary>
-        /// Adds the workspace model assemblies to the static assembly list so engine type resolution
-        /// (<see cref="ReflectionHelper.ResolveType(string, ICollection{string})"/>) can see their types, invalidates
-        /// the type caches and reconfigures the name maps. The registration is tracked so
-        /// <see cref="UnregisterModelAssemblies"/> can remove exactly these entries on reload — otherwise the static
-        /// caches would pin a collectible model <c>AssemblyLoadContext</c> forever (the reload-leak root).
+        /// The observed and registered assemblies. Callers that enumerate must hold the returned list's monitor.
+        /// </summary>
+        public static IReadOnlyList<Assembly> GetAssemblies()
+        {
+            ObserveLoadedAssemblies();
+            return Assemblies;
+        }
+
+        /// <summary>
+        /// Adds assemblies the host has loaded into the default context and can name on disk. Assemblies without a
+        /// file location (emitted expression assemblies, streams) and assemblies in a collectible or custom context
+        /// are skipped: observing those would pin a context the host expects to unload, and the engine's own emitted
+        /// assemblies would accumulate in the type maps.
+        /// </summary>
+        private static void ObserveLoadedAssemblies()
+        {
+            var loaded = AppDomain.CurrentDomain.GetAssemblies();
+            lock (Assemblies)
+            {
+                foreach (var assembly in loaded)
+                {
+                    if (!IsObservable(assembly))
+                        continue;
+                    if (AssemblyCache.TryAdd(assembly.GetName(), assembly))
+                        Assemblies.Add(assembly);
+                }
+            }
+        }
+
+        private static bool IsObservable(Assembly assembly)
+        {
+            if (assembly == null || assembly.IsDynamic || string.IsNullOrEmpty(assembly.Location))
+                return false;
+#if !NETSTANDARD2_0
+            var context = AssemblyLoadContext.GetLoadContext(assembly);
+            if (context != null && context != AssemblyLoadContext.Default)
+                return false;
+#endif
+            return true;
+        }
+
+        /// <summary>
+        /// Registers an assembly the engine would not otherwise see, and offers its assembly-level
+        /// <c>[ExportExtensions]</c> to the extension registry. Idempotent per assembly; repeatable.
+        /// </summary>
+        public static void Register(Assembly assembly)
+        {
+            if (assembly == null)
+                throw new ArgumentNullException(nameof(assembly));
+
+            lock (Assemblies)
+            {
+                if (AssemblyCache.TryAdd(assembly.GetName(), assembly))
+                    Assemblies.Add(assembly);
+            }
+
+            Runtime.TemplateFactory.RegisterExportedExtensions(assembly);
+            ReflectionHelper.Reconfigure();
+        }
+
+        /// <summary>
+        /// Adds workspace model assemblies so engine type resolution
+        /// (<see cref="ReflectionHelper.ResolveType(string, ICollection{string})"/>) can see their types. The
+        /// registration is tracked so <see cref="UnregisterModelAssemblies"/> can remove exactly these entries on
+        /// reload — otherwise the static caches would pin a collectible model <c>AssemblyLoadContext</c> forever.
         /// </summary>
         public static void RegisterModelAssemblies(IReadOnlyList<Assembly> assemblies)
         {
@@ -103,18 +110,15 @@ namespace Heddle.Native
                     ModelAssemblies.Add(assembly);
                     ModelNames.Add(name);
                 }
-
-                InvalidateTypeCaches();
             }
 
             ReflectionHelper.Reconfigure();
         }
 
         /// <summary>
-        /// Removes every assembly registered by <see cref="RegisterModelAssemblies"/> from the static lists and cache,
-        /// invalidates the type caches and reconfigures — clearing the engine-side references so a collectible model
-        /// context can actually collect after <c>Unload()</c>. C#-tier metadata references are held only in a weak
-        /// per-assembly cache (RoslynReferenceProvider) and need no eviction here.
+        /// Removes every assembly registered by <see cref="RegisterModelAssemblies"/> and reconfigures, so a
+        /// collectible model context can actually collect after <c>Unload()</c>. C#-tier metadata references are held
+        /// only in a weak per-assembly cache and need no eviction here.
         /// </summary>
         public static void UnregisterModelAssemblies()
         {
@@ -126,255 +130,40 @@ namespace Heddle.Native
                     AssemblyCache.TryRemove(name, out _);
                 ModelAssemblies.Clear();
                 ModelNames.Clear();
-
-                InvalidateTypeCaches();
             }
 
             ReflectionHelper.Reconfigure();
-        }
-
-        private static void InvalidateTypeCaches()
-        {
-            _allTypes = null;
-            _allTypesByCustomAttribute = null;
-            _exportedTypesByCustomAttribute = null;
-            AssemblyExportedTypes.Clear();
-        }
-
-        private static readonly object LockObj = new object();
-
-        public static IReadOnlyList<Type> GetAllTypes()
-        {
-            if (_allTypes == null)
-            {
-                lock (LockObj)
-                {
-                    if (_allTypes == null)
-                    {
-                        var result = new List<Type>();
-
-                        foreach (var assembly in GetAssemblies())
-                        {
-                            try
-                            {
-                                foreach (var type in assembly.GetTypes())
-                                {
-                                    result.Add(type);
-                                    if (type.IsPublic)
-                                    {
-                                        AssemblyExportedTypes.AddOrUpdate(assembly.GetName(), () => new List<Type> {type}, list => { list.Add(type); });
-                                    }
-                                }
-                            }
-                            catch
-                            {
-                                //skip type load exceptions
-                            }
-                        }
-
-                        _allTypes = result;
-                    }
-                }
-            }
-
-            return _allTypes;
-        }
-
-        public static IReadOnlyList<Type> GetAssemblyExportedTypes(AssemblyName assemblyName)
-        {
-            if (_allTypes == null)
-                GetAllTypes();
-
-            return AssemblyExportedTypes.GetValueOrDefault(assemblyName);
-        }
-
-        public static IEnumerable<Type> GetAssemblyExportedTypes()
-        {
-            if (_allTypes == null)
-                GetAllTypes();
-
-            return AssemblyExportedTypes.SelectMany(ex => ex.Value);
-        }
-
-        public static IReadOnlyList<TypeWithCustomAttributeValues> GetTypesByCustomAttribute<T>()
-            where T : Attribute
-        {
-            return GetTypesByCustomAttribute(typeof(T));
-        }
-
-        public static IReadOnlyList<TypeWithCustomAttributeValues> GetTypesByCustomAttribute(Type customAttributeType)
-        {
-            if (_allTypesByCustomAttribute == null)
-            {
-                lock (LockObj)
-                {
-                    if (_allTypesByCustomAttribute == null)
-                    {
-                        var result = new Dictionary<Type, List<TypeWithCustomAttributeValues>>(TypeEqualityComparer.Instance);
-
-                        foreach (var type in GetAllTypes())
-                        {
-                            var customAttributes = type.GetCustomAttributes(true);
-
-                            foreach (var customAttribute in customAttributes.GroupBy(c => c.GetType()))
-                            {
-                                result.AddOrUpdate(customAttribute.Key, () => new List<TypeWithCustomAttributeValues>
-                                {
-                                    new TypeWithCustomAttributeValues
-                                    {
-                                        Type = type,
-                                        AttributeType = customAttribute.Key,
-                                        AttributeValues = customAttribute.ToArray()
-                                    }
-                                }, list =>
-                                {
-                                    list.Add(new TypeWithCustomAttributeValues
-                                    {
-                                        Type = type,
-                                        AttributeType = customAttribute.Key,
-                                        AttributeValues = customAttribute.ToArray()
-                                    });
-                                });
-                            }
-                        }
-
-                        _allTypesByCustomAttribute = result;
-                    }
-                }
-            }
-
-            return _allTypesByCustomAttribute.GetValueOrDefault(customAttributeType);
-        }
-
-        public static IReadOnlyList<TypeWithCustomAttributeValues> GetExportedTypesByCustomAttribute(Type customAttributeType)
-        {
-            if (_exportedTypesByCustomAttribute == null)
-            {
-                lock (LockObj)
-                {
-                    if (_exportedTypesByCustomAttribute == null)
-                    {
-                        var result = new Dictionary<Type, List<TypeWithCustomAttributeValues>>(TypeEqualityComparer.Instance);
-
-                        foreach (var type in GetAssemblyExportedTypes())
-                        {
-                            var customAttributes = type.GetCustomAttributes(true);
-
-                            foreach (var customAttribute in customAttributes.GroupBy(c => c.GetType()))
-                            {
-                                result.AddOrUpdate(customAttribute.Key, () => new List<TypeWithCustomAttributeValues>
-                                {
-                                    new TypeWithCustomAttributeValues
-                                    {
-                                        Type = type,
-                                        AttributeType = customAttribute.Key,
-                                        AttributeValues = customAttribute.ToArray()
-                                    }
-                                }, list =>
-                                {
-                                    list.Add(new TypeWithCustomAttributeValues
-                                    {
-                                        Type = type,
-                                        AttributeType = customAttribute.Key,
-                                        AttributeValues = customAttribute.ToArray()
-                                    });
-                                });
-                            }
-                        }
-
-                        _exportedTypesByCustomAttribute = result;
-                    }
-                }
-            }
-
-            return _exportedTypesByCustomAttribute.GetValueOrDefault(customAttributeType);
-        }
-
-        public class TypeWithCustomAttributeValues
-        {
-            public Type Type { get; set; }
-
-            public object[] AttributeValues { get; set; }
-
-            public Type AttributeType { get; set; }
-        }
-
-        private static volatile List<Type> _allTypes;
-
-        private static volatile Dictionary<Type, List<TypeWithCustomAttributeValues>> _allTypesByCustomAttribute;
-
-        private static volatile Dictionary<Type, List<TypeWithCustomAttributeValues>> _exportedTypesByCustomAttribute;
-
-        private static readonly Dictionary<AssemblyName, List<Type>> AssemblyExportedTypes = new Dictionary<AssemblyName, List<Type>>(AssemblyNameEqualityComparer.Instance);
-
-        private static Assembly _applicationAssembly;
-
-        static AssemblyHelper()
-        {
-            var mainAppAssembly = Assembly.GetEntryAssembly();
-
-            Assemblies = new List<Assembly>();
-
-            if (mainAppAssembly != null)
-            {
-                _applicationAssembly = mainAppAssembly;
-                _dependencyContext = DependencyContext.Load(_applicationAssembly);
-                WalkReferenceAssemblies(_applicationAssembly);
-            }
-
-            WalkReferenceAssemblies(typeof(DynamicAttribute).GetTypeInfo().Assembly);
-#if NETSTANDARD2_0
-            // Required for net48 to work from CodeAnalysis context.
-            AssemblyLoadSafe(new AssemblyName(NetStandardAssemblyFullName), WalkReferenceAssemblies);
-#endif
-            WalkReferenceAssemblies(typeof(CSharpArgumentInfo).GetTypeInfo().Assembly);
-            EnsureApplicationAssembliesWalked();
-        }
-
-        private static bool _configured;
-
-        public static void Configure(Assembly startupAssembly)
-        {
-            if (!_configured)
-            {
-                _dependencyContext = DependencyContext.Load(startupAssembly);
-                _applicationAssembly = startupAssembly;
-                WalkReferenceAssemblies(startupAssembly);
-                EnsureApplicationAssembliesWalked();
-                _configured = true;
-                ReflectionHelper.Reconfigure();
-            }
-        }
-
-        /// <summary>Walks the app's dependency-context default assemblies into the registry (the non-Roslyn half of
-        /// the former <c>GetApplicationReferences</c> warm-up). Roslyn-free, so it stays on the reachable path.</summary>
-        private static void EnsureApplicationAssembliesWalked()
-        {
-            if (_dependencyContext != null && !_configured)
-            {
-                foreach (var name in _dependencyContext.GetDefaultAssemblyNames())
-                {
-                    if (!AssemblyCache.ContainsKey(name))
-                    {
-                        AssemblyLoadSafe(name, WalkReferenceAssemblies);
-                    }
-                }
-            }
         }
 
         /// <summary>Sole Roslyn-typed member; called only from C#-tier compile paths behind
         /// <c>Heddle.CSharpTierEnabled</c> switch, so trimmed publishes with the switch off make this dead.</summary>
         internal static List<Microsoft.CodeAnalysis.MetadataReference> GetApplicationReferences()
         {
-            EnsureApplicationAssembliesWalked();
-            return RoslynReferenceProvider.Build(Assemblies);
+            ObserveLoadedAssemblies();
+            lock (Assemblies)
+            {
+                return RoslynReferenceProvider.Build(Assemblies.ToArray());
+            }
         }
 
-        private static readonly ConcurrentDictionary<string, AssemblyName> AssemblyNameCache = new ConcurrentDictionary<string, AssemblyName>();
+        private static readonly ConcurrentDictionary<string, AssemblyName> AssemblyNameCache =
+            new ConcurrentDictionary<string, AssemblyName>();
 
         public static AssemblyName GetAssemblyName(string assemblyName)
         {
-            return AssemblyNameCache.GetOrAdd(assemblyName, name => GetAssemblies().Where(asm => asm.GetName().Name == assemblyName).Select(asm => asm.GetName()).FirstOrDefault());
+            if (AssemblyNameCache.TryGetValue(assemblyName, out var cached))
+                return cached;
+
+            AssemblyName resolved;
+            var assemblies = GetAssemblies();
+            lock (assemblies)
+            {
+                resolved = assemblies.Select(asm => asm.GetName())
+                    .FirstOrDefault(name => name.Name == assemblyName);
+            }
+
+            // Not cached when unresolved: the assembly may be loaded later.
+            return resolved == null ? null : AssemblyNameCache.GetOrAdd(assemblyName, resolved);
         }
     }
 }

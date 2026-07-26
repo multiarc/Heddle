@@ -15,7 +15,6 @@
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.1.0" />
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="6.0.2" />
     <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="6.0.36" />
     <!-- Phase 8 WI2: pin the (currently transitive) System.Memory dependency explicitly for
          IBufferWriter<byte>, BuffersExtensions.Write, and the span/Encoder APIs the sink adapters use. -->
@@ -26,17 +25,14 @@
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' ">
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.9.2" />
-    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="6.0.2" />
     <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="6.0.36" />
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'net8.0' ">
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="8.0.2" />
     <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.28" />
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'net10.0' ">
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.3.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="10.0.9" />
   </ItemGroup>
 

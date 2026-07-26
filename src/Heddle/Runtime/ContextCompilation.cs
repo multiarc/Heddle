@@ -16,7 +16,6 @@ using Heddle.Native;
 using Heddle.Runtime.Parameters;
 using Heddle.Strings.Core;
 using Platform = Microsoft.CodeAnalysis.Platform;
-using Microsoft.DotNet.PlatformAbstractions;
 using Microsoft.Extensions.FileProviders;
 
 namespace Heddle.Runtime

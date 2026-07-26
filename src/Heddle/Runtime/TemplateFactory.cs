@@ -32,38 +32,51 @@ namespace Heddle.Runtime {
     {
         private static readonly Dictionary<string, Type> Heddle = new Dictionary<string, Type>();
 
+        private static readonly HashSet<Assembly> ExportScanned = new HashSet<Assembly>();
+
         static TemplateFactory()
         {
-            AddExtensions(ObtainExtensions());
+            AddExtensions(LoadBaseExtensions());
         }
 
-        private static IEnumerable<ExtensionType> ObtainExtensions()
+        /// <summary>
+        /// Offers one assembly's assembly-level <c>[ExportExtensions]</c> to the registry. Only assemblies a host
+        /// registers are scanned — an assembly that merely happens to be loaded never takes an extension name.
+        /// Idempotent per assembly.
+        /// </summary>
+        internal static void RegisterExportedExtensions(Assembly assembly)
         {
-            foreach (var baseExtension in LoadBaseExtensions())
-            {
-                yield return baseExtension;
-            }
-            foreach (var assembly in AssemblyHelper.GetAssemblies())
-            {
-                var exportAttributes = assembly.GetCustomAttributes<ExportExtensionsAttribute>();
-                foreach (var exportAttribute in exportAttributes)
-                {
-                    if (exportAttribute != null)
-                    {
-                        if (exportAttribute.All)
-                        {
-                            foreach (var extension in LoadAddExtensionsFromAssembly(assembly))
-                            {
-                                yield return extension;
-                            }
-                            break;
-                        }
+            if (assembly == null)
+                throw new ArgumentNullException(nameof(assembly));
 
-                        foreach (var extension in LoadExtensions(exportAttribute.Extensions))
-                        {
-                            yield return extension;
-                        }
+            lock (ExportScanned)
+            {
+                if (!ExportScanned.Add(assembly))
+                    return;
+            }
+
+            AddExtensions(ExportedExtensions(assembly));
+        }
+
+        private static IEnumerable<ExtensionType> ExportedExtensions(Assembly assembly)
+        {
+            foreach (var exportAttribute in assembly.GetCustomAttributes<ExportExtensionsAttribute>())
+            {
+                if (exportAttribute == null)
+                    continue;
+
+                if (exportAttribute.All)
+                {
+                    foreach (var extension in LoadAddExtensionsFromAssembly(assembly))
+                    {
+                        yield return extension;
                     }
+                    yield break;
+                }
+
+                foreach (var extension in LoadExtensions(exportAttribute.Extensions))
+                {
+                    yield return extension;
                 }
             }
         }

@@ -542,9 +542,23 @@ namespace Heddle
             }
         }
 
+        /// <summary>
+        /// Makes an assembly's types visible to engine type resolution and offers its assembly-level
+        /// <c>[ExportExtensions]</c> to the extension registry. The engine loads nothing on its own, so an assembly
+        /// providing extensions or <c>@model</c> types that the host has not loaded from disk must be registered here.
+        /// Idempotent per assembly; repeatable, so a host may register in whatever order it establishes precedence.
+        /// </summary>
+        /// <exception cref="ArgumentNullException"><paramref name="assembly"/> is null.</exception>
+        /// <exception cref="Exceptions.TemplateOverrideException">Two unrelated types claim one extension name.</exception>
+        public static void Register(Assembly assembly)
+        {
+            AssemblyHelper.Register(assembly);
+        }
+
+        /// <summary>Registers the host's startup assembly. Equivalent to <see cref="Register"/>.</summary>
         public static void Configure(Assembly startupAssembly)
         {
-            AssemblyHelper.Configure(startupAssembly);
+            AssemblyHelper.Register(startupAssembly);
         }
     }
 }

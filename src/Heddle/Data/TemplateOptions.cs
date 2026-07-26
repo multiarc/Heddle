@@ -1,5 +1,4 @@
-﻿using Microsoft.DotNet.PlatformAbstractions;
-using System;
+﻿using System;
 using Heddle.Runtime.Expressions;
 
 namespace Heddle.Data {

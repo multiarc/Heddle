@@ -487,6 +487,7 @@ TYPE Heddle.HeddleTemplate impl Heddle.IHeddleTemplate
   METHOD System.Void Dispose()
   METHOD System.Void Generate(System.Object, System.Buffers.IBufferWriter<System.Byte>, System.Object, System.Object)
   METHOD System.Void Generate(System.Object, System.IO.TextWriter, System.Object, System.Object)
+  METHOD System.Void Register(System.Reflection.Assembly)
   PROP Heddle.Data.HeddleCompileResult CompileResult {get;}
   PROP Heddle.Runtime.CompileContext Context {get;}
   PROP System.Boolean Compiled {get;}
