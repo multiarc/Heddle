@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Status:** **proposed — not started.**
+- **Status:** **implemented (2026-07-26)** — see [Implementation record](#implementation-record-2026-07-26).
 - **Goal (one line):** Bring the prose documentation back into agreement with the code the program
   actually shipped — starting with the documents that **outrank** the code, where a wrong sentence
   is a latent bug rather than a nuisance — and leave behind gates so the agreement is mechanical
@@ -971,3 +971,75 @@ latent-bug fix is never reviewed in the same diff as a wording improvement.**
   and its ledger entry; this phase's README row and `records.md` entries; the not-delivered items (if
   any) recorded explicitly rather than dropped. **Done when** criterion 12 holds and every criterion
   above is either met or recorded as not-delivered with its reason.
+
+## Implementation record (2026-07-26)
+
+**Stage 0 — the documents that outrank code.** WI1–WI3 landed. All four false normative claims in
+`native-expressions.md` are corrected against source, each with the deciding predicate named and, where
+"fixing the code to match" would have widened behaviour, an explicit *do not* with the reason.
+The anchor rehearsal was executed rather than argued: with the `IsReferenceish` guard replaced by
+`if (true)`, exactly one test reddened, so the cross-tier pin criterion 2 asked for already existed and
+the trap was in the prose alone. The seven imprecise claims are dispositioned — the built-in numeric
+table (`floor`/`ceil`/`round` are `double`/`decimal` only, and an `int` argument is `HED1013`), the
+"never throw" claim against `range`'s sanctioned throw, the overload-ranking paragraph (now carrying
+phase 4's measurement: 0 of 480 winners change, 82 become bindable, 62 stay ambiguous), the
+registry-freeze trigger (a *native expression* compile, not a template compile), the relational row's
+`null`-literal gap, and the sandbox enumeration's missing array-index arm. `precompilation.md`'s two
+self-contradicted absolutes are scoped to what its own tables say. The circular citation between
+`MemberFacts.cs` and the sandbox section was already broken by the comment sweep.
+
+**Stage 1 — the convention and the marker.** WI4–WI5. D10 already carried the mapping and the
+condition; what landed here is the [E10](../spec/records.md#cross-spec-amendments-ledger) ledger entry
+with WI1–WI2 as its evidence, the program README bullet reduced to a pointer, and verification footers
+on the two stage-0 documents naming commit, date, and which claims each gate covers.
+
+**Stage 2 — the gates. Every one demonstrated red.** WI6–WI9.
+
+| Gate | Test | Found on its first run |
+| --- | --- | --- |
+| Diagnostics documentation | `DiagnosticIdTests.EveryShippedIdIsNamedInAPublishedDocument` | 16 of 85 ids named in no published page; then `HED3005`/`HED4002` absent from the document the registry links as their owner |
+| Options and defaults | `WorkspaceOptionParityTests` (two new legs) | nothing — the surface was already correct, and is now held |
+| Public members | `PublicApiDocMentionTests` | `architecture.md` naming `CompileScope.Compile()`, which does not exist (the pass is an internal extension method) |
+| Links and citations | `DocumentationLinkTests` | a benchmark report linking a moved `GoldenCorpus`, and — through it — `.gitattributes` pinning the same dead path, so a `-text` pin its own comment calls load-bearing had applied to nothing since the move; plus one beyond-EOF citation |
+
+**Stage 3 — class M.** WI10–WI12. `csharp-api.md`'s `FullPath` description (wrong on both clauses
+after the property was fixed) and `custom-extensions.md`'s "nothing extra to implement" about
+directive-line trimming (contradicted 450 lines later by `[ZeroOutput]`) are corrected. All 85 shipped
+diagnostic ids are now documented, `native-expressions.md` gaining a full table for its
+registry-owned block. WI12's option and editor prose needed no rewrite — WI7's gate verified it and
+now holds it.
+
+**Stage 4 — the 2.1 documentation.** WI13. The CHANGELOG entry carries the window's two newest
+breaks — assembly auto-loading removal and `PrecompiledFallbackEvent.Key`'s removal — each with what
+to call instead and what happens if you do not, plus `Register` and `ValidateAll` under *Added*. Its
+header points at the as-shipped record, 2.1 being a ratified window rather than a set of individually
+dispositioned items. The version gate already covered the shipping versions, both `package.json`s,
+`PINNED_VERSION` and the CHANGELOG heading.
+
+**Stage 5 — the standing rule and bookkeeping.** WI14–WI16. `ScopeChannelDocExampleTests` no longer
+claims to hold a document's bytes. The 1.x-manifest rejection claim is retracted in both documents
+that made it — `records.md` by an appended note, being append-only, the CHANGELOG in place.
+Testing-standards gains *Documentation currency*
+([E11](../spec/records.md#cross-spec-amendments-ledger)). WI17 landed earlier, with Q8.37, because it
+describes that work's API.
+
+### Corrections to this plan, made in place
+
+- **"830 line citations, 86 beyond EOF."** Re-measured at execution time: the tree carries **20**
+  `name:line` citations in `docs/generator_plan/**` and none elsewhere, of which **one** pointed past
+  EOF. The intervening citation sweep removed the rest. This is why WI9's report-only mode over the
+  plan and research trees was **not** built — a report of one item that nobody reads is worse than a
+  failing gate, so the gate simply covers every tree.
+- **"20 of 82 shipped ids are named in no user-facing document."** 16 of 85 at execution time.
+- **The undocumented-ID validation scenario's premise was half wrong**, and is corrected where it is
+  written: deleting `HED5019` from `language-reference.md` correctly does *not* redden, because the
+  registry links that id no owning document and it is named in two other pages.
+
+### Not delivered
+
+- **`HED7025`'s documentation row** — the id is claimed in the registry and absent from code, so there
+  is no shipped behaviour to describe. It documents itself when the owning work item lands it.
+- **A named-exemption set for the diagnostics gate.** Deliberately absent: an empty exemption set is a
+  concept with no members, and whoever finds an id that genuinely cannot be documented adds the
+  mechanism together with the reason. The same reasoning that populated the marker tier rather than
+  pinning it empty.
