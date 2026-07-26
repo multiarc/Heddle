@@ -22,18 +22,25 @@ The concrete engine entry point ([HeddleTemplate.cs](../src/Heddle/HeddleTemplat
 `sealed` and implements `IDisposable`. A single instance is compiled once and can be rendered
 many times, including concurrently.
 
-### Registration: `Configure`
+### Registration: `Register`
 
 ```csharp
-public static void Configure(Assembly startupAssembly);
+public static void Register(Assembly assembly);
+public static void Configure(Assembly startupAssembly);   // the same call, older name
 ```
 
-Scans `startupAssembly` (and its references) for extensions and registers them. Call once at
-startup, passing your application's assembly so custom extensions are discovered. The built‑in
-extensions are registered automatically.
+Reads `assembly`'s `[ExportExtensions]` and registers what it names, and makes its types visible to
+`@model`/type resolution. The engine loads and scans nothing on its own, so registration is **per
+assembly and not transitive** — call it for your application assembly and for every extension library
+you use. Built‑in extensions are always present.
+
+Idempotent per assembly and repeatable, so registration order is the host's to choose. Throws
+`ArgumentNullException` on null, and `TemplateOverrideException` when two unrelated types claim one
+extension name.
 
 ```csharp
-HeddleTemplate.Configure(typeof(Program).GetTypeInfo().Assembly);
+HeddleTemplate.Register(typeof(Program).GetTypeInfo().Assembly);
+HeddleTemplate.Register(typeof(SomeLibrary.WidgetExtension).GetTypeInfo().Assembly);
 ```
 
 ### Constructors
@@ -430,7 +437,7 @@ using Heddle;
 using Heddle.Data;
 using Heddle.Runtime;   // CompileContext
 
-HeddleTemplate.Configure(typeof(Program).GetTypeInfo().Assembly);
+HeddleTemplate.Register(typeof(Program).GetTypeInfo().Assembly);
 
 var options = new TemplateOptions("home")
 {

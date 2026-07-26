@@ -199,8 +199,8 @@ Anchored in the
   they affect (`language-reference.md`, `custom-extensions.md`,
   `built-in-extensions.md`, `csharp-api.md` — whichever apply).
 - Options enums follow the existing shape (`OutputProfile`-style simple enums);
-  extension points follow the registry pattern (`[ExtensionName]`, `Configure`) rather
-  than inventing parallel mechanisms.
+  extension points follow the registry pattern (`[ExtensionName]`, `HeddleTemplate.Register`)
+  rather than inventing parallel mechanisms.
 - Thread safety contract: extension instances are shared across concurrent renders —
   **no mutable per-render state on extension instances**; per-render state lives in the
   `Scope` lineage. Every spec that adds state names where it lives and why that is safe.

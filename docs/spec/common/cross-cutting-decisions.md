@@ -212,18 +212,21 @@ unrelated assembly loaded is reported once through `OnFallback` (`HED7104`) and 
 `PrecompiledMismatchPolicy.Strict` deliberately does not extend here, because `Strict`'s subject is
 degradation to the dynamic tier and no degradation occurs.
 
-**Known violation, recorded rather than assumed away.** `AssemblyHelper`'s **static constructor**
-force-loads the entry assembly's whole transitive `GetReferencedAssemblies()` closure (loader
-failures swallowed) plus every `DependencyContext.GetDefaultAssemblyNames()` entry, and
-`TemplateFactory`'s static constructor scans that set for `[ExportExtensions]`. The precompiled path
-reaches both through gauntlet step 2 (`PrecompiledTemplates.TryResolve` → `CheckExtensions` →
-`TemplateFactory.TryGetExtensionType`), so effectively every precompiled template triggers it. Because
-the scanned set decides extension **name ownership**, an assembly the integration layer never chose to
-load can win a name or throw `TemplateOverrideException` out of a type initializer. Ruled for removal
-in 2.1, together with the explicit registration API that replaces it — recorded as **Q8.37** in the
-[open-questions register](../../generator_plan/open-questions.md), whose window disposition is
-blocked on **Q8.39**. `PrecompiledTemplates.Register` is already clean: explicit, one assembly, no
-scan-all overload, and there is no module initializer anywhere in `src/`.
+**How the engine obtains its assembly set.** Two sources, and no third:
+
+- **Observation.** Assemblies the host has already loaded **from disk into the default load context**
+  are visible for type resolution and C#-tier metadata. Observing decides nothing — an assembly is
+  there or it is not. Excluded, deliberately: assemblies with no file location (the engine's own
+  emitted expression assemblies, anything loaded from a stream) and assemblies in a collectible or
+  custom context, because observing those would pin a context the host expects to unload.
+- **Registration.** `HeddleTemplate.Register(assembly)` for anything else, and it is the **only**
+  source of `[ExportExtensions]`: extension **name ownership** is decided exclusively by assemblies a
+  host names. A loaded-but-unregistered assembly cannot take a name, so it cannot collide with an
+  unrelated claimant and throw `TemplateOverrideException` out of a type initializer.
+
+`AssemblyHelper` declares no static constructor and calls no `Assembly.Load`; the removal of the walk
+that did both is recorded as [2.1 window item 10](../records.md#the-21-breaking-window--as-shipped-record).
+`PrecompiledTemplates.Register` has the same shape, and there is no module initializer anywhere in `src/`.
 
 ## Claimed diagnostic IDs (registry)
 

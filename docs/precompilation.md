@@ -114,8 +114,8 @@ instead. Registration is repeatable and idempotent per assembly:
 using Heddle.Precompiled;
 
 PrecompiledTemplates.Register(typeof(MyApp.Program).Assembly);   // once per assembly
-// Register(assembly) is the only registration path — HeddleTemplate.Configure(assembly)
-// discovers extensions but does NOT register precompiled templates.
+// Register(assembly) is the only registration path. HeddleTemplate.Register(assembly) is the
+// separate call for extensions, and does NOT register precompiled templates.
 
 // Discovery is a first-class, public API — keys, model types, fingerprints, capabilities:
 foreach (var entry in PrecompiledTemplates.Entries)
@@ -359,6 +359,37 @@ security or logic patch reaches precompiled templates by updating the package. S
 (parameterless ctor; no reliance on runtime registry mutation; a `InitStart`/`CompleteInit`
 override is refused as `HED7015` — **except** for a `[BranchRole]` custom branch extension, whose
 `InitStart` override is its canonical shape and instead degrades quietly to the dynamic tier).
+
+### Startup order: a suggestion, not a rule
+
+The build tier binds every extension the compilation could see; the run tier holds only the ones you
+registered. So a precompiled template survives gauntlet step 2 exactly when the extension assemblies it
+was built against are registered **before** the template renders — and which assemblies those are, and
+when they load, is the host's decision. The engine does not make it: it will not load an assembly to
+satisfy a binding, and it will not defer a render waiting for one. It reports.
+
+The pattern that keeps the reporting out of the request path:
+
+```csharp
+// 1. Extensions first — every assembly that exports any, in the precedence order you want.
+HeddleTemplate.Register(typeof(Program).Assembly);
+HeddleTemplate.Register(typeof(SomeLibrary.WidgetExtension).Assembly);
+
+// 2. Functions next, into the registry the request options will carry.
+options.Functions.RegisterFrom(typeof(Program).Assembly);
+
+// 3. Then the precompiled manifests.
+PrecompiledTemplates.Register(typeof(Program).Assembly);
+
+// 4. Then prove it, before serving a request.
+var report = PrecompiledTemplates.ValidateAll(options);
+if (!report.PassedForValidatedOptions)
+    throw new InvalidOperationException(report.ToString());   // fail the deployment, not the request
+```
+
+Registering an extension assembly *after* a template has already rendered is legal and takes effect,
+but anything rendered in between degraded to the dynamic tier and said so through `OnFallback`. Step 4
+is what turns "said so, per request, in production" into "failed at startup, once".
 
 ---
 

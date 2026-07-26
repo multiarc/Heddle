@@ -204,10 +204,24 @@ fire. Findings that survived orchestrator verification, most severe first:
    characterization pin in `GeneratorNumericTableAdoptionTests`; the plan's false "the lockstep test
    covers both copies" parenthetical is corrected in place). Mutating `ExtensionRegistrationRules`
    reddens one generator test and zero runtime tests. The two remaining ones read as fixed and are not.
-3. **`[ExportExtensions]` is unmodelled by the generator.** The runtime only scans assemblies
+3. ~~**`[ExportExtensions]` is unmodelled by the generator.** The runtime only scans assemblies
    carrying the attribute; the generator scans all referenced assemblies, so it precompiles
-   extensions the runtime never registers → permanent silent per-request fallback. A live instance
-   of the failure mode the program exists to eliminate.
+   extensions the runtime never registers → permanent silent per-request fallback.~~
+   (**closed 2026-07-26**, in two parts.) The generator half was already wrong when this was written:
+   Q8.4 aligned the generator to the runtime's rule, so `ExtensionBinder` reads
+   `ExportExtensionsAttribute` and registers only what an `[assembly: ExportExtensions(...)]`
+   occurrence names — pinned by `ExportExtensionsScopeTests`. What remained was the *set* the two
+   tiers scan, and Q8.37 changed the runtime's: it is now the assemblies a host **registers**, not
+   the assemblies that happen to be loaded. The residue is therefore **irreducible and deliberate**,
+   not drift: the generator binds what the compilation references, because that is the only fact a
+   build has, and the host's registration set is a run-time fact the build must not bake in
+   (aligning the generator to a *host-chosen set* is exactly what
+   [D11](../spec/common/cross-cutting-decisions.md#d11--the-engine-does-not-decide-which-assemblies-are-loaded)
+   forbids). The two are reconciled per request by gauntlet step 2, which resolves each bound name
+   against the live registry and reports `ExtensionBindingMismatch` with
+   `live=<unresolved>` when the owning assembly was never registered. So the outcome is a
+   *reported* per-request fallback, not a silent one — and making that class of mismatch refuse to
+   degrade under the default policy is already a [next-window candidate](../spec/common/breaking-windows.md#next-window-candidate-register).
 4. ~~**`StripGlobal`'s AQN path hard-codes `assembly: "Heddle"`**, so a user-defined nested or
    out-of-engine branch-role extension emits `Ns.Outer.Inner, Heddle` where the gauntlet computes
    `Ns.Outer+Inner, <realAsm>` — drift #6's shape surviving on a path no fixture exercises.~~

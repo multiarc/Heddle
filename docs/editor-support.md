@@ -121,8 +121,9 @@ runs a **one‑shot scan** of the configured `assemblies`:
   "unknown function"), complete with real signatures, and participate in expression typing.
 
 For runtime parity, call
-[`FunctionRegistry.RegisterFrom(assembly)`](custom-extensions.md#declaratively-exporting-functions)
-on the same assemblies in your host startup — the editor and the host then see one set.
+[`options.Functions.RegisterFrom(assembly)`](custom-extensions.md#declaratively-exporting-functions)
+and [`HeddleTemplate.Register(assembly)`](csharp-api.md#registration-register) on the same assemblies
+in your host startup — the editor and the host then see one set.
 
 **The scan is one‑shot per server process.** A new export, a changed extension body, or an
 `assemblies` change after load requires a **server restart** (VS Code: *Heddle: Restart Language
