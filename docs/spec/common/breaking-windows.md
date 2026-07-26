@@ -57,6 +57,33 @@ unrecorded breaking change.
   `HED7023` for the same input, and the two-driver corpus
   (`TypeSpellingLockstepTests` / `TypeSpellingSymbolLockstepTests`) pins the agreement.
 
+- **The generator stops precompiling extensions the host never exported** (phase 3, Q8.4;
+  `ExtensionBinder.CollectExported`, 2026-07-26). The runtime registers extensions from the engine
+  assembly and, beyond it, only what an `[assembly: ExportExtensions(...)]` attribute names; the
+  generator scanned every referenced assembly. **Judgement: defect repair, not window-gated**, on
+  three grounds. (a) No template that renders today stops rendering: a bound-but-unexported
+  extension produced a manifest row naming an extension the live registry cannot resolve, so the
+  gauntlet already rejected the entry on *every* request and the dynamic tier already served it. The
+  change removes dead precompiled output and a permanent per-request fallback; it does not change a
+  rendered byte. (b) Where the build verdict *does* change — a **bodied** call to an unexported name
+  is now `HED7006` at Error, where the build previously succeeded — the template was already broken
+  at run time: `TemplateFactory.Create` raises `HED0002` for exactly that name. Converting a
+  first-render failure into a build failure is the match principle, and is the same argument phase 3
+  made for the false-`HED7006` fix in the opposite direction. No *correct* build regresses. (c) A
+  **bodiless** call degrades quietly instead of precompiling, which is a tier change with identical
+  bytes. Hosts that intended those extensions to be live were always required to export them; the
+  fix makes the build say so.
+
+- **Type-spelling parity from folding the runtime onto the shared parser** (phase 3, Q8.3;
+  `ReflectionHelper.ResolveType` / `TypeSpelling`, 2026-07-26). Two spellings changed, both
+  **widenings**, neither window-gated. (a) `(int)` — a one-element tuple — now resolves on the
+  *build* tier as `ValueTuple<int>`, which the run tier has always resolved; the shared parser's
+  two-element floor was a refusal the extraction itself introduced, so this is drift repair toward
+  the runtime. (b) A whitespace-padded top-level spelling (`" int "`) now resolves on the *run* tier
+  where its own dispatch used to throw, because the shared parser trims every recursion. No resolved
+  type changes on either tier, and depending on `ResolveType` *throwing* for padded input is not a
+  dependency the contract offers.
+
 ## Next-window candidate register
 
 Nothing here is ratified. Rows are appended as owning specs record them and removed only
