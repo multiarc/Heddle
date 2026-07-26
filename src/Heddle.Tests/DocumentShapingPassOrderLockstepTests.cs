@@ -74,5 +74,42 @@ namespace Heddle.Tests
 
             Assert.Equal(ExpectedOrder, SharedPassCalls(shape));
         }
+
+        /// <summary>
+        /// <para>Pin 10's missing half (added by the phase-2 restoration audit, 2026-07-26). WI8's success criterion
+        /// is that the empty-default-chain pin "turns red if <b>either</b> side reintroduces the skip" (D10/Q2.1),
+        /// but the only pin that landed —
+        /// <c>Heddle.Generator.Tests.DocumentShaperAdapterTests.EmptyDefaultChainIsModelledAsAZeroLengthElementAtDocumentEnd</c>
+        /// — drives the generator's shaper only, so a runtime-side regression was invisible to it.</para>
+        /// <para>The runtime half is not reachable as a machine-level vector: <c>CompileBody</c>'s default-chain
+        /// element is minted inside the item-compile loop, gated on the chain's own compiled
+        /// <c>returnTypeChainedPrevious</c>. So it is pinned the way this file already pins the pass order — over
+        /// the driver bodies: both must construct the zero-length element at document end, and neither may carry the
+        /// count-based skip the alignment removed.</para>
+        /// </summary>
+        [Fact]
+        public void NeitherDriverSkipsAnEmptyDefaultChain()
+        {
+            var root = RepoRoot();
+            var compileBody = MethodBody(Path.Combine(root, "Heddle", "Runtime", "HeddleCompiler.cs"),
+                "foreach (var extensions in parseContext.DefaultChains)", "return new RuntimeDocument(");
+            var shape = MethodBody(Path.Combine(root, "Heddle.Generator", "Emit", "DocumentShaper.cs"),
+                "foreach (var chain in parseContext.DefaultChains)", "return new Result(");
+
+            foreach (var pair in new[] { ("runtime CompileBody", compileBody), ("generator Shape", shape) })
+            {
+                // The zero-length element at document end — the shape both tiers model (bytes unaffected; the
+                // element renders nothing, but it defeats RuntimeDocument's single-element fast path identically).
+                Assert.Contains("BlockPosition(", pair.Item2);
+                Assert.Contains(", 0)", pair.Item2);
+                Assert.Matches(@"new BlockPosition\(\s*\w+(\.\w+)*(\.Length)?,\s*0\s*\)", pair.Item2);
+
+                // ...and no reintroduced skip. `Chain == null || Chain.Count == 0` on the default-chain loop is
+                // exactly the divergence Q2.1 ruled out; either side growing it back is red here.
+                Assert.DoesNotMatch(@"Chain\s*==\s*null", pair.Item2);
+                Assert.DoesNotMatch(@"Chain\.Count\s*==\s*0", pair.Item2);
+                Assert.DoesNotMatch(@"Count\s*==\s*0", pair.Item2);
+            }
+        }
     }
 }

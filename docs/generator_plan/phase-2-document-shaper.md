@@ -3,6 +3,8 @@
 ## Header
 
 - **Status:** implemented (2026-07-25) — WI1–WI9 landed; see [Implementation record](#implementation-record).
+  Re-audited 2026-07-26 — no restoration damage; three pin gaps closed, WI5's benchmark clause
+  recorded as undelivered. See [Restoration audit](#restoration-audit-2026-07-26).
 - **Goal (one line):** One implementation of every byte-affecting document-shaping machine —
   `WidenToWholeLine` (drift fixed first, shippable alone), the five position-rebasing passes, the
   branch-set strip machine, generic piece slicing, and the region-fill matching rule — shared
@@ -525,6 +527,12 @@ byte-identically; D11 gate green.
 *Done when:* generator snapshots byte-identical (the `P0..Pn` constants are the proof); full D11
 gate green; render benchmarks show no allocation increase (the walk feeds compiled structures, not
 the render loop, but the gate is cheap and the claim should be proven, not argued).
+> **Not delivered as written** (restoration audit, 2026-07-26). The snapshot and D11 clauses are
+> green; the allocation clause was **never measured**, and the Implementation record originally
+> claimed the WI9 gate covered it while disclosing only WI9's own unmeasured benchmark. See
+> [WI5 — the unmeasured allocation clause](#wi5--the-unmeasured-allocation-clause) for the honest
+> disposition and the argument that stands in its place. The clause said "proven, not argued"; what
+> exists is an argument.
 
 **WI6 — `Language/RegionFillResolver.cs`; runtime adoption.**
 *Files:* new `src/Heddle/Language/RegionFillResolver.cs`;
@@ -838,3 +846,180 @@ not attempted, per the standing note that local wall-clock comparisons on this w
 trustworthy evidence. The D3 revisit trigger therefore stays unarmed; if a future paired run on
 benchmark hardware shows a compile-path regression beyond BenchmarkDotNet's reported error, that
 trigger is the recorded response.
+
+---
+
+## Restoration audit (2026-07-26)
+
+Phase 2 re-audited after the program landed, under the same charter the other phases used: the
+reviewer window that destroyed landed work in `PrecompiledGauntlet.cs` also mutation-tested
+`src/Heddle/Language/DocumentShaping.cs` while the tree was uncommitted, so every claim in the
+Implementation record was re-walked against source and the pins were fired rather than trusted.
+
+### Restoration: nothing was lost
+
+`git diff 6fa117e -- src/Heddle/Language/DocumentShaping.cs` compared method-by-method against the
+pre-program runtime bodies in `HeddleCompiler.cs@6fa117e`. All seven extracted machines are present
+and **byte-faithful to the runtime original**, the only differences being the two the extraction
+licensed: `ExStringBuilder.ApplyRemove`/`Replace` → the local safe pair (D3), and inline rationale
+comments promoted to doc comments. Specifically:
+
+| Machine | Runtime original (`@6fa117e`) | Shared | Verdict |
+| --- | --- | --- | --- |
+| `WidenToWholeLine` (incl. the clamp and its comment) | `:443-472` | `:59-88` | identical, character for character |
+| `ShiftBySkippedTokens` | `:655-725` | `:96-166` | identical |
+| `TrimHiddenRemnantLines` | `:484-517` | `:178-211` | identical modulo callee |
+| `ShiftListsAfter` (+ the bug-fix rationale, kept once) | `:529-567` | `:223-261` | identical |
+| `RemoveDefinitions` | `:727-764` | `:267-300` | identical modulo callee |
+| `ReplaceRawOutput` | `:634-653` | `:304-323` | identical modulo callee |
+| `RemoveEmptyItem` | `:410-431` | `:330-347` | identical modulo callee |
+| `CollectGap` / `ApplyGaps` | `:361-385` / `:387-408` | `:449-465` / `:467-488` | identical modulo callee; HED3001 correctly lifted to `OnGapCollected` |
+| strip state machine | `ProcessBranchSets` `:210-299` | `:398-447` | identical transitions; diagnostics lifted with order preserved |
+
+The **clamp is intact** — all three sub-cases (the `[0, Length]` start clamp, the `endIndex` clamps,
+`right >= document.Length`, and the clamped-span returns on both not-whole-line exits) — and the
+runtime's diagnostic order within one block (HED3005 → HED3001 → HED3002/3/4) is preserved by the
+three-event observer: `BranchSetDiagnostics.OnClassified` fires HED3005 before the switch collects
+the gap, `OnBlockCompleted` runs the orphan machine after it, and HED3004 still precedes HED3003
+inside the `Terminal` arm. `RegionFillResolver`'s runtime driver reproduces the pre-extraction
+reactions exactly, including lazy layout resolution and `PrivateOverrideReported` once-only.
+
+Per-WI, against the Implementation record: WI1 (clamp + both fixtures + `.gitattributes` LF pin) —
+verified; WI2 (twins, identical vectors, `gen` extern alias) — verified, twins byte-identical modulo
+the header; WI3 (shared file, no duplicate bodies, pass-order lockstep) — verified, neither
+`DocumentShaper.cs` (119 lines) nor `HeddleCompiler.cs` retains a pass body; WI4 (`BranchKind`,
+observer, `Participant` on both classifiers, `hasScopeChannel` seam) — verified; WI5 (`SlicePieces<T>`
+on both walks) — code verified, benchmark clause **not delivered**, below; WI6 (`RegionFillResolver`
++ runtime driver) — verified (note: `RegionFillResolverTests` was later amended by phase 1's Q1.3
+ruling, which is recorded in that file's own header); WI7 (zero-output lockstep + mirror) — verified;
+WI8 (`DocumentsCache.cs` gone, no default-chain skip) — verified; WI9 — see below.
+
+### Mutation results: five pins fired, seven mutants survived
+
+Each mutant applied to `DocumentShaping.cs`, built, run against **both** characterization twins, then
+reverted with `git diff` against HEAD checked clean.
+
+| Mutation | Result |
+| --- | --- |
+| Clamp deleted entirely | **red** — 3 pin-3 rows + the generator's `OvershootingImportChainsShapeWithoutThrowing` |
+| Clamped-span exits → original block (sub-case 3) | **red** — pin 3, both twins |
+| `right >= Length` → `== Length` (sub-case 2) | **survives — provably equivalent.** Post-clamp `right` never exceeds `document.Length` (it starts at the clamped `endIndex` and the scan loop guards on `right < Length`), so the two forms are extensionally equal. This is not a pin gap; it is the plan's own Back-compat analysis, confirmed by mutation. The `>=` stays as the defensive form the runtime shipped. |
+| `RemoveDefinitions` chain shift `>=` → `>` | **red** — pin 4, both twins |
+| `RemoveEmptyItem` shift `>` → `>=` | **red** — pin 6, both twins |
+| `ReplaceRawOutput` shift `>` → `>=` | **red** — pin 5, both twins |
+| `ShiftListsAfter` definitions-enclosing arm deleted (the documented historical bug) | **red** — pin 2, both twins |
+| Six boundary comparisons in `ShiftBySkippedTokens`' three-way classification | **survived** — fixed, below |
+| `ShiftListsAfter` chain-enclosing arm's two boundaries | **survived** — fixed, below |
+| `TrimHiddenRemnantLines`' already-removed-span guard deleted | **survived** — fixed, below |
+
+### Pins strengthened
+
+Three real gaps, all in phase 2's own WI2 suite, all fixed in both twins (vectors and literals kept
+identical, expectations hand-derived from the runtime predicates and *not* regenerated):
+
+1. **Pin 1's classification boundaries were unpinned.** The captured vector exercises the three-way
+   classification but never at an equality: no block in it starts exactly at a skipped token's start,
+   ends exactly at its end, or ends exactly at its start. Six single-comparison mutants survived it.
+   New `Pin1_ShiftBySkippedTokens_ClassificationBoundaries` — one row per boundary, over all three
+   offset-keyed lists.
+2. **Pin 2's "already-removed-span skip" row did not constrain the guard.** In the committed vector
+   the second probe lands on a line that has regained content and declines on its own, so deleting
+   the guard changed nothing. New row uses two hidden tokens mapping to the *same* clean start over a
+   run of three blank lines, where the unguarded second probe eats a second line. Also new:
+   `Pin2_ShiftListsAfter_EnclosingAndShiftBoundaries`, which pins the chain-list enclosing arm (the
+   definitions arm was pinned; the chain arm was not) at both boundaries at once.
+3. **Pin 7** — see the verdict below.
+
+### Pin 7's verdict: it could not constrain what it was written for, and now constrains what it can
+
+Pin 7 is the one machine with a real structural divergence (the generator's private enum had four
+kinds to the runtime's five, so a `[ScopeChannel]` non-role extension fell into `default:` instead of
+`Participant`) and the one whose literals were **hand-derived after the move** rather than captured
+pre-swap. The audit's finding is that its `Participant` row could not have caught the divergence it
+was written for, and neither can any strip-level vector: inside the strip machine `Participant` and
+`Other` both do exactly `stripPrev = null`, so the two arms are *extensionally equal* and no
+assertion over the working document or the rebased positions can separate them. The row is a true
+statement about a shape that is byte-equal either way — which is precisely what the plan's own risk
+row said ("it cannot today — `Participant` and the previous `default:` both disarm"), but the pin was
+recorded as though it discharged that risk.
+
+What the collapse actually cost is one step removed from the strip: the runtime maps `Participant` →
+`OrphanState.Unknown` where `Other` leaves the state alone (suppressing an orphan HED3003), and that
+reaches the driver only as the **kind the observer reports**. So the constraint was moved to where it
+exists:
+
+- `Pin7_BranchKindHasFiveKindsDefinedOnce` — the enum's arity and names, in the modelled-as-data
+  style `RegionFillResolverTests.EveryVerdictHasAReactionRow` already uses. A backslide to four kinds
+  is a red build, not a silent byte-equal collapse.
+- `Pin7_ObserverEventStreamAndOrdering` — a recording observer over three vectors, asserting the exact
+  event sequence: that a `[ScopeChannel]` non-role chain is reported **`Participant`, not `Other`**,
+  that no gap is collected across it, and that within one block the events arrive
+  classified → gap → completed, which is the ordering every re-hosted HED300x diagnostic depends on
+  and which nothing pinned at machine granularity before. `BranchSetCompilerTests.C18` remains the
+  template-granularity pin for the runtime consequence.
+
+Honest residue: the *strip behaviour* of `Participant` is still unpinnable, because it is identical to
+`Other`. That is now stated in the test's own doc comment instead of being implied away.
+
+### Q2.1's pin: half of it was missing
+
+`DocumentShaperAdapterTests.EmptyDefaultChainIsModelledAsAZeroLengthElementAtDocumentEnd` does assert
+the **matched** behaviour on the generator side and does go red if the generator reintroduces the skip
+(`Assert.Single` fails the moment the element is dropped). But WI8's success criterion is "red if
+**either** side reintroduces the skip", and that test drives only `DocumentShaper.Shape` — a runtime-side
+regression was invisible to it. The runtime half is not reachable as a machine-level vector
+(`CompileBody` mints the element inside the item-compile loop, gated on the chain's own compiled
+`returnTypeChainedPrevious`), so it is pinned the way this phase already pins the pass order — over the
+driver bodies: `DocumentShapingPassOrderLockstepTests.NeitherDriverSkipsAnEmptyDefaultChain` asserts
+both default-chain loops construct the zero-length element at document end and that neither carries the
+count-based skip the alignment removed.
+
+### WI5 — the unmeasured allocation clause
+
+WI5's done-when required render benchmarks showing no allocation increase, explicitly "proven, not
+argued". **It was never measured, and unlike WI9's benchmark note that omission was disclosed
+nowhere.** Recorded here as undelivered rather than measured, because the only credible paired
+before/after would mean reverting WI5 across `RuntimeDocument.cs` and `TemplateEmitter.cs` and holding
+that mutation across a multi-minute BenchmarkDotNet run — the exact posture that produced the
+contamination this audit exists to clean up — and this box's paired timings are not trustworthy
+evidence anyway (standing memory note).
+
+What stands in its place is an argument, labelled as one, and it is stronger for the render path than
+the clause demanded:
+
+- **Render allocation is unchanged by construction, not by measurement.** `SlicePieces` changed *how*
+  `GetDocumentPieces` walks, not *what* it returns: the produced `DataProcessor[]` is element-wise
+  identical (pinned by pin 8, the goldens, the differentials, and the generator snapshots — the
+  `P0..Pn` constants). The render loop consumes that array and was not touched, so there is no render
+  allocation to increase.
+- **The compile path did gain three allocations per body**, which the WI9 note's "no shaping pass
+  allocates anything else it did not allocate before" glossed over: `GetDocumentPieces` and
+  `PopulateBody` each construct one closure display class and two capturing delegates per call
+  (the non-capturing `position` selector is cached statically by Roslyn). That is once per compiled
+  body, on the compile path, and it is a real if trivial increase — not zero.
+
+If a future paired run on benchmark hardware is wanted, the render benchmarks in
+`src/Heddle.Performance` already carry `MemoryDiagnoser`, and allocated bytes (unlike means) are
+deterministic enough to be credible; the D3 revisit trigger is the recorded response if it is red.
+
+### Byte-neutrality evidence: what it does and does not rest on
+
+Phase 0's audit established that D4's "the corpus is the union of the feature templates" is false —
+feature suites use inline template strings and never cross the gauntlet. Phase 2's evidence is
+therefore split, and the split is stated rather than inherited:
+
+- **Genuinely corpus-backed:** WI1's clamp fix. Both fixtures are checked in under
+  `src/Heddle.Tests/TestTemplate/` with corpus rows in `CorpusDifferentialTests` and
+  `CorpusRenderParityTests`, so the overshoot class crosses the gauntlet and its precompiled render is
+  asserted byte-identical to the dynamic one.
+- **Not corpus-backed:** the trim and branch-set machines. `TrimDirectiveLinesTests`,
+  `BranchSetCompilerTests`, `BranchProtocolTests` and `BranchRoleDriftDiagnosticTests` are inline-string
+  feature suites — they pin runtime behaviour but do not exercise the precompiled tier. The cross-tier
+  evidence for those shapes is the `Heddle.Generator.IntegrationTests` differentials and the machine-level
+  twins in this phase's WI2 suite, which is why the twins matter more than the record implied.
+
+### Gate
+
+`dotnet build Heddle.sln -c Debug` green (0 errors). Test numbers in the report accompanying this
+audit; `net6.0` cannot run on this box and `net48` is Windows-gated, both checked separately.
+No mutation left behind: `git diff` against HEAD verified clean after every experiment.
