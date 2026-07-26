@@ -697,7 +697,7 @@ un-skipped it afterwards). Baseline at start of phase: 3814 / 0 / 6.
 | **B1 — `ITypeFacts` + assignability corpus (F6)** | [`Language/Binding/ITypeFacts.cs`](../../src/Heddle/Language/Binding/ITypeFacts.cs); reflection adapter [`ReflectionTypeFacts`](../../src/Heddle/Runtime/Expressions/ReflectionTypeFacts.cs); Roslyn adapter [`SymbolTypeFacts`](../../src/Heddle.Generator/Binding/SymbolTypeFacts.cs) holding the two nullable corrections **once**; shared [`AssignabilityCorpus`](../../src/Heddle/Language/Binding/AssignabilityCorpus.cs) (30 rows) run by two drivers. | + `AssignabilityCorpusReflectionTests`, `AssignabilityCorpusSymbolTests` |
 | **B2 — export discovery (F2 / Q3.2 / Q3.6)** | Shared [`ExportRules`](../../src/Heddle/Language/Binding/ExportRules.cs) + [`ExportBookkeeping`](../../src/Heddle/Language/Binding/ExportBookkeeping.cs); `FunctionRegistry` and `FunctionExportResolver` both route through them; merge semantics replace first-container-wins; **export signature discovery** lands, and [`ExportFunctionBinder`](../../src/Heddle.Generator/Binding/ExportFunctionBinder.cs) makes exports participate in the shared overload rank (phase 4's WI8 remainder); `HED7021` at Error. | + `ExportDiscoveryTests`, `ExportMergeLockstepTests` |
 | **B3 — `PropLayoutCore` (F4 / Q3.4)** | [`Language/Binding/PropLayoutCore.cs`](../../src/Heddle/Language/Binding/PropLayoutCore.cs) with the ordered `PropFault` vocabulary and `PropFaults.FaultOrder`/`Message` (phase 6's WI5 handoff); both tiers adopt it; the prop-layout manifest row + gauntlet check with a `PrecompiledSchema` bump 3 → 4. | + `PropLayoutCoreReflectionTests`, `PropLayoutCoreSymbolTests`, `PropLayoutFingerprintTests` |
-| **B4 — model type names (F8 / Q3.5)** | Shared [`TypeSpelling`](../../src/Heddle/Language/Binding/TypeSpelling.cs) parser; [`SymbolTypeIndex`](../../src/Heddle.Generator/Binding/SymbolTypeIndex.cs) reproducing the runtime's lookup rule; implicit namespaces dropped; `dynamic` added to the symbol alias map; the **runtime's short-name tie fixed in lockstep** and `HED7023` raised for the same input. | + `TypeSpellingLockstepTests`, `TypeSpellingSymbolLockstepTests`, `AliasTableLockstepTests` (third arm) |
+| **B4 — model type names (F8 / Q3.5)** | Shared [`TypeSpelling`](../../src/Heddle/Language/Binding/TypeSpelling.cs) parser (**a re-implementation at landing, not a split — see Q8.3 below**); [`SymbolTypeIndex`](../../src/Heddle.Generator/Binding/SymbolTypeIndex.cs) reproducing the runtime's lookup rule; implicit namespaces dropped; `dynamic` added to the symbol alias map; the **runtime's short-name tie fixed in lockstep** and `HED7023` raised for the same input. | + `TypeSpellingLockstepTests`, `TypeSpellingSymbolLockstepTests`, `AliasTableLockstepTests` (third arm) |
 | **B5 — member paths (F7 / Q3.1)** | `SymbolTypeResolver` re-expressed as the Roslyn adapter of phase 4's `MemberPathWalk`/`MemberVisibility`; the three divergences closed (`ProtectedOrInternal`, inherited-internal, `AllInterfaces`), `[Hidden]` matched by full metadata name. | + `MemberVisibilitySymbolConformanceTests` |
 
 ### Corrections to this plan, found against the source
@@ -721,3 +721,62 @@ un-skipped it afterwards). Baseline at start of phase: 3814 / 0 / 6.
 5. **No third Roslyn-vs-CLR assignability disagreement exists** in the corpus's variance and
    `ValueTuple` probes; the Roslyn adapter with its two nullable corrections matches the CLR on all
    30 rows.
+
+## Post-audit work items (2026-07-26)
+
+Two findings from the post-implementation reviews, both ruled in the
+[open-questions register](open-questions.md#post-implementation-questions-opened-2026-07-26).
+
+### Q8.3 — the runtime folded onto the two generator-only shared cores
+
+`ExtensionRegistrationRules` and `TypeSpelling` were called **only** by the generator; the runtime kept its own
+inlined copy of each rule. Mutating either shared file reddened one generator test and **zero** runtime tests, which
+is the "reads as fixed and is not" shape — worse than no extraction, because the record claimed otherwise. Reproduced
+before fixing: flipping `Resolve`'s `Conflict` verdict to `Register` killed only the direct table assertion, no
+behavioural runtime test.
+
+- **`TemplateFactory.AddExtensions`** now resolves collisions through `ExtensionRegistrationRules.Resolve`, and
+  **`LoadExtensions`** sorts candidates by `ExtensionRegistrationRules.OrderingKey` — the one expression that decides
+  which candidate becomes the incumbent. Behaviour unchanged.
+- **`ReflectionHelper.ResolveType`** now drives `TypeSpelling` through a reflection `ITypeLookup<Type>` adapter, and
+  its duplicate `ExtractGenericArguments` / `TryFindMatchingAngleBracket` / `SplitTopLevelArguments` /
+  `ResolveGenericType` / `ResolveArrayType` / tuple regex are **deleted**. `ResolveSimpleType` stays: the
+  assembly-scan index, the `.`→`+` retry ladder and the ambiguity rule are the reflection tier's own universe, not
+  grammar. **This is the split the B4 row above claimed and did not make.**
+- **`ExportBookkeeping<TPayload>`** had no test at all; it now has
+  [`ExportBookkeepingTests`](../../src/Heddle.Tests/ExportBookkeepingTests.cs), placed in `Heddle.Tests` so a
+  mutation of it reddens a runtime leg.
+- New runtime-tier assertions where none existed:
+  [`ExtensionRegistrationPrecedenceTests`](../../src/Heddle.Tests/ExtensionRegistrationPrecedenceTests.cs) — the
+  three verdicts through the public `AddExtensions` seam, plus the `Replace`-last ordering.
+
+**Two divergences the fold surfaced**, both now pinned in the two-driver type-name corpus:
+
+1. **`(int)` is a legal one-element tuple** (`ValueTuple<int>`), which the reflection tier has always resolved. The
+   shared parser required *two* elements, so the extraction itself had introduced a build-tier-only refusal. The
+   floor is now one element; an *empty* element (`()`) is still malformed. Fixed in the shared file, so both tiers
+   move together.
+2. **Surrounding whitespace on a top-level spelling** (`" int "`) is now tolerated on the run tier, which used to
+   throw — the shared parser trims every recursion. A widening of accepted input; no resolved type changes.
+
+### Q8.4 — `[ExportExtensions]` modelled in generator discovery
+
+`ExtensionBinder.CollectTypes` scanned every referenced assembly unconditionally. The runtime scans the engine
+assembly unconditionally (`LoadBaseExtensions`) and every other assembly **only** through
+`[assembly: ExportExtensions(...)]` — the named types, or the whole assembly for the parameterless `All` form. The
+build tier therefore bound and precompiled extensions the runtime will never register: the manifest recorded a name
+the live registry cannot resolve, and the gauntlet's extension-identity check turned **every render of every such
+template into a silent, permanent fallback**.
+
+`ExtensionBinder.CollectExported` now reproduces the runtime's scope, including the `break` on the first `All`.
+Acceptance needed an assembly *without* the attribute, because no test used one — that absence is why nothing caught
+it; [`ExportExtensionsScopeTests`](../../src/Heddle.Generator.Tests/ExportExtensionsScopeTests.cs) supplies them.
+
+Two fixture consequences, both of which made a previously-implicit declaration explicit:
+
+- Probe compilations that exist to exercise discovery now declare their exports, through the single-sourced
+  `GeneratorHarness.WithAllExtensionsExported` helper (testing standards, §Test-input single-sourcing).
+- `Heddle.Generator.IntegrationTests` declared **nine** extension types its own tests exercise and never exported
+  (`hooked`, the five `malformed*`, `wideningItem`, `nullableIface`, `nullableWiden`). They are now in the
+  `[ExportExtensions]` list, which is the single declaration of what that assembly contributes and which both tiers
+  read.

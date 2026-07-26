@@ -4,8 +4,9 @@ The consolidated Q&A register for the seven phases. Numbering is `Q<phase>.<n>`,
 phase plan's own Open-questions section.
 
 **Pre-authoring questions (Q0.1–Q6.3): all resolved (user, 2026-07-25) and folded into the phases.**
-**Post-implementation questions (Q7.1–Q8.8):** opened after the phases landed, by the two
-post-implementation reviews and the six phase audits — see
+**Post-implementation questions (Q7.1–Q8.12):** opened after the phases landed, by the two
+post-implementation reviews, the six phase audits, and the phase-8 docs sweep authored from
+the Q8.7 ruling — see
 [the section below](#post-implementation-questions-opened-2026-07-26). **Q7.4 and Q8.1–Q8.5 are
 ruled (user, 2026-07-26); the remainder stand at their stated defaults**, which are the operative
 decision until revisited.
@@ -245,6 +246,16 @@ question, the ruling or default, and where it is folded.
   **Ruling (user, 2026-07-26): fold.** *Folded into:* a post-audit work item; acceptance is that
   mutating each shared rule reddens at least one **runtime** test, which is the property whose
   absence made these transcriptions rather than sources of truth.
+  **Implemented (2026-07-26):** `TemplateFactory.AddExtensions` resolves collisions through
+  `ExtensionRegistrationRules.Resolve` and `LoadExtensions` sorts by its `OrderingKey`;
+  `ReflectionHelper.ResolveType` drives `TypeSpelling` through a reflection `ITypeLookup<Type>`
+  adapter and its five duplicate parser methods plus the tuple regex are deleted — the record's
+  "split out of `ReflectionHelper`" claim is now true, and corrected where it was not.
+  `ExportBookkeeping` gained `ExportBookkeepingTests` in `Heddle.Tests`. Mutation-verified per rule
+  (see [phase 3's post-audit section](phase-3-binding-layer.md#post-audit-work-items-2026-07-26)).
+  The fold surfaced two divergences, both fixed in the shared file so the tiers move together: the
+  parser refused the legal one-element tuple `(int)` that reflection has always resolved, and it now
+  tolerates a whitespace-padded top-level spelling the run tier used to reject.
 - **Q8.4 — Model `[ExportExtensions]` in the generator's extension discovery?** The runtime only
   scans assemblies carrying the attribute; the generator scans all referenced assemblies, so it
   binds and precompiles extensions the runtime will never register → a permanent silent per-request
@@ -253,6 +264,14 @@ question, the ruling or default, and where it is folded.
   **Ruling (user, 2026-07-26): close it.** *Folded into:* a post-audit work item; acceptance
   requires a fixture using an extension in an assembly *without* the attribute, since no test uses
   such an assembly today.
+  **Implemented (2026-07-26):** `ExtensionBinder.CollectExported` reproduces
+  `TemplateFactory.ObtainExtensions`' scope — the engine assembly whole and unconditional, every other
+  assembly only through `[ExportExtensions]` (named types, or all for the parameterless form, which
+  short-circuits the assembly's remaining attributes as the runtime's `break` does).
+  `ExportExtensionsScopeTests` supplies the missing kind of assembly. Two fixture debts fell out and
+  were paid: probe compilations now declare their exports through one single-sourced helper, and the
+  integration-tests assembly's nine declared-but-unexported extension types joined its
+  `[ExportExtensions]` list.
 - **Q8.5 — Fix `TemplateEmitter.StripGlobal`'s hard-coded assembly name?** It builds a bare dotted
   type name and feeds it to `RecordExtensionBinding`, whose `assembly` parameter **defaults to the
   literal `"Heddle"`**. For a user-defined nested or out-of-engine branch-role extension the
@@ -273,10 +292,76 @@ question, the ruling or default, and where it is folded.
   `IsReferenceish(left) && IsReferenceish(right)`, so `string == int` is `HED1008` on **both** tiers.
   Under the authority convention this document outranks both implementations, so the wrong sentence
   is a live trap: aligning to it would introduce a bug in the name of fixing drift.
-  **Default if unruled:** fix the sentence in a docs pass; no code change.
+  **Ruling (user, 2026-07-26): widened — plan a post-implementation documentation sweep covering
+  *all* docs, not just this sentence.** Deviation 1 is one instance of a general problem: seven
+  phases plus six audits changed behaviour, added seven diagnostics, altered a default, narrowed a
+  catch, changed a runtime resolution rule and shipped a binary break, and the prose documentation
+  has been updated only where a phase happened to touch it. The sweep is authored as its own effort
+  with its own plan, so the doc corrections are auditable rather than folded invisibly into code
+  landings. *Folded into:* [phase 8 — docs sweep](phase-8-docs-sweep.md) (authored 2026-07-26;
+  proposed, not started). **Sharpened while authoring it:** deviation 1 is one of **four** false
+  claims in that one document — deviation 6 (user-defined operators are *not* honored for
+  `&`/`^`/`|`, shifts, or any unary operator), the shift row's `int`-right-operand rule (any integral
+  is accepted and converted, so the doc **understates** what compiles and "fixing" the code to match
+  would break working templates), and the lifted-operands claim that equality lifts (lifting exists
+  on the numeric paths only; a `bool`/`bool?` equality is `HED1008` and the bitwise pair has no
+  diagnostic at all) — plus seven more claims imprecise enough to mislead an implementer. The
+  generator's shared rule tables already describe every one of those divergences **correctly**, in
+  comments beside the verdicts that encode them, so the tree's most accurate account of
+  native-expression semantics is `Language/Expressions/NativeOperatorRules.cs` and the document the
+  convention points at is the least accurate. That inversion is why phase 8's first design decision
+  narrows the authority convention rather than only fixing the sentences.
 - **Q8.8 — `net48`/`net6.0` verification.** `net48` is `Condition="'$(OS)' == 'Windows_NT'"` and has
   never run on this box; `net6.0` aborts with `MSB4181`. **Drift #9 (`ToString("R")`) can only be
   observed on `net48`** — `"R"` genuinely is shortest-round-trippable on CoreCLR, so the fix's
   *sufficiency* is unverified even though a revert is now caught by 23 cases. The user has said
   Windows will be checked separately. **Default if unruled:** treat drift #9 as unclosed until that
   run happens.
+
+## Opened by the phase-8 docs sweep (2026-07-26)
+
+Recorded when [phase 8](phase-8-docs-sweep.md) was authored. None blocks its stages 0–3.
+
+- **Q8.9 — Where does the narrowed authority convention live, and is it retroactive?** Phase 8 D3
+  narrows the convention (*"expression semantics defer first to `docs/native-expressions.md`"*) so
+  that a normative document outranks the implementations **only for claims that carry a verification
+  marker or are covered by a gate**; an unmarked, ungated claim becomes evidence of intent, not an
+  authority. The placement question is whether that lives in
+  [cross-cutting-decisions.md](../spec/common/cross-cutting-decisions.md) (outliving this program) or
+  stays in the program README. The sharper half is retroactivity: several landed phase D-items
+  resolved drift *by citing* that document, and narrowing the convention makes those citations weaker
+  evidence than they were when ratified. **Default if unruled:** land it as a new cross-cutting
+  decision with a ledger entry, README bullet becomes a pointer, and treat it as
+  **non-retroactive** — already-ratified D-items stand, and the narrowing governs future alignments
+  only. Re-auditing seven phases' evidence chains costs far more than the anchor defect warrants, and
+  each of those D-items also carries independent source evidence.
+- **Q8.10 — If phase 7 has not landed when phase 8's stages 0–4 are done, does D9 ship, slip, or
+  transcribe?** D9 makes qualifying doc examples executable by **single-sourcing** them from phase 7's
+  shared corpus and including them into the page, so the doc and the test read the same bytes. That
+  needs phase 7 stage 0 to exist. **Default if unruled: slip** — D9's work item moves to a phase-7
+  follow-on and phase 8 closes with the omission recorded as not-delivered (the posture phase 2's WI9
+  and phase 6's D5 established). Hand-transcription is explicitly **not** the fallback: it is the
+  defect D9 exists to remove (`ScopeChannelDocExampleTests` is the in-tree example, comment and all),
+  and shipping it would leave a second copy for phase 7 to clean up.
+- **Q8.11 — Should the nine `<Version>` elements be centralised as part of the 2.1 bump?** Four of
+  the nine sit on non-shipping projects, all nine are overridden by CI from the git tag
+  (`.github/workflows/dotnet.yml`), and `Directory.Build.props` excludes `Version` *by an explicit
+  comment* — so the nine are hand-maintained documentation of the release line with no lockstep test,
+  the duplication class phase 6 spent its WI7 deleting from source. The wider surface matters too:
+  13 files must change for 2.0.0→2.1.0 and five more are coupled, the riskiest being
+  `editors/vscode/src/extension.ts`'s `PINNED_VERSION`, which pins a NuGet tool version outside any
+  consistency check. **Default if unruled: yes** — hoist one `<VersionPrefix>`, delete the four
+  non-shipping elements, and point phase 8's version-consistency gate at the single property. It is a
+  build change, so it lands inside **Q8.2's** work item (which owns the 2.1 declaration and must ship
+  it atomically with `MinSupportedSchemaVersion = 4`), not inside the docs sweep; if that work item
+  declines it, the gate simply asserts the nine agree.
+- **Q8.12 — Who fixes the sample that still passes the removed `Name` item metadata?**
+  `samples/codegen-t4-successor/CodegenT4Successor.csproj` carries
+  `<HeddleTemplate Include="templates\report.heddle" Name="BuildReport" />`, and
+  `Heddle.Generator.props` no longer reads it (Q5.1 removed it), so the sample silently registers
+  under its filename key rather than its intended name — and the sample is golden-checked, so the
+  golden currently encodes the wrong outcome. It is a live user-facing artifact, not prose, so phase 8
+  records it rather than editing it (its D2 rule: the sweep corrects documents, never code).
+  **Default if unruled:** fold into the post-audit work-item queue beside Q8.1/Q8.5 — a one-line
+  csproj fix plus a golden re-ratification. The only real risk here is forgetting it, which is what
+  this entry prevents.
