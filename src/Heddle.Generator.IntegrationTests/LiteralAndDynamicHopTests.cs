@@ -1,5 +1,8 @@
 using System.Linq;
+using Heddle.Data;
 using Heddle.Generator.IntegrationTests.Fixtures;
+using Heddle.Runtime;
+using Microsoft.CSharp.RuntimeBinder;
 using Xunit;
 
 namespace Heddle.Generator.IntegrationTests
@@ -59,6 +62,49 @@ namespace Heddle.Generator.IntegrationTests
             Assert.DoesNotContain("(dynamic)", source);
             Assert.Contains("schemaVersion: 5", gen.ManifestSource);
         }
+
+        /// <summary>
+        /// The OQ3 entry the plan's success criteria and validation-scenario row actually asked for, added by the
+        /// phase-4 audit (2026-07-26): an <b>internal</b> property of a *consumer-assembly* type reached through a
+        /// dynamic hop. The landing shipped the <c>Order.Secret</c> fixture for exactly this and then no test used
+        /// it, so the criterion rested on <c>DynamicMemberTests</c>' unit pin over a <c>Heddle.Tests</c>-internal
+        /// type — a different accessibility situation from generated code in a third assembly, which is the one the
+        /// divergence lived in.
+        /// <para>Pre-WI9 the generated <c>(dynamic)</c> cast chain bound in the <i>consumer's</i> context and read
+        /// <c>Secret</c> happily while the runtime tier could not see it at all: one tier rendered a value, the other
+        /// failed. Both tiers now route through one binder context, so both fail identically. Asserted through the
+        /// deferred form because the byte-identical tuple short-circuits on the first backend's throw and would hide
+        /// whether the second behaves the same.</para>
+        /// </summary>
+        [Fact]
+        public void InternalPropertyDynamicHop_ReachesTheSameVerdictOnBothTiers()
+        {
+            const string key = "views/dyn-internal.heddle";
+            const string content = "@model(){{dynamic}}@\\\n[@(Secret)]\n";
+            var model = new Order { Secret = "s" };
+            var (precompiled, dyn) = DifferentialHarness.DeferredWithOptions(key, content, typeof(object), model,
+                new TemplateOptions());
+
+            var precompiledFailure = Record.Exception(() => precompiled());
+            var dynamicFailure = Record.Exception(() => dyn());
+
+            Assert.NotNull(precompiledFailure);
+            Assert.NotNull(dynamicFailure);
+            Assert.IsType<RuntimeBinderException>(Unwrap(precompiledFailure));
+            Assert.IsType<RuntimeBinderException>(Unwrap(dynamicFailure));
+
+            // And the typed tier still accepts the same getter — the deliberate asymmetry OQ3 preserved and filed as
+            // a window candidate. If a future harmonization changes either half, this row moves with it.
+            var typed = new HeddleTemplate("[@(Secret)]",
+                new CompileContext(new TemplateOptions(), typeof(Order)));
+            Assert.True(typed.CompileResult.Success, typed.CompileResult.ToString());
+            Assert.Equal("[s]", typed.Generate(model));
+        }
+
+        private static System.Exception Unwrap(System.Exception e) =>
+            e is System.Reflection.TargetInvocationException tie && tie.InnerException != null
+                ? tie.InnerException
+                : e;
 
         [Theory]
         [InlineData(null)]

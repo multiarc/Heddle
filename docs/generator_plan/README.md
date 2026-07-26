@@ -177,9 +177,13 @@ fire. Findings that survived orchestrator verification, most severe first:
    the support window is *demonstrated* rather than asserted.
 2. **Three "shared" cores have no runtime caller** — `ExtensionRegistrationRules` (runtime keeps its
    own copy in `TemplateFactory.AddExtensions`), `TypeSpelling` (a re-implementation; the original
-   survives in `ReflectionHelper`), and the numeric widening table (a live second copy in
-   `TemplateEmitter`, with *no* test referencing it). Mutating `ExtensionRegistrationRules` reddens
-   one generator test and zero runtime tests. These read as fixed and are not.
+   survives in `ReflectionHelper`), and ~~the numeric widening table (a live second copy in
+   `TemplateEmitter`, with *no* test referencing it)~~ (**closed 2026-07-26** by the phase-4 audit —
+   `TemplateEmitter.IsImplicitNumericWidening` now delegates to `NumericTable.IsImplicit` through the
+   Roslyn facts adapter, with the deleted body kept as an exhaustive `SpecialType`-squared
+   characterization pin in `GeneratorNumericTableAdoptionTests`; the plan's false "the lockstep test
+   covers both copies" parenthetical is corrected in place). Mutating `ExtensionRegistrationRules`
+   reddens one generator test and zero runtime tests. The two remaining ones read as fixed and are not.
 3. **`[ExportExtensions]` is unmodelled by the generator.** The runtime only scans assemblies
    carrying the attribute; the generator scans all referenced assemblies, so it precompiles
    extensions the runtime never registers → permanent silent per-request fallback. A live instance
@@ -191,6 +195,13 @@ fire. Findings that survived orchestrator verification, most severe first:
    shortest-round-trippable on .NET Core, so the 60 000-value round-trip suite passes identically
    under the bug; reverting the fix reddens exactly one literal-string assertion. The only leg that
    would catch it is `net48`, which is `Condition="'$(OS)' == 'Windows_NT'"` and has never run here.
+   **Confirmed by mutation and mitigated as far as this box allows (2026-07-26, phase-4 audit):** the
+   revert reddened exactly one test as predicted, and all four round-trip legs passed under the bug.
+   The guard is now a *format-identity* pin (the formatter's text must equal G17/G9 text over the
+   corners and the randomized value space, with a meta-assertion that `"R"` and G17/G9 really do differ
+   for a large share of the sample), so the same revert now reddens 23 cases across 5 methods on every
+   CoreCLR leg. **Still unverifiable here:** the defect itself, which only manifests under a .NET
+   Framework host — that check is `net48`-only and is being run separately on Windows.
 6. **The suite is not fully green: `dotnet test` exits 1.** The `net6.0` leg aborts (SDK absent on
    this box) with `MSB4181`. The reported 4808/0/0 is the sum of the legs that *ran*; `net48` and
    `net6.0` are unverified.
@@ -204,6 +215,17 @@ fire. Findings that survived orchestrator verification, most severe first:
 8. **Phase 4's reshaped overload-tie fixture pins a policy violation.** It asserts *no build
    diagnostic* is emitted, so an ambiguous overload call yields a green build and a hard `HED1013`
    at first render — contrary to both the match principle and the fallback-legitimacy ruling.
+   **Confirmed by the phase-4 audit (2026-07-26); behaviour deliberately unchanged, fix queued.** The
+   generator has *already computed* the illegality (`BindOutcome.Ambiguous`) and then reports nothing,
+   which is the shape `HED7021` was created to fix on the phase-3 side; and `precompilation.md` puts
+   the closest analogue (`UnsupportedFunction`) on the *legitimate* side of the fallback line only
+   because the build "refused **on purpose** … and warned `HED7014`" — the refusal is legitimate, the
+   silence is not. Fix: propagate `BindOutcome` out of the two binders instead of collapsing every
+   refusal to `null`, and report a `HED70xx` **error** when the outcome is `Ambiguous`/`None` *and* no
+   argument estimate is `Unknown` (that side condition is what keeps it a proof about the runtime
+   rather than a guess). Not done in the audit because a new ID is a cross-cutting-decisions registry
+   change, not an audit edit. Reasoning in full in
+   [phase 4 — the overload-tie fixture and the match principle](phase-4-expression-writers.md#phase-4-audit-2026-07-26).
 9. **Two further undelivered items** beyond the ones named below: ~~phase 6's D12.5 projection-
    equivalence corpus~~ (**closed 2026-07-26** — `DiagnosticCorpusVectors` is now one shared table
    asserted by all three hosts, so the run tier, build tier and editor are compared to each other

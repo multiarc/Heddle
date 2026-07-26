@@ -2,7 +2,10 @@
 
 ## Header
 
-- **Status:** implemented (2026-07-25) — WI1–WI10 landed; see [Implementation record](#implementation-record).
+- **Status:** implemented (2026-07-25), **audited (2026-07-26)** — WI1–WI10 landed; see
+  [Implementation record](#implementation-record) and [Phase-4 audit](#phase-4-audit-2026-07-26)
+  (numeric-table duplicate folded, four surviving mutants closed, one queued policy follow-up on the
+  overload-tie fixture).
   All open questions were **resolved (user, 2026-07-25)** before implementation and are folded in
   as committed scope; see the [open-questions register](open-questions.md) (entries Q4.1–Q4.3).
   **No diagnostic ID was claimed** by this phase, as planned — degrading to the dynamic tier is the
@@ -152,7 +155,15 @@ them into the generator with zero csproj edits, exactly as `ExprOperator` is lin
 - **No consumption changes in `TemplateEmitter`'s prop-default path** — deleting
   `IsImplicitNumericWidening`/`NumericKeyword` (`TemplateEmitter.cs:1567-1624`) in favor of the
   shared table is phase 1's adoption; this phase only guarantees the shared table exists and is
-  proven equivalent (the lockstep test covers both existing copies).
+  proven equivalent. **Correction (phase-4 audit, 2026-07-26):** the parenthetical here originally
+  read "the lockstep test covers both existing copies", and that was **false** —
+  `NumericTableLockstepTests` compares the shared table to the *runtime's* pre-extraction body only,
+  and no test referenced the emitter's `SpecialType`-keyed copy at all. Phase 1 never adopted it
+  either, so the program shipped a claimed-single table with a live, untested duplicate. The audit
+  folded `IsImplicitNumericWidening` onto `NumericTable.IsImplicit` (via `SymbolFacts.ToNumericKind`)
+  and pinned the fold against the deleted body in
+  `src/Heddle.Generator.Tests/GeneratorNumericTableAdoptionTests.cs`. `NumericKeyword` stays — it is
+  a `SpecialType` → C# keyword spelling map, not a copy of the §10.2.3 table.
 - **No `Heddle.Shared` project.** The linked-`<Compile>` mechanism is the ratified pattern
   ([07 — shared-code layout](../research/generator-code-sharing/07-recommendations.md)); this
   phase adds at most eight shared files, well under the ~20-file revisit threshold.
@@ -560,7 +571,10 @@ Measurable, checkable statements a spec can turn into tests.
       `ExprOperator` member (a new enum member without a table row fails the test).
 - [ ] `NumericKind`/`NumericTable` exist under `Language/Expressions/`; the exhaustive 13×13
       lockstep test against `NumericPromotion` is green; `NumericPromotion`'s public behavior is
-      unchanged (full runtime suite green).
+      unchanged (full runtime suite green). **Exactly one** widening table exists in the built
+      assemblies: the emitter's `SpecialType`-keyed copy delegates to `NumericTable.IsImplicit`
+      through the Roslyn facts adapter, pinned exhaustively against the deleted body
+      (phase-4 audit, 2026-07-26 — this clause was previously satisfied only on paper).
 - [ ] `NativeOperatorRules.Classify` exists; the generator emits binaries/unaries/ternaries only
       on `Supported`; the interim guard code from WI2 is deleted; the runtime lockstep sweep
       (table verdict ↔ compiler outcome) is green.
@@ -887,3 +901,208 @@ Three goldens changed, each spec-backed and diff-reviewed:
 - **No benchmark run for the emit guard's coverage cost.** The gate's cheaper proxy came out clean
   instead: `CorpusDifferentialTests`' precompiled-set pin is unchanged, so no corpus template lost
   precompilation and there is no measurable render-path delta to quantify.
+
+## Phase-4 audit (2026-07-26)
+
+Ownership picked up after the landing. Every WI claim above was walked against source; the plan, the
+supplement and `docs/native-expressions.md` were re-read against the shipped code; and the artifacts
+were **mutation-tested** (16 mutants, tight apply→build→test→revert loops over the three `net8.0`
+suites). The record's *factual* claims held — every "Where the work landed" row exists, every
+"Divergences found" row is the shipped behavior, WI10 is analysis-only (its only artifact is a test
+plus three filed register rows), and the `native-expressions.md` deviation-1 finding still stands
+(the sentence is still unfixed — see below). What did not hold was the *coverage* two of its claims
+implied. Four mutants survived; all four are now killed.
+
+### The numeric-table duplicate (review finding 1) — folded
+
+`TemplateEmitter.IsImplicitNumericWidening` was a **second live copy** of the §10.2.3 widening table,
+reachable from five call sites, and the non-goal's parenthetical "the lockstep test covers both
+existing copies" was false: `NumericTableLockstepTests` transcribes the **runtime's** pre-extraction
+body and compares it to `NumericTable`; nothing referenced the emitter's copy. Phase 1, which the
+non-goal deferred it to, never adopted it either. So "exactly one `NumericKind` table" was true of
+the plan and false of the built assemblies, and a single wrong row in the emitter's copy would have
+changed which prop defaults precompile with **no** test noticing.
+
+Folded rather than pinned-in-place: the method is now
+`NumericTable.IsImplicit(SymbolFacts.ToNumericKind(from), SymbolFacts.ToNumericKind(to))`, and
+`src/Heddle.Generator.Tests/GeneratorNumericTableAdoptionTests.cs` carries the deleted body verbatim
+as a `Legacy*` characterization pin, swept exhaustively over every `SpecialType` × `SpecialType` pair
+in three directions: emitter ≡ deleted body, emitter ≡ shared table through the adapter, and the
+adapter's own twelve rows. Mutating one shared-table row (`Char → Decimal`) now reddens the new
+generator pin alongside the runtime lockstep; mutating the adapter (`System_Char → None`) reddens it
+too. `NumericKeyword` stays as-is — it is a keyword-spelling map, not a copy of the table.
+
+The corrected non-goal text and success criterion are edited in place above.
+
+### Drift #9 / `ToString("R")` (review finding 2) — confirmed by mutation, and strengthened
+
+Reverting `G17`/`G9` → `"R"` and running the three `net8.0` suites reddened **exactly one** test
+before this audit: `NoRoundTripFormatRemainsInTheGenerator`, a two-line literal-string assertion. All
+four round-trip legs — 60 000 randomized values plus the enumerated corners — **passed under the
+bug**, because on .NET Core `"R"` *is* the shortest round-trippable form. The review finding is
+confirmed exactly as written.
+
+The guard is now stated as what it can actually be on a CoreCLR leg: an assertion about the format
+*choice*, not about round-tripping. `LiteralRoundTripTests` gains `DoubleText_IsExactlyTheG17Form` /
+`SingleText_IsExactlyTheG9Form` (theories over the same 24 + 18 corners),
+`EveryFormattedReal_IsTheFixedDigitForm_OverTheRandomizedValueSpace` (every sampled `double`/`float`
+must equal its G17/G9 text — plus a *meta-assertion* that `"R"` and G17/G9 really do produce different
+text for a large share of the sample, ~8.7 k of 20 k, so the guard cannot quietly stop discriminating),
+and `HumanScaleDecimals_AreTheFixedDigitForm_WhereRIsAtItsWorst`. Re-running the same mutation now
+reddens **23 test cases across 5 methods** on `net8.0`.
+
+**What remains unverifiable on this box, plainly:** the *defect itself*. `"R"` mis-round-trips only
+under a .NET Framework host, so the property the fix exists to preserve (`decode(format(v)) == v`
+where `"R"` would have lost a ULP) can only be observed on the `net48` leg, which is
+`Condition="'$(OS)' == 'Windows_NT'"` and has never run here. `net6.0` is also unrun (SDK absent —
+`MSB4181`). What the added pins buy is that a *revert* is caught everywhere; what they cannot buy is
+evidence that `G17` is sufficient on .NET Framework. That check is being run separately on Windows and
+is the only thing that closes drift #9's verification.
+
+### Mutation results
+
+Killed, with the test that fires (all counts `net8.0`, three suites):
+
+| Mutant | Killed by |
+| --- | --- |
+| `NumericTable`: drop the `Char → Decimal` row | `NumericTableLockstepTests`, `OverloadRankLockstepTests`, `OverloadBetternessEvaluationTests`, **new** `GeneratorNumericTableAdoptionTests` |
+| `SymbolFacts.ToNumericKind`: `System_Char → None` | `AliasTableLockstepTests`, `DefaultConvertibleLockstepTests`, **new** `GeneratorNumericTableAdoptionTests` (2) |
+| `LiteralFormatter`: `G17`/`G9` → `"R"` | 5 methods / 23 cases in `LiteralRoundTripTests` (was 1 method before this audit) |
+| `ClassifyEquality`: `bool` vs `bool?` → `Supported` | `NativeOperatorRulesTests.BinaryVerdictsPredictTheCompilersOutcome` |
+| `ClassifyBitwise`: `bool` vs `bool?` → `Supported` | the sweep + **new** `NullableBoolBitwise_IsAContainedRuntimeDefect_NotAPositionedError` |
+| `ClassifyEquality`: deviation-1 mixed/unrelated → `Supported` | `Deviation1_…`, the sweep, `MixedTypeEquality_CompilesTheConsumerProject_AndDegrades` |
+| `ClassifyCoalesce`: accept a non-nullable left | the sweep |
+| `OverloadRank.BindTier`: `frontSize == 1` → `>= 1` | `Min_IntUInt_IsAmbiguous`, `RuntimeStillReportsTheAmbiguity`, `OverloadBetternessEvaluationTests`, `OverloadTie_ResolvesIdenticallyOnBothTiers` |
+| `OperatorLexeme`: transpose `And` → `&&` | `OperatorLexemeTests.TableMatchesTheThreeLegacyCopies`, the sweep, `SupportedShapes_StayOnThePrecompiledTier` |
+| `MemberHopRule.Form`: collapse `NullDefaultConditional` | `HopFormTable` + 3 snapshots + 17 integration cases |
+| `MemberVisibility`: `Internal` ignores `declaredOnReceiver` | the conformance corpus on both adapters (reflection **and** phase 3's Roslyn side) |
+| `MemberPathWalk`: base-first walk order | `NewShadowedPropertyResolvesToTheMostDerived` (only that one — thin but real) |
+| `CSharpEscape`: stop escaping lone surrogates | `CSharpEscapeTests` + both `LiteralAndDynamicHop` literal entries |
+| `NativeExpressionWriter`: delete the **binary** guard | all 8 `OperatorGuardDifferentialTests` deviation entries |
+
+**Survivors, and what each one meant.** None was extensionally equal in general; each was a real
+hole in a claim the plan makes, and each is now covered:
+
+1. **Cast-pinning deleted entirely** (`DefaultFunctionBinder` emitting every resolved built-in with no
+   argument casts) reddened **zero** tests. D10's mechanism — "emit cast-pinned, which pins the
+   consumer's C# compiler to the same overload by making it an exact match", the thing that makes the
+   false `NativeExpressionWriter.cs:116-118` "by construction" comment true — was unobserved; only the
+   ranker's *refusals* were covered, by the overload-tie fixture. It is *currently* harmless for the
+   shipped built-in table (WI10 measured 0 of 480 combinations changing winner), but that is a property
+   of today's first-party signatures, and phase 3 routed arbitrary host `[ExportFunctions]` signatures
+   through the same `ArgumentCasts` path, where WI10's measurement explicitly does not carry. Closed by
+   new `src/Heddle.Generator.IntegrationTests/OverloadCastPinTests.cs` (asserts the emitted text:
+   `min(1, 2L)` → `Min((long)(1), 2L)`, `min(Count, Price)` → both arguments pinned to `decimal`, and
+   `min(1, 2)` → no redundant casts).
+2. **The unary and ternary guards deleted together** reddened **zero** tests, although D3, D6 and the
+   success criteria all say "binaries/unaries/ternaries" and the record claims all three are guarded.
+   The binary arity had eight named corpus entries; the other two rode along on the shared estimator
+   with no differential coverage at all. Real divergences behind it: `-Status` (C# negates an enum and
+   renders, the runtime errors), `-Total` (C# goes through `Money`'s implicit conversion, the runtime
+   refuses user conversions), `Count ? "a" : "b"` and `Count > 0 ? Name : Count` (the latter is CS0173
+   in the *consumer's* build). Closed by five new entries in `OperatorGuardDifferentialTests`, one per
+   verdict class per arity.
+3. **The shift row's `RequiresRuntimeSemantics` arm deleted** (emitting lifted shifts and wide shift
+   counts) reddened **zero** tests. C# defines `<<` only for an int-typed count while the runtime
+   narrows *any* integral count to `int`, so `Count << Big` is a hard **CS0019 in the consumer's build**
+   precompiled and a rendering expression at run time — the exact failure class this phase exists to
+   close, on a row no fixture reached. Closed by `WideShiftCount_…` and `LiftedShift_…`, with two new
+   fixture properties (`Order.Big`, `Order.Maybe`).
+4. **The string-`+` row promoted to `Supported` for `Enum`/`Reference`/`Other` partners** reddened
+   **zero** tests, because every existing fixture partner's `ToString` and C#'s chosen overload happen
+   to agree. Closed by a new `Label` fixture struct that breaks the tie deliberately — an implicit
+   conversion **to string** differing from its `ToString`, so C# would emit `Concat(string, string)`
+   through the user conversion ("converted:x") where the runtime always goes through
+   `Concat(object, object)` ("tostring:x"). Deviation 6 in the concat position, now a differential
+   entry.
+
+Each fix was re-mutated after landing and the mutant is dead.
+
+### `bool & bool?` — still contained, now pinned as a defect
+
+Confirmed unchanged and confirmed contained. `VisitBitwise`'s bool arm tests the **underlying** types,
+so a mismatched lifted pair walks into `Expression.And` and throws; the throw is caught by
+`HeddleCompiler`'s compile-item catch and collected as an `Error while compiling …` with the exception
+attached, so compilation *fails* — it never escapes and never reaches render. Nothing in the program
+widened the blast radius; it narrowed it, since the generator previously emitted C#'s lifted `&` for
+this pair and *rendered* while the runtime failed, and the table's `NotDefined` row now degrades it.
+The containment was prose only, so this audit added
+`NativeOperatorRulesTests.NullableBoolBitwise_IsAContainedRuntimeDefect_NotAPositionedError`: it pins
+the four matched/mismatched verdicts, that compilation fails with an exception-carrying error rather
+than a positioned `HED1008`, and — for contrast — that the sibling `bool == bool?` *does* get the
+positioned `HED1008`. Fixing the shape now reddens that pin, which is the intended prompt to move the
+row deliberately.
+
+### The OQ3 internal-property corpus entry — was missing, now present
+
+The success criterion "the internal-property dynamic-hop corpus entry renders identically precompiled
+vs runtime" and its validation-scenario row rested on `DynamicMemberTests`' unit pin over a
+`Heddle.Tests`-internal type. The landing also added an `Order.Secret` fixture *for exactly this* and
+then **no test used it** (`grep Secret` over both generator suites: nothing). Consumer-assembly
+internal reached through generated code is a different accessibility situation from the one the unit
+test covers, and it is the one the divergence lived in. Added:
+`LiteralAndDynamicHopTests.InternalPropertyDynamicHop_ReachesTheSameVerdictOnBothTiers`, through the
+deferred harness form so each backend's throw is observed independently, plus the typed-tier half that
+still accepts the same getter — the asymmetry OQ3 preserved and filed as a window candidate.
+
+### `docs/native-expressions.md` — the deviation-1 sentence is still wrong, and still unfixed
+
+Re-verified against source. The deviations list still reads "`==`/`!=` on unrelated reference/**mixed**
+types compiles to a total, null-safe `object.Equals`", while `VisitEquality`'s `object.Equals` fallback
+is guarded by `IsReferenceish(left) && IsReferenceish(right)` — so `string == int` is `HED1008` on both
+tiers, not `object.Equals`. Phase 4's finding stands verbatim; the corpus carries both shapes
+(`Name == Count` → both reject, `Maker == Where` → both render `False`). The doc sentence is **not**
+fixed — it is a spec-wording change, not phase-4-owned code, and it is left for the docs pass the
+record already asks for.
+
+### The overload-tie fixture and the match principle — the audit's verdict
+
+The adversarial reading is **correct**, and this audit agrees with it: the current state violates the
+program's own rulings. `OverloadTie_ResolvesIdenticallyOnBothTiers` asserts
+`Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == Error)`, so `@(min(1, 2u))` — a template the
+generator has *already computed* to be illegal, by running the shared ranker and getting
+`BindOutcome.Ambiguous` — produces a fully green build and a hard `HED1013` at first render.
+
+- Against the **match principle** ("the generator must match the runtime's validation rules, errors and
+  throws… *errors* always match"): the runtime's verdict is an error at compile time. The generator
+  reaches the same verdict at build time and then reports nothing. The two tiers agree on *legality*
+  but not on *when the author learns* — which is the same defect shape phase 3 fixed with `HED7021`
+  (a runtime `ArgumentException` became a build error precisely so the build would fail the same way).
+- Against the **fallback-legitimacy principle** ("catch-and-degrade is legitimate only for a small,
+  researched set of conditions… everything else is an error that must surface"): a provably ambiguous
+  call is not stale data and not change tracking. `precompilation.md`'s taxonomy already places the
+  closest analogue on the other side of the line — `UnsupportedFunction` is a legitimate fallback
+  *because* "the build refused **on purpose** … and warned `HED7014`". The refusal is legitimate; the
+  silence is what is not.
+- The plan's own non-goal ("No new diagnostics surface… claims no new `HED7xxx` ID") is what produced
+  this, and it is the weaker rule: it was written for the *general* degrade case, where the generator
+  refuses because it cannot prove equivalence. Ambiguity is categorically different — the generator is
+  not in doubt, it has a positive proof that the runtime will reject.
+
+**The fix (queued, deliberately not done here).** Propagate `BindOutcome` out of
+`DefaultFunctionBinder.TryBind`/`ExportFunctionBinder.TryBind` instead of collapsing every refusal to
+`null`, and report a `HED70xx` build **error** — the `HED7014` shape — when and only when the outcome is
+`Ambiguous` *and* no argument estimate is `Unknown`. That side condition is what keeps it sound: the
+`null` return today conflates "provably ambiguous" with "an argument I could not type", and only the
+first is a proof about the runtime. `BindOutcome.None` (no applicable overload) is the same class and
+should follow, with the same side condition. The fixture then asserts the build error and the runtime
+`HED1013` as one matched pair, which is strictly stronger than what it asserts now. Behaviour is
+**unchanged by this audit** — the fixture and the binder are untouched — because a new diagnostic ID is
+a cross-cutting-decisions registry change (it needs an ID allocation, a docs row and a spec entry), not
+an audit edit.
+
+### Suite
+
+`dotnet build Heddle.sln -c Debug` green. `dotnet test Heddle.sln -c Debug`: **5108 passed, 0 failed,
+0 skipped** on the legs that run — `Heddle.Tests` 1699 × 2, `Heddle.Generator.Tests` 371 × 2,
+`Heddle.Generator.IntegrationTests` 387 × 2, `Heddle.LanguageServices.Tests` 188, `Heddle.Tool.Tests` 6
+(the audit added 12 integration cases, 4 runtime-suite methods and, in `8f9c1fe`, 3 generator cases).
+`net6.0` still aborts with `MSB4181` (SDK absent on this box) and `net48` is Windows-gated — both
+unrun here, as recorded above. Nothing outside this phase's ownership was changed.
+
+**Note on the working tree.** A concurrent session's commit `8f9c1fe` (a phase-7 docs landing) swept
+two of this audit's in-progress files into itself — the `TemplateEmitter` fold and
+`GeneratorNumericTableAdoptionTests.cs`, plus an intermediate revision of `LiteralRoundTripTests.cs`.
+The content is correct and mutation-verified; no mutation residue reached any commit (checked: no
+`MUTATION` marker and no altered table row anywhere in `HEAD`). Recorded because "phase 4's fold is in
+a phase-7 commit" is otherwise a confusing archaeology.

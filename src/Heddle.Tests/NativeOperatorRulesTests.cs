@@ -185,6 +185,48 @@ namespace Heddle.Tests
             }
         }
 
+        /// <summary>
+        /// The one runtime defect this phase found and deliberately left in place, pinned as a defect
+        /// (phase-4 audit, 2026-07-26). `bool &amp; bool?` reaches <c>Expression.And</c> with no guard — the
+        /// bitwise path's bool arm tests the <b>underlying</b> types, so a mismatched lifted pair walks straight
+        /// into the factory — and the throw is contained by the compile-item catch, surfacing as an
+        /// <c>Error while compiling</c> with an exception attached instead of the positioned HED1008 the sibling
+        /// mismatch (<c>bool == bool?</c>) gets.
+        /// <para>What this pin buys: the containment is now a test, not prose. If the blast radius ever widens —
+        /// the throw escaping compilation, or reaching render — this reddens. Fixing the shape (a real HED1008)
+        /// also reddens it, which is the intended prompt to move the row deliberately rather than by accident.
+        /// The table already answers <see cref="OperatorVerdict.NotDefined"/> for the pair, so no generated code
+        /// can reach it; before phase 4 the generator emitted C#'s lifted `&amp;` and rendered.</para>
+        /// </summary>
+        [Fact]
+        public void NullableBoolBitwise_IsAContainedRuntimeDefect_NotAPositionedError()
+        {
+            var b = OperandKind.Of(OperandCategory.Bool);
+            var nb = OperandKind.Of(OperandCategory.Bool, true);
+            foreach (var op in new[] { ExprOperator.And, ExprOperator.Or, ExprOperator.ExclusiveOr })
+            {
+                // Matched pairs stay emittable; only the mismatch is refused.
+                Assert.Equal(OperatorVerdict.Supported, NativeOperatorRules.Classify(op, b, b));
+                Assert.Equal(OperatorVerdict.Supported, NativeOperatorRules.Classify(op, nb, nb));
+                Assert.Equal(OperatorVerdict.NotDefined, NativeOperatorRules.Classify(op, b, nb));
+                Assert.Equal(OperatorVerdict.NotDefined, NativeOperatorRules.Classify(op, nb, b));
+            }
+
+            var result = Compile("B & NB");
+            Assert.False(result.Success);
+            // Contained: the compile-item catch turns it into a collected error, never an escaping throw and never
+            // a render. Documented as a diagnostic-shape defect out of phase 4's scope.
+            Assert.Contains(result.ErrorList, e => e.Exception != null);
+            Assert.DoesNotContain(result.ErrorList,
+                e => e.DiagnosticId == HeddleDiagnosticIds.BinaryOperatorNotDefined);
+
+            // The sibling mismatch the runtime *does* guard, for contrast — same operand pair, real diagnostic.
+            var equality = Compile("B == NB");
+            Assert.False(equality.Success);
+            Assert.Contains(equality.ErrorList,
+                e => e.DiagnosticId == HeddleDiagnosticIds.BinaryOperatorNotDefined);
+        }
+
         [Fact]
         public void IllegalPromotionsAreNotDefined()
         {

@@ -119,6 +119,23 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public override string ToString() => Amount.ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 
+    /// <summary>Phase-4 audit (2026-07-26) — the string-<c>+</c> row's divergence class made concrete. An implicit
+    /// conversion <b>to string</b> whose result differs from <see cref="ToString"/>: C#'s <c>+</c> prefers the
+    /// converted <c>string</c> overload (a better target than <c>object</c>), while the native tier's
+    /// <c>EmitStringConcat</c> always goes through <c>string.Concat(object, object)</c> and therefore calls
+    /// <c>ToString</c>. Deviation 6 — user-defined implicit conversions are not consulted — with visibly different
+    /// rendered bytes on the two routes.</summary>
+    public readonly struct Label
+    {
+        public Label(string text) => Text = text;
+
+        public string Text { get; }
+
+        public static implicit operator string(Label value) => "converted:" + value.Text;
+
+        public override string ToString() => "tostring:" + Text;
+    }
+
     public sealed class Order
     {
         public string Name { get; set; }
@@ -127,6 +144,17 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public OrderFlags Flags { get; set; }
         public Money Total { get; set; }
         public bool? Approved { get; set; }
+
+        /// <summary>Phase-4 audit (2026-07-26): a <c>long</c> shift count and a lifted integral, the two operand
+        /// shapes the shift row degrades for. C# has no <c>&lt;&lt;(int, long)</c> operator at all, so emitting a
+        /// wide count verbatim is CS0019 in the <i>consumer's</i> build, while the runtime narrows any integral count
+        /// to <c>int</c> and renders — the same asymmetry deviation 1 has, on a row no fixture reached.</summary>
+        public long Big { get; set; }
+
+        public int? Maybe { get; set; }
+
+        public Label Tag { get; set; }
+
         public Manufacturer Maker { get; set; }
         public Address Where { get; set; }
 
