@@ -666,8 +666,20 @@ corpus), [phase-3-binding-layer-discovery-parity.md](phase-3-binding-layer-disco
 ## Implementation record
 
 Landed 2026-07-26. `dotnet build Heddle.sln -c Debug` green; `dotnet test Heddle.sln -c Debug` green —
-**4246 passed, 0 failed, 2 skipped** (phase 1's `NonLeftmostScopeChannelParticipant…` fixture × 2 TFMs,
-the only quarantine entry left). Baseline at start of phase: 3814 / 0 / 6.
+**4246 passed, 0 failed, 2 skipped** as of this phase's landing (the 2 were phase 1's
+`NonLeftmostScopeChannelParticipant…` fixture × 2 TFMs, the only quarantine entry left at the time; phase 1
+un-skipped it afterwards). Baseline at start of phase: 3814 / 0 / 6.
+
+> **Restoration note (2026-07-26).** While the program was still uncommitted, an unrelated reviewer's
+> `git checkout` reset `Precompiled/PrecompiledGauntlet.cs` to its pre-program state, destroying this phase's
+> OQ4 prop-layout fingerprint check (and phase 5's work in the same file). The check was reconstructed by hand
+> and then audited against the original: placement, gate, fallback reason and the
+> `bindingResolver` interaction were faithful; the **detail string** was not, and was restored — it had lost the
+> `live=<none>` sentinel this file uses for an absent value (`<unresolved>`, `<missing>`, `<delegate>`), so the
+> most diagnostic case (a live extension that dropped all its `[Prop]`s) rendered `live=`. The underlying reason
+> the drift went unnoticed was a weak assertion of mine: `PropLayoutFingerprintTests` probed the detail for the
+> substring `"prop layout"`. It now pins the string in full and adds
+> `ALiveExtensionThatDroppedAllItsPropsReportsTheAbsentSentinel`.
 
 ### Tranche A — the fix-first bug group
 

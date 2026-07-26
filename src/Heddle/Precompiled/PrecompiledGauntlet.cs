@@ -95,8 +95,8 @@ namespace Heddle.Precompiled
                     var liveFingerprint = PropLayout.Fingerprint(liveType);
                     if (!string.Equals(binding.PropLayoutFingerprint, liveFingerprint, StringComparison.Ordinal))
                         return Fail(entry.Key, PrecompiledFallbackReason.ExtensionBindingMismatch,
-                            $"Extension '{binding.Name}': prop layout changed " +
-                            $"(manifest={binding.PropLayoutFingerprint} live={liveFingerprint})");
+                            $"Extension '{binding.Name}': prop layout manifest={binding.PropLayoutFingerprint} " +
+                            $"live={liveFingerprint ?? "<none>"}");
                 }
             }
 
