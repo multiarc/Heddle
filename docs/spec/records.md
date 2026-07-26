@@ -44,13 +44,24 @@ additively at the grammar level).
 dynamic differential against the 2.0 defaults proving engine and generator flipped
 together.
 
-## The 2.1 release — as-shipped record
+## The 2.1 breaking window — as-shipped record
 
-Not a breaking window. **2.1 opens no window**: each item below is dispositioned as defect repair in
-[breaking-windows.md](common/breaking-windows.md#explicit-not-window-gated-rulings), so policy rule 1
-("one window per major") is untouched. The record exists because 2.1 nonetheless *ships a binary break* in
-the precompiled-manifest contract, and policy rule 5's as-shipped reconciliation is the only mechanism that
-keeps such a thing from being assumed rather than verified.
+**2.1 is a ratified breaking window** (maintainer ruling, 2026-07-26), scoped to **binary changes and
+minor API changes or additions**. A *substantial* API change is what would call for 3.0, and that is
+explicitly not on the table; anything of that size is refused entry to this window rather than being
+argued into it.
+
+**This paragraph previously read "2.1 opens no window"**, on the reasoning that each item was defect
+repair and policy rule 1 ("one window per major") therefore stayed untouched. That was superseded: a
+window is opened by an explicit maintainer decision, not by which version component carries it, and rule
+1's wording is what gives way. The individual not-window-gated dispositions in
+[breaking-windows.md](common/breaking-windows.md#explicit-not-window-gated-rulings) remain accurate about
+*why each change is safe* — they simply no longer have to carry the weight of keeping the release
+window-less.
+
+Policy rule 5's as-shipped reconciliation still governs: the window ships a binary break in the
+precompiled-manifest contract, and reconciliation is the only mechanism that keeps such a thing from being
+assumed rather than verified.
 
 **A correction, recorded here because it is exactly what that mechanism is for.** This paragraph previously
 read that the break "had already occurred in 2.0.0's metadata". It had not. Checked against the `v2.0.0`
@@ -59,7 +70,7 @@ tag: the shipped generator emitted `schemaVersion: 2`, the shipped engine accept
 in 2.1 — see row 1. The claim survived several documents because it was reasoned from the current source
 rather than from the release, which is the failure mode rule 5 exists to catch.
 
-**Window status: n/a (no window opened). Release status: pending** — recorded at implementation time;
+**Window status: open and ratified** (binary + minor API scope). **Release status: pending** — recorded at implementation time;
 reconcile against the shipped source when `v2.1.0` is tagged.
 
 | # | Change | 2.0.0 state | As implemented for 2.1.0 |

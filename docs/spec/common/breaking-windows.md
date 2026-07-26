@@ -7,9 +7,16 @@ Completed windows are recorded in the [historical records](../records.md), never
 
 ## Policy (applies to every window)
 
-1. **One window per major, one migration per window.** All ratified breaking changes for
-   a major land together; users touch their options/templates once. Between windows,
+1. **One window at a time, one migration per window.** All ratified breaking changes for
+   a window land together; users touch their options/templates once. Between windows,
    everything ships additively (new options default to current behavior).
+
+   **A window is opened by an explicit maintainer decision, not by a version component.** This rule
+   originally read "one window per *major*", which was corrected when 2.1 was ratified as a window
+   (2026-07-26): a minor may carry one, and the version number is a consequence of the window's scope
+   rather than the thing that licenses it. What the scope decides is what may enter — 2.1's is **binary
+   changes and minor API changes or additions**, and a *substantial* API change is refused entry and
+   held for a major rather than argued in.
 2. **Contents are ratified, not accumulated.** Each window item needs a maintainer-ratified
    decision record in its owning spec; the window's consolidated table, execution order,
    and whatever no single spec owns are assembled in that window's own planning document

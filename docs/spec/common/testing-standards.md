@@ -166,10 +166,19 @@ The rule:
   whose assertion pins offsets into that literal, and a constructed or `[Theory]`-generated template
   stay inline: a template next to its assertion is better test code, and those cases gain no
   cross-tier coverage. The rule targets shapes two tiers verify, not every string literal.
-- **Shared test assets are reached from the consumer's own output directory**, never by walking up
-  out of `bin/<cfg>/<tfm>` into a sibling project. Path traversal to another project's assets
+- **Shared test *inputs* are reached from the consumer's own output directory**, never by walking up
+  out of `bin/<cfg>/<tfm>` into a sibling project. Path traversal to another project's inputs
   encodes the configuration name, the TFM directory and the project nesting as assumptions, and its
   failure mode is a test that finds nothing and passes.
+
+  **The rule is about inputs, and inputs are what git stores** — templates, goldens, fixtures. A test
+  that reads another project's *output* — a compiled assembly, a generated file — is doing something
+  else and is not covered here: build artifacts legitimately live outside the consumer's own output
+  directory, because the thing that produced them decides where they go. Such a read carries its own
+  obligation instead: it must be **conflict-free and it must fail loudly on a miss**. Order the build
+  with a `ProjectReference` (`ReferenceOutputAssembly="false"` where only ordering is wanted), and
+  assert the artifact was found rather than returning early — the silent-pass failure mode above is
+  the one thing both cases share, and it is the part that actually bites.
 - **What moves is byte-identical, and its encoding is pinned by a gate.** A move is proven a rename;
   a merge of two tiers' near-identical copies resolves and *records* every difference (a divergence
   found while merging is a drift finding, not a formatting nit). Line endings are pinned in
