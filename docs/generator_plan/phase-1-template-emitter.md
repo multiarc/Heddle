@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Status:** **implemented (2026-07-26)** — D1–D14 and WI1–WI13 landed; see
+- **Status:** **implemented (2026-07-26); audited (2026-07-26 — see [Post-implementation audit](#post-implementation-audit-2026-07-26))** — D1–D14 and WI1–WI13 landed; see
   [Implementation record](#implementation-record). The program's last quarantined phase-0 fixture
   (`NonLeftmostScopeChannelParticipant_ProvisionsLocalsOnBothTiers`) is **un-skipped, reshaped and
   green**, so the quarantine register now carries **zero skips**. All four open questions were
@@ -845,3 +845,172 @@ not possible, and folding *with* the extra checks would make the build tier stri
 engine — a match-principle violation. The index-ordering rule the fold was meant to protect is
 already gated end-to-end by the props differentials, which compare rendered bytes and therefore
 slot indices.
+
+## Post-implementation audit (2026-07-26)
+
+Sixth and last of the program's phase audits, run against the landed phase. The phase's **factual**
+claims held up almost everywhere — every inventory file exists, compiles into both assemblies and is
+adopted at the seams the plan names; the two new diagnostics, the schema bump and both additive
+public-API surfaces are real and in the golden. What did **not** hold, matching every earlier audit,
+is the *coverage those claims implied*. Six items were fixed and are recorded here; the mutation
+survivors and the residual coverage gaps are recorded too, rather than argued away.
+
+### Fixed
+
+1. **`BodyModelRules` had no Release enforcement, and its acceptance test was tautological (WI10).**
+   The emitter's only link to the table was a `System.Diagnostics.Debug.Assert`, so in Release the
+   table constrained nothing at all; and `EmitterSharedRuleAdoptionTests.TheEmittersPinnedBranchesCiteTheTableRows`
+   was a theory whose `InlineData` rows *were* the table's rows, asserted against the table — it
+   could not fail, and it never touched the emitter. The rule is now **consumed**: a new
+   `TemplateEmitter.TryNestedBodyContext` derives the nested body's build context from the row
+   (`Parent` → the enclosing typed context; `ElementOfData` → the dynamic tier), and the branch trio,
+   `@for` and `@list` arms all obtain their body context from it. The build-tier tests read the
+   consequence off the generated source; the run-tier tests in `BodyModelRuleTableTests` now read each
+   column as a **prediction about observable output** instead of asserting the table against literals
+   copied out of it. Byte-neutral: the five branch names the arm accepts are exactly the table's
+   branch rows, and every arm's resulting context is the one it constructed before. Four table
+   mutants (`if`→`ElementOfData`, `list`→`Parent`, `for` row deleted, `for`'s `Chained`→`None`) now
+   all redden; before the fix the `Chained` column had **no consumer anywhere** and could be flipped
+   freely.
+2. **The "generator-side copy is deleted" pins were name pins (WI4/WI5).** They asserted
+   `Assert.DoesNotContain(methods, m => m.Name == "ScanHostsParticipant")` and the `DefinitionHasSlot`
+   twin — a re-implementation under any other name passed, which is the one failure mode they existed
+   for. Both are now name-independent and constrain the *inputs* a re-implementation must read: the
+   scope-channel predicate is read off the binder in exactly one place and consumed only by
+   `ParticipantScan` or the `DocumentShaper` hand-off; `SlotTypeName` is reachable only through
+   `SlotRules`; and no statement may re-form the `IsModelTypeParameter`-plus-carriers out-value
+   approximation. Verified by mutation: a renamed leftmost-only probe added beside the predicate
+   reddens the WI4 pin.
+3. **`ParticipantScanLockstepTests` was six hand-picked rows, not the whole-corpus sweep the matrix
+   promised (WI4).** The sweep now exists —
+   `TheSharedScanAgreesWithTheRuntimeOverTheWholeCorpus` runs both scans over all 62
+   `src/Heddle.Tests/TestTemplate/**` templates, asserts the shared parse-level verdict is never
+   narrower than `RuntimeDocument.NeedsLocals`, pins by name the six templates that do provision a
+   frame (so the sweep cannot go vacuous the way two phase-0 gates did), and carries an **empty**
+   named allow-list for corpus over-provision so any new inexactness is a conscious edit. Result:
+   exact agreement on all 62 templates today.
+4. **The reshaped F11 fixture's clause (2) was decorative.** `@row()@row()` is two *leftmost*
+   participants — a shape the old buggy probe already handled — so nothing about it could distinguish
+   fixed from unfixed, and clause (3) was a verbatim copy of
+   `ParticipantScanLockstepTests.TheLegacyProbeMissesANestedChainParameterParticipant`. Clause (3) is
+   dropped (the rule's coverage lives in `Heddle.Tests`, and duplicating it here bought nothing) and
+   clause (2) is replaced by the **observable** half of the same drift: the per-carrier flag
+   asymmetry, asserted to precompile and to render byte-identically. Verified: reverting the flag OR
+   now reddens this fixture, not only its sibling suite.
+5. **WI7's actual fix had no test.** The Implementation record says the shared classifier "fixed a
+   real inversion … a host-exported function sharing a name with a registered extension bound as a
+   function at build and as the extension at run". `CallTargetRulesTests` pins the classifier in
+   isolation and the run tier; nothing exercised the emitter over a real collision. New
+   `Heddle.Generator.Tests/CallTargetAdoptionTests` exports a function named `raw` in a synthetic
+   compilation and requires the emitter to bind `EmptyExtension` and emit no call into the container.
+   Verified: swapping the classifier's extension/function arms reddens it.
+6. **The `BindDefinition` overload claims were asserted only at the signature level.** The success
+   criterion "the existing overloads are binary-unchanged" and the record's "the 10-arg one now
+   forwards with both flags equal, so it is byte-identical to before" had no test — the public-API
+   golden covers signatures, not forwarding. New `Heddle.Tests/BindDefinitionOverloadTests` pins all
+   four flag pairs of the new overload and both legacy overloads' one-flag-to-both-carriers
+   behaviour, read off each carrier. Verified: breaking the forwarding reddens it.
+
+### Test matrix: the six "corpus guardrail entries"
+
+The verifying reviewer's report is **confirmed**: all six area-01 corpus guardrail entries had zero
+fixture files, and the matrix row that claimed they "land in `CorpusDifferentialTests`' fixture set"
+was wrong twice over — `CorpusDifferentialTests` has no fixture set of its own (it sweeps
+`src/Heddle.Tests/TestTemplate/**`), and none of the six shapes was ever added there. The matrix is
+**corrected**, not backfilled: it now states where each guardrail actually lives (a dedicated
+differential/lockstep asset per shape, which pins rendered bytes and is a strictly stronger gate than
+the corpus sweep's classification pin), records that area 01's whole-corpus guardrail is the new
+participant-scan sweep above, and states why three of the remaining five cannot be `TestTemplate`
+files at all (an error template would have to be threaded through `ExpectedDiagnosticFixtures` and
+excluded from three other whole-corpus suites; two depend on test extensions that live in the
+generator integration-test assembly). Moving them into a shared corpus is phase 7's deliverable.
+
+The matrix also carried a **naming class of error** that produced the report: fixtures in
+`Heddle.Generator.IntegrationTests` are inline template strings keyed by a `views/<stem>.heddle`
+path — that suite holds no `.heddle` files at all — so every stem in the matrix is a key, not a
+filename. That is now stated at the top. A further eleven rows named suite files that were never
+created under that name (`CallTargetLockstepTests`, `OutputProfileRulesTests`/`RenderTypeRulesTests`,
+`RegionFillResolverTests`' fixture stems, the WI3 and WI9 suite homes, …); each row now names the
+file that exists.
+
+### Mutation results
+
+Twenty-four mutants across every rule this phase owns; **all twenty-four killed**, so there is no
+survivor to classify. `ParticipantScan` (recursion removed, leftmost-only), `SlotRules`
+(`PropArguments` row, empty-first-segment check, base-chain walk), `CallTargetRules` (function before
+extension, definition before fill, C#-expression shape gate), `RenderTypeRules` (`[NotEncode]` veto),
+`OutputProfileRules` (trim, case-insensitivity, the bodied-carrier gate), `BodyModelRules` (four),
+`RegionFillResolver` (private gate, origin filter), `EmbeddedCSharpNames` (const rename),
+`CSharpEscape.IndexOfLoneSurrogate` (index → 0), `PrecompiledRuntime`'s legacy forwarding,
+`TemplateEmitter.IsZeroOutput` (back to the name list), `TryNestedBodyContext` (ignore the
+`ElementOfData` row), `MapProfilePerChain` (WI2's `HED7022` branch), the carrier-flag OR, and a
+renamed duplicate leftmost-only participant probe added beside the binder predicate.
+
+Five mutants were killed **only** by a unit/rule-level test, with every differential and golden suite
+staying green. Recorded because it locates the blind spots, not because the kills are in doubt:
+
+| Mutant | Killed only by | Why nothing else sees it |
+|---|---|---|
+| `SlotRules.SlotTypeName` stops walking the base chain | `SlotRulesTests` | no precompiled fixture inherits its `out::` from a base layer |
+| `RegionFillResolver`'s origin filter removed | `RegionFillResolverTests` | no differential fixture carries a foreign-origin candidate |
+| `RenderTypeRules.Derive` stops honouring `[NotEncode]` | `OutputProfileAndRenderTypeRuleTests` | no extension anywhere carries `[EncodeOutput]` **and** `[NotEncode]`, so the fourth row of the truth table is unreachable from a template |
+| `TryParseProfile` stops trimming | `OutputProfileAndRenderTypeRuleTests` | both tiers trim the `@profile` body *before* calling the rule, so the shared `Trim()` is live only for host/editor option values |
+| `SlotRules.HasOutValue` drops the `PropArguments` row | `SlotRulesTests` | no fixture puts named prop arguments on an `@out` |
+
+### Residual gaps and inaccuracies, recorded
+
+- **The value-path coercion rail has no byte-level fixture.** `strategy-nonstring-value` asserts the
+  rail against the **emitted source**, and `strategy-boxed-index` covers the render path; nothing
+  drives a boxed non-string through the *value* path on both tiers. The normative §4 asymmetry is
+  therefore pinned as shape plus render-path behaviour, not as the value-path drop. Closing it needs
+  a host extension whose `ProcessData` consumes its body's `Execute` result and returns a non-string.
+  The rail itself is verified identical on both sides (`RuntimeDocument`'s four strategies vs
+  `EmitBodyClass`) — see Q1.2 below.
+- **The matrix's WI1 `scope-nested-participant` byte fixture cannot exist** and the plan's success
+  criterion that names it is superseded by the record's own "Correction to the plan": the shape is
+  refused by the emitter for an unrelated pre-existing reason. The criterion should be read as
+  satisfied by the degrade-parity conjunction, not by a byte comparison.
+- **D14 row 1 landed elsewhere than planned.** The one lone-surrogate scanner is
+  `Heddle/Language/Expressions/CSharpEscape.IndexOfLoneSurrogate`, credited to phase 4 D9 / phase 6
+  D11, not `PieceWriter`. One copy, three consumers — the row's intent is met; its location claim is
+  wrong.
+- **D14 row 2 is resolved by deletion.** `StripGlobal` had **one** call site, not four (the other three
+  had already become `ExtensionBinder.Info.BareTypeName` reads) — and that one call site was
+  [post-implementation review finding 4](README.md#post-implementation-review-findings-2026-07-26): it
+  spelled a nested type `Ns.Outer.Inner` and defaulted the manifest row's assembly to the literal
+  `"Heddle"`. The helper is now deleted and the branch arm takes `Info.BareTypeName` /
+  `Info.AssemblyName` like every other row. Byte-neutral (the four engine branch-role extensions are
+  top-level), and **not reachable by a test** — the arm gates on `IsEngineAssembly`, so nothing nested or
+  out-of-engine can enter it. The guard against reintroduction is a source-shape pin, labelled as one.
+- **D14 row 3 is over-claimed.** `ExtensionBindingsArray` still concatenates `b.Type + ", " +
+  b.Assembly` rather than consuming `Info.AqnSansVersion`; both parts come from the binder, so there
+  is a single source of truth and the gauntlet gates the result, but the hand-concatenation the row
+  says was removed is still there.
+- **D14 row 4 is substantially met**: one `AnyLayer` predicate walk plus the two walks that moved
+  into `SlotRules`; `ResolvePropLayout` keeps a *collector* loop over the base chain, which is a
+  different shape and not one of the five.
+- **WI13 has no entry in the Implementation record** even though the header claims WI1–WI13 landed.
+  Its eight rows are verified above; the record should say so.
+- **`RegionTests.LocationOffsetOf` returns a hard-coded `0`** (`RegionTests.cs`) — a helper that
+  reads as a position assertion and asserts nothing. Reported, not fixed: `RegionTests` is not this
+  phase's artifact.
+
+### Q1.2 and the additive-API confirmations
+
+- **Q1.2 (joint-land rule, "any present mismatch is fixed now"): confirmed, none missed.** The runtime
+  coerces with `as string ?? string.Empty` in all three value-producing strategies
+  (`SingleStrategy`, `OptimizedStrategy`, and `NormalStrategy` with its `?? element.Piece` fallback);
+  `DocumentStrategy` returns the whole static document, which is the byte-equivalent short-circuit the
+  spec text describes. The emitter emits the identical expression for every call segment and
+  `?? string.Empty` for the `@partial` segment, with the empty/single/`string.Concat` three-case
+  shape. No present generator↔runtime rail mismatch exists.
+- **`[ZeroOutput]`:** in the public-API golden (`public-api-heddle.txt`), applied to the four built-in
+  directives, exercised on both tiers by `ZeroOutputDifferentialTests` (a custom `[ZeroOutput]`
+  extension mid-document) and by `ZeroOutputProtocolTests`' attribute ⇔ null-`InitStart` conformance.
+  Mutation-confirmed load-bearing: reverting `IsZeroOutput` to the hard-coded name list reddens the
+  custom-extension differential.
+- **The per-carrier `BindDefinition` overload:** all three overloads are in the golden; the new one is
+  exercised by generated code in `ScopeParticipantDifferentialTests` (five fixtures) and, as of this
+  audit, directly by `BindDefinitionOverloadTests` — which is also the first test of the claim that
+  the two legacy overloads still apply one flag to both carriers. `PrecompiledSchema` 4→5 and its
+  `PerCarrierLocalsSchemaVersion` gate are pinned by `PipelineContractTests`.

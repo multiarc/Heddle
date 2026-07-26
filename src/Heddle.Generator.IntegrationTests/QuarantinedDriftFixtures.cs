@@ -139,13 +139,20 @@ namespace Heddle.Generator.IntegrationTests
         // precompiled tier and a byte comparison of @yell(@row()) would compare two dynamic renders — vacuous.
         //
         // What it asserts instead, following the precedent phase 4 set for its overload-tie fixture: the
-        // conjunction the drift actually needs. (1) The control shape degrades identically on both tiers, so the
-        // latency is pinned as a fact rather than a memory — if a later phase teaches the emitter nested chain
-        // parameters, THIS assertion goes red and forces the byte comparison to be restored. (2) A neighbouring
-        // template whose participant IS reachable still precompiles and renders byte-identically, proving the
-        // participant machinery works rather than being switched off. (3) The scan rule itself agrees with the
-        // runtime on the very shape the old probe missed — asserted through the shared scan, which is where the
-        // rule now lives.
+        // conjunction the drift actually needs.
+        //   (1) DEGRADE PARITY. The control shape degrades identically to a participant-free twin of the same
+        //       syntax, so the latency is pinned as a fact rather than a memory — if a later phase teaches the
+        //       emitter nested chain parameters, THIS assertion goes red and forces the byte comparison back.
+        //   (2) THE OBSERVABLE HALF OF THE SAME DRIFT. What used to stand here was "@row()@row()" — two LEFTMOST
+        //       participants, i.e. a shape the old buggy probe already handled, so nothing about it could
+        //       distinguish fixed from unfixed. It was decorative and is replaced: the neighbour is now the
+        //       per-carrier flag asymmetry, which IS observable, so reverting either half of WI1 reddens this
+        //       fixture rather than only its sibling suite.
+        //
+        // What was DROPPED: a third clause re-asserting ParticipantScan.BodyHostsParticipant("@(else())"), which
+        // was a verbatim copy of ParticipantScanLockstepTests.TheLegacyProbeMissesANestedChainParameterParticipant.
+        // The scan rule's own coverage — the legacy-probe characterization, the runtime lockstep and the
+        // whole-corpus sweep — lives there, in Heddle.Tests, and is not duplicated here.
         // ---------------------------------------------------------------------------------------------------
         [Fact]
         public void NonLeftmostScopeChannelParticipant_ProvisionsLocalsOnBothTiers()
@@ -163,21 +170,22 @@ namespace Heddle.Generator.IntegrationTests
             var controlGen = DifferentialHarness.Generate(new[] { ("drift-locals-control.heddle", control) });
             DifferentialHarness.ExpectDegrade(controlGen, "drift-locals-control.heddle");
 
-            // (2) The reachable neighbour: the same participant, leftmost, still precompiles and matches.
-            var (precompiled, dyn) = DifferentialHarness.Render(
-                "drift-locals-ok.heddle", "@model(){{System.String}}@\\\n@row()@row()\n", typeof(string), "hi");
-            Assert.Equal(dyn, precompiled);
-            Assert.Contains("even", precompiled);
-            Assert.Contains("odd", precompiled);
+            // (2) The observable half of drift #3, next to the latent one: a definition call whose BODY hosts a
+            // participant (@gate) while its caller content does not. The dynamic tier hands the outer carrier a
+            // cleared frame, so @peek reports "unseen"; the emitter's OR'd flag used to hand it a fresh one and
+            // report "seen". The template must precompile — a degrade here would make the byte comparison vacuous
+            // in exactly the way clause (1) documents for the nested shape.
+            const string asymmetricKey = "drift-locals-asymmetric.heddle";
+            const string asymmetric = "@model(){{System.String}}@\\\n" +
+                                      "@%<box>{{[@gate(this)]@out()}}%@\n" +
+                                      "@box(this){{@flag(this)@peek(this)}}";
+            var asymmetricGen = DifferentialHarness.Generate(new[] { (asymmetricKey, asymmetric) });
+            DifferentialHarness.ExpectPrecompiled(asymmetricGen, asymmetricKey);
 
-            // (3) The rule the drift was about, asserted where it now lives: the shared scan finds a participant
-            // the old leftmost-only probe missed. Heddle.Tests.ParticipantScanLockstepTests carries the full
-            // corpus, the legacy-probe characterization, and the runtime lockstep.
-            var parse = Heddle.Language.DocumentParser.Parse("@(else())",
-                new Heddle.Language.ParserSettings { RootPath = string.Empty }, out _);
-            Assert.True(Heddle.Language.ParticipantScan.BodyHostsParticipant(parse,
-                name => Heddle.Runtime.TemplateFactory.TryGetExtensionType(name, out var type) &&
-                        type.IsHaveAttribute<Heddle.Attributes.ScopeChannelAttribute>(true)));
+            var (precompiled, dyn) = DifferentialHarness.Render(
+                asymmetricKey, asymmetric, typeof(string), "hi");
+            Assert.Equal(dyn, precompiled);
+            Assert.Contains("unseen", precompiled);
         }
 
         // ---------------------------------------------------------------------------------------------------

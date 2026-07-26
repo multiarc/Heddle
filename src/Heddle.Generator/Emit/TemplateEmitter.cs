@@ -319,6 +319,43 @@ namespace Heddle.Generator.Emit
                 new BodyContext(ModelCast, ModelSymbol, IsDynamic, Props, InSlot, fills, regionHostProps);
         }
 
+        /// <summary>
+        /// <para>Phase 1 D12 (WI10) — the nested body's model context is <b>derived from</b>
+        /// <see cref="BodyModelRules"/>' row for the host name, not chosen per emission branch. This is the
+        /// emitter's real dependency on the table: the row decides which context the body is built in, so the table
+        /// is load-bearing rather than a comment with a <c>Debug.Assert</c> beside it (which was
+        /// Release-unenforced).</para>
+        /// <list type="bullet">
+        /// <item><description><see cref="BodyModelSource.Parent"/> (the branch trio, <c>@for</c>) — the body keeps
+        /// the enclosing typed context, because it executes under <c>scope.Parent()</c>.</description></item>
+        /// <item><description><see cref="BodyModelSource.ElementOfData"/> (<c>@list</c>) — the element type is
+        /// discoverable only through the host's reflected <c>InitStart</c>, so the body is built on the dynamic
+        /// tier rather than guessed. The enclosing fill scope, region props and slot mode still
+        /// propagate.</description></item>
+        /// </list>
+        /// <para>A name with no pinned row, or a row naming a source the emitter has no emission for, returns
+        /// <c>false</c>: the caller refuses the body and the template degrades, which is the safe direction.</para>
+        /// </summary>
+        private static bool TryNestedBodyContext(string name, BodyContext bctx, out BodyContext nested)
+        {
+            nested = bctx;
+            if (!BodyModelRules.TryGet(name, out var source, out _))
+                return false;
+
+            if (source == BodyModelSource.Parent)
+                return true;
+
+            if (source == BodyModelSource.ElementOfData)
+            {
+                var dynamicCtx = new BodyContext(null, null, true,
+                    fills: bctx.Fills, regionHostProps: bctx.RegionHostProps);
+                nested = bctx.InSlot ? dynamicCtx.AsSlot() : dynamicCtx;
+                return true;
+            }
+
+            return false;
+        }
+
         private sealed class Piece { public int Index; }
 
         private sealed class Call
@@ -512,13 +549,6 @@ namespace Heddle.Generator.Emit
         private bool HasScopeChannel(string name)
             => _extensionBinder.TryResolve(name, out var i) && i.HasScopeChannel;
 
-        /// <summary>Removes the <c>global::</c> prefix from a fully-qualified name (the binder's <c>GlobalName</c>),
-        /// yielding the bare <c>Ns.Type</c> the manifest binding row and body-extension type name expect.</summary>
-        private static string StripGlobal(string globalName)
-            => globalName != null && globalName.StartsWith("global::", System.StringComparison.Ordinal)
-                ? globalName.Substring("global::".Length)
-                : globalName;
-
         private sealed class Partial
         {
             public string FieldName;
@@ -594,26 +624,35 @@ namespace Heddle.Generator.Emit
             if (_extensionBinder.TryResolve(name, out var branchInfo) && branchInfo.Role.HasValue &&
                 branchInfo.IsEngineAssembly)
             {
-                // Branch bodies execute under scope.Parent(): the model stays the enclosing body's model.
-                // The rule is BodyModelRules' row for this name — (Parent, None) — not a comment (phase 1 D12);
-                // BodyModelRuleConformanceTests asserts this branch and the runtime agree with it.
-                System.Diagnostics.Debug.Assert(
-                    BodyModelRules.TryGet(name, out var branchBodySource, out _) &&
-                    branchBodySource == BodyModelSource.Parent);
+                // Branch bodies execute under scope.Parent(): the model stays the enclosing body's model. The rule
+                // is BodyModelRules' row for this name — (Parent, None) — and it is *consumed*, not asserted: the
+                // row picks the context the body is built in (phase 1 D12). A row that stopped saying Parent would
+                // change these bytes, which is what makes the table load-bearing in Release too.
+                if (!TryNestedBodyContext(name, bctx, out var branchBodyCtx))
+                {
+                    reason = "no pinned body model-typing row for branch '" + name + "'";
+                    return null;
+                }
+
                 if (!BuildParamExpr(cp, bctx, out var bParam, out var bUses, out var bCs, out reason))
                     return null;
 
                 BodyClass branchBody = null;
                 if (!string.IsNullOrEmpty(item.ParameterTemplate) && item.Context != null)
                 {
-                    branchBody = BuildBody(item.ParameterTemplate, item.Context, bctx, out reason);
+                    branchBody = BuildBody(item.ParameterTemplate, item.Context, branchBodyCtx, out reason);
                     if (branchBody == null)
                         return null;
                 }
 
                 bool needsLocals = branchBody != null && branchBody.HostsParticipant;
-                var field = AllocateBodyExtension(name, branchInfo.GlobalName, StripGlobal(branchInfo.GlobalName),
-                    branchBody?.Name, needsLocals, item.Position);
+                // The manifest row's type/assembly come from the BINDER (BareTypeName carries the metadata `+` for a
+                // nested type, AssemblyName the real assembly) — not from stripping `global::` off the display name
+                // and defaulting the assembly to "Heddle". That stripping spelled a nested type `Ns.Outer.Inner`
+                // where the gauntlet computes `Ns.Outer+Inner, <asm>`; it was unreachable only because every engine
+                // branch-role extension happens to be top-level today (post-implementation review finding 4).
+                var field = AllocateBodyExtension(name, branchInfo.GlobalName, branchInfo.BareTypeName,
+                    branchBody?.Name, needsLocals, item.Position, branchInfo.AssemblyName);
                 var call = MakeCall(field, bParam, bUses, item.Position, bCs);
                 return call;
             }
@@ -624,20 +663,23 @@ namespace Heddle.Generator.Emit
                 // tier — BodyModelRules' row for "list" is (ElementOfData, None), and the element type is
                 // discoverable only by reflection (ListExtension.InitStart), so the emitter routes the body
                 // through the dynamic tier rather than guessing it. generated-code.md example 3.
+                // The element body is the dynamic tier; a slot @out(value) may still appear inside it, so the
+                // enclosing definition's slot mode propagates into the nested body. Phase 7 D4: the ambient
+                // fill scope (and the region host's prop layout) also propagate — the BLOCKER-A depth seam —
+                // so @item(this) nested in an @list body resolves the call site's fill. All of that is what
+                // BodyModelRules' ElementOfData row means here, and TryNestedBodyContext is where it is read.
+                if (!TryNestedBodyContext("list", bctx, out var itemCtx))
+                {
+                    reason = "no pinned body model-typing row for 'list'";
+                    return null;
+                }
+
                 if (!BuildParamExpr(cp, bctx, out var lParam, out var lUses, out var lCs, out reason))
                     return null;
 
                 BodyClass itemBody = null;
                 if (!string.IsNullOrEmpty(item.ParameterTemplate) && item.Context != null)
                 {
-                    // The element body is the dynamic tier; a slot @out(value) may still appear inside it, so the
-                    // enclosing definition's slot mode propagates into the nested body. Phase 7 D4: the ambient
-                    // fill scope (and the region host's prop layout) also propagate — the BLOCKER-A depth seam —
-                    // so @item(this) nested in an @list body resolves the call site's fill.
-                    var itemCtx = new BodyContext(null, null, true,
-                        fills: bctx.Fills, regionHostProps: bctx.RegionHostProps);
-                    if (bctx.InSlot)
-                        itemCtx = itemCtx.AsSlot();
                     itemBody = BuildBody(item.ParameterTemplate, item.Context, itemCtx, out reason);
                     if (itemBody == null)
                         return null;
@@ -654,13 +696,19 @@ namespace Heddle.Generator.Emit
                 // @for(n)/@for(Count)/@for(range(...)): ForIndexExtension re-scopes each iteration via
                 // scope.Parent(i) — BodyModelRules' row for "for" is (Parent, Int32Index): the body is typed by
                 // the enclosing model (like a branch body) and @out() splices the boxed index.
+                if (!TryNestedBodyContext("for", bctx, out var forBodyCtx))
+                {
+                    reason = "no pinned body model-typing row for 'for'";
+                    return null;
+                }
+
                 if (!BuildParamExpr(cp, bctx, out var fParam, out var fUses, out var fCs, out reason))
                     return null;
 
                 BodyClass forBody = null;
                 if (!string.IsNullOrEmpty(item.ParameterTemplate) && item.Context != null)
                 {
-                    forBody = BuildBody(item.ParameterTemplate, item.Context, bctx, out reason);
+                    forBody = BuildBody(item.ParameterTemplate, item.Context, forBodyCtx, out reason);
                     if (forBody == null)
                         return null;
                 }
@@ -2236,7 +2284,7 @@ namespace Heddle.Generator.Emit
         }
 
         private string AllocateBodyExtension(string callName, string fqn, string typeName, string bodyName,
-            bool needsLocals, BlockPosition position)
+            bool needsLocals, BlockPosition position, string assembly = "Heddle")
         {
             var field = "E" + _extensionCounter++;
             var (line, col) = _map.Map(position.StartIndex);
@@ -2248,7 +2296,7 @@ namespace Heddle.Generator.Emit
                 .Append(needsLocals ? "true" : "false")
                 .Append(", line: ").Append(line).Append(", column: ").Append(col).Append(");\n");
             _extensionFields.Add(field);
-            RecordExtensionBinding(callName, typeName);
+            RecordExtensionBinding(callName, typeName, assembly);
             return field;
         }
 

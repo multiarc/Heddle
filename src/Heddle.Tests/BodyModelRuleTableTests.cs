@@ -19,6 +19,8 @@ namespace Heddle.Tests
         {
             public string Name { get; set; }
             public int[] Scores { get; set; }
+            /// <summary>Always null, so a branch on it is falsy — the continuation/terminal probes need one.</summary>
+            public string Other { get; set; }
         }
 
         private static string Render(string template, object model) =>
@@ -32,33 +34,75 @@ namespace Heddle.Tests
             Assert.Equal(BodyModelRules.PinnedNames.OrderBy(n => n), registered.OrderBy(n => n));
         }
 
+        // -----------------------------------------------------------------------------------------------------
+        // The rows are read as PREDICTIONS about observable output, never asserted against themselves. The three
+        // tests that used to stand here ("Assert.Equal(Parent, table[\"if\"].Body)") could not fail for any reason
+        // other than someone editing both the table and the test, which is not coverage. Each row below computes
+        // the expected rendered text FROM the row, so a changed row makes the prediction wrong and the test red.
+        // -----------------------------------------------------------------------------------------------------
+
+        private const string PersonHeader = "@model(){{Heddle.Tests.BodyModelRuleTableTests+Person}}@\\\n";
+
+        /// <summary>Renders, or returns <c>null</c> when the template does not compile — which is what a body read
+        /// of a member the body's model does not have amounts to.</summary>
+        private static string TryRender(string template, object model)
+        {
+            try
+            {
+                return Render(template, model);
+            }
+            catch (Exceptions.TemplateCompileException)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>The <c>Body</c> column, as a prediction: a body typed by <see cref="BodyModelSource.Parent"/>
+        /// can bind the ENCLOSING model's members; a body typed any other way cannot, and the read fails to compile.
+        /// Every probe body reads <c>Name</c>, which only the enclosing <see cref="Person"/> has — so the row alone
+        /// decides the expected outcome, and <c>@list</c>'s <c>ElementOfData</c> row (element type <c>int</c>, no
+        /// <c>Name</c>) is discriminated from the branch/<c>@for</c> rows' <c>Parent</c>.</summary>
+        [Theory]
+        [InlineData("if", "@if(Name){{@(Name)}}", "Ada")]
+        [InlineData("ifnot", "@ifnot(Other){{@(Name)}}", "Ada")]
+        [InlineData("elif", "@if(Other){{x}}@elif(Name){{@(Name)}}", "Ada")]
+        [InlineData("elseif", "@if(Other){{x}}@elseif(Name){{@(Name)}}", "Ada")]
+        [InlineData("else", "@if(Other){{x}}@else(){{@(Name)}}", "Ada")]
+        [InlineData("for", "@for(1){{@(Name)}}", "Ada")]
+        [InlineData("list", "@list(Scores){{@(Name)}}", "Ada")]
+        public void TheBodyColumnPredictsWhetherTheBodySeesTheEnclosingModel(string name, string template,
+            string whenParent)
+        {
+            Assert.True(BodyModelRules.TryGet(name, out var body, out _));
+            var expected = body == BodyModelSource.Parent ? whenParent : null;
+            Assert.Equal(expected,
+                TryRender(PersonHeader + template, new Person { Name = "Ada", Scores = new[] { 7 } }));
+        }
+
+        /// <summary>The <c>Chained</c> column, as a prediction: <c>@for</c>'s
+        /// <see cref="ChainedModelSource.Int32Index"/> is what makes a non-slot <c>@out()</c> inside its body splice
+        /// the boxed iteration index. <see cref="ChainedModelSource.None"/> would mean nothing host-specific on the
+        /// chained channel, so <c>@out()</c> would have nothing to splice — which is what this asserts instead when
+        /// the row changes. Without this the column had no consumer anywhere: it could be flipped freely.</summary>
+        [Fact]
+        public void TheChainedColumnPredictsWhatOutSplicesInsideAForBody()
+        {
+            Assert.True(BodyModelRules.TryGet("for", out _, out var chained));
+            var expected = chained == ChainedModelSource.Int32Index ? "012" : string.Empty;
+            Assert.Equal(expected, Render(PersonHeader + "@for(3){{@out()}}", new Person { Name = "Ada" }));
+        }
+
+        /// <summary>The branch rows' <c>Chained</c> column, same treatment: <c>None</c> predicts that a branch body's
+        /// <c>@out()</c> splices nothing.</summary>
         [Theory]
         [InlineData("if")]
-        [InlineData("ifnot")]
-        [InlineData("elif")]
-        [InlineData("elseif")]
         [InlineData("else")]
-        public void TheBranchTrioIsTypedByTheParentModel(string name)
+        public void TheBranchRowsChainedColumnPredictsAnEmptyOut(string name)
         {
-            Assert.True(BodyModelRules.TryGet(name, out var body, out var chained));
-            Assert.Equal(BodyModelSource.Parent, body);
-            Assert.Equal(ChainedModelSource.None, chained);
-        }
-
-        [Fact]
-        public void ForIsParentModelPlusABoxedIndex()
-        {
-            Assert.True(BodyModelRules.TryGet("for", out var body, out var chained));
-            Assert.Equal(BodyModelSource.Parent, body);
-            Assert.Equal(ChainedModelSource.Int32Index, chained);
-        }
-
-        [Fact]
-        public void ListIsTypedByTheElementOfItsData()
-        {
-            Assert.True(BodyModelRules.TryGet("list", out var body, out var chained));
-            Assert.Equal(BodyModelSource.ElementOfData, body);
-            Assert.Equal(ChainedModelSource.None, chained);
+            Assert.True(BodyModelRules.TryGet(name, out _, out var chained));
+            var template = name == "if" ? "@if(Name){{[@out()]}}" : "@if(Other){{x}}@else(){{[@out()]}}";
+            var rendered = Render(PersonHeader + template, new Person { Name = "Ada" });
+            Assert.Equal(chained == ChainedModelSource.None ? "[]" : "[0]", rendered);
         }
 
         [Fact]
