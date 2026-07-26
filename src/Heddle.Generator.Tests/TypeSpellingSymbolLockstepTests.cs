@@ -65,6 +65,10 @@ namespace Probe.Nest { public class Outer { public class Inner { } } }";
         [InlineData("System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<int>>",
             "System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<int>>")]
         [InlineData("(int, string)", "(int, string)")]
+        // Q8.3: the one-element tuple the shared parser used to refuse — now resolved on both tiers.
+        [InlineData("(int)", "System.ValueTuple<int>")]
+        [InlineData("()", "UNRESOLVED")]
+        [InlineData(" int ", "int")]
         [InlineData("Probe.Nest.Outer.Inner", "Probe.Nest.Outer.Inner")]
         [InlineData("Probe.Only.UniqueProbe", "Probe.Only.UniqueProbe")]
         // A globally unique short name binds with no import — the runtime's rule, which the build tier lacked.

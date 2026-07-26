@@ -51,7 +51,7 @@ namespace Heddle.Generator.Tests
             return ExtensionBinder.Build(compilation);
         }
 
-        private const string NestedSource = @"
+        private static readonly string NestedSource = GeneratorHarness.WithAllExtensionsExported(@"
 using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
@@ -77,7 +77,7 @@ namespace Probe
             }
         }
     }
-}";
+}");
 
         [Fact]
         public void ScanDescendsIntoNestedContainers()
@@ -102,7 +102,7 @@ namespace Probe
             Assert.Equal("global::Probe.Container.NestedExtension", one.GlobalName);
         }
 
-        private const string GenericContainerSource = @"
+        private static readonly string GenericContainerSource = GeneratorHarness.WithAllExtensionsExported(@"
 using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
@@ -118,7 +118,7 @@ namespace Probe
             public override void RenderData(in Scope scope) { }
         }
     }
-}";
+}");
 
         [Fact]
         public void GenericContainerIdentityCarriesTheBacktickArity()
@@ -129,7 +129,7 @@ namespace Probe
             Assert.Equal("Probe.GenericHost`1+Inner", info.BareTypeName);
         }
 
-        private const string InheritedNameSource = @"
+        private static readonly string InheritedNameSource = GeneratorHarness.WithAllExtensionsExported(@"
 using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
@@ -146,7 +146,7 @@ namespace Probe
     public sealed class DerivedExtension : BaseExtension
     {
     }
-}";
+}");
 
         [Fact]
         public void InheritedExtensionNameRegistersTheSubclassAndTakesTheNameOver()
@@ -159,7 +159,7 @@ namespace Probe
             Assert.Equal("Probe.DerivedExtension", info.BareTypeName);
         }
 
-        private const string ReplaceSource = @"
+        private static readonly string ReplaceSource = GeneratorHarness.WithAllExtensionsExported(@"
 using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
@@ -173,7 +173,7 @@ namespace Probe
         public override object ProcessData(in Scope scope) => string.Empty;
         public override void RenderData(in Scope scope) { }
     }
-}";
+}");
 
         [Fact]
         public void ExtensionReplaceDisplacesTheEngineBuiltIn()
@@ -185,7 +185,7 @@ namespace Probe
             Assert.False(info.IsEngineAssembly);
         }
 
-        private const string SubclassOfBuiltInSource = @"
+        private static readonly string SubclassOfBuiltInSource = GeneratorHarness.WithAllExtensionsExported(@"
 using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
@@ -195,7 +195,7 @@ namespace Probe
     public sealed class MyIf : Heddle.Extensions.IfExtension
     {
     }
-}";
+}");
 
         [Fact]
         public void SubclassOfEngineBuiltInTakesTheNameThroughAssignability()
@@ -208,7 +208,7 @@ namespace Probe
             Assert.Equal("Probe.MyIf", info.BareTypeName);
         }
 
-        private const string InterfaceDirectSource = @"
+        private static readonly string InterfaceDirectSource = GeneratorHarness.WithAllExtensionsExported(@"
 using System;
 using Heddle.Attributes;
 using Heddle.Core;
@@ -230,7 +230,7 @@ namespace Probe
         public void RenderData(in Scope scope) { }
         public void Dispose() { }
     }
-}";
+}");
 
         [Fact]
         public void InterfaceDirectImplementorIsDiscoveredButNotBindable()
@@ -255,7 +255,7 @@ namespace Probe
             Assert.False(binder.TryGetUnbindableReason("no-such-extension", out _));
         }
 
-        private const string UnrelatedCollisionSource = @"
+        private static readonly string UnrelatedCollisionSource = GeneratorHarness.WithAllExtensionsExported(@"
 using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
@@ -275,7 +275,7 @@ namespace Probe
         public override object ProcessData(in Scope scope) => string.Empty;
         public override void RenderData(in Scope scope) { }
     }
-}";
+}");
 
         [Fact]
         public void UnrelatedClaimantsDegradeRatherThanBindOrError()

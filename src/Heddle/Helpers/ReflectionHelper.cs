@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using Heddle.Language.Binding;
 using Heddle.Native;
 
 namespace Heddle.Helpers
@@ -13,10 +14,6 @@ namespace Heddle.Helpers
     /// </summary>
     internal class ReflectionHelper
     {
-        private static readonly Regex TupleExpression = new Regex
-        (@"^\((?<tuple_types>(?>\((?<c>)|[^()]+|\)(?<-c>))*(?(c)(?!)))\)$",
-            RegexOptions.Compiled | RegexOptions.Singleline);
-
         private static readonly Regex WhitespaceChars = new Regex(@"\s+", RegexOptions.Compiled | RegexOptions.Singleline);
 
         private readonly Type _innerType;
@@ -280,6 +277,16 @@ namespace Heddle.Helpers
             return ResolveType(typeName, (ICollection<string>) imports);
         }
 
+        /// <summary>
+        /// Resolves a template-spelled type name. The <b>grammar</b> — the tuple/array/generic/simple dispatch, the
+        /// dotted-chain-with-per-segment-arity rewrite, top-level argument splitting and angle-bracket matching — is
+        /// the shared <see cref="TypeSpelling"/> parser (Q8.3); this method supplies the reflection type universe
+        /// through <see cref="ReflectionTypeLookup"/> and maps the parser's fault back onto the
+        /// <see cref="InvalidOperationException"/> messages callers already catch.
+        /// <para>Phase 3 recorded the parser as "split out of <c>ReflectionHelper</c>". It was not: the shared file
+        /// was a re-implementation and these methods stayed live, so the generator and the runtime were parsing the
+        /// same grammar twice again. This is the actual split.</para>
+        /// </summary>
         public static Type ResolveType(string typeName, ICollection<string> imports)
         {
             if (string.IsNullOrWhiteSpace(typeName))
@@ -287,133 +294,95 @@ namespace Heddle.Helpers
 
             imports = imports ?? new string[0];
 
-            if (typeName.StartsWith("("))
-            {
-                var match = TupleExpression.Match(typeName);
-                if (match.Success)
-                {
-                    return ResolveGenericType($"System.ValueTuple<{match.Groups["tuple_types"]}>", imports);
-                }
-            }
+            var lookup = new ReflectionTypeLookup(imports);
+            if (TypeSpelling.TryResolve(typeName, lookup, out var resolved, out var fault))
+                return resolved;
 
-            if (typeName.EndsWith("]"))
-            {
-                return ResolveArrayType(typeName, imports);
-            }
+            // The lookup's own resolution failures already carry the precise message (ambiguity, unresolved name);
+            // rethrowing it preserves them verbatim. A fault raised by the grammar itself has no such exception.
+            if (lookup.Failure != null)
+                throw lookup.Failure;
 
-            if (typeName.Contains("<"))
-            {
-                return ResolveGenericType(typeName, imports);
-            }
-
-            return ResolveSimpleType(typeName, imports);
+            throw ResolveError(typeName, imports, FaultReason(fault));
         }
 
-        /// <summary>
-        /// Resolves a C#-style generic name — a dotted chain where any segment may carry a type-argument
-        /// list, e.g. <c>Ns.Outer&lt;int&gt;.Inner&lt;string&gt;</c>: the definition is looked up by its
-        /// backtick spelling (<c>Ns.Outer`1.Inner`1</c>) and closed over all arguments left to right
-        /// (nested types inherit their outers' generic parameters, so the counts add up).
-        /// </summary>
-        private static Type ResolveGenericType(string typeName, ICollection<string> imports)
-        {
-            var argumentNames = ExtractGenericArguments(typeName, imports, out var definitionName);
-            var definition = ResolveSimpleType(definitionName, imports);
-
-            if (definition.GetGenericArguments().Length != argumentNames.Count)
-                throw ResolveError(typeName, imports,
-                    $"the type takes {definition.GetGenericArguments().Length} generic argument(s), not {argumentNames.Count}");
-
-            return definition.MakeGenericType(argumentNames.Select(name => ResolveType(name, imports)).ToArray());
-        }
-
-        /// <summary>
-        /// Rewrites <c>Ns.Outer&lt;int&gt;.Inner&lt;string&gt;</c> into the backtick definition name
-        /// <c>Ns.Outer`1.Inner`1</c> and returns the extracted argument names, left to right.
-        /// </summary>
-        private static List<string> ExtractGenericArguments(string typeName, ICollection<string> imports,
-            out string definitionName)
-        {
-            var definition = new StringBuilder(typeName.Length);
-            var arguments = new List<string>();
-
-            for (var i = 0; i < typeName.Length; i++)
-            {
-                if (typeName[i] != '<')
-                {
-                    definition.Append(typeName[i]);
-                    continue;
-                }
-
-                if (!TryFindMatchingAngleBracket(typeName, i, out var close))
-                    throw ResolveError(typeName, imports, "unbalanced angle brackets");
-
-                var list = SplitTopLevelArguments(typeName.Substring(i + 1, close - i - 1));
-                if (list.Any(string.IsNullOrEmpty))
-                    throw ResolveError(typeName, imports, "empty generic argument");
-
-                definition.Append('`').Append(list.Count);
-                arguments.AddRange(list);
-                i = close;
-            }
-
-            definitionName = definition.ToString();
-            return arguments;
-        }
-
-        /// <summary>Finds the <c>&gt;</c> matching the <c>&lt;</c> at <paramref name="open"/>.</summary>
-        private static bool TryFindMatchingAngleBracket(string text, int open, out int close)
-        {
-            var depth = 0;
-            for (close = open; close < text.Length; close++)
-            {
-                if (text[close] == '<') depth++;
-                else if (text[close] == '>' && --depth == 0) return true;
-            }
-            close = -1;
-            return false;
-        }
-
-        private static InvalidOperationException ResolveError(string typeName, ICollection<string> imports, string reason)
+        private static InvalidOperationException ResolveError(string typeName, ICollection<string> imports,
+            string reason)
         {
             return new InvalidOperationException(
                 $"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)}), {reason}");
         }
 
-        /// <summary>
-        /// Splits an argument list on commas that sit outside any <c>&lt;&gt;</c>, <c>()</c> or <c>[]</c>
-        /// pair; parts are trimmed.
-        /// </summary>
-        private static List<string> SplitTopLevelArguments(string argumentList)
+        private static string FaultReason(TypeSpellingFault fault)
         {
-            var parts = new List<string>();
-            var depth = 0;
-            var start = 0;
-            for (var i = 0; i < argumentList.Length; i++)
+            switch (fault)
             {
-                var c = argumentList[i];
-                if (c == '<' || c == '(' || c == '[') depth++;
-                else if (c == '>' || c == ')' || c == ']') depth--;
-                else if (c == ',' && depth == 0)
-                {
-                    parts.Add(argumentList.Substring(start, i - start).Trim());
-                    start = i + 1;
-                }
+                case TypeSpellingFault.ArityMismatch:
+                    return "the generic argument count does not match the type";
+                case TypeSpellingFault.Ambiguous:
+                    return "the type name is ambigous";
+                case TypeSpellingFault.Malformed:
+                    return "unbalanced angle brackets or an empty generic argument";
+                default:
+                    return "no such type";
             }
-            parts.Add(argumentList.Substring(start).Trim());
-            return parts;
         }
 
-        private static Type ResolveArrayType(string typeName, ICollection<string> imports)
+        /// <summary>
+        /// The reflection type universe as the shared parser sees it. Simple-name resolution stays
+        /// <see cref="ResolveSimpleType"/> — the assembly-scan index, the <c>.</c>→<c>+</c> retry ladder and the
+        /// ambiguity rule are the reflection tier's own and are not grammar — but its exception is captured rather
+        /// than thrown through the parser, so the parser stays exception-free for both tiers.
+        /// </summary>
+        private sealed class ReflectionTypeLookup : ITypeLookup<Type>
         {
-            if (!typeName.EndsWith("[]", StringComparison.Ordinal))
+            private readonly ICollection<string> _imports;
+
+            internal ReflectionTypeLookup(ICollection<string> imports) => _imports = imports;
+
+            /// <summary>The first resolution failure, so <see cref="ResolveType"/> can rethrow its exact message.</summary>
+            internal InvalidOperationException Failure { get; private set; }
+
+            public bool TryResolveSimple(string name, int backtickArity, out Type type,
+                out TypeSpellingFault fault)
             {
-                // A trailing ']' that is not an "[]" suffix — not an array spelling we support.
-                return ResolveSimpleType(typeName, imports);
+                fault = TypeSpellingFault.None;
+                try
+                {
+                    type = ResolveSimpleType(name, _imports);
+                    return type != null;
+                }
+                catch (InvalidOperationException e)
+                {
+                    Failure = Failure ?? e;
+                    type = null;
+                    fault = e.Message.IndexOf("ambigous", StringComparison.Ordinal) >= 0
+                        ? TypeSpellingFault.Ambiguous
+                        : TypeSpellingFault.Unresolved;
+                    return false;
+                }
             }
 
-            var elementName = typeName.Substring(0, typeName.Length - 2).TrimEnd();
-            return ResolveType(elementName, imports).MakeArrayType();
+            public Type MakeArray(Type elementType) => elementType.MakeArrayType();
+
+            public bool TryMakeGeneric(Type definition, IReadOnlyList<Type> arguments, out Type constructed)
+            {
+                constructed = null;
+                if (definition.GetGenericArguments().Length != arguments.Count)
+                    return false;
+
+                var array = new Type[arguments.Count];
+                for (var i = 0; i < arguments.Count; i++)
+                    array[i] = arguments[i];
+                constructed = definition.MakeGenericType(array);
+                return true;
+            }
+
+            public bool TryGetValueTupleDefinition(int arity, out Type definition)
+            {
+                definition = Type.GetType("System.ValueTuple`" + arity, false);
+                return definition != null;
+            }
         }
     }
 }

@@ -91,6 +91,31 @@ namespace Heddle.Generator.Tests
 
     internal static class GeneratorHarness
     {
+        /// <summary>
+        /// Q8.4: adds the assembly-level export declaration a probe compilation needs to be a <b>realistic</b> host
+        /// assembly. Since the generator honours <c>[ExportExtensions]</c> — because the runtime does — a probe that
+        /// declares extension types and no attribute declares extensions the runtime would never register, and the
+        /// binder correctly ignores them. Probes that exist to exercise discovery therefore export everything, which
+        /// is the parameterless <c>All</c> form.
+        /// <para>The attribute is inserted after the source's <c>using</c> directives (C# requires that) and is
+        /// declared here once rather than repeated per probe: a duplicated test input is a duplicate rule one level
+        /// up (testing standards, §Test-input single-sourcing).</para>
+        /// </summary>
+        public static string WithAllExtensionsExported(string source)
+        {
+            const string attribute = "[assembly: Heddle.Attributes.ExportExtensions]";
+            var lines = source.Replace("\r\n", "\n").Split('\n').ToList();
+
+            // After the last using directive, or at the top when there are none.
+            var insertAt = 0;
+            for (var i = 0; i < lines.Count; i++)
+                if (lines[i].TrimStart().StartsWith("using ", StringComparison.Ordinal))
+                    insertAt = i + 1;
+
+            lines.Insert(insertAt, attribute);
+            return string.Join("\n", lines);
+        }
+
         private static readonly IReadOnlyList<MetadataReference> References = BuildReferences();
 
         private static IReadOnlyList<MetadataReference> BuildReferences()

@@ -222,13 +222,15 @@ namespace Heddle.Generator.Emit
                 if (!SymbolEqualityComparer.Default.Equals(referenced, engine))
                     assemblies.Add(referenced);
 
-            // Per assembly: collect, then order by the runtime's [DataType]/[ChainedType] interface-ness key
-            // (LoadExtensions' OrderBy/ThenBy — stable, false first).
+            // Per assembly: collect what the runtime would load from it, then order by the runtime's
+            // [DataType]/[ChainedType] interface-ness key (LoadExtensions' OrderBy/ThenBy — stable, false first).
+            var exportAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.ExportExtensionsAttribute");
             var candidates = new List<Candidate>();
             foreach (var assembly in assemblies)
             {
                 var perAssembly = new List<Candidate>();
-                CollectTypes(assembly.GlobalNamespace, symbols, perAssembly);
+                CollectExported(assembly, SymbolEqualityComparer.Default.Equals(assembly, engine), exportAttr,
+                    symbols, perAssembly);
                 candidates.AddRange(StableOrderBy(perAssembly, c => c.OrderingKey));
             }
 
@@ -334,6 +336,76 @@ namespace Heddle.Generator.Emit
             public INamedTypeSymbol NotEncodeAttr;
             public INamedTypeSymbol ZeroOutputAttr;
             public INamedTypeSymbol PropAttr;
+        }
+
+        /// <summary>
+        /// Q8.4: the <b>discovery scope</b> of one assembly, as the runtime's
+        /// <c>TemplateFactory.ObtainExtensions</c> defines it.
+        /// <list type="bullet">
+        /// <item><description>The <b>engine</b> assembly is scanned whole and unconditionally — that is
+        /// <c>LoadBaseExtensions</c>, and <c>Heddle</c> carries no <c>[ExportExtensions]</c> on
+        /// itself.</description></item>
+        /// <item><description>Any other assembly contributes <b>only</b> what its
+        /// <c>[assembly: ExportExtensions(...)]</c> attributes name; the parameterless <c>All</c> form contributes
+        /// the whole assembly and short-circuits its remaining attributes, mirroring the runtime's
+        /// <c>break</c>.</description></item>
+        /// <item><description>An assembly with <b>no</b> such attribute contributes nothing.</description></item>
+        /// </list>
+        /// <para>The scan used to be unconditional, so the build tier bound extensions the runtime would never
+        /// register: the manifest recorded a name the live registry cannot resolve, and the gauntlet's
+        /// extension-identity check turned every render of every such template into a silent, permanent
+        /// fallback.</para>
+        /// </summary>
+        private static void CollectExported(IAssemblySymbol assembly, bool isEngine, INamedTypeSymbol exportAttr,
+            AttrSymbols symbols, List<Candidate> candidates)
+        {
+            if (isEngine)
+            {
+                CollectTypes(assembly.GlobalNamespace, symbols, candidates);
+                return;
+            }
+
+            if (exportAttr == null)
+                return;   // an engine reference predating the attribute — nothing outside it can be exported
+
+            foreach (var attr in assembly.GetAttributes())
+            {
+                if (!SymbolEqualityComparer.Default.Equals(attr.AttributeClass, exportAttr))
+                    continue;
+
+                // `All` is set by the parameterless constructor alone (the two others take types), so no
+                // constructor arguments means "everything in this assembly" — and the runtime stops reading this
+                // assembly's attributes at that point.
+                if (attr.ConstructorArguments.Length == 0)
+                {
+                    CollectTypes(assembly.GlobalNamespace, symbols, candidates);
+                    return;
+                }
+
+                foreach (var exported in ExportedTypes(attr))
+                    InspectType(exported, symbols, candidates);
+            }
+        }
+
+        /// <summary>The types an <c>[ExportExtensions(...)]</c> occurrence names. The runtime hands exactly these to
+        /// <c>LoadExtensions</c>, which applies the same discovery predicate — so a named type that is not an
+        /// extension contributes nothing, and nested types are <b>not</b> walked into (only the named type itself
+        /// is offered).</summary>
+        private static IEnumerable<INamedTypeSymbol> ExportedTypes(AttributeData attr)
+        {
+            foreach (var arg in attr.ConstructorArguments)
+            {
+                if (arg.Kind == TypedConstantKind.Type && arg.Value is INamedTypeSymbol single)
+                {
+                    yield return single;
+                }
+                else if (arg.Kind == TypedConstantKind.Array)
+                {
+                    foreach (var item in arg.Values)
+                        if (item.Kind == TypedConstantKind.Type && item.Value is INamedTypeSymbol many)
+                            yield return many;
+                }
+            }
         }
 
         /// <summary>Phase 3 (F1): walks namespaces <b>and nested types</b>. The old scan enumerated
