@@ -926,6 +926,23 @@ latent-bug fix is never reviewed in the same diff as a wording improvement.**
   diverge by design. **Done when** no test claims to be verbatim from a document, and the behavioural
   coverage that block provided is either still asserted elsewhere or explicitly recorded as dropped
   with its reason.
+- **WI16 — The 1.x-manifest fallback claim, which describes a case that cannot occur.** Shipped documents
+  (the 2.0 as-shipped record, the CHANGELOG) state that 1.x precompiled assemblies fall back because *"the
+  engine-version gate rejects 1.x manifests"*. Precompilation shipped **in 2.0.0**, so no 1.x manifest has
+  ever existed and no gate has ever fired for one. Q8.24 closed the behavioural half as invalid and named
+  the remainder a docs defect with no work item — this is that work item. Note `records.md` is append-only,
+  so the 2.0 record is **corrected by an appended note, never rewritten**; the CHANGELOG is editable
+  directly. **Done when** no shipped document asserts a rejection path for a manifest version that never
+  existed, and the correction says why the claim was wrong rather than quietly deleting it.
+- **WI17 — The registration-ordering pattern D11 permits documentation to suggest.**
+  [D11](../spec/common/cross-cutting-decisions.md) says the engine must not decide which assemblies are
+  loaded, may report a conflict, and may **suggest an architectural pattern — in documentation, and nothing
+  more**. That third consequence has no home in any plan. It belongs in `custom-extensions.md` beside
+  extension registration: a host wanting ordering guarantees registers explicitly, in an order it chooses,
+  before first render. **Done when** the pattern is documented as a host-side recommendation and is
+  unmistakably not a rule the engine enforces — the distinction D11 exists to protect, and the one the
+  Razor/ASP.NET precedent shows is easy to lose. **Sequencing:** this documents the API Q8.37 lands, so it
+  follows that work rather than preceding it.
 - **WI15 — Documentation-currency rule + bookkeeping (D11).** The additive testing-standards section
   and its ledger entry; this phase's README row and `records.md` entries; the not-delivered items (if
   any) recorded explicitly rather than dropped. **Done when** criterion 12 holds and every criterion

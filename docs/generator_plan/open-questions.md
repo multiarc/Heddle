@@ -698,7 +698,7 @@ which is the bookkeeping failure this section exists to correct.
   a live reason for a schema-3 manifest built against a different engine version — see
   [precompilation.md's carrier table](../precompilation.md#what-a-fallback-event-names) — so only the
   "gate for 1.x" claim is wrong.)
-
+  Docs residue now scheduled as **phase 8 WI16** (it previously had no work item).
 - **Q8.25 — An explicit `Key`/`Name` makes a template unimportable by its path.** The `@<<` import map
   is keyed by the same derived key as the registry, so a named item's path spelling stopped resolving
   and the importer drew `HED7011`.
@@ -963,7 +963,7 @@ which is the bookkeeping failure this section exists to correct.
   through a collectible tracked context, and the typed entry point does not trigger the walk at all.
   *Where it lives:* [D11](../spec/common/cross-cutting-decisions.md#d11--the-engine-does-not-decide-which-assemblies-are-loaded).
   Residue: the documentation pattern D11 permits is **not yet an item in any phase-8 plan**.
-
+  D11's third consequence — the ordering pattern documentation may *suggest* — is now **phase 8 WI17**, sequenced after Q8.37 lands the API it would describe.
 - **Q8.35 — `Min == Max == Current` makes the support window a single point.** Every future manifest
   change would then be a whole-assembly rejection until rebuilt — correct when a change is genuinely
   binary-breaking, unnecessarily severe when it is purely additive.
