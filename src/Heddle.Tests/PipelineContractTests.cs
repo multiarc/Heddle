@@ -98,9 +98,7 @@ namespace Heddle.Tests
             Assert.Equal("views/home" + TemplateKey.TemplateExtension, TemplateKey.Normalize("views/home"));
         }
 
-        // ---- D5: schema/engine versioning -----------------------------------------------------------------
-
-        /// <summary>The invariant that makes F5's all-or-nothing hazard structurally impossible: the version the
+        /// <summary>The invariant that makes the all-or-nothing hazard structurally impossible: the version the
         /// generator emits is always inside the window the runtime accepts.</summary>
         [Fact]
         public void SchemaWindowContainsTheEmittedVersion()
@@ -115,10 +113,10 @@ namespace Heddle.Tests
         /// against the <c>v2.0.0</c> tag: the shipped generator emitted <c>schemaVersion: 2</c> and the shipped engine
         /// accepted <c>1–2</c>. <b>Schemas 1 and 2 are the only released schemas</b>; the three unreleased bumps that
         /// had accumulated (dynamic-member routing at 3, the prop-layout row at 4, per-carrier
-        /// <c>BindDefinition</c> at 5) were collapsed into a single schema <b>3</b>, which also carries Q8.30's
-        /// registered name and Q8.31's <c>#line</c> path form. An unreleased increment is not a migration step, and
+        /// <c>BindDefinition</c> at 5) were collapsed into a single schema <b>3</b>, which also carries the
+        /// registered name and <c>#line</c> path form. An unreleased increment is not a migration step, and
         /// advertising three of them would claim a history no user could have.</para>
-        /// <para><b>2.1 (Q8.2, corrected) narrows the floor 1 → 3</b> — the only narrowing this window has had, and a
+        /// <para><b>2.1 narrows the floor 1 → 3</b> — the only narrowing this window has had, and a
         /// real, not-yet-shipped binary break: a released schema 1–2 manifest's IL names
         /// <c>PrecompiledExtensionBinding..ctor(string, string)</c>, which the optional third parameter removed from
         /// metadata, so accepting one faults at <c>Register</c> instead of falling back. The floor is exactly the
@@ -156,7 +154,7 @@ namespace Heddle.Tests
             Assert.True(PrecompiledSchema.IsSupported(3));
         }
 
-        /// <summary>The D11 gate itself: the generator only emits <c>DynamicMember</c> routing at or above the
+        /// <summary>The generator only emits <c>DynamicMember</c> routing at or above the
         /// schema that introduced it, so "routing emitted below its gate" cannot be built.</summary>
         [Fact]
         public void DynamicMemberRoutingIsGatedOnItsSchema()
@@ -187,9 +185,7 @@ namespace Heddle.Tests
                 PrecompiledSchema.IsEngineCompatible(Version.Parse(manifest), Version.Parse(runtime)));
         }
 
-        // ---- D7: fingerprint arity ------------------------------------------------------------------------
-
-        /// <summary>The second guard behind D7 (the first is that the generator constructs a real
+        /// <summary>The second guard behind fingerprint arity (the first is that the generator constructs a real
         /// <see cref="PrecompiledOptionsFingerprint"/>, so a new field breaks its build): the emitter's formatter
         /// writes exactly as many arguments as the struct takes. A fourth identity-bearing option can never be
         /// silently omitted from the emitted fingerprint.</summary>
@@ -216,9 +212,7 @@ namespace Heddle.Tests
             $"global::Heddle.Data.ExpressionMode.{fingerprint.ExpressionMode}," +
             $"trimDirectiveLines: {(fingerprint.TrimDirectiveLines ? "true" : "false")}";
 
-        // ---- D8: the option names + defaults table --------------------------------------------------------
-
-        /// <summary>The props↔code↔runtime lockstep gate (D8). <c>Heddle.Generator.props</c> is a second physical
+        /// <summary>The props↔code↔runtime lockstep gate. <c>Heddle.Generator.props</c> is a second physical
         /// statement of five scalar defaults — unavoidably, because <c>HeddleTemplateRoot</c>'s default is only
         /// expressible in MSBuild — so its literals are asserted against <see cref="HeddleBuildOptions"/> and
         /// against a default-constructed <see cref="TemplateOptions"/>. A one-sided default change flips every
@@ -314,7 +308,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// <para>Q8.12's structural gate. The per-item metadata names live in three physical places —
+        /// <para>The structural gate. The per-item metadata names live in three physical places —
         /// <c>Heddle.Generator.props</c> declares them <c>CompilerVisibleItemMetadata</c> (without which Roslyn does
         /// not surface them at all), <c>Heddle.Generator.targets</c> carries <c>HeddleTemplate</c> onto
         /// <c>AdditionalFiles</c>, and the generator reads <c>build_metadata.AdditionalFiles.&lt;name&gt;</c> — and a
@@ -322,7 +316,7 @@ namespace Heddle.Tests
         /// props since 2.0, never read, so <c>samples/codegen-t4-successor</c>'s <c>Name="BuildReport"</c> did nothing
         /// for a whole release and the review that noticed it concluded the metadata should be deleted rather than
         /// wired.</para>
-        /// <para><b>The second, worse half, found while wiring it (Q8.12).</b> The targets' <c>AdditionalFiles</c>
+        /// <para><b>The second, worse half, found while wiring it.</b> The targets' <c>AdditionalFiles</c>
         /// item restated each metadatum as <c>&lt;Key&gt;%(HeddleTemplate.Key)&lt;/Key&gt;</c>. An
         /// <c>Include="@(HeddleTemplate)"</c> transform already copies every metadatum; outside a target a cross-item
         /// <c>%(Other.Metadata)</c> reference evaluates to the empty string, so each element <em>overwrote</em> the

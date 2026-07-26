@@ -15,7 +15,7 @@ namespace Heddle.Tests
 
         /// <summary>The pinned scenario: break the file, reload → <c>CompileResult.Success == false</c> with
         /// the error in <c>ErrorList</c> while <c>Generate</c> still renders the previous content; fix the
-        /// file, reload → success again with the new content (the edit-to-fix loop D2 arms for).</summary>
+        /// file, reload → success again with the new content (the edit-to-fix recovery loop).</summary>
         [Fact]
         public void FailedRecompileKeepsLastGoodAndSurfacesErrorOnCompileResult()
         {

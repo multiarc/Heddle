@@ -51,7 +51,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>Line lengths exclude the terminating <c>'\n'</c> and include a <c>'\r'</c> that precedes it —
-        /// the shape <see cref="HeddleCompileResult"/>'s <c>Split('\n')</c> produced before WI4, so the
+        /// the shape <see cref="HeddleCompileResult"/>'s <c>Split('\n')</c> produced, so the
         /// <c>LineLength</c> a diagnostic carries is unchanged by the extraction.</summary>
         [Theory]
         [MemberData(nameof(DocumentNames))]

@@ -11,7 +11,7 @@ using Heddle.TestCorpus;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Success-criteria goldens (WI6): the flagship set renders exactly one branch per condition state
+    /// Success-criteria goldens: the flagship set renders exactly one branch per condition state
     /// (criterion 1) with header/footer byte-identical; the interleaved variant renders byte-identically to
     /// the flagship with exactly one HED3001 per stripped gap (criterion 1, second half); per-iteration
     /// isolation inside <c>@list</c> (criterion 3); nested-set independence (criterion 4). Line endings

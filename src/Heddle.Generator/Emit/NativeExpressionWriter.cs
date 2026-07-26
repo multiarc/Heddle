@@ -151,8 +151,8 @@ namespace Heddle.Generator.Emit
             if (!isDefault && !hasExport)
             {
                 // A bare name(args) inside a native expression is unambiguously a function call. Resolvable from
-                // neither the default table nor a referenced export → the OQ1 delegate-only remainder (D21): record
-                // it so the emitter degrades the template to a HED7014 fallback-marker entry (never emitted code).
+                // neither the default table nor a referenced export, so record it so the emitter degrades the
+                // template to a HED7014 fallback-marker entry (never emitted code).
                 _unresolvableFunctions.Add((call.Name, call.Position));
                 return null;
             }
@@ -273,10 +273,10 @@ namespace Heddle.Generator.Emit
             var right = Write(node.Right);
             if (left == null || right == null)
                 return null;
-            // Phase 4 D6: the native tier deliberately deviates from C# at seven points, so emitting `(l op r)`
-            // verbatim is only sound where the shared classification table says the two agree. Everything else
-            // degrades to the dynamic tier, where the runtime's own compiler — the semantics of record — evaluates
-            // the expression (or raises its own positioned error). Never the consumer's compiler's opinion.
+            // The native tier deliberately deviates from C# at seven points, so emitting `(l op r)` verbatim is
+            // only sound where the shared classification table says the two agree. Everything else degrades to the
+            // dynamic tier, where the runtime's own compiler — the semantics of record — evaluates the expression
+            // (or raises its own positioned error). Never the consumer's compiler's opinion.
             if (NativeOperatorRules.Classify(node.Operator, Estimate(node.Left), Estimate(node.Right)) !=
                 OperatorVerdict.Supported)
                 return null;

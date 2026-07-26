@@ -23,11 +23,11 @@ namespace Heddle.Tests.TieBeta
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 3 (F8 / Q3.5) — the runtime half of the shared type-name corpus. Its twin in
+    /// The runtime half of the shared type-name corpus. Its twin in
     /// <c>Heddle.Generator.Tests</c> resolves the same spellings symbolically and asserts the same outcomes.
     /// <para>The <b>ruling</b> pinned here: the short-name arm's order-dependent silent pick was judged defective
     /// (an assembly-load-order-sensitive result the build tier cannot match by construction, and a contradiction of
-    /// this file's own <c>RegisterType</c> comment), and both tiers were fixed in lockstep per OQ5's escape clause.
+    /// this file's own <c>RegisterType</c> comment), and both tiers were fixed in lockstep.
     /// A tie the imports settle to exactly one namespace still resolves; a tie two imports both claim is now the
     /// same "ambigous" error the dotted arms have always raised.</para>
     /// </summary>

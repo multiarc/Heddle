@@ -145,7 +145,7 @@ namespace Heddle.Tests
             AssertMatrixRow("<script src=\"@(X)\"></script>", (14, AttributeMessage, AttributeFix));
         }
 
-        [Fact] // row 12 — a mid-document flip to Html is honored (D1: the per-block effective profile).
+        [Fact] // row 12 — a mid-document flip to Html is honored.
         public void MidDocumentFlipToHtmlIsHonored()
         {
             var t = Compile("@profile(){{html}}<a title=\"@(X)\">link</a>", OutputProfile.Text);
@@ -241,7 +241,7 @@ namespace Heddle.Tests
         public void FullyCommentedScriptPairIsElementText()
         {
             // A commented <script></script> pair: close > open, so Step 1 does not fire and the
-            // trailing element-text block is clean (the D3 counter-example to row 25).
+            // trailing element-text block is clean.
             AssertMatrixRow("<!-- <script></script> --><p>@(X)</p>");
         }
 
@@ -274,7 +274,7 @@ namespace Heddle.Tests
             Assert.Equal(expected, actual.Replace("\r\n", "\n"));
         }
 
-        [Fact] // byte-neutrality golden — zero warnings, identical bytes (Text profile, R3 gate).
+        [Fact] // byte-neutrality golden — zero warnings, identical bytes (Text profile).
         public void CorpusRendersByteIdenticalUnderText()
         {
             var actual = RenderCorpus(OutputProfile.Text, out var lintCount);
@@ -284,7 +284,7 @@ namespace Heddle.Tests
             Assert.Equal(expected, actual.Replace("\r\n", "\n"));
         }
 
-        [Fact] // corpus-wide R3 gate: off-Html blocks never warn. A fixture that flips to Html mid-document
+        [Fact] // corpus-wide regression gate: off-Html blocks never warn. A fixture that flips to Html mid-document
         // carries an explicit expectation instead of the blanket zero (its post-flip blocks are Html by design).
         public void CorpusScanIsInertUnderTextProfile()
         {

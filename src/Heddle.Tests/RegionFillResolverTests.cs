@@ -101,13 +101,13 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// The reaction contract, per verdict (Q1.3). Both backends map a verdict to the same three observable
-        /// facts: whether the candidate's tentative base-not-found error is retracted, whether a fill is
-        /// installed, and whether a new error is raised. The runtime's reactions live in
-        /// <c>HeddleCompiler.BuildRegionFillScope</c> and the generator's in
-        /// <c>TemplateEmitter.TryBuildGeneratorFillScope</c>; the cross-tier proof that they agree is the paired
-        /// <c>RegionTests</c> fixture (build HED7024 ⇄ runtime HED5019, build-forwarded base-not-found ⇄ runtime
-        /// base-not-found). This table is the specification those two adapters are written against.
+        /// The reaction contract per verdict. Both backends map a verdict to the same three observable facts:
+        /// whether the candidate's tentative base-not-found error is retracted, whether a fill is installed, and
+        /// whether a new error is raised. The runtime's reactions live in <c>HeddleCompiler.BuildRegionFillScope</c>
+        /// and the generator's in <c>TemplateEmitter.TryBuildGeneratorFillScope</c>; the cross-tier proof that they
+        /// agree is the paired <c>RegionTests</c> fixture (build HED7024 ⇄ runtime HED5019, build-forwarded
+        /// base-not-found ⇄ runtime base-not-found). This table is the specification those two adapters are
+        /// written against.
         /// </summary>
         [Theory]
         [InlineData(RegionFillVerdict.Matched, true, true, false)]

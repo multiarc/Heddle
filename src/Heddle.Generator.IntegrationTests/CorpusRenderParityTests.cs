@@ -9,11 +9,11 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 WI9 render parity: for the model-less corpus templates that precompile (definition default output,
-    /// overrides/layering, import composition), renders the real <c>TestTemplate/**</c> file through both backends and
-    /// asserts byte-identical output — the render-correctness gate the classification-only
-    /// <see cref="CorpusDifferentialTests"/> does not itself provide. Imports resolve from the corpus directory on the
-    /// dynamic side and from the whole-corpus <c>AdditionalFiles</c> set on the precompiled side.
+    /// Render parity: for the model-less corpus templates that precompile (definition default output, overrides/
+    /// layering, import composition), renders the real <c>TestTemplate/**</c> file through both backends and asserts
+    /// byte-identical output — the render-correctness gate the classification-only <see cref="CorpusDifferentialTests"/>
+    /// does not itself provide. Imports resolve from the corpus directory on the dynamic side and from the whole-corpus
+    /// <c>AdditionalFiles</c> set on the precompiled side.
     /// </summary>
     public class CorpusRenderParityTests
     {
@@ -41,10 +41,9 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("shaper-clamp-overshoot.heddle")]
         public void ModelLessCorpusTemplateRendersIdentically(string name)
         {
-            // Phase 7 WI2: the corpus is in THIS project's own output directory (TestCorpus.props), so locating it
-            // is AppContext.BaseDirectory and nothing else. The assembly-path rewrite + `../../..` climb that stood
-            // here, and the hard assert that had to be bolted on top of it, are both gone — the assert was a stopgap
-            // for a fragility that no longer exists rather than a gate anyone wanted.
+            // The corpus is in THIS project's own output directory (TestCorpus.props), so locating it is
+            // AppContext.BaseDirectory and nothing else. The assembly-path rewrite + `../../..` climb that stood
+            // here, and the hard assert that had to be bolted on top of it, are both gone.
             var dir = TestCorpusIndex.CorpusDir;
             // FrontEndError entries carry deliberate parse errors; excluded so the rest of the corpus generates
             // cleanly (imports still resolve from what remains). The set is read from the intent table, not

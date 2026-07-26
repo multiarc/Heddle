@@ -8,7 +8,7 @@ using Heddle.Runtime;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Custom extensions used by the phase 3 branching tests to observe the local-context frame and the
+    /// Custom extensions used by the branching tests to observe the local-context frame and the
     /// public <see cref="Scope.Publish"/>/<see cref="Scope.TryRead"/> channel. Registered directly through
     /// the public <see cref="TemplateFactory.AddExtensions"/> to avoid assembly-scan timing.
     /// </summary>

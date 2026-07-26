@@ -161,7 +161,7 @@ namespace Heddle.Generator.Tests
             Assert.Equal("doc=[A\\nB\\n] chains=[2+0] defs=[] raws=[1+2,0+2]", Snapshot(context, working));
         }
 
-        // ---- pin 3: the WidenToWholeLine vector table (the WI1 extensional-equality pin) ----
+        // ---- pin 3: the WidenToWholeLine vector table (extensional-equality pin) ----
 
         [Theory]
         [InlineData("  ab  \nX", 2, 2, 0, 7)]        // in-bounds whole line, LF terminator
@@ -172,10 +172,10 @@ namespace Heddle.Generator.Tests
         [InlineData("  ab z\nX", 2, 2, 2, 2)]        // content on the right — rejected
         [InlineData("A\n  \nB", 2, 0, 2, 3)]         // zero-length probe on a whitespace-only line
         [InlineData("A\nxy\nB", 2, 0, 2, 0)]         // zero-length probe on a line with content
-        [InlineData("ab", 7, 0, 2, 0)]               // start past end — clamped (WI1)
-        [InlineData("  ab", 2, 99, 0, 4)]            // length past end — clamped (WI1)
+        [InlineData("ab", 7, 0, 2, 0)]               // start past end — clamped
+        [InlineData("  ab", 2, 99, 0, 4)]            // length past end — clamped
         [InlineData("", 0, 0, 0, 0)]                 // empty document
-        [InlineData("X\n", 5, 0, 2, 0)]              // start past end, terminator-adjacent — clamped (WI1)
+        [InlineData("X\n", 5, 0, 2, 0)]              // start past end, terminator-adjacent — clamped
         [InlineData("ab\ncd", 0, 2, 0, 3)]           // BOF counts as a left terminator
         public void Pin3_WidenToWholeLine(string document, int start, int length, int expectedStart,
             int expectedLength)
@@ -269,7 +269,7 @@ namespace Heddle.Generator.Tests
         [InlineData("if  pp  el", "if@0+2|part@4+2|elif@8+2", "", "doc=[if  pp  el] chains=[0+2,4+2,8+2] defs=[] raws=[]")]
         // zero-length gap (adjacent blocks) is skipped
         [InlineData("ifel  ee", "if@0+2|elif@2+2|else@6+2", "", "doc=[ifelee] chains=[0+2,2+2,4+2] defs=[] raws=[]")]
-        // definition-shadowed keyword (R8) classifies Other, so the set never forms
+        // definition-shadowed keyword classifies Other, so the set never forms
         [InlineData("if  el  ee  ZZ", "if@0+2|elif@4+2|else@8+2", "elif", "doc=[if  el  ee  ZZ] chains=[0+2,4+2,8+2] defs=[] raws=[]")]
         public void Pin7_StripBranchSets(string document, string names, string definitionNames, string expected)
         {
@@ -389,8 +389,8 @@ namespace Heddle.Generator.Tests
             context.OutputChains.Add(chain);
         }
 
-        /// <summary>The vector table's stand-in for each backend's real classifier: the same rule shape (R8
-        /// definition-first guard, then role, then <c>[ScopeChannel]</c> → Participant).</summary>
+        /// <summary>The vector table's stand-in for each backend's real classifier: the same rule shape (definition-first guard,
+        /// then role, then <c>[ScopeChannel]</c> → Participant).</summary>
         internal static DocumentShaping.BranchKind Classify(OutputChain chain, HashSet<string> definitions)
         {
             var name = chain.Chain != null && chain.Chain.Count > 0 ? chain.Chain[0].ExtensionName : null;

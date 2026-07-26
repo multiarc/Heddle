@@ -68,7 +68,7 @@ namespace Heddle.Generator.IntegrationTests
         {
             // shout(string) — the overload the shared ranker must pick out of the merged set of two. The argument
             // is a typed model member: with two candidates the ranker governs, and an argument it cannot type
-            // degrades (degrade-on-doubt), which is the same posture the built-in path has had since phase 4.
+            // degrades (degrade-on-doubt).
             const string key = "views/merged-export.heddle";
             const string content = "@model(){{" + ProductType + "}}@\\\n<span>@(shout(Name))</span>\n";
 

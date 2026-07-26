@@ -116,7 +116,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// The documented over-provision (Q1.4, ruling: keep). A definition named after a <c>[ScopeChannel]</c>
+        /// The documented over-provision (ruling: keep). A definition named after a <c>[ScopeChannel]</c>
         /// extension shadows it, so the compiled tree holds a definition carrier — no participant — while the
         /// parse-level scan, which deliberately runs before definition resolution, still counts the name. The
         /// resulting frame is never read (publish/read happens only inside participants), so this is
@@ -154,7 +154,7 @@ namespace Heddle.Tests
 
         /// <summary>Corpus templates whose compiled tree provisions a frame — the load-bearing rows of the sweep.
         /// Pinned exactly, not as a floor: a corpus that stopped exercising participants would make the sweep
-        /// vacuous while still passing, which is the failure mode the phase-0 audit found in two other gates.</summary>
+        /// vacuous while still passing, which is the failure mode an audit found in two other gates.</summary>
         private static readonly string[] CorpusTemplatesNeedingLocals =
         {
             "branch-import-else.heddle", "branching-flagship.heddle", "branching-interleaved.heddle",
@@ -162,7 +162,7 @@ namespace Heddle.Tests
         };
 
         /// <summary>Corpus templates where the parse-level scan legitimately over-provisions relative to the
-        /// compiled tree (the Q1.4 ruling's shape — a definition shadowing a <c>[ScopeChannel]</c> name). Empty
+        /// compiled tree (the ruling's shape — a definition shadowing a <c>[ScopeChannel]</c> name). Empty
         /// today: no corpus fixture has that shape, so agreement is exact and any new inexactness is a conscious
         /// edit to this list rather than a silent widening.</summary>
         private static readonly string[] CorpusOverProvisionAllowList = new string[0];
@@ -174,7 +174,7 @@ namespace Heddle.Tests
 
             var files = Directory.GetFiles(dir, "*.heddle")
                 .OrderBy(p => p, StringComparer.Ordinal).ToList();
-            // Phase 7 D5: SET equality against the declared intent table, not the `Assert.Equal(62, …)` count that
+            // SET equality against the declared intent table, not the `Assert.Equal(62, …)` count that
             // stood here. The count was the right instinct and the wrong instrument — it goes green again the moment
             // somebody edits the digit, and it never names the file that left. This sweep going vacuous while still
             // passing is the exact failure mode its own comment says it exists to prevent, so the pin has to be the

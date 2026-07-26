@@ -8,7 +8,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 7 D3/D7 — the gates that keep the shared corpus and its declared intent from drifting apart, asserted in
+    /// The gates that keep the shared corpus and its declared intent from drifting apart, asserted in
     /// the engine tier (which owns the corpus directory) as well as in the generator tier.
     /// <para>Every gate here is <b>set equality</b>. None is a count and none is a floor, and that is not stylistic
     /// fastidiousness: this repository shipped a <c>&gt;= 25</c> floor against an actual 40 and lost fifteen templates
@@ -20,8 +20,8 @@ namespace Heddle.Tests
     public class CorpusIntentGateTests
     {
         /// <summary>
-        /// D3 gate 1 and 2, the two directions. A template added without a row fails naming the template; a row that
-        /// outlives its template fails naming the row. This is the mechanism behind phase 0's standing rule that new
+        /// The two-direction gates. A template added without a row fails naming the template; a row that
+        /// outlives its template fails naming the row. This is the mechanism behind the standing rule that new
         /// feature areas contribute their templates to the corpus — a rule that had never been backfilled because it
         /// was prose in a standard with nothing behind it.
         /// </summary>
@@ -34,16 +34,16 @@ namespace Heddle.Tests
                 CorpusIntent.Describe("The corpus intent table", declared, onDisk));
         }
 
-        /// <summary>The single surviving literal (D5): the table's own row count. It exists so that "this stage added
-        /// N entries" is a one-line diff a reviewer can check against the stage's stated scope — a stage cannot
-        /// smuggle extra templates in beside the ones it names.</summary>
+        /// <summary>The table's own row count. It exists so that "this stage added N entries" is a one-line diff a
+        /// reviewer can check against the stage's stated scope — a stage cannot smuggle extra templates in beside the
+        /// ones it names.</summary>
         [Fact]
         public void TheIntentTableDeclaresExactlyTheRowCountItClaims()
         {
             Assert.Equal(CorpusIntent.DeclaredRowCount, CorpusIntent.Rows.Count);
         }
 
-        /// <summary>D3: <c>Why</c> is mandatory and non-empty. A classification with no stated reason is a rubber
+        /// <summary><c>Why</c> is mandatory and non-empty. A classification with no stated reason is a rubber
         /// stamp, and the whole value of declaring intent is that contributing a template requires saying what it is
         /// for.</summary>
         [Fact]
@@ -56,15 +56,14 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// D7 — the encoding gate, BOM half: a corpus template carries a UTF-8 byte-order mark <b>iff</b> its intent
+        /// The encoding gate, BOM half: a corpus template carries a UTF-8 byte-order mark <b>iff</b> its intent
         /// row declares <c>Bom = true</c>.
-        /// <para>Eight of the 62 templates carry one. Those BOMs are <b>deliberate coverage</b> — phase 5's F1 fix is
-        /// about hashing BOM'd templates correctly, and <c>PrecompiledGauntlet.HashFile</c> decodes with
-        /// <c>detectEncodingFromByteOrderMarks: true</c> — but until this flag existed a deliberate BOM and an
+        /// <para>Eight of the 62 templates carry one. Those BOMs are <b>deliberate coverage</b> — <c>PrecompiledGauntlet.HashFile</c>
+        /// decodes with <c>detectEncodingFromByteOrderMarks: true</c> — but until this flag existed a deliberate BOM and an
         /// accidental one were indistinguishable, so nothing could tell you which you were looking at.</para>
         /// <para>This is a <b>separate pin from line endings</b>, and deliberately so.
         /// <c>.gitattributes</c>' <c>eol=lf</c> governs newlines and says nothing whatsoever about byte-order marks:
-        /// the pre-program BOM drift across the generator snapshots (two of eight had one) passed every
+        /// the pre-program BOM drift across snapshots (two of eight had one) passed every
         /// <c>eol=lf</c> check there was. Two independent facts need two independent gates.</para>
         /// </summary>
         [Fact]
@@ -79,7 +78,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// D7 — the encoding gate, golden half: no sibling output golden carries a BOM. The goldens are byte-compared
+        /// The encoding gate, golden half: no sibling output golden carries a BOM. The goldens are byte-compared
         /// against LF engine output on both Linux and Windows CI; a BOM on one of them would be a silent three-byte
         /// prefix on the expected side.
         /// </summary>
@@ -93,8 +92,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// D7.3 / WI4 — <b>the corpus is input</b>. No file inside the shared corpus directory may be written by a
-        /// test.
+        /// <b>The corpus is input</b>. No file inside the shared corpus directory may be written by a test.
         /// <para>This was a real finding, not a hypothetical. Twenty-five sites across fourteen files wrote
         /// <c>test-&lt;name&gt;.html</c> straight back into <c>TestTemplate/</c>, six of those artifacts were checked
         /// in beside the inputs, and the engine tier's own output directory had accumulated 36 of them — so the
@@ -103,7 +101,7 @@ namespace Heddle.Tests
         /// race, and "the corpus is input" is the invariant that makes byte-neutrality checkable at all. The writes
         /// now go to <c>TestOutput/</c> in the writer's own output directory
         /// (<see cref="TestCorpusIndex.WrittenArtifactPath"/>); the six checked-in artifacts were relocated to
-        /// <c>src/Heddle.Tests/TestOutput/</c> and preserved, not deleted (Q7.3 — ruled: relocate).</para>
+        /// <c>src/Heddle.Tests/TestOutput/</c> and preserved, not deleted.</para>
         /// </summary>
         [Fact]
         public void TheCorpusDirectoryHoldsNoTestWrittenArtifact()
@@ -118,12 +116,11 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// The corpus reaches THIS project's output directory — the property that replaced the path traversal. Stated
-        /// as its own test so that a build-wiring regression fails with a wiring message rather than surfacing as a
-        /// dozen confusing assertion failures elsewhere.
+        /// The corpus reaches this project's output directory. Stated as its own test so that a build-wiring
+        /// regression fails with a wiring message rather than surfacing as a dozen confusing assertion failures elsewhere.
         /// <para>The validation-scenario canary: change the output layout (a different configuration, a renamed bin
-        /// path) and this still passes, because it reads <c>AppContext.BaseDirectory</c>. That is the scenario which,
-        /// pre-phase, silently no-op'd five integration tests.</para>
+        /// path) and this still passes, because it reads <c>AppContext.BaseDirectory</c>. That is the scenario which
+        /// silently no-op'd five integration tests.</para>
         /// </summary>
         [Fact]
         public void TheCorpusIsInThisProjectsOwnOutputDirectory()

@@ -75,7 +75,7 @@ namespace Heddle.Tests
             yield return new object[] { "PublicOnBase", true, "public getter inherited from a base class" };
             yield return new object[] { "InternalOnBase", false, "inherited non-public members are not surfaced (runtime-normative)" };
             yield return new object[] { "ProtectedOnBase", false, "protected is outside the sandbox" };
-            yield return new object[] { "ProtectedInternalHere", false, "OQ1: runtime rejects protected internal; widening is a window candidate" };
+            yield return new object[] { "ProtectedInternalHere", false, "runtime rejects protected internal; widening is a breaking-window candidate" };
             yield return new object[] { "ProtectedHere", false, "protected is outside the sandbox" };
             yield return new object[] { "PrivateHere", false, "private is outside the sandbox" };
             yield return new object[] { "WriteOnly", false, "not readable" };

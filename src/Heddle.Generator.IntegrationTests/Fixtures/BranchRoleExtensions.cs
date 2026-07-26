@@ -51,7 +51,7 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
     {
         public static bool Truthy(object value) => value != null && (!(value is bool b) || b);
 
-        /// <summary>Opportunistic publish (R11): an opener carries no <c>[ScopeChannel]</c>, so a set with no
+        /// <summary>Opportunistic publish: an opener carries no <c>[ScopeChannel]</c>, so a set with no
         /// participant sibling provisions no frame and <see cref="Scope.Publish"/> throws — swallowed, mirroring
         /// the built-in openers' frameless no-op.</summary>
         public static void TryPublish(in Scope scope, bool satisfied)
@@ -73,8 +73,8 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         }
     }
 
-    /// <summary>Opener — canonical shape with the <c>InitStart</c> parent-model override (R12). Because it overrides a
-    /// compile-time hook, the emitter degrades a call to it to the dynamic tier (no HED7015, §6.3.3).</summary>
+    /// <summary>Opener — canonical shape with the <c>InitStart</c> parent-model override. Because it overrides a
+    /// compile-time hook, the emitter degrades a call to it to the dynamic tier.</summary>
     [ExtensionName("begin")]
     [BranchRole(BranchRole.Opener)]
     public sealed class BeginExtension : AbstractExtension
@@ -194,11 +194,10 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
     }
 
     /// <summary>
-    /// Phase 1 (WI9 / D10): a CUSTOM zero-output extension. Its <c>InitStart</c> returns <c>null</c> — the runtime
-    /// protocol that makes the compiler drop the block — and it declares <c>[ZeroOutput]</c>, the symbol-readable
-    /// form of the same fact. Before phase 1 the generator classified zero-output by a hard-coded list of the four
-    /// built-in directive names, so this extension's block was removed on the dynamic tier and kept as rendered
-    /// output on the precompiled one: a silent divergence for every custom directive anyone could write.
+    /// A CUSTOM zero-output extension. Its <c>InitStart</c> returns <c>null</c> — the runtime protocol that makes
+    /// the compiler drop the block — and it declares <c>[ZeroOutput]</c>, the symbol-readable form of the same fact.
+    /// The generator classifies zero-output by reading <c>[ZeroOutput]</c>, so custom directives (like this one) and
+    /// built-in directives are handled consistently.
     /// </summary>
     [ExtensionName("note")]
     [ZeroOutput]
@@ -215,12 +214,11 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
     }
 
     /// <summary>
-    /// Phase 1 (WI1 / D2): the per-carrier locals probe. A roleless, <b>non</b>-<c>[ScopeChannel]</c> extension
-    /// that READS the local channel — the read twin of <see cref="FlagExtension"/>'s opportunistic publish. Because
-    /// it carries no <c>[ScopeChannel]</c>, neither tier counts it as a participant, so a body containing only
-    /// <c>@flag</c> + <c>@peek</c> is classified as non-participating on both tiers. What it renders therefore
-    /// reports, byte-for-byte, <em>whether that body was given a frame anyway</em> — which is exactly the question
-    /// the OR'd <c>needsLocals</c> flag used to answer differently on the two tiers.
+    /// The per-carrier locals probe. A roleless, <b>non</b>-<c>[ScopeChannel]</c> extension that READS the local
+    /// channel — the read twin of <see cref="FlagExtension"/>'s opportunistic publish. Because it carries no
+    /// <c>[ScopeChannel]</c>, neither tier counts it as a participant, so a body containing only <c>@flag</c> +
+    /// <c>@peek</c> is classified as non-participating on both tiers. What it renders therefore reports,
+    /// byte-for-byte, <em>whether that body was given a frame anyway</em>.
     /// </summary>
     [ExtensionName("peek")]
     public sealed class PeekExtension : AbstractExtension
@@ -232,9 +230,8 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
     }
 
     /// <summary>A roleless bodiless <c>[ScopeChannel]</c> participant (the documented "zebra" pattern): publishes to
-    /// a private key each sibling flips. Binds directly on the precompiled tier; the §5.3.3a fix makes the hosting
-    /// body provision a locals frame (keyed off <c>HasScopeChannel</c>) so <see cref="Scope.Publish"/> no longer
-    /// throws at render.</summary>
+    /// a private key each sibling flips. Binds directly on the precompiled tier; the hosting body provisions a locals
+    /// frame (keyed off <c>HasScopeChannel</c>) so <see cref="Scope.Publish"/> no longer throws at render.</summary>
     [ExtensionName("row")]
     [ScopeChannel]
     public sealed class RowExtension : AbstractExtension

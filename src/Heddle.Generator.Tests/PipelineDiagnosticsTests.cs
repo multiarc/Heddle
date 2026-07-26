@@ -24,8 +24,6 @@ namespace Heddle.Generator.Tests
         private static Dictionary<string, string> Root(string root) =>
             new Dictionary<string, string> { ["build_property.HeddleTemplateRoot"] = root };
 
-        // ---- HED7018: out-of-root template key (D3) -------------------------------------------------------
-
         [Fact]
         public void OutOfRootTemplateReportsHed7018OnceAndStillRegistersTheFlattenedKey()
         {
@@ -88,8 +86,6 @@ namespace Heddle.Generator.Tests
             Assert.Single(run.GeneratorDiagnostics.Where(d => d.Id == "HED7002"));
         }
 
-        // ---- HED7019: engine-version fallback --------------------------------------------------------
-
         /// <summary>The harness compiles without a visible <c>Heddle</c> reference identity in
         /// <c>ReferencedAssemblySymbols</c> only when the reference is absent; with it present the manifest records
         /// the observed version and no warning fires.</summary>
@@ -123,8 +119,6 @@ namespace Heddle.Generator.Tests
             Assert.Contains($"engineVersion: \"{expected}\"", manifest);
         }
 
-        // ---- HED7009 expected-values text, now sourced from the linked enums -----
-
         /// <summary>The allowed-value lists used to be hand-copied string arrays 2,500 lines from the enums they
         /// mirrored; they now come from <c>Enum.GetNames</c> over the linked types. The diagnostic text must read
         /// exactly as it shipped.</summary>
@@ -149,8 +143,6 @@ namespace Heddle.Generator.Tests
             Assert.Contains(property, message);
             Assert.Contains(expected, message);
         }
-
-        // ---- Precompile item metadata (Q5.1 ruling) -------------------------------------------------------
 
         [Fact]
         public void PrecompileFalseEmitsNoEntryPointAndNoManifestEntryButStillServesImports()
@@ -197,8 +189,6 @@ namespace Heddle.Generator.Tests
             Assert.Contains("key: \"page.heddle\"", manifest);
         }
 
-        // ---- The emitter-defect error path -----
-
         /// <summary>The fallback-legitimacy ruling in executable form: an exception out of the emitter is a defect,
         /// so it reds the build with a per-template error naming the template and the exception — while every other
         /// template's source and the manifest still emit (a bare rethrow would downgrade to the CS8785 warning and
@@ -240,8 +230,6 @@ namespace Heddle.Generator.Tests
                 Assert.Contains($"key: \"t{i}.heddle\"", manifest);
             }
         }
-
-        // ---- The HED7xxx registry lockstep -----
 
         /// <summary>Code ↔ claimed-IDs registry ↔ docs table. Every `HED70xx` the generator can report must be claimed
         /// and listed in the build-time diagnostics documentation; an unclaimed or undocumented id is a red build

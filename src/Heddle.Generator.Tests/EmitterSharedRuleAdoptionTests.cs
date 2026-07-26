@@ -157,7 +157,7 @@ namespace Heddle.Generator.Tests
         }
 
         // -------------------------------------------------------------------------------------------------------
-        // WI10, build-tier conformance. What used to stand here was a theory whose InlineData rows were the table's
+        // Build-tier conformance: the emitter's nested body build context is derived from the row. What used to stand here was a theory whose InlineData rows were the table's
         // own rows, asserted against the table — tautological, and it never touched the emitter. The emitter's only
         // link to the table was a Debug.Assert, i.e. nothing at all in Release.
         //

@@ -348,7 +348,7 @@ namespace Heddle.Generator.IntegrationTests
             if (gen.Assembly == null)
                 throw new InvalidOperationException("No assembly produced.");
 
-            ExpectPrecompiled(gen, targetKey);   // D5: declared precompiled expectation
+            ExpectPrecompiled(gen, targetKey);   // Declared precompiled expectation
             var entryType = FindEntryTypeByKey(gen.Assembly, targetKey)
                          ?? throw new InvalidOperationException("Generated entry class not found (fell back): " + targetKey);
 
@@ -412,7 +412,7 @@ namespace Heddle.Generator.IntegrationTests
                 dynamicRootPath: AppContext.BaseDirectory, fileBacked: fileBacked, globalOptions: globalOptions);
         }
 
-        /// <summary>One template to render on the resolver path (WI4's corpus sweep unit).</summary>
+        /// <summary>One template to render on the resolver path.</summary>
         internal sealed class ResolverTarget
         {
             public ResolverTarget(string key, string content, Type modelType, object model, bool render = true)
@@ -471,7 +471,7 @@ namespace Heddle.Generator.IntegrationTests
             if (gen.Assembly == null)
                 throw new InvalidOperationException("No assembly produced.");
 
-            // D5: the build-tier expectation is declared, not assumed — an entry class AND a non-null manifest strategy.
+            // The build-tier expectation is declared, not assumed — an entry class AND a non-null manifest strategy.
             foreach (var target in targets)
                 ExpectPrecompiled(gen, target.Key);
 
@@ -581,7 +581,7 @@ namespace Heddle.Generator.IntegrationTests
             Precompiled,
         }
 
-        /// <summary>The single copy of the manifest probe the deliberate-degrade suites used to hand-roll (D5).</summary>
+        /// <summary>The single copy of the manifest probe the deliberate-degrade suites used to hand-roll.</summary>
         internal static ManifestState ClassifyInManifest(string manifest, string key)
         {
             var marker = "key: \"" + key + "\"";

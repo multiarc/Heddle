@@ -167,7 +167,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void NamedArgsOnParameterLessExtensionDegradeToDynamicHed5005()
         {
-            // F7: the generator must NOT silently drop the named args (it degrades — no entry class), and the
+            // The generator must NOT silently drop the named args (it degrades — no entry class), and the
             // dynamic tier raises HED5005 for the same call — one verdict governs both tiers.
             var t = "@model(){{System.String}}@\\\n@yell(this, p: 1)\n";
             var gen = DifferentialHarness.Generate(new[] { ("views/yellnamed.heddle", t) });

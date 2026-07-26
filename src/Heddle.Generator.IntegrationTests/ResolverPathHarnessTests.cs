@@ -40,7 +40,7 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>A model-less template with no <c>@model</c> directive still crosses the gauntlet — the sub-mode
-        /// that the corpus sweep (WI4) uses for every entry.</summary>
+        /// that corpus processing uses for every entry.</summary>
         [Fact]
         public void ModelLessTemplate_CrossesTheGauntlet()
         {

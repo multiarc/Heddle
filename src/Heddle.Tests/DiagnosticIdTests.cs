@@ -64,8 +64,8 @@ namespace Heddle.Tests
                 "HED5013", "HED5014", "HED5015", "HED5016", "HED5017", "HED5018",
                 "HED5019", "HED5020",
                 // The HED7xxx block gained constants when the generator and engine started sharing rule cores —
-                // the ids already shipped, as Roslyn descriptors and PrecompiledFallbackEvent codes;
-                // what they lacked was a reflectable home, so nothing could gate them.
+                // the ids already shipped as Roslyn descriptors and event codes; what they lacked was a reflectable
+                // home, so nothing could gate them.
                 "HED7001", "HED7002", "HED7003", "HED7004", "HED7005", "HED7006", "HED7007",
                 "HED7008", "HED7009", "HED7010", "HED7011", "HED7012", "HED7013", "HED7014",
                 "HED7015", "HED7016", "HED7017", "HED7018", "HED7019", "HED7020", "HED7021", "HED7022",
@@ -73,7 +73,7 @@ namespace Heddle.Tests
                 "HED7101", "HED7102", "HED7103",
                 // A registered Name that another registered template already answers to. A runtime id because
                 // the collision spans assemblies — a referenced manifest's rows are IL, not symbol metadata, so the
-                // build tier cannot see them (within one compilation the same fault is HED7004).
+                // build tier cannot see them.
                 "HED7104"
             };
 
@@ -92,9 +92,9 @@ namespace Heddle.Tests
         /// <para>The claimed-ID registry and <see cref="HeddleDiagnosticIds"/> agree in both directions over the
         /// <c>HED0xxx</c>–<c>HED5xxx</c> blocks — no constant outside a claimed row, no claimed runtime row without
         /// a constant. The <c>HED7xxx</c> half is asserted generator-side, where the descriptors live.</para>
-        /// <para>Documented exclusions: <c>HED6xxx</c>/<c>HED8xxx</c> are reserved-unclaimed (no four-digit
-        /// row), <c>HED9001</c> is deliberately not public surface (the registry row says so), and the
-        /// <c>HED7xxx</c> block is the generator/precompiled-runtime block.</para>
+        /// <para>Documented exclusions: <c>HED6xxx</c>/<c>HED8xxx</c> are reserved-unclaimed (no four-digit row),
+        /// <c>HED9001</c> is deliberately not public surface (the registry row says so), and the <c>HED7xxx</c>
+        /// block is the generator/precompiled-runtime block.</para>
         /// </summary>
         [Fact]
         public void ConstantsAndTheClaimedIdRegistryAgree()
@@ -132,20 +132,17 @@ namespace Heddle.Tests
 
         /// <summary>Claimed IDs the runtime deliberately does not surface as a public constant, each named here
         /// rather than silently absent. <c>HED9001</c> is the feature-switch guard: its registry row records that
-        /// it is an internal id (<c>HeddleFeatures.CSharpTierDisabledDiagnosticId</c>) precisely because that
-        /// phase added no public API surface.</summary>
+        /// it is an internal id (<c>HeddleFeatures.CSharpTierDisabledDiagnosticId</c>) precisely because adding it
+        /// required no public API surface.</summary>
         private static readonly HashSet<string> RegistryOnly = new HashSet<string>(StringComparer.Ordinal)
         {
             "HED9001"
         };
 
         /// <summary>
-        /// Expands the claimed-ID registry table's first cells. Grammar (printed on failure): a row whose first
-        /// cell is <c>`HEDaaaa`</c> or <c>`HEDaaaa`–`HEDbbbb`</c>; IDs named in the Owner/Notes cells are
-        /// deliberately ignored, so a cross-reference never silently claims an ID.
+        /// Marks a registry row recording an id deliberately left free. Such a row is not a claim and must
+        /// not demand a constant; making the distinction machine-read avoids a whitelist that grows silently.
         /// </summary>
-        /// <summary>Marks a registry row recording an id deliberately left free. Such a row is not a claim and must
-        /// not demand a constant; making the distinction machine-read avoids a whitelist that grows silently.</summary>
         private const string UnclaimedMarker = "deliberately unclaimed";
 
         private static void AddRange(HashSet<string> into, Match match)
@@ -160,7 +157,7 @@ namespace Heddle.Tests
 
         private static HashSet<string> ClaimedIds(string markdown, HashSet<string> unclaimed = null)
         {
-            // The registry section only: D1's block-allocation table above it states ranges (HED0001-HED0999)
+            // The registry section only: the block-allocation table above states ranges (HED0001-HED0999)
             // in the same row shape, and a block reservation is not an ID claim.
             const string heading = "## Claimed diagnostic IDs (registry)";
             var start = markdown.IndexOf(heading, StringComparison.Ordinal);

@@ -86,7 +86,7 @@ namespace Heddle.Generator.IntegrationTests
                     "@feed(){{@%<heading:heading>{{<h2 class=\"hero\">Latest</h2>}}" +
                     "<item:item>{{<li>@(Title)#@(Id)</li>}}%@<p class=\"lede\">intro</p>}}";
             var gen = DifferentialHarness.Generate(new[] { ("views/region-full.heddle", t) });
-            Assert.NotEmpty(gen.TemplateSources); // the OQ1 gate: native, not fallback
+            Assert.NotEmpty(gen.TemplateSources); // native, not fallback
             var (pre, dyn) = RenderBoth("views/region-full.heddle", t, Model());
             Assert.Equal(dyn, pre);
             // The FILLED bytes at depth — a top-level-only fill install would render the default '<li>A</li>' on
@@ -219,7 +219,7 @@ namespace Heddle.Generator.IntegrationTests
         /// comparison constrains the whole anchoring chain: the diagnostic must be attached to <b>this template's
         /// file</b> (not <c>Location.None</c> and not a generated <c>.g.cs</c>), its line/character mapping must
         /// agree with its span, and the resulting offset must be the one the runtime reports.
-        /// <para>Q8.16: this used to <c>return 0</c>. That made the caller's subtraction a no-op and the whole
+        /// <para>This used to <c>return 0</c>. That made the caller's subtraction a no-op and the whole
         /// helper decorative — the file identity and the line/column mapping were asserted nowhere, so the
         /// generator could have anchored the error in the wrong file, or emitted a line span inconsistent with its
         /// span, and every assertion here would still have been green.</para>
@@ -270,7 +270,7 @@ namespace Heddle.Generator.IntegrationTests
         public void UntypedRegionWithValueArgumentSilentlyDegrades()
         {
             // An untyped region called with an explicit value: its dynamic body typing is the argument's type,
-            // which the emitter does not reproduce — left silently un-precompiled (D8/F2), rendered identically
+            // which the emitter does not reproduce — left silently un-precompiled, rendered identically
             // by the dynamic tier.
             var t = "@model(){{" + FeedType + "}}@\\\n" +
                     "@%<panel>{{@%<:head>{{[x]}}%@@head(Articles)}} :: " + FeedType + "%@\n@panel()";
@@ -283,8 +283,8 @@ namespace Heddle.Generator.IntegrationTests
         public void InnerDefinitionShadowingFunctionConvergesToDynamicTier()
         {
             // 'upper' is a default-table function name; the inner definition shadows it and the dynamic tier
-            // resolves definition-first. After F1 the generator emits the DEFINITION too — a deliberate, pinned
-            // byte change (the old flat-_parse resolution missed the inner def and emitted the function).
+            // resolves definition-first. The generator emits the DEFINITION too — a deliberate, pinned
+            // byte change (definitions are resolved before functions).
             var t = "@model(){{" + FeedType + "}}@\\\n" +
                     "@%<wrap>{{@%<upper>{{[DEF]}}%@@upper()}} :: " + FeedType + "%@\n@wrap()";
             var gen = DifferentialHarness.Generate(new[] { ("views/region-shadow.heddle", t) });

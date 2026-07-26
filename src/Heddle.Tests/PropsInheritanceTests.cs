@@ -10,7 +10,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The D6 inheritance matrix (flattening, index stability, re-default, re-type assignability) and the
+    /// Props inheritance: flattening, index stability, re-default, re-type assignability, and the
     /// declaration-side diagnostics HED5007–HED5010, HED5015–HED5017. Layout indices are asserted white-box via
     /// <see cref="PropLayout"/>; render behavior confirms defaults/overrides end-to-end.
     /// </summary>

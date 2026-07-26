@@ -25,7 +25,7 @@ namespace Heddle.Generator.Tests
 
         /// <summary>Two independent sibling elements, each a call the shared overload ranker <i>proves</i> the
         /// runtime will refuse: <c>min(1, 2u)</c> is ambiguous (flat three-member Pareto front) and
-        /// <c>min(1, 2, 3)</c> has no applicable overload. Before Q8.19 only the first was reported.</summary>
+        /// <c>min(1, 2, 3)</c> has no applicable overload. Tests that all refusals are collected.</summary>
         [Fact]
         public void TwoUnwritableCallsInOneTemplateReportTwoDiagnosticsAtTheirOwnSpans()
         {
@@ -49,7 +49,7 @@ namespace Heddle.Generator.Tests
 
         /// <summary>The companion guard, and the load-bearing half: collecting refusals must not turn into
         /// <b>emitting</b> past them. A template with an unwritable construct produces no generated template source
-        /// and no manifest row — exactly as before Q8.19 — because <c>PopulateBody</c> still returns <c>false</c> once
+        /// and no manifest row — because <c>PopulateBody</c> still returns <c>false</c> once
         /// anything refused and <c>Emit</c> still sees a null root.</summary>
         [Fact]
         public void ATemplateWithAnUnwritableConstructStillEmitsNothingAndRegistersNoManifestRow()

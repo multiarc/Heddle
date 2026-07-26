@@ -105,9 +105,9 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// The file-backed pass above is only evidence for phase 5's F1 fix if a BOM'd entry is actually in it. Making
-        /// that a standing assertion rather than a fact someone once checked: at least one entry that the file-backed
-        /// sweep stages and crosses <c>HashFile</c> with is declared <c>Bom = true</c>.
+        /// The file-backed pass above is only evidence if a BOM'd entry is actually in it. Making that a standing
+        /// assertion rather than a fact someone once checked: at least one entry that the file-backed sweep stages
+        /// and crosses <c>HashFile</c> with is declared <c>Bom = true</c>.
         /// </summary>
         [Fact]
         public void AtLeastOneStandaloneEntryCarriesADeclaredBom()
@@ -124,13 +124,10 @@ namespace Heddle.Generator.IntegrationTests
         /// Success criterion 2, coverage half: <b>every</b> corpus entry the manifest reports as precompiled is
         /// resolved through the gauntlet with zero fallback events, and the observed precompiled set is pinned by
         /// <b>set equality against the intent table</b>, reported as a symmetric difference naming the drifting files.
-        /// <para>D5, and the reason the count it replaces had to go: <c>precompiledKeys.Count == 40</c> was already an
-        /// improvement on the <c>&gt;= 25</c> floor it replaced (which sat against an actual 40 and let fifteen
-        /// templates stop precompiling in silence). But an exact count is still rubber-stampable — a change of
-        /// classification is made green by editing one digit, and the commit looks the same either way. Set equality
-        /// cannot be: making it green requires naming the file whose classification changed and writing why in its
-        /// row. It is also a strictly better message: "props-inherit.heddle stopped precompiling" rather than
-        /// "expected 40, got 39".</para>
+        /// <para>An exact count is rubber-stampable — a change of classification is made green by editing one digit,
+        /// and the commit looks the same either way. Set equality cannot be: making it green requires naming the file
+        /// whose classification changed and writing why in its row. It is also a strictly better message:
+        /// "props-inherit.heddle stopped precompiling" rather than "expected 40, got 39".</para>
         /// <para>The sweep is symmetric on purpose. A deliberate-degrade template that quietly <i>starts</i>
         /// precompiling reddens this gate exactly as loudly as one that stops — which is the mitigation for the
         /// migration risk that a <c>DegradesToMarker</c> shape silently joins the precompiled set.</para>
@@ -156,11 +153,9 @@ namespace Heddle.Generator.IntegrationTests
             Assert.True(new HashSet<string>(observed, StringComparer.Ordinal).SetEquals(declared),
                 CorpusIntent.Describe("The precompiled set", declared, observed));
 
-            // Per-entry render (WI5), not the blanket `render: false` this replaces. Declared-Standalone entries are
-            // rendered; the rest resolve only — which still proves they crossed the gauntlet, because the gauntlet's
-            // verdict lands at TryResolve, before a byte is produced. That is what a bare @else continuation, which
-            // no tier can render standalone, actually needs, and it is no longer a reason to strip the byte
-            // assertion off the other 32.
+            // Per-entry render flag: Declared-Standalone entries are rendered; the rest resolve only — which still
+            // proves they crossed the gauntlet, because the gauntlet's verdict lands at TryResolve, before a byte is
+            // produced. That is what a bare @else continuation, which no tier can render standalone, actually needs.
             var standalone = new HashSet<string>(StandaloneRenderable(), StringComparer.Ordinal);
             var keys = new HashSet<string>(precompiledKeys, StringComparer.Ordinal);
             var targets = corpus.Where(t => keys.Contains(t.key))

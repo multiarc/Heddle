@@ -40,7 +40,6 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public System.Collections.Generic.List<Product> Products { get; set; }
     }
 
-    // Definition-invocation fixtures.
     public sealed class GreetingModel
     {
         public UserPayload Payload { get; set; }
@@ -63,7 +62,6 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public TreeNode Next { get; set; }
     }
 
-    // Props/slots fixture.
     public sealed class Article
     {
         public string Title { get; set; }
@@ -82,11 +80,9 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public string Label { get; set; }
     }
 
-    // ---------------------------------------------------------------------------------------------------------
     // The operator-guard differential corpus. One model carrying an operand of every category the shared
     // classification table distinguishes, so each of the seven documented deviations from C# gets a named
     // template rather than being covered "by not happening to appear in the corpus".
-    // ---------------------------------------------------------------------------------------------------------
     public enum OrderStatus
     {
         Draft = 0,
@@ -119,12 +115,11 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public override string ToString() => Amount.ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 
-    /// <summary>Phase-4 audit (2026-07-26) — the string-<c>+</c> row's divergence class made concrete. An implicit
-    /// conversion <b>to string</b> whose result differs from <see cref="ToString"/>: C#'s <c>+</c> prefers the
-    /// converted <c>string</c> overload (a better target than <c>object</c>), while the native tier's
-    /// <c>EmitStringConcat</c> always goes through <c>string.Concat(object, object)</c> and therefore calls
-    /// <c>ToString</c>. Deviation 6 — user-defined implicit conversions are not consulted — with visibly different
-    /// rendered bytes on the two routes.</summary>
+    /// <summary>The string-<c>+</c> row's divergence class made concrete. An implicit conversion <b>to string</b>
+    /// whose result differs from <see cref="ToString"/>: C#'s <c>+</c> prefers the converted <c>string</c> overload
+    /// (a better target than <c>object</c>), while the native tier's <c>EmitStringConcat</c> always goes through
+    /// <c>string.Concat(object, object)</c> and therefore calls <c>ToString</c>. Deviation 6 — user-defined implicit
+    /// conversions are not consulted — with visibly different rendered bytes on the two routes.</summary>
     public readonly struct Label
     {
         public Label(string text) => Text = text;
@@ -145,10 +140,9 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public Money Total { get; set; }
         public bool? Approved { get; set; }
 
-        /// <summary>Phase-4 audit (2026-07-26): a <c>long</c> shift count and a lifted integral, the two operand
-        /// shapes the shift row degrades for. C# has no <c>&lt;&lt;(int, long)</c> operator at all, so emitting a
-        /// wide count verbatim is CS0019 in the <i>consumer's</i> build, while the runtime narrows any integral count
-        /// to <c>int</c> and renders — the same asymmetry deviation 1 has, on a row no fixture reached.</summary>
+        /// <summary>A <c>long</c> shift count and a lifted integral, the two operand shapes the shift row degrades
+        /// for. C# has no <c>&lt;&lt;(int, long)</c> operator at all, so emitting a wide count verbatim is CS0019 in
+        /// the <i>consumer's</i> build, while the runtime narrows any integral count to <c>int</c> and renders.</summary>
         public long Big { get; set; }
 
         public int? Maybe { get; set; }
@@ -159,11 +153,11 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public Address Where { get; set; }
 
         /// <summary>Visible to the typed member tier (an internal getter passes the runtime filter) but invisible to
-        /// the dynamic tier's binder, which binds in <c>Heddle</c>'s context — the OQ3 asymmetry.</summary>
+        /// the dynamic tier's binder, which binds in <c>Heddle</c>'s context.</summary>
         internal string Secret { get; set; }
     }
 
-    /// <summary>Q8.1 / HED7025 fixture: <see cref="Payload"/> is <c>object</c>-typed, which the operand estimator
+    /// <summary>HED7025 fixture: <see cref="Payload"/> is <c>object</c>-typed, which the operand estimator
     /// classifies as <c>Unknown</c> on purpose (an object-typed operand carries no usable static facts). The path
     /// still *writes*, so the overload binder is reached with an argument it cannot describe — the side condition's
     /// case, which must stay a silent degrade because the generator has proved nothing about the runtime.</summary>
@@ -174,14 +168,14 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public int Count { get; set; }
     }
 
-    // Phase 8 (post-2.0) extension-parameter fixture model.
+    // Extension-parameter fixture model.
     public sealed class GridModel
     {
         public string Name { get; set; }
         public int Cols { get; set; }
     }
 
-    // Phase 7 (post-2.0) named-content-region fixtures.
+    // Named-content-region fixtures.
     public class RegionArticle
     {
         public string Title { get; set; }

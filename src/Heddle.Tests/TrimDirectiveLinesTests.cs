@@ -10,7 +10,7 @@ using Heddle.TestCorpus;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The directive-line trimming torture corpus (phase 4 D6–D8). Every row is rendered with the option OFF
+    /// The directive-line trimming torture corpus. Every row is rendered with the option OFF
     /// (byte-identical current output — the compatibility guarantee) and ON (the whole-line rule). Covers
     /// LF/CRLF/CR, indentation, trailing spaces, shared lines, <c>@\</c> idempotence, comment remnants,
     /// multi-line definitions, <c>@&lt;&lt;</c> lines, <c>@profile</c> lines, <c>@param</c> non-eligibility,
