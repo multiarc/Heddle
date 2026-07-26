@@ -148,8 +148,11 @@ namespace Heddle.Generator.IntegrationTests
         public void CorpusClassificationIsPinnedAndPrecompiledCodeCompiles()
         {
             var dir = CorpusDir();
-            if (dir == null)
-                return; // Heddle.Tests.dll for this TFM is not built — the full-solution gate builds it (WI9 requires it).
+            // A missing corpus must fail, not skip. The silent `return` this replaces turned the whole gate into
+            // a no-op if the build layout ever changed -- zero signal, reported as a pass.
+            Assert.True(dir != null,
+                "The Heddle.Tests TestTemplate corpus was not found for this TFM. Build the full solution "
+                + "(dotnet build Heddle.sln) so the corpus is on disk; this gate must not be skipped.");
             var templates = LoadCorpus(dir);
             Assert.True(templates.Count >= 40, "Expected the full TestTemplate corpus (~45 files).");
             var extra = new[] { MetadataReference.CreateFromFile(HeddleTestsDll()) };

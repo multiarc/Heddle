@@ -99,8 +99,11 @@ namespace Heddle.Generator.IntegrationTests
         public void ModelLessCorpusTemplatesRenderIdenticallyThroughTheResolver()
         {
             var dir = CorpusDir();
-            if (dir == null)
-                return; // Heddle.Tests corpus for this TFM not built — the full-solution gate builds it.
+            // A missing corpus must fail, not skip. The silent `return` this replaces turned the whole gate into
+            // a no-op if the build layout ever changed -- zero signal, reported as a pass.
+            Assert.True(dir != null,
+                "The Heddle.Tests TestTemplate corpus was not found for this TFM. Build the full solution "
+                + "(dotnet build Heddle.sln) so the corpus is on disk; this gate must not be skipped.");
             var corpus = LoadCorpus(dir);
             var names = new HashSet<string>(ModelLessParityTemplates, StringComparer.Ordinal);
             var targets = Targets(corpus, k => names.Contains(Path.GetFileName(k)));
@@ -125,8 +128,11 @@ namespace Heddle.Generator.IntegrationTests
         public void ModelLessCorpusTemplatesRenderIdenticallyThroughTheResolver_FileBacked()
         {
             var dir = CorpusDir();
-            if (dir == null)
-                return;
+            // A missing corpus must fail, not skip. The silent `return` this replaces turned the whole gate into
+            // a no-op if the build layout ever changed -- zero signal, reported as a pass.
+            Assert.True(dir != null,
+                "The Heddle.Tests TestTemplate corpus was not found for this TFM. Build the full solution "
+                + "(dotnet build Heddle.sln) so the corpus is on disk; this gate must not be skipped.");
             var corpus = LoadCorpus(dir);
             var names = new HashSet<string>(ModelLessParityTemplates, StringComparer.Ordinal);
             var targets = Targets(corpus, k => names.Contains(Path.GetFileName(k)));
@@ -151,8 +157,11 @@ namespace Heddle.Generator.IntegrationTests
         public void EveryPrecompiledCorpusEntryCrossesTheGauntlet()
         {
             var dir = CorpusDir();
-            if (dir == null)
-                return;
+            // A missing corpus must fail, not skip. The silent `return` this replaces turned the whole gate into
+            // a no-op if the build layout ever changed -- zero signal, reported as a pass.
+            Assert.True(dir != null,
+                "The Heddle.Tests TestTemplate corpus was not found for this TFM. Build the full solution "
+                + "(dotnet build Heddle.sln) so the corpus is on disk; this gate must not be skipped.");
             var corpus = LoadCorpus(dir);
             var gen = DifferentialHarness.Generate(corpus, globalOptions: null, extraReferences: Extra());
             Assert.False(gen.Diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
@@ -162,8 +171,13 @@ namespace Heddle.Generator.IntegrationTests
                             DifferentialHarness.ManifestState.Precompiled)
                 .Select(t => t.key)
                 .ToList();
-            Assert.True(precompiledKeys.Count >= 25,
-                "Expected the corpus's precompiled set (~34 templates); got " + precompiledKeys.Count);
+            // An exact count, not a floor. The floor this replaced (>= 25, against an actual 40) let fifteen
+            // templates stop precompiling without reddening anything — a silent coverage loss of exactly the kind
+            // phase 0 exists to make impossible. A template joining or leaving the precompiled set is a deliberate
+            // act: update this number in the same change and say why.
+            Assert.True(precompiledKeys.Count == 40,
+                "The corpus's precompiled set should be exactly 40 templates; got " + precompiledKeys.Count +
+                ". If a template legitimately started or stopped precompiling, update this count deliberately.");
 
             var targets = Targets(corpus, k => precompiledKeys.Contains(k));
             // Resolve-only: the gauntlet's verdict lands at TryResolve, before a byte is rendered, and a handful of

@@ -123,13 +123,30 @@ representative pass file-backed), and each feature area contributes its template
 rather than re-plumbing its own tests. Feature suites (`BranchTests`, `RegionTests`, `PropsTests`,
 …) stay direct-invoke.
 
-**Rationale — why this satisfies "the majority follows the precompiled path."** The corpus is the
-union of the feature templates; after this phase every template that precompiles is rendered at
-least once end-to-end under fallback-as-failure, while the feature suites keep the isolation that
-makes a red test point at the emitter rather than at five layers of plumbing. Converting all ~130
-tests to resolver-path would multiply registry churn and suite time for no additional gauntlet
-coverage — the gauntlet's verdict is per-template, not per-assertion. The success criteria below
-state the posture as a measurable invariant rather than a test-count ratio.
+**Rationale — why this satisfies "the majority follows the precompiled path."** Every template in
+the golden corpus that precompiles crosses the gauntlet at least once under fallback-as-failure,
+while the feature suites keep the isolation that makes a red test point at the emitter rather than
+at five layers of plumbing. Converting all ~130 tests to resolver-path would multiply registry
+churn and suite time for no additional gauntlet coverage — the gauntlet's verdict is per-template,
+not per-assertion. The success criteria below state the posture as a measurable invariant rather
+than a test-count ratio.
+
+> **Correction (2026-07-26, post-implementation audit).** This rationale originally opened *"the
+> corpus is the union of the feature templates"*. **That is false**, and the claim was load-bearing:
+> the feature suites (`BranchTests`, `RegionTests`, `PropsTests`, …) build their templates as
+> **inline strings**, so their shapes are not in `Heddle.Tests/TestTemplate` and do not join the
+> sweep. Roughly 130 feature tests therefore never cross the gauntlet, and D4's coverage argument
+> does not reach them.
+>
+> What the phase actually delivers is stated precisely in the corrected criterion 2 below: **all 40
+> precompiling corpus entries cross the gauntlet** (resolve-only — the verdict lands at
+> `TryResolve`, before a byte), and **the model-less parity subset additionally byte-matches the
+> dynamic reference** in both sub-modes. That is a real and useful floor, but it is *corpus*
+> coverage, not *feature-suite* coverage.
+>
+> Closing the gap means feature areas contributing their template shapes to the corpus, which is
+> the standing rule D8 records in [testing-standards](../spec/common/testing-standards.md) — it is
+> how new areas are supposed to arrive, not a backfill anyone has done. Treat the residue as open.
 
 ### D5 — Intent is declared: `ExpectPrecompiled` is the default, `ExpectDegrade` is explicit
 
@@ -221,9 +238,17 @@ inherit the rule instead of restating it.
 
 1. Any gauntlet fallback raised during a test that did not declare it fails that test — proven by
    the seeded-mismatch meta-suite, including the unguarded-silent-success negative control (D7).
-2. Every golden-corpus entry renders through `RenderViaResolver` under `Strict` + sentinel and
-   byte-matches the dynamic reference; at least one pass runs file-backed with the staleness check
-   on.
+2. *(Corrected 2026-07-26 — the original wording, "every golden-corpus entry … byte-matches the
+   dynamic reference", was met only by redefinition and is restated here as what the suite
+   actually asserts.)* Two halves, both under `Strict` + sentinel with zero fallback events:
+   **(a) coverage** — every corpus entry the manifest reports as precompiled crosses the gauntlet
+   through `RenderViaResolver`, pinned at an **exact count** rather than a floor, so a template
+   that stops precompiling reddens the gate; and **(b) byte parity** — the model-less parity
+   subset byte-matches the dynamic reference, in registry-only *and* file-backed sub-modes.
+   Byte parity is not asserted corpus-wide by design: model-carrying families are byte-checked by
+   their own differential suites, and a handful of entries are import fragments (a bare `@else`
+   continuation) that no tier can render standalone. The gauntlet's verdict lands at `TryResolve`,
+   before a byte, so tier-selection coverage is complete even where byte comparison is meaningless.
 3. The complete set of tests that expect fallback is enumerable by grepping the two intent APIs
    (`ExpectDegrade`, `FallbackGuard.Expect`) and matches today's dedicated fallback files plus
    nothing else.
