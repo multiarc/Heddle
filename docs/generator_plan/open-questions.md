@@ -4,9 +4,11 @@ The consolidated Q&A register for the seven phases. Numbering is `Q<phase>.<n>`,
 phase plan's own Open-questions section.
 
 **Pre-authoring questions (Q0.1–Q6.3): all resolved (user, 2026-07-25) and folded into the phases.**
-**Post-implementation questions (Q7.1–Q8.8): OPEN, awaiting ruling** — see
-[the section below](#post-implementation-questions-opened-2026-07-26--open-awaiting-ruling). They were
-opened after the phases landed, by the two post-implementation reviews and the six phase audits.
+**Post-implementation questions (Q7.1–Q8.8):** opened after the phases landed, by the two
+post-implementation reviews and the six phase audits — see
+[the section below](#post-implementation-questions-opened-2026-07-26). **Q7.4 and Q8.1–Q8.5 are
+ruled (user, 2026-07-26); the remainder stand at their stated defaults**, which are the operative
+decision until revisited.
 
 Each resolved entry below records the question, the ruling, and the folding target. Two rulings
 carry a program-wide principle referenced by several phases:
@@ -150,7 +152,7 @@ carry a program-wide principle referenced by several phases:
 
 ---
 
-# Post-implementation questions (opened 2026-07-26) — **OPEN, awaiting ruling**
+# Post-implementation questions (opened 2026-07-26)
 
 Everything above was resolved before the phases were authored. The questions below were opened
 *after* the seven phases landed, by the two post-implementation reviews and the six phase audits.
@@ -159,8 +161,9 @@ particular were written into
 [phase-7-shared-test-corpus.md](phase-7-shared-test-corpus.md) and initially missed this file,
 which is the bookkeeping failure this section exists to correct.
 
-**None of these are folded into anything yet.** Each names a default so work can proceed under a
-stated assumption if a ruling does not arrive, per the convention the resolved sections use.
+**Ruled (user, 2026-07-26): Q7.4, Q8.1, Q8.2, Q8.3, Q8.4, Q8.5.** The rest stand at their stated
+defaults, which are treated as the operative decision until revisited. Each entry records the
+question, the ruling or default, and where it is folded.
 
 ## Phase 7 — shared test corpus
 
@@ -182,7 +185,11 @@ stated assumption if a ruling does not arrive, per the convention the resolved s
   confirming that requires ruling that nothing reads them. **Default if unruled:** delete.
 - **Q7.4 — Is migration stage 5 ("the remaining feature-shape families") in phase 7 or a
   follow-on?** D4's criteria scope stages 1–4 definitively; stage 5's edge is soft, and a ruling
-  lets stages 0–4 be sized. **Default if unruled:** follow-on, so phase 7 has a hard boundary.
+  lets stages 0–4 be sized. **Ruling (user, 2026-07-26): all stages, including 5, land inside
+  phase 7.** The D4 coverage residue is closed completely rather than left as a tail. *Folded into:*
+  phase 7 WI9 (stage 5 promoted from conditional to committed); each stage keeps its own
+  byte-neutral gate and suite-time measurement, so the open-ended scope is bounded by per-stage
+  acceptance rather than by stopping early.
 
 ## Post-audit behavioural questions
 
@@ -199,7 +206,13 @@ stated assumption if a ruling does not arrive, per the convention the resolved s
   report only when the outcome is `Ambiguous`/`None` **and** no argument estimate is `Unknown`,
   because today's `null` return conflates "provably ambiguous" with "an argument I could not type".
   **This is a build-surface change — a project that builds today would start failing.**
-  **Default if unruled:** do nothing; the violation stays recorded in the README findings.
+  **Ruling (user, 2026-07-26): make it a build error, `HED7025`.** The generator must not stay
+  silent about an illegality it has already proved. Accepted consequence: a project whose template
+  contains an ambiguous overload call and which builds green today will start failing its build —
+  the same posture phase 5's emitter-fault error and phase 3's `HED7021` took. The side condition is
+  mandatory: report only when no argument estimate is `Unknown`. Phase 4's quarantine fixture must
+  stop pinning the silence. *Folded into:* a post-audit work item; `HED7025` claimed in registry
+  order with rows in `cross-cutting-decisions.md` and `precompilation.md`.
 - **Q8.2 — The P1 binary break: which mechanism?** *(Partially ruled: the user has ruled "bump to
   2.1 and resolve as a binary breaking change".)* What remains open is the **gate**:
   `PrecompiledExtensionBinding`'s 2-arg `.ctor` no longer exists in metadata, while
@@ -210,27 +223,35 @@ stated assumption if a ruling does not arrive, per the convention the resolved s
   to 2.1, raise `MinSupportedSchemaVersion` to 4 so the gate rejects cleanly instead of faulting,
   add a binary fixture built at the old schema so the rejection is *demonstrated*, and record the
   break in the CHANGELOG and `breaking-windows.md`.
+  **Ruling (user, 2026-07-26): raise `MinSupportedSchemaVersion` to 4.** The break ships as declared
+  (version 2.1); no compatibility shim. The gate must reject cleanly rather than advertise a support
+  window the metadata cannot honour, and the rejection must be demonstrated by a manifest fixture
+  built at the old schema — not asserted. *Folded into:* a post-audit work item.
 - **Q8.3 — Fold the runtime onto the two remaining generator-only "shared" cores?**
   `Language/Binding/ExtensionRegistrationRules.cs` and `Language/Binding/TypeSpelling.cs` are called
   **only** by the generator; the runtime still hand-inlines both rules
   (`TemplateFactory.AddExtensions`, `ReflectionHelper`). Mutating the shared copy reddens **zero**
   runtime tests, so the files are transcriptions rather than sources of truth — the "reads as fixed
   and is not" shape. `ExportBookkeeping<TPayload>` has no test at all.
-  **Default if unruled:** fold, because a shared file one tier ignores is worse than no extraction.
+  **Ruling (user, 2026-07-26): fold.** *Folded into:* a post-audit work item; acceptance is that
+  mutating each shared rule reddens at least one **runtime** test, which is the property whose
+  absence made these transcriptions rather than sources of truth.
 - **Q8.4 — Model `[ExportExtensions]` in the generator's extension discovery?** The runtime only
   scans assemblies carrying the attribute; the generator scans all referenced assemblies, so it
   binds and precompiles extensions the runtime will never register → a permanent silent per-request
   fallback. Pre-existing and fallback-safe, but it is a live instance of the failure mode the
   program exists to eliminate, and no phase owns it.
-  **Default if unruled:** close it, since "fallback-safe" is exactly the excuse that let two of the
-  fifteen drifts ship.
+  **Ruling (user, 2026-07-26): close it.** *Folded into:* a post-audit work item; acceptance
+  requires a fixture using an extension in an assembly *without* the attribute, since no test uses
+  such an assembly today.
 - **Q8.5 — Fix `TemplateEmitter.StripGlobal`'s hard-coded assembly name?** It builds a bare dotted
   type name and feeds it to `RecordExtensionBinding`, whose `assembly` parameter **defaults to the
   literal `"Heddle"`**. For a user-defined nested or out-of-engine branch-role extension the
   manifest records `Ns.Outer.Inner, Heddle` where the gauntlet computes
   `Ns.Outer+Inner, <realAsm>` — drift #6's shape surviving on a path **no fixture exercises**.
   Phase 3's success criterion claimed zero remaining inline `global::`-strip AQN constructions.
-  **Default if unruled:** fix, with a fixture that reproduces it first (TDD).
+  **Ruling (user, 2026-07-26): fix.** *Folded into:* a post-audit work item, TDD — the reproducing
+  fixture lands red first, because the defect's whole character is that no fixture reaches it.
 - **Q8.6 — Schedule the compile-channel drain?** Recorded as a program-level gap: the generator
   runs no compile-channel stage, so eleven id-carrying warnings (`HED1016`, `HED2002`–`HED2004`,
   `HED3001`–`HED3005`, `HED4002`, `HED4005`, `HED5011`) still never reach a build diagnostic, and
