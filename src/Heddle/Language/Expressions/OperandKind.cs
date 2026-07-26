@@ -1,9 +1,8 @@
 namespace Heddle.Language.Expressions
 {
     /// <summary>
-    /// The coarse static classification an operand carries into the operator-legality and overload-rank rules
-    /// (phase 4 D6). <see cref="Unknown"/> is not an error — it is "no static type available", and every rule
-    /// degrades on it.
+    /// The coarse static classification an operand carries into the operator-legality and overload-rank rules.
+    /// <see cref="Unknown"/> is not an error — it is "no static type available", and every rule degrades on it.
     /// </summary>
     internal enum OperandCategory
     {

@@ -36,7 +36,7 @@ namespace Heddle.Language.Binding
         /// local variant under-implemented it (no by-ref arm, narrower generic test).</summary>
         bool IsUsableAsPropType(TType type);
 
-        /// <summary>Maps into phase 4's shared <see cref="NumericKind"/>; <see cref="NumericKind.None"/> for
+        /// <summary>Maps to <see cref="NumericKind"/>; <see cref="NumericKind.None"/> for
         /// anything that is not one of the twelve numeric primitives.</summary>
         NumericKind GetNumericKind(TType type);
 

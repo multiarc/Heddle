@@ -52,8 +52,6 @@ namespace Heddle.Helpers
                         // because the template lexer cannot accept '+'; both keys point at the same Type.
                         // If a real namespaced type shares the dotted spelling, the alias lands in the
                         // same list and surfaces as the existing "ambiguous" error rather than a silent pick.
-                        // (Phase 3 note: that was true of the full-name arm only until the short-name arm was
-                        // fixed to match — see ResolveSimpleType. It is now true of both, as written.)
                         StringBuilder shortNameBuilder = new StringBuilder();
                         shortNameBuilder.Append(type.Name);
                         var parent = type.DeclaringType;

@@ -55,7 +55,7 @@ namespace Heddle.Generator.Emit
         private readonly ParseContext _parse;
         private readonly GlobalConfig _config;
         private readonly LineMapper _map;
-        private readonly Compilation _compilation;   // ClassifyConversion for the HED5008 twin
+        private readonly Compilation _compilation;
 
         /// <summary>The generator's single Roslyn <c>ITypeFacts</c> adapter — the CLR assignability
         /// relation with its two nullable corrections, the unusable-prop-type predicate, and the shared AQN
