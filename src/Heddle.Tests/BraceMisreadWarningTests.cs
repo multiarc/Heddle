@@ -6,6 +6,7 @@ using Heddle.Data;
 using Heddle.Language;
 using Heddle.Runtime;
 using Xunit;
+using Heddle.TestCorpus;
 
 namespace Heddle.Tests
 {
@@ -165,7 +166,7 @@ namespace Heddle.Tests
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             Assert.Equal(1, WarningCount(t));
             var actual = t.Generate(null);
-            File.WriteAllText("TestTemplate/test-brace-misread.html", actual);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath("test-brace-misread.html"), actual);
             var expected = File.ReadAllText("TestTemplate/generated-brace-misread.html").Replace("\r\n", "\n");
             Assert.Equal(expected, actual);
         }

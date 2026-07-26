@@ -5,6 +5,7 @@ using Heddle.Data;
 using Heddle.Runtime;
 using Heddle.Tests.Data;
 using Xunit;
+using Heddle.TestCorpus;
 
 namespace Heddle.Tests
 {
@@ -111,7 +112,7 @@ namespace Heddle.Tests
             var t = new HeddleTemplate(document, new CompileContext(new TemplateOptions(), typeof(ErgoForData)));
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             var actual = t.Generate(new ErgoForData());
-            File.WriteAllText("TestTemplate/test-range-for.html", actual);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath("test-range-for.html"), actual);
             var expected = File.ReadAllText("TestTemplate/generated-range-for.html").Replace("\r\n", "\n");
             Assert.Equal(expected, actual);
         }
@@ -124,7 +125,7 @@ namespace Heddle.Tests
             var t = new HeddleTemplate(document, new CompileContext(new TemplateOptions(), typeof(ErgoForData)));
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             var actual = t.Generate(new ErgoForData { Count = 2 });
-            File.WriteAllText("TestTemplate/test-ergo-for.html", actual);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath("test-ergo-for.html"), actual);
             var expected = File.ReadAllText("TestTemplate/generated-ergo-for.html").Replace("\r\n", "\n");
             Assert.Equal(expected, actual);
         }

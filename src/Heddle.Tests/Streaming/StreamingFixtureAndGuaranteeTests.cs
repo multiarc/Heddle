@@ -9,6 +9,7 @@ using Heddle;
 using Heddle.Data;
 using Heddle.Runtime;
 using Xunit;
+using Heddle.TestCorpus;
 
 namespace Heddle.Tests.Streaming
 {
@@ -57,7 +58,7 @@ namespace Heddle.Tests.Streaming
             Assert.Equal(Encoding.UTF8.GetBytes(s), bw.ToArray());
 
             // Golden pin (string path). Write the actual for diffing, then compare against the committed golden.
-            File.WriteAllText("TestTemplate/test-streaming-unicode.html", s);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath("test-streaming-unicode.html"), s);
             var golden = File.ReadAllText("TestTemplate/generated-streaming-unicode.html").Replace("\r\n", "\n");
             Assert.Equal(golden, s.Replace("\r\n", "\n"));
         }

@@ -1100,3 +1100,80 @@ which is the bookkeeping failure this section exists to correct.
   corpus stays put and only the *sharing mechanism* — one props file, `Content` links, per-consumer
   output copies — is built. `testing-standards` gained a sentence saying a build copy is not a second
   home, because the rule as written kept being read as a storage-location rule.
+- **Q8.42 — Stage 1's "18 character-for-character cross-tier duplicates" agree only as *substrings*;
+  single-sourcing them needs a cross-project fixture-model unification nobody scoped. Do it, or
+  narrow the migration?** *(opened 2026-07-26 by the phase-7 stage-0 landing; blocks WI8 and, by
+  inheritance, WI9's stages 2–5.)*
+
+  Phase 7's [External grounding](phase-7-shared-test-corpus.md#external-grounding) records 18 template
+  literals appearing character-for-character in both `src/Heddle.Tests` and the generator suites, and
+  D4 makes them stage 1 — *"these go first, they are the defect itself"*. Re-running the survey at
+  execution time confirms the literals (31 shared literals over 14 characters; ~21 template-ish). It
+  also finds that **none of them is a whole template on either side**, and that the whole templates
+  the two tiers compile have *already diverged*:
+
+  - **Region family (13 of ~21).** The runtime's flagship prelude writes `:: RegionFeedModel` /
+    `:: RegionArticle` as bare short names; the generator's writes
+    `:: Heddle.Generator.IntegrationTests.Fixtures.RegionFeed` — a **different type name**, not merely
+    a different spelling — and prepends `@model(){{…}}@\` plus a trailing newline the runtime has
+    neither of. The fixture models diverge in shape too: `src/Heddle.Tests/RegionModels.cs` carries a
+    `RegionSpecialArticle : RegionArticle` for the narrowing tests that
+    `src/Heddle.Generator.IntegrationTests/Fixtures/Models.cs` lacks, and one `RegionFeed` is `sealed`
+    where its counterpart is not. This is precisely the drift D9 said the merge would surface.
+  - **`@out` / chained-definition / body-model families (the rest).** On the generator side every one
+    is an `[InlineData]` row — which D4's own keep-inline criterion **(f)** covers. The two tiers also
+    feed them *different inputs* and assert *different outputs*: for `[@out(){{BODY}}]` the runtime
+    supplies a chained value and expects `[CH]`, the generator supplies a model and expects `[]`. They
+    are two different tests sharing a substring, not two copies of one test.
+  - **`DocumentShapingCharacterizationTests` (9 of 31).** Expected-*output* vectors, not templates.
+    Duplicated shared vectors are a real defect but belong to the already-solved `LineIndexVectors` /
+    `DiagnosticCorpusVectors` linked-file pattern, not to a `.heddle` corpus.
+
+  So stage 1 as written has **zero migratable entries**. The options, none of them free:
+
+  1. **Unify the fixture models first** — one shared `RegionModels.cs` linked into both projects (the
+     `LineIndexVectors` pattern), reconciling `RegionFeedModel`/`RegionFeed`, `sealed`, and
+     `RegionSpecialArticle`. Then decide whether the single shared template spells its model as a bare
+     short name or an AQN. That decision is **not** cosmetic: the bare short name exercises phase 3
+     F8's global-name-index binding, the AQN exercises the `@using`/implicit-namespace path, and today
+     each tier exercises a different one. Picking either drops coverage somewhere unless both spellings
+     become corpus entries.
+  2. **Narrow the migration to shapes that are already whole templates on both sides** and accept that
+     the headline 18 were mis-characterised — the honest claim is "18 shared substrings", and shared
+     substrings inside differently-composed templates are a weaker defect than the plan argued.
+  3. **Re-scope the phase around what stage 0 actually bought** (the mechanism, the declared intent,
+     set-equality gating, 10→32 byte-compared renders) and open the backfill as its own effort with the
+     fixture-model unification as its first work item.
+
+  Recorded rather than defaulted because option 1 changes what two suites *test*, not just where their
+  text lives, and the phase's own D9 says a divergence found while merging is a finding to report, not
+  a nit to smooth over. **Until this is ruled, phase 0's D4 coverage residue stays open**: ~130 feature
+  tests still never cross the gauntlet.
+
+- **Q8.43 — `CorpusTier.DegradesToMarker` has no members, and the bucket it was promoted from was
+  never asserted. Keep it?** *(opened 2026-07-26; not blocking.)*
+
+  D3 describes its four tiers as *"exactly today's four `CorpusDifferentialTests` buckets"*. Executing
+  it found that only three are populated: every one of the 17 non-precompiling, non-error corpus
+  entries is **`Absent`** from the manifest (a whole-template degrade), never a `HED7014` marker. The
+  suite computed a `markers` `SortedSet` and then asserted nothing about it, which is why the emptiness
+  went unnoticed. Stage 0 keeps the tier and asserts it **positively** against the empty set, on the
+  reasoning that an empty set is still a pinned set and stage 4 (branch-role universality, *"mostly
+  `DegradesToMarker`"*) was expected to populate it. If Q8.42 is ruled toward option 3 and stage 4 never
+  runs, the tier is a taxonomy with a permanently empty member — keep it as the pin that catches the
+  first marker, or drop it and let a marker surface as a `FallsBackSafely` set-equality failure? The
+  former names the condition, the latter is one fewer concept. Recorded because the two differ in
+  failure *message* quality, which is the whole argument for D5.
+
+- **Q8.44 — Should the props file serve `Heddle.Generator.Tests` and `Heddle.LanguageServices.Tests`
+  too?** *(opened 2026-07-26; not blocking.)*
+
+  D1 says the props file "serves the four **test** projects"; WI1 wires **two** (`Heddle.Tests`,
+  `Heddle.Generator.IntegrationTests`) because they are the only current corpus consumers, and stage 0
+  added no consumer. `Heddle.Generator.Tests` holds 35 inline template literals and already links three
+  shared vector files from `Heddle.Tests`, so it is the natural third consumer *if* the migration
+  proceeds; wiring it now buys a 106-file copy per TFM for no reader.
+  `Heddle.LanguageServices.Tests` keeps its own 3-template corpus by the Q7.1 ruling and is a consumer
+  only if that ruling changes. Recorded so the two-of-four gap reads as a scoping decision rather than
+  an oversight. (`Heddle.Performance` is out by the Q7.2 change-nothing ruling and its path-traversal
+  helper remains **accepted residue** — do not "fix" it.)

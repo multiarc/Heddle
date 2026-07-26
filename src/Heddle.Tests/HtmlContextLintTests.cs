@@ -6,6 +6,7 @@ using Heddle.Data;
 using Heddle.Language;
 using Heddle.Runtime;
 using Xunit;
+using Heddle.TestCorpus;
 
 namespace Heddle.Tests
 {
@@ -269,7 +270,7 @@ namespace Heddle.Tests
         {
             var actual = RenderCorpus(OutputProfile.Html, out var lintCount);
             Assert.True(lintCount > 0, "The corpus fixture is expected to fire HED2004 under Html.");
-            File.WriteAllText("TestTemplate/test-context-lint-html.html", actual);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath("test-context-lint-html.html"), actual);
             var expected = File.ReadAllText("TestTemplate/generated-context-lint-html.html").Replace("\r\n", "\n");
             Assert.Equal(expected, actual.Replace("\r\n", "\n"));
         }
@@ -279,7 +280,7 @@ namespace Heddle.Tests
         {
             var actual = RenderCorpus(OutputProfile.Text, out var lintCount);
             Assert.Equal(0, lintCount);
-            File.WriteAllText("TestTemplate/test-context-lint-text.html", actual);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath("test-context-lint-text.html"), actual);
             var expected = File.ReadAllText("TestTemplate/generated-context-lint-text.html").Replace("\r\n", "\n");
             Assert.Equal(expected, actual.Replace("\r\n", "\n"));
         }

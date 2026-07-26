@@ -28,18 +28,31 @@
          use in this suite bound to the runtime copy; DifferentialHarness reaches the generator through it. -->
     <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.csproj" Aliases="generator" />
     <ProjectReference Include="..\Heddle\Heddle.csproj" />
-    <!-- Q8.20 — build ORDER only, deliberately not a compile-time reference. `CorpusResolverSweepTests` reaches into
-         Heddle.Tests' own build output (it substitutes this assembly's path to find Heddle.Tests.dll, loads it as a
-         MetadataReference, and reads the corpus from src/Heddle.Tests/TestTemplate), and nothing ordered this project
-         after that one — so under `dotnet test Heddle.sln` its VSTest run could start before or during that build.
-         Reproduced, not theorised: 1 of 30 solution runs failed three sweep cases on the "corpus was not found for
-         this TFM" hard failure.
+    <!-- The engine test MODELS, as a file on disk that this suite hands to the compilations it creates.
          `ReferenceOutputAssembly="false"` is the point of the shape, not a detail: this suite hands hand-filtered
-         reference sets to the compilations it creates (it already strips Heddle.Generator to avoid CS0433 on the
-         phase-5 linked types), and pulling Heddle.Tests and its transitive graph into its own compile would put a
-         second set of names in scope for no benefit — the test loads the DLL by path at run time, not by reference.
-         A stopgap: phase 7's shared corpus is expected to remove the cross-project read entirely. -->
-    <ProjectReference Include="..\Heddle.Tests\Heddle.Tests.csproj" ReferenceOutputAssembly="false" />
+         reference sets to those compilations (it already strips Heddle.Generator to avoid CS0433 on the phase-5
+         linked types), and pulling Heddle.Tests and its transitive graph into its own compile would put a second set
+         of names in scope for no benefit — the test loads the DLL by path at run time, not by reference.
+
+         Phase 7 WI2 — `OutputItemType="Content" CopyToOutputDirectory="PreserveNewest"` is new, and it is what
+         retires `HeddleTestsDll()`. That helper took THIS assembly's location and string-replaced the project name
+         inside it to guess where a sibling project's build output was. Copying Heddle.Tests.dll into this project's
+         own output instead makes the lookup `Path.Combine(AppContext.BaseDirectory, "Heddle.Tests.dll")` — the same
+         collapse the corpus itself gets from TestCorpus.props, and the same shape Heddle.LanguageServices.Tests
+         already uses for its by-path corpus assembly.
+
+         Q8.20 — the reference is also still the BUILD ORDER edge. Nothing ordered this project after Heddle.Tests,
+         so under `dotnet test Heddle.sln` this suite's VSTest run could start before or during that build.
+         Reproduced, not theorised: 1 of 30 solution runs failed three sweep cases on the "corpus was not found for
+         this TFM" hard failure. -->
+    <ProjectReference Include="..\Heddle.Tests\Heddle.Tests.csproj" ReferenceOutputAssembly="false"
+                      OutputItemType="Content" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <!-- Phase 7 WI1 (D1) — the shared test corpus, copied into THIS project's output directory under TestTemplate\.
+       One line, and the assembly-path rewrite plus `../../..` climb out of bin/<cfg>/<tfm> that three suites
+       triplicated is gone. The corpus files stay in src/Heddle.Tests/TestTemplate/; what this project holds is a
+       build copy, which is not a second home for the input. -->
+  <Import Project="..\TestCorpus\TestCorpus.props" />
 
 </Project>

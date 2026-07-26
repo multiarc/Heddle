@@ -2,7 +2,11 @@
 
 ## Header
 
-- **Status:** **proposed — not started.**
+- **Status:** **stage 0 implemented (2026-07-26); migration stages 1–5 stopped before starting, with
+  cause.** WI1–WI7 are landed and green. WI8/WI9 (stages 1–5) are **not** started: surveying stage 1's
+  own inputs found its premise does not hold — see
+  [Implementation record](#implementation-record-2026-07-26). The corpus is unchanged at 62 templates
+  and the precompiled figure unchanged at 40, which is the byte-neutrality D9 demanded of stage 0.
 - **Goal (one line):** Every tier's tests consume the *same* template texts and the *same* goldens
   from one shared, intent-declaring corpus — so a feature's shape exists exactly once in the repo,
   both tiers compile the same bytes, and the gauntlet-crossing posture holds by construction rather
@@ -519,6 +523,140 @@ finds out.
    per TFM, measured per stage under D6's procedure.
 10. **The standing rule exists.** The testing-standards amendment and its ledger entry are landed,
     and phase 0's D4 correction block points at this phase as the residue's owner.
+
+### Outcomes (2026-07-26)
+
+| # | Verdict | Evidence |
+| --- | --- | --- |
+| 1 | **met** | No corpus file exists at two paths; no csproj hand-lists corpus files (112 rows → one glob). |
+| 2 | **met** | `grep -r HeddleTestsDll` empty; no assembly-path rewrite or `../../..` climb for assets or for the models DLL; all five `dir == null` returns and their replacement asserts deleted. |
+| 3 | **met** | Both directions asserted in both tiers; rehearsed — adding `zz-probe.heddle` fails naming `zz-probe.heddle`. |
+| 4 | **met** | Four count gates replaced by symmetric-difference set equality (one more than the plan found — see the record). Exactly one literal remains. Rehearsed by mutating the *table* rather than the code: still red, still names the file. |
+| 5 | **not met — stopped with cause** | The 18 do not agree as whole templates. See *Why stages 1–5 stopped*; cost recorded as **Q8.42**. |
+| 6 | **partially met** | Byte-compared standalone renders **10 → 32** (F2); the file-backed pass stages each entry at its declared encoding and a real BOM'd corpus template now crosses `HashFile` (F3, rehearsed). The precompiled figure stays **40**, because no migration ran. |
+| 7 | **met** | Encoding gate green; `.gitattributes` covers the new `TestOutput/` root and now states that `eol=lf` does not govern BOMs; BOM-bearing entries are exactly the 8 declared. Rehearsed both directions. |
+| 8 | **met** | Every leg green on every TFM that runs here; goldens, Verify snapshots, differential suites and the sweep unchanged; zero fallback events. |
+| 9 | **met** | The three corpus suites total ≈ 4 s per TFM (baseline ≈ 5.8 s), against a 15 s budget — *lower* than before despite 22 more byte-compared renders, because the sweep's three generator runs now share one corpus load. |
+| 10 | **met** | The amendment and ledger E9 were authored ahead of execution and needed no change; the README row and phase-0 pointer are updated. |
+
+**Not verifiable on this box:** the `net6.0` and Windows `net48` legs. The `Content`/`Link`/glob
+mechanism is TFM-independent MSBuild, so no design element depends on them, but the claim "the corpus
+reaches every TFM's output directory" is confirmed here only for `net8.0`/`net10.0` and still needs a
+Windows checkout before the phase is called done.
+
+## Implementation record (2026-07-26)
+
+Executed against `1b0ee64`. Baseline and post-stage-0 suite counts, per TFM leg that runs on this box
+(`net6.0` has no runtime installed; `net48` is Windows-only):
+
+| Leg | Before | After | Delta |
+| --- | --- | --- | --- |
+| `Heddle.Tests` net8.0 / net10.0 | 1810 / 1810 | 1817 / 1817 | +7 (the D3/D7 gates) |
+| `Heddle.Generator.IntegrationTests` net8.0 / net10.0 | 406 / 406 | 407 / 407 | +1 (the declared-BOM-in-sweep gate) |
+| `Heddle.Generator.Tests` net8.0 / net10.0 | 448 / 448 | 448 / 448 | 0 (not a corpus consumer — WI1 scopes two projects) |
+
+All legs green, zero fallback events, goldens and Verify snapshots untouched (D9).
+
+### What stage 0 changed
+
+WI1 — `src/TestCorpus/TestCorpus.props`, imported by `Heddle.Tests.csproj` and
+`Heddle.Generator.IntegrationTests.csproj`. `src/TestCorpus/` holds **wiring only**; the templates stay
+in `src/Heddle.Tests/TestTemplate/` (D1 as revised), and the directory belongs to no project precisely
+so no csproj's default glob reaches the shared accessor sources and all consumers import on identical
+terms. The 112 hand-listed `<None Update>` rows are one glob. **Audited at the swap: the hand-list and
+the directory agreed exactly, 112 to 112** — it had not drifted yet, but nothing was preventing it.
+
+WI2 — `CorpusDir` / `HeddleTestsDll` / `LoadCorpus` / the fixture-name `HashSet`, each triplicated
+across the three corpus suites, are one `TestCorpusIndex` + the intent table. `grep -r HeddleTestsDll`
+is empty. Heddle.Tests.dll is now copied into the integration suite's own output
+(`OutputItemType="Content"`), so the assembly lookup is `AppContext.BaseDirectory` too — the Q8.40
+ruling permits the read, and this makes it fail loudly rather than return `null`. All five
+`dir == null` early-returns and the asserts that replaced them are gone.
+
+WI3 — `src/TestCorpus/CorpusIntent.cs`, 62 rows, both completeness gates, non-empty `Why` enforced.
+
+WI4 — the six checked-in written artifacts moved to `src/Heddle.Tests/TestOutput/` (preserved, per the
+Q7.3 ruling), and **all 25 write sites across 14 files** were repointed to
+`TestCorpusIndex.WrittenArtifactPath`, which writes to the writer's own output. The plan expected six
+files; the six were only the ones that had been committed. The engine tier's output corpus directory
+held **148 files against a tracked 106** — 36 accumulated test writes — which is what "the corpus is
+input" was protecting and what the new `TheCorpusDirectoryHoldsNoTestWrittenArtifact` gate now holds.
+
+WI5 — per-entry `Render` on `ResolverTarget`; `StageCorpus` honours declared `Bom`.
+
+WI6 — set equality everywhere, symmetric-difference messages. **Four** count gates were replaced, not
+one: `precompiledKeys.Count == 40` (sweep), `templates.Count == 62` (differential),
+`Assert.Equal(62, files.Count)` in `ParticipantScanLockstepTests` — which the plan's survey missed —
+and the `>= 40` / "~45 files" floor. Exactly one literal survives, `CorpusIntent.DeclaredRowCount`.
+
+WI7 — the testing-standards amendment and ledger E9 were already authored ahead of execution and
+needed no change; this record, the README row and the phase-0 pointer are the remainder.
+
+### Findings
+
+**F1 — `DegradesToMarker` has zero members, and the bucket was never asserted.** Every one of the 17
+non-precompiling, non-error corpus entries is **`Absent`** from the manifest (a whole-template
+degrade), not a `HED7014` marker. `CorpusDifferentialTests` computed a `markers` `SortedSet` and then
+asserted nothing about it — a dead computation, which is why nobody noticed the bucket was empty. The
+tier is kept (stage 4 was expected to populate it) and is now asserted **positively**: an empty set is
+still a pinned set, so the first template that starts emitting a marker reddens something.
+
+**F2 — the sweep was byte-comparing 10 entries where 32 were available.** Measured, not assumed: of
+the 40 precompiling entries, **32 render standalone and byte-identically on both backends**. The
+blanket `render: false` meant that because 8 entries genuinely cannot render standalone, all 40 lost
+their byte assertion, and only the 10 hand-listed in `CorpusRenderParityTests` were compared. The
+per-entry `Render` axis raises that to 32 with no new fixtures. Only **one** entry is genuinely
+`ResolveOnly` (`branch-import-else.heddle`, a bare `@else` continuation); the other 7 are `WithModel`
+(their `:: PropArticle` / `:: ErgoForData` short names cannot bind in a model-less standalone render).
+
+**F3 — the BOM staging hole was real, and the rehearsal proves the new coverage.** With phase 5's
+`HashFile` locally reverted to raw-byte hashing, the file-backed sweep now fails
+`StaleContent` on `optimized-document.heddle` — a real corpus template. It did not before, because
+`StageCorpus` wrote every entry BOM-free. **Correction to the plan's claim that "neither happens
+today":** a purpose-built `QuarantinedDriftFixtures.BomTemplate_StaysOnThePrecompiledTier_UnderFileBackedStaleness`
+already covered the shape with a synthetic `drift-bom.heddle`, and it failed in the same rehearsal. So
+the gain is not first-ever coverage; it is that the **real corpus's 8 BOM'd templates** now cross
+`HashFile` instead of only a synthetic one.
+
+### Why stages 1–5 stopped before starting
+
+**Stage 1's premise does not survive contact with its own inputs.** The plan's External grounding
+records "18 distinct template literals appear character-for-character in both `src/Heddle.Tests` and
+the generator suites … Those 18 are the lucky ones — they still agree." Re-running that survey finds
+31 shared literals over 14 characters, of which ~21 are template-ish. They agree **as substrings**.
+The whole templates the two tiers actually compile do **not** agree, and cannot be single-sourced
+without work this plan never scoped:
+
+- **Region family (13 of the ~21) — blocked on a fixture-model unification.** The two tiers' flagship
+  `Feed` prelude has already diverged three ways: the runtime writes `:: RegionFeedModel` and
+  `:: RegionArticle` (bare short names) where the generator writes
+  `:: Heddle.Generator.IntegrationTests.Fixtures.RegionFeed` (full AQN) — **different type names, not
+  just different spellings** — and the generator prepends a `@model(){{…}}@\` preamble plus a trailing
+  newline the runtime has neither of. The fixture models themselves differ in shape too:
+  `src/Heddle.Tests/RegionModels.cs` carries a `RegionSpecialArticle : RegionArticle` for the narrowing
+  tests that `Fixtures/Models.cs` does not have, and `RegionFeed` is `sealed` where `RegionFeedModel`
+  is not. **This is the drift D9 predicted the merge would find.** Single-sourcing the family requires
+  first unifying those model types across two projects and then deciding whether the shared template
+  spells its model as a bare short name or an AQN — which changes what the generator tier exercises
+  (phase 3 F8's short-name binding path vs the AQN path), so it is a decision, not a rename.
+- **`@out`, chained-definition and body-model families (the rest) — excluded by D4's own criteria.**
+  On the generator side every one of these shared literals is an `[InlineData]` row, which D4 criterion
+  **(f)** (*"the text is constructed, parameterized, or `[Theory]`-generated"*) says stays inline. The
+  two tiers also feed them different inputs and assert different outputs: for `[@out(){{BODY}}]` the
+  runtime supplies a *chained value* and expects `[CH]` while the generator supplies a model and
+  expects `[]`. They are not two copies of one test; they are two different tests that share a
+  substring.
+- **The `DocumentShapingCharacterizationTests` pairs are not templates.** Nine of the 31 are expected-
+  *output* vectors (`C:if=Opener|B:if=Opener|…`, `if@0+2|elif@2+2|else@6+2`) and one is a diagnostic
+  message. Duplicated shared *vectors* are a real defect, but they belong to the already-solved
+  `LineIndexVectors` / `DiagnosticCorpusVectors` linked-file pattern, not to a `.heddle` corpus.
+
+So the honest accounting of stage 1's headline set is: **zero are migratable as authored.** Thirteen
+need a cross-project fixture-model unification first; the remainder are either excluded by this plan's
+own keep-inline criteria or are not templates at all. Proceeding anyway would have produced exactly the
+failure this phase exists to remove — a half-migrated corpus with two homes and nothing forcing them to
+agree. The cost is recorded as **Q8.42**; stages 2–5 inherit the same blocker, since they are the same
+families at greater volume.
 
 ## Validation scenarios
 

@@ -9,6 +9,7 @@ using Heddle.Language;
 using Heddle.Runtime;
 using Heddle.Tests.Data;
 using Xunit;
+using Heddle.TestCorpus;
 
 namespace Heddle.Tests
 {
@@ -322,7 +323,7 @@ namespace Heddle.Tests
             var target = new HeddleTemplate(new CompileContext(options));
             Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
             var actual = target.Generate(null);
-            using (var writer = File.CreateText(@"TestTemplate/test-raw-document.html"))
+            using (var writer = File.CreateText(TestCorpusIndex.WrittenArtifactPath("test-raw-document.html")))
             {
                 writer.Write(actual);
             }
@@ -347,7 +348,7 @@ namespace Heddle.Tests
             var target = new HeddleTemplate(new CompileContext(options));
             Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
             var actual = target.Generate(null);
-            using (var writer = File.CreateText(@"TestTemplate/test-optimized-document.html"))
+            using (var writer = File.CreateText(TestCorpusIndex.WrittenArtifactPath("test-optimized-document.html")))
             {
                 writer.Write(actual);
             }
@@ -384,7 +385,7 @@ namespace Heddle.Tests
                     Value = "Value_Test2"
                 }
             });
-            using (var writer = File.CreateText(@"TestTemplate/test-tuple_array.html"))
+            using (var writer = File.CreateText(TestCorpusIndex.WrittenArtifactPath("test-tuple_array.html")))
             {
                 writer.Write(actual);
             }
@@ -477,7 +478,7 @@ namespace Heddle.Tests
             dynamic model = new ExpandoObject();
             model.Model = testList;
             var actual = target.Generate(model);
-            using (var writer = File.CreateText(@"TestTemplate/test-empty-override.html"))
+            using (var writer = File.CreateText(TestCorpusIndex.WrittenArtifactPath("test-empty-override.html")))
             {
                 writer.Write(actual);
             }
@@ -568,7 +569,7 @@ namespace Heddle.Tests
                 }
             };
             var actual = target.Generate(testList);
-            using (var writer = File.CreateText(@"TestTemplate/test-recursion.html"))
+            using (var writer = File.CreateText(TestCorpusIndex.WrittenArtifactPath("test-recursion.html")))
             {
                 writer.Write(actual);
             }
@@ -659,7 +660,7 @@ namespace Heddle.Tests
                 }
             };
             var actual = target.Generate(testList);
-            using (var writer = File.CreateText(@"TestTemplate/test-dynamic-recursion.html"))
+            using (var writer = File.CreateText(TestCorpusIndex.WrittenArtifactPath("test-dynamic-recursion.html")))
             {
                 writer.Write(actual);
             }
@@ -698,7 +699,7 @@ namespace Heddle.Tests
                 expected = reader.ReadToEnd();
             }
             var actual = target.Generate(null);
-            using (var writer = File.CreateText(@"TestTemplate/test-vc.html"))
+            using (var writer = File.CreateText(TestCorpusIndex.WrittenArtifactPath("test-vc.html")))
             {
                 writer.Write(actual);
             }
@@ -778,7 +779,7 @@ namespace Heddle.Tests
             var expected = reader.ReadToEnd();
             reader.Dispose();
             var actual = target.Generate(data);
-            var writer = File.CreateText(@"TestTemplate/test.html");
+            var writer = File.CreateText(TestCorpusIndex.WrittenArtifactPath("test.html"));
             writer.Write(actual);
             writer.Dispose();
             Assert.Equal(expected, actual);
