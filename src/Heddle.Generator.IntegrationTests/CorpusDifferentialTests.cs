@@ -58,7 +58,6 @@ namespace Heddle.Generator.IntegrationTests
             Assert.True(precompiled.SetEquals(declaredPrecompiled),
                 CorpusIntent.Describe("The precompiled set", declaredPrecompiled, precompiled));
 
-            // Asserted positively: joining/leaving precompiled reddens equally; empty set is pinned.
             var declaredMarkers = CorpusIntent.NamesWithTier(CorpusTier.DegradesToMarker);
             Assert.True(markers.SetEquals(declaredMarkers),
                 CorpusIntent.Describe("The HED7014 marker set", declaredMarkers, markers));

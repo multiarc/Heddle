@@ -12,9 +12,9 @@ namespace Heddle.TestCorpus
         /// <summary>A manifest entry with a bound (non-null) strategy and a generated entry class.</summary>
         Precompiles,
 
-        /// <summary>A HED7014 fallback-marker entry: present in the manifest with <c>strategy: null</c>.
-        /// Zero entries today—every non-precompiling entry is absent from the manifest, not a marker.
-        /// The tier is asserted positively (empty set is pinned) to catch if one appears.</summary>
+        /// <summary>A HED7014 fallback-marker entry: present in the manifest with <c>strategy: null</c>, which is
+        /// a different degrade from <see cref="FallsBackSafely"/> — the entry exists and routes to the dynamic
+        /// path, rather than not existing at all.</summary>
         DegradesToMarker,
 
         /// <summary>No manifest entry at all — the whole template degraded to the dynamic tier, output-safely.</summary>
@@ -38,8 +38,8 @@ namespace Heddle.TestCorpus
         WithModel,
 
         /// <summary>Not standalone-renderable at all — a fragment that is only meaningful when imported (a bare
-        /// <c>@else</c> continuation), or an entry whose own text is a deliberate parse error. Resolved, never
-        /// rendered.</summary>
+        /// <c>@else</c> continuation), an entry whose own text is a deliberate parse error, or one that names a
+        /// function only a host registration supplies. Resolved, never rendered by a shared harness.</summary>
         ResolveOnly,
     }
 
@@ -91,7 +91,7 @@ namespace Heddle.TestCorpus
     {
         /// <summary>Exact row count (not floor): makes "this stage added N entries" a reviewable one-line diff
         /// the reviewer can check against scope, not a silent overshoot.</summary>
-        public const int DeclaredRowCount = 62;
+        public const int DeclaredRowCount = 63;
 
         private static Dictionary<string, CorpusIntentRow> _byName;
 
@@ -236,6 +236,9 @@ namespace Heddle.TestCorpus
             new CorpusIntentRow("wierd-whitespace.heddle", CorpusTier.FallsBackSafely, CorpusRender.WithModel,
                 "Whitespace-torture document with FullCSharp expressions the emitter refuses; HeddleTemplateTests owns its bytes.",
                 bom: true),
+
+            new CorpusIntentRow("fn-unresolvable-marker.heddle", CorpusTier.DegradesToMarker, CorpusRender.ResolveOnly,
+                "The one marker entry: it calls a function resolvable from neither the default table nor any referenced export, which is the only construct that yields a manifest row with a null strategy instead of no row at all. Renders only against a host that registers the delegate, so UnresolvableFunctionTests owns both its classification and its bytes."),
 
             // These entries assert the diagnostic's IDENTITY, not offsets into a hand-counted string, which is why
             // they are corpus entries at all; position probes stay inline in their own tests.

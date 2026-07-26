@@ -536,7 +536,7 @@ namespace Heddle.Generator.IntegrationTests
         {
             /// <summary>No manifest entry at all — the whole template degraded to the dynamic tier.</summary>
             Absent,
-            /// <summary>A HED7014 fallback-marker entry (<c>strategy: null</c>, README D21).</summary>
+            /// <summary>A HED7014 fallback-marker entry: present, with <c>strategy: null</c>.</summary>
             Marker,
             /// <summary>A bound entry with a non-null strategy.</summary>
             Precompiled,
