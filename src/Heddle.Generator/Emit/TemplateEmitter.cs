@@ -1617,46 +1617,15 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>C#'s implicit numeric conversions (spec §10.2.3) over <see cref="SpecialType"/> — the exact set
-        /// <c>NumericPromotion.IsImplicitNumeric</c> allows for prop-default widening (README D22, differential-gated).</summary>
-        private static bool IsImplicitNumericWidening(SpecialType from, SpecialType to)
-        {
-            if (from == to)
-                return false;
-            switch (from)
-            {
-                case SpecialType.System_SByte:
-                    return to == SpecialType.System_Int16 || to == SpecialType.System_Int32 || to == SpecialType.System_Int64 ||
-                           to == SpecialType.System_Single || to == SpecialType.System_Double || to == SpecialType.System_Decimal;
-                case SpecialType.System_Byte:
-                    return to == SpecialType.System_Int16 || to == SpecialType.System_UInt16 || to == SpecialType.System_Int32 ||
-                           to == SpecialType.System_UInt32 || to == SpecialType.System_Int64 || to == SpecialType.System_UInt64 ||
-                           to == SpecialType.System_Single || to == SpecialType.System_Double || to == SpecialType.System_Decimal;
-                case SpecialType.System_Int16:
-                    return to == SpecialType.System_Int32 || to == SpecialType.System_Int64 ||
-                           to == SpecialType.System_Single || to == SpecialType.System_Double || to == SpecialType.System_Decimal;
-                case SpecialType.System_UInt16:
-                    return to == SpecialType.System_Int32 || to == SpecialType.System_UInt32 || to == SpecialType.System_Int64 ||
-                           to == SpecialType.System_UInt64 || to == SpecialType.System_Single || to == SpecialType.System_Double ||
-                           to == SpecialType.System_Decimal;
-                case SpecialType.System_Int32:
-                    return to == SpecialType.System_Int64 || to == SpecialType.System_Single ||
-                           to == SpecialType.System_Double || to == SpecialType.System_Decimal;
-                case SpecialType.System_UInt32:
-                    return to == SpecialType.System_Int64 || to == SpecialType.System_UInt64 ||
-                           to == SpecialType.System_Single || to == SpecialType.System_Double || to == SpecialType.System_Decimal;
-                case SpecialType.System_Int64:
-                case SpecialType.System_UInt64:
-                    return to == SpecialType.System_Single || to == SpecialType.System_Double || to == SpecialType.System_Decimal;
-                case SpecialType.System_Char:
-                    return to == SpecialType.System_UInt16 || to == SpecialType.System_Int32 || to == SpecialType.System_UInt32 ||
-                           to == SpecialType.System_Int64 || to == SpecialType.System_UInt64 || to == SpecialType.System_Single ||
-                           to == SpecialType.System_Double || to == SpecialType.System_Decimal;
-                case SpecialType.System_Single:
-                    return to == SpecialType.System_Double;
-                default:
-                    return false;
-            }
-        }
+        /// <c>NumericPromotion.IsImplicitNumeric</c> allows for prop-default widening (README D22, differential-gated).
+        /// <para>Phase 4 D5, completed by the phase-4 audit (2026-07-26): this used to be a <b>second live copy</b> of
+        /// the §10.2.3 table, keyed on <see cref="SpecialType"/> — the copy phase 4's non-goals deferred to phase 1 and
+        /// whose agreement with the shared table no test ever checked. It is now a two-line adapter over the one
+        /// shared table (<see cref="NumericTable.IsImplicit"/> via <see cref="SymbolFacts.ToNumericKind"/>), so
+        /// "exactly one numeric-kind table" is true of the built assemblies and not just of the plan.
+        /// <c>GeneratorNumericTableAdoptionTests</c> pins the fold against the deleted body, verbatim.</para></summary>
+        internal static bool IsImplicitNumericWidening(SpecialType from, SpecialType to) =>
+            NumericTable.IsImplicit(SymbolFacts.ToNumericKind(from), SymbolFacts.ToNumericKind(to));
 
         private static string NumericKeyword(SpecialType special)
         {

@@ -21,7 +21,10 @@ below, and phase 2's WI9 paired before/after benchmark (argued structurally, not
 Phase numbering follows the research-document
 numbering (area 0N → phase N), not execution order; execution order is governed by phase 0
 (the program's step 0 and gate), the fix-first groups, and the artifact-ownership
-dependencies below.
+dependencies below. **[Phase 7](phase-7-shared-test-corpus.md) is a proposed follow-on, not one of
+the original seven**: it extends the same single-artifact principle from production rules to *test
+inputs* — hand-kept duplicate test inputs being hand-kept duplicate rules one level up — and owns
+the D4 coverage residue that finding 7 below records.
 
 ## Phases
 
@@ -34,6 +37,7 @@ dependencies below.
 | 4 | [expression-writers](phase-4-expression-writers.md) | 0 (gate); 5 (schema constants, gate for the DynamicMember routing step only); co-ratifies OQ1 with 3 | One set of shared, Roslyn-free rule tables (numeric kinds, operator legality, member visibility, hop form, literal formatting, overload rank) under `src/Heddle/Language/**` so the emitters and `NativeExpressionCompiler` can no longer disagree — `ToString("R")` round-trip and unguarded binary emission fixed first | **implemented (2026-07-25)** — WI1–WI10 landed; both fix-group bugs fixed and the phase-0 overload-tie fixture un-skipped; shared cores under [`Language/Expressions/`](../../src/Heddle/Language/Expressions/) + [`Language/Members/`](../../src/Heddle/Language/Members/); `PrecompiledSchema` bumped 2→3 for `DynamicMember` routing; Q4.2 betterness evaluation filed as a window candidate (analysis only). WI2's interim guard subsumed by WI5 |
 | 5 | [pipeline-config](phase-5-pipeline-config.md) | 0 (gate); provider to 1, 3, 4, 6 | One canonical definition each for the pipeline-level generator↔runtime contracts — content hash, key↔path derivation, `.heddle` extension rule, schema/engine versioning, option names/defaults — with the four live bugs (hash-input mismatch, silent key fallback, fabricated engine version, dead item metadata) fixed first | **implemented (2026-07-25)** — WI1–WI10 landed; all four live bugs fixed (phase-0 BOM fixture un-skipped and green); `HED7018`/`HED7019`/`HED7020` claimed; Q2.2 fallback taxonomy spec'd and the generator's blanket catch replaced by a per-template error |
 | 6 | [diagnostics-utilities](phase-6-diagnostics-utilities.md) | 0 (gate); 1 (profile parsing), 4 (escape-set boundary), 5 (`TemplateKey.Relativize`) — WI1–WI8 have no dependency | One diagnostic identity across build tier, run tier, and editor — shared diagnostic catalog and projection, one line-index rule, single copies of the small utility tables — opened by an independently shippable fix group (forwarded-warning ID/Fix loss, HED7017 doc gap, line-index `\r` mismatch) | **implemented (2026-07-26, two passes)** — **Pass 1 (WI1–WI8):** shared [`Data/HeddleDiagnosticCatalog.cs`](../../src/Heddle/Data/HeddleDiagnosticCatalog.cs) (82 rows), [`Data/LineIndex.cs`](../../src/Heddle/Data/LineIndex.cs) (`\n`-only rule normative), [`Helpers/CSharpTypeNames.cs`](../../src/Heddle/Helpers/CSharpTypeNames.cs), projection, `SanitizeName` IVT cleanup; WI2 was already closed by phase 5. **Pass 2 (WI9–WI11 + reconciliation):** LSP full options parity with a completeness gate (6 wired, 11 documented exclusions) and the **LSP default profile aligned `Text`→`Html`** (new editor diagnostics, no build or byte change — see the plan's back-compat note); `TemplateOptions.FullPath`/`RenderPath` fixes (both carried live defects); escape fold completed — **one** string-escape, char-escape and lone-surrogate implementation repo-wide; alias↔`NumericKind` boundary gated for the first time. WI5's twin-vocabulary unification + `FaultOrder` were taken by phase 3 |
+| 7 | [shared-test-corpus](phase-7-shared-test-corpus.md) | 0 (posture + corpus sweep); 1–6 landed (their byte-neutrality gates are the invariant) | Extend the program's single-artifact principle from production rules to **test inputs** — one shared, intent-declaring template corpus consumed by every tier's tests (source templates *and* goldens), so a shape exists exactly once, both tiers compile the same bytes, and phase 0's D4 residue closes | **proposed — not started** |
 
 Supplements (linked from their main plans):
 [1: test matrix](phase-1-template-emitter-test-matrix.md) ·
@@ -195,6 +199,8 @@ fire. Findings that survived orchestrator verification, most severe first:
    feature templates" is false: feature suites use inline strings, so ~130 feature tests never
    cross the gauntlet. The `>= 25` corpus floor sits against an actual 40, letting 15 vanish
    silently. Five corpus tests carry `if (dir == null) return;` — a silent no-op if layout changes.
+   **Owned by [phase 7](phase-7-shared-test-corpus.md)** (proposed): the floor and the traversal are
+   fixed by its stage 0, and the inline-string residue by its migration stages.
 8. **Phase 4's reshaped overload-tie fixture pins a policy violation.** It asserts *no build
    diagnostic* is emitted, so an ambiguous overload call yields a green build and a hard `HED1013`
    at first render — contrary to both the match principle and the fallback-legitimacy ruling.

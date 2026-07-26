@@ -154,7 +154,13 @@ namespace Heddle.Generator.IntegrationTests
                 "The Heddle.Tests TestTemplate corpus was not found for this TFM. Build the full solution "
                 + "(dotnet build Heddle.sln) so the corpus is on disk; this gate must not be skipped.");
             var templates = LoadCorpus(dir);
-            Assert.True(templates.Count >= 40, "Expected the full TestTemplate corpus (~45 files).");
+            // An exact count, not a floor. `>= 40` against an actual 62 let a third of the corpus disappear without
+            // reddening anything — the same anti-pattern as the `>= 25`-against-40 gate in CorpusResolverSweepTests,
+            // and it survived that fix. Phase 7 replaces both with set equality against the intent table; until then,
+            // an exact number at least makes a loss visible. Update it deliberately when the corpus changes.
+            Assert.True(templates.Count == 62,
+                "Expected the full TestTemplate corpus of 62 files; got " + templates.Count +
+                ". If a template was legitimately added or removed, update this count deliberately.");
             var extra = new[] { MetadataReference.CreateFromFile(HeddleTestsDll()) };
 
             // First pass over the whole corpus (so @<< imports resolve): find the diagnostic-fixture templates whose
