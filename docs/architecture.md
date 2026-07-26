@@ -155,8 +155,9 @@ DLR call sites (see below).
   ([`CompiledParameter`](../src/Heddle/Runtime/Parameters/CompiledParameter.cs)). This is
   also where C# expressions are **bound to the model's types**; the
   [`CompileScope`](../src/Heddle/Runtime)/`CSharpContext` track imported namespaces
-  (`@using`) and the model type (`@model`, `:: Type`). `CompileScope.Compile()` runs that
-  Roslyn pass.
+  (`@using`) and the model type (`@model`, `:: Type`). The Roslyn pass is run by
+  `ContextCompilation.Compile`, an internal extension method over `CompileScope` — not a member of
+  `CompileScope`, which exposes no compile entry point of its own.
 - Errors from either path are collected as `HeddleCompileError`s rather than thrown, and surfaced
   through [`HeddleCompileResult`](../src/Heddle/Data/HeddleCompileResult.cs).
 
