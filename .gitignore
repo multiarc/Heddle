@@ -167,3 +167,6 @@ benchmarks/out/
 
 # Agent worktrees and local session state
 .claude/
+
+# BenchmarkDotNet default output directory (generated; raw captures are kept locally, never committed)
+BenchmarkDotNet.Artifacts/
