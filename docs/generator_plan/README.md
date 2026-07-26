@@ -192,9 +192,19 @@ fire. Findings that survived orchestrator verification, most severe first:
    carrying the attribute; the generator scans all referenced assemblies, so it precompiles
    extensions the runtime never registers → permanent silent per-request fallback. A live instance
    of the failure mode the program exists to eliminate.
-4. **`StripGlobal`'s AQN path hard-codes `assembly: "Heddle"`**, so a user-defined nested or
+4. ~~**`StripGlobal`'s AQN path hard-codes `assembly: "Heddle"`**, so a user-defined nested or
    out-of-engine branch-role extension emits `Ns.Outer.Inner, Heddle` where the gauntlet computes
-   `Ns.Outer+Inner, <realAsm>` — drift #6's shape surviving on a path no fixture exercises.
+   `Ns.Outer+Inner, <realAsm>` — drift #6's shape surviving on a path no fixture exercises.~~
+   (**closed 2026-07-26** by the phase-1 audit.) `StripGlobal` is **deleted**: the branch arm's manifest
+   row now takes `ExtensionBinder.Info.BareTypeName` (metadata `+` for a nested type) and
+   `Info.AssemblyName`, the same values every other binding row already used, and
+   `AllocateBodyExtension` takes the assembly instead of letting it default to the literal. Byte-neutral
+   — the four engine branch-role extensions are top-level, so both spellings agree — which is also why
+   the defect itself is **not reachable by a test**: the arm gates on `IsEngineAssembly`, so a nested or
+   out-of-engine role extension cannot enter it, and the generic custom path it falls through to was
+   already correct. The reintroduction guard is therefore a source-shape pin
+   (`EmitterSharedRuleAdoptionTests.ManifestTypeNamesComeFromTheBinderNotFromStringSurgery`), stated as
+   such rather than dressed up as behavioural coverage.
 5. **Drift #9 (`ToString("R")`) has never been exercised where it manifests.** `"R"` *is*
    shortest-round-trippable on .NET Core, so the 60 000-value round-trip suite passes identically
    under the bug; reverting the fix reddens exactly one literal-string assertion. The only leg that
@@ -244,6 +254,22 @@ fire. Findings that survived orchestrator verification, most severe first:
    Also: three blanket `catch (Exception)`
    sites survive in the generator (the phase-5 one now *reports* rather than degrades, so intent
    holds, but the "no blanket catch" claim is literally false); the catalog is 82 rows, not 80.
+
+10. **Phase 1's coverage was thinner than its claims (found by the phase-1 audit, 2026-07-26; all
+   fixed except where noted).** `BodyModelRules` was enforced only by a `Debug.Assert`, so in Release
+   the table constrained nothing, and its build-tier acceptance test asserted the table against its own
+   `InlineData`; the two "the generator-side copy is deleted" pins pinned method *names*, so a
+   duplicate under any other name passed; `ParticipantScanLockstepTests` was six hand-picked rows, not
+   the whole-corpus sweep its matrix promised; the reshaped F11 fixture's "reachable neighbour" clause
+   used two *leftmost* participants — a shape the old buggy probe already handled — and a third clause
+   duplicated a lockstep test verbatim; WI7's actual fix (extension beats a same-named exported
+   function at build time) had no test at all; and the `BindDefinition` overload's "existing overloads
+   unchanged" criterion was asserted only at the signature level. The test matrix's six "corpus
+   guardrail entries" had **zero** fixture files and named a fixture set that does not exist — the
+   matrix is corrected rather than backfilled, and eleven further rows that named never-created files
+   are corrected too. Remaining open: the value-path coercion rail has no byte-level fixture on either
+   tier (shape and render-path only). Full detail in
+   [phase 1 — post-implementation audit](phase-1-template-emitter.md#post-implementation-audit-2026-07-26).
 
 **Process note, recorded as a lesson:** the program was implemented entirely in the working tree
 with nothing committed. A reviewer subagent reverting a mutation with `git checkout` therefore

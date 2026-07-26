@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
@@ -155,6 +157,79 @@ namespace Heddle.Tests
             var document = HeddleCompiler.Compile(clean, compileScope, parse, null);
             compileScope.CompileContext.Compile();
             return document != null && document.NeedsLocals;
+        }
+
+        // -------------------------------------------------------------------------------------------------------
+        // The whole-corpus sweep the test matrix promised ("for every compiled fixture in the differential
+        // corpus"). What stood here before was the six hand-picked rows above — a good divergence-set statement,
+        // but not the sweep, and the plan's own risk table names "the lockstep corpus misses a shape" as the risk
+        // this is the mitigation for. The corpus is src/Heddle.Tests/TestTemplate/**, the same set
+        // CorpusDifferentialTests classifies.
+        // -------------------------------------------------------------------------------------------------------
+
+        /// <summary>Corpus templates whose compiled tree provisions a frame — the load-bearing rows of the sweep.
+        /// Pinned exactly, not as a floor: a corpus that stopped exercising participants would make the sweep
+        /// vacuous while still passing, which is the failure mode the phase-0 audit found in two other gates.</summary>
+        private static readonly string[] CorpusTemplatesNeedingLocals =
+        {
+            "branch-import-else.heddle", "branching-flagship.heddle", "branching-interleaved.heddle",
+            "branching-nested.heddle", "branching-partial-child.heddle", "branching-partial-parent.heddle"
+        };
+
+        /// <summary>Corpus templates where the parse-level scan legitimately over-provisions relative to the
+        /// compiled tree (the Q1.4 ruling's shape — a definition shadowing a <c>[ScopeChannel]</c> name). Empty
+        /// today: no corpus fixture has that shape, so agreement is exact and any new inexactness is a conscious
+        /// edit to this list rather than a silent widening.</summary>
+        private static readonly string[] CorpusOverProvisionAllowList = new string[0];
+
+        [Fact]
+        public void TheSharedScanAgreesWithTheRuntimeOverTheWholeCorpus()
+        {
+            var dir = Path.GetFullPath("TestTemplate");
+            Assert.True(Directory.Exists(dir),
+                "The TestTemplate corpus was not found next to the test assembly. Build the solution; this sweep "
+                + "must fail rather than skip.");
+
+            var files = Directory.GetFiles(dir, "*.heddle")
+                .OrderBy(p => p, StringComparer.Ordinal).ToList();
+            Assert.Equal(62, files.Count);   // the same exact count CorpusDifferentialTests pins
+
+            var settings = new ParserSettings { RootPath = dir + Path.DirectorySeparatorChar };
+            var options = new TemplateOptions { RootPath = dir, FileNamePostfix = ".heddle" };
+
+            var narrower = new List<string>();
+            var overProvisioned = new List<string>();
+            var needingLocals = new List<string>();
+
+            foreach (var file in files)
+            {
+                var name = Path.GetFileName(file);
+                var text = File.ReadAllText(file).Replace("\r\n", "\n");
+
+                var compileScope = new CompileScope(new CompileContext(options, ExType.Dynamic));
+                var parse = DocumentParser.Parse(text, settings, out var clean);
+                var document = HeddleCompiler.Compile(clean, compileScope, parse, null);
+                compileScope.CompileContext.Compile();
+                // Every corpus template compiles as a dynamic document today (the *-broken fixtures carry
+                // front-end diagnostics, not compile failures), so there is no "unprobeable" escape hatch here.
+                Assert.NotNull(document);
+
+                var runtime = document.NeedsLocals;
+                var shared = ParticipantScan.BodyHostsParticipant(
+                    DocumentParser.Parse(text, settings, out _), HasScopeChannel);
+
+                if (runtime)
+                    needingLocals.Add(name);
+                if (runtime && !shared)
+                    narrower.Add(name);
+                if (shared && !runtime)
+                    overProvisioned.Add(name);
+            }
+
+            // The contract: the parse-level scan may over-provision, never under-provision.
+            Assert.Empty(narrower);
+            Assert.Equal(CorpusOverProvisionAllowList, overProvisioned.ToArray());
+            Assert.Equal(CorpusTemplatesNeedingLocals, needingLocals.ToArray());
         }
     }
 }
