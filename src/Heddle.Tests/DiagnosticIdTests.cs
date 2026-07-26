@@ -12,7 +12,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Pins the phase 1 diagnostic-ID plumbing (cross-cutting D1): the null-preserving ToString formats and
+    /// Pins the diagnostic-ID plumbing: the null-preserving ToString formats and
     /// the one-to-one match between HeddleDiagnosticIds constants and the Diagnostics table.
     /// </summary>
     public class DiagnosticIdTests
@@ -63,7 +63,7 @@ namespace Heddle.Tests
                 "HED5007", "HED5008", "HED5009", "HED5010", "HED5011", "HED5012",
                 "HED5013", "HED5014", "HED5015", "HED5016", "HED5017", "HED5018",
                 "HED5019", "HED5020",
-                // The HED7xxx block gained constants in the generator↔engine code-sharing program's phase 6
+                // The HED7xxx block gained constants when the generator and engine started sharing rule cores
                 // (D12.1) — the ids already shipped, as Roslyn descriptors and PrecompiledFallbackEvent codes;
                 // what they lacked was a reflectable home, so nothing could gate them.
                 "HED7001", "HED7002", "HED7003", "HED7004", "HED7005", "HED7006", "HED7007",
@@ -71,7 +71,7 @@ namespace Heddle.Tests
                 "HED7015", "HED7016", "HED7017", "HED7018", "HED7019", "HED7020", "HED7021", "HED7022",
                 "HED7023", "HED7024", "HED7025", "HED7028",
                 "HED7101", "HED7102", "HED7103",
-                // Q8.30: a registered Name that another registered template already answers to. A runtime id because
+                // A registered Name that another registered template already answers to. A runtime id because
                 // the collision spans assemblies — a referenced manifest's rows are IL, not symbol metadata, so the
                 // build tier cannot see them (within one compilation the same fault is HED7004).
                 "HED7104"
@@ -89,12 +89,9 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// <para>Generator plan phase 6 D12.3, the runtime half of the docs gate: the normative
-        /// <c>docs/spec/common/cross-cutting-decisions.md</c> claimed-ID registry and
-        /// <see cref="HeddleDiagnosticIds"/> agree in both directions over the <c>HED0xxx</c>–<c>HED5xxx</c>
-        /// blocks — no constant outside a claimed row, no claimed runtime row without a constant. The
-        /// <c>HED7xxx</c> half (code ⇄ registry ⇄ <c>docs/precompilation.md</c>) is asserted generator-side,
-        /// where the descriptors live.</para>
+        /// <para>The claimed-ID registry and <see cref="HeddleDiagnosticIds"/> agree in both directions over the
+        /// <c>HED0xxx</c>–<c>HED5xxx</c> blocks — no constant outside a claimed row, no claimed runtime row without
+        /// a constant. The <c>HED7xxx</c> half is asserted generator-side, where the descriptors live.</para>
         /// <para>Documented exclusions: <c>HED6xxx</c>/<c>HED8xxx</c> are reserved-unclaimed (no four-digit
         /// row), <c>HED9001</c> is deliberately not public surface (the registry row says so), and the
         /// <c>HED7xxx</c> block is the generator/precompiled-runtime block.</para>
@@ -120,8 +117,8 @@ namespace Heddle.Tests
             Assert.True(missing.Count == 0,
                 "Claimed registry rows with no HeddleDiagnosticIds constant: " + string.Join(", ", missing));
 
-            // The inverse, so a "deliberately unclaimed" row is a gate and not a comment: taking one of those ids
-            // without first rewriting its row reddens here, at the moment the decision is being reversed.
+            // The inverse, so an unclaimed row is a gate rather than a note: taking one of those ids without
+            // rewriting its row reddens here.
             var takenAnyway = deliberatelyUnclaimed
                 .Where(constants.Contains)
                 .OrderBy(id => id, StringComparer.Ordinal)
@@ -147,10 +144,8 @@ namespace Heddle.Tests
         /// cell is <c>`HEDaaaa`</c> or <c>`HEDaaaa`–`HEDbbbb`</c>; IDs named in the Owner/Notes cells are
         /// deliberately ignored, so a cross-reference never silently claims an ID.
         /// </summary>
-        /// <summary>A registry row may record an id the program decided <em>not</em> to take — a ruling withdrawn
-        /// on assessment, or a reservation that turned out to have an existing home. Such a row is documentation of
-        /// a decision, not a claim, so it must not demand a constant. The marker makes the distinction machine-read
-        /// rather than left to a whitelist that would grow silently.</summary>
+        /// <summary>Marks a registry row recording an id deliberately left free. Such a row is not a claim and must
+        /// not demand a constant; making the distinction machine-read avoids a whitelist that grows silently.</summary>
         private const string UnclaimedMarker = "deliberately unclaimed";
 
         private static void AddRange(HashSet<string> into, Match match)
