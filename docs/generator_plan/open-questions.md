@@ -549,31 +549,32 @@ question, the ruling or default, and where it is folded.
   so a template that is legal *for that host* now fails the build, and unlike the emitted-code case
   the gauntlet's `FunctionBindings` overload-count check cannot rescue it. A delegate registration is
   invisible in assembly metadata, which is precisely the blindness `HED7014` exists for — and
-  `HED7014` chose *warning + degrade* for it. **Default if unruled:** keep the error as ruled and
-  keep `Precompile="false"` as the escape hatch; the scenario needs a host that both registers extra
-  overloads of a name the generator already knows *and* writes a template call that only those extra
-  overloads satisfy, which no first-party or sample code does. Candidate refinements, in increasing
-  cost: (a) restrict the error to `Ambiguous` and let `None` degrade with a warning, since `None` is
-  the arm a *single* added overload most easily rescues; (b) suppress the error for any name the
-  compilation cannot prove closed, which in practice means every name — i.e. withdraw the fix; (c) give
-  the host a build-time declaration of its run-time registrations, which is a new surface. *Related:*
-  Q8.1, and `HED7014`'s legitimacy argument in
-  [precompilation.md](../precompilation.md#which-fallbacks-are-legitimate).
+  `HED7014` chose *warning + degrade* for it. **Ruling (user, 2026-07-26) — the premise was wrong, and the question dissolves.** The user's
+  observation, verified in source: precompiled function calls are **statically bound at build time**.
+  `NativeExpressionWriter` emits a direct call to a shim method resolved through a build-time
+  `DefaultShims` table (`:25`, `:98`, `:154`); nothing in `PrecompiledRuntime` consults
+  `options.Functions` at render. So **precompiled code cannot resolve a runtime-registered function
+  at all** — the build-time inventory is not merely *a* scope, it is the only scope that can be
+  correct for what precompiles. A host that registers extra overloads is handled by
+  `PrecompiledGauntlet.CheckFunctions`, which detects the divergence and degrades to the dynamic tier.
 
+  The one residual, stated for the record rather than as a reopening: `HED7025` is an **error**, so it
+  fails the build before any tier is chosen, and the gauntlet cannot rescue a failed build. That is
+  acceptable because the escape hatch is real and was verified — `Precompile="false"` `continue`s at
+  `HeddleTemplateGenerator.cs:193`, *before* key derivation and emit, so no diagnostic can fire for an
+  opted-out item while it stays in the import map. **Closed; no code change, and no option added.**
 - **Q8.19 — Two illegal calls in one template report once. Should the emitter continue past an
   unwritable construct to collect the rest?** `BuildBody` abandons at the first construct it cannot
   write, so `@(min(1, 2u)) @(max(1, 2u))` yields one `HED7025`, not two; the author fixes one, rebuilds,
   and meets the next. This is pre-existing emitter shape rather than anything Q8.1 introduced (it is
   equally true of `HED7008`), but Q8.1 is the first error where the one-at-a-time surfacing is the
-  *whole* user experience, so it is now worth asking. **Default if unruled:** leave it — collecting
-  the remainder means continuing a body build whose result is discarded, and the dynamic tier reports
-  one error at a time too (`Fail` returns null and unwinds), so today's behaviour *matches*. Pinned as
-  a fact, not a bug, by
-  `AmbiguousOverloadDiagnosticTests.TwoCallSitesInOneTemplateReportOnceBecauseTheBodyBuildAbandonsAtTheFirst`,
-  which reddens if a later change makes the emitter continue.
-
-## Opened by the Q8.2 / Q8.11 / Q8.12 landing (2026-07-26)
-
+  *whole* user experience, so it is now worth asking. **Ruling (user, 2026-07-26): collect all of them, if it is not a major undertaking.** Assess the
+  cost honestly first — `BuildBody` abandoning at the first unwritable construct is long-standing
+  emitter shape, and unwinding it is not obviously cheap. If continuing past the first error is
+  contained (collect refusals, keep walking, report each at its own span, and still emit nothing for
+  the template), do it. If it turns out to require restructuring the body walk, stop and report the
+  cost rather than half-doing it — a partial rewrite of the walk is worse than the current honest
+  one-at-a-time behaviour.
 - **Q8.24 — A 1.x manifest's rejection reason changed from `EngineVersionIncompatible` to
   `SchemaVersionUnsupported`.** The 2.0 window's as-shipped record and the CHANGELOG both state that
   1.x precompiled assemblies fall back because "the engine-version gate rejects 1.x manifests". With
@@ -582,37 +583,55 @@ question, the ruling or default, and where it is folded.
   `SchemaVersionUnsupported` (`HED7102`) before the engine-version check is reached. The observable
   outcome is identical — one callback, whole-assembly fallback, `Strict` throws — but a host that
   branches on `PrecompiledFallbackEvent.Reason` (a public enum) sees a different member, and two shipped
-  documents name the wrong one. **Default if unruled:** treat it as a documentation correction owned by
-  phase 8's sweep, not a behaviour change: both reasons are in the same "must surface / packaging defect"
-  row of the fallback taxonomy, and the ordering of two gates that both reject the same input is not a
-  contract. Worth a ruling because the alternative — checking engine version first so the *older* and
-  more specific diagnosis wins — is defensible and cheap.
+  documents name the wrong one. **Ruling (user, 2026-07-26) — closed as invalid; the question was speculation.** *"We have NO 1.x
+  manifests, 2.0 is the first version with pre-compilation."* Correct: precompilation shipped in 2.0.0,
+  so no 1.x manifest has ever existed and the reason-code change has no population to affect. The
+  entry was reasoning about a hypothetical migration path.
 
+  Two corrections follow. First, the shipped documents that name `EngineVersionIncompatible` as the
+  gate for "old" manifests are describing a case that cannot occur — that is a **docs defect for
+  phase 8**, not a behavioural question. Second, on *"why is throwing an error on a wrong manifest a
+  problem, and why do we need an option for that"*: it is not a problem, and **no option was added**.
+  `PrecompiledMismatchPolicy` is pre-existing 2.0 API (`Strict` throws, `Fallback` degrades) and
+  phase 0's guardrails depend on `Strict`; nothing in this program introduced a switch for this. The
+  entry read as though it were proposing one, which it was not. **No code change.**
 - **Q8.25 — An explicit `Key`/`Name` makes a template unimportable by its path.** The `@<<` import map
   is keyed by the same derived key as the registry, so `@<<{{ templates/report.heddle }}` no longer
   resolves once that item carries `Name="BuildReport"` — the importer draws `HED7011`, and the fix is to
   import the *key*. This is pre-existing for `Key` and was simply unreachable while the metadata was
-  inert (Q8.12), so wiring the feature made it reachable for the first time. **Default if unruled:**
-  leave it and document the import path as key-relative, since the runtime's own `ImportReader` is
-  key-based and a second, path-based lookup would be a second rule. Worth a ruling because the intuitive
-  reading of `@<<{{ some/path }}` is a path, and the failure is a build error rather than a fallback.
+  inert (Q8.12), so wiring the feature made it reachable for the first time. **Ruling (user, 2026-07-26) — this is a CORRECTION to what was just landed.** *"Name is an
+  optional additional name register for import to use, not an override, just like I asked it to be."*
 
+  The landed implementation made `Name` a *second spelling of `Key`*, i.e. an override: the
+  path-derived key is replaced, so `@<<{{ templates/report.heddle }}` stops resolving and draws
+  `HED7011`. That is wrong. **`Name` must be additive**: the template keeps its path-derived key *and*
+  gains the registered name, so imports by **either** spelling resolve. Nothing that resolved before
+  may stop resolving.
+
+  Add a **warning** where a named template is imported by path, stating that the template has a
+  registered name and that the name-first spelling is preferred for named templates — guidance, not a
+  break. Claim `HED7028` for it (still free).
+
+  Note this also changes the `HED7018` interaction recorded under Q8.12: an explicit `Name` no longer
+  replaces the key, so it cannot suppress an out-of-root warning about the path-derived key. Only an
+  explicit `Key` does. Re-derive that rather than assuming it carries over.
 - **Q8.26 — Warning regressions are not gated.** `Q8.11` removed the eight `CS8002` warnings and the
   build has no `TreatWarningsAsErrors`, so nothing prevents them — or any other warning class — from
   coming back. The signing half is now held by
   `VersionConsistencyTests.EveryFirstPartyProjectUnderSrcIsStrongNamed`, but that gates the *cause* for
   one warning, not warnings in general; the tree currently carries fourteen xUnit-analyzer warnings and
-  four `NU1510`s that no gate mentions. **Default if unruled:** leave it. `TreatWarningsAsErrors` on a
-  tree with eighteen live warnings is a landing of its own, and the two candidate mechanisms
-  (`TreatWarningsAsErrors` plus a `NoWarn` allow-list, or a CI step asserting a warning census) differ in
-  who pays: the first reds local builds, the second only CI. Recorded so "the warnings stopped" is known
-  to be a state rather than a property.
-
+  four `NU1510`s that no gate mentions. **Ruling (user, 2026-07-26): leave it as is.** No `TreatWarningsAsErrors` — it obstructs quick
+  proof-of-concept work and fast testing feedback. The signing *cause* stays gated (a project losing
+  its strong name reddens a test); warning regressions in general are deliberately not gated.
+  **Closed; no change.**
 - **Q8.27 — Should `#line` name a path the compiler can open, rather than a repo-relative one?** Q8.12
   separated the `#line` file from the registration key, and the value it now emits is the template's path
   relative to `HeddleTemplateRoot` — resolvable when the compiler's working directory is the project
   directory, which is the normal case, and not otherwise. The alternative is the absolute
   `AdditionalText.Path`, which is what a `#line` is really for, but it would put machine-specific
-  absolute paths into eight `Verify` snapshots and every generated-source golden. **Default if unruled:**
-  keep the relative path; it is what shipped, it is golden-stable, and it is correct for the working
-  directory MSBuild actually uses. Revisit if a debugger or error-list mis-resolution is ever observed.
+  absolute paths into eight `Verify` snapshots and every generated-source golden. **Ruling (user, 2026-07-26): prefer absolute paths, and where relative is unavoidable, mark it
+  properly rather than churning it.** Use absolute paths wherever that is workable; where a relative
+  form is genuinely the right answer — multi-template setups, complex definition chains, the cases
+  where a single absolute anchor cannot express the mapping — keep it and **mark the relativity
+  explicitly** so a reader knows which form a given `#line` is in. Explicitly not a mandate to convert
+  everything: the instruction is to be reasonable and label, not to fixate on rewriting.
