@@ -11,7 +11,9 @@
 
 **All seven phases (0–6) are implemented.** The quarantine register phase 0 opened is empty — every
 red fixture was earned green by its owning phase, none deleted and none weakened (one, phase 1's
-F11, was *reshaped*; see that phase's record). Suite: **4808 passed / 0 failed / 0 skipped**,
+F11, was *reshaped*; see that phase's record). Suite: **4986 passed / 0 failed / 0 skipped**
+(the count rose through the post-implementation audits, which added coverage the phases had claimed
+but not held — see the findings section),
 against a pre-program baseline of 2630 / 0 / 0. Diagnostic IDs `HED7018`–`HED7024` were claimed in
 registry order. Two items are recorded as **not delivered** and are named here rather than buried
 in a phase: the [compile-channel drain gap](#known-program-level-gap--the-compile-channel-drain-is-unscheduled)
@@ -199,8 +201,15 @@ fire. Findings that survived orchestrator verification, most severe first:
 9. **Two further undelivered items** beyond the ones named below: ~~phase 6's D12.5 projection-
    equivalence corpus~~ (**closed 2026-07-26** — `DiagnosticCorpusVectors` is now one shared table
    asserted by all three hosts, so the run tier, build tier and editor are compared to each other
-   rather than to three sets of hand-written expectations) and phase 2's WI5 allocation
-   benchmark (its done-when said "proven, not argued"). Also: three blanket `catch (Exception)`
+   rather than to three sets of hand-written expectations) and ~~phase 2's WI5 allocation
+   benchmark (its done-when said "proven, not argued")~~ (**recorded as undelivered 2026-07-26** —
+   the clause is now marked not-delivered in the plan, with the argument that stands in its place
+   labelled as an argument: the render path allocates identically *by construction* because
+   `SlicePieces` changed how `GetDocumentPieces` walks and not what it returns, while the compile
+   path did gain one closure and two capturing delegates per body, which the WI9 note had glossed
+   as zero. Not measured: a credible paired run means holding a two-file revert of landed code
+   across a multi-minute BenchmarkDotNet run, and this box's paired timings are untrustworthy).
+   Also: three blanket `catch (Exception)`
    sites survive in the generator (the phase-5 one now *reports* rather than degrades, so intent
    holds, but the "no blanket catch" claim is literally false); the catalog is 82 rows, not 80.
 

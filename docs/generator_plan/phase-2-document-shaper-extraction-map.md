@@ -68,9 +68,16 @@ the shared core post-swap, asserting the working document and every rebased posi
 1. **Shift, three-way:** a skipped token enclosed by a chain; a chain wholly after; a chain wholly
    before (loop `break` reached); same three for a definition position and a raw-output item;
    multiple skipped tokens processed in reverse.
+   *(Restoration audit 2026-07-26: as landed, this pin covered the three classes but none of their
+   **boundaries**, and six single-comparison mutants survived it. `Pin1_…ClassificationBoundaries`
+   adds one row per equality boundary across all three lists.)*
 2. **Trim remnants:** whole-line comment remnant (removed); `@\` remnant with content (no-op);
    two comments on one line (removed once via the already-removed-span skip); remnant inside a
    definition block (the `ShiftListsAfter` enclosing case — the documented historical bug).
+   *(Restoration audit: the "two comments on one line" row did **not** constrain the
+   already-removed-span guard — the second probe declines on its own once the line regains content.
+   A three-blank-line row now does. The `ShiftListsAfter` **definitions** enclosing arm was pinned;
+   the **chain** arm was not — `Pin2_ShiftListsAfter_EnclosingAndShiftBoundaries` adds it.)*
 3. **Widen predicate:** the WI1 vector table (in-bounds whole-line with LF / CRLF / bare CR / EOF
    terminators; content-left and content-right rejections; zero-length probe; the three
    out-of-bounds classes).
@@ -86,6 +93,13 @@ the shared core post-swap, asserting the working document and every rebased posi
    separately by the existing branch suites); `Participant` between opener and continuation
    (disarms — no gap across it); zero/negative gap (imported zero-length blocks); gap bounds
    guard; definition-shadowed keyword (R8 — classified `Other`).
+   *(Restoration audit: this pin's literals were hand-derived **after** the move, and its
+   `Participant` row cannot catch the divergence it was written for — inside the strip machine
+   `Participant` and `Other` are extensionally equal (both `stripPrev = null`), so no strip-level
+   assertion can separate them. The constraint moved to where it exists: enum arity/names, and an
+   observer event-stream pin asserting the reported **kind** and the classified → gap → completed
+   ordering the re-hosted HED300x diagnostics depend on. The strip behaviour of `Participant`
+   remains unpinnable, and now says so.)*
 8. **Piece slicing:** element at offset 0 (no leading piece); adjacent elements (no inter-piece);
    trailing remainder; empty element list (single whole-document piece); zero-length element.
 9. **Region-fill verdicts:** matched public; dangling; private; default-missing; candidate from a
@@ -95,3 +109,7 @@ the shared core post-swap, asserting the working document and every rebased posi
     pin lands with WI8 (the alignment), not pre-swap: it asserts the **matched** behavior — both
     sides model the runtime's zero-length element (plan D10, Q2.1 resolved) — and turns red if
     either side reintroduces the skip.
+    *(Restoration audit: as landed, only the **generator** half was pinned
+    (`DocumentShaperAdapterTests`), so a runtime-side reintroduction was invisible. The runtime half
+    is not reachable as a machine-level vector, so it is pinned over the driver bodies —
+    `DocumentShapingPassOrderLockstepTests.NeitherDriverSkipsAnEmptyDefaultChain`.)*
