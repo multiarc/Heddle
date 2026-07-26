@@ -1269,6 +1269,21 @@ so the outstanding set is complete in one place.
   assemblies while the runtime scans only `[ExportExtensions]`-carrying ones — since the two are halves of
   one seam and a fix to either alone widens the drift.
 
+  **Ruling (user, 2026-07-26): remove the auto-loading in 2.1 — the current breaking window — and add
+  proper extension points where they are missing.** *"Remove auto-loading in 2.1 (current breaking window)
+  and add proper (if missing) extensions."* So this is not gated behind a switch and not narrowed: the
+  static-constructor walk and the scan-all discovery go, and what replaces them is explicit host
+  registration on the shape `PrecompiledTemplates.Register` already has. Where a host can only reach
+  today's behaviour through the scan — i.e. where removing it leaves a real need with no API — that is a
+  **missing extension point to add**, not a reason to keep the walk.
+
+  Two obligations that come with it, not optional. The break needs a `breaking-windows.md` disposition
+  stating what stops working for a host that relied on discovery and what it must call instead — the
+  population is every host that declares `[ExportExtensions]` and registers nothing. And it must be
+  reconciled with README **finding 3** in the same change, because the generator scanning *all referenced*
+  assemblies while the runtime scans only `[ExportExtensions]`-carrying ones is the other half of this seam;
+  fixing one side alone widens the drift, which the entry above already states.
+
 - **Q8.38 — A post-configuration validation pass has to be told which `TemplateOptions` it is validating
   against, and nothing says which.** Raised by Q8.32's feasibility assessment, which recommends the
   validation-only subset. Four of the gauntlet's inputs are **per-request**, not per-configuration:
@@ -1282,3 +1297,12 @@ so the outstanding set is complete in one place.
   so this wants a ruling before the subset is built rather than a default chosen during implementation.
   Note the constraint is not incidental: step 1 exists *because* the fingerprint is a per-request check,
   so it cannot simply be hoisted with steps 2 and 3.
+
+  **Ruling (user, 2026-07-26) — closed as not a question.** *"I don't think you can coherently raise
+  questions. It's just a prose about a problem."* Correct, and the fault is in the entry, not the subject:
+  it describes a constraint at length and then offers three shapes without asking anything a ruling could
+  answer. The constraint itself is real and stays recorded above — a per-request fingerprint cannot be
+  hoisted into a per-configuration pass — but it is an **implementation fact for whoever builds the
+  subset**, to be resolved by the code and pinned by a test, not escalated. If building it turns up a
+  decision that genuinely needs the user (an API shape, a default that could mislead), that gets raised
+  then, as a question with an actual question in it.
