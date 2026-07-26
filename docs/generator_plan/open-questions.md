@@ -4,7 +4,7 @@ The consolidated Q&A register for the seven phases. Numbering is `Q<phase>.<n>`,
 phase plan's own Open-questions section.
 
 **Pre-authoring questions (Q0.1–Q6.3): all resolved (user, 2026-07-25) and folded into the phases.**
-**Post-implementation questions (Q7.1–Q8.12):** opened after the phases landed, by the two
+**Post-implementation questions (Q7.1–Q8.17):** opened after the phases landed, by the two
 post-implementation reviews, the six phase audits, and the phase-8 docs sweep authored from
 the Q8.7 ruling — see
 [the section below](#post-implementation-questions-opened-2026-07-26). **Q7.4 and Q8.1–Q8.5 are
@@ -322,6 +322,42 @@ question, the ruling or default, and where it is folded.
 
 Recorded when [phase 8](phase-8-docs-sweep.md) was authored. None blocks its stages 0–3.
 
+- **Q8.13 — Does the value-path coercion rail need a byte-level fixture?** `native-expressions.md`
+  §4 is normative: a boxed non-string reaching the value path is dropped to empty while the render
+  path stringifies it. Phase 1's audit found this is pinned as emitted *shape* plus render-path
+  behaviour, with **no byte-level fixture on either tier**. Closing it needs new fixture machinery —
+  a host extension whose `ProcessData` consumes its body's `Execute` result and returns a
+  non-string. **Default if unruled:** leave the shape pin. The rail is slated to change (Q1.2's
+  joint-land rule means the runtime and generator move together when it does), so building fixture
+  machinery for a contract about to be rewritten is likely wasted — but the gap is real and now
+  recorded rather than implied.
+- **Q8.14 — Should `[EncodeOutput]` + `[NotEncode]` on one extension be an error?**
+  `RenderTypeRules.Derive`'s fourth truth-table row ("`[NotEncode]` vetoes") is **unreachable from
+  any real extension** — nothing in the tree carries both attributes, so the row is exercised only
+  by the truth-table theory. Either the combination is meaningful and deserves a fixture, or it is
+  incoherent and should be a registration/build **error on both tiers** under the match principle.
+  **Default if unruled:** leave the row and its theory; it is a silently-`Raw` outcome that harms
+  nobody today.
+- **Q8.15 — Stabilise the two intermittently-failing tests?** Phase 3's audit observed
+  `Heddle.Tests.BodyModelRuleTableTests` (a *different* row failing on each of two consecutive
+  solution runs; passes in isolation and in its leg alone) and
+  `Heddle.Generator.Tests.CallTargetAdoptionTests.AnExportedFunctionDoesNotStealARegisteredExtensionName`
+  (failed once in a solution run, then passed in isolation, three leg runs and two solution runs).
+  Both go through the generator, under concurrent multi-TFM execution. This matters beyond tidiness:
+  **every mutation result in these audits rested on "this test went red because of my change"**, and
+  flakiness poisons that inference — an intermittently-red suite is how a real surviving mutant goes
+  unnoticed. **Default if unruled:** stabilise both before any further mutation work, treating a
+  flaky gate as a broken gate.
+- **Q8.16 — `RegionTests.LocationOffsetOf` returns a hard-coded `0`.** Reported by phase 1's audit,
+  not its artifact, so it was left. A helper that reads as a position assertion and asserts nothing
+  is worse than an absent assertion, because it looks like coverage. **Default if unruled:** fix it
+  to compute the real offset, or delete it and the assertions that call it, in the next pass over
+  that suite.
+- **Q8.17 — `SymbolTypeIndex.Cache` is an unbounded static `Dictionary<Compilation, …>`.** Phase 3's
+  own artifact, correct and lock-guarded, but it pins every `Compilation` it has ever seen for the
+  process lifetime. Fine for a one-shot build; questionable for a long-lived IDE session where the
+  analyzer sees a new `Compilation` per keystroke-batch. **Default if unruled:** leave it, and
+  revisit if editor memory is ever reported as a problem.
 - **Q8.9 — Where does the narrowed authority convention live, and is it retroactive?** Phase 8 D3
   narrows the convention (*"expression semantics defer first to `docs/native-expressions.md`"*) so
   that a normative document outranks the implementations **only for claims that carry a verification
