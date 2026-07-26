@@ -39,7 +39,7 @@ C# precedence, verbatim. Highest to lowest:
 | multiplicative | `*` `/` `%` | left | |
 | additive | `+` `-` | left | `+` is string concatenation when an operand is a string |
 | shift | `<<` `>>` | left | integral left operand; **any** integral right operand, converted to `int` (a [deviation](#deviations-from-c)) |
-| relational | `<` `<=` `>` `>=` | left | null operands compare `false` (lifted, non‑null result) |
+| relational | `<` `<=` `>` `>=` | left | a `null`‑*valued* `Nullable<T>` compares `false` (lifted, non‑null result); the `null` **literal** is `HED1008` |
 | equality | `==` `!=` | left | `object.Equals` fallback when **both** operands are reference types or `Nullable<T>`; a reference/value mix is `HED1008` |
 | bitwise AND | `&` | left | ints, same‑enum, and `bool` |
 | bitwise XOR | `^` | left | |
@@ -137,8 +137,9 @@ nothing else is. There is no path from template text to arbitrary methods by nam
 
 ### The default built‑ins
 
-All are invariant‑culture and never throw at render (string‑returning ones map `null` input to
-`""`):
+All are invariant‑culture, and all but `range` never throw at render (string‑returning ones map
+`null` input to `""`). `range` is the one sanctioned exception: a non‑positive step known only at
+render throws, because the alternative is a loop that never terminates — see [`range`](#range).
 
 | Function | Behavior |
 | --- | --- |
@@ -151,7 +152,8 @@ All are invariant‑culture and never throw at render (string‑returning ones m
 | `format(value, fmt)` | `IFormattable.ToString(fmt, InvariantCulture)` |
 | `format(fmt, args…)` | composite `string.Format(InvariantCulture, …)` |
 | `str(value)` | invariant `Convert.ToString` |
-| `abs`, `min`, `max`, `round`, `floor`, `ceil` | over `int`/`long`/`double`/`decimal` as applicable; clamped, non‑throwing |
+| `abs`, `min`, `max` | `int`, `long`, `double`, `decimal` (one overload per type); clamped, non‑throwing |
+| `round`, `floor`, `ceil` | **`double` and `decimal` only** — `round` also takes a digit count. An `int` argument is `HED1013` (see below) |
 | `range(start, last[, step])` | builds a `Heddle.Models.Range` for `@for` — iterates `start … last‑1` by `step` (default 1) |
 
 <a id="range"></a>
@@ -181,10 +183,23 @@ var options = new TemplateOptions { Functions = functions };
 
 - Names are ordinal and case‑sensitive.
 - Registering the same name with identical parameter types **replaces**; otherwise it adds an
-  overload. Overload resolution ranks exact match over widening over boxing to `object`.
-- The registry **freezes on first compile use**; registering afterwards throws
-  `InvalidOperationException`. Frozen registries are immutable and safe for concurrent compiles and
-  renders.
+  overload. Overload resolution ranks each candidate on a flat scale — exact match over implicit
+  widening over boxing to `object` — and refuses when two candidates tie, rather than applying C#'s
+  better‑conversion‑target rule. Both tiers share one ranker, so a call that binds at build time
+  binds identically at run time and a tie is `HED1013` on both.
+  The consequence is narrower acceptance than C#, not a different winner: measured over the shipped
+  built‑in table, **0 of 480** argument combinations would change which overload wins under C#'s rule,
+  **82** would become bindable that are ties today, and **62** stay ambiguous either way (`double`
+  and `decimal` are mutually non‑convertible, so neither is closer). `floor(3)` is in the 82:
+  `int→double` and `int→decimal` tie, so it is `HED1013`. Adopting C#'s rule would *widen* what
+  compiles, which cannot be withdrawn later, so it is a **window‑gated** change rather than a fix to
+  make casually.
+- The registry **freezes when a native expression is first compiled against it** — not when a
+  template is merely compiled, so a template containing no native expression leaves it open.
+  Registering after the freeze throws `InvalidOperationException`. Frozen registries are immutable
+  and safe for concurrent compiles and renders, which is why the freeze exists.
+  Registration order therefore matters: register everything before the first render, not lazily on
+  demand.
 - `null` `TemplateOptions.Functions` means `FunctionRegistry.Default` (the frozen built‑ins).
 
 ### Standalone vs. in‑expression calls
@@ -241,9 +256,11 @@ Native expressions match C# except for a small, deliberate set of ergonomic choi
 ## The sandbox
 
 The compiler can only ever emit invocations of: property/indexer getters that pass the member‑tier
-visibility and `[Hidden]` filter; the `MethodInfo`s/delegates the host registered (built‑ins
-included); compiler‑chosen intrinsics (`string.Concat`, static `object.Equals`, conversions); and
-user‑defined operator methods declared by the operand types themselves. Method‑call syntax
+visibility and `[Hidden]` filter; **array element access** (`Expression.ArrayIndex`, single- and
+multi-dimensional), which invokes nothing but is an emitted access all the same; the
+`MethodInfo`s/delegates the host registered (built‑ins included); compiler‑chosen intrinsics
+(`string.Concat`, static `object.Equals`, conversions); and user‑defined operator methods declared by
+the operand types themselves. Method‑call syntax
 (`x.Foo()`), unregistered names, dynamic‑scope operands, assignment, lambdas, `new`, casts, and
 `is`/`as` are all rejected at **compile time** with a positioned error — never executed. See the
 [built‑in extension parameter docs](built-in-extensions.md) for how `@if`/`@for` consume these

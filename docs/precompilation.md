@@ -69,8 +69,12 @@ naming the file, the root, and the flattened key it used.
 These mirror `TemplateOptions` and are baked into the generated artifact; a mismatch against
 the runtime request is caught by the validation gauntlet (below). An unparsable value is a
 build error (`HED7009`). The generator defaults track the engine defaults (both flipped in 2.0),
-so an unset property produces the same options fingerprint as a default‑options runtime request
-— an unset property never causes a gauntlet mismatch.
+so an unset property produces the same options fingerprint as a **default‑options** runtime request.
+It does not follow that an unset property is always safe: the fingerprint compares what the build
+baked against what the request carries, so a host that sets a non‑default `OutputProfile`,
+`ExpressionMode` or `TrimDirectiveLines` at run time while the build left the property unset gets an
+`OptionsMismatch` and a per‑request degrade. Set the property to match the host, or leave both at
+their defaults.
 
 | Property | Values / default | Effect |
 | --- | --- | --- |
@@ -295,8 +299,12 @@ saw hides a packaging bug behind identical output. The classification:
 | `RegisteredNameUnavailable` | informational | Never a gauntlet failure and never a throw (`HED7104`): a registered `Name` is an *addition*, and an addition whose spelling is already taken — or that the key rule refuses outright — costs the addition and nothing more — the template stays registered under its key, so no resolution that worked before changes meaning. Unlike a duplicate key there is nothing unresolvable to refuse, because key precedence already decides which template the spelling means. |
 | duplicate key at registration | already surfaces | `PrecompiledTemplates.Register` throws `PrecompiledRegistrationException` — the precedent that registration defects throw. |
 
-**Today's behavior is unchanged**: under the default `Fallback` policy every class above still
-degrades silently with an `OnFallback` event, and only `Strict` throws. Making the must‑surface
+**Today's behavior is unchanged**: under the default `Fallback` policy every class marked *must
+surface* degrades to the dynamic tier and reports it through `OnFallback`, and only `Strict` throws.
+"Silent" here means silent to the *render* — the output is correct and nothing fails — not
+unreported: a host that leaves `OnFallback` unset is what makes it silent. The two rows marked
+*informational* do not degrade at all; they report an addition that was not available and leave the
+template reachable by its key. Making the must‑surface
 classes throw *by default* (with an explicit opt‑out policy for hosts that rely on silent
 degrade) is a behavioral change: it is filed as a candidate for the next breaking window and does
 not ship outside one.
