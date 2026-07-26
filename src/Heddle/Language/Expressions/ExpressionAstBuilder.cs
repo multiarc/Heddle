@@ -243,7 +243,11 @@ namespace Heddle.Language.Expressions
             return minus != null ? Negate(real.Value) : real.Value;
         }
 
-        private static object Negate(object value)
+        /// <summary>
+        /// Applies the lexer's sign prefix to a decoded literal. Internal (not private) because it is one third of
+        /// the decoder half of the <c>LiteralFormatter</c> round-trip contract the phase 4 D2 test pins.
+        /// </summary>
+        internal static object Negate(object value)
         {
             switch (value)
             {
@@ -290,7 +294,9 @@ namespace Heddle.Language.Expressions
 
         #region Literal decoding
 
-        private static LiteralNode DecodeInteger(string text, BlockPosition position)
+        /// <summary>Integer first-fit decoding — <c>int → uint → long → ulong</c>, suffix-driven. Internal so the
+        /// <c>LiteralFormatter</c> round-trip test can drive the exact inverse the formatter must satisfy.</summary>
+        internal static LiteralNode DecodeInteger(string text, BlockPosition position)
         {
             string body = text;
             int suffixLength = 0;
@@ -369,7 +375,9 @@ namespace Heddle.Language.Expressions
             return result;
         }
 
-        private static LiteralNode DecodeReal(string text, BlockPosition position)
+        /// <summary>Real decoding — <c>F</c>/<c>D</c>/<c>M</c> suffixes, bare form is <c>double</c>. Internal so the
+        /// <c>LiteralFormatter</c> round-trip test can drive the exact inverse the formatter must satisfy.</summary>
+        internal static LiteralNode DecodeReal(string text, BlockPosition position)
         {
             string body = text.Replace("_", string.Empty);
             char last = body[body.Length - 1];

@@ -23,7 +23,10 @@
   <ItemGroup>
     <!-- The generator under test, driven as an analyzer through CSharpGeneratorDriver (D19), and the runtime so
          the differential harness can compile+load generated code and render on both backends (WI9). -->
-    <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.csproj" />
+    <!-- Aliased: phase 5 links the runtime's OutputProfile/ExpressionMode/fingerprint/capabilities sources into
+         the generator (D7), so those type names now exist in both assemblies. The alias keeps every unqualified
+         use in this suite bound to the runtime copy; DifferentialHarness reaches the generator through it. -->
+    <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.csproj" Aliases="generator" />
     <ProjectReference Include="..\Heddle\Heddle.csproj" />
   </ItemGroup>
 

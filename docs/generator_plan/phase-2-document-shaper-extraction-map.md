@@ -24,7 +24,7 @@ move.
 | 4 | `ReplaceRawOutput` (`:89`) | same (`:59`) | Pass shared (WI3) |
 | 5 | `ProcessBranchSets` (`:90`) — strip + HED3001–HED3005 + orphan machine | `StripBranchSets` (`:60`) — strip only | Machine shared, diagnostics become runtime observer (WI4) |
 | 6 | zero-output removal *interleaved with* item compilation: `returnTypeChainedPrevious == null` → `RemoveEmptyItem` (`:128-131`); `ScanHtmlContextLint` on the producing branch (`:137`) | up-front eligibility via injected `isZeroOutput` → `RemoveEmptyItem` (`:66-69`) | `RemoveEmptyItem` pass shared (WI3); classification stays per-side (plan D8) |
-| 7 | default chains: compiled; empty chain + non-null `chainedType` yields a zero-length element (`:143-177`) | default chains with `Chain == null \|\| Count == 0` skipped (`:72-78`) | Not unified — documented asymmetry, plan D10 / OQ1 |
+| 7 | default chains: compiled; empty chain + non-null `chainedType` yields a zero-length element (`:143-177`) | default chains with `Chain == null \|\| Count == 0` skipped (`:72-78`) | Aligned in WI8 — the generator stops skipping and models the runtime's zero-length element (plan D10, Q2.1 resolved: runtime is the source of truth) |
 
 The relative order of the shared passes (1 → 2 → 3 → 4 → 5 → 6) is the normative ordering contract
 written into `DocumentShaping`'s header; the WI3 lockstep test asserts both drivers preserve it.
@@ -56,7 +56,7 @@ written into `DocumentShaping`'s header; the WI3 lockstep test asserts both driv
 | `ExStringBuilder` (`src/Heddle/Strings/ExStringBuilder.cs`) | `unsafe`, unlinkable; untouched; shaping passes stop calling it (plan D3) |
 | Zero-output classification sources (four-name list `TemplateEmitter.cs:208-215`; runtime `returnTypeChainedPrevious == null` `HeddleCompiler.cs:128-131`) | Co-owned with Phase 1 (attribute design); this phase keeps the `isZeroOutput` seam and adds the WI7 lockstep guard |
 | `ScanHostsParticipant` (`TemplateEmitter.cs:1404-1416`) and the element-walk participant flag (`:371-375`) | Phase 1 (`ParticipantScan`) — referenced, untouched |
-| Default-chain asymmetry (`DocumentShaper.cs:72-78` vs `HeddleCompiler.cs:143-177`) | Documented + characterization-pinned, not unified (plan D10, OQ1) |
+| Default-chain handling (`DocumentShaper.cs:72-78` vs `HeddleCompiler.cs:143-177`) | No shared-file move — the loop stays in each driver — but the asymmetry is removed in WI8: the generator aligns to the runtime's zero-length element, characterization-pinned as **matched** (plan D10, Q2.1 resolved) |
 | `Runtime/DocumentsCache.cs` | Deleted (plan D10) — fully commented out, zero references |
 
 ## Characterization pins (WI2 must cover every row)
@@ -91,6 +91,7 @@ the shared core post-swap, asserting the working document and every rebased posi
 9. **Region-fill verdicts:** matched public; dangling; private; default-missing; candidate from a
    different origin (filtered, no lookup performed — pins the lazy layout resolution);
    multiple candidates with mixed verdicts.
-10. **Default chains:** empty default chain with non-null chained type (runtime zero-length
-    element vs generator skip — pinned **as currently divergent**, per plan D10; this pin
-    documents, it does not equalize).
+10. **Default chains:** empty default chain with non-null chained type — unlike pins 1–9, this
+    pin lands with WI8 (the alignment), not pre-swap: it asserts the **matched** behavior — both
+    sides model the runtime's zero-length element (plan D10, Q2.1 resolved) — and turns red if
+    either side reintroduces the skip.

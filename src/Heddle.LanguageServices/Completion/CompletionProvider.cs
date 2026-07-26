@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Heddle.Data;
+using Heddle.Helpers;
 using Heddle.Runtime;
 using Heddle.Runtime.Expressions;
 
@@ -195,19 +196,14 @@ namespace Heddle.LanguageServices.Completion
             return $"{ret} {o.Name}({pars})";
         }
 
+        /// <summary>The reader-facing spelling of a type in completion/hover text. The alias table is the shared
+        /// one (phase 6 D7) — this used to be a verbatim copy of <c>FunctionEntry.FriendlyName</c>, which existed
+        /// only because that method is private; the fallback (a full <see cref="ExType"/> spelling) is what makes
+        /// this surface's policy its own.</summary>
         internal static string Friendly(Type type)
         {
-            if (type == null) return "void";
-            if (type == typeof(void)) return "void";
-            if (type == typeof(int)) return "int";
-            if (type == typeof(long)) return "long";
-            if (type == typeof(double)) return "double";
-            if (type == typeof(decimal)) return "decimal";
-            if (type == typeof(string)) return "string";
-            if (type == typeof(bool)) return "bool";
-            if (type == typeof(object)) return "object";
-            if (type == typeof(object[])) return "object[]";
-            return new ExType(type).ToString();
+            if (type == null || type == typeof(void)) return "void";
+            return CSharpTypeNames.TryGetDisplayName(type, out var name) ? name : new ExType(type).ToString();
         }
 
         private static string FormatDefault(object value)

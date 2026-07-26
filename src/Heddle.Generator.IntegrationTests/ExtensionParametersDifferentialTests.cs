@@ -1,6 +1,8 @@
 using System.Linq;
 using Heddle;
+using Heddle.Data;
 using Heddle.Generator.IntegrationTests.Fixtures;
+using Heddle.Runtime;
 using Microsoft.CodeAnalysis;
 using Xunit;
 
@@ -53,6 +55,7 @@ namespace Heddle.Generator.IntegrationTests
             var gen = DifferentialHarness.Generate(new[] { ("views/gridbodied.heddle", t) });
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
             Assert.Empty(gen.TemplateSources);   // degraded — no .g.cs
+            DifferentialHarness.ExpectDegrade(gen, "views/gridbodied.heddle");   // phase 0 D5: declared intent
 
             var dynamicTemplate = new HeddleTemplate(t,
                 new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(), typeof(string)));
@@ -109,14 +112,27 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("<B>!", dyn);   // raw — unencoded
         }
 
+        /// <summary>
+        /// Phase 3 (F4, and the twin-vocabulary unification phase 6 handed over): the malformed-[Prop] sentence is
+        /// now produced once, by <c>HeddleDiagnosticCatalog.PropFaults.Message</c>, and quoted verbatim by both
+        /// tiers — the build tier's <c>HED7017</c> and the dynamic tier's
+        /// <c>HED5007</c>/<c>HED5008</c>/<c>HED5009</c>/<c>HED5010</c>/<c>HED5015</c>. The sentences asserted here
+        /// are the shared ones verbatim; the cross-tier half (same fault, same order, same words, from the same
+        /// declaration list) is pinned by the two-driver <c>PropLayoutCore</c> lockstep tests, because these
+        /// malformed fixtures are deliberately not exported to the dynamic registry.
+        /// </summary>
         [Theory]
-        [InlineData("malformedDup", "duplicate parameter name 'a'")]
-        [InlineData("malformedReserved", "reserved parameter name 'out'")]
-        [InlineData("malformedNullName", "parameter name is null or empty")]
-        [InlineData("malformedDefault", "default value for 'a' is not convertible")]
-        [InlineData("malformedType", "unusable type")]
-        [InlineData("wideningItem", "re-declared parameter 'item' widens the inherited type")]
-        public void MalformedPropDeclarationReportsHed7017(string name, string faultFragment)
+        [InlineData("malformedDup", "Prop 'a' is declared more than once on extension 'malformedDup'.")]
+        [InlineData("malformedReserved", "'out' is reserved and cannot be used as a prop name.")]
+        [InlineData("malformedNullName",
+            "A [Prop] parameter name on extension 'malformedNullName' is null or empty.")]
+        [InlineData("malformedDefault",
+            "The default value for prop 'a' (String) is not convertible to System.Int32.")]
+        [InlineData("malformedType", "Cannot resolve type for prop 'a' of extension 'malformedType'.")]
+        [InlineData("wideningItem",
+            "Prop 'item' is re-declared with type System.Object, which is not assignable to the inherited type " +
+            "System.String.")]
+        public void MalformedPropDeclarationReportsHed7017(string name, string sentence)
         {
             var t = "@model(){{System.String}}@\\\n@" + name + "(this)\n";
             var gen = DifferentialHarness.Generate(new[] { ("views/" + name + ".heddle", t) });
@@ -124,7 +140,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.NotEqual(default, hed7017);
             Assert.Equal(DiagnosticSeverity.Error, hed7017.Severity);
             Assert.Contains(name, hed7017.GetMessage());
-            Assert.Contains(faultFragment, hed7017.GetMessage());
+            Assert.Contains(sentence, hed7017.GetMessage());
         }
 
         [Theory]
@@ -159,6 +175,7 @@ namespace Heddle.Generator.IntegrationTests
             var gen = DifferentialHarness.Generate(new[] { ("views/yellnamed.heddle", t) });
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
             Assert.Empty(gen.TemplateSources);   // degraded — the named args were not bound away
+            DifferentialHarness.ExpectDegrade(gen, "views/yellnamed.heddle");   // phase 0 D5: declared intent
 
             var dynamicTemplate = new HeddleTemplate(t,
                 new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(), typeof(string)));

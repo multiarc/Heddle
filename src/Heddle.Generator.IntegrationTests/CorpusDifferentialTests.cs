@@ -54,6 +54,17 @@ namespace Heddle.Generator.IntegrationTests
             "profile-partial-parent.heddle",
             "profile-resolver-default.heddle",
             "props-abstract-panel.heddle",
+            // Phase 3 (F8): four fixtures joined the precompiled set when the build tier stopped resolving
+            // model type names by its own rule. Each writes a bare `:: PropArticle` / `:: PropMenuOption`
+            // short name; the runtime resolves those through its global name index (a globally unique short
+            // name binds with no import at all), while the generator only tried the @using list and then two
+            // implicit namespaces the runtime does not have. Sharing the lookup rule made them bind, and the
+            // corpus render-parity sweep proves the bytes are unchanged — this is the F8 payoff, not a
+            // classification drift.
+            "props-defaults.heddle",
+            "props-inherit.heddle",
+            "slot-compose.heddle",
+            "slot-picker.heddle",
             // Phase 6 (post-2.0) WI8: the range-for fixture (@for(range(...)) + str(range(...))) — native-tier
             // constructs only, so it precompiles; render parity is pinned by ForTests.RangeForFixture….
             "range-for.heddle",
@@ -66,6 +77,11 @@ namespace Heddle.Generator.IntegrationTests
             // path — pinned by its runtime golden, not here.
             "regr-def-inner-comment.heddle",
             "regr-import-shell.heddle",
+            // Generator plan phase 2 WI1 (clamp drift): the indented last-line @<< import whose re-based chain
+            // overshoots the widened-away import line, and the library it imports. Both precompile — the overshoot
+            // page ONLY since the clamp fix; before it the emitter threw and silently degraded.
+            "shaper-clamp-imported.heddle",
+            "shaper-clamp-overshoot.heddle",
             "streaming-large.heddle",     // phase 8 fixture: pure static → precompiles (dynamic tier)
             "streaming-unicode.heddle",   // phase 8 fixture: static + dynamic @(Name)/@(City) → precompiles
             // TryCompile-parity fixtures: a parent with a @partial call site of the child, the static child itself,

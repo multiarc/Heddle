@@ -99,3 +99,34 @@ The gate every spec runs before merge, in one combined invocation:
 - Tests are exempt from DRY pressure (see
   [coding standards](coding-standards.md#dry-applied)): repeat setup where it makes a
   failing test diagnosable at a glance.
+
+## Precompiled-tier posture
+
+> Added by [ledger entry E8](../records.md#cross-spec-amendments-ledger) (generator ↔ engine
+> code-sharing program, phase 0). Normative for every spec whose work touches the source
+> generator, the precompiled registry, or the resolver.
+
+The precompiled tier and the dynamic engine render byte-identical output *by design*, so a
+precompiled→dynamic fallback is invisible in output. A test that does not pin the tier is
+therefore not evidence about the tier it claims to test — two shipped drifts (the content-hash
+input mismatch and the nested/generic AQN mismatch) reached release precisely that way. The rule:
+
+- **End-to-end precompiled tests pin the precompiled tier.** A test that renders real generator
+  output through registration → resolver → gauntlet runs under
+  `TemplateOptions.PrecompiledMismatchPolicy = Strict` **and** a fallback sentinel hooked onto
+  `PrecompiledTemplates.OnFallback`; any fallback raised during the test fails it. In the
+  generator integration suite the two guards are packaged as `FallbackGuard` /
+  `DifferentialHarness.RenderViaResolver`.
+- **Fallback is tested only where fallback is the subject, and the expectation is declared.**
+  A build-time degrade is declared with `DifferentialHarness.ExpectDegrade(gen, key)`; a
+  run-time fallback with `FallbackGuard.Expect(key, reason)`. Nothing else may fall back —
+  the complete set of tests that expect a fallback must stay enumerable by grepping those two
+  APIs.
+- **New feature areas contribute their templates to the gauntlet-crossing corpus** rather than
+  re-plumbing their own suites. Feature suites keep direct-invoke isolation (a red test points
+  at the emitter, not at five layers of plumbing); the corpus sweep carries the tier posture
+  for every template that precompiles, with at least one pass file-backed so the staleness /
+  content-hash path is exercised.
+- **A guarded fixture that fails because of a known, owned defect is quarantined, never
+  weakened.** Its `Skip` string names the owning work item and the defect, and the owning work
+  item un-skips it as acceptance evidence. An unexplained or orphaned skip is a review failure.

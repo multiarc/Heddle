@@ -2,7 +2,11 @@
 
 ## Header
 
-- **Status:** proposed — not started
+- **Status:** implemented (2026-07-25) — WI1–WI10 landed; see [Implementation record](#implementation-record).
+  All open questions were **resolved (user, 2026-07-25)** before implementation and are folded in
+  as committed scope; see the [open-questions register](open-questions.md) (entries Q4.1–Q4.3).
+  **No diagnostic ID was claimed** by this phase, as planned — degrading to the dynamic tier is the
+  writer's existing, documented reaction to an unsupported construct.
 - **Goal (one line):** One set of shared, Roslyn-free rule tables (numeric kinds, operator
   legality, member visibility, hop form, literal formatting, overload rank) under
   `src/Heddle/Language/**` so the generator's expression emitters and the runtime's
@@ -14,7 +18,8 @@
   (`src/Heddle.Generator/Heddle.Generator.csproj:50` — the `..\Heddle\Language\**\*.cs` glob,
   already proven by `ExprOperator` and the parse front end). Coordination points: **phase 3**
   co-owns the member-visibility core (this phase builds the core and adopts it in the runtime's
-  `MemberPathResolver`; phase 3 adopts it in `SymbolTypeResolver`) and the `NumericKind` tables
+  `MemberPathResolver`; phase 3 adopts it in `SymbolTypeResolver` — the joint Q4.1/Q3.1
+  visibility ruling is settled, so this adoption ordering is unblocked) and the `NumericKind` tables
   built here are consumed by **phases 1 and 3**; the `DynamicMember` routing (WI9) needs the
   manifest schema-version constants **phase 5** extracts (`PrecompiledSchema.cs`), so WI9 lands
   with or after phase 5's constants.
@@ -101,7 +106,7 @@ them into the generator with zero csproj edits, exactly as `ExprOperator` is lin
   (`src/Heddle/Runtime/Expressions/MemberPathResolver.cs:17-22`, verified) while the generator is
   a second source. This phase owns the core and the runtime `MemberPathResolver` adoption;
   phase 3 adopts it in `SymbolTypeResolver`. The *policy ruling* on which side's visibility
-  behavior is correct is OQ1.
+  behavior is correct is OQ1 (resolved: runtime observable behavior is normative).
 - `MemberHopRule.Form` ([04 F4](../research/generator-code-sharing/04-expression-writers.md)) —
   the three-branch null-safe hop decision (`Direct | NullConditional | NullDefaultConditional`)
   as one function, mapped to `Expression` trees by `ModelParameter` and to text by
@@ -119,14 +124,16 @@ them into the generator with zero csproj edits, exactly as `ExprOperator` is lin
   at `NativeExpressionWriter.cs:116-118` claims the consumer's compiler reproduces the runtime
   rank "by construction", and that claim is false — `min(1, 2u)` is a runtime ambiguity error
   (three non-dominated widening candidates) while C# happily picks `Min(long,long)` and renders.
-  Which semantics wins is OQ2.
+  Which semantics wins is OQ2 (resolved: Heddle's flat rank stays the semantics of record for
+  this phase; a committed evaluation of C#-betterness-in-runtime is WI10).
 - `PrecompiledRuntime.DynamicMember(object, string)` ([04 F8](../research/generator-code-sharing/04-expression-writers.md))
   — one public helper unifying the dynamic-binder context. Today the runtime binds dynamic hops
   in `Heddle`'s context (`typeof(DynamicParameter)`,
   `src/Heddle/Runtime/Parameters/DynamicParameter.cs:28`, verified) while generated `(dynamic)`
   code binds in the consumer assembly's context (`TemplateEmitter.cs:2150-2162`) — internal
   properties resolve on one side and not the other. Routing generated hops through the helper
-  makes the context choice exist once. Which context is *correct* is OQ3.
+  makes the context choice exist once. Which context is *correct* is OQ3 (resolved: the
+  runtime's Heddle-context binding is reproduced).
 
 ## Non-goals / scope boundary
 
@@ -136,7 +143,9 @@ them into the generator with zero csproj edits, exactly as `ExprOperator` is lin
   template whose tiers already agree renders differently. Any *widening* of behavior surfaced by
   OQ1–OQ3 (e.g. accepting `protected internal` getters, adopting C# betterness) is recorded as a
   candidate in the [breaking-windows register](../spec/common/breaking-windows.md), never done
-  here.
+  here. The Q4.2(b) betterness *evaluation* (WI10) is committed in this phase, but its output is
+  precisely such a register entry — adoption itself stays conditional on the evaluation's outcome
+  plus a breaking window, landed jointly on both tiers.
 - **No generator adoption of the member core in `SymbolTypeResolver`** — that is phase 3's work
   item, against the core this phase ships. This phase's generator-side member change is limited
   to what its own emit guard needs.
@@ -334,8 +343,8 @@ adopts the core in `MemberPathResolver.TryResolve`/`GetVisibleProperties` behind
 `ITypeModel` (making the "single source" doc claim at `MemberPathResolver.cs:17-22` true again);
 phase 3 adopts it in `SymbolTypeResolver.ResolvePath`/`FindProperty`. Until phase 3 lands, the
 accept/reject *policy* in `MemberVisibility` reproduces the runtime's current observable behavior
-(the OQ1 recommendation), so the runtime adoption is behavior-preserving except for the two
-error-shape fixes above. **Rationale:** fixes three live sandbox-contract divergences by
+(the OQ1 ruling, resolved user 2026-07-25), so the runtime adoption is behavior-preserving except
+for the two error-shape fixes above. **Rationale:** fixes three live sandbox-contract divergences by
 construction, in the one place the sandbox filter is documented to live
 ([docs/native-expressions.md](../native-expressions.md), sandbox section). **Alternative
 rejected:** fixing the six divergences point-wise in both resolvers — six paired edits with no
@@ -393,19 +402,32 @@ ambiguity or when any argument kind is `Unknown`; when it resolves uniquely, emi
 compiler to the same overload by making it an exact match — eliminating the class where C#
 betterness silently picks a different overload than Heddle's flat rank (verified false-claim
 comment at `NativeExpressionWriter.cs:116-118`; `min(1, 2u)` renders precompiled today but is a
-runtime ambiguity error). Subject to OQ2's ruling (the recommendation keeps Heddle's rank as the
-semantics of record, making this design final). **Rationale:**
+runtime ambiguity error). OQ2 is resolved (user, 2026-07-25): Heddle's flat Pareto rank stays
+the semantics of record, making this design final for this phase. **Rationale:**
 [04 F3](../research/generator-code-sharing/04-expression-writers.md) — the drift is currently
 masked for built-ins only by sample-based differential tests; cast-pinning makes the "by
 construction" claim actually true. **Alternative rejected:** degrading every multi-overload call
 — kills precompilation for `min`/`max`/`round` in common typed cases the ranker resolves fine.
+
+**Q4.2(b) amendment — committed betterness evaluation (WI10).** The OQ2 ruling additionally
+commits a follow-up evaluation: assess adopting the **C# native betterness schema in the runtime
+binder** — plus extra validations preserving Heddle's documented limitations (the spec's
+deviation set) — with the generator then matching **by construction** (direct emission; the
+cast-pin emit guard of this design mostly retired). The evaluation must quantify the behavioral
+delta: the set of calls that are ambiguous under the flat rank today but would bind under
+betterness, and any calls whose winning overload changes. If adoption is chosen, it is a
+breaking-window candidate landed **jointly** on both tiers; filing the entry in the
+breaking-windows next-window candidate register is a WI10 deliverable. Nothing in this phase
+changes runtime overload behavior — D10 as specified above ships regardless of the evaluation's
+outcome, and the shared `OverloadRank` core doubles as WI10's measurement instrument.
 
 ### D11 — `PrecompiledRuntime.DynamicMember` and the schema story (F8)
 
 A public static helper `PrecompiledRuntime.DynamicMember(object receiver, string name)` (in
 `src/Heddle/Precompiled/PrecompiledRuntime.cs`, XML-doc'd, thread-safe via an internal
 per-name-per-type bound-callsite cache) becomes the single implementation of a dynamic member
-hop; per OQ3's recommendation it reproduces `DynamicParameter`'s exact semantics — null receiver
+hop; per the OQ3 ruling (resolved user, 2026-07-25) it reproduces `DynamicParameter`'s exact
+semantics — null receiver
 propagates null, binder context is the `Heddle` assembly (`DynamicParameter.cs:21-44`). The
 generator's `WriteDynamicPath` (`TemplateEmitter.cs:2150-2162`) changes from the `(dynamic)` cast
 chain — which binds in the *consumer's* context and therefore sees internal members the runtime
@@ -425,6 +447,11 @@ that exists for exactly this. **Alternative rejected:** spec-note + corpus test 
 
 ## Dependencies & ordering
 
+- **Phase 0 posture (landed):** every test in this phase runs under the gauntlet-crossing guardrails — see the
+  [precompiled-tier posture](../spec/common/testing-standards.md#precompiled-tier-posture) rule. This phase's
+  fix-first group un-skips phase 0's quarantined `OverloadTie_ResolvesIdenticallyOnBothTiers` fixture (F3) as
+  acceptance evidence.
+
 Work items in implementation order. WI1 and WI2 are the fix-first group — independently
 shippable, in any order, before everything else. WI3+ follow the research area's ratified
 sequencing ([04 — suggested sequencing](../research/generator-code-sharing/04-expression-writers.md)).
@@ -436,10 +463,11 @@ sequencing ([04 — suggested sequencing](../research/generator-code-sharing/04-
 | WI3 | D4+F5: `Language/Expressions/OperatorLexeme.cs`; generator `BinarySymbol`/unary switch deleted, runtime `Symbol` delegates; supported-set test derived from the table | — |
 | WI4 | D5: `NumericKind` + `NumericTable`; `NumericPromotion` delegates; exhaustive lockstep test | — |
 | WI5 | D6: `NativeOperatorRules.Classify` + generator adoption (interim guard from WI2 deleted); runtime lockstep sweep; corpus entries re-pointed at the table | WI3, WI4 |
-| WI6 | D7+D8: `Language/Members/` core (`MemberAccess`, `MemberFacts`, `MemberVisibility`, `MemberPathWalk<TType>`, `MemberHopRule`); runtime `MemberPathResolver` + `ModelParameter`/`MemberPathWriter` adoption; visibility conformance corpus (shared data file, reflection side) | OQ1 ruling |
+| WI6 | D7+D8: `Language/Members/` core (`MemberAccess`, `MemberFacts`, `MemberVisibility`, `MemberPathWalk<TType>`, `MemberHopRule`); runtime `MemberPathResolver` + `ModelParameter`/`MemberPathWriter` adoption; visibility conformance corpus (shared data file, reflection side) | — (OQ1 ruling resolved 2026-07-25) |
 | WI7 | D9: `LiteralFormatter` relocation + `CSharpEscape`; round-trip test moves to the runtime suite; lone-surrogate corpus entry | WI1 |
-| WI8 | D10: `OverloadRank` shared core; runtime delegation + lockstep; generator cast-pinned emit guard; `min(1, 2u)` corpus entry | WI4, OQ2 ruling |
-| WI9 | D11: `DynamicMember` helper (API first), then generator routing behind the schema bump; internal-property corpus entry | OQ3 ruling; phase 5's `PrecompiledSchema` constants for the routing step |
+| WI8 | D10: `OverloadRank` shared core; runtime delegation + lockstep; generator cast-pinned emit guard; `min(1, 2u)` corpus entry | WI4 (OQ2 ruling resolved 2026-07-25) |
+| WI9 | D11: `DynamicMember` helper (API first), then generator routing behind the schema bump; internal-property corpus entry | Phase 5's `PrecompiledSchema` constants for the routing step (OQ3 ruling resolved 2026-07-25) |
+| WI10 | Q4.2(b) evaluation (per the D10 amendment): feasibility + behavioral-delta assessment of C# native betterness in the runtime binder, with extra validations preserving the documented deviation set; quantified delta report (ambiguous-today calls that would bind under betterness; any changed overload picks); filed entry in the breaking-windows next-window candidate register. Analysis-only — no code change; adoption is conditional on the outcome + a jointly-landed breaking window | WI8 (the shared ranker is the measurement instrument) |
 
 Cross-phase edges:
 
@@ -447,8 +475,9 @@ Cross-phase edges:
   `TemplateEmitter.cs:1567-1624`) and WI7's `CSharpEscape` (via `PieceWriter`); nothing in phase 1
   blocks this phase.
 - **Phase 3** consumes WI4 and adopts WI6's core in `SymbolTypeResolver` (including the
-  full-name `[Hidden]` fix at `SymbolTypeResolver.cs:229`); the OQ1 ruling must be jointly
-  ratified before either side's adoption lands, so the two adapters encode one policy.
+  full-name `[Hidden]` fix at `SymbolTypeResolver.cs:229`); the joint OQ1/Q3.1 ratification is
+  settled (user, 2026-07-25 — runtime behavior normative), so the two adapters encode one policy
+  and either side's adoption may land in its planned order without waiting on a ruling.
 - **Phase 5** owns the `PrecompiledSchema.cs` constants extraction; WI9's routing step lands with
   or after it and shares its schema-version bump.
 
@@ -476,7 +505,7 @@ the precompiled parity contract (precompiled output must match runtime output by
   lockstep test; goldens byte-identical; the regression gate's grammar-stability check applies
   (no grammar change licensed).
 - **WI6 (member core, runtime adoption).** Accept/reject behavior preserved under the OQ1
-  recommendation. Two deliberate error-shape changes: static-property access becomes a positioned
+  ruling. Two deliberate error-shape changes: static-property access becomes a positioned
   property-not-found instead of an unpositioned `ArgumentException`
   (`ModelParameter.cs:41`), and `new`-shadowed lookups resolve most-derived instead of possibly
   throwing `AmbiguousMatchException`. Both convert crashes into the documented diagnostic surface
@@ -490,6 +519,11 @@ the precompiled parity contract (precompiled output must match runtime output by
   changes occur only for internal-property dynamic hops, where the two tiers currently disagree —
   parity restoration again. The schema bump itself is phase 5's coordinated change and is
   additive for hosts (fallback, never failure).
+- **WI10 (betterness evaluation).** Analysis-only: no code, byte, or behavior change in this
+  phase. Its deliverables are the quantified behavioral-delta report and a breaking-windows
+  next-window candidate register entry; actual adoption, if chosen, is a separate breaking-window
+  change landed jointly on both tiers under that register's process — never as part of this
+  phase.
 
 ## Risks & mitigations
 
@@ -497,7 +531,7 @@ the precompiled parity contract (precompiled output must match runtime output by
 | --- | --- | --- |
 | The interim guard (WI2) over-degrades a hot expression shape in real templates (precompilation-coverage regression, e.g. an export-function call inside a comparison) | The whitelist is data in the supplement and reviewed against the differential corpus + existing test templates before merge; built-in calls with uniform return types stay emittable; WI5 restores coverage with the real table; benchmark gate quantifies the interim cost | M |
 | The classification table (WI5) encodes a deviation wrongly — guard passes something divergent or blocks something identical | The runtime lockstep sweep asserts table-verdict ↔ actual-compiler-outcome agreement over a generated kind-lattice sample; each of the seven deviations has a named differential corpus entry; the table rows cite the runtime dispatch lines they encode | M |
-| Runtime `MemberPathResolver` adoption (WI6) silently changes accept/reject for some reflection corner (e.g. generic base properties, explicit interface implementations) | Adoption is behind the visibility conformance corpus (shared `(type, member, expected)` data file run against the reflection adapter) plus the full existing member-tier suite on all TFMs incl. `net48`; the OQ1 recommendation pins "reproduce current runtime behavior" as the acceptance bar | M |
+| Runtime `MemberPathResolver` adoption (WI6) silently changes accept/reject for some reflection corner (e.g. generic base properties, explicit interface implementations) | Adoption is behind the visibility conformance corpus (shared `(type, member, expected)` data file run against the reflection adapter) plus the full existing member-tier suite on all TFMs incl. `net48`; the OQ1 ruling pins "reproduce current runtime behavior" as the acceptance bar | M |
 | Shared files break the netstandard2.0/no-Roslyn constraint accidentally (a `using` slips in) | Shared files compile in the runtime's netstandard2.0 target by construction (they live in `src/Heddle/`); the generator build fails on any Heddle-runtime-type reference; review checklist item per file | S |
 | Cast-pinned emission (WI8) changes arithmetic results where the cast itself converts (e.g. `min(1, 2u)` → `min((long)1, (long)2u)`) | That conversion is exactly the runtime's `ConvertTo` behavior for the chosen overload (`NativeExpressionCompiler.cs:526-546`) — pinning reproduces it; the differential corpus overload-tie entries assert precompiled == runtime for resolvable cases and degraded-for-ambiguous cases | S |
 | `DynamicMember` routing ships without the schema gate and faults on older runtimes | WI9 is split: helper API first, routing only lands with phase 5's schema constants and bump; the plan's ordering makes the unsafe combination unbuildable | S |
@@ -554,6 +588,13 @@ Measurable, checkable statements a spec can turn into tests.
       identically precompiled vs runtime; a precompiled assembly with the bumped schema loaded by
       an older-schema runtime falls back with the existing `SchemaVersionUnsupported` reason and
       renders correctly.
+- [ ] The Q4.2(b) betterness evaluation (WI10) is delivered: a written assessment of adopting
+      the C# native betterness schema in the runtime binder (with the extra validations
+      preserving the documented deviation set), quantifying the behavioral delta — the set of
+      calls ambiguous under the flat rank today that would bind under betterness, and any calls
+      whose winning overload changes — plus a filed entry in the breaking-windows next-window
+      candidate register. Runtime overload behavior in this phase is unchanged; adoption itself
+      remains conditional on the evaluation's outcome and a jointly-landed breaking window.
 - [ ] Regression gate per testing standards: full solution build, full test suite on all TFMs,
       goldens byte-identical outside the spec-backed changes above, grammar-stability check
       clean, benchmarks run for WI2/WI5 (render path) with no allocation increase.
@@ -568,8 +609,8 @@ Measurable, checkable statements a spec can turn into tests.
 | Model type with a user-defined implicit conversion used in a binary | Degrades; no consumer-compiler conversion is consulted; outputs byte-identical |
 | `@(min(1, 2u))` with the default registry | Generator degrades (shared ranker reports a 3-way non-dominated tie); runtime raises its ambiguity error — same verdict both tiers; `@(min(1, 2))` resolves, emits cast-pinned, renders identically |
 | A `double` literal whose shortest form doesn't survive `"R"` on .NET Framework, built on a `net48` msbuild host | Generated literal re-parses to the identical bit pattern; precompiled output equals runtime output; round-trip test covers the value class |
-| A model with an `internal` property reached through a dynamic hop | After WI9: both tiers resolve through `DynamicMember` with one binder context — identical result; before WI9: corpus entry documents the divergence as a known-fail pinning the OQ3 decision |
-| A model whose property getter is `protected internal` | Both tiers give the OQ1-ruled verdict (recommendation: both reject with the property-not-found diagnostic); conformance corpus row proves the reflection adapter; phase 3 flips the generator row |
+| A model with an `internal` property reached through a dynamic hop | After WI9: both tiers resolve through `DynamicMember` with one binder context — identical result; before WI9: corpus entry documents the divergence as a known-fail pinning the OQ3 ruling |
+| A model whose property getter is `protected internal` | Both tiers give the OQ1-ruled verdict (ruling: both reject with the property-not-found diagnostic); conformance corpus row proves the reflection adapter; phase 3 flips the generator row |
 | A template using a static property in a member path | Positioned property-not-found diagnostic from the runtime (no `ArgumentException`); generator (post phase-3) reports the twin diagnostic instead of emitting CS0176-bound code |
 | A `char` literal containing a lone surrogate | Emitted as `\uXXXX`; generated source compiles; renders identically in both tiers |
 | A new `ExprOperator` enum member added without touching the tables | The derived-set test and the classification-table completeness test both fail — the four-touch-point drift of F5 is structurally impossible |
@@ -577,53 +618,62 @@ Measurable, checkable statements a spec can turn into tests.
 
 ## Open questions
 
-Three genuine behavior decisions, as flagged by the research; each carries a recommendation this
-plan is written against. They are plan-level maintainer rulings — the spec must close them as
-decision records.
+**None remain open.** All three questions are resolved (user, 2026-07-25) and recorded in the
+[open-questions register](open-questions.md) as Q4.1–Q4.3; the spec closes them as decision
+records. The entries below preserve each question's context and record the ruling as folded
+into this plan.
 
 **OQ1 — Member-visibility policy: which side is correct?** ([04 F1](../research/generator-code-sharing/04-expression-writers.md);
-co-owned with phase 3.) The runtime rejects `protected internal` getters
-(`getter.IsAssembly || getter.IsPublic`, `MemberPathResolver.cs:123` — `IsAssembly` is false for
-`FamilyOrAssembly`), does not surface inherited non-public or base-interface members through
-`Type.GetProperty`, and matches `[Hidden]` by real attribute type; the generator accepts
+register Q4.1, joint with Q3.1 — co-owned with phase 3.) The runtime rejects `protected internal`
+getters (`getter.IsAssembly || getter.IsPublic`, `MemberPathResolver.cs:123` — `IsAssembly` is
+false for `FamilyOrAssembly`), does not surface inherited non-public or base-interface members
+through `Type.GetProperty`, and matches `[Hidden]` by real attribute type; the generator accepts
 `ProtectedOrInternal` (`SymbolTypeResolver.cs:224-225`), walks bases and `AllInterfaces`, and
-matches `[Hidden]` by unqualified name. The runtime's doc comment claims to be the single source
-of these semantics; [docs/native-expressions.md](../native-expressions.md) defines the sandbox as
-"the member-tier visibility and `[Hidden]` filter" without enumerating the corners.
-**Recommendation:** rule the runtime's observable accept/reject behavior normative for every
-divergence — it is the shipped sandbox boundary that existing renders depend on, and narrowing
-beats widening for a security filter; the generator (phase 3) conforms downward. Error-shape
-fixes (statics → positioned not-found, shadowing → deterministic most-derived) are in scope now
-as crash-to-diagnostic corrections; any *widening* (accepting `protected internal` per a
-plain-English reading of "public-or-internal", surfacing base-interface members) goes to the
-breaking-windows candidate register with a spec-wording update, not into this phase. The ruling
-must be recorded once and encoded once, in `MemberVisibility.IsAccessible`.
+matches `[Hidden]` by unqualified name.
+**Resolved (user, 2026-07-25): use runtime behavior** — the recommendation is confirmed. The
+runtime's observable accept/reject behavior is normative for every divergence; the generator
+(phase 3) conforms downward. The joint ratification with phase 3 is settled, unblocking the
+`MemberVisibility`-core adoption ordering (WI6 here; phase 3's `SymbolTypeResolver` adoption).
+Error-shape fixes (statics → positioned not-found, shadowing → deterministic most-derived) stay
+in scope as planned, as crash-to-diagnostic corrections; any *widening* (accepting
+`protected internal` per a plain-English reading of "public-or-internal", surfacing
+base-interface members) goes to the breaking-windows candidate register with a spec-wording
+update, not into this phase. The ruling is recorded once (the register) and encoded once, in
+`MemberVisibility.IsAccessible`.
 
 **OQ2 — Overload-selection semantics: Heddle flat rank or C# betterness?**
-([04 F3](../research/generator-code-sharing/04-expression-writers.md).) The runtime's rank vector
-is flat (all widenings rank 1, `NativeExpressionCompiler.cs:507-517`), so several
-widening-reachable candidates tie into an ambiguity error where C# betterness picks the closest
-target (`min(1, 2u)`). The published docs promise only "exact match over widening over boxing"
-([docs/native-expressions.md](../native-expressions.md), registered-functions section) — the flat
-rank satisfies the documented contract. **Recommendation:** keep Heddle's flat Pareto rank as the
-semantics of record; the shared `OverloadRank` core encodes it, the generator conforms via
-degrade-on-ambiguity + cast-pinned emission (D10). Adopting C# betterness instead would change
-runtime behavior (ambiguity errors becoming silent picks) — a behavior change that belongs in the
-breaking-windows register if ever wanted, and it would re-couple Heddle semantics to C#'s exactly
-where this initiative decouples them.
+([04 F3](../research/generator-code-sharing/04-expression-writers.md); register Q4.2.) The
+runtime's rank vector is flat (all widenings rank 1, `NativeExpressionCompiler.cs:507-517`), so
+several widening-reachable candidates tie into an ambiguity error where C# betterness picks the
+closest target (`min(1, 2u)`). The published docs promise only "exact match over widening over
+boxing" ([docs/native-expressions.md](../native-expressions.md), registered-functions section) —
+the flat rank satisfies the documented contract.
+**Resolved (user, 2026-07-25), in two parts.** (a) The near-term posture is confirmed unchanged:
+the runtime keeps its flat Pareto rank as the semantics of record; the shared `OverloadRank`
+core encodes it, and the generator conforms via degrade-on-ambiguity + cast-pinned emission
+(D10). (b) A **committed evaluation work item** (WI10, per the D10 amendment): assess adopting
+the C# native betterness schema in the *runtime* binder — plus extra validations preserving
+Heddle's documented limitations (the spec's deviation set) — with the generator then matching by
+construction (direct emission; the cast-pin guard mostly retired). The evaluation must quantify
+the behavioral delta (calls ambiguous today that would bind under betterness; any overload picks
+that change); if adoption is chosen it is a breaking-window candidate landed **jointly** on both
+tiers, and filing the next-window candidate register entry is a WI10 deliverable. Adoption is
+conditional on the evaluation's outcome plus a window; this phase changes no runtime overload
+behavior.
 
 **OQ3 — Dynamic-binder context: whose visibility does the dynamic tier use?**
-([04 F8](../research/generator-code-sharing/04-expression-writers.md).) The runtime binds with
-`typeof(DynamicParameter)` — `Heddle`'s context, so a consumer-assembly `internal` property is
-invisible; generated `(dynamic)` code binds in the consumer's context, where it is visible. A
-secondary tension: the *typed* tier's reflection filter accepts `internal` getters regardless of
-assembly, so no single existing behavior is fully self-consistent. **Recommendation:**
-`DynamicMember` reproduces the runtime tier's current behavior (bind in `Heddle`'s context,
-null-propagating), because cross-tier parity with the shipped fallback path is the contract this
-phase restores; the typed-vs-dynamic visibility asymmetry is documented in the helper's XML docs
-and filed as a spec-clarification candidate alongside OQ1's register entry. Sub-decision folded
-in: routing is schema-gated (D11) rather than emitted unconditionally — ratifying the
-recommendation ratifies the gate.
+([04 F8](../research/generator-code-sharing/04-expression-writers.md); register Q4.3.) The
+runtime binds with `typeof(DynamicParameter)` — `Heddle`'s context, so a consumer-assembly
+`internal` property is invisible; generated `(dynamic)` code binds in the consumer's context,
+where it is visible. A secondary tension: the *typed* tier's reflection filter accepts
+`internal` getters regardless of assembly, so no single existing behavior is fully
+self-consistent.
+**Resolved (user, 2026-07-25): reproduce runtime behavior** — the recommendation is confirmed.
+`PrecompiledRuntime.DynamicMember` reproduces the runtime tier's current behavior (bind in
+`Heddle`'s context, null-propagating); the typed-vs-dynamic visibility asymmetry is documented
+in the helper's XML docs and filed as a spec-clarification candidate alongside OQ1's register
+entry. The folded sub-decision stands ratified with it: routing is schema-gated (D11) rather
+than emitted unconditionally.
 
 ## External grounding
 
@@ -647,3 +697,193 @@ recommendation ratifies the gate.
 | Tier model, live-drift table rows 4/5/9/14, cross-area layout and sequencing | [07 — recommendations](../research/generator-code-sharing/07-recommendations.md) |
 | Fix-forward vs breaking-window rules; golden-change policy; test/gate requirements | [breaking-windows.md](../spec/common/breaking-windows.md), [coding-standards.md](../spec/common/coding-standards.md), [testing-standards.md](../spec/common/testing-standards.md) |
 | `G17`/`G9` round-trip guarantee vs `"R"` unreliability on .NET Framework | Microsoft Learn — standard numeric format strings ("R" remarks; G17/G9 round-trip guidance) |
+
+## Implementation record
+
+Landed 2026-07-25. `dotnet build Heddle.sln -c Debug` green; `dotnet test Heddle.sln -c Debug` green —
+**3814 passed, 0 failed, 6 skipped** (the three remaining phase-1/3/3 quarantined fixtures × 2 TFMs).
+Phase 0's `OverloadTie_ResolvesIdenticallyOnBothTiers` fixture is **un-skipped and green**, this phase's
+acceptance evidence for the F3 drift.
+
+### Where the work landed
+
+| WI | Files |
+| --- | --- |
+| WI1 | `LiteralFormatter.Format` uses `G9`/`G17`, never `"R"`; `ExpressionAstBuilder.DecodeInteger`/`DecodeReal`/`Negate` widened to `internal` so the decoder half of the inverse pair is directly testable; new `src/Heddle.Tests/LiteralRoundTripTests.cs` (fixed-seed randomized + enumerated corners, on the `net48` leg after WI7's relocation) |
+| WI2 | Superseded by WI5 — see *Not implemented*. Its differential-corpus half landed in full: new `src/Heddle.Generator.IntegrationTests/OperatorGuardDifferentialTests.cs` + the `Order`/`Money`/`OrderStatus`/`OrderFlags` fixtures in `Fixtures/Models.cs` |
+| WI3 | new `src/Heddle/Language/Expressions/OperatorLexeme.cs`; generator `BinarySymbol` and the inline unary switch deleted; runtime `Symbol` deleted (`FailBinary` calls `ForBinary`); new `src/Heddle.Tests/OperatorLexemeTests.cs` (derived-set + three-legacy-copy pin) |
+| WI4 | new `src/Heddle/Language/Expressions/NumericKind.cs` (`NumericKind` + `NumericTable`); `NumericPromotion` reduced to a `Type`-keyed façade; new `src/Heddle.Tests/NumericTableLockstepTests.cs` (exhaustive 13×13, legacy body transcribed) |
+| WI5 | new `src/Heddle/Language/Expressions/OperandKind.cs` and `NativeOperatorRules.cs`; new `src/Heddle.Generator/Binding/SymbolFacts.cs` (Roslyn facts adapter); `NativeExpressionWriter` gains the memoized `Estimate` walk and guards `WriteBinary`/`WriteUnary`/`WriteTernary` on `Classify`; new `src/Heddle.Tests/NativeOperatorRulesTests.cs` (structural completeness + the seven deviations as data + the compile-it-for-real lockstep sweep) |
+| WI6 | new `src/Heddle/Language/Members/` (`MemberFacts.cs`, `MemberPathWalk.cs`, `MemberHopRule.cs`); `MemberPathResolver` rewritten over `ReflectionTypeModel` + `MemberPathWalk`; `ModelParameter.BuildNullSafePropertyChain` and generator `MemberPathWriter.Write` both branch on `MemberHopRule.Form`; new `src/Heddle.Tests/MemberVisibilityConformanceTests.cs` (the shared conformance corpus, reflection side) |
+| WI7 | `LiteralFormatter` relocated to `src/Heddle/Language/Expressions/LiteralFormatter.cs` (generator copy + `EscapeChar` deleted, `TemplateEmitter`/`NativeExpressionWriter` call sites re-pointed); new `CSharpEscape.cs`; `PieceWriter.Escape`/`HasLoneSurrogate` delegate; round-trip test moved into the runtime suite; new `src/Heddle.Tests/CSharpEscapeTests.cs` and the lone-surrogate corpus entries in `LiteralAndDynamicHopTests.cs` |
+| WI8 | new `src/Heddle/Language/Expressions/OverloadRank.cs`; `NativeExpressionCompiler`'s `ConversionRank`/`TryRank`/`Dominates`/`BindTier` replaced by delegation through `ReflectionRankModel`; new `src/Heddle.Generator/Binding/DefaultFunctionBinder.cs` (name-keyed rank model + cast-pinned emission); `WriteCall` binds through it; new `src/Heddle.Tests/OverloadRankLockstepTests.cs`; the quarantined fixture un-skipped |
+| WI9 | `PrecompiledRuntime.DynamicMember` (public, XML-doc'd, per-name call-site cache); `PrecompiledSchema` bumped to 3 with `DynamicMemberRoutingSchemaVersion` + `EmitsDynamicMemberRouting`; `TemplateEmitter.WriteDynamicPath` routes through the helper behind that gate; new `src/Heddle.Tests/DynamicMemberTests.cs`, corpus entries in `LiteralAndDynamicHopTests.cs`, schema pins updated in `PipelineContractTests`/`PrecompiledRegistryTests` |
+| WI10 | new `src/Heddle.Tests/OverloadBetternessEvaluationTests.cs` (the measurement instrument and the quantified pin); three filed rows in the [next-window candidate register](../spec/common/breaking-windows.md#next-window-candidate-register) — betterness adoption, member-visibility widening, and the dynamic-vs-typed visibility asymmetry |
+
+### The two fix-group bugs
+
+- **WI1 — `ToString("R")`.** The bug is not "R is wrong on modern .NET"; it is that the generator runs
+  *inside the compiler process*, and under a .NET Framework host (VS, the desktop `VBCSCompiler`) `"R"`
+  is the documented non-round-tripping format for `double`. The runtime never re-formats — the native
+  compiler keeps the decoder's boxed value — so the *same template* could compute a different value
+  precompiled than at run time depending on which machine built it. Fixed to `G17`/`G9` and pinned by a
+  decoder↔formatter round-trip property (fixed seed, 60 000 randomized values plus enumerated corners),
+  which lives in the runtime suite and therefore runs on the `net48` leg. **Literal text that changes:**
+  every `float`/`double` whose shortest round-trippable form is shorter than its exact 9/17-significant-digit
+  expansion — `0.1D` → `0.10000000000000001D`, `0.3D` → `0.29999999999999999D`, `(1.0/3)` →
+  `0.33333333333333331D`, `double.Epsilon` → `4.9406564584124654E-324D`, `0.1F` → `0.100000001F`,
+  `1E+30F` → `1.00000002E+30F`, `float.MaxValue` → `3.40282347E+38F`. Values whose shortest form already
+  has the full digit count are unchanged (`1.5`, `1000`, `1E+30D`, `double.MaxValue`). No golden or
+  snapshot moved: no fixture carries a real literal.
+- **WI2/WI5 — unguarded binary emission.** `WriteBinary` emitted `(left op right)` consulting no operand
+  types at all, so the seven documented deviations broke in two opposite directions simultaneously:
+  mixed/unrelated equality produced **CS0019 in the consumer's build** for a template the runtime
+  accepts, while enum arithmetic and `enum & 0` produced valid C# that *renders* where the runtime
+  raises a positioned error. Fixed by guarding every binary/unary/ternary emission on
+  `NativeOperatorRules.Classify` and degrading on anything but `Supported`. Pinned by
+  `OperatorGuardDifferentialTests` (one named entry per deviation, each asserting the template degrades
+  *and* that the consumer project compiles) plus `NativeOperatorRulesTests`' lockstep sweep, which
+  compiles every operator × operand pair for real and checks the table predicted the outcome.
+
+### The overload-tie fixture, before and after
+
+Before: `@(min(1, 2u))` precompiled and rendered `1`, while the dynamic tier rejected the identical
+template with HED1013 — the two tiers disagreed about whether the template was even legal. The fixture
+asserted `Assert.Equal(dyn, precompiled)` through `DifferentialHarness.Render`.
+
+After: both tiers reject it. The shared `OverloadRank` core scores `(long,long)`, `(double,double)` and
+`(decimal,decimal)` at `(1,1)` — the flat rank — leaving a three-way non-dominated front, so
+`DefaultFunctionBinder.TryBind` returns null and the emitter degrades; the dynamic tier then raises its
+own HED1013. The fixture body had to change shape, and deliberately got **stronger**: a template both
+tiers reject has no rendered bytes for the original equality to compare, so it now asserts the
+conjunction the drift actually needed — build-time degrade **and** the runtime's HED1013 (verdict
+identity) — plus a resolvable neighbour, `@(min(1, 2))`, that still precompiles and renders
+byte-identically, proving the guard resolves rather than blanket-degrades.
+
+### Divergences found per extracted table
+
+| Table | Divergence found pre-unification | Normative side, and why |
+| --- | --- | --- |
+| Numeric kinds (WI4) | **None.** The runtime's `Type`-keyed table and the generator's `SpecialType`-keyed twin agreed entry-for-entry, exactly as [04 F7](../research/generator-code-sharing/04-expression-writers.md) reported. The real gap was asymmetric *coverage*: `TryPromote`/`UnaryPromote` had no generator counterpart at all, which is why F2 existed | Neither — the agreement was pinned before it could rot (exhaustive 13×13 lockstep) |
+| Operator legality (WI5) | Total: the generator had **no** table. Building one surfaced two rules neither side had written down — `bool == bool?` is HED1008 in the runtime (not lifted), and `bool & bool?` reaches `Expression.And` unguarded and surfaces as an unpositioned "Error while compiling" | Runtime; both rows are `NotDefined` so the generator degrades. The unguarded `bool`/`bool?` bitwise throw is a **runtime defect left in place** — it is contained (it still surfaces as a compile error) and fixing it is a diagnostic-shape change outside this phase's scope |
+| Member visibility (WI6) | All six from [04 F1](../research/generator-code-sharing/04-expression-writers.md): `protected internal` accepted by the generator and rejected by the runtime; inherited non-public and base-interface members visible only to the generator; statics crashing differently on each tier; `[Hidden]` matched by unqualified name in the generator; `new`-shadowing throwing `AmbiguousMatchException` in the runtime | Runtime (OQ1). The narrower sandbox is normative and the policy now exists once, in `MemberVisibility.IsAccessible`; the widenings are filed as window candidates. Two error-shape fixes shipped anyway (statics → positioned not-found, shadowing → deterministic most-derived) because they convert crashes into the documented diagnostic surface |
+| Hop form (WI8/D8) | **None** — the equivalence argument the two doc comments made about each other was sound. It is now shared code rather than an argument; existing goldens are the proof | Neither; byte-neutral by construction |
+| Literal formatting (WI1/WI7) | `"R"` vs the round-trip requirement (WI1), and **three** disagreeing escape tables in one assembly: `EscapeChar` lacked `\a \b \f \v`, `PieceWriter.Escape` lacked `\'`, and neither guarded a lone surrogate in a literal | The *decoder* is normative — the formatter is defined as its inverse, so the fix is whatever makes `decode(format(v)) == v` |
+| Overload rank (WI8) | The generator had no ranker at all; it emitted the call and let the consumer's C# compiler choose. The `NativeExpressionWriter.cs:116-118` comment claiming the C# result reproduces the runtime rank "by construction" was **false** — flat rank vs betterness | Runtime (OQ2). Cast-pinned emission now makes the "by construction" claim actually true for the calls the shared ranker resolves |
+
+**Where `docs/native-expressions.md` disagreed with both implementations:** one place, and it matters
+for how the deviation-1 corpus entry is written. The spec's deviations list says `==`/`!=` on
+"unrelated reference/mixed types compiles to a total, null-safe `object.Equals`". The runtime's
+`object.Equals` fallback is guarded by `IsReferenceish(left) && IsReferenceish(right)`, so it applies to
+unrelated **reference** pairs only — a genuinely *mixed* pair such as `string == int` is HED1008 on both
+tiers, not `object.Equals`. The plan inherited the spec's wording in its validation-scenario row
+("precompiled and runtime renders byte-identical, runtime `object.Equals` semantics"), which is not what
+the shipped runtime does for that example. The corpus therefore carries **both** entries —
+`Name == Count` (mixed → both tiers reject) and `Maker == Where` (unrelated references → both tiers
+render `False` via `object.Equals`) — and the spec sentence wants a wording fix in a later docs pass.
+
+### The Q4.2(b) betterness evaluation (analysis only — no code, byte or behavior change)
+
+Measured with the shared ranker as the instrument (`OverloadBetternessEvaluationTests`), over the
+shipped built-in table's all-numeric overload groups (`abs`, `min`, `max`, `round`), across every
+argument combination drawn from the twelve numeric primitives — 480 combinations:
+
+| Outcome | Count |
+| --- | --- |
+| Bind identically today and under betterness | 220 |
+| **Ambiguous today, would bind under betterness** | **82** |
+| Ambiguous under both schemas | 62 |
+| **Bind today but to a different overload under betterness** | **0** |
+| No applicable overload on either schema | 116 |
+
+**Findings.** (1) Over the shipped table, betterness is a pure *widening*: not one call that binds today
+would bind to a different overload, so **no rendered byte changes for any template that compiles today**
+— the risk the evaluation was commissioned to size is, for the built-ins, zero. (2) The 82 newly-binding
+combinations are entirely sub-`int` and unsigned arguments — `abs(byte)`, `min(sbyte, uint)`,
+`round(float, short)` — i.e. exactly the shapes a template author writes by accident and currently gets
+an ambiguity error for. (3) Betterness does **not** eliminate ambiguity, only reduces it: 62
+combinations stay ambiguous because `double` and `decimal` are mutually non-convertible, so neither is
+the "closer" target (`min(ulong, int)` is the family). Any adoption still needs the ambiguity error and
+HED1013.
+
+**Recommendation: adopt, but only inside a ratified window, and jointly on both tiers.** It is a
+strict-widening quality-of-life win with a zero-byte blast radius on first-party built-ins, but it *is*
+a widening — templates that error today would start rendering, and that acceptance can never be
+withdrawn — and it cannot be measured the same way for host-registered overload sets, where an arbitrary
+signature set can produce a different winner. Two things must land with it: explicit validations for
+deviations 4–7, whose enforcement the flat rank currently gets for free from ambiguity errors, and a
+decision on the residual `double`/`decimal` ambiguity's wording. Filed accordingly in the next-window
+candidate register; runtime overload behavior is unchanged by this phase.
+
+### Byte-neutrality evidence
+
+One combined run: the corpus differential, corpus render-parity, and the phase-0 gauntlet-crossing
+**resolver sweep** are unchanged with **zero fallback events**; `CorpusDifferentialTests`' precompiled-set
+pin is unchanged, so no template lost precompilation to the operator guard or the overload guard; the
+golden corpus and `src/Heddle.Language/generated/` have no diff. Characterization pins were captured
+from the pre-extraction bodies and landed **before** each move (`NumericTableLockstepTests`,
+`OverloadRankLockstepTests`, `OperatorLexemeTests`, `CSharpEscapeTests` each carry a verbatim `Legacy*`
+transcription of the code they replaced) — no pin was hand-derived after the fact.
+
+Three goldens changed, each spec-backed and diff-reviewed:
+
+- the eight generator snapshots' `schemaVersion: 2` → `3` (WI9's D11 gate);
+- `Example4_DynamicTemplate`'s dynamic hop, from the inline `(dynamic)` cast chain to
+  `PrecompiledRuntime.DynamicMember` (the D11 shape change itself) — the **only** generated-code line
+  that moved in any snapshot;
+- the `Heddle` public-API surface, additively: `DynamicMember`, `DynamicMemberRoutingSchemaVersion`,
+  `EmitsDynamicMemberRouting`.
+
+### Corrections to this plan, recorded against source
+
+- **The plan's mixed-type-equality validation scenario is wrong about the shipped runtime.** See the
+  `native-expressions.md` note above: `@(Name == Count)` (string vs int) does not reach the
+  `object.Equals` fallback — both tiers reject it. The corpus carries both shapes so the deviation is
+  covered as it actually behaves.
+- **The interim guard (D3/WI2) was never landed**, because its whole purpose was to be shippable ahead
+  of WI3/WI4, and those shipped in the same landing. `NativeOperatorRules.Classify` (D6/WI5) is what
+  guards emission; WI2's other deliverable, the F2 differential corpus, landed in full. See
+  *Not implemented*.
+- **`OperandKind` cannot decide a ternary or `??` over reference operands**, contrary to the
+  supplement's "arms of identical category+kind+nullability → `Supported`" row: two *different*
+  reference types both present as `(Reference, None, false)`, so treating "identical descriptor" as
+  "identical type" would emit `c ? refA : refB` for operands with no common type. The implementation
+  restricts the `Supported` arm to `Numeric`/`Bool`/`String` and answers `RequiresRuntimeSemantics`
+  for `Reference`/`Other`/`Enum`. Same tightening for `??`.
+- **`MemberVisibility.IsAccessible` needed a second parameter.** The supplement's four-fact table cannot
+  express "an `internal` getter on a *base* class is not-found", which is reflection's actual behavior
+  and therefore normative under OQ1. The policy function takes `declaredOnReceiver` and the shared walk
+  supplies it, which is what keeps that rule a *rule* instead of an accident of which reflection
+  overload each side called.
+- **The lockstep sweep constrains two verdicts, not three.** The plan asked for
+  `Supported`/`RequiresRuntimeSemantics` → compiles. `RequiresRuntimeSemantics` is also the
+  degrade-on-doubt answer for operands whose behavior depends on user-defined operators the descriptor
+  does not carry, so it cannot promise the runtime compiles them. The sweep asserts `Supported` →
+  compiles and `NotDefined` → positioned error, and treats `RequiresRuntimeSemantics` as "do not emit",
+  which is the only claim the generator ever acts on.
+- **The generator's estimator improved on the plan's built-in rule.** D3 specified "a kind only when
+  every `DefaultFunctionTable` row for the name agrees on `ReturnTypeName`". Once WI8's ranker exists,
+  the *chosen overload's* return type is known, so `min(1, 2) > 0` precompiles where the planned rule
+  would have degraded it.
+- **Export calls keep resolving through the consumer's compiler.** `FunctionExportResolver` carries no
+  parameter-type metadata (only a container, a method name and an overload count), so the shared ranker
+  has nothing to rank. The cast-pin guard covers default built-ins only; closing the export half needs
+  phase 3's export signature discovery.
+- Line references verified accurate throughout, with one exception: the runtime `Symbol` copy sat at
+  `:1153-1175` as cited, but its `default:` arm was already unreachable — `FailBinary` is the only
+  caller and never sees a logical or coalesce operator, so deleting it changed no error text.
+
+### Not implemented
+
+- **D3 / WI2's interim emit guard** — deliberately, per the correction above. Nothing it would have
+  covered is uncovered: WI5's shared table is strictly stronger, and WI2's corpus half shipped.
+- **No runtime dispatch restructuring.** `NativeExpressionCompiler` still builds its `Expression` trees
+  by hand rather than dispatching *from* `NativeOperatorRules`; the lockstep sweep buys the drift
+  protection now, and dispatch unification can follow as its own mechanical change once the table has
+  soaked. This is what D6 planned.
+- **No generator adoption of the member core in `SymbolTypeResolver`** — phase 3's work item, against the
+  core this phase ships. The conformance corpus runs against the reflection adapter only; phase 3 runs
+  the same rows through the Roslyn adapter and flips its known deltas.
+- **No benchmark run for the emit guard's coverage cost.** The gate's cheaper proxy came out clean
+  instead: `CorpusDifferentialTests`' precompiled-set pin is unchanged, so no corpus template lost
+  precompilation and there is no measurable render-path delta to quantify.

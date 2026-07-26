@@ -2,7 +2,15 @@
 
 ## Header
 
-- **Status:** proposed — not started
+- **Status:** **implemented (2026-07-26)** — D1–D14 and WI1–WI13 landed; see
+  [Implementation record](#implementation-record). The program's last quarantined phase-0 fixture
+  (`NonLeftmostScopeChannelParticipant_ProvisionsLocalsOnBothTiers`) is **un-skipped, reshaped and
+  green**, so the quarantine register now carries **zero skips**. All four open questions were
+  resolved (user, 2026-07-25 — see the [open-questions register](open-questions.md)) and folded in.
+  Two diagnostics are claimed to this phase in the
+  [registry](../spec/common/cross-cutting-decisions.md#claimed-diagnostic-ids-registry): `HED7022`
+  (unknown `@profile` value, Error, D3) and `HED7024` (call-site fill of a private region, Error,
+  D7/Q1.3). `PrecompiledSchema` is bumped 4→5 for the per-carrier `BindDefinition` overload.
 - **Goal (one line):** Resolve research area 01's drift between `TemplateEmitter` and the runtime
   compile/render pipeline — three live bugs fixed first, then the area's genuinely-sharable rules
   extracted into linked shared sources and its spec-only rules pinned as data tables plus
@@ -16,9 +24,11 @@
 - **Changes an externally-visible contract:** yes, in three bounded ways. (1) Two parity-restoring
   fixes change rendered behavior/bytes of *affected precompiled templates* back to what the dynamic
   tier — the authoritative behavior — already produces (see *Back-compat / impact* for why this is
-  not window-gated). (2) One new build-time diagnostic (`HED70xx`, claimed at spec time per the
-  [registry rules](../spec/common/cross-cutting-decisions.md#claimed-diagnostic-ids-registry))
-  turns a silently-mis-precompiled template error into a build error. (3) Two additive public API
+  not window-gated). (2) Two new build-time diagnostics (`HED70xx` IDs, claimed at spec time per the
+  [registry rules](../spec/common/cross-cutting-decisions.md#claimed-diagnostic-ids-registry)):
+  one turns a silently-mis-precompiled `@profile` error into a build error, and one surfaces the
+  runtime's `HED5019` private-region-fill error as a matching build-time error (the Q1.3
+  match-principle ruling). (3) Two additive public API
   surfaces: a per-carrier `PrecompiledRuntime.BindDefinition` overload and a `[ZeroOutput]`
   attribute — both additive, existing signatures retained.
 
@@ -78,11 +88,13 @@ cited next to line numbers, which drift).
   owning phase.
 - **No change to the `maxRecursionCount` build-baked posture**
   ([01 F19](../research/generator-code-sharing/01-template-emitter.md)) — intentional per the
-  precompilation spec's D23; the options-fingerprint gap it leaves is recorded in *Open
-  questions*, not silently decided here.
+  precompilation spec's D23; the options-fingerprint gap it leaves is resolved in *Open
+  questions* (OQ1: the call is the precompilation spec's, and the default posture records the
+  divergence as intentional).
 - **No behavior change to correct templates.** Every extraction is byte-neutral by construction
   and gated on the existing snapshot/differential/golden suites; the only behavior deltas are the
-  three parity-restoring bug fixes, each individually called out in *Back-compat / impact*.
+  three parity-restoring bug fixes and WI6's region-fill error-surfacing alignment (the OQ3
+  ruling), each individually called out in *Back-compat / impact*.
 - **No new runtime render-path allocations.** Shared rule files run at compile/emit time only;
   the per-carrier locals fix strictly *reduces* over-provisioned frames relative to today's OR
   (see D2). The [coding standards' performance rules](../spec/common/coding-standards.md#performance-rules-the-render-path-is-hot)
@@ -244,26 +256,45 @@ and breaks on the next `CallParameter` carrier — replacing it now is a zero-by
 extraction that removes a booby trap. **Alternatives rejected:** none serious; this is the
 cheapest extraction in the area.
 
-#### D7 — `RegionFillResolver.cs`: shared matching, per-side reactions, materialization stays outside
+#### D7 — `RegionFillResolver.cs`: shared matching, runtime-matched reactions, materialization stays outside
 
 **Decision.** The resolver exposes one method that, given the caller context's candidates, the
 caller origin, and the callee `DefinitionItem`, yields per-candidate verdicts:
-`Matched(candidate, declaration, regionDefault)`, `ForeignOrigin` (skip), `Dangling`,
+`Matched(candidate, declaration, regionDefault)`, `ForeignOrigin`, `Dangling`,
 `PrivateRegion`, `DefaultMissing`. It performs no materialization —
 `DefinitionMaterializer.Materialize` (already shared) is invoked by each side on `Matched`.
 The emitter's `TryBuildGeneratorFillScope` loop (`TemplateEmitter.cs:1300-1339`, verified)
-becomes a thin adapter: `Matched` → materialize + mark consumed; any fault verdict → refuse to
-precompile with the existing reason strings. The runtime side keeps its current reaction
-(continue on dangling — `HeddleCompiler.BuildRegionFillScope`) and is adopted by **phase 2**;
-this phase only guarantees the shared file's API covers both reaction patterns. **Rationale.**
+becomes a thin adapter that reacts to each verdict **exactly as the runtime reacts** (the
+Q1.3/OQ3 match-principle ruling — the generator behaves as if it were part of the dynamic
+engine; `HeddleCompiler.BuildRegionFillScope`, `HeddleCompiler.cs:1686-1735`, verified):
+
+- `Matched` → retract the candidate's parse-emitted error, materialize, mark consumed — both
+  sides, unchanged.
+- `ForeignOrigin` and `Dangling` → skip (`continue`), leaving the candidate's parse-emitted
+  base-not-found error in place to surface through the generator's existing parse-diagnostic
+  forwarding exactly as it surfaces from the dynamic compile — **no refusal to precompile**;
+  this supersedes the earlier draft's "any fault verdict → refuse" posture.
+- `DefaultMissing` → skip, defensive, parse error left in place (the runtime's byte-identical
+  posture).
+- `PrivateRegion` → reproduce the runtime's retract-and-raise: the parse-emitted error is
+  retracted and a positioned build-time error matching `HED5019`'s message and anchoring
+  (`RetractCandidateError` + the `RegionNotPublic` raise, once per candidate) is emitted; the
+  generator-side twin ID is claimed at spec time per the registry rules (the `HED7017` twin
+  precedent — see D3).
+
+The runtime side's reactions are unchanged and normative; phase 2 adopts the shared resolver in
+`HeddleCompiler.BuildRegionFillScope`. **Rationale.**
 [01 F12](../research/generator-code-sharing/01-template-emitter.md): the byte-relevant
 materialization is already shared; the duplicated matching/precedence half is the drift surface.
-The verdict enum makes the intentional generator-strict/runtime-lenient asymmetry an explicit,
-reviewable divergence instead of two loops that happen to differ (whether the runtime *should*
-stay silent on a dangling candidate is recorded in *Open questions* — it is a runtime-owner
-call, not this phase's). **Alternatives rejected:** sharing reactions too (the asymmetry is
-intentional — "failed ⇒ don't precompile" vs. "compile and let the error surface" are
-per-tier policies, not one rule).
+The verdict enum now exists to make reaction *parity* reviewable and testable — a verdict
+theory asserts both sides map every verdict to the same outcome — rather than (as originally
+drafted) to document a generator-strict/runtime-lenient asymmetry; per the ruling, differences
+may legitimately exist only in warning channels the build tier lacks, and errors always match.
+**Alternatives rejected:** the original refuse-on-any-fault posture (superseded by the Q1.3
+ruling — refusal made the generator stricter than the engine it must match, and un-precompiling
+a template the runtime compiles is itself a divergence); sharing reaction *code* (the channels
+differ — compile-scope error lists vs. generator diagnostics — so reactions stay thin per-side
+adapters over one shared semantics).
 
 #### D8 — `CallTargetRules.cs`: the precedence order becomes one classifier both sides call
 
@@ -369,9 +400,11 @@ processor result with `as string ?? string.Empty` and concatenates in document o
 three-case shape); (3) the runtime's `NormalStrategy` piece-fallback (`?? element.Piece`) and
 its `DocumentStrategy`/full-optimize short-circuits are byte-equivalent optimizations, and any
 change to them or to the rail is a cross-tier contract change that must update this spec text
-and both implementations together — the `OutExtension` comment
-(`src/Heddle/Extensions/OutExtension.cs:128-133`, verified) already flags a planned rail change
-(non-string drop), which is exactly the change this pin exists to catch (see *Open questions*).
+and both implementations together — the **joint-land rule** ratified by the OQ2 ruling: the
+`OutExtension` comment (`src/Heddle/Extensions/OutExtension.cs:128-133`, verified) already flags
+a planned rail change (non-string drop), and when it ships the runtime rail and the emitted
+`Execute` shape change in the same landing, so the generated equivalent matches the dynamic
+engine at all times (see *Open questions*, resolved).
 New `StrategyShapeDifferentialTests` exercise the corners per the
 [test matrix](phase-1-template-emitter-test-matrix.md). The shared offset-walk *code* is
 phase 2's `DocumentShaping.cs`; when it lands, the emitter's walk consumes it and the spec text
@@ -435,10 +468,15 @@ are named in the [test matrix supplement](phase-1-template-emitter-test-matrix.m
   impact: none. Completion: `HasOutValue` exists once; slot fixtures byte-identical; the
   five-way theory passes against both call paths.
 - **WI6 — `RegionFillResolver.cs` (D7).** Files: new shared file; `TemplateEmitter.cs`
-  (`TryBuildGeneratorFillScope` becomes an adapter). Byte impact: none (verdict-to-reaction
-  mapping preserves current reason strings and refusal behavior). Completion: region/fill
-  suites (`RegionTests`, `CompositionTests`) green unchanged; verdict-enum unit theory covers
-  all five verdicts; phase 2 handoff note recorded in the spec.
+  (`TryBuildGeneratorFillScope` becomes an adapter with runtime-matched reactions);
+  `Diagnostics/GeneratorDiagnostics.cs` (the `HED5019`-twin descriptor), registry table row
+  (same change). Behavior impact: **yes — error-matching alignment per the OQ3 ruling**
+  (dangling/foreign-origin/default-missing candidates no longer refuse to precompile;
+  private-region fills error at build — see Back-compat). Byte impact: none for correct
+  templates. Completion: region/fill suites (`RegionTests`, `CompositionTests`) green
+  unchanged; verdict-enum theory asserts both sides' reactions match per verdict; the
+  dangling and private-region fixtures behave per the runtime (matrix); phase 2 handoff note
+  recorded in the spec.
 - **WI7 — `CallTargetRules.cs` (D8).** Files: new shared file; `TemplateEmitter.cs` (dispatch
   in `BuildCall`/`BuildChainItemExpr`); `HeddleCompiler.cs` (dispatch in `CompileItem`). Byte
   impact: none. Completion: precedence theory (definition-shadows-branch,
@@ -464,15 +502,27 @@ are named in the [test matrix supplement](phase-1-template-emitter-test-matrix.m
   `DerivedRenderTypeLiteral` consume the rules, `ProfileFlipTests` and encoding differentials
   green, the emitter's private ternary deleted.
 - **WI12 — strategy-shape parity spec + tests (D13).** Files: spec text (phase spec);
-  `StrategyShapeDifferentialTests` + corpus entries. Byte impact: none (pins current
-  behavior, including the non-string drop rail as-is). Completion: every matrix row green;
-  the spec section cross-references the `OutExtension` planned-change comment and OQ2.
+  `StrategyShapeDifferentialTests` + corpus entries. Byte impact: none (pins the current
+  rail as-is — verified matching on both sides today, so the OQ2 ruling's "fix where needed"
+  clause has no present work). Completion: every matrix row green; the spec section
+  cross-references the `OutExtension` planned-change comment and records OQ2's resolved
+  joint-land rule.
+  - Per the OQ2 ruling, the emitted `Execute` shape must match the runtime rail at all
+    times: when the rail change ships, runtime, generator, and this WI's spec text move in
+    **one landing** (a breaking-window item — see Back-compat). Until then WI12 keeps
+    pinning the current rail, and the `strategy-nonstring-value` fixture is the tripwire
+    that landing must consciously edit.
 - **WI13 — F20 cleanups (D14).** Files: `TemplateEmitter.cs`, `PieceWriter.cs`,
   `NativeExpressionWriter.cs`, `ExtensionBinder.cs`, `FunctionExportResolver.cs`. Byte impact:
   none. Completion: generator snapshot suite byte-identical; each table row's "copies"
   reduced to one, checked off in the spec.
 
 ## Dependencies & ordering
+
+- **Phase 0 posture (landed):** every test in this phase runs under the gauntlet-crossing guardrails — see the
+  [precompiled-tier posture](../spec/common/testing-standards.md#precompiled-tier-posture) rule. This phase's
+  fix-first group un-skips phase 0's quarantined `NonLeftmostScopeChannelParticipant_ProvisionsLocalsOnBothTiers`
+  fixture (F11) as acceptance evidence.
 
 - **Consumed from phase 2** (document shaper): the shared `DocumentShaping.cs` offset-walk /
   `SlicePieces` (this phase's WI12 pins the contract; the emitter's walk migrates onto phase 2's
@@ -488,6 +538,14 @@ are named in the [test matrix supplement](phase-1-template-emitter-test-matrix.m
 - **Consumed from phase 5** (pipeline/config): the linked `OutputProfile`/`ExpressionMode`/
   `RenderType` enums. **Hard gate for WI11's generator half only**; everything else in this
   phase is independent of phase 5.
+- **Supplied to phase 5** (pipeline/config, per the Q2.2 fallback-legitimacy ruling): the
+  taxonomy of this phase's *intentional* emitter refusals — the points where the emitter
+  deliberately returns/degrades to the dynamic tier rather than throwing (e.g. WI3's remaining
+  `DefaultConvertible` over-refusals, WI9's unresolvable-name fallback branch). Phase 5
+  consumes it when narrowing the blanket `catch (Exception)` in `HeddleTemplateGenerator.cs`
+  to a researched legitimate-fallback set; everything outside the taxonomy is a defect that
+  must throw and surface. Not a gate in either direction. Note: after the Q1.3 ruling,
+  region-fill fault verdicts are *no longer* refusals and do not enter the taxonomy.
 - **Internal ordering:** WI1–WI3 first (any order, independently shippable); WI4 after WI1
   (it refactors WI1's fix); WI5–WI10 in listed order (effort-to-value, no hard dependencies
   among them); WI11's runtime half any time, generator half after phase 5; WI12 any time after
@@ -529,19 +587,34 @@ every byte- or behavior-affecting change is called out individually:
   (a `Nullable<S>` default on a `Nullable<W>` prop) move from dynamic fallback to precompiled;
   their bytes are proven identical by the differential gate before the change ships. No
   currently-precompiled template changes bytes.
+- **WI6 (region-fill reactions) — error-matching alignment, not window-gated.** Per the OQ3
+  ruling, the generator stops refusing to precompile on fault verdicts and reacts as the
+  runtime reacts. Every affected template is an error template on the authoritative tier
+  already: a dangling candidate carries a parse-emitted error on both tiers (unchanged — the
+  generator merely stops un-precompiling over it), and a private-region fill that previously
+  refused (deferring the runtime's `HED5019` to first dynamic render) now fails the build with
+  the matching positioned error. No correct template changes bytes or tier; same
+  earlier-surfacing rationale and precedent as WI2.
+- **Coercion-rail change (OQ2 ruling) — future, window-gated, joint-land.** Not shipped by
+  this phase. When the planned non-string rail change is scheduled into the
+  [next-window register](../spec/common/breaking-windows.md#next-window-candidate-register),
+  it lands as **one window item** covering the runtime rail, the emitted `Execute` shape, and
+  WI12's spec text — the generated equivalent matches the dynamic engine at all times, so the
+  two tiers never publish different rails.
 - **WI9 (`[ZeroOutput]`) and WI1's `BindDefinition` overload — additive public API.** New
   attribute type; new overload with existing overloads retained (assemblies generated by older
   generator versions continue to bind — the overload addition follows the
   [API compatibility rules](../spec/common/coding-standards.md#api-design-and-compatibility)).
   Both carry XML docs and same-change updates to `custom-extensions.md` /
   `precompilation.md` as applicable.
-- **All extractions (WI4–WI8, WI10–WI13) — byte-neutral by construction**, gated by the
+- **All remaining extractions (WI4–WI5, WI7–WI8, WI10–WI13) — byte-neutral by construction**, gated by the
   existing snapshot, golden, and differential suites; goldens change for **no** existing
   fixture (a golden diff in these WIs is a defect, per the golden-change policy). New fixtures
   pin the previously-divergent behaviors; no existing golden is regenerated.
-- **Diagnostic registry.** The one new ID is claimed in the
+- **Diagnostic registry.** The two new IDs (D3's `@profile` error, D7's `HED5019` twin) are
+  claimed in the
   [registry](../spec/common/cross-cutting-decisions.md#claimed-diagnostic-ids-registry) by the
-  phase spec in the same change that introduces it; no shipped ID is reused or renumbered.
+  phase spec in the same change that introduces each; no shipped ID is reused or renumbered.
 
 ## Risks & mitigations
 
@@ -567,6 +640,10 @@ every byte- or behavior-affecting change is called out individually:
 - [ ] A template containing `@profile(){{<unknown>}}` produces a positioned generator build
       error with the claimed `HED70xx` ID, and the same fixture produces `HED2001` from the
       dynamic compiler; the registry table contains the new ID in the same change.
+- [ ] A dangling region-fill candidate precompiles with the runtime's skip semantics (the
+      parse-emitted error surfaces identically on both tiers; no refusal); a private-region
+      fill fails the build with the positioned `HED5019`-twin error while the same fixture's
+      dynamic compile raises `HED5019` (the OQ3 match principle).
 - [ ] A `Nullable<S>` default on a `Nullable<W>` prop precompiles; its rendered bytes equal the
       dynamic tier's; the emitter contains exactly one nullable-underlying probe.
 - [ ] All nine inventory files exist, compile in both `Heddle` and `Heddle.Generator`
@@ -574,7 +651,8 @@ every byte- or behavior-affecting change is called out individually:
       generator-side copy is deleted (verified by review checklist in the spec).
 - [ ] `OutExtension.HasOutValue`'s logic exists exactly once; `BuildOutCall` no longer contains
       the `!cp.IsModelTypeParameter` approximation.
-- [ ] The call-target precedence, region-fill matching verdicts, body model-typing table,
+- [ ] The call-target precedence, region-fill matching verdicts (reactions matching the
+      runtime per the OQ3 ruling), body model-typing table,
       embedded-C# names, and zero-output classification each have a green lockstep/conformance/
       pin test naming the rule (fixtures per the
       [test matrix](phase-1-template-emitter-test-matrix.md)).
@@ -598,39 +676,47 @@ every byte- or behavior-affecting change is called out individually:
 | Extension `[Prop("x", typeof(long?))]` called with an `int?` constant default | Precompiles after WI3; rendered value's boxed CLR type matches the runtime prototype (`Convert.ChangeType` reproduction) |
 | A custom extension marked `[ZeroOutput]` whose block sits mid-document | Block removed from output on both tiers; before WI9 the precompiled tier renders divergently |
 | A definition named `if` shadowing the branch keyword | Both tiers resolve the definition (classifier precedence); lockstep theory asserts the shared classifier and both dispatch sites agree |
-| A dangling region-fill candidate | Generator refuses to precompile with the existing reason; runtime continues (per-side reactions over the shared `Dangling` verdict); the divergence is asserted intentionally in the verdict theory |
+| A dangling region-fill candidate | Both tiers skip the candidate (`continue`) and keep the parse-emitted base-not-found error; the generator no longer refuses to precompile; the verdict theory asserts the reactions match (the OQ3 match principle) |
+| A call-site fill of a private region | Dynamic compile raises `HED5019`; the precompiled build fails with the matching positioned twin error (same message and override anchoring, retract mechanics reproduced) |
 | A `.tcs` template parameter renamed (mutation test during review) | The embedded-C# pin test fails naming the const that no longer matches |
 | A body whose only processor returns a non-string on the value path | Both tiers drop it to `string.Empty` (the pinned rail); the fixture documents the rail so a future rail change must touch it |
 | Any fixture that existed before this phase | Byte-identical goldens; any diff is a defect by the golden-change policy |
 
 ## Open questions
 
+All four questions are **resolved** (user, 2026-07-25); the rulings are recorded in the
+[open-questions register](open-questions.md) (Q1.1–Q1.4) and folded into the design decisions
+and work items above. None remain open; the entries below record each ruling in place.
+
 - **OQ1 — `maxRecursionCount` and the options fingerprint
-  ([01 F19](../research/generator-code-sharing/01-template-emitter.md)).** The build-baked vs.
-  options-read split is intentional (precompilation D23), but the value is absent from the
-  fingerprint, so a host raising `MaxRecursionCount` at runtime gets divergent deep-recursion
-  *error* behavior between tiers with no gauntlet fallback. Should the value join the
-  fingerprint (turning the divergence into a detectable staleness), or is the divergence
-  accepted and documented? Owner: the precompilation spec; this phase only records the finding.
-- **OQ2 — the non-string coercion rail's planned change.** `OutExtension`'s comment flags the
-  `as string ?? string.Empty` drop as slated to change. WI12 pins the *current* rail as the
-  cross-tier contract. When the change is made, it is byte-affecting for correct templates and
-  therefore a breaking-window candidate that must land on both tiers plus the WI12 spec text in
-  one window item. Who owns scheduling it into the
-  [next-window register](../spec/common/breaking-windows.md#next-window-candidate-register), and
-  is the change still wanted? Owner: runtime maintainer.
-- **OQ3 — runtime silence on dangling region-fill candidates.** The generator refuses to
-  precompile; the runtime silently skips (`continue`). D7 preserves both reactions and makes the
-  divergence explicit, but whether the runtime should surface a diagnostic (a dangling override
-  is almost certainly an authoring mistake) is a runtime-behavior decision outside this phase's
-  authority — recording it here rather than deciding silently. Owner: runtime maintainer
-  (would claim an `HED5xxx`-block ID if ratified).
-- **OQ4 — generator over-provision on shadowed participant names.** D5 retains the parse-level
-  scan's over-provision (frame provisioned when a definition shadows a `[ScopeChannel]`
-  extension name), argued behavior-invisible and emit-time-only. If a future maintainer wants
-  exact verdict equality instead, the shared scan would need a `definitionExists` predicate —
-  the trigger to revisit is the lockstep fixture for shadowing ever needing its "over-provision
-  asserted" branch changed.
+  ([01 F19](../research/generator-code-sharing/01-template-emitter.md)).** Resolved (user,
+  2026-07-25): recommendation applied — the call is decided once in the precompilation spec,
+  which owns it; the default posture records the build-baked divergence as intentional (D23)
+  unless that spec adds the field at the next schema bump. This phase changes nothing either
+  way ([register Q1.1](open-questions.md)).
+- **OQ2 — the non-string coercion rail's planned change.** Resolved (user, 2026-07-25): the
+  generated equivalent must match the dynamic engine — when the runtime rail changes, the
+  emitted `Execute` shape changes in the same landing (the **joint-land rule**), and any
+  present mismatch is fixed now (authoring-time verification found none: both sides implement
+  the `as string ?? string.Empty` rail today, per D13). WI12 keeps pinning the current rail
+  until the change ships; the rail change stays a breaking-window candidate that moves both
+  tiers plus WI12's spec text through the window together
+  ([register Q1.2](open-questions.md); folded into D13, WI12, and Back-compat).
+- **OQ3 — runtime behavior on dangling region-fill candidates.** Resolved (user, 2026-07-25) —
+  **the match principle**, recorded program-wide in the register: the generator matches the
+  runtime's validation rules and mechanics, behaving as if it were part of the dynamic engine.
+  Dangling candidates are skipped as the runtime skips them (no hard refusal, no
+  un-precompile), and cases the runtime raises as errors (the `HED5019` retract path for
+  private-region fills) surface as matching build-time errors. The build tier cannot always
+  carry the same *warnings* through the same channel — such differences may legitimately
+  exist, but the program strives for matching, and errors always match
+  ([register Q1.3](open-questions.md); folded into D7, WI6, Back-compat, and the validation
+  scenarios).
+- **OQ4 — generator over-provision on shadowed participant names.** Resolved (user,
+  2026-07-25): recommendation applied — D5's safe over-provision is kept (behavior-invisible,
+  emit-time-only); revisit only on the named trigger: the shadowing lockstep fixture's
+  "over-provision asserted" branch ever needing to change, at which point the shared scan
+  gains a `definitionExists` predicate. No design change ([register Q1.4](open-questions.md)).
 
 ## External grounding
 
@@ -644,7 +730,7 @@ every byte- or behavior-affecting change is called out individually:
 | Runtime `HED2001` on unknown `@profile`; emitter's silent fall-through | `src/Heddle/Extensions/ProfileExtension.cs` — `InitStart` (:26-37); `TemplateEmitter.cs` — `MapProfilePerChain` (:418-427) *(read)*; `HeddleDiagnosticIds.UnknownOutputProfile` = `HED2001` *(read)* |
 | Missing `S?→W?` row; `ConstructedFrom` vs `OriginalDefinition` split | `src/Heddle/Runtime/Expressions/PropConversion.cs` — `CanConvertTypes` (:44-46); `TemplateEmitter.cs` — `DefaultConvertible` (:942-974), `TryFormatPropValue` (:1510-1514) *(read)* |
 | Canonical `HasOutValue`; approximate generator probe; duplicate slot walks | `src/Heddle/Extensions/OutExtension.cs` — `HasOutValue` (:143-155); `TemplateEmitter.cs` — `BuildOutCall` (:1152-1155), `DefinitionHasSlot` (:1644-1650) *(read)* |
-| Fill-matching loop and per-side reactions; shared `DefinitionMaterializer` | `TemplateEmitter.cs` — `TryBuildGeneratorFillScope` (:1300-1339), `Rebound` (:1275-1286) *(read)* |
+| Fill-matching loop and runtime reactions (skip-on-dangling, `HED5019` retract-and-raise); shared `DefinitionMaterializer` | `TemplateEmitter.cs` — `TryBuildGeneratorFillScope` (:1300-1339), `Rebound` (:1275-1286); `src/Heddle/Runtime/HeddleCompiler.cs` — `BuildRegionFillScope` (:1686-1735), `RetractCandidateError` (:1744-1748) *(read)* |
 | Precedence chain incl. comment-only registry invariant; strategy shapes and the coercion rail; manifest duplication; `Mode()` default | `TemplateEmitter.cs` — `BuildCall` (:506-657), `EmitBodyClass` (:2402-2493), `BuildManifestEntry`/`BuildMarkerManifestEntry` (:2520-2568), `Mode` (:2572-2580) *(read)* |
 | `.tcs` identifier contract as literal text | `src/Heddle/LanguageTemplates/CSharpClassTemplate.tcs` (:9), `CSharpPreparseTemplate.tcs` (:11) *(read)* |
 | `HED7001`–`HED7017` claimed; registry rules; twin-ID precedent (`HED7017`); amendments ledger | `src/Heddle.Generator/Diagnostics/GeneratorDiagnostics.cs` *(read)*; [cross-cutting decisions](../spec/common/cross-cutting-decisions.md) |
@@ -654,3 +740,108 @@ every byte- or behavior-affecting change is called out individually:
 Line numbers above were verified against the working tree while authoring this plan and are
 cited with their anchor members because they will drift; the spec re-verifies each seam per the
 *(verify at implementation)* convention.
+
+---
+
+## Normative — the generated strategy shape and the coercion rail (D13 / WI12)
+
+This section is contract, not description. It is the artifact D13 calls for: the two backends
+implement the same body shape with different optimizations, so the shape cannot be shared as code
+and is pinned here plus in `StrategyShapeDifferentialTests`.
+
+1. **Document-ordered alternation.** A body is a document-ordered alternation of literal pieces
+   and processor calls: head piece (when the first element starts past offset 0), then each
+   element's processor, advancing the offset past it, then the tail piece. The walk itself is
+   phase 2's shared `DocumentShaping.SlicePieces<T>`; both tiers consume it, so the *segmentation*
+   is code-shared and only the emission differs.
+2. **Render path.** Pieces are written straight to the sink; each processor is invoked for its
+   render effect. No coercion happens on this path — a processor that emits a boxed non-string
+   stringifies it itself (`OutExtension.RenderData` is the canonical example).
+3. **Value path — the coercion rail.** Every processor result is coerced with
+   `as string ?? string.Empty` and the parts are concatenated in document order, in a three-case
+   shape: no parts → `string.Empty`; one part → that part; more → `string.Concat(…)`. The runtime's
+   `NormalStrategy` adds a piece fallback (`?? element.Piece`) and its `DocumentStrategy` /
+   full-optimize short-circuits skip the concat entirely; those are **byte-equivalent
+   optimizations** of this rail, not a second rail.
+4. **The render/value asymmetry is deliberate and pinned.** A boxed non-string reaching the value
+   path is dropped to empty while the render path stringifies it. `OutExtension` flags this as
+   slated to change.
+5. **Joint-land rule (Q1.2, ratified).** Any change to the rail, to the three-case shape, or to the
+   optimizations above is a **cross-tier contract change**. The runtime rail, the emitted `Execute`
+   shape and this section move through the breaking window in **one landing**, so the generated
+   equivalent matches the dynamic engine at all times. The tripwire that landing must consciously
+   edit is `StrategyShapeDifferentialTests.TheEmittedValuePathCarriesThePinnedCoercionRail` together
+   with its render-path companion. Authoring- and implementation-time verification both found **no
+   present mismatch**: both tiers implement `as string ?? string.Empty` today.
+
+## Implementation record
+
+**Landed 2026-07-26.** Suite: 4642 passed, 0 failed, **0 skipped** (from 4246/2 skipped);
+`dotnet build Heddle.sln -c Debug` and `dotnet test Heddle.sln -c Debug` green on every runnable
+TFM (`Heddle.Tests`' net6.0 leg cannot run on this box — pre-existing, unrelated).
+
+### Fix group
+
+- **WI1 (D2) — `needsLocals`.** Both generator probes replaced by the shared, full-chain,
+  parameter-recursing `Language/ParticipantScan.cs`; `BuildDefinitionCall` stopped OR-ing the two
+  carriers' flags and now passes each its own, through a new additive
+  `PrecompiledRuntime.BindDefinition(… bodyNeedsLocals, callerContentNeedsLocals …)` overload
+  (existing overloads retained and unchanged; the 10-arg one now forwards with both flags equal, so
+  it is byte-identical to before). `PrecompiledSchema` bumped 4→5 with a
+  `PerCarrierLocalsSchemaVersion` gate, following phase 4's `DynamicMemberRouting` precedent.
+  Pinned by `ScopeParticipantDifferentialTests` (five fixtures; the two asymmetric ones verified red
+  against the reverted OR) and `ParticipantScanLockstepTests`.
+  - **Correction to the plan.** The scan half is **latent** on the precompiled tier, not
+    observable: every shape that puts a participant off the leftmost position is one the emitter
+    already refuses for an unrelated reason. The *observable* half of drift #3 is entirely the
+    carrier-flag OR, and the fixtures had to be built around a non-`[ScopeChannel]` reader
+    (`@peek`) to make it visible at all.
+- **WI2 (D3) — unknown `@profile`.** `MapProfilePerChain` gained the runtime's third branch:
+  `HED7022`, Error, at the directive, one per directive. Twin asserted against `HED2001` in the same
+  test, including identical anchoring.
+- **WI3 (D4) — `DefaultConvertible`.** The `Nullable<S> → Nullable<W>` row added and the file's two
+  nullable probes folded onto one `TryGetNullableUnderlying` over `OriginalDefinition`. Pinned by
+  the linked `PropDefaultConversionVectors` driven through both tiers.
+  - **Correction to the plan.** The new row is **unreachable from an extension `[Prop]` default**:
+    an attribute constant's `TypedConstant.Type` can never be a `Nullable<S>`. It is landed for
+    table identity with `PropConversion` (and is asserted as such); the user-visible enabling delta
+    on that path is nil.
+
+### Extractions
+
+`Language/ParticipantScan.cs`, `Language/SlotRules.cs`, `Language/CallTargetRules.cs`,
+`Language/BodyModelRules.cs`, `Language/Expressions/EmbeddedCSharpNames.cs`,
+`Data/OutputProfileRules.cs`, `Data/RenderTypeRules.cs` (the last two with one csproj link line
+each, plus `Data/RenderType.cs`); `Language/RegionFillResolver.cs` (phase 2's file) adopted
+emitter-side. Structural acceptance is asserted by `EmitterSharedRuleAdoptionTests`; byte
+neutrality by the unchanged snapshot/golden/differential suites (the only snapshot delta across the
+whole phase is `schemaVersion: 4` → `5`).
+
+- **WI6 (D7 / Q1.3)** is the behavior-affecting extraction: the emitter no longer refuses to
+  precompile on a fault verdict. Dangling/default-missing candidates are skipped and their
+  parse-emitted error is now **forwarded at build** (it used to be filtered out of the build
+  channel entirely, so it surfaced only on the first dynamic render); a private-region fill
+  retracts that error and raises `HED7024`, the `HED5019` twin.
+  - **Bounded residual, recorded.** The surviving-candidate forwarding is gated on a completed body
+    build: when the emitter degrades for an unrelated reason it never visits the call sites and has
+    no verdict to report, so those templates keep the pre-phase-1 behavior (the dynamic tier
+    raises). Closing it means resolving fill scopes in a pass independent of emission.
+- **WI7 (D8)** fixed a real inversion found during the work: the emitter tried the function tier
+  **before** the extension binder, so a host-exported function sharing a name with a registered
+  extension bound as a function at build and as the extension at run. The shared classifier's
+  extension-wins arm resolves it to the runtime's answer.
+- **WI9 (D10)** — `[ZeroOutput]`, additive public API, applied to the four built-in directives and
+  read symbolically by `ExtensionBinder` into `Info.IsZeroOutput`. The hard-coded name list survives
+  only as the unresolvable-name fallback.
+
+### Not folded
+
+The **definition-side** `PropLayout.Resolve` / `TemplateEmitter.ResolvePropLayout` pair is
+**declined**, for the reason phase 3 anticipated. `PropLayoutCore.Build` runs name-validity,
+reserved-name, same-level-duplicate and unusable-type checks that the definition path deliberately
+does not (they are parser pre-checks there), and it owns a different message vocabulary for both
+the unresolved-type and the re-declaration faults. Folding without changing those four messages is
+not possible, and folding *with* the extra checks would make the build tier stricter than the
+engine — a match-principle violation. The index-ordering rule the fold was meant to protect is
+already gated end-to-end by the props differentials, which compare rendered bytes and therefore
+slot indices.

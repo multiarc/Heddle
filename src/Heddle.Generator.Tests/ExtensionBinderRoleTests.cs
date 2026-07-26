@@ -1,3 +1,4 @@
+extern alias gen;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -6,6 +7,10 @@ using Heddle.Generator.Emit;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Xunit;
+// Phase 3 (F9): BranchRole is no longer a generator-local mirror — it is Heddle.Attributes.BranchRole,
+// linked into Heddle.Generator as shared source. Both referenced assemblies therefore declare it, so the
+// generator's copy (the one ExtensionBinder.Info exposes) is named through the `gen` alias.
+using BranchRole = gen::Heddle.Attributes.BranchRole;
 
 namespace Heddle.Generator.Tests
 {
@@ -24,6 +29,11 @@ namespace Heddle.Generator.Tests
             var tpa = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
             var refs = tpa.Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
+                // Heddle.Generator is an *analyzer*, never a reference — and since phase 3 (F9) it carries linked
+                // copies of runtime types (Heddle.Attributes.BranchRole), so handing it to a probe compilation
+                // alongside Heddle.dll makes those names ambiguous (CS0433). Same filter the harnesses apply.
+                .Where(p => !string.Equals(Path.GetFileNameWithoutExtension(p), "Heddle.Generator",
+                    StringComparison.OrdinalIgnoreCase))
                 .Select(p => (MetadataReference)MetadataReference.CreateFromFile(p))
                 .ToList();
             // The runtime engine assembly (carries IfExtension/ElifExtension/… with [BranchRole]/[ScopeChannel]).

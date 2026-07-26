@@ -62,9 +62,11 @@ function readSettings(): Record<string, unknown> {
   return {
     assemblies: config.get<string[]>('model.assemblies', []),
     rootPath: config.get<string>('workspace.rootPath', ''),
-    outputProfile: config.get<string>('compile.outputProfile', 'text'),
+    outputProfile: config.get<string>('compile.outputProfile', 'html'),
     expressionMode: mode,
-    fileNamePostfix: config.get<string>('compile.fileNamePostfix', '')
+    fileNamePostfix: config.get<string>('compile.fileNamePostfix', ''),
+    trimDirectiveLines: config.get<boolean>('compile.trimDirectiveLines', true),
+    maxRecursionCount: config.get<number>('compile.maxRecursionCount', 100)
   };
 }
 

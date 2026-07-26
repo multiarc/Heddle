@@ -9,7 +9,14 @@
 > live drifts — several of them user-visible bugs — are fixed first, as independently
 > shippable groups inside each phase, each verified under the phase-0 guardrails.
 
-All phases: **status proposed — not started.** Phase numbering follows the research-document
+**All seven phases (0–6) are implemented.** The quarantine register phase 0 opened is empty — every
+red fixture was earned green by its owning phase, none deleted and none weakened (one, phase 1's
+F11, was *reshaped*; see that phase's record). Suite: **4808 passed / 0 failed / 0 skipped**,
+against a pre-program baseline of 2630 / 0 / 0. Diagnostic IDs `HED7018`–`HED7024` were claimed in
+registry order. Two items are recorded as **not delivered** and are named here rather than buried
+in a phase: the [compile-channel drain gap](#known-program-level-gap--the-compile-channel-drain-is-unscheduled)
+below, and phase 2's WI9 paired before/after benchmark (argued structurally, not measured).
+Phase numbering follows the research-document
 numbering (area 0N → phase N), not execution order; execution order is governed by phase 0
 (the program's step 0 and gate), the fix-first groups, and the artifact-ownership
 dependencies below.
@@ -18,13 +25,13 @@ dependencies below.
 
 | # | Phase | Depends on | Goal (one line) | Status |
 |---|---|---|---|---|
-| 0 | [test-fallback-guardrails](phase-0-test-fallback-guardrails.md) | — (**gates 1–6**) | Make the test suite structurally unable to pass through an unintended fallback — resolver/gauntlet-crossing renders of real generator output with fallback-as-failure (Strict + sentinel), corpus-wide; fallback exercised only by tests that declare it; known live drifts handed to phases 1–6 as quarantined red fixtures | proposed |
-| 1 | [template-emitter](phase-1-template-emitter.md) | 0 (gate); 5 (enum links, hard gate for one WI); consumes 2, 3, 4 | Resolve the emitter↔runtime drift — three live bugs fixed first (needsLocals scan + per-carrier flags, unknown-`@profile` silent acceptance, `DefaultConvertible` gaps), then nine linked shared sources and the representation-bound rules pinned as data tables plus differential tests | proposed |
-| 2 | [document-shaper](phase-2-document-shaper.md) | 0 (gate); unblocks 1 | One implementation of every byte-affecting document-shaping machine — `WidenToWholeLine` (clamp drift fixed first, shippable alone), the five rebasing passes, the branch-set strip machine, generic `SlicePieces<T>`, and the region-fill matching rule — shared via linked `Language/` sources, proven byte-neutral by the existing golden/differential suites | proposed |
-| 3 | [binding-layer](phase-3-binding-layer.md) | 0 (gate); 4 (PrimitiveKind, member-path core, rank core); 5 (conditional, OQ4 manifest row); 6 (alias-table boundary) | The generator and runtime answer every binding question — extension identity/discovery, function exports, prop layouts, assignability, member paths, model type names — from one shared rule-core each, with the three live binding bugs (false HED7006, nested/generic AQN mismatch, BranchRole mirror) fixed first | proposed |
-| 4 | [expression-writers](phase-4-expression-writers.md) | 0 (gate); 5 (schema constants, gate for the DynamicMember routing step only); co-ratifies OQ1 with 3 | One set of shared, Roslyn-free rule tables (numeric kinds, operator legality, member visibility, hop form, literal formatting, overload rank) under `src/Heddle/Language/**` so the emitters and `NativeExpressionCompiler` can no longer disagree — `ToString("R")` round-trip and unguarded binary emission fixed first | proposed |
-| 5 | [pipeline-config](phase-5-pipeline-config.md) | 0 (gate); provider to 1, 3, 4, 6 | One canonical definition each for the pipeline-level generator↔runtime contracts — content hash, key↔path derivation, `.heddle` extension rule, schema/engine versioning, option names/defaults — with the four live bugs (hash-input mismatch, silent key fallback, fabricated engine version, dead item metadata) fixed first | proposed |
-| 6 | [diagnostics-utilities](phase-6-diagnostics-utilities.md) | 0 (gate); 1 (profile parsing), 4 (escape-set boundary), 5 (`TemplateKey.Relativize`) — WI1–WI8 have no dependency | One diagnostic identity across build tier, run tier, and editor — shared diagnostic catalog and projection, one line-index rule, single copies of the small utility tables — opened by an independently shippable fix group (forwarded-warning ID/Fix loss, HED7017 doc gap, line-index `\r` mismatch) | proposed |
+| 0 | [test-fallback-guardrails](phase-0-test-fallback-guardrails.md) | — (**gates 1–6**) | Make the test suite structurally unable to pass through an unintended fallback — resolver/gauntlet-crossing renders of real generator output with fallback-as-failure (Strict + sentinel), corpus-wide; fallback exercised only by tests that declare it; known live drifts handed to phases 1–6 as quarantined red fixtures | **implemented (2026-07-25)** — WI1–WI8 landed; five quarantined fixtures registered, posture pinned in [testing-standards](../spec/common/testing-standards.md#precompiled-tier-posture) |
+| 1 | [template-emitter](phase-1-template-emitter.md) | 0 (gate); 5 (enum links, hard gate for one WI); consumes 2, 3, 4 | Resolve the emitter↔runtime drift — three live bugs fixed first (needsLocals scan + per-carrier flags, unknown-`@profile` silent acceptance, `DefaultConvertible` gaps), then nine linked shared sources and the representation-bound rules pinned as data tables plus differential tests | **implemented (2026-07-26)** — D1–D14 / WI1–WI13 landed; the program's **last** quarantined fixture un-skipped (reshaped — the participant-scan drift is latent on the precompiled tier, so it now pins degrade-parity + the reachable neighbour + the scan rule) so the register carries **zero skips**; shared cores in [`Language/ParticipantScan.cs`](../../src/Heddle/Language/ParticipantScan.cs), [`SlotRules.cs`](../../src/Heddle/Language/SlotRules.cs), [`CallTargetRules.cs`](../../src/Heddle/Language/CallTargetRules.cs), [`BodyModelRules.cs`](../../src/Heddle/Language/BodyModelRules.cs), [`Expressions/EmbeddedCSharpNames.cs`](../../src/Heddle/Language/Expressions/EmbeddedCSharpNames.cs), [`Data/OutputProfileRules.cs`](../../src/Heddle/Data/OutputProfileRules.cs), [`Data/RenderTypeRules.cs`](../../src/Heddle/Data/RenderTypeRules.cs); `HED7022`/`HED7024` claimed; `PrecompiledSchema` bumped 4→5 for the per-carrier `BindDefinition` overload; `[ZeroOutput]` added |
+| 2 | [document-shaper](phase-2-document-shaper.md) | 0 (gate); unblocks 1 | One implementation of every byte-affecting document-shaping machine — `WidenToWholeLine` (clamp drift fixed first, shippable alone), the five rebasing passes, the branch-set strip machine, generic `SlicePieces<T>`, and the region-fill matching rule — shared via linked `Language/` sources, proven byte-neutral by the existing golden/differential suites | **implemented (2026-07-25)** — WI1–WI9 landed; clamp drift fixed (generator wrong on all three sub-cases, runtime normative), `DocumentShaper.cs` 398→118 lines, shared core in [`Language/DocumentShaping.cs`](../../src/Heddle/Language/DocumentShaping.cs) + [`Language/RegionFillResolver.cs`](../../src/Heddle/Language/RegionFillResolver.cs); WI9's paired BDN before/after not run (see plan) |
+| 3 | [binding-layer](phase-3-binding-layer.md) | 0 (gate); 4 (NumericKind, member-path core, rank core); 5 (schema constants, OQ4 manifest row); 6 (alias-table boundary) | The generator and runtime answer every binding question — extension identity/discovery, function exports, prop layouts, assignability, member paths, model type names — from one shared rule-core each, with the three live binding bugs (false HED7006, nested/generic AQN mismatch, BranchRole mirror) fixed first | **implemented (2026-07-26)** — Tranche A + B landed; both phase-3 quarantined fixtures un-skipped and green; shared cores under [`Language/Binding/`](../../src/Heddle/Language/Binding/) + [`Precompiled/AqnFormatter.cs`](../../src/Heddle/Precompiled/AqnFormatter.cs); `HED7021`/`HED7023` claimed; `PrecompiledSchema` bumped 3→4 for the OQ4 prop-layout row; the runtime's short-name-tie pick fixed in lockstep per Q3.5 (judgement in [breaking-windows](../spec/common/breaking-windows.md#explicit-not-window-gated-rulings)) |
+| 4 | [expression-writers](phase-4-expression-writers.md) | 0 (gate); 5 (schema constants, gate for the DynamicMember routing step only); co-ratifies OQ1 with 3 | One set of shared, Roslyn-free rule tables (numeric kinds, operator legality, member visibility, hop form, literal formatting, overload rank) under `src/Heddle/Language/**` so the emitters and `NativeExpressionCompiler` can no longer disagree — `ToString("R")` round-trip and unguarded binary emission fixed first | **implemented (2026-07-25)** — WI1–WI10 landed; both fix-group bugs fixed and the phase-0 overload-tie fixture un-skipped; shared cores under [`Language/Expressions/`](../../src/Heddle/Language/Expressions/) + [`Language/Members/`](../../src/Heddle/Language/Members/); `PrecompiledSchema` bumped 2→3 for `DynamicMember` routing; Q4.2 betterness evaluation filed as a window candidate (analysis only). WI2's interim guard subsumed by WI5 |
+| 5 | [pipeline-config](phase-5-pipeline-config.md) | 0 (gate); provider to 1, 3, 4, 6 | One canonical definition each for the pipeline-level generator↔runtime contracts — content hash, key↔path derivation, `.heddle` extension rule, schema/engine versioning, option names/defaults — with the four live bugs (hash-input mismatch, silent key fallback, fabricated engine version, dead item metadata) fixed first | **implemented (2026-07-25)** — WI1–WI10 landed; all four live bugs fixed (phase-0 BOM fixture un-skipped and green); `HED7018`/`HED7019`/`HED7020` claimed; Q2.2 fallback taxonomy spec'd and the generator's blanket catch replaced by a per-template error |
+| 6 | [diagnostics-utilities](phase-6-diagnostics-utilities.md) | 0 (gate); 1 (profile parsing), 4 (escape-set boundary), 5 (`TemplateKey.Relativize`) — WI1–WI8 have no dependency | One diagnostic identity across build tier, run tier, and editor — shared diagnostic catalog and projection, one line-index rule, single copies of the small utility tables — opened by an independently shippable fix group (forwarded-warning ID/Fix loss, HED7017 doc gap, line-index `\r` mismatch) | **implemented (2026-07-26, two passes)** — **Pass 1 (WI1–WI8):** shared [`Data/HeddleDiagnosticCatalog.cs`](../../src/Heddle/Data/HeddleDiagnosticCatalog.cs) (80 rows), [`Data/LineIndex.cs`](../../src/Heddle/Data/LineIndex.cs) (`\n`-only rule normative), [`Helpers/CSharpTypeNames.cs`](../../src/Heddle/Helpers/CSharpTypeNames.cs), projection, `SanitizeName` IVT cleanup; WI2 was already closed by phase 5. **Pass 2 (WI9–WI11 + reconciliation):** LSP full options parity with a completeness gate (6 wired, 11 documented exclusions) and the **LSP default profile aligned `Text`→`Html`** (new editor diagnostics, no build or byte change — see the plan's back-compat note); `TemplateOptions.FullPath`/`RenderPath` fixes (both carried live defects); escape fold completed — **one** string-escape, char-escape and lone-surrogate implementation repo-wide; alias↔`NumericKind` boundary gated for the first time. WI5's twin-vocabulary unification + `FaultOrder` were taken by phase 3 |
 
 Supplements (linked from their main plans):
 [1: test matrix](phase-1-template-emitter-test-matrix.md) ·
@@ -94,6 +101,16 @@ Supplements (linked from their main plans):
   [claimed-registry rules](../spec/common/cross-cutting-decisions.md), IDs are claimed once,
   at spec-authoring time, in registry order — the numbers in the plans are placeholders, and
   whichever phase reaches spec first claims first. Do not copy the plan literals into code.
+  **Allocated so far (2026-07-26),
+  centrally, in claim order:** `HED7018` out-of-root template
+  key (phase 5 D3), `HED7019` engine-version fallback (phase 5 D6), `HED7020` emitter fault
+  (phase 5 D12a), `HED7021` ineligible `[ExportFunctions]` container/method (phase 3, Q3.6),
+  `HED7023` ambiguous type name (phase 3, Q3.5). `HED7022` unknown `@profile`
+  value (phase 1 D3) and `HED7024` call-site fill of a private region (phase 1 D7 / Q1.3). Phase 1
+  used the reserved `HED7022` as instructed; the dangling-fill *visibility* diagnostic it was
+  originally reserved for turned out not to be warranted — Q1.3's ruling makes a dangling candidate
+  a skip whose already-existing parse error is simply forwarded, so no new ID describes it — and the
+  number went to the phase's first genuinely new condition instead.
 - **Authority convention (applies everywhere):** the runtime engine's observable behavior is
   normative when aligning drift, except where a plan's D-item records the runtime itself as
   the defect; expression semantics defer first to
@@ -136,12 +153,98 @@ sequencing and the tier model come from
 clamp sub-case 3 unreachable today; phase 5: `TemplateOptions.Equals` omits `ExpressionMode`;
 phase 6: the id-carrying warnings sit in the compile channel the generator never drains).
 
+## Post-implementation review findings (2026-07-26)
+
+Two independent reviewers — a verifier (completion vs. each plan's acceptance criteria) and an
+adversary (defect hunt) — reviewed the landed program. Both mutation-tested pins to confirm they
+fire. Findings that survived orchestrator verification, most severe first:
+
+1. **P1 — `PrecompiledExtensionBinding` binary break.** The schema-4 field landed as an *optional
+   constructor parameter*, so the 2-arg `.ctor(string, string)` no longer exists in metadata
+   (confirmed by reflection over the built assembly). Every manifest emitted by the pre-program
+   generator references it. `MinSupportedSchemaVersion = 1` *accepts* those manifests, and the
+   fault then lands at `Activator.CreateInstance` inside `RegistrationLock` with no catch — a
+   `MissingMethodException` out of `PrecompiledTemplates.Register()` at host startup, neither a
+   degrade nor a render. `BindDefinition` solved the same problem correctly with three real
+   overloads. **Fix:** add a real 2-arg overload, or raise `MinSupportedSchemaVersion` so the gate
+   rejects what would fault; then check in a binary manifest fixture built at an older schema, so
+   the support window is *demonstrated* rather than asserted.
+2. **Three "shared" cores have no runtime caller** — `ExtensionRegistrationRules` (runtime keeps its
+   own copy in `TemplateFactory.AddExtensions`), `TypeSpelling` (a re-implementation; the original
+   survives in `ReflectionHelper`), and the numeric widening table (a live second copy in
+   `TemplateEmitter`, with *no* test referencing it). Mutating `ExtensionRegistrationRules` reddens
+   one generator test and zero runtime tests. These read as fixed and are not.
+3. **`[ExportExtensions]` is unmodelled by the generator.** The runtime only scans assemblies
+   carrying the attribute; the generator scans all referenced assemblies, so it precompiles
+   extensions the runtime never registers → permanent silent per-request fallback. A live instance
+   of the failure mode the program exists to eliminate.
+4. **`StripGlobal`'s AQN path hard-codes `assembly: "Heddle"`**, so a user-defined nested or
+   out-of-engine branch-role extension emits `Ns.Outer.Inner, Heddle` where the gauntlet computes
+   `Ns.Outer+Inner, <realAsm>` — drift #6's shape surviving on a path no fixture exercises.
+5. **Drift #9 (`ToString("R")`) has never been exercised where it manifests.** `"R"` *is*
+   shortest-round-trippable on .NET Core, so the 60 000-value round-trip suite passes identically
+   under the bug; reverting the fix reddens exactly one literal-string assertion. The only leg that
+   would catch it is `net48`, which is `Condition="'$(OS)' == 'Windows_NT'"` and has never run here.
+6. **The suite is not fully green: `dotnet test` exits 1.** The `net6.0` leg aborts (SDK absent on
+   this box) with `MSB4181`. The reported 4808/0/0 is the sum of the legs that *ran*; `net48` and
+   `net6.0` are unverified.
+7. **Coverage narrower than claimed** — phase 0's resolver byte-parity covers 9 templates, not the
+   corpus (the rest are resolve-only), and D4's rationale that "the corpus is the union of the
+   feature templates" is false: feature suites use inline strings, so ~130 feature tests never
+   cross the gauntlet. The `>= 25` corpus floor sits against an actual 40, letting 15 vanish
+   silently. Five corpus tests carry `if (dir == null) return;` — a silent no-op if layout changes.
+8. **Phase 4's reshaped overload-tie fixture pins a policy violation.** It asserts *no build
+   diagnostic* is emitted, so an ambiguous overload call yields a green build and a hard `HED1013`
+   at first render — contrary to both the match principle and the fallback-legitimacy ruling.
+9. **Two further undelivered items** beyond the ones named below: phase 6's D12.5 projection-
+   equivalence corpus (no LSP↔generator comparison test exists) and phase 2's WI5 allocation
+   benchmark (its done-when said "proven, not argued"). Also: three blanket `catch (Exception)`
+   sites survive in the generator (the phase-5 one now *reports* rather than degrades, so intent
+   holds, but the "no blanket catch" claim is literally false); the catalog is 82 rows, not 80.
+
+**Process note, recorded as a lesson:** the program was implemented entirely in the working tree
+with nothing committed. A reviewer subagent reverting a mutation with `git checkout` therefore
+destroyed implementer work (phase 3's prop-layout fingerprint check), which had to be reconstructed
+from its red test. Future runs of this shape should commit each phase before review, and reviewers
+that mutate should work on a clone.
+
+## Known program-level gap — the compile-channel drain is unscheduled
+
+Recorded during implementation (2026-07-25), because no phase owns it.
+
+Q6.1's ruling states the principle *"if diagnostics can surface early, they must — on both
+tiers."* Phase 6's D5/WI6 delivers the **structural** half: one shared
+[`HeddleDiagnosticProjection`](../../src/Heddle/Language/HeddleDiagnosticProjection.cs) that
+drains parse *and* compile channels, so a generator that runs compile-channel stages gets
+channel-completeness by construction. But D5 is explicit that this only pays out *"once the
+generator (in any later phase) runs compile-channel stages"* — and **no phase 0–6 schedules
+that.** Phase 6 deliberately keeps the generator on the parse-channel overload.
+
+Consequence, verified against the tree: `ParseContext.Warnings` has exactly one producer (the
+id-less SLL-fallback warning), so the eleven id-carrying warnings — `HED1016`, `HED2002`,
+`HED2003`, `HED2004`, `HED3001`, `HED3002`, `HED3004`, `HED3005`, `HED4002`, `HED4005`,
+`HED5011` — are added to `CompileWarnings` and **still never reach a build-time diagnostic**.
+Phase 6's forwarded-ID fix is therefore correct but *latent*: its only day-one user-visible
+effect is the appended `Fix` sentence on the SLL-fallback warning. The ID-collapse defect is
+fixed by construction, not by observation — the program has no test that can fire it.
+
+This is a scope gap in the program, not a defect in phase 6. Closing it means giving some phase
+the work of running compile-channel stages in the generator and draining them through the shared
+projection; until then the early-surfacing principle is unmet for those eleven diagnostics.
+
 ## Open questions
 
-See [open-questions.md](open-questions.md) for the consolidated Q&A register — 21 questions
-across the seven phases (20 distinct: Q3.1/Q4.1 are one joint ruling), each carried with the
-owning plan's recommended answer as a provisional default. **None are resolved; the plans
-are not at DoR until the register is ruled on** (fix-first groups are unaffected unless a
-plan notes otherwise). The highest-leverage rulings are Q3.1/Q4.1 (member-visibility policy
-— jointly ratified by phases 3 and 4 before either adopts the shared core) and Q5.1
-(`Precompile` item metadata — wire or remove).
+See [open-questions.md](open-questions.md) for the Q&A register. **All 21 questions are
+resolved (user, 2026-07-25) and folded into the phases — the plans are at DoR.** Two rulings
+carry program-wide principles restated in the register and inherited by every phase: the
+**match principle** (the runtime dynamic engine is the primary source of truth; the generator
+matches its validation rules, errors, and throws as if it were part of the dynamic engine —
+warning-channel differences may legitimately exist, errors always match) and the
+**fallback-legitimacy principle** (catch-and-degrade only for a researched set of genuinely
+fallback-worthy conditions such as staleness/change tracking; everything else surfaces as an
+error). Notable scope changes from the rulings: phase 5 gains the fallback-taxonomy
+research + narrowed catch (from Q2.2) and the all-resolver-arms registry consultation
+(Q5.2); phase 3's ineligible-container diagnostic is an error, not a warning (Q3.6), and
+type-name resolution must match the runtime exactly rather than degrade (Q3.5); phase 4
+gains the C#-betterness-in-runtime evaluation task (Q4.2); phase 6's LSP work expands to
+full options parity (Q6.2).

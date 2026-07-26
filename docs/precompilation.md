@@ -32,17 +32,22 @@ package stays runtime‑only and unrestricted):
 ```
 
 By default every `**/*.heddle` file in the project (excluding `bin`/`obj`) is picked up as a
-template. Opt individual files out, or add extra ones, with the `HeddleTemplate` item. The
-only item metadata the generator reads is `Key`, which sets both the lookup key **and** the
-generated class name (via `SanitizeName`); to exclude a file, `Remove` it (or disable the
-default glob and include explicitly):
+template. Opt individual files out, or add extra ones, with the `HeddleTemplate` item. Two item
+metadata are read:
+
+| Metadata | Effect |
+| --- | --- |
+| `Key` | Sets both the lookup key **and** the generated class name (via `SanitizeName`). Also the remedy for a template outside `HeddleTemplateRoot` (`HED7018`). |
+| `Precompile` | `false` opts the file out of pre‑compilation: no entry point, no manifest entry — but it **stays available to `@<<` imports**, which `Remove` cannot do. Absent or any other value means "precompile". |
 
 ```xml
 <ItemGroup>
   <!-- disable the default glob and be explicit -->
   <HeddleTemplate Include="Templates/**/*.heddle" />
-  <!-- exclude an import-only file: drop it from the item set so no entry point is emitted -->
-  <HeddleTemplate Remove="Templates/_layout.heddle" />
+  <!-- an import-only file: no entry point, but every @<< that imports it still resolves -->
+  <HeddleTemplate Update="Templates/_layout.heddle" Precompile="false" />
+  <!-- drop a file from the item set entirely (importers of it then draw HED7011) -->
+  <HeddleTemplate Remove="Templates/scratch.heddle" />
   <!-- override the key (this also renames the generated class to `Home`) -->
   <HeddleTemplate Update="Templates/Home.heddle" Key="home" />
 </ItemGroup>
@@ -50,6 +55,10 @@ default glob and include explicitly):
   <EnableDefaultHeddleTemplates>false</EnableDefaultHeddleTemplates>
 </PropertyGroup>
 ```
+
+A template whose path is **not** under `HeddleTemplateRoot` and that carries no explicit `Key`
+registers under its bare filename — the directory is dropped — and the build reports `HED7018`
+naming the file, the root, and the flattened key it used.
 
 ## Compile options (MSBuild properties)
 
@@ -102,11 +111,18 @@ foreach (var entry in PrecompiledTemplates.Entries)
     Console.WriteLine($"{entry.Key}  model={entry.ModelType}  precompiled={entry.IsPrecompiled}");
 ```
 
-For direct (`TemplatePathType.None`) lookups, `TemplateResolver.GetTemplate` consults the
-registry **before** the dynamic cache and file check; hosted view/partial‑view search paths
-stay fully dynamic and do not consult the registry. On a hit it runs the per‑request
-validation gauntlet; all pass → a `HeddleTemplate` in
-precompiled‑adapter mode (zero parse, zero compile). A registry **miss** is never a failure —
+**Every** resolver arm consults the registry. For direct (`TemplatePathType.None`) lookups
+`TemplateResolver.GetTemplate` consults it before the dynamic cache and file check; for the
+hosted `View`/`PartialView`/`Master` arms the search ladder is three tiers — **registry, then
+cache, then disk**, each walked in search‑location order — so a candidate location whose
+root‑relative path maps onto a registered key is served precompiled instead of compiled. Tier
+order beats location order, which is how the cache tier has always behaved (a cached template at
+the second location already won over a first‑location file on disk).
+
+On a hit the per‑request validation gauntlet runs against the arm's *real* effective options —
+including the hosted arms' `ExpressionMode.FullCSharp`, so a manifest built under `Native` is
+refused by the fingerprint check with no special‑casing anywhere. All pass → a `HeddleTemplate`
+in precompiled‑adapter mode (zero parse, zero compile). A registry **miss** is never a failure —
 the dynamic path proceeds untouched.
 
 ## The validation gauntlet and mismatch policy
@@ -137,6 +153,56 @@ On any failure, behavior is controlled by `TemplateOptions.PrecompiledMismatchPo
 
 An assembly whose manifest schema/engine version is incompatible is ignored wholesale (every
 template falls back), with one `HED7102` callback per manifest.
+
+### The staleness identity
+
+`ContentHash` is the lowercase‑hex SHA‑256 of the template's **decoded text** re‑encoded as UTF‑8
+without a BOM — not of the file's raw bytes. Both tiers compute it the same way
+(`Heddle.Precompiled.ContentHash.HashText`): the build hashes the text Roslyn decoded, and the
+staleness check decodes the file (honoring and stripping a BOM; no BOM means UTF‑8) before
+hashing. An **encoding‑only** re‑save — adding a BOM, switching to UTF‑16 — therefore does not
+read as stale, because it does not change the compiled output; any character change still does.
+A file with no BOM that is not valid UTF‑8 is outside this contract, and its verdict is
+unspecified — it degrades safely to the dynamic path.
+
+### Deploying template files next to a precompiled assembly
+
+Staleness compares the manifest key against a file at `TemplateOptions.RootPath`, so under
+`EnableFileChangeCheck` the deployed templates must mirror their **build‑time** root‑relative
+layout: a template built at `$(HeddleTemplateRoot)/views/home.heddle` must be deployed at
+`{RootPath}/views/home.heddle`. The two roots cannot see each other (the build does not know the
+deployment layout), so a mismatch is not validated — it simply reads as `StaleContent` and takes
+the byte‑identical dynamic path, with an `OnFallback` event naming the key.
+
+### Which fallbacks are legitimate
+
+Falling back is the right answer for *stale data and change tracking*, and a defect everywhere
+else: silently rendering dynamically because the deployed assemblies disagree with what the build
+saw hides a packaging bug behind identical output. The classification:
+
+| Reason | Class | Why |
+| --- | --- | --- |
+| `StaleContent` | legitimate fallback | The template changed on disk after the build — dynamic recompile is the correct semantics, and `EnableFileChangeCheck` exists to ask for exactly this tracking. |
+| `StaleImport` | legitimate fallback | The same, one hop out: an import changed under an unchanged root template. |
+| `UnsupportedFunction` | legitimate fallback | Not a run‑time discovery at all — the build refused *on purpose* (a delegate‑only function, warned `HED7014`) and recorded a marker entry. |
+| `OptionsMismatch` | legitimate fallback | Options are per‑request degrees of freedom a host legitimately exercises; the same template served `Text` for mail and `Html` precompiled is a designed miss of the fingerprinted point, not a defect. |
+| `ExtensionBindingMismatch` | **must surface** *(provisional)* | A residual mismatch means the deployed binding set genuinely differs from the one the build declared — rendering dynamically with *different bindings than the build recorded* is the hazard, not the cure. |
+| `FunctionBindingMismatch` | **must surface** *(provisional)* | Declaring‑type/overload drift under the default registry signals assembly skew. A per‑request export registry (`options.Functions`) diverging by host choice is the one arguable sub‑case. |
+| `SchemaVersionUnsupported` | **must surface** | A manifest outside the engine's schema window means the deployable pairs generator and engine packages out of contract — a packaging defect that today silently un‑precompiles an entire assembly. |
+| `EngineVersionIncompatible` | **must surface** | The same argument for engine skew; whole‑assembly silent rejection is the worst place to be quiet. |
+| `CaseMismatch` | informational | Never a gauntlet failure — a registry lookup miss is contractually never a failure; the `HED7103` event is a diagnostic aid. |
+| duplicate key at registration | already surfaces | `PrecompiledTemplates.Register` throws `PrecompiledRegistrationException` — the precedent that registration defects throw. |
+
+**Today's behavior is unchanged**: under the default `Fallback` policy every class above still
+degrades silently with an `OnFallback` event, and only `Strict` throws. Making the must‑surface
+classes throw *by default* (with an explicit opt‑out policy for hosts that rely on silent
+degrade) is a behavioral change: it is filed as a candidate for the next breaking window and does
+not ship outside one.
+
+The build tier obeys the same principle already: an exception escaping the template emitter is a
+defect, so it reds the build with a per‑template `HED7020` error naming the template and the
+exception — the remaining templates and the manifest still emit — instead of being swallowed into
+a silent degrade.
 
 ---
 
@@ -193,7 +259,7 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 | `HED7003` | Two keys differ only by case (warning). |
 | `HED7004` | Invalid explicit `Key` metadata. |
 | `HED7005` | Unpaired surrogate in static text — the `"…"u8` twin is suppressed (warning). |
-| `HED7006` | A named extension resolves to no `[ExtensionName]` type in any reference. |
+| `HED7006` | A named extension resolves to no `[ExtensionName]` type in any reference **under the runtime's own discovery rule** (implements `IExtension` and carries an inherited `[ExtensionName]`). A name the runtime *would* find but the generator cannot bind — an `IExtension`-direct implementor, or a collision between unrelated types — degrades to the dynamic tier with a recorded reason instead (phase 3, F3). |
 | `HED7007` | The `@model`/`::` type does not resolve (milestone‑2 native diagnostic). |
 | `HED7008` | A member path does not resolve on the model type (milestone‑2 native diagnostic). |
 | `HED7009` | An MSBuild option value is unparsable. |
@@ -203,6 +269,14 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 | `HED7014` | A called function is delegate‑only (not precompilable) — the template falls back (warning). |
 | `HED7015` | A bound extension overrides a compile‑time hook — unevaluable at build. |
 | `HED7016` | A branch continuation/terminal (`[BranchRole]`) omits `[ScopeChannel]`, so it can never read the branch state at run time (warning). |
+| `HED7017` | An extension declares a malformed `[Prop]` parameter — the build‑tier twin of the dynamic tier's declaration diagnostics. |
+| `HED7018` | A template is outside `HeddleTemplateRoot` and has no explicit `Key`, so its directory is dropped and it registers under a flattened filename key (warning). |
+| `HED7019` | The `Heddle` engine assembly is not visible among the compilation's references, so the manifest records the generator's own version as `engineVersion` (warning). |
+| `HED7020` | The template emitter threw — a generator defect, not a template error. That one template emits nothing; the rest of the pass and the manifest are unaffected. |
+| `HED7021` | An `[assembly: ExportFunctions(...)]` container is not a public static class. The runtime throws when the host assembly is registered, so the build errors rather than skipping the container silently. |
+| `HED7022` | An `@profile(){{…}}` value is neither `text` nor `html`. The runtime rejects the template with `HED2001`, so the build reports it rather than pre-compiling output the dynamic tier would never produce. |
+| `HED7023` | A model/prop/slot type name is ambiguous — several types answer to it and the `@using` imports do not settle it. The runtime raises the same ambiguity, so the build errors rather than binding one candidate. |
+| `HED7024` | A call-site fill overrides a region the definition declares private. The runtime raises `HED5019` for the same template, so the build reports the matching error at the override's position. |
 
 Member/type errors in milestone 1 arrive as C# errors remapped to the template span via
 `#line`; milestone 2 replaces the covered ones with native `HED7007`/`HED7008`.

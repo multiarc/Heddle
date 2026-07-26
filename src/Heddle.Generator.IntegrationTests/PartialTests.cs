@@ -1,3 +1,4 @@
+extern alias generator;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -35,22 +36,11 @@ namespace Heddle.Generator.IntegrationTests
             return null;
         }
 
-        private static string Sanitize(string key)
-        {
-            var file = key.Contains('/') ? key.Substring(key.LastIndexOf('/') + 1) : key;
-            var dot = file.LastIndexOf('.');
-            if (dot > 0) file = file.Substring(0, dot);
-            var sb = new System.Text.StringBuilder();
-            for (int i = 0; i < file.Length; i++)
-            {
-                var c = file[i];
-                bool valid = c == '_' || char.IsLetter(c) || (i > 0 && char.IsDigit(c));
-                if (i == 0 && char.IsDigit(c)) sb.Append('_').Append(c);
-                else if (valid) sb.Append(i == 0 ? char.ToUpperInvariant(c) : c);
-                else sb.Append('_');
-            }
-            return sb.Length == 0 ? "_" : sb.ToString();
-        }
+        /// <summary>The generator's own <c>SanitizeName</c> (phase 6 D9). This used to be a simplified,
+        /// already-divergent copy — it dropped the directory-segment handling entirely — which is exactly how a
+        /// hand-synchronized "independent oracle" fails.</summary>
+        private static string Sanitize(string key) =>
+            generator::Heddle.Generator.HeddleTemplateGenerator.SanitizeName(key);
 
         [Fact]
         public void PrecompiledParentRendersPrecompiledChild()

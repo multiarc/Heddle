@@ -1,5 +1,6 @@
 using System.Collections.Generic;
-using System.Linq;
+using Heddle.Language.Binding;
+using Heddle.Strings.Core;
 using Microsoft.CodeAnalysis;
 
 namespace Heddle.Generator.Binding
@@ -7,43 +8,93 @@ namespace Heddle.Generator.Binding
     /// <summary>
     /// Discovers declaratively exported host functions (phase 7 D21 / OQ1 resolution): the assembly-level
     /// <c>Heddle.Attributes.ExportFunctionsAttribute</c> on the compilation's own assembly and its referenced
-    /// assemblies. Each container is a <c>public static</c> class; every public static method is one function named
-    /// <c>MethodInfo.Name.ToLowerInvariant()</c> (phase 6 D24). Generated calls bind <b>directly</b> to the
-    /// discovered container (no shim, no runtime registry), and the manifest records the container as AQN sans
-    /// version — the exact shape the gauntlet compares against the live registry.
+    /// assemblies. Each container is a <c>public static</c> class; every <b>eligible</b> public static method is one
+    /// function named <c>MethodInfo.Name.ToLowerInvariant()</c> (phase 6 D24). Generated calls bind <b>directly</b>
+    /// to the discovered container (no shim, no runtime registry), and the manifest records the container as AQN
+    /// sans version — the exact shape the gauntlet compares against the live registry.
+    /// <para>Phase 3 (F2) moved three rules here from hand transcription into the shared
+    /// <see cref="ExportRules"/>/<see cref="ExportBookkeeping{TPayload}"/> core:</para>
+    /// <list type="bullet">
+    /// <item><description><b>method eligibility</b> — the runtime refuses open generics, <c>void</c> returns and
+    /// <c>ref</c>/<c>out</c>/pointer parameters; this resolver used to count them, and because the gauntlet compares
+    /// overload counts exactly in both directions, one <c>void Log(string)</c> helper permanently un-precompiled
+    /// every template calling any function from that container;</description></item>
+    /// <item><description><b>merge across containers</b> (OQ2) — a second container exporting the same name adds its
+    /// overloads rather than being ignored, so the manifest rows match the live merged registry;</description></item>
+    /// <item><description><b>container eligibility</b> — an ineligible container is <c>HED7021</c> at
+    /// <b>Error</b> severity (Q3.6's match-principle ruling), not a silent skip: the runtime throws
+    /// <c>ArgumentException</c> at <c>RegisterFrom</c>, so the build fails the same way instead of masking a host
+    /// configuration error until first render.</description></item>
+    /// </list>
     /// </summary>
     internal sealed class FunctionExportResolver
     {
-        internal sealed class ExportEntry
+        /// <summary>One discovered overload: the container it lives in and the metadata a call site needs to emit
+        /// (and to rank) it.</summary>
+        internal sealed class ExportOverloadInfo
         {
-            public ExportEntry(string containerGlobalName, string containerAqnSansVersion,
-                IReadOnlyDictionary<string, string> methodNamesByFunction, int overloadCount)
+            public ExportOverloadInfo(INamedTypeSymbol container, IMethodSymbol method)
             {
-                ContainerGlobalName = containerGlobalName;
-                ContainerAqnSansVersion = containerAqnSansVersion;
-                MethodNamesByFunction = methodNamesByFunction;
-                OverloadCount = overloadCount;
+                Container = container;
+                Method = method;
             }
 
+            public INamedTypeSymbol Container { get; }
+
+            public IMethodSymbol Method { get; }
+
             /// <summary><c>global::</c>-qualified container type name for the generated call site.</summary>
-            public string ContainerGlobalName { get; }
+            public string ContainerGlobalName =>
+                Container.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-            /// <summary>AQN sans version (<c>Ns.Type, Assembly</c>) for the manifest <c>FunctionBindings</c> row.</summary>
-            public string ContainerAqnSansVersion { get; }
+            /// <summary>The concrete (cased) method name to emit.</summary>
+            public string MethodName => Method.Name;
+        }
 
-            /// <summary>The concrete (cased) method name to emit for this function (the C# compiler resolves the
-            /// overload); keyed by the lowercase function name.</summary>
-            public IReadOnlyDictionary<string, string> MethodNamesByFunction { get; }
+        internal sealed class ExportEntry
+        {
+            public ExportEntry(IReadOnlyList<ExportOverloadInfo> overloads,
+                IReadOnlyList<(string Aqn, int OverloadCount)> manifestRows)
+            {
+                Overloads = overloads;
+                ManifestRows = manifestRows;
+            }
 
-            /// <summary>Overload count for the function within this container — the manifest row's per-target count.</summary>
-            public int OverloadCount { get; }
+            /// <summary>Every overload registered under this function name, across every container that exports it —
+            /// the merged set the runtime's registry holds.</summary>
+            public IReadOnlyList<ExportOverloadInfo> Overloads { get; }
+
+            /// <summary>One manifest <c>FunctionBindings</c> row per contributing container, with that container's
+            /// overload count. The gauntlet compares each row's count exactly.</summary>
+            public IReadOnlyList<(string Aqn, int OverloadCount)> ManifestRows { get; }
+
+            /// <summary>Convenience for the single-container case the emitter's older call shape assumes.</summary>
+            public string ContainerAqnSansVersion => ManifestRows.Count == 1 ? ManifestRows[0].Aqn : null;
+
+            public int OverloadCount => ManifestRows.Count == 1 ? ManifestRows[0].OverloadCount : 0;
+        }
+
+        /// <summary>An ineligible <c>[ExportFunctions]</c> container, for the <c>HED7021</c> error.</summary>
+        internal readonly struct IneligibleContainer
+        {
+            public IneligibleContainer(string display, string reason)
+            {
+                Display = display;
+                Reason = reason;
+            }
+
+            public string Display { get; }
+            public string Reason { get; }
         }
 
         private readonly Dictionary<string, ExportEntry> _byFunctionName;
+        private readonly IReadOnlyList<IneligibleContainer> _ineligible;
 
-        private FunctionExportResolver(Dictionary<string, ExportEntry> byFunctionName)
+        private FunctionExportResolver(Dictionary<string, ExportEntry> byFunctionName,
+            IReadOnlyList<IneligibleContainer> ineligible)
         {
             _byFunctionName = byFunctionName;
+            _ineligible = ineligible;
         }
 
         public bool TryGet(string functionName, out ExportEntry entry) =>
@@ -51,18 +102,28 @@ namespace Heddle.Generator.Binding
 
         public bool Any => _byFunctionName.Count != 0;
 
+        /// <summary>Containers the runtime would reject with <c>ArgumentException</c> — each one <c>HED7021</c>.</summary>
+        public IReadOnlyList<IneligibleContainer> IneligibleContainers => _ineligible;
+
         public static FunctionExportResolver Build(Compilation compilation)
         {
             var byName = new Dictionary<string, ExportEntry>(System.StringComparer.Ordinal);
+            var ineligible = new List<IneligibleContainer>();
             if (compilation == null)
-                return new FunctionExportResolver(byName);
+                return new FunctionExportResolver(byName, ineligible);
 
             var exportAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.ExportFunctionsAttribute");
             if (exportAttr == null)
-                return new FunctionExportResolver(byName);
+                return new FunctionExportResolver(byName, ineligible);
 
             var assemblies = new List<IAssemblySymbol> { compilation.Assembly };
             assemblies.AddRange(compilation.SourceModule.ReferencedAssemblySymbols);
+
+            // The bookkeeping accumulates every container's contribution under one name (OQ2: merge). The order
+            // fed in is the documented one: compilation assembly first, then referenced assemblies, then per
+            // assembly the attribute declaration order — the only thing it can change is which of two
+            // identical-signature registrations survives, which is the runtime's replace-on-identical rule.
+            var bookkeeping = new ExportBookkeeping<ExportOverloadInfo>();
 
             foreach (var assembly in assemblies)
             {
@@ -72,11 +133,24 @@ namespace Heddle.Generator.Binding
                         continue;
 
                     foreach (var container in ContainerTypes(attr))
-                        AddContainer(container, byName);
+                        AddContainer(container, bookkeeping, ineligible);
                 }
             }
 
-            return new FunctionExportResolver(byName);
+            foreach (var name in bookkeeping.Names)
+            {
+                var overloads = new List<ExportOverloadInfo>();
+                foreach (var overload in bookkeeping.Overloads(name))
+                    overloads.Add(overload.Payload);
+
+                var rows = new List<(string, int)>();
+                foreach (var container in bookkeeping.Containers(name))
+                    rows.Add((container, bookkeeping.OverloadCount(name, container)));
+
+                byName[name] = new ExportEntry(overloads, rows);
+            }
+
+            return new FunctionExportResolver(byName, ineligible);
         }
 
         private static IEnumerable<INamedTypeSymbol> ContainerTypes(AttributeData attr)
@@ -96,45 +170,124 @@ namespace Heddle.Generator.Binding
             }
         }
 
-        private static void AddContainer(INamedTypeSymbol container, Dictionary<string, ExportEntry> byName)
+        private static void AddContainer(INamedTypeSymbol container,
+            ExportBookkeeping<ExportOverloadInfo> bookkeeping, List<IneligibleContainer> ineligible)
         {
-            if (container == null || container.DeclaredAccessibility != Accessibility.Public ||
-                !container.IsStatic)
+            if (container == null)
                 return;
 
-            // function name (lowercase) -> concrete method name; and per-function overload count.
-            var methodNames = new Dictionary<string, string>(System.StringComparer.Ordinal);
-            var overloadCounts = new Dictionary<string, int>(System.StringComparer.Ordinal);
+            // Reflection's "public" for a container is IsPublic || IsNestedPublic — a nested public container is a
+            // legal export target, so the symbol test walks the containing chain rather than looking at the
+            // declared accessibility alone.
+            bool isStaticClass = container.TypeKind == TypeKind.Class && container.IsStatic;
+            bool isPublic = IsPubliclyVisible(container);
+            if (!ExportRules.IsContainerEligible(isStaticClass, isPublic))
+            {
+                var display = SymbolTypeIdentity.FullName(container);
+                ineligible.Add(new IneligibleContainer(display,
+                    ExportRules.ContainerIneligibleMessage(display)));
+                return;
+            }
+
+            var containerAqn = SymbolTypeIdentity.AqnSansVersion(container);
             foreach (var member in container.GetMembers())
             {
-                if (!(member is IMethodSymbol method) || method.MethodKind != MethodKind.Ordinary)
-                    continue;
-                if (method.DeclaredAccessibility != Accessibility.Public || !method.IsStatic)
+                if (!(member is IMethodSymbol method))
                     continue;
 
-                var fnName = method.Name.ToLowerInvariant();
-                methodNames[fnName] = method.Name;
-                overloadCounts[fnName] = overloadCounts.TryGetValue(fnName, out var c) ? c + 1 : 1;
-            }
-
-            if (methodNames.Count == 0)
-                return;
-
-            var globalName = container.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            var bareName = globalName.StartsWith("global::", System.StringComparison.Ordinal)
-                ? globalName.Substring("global::".Length)
-                : globalName;
-            var aqn = bareName + ", " + container.ContainingAssembly.Identity.Name;
-
-            foreach (var pair in methodNames)
-            {
-                // Later declarations do not override earlier ones (attribute declaration order, D24) —
-                // a function name already bound to a container stays with it.
-                if (byName.ContainsKey(pair.Key))
+                var facts = DescribeMethod(method);
+                if (!ExportRules.IsCandidate(facts))
                     continue;
-                var single = new Dictionary<string, string>(System.StringComparer.Ordinal) { [pair.Key] = pair.Value };
-                byName[pair.Key] = new ExportEntry(globalName, aqn, single, overloadCounts[pair.Key]);
+
+                // Verified against the runtime while implementing (a correction to the plan's framing of F2): an
+                // ineligible METHOD is not a silent over-count on one tier — RegisterContainer wraps the
+                // ArgumentException and rethrows, so the whole container fails to register and the host throws at
+                // startup. Under the match principle that is a build error, not an excluded manifest row.
+                var rejection = ExportRules.Evaluate(facts);
+                if (rejection != ExportRejection.None)
+                {
+                    ineligible.Add(new IneligibleContainer(SymbolTypeIdentity.FullName(container),
+                        ExportRules.MethodIneligibleMessage(SymbolTypeIdentity.FullName(container), method.Name,
+                            rejection)));
+                    continue;
+                }
+
+                bookkeeping.AddOrReplace(ExportRules.FunctionName(method.Name),
+                    new ExportOverload<ExportOverloadInfo>
+                    {
+                        ContainerAqn = containerAqn,
+                        ParameterTypeKeys = facts.ParameterTypeKeys,
+                        Payload = new ExportOverloadInfo(container, method)
+                    });
             }
         }
+
+        private static bool IsPubliclyVisible(INamedTypeSymbol type)
+        {
+            for (var t = type; t != null; t = t.ContainingType)
+                if (t.DeclaredAccessibility != Accessibility.Public)
+                    return false;
+            return true;
+        }
+
+        /// <summary>
+        /// The Roslyn adapter of <see cref="ExportedMethodFacts"/>.
+        /// <para><b>The <c>MethodKind.Ordinary</c> ↔ <c>!IsSpecialName</c> correspondence is stated here, once.</b>
+        /// Reflection skips <c>IsSpecialName</c> methods — property accessors, event accessors, operators,
+        /// constructors. Roslyn's <c>MethodKind</c> partitions the same set: everything <em>except</em>
+        /// <c>Ordinary</c> (and <c>DeclareMethod</c>, a VB concept) is special-name in metadata. The residual
+        /// difference runs the other way — a C# method can carry <c>[SpecialName]</c> explicitly and still be
+        /// <c>MethodKind.Ordinary</c>. That case would make the build tier count a method the runtime skips, so it
+        /// is checked explicitly rather than inferred from the kind.</para>
+        /// <para>Parameter-type keys use a fully-qualified, non-aliased display. They are only ever compared
+        /// <em>within</em> this tier (each tier merges its own registrations), so consistency is what matters, not
+        /// byte-equality with reflection's <c>Type.FullName</c>.</para>
+        /// </summary>
+        private static ExportedMethodFacts DescribeMethod(IMethodSymbol method)
+        {
+            var keys = new string[method.Parameters.Length];
+            bool byRefOrPointer = false;
+            for (int i = 0; i < method.Parameters.Length; i++)
+            {
+                var parameter = method.Parameters[i];
+                if (parameter.RefKind != RefKind.None || parameter.Type.TypeKind == TypeKind.Pointer ||
+                    parameter.Type.TypeKind == TypeKind.FunctionPointer)
+                    byRefOrPointer = true;
+                keys[i] = SignatureKey(parameter.Type);
+            }
+
+            bool specialName = method.MethodKind != MethodKind.Ordinary ||
+                               HasSpecialNameAttribute(method);
+
+            return new ExportedMethodFacts
+            {
+                Name = method.Name,
+                IsStatic = method.IsStatic,
+                IsPublic = method.DeclaredAccessibility == Accessibility.Public,
+                IsOpenGeneric = method.IsGenericMethod,
+                ReturnsVoid = method.ReturnsVoid,
+                HasByRefOrPointerParameter = byRefOrPointer,
+                IsSpecialName = specialName,
+                ParameterTypeKeys = keys
+            };
+        }
+
+        private static bool HasSpecialNameAttribute(IMethodSymbol method)
+        {
+            foreach (var attribute in method.GetAttributes())
+                if (attribute.AttributeClass?.MetadataName == "SpecialNameAttribute")
+                    return true;
+            return false;
+        }
+
+        private static readonly SymbolDisplayFormat SignatureFormat = SymbolDisplayFormat.FullyQualifiedFormat
+            .WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Omitted)
+            .WithMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers);
+
+        internal static string SignatureKey(ITypeSymbol type) => type.ToDisplayString(SignatureFormat);
+
+        /// <summary>The build-time position an <c>HED7021</c> is reported at is the template whose compilation
+        /// consulted the resolver; the resolver itself is template-independent, so the pipeline supplies it.</summary>
+        internal static BlockPosition NoPosition => default;
     }
 }

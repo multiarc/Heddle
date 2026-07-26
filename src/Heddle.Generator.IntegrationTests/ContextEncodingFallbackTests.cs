@@ -18,17 +18,6 @@ namespace Heddle.Generator.IntegrationTests
     /// </summary>
     public class ContextEncodingFallbackTests
     {
-        private static bool IsPrecompiled(string manifest, string key)
-        {
-            var marker = "key: \"" + key + "\"";
-            var at = manifest?.IndexOf(marker, StringComparison.Ordinal) ?? -1;
-            if (at < 0)
-                return false; // no manifest entry -> full dynamic fallback
-            var next = manifest.IndexOf("key: \"", at + marker.Length, StringComparison.Ordinal);
-            var block = next < 0 ? manifest.Substring(at) : manifest.Substring(at, next - at);
-            return !block.Contains("strategy: null"); // strategy: null == marker (not precompiled)
-        }
-
         private static string RenderDynamic(string content, string model)
         {
             var t = new HeddleTemplate(content, new CompileContext(new TemplateOptions(), new ExType(typeof(string))));
@@ -48,9 +37,9 @@ namespace Heddle.Generator.IntegrationTests
             Assert.False(gen.Diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error),
                 "Unexpected generator error: " + string.Join("; ", gen.Diagnostics.Select(d => d.ToString())));
 
-            // Documented fallback (C2-R7): the template does not precompile — no bound strategy for it.
-            Assert.False(IsPrecompiled(gen.ManifestSource ?? string.Empty, "views/ctx.heddle"),
-                "Expected a dynamic-tier fallback (InitStart-overriding value-call), but the template precompiled.");
+            // Documented fallback (C2-R7), declared through the phase 0 D5 intent API: the template does not
+            // precompile — no bound strategy and no entry class for it.
+            DifferentialHarness.ExpectDegrade(gen, "views/ctx.heddle");
 
             // The runtime backend renders the escaping — the fallback is output-safe.
             Assert.Equal(expected + "\n", RenderDynamic(template, value));

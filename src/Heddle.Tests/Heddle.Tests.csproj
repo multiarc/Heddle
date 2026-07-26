@@ -60,6 +60,13 @@
     <None Update="TestTemplate\at-escape.heddle">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <!-- Generator plan phase 2 WI1 — the clamp-drift fixture pair (indented last-line @<< import + its library). -->
+    <None Update="TestTemplate\shaper-clamp-overshoot.heddle">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestTemplate\shaper-clamp-imported.heddle">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="TestTemplate\generated-at-escape.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

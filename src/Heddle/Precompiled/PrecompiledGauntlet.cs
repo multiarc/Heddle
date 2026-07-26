@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
+using System.Text;
 using Heddle.Data;
 using Heddle.Runtime;
 using Heddle.Runtime.Expressions;
@@ -85,6 +85,20 @@ namespace Heddle.Precompiled
                 if (!matches)
                     return Fail(entry.Key, PrecompiledFallbackReason.ExtensionBindingMismatch,
                         $"Extension '{binding.Name}': manifest={binding.ExtensionTypeName} live={AqnSansVersion(liveType)}");
+
+                // Phase 3 OQ4 — the identity check above proves the manifest and the live registry name the same
+                // type, not that the type still lays its [Prop] slots out the same way. An extension package that
+                // gains or re-orders a slot keeps its AQN, so without this row the render writes values into the
+                // wrong slots. Vacuous when the fingerprint is absent (schema 1–3 manifests): the additive-schema
+                // contract means the row's arrival forces nobody to re-precompile.
+                if (!string.IsNullOrEmpty(binding.PropLayoutFingerprint))
+                {
+                    var liveFingerprint = PropLayout.Fingerprint(liveType);
+                    if (!string.Equals(binding.PropLayoutFingerprint, liveFingerprint, StringComparison.Ordinal))
+                        return Fail(entry.Key, PrecompiledFallbackReason.ExtensionBindingMismatch,
+                            $"Extension '{binding.Name}': prop layout changed " +
+                            $"(manifest={binding.PropLayoutFingerprint} live={liveFingerprint})");
+                }
             }
 
             return null;
@@ -183,33 +197,21 @@ namespace Heddle.Precompiled
             return null;
         }
 
+        /// <summary>Decode-then-hash (phase 5 D1): the file is read with BOM detection (a BOM is honored and
+        /// stripped; no BOM means UTF-8) and its <b>decoded text</b> is hashed through the shared
+        /// <see cref="ContentHash"/> rule — the same input the generator hashed at build time. Hashing the raw byte
+        /// stream here is what made every BOM'd/UTF-16 template permanently <c>StaleContent</c>.</summary>
         internal static string HashFile(string path)
         {
-            using (var sha = SHA256.Create())
             using (var stream = File.OpenRead(path))
-                return ToHex(sha.ComputeHash(stream));
+            using (var reader = new StreamReader(stream, new UTF8Encoding(false), detectEncodingFromByteOrderMarks: true))
+                return ContentHash.HashText(reader.ReadToEnd());
         }
 
-        internal static string HashBytes(byte[] bytes)
-        {
-            using (var sha = SHA256.Create())
-                return ToHex(sha.ComputeHash(bytes));
-        }
-
-        private static string ToHex(byte[] hash)
-        {
-            var builder = new System.Text.StringBuilder(hash.Length * 2);
-            foreach (var b in hash)
-                builder.Append(b.ToString("x2", CultureInfo.InvariantCulture));
-            return builder.ToString();
-        }
-
-        internal static string AqnSansVersion(Type type)
-        {
-            if (type == null)
-                return "<unknown>";
-            return type.FullName + ", " + type.Assembly.GetName().Name;
-        }
+        /// <summary>Phase 3 (F1): the manifest identity string, produced by the shared <see cref="AqnFormatter"/>
+        /// through its reflection adapter — the same rule the generator's Roslyn adapter applies, so a nested or
+        /// generic container can no longer spell its identity two different ways.</summary>
+        internal static string AqnSansVersion(Type type) => ReflectionTypeIdentity.AqnSansVersion(type);
 
         private static string Lower(bool value) => value ? "true" : "false";
 

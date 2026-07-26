@@ -54,8 +54,8 @@ namespace Heddle.Generator.IntegrationTests
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
 
             // Not precompiled: the bodied custom-branch call degrades the whole template to the dynamic tier, so the
-            // manifest carries no entry for this key.
-            Assert.DoesNotContain("key: \"views/custom-trio.heddle\"", gen.ManifestSource ?? string.Empty);
+            // manifest carries no bound strategy for this key (phase 0 D5 — the degrade is declared, not inferred).
+            DifferentialHarness.ExpectDegrade(gen, "views/custom-trio.heddle");
 
             // The dynamic tier renders with full role semantics — byte-identical to the built-in family.
             var builtin = "@model(){{" + CartType + "}}@\\\n" +

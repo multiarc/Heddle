@@ -21,34 +21,12 @@ namespace Heddle.Helpers
 
         private readonly Type _innerType;
 
-        private static readonly Dictionary<string, Type> CSharpTypes;
-
         private static Dictionary<string, List<Type>> _shortNames;
 
         private static Dictionary<string, List<Type>> _fullNames;
 
         static ReflectionHelper()
         {
-            CSharpTypes = new Dictionary<string, Type>(StringComparer.Ordinal)
-            {
-                {"bool", typeof(bool)},
-                {"byte", typeof(byte)},
-                {"sbyte", typeof(sbyte)},
-                {"char", typeof(char)},
-                {"decimal", typeof(decimal)},
-                {"double", typeof(double)},
-                {"float", typeof(float)},
-                {"int", typeof(int)},
-                {"uint", typeof(uint)},
-                {"long", typeof(long)},
-                {"ulong", typeof(ulong)},
-                {"object", typeof(object)},
-                {"short", typeof(short)},
-                {"ushort", typeof(ushort)},
-                {"string", typeof(string)},
-                {"dynamic", typeof(object)}
-            };
-
             Reconfigure();
         }
 
@@ -80,6 +58,8 @@ namespace Heddle.Helpers
                         // because the template lexer cannot accept '+'; both keys point at the same Type.
                         // If a real namespaced type shares the dotted spelling, the alias lands in the
                         // same list and surfaces as the existing "ambiguous" error rather than a silent pick.
+                        // (Phase 3 note: that was true of the full-name arm only until the short-name arm was
+                        // fixed to match — see ResolveSimpleType. It is now true of both, as written.)
                         StringBuilder shortNameBuilder = new StringBuilder();
                         shortNameBuilder.Append(type.Name);
                         var parent = type.DeclaringType;
@@ -151,14 +131,10 @@ namespace Heddle.Helpers
             return IsType(value.GetType());
         }
 
-        private static Type ResolveCsharpType(string typeName)
-        {
-            if (CSharpTypes.TryGetValue(typeName, out var result))
-            {
-                return result;
-            }
-            return null;
-        }
+        // The alias table lives in CSharpTypeNames (phase 6 D7) — one data source for the parse direction here,
+        // the display direction in signature/hover text, and the build tier's symbol-side adapter.
+        private static Type ResolveCsharpType(string typeName) =>
+            CSharpTypeNames.TryGetType(typeName, out var result) ? result : null;
 
         private static Type ResolveSimpleType(string typeName, ICollection<string> imports)
         {
@@ -235,12 +211,28 @@ namespace Heddle.Helpers
                     {
                         return types[0];
                     }
-                    result = types.FirstOrDefault(t => imports.Contains(t.Namespace));
-                    if (result == null)
+
+                    // Phase 3 (Q3.5 / OQ5 escape clause): a short-name tie is disambiguated by the imports, and a
+                    // tie the imports do NOT settle is the SAME "ambigous" error the dotted/full-name arms above
+                    // already raise. It used to be `types.FirstOrDefault(t => imports.Contains(t.Namespace))` — a
+                    // first-match pick over an assembly-scan-ordered list, so with two imported namespaces both
+                    // carrying the name the resolved type depended on assembly load order. That is not a rule the
+                    // build tier can match by construction, and reproducing it would bake load order into build
+                    // output; it also contradicted this file's own comment at RegisterType, which states that a
+                    // dotted-alias collision "surfaces as the existing ambiguous error rather than a silent pick".
+                    // Both tiers are fixed together and stay matched (the generator raises HED7023 for the same
+                    // input). Behaviour is otherwise unchanged: one match still resolves, no match still fails.
+                    var matches = types.Where(t => imports.Contains(t.Namespace)).ToList();
+                    if (matches.Count == 1)
                     {
-                        throw new InvalidOperationException($"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)})");
+                        return matches[0];
                     }
-                    return result;
+                    if (matches.Count > 1)
+                    {
+                        throw new InvalidOperationException(
+                            $"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)}), the type name is ambigous");
+                    }
+                    throw new InvalidOperationException($"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)})");
                 }
                 throw new InvalidOperationException($"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)})");
             }

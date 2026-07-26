@@ -4,6 +4,7 @@ using System.Linq;
 using Heddle.Attributes;
 using Heddle.Data;
 using Heddle.Helpers;
+using Heddle.Language;
 using Heddle.Runtime.Parameters;
 using Heddle.Strings;
 using Heddle.Strings.Core;
@@ -92,40 +93,20 @@ namespace Heddle.Runtime {
             return resultTree;
         }
 
+        /// <summary>The static-piece walk (generator plan phase 2 D6): the segmentation itself lives once in
+        /// <see cref="DocumentShaping.SlicePieces{T}"/>, shared with the emitter's body walk so the precompiled
+        /// <c>P0..Pn</c> constants are the same strings this method produces. The pair-building is the only
+        /// runtime-specific part.</summary>
         private static DataProcessor[] GetDocumentPieces(ICollection<IDataProcessor> processors, string document)
         {
             List<DataProcessor> optimized = new List<DataProcessor>();
-            int offset = 0;
-            foreach (var element in processors)
-            {
-                if (element.Position.StartIndex > offset)
+            DocumentShaping.SlicePieces(processors, element => element.Position, document,
+                piece => optimized.Add(new DataProcessor { Piece = piece, Processor = null }),
+                element =>
                 {
-                    optimized.Add(new DataProcessor
-                    {
-                        Piece = document.Substring(offset, element.Position.StartIndex - offset),
-                    });
-                    optimized.Add(new DataProcessor
-                    {
-                        Processor = element
-                    });
-                }
-                else
-                {
-                    optimized.Add(new DataProcessor
-                    {
-                        Processor = element
-                    });
-                }
-                offset = element.Position.StartIndex + element.Position.Length;
-            }
-            if (document.Length > offset)
-            {
-                optimized.Add(new DataProcessor
-                {
-                    Piece = document.Substring(offset),
-                    Processor = null
+                    optimized.Add(new DataProcessor { Processor = element });
+                    return true;
                 });
-            }
             return optimized.ToArray();
         }
 

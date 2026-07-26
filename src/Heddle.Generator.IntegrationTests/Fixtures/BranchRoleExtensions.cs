@@ -3,6 +3,7 @@ using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
 using Heddle.Exceptions;
+using Heddle.Runtime;
 
 // Exports the custom branch-role trio (and the bodiless zebra-style participant) to the dynamic backend so a
 // custom-trio template resolves the same [ExtensionName] types on both tiers — the WI6 (§8.3) universality gate.
@@ -14,13 +15,20 @@ using Heddle.Exceptions;
     typeof(Heddle.Generator.IntegrationTests.Fixtures.FlagExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.GateExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.RowExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.PeekExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NoteExtension),
     // Phase 8 (WI9): the extension-parameter fixtures the cross-tier differential renders on the dynamic side.
     typeof(Heddle.Generator.IntegrationTests.Fixtures.GridExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.GridReqExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.EncodedGridExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.EncodedBareExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.NarrowItemExtension),
-    typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableNarrowItemExtension))]
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableNarrowItemExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableLiftDefaultExtension),
+    // Phase 0 (WI6): the quarantined drift-register fixtures. Their names are used by no other suite.
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.DriftContainer.NestedYellExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.DriftBaseExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.DriftInheritedExtension))]
 
 namespace Heddle.Generator.IntegrationTests.Fixtures
 {
@@ -171,6 +179,44 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
             scope.Publish(BranchState.ReservedKey, new BranchState(truthy));
             if (truthy) scope.Renderer.Render(scope.ModelData?.ToString() ?? string.Empty);
         }
+    }
+
+    /// <summary>
+    /// Phase 1 (WI9 / D10): a CUSTOM zero-output extension. Its <c>InitStart</c> returns <c>null</c> — the runtime
+    /// protocol that makes the compiler drop the block — and it declares <c>[ZeroOutput]</c>, the symbol-readable
+    /// form of the same fact. Before phase 1 the generator classified zero-output by a hard-coded list of the four
+    /// built-in directive names, so this extension's block was removed on the dynamic tier and kept as rendered
+    /// output on the precompiled one: a silent divergence for every custom directive anyone could write.
+    /// </summary>
+    [ExtensionName("note")]
+    [ZeroOutput]
+    public sealed class NoteExtension : AbstractExtension
+    {
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
+            => null;
+
+        public override object ProcessData(in Scope scope) => null;
+
+        public override void RenderData(in Scope scope)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Phase 1 (WI1 / D2): the per-carrier locals probe. A roleless, <b>non</b>-<c>[ScopeChannel]</c> extension
+    /// that READS the local channel — the read twin of <see cref="FlagExtension"/>'s opportunistic publish. Because
+    /// it carries no <c>[ScopeChannel]</c>, neither tier counts it as a participant, so a body containing only
+    /// <c>@flag</c> + <c>@peek</c> is classified as non-participating on both tiers. What it renders therefore
+    /// reports, byte-for-byte, <em>whether that body was given a frame anyway</em> — which is exactly the question
+    /// the OR'd <c>needsLocals</c> flag used to answer differently on the two tiers.
+    /// </summary>
+    [ExtensionName("peek")]
+    public sealed class PeekExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) =>
+            BranchTrioSupport.ReadSatisfied(scope, out var present) || present ? "seen" : "unseen";
+
+        public override void RenderData(in Scope scope) => scope.Renderer.Render((string) ProcessData(scope));
     }
 
     /// <summary>A roleless bodiless <c>[ScopeChannel]</c> participant (the documented "zebra" pattern): publishes to

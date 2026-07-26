@@ -4,6 +4,7 @@ using System.Reflection;
 using Heddle.Attributes;
 using Heddle.Data;
 using Heddle.Helpers;
+using Heddle.Language.Members;
 
 namespace Heddle.Runtime.Expressions
 {
@@ -56,10 +57,53 @@ namespace Heddle.Runtime.Expressions
             new MemberPathResolution(MemberPathResolutionKind.Failed, null, null, index, message);
     }
 
+    /// <summary>
+    /// The reflection fact source for the shared member walk (phase 4 D7). Roslyn's mirror of this adapter lives in
+    /// the generator; both feed the identical <see cref="MemberVisibility"/> policy, so the six divergences the
+    /// research verified between the two hand-written resolvers cannot re-open.
+    /// <para>Two capability choices are deliberate and runtime-normative under OQ1: <see cref="BaseInterfaces"/>
+    /// returns nothing (reflection's <c>GetProperty</c> never searched base interfaces, so surfacing them would be a
+    /// behavior <i>widening</i> — a breaking-window candidate, not a drift fix), and non-public members declared on a
+    /// base class stay invisible, which <see cref="MemberVisibility"/> encodes through its
+    /// <c>declaredOnReceiver</c> rule.</para>
+    /// </summary>
+    internal sealed class ReflectionTypeModel : ITypeModel<Type, PropertyInfo>
+    {
+        public static readonly ReflectionTypeModel Instance = new ReflectionTypeModel();
+
+        private ReflectionTypeModel() { }
+
+        public bool IsDynamic(Type type) => false;   // dynamic-ness is an ExType fact, decided before the walk
+
+        public IEnumerable<PropertyInfo> DeclaredProperties(Type type, string name)
+        {
+            foreach (var property in type.GetProperties(MemberPathResolver.DeclaredBindingFlags))
+            {
+                if (string.Equals(property.Name, name, StringComparison.Ordinal))
+                    yield return property;
+            }
+        }
+
+        public MemberFacts FactsOf(PropertyInfo member) => MemberPathResolver.FactsOf(member);
+
+        public Type TypeOf(PropertyInfo member) => member.PropertyType;
+
+        public Type BaseOf(Type type) => type.BaseType;
+
+        public bool IsInterface(Type type) => type.IsInterface;
+
+        public IEnumerable<Type> BaseInterfaces(Type type) => Array.Empty<Type>();
+    }
+
     internal static class MemberPathResolver
     {
         internal const BindingFlags MemberBindingFlags =
             BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public;
+
+        /// <summary>The same set restricted to one type's own declarations — the shared walk visits the base chain
+        /// itself, most-derived-first, so a <c>new</c>-shadowed property resolves deterministically instead of
+        /// throwing <c>AmbiguousMatchException</c> out of <c>Type.GetProperty</c>.</summary>
+        internal const BindingFlags DeclaredBindingFlags = MemberBindingFlags | BindingFlags.DeclaredOnly;
 
         /// <summary>
         /// Walks <paramref name="segments"/> off <paramref name="startType"/>, applying the member-tier filter
@@ -74,8 +118,8 @@ namespace Heddle.Runtime.Expressions
                 if (currentType.IsDynamic)
                     return MemberPathResolution.DynamicHop(properties, i);
 
-                var dataProperty = currentType.Type.GetProperty(segments[i], MemberBindingFlags);
-                if (!IsAccessible(dataProperty))
+                if (!MemberPathWalk.TryFind(ReflectionTypeModel.Instance, currentType.Type, segments[i],
+                        out var dataProperty))
                 {
                     return MemberPathResolution.Failed(i,
                         $"Property {segments[i]} not found in Type [{currentType}]");
@@ -103,24 +147,56 @@ namespace Heddle.Runtime.Expressions
                 yield break;
 
             var seen = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var property in type.GetProperties(MemberBindingFlags))
+            bool declaredOnReceiver = true;
+            for (var current = type; current != null; current = current.BaseType)
             {
-                if (!IsAccessible(property))
-                    continue;
-                if (seen.Add(property.Name))
-                    yield return property;
+                foreach (var property in current.GetProperties(DeclaredBindingFlags))
+                {
+                    if (!MemberVisibility.IsAccessible(FactsOf(property), declaredOnReceiver))
+                        continue;
+                    if (seen.Add(property.Name))
+                        yield return property;
+                }
+
+                declaredOnReceiver = false;
             }
         }
 
-        /// <summary>The exact member-tier property filter: readable, not <c>[Hidden]</c>, getter assembly/public.</summary>
+        /// <summary>The exact member-tier property filter: readable, not <c>[Hidden]</c>, instance, getter
+        /// assembly/public. Kept as a <see cref="PropertyInfo"/>-shaped entry point for the callers that already
+        /// hold a resolved property (prop-shadow detection, indexer selection).</summary>
         internal static bool IsAccessible(PropertyInfo property)
         {
+            return property != null && MemberVisibility.IsAccessible(FactsOf(property));
+        }
+
+        /// <summary>The reflection → <see cref="MemberFacts"/> adapter.</summary>
+        internal static MemberFacts FactsOf(PropertyInfo property)
+        {
             if (property == null || !property.CanRead)
-                return false;
-            if (property.GetCustomAttribute<HiddenAttribute>(false) != null)
-                return false;
+                return new MemberFacts(false, MemberAccess.Private, false, false);
+
             var getter = property.GetGetMethod(true);
-            return getter != null && (getter.IsAssembly || getter.IsPublic);
+            if (getter == null)
+                return new MemberFacts(false, MemberAccess.Private, false, false);
+
+            bool hidden = property.GetCustomAttribute<HiddenAttribute>(false) != null;
+            return new MemberFacts(true, AccessOf(getter), hidden, getter.IsStatic);
+        }
+
+        private static MemberAccess AccessOf(MethodBase getter)
+        {
+            if (getter.IsPublic)
+                return MemberAccess.Public;
+            if (getter.IsFamilyOrAssembly)
+                return MemberAccess.ProtectedOrInternal;
+            if (getter.IsFamilyAndAssembly)
+                return MemberAccess.ProtectedAndInternal;
+            if (getter.IsAssembly)
+                return MemberAccess.Internal;
+            if (getter.IsFamily)
+                return MemberAccess.Protected;
+            return MemberAccess.Private;
         }
     }
 }

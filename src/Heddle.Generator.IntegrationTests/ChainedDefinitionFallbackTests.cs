@@ -18,17 +18,6 @@ namespace Heddle.Generator.IntegrationTests
     /// </summary>
     public class ChainedDefinitionFallbackTests
     {
-        private static bool IsPrecompiled(string manifest, string key)
-        {
-            var marker = "key: \"" + key + "\"";
-            var at = manifest?.IndexOf(marker, StringComparison.Ordinal) ?? -1;
-            if (at < 0)
-                return false; // no manifest entry -> full dynamic fallback
-            var next = manifest.IndexOf("key: \"", at + marker.Length, StringComparison.Ordinal);
-            var block = next < 0 ? manifest.Substring(at) : manifest.Substring(at, next - at);
-            return !block.Contains("strategy: null"); // strategy: null == marker (not precompiled)
-        }
-
         private static string RenderDynamic(string content, string model)
         {
             var t = new HeddleTemplate(content, new CompileContext(new TemplateOptions(), new ExType(typeof(string))));
@@ -51,9 +40,9 @@ namespace Heddle.Generator.IntegrationTests
             Assert.False(gen.Diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error),
                 "Unexpected generator error: " + string.Join("; ", gen.Diagnostics.Select(d => d.ToString())));
 
-            // Documented fallback: a multi-item chain does not precompile — no bound strategy for it.
-            Assert.False(IsPrecompiled(gen.ManifestSource ?? string.Empty, "views/chained-def.heddle"),
-                "Expected a dynamic-tier fallback (chained call), but the template precompiled.");
+            // Documented fallback (phase 0 D5: declared, not inferred): a multi-item chain does not precompile,
+            // so the manifest carries no bound strategy and no entry class was generated.
+            DifferentialHarness.ExpectDegrade(gen, "views/chained-def.heddle");
 
             // The runtime backend renders the corrected output: the chained value reaches the definition's @out().
             Assert.Equal(expected, RenderDynamic(template, value));

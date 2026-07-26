@@ -2,7 +2,8 @@
 
 ## Header
 
-- **Status:** proposed — not started. **Step 0 of the program: lands before, and gates, every fix in phases 1–6.**
+- **Status:** implemented (2026-07-25) — WI1–WI8 landed; see [Implementation record](#implementation-record).
+  **Step 0 of the program: lands before, and gates, every fix in phases 1–6.**
 - **Goal (one line):** Make the test suite structurally unable to pass through an unintended fallback — the majority of end-to-end tests pin the precompiled tier (any fallback throws or fails the test), and fallback is exercised only by the handful of tests whose subject *is* fallback.
 - **Depends on:** nothing. Everything else depends on this: each later phase's fix groups and extractions are verified under the guarded suite this phase creates.
 - **Changes an externally-visible contract:** no. Test-only work plus one `InternalsVisibleTo` line in the engine (no public surface, no behavior, no bytes). The one spec touch is an amendment to [testing-standards.md](../spec/common/testing-standards.md) recording the posture (WI8), via the amendments mechanism.
@@ -250,11 +251,10 @@ inherit the rule instead of restating it.
 
 ## Open questions
 
-- **Q0.1 — Should feature-area suites eventually convert to resolver-path rendering wholesale,
-  or does the corpus sweep remain the permanent posture carrier?** *Recommendation:* the corpus
-  sweep suffices (per-template gauntlet verdicts make per-assertion conversion redundant — D4);
-  revisit only if a feature area's templates cannot be expressed as corpus entries. Recorded in
-  the [register](open-questions.md).
+None open. **Q0.1 resolved (user, 2026-07-25): recommendation applied** — the corpus sweep is
+the permanent posture carrier (D4 stands as written); feature suites keep direct-invoke
+isolation and contribute their templates to the corpus. See the
+[register](open-questions.md).
 
 ## External grounding
 
@@ -298,3 +298,74 @@ inherit the rule instead of restating it.
   holds.
 - **WI8 — Testing-standards amendment + this plan's cross-references landed** (D8; README and the
   affected phase plans' test sections gain one-line pointers). Done when criterion 6 holds.
+
+---
+
+## Implementation record
+
+Landed 2026-07-25. Build `dotnet build Heddle.sln -c Debug` green; `dotnet test Heddle.sln -c Debug`
+green with exactly the five quarantined skips below and no others.
+
+### Where the work landed
+
+| WI | Files |
+| --- | --- |
+| WI1 | `src/Heddle.Generator.IntegrationTests/FallbackGuard.cs` (sentinel + `GuardedOptions`); its unit tests in `PrecompiledRegistryIsolationTests.cs` |
+| WI2 | `DifferentialHarness.RenderViaResolver` / `SweepViaResolver` (+ `ResolverTarget`, `ResolverSweepResult`, `StageCorpus`, `AssertServedByPrecompiledAdapter`); `ResolverPathHarnessTests.cs` |
+| WI3 | one `InternalsVisibleTo` line in `src/Heddle/Properties/AssemblyInfo.cs`; `PrecompiledRegistryTestBase` + leakage canary in `PrecompiledRegistryIsolationTests.cs`; `ResolverIntegrationTests` joins the base |
+| WI4 | `CorpusResolverSweepTests.cs` |
+| WI5 | `DifferentialHarness.ExpectPrecompiled` / `ExpectDegrade` / `ClassifyInManifest`; probes deleted from `ChainedDefinitionFallbackTests`, `ContextEncodingFallbackTests`, `OutStaticBodyFallbackTests`, `BranchRoleUniversalityTests`, `ExtensionParametersDifferentialTests` |
+| WI6 | `QuarantinedDriftFixtures.cs` + `Fixtures/DriftFixtures.cs` (exports added to `Fixtures/BranchRoleExtensions.cs`) |
+| WI7 | `SeededMismatchMetaTests.cs`; `DifferentialHarness.Generate`'s `rewriteManifest` hook |
+| WI8 | `docs/spec/common/testing-standards.md` §*Precompiled-tier posture*; ledger entry **E8** in `docs/spec/records.md`; one-line pointers in each phase 1–6 plan's *Dependencies & ordering* |
+
+### Quarantine register (WI6 / D6)
+
+| Fixture | Owner | Drift | Observed failure today |
+| --- | --- | --- | --- |
+| `BomTemplate_StaysOnThePrecompiledTier_UnderFileBackedStaleness` | phase 5 | F1 content-hash input mismatch | `PrecompiledMismatchException(StaleContent)` — "hash mismatch" |
+| `NestedExtensionType_BindsAndCrossesTheGauntlet` | phase 3 | F1 nested/generic AQN identity | build-time degrade (manifest entry absent) |
+| `InheritedExtensionNameSubclass_CrossesTheGauntlet` | phase 3 | F3 inherited `[ExtensionName]` | `PrecompiledMismatchException(ExtensionBindingMismatch)` |
+| `NonLeftmostScopeChannelParticipant_ProvisionsLocalsOnBothTiers` | phase 1 | F11 `needsLocals` participant scan | build-time degrade (nested chain parameters are refused) |
+| `OverloadTie_ResolvesIdenticallyOnBothTiers` | phase 4 | F3 overload-rank tie | dynamic compile fails `HED1013` while the precompiled tier renders |
+
+### Corrections to this plan, recorded against source
+
+- **Nested-type AQN (phase 3 F1) is not reachable as an AQN comparison today.**
+  `ExtensionBinder.CollectTypes` enumerates `INamespaceSymbol.GetTypeMembers()` only and never
+  descends into nested types, so a nested extension degrades at build time *before* the two
+  identity spellings can be compared. Phase 3's fix owns both halves — nested-container discovery
+  and `+`-separated AQN formatting.
+- **The non-leftmost `[ScopeChannel]` drift (phase 1 F11) is latent, not observable.** The emitter
+  refuses *any* nested chain parameter (`@yell(@yell(this))` degrades identically), so the shape
+  that would expose the leftmost-only participant scan never reaches the precompiled tier. The
+  fixture is still phase 1's acceptance test — its fix is what makes the shape both precompile and
+  provision the frame.
+- **Corpus sweep coverage is resolve-only for the full precompiled set.** The gauntlet's verdict
+  lands at `TryResolve`, before any byte is rendered, and a few corpus entries are import fragments
+  (a bare `@else` continuation) that no tier can render standalone. Byte parity is asserted over the
+  model-less parity subset in both sub-modes.
+- **Registering real generator output loads the extra references.** The direct-invoke paths only
+  ever *compiled* against `Heddle.Tests`; `PrecompiledTemplates.Register` instantiates the manifest,
+  whose rows touch every generated entry class's static constructor. The harness now resolves those
+  assemblies from their reference paths.
+- Line-number drift in this plan's citations: the collection definition is at
+  `ResolverIntegrationTests.cs:96-97` (cited `:99-100`), and the hand-rolled manifest probes were at
+  `:21-30` in the two fallback files (cited `:23-29`). All other cited anchors verified accurate.
+
+### WI4 suite-time budget
+
+Measured on `net10.0`, Debug, second of two consecutive runs (noisy workstation — treat as
+order-of-magnitude):
+
+| Suite | Tests | Wall time |
+| --- | --- | --- |
+| `CorpusResolverSweepTests` (added by this phase) | 3 | ≈ 1.7 s (1.0 s + 451 ms + 230 ms) |
+| `CorpusDifferentialTests` (existing) | 1 | ≈ 1.0 s |
+| `CorpusRenderParityTests` (existing) | 9 | ≈ 3.1 s |
+
+The sweep costs ≈ 1.7 s per TFM against ≈ 4.1 s for the two existing corpus suites it sits beside —
+inside the budget as stated ("less than the existing corpus differential suite's own runtime") when
+that phrase is read as the corpus suites; it is ≈ 1.7× the single `CorpusDifferentialTests` fact read
+narrowly. Sharing one generator run and one registration across every target in a sweep is what keeps
+it there: the marginal cost of a swept template is one `TryResolve` plus one render.

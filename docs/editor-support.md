@@ -65,22 +65,45 @@ setting). Because it is a single file, it is the editor‑agnostic carrier.
   "rootPath": "Views",
   "outputProfile": "html",
   "expressionMode": "native",
-  "fileNamePostfix": ".heddle"
+  "fileNamePostfix": ".heddle",
+  "trimDirectiveLines": true,
+  "maxRecursionCount": 100
 }
 ```
 
-| Field | Meaning |
-| --- | --- |
-| `assemblies` | Model assemblies for typed completion/hover, **and** the input of the one‑shot export scan (see below). Relative to the workspace root. |
-| `rootPath` | Template root for `@<<` import and `@partial` resolution (`TemplateOptions.RootPath`). |
-| `outputProfile` | `text` or `html` — so diagnostics match your host's compile options. |
-| `expressionMode` | `memberPathsOnly` / `native` / `fullCSharp`. |
-| `fileNamePostfix` | Template file name postfix. |
+The editor follows the same configuration surface the engine permits: every compile option that
+affects analysis has a key here, and its name is the option's own name camel‑cased, with the same
+default the engine and the build tier use. Options with no analysis meaning — render‑time settings
+such as `Encoder`, `RenderBudget`, `ValidateModelType`, `PrecompiledMismatchPolicy`,
+`EnableFileChangeCheck`, and the per‑render `Data` — have no key by design.
+
+| Field | Meaning | Default |
+| --- | --- | --- |
+| `assemblies` | Model assemblies for typed completion/hover, **and** the input of the one‑shot export scan (see below). Relative to the workspace root. | none |
+| `rootPath` | Template root for `@<<` import and `@partial` resolution (`TemplateOptions.RootPath`). | the workspace root |
+| `outputProfile` | `text` or `html` — so diagnostics match your host's compile options. | `html` |
+| `expressionMode` | `memberPathsOnly` / `native` / `fullCSharp`. | `native` |
+| `fileNamePostfix` | Template file name postfix. | empty |
+| `trimDirectiveLines` | Whether whole‑line directives swallow their line (`TemplateOptions.TrimDirectiveLines`). | `true` |
+| `maxRecursionCount` | Compile‑time recursion bound (`TemplateOptions.MaxRecursionCount`). | `100` |
+
+An unrecognized value never breaks editing: the option keeps its default and the server writes a
+log line naming the accepted values (visible in the client's Heddle output channel). A key of the
+wrong JSON type is ignored the same way.
+
+::: warning The default output profile is `html`
+Before 2.0.x the editor defaulted to `text` while the engine and the build tier defaulted to `html`,
+so a workspace with no `outputProfile` never saw the encoding lints (`HED2004` and friends) its
+build of record produces. The editor now defaults to `html` like everything else. If your templates
+really are text‑profile, set `"outputProfile": "text"` — that is the opt‑out, and it is also what
+your host should be passing.
+:::
 
 The VS Code extension contributes mirror settings (`heddle.model.assemblies`,
 `heddle.workspace.rootPath`, `heddle.compile.outputProfile`, `heddle.compile.expressionMode`,
-`heddle.compile.fileNamePostfix`, plus `heddle.server.path` and `heddle.trace.server`) and forwards
-them to the server.
+`heddle.compile.fileNamePostfix`, `heddle.compile.trimDirectiveLines`,
+`heddle.compile.maxRecursionCount`, plus `heddle.server.path` and `heddle.trace.server`) and
+forwards them to the server.
 
 **Types are stale until rebuild.** The editor loads your model assemblies as they are on disk;
 rebuild your project to pick up type changes.

@@ -78,15 +78,18 @@ namespace Heddle.Runtime
         {
             string workingDocument = document;
             bool trimDirectiveLines = compileScope.Options.TrimDirectiveLines;
-            ShiftBySkippedTokens(parseContext);
+            // Generator plan phase 2 (D4): the byte-affecting shaping passes live once, in
+            // Heddle.Language.DocumentShaping, and are driven from here in the normative order documented on that
+            // class. Only the runtime-only, byte-neutral diagnostic passes interleave below.
+            DocumentShaping.ShiftBySkippedTokens(parseContext);
             // Phase 2 (post-2.0) D5 — the HED4005 misread scan runs immediately after the shift: at this point
             // workingDocument (== document, unmutated) and the three exclusion-span lists rebased by
             // ShiftBySkippedTokens share the clean, hidden-token-excised coordinate space on the runtime path.
             ScanBraceMisreads(parseContext, compileScope, workingDocument);
             if (trimDirectiveLines)
-                TrimHiddenRemnantLines(parseContext, ref workingDocument);
-            RemoveDefinitions(parseContext, ref workingDocument, trimDirectiveLines);
-            ReplaceRawOutput(parseContext, ref workingDocument);
+                DocumentShaping.TrimHiddenRemnantLines(parseContext, ref workingDocument);
+            DocumentShaping.RemoveDefinitions(parseContext, ref workingDocument, trimDirectiveLines);
+            DocumentShaping.ReplaceRawOutput(parseContext, ref workingDocument);
             ProcessBranchSets(parseContext, compileScope, ref workingDocument);
             var documentElements = new List<DocumentElement>();
             // Phase 3 (post-2.0) D3 — the producing blocks already compiled to the left of the current one, in
@@ -127,7 +130,8 @@ namespace Heddle.Runtime
 
                 if (returnTypeChainedPrevious == null)
                 {
-                    RemoveEmptyItem(parseContext, extensions.BlockPosition, ref workingDocument, trimDirectiveLines);
+                    DocumentShaping.RemoveEmptyItem(parseContext, extensions.BlockPosition, ref workingDocument,
+                        trimDirectiveLines);
                 }
                 else
                 {
@@ -179,15 +183,6 @@ namespace Heddle.Runtime
             return new RuntimeDocument(workingDocument, documentElements.ToArray(), compileScope);
         }
 
-        private enum BranchBlockKind
-        {
-            Other,
-            Opener,
-            Continuation,
-            Terminal,
-            Participant
-        }
-
         private enum OrphanState
         {
             None,
@@ -197,47 +192,69 @@ namespace Heddle.Runtime
         }
 
         /// <summary>
-        /// <para>The phase 3 compile-time branch-set scan (D9/D10): two state machines over
-        /// <see cref="ParseContext.OutputChains"/> in document order, run once per compiled body.</para>
-        /// <para>The <b>strip machine</b> swallows the text between the blocks of one branch set (adjacency),
-        /// warning <c>HED3001</c> when a stripped gap holds non-whitespace. The <b>orphan machine</b> mirrors
-        /// the runtime frame — a non-branch block does not clear state — and emits <c>HED3002</c> (orphan
-        /// <c>@elif</c>, acts as <c>@if</c>), <c>HED3003</c> (orphan <c>@else</c>, hard error) and
-        /// <c>HED3004</c> (<c>@else</c> with an ignored parameter). Called between <see cref="ReplaceRawOutput"/>
-        /// and the chain-compile loop, where chain positions and the working document are consistent.
-        /// </para>
+        /// <para>The phase 3 compile-time branch-set scan (D9/D10). The <b>strip machine</b> — swallowing the text
+        /// between the blocks of one branch set — lives once in
+        /// <see cref="DocumentShaping.StripBranchSets"/> (generator plan phase 2 D5); this driver supplies the
+        /// runtime's classifier and re-hosts the runtime-only diagnostics as an observer over that machine's event
+        /// stream: <c>HED3001</c> (non-whitespace stripped gap), <c>HED3005</c> (branch continuation/terminal
+        /// without <c>[ScopeChannel]</c>), and the <b>orphan machine</b> — which mirrors the runtime frame (a
+        /// non-branch block does not clear state) and emits <c>HED3002</c> (orphan <c>@elif</c>, acts as
+        /// <c>@if</c>), <c>HED3003</c> (orphan <c>@else</c>, hard error) and <c>HED3004</c> (<c>@else</c> with an
+        /// ignored parameter). Called between <see cref="DocumentShaping.ReplaceRawOutput"/> and the chain-compile loop, where
+        /// chain positions and the working document are consistent.</para>
         /// </summary>
         private static void ProcessBranchSets(ParseContext parseContext, CompileScope compileScope,
             ref string workingDocument)
         {
-            var chains = parseContext.OutputChains;
-            if (chains == null || chains.Count == 0)
-                return;
+            DocumentShaping.StripBranchSets(parseContext, ref workingDocument,
+                chain => Classify(chain, chain.Chain != null && chain.Chain.Count > 0 ? chain.Chain[0] : null),
+                new BranchSetDiagnostics(compileScope));
+        }
 
-            OutputChain stripPrev = null;
-            List<BlockPosition> gaps = null;
-            OrphanState state = OrphanState.None;
+        /// <summary>The runtime-only half of the branch-set scan (generator plan phase 2 D5): every HED300x
+        /// diagnostic and the orphan state machine, expressed as a pure function of the shared strip machine's
+        /// two event streams — block classified, gap collected — in the same document order the inline code
+        /// observed. No message, ID, position, or ordering changes from the pre-extraction inline form.</summary>
+        private sealed class BranchSetDiagnostics : DocumentShaping.IBranchStripObserver
+        {
+            private readonly CompileScope _compileScope;
+            private OrphanState _state = OrphanState.None;
 
-            foreach (var chain in chains)
+            internal BranchSetDiagnostics(CompileScope compileScope) => _compileScope = compileScope;
+
+            public void OnClassified(OutputChain chain, OutputItem leftmost, DocumentShaping.BranchKind kind)
             {
-                var leftmost = chain.Chain != null && chain.Chain.Count > 0 ? chain.Chain[0] : null;
-                var kind = Classify(chain, leftmost);
+                if (kind == DocumentShaping.BranchKind.Continuation || kind == DocumentShaping.BranchKind.Terminal)
+                    WarnIfMissingScopeChannel(leftmost, _compileScope);
+            }
 
+            public void OnGapCollected(OutputChain prev, OutputChain next, OutputItem nextLeftmost,
+                BlockPosition gap, string gapText)
+            {
+                if (!string.IsNullOrWhiteSpace(gapText) && nextLeftmost != null)
+                {
+                    _compileScope.CompileWarnings.Add(new HeddleCompileWarning
+                    {
+                        Error = "Text between branch blocks is never rendered.",
+                        Fix = "Move it before the '@if', after the last branch, or into a branch body.",
+                        Position = nextLeftmost.Position,
+                        DiagnosticId = HeddleDiagnosticIds.BranchTextStripped
+                    });
+                }
+            }
+
+            public void OnBlockCompleted(OutputChain chain, OutputItem leftmost, DocumentShaping.BranchKind kind)
+            {
                 switch (kind)
                 {
-                    case BranchBlockKind.Opener:
-                        stripPrev = chain;
-                        state = OrphanState.Open;
+                    case DocumentShaping.BranchKind.Opener:
+                        _state = OrphanState.Open;
                         break;
 
-                    case BranchBlockKind.Continuation:
-                        WarnIfMissingScopeChannel(leftmost, compileScope);
-                        if (stripPrev != null)
-                            CollectGap(stripPrev, chain, leftmost, compileScope, workingDocument, ref gaps);
-                        stripPrev = chain;
-                        if (state == OrphanState.None || state == OrphanState.Closed)
+                    case DocumentShaping.BranchKind.Continuation:
+                        if (_state == OrphanState.None || _state == OrphanState.Closed)
                         {
-                            compileScope.CompileWarnings.Add(new HeddleCompileWarning
+                            _compileScope.CompileWarnings.Add(new HeddleCompileWarning
                             {
                                 Error =
                                     $"'@{leftmost.ExtensionName}' is a branch continuation with no preceding opener in this scope — it starts a new set.",
@@ -248,17 +265,13 @@ namespace Heddle.Runtime
                             });
                         }
 
-                        state = OrphanState.Open;
+                        _state = OrphanState.Open;
                         break;
 
-                    case BranchBlockKind.Terminal:
-                        WarnIfMissingScopeChannel(leftmost, compileScope);
-                        if (stripPrev != null)
-                            CollectGap(stripPrev, chain, leftmost, compileScope, workingDocument, ref gaps);
-                        stripPrev = null;
+                    case DocumentShaping.BranchKind.Terminal:
                         if (leftmost != null && !IsEmptyParameter(leftmost))
                         {
-                            compileScope.CompileWarnings.Add(new HeddleCompileWarning
+                            _compileScope.CompileWarnings.Add(new HeddleCompileWarning
                             {
                                 Error = "A branch terminal takes no condition — its parameter is ignored.",
                                 Fix = "Use a branch continuation (such as '@elif(...)') for a conditional branch, or remove the parameter.",
@@ -267,9 +280,9 @@ namespace Heddle.Runtime
                             });
                         }
 
-                        if (state == OrphanState.None || state == OrphanState.Closed)
+                        if (_state == OrphanState.None || _state == OrphanState.Closed)
                         {
-                            compileScope.CompileErrors.Add(
+                            _compileScope.CompileErrors.Add(
                                 $"'@{leftmost?.ExtensionName}' is a branch terminal with no matching opener in this scope."
                                     .ToError(leftmost?.Position ?? chain.BlockPosition,
                                         HeddleDiagnosticIds.ElseWithoutIf));
@@ -277,58 +290,50 @@ namespace Heddle.Runtime
                         }
                         else
                         {
-                            state = OrphanState.Closed;
+                            _state = OrphanState.Closed;
                         }
 
                         break;
 
-                    case BranchBlockKind.Participant:
-                        stripPrev = null;
-                        state = OrphanState.Unknown;
+                    case DocumentShaping.BranchKind.Participant:
+                        _state = OrphanState.Unknown;
                         break;
 
                     default: // Other
-                        stripPrev = null;
                         // state unchanged: a non-branch block ends stripping adjacency but leaves the
                         // runtime frame intact, so a following @else still binds to the open set.
                         break;
                 }
             }
-
-            ApplyGaps(parseContext, gaps, ref workingDocument);
         }
 
-        private static BranchBlockKind Classify(OutputChain chain, OutputItem leftmost)
+        private static DocumentShaping.BranchKind Classify(OutputChain chain, OutputItem leftmost)
         {
             if (leftmost == null)
-                return BranchBlockKind.Other;
+                return DocumentShaping.BranchKind.Other;
             var name = leftmost.ExtensionName;
             if (chain.Context != null && chain.Context.DefenitionExists(name))
-                return BranchBlockKind.Other;                          // R8 — unchanged
+                return DocumentShaping.BranchKind.Other;               // R8 — unchanged
 
             if (string.IsNullOrEmpty(name) ||
                 !TemplateFactory.TryGetExtensionType(name, out var extensionType))
-                return BranchBlockKind.Other;
+                return DocumentShaping.BranchKind.Other;
 
             var role = extensionType.GetBranchRole();                  // inherit: true
             if (role.HasValue)
                 switch (role.Value)
                 {
-                    case BranchRole.Opener:       return BranchBlockKind.Opener;
-                    case BranchRole.Continuation: return BranchBlockKind.Continuation;
-                    case BranchRole.Terminal:     return BranchBlockKind.Terminal;
+                    case BranchRole.Opener:       return DocumentShaping.BranchKind.Opener;
+                    case BranchRole.Continuation: return DocumentShaping.BranchKind.Continuation;
+                    case BranchRole.Terminal:     return DocumentShaping.BranchKind.Terminal;
                 }
 
             if (extensionType.IsHaveAttribute<ScopeChannelAttribute>(true))
-                return BranchBlockKind.Participant;                    // R10 — role wins over Participant
+                return DocumentShaping.BranchKind.Participant;         // R10 — role wins over Participant
 
-            return BranchBlockKind.Other;
+            return DocumentShaping.BranchKind.Other;
         }
 
-        /// <summary>D-ROLE-5 drift (§6.5): a branch continuation/terminal that does not carry
-        /// <c>[ScopeChannel]</c> cannot read the branch state at render time (R11). Emitted as a warning-severity
-        /// <c>HED3005</c> at the block confirmed a Continuation/Terminal — additive, never raised by the built-ins
-        /// (they all comply), so existing HED300x diagnostics are unperturbed.</summary>
         private static void WarnIfMissingScopeChannel(OutputItem leftmost, CompileScope compileScope)
         {
             if (leftmost == null)
@@ -358,214 +363,6 @@ namespace Heddle.Runtime
                    string.IsNullOrEmpty(callParameter.ModelParameter[0]);
         }
 
-        private static void CollectGap(OutputChain prev, OutputChain next, OutputItem nextLeftmost,
-            CompileScope compileScope, string workingDocument, ref List<BlockPosition> gaps)
-        {
-            int gapStart = prev.BlockPosition.StartIndex + prev.BlockPosition.Length;
-            int gapLength = next.BlockPosition.StartIndex - gapStart;
-            if (gapLength <= 0)
-                return; // zero-length imported blocks make non-positive gaps possible
-            if (gapStart < 0 || gapStart + gapLength > workingDocument.Length)
-                return;
-
-            var gapText = workingDocument.Substring(gapStart, gapLength);
-            if (!string.IsNullOrWhiteSpace(gapText) && nextLeftmost != null)
-            {
-                compileScope.CompileWarnings.Add(new HeddleCompileWarning
-                {
-                    Error = "Text between branch blocks is never rendered.",
-                    Fix = "Move it before the '@if', after the last branch, or into a branch body.",
-                    Position = nextLeftmost.Position,
-                    DiagnosticId = HeddleDiagnosticIds.BranchTextStripped
-                });
-            }
-
-            gaps ??= new List<BlockPosition>();
-            gaps.Add(new BlockPosition(gapStart, gapLength));
-        }
-
-        private static void ApplyGaps(ParseContext parseContext, List<BlockPosition> gaps,
-            ref string workingDocument)
-        {
-            if (gaps == null || gaps.Count == 0)
-                return;
-
-            // Apply right-to-left so already-collected (original-coordinate) gaps to the left stay valid;
-            // shift every later chain back by the removed length after each removal.
-            for (int i = gaps.Count - 1; i >= 0; i--)
-            {
-                var gap = gaps[i];
-                int seed = ExStringBuilder.ApplyRemove(gap, ref workingDocument);
-                foreach (var chain in parseContext.OutputChains)
-                {
-                    if (chain.BlockPosition.StartIndex > gap.StartIndex)
-                    {
-                        chain.BlockPosition = new BlockPosition(chain.BlockPosition.StartIndex - seed,
-                            chain.BlockPosition.Length);
-                    }
-                }
-            }
-        }
-
-        private static void RemoveEmptyItem(ParseContext context, BlockPosition blockPosition,
-            ref string workingDocument, bool trimDirectiveLines)
-        {
-            // D8 step 6: widen a whole-line zero-output chain to swallow its line when trimming is on.
-            // The widening only ever extends into surrounding whitespace/newline, so the "chains after this
-            // block" predicate (unchanged) still selects exactly the positions needing the shift; only the
-            // shift amount grows to the widened length.
-            var removal = trimDirectiveLines ? WidenToWholeLine(blockPosition, workingDocument) : blockPosition;
-            int seed = ExStringBuilder.ApplyRemove(removal, ref workingDocument);
-            foreach (var chain in ((ICollection<OutputChain>) context.OutputChains).Reverse())
-            {
-                if (chain.BlockPosition.StartIndex > blockPosition.StartIndex)
-                {
-                    chain.BlockPosition =
-                        new BlockPosition(chain.BlockPosition.StartIndex - seed, chain.BlockPosition.Length);
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-
-        /// <summary>
-        /// <para>Phase 4 D6 — the whole-line trim predicate, evaluated against the working document at the
-        /// moment of removal. A removed span is widened to its whole line iff the block occupies the line by
-        /// itself: only spaces/tabs to the left back to a line terminator or document start, and only
-        /// spaces/tabs then one line terminator (or EOF) to the right. Both sides must pass. A returned span
-        /// equal to the input means "not whole-line — remove exactly as today".</para>
-        /// <para>Allocation-free; a plain char loop shared by all TFMs (cross-cutting D7). Handles a
-        /// zero-length probe (the remnant-line case) without a special case — the scans meet across the empty
-        /// span and the predicate degenerates to "is this line whitespace-only".</para>
-        /// </summary>
-        private static BlockPosition WidenToWholeLine(BlockPosition block, string document)
-        {
-            // Defensive clamp: an earlier widened removal on the same line can leave a later block's stored
-            // position overshooting the (now shorter) working document. Never dereference past its end.
-            int startIndex = block.StartIndex < 0 ? 0
-                : (block.StartIndex > document.Length ? document.Length : block.StartIndex);
-            int endIndex = block.StartIndex + block.Length;
-            if (endIndex > document.Length) endIndex = document.Length;
-            if (endIndex < startIndex) endIndex = startIndex;
-
-            int left = startIndex;                             // will become the widened start
-            while (left > 0 && (document[left - 1] == ' ' || document[left - 1] == '\t'))
-                left--;
-            if (left != 0 && document[left - 1] != '\n' && document[left - 1] != '\r')
-                return new BlockPosition(startIndex, endIndex - startIndex); // content on the left — unchanged
-
-            int right = endIndex;                              // first index after the block
-            while (right < document.Length && (document[right] == ' ' || document[right] == '\t'))
-                right++;
-            if (right >= document.Length)
-                return new BlockPosition(left, right - left);  // EOF is a valid terminator
-            if (document[right] == '\r')
-            {
-                right += right + 1 < document.Length && document[right + 1] == '\n' ? 2 : 1;
-                return new BlockPosition(left, right - left);  // CRLF pair or bare CR
-            }
-            if (document[right] == '\n')
-                return new BlockPosition(left, right + 1 - left);
-            return new BlockPosition(startIndex, endIndex - startIndex); // content on the right — unchanged
-        }
-
-        /// <summary>
-        /// Phase 4 D6/D8 step 2 — removes comment-only remnant lines when trimming is on. A whole-line comment
-        /// leaves a bare terminator in the working document (the lexer excised only the hidden comment token).
-        /// Each <see cref="ParseContext.SkippedTokens"/> entry is mapped to its clean-document position
-        /// (original start minus the summed lengths of prior hidden tokens — the list is in document order),
-        /// then a zero-length probe there is run through <see cref="WidenToWholeLine"/>: it widens only when
-        /// the remnant line is whitespace-only, which removes comment-only lines and is a no-op for every
-        /// <c>@\</c> remnant (their lines retain content by construction). Processed in reverse document order,
-        /// skipping positions inside an already-removed span (multiple comments on one line remove it once).
-        /// </summary>
-        private static void TrimHiddenRemnantLines(ParseContext context, ref string workingDocument)
-        {
-            var skipped = context.SkippedTokens;
-            if (skipped == null || skipped.Count == 0)
-                return;
-
-            var cleanStarts = new int[skipped.Count];
-            int running = 0;
-            for (int i = 0; i < skipped.Count; i++)
-            {
-                cleanStarts[i] = skipped[i].StartIndex - running;
-                running += skipped[i].Length;
-            }
-
-            int removedStart = int.MaxValue;
-            int removedEnd = int.MaxValue;
-            for (int i = skipped.Count - 1; i >= 0; i--)
-            {
-                int start = cleanStarts[i];
-                if (start < 0 || start > workingDocument.Length)
-                    continue;
-                if (start >= removedStart && start < removedEnd)
-                    continue;                                  // this line was already removed by a later token
-
-                var widened = WidenToWholeLine(new BlockPosition(start, 0), workingDocument);
-                if (widened.Length == 0)
-                    continue;                                  // not a whitespace-only remnant line
-
-                removedStart = widened.StartIndex;
-                removedEnd = widened.StartIndex + widened.Length;
-                int seed = ExStringBuilder.ApplyRemove(widened, ref workingDocument);
-                ShiftListsAfter(context, widened, seed);
-            }
-        }
-
-        /// <summary>
-        /// Shifts <see cref="ParseContext.OutputChains"/>, <see cref="DefinitionBlock.Positions"/>, and
-        /// <see cref="ParseContext.RawOutputItems"/> to account for the removed span, using the same three-way
-        /// classification <see cref="ShiftBySkippedTokens"/> applies: a block that <em>encloses</em> the removed
-        /// span keeps its start but loses <paramref name="seed"/> from its length; a block wholly after the span
-        /// moves back by <paramref name="seed"/>; a block wholly before is untouched. Used by
-        /// <see cref="TrimHiddenRemnantLines"/>. Missing the enclosing case let a whole-line comment removed from
-        /// inside a definition block leave that block's length overstated, so <see cref="RemoveDefinitions"/> then
-        /// over-removed into the following text (cross-file/imported bodies made this visible as offset drift).
-        /// </summary>
-        private static void ShiftListsAfter(ParseContext context, BlockPosition removed, int seed)
-        {
-            int startToSkip = removed.StartIndex;
-            int endToSkip = removed.StartIndex + removed.Length - 1;
-            foreach (var chain in ((ICollection<OutputChain>) context.OutputChains).Reverse())
-            {
-                var start = chain.BlockPosition.StartIndex;
-                var end = start + chain.BlockPosition.Length - 1;
-                if (start <= startToSkip && end >= endToSkip)
-                    chain.BlockPosition = new BlockPosition(start, chain.BlockPosition.Length - seed);
-                else if (end > startToSkip)
-                    chain.BlockPosition = new BlockPosition(start - seed, chain.BlockPosition.Length);
-                else
-                    break;
-            }
-
-            for (int index = context.DefinitionsBlock.Positions.Count - 1; index >= 0; index--)
-            {
-                var position = context.DefinitionsBlock.Positions[index];
-                var start = position.StartIndex;
-                var end = start + position.Length - 1;
-                if (start <= startToSkip && end >= endToSkip)
-                    context.DefinitionsBlock.Positions[index] = new BlockPosition(start, position.Length - seed);
-                else if (end > startToSkip)
-                    context.DefinitionsBlock.Positions[index] = new BlockPosition(start - seed, position.Length);
-                else
-                    break;
-            }
-
-            foreach (var raw in ((ICollection<RawOutputItem>) context.RawOutputItems).Reverse())
-            {
-                var start = raw.BlockPosition.StartIndex;
-                var end = start + raw.BlockPosition.Length - 1;
-                if (end > startToSkip)
-                    raw.BlockPosition = new BlockPosition(start - seed, raw.BlockPosition.Length);
-                else
-                    break;
-            }
-        }
-
         /// <summary>
         /// Phase 2 (post-2.0) D7 — the narrowest Liquid/Jinja-style misread shape: braces wrapping a single
         /// ASCII identifier or dotted path (spaces/tabs only around it, single-line). Anything else — an
@@ -581,7 +378,7 @@ namespace Heddle.Runtime
         /// <para>Phase 2 (post-2.0) D5/D6/D7 — the HED4005 <c>{{ … }}</c>-in-text misread lint. A bare
         /// <c>{{ Title }}</c> in body text renders literal braces rather than interpolating; this pass warns
         /// once per literal occurrence and suggests <c>@(Title)</c>. It runs immediately after
-        /// <see cref="ShiftBySkippedTokens"/>, where <paramref name="workingDocument"/> and the three
+        /// <see cref="DocumentShaping.ShiftBySkippedTokens"/>, where <paramref name="workingDocument"/> and the three
         /// exclusion-span lists (<c>OutputChains</c> / <c>RawOutputItems</c> / <c>DefinitionsBlock.Positions</c>)
         /// share the clean coordinate space on the runtime path — a match inside any of those spans is a real
         /// subtemplate body, raw region, definition body, or <c>@&lt;&lt;</c> import block and is skipped.</para>
@@ -628,138 +425,6 @@ namespace Heddle.Runtime
                     Position = new BlockPosition(parseContext.AbsoluteOffset + at, 2),
                     DiagnosticId = HeddleDiagnosticIds.LiquidStyleInterpolationMisread
                 });
-            }
-        }
-
-        private static void ReplaceRawOutput(ParseContext context, ref string workingDocument)
-        {
-            foreach (var rawOut in ((ICollection<RawOutputItem>) context.RawOutputItems).Reverse())
-            {
-                workingDocument = ExStringBuilder.Replace(rawOut.BlockPosition.StartIndex, rawOut.BlockPosition.Length,
-                    rawOut.Text, workingDocument);
-                int seed = rawOut.BlockPosition.Length - rawOut.Text.Length;
-                var outputItem = rawOut;
-                foreach (var chain in ((ICollection<OutputChain>) context.OutputChains).Reverse())
-                {
-                    if (chain.BlockPosition.StartIndex > outputItem.BlockPosition.StartIndex)
-                        chain.BlockPosition = new BlockPosition(chain.BlockPosition.StartIndex - seed,
-                            chain.BlockPosition.Length);
-                    else
-                    {
-                        break;
-                    }
-                }
-            }
-        }
-
-        private static void ShiftBySkippedTokens(ParseContext context)
-        {
-            foreach (var blockPosition in ((ICollection<BlockPosition>) context.SkippedTokens).Reverse())
-            {
-                var seed = blockPosition.Length;
-
-                var startToSkip = blockPosition.StartIndex;
-                var endToSkip = blockPosition.StartIndex + blockPosition.Length - 1;
-
-                foreach (var chain in ((ICollection<OutputChain>) context.OutputChains).Reverse())
-                {
-                    var chainBlockStart = chain.BlockPosition.StartIndex;
-                    var chainBlockEnd = chain.BlockPosition.StartIndex + chain.BlockPosition.Length - 1;
-
-                    if (chainBlockStart <= startToSkip && chainBlockEnd >= endToSkip)
-                    {
-                        chain.BlockPosition = new BlockPosition(chainBlockStart,
-                            chain.BlockPosition.Length - seed);
-                    }
-                    else if (chainBlockEnd > startToSkip)
-                    {
-                        chain.BlockPosition = new BlockPosition(chainBlockStart - seed,
-                            chain.BlockPosition.Length);
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-
-                for (int index = context.DefinitionsBlock.Positions.Count - 1; index >= 0; index--)
-                {
-                    var position = context.DefinitionsBlock.Positions[index];
-
-                    var definitionBlockStart = position.StartIndex;
-                    var definitionBlockEnd = position.StartIndex + position.Length - 1;
-
-                    if (definitionBlockStart <= startToSkip && definitionBlockEnd >= endToSkip)
-                    {
-                        context.DefinitionsBlock.Positions[index] =
-                            new BlockPosition(definitionBlockStart,
-                                position.Length - seed);
-                    }
-                    else if (definitionBlockEnd > startToSkip)
-                    {
-                        context.DefinitionsBlock.Positions[index] = new BlockPosition(definitionBlockStart - seed,
-                            position.Length);
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-
-                foreach (var raw in ((ICollection<RawOutputItem>) context.RawOutputItems).Reverse())
-                {
-                    var rawBlockStart = raw.BlockPosition.StartIndex;
-                    var rawBlockEnd = raw.BlockPosition.StartIndex + raw.BlockPosition.Length - 1;
-
-                    if (rawBlockEnd > blockPosition.StartIndex)
-                    {
-                        raw.BlockPosition = new BlockPosition(rawBlockStart - seed,
-                            raw.BlockPosition.Length);
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-            }
-        }
-
-        private static void RemoveDefinitions(ParseContext context, ref string workingDocument,
-            bool trimDirectiveLines)
-        {
-            foreach (var definitionBlock in ((ICollection<BlockPosition>) context.DefinitionsBlock.Positions).Reverse())
-            {
-                // D8 step 3: each definition/import span is widened to its whole line first when trimming is
-                // on; the existing shift loops compare against the original block boundaries (the widening
-                // only extends into whitespace, so no chain/raw sits between them and the shift set is the
-                // same — only the removed length grows).
-                var removal = trimDirectiveLines ? WidenToWholeLine(definitionBlock, workingDocument) : definitionBlock;
-                int seed = ExStringBuilder.ApplyRemove(removal, ref workingDocument);
-                foreach (var chain in ((ICollection<OutputChain>) context.OutputChains).Reverse())
-                {
-                    if (chain.BlockPosition.StartIndex >= definitionBlock.StartIndex + definitionBlock.Length)
-                    {
-                        chain.BlockPosition = new BlockPosition(chain.BlockPosition.StartIndex - seed,
-                            chain.BlockPosition.Length);
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-
-                foreach (var raw in ((ICollection<RawOutputItem>) context.RawOutputItems).Reverse())
-                {
-                    if (raw.BlockPosition.StartIndex >= definitionBlock.StartIndex + definitionBlock.Length)
-                    {
-                        raw.BlockPosition = new BlockPosition(raw.BlockPosition.StartIndex - seed,
-                            raw.BlockPosition.Length);
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
             }
         }
 
@@ -885,10 +550,16 @@ namespace Heddle.Runtime
                 compileScope.Options.ExpressionMode != ExpressionMode.MemberPathsOnly)
             {
                 var functionRegistry = compileScope.Options.Functions ?? FunctionRegistry.Default;
-                bool nameIsExtension = TemplateFactory.Exists(extensionItem.ExtensionName);
+                // Phase 1 D8: the precedence itself is the shared CallTargetRules classifier the emitter's
+                // dispatch also runs. Fill/definition are already resolved above (definitionItem), so this call
+                // decides the extension-beats-function half and the function-shape gate.
+                var callTarget = CallTargetRules.ResolveCallTarget(extensionItem.ExtensionName,
+                    extensionItem.CallParameter, null, null,
+                    TemplateFactory.Exists, functionRegistry.Contains);
+                bool nameIsExtension = callTarget == CallTargetKind.Extension;
                 bool nameInRegistry = functionRegistry.Contains(extensionItem.ExtensionName);
-                bool functionCompatibleShape = extensionItem.CallParameter.ChainParameter == null &&
-                                               string.IsNullOrEmpty(extensionItem.CallParameter.CSharpExpression);
+                bool functionCompatibleShape =
+                    CallTargetRules.IsFunctionCompatibleShape(extensionItem.CallParameter);
 
                 if (nameIsExtension && nameInRegistry)
                 {
@@ -1467,10 +1138,13 @@ namespace Heddle.Runtime
         /// </summary>
         private static string UnnamedCarrierName(OutputItem item, CompileContext context)
         {
-            if (!string.IsNullOrEmpty(item.ParameterTemplate))
-                return string.Empty;                       // @(X){{…}} stays the raw rescoping container
-            context.UnnamedOutputCompiled = true;          // D13 tracking
-            return context.OutputProfile == OutputProfile.Html ? "html" : string.Empty;
+            bool hasBody = !string.IsNullOrEmpty(item.ParameterTemplate);
+            if (!hasBody)
+                context.UnnamedOutputCompiled = true;      // D13 tracking
+            // Phase 1 D11: the carrier decision itself is the shared OutputProfileRules rule (the emitter's
+            // AllocateEmptyExtension runs the identical call), so the two tiers cannot pick different carriers.
+            OutputProfileRules.ResolveUnnamedCarrier(context.OutputProfile, hasBody, out var kind, out _);
+            return OutputProfileRules.CarrierRegistryName(kind);
         }
 
         private static IExtension CreateExtension(OutputItem extensionItem, CompileScope compileScope,
@@ -1693,43 +1367,54 @@ namespace Heddle.Runtime
             if (candidates == null || candidates.Count == 0)
                 return null;
 
-            var origin = callerContext.OriginIdentity;
             Dictionary<string, DefinitionItem> fills = null;
             RegionLayout layout = null;
-            foreach (var candidate in candidates)
-            {
-                if (candidate.Origin != origin)
-                    continue;
 
-                layout = layout ?? ResolveRegionLayoutCached(definition, compileScope);
-                if (!layout.TryGet(candidate.Name, out var slot))
-                    continue; // genuinely dangling — the parse-emitted error stays (D5)
-
-                if (!slot.IsPublic)
+            // Generator plan phase 2 D7: the four-step matching rule is shared (RegionFillResolver); only the
+            // table and the reactions are runtime-specific. The layout stays lazily resolved — the delegate runs
+            // only for candidates the shared rule lets past the origin filter, exactly as the inline loop did.
+            RegionFillResolver.Resolve(candidates, callerContext.OriginIdentity,
+                (string name, out bool isPublic) =>
                 {
-                    RetractCandidateError(candidate, compileScope);
-                    if (!candidate.PrivateOverrideReported)
+                    layout = layout ?? ResolveRegionLayoutCached(definition, compileScope);
+                    if (!layout.TryGet(name, out var slot))
                     {
-                        candidate.PrivateOverrideReported = true;
-                        compileScope.CompileErrors.Add(
-                            $"Region '{candidate.Name}' of definition '{definition.Name}' is private and cannot be overridden from a call site. Mark it public with '<:{candidate.Name}>' in the definition, or remove this override."
-                                .ToError(candidate.Position, HeddleDiagnosticIds.RegionNotPublic));
+                        isPublic = false;
+                        return false;
                     }
 
-                    continue;
-                }
+                    isPublic = slot.IsPublic;
+                    return true;
+                },
+                definition,
+                (candidate, verdict, materialized) =>
+                {
+                    switch (verdict)
+                    {
+                        case RegionFillVerdict.Dangling:
+                        case RegionFillVerdict.DefaultMissing:
+                            // genuinely dangling (or declared but not stored) — the parse-emitted error stays (D5)
+                            break;
 
-                // The region default of THIS call site's isolated callee instance — the fill layers over it, so a
-                // self-call inside the override body resolves to this site's own base default (D4 steps 4/5).
-                DefinitionItem regionDefault = null;
-                definition.Context?.DefinitionsBlock?.Definitions.TryGetValue(candidate.Name, out regionDefault);
-                if (regionDefault == null)
-                    continue; // defensive: declared but not stored — leave the parse error in place
+                        case RegionFillVerdict.Private:
+                            RetractCandidateError(candidate, compileScope);
+                            if (!candidate.PrivateOverrideReported)
+                            {
+                                candidate.PrivateOverrideReported = true;
+                                compileScope.CompileErrors.Add(
+                                    $"Region '{candidate.Name}' of definition '{definition.Name}' is private and cannot be overridden from a call site. Mark it public with '<:{candidate.Name}>' in the definition, or remove this override."
+                                        .ToError(candidate.Position, HeddleDiagnosticIds.RegionNotPublic));
+                            }
 
-                RetractCandidateError(candidate, compileScope);
-                fills = fills ?? new Dictionary<string, DefinitionItem>(StringComparer.Ordinal);
-                fills[candidate.Name] = DefinitionMaterializer.Materialize(candidate, regionDefault);
-            }
+                            break;
+
+                        default: // Matched
+                            RetractCandidateError(candidate, compileScope);
+                            fills = fills ?? new Dictionary<string, DefinitionItem>(StringComparer.Ordinal);
+                            fills[candidate.Name] = materialized;
+                            break;
+                    }
+                });
 
             return fills == null ? null : new RegionFillScope(fills);
         }
@@ -1751,16 +1436,8 @@ namespace Heddle.Runtime
         /// base chain; HED5010 (slot form) when unresolvable.</summary>
         private static ExType ResolveSlotType(DefinitionItem definition, CompileScope compileScope)
         {
-            string slotName = null;
-            for (var d = definition; d != null; d = d.BaseDefinition)
-            {
-                if (!string.IsNullOrEmpty(d.SlotTypeName))
-                {
-                    slotName = d.SlotTypeName;
-                    break;
-                }
-            }
-
+            // Phase 1 D6: the base-chain walk is the shared SlotRules rule the emitter's two copies now call too.
+            var slotName = SlotRules.SlotTypeName(definition);
             if (slotName == null)
                 return null;
 
@@ -1960,9 +1637,12 @@ namespace Heddle.Runtime
         {
             modelType ??= typeof(object);
             chainedType ??= typeof(object);
-            RenderType directRender = extension.GetType().IsHaveAttribute<EncodeOutputAttribute>(true)
-                ? (extension.GetType().IsHaveAttribute<NotEncodeAttribute>(true) ? RenderType.Raw : RenderType.Encode)
-                : RenderType.Raw;
+            // Phase 1 D11: the truth table is the shared RenderTypeRules.Derive — the emitter's
+            // DerivedRenderTypeLiteral evaluates the same function over the symbol-side flags.
+            var extensionType = extension.GetType();
+            RenderType directRender = RenderTypeRules.Derive(
+                extensionType.IsHaveAttribute<EncodeOutputAttribute>(true),
+                extensionType.IsHaveAttribute<NotEncodeAttribute>(true));
             extension.SetUpRenderType(directRender);
             var initContext = new InitContext(parameterFastString, compileScope, parseContext)
             {

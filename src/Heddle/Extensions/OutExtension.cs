@@ -140,18 +140,8 @@ namespace Heddle.Extensions
             RenderInnerResult(innerScope);
         }
 
-        private static bool HasOutValue(CallParameter callParameter)
-        {
-            if (callParameter.NativeExpression != null)
-                return true;
-            if (callParameter.ChainParameter != null)
-                return true;
-            if (!string.IsNullOrEmpty(callParameter.CSharpExpression))
-                return true;
-            if (callParameter.PropArguments != null)
-                return true;
-            return callParameter.ModelParameter != null && callParameter.ModelParameter.Length > 0 &&
-                   !string.IsNullOrEmpty(callParameter.ModelParameter[0]);
-        }
+        /// <summary>The canonical five-way test now lives in the shared <see cref="SlotRules"/> (generator plan
+        /// phase 1 D6) so the build tier stops approximating it; this stays as the extension's own vocabulary.</summary>
+        private static bool HasOutValue(CallParameter callParameter) => SlotRules.HasOutValue(callParameter);
     }
 }

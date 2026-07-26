@@ -162,25 +162,61 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("<hr class=\"dark\">", pre);
         }
 
-        [Fact] // region_private_override — NOT precompiled; the dynamic tier raises HED5019 (review C)
-        public void PrivateOverrideIsNotPrecompiledDynamicRaisesHed5019()
+        // ---------------------------------------------------------------------------------------------------
+        // Phase 1 WI6 (D7 / Q1.3's match principle) rewrote the two fixtures below. Until phase 1 the generator was
+        // STRICTER than the engine it must match: any fault verdict un-precompiled the whole template *silently*,
+        // and the tentative base-not-found error a fill candidate carries was filtered out of the build channel
+        // entirely — so the user saw nothing at build and the error only appeared on the first dynamic render.
+        // The generator now reacts to each verdict exactly as HeddleCompiler.BuildRegionFillScope reacts, and the
+        // assertion shape follows: the pin is the *twin relationship* — same condition, same position, matching
+        // error on both tiers — asserted in one test, the WI2 pattern.
+        // ---------------------------------------------------------------------------------------------------
+
+        [Fact] // region_private_override — build raises HED7024, the twin of the dynamic tier's HED5019
+        public void PrivateOverrideRaisesTheMatchingErrorOnBothTiers()
         {
             var t = Feed + "@feed(){{@%<divider:divider>{{<hr class=\"dark\">}}%@}}";
-            var dynamic = AssertNotPrecompiledAndCompileDynamic("views/region-private.heddle", t);
+            var gen = DifferentialHarness.Generate(new[] { ("views/region-private.heddle", t) });
+
+            var build = Assert.Single(gen.Diagnostics.Where(d => d.Id == "HED7024"));
+            Assert.Equal(DiagnosticSeverity.Error, build.Severity);
+            Assert.Contains("'divider'", build.GetMessage());
+            Assert.Contains("'feed'", build.GetMessage());
+            // The tentative base-not-found error is RETRACTED, exactly as the runtime retracts it before raising —
+            // the user gets one error about privacy, not two about two different things.
+            Assert.DoesNotContain(gen.Diagnostics, d => d.GetMessage().Contains("Base definition divider"));
+
+            var dynamic = new HeddleTemplate(t, new CompileContext(new TemplateOptions(), typeof(RegionFeed)));
             Assert.False(dynamic.CompileResult.Success);
-            Assert.Contains(dynamic.CompileResult.ErrorList,
-                e => e.DiagnosticId == "HED5019");
+            var runtimeError = Assert.Single(dynamic.CompileResult.ErrorList.Where(e => e.DiagnosticId == "HED5019"));
+            // Same anchoring: both tiers point at the override declaration.
+            Assert.Equal(runtimeError.Position.StartIndex,
+                build.Location.SourceSpan.Start - LocationOffsetOf(t, build));
         }
 
-        [Fact] // region_dangling_override — NOT precompiled; the dynamic tier keeps the base-not-found error
-        public void DanglingOverrideIsNotPrecompiledDynamicKeepsError()
+        [Fact] // region_dangling_override — build forwards the same base-not-found error the dynamic compile keeps
+        public void DanglingOverrideSurfacesTheSameErrorOnBothTiers()
         {
             var t = Feed + "@feed(){{@%<ghost:ghost>{{x}}%@}}";
-            var dynamic = AssertNotPrecompiledAndCompileDynamic("views/region-dangling.heddle", t);
+            var gen = DifferentialHarness.Generate(new[] { ("views/region-dangling.heddle", t) });
+
+            // Skipped as the runtime skips it — no refusal, no HED7024 — and its parse-emitted error now reaches
+            // the build channel instead of waiting for the first dynamic render.
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Id == "HED7024");
+            var build = Assert.Single(gen.Diagnostics.Where(
+                d => d.Severity == DiagnosticSeverity.Error &&
+                     d.GetMessage().Contains("Base definition ghost couldn't be found")));
+
+            var dynamic = new HeddleTemplate(t, new CompileContext(new TemplateOptions(), typeof(RegionFeed)));
             Assert.False(dynamic.CompileResult.Success);
             Assert.Contains(dynamic.CompileResult.ErrorList,
                 e => e.Error == "Base definition ghost couldn't be found");
+            Assert.NotNull(build);
         }
+
+        /// <summary>Zero — the harness maps the template offset straight onto the single-file source span; the
+        /// helper exists so the assertion above reads as "same offset" rather than hiding the identity.</summary>
+        private static int LocationOffsetOf(string template, Diagnostic diagnostic) => 0;
 
         [Fact] // patterns_sibling_shell — the sibling-override idiom keeps the silent degrade (D11)
         public void SiblingOverrideIdiomStaysUnprecompiledAndCorrectDynamically()

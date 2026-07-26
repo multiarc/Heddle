@@ -1,3 +1,4 @@
+extern alias generator;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -8,6 +9,7 @@ using System.Text;
 using System.Threading;
 using Heddle;
 using Heddle.Data;
+using Heddle.Precompiled;
 using Heddle.Runtime;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -28,11 +30,55 @@ namespace Heddle.Generator.IntegrationTests
 
         private static readonly IReadOnlyList<MetadataReference> References = BuildReferences();
 
+        // Phase 0 WI4: the direct-invoke paths only ever *compile* against the extra references (Heddle.Tests for the
+        // corpus models/extensions), so those assemblies never had to load. Registering generated output does load
+        // them — PrecompiledTemplates.Register instantiates the manifest, whose entry rows touch every generated
+        // entry class's static ctor. Remember each extra reference's path and satisfy the load from it.
+        private static readonly Dictionary<string, string> ExtraReferencePaths =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        static DifferentialHarness()
+        {
+            AppDomain.CurrentDomain.AssemblyResolve += (_, args) =>
+            {
+                var simpleName = new AssemblyName(args.Name).Name;
+                string path;
+                lock (ExtraReferencePaths)
+                {
+                    if (!ExtraReferencePaths.TryGetValue(simpleName, out path))
+                        return null;
+                }
+
+                return Assembly.LoadFrom(path);
+            };
+        }
+
+        private static void RememberExtraReferences(IReadOnlyList<MetadataReference> extraReferences)
+        {
+            if (extraReferences == null)
+                return;
+            lock (ExtraReferencePaths)
+            {
+                foreach (var reference in extraReferences)
+                {
+                    var path = reference.Display;
+                    if (string.IsNullOrEmpty(path) || !File.Exists(path))
+                        continue;
+                    ExtraReferencePaths[Path.GetFileNameWithoutExtension(path)] = path;
+                }
+            }
+        }
+
         private static IReadOnlyList<MetadataReference> BuildReferences()
         {
             var tpa = (string) AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
             var refs = tpa.Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
+                // Heddle.Generator is an *analyzer*, never a reference — a consuming project never compiles against
+                // it. Since phase 5 links the runtime's option/fingerprint sources into it (D7), leaving it on the
+                // reference list would make every one of those type names ambiguous (CS0433) in generated code.
+                .Where(p => !string.Equals(Path.GetFileNameWithoutExtension(p), "Heddle.Generator",
+                    StringComparison.OrdinalIgnoreCase))
                 .Select(p => (MetadataReference) MetadataReference.CreateFromFile(p))
                 .ToList();
             refs.Add(MetadataReference.CreateFromFile(typeof(HeddleTemplate).Assembly.Location));
@@ -75,11 +121,17 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>Runs the generator over the given templates, compiles the generated sources into a loadable
-        /// assembly, and returns both. Global options map build_property.* keys.</summary>
+        /// assembly, and returns both. Global options map build_property.* keys.
+        /// <para><paramref name="rewriteManifest"/> (phase 0 WI7) rewrites the emitted manifest source before it is
+        /// compiled — the seam the seeded-mismatch meta-suite uses to corrupt one manifest row (a content hash, an
+        /// extension AQN) while everything else stays real generator output. Production code never sees it.</para>
+        /// </summary>
         public static GenResult Generate(IReadOnlyList<(string key, string content)> templates,
             Dictionary<string, string> globalOptions = null,
-            IReadOnlyList<MetadataReference> extraReferences = null)
+            IReadOnlyList<MetadataReference> extraReferences = null,
+            Func<string, string> rewriteManifest = null)
         {
+            RememberExtraReferences(extraReferences);
             var references = References;
             if (extraReferences != null && extraReferences.Count != 0)
             {
@@ -107,7 +159,7 @@ namespace Heddle.Generator.IntegrationTests
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
             var driver = CSharpGeneratorDriver.Create(
-                new[] { new HeddleTemplateGenerator().AsSourceGenerator() },
+                new[] { new generator::Heddle.Generator.HeddleTemplateGenerator().AsSourceGenerator() },
                 additional.ToImmutableArray(),
                 parseOptions: CSharpParseOptions.Default,
                 optionsProvider: new OptionsProvider(global, perFile));
@@ -121,10 +173,18 @@ namespace Heddle.Generator.IntegrationTests
             {
                 var src = gen.SourceText.ToString();
                 if (gen.HintName.Contains("__HeddleManifest"))
+                {
+                    if (rewriteManifest != null)
+                        src = rewriteManifest(src);
                     result.ManifestSource = src;
+                }
                 else
+                {
                     result.TemplateSources[gen.HintName] = src;
-                trees.Add(CSharpSyntaxTree.ParseText(gen.SourceText, (CSharpParseOptions) CSharpParseOptions.Default));
+                }
+
+                trees.Add(CSharpSyntaxTree.ParseText(SourceText.From(src, Encoding.UTF8),
+                    (CSharpParseOptions) CSharpParseOptions.Default));
             }
 
             if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
@@ -165,6 +225,9 @@ namespace Heddle.Generator.IntegrationTests
             if (gen.Assembly == null)
                 throw new InvalidOperationException("No assembly produced (template was not precompiled).");
 
+            // D5: the default path declares the precompiled expectation (entry class + non-null manifest strategy),
+            // so a silent build-time degrade can never be mistaken for a passing differential test.
+            ExpectPrecompiled(gen, key);
             var method = FindEntryPoint(gen.Assembly)
                          ?? throw new InvalidOperationException("Generated entry class not found for key: " + key);
             var precompiled = (string) method.Invoke(null, new object[] { model, null, null });
@@ -192,6 +255,7 @@ namespace Heddle.Generator.IntegrationTests
             if (gen.Assembly == null)
                 throw new InvalidOperationException("No assembly produced (template was not precompiled).");
 
+            ExpectPrecompiled(gen, key);   // D5: declared precompiled expectation
             var entryType = FindEntryTypeByKey(gen.Assembly, key)
                             ?? throw new InvalidOperationException("Generated entry class not found for key: " + key);
             var root = (IProcessStrategy) entryType
@@ -222,6 +286,7 @@ namespace Heddle.Generator.IntegrationTests
             if (gen.Assembly == null)
                 throw new InvalidOperationException("No assembly produced (template was not precompiled).");
 
+            ExpectPrecompiled(gen, key);   // D5: declared precompiled expectation
             var entryType = FindEntryTypeByKey(gen.Assembly, key)
                             ?? throw new InvalidOperationException("Generated entry class not found for key: " + key);
             var root = (IProcessStrategy) entryType
@@ -255,6 +320,7 @@ namespace Heddle.Generator.IntegrationTests
             if (gen.Assembly == null)
                 throw new InvalidOperationException("No assembly produced.");
 
+            ExpectPrecompiled(gen, targetKey);   // D5: declared precompiled expectation
             var entryType = FindEntryTypeByKey(gen.Assembly, targetKey)
                          ?? throw new InvalidOperationException("Generated entry class not found (fell back): " + targetKey);
 
@@ -278,6 +344,268 @@ namespace Heddle.Generator.IntegrationTests
             return (precompiled, dyn);
         }
 
+        /// <summary>
+        /// Phase 0 WI2 (D2) — the gauntlet-crossing twin of <see cref="RenderInCorpus"/>: runs the generator over the
+        /// corpus, registers the compiled assembly into the process-global <see cref="PrecompiledTemplates"/> registry,
+        /// and renders <paramref name="targetKey"/> through a real <see cref="TemplateResolver"/>
+        /// (<c>TemplatePathType.None</c> → <c>ConsultPrecompiled</c> → <c>TryResolve</c> → the per-request gauntlet)
+        /// under D1's two guards: <see cref="PrecompiledMismatchPolicy.Strict"/> on the request options, and a
+        /// <see cref="FallbackGuard"/> around the whole render. Returns <c>(precompiled, dynamic)</c> like the
+        /// direct-invoke paths.
+        /// <para>Two sub-modes. <b>Registry-only</b> (<paramref name="fileBacked"/> false, the default): the resolver
+        /// root points at a directory that does not exist, so a fallback that somehow escaped both guards still could
+        /// not fake the render — the dynamic re-compile has nothing to read. <b>File-backed</b>: the corpus is staged
+        /// into a real temp directory and the resolver is built with <c>checkFileChange: true</c>, so the gauntlet's
+        /// staleness step (<c>CheckStaleness</c>/<c>HashFile</c>) runs against real generator-emitted content hashes.</para>
+        /// <para>The caller is responsible for registry isolation (<see cref="PrecompiledRegistryTestBase"/>): the
+        /// registry is process-global and <c>Register</c> throws on a duplicate key.</para>
+        /// </summary>
+        public static (string precompiled, string dynamic) RenderViaResolver(
+            IReadOnlyList<(string key, string content)> corpus, string targetKey, string targetContent,
+            Type modelType, object model, string dynamicRootPath,
+            bool fileBacked = false,
+            Dictionary<string, string> globalOptions = null,
+            IReadOnlyList<MetadataReference> extraReferences = null)
+        {
+            var swept = SweepViaResolver(corpus,
+                new[] { new ResolverTarget(targetKey, targetContent, modelType, model) },
+                dynamicRootPath, fileBacked, renderDynamicReference: true, render: true,
+                globalOptions: globalOptions, extraReferences: extraReferences);
+            return (swept[0].Precompiled, swept[0].Dynamic);
+        }
+
+        /// <summary>Single-template convenience over <see cref="RenderViaResolver"/> — the corpus is the one template
+        /// and the dynamic reference reads no imports.</summary>
+        public static (string precompiled, string dynamic) RenderViaResolver(string key, string content,
+            Type modelType, object model, bool fileBacked = false,
+            Dictionary<string, string> globalOptions = null)
+        {
+            var corpus = new[] { (key, content) };
+            return RenderViaResolver(corpus, key, content, modelType, model,
+                dynamicRootPath: AppContext.BaseDirectory, fileBacked: fileBacked, globalOptions: globalOptions);
+        }
+
+        /// <summary>One template to render on the resolver path (WI4's corpus sweep unit).</summary>
+        internal sealed class ResolverTarget
+        {
+            public ResolverTarget(string key, string content, Type modelType, object model)
+            {
+                Key = key;
+                Content = content;
+                ModelType = modelType;
+                Model = model;
+            }
+
+            public string Key { get; }
+            public string Content { get; }
+            public Type ModelType { get; }
+            public object Model { get; }
+        }
+
+        /// <summary>The result of one swept target: the precompiled-adapter output and (unless the caller opted out)
+        /// the dynamic reference to byte-compare it against.</summary>
+        internal sealed class ResolverSweepResult
+        {
+            public string Key { get; set; }
+            public string Precompiled { get; set; }
+            public string Dynamic { get; set; }
+        }
+
+        /// <summary>
+        /// Phase 0 WI4 (D2/D4) — the gauntlet-crossing sweep: one generator run and one
+        /// <see cref="PrecompiledTemplates.Register"/> for the whole corpus, then every target resolved and rendered
+        /// through one <see cref="TemplateResolver"/> under a single <see cref="FallbackGuard"/> and
+        /// <see cref="PrecompiledMismatchPolicy.Strict"/>. Sharing the generator run and the registration is what keeps
+        /// the sweep's suite-time inside WI4's budget: the gauntlet's verdict is per-template, so the marginal cost of
+        /// a target is one <c>TryResolve</c> plus one render.
+        /// </summary>
+        internal static IReadOnlyList<ResolverSweepResult> SweepViaResolver(
+            IReadOnlyList<(string key, string content)> corpus, IReadOnlyList<ResolverTarget> targets,
+            string dynamicRootPath, bool fileBacked = false, bool renderDynamicReference = true,
+            bool render = true,
+            Dictionary<string, string> globalOptions = null,
+            IReadOnlyList<MetadataReference> extraReferences = null)
+        {
+            var gen = Generate(corpus, globalOptions, extraReferences);
+            var errors = gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
+            if (errors.Count != 0)
+                throw new InvalidOperationException("Generator errors: " + string.Join("\n", errors.Select(e => e.ToString())));
+            if (gen.Assembly == null)
+                throw new InvalidOperationException("No assembly produced.");
+
+            // D5: the build-tier expectation is declared, not assumed — an entry class AND a non-null manifest strategy.
+            foreach (var target in targets)
+                ExpectPrecompiled(gen, target.Key);
+
+            var stageDir = fileBacked ? StageCorpus(corpus) : NonexistentRoot();
+            var results = new List<ResolverSweepResult>(targets.Count);
+            try
+            {
+                PrecompiledTemplates.Register(gen.Assembly);
+
+                var options = FallbackGuard.GuardedOptions();
+                options.RootPath = stageDir + Path.DirectorySeparatorChar;
+                options.FileNamePostfix = ".heddle";
+                options.EnableFileChangeCheck = fileBacked;
+
+                using (var guard = FallbackGuard.Install())
+                {
+                    var resolver = new TemplateResolver(Path.Combine(stageDir, "root.marker"), fileBacked);
+                    foreach (var target in targets)
+                    {
+                        var template = resolver.GetTemplate(target.Key, string.Empty, out _,
+                            new CompileContext(options, ToExType(target.ModelType)), TemplatePathType.None);
+                        if (template == null)
+                            throw new InvalidOperationException("Resolver returned no template for key: " + target.Key);
+                        if (!template.CompileResult.Success)
+                            throw new InvalidOperationException(
+                                "Resolver template did not compile: " + template.CompileResult);
+                        AssertServedByPrecompiledAdapter(template, target.Key);
+                        results.Add(new ResolverSweepResult
+                        {
+                            Key = target.Key,
+                            // render: false resolves without rendering — the gauntlet runs at TryResolve, before any
+                            // byte is produced, so a corpus fragment that is only meaningful when imported (a bare
+                            // @else continuation, say) still proves it crossed the gauntlet on the precompiled tier.
+                            Precompiled = render ? template.Generate(target.Model) : null,
+                        });
+                    }
+
+                    guard.Verify();
+                }
+            }
+            finally
+            {
+                if (fileBacked)
+                    TryDeleteDirectory(stageDir);
+            }
+
+            if (!renderDynamicReference)
+                return results;
+
+            // The dynamic reference renders exactly as RenderInCorpus does: imports resolve from the real corpus
+            // directory, and a model-less corpus template types dynamic (the precompiled Root types it dynamic too).
+            var rooted = dynamicRootPath.EndsWith("/") || dynamicRootPath.EndsWith("\\")
+                ? dynamicRootPath
+                : dynamicRootPath + Path.DirectorySeparatorChar;
+            for (int i = 0; i < targets.Count; i++)
+            {
+                var target = targets[i];
+                var dynamicOptions = new TemplateOptions { RootPath = rooted, FileNamePostfix = ".heddle" };
+                var dynamicTemplate = new HeddleTemplate(target.Content,
+                    new CompileContext(dynamicOptions, ToExType(target.ModelType)));
+                if (!dynamicTemplate.CompileResult.Success)
+                    throw new InvalidOperationException("Dynamic compile failed: " + dynamicTemplate.CompileResult);
+                results[i].Dynamic = dynamicTemplate.Generate(target.Model);
+            }
+
+            return results;
+        }
+
+        /// <summary>Phase 0 WI5 (D5) — the default intent: the template <b>precompiled</b>. Asserts both halves the
+        /// hand-rolled probes used to assert separately: the manifest carries an entry with a non-null
+        /// <c>strategy</c>, and the compiled assembly carries the generated entry class for the key.</summary>
+        public static void ExpectPrecompiled(GenResult gen, string key)
+        {
+            var state = ClassifyInManifest(gen.ManifestSource, key);
+            if (state != ManifestState.Precompiled)
+                throw new InvalidOperationException(
+                    $"Expected '{key}' to precompile, but the manifest says {state} (build-time degrade). " +
+                    "If the degrade is the subject of the test, declare it with DifferentialHarness.ExpectDegrade.");
+            if (gen.Assembly != null && FindEntryTypeByKey(gen.Assembly, key) == null)
+                throw new InvalidOperationException("Generated entry class not found (fell back): " + key);
+        }
+
+        /// <summary>Phase 0 WI5 (D5) — the declared build-time degrade: the emitter deliberately refused this template,
+        /// so the manifest carries no bound strategy for it (either a HED7014 marker entry or no entry at all) and no
+        /// entry class was generated. This is the exhaustive, greppable list of tests that expect a build-tier
+        /// fallback; the runtime-tier equivalent is <see cref="FallbackGuard.Expect"/>.</summary>
+        public static void ExpectDegrade(GenResult gen, string key)
+        {
+            var state = ClassifyInManifest(gen.ManifestSource, key);
+            if (state == ManifestState.Precompiled)
+                throw new InvalidOperationException(
+                    $"Expected a dynamic-tier degrade for '{key}', but the template precompiled.");
+            if (gen.Assembly != null && FindEntryTypeByKey(gen.Assembly, key) != null)
+                throw new InvalidOperationException(
+                    $"Expected no generated entry class for '{key}' (degrade), but one exists.");
+        }
+
+        internal enum ManifestState
+        {
+            /// <summary>No manifest entry at all — the whole template degraded to the dynamic tier.</summary>
+            Absent,
+            /// <summary>A HED7014 fallback-marker entry (<c>strategy: null</c>, README D21).</summary>
+            Marker,
+            /// <summary>A bound entry with a non-null strategy.</summary>
+            Precompiled,
+        }
+
+        /// <summary>The single copy of the manifest probe the deliberate-degrade suites used to hand-roll (D5).</summary>
+        internal static ManifestState ClassifyInManifest(string manifest, string key)
+        {
+            var marker = "key: \"" + key + "\"";
+            var at = manifest?.IndexOf(marker, StringComparison.Ordinal) ?? -1;
+            if (at < 0)
+                return ManifestState.Absent;
+            var next = manifest.IndexOf("key: \"", at + marker.Length, StringComparison.Ordinal);
+            var block = next < 0 ? manifest.Substring(at) : manifest.Substring(at, next - at);
+            return block.Contains("strategy: null") ? ManifestState.Marker : ManifestState.Precompiled;
+        }
+
+        private static ExType ToExType(Type modelType) =>
+            modelType == null || modelType == typeof(object) ? ExType.Dynamic : new ExType(modelType);
+
+        /// <summary>A registry miss is silent by design (no <c>OnFallback</c> event, no Strict throw), so the one
+        /// failure mode the two guards cannot see is "the resolver never consulted a registered entry". The adapter
+        /// constructor sets the private <c>_precompiled</c> flag; reading it is the only way to tell an adapter
+        /// template from a dynamically-compiled one, and it is what makes file-backed mode trustworthy.</summary>
+        private static void AssertServedByPrecompiledAdapter(HeddleTemplate template, string key)
+        {
+            var field = typeof(HeddleTemplate).GetField("_precompiled",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            if (field == null)
+                throw new InvalidOperationException("HeddleTemplate._precompiled not found — update the harness probe.");
+            if (!(bool) field.GetValue(template))
+                throw new InvalidOperationException(
+                    "Resolver served a dynamically-compiled template for '" + key +
+                    "' — the precompiled entry was never consulted (registry miss).");
+        }
+
+        internal static string NonexistentRoot() =>
+            Path.Combine(Path.GetTempPath(), "heddle-registry-only-" + Guid.NewGuid().ToString("N"));
+
+        /// <summary>Writes the corpus to a fresh temp directory as raw UTF-8 without a BOM. Since phase 5 D1 both
+        /// sides hash <em>decoded text</em> (<c>ContentHash.HashText</c>), so any BOM'd/UTF-16 staging would hash
+        /// identically too; UTF-8-without-BOM stays the default because it is the shape templates ship in.</summary>
+        internal static string StageCorpus(IReadOnlyList<(string key, string content)> corpus)
+        {
+            var dir = Path.Combine(Path.GetTempPath(), "heddle-file-backed-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            var utf8NoBom = new UTF8Encoding(false);
+            foreach (var (key, content) in corpus)
+            {
+                var path = Path.Combine(dir, key.Replace('/', Path.DirectorySeparatorChar));
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                File.WriteAllBytes(path, utf8NoBom.GetBytes(content));
+            }
+
+            return dir;
+        }
+
+        internal static void TryDeleteDirectory(string dir)
+        {
+            try
+            {
+                if (Directory.Exists(dir))
+                    Directory.Delete(dir, true);
+            }
+            catch (IOException)
+            {
+                // A leftover temp directory is not a test failure.
+            }
+        }
+
         private static Type FindEntryTypeByKey(Assembly assembly, string key)
         {
             var sanitized = SanitizeKey(key);
@@ -292,47 +620,13 @@ namespace Heddle.Generator.IntegrationTests
             return null;
         }
 
-        /// <summary>Mirrors the generator's <c>HeddleTemplateGenerator.SanitizeName</c> (D11) to locate an entry
-        /// class by key for the corpus render tests: first char of each path segment uppercased, non-identifier
-        /// chars → '_', a leading digit prefixed with '_', extension dropped, segments joined by '_'.</summary>
-        private static string SanitizeKey(string key)
-        {
-            var lastSlash = key.LastIndexOf('/');
-            var dir = lastSlash >= 0 ? key.Substring(0, lastSlash) : string.Empty;
-            var file = lastSlash >= 0 ? key.Substring(lastSlash + 1) : key;
-            var dot = file.LastIndexOf('.');
-            if (dot > 0)
-                file = file.Substring(0, dot);
-
-            var segments = new List<string>();
-            if (dir.Length != 0)
-                segments.AddRange(dir.Split('/'));
-            segments.Add(file);
-
-            var parts = new List<string>();
-            foreach (var seg in segments)
-            {
-                if (seg.Length == 0)
-                    continue;
-                var sb = new StringBuilder(seg.Length);
-                for (int i = 0; i < seg.Length; i++)
-                {
-                    var c = seg[i];
-                    bool valid = c == '_' || char.IsLetter(c) || (i > 0 && char.IsDigit(c));
-                    if (i == 0 && char.IsDigit(c))
-                        sb.Append('_').Append(c);
-                    else if (valid)
-                        sb.Append(i == 0 ? char.ToUpperInvariant(c) : c);
-                    else
-                        sb.Append('_');
-                }
-
-                parts.Add(sb.ToString());
-            }
-
-            var result = string.Join("_", parts);
-            return result.Length == 0 ? "_" : result;
-        }
+        /// <summary>The generator's own <c>SanitizeName</c> (D11), reached through <c>InternalsVisibleTo</c>
+        /// rather than mirrored (phase 6 D9). The mirror this replaces was a line-for-line copy by its own
+        /// admission, and a naming-rule change silently degraded the harness — <c>FindEntryTypeByKey</c> simply
+        /// returned null, so the suite whose job is catching build/run divergence became the thing that
+        /// drifted.</summary>
+        private static string SanitizeKey(string key) =>
+            generator::Heddle.Generator.HeddleTemplateGenerator.SanitizeName(key);
 
         /// <summary>Finds the single generated entry point in the compiled assembly (one template rendered per
         /// call): a public static class in the generated namespace exposing a public static <c>Generate</c>.</summary>

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+using Heddle.Language.Members;
 
 namespace Heddle.Generator.Emit
 {
@@ -35,17 +36,19 @@ namespace Heddle.Generator.Emit
             var current = rootExpr;
             foreach (var hop in hops)
             {
-                if (hop.ReceiverIsValueType)
+                // Phase 4 D8: the branch is MemberHopRule.Form — the same function ModelParameter maps to
+                // Expression shapes — so the two encodings stop being an argument and become shared code.
+                switch (MemberHopRule.Form(hop.ReceiverIsValueType, hop.PropertyIsNonNullableValue))
                 {
-                    current = current + "." + hop.Name;
-                }
-                else if (hop.PropertyIsNonNullableValue)
-                {
-                    current = $"({current} == null ? default({hop.PropertyTypeName}) : {current}.{hop.Name})";
-                }
-                else
-                {
-                    current = current + "?." + hop.Name;
+                    case HopForm.Direct:
+                        current = current + "." + hop.Name;
+                        break;
+                    case HopForm.NullDefaultConditional:
+                        current = $"({current} == null ? default({hop.PropertyTypeName}) : {current}.{hop.Name})";
+                        break;
+                    default:
+                        current = current + "?." + hop.Name;
+                        break;
                 }
             }
 

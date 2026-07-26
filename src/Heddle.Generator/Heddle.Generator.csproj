@@ -30,6 +30,9 @@
   <ItemGroup>
     <!-- White-box binder unit tests (ExtensionBinder / Info are internal). Signed with the shared key. -->
     <InternalsVisibleTo Include="Heddle.Generator.Tests, PublicKey=00240000048000009400000006020000002400005253413100040000010001008F699CB432AD3DC770F9147DE37911B49099706C36AF5F14DB7C2031DD216FFAE283B63A2591814F371929AB231C4A82BCBFAC9803C37B96AE90DC703F4159E8B6AC6E2E9F364F072D1BA2FC5B79F26ACF3BD61637D2DB47F409E2B07CF3F49E988BF2C5F6DDAE6D8F804C770601CCE3F3CEA11F7D61A3583109D9AD3244F6C6" />
+    <!-- Phase 6 D9: the differential/partial suites located generated entry classes through hand-kept mirrors of
+         SanitizeName; they now call the production method. Same signing key as the line above. -->
+    <InternalsVisibleTo Include="Heddle.Generator.IntegrationTests, PublicKey=00240000048000009400000006020000002400005253413100040000010001008F699CB432AD3DC770F9147DE37911B49099706C36AF5F14DB7C2031DD216FFAE283B63A2591814F371929AB231C4A82BCBFAC9803C37B96AE90DC703F4159E8B6AC6E2E9F364F072D1BA2FC5B79F26ACF3BD61637D2DB47F409E2B07CF3F49E988BF2C5F6DDAE6D8F804C770601CCE3F3CEA11F7D61A3583109D9AD3244F6C6" />
   </ItemGroup>
 
   <ItemGroup>
@@ -45,9 +48,10 @@
   </ItemGroup>
 
   <!-- Shared front-end sources (D4 step 2): the same parse pipeline the runtime compiles, linked in so parse
-       knowledge exists exactly once. Excludes the runtime CompileContext adapter partial. -->
+       knowledge exists exactly once. Excludes the `*.Runtime.cs` halves — the partials that reach into the
+       runtime's CompileContext, which is not part of the linked closure. -->
   <ItemGroup>
-    <Compile Include="..\Heddle\Language\**\*.cs" Exclude="..\Heddle\Language\DocumentParser.Runtime.cs">
+    <Compile Include="..\Heddle\Language\**\*.cs" Exclude="..\Heddle\Language\**\*.Runtime.cs">
       <Link>Shared\Language\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </Compile>
     <Compile Include="..\Heddle\Strings\Core\BlockPosition.cs" Link="Shared\Strings\BlockPosition.cs" />
@@ -55,11 +59,31 @@
     <Compile Include="..\Heddle\Data\HeddleCompileError.cs" Link="Shared\Data\HeddleCompileError.cs" />
     <Compile Include="..\Heddle\Data\HeddleCompileWarning.cs" Link="Shared\Data\HeddleCompileWarning.cs" />
     <Compile Include="..\Heddle\Data\HeddleDiagnosticIds.cs" Link="Shared\Data\HeddleDiagnosticIds.cs" />
+    <Compile Include="..\Heddle\Data\HeddleDiagnosticCatalog.cs" Link="Shared\Data\HeddleDiagnosticCatalog.cs" />
+    <Compile Include="..\Heddle\Helpers\CSharpTypeNames.cs" Link="Shared\Helpers\CSharpTypeNames.cs" />
     <Compile Include="..\Heddle\Data\LinePosition.cs" Link="Shared\Data\LinePosition.cs" />
+    <Compile Include="..\Heddle\Data\LineIndex.cs" Link="Shared\Data\LineIndex.cs" />
     <Compile Include="..\Heddle\Exceptions\TemplateCompileException.cs" Link="Shared\Exceptions\TemplateCompileException.cs" />
     <Compile Include="..\Heddle\Exceptions\TemplateParseException.cs" Link="Shared\Exceptions\TemplateParseException.cs" />
     <Compile Include="..\Heddle\Precompiled\TemplateKey.cs" Link="Shared\Precompiled\TemplateKey.cs" />
     <Compile Include="..\Heddle\Precompiled\DefaultFunctionTable.cs" Link="Shared\Precompiled\DefaultFunctionTable.cs" />
+    <!-- Phase 5: the pipeline-level generator↔runtime contracts, stated once (D1/D5/D7/D8). -->
+    <Compile Include="..\Heddle\Precompiled\ContentHash.cs" Link="Shared\Precompiled\ContentHash.cs" />
+    <Compile Include="..\Heddle\Precompiled\PrecompiledSchema.cs" Link="Shared\Precompiled\PrecompiledSchema.cs" />
+    <Compile Include="..\Heddle\Precompiled\PrecompiledOptionsFingerprint.cs" Link="Shared\Precompiled\PrecompiledOptionsFingerprint.cs" />
+    <Compile Include="..\Heddle\Precompiled\PrecompiledCapabilities.cs" Link="Shared\Precompiled\PrecompiledCapabilities.cs" />
+    <Compile Include="..\Heddle\Precompiled\HeddleBuildOptions.cs" Link="Shared\Precompiled\HeddleBuildOptions.cs" />
+    <Compile Include="..\Heddle\Data\OutputProfile.cs" Link="Shared\Data\OutputProfile.cs" />
+    <Compile Include="..\Heddle\Data\ExpressionMode.cs" Link="Shared\Data\ExpressionMode.cs" />
+    <!-- Phase 1 (D11): the encoding-deciding rules, beside the enums they interpret. -->
+    <Compile Include="..\Heddle\Data\RenderType.cs" Link="Shared\Data\RenderType.cs" />
+    <Compile Include="..\Heddle\Data\OutputProfileRules.cs" Link="Shared\Data\OutputProfileRules.cs" />
+    <Compile Include="..\Heddle\Data\RenderTypeRules.cs" Link="Shared\Data\RenderTypeRules.cs" />
+    <!-- Phase 3: the binding-layer contracts, stated once (F1/F9). BranchRole replaces the hand-mirrored enum
+         that used to live in Emit\ExtensionBinder.cs, whose numeric values were a cross-assembly contract
+         enforced only by a doc comment. -->
+    <Compile Include="..\Heddle\Precompiled\AqnFormatter.cs" Link="Shared\Precompiled\AqnFormatter.cs" />
+    <Compile Include="..\Heddle\Attributes\BranchRole.cs" Link="Shared\Attributes\BranchRole.cs" />
   </ItemGroup>
 
   <!-- Pack layout: the generator + its generation-time dependencies inside analyzers/dotnet/cs; MSBuild

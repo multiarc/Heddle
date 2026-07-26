@@ -1,13 +1,18 @@
 using System;
+using Heddle.Data;
 
 namespace Heddle.Generator.Pipeline
 {
     /// <summary>The compilation-wide build options (phase 7 D16 step 2), a value-equatable model of primitives —
     /// safe to hold in the incremental pipeline. Mirrors the identity-bearing <c>TemplateOptions</c> triple plus the
-    /// baked <c>MaxRecursionCount</c>, the generated namespace, the template root, and the u8 toggle.</summary>
+    /// baked <c>MaxRecursionCount</c>, the generated namespace, the template root, and the u8 toggle.
+    /// <para>Phase 5 D7: the identity-bearing pair are the runtime's own <see cref="Data.OutputProfile"/>/
+    /// <see cref="Data.ExpressionMode"/> enums (linked source), not strings — so the emitter cannot bake a profile
+    /// or mode the runtime does not have, and the hand-rolled ordinal string compares collapse to enum compares
+    /// (strictly stronger for the incremental pipeline's equality).</para></summary>
     internal sealed class GlobalConfig : IEquatable<GlobalConfig>
     {
-        public GlobalConfig(string outputProfile, string expressionMode, bool trimDirectiveLines,
+        public GlobalConfig(OutputProfile outputProfile, ExpressionMode expressionMode, bool trimDirectiveLines,
             int maxRecursionCount, string templateRoot, string generatedNamespace, bool emitUtf8Pieces)
         {
             OutputProfile = outputProfile;
@@ -19,8 +24,8 @@ namespace Heddle.Generator.Pipeline
             EmitUtf8Pieces = emitUtf8Pieces;
         }
 
-        public string OutputProfile { get; }
-        public string ExpressionMode { get; }
+        public OutputProfile OutputProfile { get; }
+        public ExpressionMode ExpressionMode { get; }
         public bool TrimDirectiveLines { get; }
         public int MaxRecursionCount { get; }
         public string TemplateRoot { get; }
@@ -30,8 +35,8 @@ namespace Heddle.Generator.Pipeline
         public bool Equals(GlobalConfig other)
         {
             if (other is null) return false;
-            return string.Equals(OutputProfile, other.OutputProfile, StringComparison.Ordinal)
-                   && string.Equals(ExpressionMode, other.ExpressionMode, StringComparison.Ordinal)
+            return OutputProfile == other.OutputProfile
+                   && ExpressionMode == other.ExpressionMode
                    && TrimDirectiveLines == other.TrimDirectiveLines
                    && MaxRecursionCount == other.MaxRecursionCount
                    && string.Equals(TemplateRoot, other.TemplateRoot, StringComparison.Ordinal)
@@ -46,8 +51,8 @@ namespace Heddle.Generator.Pipeline
             unchecked
             {
                 var hash = 17;
-                hash = hash * 31 + (OutputProfile?.GetHashCode() ?? 0);
-                hash = hash * 31 + (ExpressionMode?.GetHashCode() ?? 0);
+                hash = hash * 31 + (int)OutputProfile;
+                hash = hash * 31 + (int)ExpressionMode;
                 hash = hash * 31 + TrimDirectiveLines.GetHashCode();
                 hash = hash * 31 + MaxRecursionCount;
                 hash = hash * 31 + (TemplateRoot?.GetHashCode() ?? 0);

@@ -14,6 +14,7 @@ namespace Heddle.Extensions {
               "Use '@<<{{ path }}' to share definitions and layouts, or '@partial(){{ name }}' to embed rendered output.",
         error: true)]
     [ExtensionName("import")]
+    [ZeroOutput]
     public sealed class ImportExtension : AbstractExtension {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
