@@ -3,9 +3,6 @@ using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
 
-// Extension-parameter fixtures. The malformed fixtures are exported so the differential dynamic side can resolve
-// the names — the generator resolves them by [ExtensionName] regardless.
-
 namespace Heddle.Generator.IntegrationTests.Fixtures
 {
     /// <summary>The canonical parameter-declaring extension: one optional int parameter (default 3), read at
@@ -43,9 +40,7 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         }
     }
 
-    /// <summary><c>[EncodeOutput]</c> AND a <c>[Prop]</c> — the carrier must stay
-    /// attribute-transparent so the inner still self-encodes on both tiers (an XSS-class guard). Emits
-    /// markup-significant characters so Encode vs Raw differ in bytes.</summary>
+    /// <summary><c>[EncodeOutput]</c> with <c>[Prop]</c>: carrier stays attribute-transparent so inner self-encodes.</summary>
     [ExtensionName("encodedGrid")]
     [EncodeOutput]
     [Prop("columns", typeof(int), Default = 3)]
@@ -63,11 +58,7 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         }
     }
 
-    /// <summary>A NO-parameter <c>[EncodeOutput]</c> custom extension shaped to provably hit
-    /// <c>AllocateCustomExtension</c> — no <c>InitStart</c>/<c>CompleteInit</c> override (so
-    /// <c>OverridesHook == false</c> and a bodiless call binds through the plain custom path, not the dynamic
-    /// fallback), <c>[EncodeOutput]</c> without <c>[NotEncode]</c> (derived render type <c>Encode</c>, the
-    /// previously-divergent value), markup-significant output (Encode vs Raw differ in bytes).</summary>
+    /// <summary><c>[EncodeOutput]</c> with no parameters: hits <c>AllocateCustomExtension</c> with render type <c>Encode</c>.</summary>
     [ExtensionName("encodedBare")]
     [EncodeOutput]
     public sealed class EncodedBareExtension : AbstractHtmlExtension
@@ -211,12 +202,7 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         }
     }
 
-    /// <summary>
-    /// A <c>Nullable&lt;W&gt;</c>-typed prop with a widening constant default. The default's
-    /// own type is <c>int</c> and the slot is <c>long?</c>, so the conversion goes through the
-    /// widen-then-lift branch of the shared rule and the frozen prototype must store the same boxed
-    /// <see cref="long"/> the runtime's <c>Convert.ChangeType</c> produces — the byte-exactness requirement.
-    /// </summary>
+    /// <summary>Widening default <c>int</c> into <c>long?</c>: must produce boxed <see cref="long"/>, not <c>int</c>.</summary>
     [ExtensionName("nullableLiftDefault")]
     [Prop("n", typeof(long?), Default = 5)]
     public sealed class NullableLiftDefaultExtension : EchoExtensionBase

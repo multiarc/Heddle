@@ -20,7 +20,6 @@ namespace Heddle.Language
     /// </summary>
     internal static class ParticipantScan
     {
-        /// <summary>True when any output chain of <paramref name="context"/> hosts a participant.</summary>
         internal static bool BodyHostsParticipant(ParseContext context, Func<string, bool> hasScopeChannel)
         {
             var chains = context?.OutputChains;
@@ -35,8 +34,6 @@ namespace Heddle.Language
             return false;
         }
 
-        /// <summary>True when any item of <paramref name="chain"/> — or of any chain nested in one of its call
-        /// parameters — resolves to a <c>[ScopeChannel]</c> extension.</summary>
         internal static bool ChainHostsParticipant(OutputChain chain, Func<string, bool> hasScopeChannel)
             => ItemsHostParticipant(chain?.Chain, hasScopeChannel);
 
@@ -60,8 +57,7 @@ namespace Heddle.Language
             var name = item.ExtensionName;
             if (!string.IsNullOrEmpty(name) && hasScopeChannel(name))
                 return true;
-            // The runtime's ChainedParameter recursion (RuntimeDocument.ItemNeedsLocals): a participant reachable
-            // only as a nested chain parameter — @yell(@row()) — still provisions the hosting body's frame.
+            // Nested chain parameters (@yell(@row())) still provision the hosting body's frame.
             return ItemsHostParticipant(item.CallParameter?.ChainParameter, hasScopeChannel);
         }
     }

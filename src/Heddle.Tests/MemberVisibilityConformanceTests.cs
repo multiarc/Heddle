@@ -56,15 +56,10 @@ namespace Foreign
 
 namespace Heddle.Tests
 {
-    /// <summary>
-    /// The member-visibility conformance corpus, run against the <b>reflection</b> facts adapter. The rows are the
-    /// shared data both adapters must agree on; the generator's Roslyn adapter runs the same rows, which turns "the
-    /// two resolvers happen to agree" into "a divergent policy is structurally impossible".
-    /// <para>Every verdict below reflects the <b>runtime's current observable behavior</b> (resolved). Where a
-    /// plain-English reading of the sandbox contract would be more generous (accepting a <c>protected internal</c>
-    /// getter, surfacing a base-interface member), that generosity is a breaking-window candidate, not a drift fix,
-    /// and the row here pins the narrow behavior on purpose.</para>
-    /// </summary>
+    /// <summary>Member-visibility conformance corpus run against the reflection adapter. Rows are shared data both
+    /// adapters must agree on; the generator's Roslyn adapter runs the same rows, making divergent policies structurally
+    /// impossible. Every verdict pins the runtime's current observable behavior; departures from the sandbox contract
+    /// are breaking-window candidates, not drift fixes.</summary>
     public class MemberVisibilityConformanceTests
     {
         public static IEnumerable<object[]> Rows()
@@ -104,7 +99,7 @@ namespace Heddle.Tests
         [Fact]
         public void NewShadowedPropertyResolvesToTheMostDerived_InsteadOfThrowingAmbiguousMatch()
         {
-            // Type.GetProperty threw AmbiguousMatchException here — an unpositioned crash out of the member tier.
+            // Type.GetProperty threw AmbiguousMatchException; now resolves to most-derived.
             var resolution = MemberPathResolver.TryResolve(new ExType(typeof(MemberConformance.VisibilityModel)),
                 new[] { "Shadowed" });
             Assert.Equal(MemberPathResolutionKind.Resolved, resolution.Kind);
@@ -115,9 +110,7 @@ namespace Heddle.Tests
         [Fact]
         public void StaticPropertyIsAPositionedNotFound_NotAnArgumentException()
         {
-            // Before: Expression.MakeMemberAccess threw an unpositioned ArgumentException on the runtime tier and
-            // the generator emitted m.StaticProp → CS0176 in the consumer's build. Two different crashes for one
-            // template; now one positioned diagnostic on both.
+            // Previously threw unpositioned ArgumentException; now emits positioned diagnostic on both tiers.
             var template = new HeddleTemplate("@(StaticHere)",
                 new CompileContext(new TemplateOptions(), typeof(MemberConformance.VisibilityModel)));
             Assert.False(template.CompileResult.Success);
@@ -128,8 +121,7 @@ namespace Heddle.Tests
         [Fact]
         public void BaseInterfaceMembersStayInvisible_TheNarrowRuntimeBehavior()
         {
-            // Reflection's GetProperty on an interface never searched base interfaces. Surfacing them would widen
-            // the sandbox, so it is a window candidate rather than something this phase quietly enables.
+            // Reflection's GetProperty never searched base interfaces; surfacing them is a breaking-window candidate.
             var self = MemberPathResolver.TryResolve(new ExType(typeof(MemberConformance.IDerivedFacet)),
                 new[] { "FromDerivedInterface" });
             Assert.Equal(MemberPathResolutionKind.Resolved, self.Kind);
@@ -160,8 +152,7 @@ namespace Heddle.Tests
         [Fact]
         public void PolicyTable()
         {
-            // (access, declaredOnReceiver) → accessible. Public is reachable through inheritance; internal only
-            // where reflection would have surfaced it; everything else is outside the sandbox.
+            // (access, declaredOnReceiver) → accessible. Public reaches through inheritance; internal only where reflection surfaces it.
             AssertPolicy(MemberAccess.Public, true, true);
             AssertPolicy(MemberAccess.Public, false, true);
             AssertPolicy(MemberAccess.Internal, true, true);

@@ -11,7 +11,6 @@ namespace Heddle.Language.Binding
         /// to drop the declaration (dropping it would silently treat the owner as parameter-less).</summary>
         public string Name;
 
-        /// <summary>Declared type.</summary>
         public TType Type;
 
         /// <summary>Base-chain layer index, outermost base first. A repeated name at a HIGHER level is an
@@ -59,21 +58,7 @@ namespace Heddle.Language.Binding
             out string sourceDisplay);
     }
 
-    /// <summary>
-    /// The <b>one</b> implementation of extension/definition prop-layout sequencing and slot
-    /// indexing — the highest-payoff extraction in the binding layer, because slot indices are a wire format and a
-    /// disagreement is silent wrong rendered output rather than a fallback.
-    /// <para>Rules are the runtime's (<c>PropLayout.ResolveFromExtension</c>), verbatim: validation order per
-    /// declaration is name-validity → reserved → same-level duplicate → unusable type → redeclaration
-    /// assignability → default application (<see cref="HeddleDiagnosticCatalog.PropFaults.FaultOrder"/>); faults
-    /// accumulate and the walk continues; an inherited re-declaration keeps the base slot's index and re-applies
-    /// the default; a new name appends at <c>slots.Count</c>.</para>
-    /// <para>Three build-tier divergences this closes: the generator walked the base chain past
-    /// <c>typeof(object)</c>, stopped at the first fault, and used a narrower unusable-type predicate (no by-ref
-    /// arm, <c>IsUnboundGenericType</c> instead of <c>ContainsGenericParameters</c>). The layer walk itself stays
-    /// with each adapter — only the runtime knows what its own base chain is — but the stop rule is pinned by
-    /// <see cref="StopsAtObject"/> so both adapters state it the same way.</para>
-    /// </summary>
+    /// <summary>The sole implementation of extension prop-layout sequencing and slot indexing; slot indices are a wire format.</summary>
     internal static class PropLayoutCore
     {
         /// <summary>The runtime's layer-walk stop rule, named so both adapters cite one place: the base chain is
@@ -105,7 +90,6 @@ namespace Heddle.Language.Binding
                     seenAtLevel = new HashSet<string>(System.StringComparer.Ordinal);
                 }
 
-                // 1 — name validity. Checked first: the hash-set and dictionary probes below reject null keys.
                 if (IsNullOrWhiteSpace(declaration.Name))
                 {
                     sink.Fault(PropFault.NameInvalid, declaration, default(TType), null);
@@ -113,7 +97,6 @@ namespace Heddle.Language.Binding
                     continue;
                 }
 
-                // 2 — reserved names.
                 if (HeddleDiagnosticCatalog.PropFaults.IsReserved(declaration.Name))
                 {
                     sink.Fault(PropFault.NameReserved, declaration, default(TType), null);
@@ -121,7 +104,6 @@ namespace Heddle.Language.Binding
                     continue;
                 }
 
-                // 3 — same-level duplicate.
                 if (!seenAtLevel.Add(declaration.Name))
                 {
                     sink.Fault(PropFault.DuplicateAtLevel, declaration, default(TType), null);
@@ -129,7 +111,6 @@ namespace Heddle.Language.Binding
                     continue;
                 }
 
-                // 4 — unusable type.
                 if (!facts.IsUsableAsPropType(declaration.Type))
                 {
                     sink.Fault(PropFault.TypeUnusable, declaration, default(TType), null);
@@ -139,8 +120,6 @@ namespace Heddle.Language.Binding
 
                 if (byName.TryGetValue(declaration.Name, out var existing))
                 {
-                    // 5 — inherited re-declaration: keep the base slot index; the re-declared type must be
-                    // assignable to the inherited one.
                     if (!facts.IsAssignableFrom(existing.Type, declaration.Type))
                     {
                         sink.Fault(PropFault.RedeclarationNotAssignable, declaration, existing.Type,
@@ -173,8 +152,6 @@ namespace Heddle.Language.Binding
             return slots;
         }
 
-        // 6 — default application. A failure clears the slot's default (the runtime's ApplyDefaultCore shape:
-        // the slot survives, defaultless, so downstream "required argument missing" reporting stays coherent).
         private static bool ApplyDefault<TType>(PropDeclaration<TType> declaration, ITypeFacts<TType> facts,
             IPropLayoutSink<TType> sink, PropSlot<TType> slot)
         {
@@ -222,8 +199,6 @@ namespace Heddle.Language.Binding
             return builder.ToString();
         }
 
-        /// <summary><c>string.IsNullOrWhiteSpace</c> is not on every netstandard2.0 consumer's happy path in this
-        /// codebase's minimum; spelled out so the shared file carries no surprise dependency.</summary>
         private static bool IsNullOrWhiteSpace(string value)
         {
             if (value == null || value.Length == 0)

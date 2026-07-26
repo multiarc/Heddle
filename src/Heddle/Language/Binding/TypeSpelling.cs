@@ -41,18 +41,9 @@ namespace Heddle.Language.Binding
         bool TryGetValueTupleDefinition(int arity, out TType definition);
     }
 
-    /// <summary>
-    /// The reflection-free type-spelling parser, shared.
-    /// <para>It was already reflection-free imperative code inside <c>ReflectionHelper</c>
-    /// (<c>ExtractGenericArguments</c>, <c>TryFindMatchingAngleBracket</c>, <c>SplitTopLevelArguments</c>) —
-    /// directly extractable to share between tiers. The generator supported <b>none</b> of
-    /// <c>List&lt;int&gt;</c>, <c>T[]</c>, <c>(int, string)</c> or dotted-nested spellings, so whole feature areas
-    /// silently never precompiled: fallback-safe, but permanent.</para>
-    /// <para>The grammar handled here: a dotted chain where any segment may carry a type-argument list
-    /// (<c>Ns.Outer&lt;int&gt;.Inner&lt;string&gt;</c> → definition <c>Ns.Outer`1.Inner`1</c> closed over all
-    /// arguments left to right — nested types inherit their outers' parameters, so the counts add up), an
-    /// <c>[]</c> array suffix, and a parenthesised tuple spelling rewritten to <c>System.ValueTuple&lt;…&gt;</c>.</para>
-    /// </summary>
+    /// <summary>Reflection-free type-spelling parser shared across tiers. Handles dotted chains with type
+    /// arguments (<c>Ns.Outer&lt;int&gt;.Inner&lt;string&gt;</c>), array suffixes (<c>[]</c>), and tuple
+    /// spellings as <c>System.ValueTuple</c>.</summary>
     internal static class TypeSpelling
     {
         internal static bool TryResolve<TType>(string spelling, ITypeLookup<TType> lookup, out TType type,
@@ -73,14 +64,8 @@ namespace Heddle.Language.Binding
                 return false;
             }
 
-            // Tuple: "(a, b)" — the whole spelling parenthesised, split at top level.
             if (spelling[0] == '(' && spelling[spelling.Length - 1] == ')')
             {
-                // Arity 1 is legal: `(int)` is `System.ValueTuple<int>`, which is what the reflection tier has
-                // always resolved it to. The shared parser originally required two elements, so the build tier
-                // refused a spelling the run tier accepted — a drift introduced by the extraction itself, which
-                // was found and fixed when the runtime was folded onto this parser. An EMPTY element is still malformed: `()`
-                // splits to one empty part, which fails when the element is resolved below.
                 var parts = SplitTopLevelArguments(spelling.Substring(1, spelling.Length - 2));
                 if (parts.Count == 0)
                 {
@@ -97,7 +82,6 @@ namespace Heddle.Language.Binding
                 return TryClose(parts, tupleDefinition, lookup, out type, out fault);
             }
 
-            // Array: one "[]" suffix at a time, innermost element resolved first.
             if (spelling.EndsWith("[]", System.StringComparison.Ordinal))
             {
                 var elementSpelling = spelling.Substring(0, spelling.Length - 2).TrimEnd();

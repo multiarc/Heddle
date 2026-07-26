@@ -9,12 +9,8 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// The precompile-vs-fallback behaviour of <c>@attr</c>/<c>@js</c>/<c>@url</c>. Each mirrors
-    /// <c>@string</c>'s value-call shape, which means it overrides <c>InitStart</c> (the step-back default body). The
-    /// generator refuses to bind engine extensions that override a compile-time hook (it reproduces only the base
-    /// behavior), so — exactly like custom branch sets — a template using these built-ins <b>falls back to the
-    /// dynamic tier</b> rather than precompiling. This suite pins the documented fallback (no precompiled strategy is
-    /// emitted for the template) and asserts the runtime backend renders the escaping correctly.
+    /// Context encoders (<c>@attr</c>/<c>@js</c>/<c>@url</c>) override compile-time hooks, so templates using them
+    /// fall back to the dynamic tier. Pins the fallback (no precompiled strategy) and verifies runtime escaping.
     /// </summary>
     public class ContextEncodingFallbackTests
     {
@@ -37,10 +33,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.False(gen.Diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error),
                 "Unexpected generator error: " + string.Join("; ", gen.Diagnostics.Select(d => d.ToString())));
 
-            // Documented fallback: the template does not precompile — no bound strategy and no entry class for it.
             DifferentialHarness.ExpectDegrade(gen, "views/ctx.heddle");
-
-            // The runtime backend renders the escaping — the fallback is output-safe.
             Assert.Equal(expected + "\n", RenderDynamic(template, value));
         }
     }

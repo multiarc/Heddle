@@ -22,12 +22,10 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal(dyn, precompiled);
         }
 
-        // ---- Default output ('-> chain' renders at document end) ----
-
         [Fact]
         public void DefaultOutput_ModelLess()
         {
-            // ergo-double-render shape without the double call: the definition renders once at document end.
+            // Definition renders once at document end, not on each call.
             var t = "@%\n<card> -> ()\n{{CARD}}\n%@\n";
             AssertParity("views/default-once.heddle", t, typeof(object), null);
         }
@@ -35,7 +33,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void DefaultOutput_DoubleRender()
         {
-            // The by-name call renders once and the default chain renders again at document end (HED4002 warning).
+            // By-name call and default chain both render; default chain also renders at end.
             var t = "@%\n<card> -> ()\n{{CARD}}\n%@\n@card()\n";
             AssertParity("views/default-double.heddle", t, typeof(object), null);
         }
@@ -60,8 +58,7 @@ namespace Heddle.Generator.IntegrationTests
         [MemberData(nameof(Menus))]
         public void Slot_PickerProjectsCallerContent(Menu model)
         {
-            // slot-picker shape: the definition iterates Options and projects the caller content per option via
-            // @out(this) — the caller body is typed by the declared slot type (MenuOption).
+            // Definition iterates Options, projecting caller content via @out(this) for each item.
             var t = "@model(){{" + MenuType + "}}@\\\n" +
                     "@%\n<picker(out:: " + OptionType + ")>{{<ul>@list(Options){{<li>@out(this)</li>}}</ul>}} :: " + MenuType + "\n%@\n" +
                     "@picker(this){{<a href=\"/go?id=@(Id)\">@(Label)</a>}}\n";
@@ -78,7 +75,7 @@ namespace Heddle.Generator.IntegrationTests
         [MemberData(nameof(Articles))]
         public void Slot_SingleValueProjection(Article model)
         {
-            // A slot definition that projects a single value: @out(this) passes the definition's own model through.
+            // @out(this) projects the definition's own model through the slot.
             var t = "@model(){{" + ArticleType + "}}@\\\n" +
                     "@%\n<frame(out:: " + ArticleType + ")>{{[frame:@out(this)]}} :: " + ArticleType + "\n%@\n" +
                     "@frame(this){{<b>@(Title)</b>}}\n";

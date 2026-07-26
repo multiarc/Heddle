@@ -17,14 +17,7 @@ namespace Heddle.Data {
         /// <see cref="FunctionRegistry.Default"/>. The registry freezes on first compile use.</summary>
         public FunctionRegistry Functions { get; set; }
 
-        /// <summary>
-        /// <para>Bridge over <see cref="ExpressionMode"/>: <c>true</c> == <see cref="Data.ExpressionMode.FullCSharp"/>.
-        /// Setting <c>false</c> leaves <see cref="Data.ExpressionMode.MemberPathsOnly"/> untouched and otherwise
-        /// selects <see cref="Data.ExpressionMode.Native"/>.</para>
-        /// <para>Obsolete since 2.x — use <see cref="ExpressionMode"/> instead; reads and writes keep working as a
-        /// compatibility bridge (<c>AllowCSharp == true</c> is equivalent to <see cref="Data.ExpressionMode.FullCSharp"/>,
-        /// <c>false</c> selects <see cref="Data.ExpressionMode.Native"/> or leaves <see cref="Data.ExpressionMode.MemberPathsOnly"/> untouched).</para>
-        /// </summary>
+        /// <summary>Obsolete bridge to <see cref="ExpressionMode"/>: <c>true</c> == <see cref="Data.ExpressionMode.FullCSharp"/>.</summary>
         [Obsolete("Use ExpressionMode. AllowCSharp == true is equivalent to ExpressionMode.FullCSharp; false selects Native (or leaves MemberPathsOnly untouched).")]
         public bool AllowCSharp
         {
@@ -42,89 +35,38 @@ namespace Heddle.Data {
         public bool ProvideLanguageFeatures { get; set; }
         public object Data { get; set; }
 
-        /// <summary>
-        /// <para>Governs handling when a precompiled template entry exists for a lookup but fails the per-request
-        /// validation gauntlet. <see cref="PrecompiledMismatchPolicy.Fallback"/> (default) recompiles dynamically and
-        /// raises <c>HED7101</c>; <see cref="PrecompiledMismatchPolicy.Strict"/> throws. A registry miss is unaffected
-        /// by this setting.</para>
-        /// <para>Copied by the copy constructor; deliberately absent from <see cref="Equals(TemplateOptions)"/>/
-        /// <see cref="GetHashCode"/> and the resolver cache key — it changes failure handling, never output
-        /// bytes.</para>
-        /// </summary>
+        /// <summary>Governs handling when a precompiled entry fails validation: <see cref="PrecompiledMismatchPolicy.Fallback"/>
+        /// (default) recompiles; <see cref="PrecompiledMismatchPolicy.Strict"/> throws. Absent from
+        /// <see cref="Equals(TemplateOptions)"/> — changes handling, not output.</summary>
         public PrecompiledMismatchPolicy PrecompiledMismatchPolicy { get; set; }
 
-        /// <summary>
-        /// <para>Output profile for this template and its child compiles (bodies, partials, imports).
-        /// Default: <see cref="Data.OutputProfile.Html"/> (2.0) — the unnamed <c>@(...)</c> encodes by
-        /// default; opt out per output with <c>@raw</c> or per template with <see cref="Data.OutputProfile.Text"/>.</para>
-        /// <para>Participates in <see cref="Equals(TemplateOptions)"/>/<see cref="GetHashCode"/> — the
-        /// profile keys template caches.</para>
-        /// </summary>
+        /// <summary>Output profile for this template and its child compiles. Default:
+        /// <see cref="Data.OutputProfile.Html"/>. Participates in cache key.</summary>
         public OutputProfile OutputProfile { get; set; }
 
-        /// <summary>
-        /// <para>When <c>true</c>, whole-line directives (<c>@using</c>, <c>@model</c>, <c>@profile</c>,
-        /// definitions, <c>@&lt;&lt;</c> imports, whole-line comments, and any extension block
-        /// removed at compile time) swallow their line — leading indentation, trailing spaces, and one line
-        /// terminator.</para>
-        /// <para>Default: <c>true</c> (2.0) — set <c>false</c> to keep whole-line directives' lines. Participates in
-        /// <see cref="Equals(TemplateOptions)"/>/<see cref="GetHashCode"/> — trimming changes output bytes, so
-        /// it keys template caches. Compile-time only; never read at render.</para>
-        /// </summary>
+        /// <summary>When <c>true</c>, whole-line directives swallow their line terminator. Default: <c>true</c>.
+        /// Participates in cache key; compile-time only.</summary>
         public bool TrimDirectiveLines { get; set; }
 
-        /// <summary>
-        /// <para>The output encoder applied at every HTML-encoding site (the <see cref="Data.OutputProfile.Html"/>
-        /// unnamed sink and every <c>[EncodeOutput]</c> extension). <c>null</c> (the default) selects the legacy
-        /// built-in path — the current <see cref="System.Net.WebUtility.HtmlEncode(string)"/> behavior, including its
-        /// Latin-1 160–255 quirk — so an unset encoder renders byte-identically to before (B2-R2/R3). Supply an
-        /// encoder (e.g. <c>HtmlEncoder.Create(UnicodeRanges.All)</c>) to opt into the modern
-        /// <see cref="System.Text.Encodings.Web.TextEncoder"/> contract with its span/UTF-8 paths.</para>
-        /// <para>Applies to *encoding* sites only — never to <see cref="Data.OutputProfile.Text"/> bare output,
-        /// <c>@raw</c>, raw blocks, or literal text (B2-R8). Copied by the copy constructor. Participates in
-        /// <see cref="Equals(TemplateOptions)"/>/<see cref="GetHashCode"/> <b>by reference</b> — a different encoder
-        /// instance renders different bytes, so it keys template caches (B2-R6). <see cref="System.Text.Encodings.Web.TextEncoder"/>
-        /// implementations are required to be thread-safe, so one options instance may back parallel renders.</para>
-        /// </summary>
+        /// <summary>Output encoder at HTML-encoding sites. <c>null</c> selects the legacy built-in path; supply a
+        /// <see cref="System.Text.Encodings.Web.TextEncoder"/> for modern contract. Participates in cache key
+        /// by reference; thread-safe implementations are required.</summary>
         public System.Text.Encodings.Web.TextEncoder Encoder { get; set; }
 
-        /// <summary>
-        /// <para>Per-render resource limits (C1) — output chars, render ops, and wall-clock time. <c>null</c> (the
-        /// default) is today's unlimited behavior with zero render-path cost: no budget wrapper is created, so an
-        /// unbudgeted render allocates nothing new and is byte-identical to before (C1-R11/G-R2). Supply a
-        /// <see cref="Data.RenderBudget"/> to bound untrusted renders; a breach throws
-        /// <see cref="Heddle.Exceptions.TemplateRenderBudgetException"/>.</para>
-        /// <para>Copied by the copy constructor. Deliberately absent from <see cref="Equals(TemplateOptions)"/>/
-        /// <see cref="GetHashCode"/> and the precompiled options fingerprint (precedent
-        /// <see cref="MaxRecursionCount"/>, C1-R8): it changes no compiled structure and no bytes of a *successful*
-        /// render, so it must not fragment template caches or trip the precompiled gauntlet.</para>
-        /// </summary>
+        /// <summary>Per-render resource limits (output, ops, time). <c>null</c> (default) is unlimited with zero cost.
+        /// Absent from cache keys — does not affect compiled structure or bytes of successful renders.</summary>
         public RenderBudget RenderBudget { get; set; }
 
-        /// <summary>
-        /// <para>When <c>true</c>, a render (<c>Generate</c>) validates the supplied <c>data</c> against the
-        /// template's compiled model type and throws <see cref="Heddle.Exceptions.TemplateProcessingException"/>
-        /// on a mismatch — the same guard that fires unconditionally in <c>DEBUG</c> builds, now available in
-        /// Release. Default: <c>false</c> (Release behavior is unchanged — wrong-typed data is not validated).</para>
-        /// <para>The check is skipped for precompiled-adapter templates (a precompiled root carries no
-        /// compile-time model type to check against) — a known limit mirrored from the <c>DEBUG</c> guard.
-        /// A <c>null</c> model is always legal and never validated. In <c>DEBUG</c> the guard fires regardless
-        /// of this flag.</para>
-        /// <para>Copied by the copy constructor. Deliberately absent from <see cref="Equals(TemplateOptions)"/>/
-        /// <see cref="GetHashCode"/> and any template/precompiled cache key (precedent
-        /// <see cref="RenderBudget"/>, <see cref="MaxRecursionCount"/>): it changes failure handling, never the
-        /// bytes of a successful render, so it must not fragment caches.</para>
-        /// </summary>
+        /// <summary>When <c>true</c>, validates data against the template's compiled model type; throws
+        /// <see cref="Heddle.Exceptions.TemplateProcessingException"/> on mismatch. Default: <c>false</c>.
+        /// Absent from cache keys — changes failure handling, not successful output.</summary>
         public bool ValidateModelType { get; set; }
 
         public TemplateOptions() : this((string) null)
         {
         }
 
-        /// <summary>Every default comes from the shared <see cref="Heddle.Precompiled.HeddleBuildOptions"/> table —
-        /// the same table the generator's option reader and the MSBuild props defaults are pinned against, so a
-        /// build-time and a run-time default can no longer drift into a permanent <c>OptionsMismatch</c>. The
-        /// parameterless constructor chains here rather than restating them.</summary>
+        /// <summary>Defaults come from <see cref="Heddle.Precompiled.HeddleBuildOptions"/>, shared with the generator and MSBuild.</summary>
         public TemplateOptions(string templateName) {
             FileNamePostfix = string.Empty;
             RootPath = AppContext.BaseDirectory;
@@ -155,12 +97,7 @@ namespace Heddle.Data {
             ValidateModelType = value.ValidateModelType;   // Copied, but not part of Equals/GetHashCode or the fingerprint.
         }
 
-        /// <summary>The composed on-disk path of this template — <b>the</b> composition rule, which
-        /// <c>FileReader.GetFileName</c> now reads rather than restates. Previously this was a naive
-        /// <c>RootPath + TemplateName + FileNamePostfix</c> concatenation while the reader used
-        /// <see cref="System.IO.Path.Combine(string,string)"/>, so a host that set <c>RootPath</c> without a trailing
-        /// separator got a defective string here — visible as <c>ImportOrigin</c>/<c>ImportedFrom</c> text — while
-        /// resolution silently worked. There is now only one statement of the rule to diverge from.</summary>
+        /// <summary>The composed on-disk path, using <see cref="System.IO.Path.Combine(string,string)"/>.</summary>
         public string FullPath =>
             System.IO.Path.Combine(RootPath ?? string.Empty, TemplateName + FileNamePostfix);
 

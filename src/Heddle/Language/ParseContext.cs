@@ -37,9 +37,7 @@ namespace Heddle.Language {
             ImportOrigin = parentContext?.ImportOrigin;
         }
 
-        /// <summary>
-        /// The absolute (document-space) UTF-16 offset this context's tokens are keyed from. Equal to the private <c>_offset</c>.
-        /// </summary>
+        /// <summary>The absolute document-space UTF-16 offset this context's tokens are keyed from.</summary>
         internal int AbsoluteOffset => _offset;
 
         /// <summary>
@@ -182,8 +180,6 @@ namespace Heddle.Language {
         internal DefinitionItem CreateDefinition(HeddleParser.DefContext context, out OutputChain chain) {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
-            // A public region declaration <:name> / <:name :: Type> has a leading DELIM as a direct child of def
-            // only in the region alternative (the <child:base> DELIM lives inside def_base).
             if (context.DELIM() != null)
                 return CreateRegionDefinition(context, out chain);
             var defBase = context.def_base();
@@ -243,9 +239,6 @@ namespace Heddle.Language {
                 HeddleCompileError baseNotFound = null;
                 if (baseDefenition == null)
                 {
-                    // Emit-then-retract: the base-not-found error is captured below on the fill candidate
-                    // so a compile-time public-region match can retract the identical instance from BOTH
-                    // downstream lists (parse Errors and compile CompileErrors); a genuinely dangling <x:x> retracts nothing.
                     baseNotFound = $"Base definition {baseName} couldn't be found".ToError(GetAbsoluteBlockPosition(context));
                     Errors.Add(baseNotFound);
                 }
@@ -301,12 +294,7 @@ namespace Heddle.Language {
             }
         }
 
-        /// <summary>
-        /// Builds the <see cref="DefinitionItem"/> for a public region declaration
-        /// (<c>&lt;:name&gt;</c> / <c>&lt;:name :: Type&gt;</c>). A region carries no prop list, no base, and no
-        /// default output chain; its model type is the in-header <c>def_region_type</c> or <c>object</c> when
-        /// omitted. A <c>&lt;:name&gt;</c> outside any definition body is a positioned id-less parse error.
-        /// </summary>
+        /// <summary>Builds the <see cref="DefinitionItem"/> for a public region declaration (<c>&lt;:name&gt;</c> or <c>&lt;:name :: Type&gt;</c>).</summary>
         private DefinitionItem CreateRegionDefinition(HeddleParser.DefContext context, out OutputChain chain)
         {
             chain = null;
@@ -346,12 +334,7 @@ namespace Heddle.Language {
             };
         }
 
-        /// <summary>
-        /// Parses a definition header's prop list, builds the <see cref="PropDeclaration"/> list and
-        /// the slot type name, emitting the parse-time header diagnostics HED5015/HED5016/HED5017/HED5007 and
-        /// editor tokens. Base props are not flattened here — inheritance flattening is a compile-time
-        /// concern (the layout resolver).
-        /// </summary>
+        /// <summary>Parses the prop list and slot type, emitting diagnostics HED5015/HED5016/HED5017/HED5007.</summary>
         private (IReadOnlyList<PropDeclaration> props, string slotTypeName) ParseDefProps(
             HeddleParser.Def_propsContext defProps, string definitionName)
         {
@@ -422,8 +405,6 @@ namespace Heddle.Language {
                     defaultValue = ExpressionAstBuilder.DecodeDefaultLiteral(defaultCtx.def_literal(), this, out _);
                 }
 
-                // The reserved-name set is shared vocabulary: the same list backs PropLayout's
-                // attribute-source twin and the generator's emitter twin, so a change lands in one place.
                 if (HeddleDiagnosticCatalog.PropFaults.IsReserved(name))
                 {
                     var fix = string.Equals(name, "out", StringComparison.Ordinal)
@@ -557,7 +538,6 @@ namespace Heddle.Language {
             }
 
             var oneLineStyle = text.StartsWith("@:");
-            
             if (oneLineStyle && text.Length < 2 || !oneLineStyle && text.Length < 4)
                 throw new TemplateParseException("Raw block is wrongly formatted".ToError(GetAbsoluteBlockPosition(context)));
             return new RawOutputItem

@@ -9,10 +9,8 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Nested CLR types are addressed from templates with C#-style dots (<c>Outer.Nested</c>), never the CLR
-    /// <c>+</c> spelling (which the lexer rejects as HED0003). These tests pin the dotted spelling for the two
-    /// template-facing type positions: a definition's <c>:: model</c> clause and a slot's <c>out::</c> clause.
-    /// Mirrors the shapes in <c>Heddle.Performance.PropsRenderBenchmarks</c> at small scale.
+    /// Nested CLR types resolve from templates with C#-style dots (<c>Outer.Nested</c>), never the CLR <c>+</c> spelling.
+    /// Pins the dotted spelling for definition <c>:: model</c> clauses and slot <c>out::</c> clauses.
     /// </summary>
     public class NestedTypeResolutionTests
     {
@@ -85,8 +83,7 @@ namespace Heddle.Tests
         public void MetadataPlusSpellingStillResolvesAtHelperLevel()
         {
             HeddleTemplate.Configure(typeof(NestedTypeResolutionTests).GetTypeInfo().Assembly);
-            // The stored canonical keys are CLR metadata names; the '+' spelling is unreachable from
-            // templates (lexer rejects '+') but must keep resolving through the helper API.
+            // CLR metadata uses '+' spelling; templates cannot emit it (lexer rejects '+') but must still resolve via helper.
             Assert.Same(typeof(Article),
                 ReflectionHelper.ResolveType("Heddle.Tests.NestedTypeResolutionTests+Article"));
             Assert.Same(typeof(Article),
@@ -107,8 +104,7 @@ namespace Heddle.Tests
         public void AssemblyQualifiedDottedNestedNameResolvesViaGetTypeFallback()
         {
             HeddleTemplate.Configure(typeof(NestedTypeResolutionTests).GetTypeInfo().Assembly);
-            // Type.GetType fails on the dotted spelling; the helper retries by replacing the
-            // rightmost '.' with '+' until the CLR metadata name is found.
+            // Type.GetType fails on dotted spelling; helper retries by replacing rightmost '.' with '+' until CLR metadata name is found.
             Assert.Same(typeof(Article),
                 ReflectionHelper.ResolveType("Heddle.Tests.NestedTypeResolutionTests.Article, Heddle.Tests"));
         }
@@ -127,7 +123,7 @@ namespace Heddle.Tests
         public void MultiLevelMetadataPlusSpellingResolvesAtHelperLevel()
         {
             HeddleTemplate.Configure(typeof(NestedTypeResolutionTests).GetTypeInfo().Assembly);
-            // Canonical metadata names: '+' between every nesting level, dots only in the namespace prefix.
+            // CLR metadata names: '+' between every nesting level, dots only in the namespace prefix.
             Assert.Same(typeof(Outer.Middle.Inner),
                 ReflectionHelper.ResolveType("Heddle.Tests.NestedTypeResolutionTests+Outer+Middle+Inner"));
             Assert.Same(typeof(Outer.Middle.Inner),
@@ -149,12 +145,7 @@ namespace Heddle.Tests
         public void AssemblyQualifiedMultiLevelDottedNameResolvesViaGetTypeFallback()
         {
             HeddleTemplate.Configure(typeof(NestedTypeResolutionTests).GetTypeInfo().Assembly);
-            // Progressive rightmost-dot replacement walks
-            //   ...NestedTypeResolutionTests.Outer.Middle+Inner   (miss)
-            //   ...NestedTypeResolutionTests.Outer+Middle+Inner   (miss)
-            //   ...NestedTypeResolutionTests+Outer+Middle+Inner   (hit)
-            // Every intermediate candidate keeps all '+' to the right of the conversion point,
-            // so no candidate ever places a dot after a '+'.
+            // Progressive rightmost-dot replacement until CLR metadata name is found.
             Assert.Same(typeof(Outer.Middle.Inner),
                 ReflectionHelper.ResolveType("Heddle.Tests.NestedTypeResolutionTests.Outer.Middle.Inner, Heddle.Tests"));
         }
@@ -163,8 +154,7 @@ namespace Heddle.Tests
         public void MixedSpellingWithDotAfterPlusDoesNotResolve()
         {
             HeddleTemplate.Configure(typeof(NestedTypeResolutionTests).GetTypeInfo().Assembly);
-            // Invariant: nested types can only contain nested types, so a metadata name never has a
-            // dot after a '+'. The mixed spelling is registered nowhere and must fail to resolve.
+            // Nested types contain only nested types, so metadata names never have a dot after '+'; mixed spellings are unreachable.
             Assert.Throws<InvalidOperationException>(() =>
                 ReflectionHelper.ResolveType("Heddle.Tests.NestedTypeResolutionTests+Outer.Middle"));
             Assert.Throws<InvalidOperationException>(() =>

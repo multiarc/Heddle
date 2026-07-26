@@ -9,32 +9,20 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// The whole-corpus gate over the shared corpus (<c>src/Heddle.Tests/TestTemplate/**</c>, build-copied into this
-    /// project's output by <c>src/TestCorpus/TestCorpus.props</c>). Runs the generator across the entire real corpus
-    /// (imports resolved from the same set) with the engine test models referenced and pins, per template, whether it
-    /// <b>precompiles</b>, degrades to a <b>HED7014 marker</b>, safely <b>falls back</b> to the dynamic path, or is a
-    /// <b>front-end error fixture</b> whose error the generator forwards. Every non-fixture template's generated
-    /// <c>.g.cs</c> is required to compile (compile-safety). Byte-for-byte render parity for the supported families is
-    /// covered by the family-specific differential suites with representative models.
-    /// <para>The classification is read from <see cref="CorpusIntent"/>, and every pin is <b>set equality reported as a symmetric
-    /// difference</b>. Set equality forces the commit message to name the file that changed and why in its intent row,
-    /// preventing silent classification drifts.</para>
+    /// Whole-corpus gate: pins whether each template precompiles, degrades to HED7014 marker, falls back safely,
+    /// or is a front-end error fixture. Generated .g.cs must compile (compile-safety). Classification via
+    /// <see cref="CorpusIntent"/>, asserted as set equality (symmetric difference) to prevent silent drifts.
     /// </summary>
     public class CorpusDifferentialTests
     {
         [Fact]
         public void CorpusClassificationIsPinnedAndPrecompiledCodeCompiles()
         {
-            // The corpus is Content-copied into this project's own output; a miss throws from the accessor.
             var templates = TestCorpusIndex.Load();
-
-            // Asserted here because this suite would otherwise happily classify a template nobody declared.
             AssertIntentIsTotal();
-
             var extra = DifferentialHarness.EngineTestModelReferences();
 
-            // First pass over the whole corpus (so @<< imports resolve): find the templates whose front-end error the
-            // generator forwards, attributed to their file by the diagnostic location.
+            // First pass: find templates with front-end errors (so @<< imports resolve).
             var all = DifferentialHarness.Generate(templates, globalOptions: null, extraReferences: extra);
             var frontEndErrors = new HashSet<string>(all.Diagnostics
                 .Where(d => d.Severity == DiagnosticSeverity.Error)
@@ -45,15 +33,13 @@ namespace Heddle.Generator.IntegrationTests
             Assert.True(frontEndErrors.SetEquals(declaredFrontEndErrors),
                 CorpusIntent.Describe("The FrontEndError set", declaredFrontEndErrors, frontEndErrors));
 
-            // Second pass over the rest: no forwarded errors, so the generated code must all compile together
-            // (compile-safety for every precompiled corpus template).
+            // Second pass: generated code must compile (compile-safety).
             var clean = templates.Where(t => !frontEndErrors.Contains(Path.GetFileName(t.key))).ToList();
             var cleanGen = DifferentialHarness.Generate(clean, globalOptions: null, extraReferences: extra);
             Assert.False(cleanGen.Diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error),
                 "Unexpected generator errors over the non-fixture corpus.");
             Assert.NotNull(cleanGen.Assembly);   // Generate throws if the generated .g.cs fails to compile.
 
-            // Classify each remaining template into the three build-tier buckets.
             var precompiled = new SortedSet<string>(StringComparer.Ordinal);
             var markers = new SortedSet<string>(StringComparer.Ordinal);
             var fallbacks = new SortedSet<string>(StringComparer.Ordinal);
@@ -72,11 +58,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.True(precompiled.SetEquals(declaredPrecompiled),
                 CorpusIntent.Describe("The precompiled set", declaredPrecompiled, precompiled));
 
-            // Asserted POSITIVELY, not by exclusion, and this is the point of the symmetric difference: a template
-            // JOINING the precompiled set reddens the gate exactly as loudly as one leaving it. It is empty
-            // today (every non-precompiling corpus entry is ABSENT from the manifest, not
-            // a marker), and an empty set is still a pinned set: the first template that starts emitting a HED7014
-            // marker must redden something rather than pass unnoticed.
+            // Asserted positively: joining/leaving precompiled reddens equally; empty set is pinned.
             var declaredMarkers = CorpusIntent.NamesWithTier(CorpusTier.DegradesToMarker);
             Assert.True(markers.SetEquals(declaredMarkers),
                 CorpusIntent.Describe("The HED7014 marker set", declaredMarkers, markers));
@@ -87,9 +69,8 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// Two bidirectional completeness gates. Neither direction can drift silently: a template added without a row
-        /// fails naming the template, and a row outliving its template fails naming the row. Contributing a template
-        /// REQUIRES declaring what it is for.
+        /// Two bidirectional completeness gates: no template without a row, no row without a template. Neither
+        /// can drift silently — contributing a template requires declaring its purpose.
         /// </summary>
         internal static void AssertIntentIsTotal()
         {
@@ -98,9 +79,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.True(new HashSet<string>(onDisk, StringComparer.Ordinal).SetEquals(declared),
                 CorpusIntent.Describe("The corpus intent table", declared, onDisk));
 
-            // The one surviving literal. Deliberate, and not a floor: it makes "this stage added N entries" a
-            // one-line reviewable diff a reviewer can check against the stage's stated scope, so a stage cannot
-            // smuggle extra templates in alongside the ones it claims.
+            // Deliberate literal: makes "this stage added N entries" a one-line reviewable diff.
             Assert.Equal(CorpusIntent.DeclaredRowCount, CorpusIntent.Rows.Count);
 
             var blank = CorpusIntent.Rows.Where(r => string.IsNullOrWhiteSpace(r.Why)).Select(r => r.Name).ToList();

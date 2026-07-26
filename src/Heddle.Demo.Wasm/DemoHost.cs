@@ -21,8 +21,7 @@ namespace Heddle.Demo.Wasm
 
         public DemoHost()
         {
-            // The compiled-in models are name-resolvable because the host seeds the engine assembly list. The
-            // browser cannot load user assemblies, so AssemblyPaths stays empty and the facade's ALC path is unused.
+            // Host seeds assembly list for models; browser cannot load user assemblies.
             HeddleTemplate.Configure(typeof(Blog).Assembly);
             _service = new HeddleLanguageService(new HeddleLanguageServiceOptions
             {
@@ -107,14 +106,13 @@ namespace Heddle.Demo.Wasm
                     ExpressionMode = ExpressionMode.Native,
                     TrimDirectiveLines = true,
                     RootPath = "/"
-                    // ProvideLanguageFeatures stays off: this is the render compile, not the tooling analysis.
+                    // ProvideLanguageFeatures off: render compile, not tooling analysis.
                 };
 
                 using var template = new HeddleTemplate(text, new CompileContext(options));
                 if (!template.CompileResult.Success)
                 {
-                    // A C#-tier construct declined by ExpressionMode.Native (or any compile error) surfaces here;
-                    // the page shows it in the pane note.
+                    // Compile errors surface here for display in the pane.
                     return new RenderResult { Error = FirstError(template.CompileResult) };
                 }
 
@@ -123,8 +121,7 @@ namespace Heddle.Demo.Wasm
             }
             catch (Exception ex)
             {
-                // Render faults (e.g. a :: dynamic template exercising trimmed runtime-binder paths) never crash
-                // the page — the pane shows the message.
+                // Render faults show in the pane, never crash the page.
                 return new RenderResult { Error = ex.Message };
             }
         }

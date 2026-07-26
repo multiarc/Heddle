@@ -55,7 +55,6 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public string Name { get; set; }
     }
 
-    // Recursion fixture: a linked list the definition walks by calling itself.
     public sealed class TreeNode
     {
         public string Label { get; set; }
@@ -68,7 +67,6 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public string Summary { get; set; }
     }
 
-    // Slot fixtures: a definition projects caller content through @out(value).
     public sealed class Menu
     {
         public System.Collections.Generic.List<MenuOption> Options { get; set; }
@@ -80,9 +78,6 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public string Label { get; set; }
     }
 
-    // The operator-guard differential corpus. One model carrying an operand of every category the shared
-    // classification table distinguishes, so each of the seven documented deviations from C# gets a named
-    // template rather than being covered "by not happening to appear in the corpus".
     public enum OrderStatus
     {
         Draft = 0,
@@ -98,8 +93,7 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         Gift = 2
     }
 
-    /// <summary>A value type carrying both a user-defined <b>operator</b> (which the native tier honors) and
-    /// user-defined <b>implicit conversions</b> (which it deliberately does not consult) — deviation 6.</summary>
+    /// <summary>Demonstrates divergence between native and C# semantics: user-defined operators are honored, but implicit conversions are not.</summary>
     public readonly struct Money
     {
         public Money(decimal amount) => Amount = amount;
@@ -115,11 +109,7 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public override string ToString() => Amount.ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 
-    /// <summary>The string-<c>+</c> row's divergence class made concrete. An implicit conversion <b>to string</b>
-    /// whose result differs from <see cref="ToString"/>: C#'s <c>+</c> prefers the converted <c>string</c> overload
-    /// (a better target than <c>object</c>), while the native tier's <c>EmitStringConcat</c> always goes through
-    /// <c>string.Concat(object, object)</c> and therefore calls <c>ToString</c>. Deviation 6 — user-defined implicit
-    /// conversions are not consulted — with visibly different rendered bytes on the two routes.</summary>
+    /// <summary>Implicit conversion to string differs from <c>ToString()</c>; C#'s <c>+</c> prefers the conversion, while native rendering calls <c>ToString</c>.</summary>
     public readonly struct Label
     {
         public Label(string text) => Text = text;
@@ -140,9 +130,7 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public Money Total { get; set; }
         public bool? Approved { get; set; }
 
-        /// <summary>A <c>long</c> shift count and a lifted integral, the two operand shapes the shift row degrades
-        /// for. C# has no <c>&lt;&lt;(int, long)</c> operator at all, so emitting a wide count verbatim is CS0019 in
-        /// the <i>consumer's</i> build, while the runtime narrows any integral count to <c>int</c> and renders.</summary>
+        /// <summary>Tests shift operands with a long count and nullable int; C# has no <c>&lt;&lt;(int, long)</c> overload.</summary>
         public long Big { get; set; }
 
         public int? Maybe { get; set; }
@@ -157,10 +145,7 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         internal string Secret { get; set; }
     }
 
-    /// <summary>HED7025 fixture: <see cref="Payload"/> is <c>object</c>-typed, which the operand estimator
-    /// classifies as <c>Unknown</c> on purpose (an object-typed operand carries no usable static facts). The path
-    /// still *writes*, so the overload binder is reached with an argument it cannot describe — the side condition's
-    /// case, which must stay a silent degrade because the generator has proved nothing about the runtime.</summary>
+    /// <summary>HED7025 fixture: <see cref="Payload"/> is <c>object</c>-typed, testing the overload binder's handling of operands with no static type information.</summary>
     public sealed class OverloadPayload
     {
         public object Payload { get; set; }
@@ -168,14 +153,12 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public int Count { get; set; }
     }
 
-    // Extension-parameter fixture model.
     public sealed class GridModel
     {
         public string Name { get; set; }
         public int Cols { get; set; }
     }
 
-    // Named-content-region fixtures.
     public class RegionArticle
     {
         public string Title { get; set; }

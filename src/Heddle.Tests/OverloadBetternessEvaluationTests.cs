@@ -9,18 +9,9 @@ using Xunit.Abstractions;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The evaluation instrument for overload betterment. <b>Analysis only</b>: nothing here changes runtime overload
-    /// behavior, and the shared <see cref="OverloadRank"/> core is the measurement tool, not the subject.
-    /// <para>The question the user asked: would adopting C#'s native <i>betterness</i> schema in the runtime binder
-    /// (plus extra validations preserving Heddle's documented deviations) make sense, with the generator then
-    /// matching by construction? Answering it needs a number: how many calls that are <b>ambiguous today</b> would
-    /// bind under betterness, and — the dangerous half — how many calls would bind to a <b>different</b> overload
-    /// than they do now. This test computes both over the shipped built-in table and pins them, so the plan's
-    /// quantified claim is executable rather than asserted.</para>
-    /// <para>Betterness is modeled per the C# rule for the case that actually arises here: conversion to
-    /// <c>P1</c> is better than conversion to <c>P2</c> when <c>P1</c> is an exact match, or when an implicit
-    /// conversion <c>P1 → P2</c> exists and no implicit conversion <c>P2 → P1</c> does — i.e. "closest target
-    /// wins", which is exactly the property Heddle's flat rank does not have.</para>
+    /// Analysis only: pins quantified claims about adopting C#'s betterness schema (how many ambiguous calls would bind,
+    /// how many would bind to a different overload). Betterness: P1 is better than P2 when P1 is an exact match or when a
+    /// P1→P2 conversion exists with no P2→P1 — the "closest target wins" property Heddle's flat rank lacks.
     /// </summary>
     public class OverloadBetternessEvaluationTests
     {
@@ -227,18 +218,10 @@ namespace Heddle.Tests
             foreach (var line in changedWinner)
                 _output.WriteLine("    changed winner: " + line);
 
-            // The findings, pinned so the plan's quantified claims stay executable (a change to the built-in table
-            // is a spec change and moves these numbers deliberately):
-            //
-            //  1. Betterness is a pure *widening* over the shipped built-in table — differentWinner is ZERO. Not one
-            //     call that binds today would bind to a different overload, so no rendered byte changes for any
-            //     template that compiles today. That is the single most important number in the evaluation.
-            //  2. 82 of 480 argument combinations are ambiguity errors today and would compile under betterness —
-            //     every one of them a sub-int or unsigned argument to abs/min/max/round (abs(byte), min(sbyte, uint),
-            //     round(float, short) …), i.e. exactly the shapes a template author writes by accident.
-            //  3. Betterness does **not** remove ambiguity, it only reduces it: 62 combinations stay ambiguous
-            //     because `double` and `decimal` are mutually non-convertible, so neither target is "closer"
-            //     (min(ulong, int) is the family). Any adoption still needs the ambiguity error and its diagnostic.
+            // Findings pinned for executable quantification (spec change moves these deliberately):
+            // 1. Pure widening: differentWinner = ZERO (no existing call binds differently)
+            // 2. 82 combinations: ambiguous today but bind under betterness (sub-int/unsigned patterns)
+            // 3. 62 stay ambiguous (double/decimal non-convertible); adoption still needs ambiguity error
             Assert.Equal(480, total);
             Assert.Equal(0, differentWinner);
             Assert.Equal(82, wouldBindUnderBetterness);

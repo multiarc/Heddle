@@ -4,10 +4,8 @@ using Heddle.Data;
 namespace Heddle.Runtime
 {
     /// <summary>
-    /// One recorded body-compile span: the effective model and chained types the compiler
-    /// threaded for the body whose text starts at <see cref="Offset"/> (absolute UTF-16 code units) and runs
-    /// <see cref="Length"/> units. Definition bodies compile once per call site, so one body span can carry
-    /// several entries — one per site's effective type; the artificial-type rule is a query over them.
+    /// One recorded body-compile span with effective model and chained types; definition bodies
+    /// compile once per call site, so one span can carry multiple entries (one per site's type).
     /// </summary>
     internal readonly struct ScopeMapEntry
     {
@@ -29,12 +27,8 @@ namespace Heddle.Runtime
     }
 
     /// <summary>
-    /// <para>Append-only retention of the per-body-span model/chained types the compiler computes.
-    /// Created on <see cref="CompileContext"/> only when <see cref="Data.TemplateOptions.ProvideLanguageFeatures"/>
-    /// is true and reference-copied through the private copy ctor so every child compile shares one map — the
-    /// map is engine-accurate by construction because every body funnels through
-    /// <c>HeddleCompiler.Compile</c>.</para>
-    /// <para>Compile-time state on a single-threaded compile; never read at render time.</para>
+    /// Append-only retention of per-body-span model/chained types; reference-copied via private ctor so
+    /// child compiles share one engine-accurate map. Compile-time state, never read at render time.
     /// </summary>
     internal sealed class ScopeMap
     {

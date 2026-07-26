@@ -40,11 +40,10 @@ namespace Heddle.Generator.IntegrationTests
             Assert.False(gen.Diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error),
                 "Unexpected generator error: " + string.Join("; ", gen.Diagnostics.Select(d => d.ToString())));
 
-            // The fallback is declared, not inferred: a multi-item chain does not precompile, so the manifest
-            // carries no bound strategy and no entry class was generated.
+            // Multi-item chains don't precompile, so no strategy is emitted.
             DifferentialHarness.ExpectDegrade(gen, "views/chained-def.heddle");
 
-            // The runtime backend renders the corrected output: the chained value reaches the definition's @out().
+            // Chained value reaches definition @out().
             Assert.Equal(expected, RenderDynamic(template, value));
         }
     }

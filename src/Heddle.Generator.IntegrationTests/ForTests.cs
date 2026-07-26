@@ -5,12 +5,8 @@ using Xunit;
 
 namespace Heddle.Generator.IntegrationTests
 {
-    /// <summary>
-    /// The <c>@for</c> sugar: <c>ForIndexExtension</c> bound with the loop body; each iteration re-scopes via
-    /// <c>scope.Parent(i)</c> (ModelData = the enclosing model, ChainedData = the boxed index), so <c>@out()</c>
-    /// splices the index. Counted (<c>@for(n)</c> / <c>@for(Count)</c>) and <c>range(...)</c> forms are all bound
-    /// through the same extension. Differential-gated.
-    /// </summary>
+    /// <summary>Tests the <c>@for</c> sugar across both backends: counted forms (<c>@for(n)</c>, <c>@for(Count)</c>)
+    /// and range expressions, verifying byte-identical output.</summary>
     public class ForTests
     {
         private const string CartType = "Heddle.Generator.IntegrationTests.Fixtures.Cart";
@@ -53,9 +49,8 @@ namespace Heddle.Generator.IntegrationTests
             AssertParity("views/for-range.heddle", t, typeof(Cart), model);
         }
 
-        // The range-for differential fixture rows through both backends — iteration, the empty range, and the
-        // str(range(...)) stringification (renders "range(2, 10, 2)"; verifies PrecompiledFunctions.Str over a
-        // boxed Heddle.Models.Range matches the dynamic Str byte-for-byte).
+        // Tests iteration, the empty range, and the str(range(...)) stringification to verify PrecompiledFunctions.Str
+        // matches the dynamic version byte-for-byte.
         [Fact]
         public void RangeForFixtureIsByteIdenticalAcrossBackends()
         {

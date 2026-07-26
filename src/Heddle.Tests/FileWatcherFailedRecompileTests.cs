@@ -10,7 +10,7 @@ namespace Heddle.Tests
     /// </summary>
     public class FileWatcherFailedRecompileTests
     {
-        // Per-test watched-file stem: isolates this test from concurrent tests and parallel TFM hosts.
+        // Isolates this test from concurrent tests.
         private readonly string _stem = FileWatcherTestSupport.NewStem();
 
         /// <summary>The pinned scenario: break the file, reload → <c>CompileResult.Success == false</c> with
@@ -28,14 +28,14 @@ namespace Heddle.Tests
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
                 FileWatcherTestSupport.Disarm(template);
 
-                File.WriteAllText(path, "@profile(){{pdf}}broken");   // deterministic compile error (unknown profile)
+                File.WriteAllText(path, "@profile(){{pdf}}broken");
                 FileWatcherTestSupport.InvokeChanged(template, dir, _stem + ".heddle");
 
                 Assert.False(template.CompileResult.Success, "the broken edit must surface a failed CompileResult");
                 Assert.NotEmpty(template.CompileResult.ErrorList);
-                Assert.Equal("GOOD", template.Generate(null));        // last-good stays published and renderable
+                Assert.Equal("GOOD", template.Generate(null));
 
-                File.WriteAllText(path, "FIXED");                     // the edit-to-fix save recovers
+                File.WriteAllText(path, "FIXED");
                 FileWatcherTestSupport.InvokeChanged(template, dir, _stem + ".heddle");
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
                 Assert.Equal("FIXED", template.Generate(null));

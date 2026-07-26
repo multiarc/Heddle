@@ -10,20 +10,16 @@ using Heddle.Strings.Core;
 namespace Heddle.Language
 {
     /// <summary>
-    /// Parses document and creates template cache that can be used multiple times as source template representation, also used to replace templates with data multiple times (template source preserved).
+    /// Parses documents into a reusable template cache representation.
     /// </summary>
     /// <remarks>
-    /// The <see cref="ParserSettings"/>-based methods here are the shared front-end core: they carry no
-    /// dependency on the runtime <c>CompileContext</c>, so this file compiles into the <c>Heddle.Generator</c>
-    /// analyzer as a linked shared source. The runtime <c>CompileContext</c> adapters live in the sibling partial
-    /// <c>DocumentParser.Runtime.cs</c>, which the generator does not compile.
+    /// ParserSettings-based methods are the shared front-end core compiled into both Heddle and Heddle.Generator.
+    /// Runtime CompileContext adapters are in DocumentParser.Runtime.cs, which the generator does not compile.
     /// </remarks>
     public static partial class DocumentParser
     {
         /// <summary>
-        /// Performs parse of document against a <see cref="ParserSettings"/> seam (the build-time / import-neutral
-        /// entry). Front-end diagnostics accumulate on the returned <see cref="ParseContext"/>; no
-        /// <c>CompileContext</c> is involved.
+        /// Parses document against ParserSettings; front-end diagnostics accumulate on the returned <see cref="ParseContext"/>.
         /// </summary>
         public static ParseContext Parse(string document, ParserSettings settings, out string cleanDocument)
         {

@@ -115,7 +115,7 @@ namespace Heddle.Tests
         [Fact]
         public void BodyScopedFlipStaysInSubtree()
         {
-            // The flip inside the @if body affects only that subtree; the trailing @(V) keeps the Text default.
+            // Flip affects only the @if body; outside stays Text.
             var t = Compile("@if(Flag){{@profile(){{html}}[@(V)]}}[@(V)]", typeof(SubtreeModel), OutputProfile.Text);
             Assert.Equal("[&lt;i&gt;][<i>]", t.Generate(new SubtreeModel { Flag = true, V = "<i>" }));
         }

@@ -10,9 +10,8 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The name-resolution precedence, now one classifier both dispatch sites call. The rows enumerate the whole
-    /// order; the invariant test at the bottom turns the emitter's comment-only claim ("default-function names do
-    /// not collide with built-in extension names") into something that fails when it stops being true.
+    /// Tests the name-resolution precedence rules that both dispatch sites use. The final invariant verifies that
+    /// default-function names never collide with built-in extension names.
     /// </summary>
     public class CallTargetRulesTests
     {
@@ -103,9 +102,8 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// The comment-only registry invariant, made executable: no default-function name is also a registered
-        /// built-in extension name. If it ever were, the classifier's extension-wins arm would silently reroute a
-        /// call the emitter has always compiled as a function.
+        /// Verifies that no default-function name collides with a built-in extension name; the extension-wins
+        /// precedence rule would cause silent misrouting.
         /// </summary>
         [Fact]
         public void DefaultFunctionNamesDoNotCollideWithBuiltInExtensionNames()

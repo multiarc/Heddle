@@ -24,9 +24,7 @@ namespace Heddle.Tests
     {
         private const int Seed = 20260725;
 
-        /// <summary>Formats <paramref name="value"/> and runs the formatted text back through the decoder the same
-        /// way the lexer would: a leading '-' is a unary sign prefix over the magnitude literal, never part of the
-        /// literal token.</summary>
+        /// <summary>Formats <paramref name="value"/> and decodes it: leading '-' is unary, not part of the token.</summary>
         private static object RoundTrip(object value)
         {
             var text = LiteralFormatter.Format(value);
@@ -113,7 +111,7 @@ namespace Heddle.Tests
                 random.NextBytes(buffer);
                 double value = BitConverter.ToDouble(buffer, 0);
                 if (double.IsNaN(value) || double.IsInfinity(value))
-                    continue;   // the decoder's range rules make these unreachable literals
+                    continue;
                 AssertRoundTrips(value);
             }
         }
@@ -136,8 +134,7 @@ namespace Heddle.Tests
         [Fact]
         public void RandomScaledDoubles_RoundTripExactly()
         {
-            // The shape real templates actually contain: human-scale decimals, where "R" on .NET Framework is at
-            // its worst and where G17's longer text is the visible change.
+            // Human-scale decimals: where "R" on .NET Framework diverges most from G17.
             var random = new Random(Seed + 1);
             for (int i = 0; i < 20000; i++)
             {
@@ -159,7 +156,7 @@ namespace Heddle.Tests
             Assert.Equal(decimal.MaxValue, RoundTrip(decimal.MaxValue));
             Assert.Equal(decimal.MinValue, RoundTrip(decimal.MinValue));
             Assert.Equal(0.1m, RoundTrip(0.1m));
-            Assert.Equal(1.10m, RoundTrip(1.10m));   // trailing-zero scale is part of decimal's identity
+            Assert.Equal(1.10m, RoundTrip(1.10m));
             Assert.Equal(-7, RoundTrip(-7));
             Assert.Equal(-7L, RoundTrip(-7L));
         }
@@ -167,33 +164,20 @@ namespace Heddle.Tests
         [Fact]
         public void IntMinValue_RetypesToLong_TheDocumentedDeviation3()
         {
-            // '-2147483648' types as long, because the sign is a unary operator over a first-fit magnitude literal
-            // and 2147483648 does not fit int. The *value* is identical; pinned here so this type exception stays
-            // deliberate.
+            // Sign is unary; 2147483648 does not fit int, so type is long: documented exception.
             Assert.Equal(-2147483648L, RoundTrip(int.MinValue));
         }
 
         [Fact]
         public void NoRoundTripFormatRemainsInTheGenerator()
         {
-            // The regression this whole file exists for: "R" is the format that does not round-trip on a .NET
-            // Framework build host. Pinned as a value assertion on the two formats the formatter must use.
+            // Regression guard: "R" does not round-trip on .NET Framework.
             Assert.Equal("0.10000000000000001D", LiteralFormatter.Format(0.1d));
             Assert.Equal("0.100000001F", LiteralFormatter.Format(0.1f));
         }
 
-        // ---- The format-identity guard ----------------------------
-        //
-        // Why the round-trip sweeps above cannot carry drift #9 on their own: on .NET Core "R" *is* the
-        // shortest-round-trippable form, so every one of the 60 000 values round-trips identically under the bug.
-        // Reverting G17/G9 → "R" therefore reddens nothing on a CoreCLR leg except a literal-string assertion.
-        // The defect is only *observable* on net48, which is Windows-gated here and cannot be run on this box.
-        //
-        // So the guard on the legs that do run is stated as what it actually is: an assertion about the format
-        // *choice*, not about round-tripping. The formatter must emit exactly the fixed-significant-digit form on
-        // every host — that is the property that makes the .NET Framework host safe — so these sweeps compare the
-        // formatter's text to G17/G9 text over the same corner set and value space the round-trip legs use. Any
-        // other format string ("R", "G", "G15", …) reddens them on every TFM.
+        // On .NET Core "R" is shortest-round-trippable, so round-trip tests alone cannot catch a revert.
+        // This guard asserts the formatter uses G17/G9, not "R", which is the property that keeps .NET Framework safe.
 
         [Theory]
         [MemberData(nameof(DoubleCorners))]
@@ -231,12 +215,7 @@ namespace Heddle.Tests
                 }
             }
 
-            // The sweeps above are only a guard if "R" and G17/G9 really do disagree on the text for a large part of
-            // the value space; otherwise a revert to "R" could slip through them the way it slips through the
-            // round-trip legs. Measured here rather than assumed: over uniformly random bit patterns (mostly extreme
-            // exponents, where the shortest round-trippable form already needs the full digit count anyway) the two
-            // formats agree for a bit over half the sample — ~8.7k of 20k differ — so the floor sits well under half.
-            // The author-written literal shapes below (0.1, 1/3, …) are where they differ every time.
+            // Guard is reliable only if "R" and G17/G9 disagree on a large portion of the value space.
             Assert.True(doubleChanged > 4000,
                 $"'R' and G17 produced different text for only {doubleChanged} of the sampled doubles — the " +
                 "format-identity guard above would no longer reliably detect a revert to \"R\".");
@@ -247,8 +226,7 @@ namespace Heddle.Tests
         [Fact]
         public void HumanScaleDecimals_AreTheFixedDigitForm_WhereRIsAtItsWorst()
         {
-            // The shape real templates carry, and the exact class where .NET Framework's "R" mis-round-trips: a
-            // literal like 0.1 whose shortest form is 3 chars and whose exact G17 expansion is 19.
+            // Test cases where .NET Framework's "R" diverges most: short literals with long G17 expansion.
             Assert.Equal("0.29999999999999999D", LiteralFormatter.Format(0.3d));
             Assert.Equal("0.33333333333333331D", LiteralFormatter.Format(1d / 3d));
             Assert.Equal("4.9406564584124654E-324D", LiteralFormatter.Format(double.Epsilon));

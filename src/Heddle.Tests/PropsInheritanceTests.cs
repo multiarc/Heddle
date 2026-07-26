@@ -42,8 +42,7 @@ namespace Heddle.Tests
             var parseContext = DocumentParser.Parse(doc, scope.CompileContext, out var clean);
             HeddleCompiler.Compile(clean, scope, parseContext, null);
             Assert.Empty(scope.CompileErrors);
-            // Both @panel sites — compiled against different positional model types (Article vs Menu) — resolve
-            // one cached PropLayout: the layout is model-orthogonal.
+            // Layout is model-orthogonal; different model types resolve one cached PropLayout.
             Assert.Single(scope.CompileContext.ResolvedPropLayouts);
         }
 

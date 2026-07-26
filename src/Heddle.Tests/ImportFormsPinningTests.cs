@@ -46,14 +46,12 @@ namespace Heddle.Tests
         {
             var t = CompileFixture("ergo-import-composition");
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
-            // Normalize both sides: the rendered output embeds the imported .heddle fixtures' raw newlines,
-            // which are CRLF on a Windows checkout unless pinned — this test compares composition semantics,
-            // not newline bytes (the .heddle files are also pinned to LF in .gitattributes).
+            // Normalize line endings to compare composition semantics, not newline bytes (CRLF→LF on Windows).
             var actual = t.Generate(null).Replace("\r\n", "\n");
             File.WriteAllText(TestCorpusIndex.WrittenArtifactPath("test-ergo-import-composition.html"), actual);
             var expected = File.ReadAllText("TestTemplate/generated-ergo-import-composition.html").Replace("\r\n", "\n");
             Assert.Equal(expected, actual);
-            Assert.DoesNotContain("STATIC-IN-LIB", actual); // I03: imported static text never transfers
+            Assert.DoesNotContain("STATIC-IN-LIB", actual); // Imported static text never transfers
         }
 
         [Fact]

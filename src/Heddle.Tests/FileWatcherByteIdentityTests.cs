@@ -15,12 +15,9 @@ namespace Heddle.Tests
         private readonly string _stem = FileWatcherTestSupport.NewStem();
 
         private const string Source = "<p>@()</p>|@raw()";
-        // Pre-recorded baseline for Source with model "<b>x</b>" under the default options (Html profile,
-        // legacy WebUtility encoder): the unnamed sink encodes, @raw does not.
+        // Baseline: Html profile with WebUtility encoder; unnamed sink encodes, @raw does not.
         private const string Baseline = "<p>&lt;b&gt;x&lt;/b&gt;</p>|<b>x</b>";
 
-        /// <summary>An inline compile and a flag-off file compile of the same source both render the exact
-        /// recorded baseline bytes — the watcher fix changes nothing for non-watching templates.</summary>
         [Fact]
         public void FlagOffAndInlineOutputsAreByteIdentical()
         {

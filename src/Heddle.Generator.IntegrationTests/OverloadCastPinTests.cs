@@ -4,15 +4,8 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Cast-pinning of resolved function calls. A **surviving mutant**: deleting cast-pinning outright —
-    /// <c>DefaultFunctionBinder</c> emitting every resolved built-in call with no argument casts at all — reddened
-    /// **zero** tests across all three suites. The mechanism ("emit the call with explicit casts to the chosen
-    /// overload's parameter types, which pins the consumer's C# compiler to the same overload by making it an exact
-    /// match") was therefore unpinned: the ranker's *refusals* were covered by the overload-tie fixture, but nothing
-    /// observed that a resolved call carries the pin.
-    /// <para>The mutant is currently extensionally harmless for the shipped built-in table, but that is a property of
-    /// today's first-party signatures, not of the mechanism. Host <c>[ExportFunctions]</c> overload sets (arbitrary
-    /// signatures) are routed through the same <c>ArgumentCasts</c> path, so the pin must be observed as emitted text.</para>
+    /// Cast-pinning of resolved calls: emits argument casts to ensure the consumer's compiler chooses the selected overload
+    /// (a surviving mutant with no test coverage — critical for arbitrary host <c>[ExportFunctions]</c> signatures).
     /// </summary>
     public class OverloadCastPinTests
     {
@@ -21,11 +14,9 @@ namespace Heddle.Generator.IntegrationTests
         private static string Template(string expression) =>
             "@model(){{" + CartType + "}}@\\\nvalue: @(" + expression + ")\n";
 
-        /// <summary>The flat rank picks <c>Min(long, long)</c> for <c>min(1, 2L)</c> — <c>(int, long)</c> ranks
-        /// <c>(1, 0)</c> and dominates <c>(double, double)</c>/<c>(decimal, decimal)</c> at <c>(1, 1)</c> — so the
-        /// non-exact argument must reach the consumer's compiler already cast to <c>long</c>. Without the cast the
-        /// consumer's compiler re-runs its own betterness over the same candidate set; with it, there is no choice
-        /// left to make, which is what makes the "by construction" claim true instead of merely asserted.</summary>
+        /// <summary>
+        /// Non-exact arguments must be cast to the selected signature's parameter types; the exact argument does not.
+        /// </summary>
         [Fact]
         public void AResolvedCallIsEmittedCastPinnedToTheChosenSignature()
         {
@@ -35,7 +26,7 @@ namespace Heddle.Generator.IntegrationTests
             DifferentialHarness.ExpectPrecompiled(gen, key);
             var source = string.Join("\n", gen.TemplateSources.Values);
 
-            // The non-exact argument carries the winning signature's parameter type; the exact one does not need it.
+            // Non-exact argument cast to parameter type; exact argument remains uncast.
             Assert.Contains("(long)(1)", source);
             Assert.Contains("PrecompiledFunctions.Min((long)(1), 2L)", source);
 
@@ -43,8 +34,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal(dyn, precompiled);
         }
 
-        /// <summary>An all-exact call needs no pin, and must not grow a redundant one — the negative half, so the
-        /// assertion above cannot be satisfied by casting everything unconditionally.</summary>
+        /// <summary>Exact-match calls have no casts (negative case: proves selective casting).</summary>
         [Fact]
         public void AnAllExactCallCarriesNoCasts()
         {
@@ -60,9 +50,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal(dyn, precompiled);
         }
 
-        /// <summary>A widening on both sides: <c>min(Count, Price)</c> is <c>(int, decimal)</c>, so the winning
-        /// <c>(decimal, decimal)</c> row pins both arguments — and the rendered bytes are the runtime's, which is
-        /// the property the cast is there to preserve when the conversion itself changes the value's type.</summary>
+        /// <summary>Both arguments cast when neither is exact (preserves type when conversion changes the value).</summary>
         [Fact]
         public void BothArgumentsArePinnedWhenNeitherIsExact()
         {

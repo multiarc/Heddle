@@ -4,13 +4,8 @@ using Xunit;
 
 namespace Heddle.Generator.IntegrationTests
 {
-    /// <summary>
-    /// The render-budget differential fixture. Budgets are enforced entirely at the renderer seam, which both
-    /// backends write through, so a budget-completing render is byte-identical on both backends, and a
-    /// budget-breaching render throws the same <see cref="TemplateRenderBudgetException.Kind"/> on both. The budget
-    /// flows to the precompiled side via the options-carrying <c>GenerateString</c> overload exactly as it reaches
-    /// the dynamic engine's <c>HeddleTemplate.Generate</c>.
-    /// </summary>
+    /// <summary>Render-budget differential fixture: both backends enforce budgets at the renderer seam
+    /// identically, byte-for-byte in success cases and same exception kind in failures.</summary>
     public class RenderBudgetDifferentialTests
     {
         [Fact]
@@ -18,7 +13,7 @@ namespace Heddle.Generator.IntegrationTests
         {
             const string content = "<p>@(V)</p>";
             var model = new EncoderDifferentialTests.HostileModel { V = "hello" };
-            // Generous limits: the render completes well under every cap, so both backends produce identical bytes.
+            // Generous limits ensure both backends produce identical bytes.
             var options = new TemplateOptions
             {
                 OutputProfile = OutputProfile.Html,
@@ -55,7 +50,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void BudgetBreach_RenderOps_ThrowsSameKindOnBothBackends()
         {
-            // Multiple write ops (static + value + static): MaxRenderOps=1 trips on the second op on both backends.
+            // MaxRenderOps=1 trips on the second write op (static, value, static).
             const string content = "<p>@(V)</p>";
             var model = new EncoderDifferentialTests.HostileModel { V = "value" };
             var options = new TemplateOptions

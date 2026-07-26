@@ -6,31 +6,15 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// <para>The <c>Name</c> item metadata as an <b>additional import name</b>, distinct from the registration <c>Key</c>.
-    /// Where an earlier implementation replaced the key with the name (causing existing imports to fail), this corrected
-    /// version is additive: the template keeps its path-derived or explicit key and gains the registered name as an
-    /// additional spelling. Both spellings resolve, and nothing that resolved before stops resolving.</para>
-    /// <para>Behavioral coverage:</para>
-    /// <list type="bullet">
-    /// <item>The registration key, manifest row, generated entry-class identifier, and <c>#line</c> file are untouched
-    /// by <c>Name</c>. Only <c>Key</c> moves the key.</item>
-    /// <item>HED7002 and HED7003 apply to keys only; a name registers no manifest row and is never a registry lookup.</item>
-    /// <item>HED7018 (out-of-root warning) is suppressed by <c>Key</c> only; an additive <c>Name</c> leaves the flattened
-    /// key in place and unasked-for, so the warning stands.</item>
-    /// <item><c>Key</c> + <c>Name</c> together are two names for one template, not a conflict: two registration spellings.</item>
-    /// <item>HED7004 covers unusable names: a value the normalizer refuses, or a spelling another template's key already
-    /// answers to. A broken name costs only the name, not the template's key.</item>
-    /// <item>HED7028 advises when a named template is imported by its key instead of its preferred name spelling.</item>
-    /// </list></para>
+    /// <c>Name</c> metadata registers an additional import spelling distinct from the registration <c>Key</c>,
+    /// without displacing the key or breaking existing imports.
     /// </summary>
     public class TemplateNameMetadataTests
     {
         private const string Root = "/repo/app";
         private const string ReportPath = "/repo/app/templates/report.heddle";
 
-        /// <summary>An <c>@&lt;&lt;</c> pulls in <b>definitions</b>, not literal text, so "the import resolved" is
-        /// asserted by the definition body turning up inlined in the importer's generated pieces — not merely by the
-        /// absence of HED7011, which an implementation that silently dropped the import would also satisfy.</summary>
+        /// <summary>Asserts that an import resolved by checking if the imported definition's body is inlined into the importer.</summary>
         private const string DefinesBanner = "@%\n  <banner>{{ BANNER-TEXT }}\n%@\n";
 
         private static string Imports(string spelling) => "@<<{{" + spelling + "}}@\\\n@banner()\n";
@@ -60,8 +44,7 @@ namespace Heddle.Generator.Tests
         private static IEnumerable<Diagnostic> WithId(GeneratorRun run, string id) =>
             run.GeneratorDiagnostics.Where(d => d.Id == id);
 
-        /// <summary>A named template imported <b>by its path</b> still resolves, testing the core invariant: nothing
-        /// that resolved before may stop resolving.</summary>
+        /// <summary>A named template imported by its path still resolves; nothing that resolved before may stop resolving.</summary>
         [Fact]
         public void ANamedTemplateIsStillImportableByItsPath()
         {
@@ -72,12 +55,10 @@ namespace Heddle.Generator.Tests
             }, globalOptions: RootOption, perFileOptions: Meta(ReportPath, name: "BuildReport"));
 
             Assert.DoesNotContain(run.GeneratorDiagnostics, d => d.Id == "HED7011");
-            // Resolved, not merely un-diagnosed: the imported definition's body is inlined into the importer.
             Assert.Contains("BANNER-TEXT", Source(run, "class Page"));
         }
 
-        /// <summary>The feature: the registered name resolves too. This is what the sample's csproj has been asking
-        /// for since 2.0.</summary>
+        /// <summary>The registered name resolves as an import spelling.</summary>
         [Fact]
         public void ANamedTemplateIsImportableByItsRegisteredName()
         {
@@ -91,9 +72,7 @@ namespace Heddle.Generator.Tests
             Assert.Contains("BANNER-TEXT", Source(run, "class Page"));
         }
 
-        /// <summary>The name is additive in the strict sense: with one <c>Name</c> set, <b>two</b> spellings resolve in
-        /// one compilation. Asserted together so an implementation that merely swapped which one works cannot pass.
-        /// </summary>
+        /// <summary>Two spellings resolve in one compilation, asserted together to prevent implementations that merely swap which one works.</summary>
         [Fact]
         public void BothSpellingsResolveInOneCompilation()
         {
@@ -109,9 +88,7 @@ namespace Heddle.Generator.Tests
             Assert.Contains("BANNER-TEXT", Source(run, "class ByName"));
         }
 
-        /// <summary>The intended shape of the feature: a <c>Precompile="false"</c> import-only partial reachable under
-        /// a friendly name. Both halves of the item metadata are exercised at once, and neither the flattened path nor
-        /// the name registers a manifest row.</summary>
+        /// <summary>An import-only partial is reachable by its registered name; neither spelling registers a manifest row.</summary>
         [Fact]
         public void AnImportOnlyPartialIsReachableByItsRegisteredName()
         {
@@ -128,9 +105,7 @@ namespace Heddle.Generator.Tests
             Assert.DoesNotContain("key: \"partials/_banner.heddle\"", Manifest(run));
         }
 
-        /// <summary>A registered name never displaces a real key spelling: keys are registered first, by construction,
-        /// so a name that happens to spell a sibling's path leaves that sibling reachable by its own path. The name
-        /// itself is then unusable and draws HED7004 (below).</summary>
+        /// <summary>A name that spells a sibling's path does not displace it; the name becomes unusable (HED7004).</summary>
         [Fact]
         public void ANameNeverDisplacesAnotherTemplatesKey()
         {
@@ -145,12 +120,7 @@ namespace Heddle.Generator.Tests
             Assert.DoesNotContain("THE-REPORT", Source(run, "class Page"));
         }
 
-        /// <summary>
-        /// <para>The registration key is untouched by <c>Name</c>: the manifest row's <c>key</c> and the generated
-        /// entry class stay path-derived. The test asserts that <c>Name</c> appears as a distinct <c>registeredName</c>
-        /// field in the manifest, not as the key, to ensure the name is recorded additively rather than as a replacement.
-        /// </para>
-        /// </summary>
+        /// <summary>Name is recorded as a distinct field, not as the key; key and entry class remain path-derived.</summary>
         [Fact]
         public void NameIsRecordedAsANameAndDoesNotChangeTheKeyOrTheEntryClass()
         {
@@ -160,16 +130,13 @@ namespace Heddle.Generator.Tests
             Assert.Empty(run.GeneratorDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
             var manifest = Manifest(run);
             Assert.Contains("key: \"templates/report.heddle\"", manifest);
-            // Recorded as a name so the runtime registry can answer to it.
             Assert.Contains("registeredName: \"BuildReport.heddle\"", manifest);
-            // ...and nowhere else: not as the key, and not as the entry class.
             Assert.DoesNotContain("key: \"BuildReport", manifest);
             Assert.Contains(run.GeneratedSourceTexts, s => s.Contains("class Templates_Report"));
             Assert.DoesNotContain(run.GeneratedSourceTexts, s => s.Contains("class BuildReport"));
         }
 
-        /// <summary>An unnamed template — every pre-existing project — records no name. The field is present and null,
-        /// not absent: a row shape that varied per template would be a second manifest grammar.</summary>
+        /// <summary>Unnamed templates record a null name field to maintain consistent manifest row shape.</summary>
         [Fact]
         public void AnUnnamedTemplateRecordsANullName()
         {
@@ -178,9 +145,7 @@ namespace Heddle.Generator.Tests
             Assert.Contains("registeredName: null", Manifest(run));
         }
 
-        /// <summary>A name that could not be registered must not reach the manifest: the build tier refused it, so the
-        /// runtime index must not hold it either, or the two tiers would disagree about which template answers to the
-        /// spelling. Here the name collides with a sibling's key, which is HED7004.</summary>
+        /// <summary>An unregisterable name (colliding with a sibling's key) must not reach the manifest (HED7004).</summary>
         [Fact]
         public void AnUnregisterableNameIsNotRecordedInTheManifest()
         {
@@ -196,8 +161,7 @@ namespace Heddle.Generator.Tests
             Assert.DoesNotContain("registeredName: \"shared/banner.heddle\"", manifest);
         }
 
-        /// <summary>A name equal to the template's own key adds no spelling, so it records none — the key row already
-        /// is that spelling. The runtime skips such a name for the same reason.</summary>
+        /// <summary>A name equal to the template's own key is not recorded because the key row already is that spelling.</summary>
         [Fact]
         public void ANameEqualToTheOwnKeyIsNotRecordedInTheManifest()
         {
@@ -207,8 +171,6 @@ namespace Heddle.Generator.Tests
             Assert.Contains("registeredName: null", Manifest(run));
         }
 
-        /// <summary>An explicit <c>Key</c> still moves the key — <c>Name</c>'s correction did not touch that path.
-        /// </summary>
         [Fact]
         public void KeyStillSetsTheRegistrationKey()
         {
@@ -218,8 +180,7 @@ namespace Heddle.Generator.Tests
             Assert.Contains("key: \"reports/Build.heddle\"", Manifest(run));
         }
 
-        /// <summary>The name goes through the shared normalizer exactly as a key does — it occupies the same
-        /// import-path namespace — which is observable as the spelling an <c>@&lt;&lt;</c> must use to hit it.</summary>
+        /// <summary>A name occupies the same import-path namespace as keys and is normalized the same way.</summary>
         [Theory]
         [InlineData("BuildReport", "BuildReport")]
         [InlineData("reports\\Build", "reports/Build.heddle")]
@@ -237,8 +198,7 @@ namespace Heddle.Generator.Tests
             Assert.Contains("BANNER-TEXT", Source(run, "class Page"));
         }
 
-        /// <summary>An empty <c>Name</c> is absent, not malformed — MSBuild materializes unset metadata as the empty
-        /// string on every item, so treating "" as a request would red every build.</summary>
+        /// <summary>Empty <c>Name</c> metadata (MSBuild's default for unset values) is treated as absent, not an error.</summary>
         [Fact]
         public void EmptyNameMetadataIsAbsent()
         {
@@ -249,9 +209,7 @@ namespace Heddle.Generator.Tests
             Assert.Contains("key: \"templates/report.heddle\"", Manifest(run));
         }
 
-        /// <summary><c>Key</c> and <c>Name</c> together are <b>two names for one template</b>, not a conflict: the key
-        /// determines the registration key, and the name is an additional import spelling. No precedence to settle
-        /// because they serve different purposes.</summary>
+        /// <summary><c>Key</c> and <c>Name</c> are two names for one template; the key sets registration, the name adds a spelling.</summary>
         [Fact]
         public void KeyAndNameTogetherAreTwoNamesForOneTemplateNotAConflict()
         {
@@ -268,9 +226,7 @@ namespace Heddle.Generator.Tests
             Assert.Contains("BANNER-TEXT", Source(run, "class ByName"));
         }
 
-        /// <summary>A name is not a key, so it cannot duplicate one: HED7002's population is unchanged by the feature.
-        /// The collision is real, but it is an <em>import-name</em> collision and is reported as HED7004 against the
-        /// name — not as a duplicate key, which would wrongly un-precompile a template whose key is fine.</summary>
+        /// <summary>A name collision is HED7004 (import-name collision), not HED7002 (duplicate key).</summary>
         [Fact]
         public void ANameThatSpellsASiblingsKeyIsNotHed7002()
         {
@@ -281,14 +237,12 @@ namespace Heddle.Generator.Tests
             }, globalOptions: RootOption, perFileOptions: Meta(ReportPath, name: "shared/banner"));
 
             Assert.Empty(WithId(run, "HED7002"));
-            // Both templates still precompile under their own keys.
             var manifest = Manifest(run);
             Assert.Contains("key: \"shared/banner.heddle\"", manifest);
             Assert.Contains("key: \"templates/report.heddle\"", manifest);
         }
 
-        /// <summary>Nor can a name case-shadow a key: HED7003 exists because the precompiled registry's lookup is
-        /// ordinal, and a name is never a registry lookup.</summary>
+        /// <summary>A case-only variant of another template's key is not HED7003; names do not participate in registry lookups.</summary>
         [Fact]
         public void ANameThatDiffersOnlyByCaseFromASiblingsKeyIsNotHed7003()
         {
@@ -301,8 +255,7 @@ namespace Heddle.Generator.Tests
             Assert.Empty(WithId(run, "HED7003"));
         }
 
-        /// <summary>The key-side checks themselves are untouched: an explicit <c>Key</c> colliding with a sibling's
-        /// path-derived key is still HED7002, and a case-only twin is still HED7003.</summary>
+        /// <summary>Key-side duplicate and case-twin checks (HED7002, HED7003) are unaffected by the <c>Name</c> feature.</summary>
         [Fact]
         public void TheKeySideDuplicateAndCaseTwinChecksStillFire()
         {
@@ -321,9 +274,7 @@ namespace Heddle.Generator.Tests
             Assert.Single(WithId(twin, "HED7003"));
         }
 
-        /// <summary>A <c>Name</c> the normalizer rejects is an error, not a silent no-op: the user asked for an import
-        /// name and did not get one. It does <b>not</b> un-precompile the template — the key is unaffected, so the
-        /// broken addition costs only the addition.</summary>
+        /// <summary>A malformed name is HED7004 but does not un-precompile the template; the key is unaffected.</summary>
         [Theory]
         [InlineData("../escape")]
         [InlineData("  ")]
@@ -340,8 +291,7 @@ namespace Heddle.Generator.Tests
             Assert.Contains("key: \"templates/report.heddle\"", Manifest(run));
         }
 
-        /// <summary>A malformed <c>Key</c> is still the pre-existing fault: the item asked for a registration key and
-        /// gets none, so it contributes nothing.</summary>
+        /// <summary>A malformed key is HED7004 and un-precompiles the template; the <c>Name</c> feature does not change this.</summary>
         [Fact]
         public void MalformedKeyMetadataStillReportsHed7004AndUnprecompiles()
         {
@@ -353,8 +303,7 @@ namespace Heddle.Generator.Tests
             Assert.DoesNotContain("key: \"", Manifest(run));
         }
 
-        /// <summary>A name that another template's key already answers to cannot be registered, drawing HED7004 against
-        /// the name.</summary>
+        /// <summary>A name that matches another template's key is HED7004 against the name.</summary>
         [Fact]
         public void ANameASiblingsKeyAlreadyAnswersToReportsHed7004()
         {
@@ -370,8 +319,7 @@ namespace Heddle.Generator.Tests
             Assert.Contains("shared/banner.heddle", hed7004.GetMessage());
         }
 
-        /// <summary>Two templates claiming one name: the second cannot have it, and says so. First-come is the only
-        /// order the import map can honour, and the loser is told rather than silently ignored.</summary>
+        /// <summary>Two templates claiming the same name; the second receives HED7004 by first-come-first-served.</summary>
         [Fact]
         public void TwoTemplatesClaimingOneNameReportHed7004()
         {
@@ -393,9 +341,7 @@ namespace Heddle.Generator.Tests
             Assert.Contains("Shared.heddle", hed7004.GetMessage());
         }
 
-        /// <summary>A <c>Name</c> that spells the template's <b>own</b> key is a redundant request, not a collision:
-        /// the preferred spelling and the path spelling are the same string, so there is nothing to add and nothing to
-        /// complain about.</summary>
+        /// <summary>A name equal to the template's own key is accepted silently as redundant, not an error.</summary>
         [Fact]
         public void ANameEqualToTheTemplatesOwnKeyIsAccepted()
         {
@@ -410,9 +356,7 @@ namespace Heddle.Generator.Tests
             Assert.Contains("BANNER-TEXT", Source(run, "class Page"));
         }
 
-        /// <summary>HED7018 warns when a directory is flattened from the registration key without being requested.
-        /// An explicit <c>Key</c> asks for the key it names and suppresses the warning. An additive <c>Name</c> does
-        /// not affect the key: the flattened key still exists and is still unasked-for, so the warning stands.</summary>
+        /// <summary>Only an explicit <c>Key</c> suppresses HED7018 (out-of-root warning); an additive <c>Name</c> does not.</summary>
         [Fact]
         public void OnlyAnExplicitKeySuppressesTheOutOfRootWarning()
         {
@@ -428,14 +372,11 @@ namespace Heddle.Generator.Tests
             var withName = GeneratorHarness.Run(new[] { (outside, "hello\n") },
                 globalOptions: RootOption, perFileOptions: Meta(outside, name: "BuildReport"));
             var hed7018 = Assert.Single(WithId(withName, "HED7018"));
-            // And it names the flattened key that really did register, not the name.
             Assert.Contains("banner.heddle", hed7018.GetMessage());
             Assert.Contains("key: \"banner.heddle\"", Manifest(withName));
         }
 
-        /// <summary>Importing a named template by its key works; the build advises the name-first spelling
-        /// is preferred. A warning at the importer's <c>@&lt;&lt;{{…}}</c> block — guidance, never a break, which is
-        /// asserted by the absence of any error and by the import having actually resolved.</summary>
+        /// <summary>Importing by key rather than name reports HED7028 (advisory) but resolves successfully.</summary>
         [Fact]
         public void ImportingANamedTemplateByItsKeyReportsHed7028()
         {
@@ -453,8 +394,7 @@ namespace Heddle.Generator.Tests
             Assert.Equal("/repo/app/page.heddle", hed7028.Location.GetLineSpan().Path);
         }
 
-        /// <summary>The advisory is positioned at the import block the author typed, not at the file — otherwise it
-        /// cannot be acted on in a template with several imports.</summary>
+        /// <summary>HED7028 is positioned at the import block, not the file, so it can be acted on in templates with multiple imports.</summary>
         [Fact]
         public void Hed7028IsPositionedAtTheImportBlock()
         {
@@ -468,9 +408,7 @@ namespace Heddle.Generator.Tests
             Assert.Equal(2, hed7028.Location.GetLineSpan().StartLinePosition.Line + 1);
         }
 
-        /// <summary>Two <c>@&lt;&lt;</c>s naming one spelling advise <b>once</b>. The reader is called per import, and
-        /// the position is resolved by finding the first block that names the path — so an undeduplicated report would
-        /// stack two identical warnings on one block, which is noise pointing at the wrong place.</summary>
+        /// <summary>Repeated imports of one spelling are advised once, resolved to the first block, not duplicated.</summary>
         [Fact]
         public void RepeatedImportsOfOneSpellingAdviseOnce()
         {
@@ -484,8 +422,7 @@ namespace Heddle.Generator.Tests
             Assert.Single(WithId(run, "HED7028"));
         }
 
-        /// <summary>Importing by the preferred spelling is silent — the advisory exists to move authors to it, so it
-        /// must not fire once they have moved.</summary>
+        /// <summary>Importing by the preferred name spelling is silent.</summary>
         [Fact]
         public void ImportingANamedTemplateByItsNameIsSilent()
         {
@@ -498,9 +435,7 @@ namespace Heddle.Generator.Tests
             Assert.Empty(WithId(run, "HED7028"));
         }
 
-        /// <summary>An unnamed template imported by path is silent: the advisory is about named templates, and every
-        /// pre-existing project is unnamed. This is the "no new warning noise for anyone who did not opt in"
-        /// assertion.</summary>
+        /// <summary>Unnamed templates imported by path remain silent; the feature adds no warning noise to existing projects.</summary>
         [Fact]
         public void ImportingAnUnnamedTemplateByPathIsSilent()
         {
@@ -513,9 +448,7 @@ namespace Heddle.Generator.Tests
             Assert.Empty(WithId(run, "HED7028"));
         }
 
-        /// <summary>A name that could not be registered advises nothing: there is no preferred spelling to move to, so
-        /// HED7004 is the whole report and HED7028 stays silent rather than pointing at a name that does not resolve.
-        /// </summary>
+        /// <summary>An unregisterable name (HED7004) does not trigger HED7028; there is no preferred spelling.</summary>
         [Fact]
         public void AnUnregisterableNameAdvisesNothing()
         {
@@ -530,9 +463,7 @@ namespace Heddle.Generator.Tests
             Assert.Empty(WithId(run, "HED7028"));
         }
 
-        /// <summary>A malformed <c>Name</c> on an opted-out item must be validated and reported, even though the item
-        /// does not precompile. Opted-out items participate in the import graph and their registration faults need to be
-        /// visible at the defining file, not deferred to importers.</summary>
+        /// <summary>A malformed name on an opted-out item is HED7004; opted-out items participate in the import graph.</summary>
         [Theory]
         [InlineData("../escape")]
         [InlineData("  ")]
@@ -549,8 +480,7 @@ namespace Heddle.Generator.Tests
             Assert.Contains(ReportPath, hed7004.GetMessage());
         }
 
-        /// <summary>The same for a <c>Name</c> whose spelling is already taken — the fault the ruling calls out by
-        /// name, because it is the one that silently loses a registration a project depends on.</summary>
+        /// <summary>An already-taken name on an opted-out item is HED7004; the name is visible at the defining file.</summary>
         [Fact]
         public void AnAlreadyTakenNameOnAnOptedOutItemReportsHed7004()
         {
@@ -566,10 +496,7 @@ namespace Heddle.Generator.Tests
             Assert.Contains("shared/banner.heddle", hed7004.GetMessage());
         }
 
-        /// <summary>And for a malformed <c>Key</c>. Pre-existing and deliberate while an opted-out item registered
-        /// nothing — an unusable registration key cost nothing — but the ruling levels it: the same fault reports the
-        /// same way whichever side of the opt-out the item is on, and an unusable <c>Key</c> does cost something,
-        /// because <c>Key</c> also names the item's import spelling.</summary>
+        /// <summary>A malformed key on an opted-out item is HED7004; the same fault reports the same way whether opted-out or not.</summary>
         [Fact]
         public void AMalformedKeyOnAnOptedOutItemReportsHed7004()
         {
@@ -581,9 +508,7 @@ namespace Heddle.Generator.Tests
             Assert.Contains("Key", hed7004.GetMessage());
         }
 
-        /// <summary><b>The invariant the ruling protects.</b> Validating an opted-out item must not start precompiling
-        /// it: no entry point, no manifest entry. Asserted on a clean opted-out item with a working name, so the
-        /// diagnostics change cannot have leaked into the emit decision.</summary>
+        /// <summary>Validating an opted-out item does not start precompiling it; no entry point or manifest entry.</summary>
         [Fact]
         public void AValidatedOptedOutItemStillContributesNoEntryPointAndNoManifestEntry()
         {
@@ -596,18 +521,13 @@ namespace Heddle.Generator.Tests
 
             Assert.Empty(run.GeneratorDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
             var manifest = Manifest(run);
-            // No row for the opted-out template, under either spelling.
             Assert.DoesNotContain("key: \"templates/report.heddle\"", manifest);
             Assert.DoesNotContain("BuildReport", manifest);
-            // No entry class either.
             Assert.DoesNotContain(run.GeneratedSourceTexts, s => s.Contains("class Templates_Report"));
-            // The importer, which does precompile, resolved the import.
             Assert.Contains("BANNER-TEXT", Source(run, "class Page"));
         }
 
-        /// <summary>HED7028 fires for an import inside an opted-out file. Opted-out templates participate in the import
-        /// graph and trigger advisories on their imports, even though they do not generate output themselves.
-        /// </summary>
+        /// <summary>HED7028 fires for imports inside opted-out files; they participate in the import graph.</summary>
         [Fact]
         public void Hed7028FiresForAnImportInsideAnOptedOutFile()
         {
@@ -631,12 +551,7 @@ namespace Heddle.Generator.Tests
             Assert.Contains("BuildReport.heddle", hed7028.GetMessage());
         }
 
-        /// <summary>The advisory parse of an opted-out file reports <b>only</b> the advisory. A missing import inside
-        /// an opted-out file stays silent, and so do its template errors: the ruling asks for the item's metadata to be
-        /// validated and its imports advised, and turning every opted-out file's parse errors into build errors would
-        /// red previously-green builds over templates the author explicitly told this build not to compile. Those
-        /// faults are not forgiven — the moment a precompiled template imports the file they surface through the
-        /// importer's own parse.</summary>
+        /// <summary>The advisory parse of an opted-out file reports only HED7028; missing imports and parse errors stay silent.</summary>
         [Fact]
         public void TheAdvisoryParseOfAnOptedOutFileReportsNothingElse()
         {
@@ -651,8 +566,7 @@ namespace Heddle.Generator.Tests
             Assert.Empty(run.GeneratorDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
         }
 
-        /// <summary>An importer that <em>does</em> precompile still reports the missing import, so the suppression
-        /// above is scoped to the opt-out rather than having removed the diagnostic.</summary>
+        /// <summary>A precompiled file still reports its missing imports; opt-out suppression is scoped narrowly.</summary>
         [Fact]
         public void APrecompiledFileStillReportsItsMissingImport()
         {
@@ -664,10 +578,7 @@ namespace Heddle.Generator.Tests
             Assert.Single(WithId(run, "HED7011"));
         }
 
-        /// <summary>The <c>#line</c> file names the <b>file</b>, the key names the <b>registration</b>. Conflating them
-        /// was invisible while every key was path-derived — the two strings were equal — and an explicit <c>Key</c>
-        /// makes it observable: the generated code's mapped spans pointed at a path that exists nowhere. A <c>Name</c>
-        /// cannot reach this at all any more, which is itself worth pinning.</summary>
+        /// <summary>The <c>#line</c> file names the file (path-derived), not the key; this is observable when <c>Key</c> is explicit.</summary>
         [Fact]
         public void TheLineDirectiveNamesTheFileNotTheKey()
         {
@@ -686,12 +597,7 @@ namespace Heddle.Generator.Tests
             Assert.Contains("\"templates/report.heddle\"", Source(plain, "class Templates_Report"));
         }
 
-        /// <summary>
-        /// <para>Under the template root the <c>#line</c> file is root-relative — an absolute path would bake one
-        /// machine's layout into every checked-in golden. The form is recorded in the manifest's <c>linePathForm</c>
-        /// field rather than as a comment, because comments are unreadable to stack-trace symbolizers, IDEs, or LSP.
-        /// </para>
-        /// </summary>
+        /// <summary>Under the template root, <c>#line</c> is root-relative; the form is recorded in the manifest, not as a comment.</summary>
         [Fact]
         public void UnderTheRootTheLineFileIsRootRelativeAndTheFormIsRecordedInTheManifest()
         {
@@ -702,13 +608,10 @@ namespace Heddle.Generator.Tests
             Assert.Contains("\"templates/report.heddle\"", source);
             Assert.Contains("linePathForm: global::Heddle.Precompiled.PrecompiledLinePathForm.RootRelative",
                 Manifest(run));
-            // The line-path form is recorded in the manifest, not as a comment in generated code.
             Assert.DoesNotContain("#line file names below", source);
         }
 
-        /// <summary>Outside the template root there is no anchor for relativity, so the template's own path is emitted
-        /// in the <c>#line</c> directive (absolute in a real build), and the manifest records this form. This replaces
-        /// a bare-filename fallback that was not openable and collided across directories.</summary>
+        /// <summary>Outside the template root, <c>#line</c> is the template's path; relativity has no anchor.</summary>
         [Fact]
         public void OutsideTheRootTheLineFileIsTheTemplatesOwnPathAndTheFormIsRecorded()
         {
@@ -721,13 +624,10 @@ namespace Heddle.Generator.Tests
             Assert.Contains("linePathForm: global::Heddle.Precompiled.PrecompiledLinePathForm.TemplatePath",
                 Manifest(run));
             Assert.DoesNotContain("#line file names below", source);
-            // The old form was the bare filename, which the compiler could not open.
             Assert.DoesNotContain("\"banner.heddle\"", source);
         }
 
-        /// <summary>The two forms are genuinely distinguished by the recorded value, not just present: one compilation
-        /// containing a rooted and an out-of-root template records a different form for each. A constant would satisfy
-        /// each single-template test above.</summary>
+        /// <summary>One compilation containing both rooted and out-of-root templates records a different form for each.</summary>
         [Fact]
         public void TheTwoLineFormsAreRecordedDistinctlyInOneCompilation()
         {

@@ -40,7 +40,6 @@ namespace Heddle.Tests
         [Fact]
         public void FunnelRenderPathInstallsFreshOrClearedFrame()
         {
-            // (a) participating body: root has probe (participant) -> root frame; if-body has probe -> fresh frame.
             ScopeProbeExtension.Reset();
             Compile("@probe()@if(A){{@probe()}}", typeof(Flag)).Generate(new Flag { A = true });
             var frames = ScopeProbeExtension.Frames;
@@ -49,14 +48,12 @@ namespace Heddle.Tests
             Assert.NotNull(frames[1]);
             Assert.NotSame(frames[0], frames[1]); // nested body's frame is fresh, not the parent's
 
-            // (b) non-participating body under a provisioned parent -> cleared (null).
             PlainProbeExtension.Reset();
             Compile("@probe()@if(A){{@plainprobe()}}", typeof(Flag)).Generate(new Flag { A = true });
             var b = PlainProbeExtension.Frames;
             Assert.Single(b);
             Assert.Null(b[0]);
 
-            // (c) non-participating body under a non-provisioned parent -> passthrough (null) fast path.
             PlainProbeExtension.Reset();
             Compile("@(A){{@plainprobe()}}", typeof(Flag)).Generate(new Flag { A = true });
             var c = PlainProbeExtension.Frames;
@@ -68,7 +65,7 @@ namespace Heddle.Tests
         public void FunnelProcessPathInstallsFreshFrame()
         {
             ScopeProbeExtension.Reset();
-            // Run d() as a chain parameter because @out(d()) is now HED5012; same ProcessData funnel path.
+            // Bodied @out is disallowed; chain through parameter instead to test the process path.
             Compile("@%<d>{{@probe()}}%@@(d())", typeof(Flag)).Generate(new Flag());
             var frames = ScopeProbeExtension.Frames;
             Assert.NotEmpty(frames);
@@ -107,8 +104,7 @@ namespace Heddle.Tests
         [Fact]
         public void SwapBodyGetsFreshFrame()
         {
-            // Enclosing set satisfied (A true), then a swap body reads: must be NONE (fresh), not SAT.
-            // Use bodiless @out() because @out(A) is now HED5012.
+            // Swap body must see fresh frame (NONE), not enclosing state (SAT).
             var t = Compile("@if(A){{}}@out():swap(){{@branchreader()}}", typeof(Flag));
             Assert.Equal("NONE", t.Generate(new Flag { A = true }));
         }

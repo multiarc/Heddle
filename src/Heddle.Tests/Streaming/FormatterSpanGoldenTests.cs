@@ -36,7 +36,7 @@ namespace Heddle.Tests.Streaming
 
         private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
-        // doc, expected-string (the semantic definition: ToString(format, culture)).
+        // Reference semantics: ToString(format, culture).
         public static TheoryData<string, string> Cases()
         {
             var m = Model();
@@ -66,11 +66,7 @@ namespace Heddle.Tests.Streaming
         [Fact]
         public void MoneyDefaultLocale_UsesThreadCurrentCulture_ThreeSinkParity()
         {
-            // The no-locale branch resolves NumberFormatInfo.CurrentInfo in both ToString("c") and TryFormat — the
-            // per-type current-culture quirk. Pin the thread culture to a fixed, encoding-stable one
-            // (en-US: '$' passes HtmlEncode unchanged) so the assertion is deterministic on CI runners, which default
-            // to the invariant culture (currency symbol U+00A4 '¤', numeric-encoded to "&#164;"). The test still proves
-            // the extension reads the *current* culture — an invariant-symbol regression would fail against "$…".
+            // Pin culture to en-US for deterministic CI results; test proves extension reads thread-local culture.
             var prior = CultureInfo.CurrentCulture;
             try
             {
@@ -94,8 +90,7 @@ namespace Heddle.Tests.Streaming
         [Fact]
         public void LongFormat_OverflowsStackallocTier_FallsBackToString()
         {
-            // A format producing > 256 chars overflows the stackalloc char[256] span tier and must fall through to the
-            // ToString tier — byte-identical output. 300 zero-pad digits.
+            // Stackalloc overflow test: format with 300 zero-pad digits falls back to ToString tier.
             var pad = new string('0', 300);
             var doc = "@int(I){{" + pad + "}}";
             var expected = Model().I.ToString(pad, Inv);
@@ -107,8 +102,7 @@ namespace Heddle.Tests.Streaming
         [Fact]
         public void FormattersUnderHtml_ByteIdenticalAcrossSinks()
         {
-            // Encode-carrier formatters bridge through one string under the proxy; guid takes the full fast
-            // path on every profile (not [EncodeOutput]). All byte-identical across sinks.
+            // Verify formatters are byte-identical across sinks despite different implementations.
             SinkTestHarness.AssertThreeSinkParity(
                 "i=@int(I){{N0}} d=@date(T){{yyyy}} m=@money(D){{en-US}} g=@guid(G)", Model(), typeof(FM),
                 OutputProfile.Html);

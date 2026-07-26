@@ -30,7 +30,7 @@ namespace Heddle.Tests
         private static int WarningCount(HeddleTemplate t) =>
             t.Context.CompileWarnings.Count(w => w.DiagnosticId == HeddleDiagnosticIds.DefinitionRendersTwice);
 
-        [Fact] // W01
+        [Fact]
         public void W01_DefaultOutputAlsoCalledByNameWarnsOnce()
         {
             var t = Compile("@%\n<card> -> ()\n{{CARD}}\n%@\n@card()");
@@ -43,44 +43,44 @@ namespace Heddle.Tests
             Assert.True(warning.Position.StartIndex > 0, "warning is positioned at the by-name call, not the declaration");
         }
 
-        [Fact] // W02
+        [Fact]
         public void W02_NoDefaultOutputDoesNotWarn()
         {
             Assert.Equal(0, WarningCount(Compile("@%\n<card>\n{{CARD}}\n%@\n@card()")));
         }
 
-        [Fact] // W03
+        [Fact]
         public void W03_SelfCallExemptWhenNotCalledByName()
         {
             Assert.Equal(0, WarningCount(Compile("@%\n<card> -> ()\n{{CARD}}\n%@")));
         }
 
-        [Fact] // W04
+        [Fact]
         public void W04_TwoCallsProduceTwoWarnings()
         {
             Assert.Equal(2, WarningCount(Compile("@%\n<card> -> ()\n{{CARD}}\n%@\n@card()\n@card()")));
         }
 
-        [Fact] // W05
+        [Fact]
         public void W05_CallBeforeFullOverrideWarns()
         {
             Assert.Equal(1, WarningCount(Compile("@%\n<a> -> ()\n{{A}}\n%@\n@a()\n@%\n<a:a>\n{{A2}}\n%@")));
         }
 
-        [Fact] // W06
+        [Fact]
         public void W06_CallAfterFullOverrideStillWarns()
         {
-            // HasDefaultOutput survives OverrideWith — the base's default chain still renders at document end.
+            // Base's default chain persists after override.
             Assert.Equal(1, WarningCount(Compile("@%\n<a> -> ()\n{{A}}\n%@\n@%\n<a:a>\n{{A2}}\n%@\n@a()")));
         }
 
-        [Fact] // W07
+        [Fact]
         public void W07_DerivedNameCallDoesNotWarn()
         {
             Assert.Equal(0, WarningCount(Compile("@%\n<a> -> ()\n{{A}}\n<b:a>\n{{B}}\n%@\n@b()")));
         }
 
-        [Fact] // W08 — full-corpus scan
+        [Fact]
         public void W08_CorpusScanReportsExactlyTheTwoVcTestHits()
         {
             HeddleTemplate.Configure(typeof(DoubleRenderWarningTests).GetTypeInfo().Assembly);
@@ -100,8 +100,7 @@ namespace Heddle.Tests
                     }
                     catch
                     {
-                        // A fixture that needs specific host setup may throw; warnings collected before the
-                        // throw are still counted. Only vc-test carries the -> + by-name pattern.
+                        // Host setup may fail; warnings collected before the throw still count.
                     }
 
                     hits = scope.CompileWarnings.Count(w => w.DiagnosticId == HeddleDiagnosticIds.DefinitionRendersTwice);
@@ -112,7 +111,7 @@ namespace Heddle.Tests
             }
         }
 
-        [Fact] // ergo-double-render golden — the warning does not alter output (D5 in miniature)
+        [Fact]
         public void ErgoDoubleRenderGolden()
         {
             HeddleTemplate.Configure(typeof(DoubleRenderWarningTests).GetTypeInfo().Assembly);

@@ -72,9 +72,9 @@ namespace Heddle.Tests
             const int n = 10000;
             var model = new ListModel { Items = Enumerable.Range(0, n).Select(_ => new Cell { F = true }).ToList() };
 
-            // Identical output ("X" per item) so string/render allocations cancel; the delta isolates frames.
-            var pair = Compile("@list(Items){{@if(F){{X}}@ifnot(F){{Y}}}}", typeof(ListModel)); // no participant -> 0 frames
-            var elseL = Compile("@list(Items){{@if(F){{X}}@else(){{Y}}}}", typeof(ListModel));   // else -> 1 frame/iter
+            // Identical output so allocations cancel; delta isolates frame costs.
+            var pair = Compile("@list(Items){{@if(F){{X}}@ifnot(F){{Y}}}}", typeof(ListModel));
+            var elseL = Compile("@list(Items){{@if(F){{X}}@else(){{Y}}}}", typeof(ListModel));
 
             Assert.Equal(pair.Generate(model), elseL.Generate(model)); // byte-identical output
 
@@ -84,11 +84,7 @@ namespace Heddle.Tests
             long elseAlloc = Measure(() => elseL.Generate(model));
             long delta = elseAlloc - pairAlloc;
 
-            // The participating body's per-iteration cost is bounded by exactly one ScopeLocals frame
-            // (32 B on x64 = 320 000 B for n=10 000) and nothing else — no overflow map, no boxing. That is
-            // the worst case, assuming no JIT rescue; on newer runtimes the JIT stack-allocates part of it,
-            // so the real delta is often lower. Either way it must not exceed the one-frame budget, and the
-            // @if/@ifnot pair is the frame-free baseline.
+            // Per-iteration cost must not exceed one ScopeLocals frame; @if/@ifnot pair is the baseline.
             Assert.True(delta <= n * 40L, $"per-iteration delta {delta} exceeds the one-frame budget (~{n * 32L})");
             Assert.True(delta >= -n * 8L, $"unexpected negative allocation delta {delta}");
         }

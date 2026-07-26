@@ -49,17 +49,10 @@ namespace Heddle.Generator.Binding
                 !_facts.IsValueType(from) && _facts.IsAssignableFrom(to, from);
         }
 
-        /// <summary>
-        /// Ranks the merged overload set for one call. Returns null — meaning "degrade to dynamic" — when any
-        /// argument cannot be given a precise static type, when no overload is applicable, or when the flat Pareto
-        /// front has more than one member (the runtime's <c>HED1013</c> verdict, which the build tier must reach
-        /// too rather than letting C# betterness pick a winner the runtime would refuse).
-        /// <para><paramref name="refusal"/> separates the last two from the first. An ambiguous or
-        /// inapplicable front over arguments the estimator <i>typed</i> is a proof that the host's own registry will
-        /// refuse the call, so the build reports <c>HED7025</c>; an untypeable argument proves nothing and still
-        /// degrades in silence. This path carries arbitrary host signatures rather than the shipped built-in table,
-        /// so the distinction matters more, not less, than it does for the built-ins.</para>
-        /// </summary>
+        /// <summary>Ranks the merged overload set. Returns null (degrade to dynamic) when any argument cannot be
+        /// typed, no overload is applicable, or when multiple overloads tie (the flat Pareto front has &gt; 1 member).
+        /// <paramref name="refusal"/> distinguishes ambiguous/inapplicable over typed arguments (reports <c>HED7025</c>)
+        /// from untypeable arguments (silent degrade).</summary>
         internal static Binding TryBind(SymbolTypeFacts facts, string name,
             IReadOnlyList<FunctionExportResolver.ExportOverloadInfo> overloads, IReadOnlyList<OperandKind> argKinds,
             out BindRefusal refusal)
@@ -94,9 +87,7 @@ namespace Heddle.Generator.Binding
 
                 var type = ToSymbol(facts.Compilation, argKinds[i]);
                 if (type == null)
-                    // THE SIDE CONDITION. Degrade-on-doubt: an untypeable argument cannot be ranked, so any
-                    // front computed past this point would describe the generator's ignorance rather than the host
-                    // registry's verdict. Leaving before Bind runs is what keeps this a silent degrade.
+                    // Untypeable argument: degrade before ranking, so front describes host registry only.
                     return null;
                 args[i] = RankArgument<ITypeSymbol>.Of(type);
             }
@@ -124,7 +115,6 @@ namespace Heddle.Generator.Binding
             var binding = OverloadRank.Bind(new SymbolRankModel(facts), candidates, args);
             if (binding.Outcome != BindOutcome.Bound)
             {
-                // Ambiguous / inapplicable over fully typed arguments — the host registry's own verdict.
                 refusal = Refuse(name, binding.Outcome, overloads, args);
                 return null;
             }
@@ -147,9 +137,8 @@ namespace Heddle.Generator.Binding
             return new Binding { Overload = winner, ArgumentCasts = casts, ReturnType = winner.Method.ReturnType };
         }
 
-        /// <summary>The <c>HED7025</c> payload for a proven-illegal export call, shaped like the runtime's own
-        /// sentence for the same input so the two tiers say the same thing. Candidates are every discovered
-        /// overload of the name across every container, which is the merged set the runtime registry holds.</summary>
+        /// <summary>Formats <c>HED7025</c> payload to match the runtime's verdict message. Candidates are every
+        /// discovered overload of the name across containers.</summary>
         private static BindRefusal Refuse(string name, BindOutcome outcome,
             IReadOnlyList<FunctionExportResolver.ExportOverloadInfo> overloads,
             IReadOnlyList<RankArgument<ITypeSymbol>> args)

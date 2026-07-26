@@ -9,16 +9,8 @@ using Xunit;
 
 namespace Heddle.Generator.Tests
 {
-    /// <summary>
-    /// The prop-default conversion table, symbol side against reflection side. The emitter's <c>DefaultConvertible</c>
-    /// is the twin of the runtime's <c>PropConversion.CanConvertTypes(source, target, allowBoxToObject: true)</c>;
-    /// every rule branch gets a row here, driven through <b>both</b> implementations from one <c>(source, target)</c>
-    /// pair so a unilateral edit to either is a red test naming the pair.
-    /// <para>The row that motivated this work is <c>Nullable&lt;S&gt; → Nullable&lt;W&gt;</c>: the runtime had it,
-    /// the emitter did not. A missing row is a safe over-<em>refusal</em> — the template falls back rather than
-    /// mis-renders — but an over-refusal is still a divergence about which templates precompile.</para>
-    /// <para>This row set is the seed of the assignability conformance corpus and is handed to it verbatim.</para>
-    /// </summary>
+    /// <summary>Verifies emitter and runtime type conversion agree. Both tiers are driven from the same test vectors
+    /// so unilateral divergence is caught immediately.</summary>
     public class DefaultConvertibleLockstepTests
     {
         private static readonly CSharpCompilation Compilation = CSharpCompilation.Create("probe",
@@ -30,23 +22,18 @@ namespace Heddle.Generator.Tests
             },
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        /// <summary>The shared vectors — authored in <c>Heddle.Tests</c> and linked into this project, so the
-        /// two tiers are driven from one row set rather than two that agree by inspection.</summary>
+        /// <summary>Shared test vectors for both tiers.</summary>
         public static IEnumerable<object[]> Rows() => Heddle.Tests.PropDefaultConversionVectors.Rows();
 
         [Theory]
         [MemberData(nameof(Rows))]
         public void SymbolSideAgreesWithReflectionSide(Type source, Type target, bool expected)
         {
-            // The reflection side of the same rows is asserted by Heddle.Tests.DefaultConvertibleReflectionTests;
-            // this project cannot see PropConversion (internal to Heddle, no IVT), so the vectors are the seam.
+            // Reflection side tested elsewhere; vectors bridge the two tiers.
             Assert.Equal(expected, SymbolSide(source, target));
         }
 
-        /// <summary>
-        /// Drives the emitter's own <c>DefaultConvertible</c> over the symbol pair. It is private, so it is reached
-        /// by reflection rather than mirrored here — mirroring it would make this a test of the mirror.
-        /// </summary>
+        /// <summary>Invokes private DefaultConvertible via reflection to avoid mirroring the implementation.</summary>
         private static bool SymbolSide(Type source, Type target)
         {
             var emitterType = typeof(gen::Heddle.Generator.Emit.TemplateEmitter);
@@ -85,9 +72,7 @@ namespace Heddle.Generator.Tests
             return symbol;
         }
 
-        /// <summary>The emitter's nullable probe is one method now — the file used to carry two, one over
-        /// <c>ConstructedFrom</c> and one over <c>OriginalDefinition</c>, which is a latent divergence inside a
-        /// single file. Asserted structurally so a third cannot quietly reappear.</summary>
+        /// <summary>Ensures exactly one nullable-probe method to prevent latent divergence from reappearing.</summary>
         [Fact]
         public void TheEmitterHasExactlyOneNullableUnderlyingProbe()
         {

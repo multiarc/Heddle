@@ -5,11 +5,8 @@ using Heddle.Language.Members;
 namespace Heddle.Generator.Emit
 {
     /// <summary>
-    /// Emits a member-path accessor as C# reproducing the runtime member tier hop by hop (<c>ModelParameter.BuildNullSafePropertyChain</c>):
-    /// a hop off a value-typed receiver accesses directly; a hop off a reference receiver yields
-    /// <c>default(propertyType)</c> when the receiver is null — which is <c>?.</c> for a reference/nullable property
-    /// type and the explicit conditional for a non-nullable value property type (where <c>?.</c> would produce
-    /// <c>Nullable&lt;T&gt;</c>/boxed-null instead of boxed default).
+    /// Emits null-safe member-path accessor as C# using <c>ModelParameter.BuildNullSafePropertyChain</c>
+    /// semantics: direct access for value receivers; <c>default(T)</c> via conditional for null references.
     /// </summary>
     internal static class MemberPathWriter
     {
@@ -36,8 +33,7 @@ namespace Heddle.Generator.Emit
             var current = rootExpr;
             foreach (var hop in hops)
             {
-                // The branch is MemberHopRule.Form — the same function ModelParameter maps to Expression shapes
-                // — so the two encodings share the same code.
+                // Must stay in sync with MemberHopRule.Form (shared by parameter and expression tiers).
                 switch (MemberHopRule.Form(hop.ReceiverIsValueType, hop.PropertyIsNonNullableValue))
                 {
                     case HopForm.Direct:

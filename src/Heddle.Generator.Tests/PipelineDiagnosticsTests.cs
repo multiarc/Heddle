@@ -11,12 +11,6 @@ using Xunit;
 
 namespace Heddle.Generator.Tests
 {
-    /// <summary>
-    /// Build-tier gates: the two new diagnostics (`HED7018` out-of-root key, `HED7019` engine-version fallback),
-    /// the `Precompile` per-item opt-out, the emitter-defect error path that replaced the blanket
-    /// <c>catch (Exception)</c>, and the registry lockstep that keeps the descriptor set, the claimed-IDs registry,
-    /// and the docs table from drifting apart.
-    /// </summary>
     public class PipelineDiagnosticsTests
     {
         private const string Simple = "@model(){{System.String}}@\\\nHello @(this)!\n";
@@ -119,9 +113,8 @@ namespace Heddle.Generator.Tests
             Assert.Contains($"engineVersion: \"{expected}\"", manifest);
         }
 
-        /// <summary>The allowed-value lists used to be hand-copied string arrays 2,500 lines from the enums they
-        /// mirrored; they now come from <c>Enum.GetNames</c> over the linked types. The diagnostic text must read
-        /// exactly as it shipped.</summary>
+        /// <summary>The diagnostic text must read exactly as it shipped, validating that the refactoring to
+        /// <c>Enum.GetNames</c> did not change user-facing output.</summary>
         [Theory]
         [InlineData("HeddleOutputProfile", "WebForms", "Text|Html")]
         [InlineData("HeddleExpressionMode", "Roslyn", "MemberPathsOnly|Native|FullCSharp")]
@@ -189,10 +182,8 @@ namespace Heddle.Generator.Tests
             Assert.Contains("key: \"page.heddle\"", manifest);
         }
 
-        /// <summary>The fallback-legitimacy ruling in executable form: an exception out of the emitter is a defect,
-        /// so it reds the build with a per-template error naming the template and the exception — while every other
-        /// template's source and the manifest still emit (a bare rethrow would downgrade to the CS8785 warning and
-        /// discard the generator's entire contribution).</summary>
+        /// <summary>When the emitter throws, it must become a per-template error (not a bare rethrow that
+        /// downgrades to CS8785 and discards the generator's contribution) while other templates still emit.</summary>
         [Fact]
         public void EmitterDefectSurfacesAsAnErrorAndTheRestOfThePassStillEmits()
         {
@@ -231,9 +222,8 @@ namespace Heddle.Generator.Tests
             }
         }
 
-        /// <summary>Code ↔ claimed-IDs registry ↔ docs table. Every `HED70xx` the generator can report must be claimed
-        /// and listed in the build-time diagnostics documentation; an unclaimed or undocumented id is a red build
-        /// rather than a review miss.</summary>
+        /// <summary>Every generated diagnostic ID must be claimed in the registry and listed in the docs table;
+        /// this lockstep is a red build, not a review miss.</summary>
         [Fact]
         public void EveryGeneratorDiagnosticIdIsClaimedInTheRegistryAndListedInTheDocsTable()
         {
@@ -256,14 +246,11 @@ namespace Heddle.Generator.Tests
             var undocumented = declared.Where(id => !documented.Contains(id)).ToList();
             Assert.True(undocumented.Count == 0,
                 "Diagnostic ids missing from the precompilation.md table: " + string.Join(", ", undocumented));
-
-            // And nothing is documented that no descriptor can report.
             var orphaned = documented.Where(id => !declared.Contains(id)).ToList();
             Assert.True(orphaned.Count == 0,
                 "Documented ids with no descriptor: " + string.Join(", ", orphaned));
         }
 
-        /// <summary>Expands the registry table's ids, including its `HEDaaaa`–`HEDbbbb` range rows.</summary>
         private static HashSet<string> ClaimedIds(string markdown)
         {
             var ids = new HashSet<string>(StringComparer.Ordinal);

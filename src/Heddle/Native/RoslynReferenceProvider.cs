@@ -6,15 +6,9 @@ using Microsoft.CodeAnalysis;
 namespace Heddle.Native
 {
     /// <summary>
-    /// <para>Isolates <c>Microsoft.CodeAnalysis</c> metadata-reference concern. Every member whose signature
-    /// mentions a Roslyn type lives here (and in <c>ContextCompilation</c>/<c>CSharpContext</c>), reached only from
-    /// the C#-tier compile paths that sit behind the <c>Heddle.CSharpTierEnabled</c> feature switch. When the switch
-    /// is trimmed off those call sites are dead code, so the linker removes this whole class together with the rest
-    /// of the Roslyn graph — <see cref="AssemblyHelper"/> itself carries no Roslyn-typed member in its reachable
-    /// surface.</para>
-    /// <para>References are cached per <see cref="Assembly"/> in a <see cref="ConditionalWeakTable{TKey,TValue}"/>
-    /// so an unloaded (collectible) model assembly is never pinned — the reload-leak invariant is preserved without
-    /// a manual eviction call that would tie this class back into the reachable graph.</para>
+    /// Isolates Roslyn types for trimming when <c>Heddle.CSharpTierEnabled</c> is off. Caches references per
+    /// <see cref="Assembly"/> in <see cref="ConditionalWeakTable{TKey,TValue}"/>, avoiding pinning of
+    /// collectible model assemblies — reload-leak invariant preserved without manual eviction.
     /// </summary>
     internal static class RoslynReferenceProvider
     {

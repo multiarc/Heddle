@@ -31,14 +31,9 @@ namespace Heddle.Language.Members
         IEnumerable<TType> BaseInterfaces(TType type);
     }
 
-    /// <summary>
-    /// The member-path walk order, stated once to prevent divergence. Previously the generator and runtime each
-    /// carried a hand-written resolver with verified divergences.
-    /// <para>Order: the receiver type, then its base chain most-derived-first, taking the <b>first</b> accessible
-    /// property with the requested name — which makes <c>new</c>-shadowing resolve deterministically to the
-    /// most-derived accessible member instead of throwing <c>AmbiguousMatchException</c>. For an interface root,
-    /// search the interface itself, then whatever base-interface closure the adapter supplies.</para>
-    /// </summary>
+    /// <summary>The canonical member-path walk order: receiver type, then base chain most-derived-first,
+    /// returning the first accessible property with the requested name. This makes new-shadowing resolve to the
+    /// most-derived accessible member rather than throwing AmbiguousMatchException.</summary>
     internal static class MemberPathWalk
     {
         /// <summary>Finds the one property a path segment binds to, or reports not-found.</summary>

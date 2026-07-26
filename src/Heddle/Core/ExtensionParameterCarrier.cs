@@ -24,11 +24,10 @@ namespace Heddle.Core
     {
         private readonly IExtension _inner;
         private readonly ExtensionParameterMap _map;
-        private readonly PropsBinder _binder;                       // dynamic tier
-        private readonly object[] _prototype;                       // precompiled tier
-        private readonly PrecompiledPropSetter[] _setters;          // precompiled tier
+        private readonly PropsBinder _binder;
+        private readonly object[] _prototype;
+        private readonly PrecompiledPropSetter[] _setters;
 
-        /// <summary>Dynamic-tier carrier: the compile-time <see cref="PropsBinder"/> binds per invocation.</summary>
         internal ExtensionParameterCarrier(IExtension inner, PropsBinder binder, ExtensionParameterMap map)
         {
             _inner = inner;
@@ -37,8 +36,6 @@ namespace Heddle.Core
             Position = (inner as AbstractExtension)?.Position ?? Position;
         }
 
-        /// <summary>Precompiled-tier carrier: the generator-emitted frozen prototype (+ optional dynamic
-        /// setters) reproduces what <see cref="PropsBinder"/> would bind.</summary>
         internal ExtensionParameterCarrier(IExtension inner, object[] prototype, PrecompiledPropSetter[] setters,
             ExtensionParameterMap map)
         {
@@ -49,8 +46,7 @@ namespace Heddle.Core
             Position = (inner as AbstractExtension)?.Position ?? Position;
         }
 
-        /// <summary>The wrapped user extension — the type every compile-time attribute reflection must see, so the
-        /// carrier stays transparent to attribute lookups.</summary>
+        /// <summary>The wrapped user extension; the carrier stays transparent to attribute reflection.</summary>
         internal IExtension Inner => _inner;
 
         private object[] BindValues(in Scope scope)

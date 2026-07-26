@@ -6,13 +6,8 @@ using Microsoft.CodeAnalysis.CSharp;
 namespace Heddle.Generator.Binding
 {
     /// <summary>
-    /// The <b>Roslyn</b> adapter of <see cref="ITypeFacts{TType}"/>. This is the one place the
-    /// generator knows the CLR assignability relation — replacing <c>TemplateEmitter.RedeclarationAssignable</c>,
-    /// the second partial encoding inside <c>DefaultConvertible</c>, and the third <c>Nullable&lt;T&gt;</c>
-    /// spelling in <c>SymbolTypeResolver.IsNonNullableValueType</c>.
-    /// <para>Two verified Roslyn-vs-CLR disagreements are corrected here and nowhere else; the shared
-    /// assignability conformance corpus generates its expectations from live reflection, so the corrections are
-    /// held to "the Roslyn adapter equals the CLR".</para>
+    /// The Roslyn adapter of <see cref="ITypeFacts{TType}"/>. Two verified Roslyn-vs-CLR disagreements over
+    /// nullable domain assignability are corrected here; the shared conformance corpus enforces adapter fidelity.
     /// </summary>
     internal sealed class SymbolTypeFacts : ITypeFacts<ITypeSymbol>
     {
@@ -50,21 +45,18 @@ namespace Heddle.Generator.Binding
             if (_csharp == null)
                 return HierarchyAssignable(target, source);
 
-            // (A) the CLR's underlying-value rule: X is assignable to X? (int -> int?).
             if (TryGetNullableUnderlying(target, out var targetUnderlying) &&
                 SymbolEqualityComparer.Default.Equals(targetUnderlying, source))
                 return true;
 
             var conv = _csharp.ClassifyConversion(source, target);
 
-            // (B) identity + implicit reference (class/interface upcast, array and generic variance).
             if (conv.IsIdentity)
                 return true;
             if (conv.IsImplicit && conv.IsReference)
                 return true;
 
-            // (C) implicit boxing (value -> object / ValueType / implemented interface) — EXCEPT a Nullable<T>
-            //     source to an interface, per correction 2 above.
+            // Implicit boxing, except Nullable<T> to interface.
             bool sourceNullable = TryGetNullableUnderlying(source, out _);
             if (conv.IsImplicit && conv.IsBoxing && !(sourceNullable && target.TypeKind == TypeKind.Interface))
                 return true;
@@ -113,10 +105,7 @@ namespace Heddle.Generator.Binding
 
         public bool IsValueType(ITypeSymbol type) => type != null && type.IsValueType;
 
-        /// <summary>The runtime's <c>null / ContainsGenericParameters / IsPointer / IsByRef</c> rule over symbols.
-        /// The generator's old local variant tested <c>IsUnboundGenericType</c> — strictly narrower than
-        /// <c>ContainsGenericParameters</c>, which is also true of a type <em>containing</em> a type parameter —
-        /// and had no by-ref arm at all.</summary>
+        /// <summary>False for null, error types, pointers, or types containing generic parameters.</summary>
         public bool IsUsableAsPropType(ITypeSymbol type)
         {
             if (type == null || type is IErrorTypeSymbol)
@@ -160,12 +149,8 @@ namespace Heddle.Generator.Binding
         public string FormatAqn(ITypeSymbol type) =>
             SymbolTypeIdentity.AqnSansVersion(type as INamedTypeSymbol);
 
-        /// <summary>The type spelling shared diagnostic messages quote. Deliberately <b>not</b>
-        /// <c>FullyQualifiedFormat</c>: that aliases special types (<c>int</c>), while the dynamic tier's twin
-        /// of the same message interpolates <c>Type.ToString()</c> (<c>System.Int32</c>). Dropping the alias option
-        /// makes the two tiers' prop-fault sentences byte-identical for the primitive cases that dominate them.
-        /// (Constructed generics still differ — reflection spells them <c>List`1[System.Int32]</c> and no Roslyn
-        /// format produces that; the <em>wording</em> is unified, the type rendering stays each tier's own.)</summary>
+        /// <summary>Type format for diagnostic messages: not fully qualified (no special-type aliases) so error
+        /// messages match the dynamic tier's reflection-based spelling.</summary>
         private static readonly SymbolDisplayFormat DiagnosticFormat = SymbolDisplayFormat.FullyQualifiedFormat
             .WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Omitted)
             .WithMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers);

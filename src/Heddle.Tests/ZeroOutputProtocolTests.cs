@@ -10,16 +10,13 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The zero-output protocol. The runtime's rule is behavioral: a directive's
-    /// <c>InitStart</c> returns <c>null</c>, and that is what makes the compiler drop the block. A build-time
-    /// generator can only read symbols, so <c>[ZeroOutput]</c> is the declarative form of the same fact — and this
-    /// conformance test is what keeps the two from drifting apart, for every built-in at once.
+    /// Conformance test: the runtime's null <c>InitStart</c> and the <c>[ZeroOutput]</c> attribute must stay in
+    /// sync across all built-ins.
     /// </summary>
     public class ZeroOutputProtocolTests
     {
-        /// <summary>The four built-ins whose <c>InitStart</c> returns null — the runtime protocol, stated here as
-        /// the expected side of the conformance. A fifth zero-output built-in must be added here <em>and</em>
-        /// carry the attribute; adding only one of the two reds this test.</summary>
+        /// <summary>Every zero-output built-in must be added here <em>and</em> carry the attribute; adding only
+        /// one of the two reds this test.</summary>
         private static readonly HashSet<string> ZeroOutputNames =
             new HashSet<string>(StringComparer.Ordinal) { "model", "using", "import", "profile" };
 
@@ -40,8 +37,7 @@ namespace Heddle.Tests
             Assert.Equal(expected, declared);
         }
 
-        /// <summary>Every name the protocol list claims is actually registered — so the list cannot rot into
-        /// vacuity by naming an extension that no longer exists.</summary>
+        /// <summary>The list cannot rot by naming an extension that no longer exists.</summary>
         [Fact]
         public void EveryZeroOutputNameIsRegistered()
         {
@@ -49,9 +45,8 @@ namespace Heddle.Tests
             Assert.Empty(ZeroOutputNames.Except(registered));
         }
 
-        /// <summary>The attribute is <c>Inherited = true</c>, like <c>[ScopeChannel]</c>: a host extension deriving
-        /// a directive keeps zero-output classification without re-declaring it. Both tiers read it that way — the
-        /// runtime through <c>IsHaveAttribute(inherit: true)</c>, the generator through its base-chain walk.</summary>
+        /// <summary>The attribute is <c>Inherited = true</c>: deriving extensions keep zero-output classification
+        /// without re-declaring it.</summary>
         [Fact]
         public void TheAttributeIsInherited()
         {

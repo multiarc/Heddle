@@ -125,7 +125,6 @@ namespace Heddle.Tests
 
         #endregion
 
-        /// <summary>All 13 kinds, with a non-numeric stand-in type for <see cref="NumericKind.None"/>.</summary>
         private static IEnumerable<(NumericKind kind, Type type)> AllKinds()
         {
             yield return (NumericKind.None, typeof(string));

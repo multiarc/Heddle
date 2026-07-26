@@ -9,11 +9,8 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Extension-parameter differentials: a bodiless parameter-declaring custom extension binds its <c>[Prop]</c>
-    /// layout at build time (frozen prototype + dynamic setters via <c>PrecompiledRuntime.BindExtension</c>) and
-    /// renders byte-identically with the dynamic backend; the encode-attribute alignment keeps both tiers
-    /// self-encoding; malformed <c>[Prop]</c> declarations draw <c>HED7017</c>; and a guard keeps the precompiled
-    /// tier from silently dropping named args the dynamic tier rejects (HED5005).
+    /// Parameter-declaring custom extensions render byte-identically between precompiled and dynamic tiers.
+    /// Tests encode-attribute alignment, HED7017 for malformed [Prop], and guard against dropped named args.
     /// </summary>
     public class ExtensionParametersDifferentialTests
     {
@@ -48,8 +45,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void BodiedParameterCallFallsBackAndDynamicRendersParameters()
         {
-            // A bodied custom call keeps the existing dynamic-tier fallback: the generator emits no entry class for
-            // the template, and the dynamic tier renders it — parameters and all.
+            // Bodied custom call: generator emits no entry class; dynamic tier renders with parameters.
             var t = "@model(){{System.String}}@\\\n@grid(this, columns: 4){{body}}\n";
             var gen = DifferentialHarness.Generate(new[] { ("views/gridbodied.heddle", t) });
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
@@ -65,8 +61,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void EncodedGridCrossTierSelfEncodesIdentically()
         {
-            // [EncodeOutput] + [Prop] — the precompiled inner self-encodes because
-            // AllocateParameterizedExtension emits RenderType.Encode and BindExtension applies it to the inner.
+            // [EncodeOutput] + [Prop]: precompiled inner self-encodes via AllocateParameterizedExtension and BindExtension.
             var t = "@model(){{System.String}}@\\\n@encodedGrid(this, columns: 4)\n";
             var (pre, dyn) = DifferentialHarness.Render("views/encgrid.heddle", t, typeof(string), "a&b");
             Assert.Equal(dyn, pre);
@@ -77,13 +72,10 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void EncodedBareCrossTierAlignsPlainCustomRenderType()
         {
-            // The plain (no-parameter) custom path derives Encode from [EncodeOutput] instead of hard-coding Raw.
-            // Against the pre-fix hard-coded Raw the precompiled tier would emit the markup un-encoded while the
-            // dynamic tier encodes — this row would FAIL.
+            // Derives Encode from [EncodeOutput] instead of hard-coding Raw; pre-fix would fail (tier divergence).
             var t = "@model(){{System.String}}@\\\n@encodedBare(this)\n";
 
-            // Non-vacuity: the precompiled path must actually be taken — the generated source binds the site
-            // through PrecompiledRuntime.Bind with the DERIVED RenderType.Encode (no dynamic fallback).
+            // Non-vacuity: generated source binds via PrecompiledRuntime.Bind with derived RenderType.Encode (no fallback).
             var gen = DifferentialHarness.Generate(new[] { ("views/encbare.heddle", t) });
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
             var source = Assert.Single(gen.TemplateSources).Value;
@@ -99,8 +91,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void PlainCustomWithoutEncodeOutputStaysRaw()
         {
-            // The derivation touches only the [EncodeOutput] case: a plain custom extension without it still
-            // emits Raw, byte-identical to today.
+            // Derivation touches only [EncodeOutput]; plain custom without it stays Raw (byte-identical).
             var t = "@model(){{System.String}}@\\\n@yell(this)\n";
             var gen = DifferentialHarness.Generate(new[] { ("views/yellraw.heddle", t) });
             var source = Assert.Single(gen.TemplateSources).Value;
@@ -112,12 +103,8 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// The malformed-[Prop] sentence is now produced once, by <c>HeddleDiagnosticCatalog.PropFaults.Message</c>,
-        /// and quoted verbatim by both tiers — the build tier's <c>HED7017</c> and the dynamic tier's
-        /// <c>HED5007</c>/<c>HED5008</c>/<c>HED5009</c>/<c>HED5010</c>/<c>HED5015</c>. The sentences asserted here
-        /// are the shared ones verbatim; the cross-tier half (same fault, same order, same words, from the same
-        /// declaration list) is pinned by the two-driver <c>PropLayoutCore</c> lockstep tests, because these
-        /// malformed fixtures are deliberately not exported to the dynamic registry.
+        /// Malformed-[Prop] sentences produced once and quoted by both tiers: HED7017 (build), HED5007-5015 (dynamic).
+        /// Cross-tier testing pinned by PropLayoutCore lockstep.
         /// </summary>
         [Theory]
         [InlineData("malformedDup", "Prop 'a' is declared more than once on extension 'malformedDup'.")]
@@ -154,7 +141,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void NullableNarrowingAcceptsAndRendersIdentically()
         {
-            // int? <- int: reflection's underlying-value rule accepts (rule (A)) — the twin must NOT false-error.
+            // int? <- int: reflection's rule accepts; twin must NOT false-error.
             var t = "@model(){{System.String}}@\\\n@nullableNarrow(this)\n";
             var gen = DifferentialHarness.Generate(new[] { ("views/nullnarrow.heddle", t) });
             Assert.DoesNotContain(gen.Diagnostics, d => d.Id == "HED7017");
@@ -167,8 +154,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void NamedArgsOnParameterLessExtensionDegradeToDynamicHed5005()
         {
-            // The generator must NOT silently drop the named args (it degrades — no entry class), and the
-            // dynamic tier raises HED5005 for the same call — one verdict governs both tiers.
+            // Generator must NOT drop named args (degrades); dynamic tier raises HED5005 — one verdict governs both.
             var t = "@model(){{System.String}}@\\\n@yell(this, p: 1)\n";
             var gen = DifferentialHarness.Generate(new[] { ("views/yellnamed.heddle", t) });
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);

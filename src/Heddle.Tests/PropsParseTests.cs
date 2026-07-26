@@ -143,9 +143,7 @@ namespace Heddle.Tests
         [Fact]
         public void PP12_ThisAsFunctionArgument()
         {
-            // Grammar reality (like @(upper(Name))): a single-argument call parses as the nested-chain
-            // carrier — the function-argument binding happens at compile time. 'this' rides as
-            // the carrier's native parameter, which is the "this as a function argument" the corpus pins.
+            // A single-argument call parses as the nested-chain carrier; 'this' rides as the native parameter.
             var p = ParseCall("@(len(this))");
             Assert.NotNull(p.ChainParameter);
             var carrier = Assert.Single(p.ChainParameter);

@@ -33,10 +33,6 @@ namespace Heddle.Generator.IntegrationTests
             yield return new object[] { null };
         }
 
-        // ------------------------------------------------------------------------------------------------
-        // A bodied custom-branch trio is NOT precompiled (no manifest entry), draws NO HED7015,
-        // and the dynamic tier renders it with full role semantics (parity with the built-in @if/@elif/@else).
-        // ------------------------------------------------------------------------------------------------
         [Theory]
         [MemberData(nameof(CartModels))]
         public void BodiedCustomTrio_FallsBackWithoutHed7015_DynamicRendersWithRoleSemantics(Cart model)
@@ -48,16 +44,11 @@ namespace Heddle.Generator.IntegrationTests
 
             var gen = DifferentialHarness.Generate(new[] { ("views/custom-trio.heddle", custom) });
 
-            // No error diagnostics at all, and specifically no HED7015: overriding InitStart is a legitimate part of
-            // the role contract, not an authoring error.
             Assert.DoesNotContain(gen.Diagnostics, d => d.Id == "HED7015");
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
 
-            // Not precompiled: the bodied custom-branch call degrades the whole template to the dynamic tier, so the
-            // manifest carries no bound strategy for this key — the degrade is declared, not inferred.
             DifferentialHarness.ExpectDegrade(gen, "views/custom-trio.heddle");
 
-            // The dynamic tier renders with full role semantics — byte-identical to the built-in family.
             var builtin = "@model(){{" + CartType + "}}@\\\n" +
                           "@if(IsFeatured){{ <b>Featured</b> }}\n" +
                           "@elif(IsArchived){{ <i>Archived</i> }}\n" +
@@ -65,10 +56,6 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal(RenderDynamic(builtin, model), RenderDynamic(custom, model));
         }
 
-        // ------------------------------------------------------------------------------------------------
-        // A bodiless custom role opener (no hook override) binds via the generic custom path:
-        // it precompiles, records a manifest binding row, and renders byte-identically to the dynamic engine.
-        // ------------------------------------------------------------------------------------------------
         [Theory]
         [InlineData("wonder")]
         [InlineData("")]
@@ -87,35 +74,22 @@ namespace Heddle.Generator.IntegrationTests
             var gen = DifferentialHarness.Generate(new[] { ("views/flag.heddle", t) });
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
             Assert.NotNull(gen.ManifestSource);
-            // Bound (precompiled), not fallen back: an entry exists for the key and the binding row is present.
             Assert.Contains("key: \"views/flag.heddle\"", gen.ManifestSource);
             Assert.Contains(
                 "Heddle.Generator.IntegrationTests.Fixtures.FlagExtension, Heddle.Generator.IntegrationTests",
                 gen.ManifestSource);
         }
 
-        // ------------------------------------------------------------------------------------------------
-        // Strip parity: a precompiling custom-trio template (bodiless flag opener + gate
-        // continuation) has its inter-block text removed by the generator's role-based strip machine exactly as the
-        // runtime does, proven by byte-for-byte differential render.
-        // ------------------------------------------------------------------------------------------------
         [Theory]
         [MemberData(nameof(CartModels))]
         public void CustomTrioStripParity_GeneratorMatchesRuntime(Cart model)
         {
-            // " STRAY " sits between two blocks of one custom set; both tiers strip it (the emitter silently, the
-            // runtime with HED3001 — a compile warning that does not affect bytes).
             var t = "@model(){{" + CartType + "}}@\\\n@flag(IsFeatured) STRAY @gate(IsArchived)\n";
             var (pre, dyn) = DifferentialHarness.Render("views/custom-strip.heddle", t, typeof(Cart), model);
             Assert.Equal(dyn, pre);
-            Assert.DoesNotContain("STRAY", pre); // the set-internal gap really was stripped
+            Assert.DoesNotContain("STRAY", pre);
         }
 
-        // ------------------------------------------------------------------------------------------------
-        // The HostsParticipant fix: a precompiled body binding a bodiless zebra-style [ScopeChannel] extension
-        // provisions a locals frame (keyed off HasScopeChannel) so scope.Publish does not throw at render.
-        // Byte-identical to the dynamic engine.
-        // ------------------------------------------------------------------------------------------------
         [Fact]
         public void HostsParticipantFix_BodilessScopeChannelExtension_ProvisionsLocalsAndRenders()
         {

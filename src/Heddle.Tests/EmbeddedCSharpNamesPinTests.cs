@@ -8,14 +8,8 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The embedded-C# identifier contract. The dynamic tier declares <c>model</c>/<c>chained</c>/<c>root</c>
-    /// as the parameter list of the method it generates from two embedded <c>.tcs</c> resources; the emitter
-    /// declares the model one as a local and refuses expressions naming the other two. Because the <c>.tcs</c>
-    /// side is literal template text, the consts cannot flow into it — so this pin reads the resources and
-    /// asserts the spelling instead. Renaming a <c>.tcs</c> parameter silently changes what a pasted C# expression
-    /// means on the dynamic tier only; this test is the tripwire.
-    /// <para>Verified by mutation during review: renaming <c>chained</c> in either resource reds this test naming
-    /// the const that no longer matches.</para>
+    /// The embedded-C# identifiers (<c>model</c>/<c>chained</c>/<c>root</c>) must match across resources and
+    /// consts; renaming silently breaks expression semantics on the dynamic tier.
     /// </summary>
     public class EmbeddedCSharpNamesPinTests
     {
@@ -29,8 +23,6 @@ namespace Heddle.Tests
                 return reader.ReadToEnd();
         }
 
-        /// <summary>Extracts the ordered parameter identifiers of the single <c>(@(…Type) name, …)</c> signature in
-        /// the resource: every <c>@(SomethingType) identifier</c> pair, in source order.</summary>
         private static string[] SignatureParameterNames(string template)
         {
             var matches = Regex.Matches(template, @"@\((?<type>\w*Type)\)\s+(?<name>\w+)");
@@ -50,8 +42,7 @@ namespace Heddle.Tests
                 parameters);
         }
 
-        /// <summary>The consts themselves, pinned as literals: the test above compares the resources <em>to</em>
-        /// the consts, so without this row a rename on both sides would pass silently.</summary>
+        /// <summary>Without this literal pin, a rename on both resources and consts would pass silently.</summary>
         [Fact]
         public void TheSharedNamesAreTheDocumentedIdentifiers()
         {

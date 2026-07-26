@@ -52,7 +52,7 @@ namespace Heddle.Tests
 
             Assert.NotNull(textTemplate);
             Assert.NotNull(htmlTemplate);
-            Assert.NotSame(textTemplate, htmlTemplate); // distinct cache entries, no Dictionary.Add collision
+            Assert.NotSame(textTemplate, htmlTemplate);
 
             var model = Model();
             Assert.Contains("<script>alert(1)</script>", textTemplate.Generate(model));
@@ -108,7 +108,7 @@ namespace Heddle.Tests
             resolver.RemoveFromCache(first);
             var second = resolver.GetTemplate("profile-flagship.heddle", "", out _, Context(OutputProfile.Text), TemplatePathType.None);
 
-            Assert.NotSame(first, second); // re-created because the cached instance was evicted
+            Assert.NotSame(first, second);
         }
     }
 }

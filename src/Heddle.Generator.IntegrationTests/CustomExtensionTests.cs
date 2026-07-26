@@ -19,8 +19,7 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("<b>x</b>")]
         public void RawEngineExtensionBindsAndRendersIdentically(string value)
         {
-            // @raw is EmptyExtension ([ExtensionName("raw")]) — a plain engine extension the binder now binds. It is
-            // the trusted-value opt-out, so it must render unencoded under both profiles.
+            // @raw (EmptyExtension) is the trusted-value opt-out; must render unencoded under both profiles.
             var t = "@model(){{System.String}}@\\\n<x>@raw(this)</x>\n";
             var (pre, dyn) = DifferentialHarness.Render("views/raw.heddle", t, typeof(string), value);
             Assert.Equal(dyn, pre);
@@ -32,7 +31,7 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData(null)]
         public void CustomExtensionBindsAndRendersIdentically(string value)
         {
-            // @yell resolves to the test assembly's YellExtension (a plain custom extension), bound directly.
+            // @yell resolves to YellExtension from the test assembly.
             var t = "@model(){{System.String}}@\\\n<x>@yell(this)</x>\n";
             var (pre, dyn) = DifferentialHarness.Render("views/yell.heddle", t, typeof(string), value);
             Assert.Equal(dyn, pre);
@@ -52,7 +51,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void HookOverridingCustomExtensionReportsHed7015()
         {
-            // @hooked resolves to HookedExtension, which overrides InitStart — unevaluable at build time.
+            // HookedExtension overrides InitStart, unevaluable at build time.
             var t = "@model(){{System.String}}@\\\n@hooked(this)\n";
             var gen = DifferentialHarness.Generate(new[] { ("views/hooked.heddle", t) });
             var hed7015 = gen.Diagnostics.FirstOrDefault(d => d.Id == "HED7015");
@@ -66,7 +65,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void UnresolvableBodiedExtensionReportsHed7006()
         {
-            // A bodied call (extension-only shape) whose name resolves to no [ExtensionName] type anywhere.
+            // Bodied call shape with no matching [ExtensionName].
             var t = "@model(){{System.String}}@\\\n@nosuchext(this){{body}}\n";
             var gen = DifferentialHarness.Generate(new[] { ("views/x.heddle", t) });
             var hed7006 = gen.Diagnostics.FirstOrDefault(d => d.Id == "HED7006");

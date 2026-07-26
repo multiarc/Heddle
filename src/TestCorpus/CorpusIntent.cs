@@ -13,11 +13,8 @@ namespace Heddle.TestCorpus
         Precompiles,
 
         /// <summary>A HED7014 fallback-marker entry: present in the manifest with <c>strategy: null</c>.
-        /// <para><b>Zero entries carry this today, and that is a finding, not an omission.</b> Every non-precompiling
-        /// corpus entry is <i>Absent</i> from the manifest (a whole-template degrade), never a marker — so
-        /// <c>CorpusDifferentialTests</c>' <c>markers</c> set was computed and then never asserted, a dead bucket.
-        /// The tier is kept and now asserted <b>positively</b> (an empty set is still a pinned set), because a
-        /// template that starts emitting a marker must redden something.</para></summary>
+        /// Zero entries today—every non-precompiling entry is absent from the manifest, not a marker.
+        /// The tier is asserted positively (empty set is pinned) to catch if one appears.</summary>
         DegradesToMarker,
 
         /// <summary>No manifest entry at all — the whole template degraded to the dynamic tier, output-safely.</summary>
@@ -28,13 +25,8 @@ namespace Heddle.TestCorpus
         FrontEndError,
     }
 
-    /// <summary>How the <b>sweep</b> may exercise a corpus entry. Orthogonal to <see cref="CorpusTier"/> on purpose:
-    /// collapsing the two into one cross-product enum is where the "a tier stopped exercising this" signal gets lost.
-    /// <para>Consumed by the sweep for entries whose tier is <see cref="CorpusTier.Precompiles"/> — those are the only
-    /// entries the sweep sees. For every other entry the value is <b>forward-looking</b>: it records what the sweep
-    /// would do if that entry started precompiling, so the decision is already made and reviewed rather than
-    /// improvised at that moment. Nothing asserts it until then, and this comment is here so no reader mistakes a
-    /// declaration for an assertion.</para></summary>
+    /// <summary>How the sweep may exercise an entry. Orthogonal to <see cref="CorpusTier"/> on purpose
+    /// (prevents signal loss). For non-precompiling entries, forward-looking: what would happen if it precompiled.</summary>
     internal enum CorpusRender
     {
         /// <summary>Model-less and byte-compared against the dynamic reference inside the sweep. Verified: the entry
@@ -97,15 +89,8 @@ namespace Heddle.TestCorpus
     /// </summary>
     internal static class CorpusIntent
     {
-        /// <summary>
-        /// How many rows the table declares — the only literal count in the corpus gates, because every other pin is
-        /// set equality and needs no number.
-        /// <para>It is deliberate and it is not a floor: it makes "this stage added N entries" a one-line diff a
-        /// reviewer can check against the stage's stated scope, so a stage cannot smuggle in extra templates. A floor
-        /// has failed in this tree twice — <c>&gt;= 25</c> against an actual 40 let fifteen templates stop
-        /// precompiling in silence, and <c>&gt;= 40</c> against an actual 62 sat in the differential suite next to a
-        /// comment claiming "~45". Neither reddened anything.</para>
-        /// </summary>
+        /// <summary>Exact row count (not floor): makes "this stage added N entries" a reviewable one-line diff
+        /// the reviewer can check against scope, not a silent overshoot.</summary>
         public const int DeclaredRowCount = 62;
 
         private static Dictionary<string, CorpusIntentRow> _byName;

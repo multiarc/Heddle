@@ -7,19 +7,9 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Regression pins for the hidden-token offset defect in subtemplate bodies. A comment (any hidden token)
-    /// sitting inside a multi-line definition/override body used to corrupt the render:
-    /// <list type="bullet">
-    /// <item>Under a cross-file <c>@&lt;&lt;</c> import the importing document's skipped-token positions were carried
-    /// into the imported parse (wrong coordinate space) and a position that happened to land inside an imported
-    /// definition body's span was injected into it, shifting every output chain by one — stray <c>)</c> after calls,
-    /// <c>&lt;main&gt;</c> losing its <c>&gt;</c>.</item>
-    /// <item>Under <c>TrimDirectiveLines</c> the whole comment-remnant line inside a definition block was removed
-    /// without shrinking the enclosing block's length, so the block removal over-ran into the following static text
-    /// (silent truncation, or an out-of-range crash).</item>
-    /// </list>
-    /// Both are exercised here through the runtime backend; <see cref="Heddle.Generator.IntegrationTests"/>
-    /// re-renders the same cross-file fixture through the precompiled backend for the byte-identical differential.
+    /// Regression pins for hidden-token offset defects in subtemplate bodies: a comment inside a multi-line
+    /// definition/override body corrupted render position tracking across imports and trimmed-directive scopes.
+    /// Exercised here via runtime backend and mirrored in the precompiled backend for byte-identical parity.
     /// </summary>
     public class MultilineOverrideOffsetRegressionTests
     {

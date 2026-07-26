@@ -1,13 +1,6 @@
 namespace Heddle.Precompiled
 {
-    /// <summary>One called function name and its actual build-time binding target: the discovered exporting
-    /// container as AQN sans version (e.g.
-    /// <c>"Acme.Web.TemplateFunctions, Acme.Web"</c>), or the shim's forwarding-target type
-    /// (<c>"Heddle.Runtime.Expressions.BuiltInFunctions, Heddle"</c>) for shim-bound defaults. One row per distinct
-    /// <c>(name, target)</c> pair the generated code calls; a merged overload set spanning targets carries one row
-    /// per target. <see cref="OverloadCount"/> is the merged table's per-target overload count for the name at build
-    /// (0 on a null-target row). A null <see cref="TargetTypeName"/> marks a name resolvable from neither the default
-    /// table nor any referenced export (delegate-only remainder) and appears only on fallback-marker entries.</summary>
+    /// <summary>A function name and its build-time binding target (AQN sans version, or null if unresolvable).</summary>
     public readonly struct PrecompiledFunctionBinding
     {
         public PrecompiledFunctionBinding(string name, string targetTypeName, int overloadCount)
@@ -19,7 +12,7 @@ namespace Heddle.Precompiled
 
         public string Name { get; }
 
-        /// <summary>The bound target as AQN sans version, or <c>null</c> for the unresolvable-at-build remainder.</summary>
+        /// <summary>Bound target as AQN sans version, or <c>null</c> if unresolvable at build.</summary>
         public string TargetTypeName { get; }
 
         public int OverloadCount { get; }

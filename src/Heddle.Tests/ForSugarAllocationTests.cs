@@ -44,7 +44,6 @@ namespace Heddle.Tests
                 "@using(){{Heddle.Tests.Data}}@using(){{Heddle.Models}}@for(@new Heddle.Models.Range(0, model.Count)){{<i>@out()</i>}}",
                 typeof(ErgoForData), allowCSharp: true);
 
-            // Byte-identical output: the int arm behaves exactly as Heddle.Models.Range(0, n).
             Assert.Equal(modelFor.Generate(model), intFor.Generate(model));
 
             for (int i = 0; i < 30; i++) { intFor.Generate(model); modelFor.Generate(model); } // warm up (JIT/tiering)
@@ -52,8 +51,7 @@ namespace Heddle.Tests
             long intAlloc = Measure(() => { for (int i = 0; i < 200; i++) intFor.Generate(model); });
             long modelAlloc = Measure(() => { for (int i = 0; i < 200; i++) modelFor.Generate(model); });
 
-            // The int path shares the Range path's loop body exactly and additionally avoids the per-render
-            // Heddle.Models.Range box — so it must never allocate more. A small tolerance absorbs GC noise.
+            // Int path avoids Range boxing on each render; tolerance absorbs GC noise.
             Assert.True(intAlloc <= modelAlloc + 4096,
                 $"int-@for allocated {intAlloc} B, Range-@for allocated {modelAlloc} B — the int normalization must not increase allocation.");
         }

@@ -11,11 +11,9 @@ using Heddle.TestCorpus;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Success-criteria goldens: the flagship set renders exactly one branch per condition state
-    /// (criterion 1) with header/footer byte-identical; the interleaved variant renders byte-identically to
-    /// the flagship with exactly one HED3001 per stripped gap (criterion 1, second half); per-iteration
-    /// isolation inside <c>@list</c> (criterion 3); nested-set independence (criterion 4). Line endings
-    /// normalized per the testing standards.
+    /// Flagship set renders exactly one branch per condition state with byte-identical header/footer;
+    /// interleaved variant renders byte-identically with one HED3001 per stripped gap; tests per-iteration
+    /// isolation inside <c>@list</c> and nested-set independence. Line endings normalized per testing standards.
     /// </summary>
     public class BranchingGoldenTests
     {
@@ -70,7 +68,6 @@ namespace Heddle.Tests
             var stripped = t.Context.CompileWarnings.Where(w => w.DiagnosticId == HeddleDiagnosticIds.BranchTextStripped).ToList();
             Assert.Equal(2, stripped.Count);
 
-            // Byte-identical to the flagship goldens.
             AssertGolden("branching-flagship-featured", t.Generate(new FlagshipModel { IsFeatured = true }));
             AssertGolden("branching-flagship-archived", t.Generate(new FlagshipModel { IsFeatured = false, IsArchived = true }));
             AssertGolden("branching-flagship-regular", t.Generate(new FlagshipModel { IsFeatured = false, IsArchived = false }));
@@ -84,10 +81,10 @@ namespace Heddle.Tests
             {
                 Items = new List<Item>
                 {
-                    new Item { IsFeatured = true },                        // F
-                    new Item { IsFeatured = false, IsArchived = true },    // A
-                    new Item { IsFeatured = false, IsArchived = false },   // R
-                    new Item { IsFeatured = false, IsArchived = true },    // A
+                    new Item { IsFeatured = true },
+                    new Item { IsFeatured = false, IsArchived = true },
+                    new Item { IsFeatured = false, IsArchived = false },
+                    new Item { IsFeatured = false, IsArchived = true },
                 }
             };
             AssertGolden("branching-list-alternating", t.Generate(model));
@@ -99,8 +96,7 @@ namespace Heddle.Tests
         [Fact]
         public void OutProjectionSetPersistsAcrossOutCallerContentIndependent()
         {
-            // The def-body @else (Z) binds to the def-body set state that persisted across the non-branch @out() block;
-            // the caller-content set (CIN/COUT) is fully independent.
+            // def-body state persists across @out(); caller-content is independent.
             var t = Compile("branching-out-projection", typeof(OutModel));
             Assert.Equal("XCIN", t.Generate(new OutModel { A = true, B = true }));   // A satisfied -> X + caller CIN; def @else silent
             Assert.Equal("COUTZ", t.Generate(new OutModel { A = false, B = false })); // caller COUT + def @else Z
@@ -110,8 +106,7 @@ namespace Heddle.Tests
         [Fact]
         public void PartialGetsFreshRootFrameParentSetBindsAcrossIt()
         {
-            // The @partial is a non-branch (Other) block — the parent set binds across it (P-ELSE),
-            // while the child renders by its own condition under a fresh root frame (C-IF).
+            // @partial is non-branch: parent set binds across it; child renders under fresh root frame.
             HeddleTemplate.Configure(typeof(BranchingGoldenTests).GetTypeInfo().Assembly);
             BranchTestExtensions.Register();
             var options = new TemplateOptions("branching-partial-parent")

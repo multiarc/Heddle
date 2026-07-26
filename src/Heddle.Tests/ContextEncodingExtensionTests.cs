@@ -31,8 +31,7 @@ namespace Heddle.Tests
             return t.Generate(model);
         }
 
-        // A dynamic model reaches the runtime stringify path: like @string, a statically non-string parameter is a
-        // compile-time type error (HED0004); "any object" input flows through the dynamic tier.
+        /// <summary>Dynamic models flow through the dynamic tier (unlike static types that error at compile time).</summary>
         private static string RenderDynamic(string template, object model, OutputProfile profile = OutputProfile.Html)
         {
             HeddleTemplate.Configure(typeof(ContextEncodingExtensionTests).GetTypeInfo().Assembly);

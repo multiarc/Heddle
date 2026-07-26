@@ -20,7 +20,6 @@ namespace Heddle.Precompiled
         internal static PrecompiledFallbackEvent? Validate(PrecompiledTemplateInfo entry, TemplateOptions options,
             Func<PrecompiledExtensionBinding, Type, bool> bindingResolver)
         {
-            // Step 0 — marker short-circuit.
             if (!entry.IsPrecompiled)
             {
                 var name = entry.FunctionBindings.FirstOrDefault(r => r.TargetTypeName == null).Name ?? "?";
@@ -28,22 +27,18 @@ namespace Heddle.Precompiled
                     $"Function '{name}': not precompiled (no default or exported binding; build warning HED7014)");
             }
 
-            // Step 1 — options fingerprint.
             var optionsFailure = CheckOptions(entry, options);
             if (optionsFailure != null)
                 return optionsFailure;
 
-            // Step 2 — extension bindings vs the live registry.
             var extensionFailure = CheckExtensions(entry, bindingResolver);
             if (extensionFailure != null)
                 return extensionFailure;
 
-            // Step 3 — function bindings vs the request's effective registry.
             var functionFailure = CheckFunctions(entry, options);
             if (functionFailure != null)
                 return functionFailure;
 
-            // Step 4 — staleness (only under EnableFileChangeCheck).
             if (options.EnableFileChangeCheck)
             {
                 var staleFailure = CheckStaleness(entry, options);
@@ -85,11 +80,8 @@ namespace Heddle.Precompiled
                     return Fail(entry.Key, PrecompiledFallbackReason.ExtensionBindingMismatch,
                         $"Extension '{binding.Name}': manifest={binding.ExtensionTypeName} live={AqnSansVersion(liveType)}");
 
-                // The identity check above proves the manifest and the live registry name the same
-                // type, not that the type still lays its [Prop] slots out the same way. An extension package that
-                // gains or re-orders a slot keeps its AQN, so without this row the render writes values into the
-                // wrong slots. Vacuous when the fingerprint is absent, which is a parameter-less extension: the row
-                // is omitted entirely rather than emitted empty, so nothing about such a binding's shape changed.
+                // Identity match (same AQN) does not guarantee [Prop] slots remain unchanged; extension packages
+                // can gain/reorder slots while keeping AQN, so validate the fingerprint.
                 if (!string.IsNullOrEmpty(binding.PropLayoutFingerprint))
                 {
                     var liveFingerprint = PropLayout.Fingerprint(liveType);
@@ -120,8 +112,7 @@ namespace Heddle.Precompiled
 
             if (registry == null)
             {
-                // The request compiles against the frozen FunctionRegistry.Default — it cannot have diverged from
-                // the default rows, but it equally cannot contain an export.
+                // Request compiles against frozen FunctionRegistry.Default — must not contain exports.
                 if (allBuiltIn)
                     return null;
                 var exportRow = rows.First(r => r.TargetTypeName != DefaultFunctionTable.ShimTargetTypeName &&
@@ -130,7 +121,6 @@ namespace Heddle.Precompiled
                     $"Function '{exportRow.Name}': manifest={exportRow.TargetTypeName} live=<missing>");
             }
 
-            // Distinct called names, in manifest (row) order.
             var names = new List<string>();
             foreach (var r in rows)
                 if (!names.Contains(r.Name))

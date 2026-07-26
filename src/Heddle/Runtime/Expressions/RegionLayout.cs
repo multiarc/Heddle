@@ -17,7 +17,7 @@ namespace Heddle.Runtime.Expressions
         internal bool IsPublic;            // <:name> => true; a component's private inner <name> => false
         internal ExType ModelType;         // resolved <:name :: Type>; null when unresolvable/abstract
         internal string ModelTypeName;     // the unresolved name, for diagnostics
-        internal BlockPosition Position;   // the declaration site
+        internal BlockPosition Position;
         internal DefinitionItem Definition;
     }
 

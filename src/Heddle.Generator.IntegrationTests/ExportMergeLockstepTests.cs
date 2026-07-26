@@ -9,13 +9,8 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// The cross-tier gate on export bookkeeping. The gauntlet compares each manifest <c>FunctionBindings</c>
-    /// row's overload count against the live registry <b>exactly</b>, failing on both <c>&gt;</c> and <c>&lt;</c>,
-    /// so "the generator counted what the runtime registers" is the property that decides whether a template
-    /// touching exports ever stays precompiled.
-    /// <para><c>shout</c> is exported by two containers here — <c>TemplateFunctions.Shout(string)</c> and
-    /// <c>MoreTemplateFunctions.Shout(int)</c> — which is the merge case first-container-wins used to turn into a
-    /// permanent <c>FunctionBindingMismatch</c>.</para>
+    /// The cross-tier gate on export bookkeeping: manifest <c>FunctionBindings</c> row counts must match the live registry exactly.
+    /// <c>shout</c> merged from two containers guards the first-container-wins fix for what used to be permanent <c>FunctionBindingMismatch</c>.
     /// </summary>
     public class ExportMergeLockstepTests
     {
@@ -30,7 +25,7 @@ namespace Heddle.Generator.IntegrationTests
             return options;
         }
 
-        /// <summary>The live registry's (target AQN → overload count) map for one function name.</summary>
+        /// <summary>Live registry overload counts by target AQN for one function name.</summary>
         private static Dictionary<string, int> LiveCounts(string functionName)
         {
             var registry = OptionsWithExports().Functions;
@@ -58,7 +53,6 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void PropertyAccessorsAreNotFunctionsOnEitherTier()
         {
-            // MoreTemplateFunctions.Version is a property; neither tier may count its accessor.
             Assert.Empty(LiveCounts("version"));
             Assert.Empty(LiveCounts("get_version"));
         }
@@ -66,9 +60,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void MergedExportCallRendersIdenticallyOnBothTiers()
         {
-            // shout(string) — the overload the shared ranker must pick out of the merged set of two. The argument
-            // is a typed model member: with two candidates the ranker governs, and an argument it cannot type
-            // degrades (degrade-on-doubt).
+            // Ranker must pick shout(string) from the merged set of two when argument is a typed model member.
             const string key = "views/merged-export.heddle";
             const string content = "@model(){{" + ProductType + "}}@\\\n<span>@(shout(Name))</span>\n";
 
@@ -88,8 +80,7 @@ namespace Heddle.Generator.IntegrationTests
             DifferentialHarness.ExpectPrecompiled(gen, key);
 
             var manifest = gen.ManifestSource ?? string.Empty;
-            // Both containers appear as recorded targets for the name; the gauntlet rejects a live target absent
-            // from that set, which is exactly what first-container-wins produced.
+            // Manifest must record both containers; gauntlet rejects a live target absent from the set.
             Assert.Contains("Heddle.Generator.IntegrationTests.Fixtures.TemplateFunctions, " +
                             "Heddle.Generator.IntegrationTests", manifest);
             Assert.Contains("Heddle.Generator.IntegrationTests.Fixtures.MoreTemplateFunctions, " +

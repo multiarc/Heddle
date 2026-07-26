@@ -133,8 +133,6 @@ namespace Heddle.Runtime.Expressions
             return null;
         }
 
-        #region Literals & paths
-
         private Expression VisitLiteral(LiteralNode literal)
         {
             if (literal.LiteralError != null)
@@ -318,10 +316,6 @@ namespace Heddle.Runtime.Expressions
             return Fail(index.Position, HeddleDiagnosticIds.IndexerNotFound,
                 $"Type {FriendlyName(targetType)} has no accessible indexer that takes ({argTypes}).");
         }
-
-        #endregion
-
-        #region Function calls
 
         private Expression VisitCall(CallNode call)
         {
@@ -527,10 +521,6 @@ namespace Heddle.Runtime.Expressions
             return max;
         }
 
-        #endregion
-
-        #region Unary
-
         private Expression VisitUnary(UnaryNode node)
         {
             var operand = Visit(node.Operand);
@@ -597,10 +587,6 @@ namespace Heddle.Runtime.Expressions
             return Fail(node.Position, HeddleDiagnosticIds.UnaryOperatorNotDefined,
                 $"Operator '{op}' is not defined for operand type {FriendlyName(type)}.");
         }
-
-        #endregion
-
-        #region Binary
 
         private Expression VisitBinary(BinaryNode node)
         {
@@ -914,10 +900,6 @@ namespace Heddle.Runtime.Expressions
             }
         }
 
-        #endregion
-
-        #region Ternary
-
         private Expression VisitTernary(TernaryNode node)
         {
             var condition = Visit(node.Condition);
@@ -1007,10 +989,6 @@ namespace Heddle.Runtime.Expressions
             return false;
         }
 
-        #endregion
-
-        #region Helpers
-
         private static bool IsNullLiteral(Expression expression)
         {
             return expression is ConstantExpression constant && constant.Value == null;
@@ -1098,7 +1076,5 @@ namespace Heddle.Runtime.Expressions
                 return FriendlyName(underlying) + "?";
             return type.Name;
         }
-
-        #endregion
     }
 }

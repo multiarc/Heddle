@@ -22,9 +22,7 @@ namespace Heddle.Runtime
 {
     public class CSharpContext
     {
-        // The only Microsoft.CodeAnalysis-typed static of this class lives in a nested holder so it is
-        // reached (and its type-initializer run) only from the C#-tier body behind the feature switch — a trimmed
-        // publish with the switch off drops the holder with the rest of the Roslyn graph.
+        // Roslyn statics live in a nested holder so they initialize only when C# tier is enabled and can be trimmed when disabled.
         private static class RoslynDisplay
         {
             internal static readonly SymbolDisplayFormat Format =
@@ -134,10 +132,7 @@ namespace Heddle.Runtime
                     $"[{expressionOptions.Position}]<{expressionOptions.ExtensionName}> Expression cannot be null or empty");
             }
 
-            // The parse-time Roslyn entry. When the C#-tier feature switch is trimmed off, this is a
-            // constant-true early return, so the Roslyn body below (and the ITypeSymbol-typed ResolveTypeReference)
-            // become dead code the linker removes. The method still records the C# expression; the single HED9001 is
-            // surfaced later by ContextCompilation.Compile. Behavior is identical when the switch is left on (default).
+            // When feature switch is trimmed off, this becomes constant-true and Roslyn code below becomes dead code removed by linker.
             if (!HeddleFeatures.CSharpTierEnabled)
             {
                 objectType = ExType.Dynamic;
@@ -185,11 +180,7 @@ namespace Heddle.Runtime
                         typeof(object));
                 }
 
-                // The expression we evaluate is the body of the generated PreProcessData wrapper:
-                //   return <Expression>;
-                // A statement-bodied lambda (or any nested 'return') in <Expression> adds further
-                // ReturnStatementSyntax nodes, so we must select the wrapper's own return - the one whose
-                // immediate parent is the method body block - rather than assuming a single return exists.
+                // Select the wrapper's return (parent is method body block), not any return in the expression itself.
                 var syntax = tree.GetRoot().DescendantNodes()
                     .OfType<ReturnStatementSyntax>()
                     .First(r => r.Parent is BlockSyntax block

@@ -1,18 +1,13 @@
 using System.Globalization;
 
-// Declaratively export the host function container. The generator discovers this over the
-// compilation's reference to this test assembly and binds calls directly to the container.
+// Export host function containers for generator discovery.
 [assembly: Heddle.Attributes.ExportFunctions(typeof(Heddle.Generator.IntegrationTests.Fixtures.TemplateFunctions))]
-// A second container exporting one of the same names, so the merge path is differential-gated.
-// It deliberately carries only ELIGIBLE members: an ineligible one would make the runtime's RegisterFrom throw,
-// which is precisely why the generator now raises HED7021 for it (see ExportDiscoveryTests) rather than quietly
-// excluding it — a container the host cannot register is a build error, not a silent count adjustment.
+// Fixture for merge-path testing; contains only eligible members to validate build-time enforcement.
 [assembly: Heddle.Attributes.ExportFunctions(typeof(Heddle.Generator.IntegrationTests.Fixtures.MoreTemplateFunctions))]
 
 namespace Heddle.Generator.IntegrationTests.Fixtures
 {
-    /// <summary>A host function container exported for the export-function differential. Function
-    /// names are the method names lowercased: <c>titlecase</c>, <c>shout</c>.</summary>
+    /// <summary>Exported function container; function names are method names lowercased.</summary>
     public static class TemplateFunctions
     {
         public static string TitleCase(string value)
@@ -28,9 +23,7 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
 
 namespace Heddle.Generator.IntegrationTests.Fixtures
 {
-    /// <summary>The eligibility/merge fixture container. <c>Shout(int)</c> merges a second overload onto the name
-    /// <c>TemplateFunctions.Shout(string)</c> already claims; the remaining members are exactly the shapes the
-    /// runtime refuses to register, so <b>neither</b> tier may count them.</summary>
+    /// <summary>Fixture for merge-path testing; defines ineligible shapes the runtime refuses to register.</summary>
     public static class MoreTemplateFunctions
     {
         /// <summary>A merged overload of the name <c>TemplateFunctions</c> also exports.</summary>

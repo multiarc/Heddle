@@ -40,8 +40,7 @@ namespace Heddle.Generator.Tests
             return refs;
         }
 
-        // A continuation and a terminal that FAIL the R11 contract (no [ScopeChannel]); plus one compliant
-        // continuation, to prove the drift set is exactly the offenders.
+        // Two drift cases (no [ScopeChannel]) and one compliant continuation to establish the exact drift set.
         private static readonly string DriftSource = GeneratorHarness.WithAllExtensionsExported(@"
 using Heddle.Attributes;
 using Heddle.Core;
@@ -57,7 +56,7 @@ namespace DriftBranch
         public override void RenderData(in Scope scope) { }
     }
 
-    // Continuation WITHOUT [ScopeChannel] — drift (HED7016).
+    // Drift: Continuation missing [ScopeChannel].
     [ExtensionName(""driftbetween"")]
     [BranchRole(BranchRole.Continuation)]
     public class DriftBetweenExtension : AbstractExtension
@@ -66,7 +65,7 @@ namespace DriftBranch
         public override void RenderData(in Scope scope) { }
     }
 
-    // Terminal WITHOUT [ScopeChannel] — drift (HED7016).
+    // Drift: Terminal missing [ScopeChannel].
     [ExtensionName(""driftfinish"")]
     [BranchRole(BranchRole.Terminal)]
     public class DriftFinishExtension : AbstractExtension
@@ -75,7 +74,7 @@ namespace DriftBranch
         public override void RenderData(in Scope scope) { }
     }
 
-    // Compliant continuation — NOT drift.
+    // Compliant: has [ScopeChannel].
     [ExtensionName(""okbetween"")]
     [ScopeChannel]
     [BranchRole(BranchRole.Continuation)]

@@ -43,14 +43,12 @@ namespace Heddle.Tests
 
         private static readonly M Model = new M();
 
-        // The expected values below are deliberately C#-computed, including comparisons the C# compiler
-        // constant-folds (a nullable compared to null literal) — that folded result IS the reference value.
+        // Expected values are C#-computed including constant-folded comparisons.
 #pragma warning disable CS0464, CS0472, CS0458
         public static IEnumerable<object[]> Rows()
         {
             object[] R(string template, object expected) => new[] { template, expected };
 
-            // Numeric promotion pairs.
             yield return R("@(I + L)", 3 + 10L);
             yield return R("@(Dec * I)", 2.5m * 3);
             yield return R("@(D + I)", 2.5 + 3);
@@ -67,11 +65,9 @@ namespace Heddle.Tests
             yield return R("@(Flags | 1)", 6 | 1);
             yield return R("@(I ^ 1)", 3 ^ 1);
             yield return R("@(~I)", ~3);
-
             yield return R("@(EnumA & EnumB)", (Color.Red | Color.Green) & Color.Green);
             yield return R("@(EnumA | EnumB)", (Color.Red | Color.Green) | Color.Green);
             yield return R("@(~EnumA)", ~(Color.Red | Color.Green));
-
             yield return R("@(I < L)", 3 < 10L);
             yield return R("@(I == 3)", 3 == 3);
             yield return R("@(I != 3)", 3 != 3);
@@ -80,7 +76,6 @@ namespace Heddle.Tests
             yield return R("@(NIv == null)", (int?)7 == null);
             yield return R("@(Date < Date2)", new DateTime(2020, 1, 1) < new DateTime(2020, 1, 2));
             yield return R("@(Obj == S)", Equals((object)"ab", (object)"ab"));
-
             yield return R("@(B && true)", true && true);
             yield return R("@(B || false)", true || false);
             yield return R("@(!B)", !true);
@@ -90,7 +85,6 @@ namespace Heddle.Tests
             yield return R("@(S + I)", "ab" + 3);
             yield return R("@(S + S)", "ab" + "ab");
             yield return R("@(C + 1)", 'A' + 1);         // char + int => int
-
             yield return R("@(NI + 1)", (int?)null + 1);  // lifted -> null
             yield return R("@(NI ?? 0)", (int?)null ?? 0);
             yield return R("@(NIv ?? 0)", (int?)7 ?? 0);

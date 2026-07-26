@@ -89,12 +89,9 @@ namespace Heddle.LanguageServices
                 diagnostics, definitions, imports, scopes, csharpUsed);
         }
 
-        /// <summary>Projects the workspace options onto the engine's own options object.
-        /// <b>Every</b> analysis-applicable option is carried across — the editor compiles a
-        /// document under the same option set the build of record uses, and the fallbacks when no workspace
-        /// options exist are the shared <see cref="HeddleBuildOptions"/> defaults rather than a second opinion
-        /// about what the defaults are. <c>ProvideLanguageFeatures</c> is hardwired: it <i>is</i> the analyzer's
-        /// operating mode, not a workspace choice.</summary>
+        /// <summary>Projects workspace options to engine options. Every analysis-applicable option is carried; the
+        /// editor compiles under the same options as the build. <c>ProvideLanguageFeatures</c> is hardwired as
+        /// the analyzer's operating mode, not a workspace choice.</summary>
         private TemplateOptions BuildTemplateOptions(Heddle.Runtime.Expressions.FunctionRegistry functions)
         {
             return new TemplateOptions
@@ -112,11 +109,8 @@ namespace Heddle.LanguageServices
             };
         }
 
-        /// <summary>Drains through the shared projection and layers this host's one policy on top:
-        /// an entry stamped with import provenance is re-anchored to a zero-width range at the import site and
-        /// its message prefixed with the rendered origin path. Which channels are drained, severity by subtype,
-        /// id and fix passthrough and the reference dedupe are no longer this file's rules — they are the rules,
-        /// stated once, that the build tier and <c>HeddleCompileResult</c> read too.</summary>
+        /// <summary>Uses shared projection, then re-anchors import-origin entries to zero-width at the import site
+        /// with path-prefixed messages. Channel selection and deduplication follow shared rules with build tier.</summary>
         private IReadOnlyList<HeddleDiagnostic> ProjectDiagnostics(CompileContext compileContext,
             ParseContext parseContext)
         {
@@ -270,14 +264,10 @@ namespace Heddle.LanguageServices
 
         /// <summary>
         /// The display spelling of an import/partial origin: the template key it would have under
-        /// <paramref name="root"/>, or the absolute path in <c>/</c> form when it has none. The relativization
-        /// itself is <see cref="TemplateKey.TryMakeRelative"/>, the shared rule with its two-case-domain policy,
-        /// so this is a hand-rolled prefix strip deleted rather than maintained.
-        /// <para>Adopting it fixes a real defect the strip carried: a bare <c>StartsWith(rootFull)</c> matched a
-        /// <i>sibling</i> directory whose name began with the root's (<c>/root</c> vs <c>/rootx/a</c>) and rendered
-        /// it as the relative key <c>x/a</c>. The shared rule requires a separator after the root.</para>
-        /// <para>The LSP-only part that stays: a path outside the root is still shown absolute with <c>\</c>
-        /// normalized to <c>/</c>, because an editor must display <i>something</i> for a file it cannot key.</para>
+        /// <paramref name="root"/>, or the absolute path in <c>/</c> form when it has none. Uses
+        /// <see cref="TemplateKey.TryMakeRelative"/> to avoid a prefix-strip bug where <c>StartsWith</c> matched
+        /// sibling directories (<c>/root</c> vs <c>/rootx/a</c>). Paths outside root show absolute with backslashes
+        /// normalized to forward slashes.
         /// </summary>
         internal static string RenderPath(string path, string root)
         {

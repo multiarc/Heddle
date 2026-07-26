@@ -154,12 +154,11 @@ namespace Heddle.LanguageServices
         {
             lock (_writerGate)
             {
-                _analyses.Clear();                                  // drop every type-derived cache
-                _modelManager.Unload();                             // unregister + Unload
+                _analyses.Clear();
+                _modelManager.Unload();
                 if (_options.AssemblyPaths != null && _options.AssemblyPaths.Count > 0)
-                    _modelManager.Load(_options.AssemblyPaths);     // load the new generation
-                // The extension registry is process-append-only and untouched; the function registry re-applies
-                // from the retained scan handles without rescanning.
+                    _modelManager.Load(_options.AssemblyPaths);
+                // Extension registry is process-append-only; function registry re-applies from retained handles.
                 _functions = FunctionExportRegistrar.BuildRegistry(_retainedHandles, Log);
             }
         }

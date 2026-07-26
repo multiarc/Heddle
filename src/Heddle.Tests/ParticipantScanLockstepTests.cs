@@ -14,17 +14,10 @@ using Heddle.TestCorpus;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The <c>[ScopeChannel]</c> participant scan.
-    /// <para>Two things are pinned here. First, the <b>characterization</b>: <see cref="LegacyLeftmostScan"/> is a
-    /// verbatim transcription of the generator's pre-phase probe (<c>TemplateEmitter.ScanHostsParticipant</c>
-    /// and the twin in <c>PopulateBody</c>, both of which looked at <c>chain.Chain[0]</c> only). It is kept so the
-    /// divergence set the fix closes is stated as data rather than recalled from a plan.</para>
-    /// <para>Second, the <b>lockstep</b>: the shared parse-level scan must agree with the runtime's compiled-tree
-    /// <c>RuntimeDocument.NeedsLocals</c>, which walks every item of a chain and recurses into nested chain
-    /// parameters. The two genuinely see different trees — the runtime's runs post-compile over extension
-    /// <em>instances</em>, where carrier wrap and definition shadowing are already resolved — so the parse-level
-    /// scan is allowed to be a superset (an unread frame is behavior-invisible), never a subset. Both directions
-    /// are asserted, and the one documented over-provision has its own named row.</para>
+    /// The <c>[ScopeChannel]</c> participant scan. Two things: the characterization (<see cref="LegacyLeftmostScan"/>
+    /// transcribes the legacy probe to show the divergence as data), and the lockstep that the parse-level scan must
+    /// agree with the runtime's <c>RuntimeDocument.NeedsLocals</c>. The parse-level scan may over-provision
+    /// (behavior-invisible) but never under-provision.
     /// </summary>
     public class ParticipantScanLockstepTests
     {
@@ -144,27 +137,19 @@ namespace Heddle.Tests
             return document != null && document.NeedsLocals;
         }
 
-        // -------------------------------------------------------------------------------------------------------
-        // The whole-corpus sweep the test matrix promised ("for every compiled fixture in the differential
-        // corpus"). What stood here before was the six hand-picked rows above — a good divergence-set statement,
-        // but not the sweep, and the plan's own risk table names "the lockstep corpus misses a shape" as the risk
-        // this is the mitigation for. The corpus is src/Heddle.Tests/TestTemplate/**, the same set
-        // CorpusDifferentialTests classifies.
-        // -------------------------------------------------------------------------------------------------------
+        // The whole-corpus sweep ensures shapes the hand-picked rows miss are caught.
+        // The corpus is src/Heddle.Tests/TestTemplate/**, the same set CorpusDifferentialTests classifies.
 
-        /// <summary>Corpus templates whose compiled tree provisions a frame — the load-bearing rows of the sweep.
-        /// Pinned exactly, not as a floor: a corpus that stopped exercising participants would make the sweep
-        /// vacuous while still passing, which is the failure mode an audit found in two other gates.</summary>
+        /// <summary>Corpus templates whose compiled tree provisions a frame. Pinned exactly (not a floor) to
+        /// prevent the sweep from becoming vacuous silently.</summary>
         private static readonly string[] CorpusTemplatesNeedingLocals =
         {
             "branch-import-else.heddle", "branching-flagship.heddle", "branching-interleaved.heddle",
             "branching-nested.heddle", "branching-partial-child.heddle", "branching-partial-parent.heddle"
         };
 
-        /// <summary>Corpus templates where the parse-level scan legitimately over-provisions relative to the
-        /// compiled tree (the ruling's shape — a definition shadowing a <c>[ScopeChannel]</c> name). Empty
-        /// today: no corpus fixture has that shape, so agreement is exact and any new inexactness is a conscious
-        /// edit to this list rather than a silent widening.</summary>
+        /// <summary>Corpus templates where the parse-level scan legitimately over-provisions (definition shadowing
+        /// a <c>[ScopeChannel]</c> name). Empty today; any new entry requires conscious edit, not silent widening.</summary>
         private static readonly string[] CorpusOverProvisionAllowList = new string[0];
 
         [Fact]
@@ -174,11 +159,8 @@ namespace Heddle.Tests
 
             var files = Directory.GetFiles(dir, "*.heddle")
                 .OrderBy(p => p, StringComparer.Ordinal).ToList();
-            // SET equality against the declared intent table, not the `Assert.Equal(62, …)` count that
-            // stood here. The count was the right instinct and the wrong instrument — it goes green again the moment
-            // somebody edits the digit, and it never names the file that left. This sweep going vacuous while still
-            // passing is the exact failure mode its own comment says it exists to prevent, so the pin has to be the
-            // kind that cannot be satisfied without naming what changed.
+            // SetEquals prevents the sweep from silently becoming vacuous: it pins against named files, not an
+            // editable count.
             var observed = files.Select(Path.GetFileName).ToList();
             var declared = CorpusIntent.DeclaredNames();
             Assert.True(new HashSet<string>(observed, StringComparer.Ordinal).SetEquals(declared),
@@ -200,8 +182,6 @@ namespace Heddle.Tests
                 var parse = DocumentParser.Parse(text, settings, out var clean);
                 var document = HeddleCompiler.Compile(clean, compileScope, parse, null);
                 compileScope.CompileContext.Compile();
-                // Every corpus template compiles as a dynamic document today (the *-broken fixtures carry
-                // front-end diagnostics, not compile failures), so there is no "unprobeable" escape hatch here.
                 Assert.NotNull(document);
 
                 var runtime = document.NeedsLocals;

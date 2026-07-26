@@ -5,12 +5,8 @@ using Xunit;
 
 namespace Heddle.Tests
 {
-    /// <summary>
-    /// The two encoding-deciding rule files. These carry the same blast radius
-    /// as an XSS regression: if the build tier and the run tier ever disagree about which carrier a bodiless
-    /// <c>@(…)</c> binds, or about what <c>[EncodeOutput]</c> means, one tier emits unencoded output. The rules are
-    /// now one function each; these theories enumerate them exhaustively so a unilateral edit is a red test.
-    /// </summary>
+    /// <summary>Encoding-deciding rule functions guarding against build/run tier divergence on carrier binding and
+    /// [EncodeOutput] semantics; theories enumerate all cases so unilateral edits fail.</summary>
     public class OutputProfileAndRenderTypeRuleTests
     {
         [Theory]
@@ -50,8 +46,7 @@ namespace Heddle.Tests
                 Assert.Equal(mode, parsed);
         }
 
-        /// <summary>The (profile × hasBody) matrix. A bodied <c>@(X){{…}}</c> is a raw rescoping container and is
-        /// never redirected, whatever the profile — the one row a "profile decides encoding" shortcut gets wrong.</summary>
+        /// <summary>The (profile × hasBody) matrix; bodied @(X){{…}} are rescoping containers never redirected.</summary>
         [Theory]
         [InlineData(OutputProfile.Html, false, UnnamedCarrierKind.EmptyHtml, RenderType.Encode, "html")]
         [InlineData(OutputProfile.Html, true, UnnamedCarrierKind.Empty, RenderType.Raw, "")]
@@ -77,15 +72,8 @@ namespace Heddle.Tests
             Assert.Equal(expected, RenderTypeRules.Derive(hasEncodeOutput, hasNotEncode));
         }
 
-        /// <summary>The veto row's reachability, pinned. <c>[NotEncode]</c> is
-        /// <see cref="AttributeTargets.Property"/> while <c>[EncodeOutput]</c> is <see cref="AttributeTargets.Class"/>,
-        /// so an extension <em>type</em> carrying both is not a state any C# (or VB/F#) declaration can express — the
-        /// compiler rejects the application outright (CS0592), which the build tier's
-        /// <c>ContradictoryEncodingAttributeTests</c> pins from the other side. The row is therefore reachable only
-        /// from forged/IL-authored metadata, and there both tiers evaluate this same function and get
-        /// <see cref="RenderType.Raw"/> — indistinguishable from an extension carrying neither attribute, so no tier
-        /// diverges and there is nothing to diagnose. Widening the attribute's targets makes the contradiction
-        /// declarable and reopens related diagnostics; this test is what says so out loud.</summary>
+        /// <summary>[NotEncode] targets Property while [EncodeOutput] targets Class, making simultaneous application
+        /// impossible in C#; the veto row is reachable only from forged IL metadata, where both tiers get RenderType.Raw.</summary>
         [Fact]
         public void TheNotEncodeVetoRowIsUnreachableFromAnyDeclaration()
         {
@@ -104,8 +92,7 @@ namespace Heddle.Tests
             Assert.Equal(RenderTypeRules.Derive(false, false), RenderTypeRules.Derive(true, true));
         }
 
-        /// <summary>The valid-values fragment both tiers quote in their unknown-profile message is built from the
-        /// same two constants the parser matches, so the message can never name a spelling the parser rejects.</summary>
+        /// <summary>The valid-values fragment is built from the same constants the parser matches.</summary>
         [Fact]
         public void ValidValuesFragmentNamesExactlyTheAcceptedSpellings()
         {

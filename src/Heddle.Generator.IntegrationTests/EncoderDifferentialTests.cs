@@ -16,8 +16,6 @@ namespace Heddle.Generator.IntegrationTests
     /// </summary>
     public class EncoderDifferentialTests
     {
-        /// <summary>Wraps every HTML-significant character in a visible <c>[E:name]</c> token — a deterministic,
-        /// unmistakably-not-WebUtility encoding, so a divergence between backends is obvious.</summary>
         private sealed class MarkerEncoder : TextEncoder
         {
             private static readonly Dictionary<int, string> Map = new Dictionary<int, string>
@@ -73,8 +71,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void MarkerEncoder_TypedMemberOutput_IsByteIdenticalAcrossBackends()
         {
-            // A typed @(V) precompiles (the streaming-unicode family); its value is deferred to render (RenderType.Encode).
-            // If the generator ever baked a WebUtility-encoded literal here, the backends would diverge under the marker.
+            // Typed member values defer encoding to render time; backends diverge if WebUtility-encoded at compile time.
             const string content = "<p>@(V)</p>";
             var model = new HostileModel { V = "<b>&\"'x</b>" };
             var options = new TemplateOptions { OutputProfile = OutputProfile.Html, Encoder = new MarkerEncoder() };
@@ -87,10 +84,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.DoesNotContain("&lt;", precompiled);
         }
 
-        // B2-R7 condition: the fold-site guarantee must also hold "including under HeddleEmitUtf8Pieces". With the
-        // UTF-8 piece emission toggle on, static text is emitted as u8 literals — but value encoding must still defer
-        // to render (RenderType.Encode). These two exercise that dimension: the marker encoder proves no WebUtility
-        // value was constant-folded even when the generator is emitting UTF-8 pieces.
+        // UTF-8 piece emission doesn't change the fold-site guarantee: encoding still defers to render time.
         private static readonly Dictionary<string, string> Utf8PiecesOn =
             new Dictionary<string, string> { ["build_property.HeddleEmitUtf8Pieces"] = "true" };
 
@@ -104,9 +98,9 @@ namespace Heddle.Generator.IntegrationTests
             var (precompiled, dyn) = DifferentialHarness.RenderWithOptions(
                 "views/encoder-bare-u8.heddle", content, typeof(string), hostile, options, Utf8PiecesOn);
 
-            Assert.Equal(dyn, precompiled);                 // B2-R7: byte-identical with HeddleEmitUtf8Pieces=true
-            Assert.Contains("[E:lt]", precompiled);          // the marker encoder ran at render time
-            Assert.DoesNotContain("&lt;", precompiled);      // no compile-time WebUtility fold, even under u8 pieces
+            Assert.Equal(dyn, precompiled);
+            Assert.Contains("[E:lt]", precompiled);
+            Assert.DoesNotContain("&lt;", precompiled);
         }
 
         [Fact]

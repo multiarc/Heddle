@@ -23,8 +23,7 @@ namespace Heddle.Tests
         [Fact]
         public void PropWinsAndWarnsAndThisEscapes()
         {
-            // 'style' is both a declared prop and a PropRoot member; the prop wins, the member is reached via
-            // this.style. The read of the shadowing prop emits HED5011 with the this.<name> fix.
+            // Props win over model members; reach the member via this.<name>.
             const string doc =
                 "@% <panel(style: string = \"PROP\")>{{[@(style)|@(this.style)|@(::style)]}} :: PropRoot %@\n@panel(this)";
             var t = Compile(doc, typeof(PropRoot));
@@ -51,8 +50,7 @@ namespace Heddle.Tests
         [Fact]
         public void DynamicDefinitionReadsPropStatically()
         {
-            // The model is a dynamic bag WITHOUT a 'label' member; the read resolves to the prop (static),
-            // rendering the default — proof the layout is model-orthogonal.
+            // The read resolves to the prop (static), proving the layout is model-orthogonal.
             const string doc = "@% <dyn(label: string = \"static\")>{{[@(label)]}} :: dynamic %@\n@dyn(this)";
             var t = Compile(doc, ExType.Dynamic);
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());

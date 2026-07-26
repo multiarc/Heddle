@@ -148,10 +148,7 @@ namespace Heddle.TestCorpus
         /// that <see cref="File.ReadAllText(string)"/> strips.</summary>
         public static byte[] Bytes(string name) => File.ReadAllBytes(FilePath(name));
 
-        /// <summary>True when the on-disk file starts with a UTF-8 byte-order mark. BOM presence and line-ending
-        /// normalization are INDEPENDENT pins: <c>.gitattributes</c>' <c>eol=lf</c> governs the latter and says
-        /// nothing at all about the former, which is why the pre-program BOM drift across the generator snapshots
-        /// passed every <c>eol=lf</c> check.</summary>
+        /// <summary>True when the on-disk file starts with a UTF-8 byte-order mark; independent of <c>.gitattributes</c> line-ending rules.</summary>
         public static bool HasUtf8Bom(string name)
         {
             var b = Bytes(name);
@@ -168,11 +165,7 @@ namespace Heddle.TestCorpus
                 .ToList();
 
         /// <summary>
-        /// Where a test writes its rendered output when it wants the artifact on disk for eyeballing.
-        /// These writes previously landed inside the corpus directory, which made the corpus simultaneously input and
-        /// output and therefore un-checkable for byte neutrality — and, once the corpus is copied into several
-        /// consumers' outputs, would have had one project's test run writing files into a directory another
-        /// project's gate enumerates. The directory is created on demand in the writer's OWN output.
+        /// Path for test-written debug output; separate from the corpus directory (which is input, not output) to preserve byte neutrality.
         /// </summary>
         public static string WrittenArtifactPath(string fileName)
         {

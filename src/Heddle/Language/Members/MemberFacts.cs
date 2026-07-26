@@ -63,8 +63,7 @@ namespace Heddle.Language.Members
                 return false;
             if (facts.HasHidden)
                 return false;
-            // Static properties return not-found rather than ArgumentException (Expression.MakeMemberAccess) or
-            // CS0176 error, which can differ between tiers.
+            // Align with reflection and expression trees: static properties return not-found.
             if (facts.IsStatic)
                 return false;
 

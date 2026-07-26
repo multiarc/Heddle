@@ -36,8 +36,7 @@ namespace Heddle.Generator.IntegrationTests
             private void Grow(int hint) { if (hint < 1) hint = 1; if (_b.Length - _n < hint) Array.Resize(ref _b, Math.Max(_b.Length * 2, _n + hint)); }
         }
 
-        /// <summary>Records the sizeHints requested so the transcode path (GetSpan(len*3) &gt; 0) is distinguishable
-        /// from the u8 straight-copy path (BuffersExtensions.Write → GetSpan(0)).</summary>
+        /// <summary>Records sizeHints to distinguish transcode (GetSpan with hint &gt; 0) from u8 direct copy (hint = 0).</summary>
         private sealed class RecordingBufferWriter : IBufferWriter<byte>
         {
             private byte[] _b = new byte[1 << 16];
@@ -120,9 +119,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void Utf8FastPath_OptedInPieces_BypassTranscode()
         {
-            // A static-only opted-in template: every write is a piece routed through WritePiece → RenderUtf8 (u8 twin)
-            // → BuffersExtensions.Write → GetSpan(0). The transcode path would request GetSpan(len*3) > 0. So with the
-            // opt-in the writer sees no positive size hint; without it, the piece transcodes and a positive hint appears.
+            // Opted-in pieces write directly via RenderUtf8 with GetSpan(0); without opt-in, transcode requests GetSpan(len*3).
             var template = "@model(){{" + ProductType + "}}@\\\n<h1>Hello — Привет 😀 static only</h1>\n";
 
             var onGen = DifferentialHarness.Generate(new[] { ("views/fp.heddle", template) },

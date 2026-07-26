@@ -14,19 +14,10 @@ namespace Heddle.Generator.IntegrationTests
     }
 
     /// <summary>
-    /// The fallback sentinel. Hooks <see cref="PrecompiledTemplates.OnFallback"/> for the lifetime of a guarded
-    /// region, records every raised <see cref="PrecompiledFallbackEvent"/>, and restores the previous hook on dispose
-    /// (the save/restore pattern the existing <c>OnFallback</c> tests already prove). Any event whose (subject,
-    /// reason) pair was not declared through <see cref="Expect"/> fails the test at <see cref="Verify"/>.
-    /// <para>The subject is whichever of the event's two carriers is populated: a template key for the per-request
-    /// reasons, an assembly name for the registration-time ones. The guard matches on both because it polices
-    /// <em>every</em> fallback, and collapsing them here is a test-side display choice — the engine keeps them
-    /// apart, which is the whole point of the split.</para>
-    /// <para>The sentinel deliberately does <b>not</b> throw from inside the callback: <c>TryResolve</c> raises the
-    /// event *before* the <see cref="PrecompiledMismatchPolicy.Strict"/> throw, so a throwing callback would replace
-    /// the sharper typed <see cref="PrecompiledMismatchException"/> that <see cref="GuardedOptions"/> exists to
-    /// produce. Under Strict the typed exception escapes the render and <c>Verify</c> is never reached; under the
-    /// default <c>Fallback</c> policy the render silently degrades and <c>Verify</c> is what fails the test.</para>
+    /// Hooks <see cref="PrecompiledTemplates.OnFallback"/> to record <see cref="PrecompiledFallbackEvent"/>s
+    /// raised during a guarded region. Any undeclared event fails the test at <see cref="Verify"/>.
+    /// Does not throw from the callback to preserve <see cref="PrecompiledMismatchException"/> under
+    /// <see cref="PrecompiledMismatchPolicy.Strict"/> mode.
     /// </summary>
     internal sealed class FallbackGuard : IDisposable
     {
@@ -46,10 +37,7 @@ namespace Heddle.Generator.IntegrationTests
         /// <summary>Installs the sentinel. Dispose restores the previously-installed hook.</summary>
         public static FallbackGuard Install() => new FallbackGuard();
 
-        /// <summary>The guarded request options: <see cref="PrecompiledMismatchPolicy.Strict"/> so a gauntlet failure
-        /// throws a typed <see cref="PrecompiledMismatchException"/> at the primary resolve, over a copy of
-        /// <paramref name="baseOptions"/> (a fresh <see cref="TemplateOptions"/> when null) so callers keep their
-        /// profile/trim/encoder settings.</summary>
+        /// <summary>Returns options with <see cref="PrecompiledMismatchPolicy.Strict"/> policy, preserving caller settings from <paramref name="baseOptions"/>.</summary>
         public static TemplateOptions GuardedOptions(TemplateOptions baseOptions = null)
         {
             var options = baseOptions == null ? new TemplateOptions() : new TemplateOptions(baseOptions);
@@ -57,8 +45,7 @@ namespace Heddle.Generator.IntegrationTests
             return options;
         }
 
-        /// <summary>Declares one fallback as expected — the only way an event passes <see cref="Verify"/>. An
-        /// expectation is consumed once per matching event.</summary>
+        /// <summary>Declares one expected fallback; each expectation matches one event at <see cref="Verify"/>.</summary>
         public FallbackGuard Expect(string key, PrecompiledFallbackReason reason)
         {
             lock (_sync)
@@ -100,7 +87,7 @@ namespace Heddle.Generator.IntegrationTests
             }
         }
 
-        /// <summary>Whichever carrier the event's reason populates — see the class remark.</summary>
+        /// <summary>Returns the event's subject: the TemplateKey or AssemblyName depending on the reason.</summary>
         private static string Subject(PrecompiledFallbackEvent evt) => evt.TemplateKey ?? evt.AssemblyName;
 
         private void Record(PrecompiledFallbackEvent evt)

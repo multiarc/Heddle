@@ -34,8 +34,6 @@ namespace Heddle.Tests
             typeof(object[]),
         };
 
-        #region Legacy body — verbatim pre-extraction ConversionRank / Dominates
-
         private static int LegacyConversionRank(Type argType, bool isNullLiteral, Type parameterType)
         {
             if (isNullLiteral)
@@ -93,8 +91,6 @@ namespace Heddle.Tests
 
             return strictlyBetter;
         }
-
-        #endregion
 
         private sealed class TypeRankModel : IRankModel<Type>
         {
@@ -155,8 +151,6 @@ namespace Heddle.Tests
             foreach (var b in vectors)
                 Assert.Equal(LegacyDominates(a, b), OverloadRank.Dominates(a, b));
         }
-
-        // ---- The verdicts the fixture cares about ------------------------------------------------------------
 
         private static RankCandidate<Type> Candidate(params Type[] parameters) =>
             new RankCandidate<Type>(parameters, false, null);

@@ -3,16 +3,8 @@ using Heddle.Language.Expressions;
 namespace Heddle.Language.Binding
 {
     /// <summary>
-    /// The type-system seam the shared binding rule-cores answer their questions through.
-    /// <para>The assignability relation cannot be shared imperatively — it <em>is</em> the type graph, and each side
-    /// already has an engine for it (reflection's <c>Type.IsAssignableFrom</c>; Roslyn's
-    /// <c>Compilation.ClassifyConversion</c> plus a hierarchy walk). What drifted was never the graph but the
-    /// corrections and spellings around it, which the generator carried in three places. This interface confines
-    /// the graph to one adapter per side and lets the <em>rules</em> (prop-layout sequencing, discovery precedence,
-    /// conversion legality) live in Roslyn-free shared files.</para>
-    /// <para><typeparamref name="TType"/> is fully opaque here: the reflection adapter closes it over
-    /// <c>System.Type</c> in <c>Heddle</c>, the Roslyn adapter over <c>ITypeSymbol</c> in <c>Heddle.Generator</c>,
-    /// and neither adapter type appears in a shared file.</para>
+    /// The type-system seam for shared binding rules. <typeparamref name="TType"/> is opaque: reflection adapter
+    /// over <c>System.Type</c>, Roslyn adapter over <c>ITypeSymbol</c>; neither appears in shared files.
     /// </summary>
     internal interface ITypeFacts<TType>
     {
@@ -30,10 +22,7 @@ namespace Heddle.Language.Binding
 
         bool IsValueType(TType type);
 
-        /// <summary>The unified unusable-prop-type predicate: false for null/unresolved, open generics
-        /// (<c>ContainsGenericParameters</c> semantics — not merely an unbound definition), pointers and by-ref
-        /// types. The runtime's rule at <c>PropLayout.ResolveFromExtension</c> is authoritative; the generator's
-        /// local variant under-implemented it (no by-ref arm, narrower generic test).</summary>
+        /// <summary>False for null/unresolved, open generics, pointers, and by-ref types.</summary>
         bool IsUsableAsPropType(TType type);
 
         /// <summary>Maps to <see cref="NumericKind"/>; <see cref="NumericKind.None"/> for

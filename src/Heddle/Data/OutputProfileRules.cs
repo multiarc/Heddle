@@ -14,15 +14,9 @@ namespace Heddle.Data
         EmptyHtml
     }
 
-    /// <summary>
-    /// <para>The two <b>encoding-deciding</b> output-profile rules,
-    /// written once for the engine, the generator and the language server: how an <c>@profile(){{…}}</c> value
-    /// parses, and which unnamed carrier a given profile binds.</para>
-    /// <para>Both are pure functions of a string and two enums, so they are genuinely shared code rather than a
-    /// pinned table. The <em>plumbing</em> around them stays per-side — the runtime mutates
-    /// <c>CompileContext.OutputProfile</c> along its context lineage, the emitter keeps a per-chain map with
-    /// save/restore around each body walk — and that ordering contract is a documented convention, not code.</para>
-    /// </summary>
+    /// <summary>The two encoding-deciding output-profile rules shared across tiers: how <c>@profile(){{…}}</c>
+    /// parses and which unnamed carrier a given profile binds. Per-side plumbing (runtime mutates context
+    /// lineage; emitter uses per-chain maps) follows documented conventions.</summary>
     public static class OutputProfileRules
     {
         /// <summary>The <c>text</c> spelling <see cref="TryParseProfile"/> accepts (ordinal, case-insensitive).</summary>

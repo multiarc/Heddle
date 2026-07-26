@@ -23,8 +23,7 @@ namespace Heddle.Tests
 
         private static void WithSwitch(bool? value, Action body)
         {
-            // AppContext switches cannot be truly unset; enabling it is behaviorally identical to unset for
-            // HeddleFeatures.CSharpTierEnabled (unset || enabled == true). null models the unset/default host.
+            // AppContext switches can't be unset; null models the default host behavior.
             try
             {
                 if (value.HasValue)
@@ -41,7 +40,6 @@ namespace Heddle.Tests
         public void SwitchUnsetDefault_CompilesAndRendersCSharpTier()
         {
             HeddleTemplate.Configure(typeof(FeatureSwitchTests).GetTypeInfo().Assembly);
-            // Default host: switch left as the suite baseline (enabled).
             using var template = new HeddleTemplate(CSharpTierTemplate,
                 new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp }));
             Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
@@ -82,7 +80,6 @@ namespace Heddle.Tests
 
                 var diag = Assert.Single(result.Errors, e => e.DiagnosticId == HeddleFeatures.CSharpTierDisabledDiagnosticId);
                 Assert.Equal("HED9001", diag.DiagnosticId);
-                // The guard is a host-capability condition on the whole compile: document-start position.
                 Assert.Equal(0, diag.Position.StartIndex);
                 Assert.Equal(0, diag.Position.Length);
                 Assert.Contains("Heddle.CSharpTierEnabled", diag.Error);
@@ -115,7 +112,6 @@ namespace Heddle.Tests
                 Assert.False(off.CompileResult.Success);
             });
 
-            // After restore, the tier is available again with byte-identical output.
             using var on = new HeddleTemplate(CSharpTierTemplate,
                 new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp }));
             Assert.True(on.CompileResult.Success, on.CompileResult.ToString());

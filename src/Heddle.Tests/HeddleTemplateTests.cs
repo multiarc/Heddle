@@ -35,10 +35,8 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// Regression for the named-call C# token branch: a C# expression containing nested parentheses must
-        /// classify the inner tokens (including the nested '(' and ')') identically for both the named
-        /// (e.g. <c>@x(@Foo(1))</c>) and unnamed (<c>@(@Foo(1))</c>) call forms. Nested parens are lexed as
-        /// ordinary CSHARP_TOKENs, so the two forms must yield the same C# token set.
+        /// Regression: nested parentheses in C# expressions must classify identically in named (<c>@x(@Foo(1))</c>)
+        /// and unnamed (<c>@(@Foo(1))</c>) call forms.
         /// </summary>
         [Fact]
         public void NamedAndUnnamedCSharpCallsClassifyParenTokensEqually()
@@ -57,16 +55,11 @@ namespace Heddle.Tests
             var unnamed = CSharpTokenCount("@(@Foo(1) + 2)tail");
             var namedNoNesting = CSharpTokenCount("@x(@Foo + 2)tail");
 
-            // The two call forms share the same C# expression, so they must yield the same C# token set.
             Assert.Equal(unnamed, named);
-            // The nested '(' '1' ')' (including the inner OUT_PARAMEND) must contribute extra C# tokens.
             Assert.True(named > namedNoNesting, $"expected nested parens to add C# tokens: {named} vs {namedNoNesting}");
         }
 
-        /// <summary>
-        /// Tier 1 lexer additions: digit separators (1_000), binary literals (0b1010) and hex with separators
-        /// (0xFF_FF) must tokenize without a lexer error and compile/evaluate through Roslyn.
-        /// </summary>
+        /// <summary>Digit separators, binary literals, and hex with separators must tokenize and compile.</summary>
         [Fact]
         public void ModernNumericLiteralsCompile()
         {
@@ -77,11 +70,7 @@ namespace Heddle.Tests
             Assert.Equal("66545", target.Generate(null));
         }
 
-        /// <summary>
-        /// Tier 2: string interpolation. A simple hole, a hole containing parentheses, and a hole containing a
-        /// nested string literal must all lex (no error) and render correctly. The nested-string case is the one
-        /// the lexer-mode approach handles that a naive opaque scan would not.
-        /// </summary>
+        /// <summary>String interpolation with simple holes, parentheses, and nested literals must lex and render.</summary>
         [Fact]
         public void InterpolatedStringExpressions()
         {
@@ -90,9 +79,6 @@ namespace Heddle.Tests
             {
                 ExpressionMode = ExpressionMode.FullCSharp
             };
-            // Self-contained C# interpolation: a simple hole ({1 + 2}), a hole containing parentheses and a
-            // nested string literal ({(1 < 2 ? "a" : "b")}), and a hole wrapped in parentheses with parens
-            // inside ((p{(3 * 4)})). The nested-string case is the one the lexer-mode handling makes work.
             var target = new HeddleTemplate(
                 "@(@$\"x{1 + 2}y z{(1 < 2 ? \"a\" : \"b\")} (p{(3 * 4)})\")",
                 new CompileContext(options));
@@ -101,32 +87,23 @@ namespace Heddle.Tests
             Assert.Equal("x3y za (p12)", actual);
         }
 
-        /// <summary>
-        /// Brace escapes per the C# spec (§12.8.3): '{{' and '}}' are literal '{' and '}' in the string body,
-        /// not hole delimiters. Covers both regular and verbatim interpolated strings.
-        /// </summary>
+        /// <summary>Brace escapes per C# spec (§12.8.3): '{{' and '}}' are literal braces, not hole delimiters.</summary>
         [Fact]
         public void InterpolatedStringBraceEscapes()
         {
             HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
             var options = new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp };
 
-            // Regular: a{b}c around a real hole -> a{b}c5
             var regular = new HeddleTemplate("@(@$\"a{{b}}c{2 + 3}\")", new CompileContext(options));
             Assert.True(regular.CompileResult.Success, regular.CompileResult.ToString());
             Assert.Equal("a{b}c5", regular.Generate(null));
 
-            // Verbatim: same escapes, '\' is literal.
             var verbatim = new HeddleTemplate("@(@$@\"p{{q}}r{4 * 2}\")", new CompileContext(options));
             Assert.True(verbatim.CompileResult.Success, verbatim.CompileResult.ToString());
             Assert.Equal("p{q}r8", verbatim.Generate(null));
         }
 
-        /// <summary>
-        /// A C# expression call that is the very last thing in the document (no trailing token) must parse.
-        /// Nested parentheses now close with an ordinary CSHARP_TOKEN, so the single terminating OUT_PARAMEND
-        /// is unambiguous and 'csharp_expression' no longer greedily swallows it at end-of-input.
-        /// </summary>
+        /// <summary>A C# expression call at end-of-input must parse, including nested parentheses as the final tokens.</summary>
         [Fact]
         public void CSharpCallAtEndOfInput()
         {
@@ -137,38 +114,28 @@ namespace Heddle.Tests
             Assert.True(simple.CompileResult.Success, simple.CompileResult.ToString());
             Assert.Equal("5", simple.Generate(null));
 
-            // Nested parens as the final characters: (2 + 3) closes inside the expression, then the call closes.
             var nested = new HeddleTemplate("@(@(2 + 3) * 4)", new CompileContext(options));
             Assert.True(nested.CompileResult.Success, nested.CompileResult.ToString());
             Assert.Equal("20", nested.Generate(null));
         }
 
-        /// <summary>
-        /// Verbatim identifiers ('@' prefix) inside a C# expression must lex without mangling the leading '@'
-        /// and round-trip to Roslyn. '@System' is the verbatim form of 'System', so it resolves identically.
-        /// </summary>
+        /// <summary>Verbatim identifiers ('@' prefix) must lex and round-trip to Roslyn.</summary>
         [Fact]
         public void VerbatimIdentifierExpressions()
         {
             HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
             var options = new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp };
 
-            // '@(' opens the call, the first '@' switches to C#, '@System' is a verbatim identifier.
             var plain = new HeddleTemplate("@(@@System.Int32.MaxValue)", new CompileContext(options));
             Assert.True(plain.CompileResult.Success, plain.CompileResult.ToString());
             Assert.Equal("2147483647", plain.Generate(null));
 
-            // Verbatim identifier followed by a parenthesised call (also exercises nested parens).
             var withCall = new HeddleTemplate("@(@@System.Math.Max(2, 3))", new CompileContext(options));
             Assert.True(withCall.CompileResult.Success, withCall.CompileResult.ToString());
             Assert.Equal("3", withCall.Generate(null));
         }
 
-        /// <summary>
-        /// Statement-bodied lambdas (and any other nested 'return') must compile. The generated wrapper is
-        /// 'return &lt;Expression&gt;;', so a lambda body like '() => { return 7; }' adds a second return
-        /// statement; result-type detection must pick the wrapper's return, not fail on the extra one.
-        /// </summary>
+        /// <summary>Statement-bodied lambdas must compile despite nested return statements in the wrapper.</summary>
         [Fact]
         public void StatementLambdaExpressions()
         {
@@ -181,7 +148,6 @@ namespace Heddle.Tests
             Assert.True(blockLambda.CompileResult.Success, blockLambda.CompileResult.ToString());
             Assert.Equal("7", blockLambda.Generate(null));
 
-            // Multiple nested returns (two statement lambdas) must also resolve.
             var twoLambdas = new HeddleTemplate(
                 "@(@new System.Func<int>(() => { if (true) return 2; return 0; })() + new System.Func<int>(() => { return 3; })())",
                 new CompileContext(options));
@@ -189,19 +155,12 @@ namespace Heddle.Tests
             Assert.Equal("5", twoLambdas.Generate(null));
         }
 
-        /// <summary>
-        /// Raw string literals (C# 11) and the UTF-8 string suffix. Each literal - including the interpolated
-        /// raw form and its holes - is consumed as one token, so interior quotes/parens can't disturb token
-        /// balancing and the exact text round-trips to Roslyn.
-        /// </summary>
+        /// <summary>Raw string literals (C# 11) and UTF-8 suffix must tokenize as single tokens.</summary>
         [Fact]
         public void RawStringAndUtf8Literals()
         {
             HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
 
-            // Grammar level (all targets): each literal - raw string (incl. interior quotes/parens, 4-quote
-            // delimiters, interpolated raw) and the u8 suffix - tokenizes as ONE token, so there are no parse
-            // errors and interior parens can't break the call's paren balance.
             void NoErrors(string template)
             {
                 var ctx = DocumentParser.Parse(template,
@@ -209,18 +168,15 @@ namespace Heddle.Tests
                 Assert.Empty(ctx.Errors);
             }
             NoErrors("@(@\"abc\"u8.Length)");
-            NoErrors("@(@\"\"\"(\"\"\".Length)");            // interior paren must not break balance
-            NoErrors("@(@\"\"\"\"a\"\"\"b\"\"\"\".Length)"); // 4-quote raw, interior """
-            NoErrors("@(@$\"\"\"x{1 + 2}y\"\"\")");          // interpolated raw
-            // Arbitrary delimiter widths (recursive rule - no enumerated bound), incl. an interior quote run
-            // shorter than the delimiter.
+            NoErrors("@(@\"\"\"(\"\"\".Length)");
+            NoErrors("@(@\"\"\"\"a\"\"\"b\"\"\"\".Length)");
+            NoErrors("@(@$\"\"\"x{1 + 2}y\"\"\")");
             NoErrors("@(@" + new string('"', 7) + "x" + new string('"', 7) + ".Length)");
             NoErrors("@(@" + new string('"', 20) + "x" + new string('"', 20) + ".Length)");
             NoErrors("@(@" + new string('"', 5) + "a" + new string('"', 4) + "b" + new string('"', 5) + ".Length)");
 
 #if NET6_0_OR_GREATER
-            // End-to-end evaluation additionally needs a Roslyn that supports C# 11. The netstandard2.0 build
-            // used on .NET Framework ships C# 10 Roslyn, so these render assertions run on net6.0+ only.
+            // C# 11 evaluation requires Roslyn support available only on net6.0+.
             var options = new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp };
             string Render(string template)
             {
@@ -229,29 +185,24 @@ namespace Heddle.Tests
                 return t.Generate(null);
             }
 
-            Assert.Equal("3", Render("@(@\"abc\"u8.Length)"));                 // UTF-8 suffix
-            Assert.Equal("3", Render("@(@\"\"\"abc\"\"\".Length)"));           // raw, basic
-            Assert.Equal("3", Render("@(@\"\"\"a\"b\"\"\".Length)"));          // raw, interior quote
-            Assert.Equal("1", Render("@(@\"\"\"(\"\"\".Length)"));             // raw, interior paren (balance)
-            Assert.Equal("5", Render("@(@\"\"\"\"a\"\"\"b\"\"\"\".Length)"));  // 4-quote raw, interior """
-            Assert.Equal("x3y", Render("@(@$\"\"\"x{1 + 2}y\"\"\")"));         // interpolated raw
-            Assert.Equal("3", Render("@(@\"\"\"\nabc\n\"\"\".Length)"));       // multi-line raw
-            Assert.Equal("3", Render("@(@" + new string('"', 7) + "abc" + new string('"', 7) + ".Length)")); // 7-quote
-            // Arbitrary width with an interior quote run shorter than the delimiter: content is a""""b (6 chars).
+            Assert.Equal("3", Render("@(@\"abc\"u8.Length)"));
+            Assert.Equal("3", Render("@(@\"\"\"abc\"\"\".Length)"));
+            Assert.Equal("3", Render("@(@\"\"\"a\"b\"\"\".Length)"));
+            Assert.Equal("1", Render("@(@\"\"\"(\"\"\".Length)"));
+            Assert.Equal("5", Render("@(@\"\"\"\"a\"\"\"b\"\"\"\".Length)"));
+            Assert.Equal("x3y", Render("@(@$\"\"\"x{1 + 2}y\"\"\")"));
+            Assert.Equal("3", Render("@(@\"\"\"\nabc\n\"\"\".Length)"));
+            Assert.Equal("3", Render("@(@" + new string('"', 7) + "abc" + new string('"', 7) + ".Length)"));
             Assert.Equal("6", Render("@(@" + new string('"', 5) + "a" + new string('"', 4) + "b" + new string('"', 5) + ".Length)"));
 #endif
         }
 
-        /// <summary>
-        /// Identifier coverage per the C# spec (§6.4.3): Unicode letters are valid identifier characters, and
-        /// identifier-part must NOT absorb '+', so 'a+b' with no spaces is three tokens ('a', '+', 'b').
-        /// </summary>
+        /// <summary>Per C# spec (§6.4.3): Unicode identifiers are valid, and '+' is not absorbed into identifiers.</summary>
         [Fact]
         public void IdentifierAndOperatorCoverage()
         {
             HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
 
-            // Unicode identifiers tokenize without a lexer error.
             void NoErrors(string template)
             {
                 var ctx = DocumentParser.Parse(template,
@@ -261,24 +212,19 @@ namespace Heddle.Tests
             NoErrors("@(@café.ToString())");
             NoErrors("@(@Δλ + naïve)");
 
-            // '+' directly between identifiers is its own operator: "x".Length+1 == 2 (was mis-lexed as the
-            // single identifier 'Length+1' when identifier-part wrongly included '+').
+            // '+' between identifiers must be a separate operator, not part of an identifier.
             var t = new HeddleTemplate("@(@\"x\".Length+1)",
                 new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp }));
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             Assert.Equal("2", t.Generate(null));
 
-            // Contextual keyword used in an expression still works (now matched as CONTEXTUAL_KEYWORD).
             var nameofT = new HeddleTemplate("@(@nameof(System.String))",
                 new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp }));
             Assert.True(nameofT.CompileResult.Success, nameofT.CompileResult.ToString());
             Assert.Equal("String", nameofT.Generate(null));
         }
 
-        /// <summary>
-        /// The C# 13 '\e' escape must tokenize without a lexer error. (End-to-end compilation additionally
-        /// requires a Roslyn language version that finalizes C# 13; the lexer itself no longer rejects it.)
-        /// </summary>
+        /// <summary>The C# 13 '\e' escape must tokenize without error.</summary>
         [Fact]
         public void EscapeSequenceLexes()
         {

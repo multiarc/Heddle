@@ -79,8 +79,7 @@ namespace Heddle.Tests.Streaming
         [Fact]
         public void LargeChunkedValue_ThreeSinksByteIdentical()
         {
-            // A dynamic value > 5 461 UTF-16 units drives the Utf8 sink into the chunked (Encoder.Convert) tier;
-            // a large static piece does too. Both must be byte-identical across sinks.
+            // Large values (>5461 UTF-16 units) trigger chunked encoding and must remain byte-identical across sinks.
             var big = new string('x', 20000);
             var model = new M { Name = big, Body = new string('Ω', 8000) };
             var doc = "START" + new string('.', 7000) + "@(Name)MID@(Body)END";
@@ -90,8 +89,7 @@ namespace Heddle.Tests.Streaming
         [Fact]
         public void StreamedPartial_ThreeSinksByteIdentical()
         {
-            // Proves @partial streams identically across sinks: the parent's partial output interleaves through
-            // each sink in call order, byte-identical to the string path.
+            // Partial output must interleave byte-identically across sinks in call order.
             var dir = Path.Combine(Path.GetTempPath(), "heddle_sinkpartial_" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(dir);
             try

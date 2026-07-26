@@ -100,7 +100,6 @@ namespace Heddle.Tests
             Assert.Equal("2", t.Generate(new Model { A = false }));
         }
 
-        // C07 — an @date Other block splits the set for stripping only: the two gaps render, @else still binds.
         [Fact]
         public void C07_FormatBlockSplitsStrippingNotBinding()
         {
@@ -116,7 +115,6 @@ namespace Heddle.Tests
             Assert.Contains(" 2021 ", outp);
         }
 
-        // C08 — two independent sets; the inter-set space renders.
         [Fact]
         public void C08_TwoIndependentSets()
         {
@@ -128,7 +126,6 @@ namespace Heddle.Tests
             Assert.Equal("1 4", t.Generate(new Model { A = true, B = false }));
         }
 
-        // C09 — the second opener ends set 1 and starts set 2; @else binds to set 2.
         [Fact]
         public void C09_SecondOpenerStartsNewSet()
         {
@@ -155,7 +152,6 @@ namespace Heddle.Tests
             Assert.Equal("2", t.Generate(new Model { A = false }));
         }
 
-        // C11 — @<< imported chains join as zero-length blocks; nothing stripped; @else binds; zero diagnostics.
         [Fact]
         public void C11_ImportedBranchBlocksJoinTheImportingBodyLevel()
         {
@@ -167,7 +163,6 @@ namespace Heddle.Tests
             Assert.Equal("2", t.Generate(new Model { A = false }));
         }
 
-        // C12 — a definition named 'else' shadows the extension: Other, no HED3003, renders the definition.
         [Fact]
         public void C12_DefinitionShadowedElseIsNotOrphan()
         {
@@ -176,7 +171,6 @@ namespace Heddle.Tests
             Assert.DoesNotContain(t.CompileResult.ErrorList, e => e.DiagnosticId == HeddleDiagnosticIds.ElseWithoutIf);
         }
 
-        // C13 — @else(X): HED3004 at the @else; parameter compiles, evaluates, ignored; terminal unchanged.
         [Fact]
         public void C13_ElseWithParameterWarnsHed3004()
         {
@@ -190,7 +184,6 @@ namespace Heddle.Tests
             Assert.Equal("2", t.Generate(new Model { A = false, B = true }));
         }
 
-        // C14 — orphan @else as the first block: HED3003 error, positioned, compilation fails.
         [Fact]
         public void C14_OrphanElseIsHed3003Error()
         {
@@ -202,7 +195,6 @@ namespace Heddle.Tests
             AssertPositionedAtBlock(e, template, "@else");
         }
 
-        // C15 — a second @else in one set: HED3003 at the second @else; a third errors again.
         [Fact]
         public void C15_SecondElseIsHed3003()
         {
@@ -220,7 +212,6 @@ namespace Heddle.Tests
             Assert.Equal(2, t3.CompileResult.ErrorList.Count(x => x.DiagnosticId == HeddleDiagnosticIds.ElseWithoutIf));
         }
 
-        // C16 — orphan @elif: HED3002 warning; renders exactly as @if.
         [Fact]
         public void C16_OrphanElifWarnsHed3002AndActsAsIf()
         {
@@ -233,7 +224,6 @@ namespace Heddle.Tests
             Assert.Equal("", t.Generate(new Model { A = false }));
         }
 
-        // C17 — @elif after @else: HED3002 (state Closed); starts a NEW set; the second @else closes it (no HED3003).
         [Fact]
         public void C17_ElifAfterElseStartsNewSet()
         {
@@ -245,7 +235,6 @@ namespace Heddle.Tests
             Assert.DoesNotContain(t.CompileResult.ErrorList, e => e.DiagnosticId == HeddleDiagnosticIds.ElseWithoutIf);
         }
 
-        // C18 — a [ScopeChannel] custom publisher, then @else: no diagnostic (state Unknown).
         [Fact]
         public void C18_CustomPublisherSuppressesOrphanDiagnostic()
         {
@@ -256,11 +245,6 @@ namespace Heddle.Tests
             Assert.Equal("", t.Generate(new Model()));
         }
 
-        // C19 — a non-branch "Other" block between @if and @else does not orphan the @else. An @date(D){{yyyy}}
-        // block (an ordinary output-producing extension with a subtemplate body) sits between the opener and the
-        // terminal: the branch scan classifies it as Other, so the set spanning it stays open and the following
-        // @else binds cleanly — no HED3003 (nor any other HED3xxx). Because @date is a well-behaved block, the
-        // whole template also compiles successfully.
         [Fact]
         public void C19_NonBranchOtherBlockBetweenIfAndElseDoesNotOrphanTheElse()
         {

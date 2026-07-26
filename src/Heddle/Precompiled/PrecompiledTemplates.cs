@@ -15,10 +15,6 @@ namespace Heddle.Precompiled
         internal const string Hed7102 = Data.HeddleDiagnosticIds.PrecompiledManifestRejected;
         internal const string Hed7103 = Data.HeddleDiagnosticIds.PrecompiledKeyCaseMismatch;
         internal const string Hed7104 = Data.HeddleDiagnosticIds.PrecompiledRegisteredNameUnavailable;
-        // The accepted schema window (shared in PrecompiledSchema, which the generator also uses): schemas 1–2 were
-        // the only released versions, but manifests built against them reference a PrecompiledExtensionBinding
-        // constructor that no longer exists, so accepting them would cause startup faults instead of graceful fallback.
-        // Three unreleased increments above 2 were collapsed into one, so 3 is the only shape this engine reads.
 
         private sealed class Snapshot
         {
@@ -87,8 +83,6 @@ namespace Heddle.Precompiled
             if (attribute == null)
                 return;
 
-            // Never null in practice; defaulted rather than left null because the fallback event's assembly carrier
-            // must always be populated and a diagnostic must not become a throw.
             var assemblyName = assembly.GetName().Name ?? assembly.FullName ?? "<unknown assembly>";
 
             if (!PrecompiledSchema.IsSupported(attribute.SchemaVersion))
@@ -108,8 +102,6 @@ namespace Heddle.Precompiled
                 return;
             }
 
-            // HED7104 reports are collected under the lock and raised after it: OnFallback is host code and
-            // must never run while the registration lock is held.
             List<PrecompiledFallbackEvent> lostNames = null;
 
             lock (RegistrationLock)
@@ -127,8 +119,6 @@ namespace Heddle.Precompiled
                 var byName = new Dictionary<string, PrecompiledTemplateInfo>(current.ByName, StringComparer.Ordinal);
                 var nameOwner = new Dictionary<string, string>(current.NameOwner, StringComparer.Ordinal);
 
-                // Pass 1 — keys. Staged transactionally: every key is validated before anything is published, and a
-                // duplicate throws, because two templates claiming one registration has no resolvable answer.
                 foreach (var template in templates)
                 {
                     var key = TemplateKey.Normalize(template.Key);
@@ -156,9 +146,6 @@ namespace Heddle.Precompiled
 
                 }
 
-                // Pass 2 — names, over the whole manifest's keys, mirroring the build tier's two-pass import map.
-                // Keys-first is what makes `Name` additive rather than an override, at both tiers: every key
-                // is already known when the first name is considered, so a name can never displace one.
                 foreach (var template in templates)
                 {
                     if (string.IsNullOrEmpty(template.RegisteredName))
@@ -303,8 +290,6 @@ namespace Heddle.Precompiled
             if (options == null)
                 throw new ArgumentNullException(nameof(options));
 
-            // Entries is already a snapshot array; ordering is by key so the report does not inherit the
-            // registry dictionary's enumeration order, which is an implementation accident.
             var entries = Entries.OrderBy(e => e.Key, StringComparer.Ordinal).ToList();
 
             List<PrecompiledFallbackEvent> failures = null;

@@ -32,8 +32,6 @@ namespace Heddle.Demo.Models
     /// <summary>The model-set registry the demo page's picker binds to. v1 ships two sets.</summary>
     public static class DemoCatalog
     {
-        // The blog starter: @model pins the root type (resolvable because the host registers this assembly via
-        // HeddleTemplate.Configure). Native expressions + Html profile only — no C# tier in the browser.
         private const string BlogStarter = """
             @using(){{Heddle.Demo.Models}}
             @model(){{Blog}}

@@ -17,9 +17,7 @@ namespace Heddle.Generator.Tests
     /// </summary>
     public class DiagnosticProjectionCorpusGeneratorTests
     {
-        /// <summary>The harness drives the generator without MSBuild props, so <c>HeddleTemplateRoot</c> is unset
-        /// and every run draws the out-of-root key warning. It is a property of the harness, not of the fixture,
-        /// and is excluded by name rather than by a range so a genuine HED7018 regression elsewhere still shows.</summary>
+        /// <summary>Excluded because the harness lacks <c>HeddleTemplateRoot</c>, not because of the fixture.</summary>
         private const string HarnessRootWarning = "HED7018";
 
         public static TheoryData<string> Names

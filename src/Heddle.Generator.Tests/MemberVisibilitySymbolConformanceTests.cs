@@ -10,13 +10,8 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// The <b>symbol-side</b> driver of member-visibility conformance corpus. The rows are the same as
-    /// <c>Heddle.Tests.MemberVisibilityConformanceTests</c>'s, and the model type is the same shape; this turns
-    /// "the two resolvers happen to agree" into "a divergent policy is structurally impossible", because both now
-    /// run the one <c>MemberVisibility</c> decision table.
-    /// <para>Three rows are known divergences this adoption closed. Each ran the dangerous direction — the generator
-    /// was more permissive, and the same resolver drives emission, so the extra permissiveness became emitted
-    /// typed code the dynamic tier rejects.</para>
+    /// Validates symbol-level member-visibility against the shared <c>MemberVisibility</c> decision table.
+    /// Same corpus as run-tier tests prevents divergent policies.
     /// </summary>
     public class MemberVisibilitySymbolConformanceTests
     {
@@ -117,8 +112,7 @@ namespace Probe
         [Fact]
         public void BaseInterfaceMembersAreNotSurfacedFromAnInterfaceRoot()
         {
-            // FindProperty used to walk AllInterfaces, so a base-interface member bound at build time that
-            // Type.GetProperty on an interface does not surface at run time.
+            // Symbol build (FindProperty) walks AllInterfaces; runtime Type.GetProperty does not.
             Assert.Equal(SymbolTypeResolver.PathKind.Resolved,
                 Probe.Resolver.ResolvePath(Probe.DerivedFacet, new[] { "FromDerivedInterface" }).Kind);
             Assert.Equal(SymbolTypeResolver.PathKind.Failed,

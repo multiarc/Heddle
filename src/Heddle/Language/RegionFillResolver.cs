@@ -61,8 +61,7 @@ namespace Heddle.Language
                     continue;
                 }
 
-                // The region default of THIS call site's isolated callee instance — the fill layers over it, so a
-                // self-call inside the override body resolves to this site's own base default.
+                // Region default for this call site; a self-call inside the override body resolves to this site's base.
                 DefinitionItem regionDefault = null;
                 calleeDefinition?.Context?.DefinitionsBlock?.Definitions.TryGetValue(candidate.Name,
                     out regionDefault);

@@ -8,17 +8,11 @@ namespace Heddle.Data
     {
         private readonly IScopeRenderer _renderer;
 
-        // The effective output encoder for this render: pulled from the wrapped sink's IEncoderCarrier so the
-        // configured TemplateOptions.Encoder flows to the proxy without a new public ctor. null selects the legacy
-        // WebUtility.HtmlEncode path (byte-identical to the behaviour before encoders were configurable). Held so
-        // nested resolution (this proxy re-read as an IEncoderCarrier) returns the same encoder.
+        // Pulled from wrapped sink to preserve configured TemplateOptions.Encoder through nested resolution.
+        // null selects legacy WebUtility.HtmlEncode path (byte-identical to pre-encoder behavior).
         private readonly TextEncoder _encoder;
 
-        // The deadline probe of the wrapped renderer, forwarded exactly as the encoder is. When this
-        // proxy is the renderer a loop holds (a @list/@for nested inside a DirectRender value-extension body), the
-        // loop's one-time `scope.Renderer as IBudgetProbe` type-test lands on this proxy; delegating to the inner
-        // probe keeps the empty-loop MaxRenderTime backstop universal regardless of proxy nesting. null (the inner
-        // renderer isn't budgeted) makes TickDeadline a no-op, so the unbudgeted path is unaffected.
+        // Forwarded to nested resolution; null makes TickDeadline a no-op to preserve unbudgeted path.
         private readonly IBudgetProbe _probe;
 
         public HtmlEncodedRenderer(IScopeRenderer renderer)
@@ -41,12 +35,9 @@ namespace Heddle.Data
         }
 
         /// <summary>
-        /// The string bridge for span writes under an encode proxy. Encoding happens on chars, before any byte
-        /// transcode (encode → transcode, never reversed): a span materializes one string and routes through the
-        /// effective encoder — the configured <see cref="System.Text.Encodings.Web.TextEncoder"/>
-        /// (<c>TemplateOptions.Encoder</c>) when set, else the legacy <c>WebUtility.HtmlEncode</c> path. Deliberately
-        /// <b>not</b> an <see cref="IUtf8ScopeRenderer"/>, so pre-encoded bytes can never bypass the proxy: the UTF-8
-        /// sink only sees post-encode chars.
+        /// Encodes span writes through the configured <see cref="System.Text.Encodings.Web.TextEncoder"/> (or legacy
+        /// <c>WebUtility.HtmlEncode</c>). Deliberately not <see cref="IUtf8ScopeRenderer"/> so pre-encoded bytes
+        /// cannot bypass encoding.
         /// </summary>
         public void Render(ReadOnlySpan<char> data)
         {

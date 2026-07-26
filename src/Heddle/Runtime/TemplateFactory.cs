@@ -27,9 +27,7 @@ namespace Heddle.Runtime {
         public bool Replace { get; set; }
     }
 
-    /// <summary>
-    /// Template factory, initializes and creates all templates
-    /// </summary>
+    /// <summary>Discovery, registration, and instantiation of template extensions at compile time.</summary>
     public static class TemplateFactory
     {
         private static readonly Dictionary<string, Type> Heddle = new Dictionary<string, Type>();
@@ -83,19 +81,12 @@ namespace Heddle.Runtime {
         }
 
         /// <summary>
-        /// Registers extension types, resolving name collisions through the <b>shared</b>
-        /// <see cref="ExtensionRegistrationRules"/> — the same rule the source generator's <c>ExtensionBinder</c>
-        /// applies at build time.
-        /// <para>The rule used to be inlined here <em>and</em> transcribed into the shared file, so mutating the
-        /// shared copy reddened no runtime test: it read as a source of truth and was not one. Behaviour is
-        /// unchanged — <c>[ExtensionReplace]</c> candidates still come last, a candidate the incumbent is
-        /// assignable from still overrides, and an unrelated claimant still raises
-        /// <see cref="TemplateOverrideException"/>.</para>
+        /// Registers extension types, resolving name collisions through the shared
+        /// <see cref="ExtensionRegistrationRules"/> — the same rule the source generator applies at build time.
         /// </summary>
         public static void AddExtensions(IEnumerable<ExtensionType> toAdd)
         {
             if (toAdd == null) throw new ArgumentNullException(nameof(toAdd));
-            //extensions marked as replacements comes last
             foreach (var type in toAdd.OrderBy(ext => ext.Replace))
             {
                 if (type.Type == null || type.Name == null )
@@ -114,21 +105,18 @@ namespace Heddle.Runtime {
                         Heddle[type.Name] = type.Type;
                         break;
                     default:
-                        // Resolve never returns KeepIncumbent — that verdict is the build tier's
-                        // order-insensitivity relaxation (ResolveForBuild) and cannot arise here.
+                        // Resolve never returns KeepIncumbent in this context.
                         throw new TemplateOverrideException(
                             $"Cannot override <{type.Name}> Extension, <{type.Type}> is not inherited from <{incumbent}>");
                 }
             }
         }
 
-        /// <summary>
-        /// Creates extension by it's name and adds parameter string if it's present
-        /// </summary>
-        /// <param name="templateName">Extension name <see cref="ExtensionNameAttribute"/></param>
-        /// <param name="absoluteTextPosition">Extension usage position in source text</param>
-        /// <param name="context">Parser context, used to get defenitions list</param>
-        /// <returns>ITemplate compatible object <see cref="IExtension"/></returns>
+        /// <summary>Creates an extension instance by name, with position and error collection.</summary>
+        /// <param name="templateName">Extension name from <see cref="ExtensionNameAttribute"/></param>
+        /// <param name="absoluteTextPosition">Usage position in the source text</param>
+        /// <param name="context">Parser context for definition resolution</param>
+        /// <returns>An <see cref="IExtension"/> instance, or null on error</returns>
         public static IExtension Create(string templateName, BlockPosition absoluteTextPosition, ParseContext context, CompileContext compileContext)
         {
             if (templateName == null)
@@ -142,12 +130,7 @@ namespace Heddle.Runtime {
             }
             catch (KeyNotFoundException)
             {
-                // HED0002 means exactly this — an extension name could not be resolved
-                // by TemplateFactory.Create — but the raise site carried no id, so the constant and its registry
-                // row had no producer anywhere in src/. The id is kept and made to fire rather than retired: the
-                // condition is real and reachable (a name the compiler classified as an extension that the live
-                // registry does not hold), and it is narrower than HED1001, which covers "neither an extension nor
-                // a registered function".
+                // HED0002: extension not found. Narrower than HED1001 (neither extension nor function).
                 compileContext.CompileErrors.Add($"Cannot find extension <{templateName}>"
                     .ToError(absoluteTextPosition, Data.HeddleDiagnosticIds.ExtensionNotFound));
                 return null;
@@ -210,9 +193,7 @@ namespace Heddle.Runtime {
 
         internal static IEnumerable<ExtensionType> LoadExtensions(IEnumerable<Type> extensions)
         {
-            // The discovery predicate and the pre-registration ordering key both come from the shared rule-core.
-            // `OrderingKey` is the one expression that decides which candidate becomes the incumbent, and
-            // the generator sorts its candidates by the same call.
+            // OrderingKey decides the incumbent candidate; both discovery and generator sort by this call.
             var types =
                 extensions.Where(t => t.IsImplement<IExtension>() && t.IsHaveAttribute<ExtensionNameAttribute>(true))
                     .OrderBy(t => ExtensionRegistrationRules.OrderingKey(

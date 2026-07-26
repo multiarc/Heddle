@@ -6,56 +6,31 @@ using Heddle.Strings.Core;
 namespace Heddle.Language
 {
     /// <summary>
-    /// <para>The single implementation of every byte-affecting document-shaping
-    /// machine. Both backends drive it: the runtime <c>HeddleCompiler.CompileBody</c> and the build-time
-    /// <c>DocumentShaper.Shape</c>. It used to exist twice as hand-maintained copies, which is how the
-    /// <see cref="WidenToWholeLine"/> clamp drift shipped; every offset-arithmetic fix now lands here once.</para>
-    /// <para><b>Normative pass ordering</b> — both drivers invoke these in this relative order, and the
-    /// lockstep test asserts they still do:</para>
-    /// <list type="number">
-    /// <item><see cref="ShiftBySkippedTokens"/> — rebase onto the hidden-token-excised clean document.</item>
-    /// <item><see cref="TrimHiddenRemnantLines"/> — only when <c>TrimDirectiveLines</c> is on.</item>
-    /// <item><see cref="RemoveDefinitions"/> — definition/import block removal.</item>
-    /// <item><see cref="ReplaceRawOutput"/> — raw-output splice.</item>
-    /// <item><see cref="StripBranchSets"/> — branch-set adjacency strip.</item>
-    /// <item><see cref="RemoveEmptyItem"/> — per zero-output chain, in document order.</item>
-    /// </list>
-    /// <para>Constraints this file lives under: netstandard2.0-clean, no Roslyn types, no <c>unsafe</c>, and no
-    /// type outside the already-linked parse model — it is compiled into the generator by the
-    /// <c>..\Heddle\Language\**\*.cs</c> glob in <c>Heddle.Generator.csproj</c> with zero csproj edits, so any
-    /// violation is a red generator build rather than a latent defect. That is also why the string operations
-    /// below are the safe pair rather than <c>ExStringBuilder</c>'s <c>unsafe</c> equivalents, which cannot
-    /// be linked; the runtime's other <c>ExStringBuilder</c> consumers are untouched.</para>
+    /// Single implementation of all byte-affecting document shaping, shared by runtime compile
+    /// and build-time shaper to prevent offset-arithmetic drift. Pass ordering (via
+    /// <see cref="ShiftBySkippedTokens"/>, <see cref="TrimHiddenRemnantLines"/>,
+    /// <see cref="RemoveDefinitions"/>, <see cref="ReplaceRawOutput"/>, <see cref="StripBranchSets"/>,
+    /// <see cref="RemoveEmptyItem"/>) must be preserved. Constraint: netstandard2.0-clean, no Roslyn
+    /// types, no <c>unsafe</c> — this file is linked into the generator with zero csproj edits.
     /// </summary>
     internal static class DocumentShaping
     {
-        // ---- Safe string operations: semantically equal to ExStringBuilder.ApplyRemove/Replace. ----
-
-        /// <summary>Removes <paramref name="element"/> from <paramref name="source"/> and returns the removed
-        /// length (the shift <c>seed</c> every rebasing loop applies).</summary>
+        /// <summary>Removes <paramref name="element"/> from <paramref name="source"/>, returning the
+        /// removed length used as shift <c>seed</c> in rebasing loops.</summary>
         internal static int ApplyRemove(BlockPosition element, ref string source)
         {
             source = source.Remove(element.StartIndex, element.Length);
             return element.Length;
         }
 
-        /// <summary>Splices <paramref name="replacement"/> over <c>[start, start+length)</c> of
+        /// <summary>Splices <paramref name="replacement"/> at <c>[start, start+length)</c> of
         /// <paramref name="source"/>.</summary>
         internal static string Replace(int start, int length, string replacement, string source)
             => source.Substring(0, start) + replacement + source.Substring(start + length);
 
-        // ---- The whole-line trim predicate. ----
-
-        /// <summary>
-        /// <para>The whole-line trim predicate, evaluated against the working document at the
-        /// moment of removal. A removed span is widened to its whole line iff the block occupies the line by
-        /// itself: only spaces/tabs to the left back to a line terminator or document start, and only
-        /// spaces/tabs then one line terminator (or EOF) to the right. Both sides must pass. A returned span
-        /// equal to the input means "not whole-line — remove exactly as today".</para>
-        /// <para>Allocation-free; a plain char loop shared by all TFMs. Handles a
-        /// zero-length probe (the remnant-line case) without a special case — the scans meet across the empty
-        /// span and the predicate degenerates to "is this line whitespace-only".</para>
-        /// </summary>
+        /// <summary>Widens to whole line iff block occupies line by itself (spaces/tabs only to
+        /// terminator on both sides). Returns input unchanged if not whole-line. Allocation-free;
+        /// handles zero-length probe as whitespace-only line check.</summary>
         internal static BlockPosition WidenToWholeLine(BlockPosition block, string document)
         {
             // Defensive clamp: an earlier widened removal on the same line can leave a later block's stored
@@ -66,13 +41,13 @@ namespace Heddle.Language
             if (endIndex > document.Length) endIndex = document.Length;
             if (endIndex < startIndex) endIndex = startIndex;
 
-            int left = startIndex;                             // will become the widened start
+            int left = startIndex;
             while (left > 0 && (document[left - 1] == ' ' || document[left - 1] == '\t'))
                 left--;
             if (left != 0 && document[left - 1] != '\n' && document[left - 1] != '\r')
-                return new BlockPosition(startIndex, endIndex - startIndex); // content on the left — unchanged
+                return new BlockPosition(startIndex, endIndex - startIndex);
 
-            int right = endIndex;                              // first index after the block
+            int right = endIndex;
             while (right < document.Length && (document[right] == ' ' || document[right] == '\t'))
                 right++;
             if (right >= document.Length)
@@ -84,15 +59,11 @@ namespace Heddle.Language
             }
             if (document[right] == '\n')
                 return new BlockPosition(left, right + 1 - left);
-            return new BlockPosition(startIndex, endIndex - startIndex); // content on the right — unchanged
+            return new BlockPosition(startIndex, endIndex - startIndex);
         }
 
-        // ---- The five position-rebasing passes. ----
-
-        /// <summary>Pass 1 — rebases the three offset-keyed lists off the hidden (comment / <c>@\</c>) tokens the
-        /// lexer excised, using the three-way classification: a block that <em>encloses</em> a skipped token keeps
-        /// its start and loses the token's length; a block wholly after moves back by it; a block wholly before is
-        /// untouched and terminates the reverse loop.</summary>
+        /// <summary>Pass 1: rebases three offset-keyed lists off hidden tokens excised by the lexer.
+        /// Enclosing block loses token length; after block moves back by it; before block untouched.</summary>
         internal static void ShiftBySkippedTokens(ParseContext context)
         {
             foreach (var blockPosition in ((ICollection<BlockPosition>) context.SkippedTokens).Reverse())
@@ -165,16 +136,9 @@ namespace Heddle.Language
             }
         }
 
-        /// <summary>
-        /// Pass 2 — removes comment-only remnant lines when trimming is on. A whole-line
-        /// comment leaves a bare terminator in the working document (the lexer excised only the hidden comment
-        /// token). Each <see cref="ParseContext.SkippedTokens"/> entry is mapped to its clean-document position
-        /// (original start minus the summed lengths of prior hidden tokens — the list is in document order),
-        /// then a zero-length probe there is run through <see cref="WidenToWholeLine"/>: it widens only when
-        /// the remnant line is whitespace-only, which removes comment-only lines and is a no-op for every
-        /// <c>@\</c> remnant (their lines retain content by construction). Processed in reverse document order,
-        /// skipping positions inside an already-removed span (multiple comments on one line remove it once).
-        /// </summary>
+        /// <summary>Pass 2: removes comment-only remnant lines when trimming is on, using
+        /// <see cref="WidenToWholeLine"/> on zero-length probes at skipped token positions.
+        /// Reverse document order; skips positions inside already-removed spans.</summary>
         internal static void TrimHiddenRemnantLines(ParseContext context, ref string workingDocument)
         {
             var skipped = context.SkippedTokens;
@@ -197,11 +161,11 @@ namespace Heddle.Language
                 if (start < 0 || start > workingDocument.Length)
                     continue;
                 if (start >= removedStart && start < removedEnd)
-                    continue;                                  // this line was already removed by a later token
+                    continue; // already removed by a later token in reverse order
 
                 var widened = WidenToWholeLine(new BlockPosition(start, 0), workingDocument);
                 if (widened.Length == 0)
-                    continue;                                  // not a whitespace-only remnant line
+                    continue;
 
                 removedStart = widened.StartIndex;
                 removedEnd = widened.StartIndex + widened.Length;
@@ -210,16 +174,9 @@ namespace Heddle.Language
             }
         }
 
-        /// <summary>
-        /// Shifts <see cref="ParseContext.OutputChains"/>, <see cref="DefinitionBlock.Positions"/>, and
-        /// <see cref="ParseContext.RawOutputItems"/> to account for the removed span, using the same three-way
-        /// classification <see cref="ShiftBySkippedTokens"/> applies: a block that <em>encloses</em> the removed
-        /// span keeps its start but loses <paramref name="seed"/> from its length; a block wholly after the span
-        /// moves back by <paramref name="seed"/>; a block wholly before is untouched. Used by
-        /// <see cref="TrimHiddenRemnantLines"/>. Missing the enclosing case let a whole-line comment removed from
-        /// inside a definition block leave that block's length overstated, so <see cref="RemoveDefinitions"/> then
-        /// over-removed into the following text (cross-file/imported bodies made this visible as offset drift).
-        /// </summary>
+        /// <summary>Shifts three offset lists after a removed span: enclosing block loses
+        /// <paramref name="seed"/> length; after block moves back by it; before untouched.
+        /// Enclosing case is essential — omitting it caused offset drift on comment removal inside definition blocks.</summary>
         internal static void ShiftListsAfter(ParseContext context, BlockPosition removed, int seed)
         {
             int startToSkip = removed.StartIndex;
@@ -260,10 +217,8 @@ namespace Heddle.Language
             }
         }
 
-        /// <summary>Pass 3 — removes every definition/import block. Each span is widened to its whole
-        /// line first when trimming is on; the shift loops compare against the <em>original</em> block boundaries
-        /// (the widening only extends into whitespace, so no chain/raw sits between them and the shift set is the
-        /// same — only the removed length grows).</summary>
+        /// <summary>Pass 3: removes every definition/import block. When trimming is on, widens to
+        /// whole line before removal; shift loops always compare against original boundaries.</summary>
         internal static void RemoveDefinitions(ParseContext context, ref string workingDocument,
             bool trimDirectiveLines)
         {
@@ -299,8 +254,7 @@ namespace Heddle.Language
             }
         }
 
-        /// <summary>Pass 4 — splices every raw-output block's text over its source span, shifting the chains
-        /// strictly to its right by the length delta.</summary>
+        /// <summary>Pass 4: splices raw-output text over source spans, shifting chains right by length delta.</summary>
         internal static void ReplaceRawOutput(ParseContext context, ref string workingDocument)
         {
             foreach (var rawOut in ((ICollection<RawOutputItem>) context.RawOutputItems).Reverse())
@@ -322,11 +276,8 @@ namespace Heddle.Language
             }
         }
 
-        /// <summary>Pass 6 — removes one zero-output chain. A whole-line zero-output chain is widened to
-        /// swallow its line when trimming is on. The widening only ever extends into surrounding
-        /// whitespace/newline, so the "chains after this block" predicate (unchanged, against the
-        /// <em>original</em> position) still selects exactly the positions needing the shift; only the shift
-        /// amount grows to the widened length.</summary>
+        /// <summary>Pass 6: removes one zero-output chain. When trimming is on, widens to whole
+        /// line; shift loop predicates unchanged against original position.</summary>
         internal static void RemoveEmptyItem(ParseContext context, BlockPosition blockPosition,
             ref string workingDocument, bool trimDirectiveLines)
         {
@@ -346,14 +297,8 @@ namespace Heddle.Language
             }
         }
 
-        // ---- Pass 5: the branch-set adjacency strip machine. ----
-
-        /// <summary>
-        /// The branch classification both backends map into. Defined once here so the runtime cannot gain a
-        /// kind the generator silently misses — the <c>Participant</c>/<c>Other</c> collapse that used to be
-        /// "benign only because both disarm" is now a checked shape. Deliberately independent of either
-        /// <c>BranchRole</c> enum, so this file needs no attribute or Roslyn types.
-        /// </summary>
+        /// <summary>Branch classification shared by both backends; defined once here to prevent
+        /// silent mismatches. Independent of <c>BranchRole</c> to keep this file Roslyn-free.</summary>
         internal enum BranchKind
         {
             Other,
@@ -363,38 +308,24 @@ namespace Heddle.Language
             Participant
         }
 
-        /// <summary>
-        /// The strip machine's event stream, consumed by the runtime to re-host its HED3001–HED3005 diagnostics
-        /// and its orphan state machine without duplicating the machine they observe. The generator passes
-        /// no observer. Three events rather than two, because the runtime's diagnostic <em>order</em>
-        /// within one block is HED3005 → HED3001 (gap) → HED3002/3/4: the scope-channel check runs before gap
-        /// collection and the orphan machine after it, so a single "classified" event could not preserve it.
-        /// </summary>
+        /// <summary>Event stream for the strip machine. Three events preserve diagnostic ordering:
+        /// scope-channel check (OnClassified), gap collection (OnGapCollected), orphan machine (OnBlockCompleted).</summary>
         internal interface IBranchStripObserver
         {
-            /// <summary>Raised for every chain in document order, immediately after classification and before any
-            /// gap for it is collected.</summary>
+            /// <summary>Raised for every chain after classification, before gap collection.</summary>
             void OnClassified(OutputChain chain, OutputItem leftmost, BranchKind kind);
 
-            /// <summary>Raised for every gap the machine actually collects, with the gap's text.</summary>
+            /// <summary>Raised for every collected gap, with the gap text.</summary>
             void OnGapCollected(OutputChain prev, OutputChain next, OutputItem nextLeftmost, BlockPosition gap,
                 string gapText);
 
-            /// <summary>Raised for every chain in document order, after its gap (if any) was collected and the
-            /// strip state advanced.</summary>
+            /// <summary>Raised for every chain after gap collection and state advance.</summary>
             void OnBlockCompleted(OutputChain chain, OutputItem leftmost, BranchKind kind);
         }
 
-        /// <summary>
-        /// <para>Pass 5 — the adjacency strip: a document-ordered state machine over
-        /// <see cref="ParseContext.OutputChains"/> that swallows the text between the blocks of one branch set.
-        /// An <c>Opener</c> arms; a <c>Continuation</c> collects the gap <c>[prevEnd, nextStart)</c> and re-arms;
-        /// a <c>Terminal</c> collects and disarms; a <c>Participant</c> and anything else disarm. Collected gaps
-        /// are applied right-to-left.</para>
-        /// <para>Classification stays per-side behind <paramref name="classify"/> (the runtime resolves through
-        /// <c>TemplateFactory</c> + <c>[BranchRole]</c>/<c>[ScopeChannel]</c>; the generator through its
-        /// Roslyn-backed binder), including the R8 definition-first guard.</para>
-        /// </summary>
+        /// <summary>Pass 5: document-ordered state machine over output chains that swallows text
+        /// between branch-set blocks. Opener arms; Continuation collects gap and re-arms; Terminal
+        /// collects and disarms. Classification via <paramref name="classify"/>; gaps applied right-to-left.</summary>
         internal static void StripBranchSets(ParseContext parseContext, ref string workingDocument,
             Func<OutputChain, BranchKind> classify, IBranchStripObserver observer = null)
         {
@@ -435,8 +366,8 @@ namespace Heddle.Language
 
                     default: // Other
                         stripPrev = null;
-                        // a non-branch block ends stripping adjacency but leaves the runtime frame intact, so a
-                        // following branch terminal still binds to the open set (the observer's concern).
+                        // Non-branch block disarms stripping but preserves runtime frame for
+                        // a following branch terminal to bind to the open set.
                         break;
                 }
 
@@ -470,8 +401,7 @@ namespace Heddle.Language
             if (gaps == null || gaps.Count == 0)
                 return;
 
-            // Apply right-to-left so already-collected (original-coordinate) gaps to the left stay valid;
-            // shift every later chain back by the removed length after each removal.
+            // Right-to-left: keeps left-side gaps valid; shifts later chains after each removal.
             for (int i = gaps.Count - 1; i >= 0; i--)
             {
                 var gap = gaps[i];
@@ -487,19 +417,9 @@ namespace Heddle.Language
             }
         }
 
-        // ---- Piece slicing. ----
-
-        /// <summary>
-        /// <para>The static-piece segmentation walk, shared by <c>RuntimeDocument.GetDocumentPieces</c> and the
-        /// emitter's body walk — <em>the</em> byte-parity contract: the emitter's <c>P0..Pn</c> constants must
-        /// equal the runtime's piece strings exactly.</para>
-        /// <para>Walks <paramref name="elements"/> in document order; emits the literal
-        /// <c>document[offset .. StartIndex)</c> through <paramref name="onPiece"/> only when
-        /// <c>StartIndex &gt; offset</c>; calls <paramref name="onElement"/> for every element; advances past the
-        /// element; emits the trailing literal after the loop. <paramref name="onElement"/> returns <c>false</c>
-        /// to abandon the walk (the emitter's mid-walk degrade), which this method reports by returning
-        /// <c>false</c> — no exception, per the phase's intentional-refusal posture.</para>
-        /// </summary>
+        /// <summary>Byte-parity static-piece segmentation walk shared by runtime and emitter.
+        /// Walks elements in document order, emitting literals between them. <paramref name="onElement"/>
+        /// returns false to abandon walk (mid-walk degrade); method propagates this as false return.</summary>
         internal static bool SlicePieces<T>(IEnumerable<T> elements, Func<T, BlockPosition> position,
             string document, Action<string> onPiece, Func<T, bool> onElement)
         {

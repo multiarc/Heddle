@@ -7,7 +7,6 @@ using Heddle.Runtime;
 using Heddle.Runtime.Expressions;
 using Xunit;
 
-// The export-discovery tests are driven against this assembly's own declarative export.
 [assembly: ExportFunctions(typeof(Heddle.Tests.ExportedFunctions))]
 
 namespace Heddle.Tests
@@ -19,7 +18,6 @@ namespace Heddle.Tests
         public static string TitleCase(string value) => value;
         public static string TitleCase(string value, bool upper) => upper ? value.ToUpperInvariant() : value;
 
-        // Exact-signature twin of the built-in 'upper' (string) -> string: replaces it under the replace rules.
         public static string Upper(string value) => "X" + value;
     }
 
@@ -55,11 +53,11 @@ namespace Heddle.Tests
             var registry = new FunctionRegistry();
             registry.RegisterFrom(typeof(ExportedFunctions).Assembly);
 
-            Assert.True(registry.Contains("titlecase"));      // TitleCase -> titlecase (invariant lowercase)
-            Assert.False(registry.Contains("TitleCase"));      // lookup is ordinal, case-sensitive
+            Assert.True(registry.Contains("titlecase"));
+            Assert.False(registry.Contains("TitleCase"));
 
             var overloads = registry.EnumerateOverloads().Where(o => o.Name == "titlecase").ToList();
-            Assert.Equal(2, overloads.Count);                  // (string) and (string, bool) group by derived name
+            Assert.Equal(2, overloads.Count);
         }
 
         [Fact]
@@ -131,7 +129,7 @@ namespace Heddle.Tests
 
         private static void Freeze(FunctionRegistry r)
         {
-            // Guard: default registry is frozen; a fresh one is mutable until first compile use.
+            // Guard: fresh registries are mutable.
             Assert.False(r.IsFrozen);
         }
     }

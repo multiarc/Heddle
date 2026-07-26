@@ -29,11 +29,7 @@ namespace Heddle.Runtime
             if (compileScope == null)
                 throw new ArgumentNullException(nameof(compileScope));
 
-            // The single body-compile funnel. Record the span→types entry for the scope map
-            // (gated by the flag via the ?. on a null map), but never for a body compiled from an imported file —
-            // its foreign offsets must not enter the analyzed document's offset-keyed map (the imported file's
-            // own analysis owns those spans). Import-marked compiles instead bracket their appended
-            // diagnostics so the facade can re-anchor them to the import site.
+            // Never record imports' foreign offsets in the analyzed document's offset map; bracket their diagnostics for re-anchoring.
             var importOrigin = parseContext.ImportOrigin;
             if (importOrigin == null)
             {
@@ -78,13 +74,8 @@ namespace Heddle.Runtime
         {
             string workingDocument = document;
             bool trimDirectiveLines = compileScope.Options.TrimDirectiveLines;
-            // The byte-affecting shaping passes live once, in Heddle.Language.DocumentShaping, and are driven from
-            // here in the normative order documented on that class. Only the runtime-only, byte-neutral diagnostic
-            // passes interleave below.
             DocumentShaping.ShiftBySkippedTokens(parseContext);
-            // The HED4005 misread scan runs immediately after the shift: at this point
-            // workingDocument (== document, unmutated) and the three exclusion-span lists rebased by
-            // ShiftBySkippedTokens share the clean, hidden-token-excised coordinate space on the runtime path.
+            // HED4005 scan runs here when coordinates are consistent with exclusion spans.
             ScanBraceMisreads(parseContext, compileScope, workingDocument);
             if (trimDirectiveLines)
                 DocumentShaping.TrimHiddenRemnantLines(parseContext, ref workingDocument);
@@ -92,11 +83,7 @@ namespace Heddle.Runtime
             DocumentShaping.ReplaceRawOutput(parseContext, ref workingDocument);
             ProcessBranchSets(parseContext, compileScope, ref workingDocument);
             var documentElements = new List<DocumentElement>();
-            // The producing blocks already compiled to the left of the current one, in
-            // current working-document coordinates. Their @(…) source spans stay physically in workingDocument
-            // (GetDocumentPieces skips them at render), so the HED2004 left scan must excise them: they are
-            // unresolved interpolation source, not HTML literal. Ascending order by construction (document-ordered
-            // loop); never shifted afterwards (RemoveEmptyItem only shifts chains to the right of a removal).
+            // HED2004 left scan excises earlier @(…) source spans; they're unresolved interpolation, not HTML literal.
             var htmlLintLeftSpans = new List<BlockPosition>();
             foreach (var extensions in parseContext.OutputChains)
             {
@@ -135,9 +122,7 @@ namespace Heddle.Runtime
                 }
                 else
                 {
-                    // The HED2004 HTML-context lint, hooked at the producing branch:
-                    // the effective profile reflects every earlier @profile() flip (document order) and
-                    // workingDocument / BlockPosition are consistent for a producing block.
+                    // Profile and coordinates are consistent here.
                     ScanHtmlContextLint(extensions, htmlLintLeftSpans, compileScope, workingDocument);
                     documentElements.Add(element);
                     htmlLintLeftSpans.Add(extensions.BlockPosition);
@@ -192,16 +177,8 @@ namespace Heddle.Runtime
         }
 
         /// <summary>
-        /// <para>The compile-time branch-set scan. The <b>strip machine</b> — swallowing the text
-        /// between the blocks of one branch set — lives once in
-        /// <see cref="DocumentShaping.StripBranchSets"/>; this driver supplies the
-        /// runtime's classifier and re-hosts the runtime-only diagnostics as an observer over that machine's event
-        /// stream: <c>HED3001</c> (non-whitespace stripped gap), <c>HED3005</c> (branch continuation/terminal
-        /// without <c>[ScopeChannel]</c>), and the <b>orphan machine</b> — which mirrors the runtime frame (a
-        /// non-branch block does not clear state) and emits <c>HED3002</c> (orphan <c>@elif</c>, acts as
-        /// <c>@if</c>), <c>HED3003</c> (orphan <c>@else</c>, hard error) and <c>HED3004</c> (<c>@else</c> with an
-        /// ignored parameter). Called between <see cref="DocumentShaping.ReplaceRawOutput"/> and the chain-compile loop, where
-        /// chain positions and the working document are consistent.</para>
+        /// Compile-time branch-set scan: classifies blocks and runs orphan state machine for HED3001/3002/3003/3004/3005.
+        /// Called between ReplaceRawOutput and chain-compile loop where coordinates are consistent.
         /// </summary>
         private static void ProcessBranchSets(ParseContext parseContext, CompileScope compileScope,
             ref string workingDocument)
@@ -211,10 +188,9 @@ namespace Heddle.Runtime
                 new BranchSetDiagnostics(compileScope));
         }
 
-        /// <summary>The runtime-only half of the branch-set scan: every HED300x
-        /// diagnostic and the orphan state machine, expressed as a pure function of the shared strip machine's
-        /// two event streams — block classified, gap collected — in the same document order the inline code
-        /// observed. No message, ID, position, or ordering changes from the pre-extraction inline form.</summary>
+        /// <summary>
+        /// Runtime-only branch-set observer: emits HED300x diagnostics and orphan state machine over the shared strip machine's event stream.
+        /// </summary>
         private sealed class BranchSetDiagnostics : DocumentShaping.IBranchStripObserver
         {
             private readonly CompileScope _compileScope;
@@ -300,8 +276,7 @@ namespace Heddle.Runtime
                         break;
 
                     default: // Other
-                        // state unchanged: a non-branch block ends stripping adjacency but leaves the
-                        // runtime frame intact, so a following @else still binds to the open set.
+                        // Non-branch blocks leave runtime frame intact so following @else can still bind.
                         break;
                 }
             }
@@ -313,13 +288,13 @@ namespace Heddle.Runtime
                 return DocumentShaping.BranchKind.Other;
             var name = leftmost.ExtensionName;
             if (chain.Context != null && chain.Context.DefenitionExists(name))
-                return DocumentShaping.BranchKind.Other;               // a local definition shadows the extension name
+                return DocumentShaping.BranchKind.Other;  // Definition shadows extension.
 
             if (string.IsNullOrEmpty(name) ||
                 !TemplateFactory.TryGetExtensionType(name, out var extensionType))
                 return DocumentShaping.BranchKind.Other;
 
-            var role = extensionType.GetBranchRole();                  // inherit: true
+            var role = extensionType.GetBranchRole();  // inherit: true
             if (role.HasValue)
                 switch (role.Value)
                 {
@@ -329,7 +304,7 @@ namespace Heddle.Runtime
                 }
 
             if (extensionType.IsHaveAttribute<ScopeChannelAttribute>(true))
-                return DocumentShaping.BranchKind.Participant;         // a declared role wins over Participant
+                return DocumentShaping.BranchKind.Participant;  // Declared role wins over Participant.
 
             return DocumentShaping.BranchKind.Other;
         }
@@ -364,9 +339,7 @@ namespace Heddle.Runtime
         }
 
         /// <summary>
-        /// The narrowest Liquid/Jinja-style misread shape: braces wrapping a single
-        /// ASCII identifier or dotted path (spaces/tabs only around it, single-line). Anything else — an
-        /// <c>@</c>, an operator, inner whitespace, an empty body, a non-ASCII identifier — does not match.
+        /// Matches Liquid/Jinja style braces around a single ASCII identifier or dotted path.
         /// </summary>
         private static readonly System.Text.RegularExpressions.Regex BraceMisreadRegex =
             new System.Text.RegularExpressions.Regex(
@@ -375,14 +348,8 @@ namespace Heddle.Runtime
                 System.Text.RegularExpressions.RegexOptions.Compiled);
 
         /// <summary>
-        /// <para>The HED4005 <c>{{ … }}</c>-in-text misread lint. A bare
-        /// <c>{{ Title }}</c> in body text renders literal braces rather than interpolating; this pass warns
-        /// once per literal occurrence and suggests <c>@(Title)</c>. It runs immediately after
-        /// <see cref="DocumentShaping.ShiftBySkippedTokens"/>, where <paramref name="workingDocument"/> and the three
-        /// exclusion-span lists (<c>OutputChains</c> / <c>RawOutputItems</c> / <c>DefinitionsBlock.Positions</c>)
-        /// share the clean coordinate space on the runtime path — a match inside any of those spans is a real
-        /// subtemplate body, raw region, definition body, or <c>@&lt;&lt;</c> import block and is skipped.</para>
-        /// <para>Warning-only; never blocks compilation and never changes rendered bytes.</para>
+        /// HED4005 lint: warns when <c>{{ … }}</c> in text renders literal braces instead of interpolating.
+        /// Skips matches inside exclusion spans. Warning-only; never blocks compilation or changes bytes.
         /// </summary>
         private static void ScanBraceMisreads(ParseContext parseContext, CompileScope compileScope,
             string workingDocument)
@@ -449,14 +416,8 @@ namespace Heddle.Runtime
             return result;
         }
 
-        // A chain item that has a producer to its right (i.e. is not the tail of its own chain) receives that
-        // producer's output on the chained channel. For a definition call this is its caller content — but only when
-        // the call site carries no caller body: a body (static OR dynamic, even an explicit empty {{}}) always wins.
-        // So the flag is gated on the compile-time fact "this call has no {{...}} body" (ParameterTemplate == null;
-        // a present-but-empty body is "" and still wins), never on a runtime subtemplate flag — a pure-static body
-        // leaves InnerExist false yet must still win. Then the definition body's @out() emits the chained value only
-        // for a genuine bodiless chain consumer (the documented @heading():emphasis() pattern). Flagged structurally,
-        // per chain position, so ambient chained data never leaks into a lone call.
+        // Chain consumers with no {{...}} body receive producer output via the chained channel; flagged structurally
+        // per chain position to prevent ambient data leaking into lone calls (e.g., @heading():emphasis() pattern).
         private static void MarkChainConsumer(TemplateItem compiledItem, OutputItem item, bool hasProducerToRight)
         {
             if (hasProducerToRight && item.ParameterTemplate == null &&
@@ -464,11 +425,8 @@ namespace Heddle.Runtime
                 definition.ReceivesChainedValue = true;
         }
 
-        // chainParameter is true when this item is a *nested* producer inside another item's parenthesized
-        // chain (compiled via CompileParameterChain). Such producers forward their value raw to the enclosing
-        // carrier — only the enclosing leaf carrier applies the Html redirect: @(upper(x)) compiles as
-        // @() <- upper(x), so redirecting the nested function carrier too would double-encode. Encoding stays
-        // at the emitting leaf.
+        // Nested producers in parameter chains forward raw output; only the enclosing leaf applies HTML redirect
+        // to avoid double-encoding (e.g., @(upper(x)) → @() ← upper(x)).
         private static TemplateItem CompileItem
         (OutputItem extensionItem, CompileScope compileScope, ParseContext parseContext,
             ref ExType returnTypeChainedPrevious, bool chainParameter = false)
@@ -487,9 +445,7 @@ namespace Heddle.Runtime
             ExType dataType;
             IExtension extension;
             DefinitionItem definitionItem = null;
-            // The ambient call-scoped fill scope is consulted BEFORE the parse-context
-            // lookup — the scope rides the parent-chained CompileContext (not the per-level ParseContext), so a
-            // matched fill reaches a region call at any depth of the callee body.
+            // Ambient fill scope is consulted before parse-context lookup to reach region calls at any callee depth.
             var regionFills = compileScope.CompileContext.RegionFillScope;
             if (regionFills != null && regionFills.TryGet(extensionItem.ExtensionName, out var filledRegion))
             {
@@ -500,8 +456,7 @@ namespace Heddle.Runtime
                 definitionItem = parseContext.GetDefenition(extensionItem.ExtensionName);
             }
 
-            // Named-argument target/mode checks. Named arguments require the native
-            // tier (MemberPathsOnly → HED1014) and a definition target (extension/function/unknown → HED5005).
+            // Named arguments require the native tier and a definition target.
             if (extensionItem.CallParameter.PropArguments != null)
             {
                 var firstArgPosition = extensionItem.CallParameter.PropArguments[0].Position;
@@ -513,10 +468,7 @@ namespace Heddle.Runtime
                     return null;
                 }
 
-                // Named arguments on a non-definition target compile when the
-                // target is an extension declaring a [Prop] parameter surface; the layout binds in
-                // CreateExtension (reusing BindProps → HED5001–HED5004). Otherwise HED5005, same id and
-                // condition as before (target exposes no named-parameter surface), reworded.
+                // Non-definition targets compile named arguments only if they declare [Prop] parameters.
                 if (definitionItem == null &&
                     !(TemplateFactory.TryGetExtensionType(extensionItem.ExtensionName, out var namedArgTargetType) &&
                       PropLayout.DeclaresExtensionParameters(namedArgTargetType)))
@@ -528,10 +480,8 @@ namespace Heddle.Runtime
                 }
             }
 
-            // HED4002: a by-name call resolving to a definition that carries a default output
-            // ('-> chain') renders it twice — once at the call, once via the default chain at document end.
-            // The default chain's own synthetic self-call is exempt. Memoization guarantees one warning per
-            // distinct call site.
+            // HED4002: by-name call to definition with default output ('-> chain') renders twice
+            // (once here, once at document end); exempt synthetic default-chain self-calls.
             if (definitionItem != null && definitionItem.HasDefaultOutput && !extensionItem.IsDefaultChainSelfCall)
             {
                 compileScope.CompileContext.CompileWarnings.Add(new HeddleCompileWarning
@@ -544,15 +494,12 @@ namespace Heddle.Runtime
                 });
             }
 
-            // Standalone name resolution: definition -> extension -> registered function.
-            // The registry fallback is part of the native tier, so it is off under MemberPathsOnly.
+            // Fallback: definition → extension → registered function (native tier only, off under MemberPathsOnly).
             if (!string.IsNullOrEmpty(extensionItem.ExtensionName) && definitionItem == null &&
                 compileScope.Options.ExpressionMode != ExpressionMode.MemberPathsOnly)
             {
                 var functionRegistry = compileScope.Options.Functions ?? FunctionRegistry.Default;
-                // The precedence itself is the shared CallTargetRules classifier the emitter's
-                // dispatch also runs. Fill/definition are already resolved above (definitionItem), so this call
-                // decides the extension-beats-function half and the function-shape gate.
+                // Shared with emitter's dispatch to ensure consistent precedence (extension beats function).
                 var callTarget = CallTargetRules.ResolveCallTarget(extensionItem.ExtensionName,
                     extensionItem.CallParameter, null, null,
                     TemplateFactory.Exists, functionRegistry.Contains);
@@ -716,8 +663,7 @@ namespace Heddle.Runtime
                 ? compileContext.CompileContext.RootScopeType
                 : compileContext.CompileContext.ScopeType;
 
-            // A body prop read wins over the model on the first segment (never for :: root refs).
-            // Resolves before the dynamic check so props stay statically typed even in a :: dynamic definition.
+            // Body prop read wins over model on first segment; resolves before dynamic check to keep props statically typed.
             if (!extensionItem.CallParameter.RootReference)
             {
                 var propParameter = TryCompilePropRead(extensionItem.CallParameter.ModelParameter, scopeType,
@@ -784,10 +730,7 @@ namespace Heddle.Runtime
         }
 
         /// <summary>
-        /// Member-tier body prop read. Returns a <see cref="PropsSlotParameter"/> when the first path
-        /// segment names a prop in the active layout (single-segment = a direct slot load; multi-hop roots the
-        /// null-safe chain at the boxed prop value), or <c>null</c> when the segment is not a prop (the
-        /// caller falls through to ordinary model resolution).
+        /// Returns <see cref="PropsSlotParameter"/> if first segment is a prop; <c>null</c> to fall through to model resolution.
         /// </summary>
         private static IRuntimeParameter TryCompilePropRead(string[] segments, ExType scopeType,
             CompileScope compileScope, BlockPosition position, out ExType resultType)
@@ -835,6 +778,7 @@ namespace Heddle.Runtime
         {
             if (callParameter.NativeExpression != null)
                 return new List<ExprNode> { callParameter.NativeExpression };
+
             var segments = callParameter.ModelParameter;
             if (segments == null || segments.Length == 0 || string.IsNullOrEmpty(segments[0]))
                 return new List<ExprNode>();
@@ -851,10 +795,7 @@ namespace Heddle.Runtime
         }
 
         /// <summary>
-        /// Emits the HED2003 double-encode warning: a bodiless unnamed <c>@(...)</c> under the
-        /// effective <c>Html</c> profile whose parenthesized chain's final producer (the leftmost call =
-        /// the last compiled <see cref="TemplateItem"/>) carries <c>[EncodeOutput]</c> would encode the value
-        /// twice. Output is unchanged; the warning points at the redundant producer call.
+        /// Emits HED2003 when a bodiless unnamed <c>@(...)</c> under Html profile has an <c>[EncodeOutput]</c> producer in the chain.
         /// </summary>
         private static void WarnOnRedundantEncoding(OutputItem extensionItem, TemplateChain callParameter,
             CompileScope compileScope)
@@ -870,9 +811,7 @@ namespace Heddle.Runtime
             if (items.Count == 0)
                 return;
             var producer = items[items.Count - 1];
-            // A parameter-declaring producer stands behind the attribute-less
-            // ExtensionParameterCarrier — unwrap to the inner so [EncodeOutput] is still observed (a no-op for
-            // every non-carrier producer).
+            // Unwrap parameter-declaring producer to check inner extension's [EncodeOutput] (carrier-transparency).
             var producerExtension = (producer.Extension as ExtensionParameterCarrier)?.Inner ?? producer.Extension;
             if (producerExtension == null ||
                 !producerExtension.GetType().IsHaveAttribute<EncodeOutputAttribute>(true))
@@ -889,8 +828,7 @@ namespace Heddle.Runtime
             });
         }
 
-        /// <summary>The HED2004 heuristic classification of a bare <c>@(value)</c> block's position.
-        /// <see cref="HtmlContext.None"/> emits nothing.</summary>
+        /// <summary>Classification of bare <c>@(value)</c> block position for HED2004 lint.</summary>
         private enum HtmlContext
         {
             None,
@@ -899,7 +837,7 @@ namespace Heddle.Runtime
             Url
         }
 
-        /// <summary>The fixed set of attributes whose value is a URL, used to classify an HED2004 site.</summary>
+        /// <summary>Attributes carrying URL values for HED2004 classification.</summary>
         private static readonly HashSet<string> UrlAttributes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "href", "src", "action", "formaction", "cite", "poster", "background", "manifest",
@@ -907,10 +845,7 @@ namespace Heddle.Runtime
         };
 
         /// <summary>
-        /// <para>The HED2004 HTML-context encoding lint: profile gate, then candidacy, then classification of the
-        /// surrounding HTML position, then the warning. Called from the <c>CompileBody</c> producing branch, where the
-        /// effective profile reflects every earlier <c>@profile()</c> flip. Warning-only: never mutates
-        /// <paramref name="workingDocument"/>, a position, or an element — byte-neutral by construction.</para>
+        /// HED2004 warning-only lint for bare <c>@(value)</c> blocks under Html profile; classifies surrounding HTML position.
         /// </summary>
         private static void ScanHtmlContextLint(OutputChain chain, List<BlockPosition> leftSpans,
             CompileScope compileScope, string workingDocument)
@@ -921,8 +856,7 @@ namespace Heddle.Runtime
             var leftmost = chain.Chain != null && chain.Chain.Count > 0 ? chain.Chain[0] : null;
             if (leftmost == null)
                 return;
-            // Only the bodiless unnamed carrier (bare @(value)) is a candidate; any named encoder/opt-out
-            // (@attr/@js/@url/@raw/@html/@string) or a bodied @(X){{…}} rescoping container never warns.
+            // Only bodiless unnamed carriers warn; named encoders and bodied calls never do.
             if (leftmost.ExtensionName.Length != 0 || !string.IsNullOrEmpty(leftmost.ParameterTemplate))
                 return;
 
@@ -957,18 +891,8 @@ namespace Heddle.Runtime
         }
 
         /// <summary>
-        /// <para>The left-only adjacent-literal heuristic over
-        /// <paramref name="workingDocument"/>, indexed by the block's working-document coordinates. The literal
-        /// left text <c>L</c> excises every earlier producing block's source span (<paramref name="leftSpans"/>,
-        /// current coordinates): those are unresolved interpolations, not HTML literal. No HTML parsing, no tag
-        /// model, single-hop by construction.</para>
-        /// <para>Step 1 — <c>&lt;script&gt;</c>-element containment, anchored on a <em>closed</em>
-        /// <c>&lt;script …&gt;</c> start tag (tag-name boundary + a quote-aware unquoted-<c>&gt;</c> check), so an
-        /// interior <c>&lt;</c>/<c>&gt;</c> in a script body never mis-routes and a block inside the start tag
-        /// itself falls through to the attribute steps. Step 2 — nearest tag boundary: the last <c>&lt;</c> whose
-        /// tag has no unquoted <c>&gt;</c> before the block means "inside a tag"; otherwise element text
-        /// (<see cref="HtmlContext.None"/>). Step 3 — quote parity + attribute-name derivation; a recognized
-        /// URL-carrying attribute with a component-position signal refines to <see cref="HtmlContext.Url"/>.</para>
+        /// Left-only literal heuristic (earlier blocks excised): Step 1 check <c>&lt;script&gt;</c> containment.
+        /// Step 2 find nearest tag boundary. Step 3 detect quote parity and URL attribute.
         /// </summary>
         private static HtmlContext ClassifyHtmlContext(string workingDocument, int blockStart,
             List<BlockPosition> leftSpans)
@@ -978,19 +902,18 @@ namespace Heddle.Runtime
 
             var left = BuildLiteralLeft(workingDocument, blockStart, leftSpans);
 
-            // Step 1 — <script>-element containment (checked first). open = the LAST "<script" with a tag-name
-            // boundary after it whose start tag is closed by an unquoted '>' before the block.
+            // Step 1: <script>-element containment.
             int open = -1;
             for (int m = 0; (m = left.IndexOf("<script", m, StringComparison.OrdinalIgnoreCase)) >= 0; m++)
             {
                 int after = m + 7;
                 if (after >= left.Length)
-                    continue; // the block interrupts the tag name — not a completed <script …> open.
+                    continue;  // Tag name interrupted.
                 char c = left[after];
                 if (c != '/' && c != '>' && !char.IsWhiteSpace(c))
-                    continue; // (a) — a custom element such as <script-loader> is not a script open.
+                    continue;  // Not a script tag (e.g., <script-loader>).
                 if (!HasUnquotedGreaterThan(left, after))
-                    continue; // (b) — still inside the start tag itself (e.g. <script src="@(X)">).
+                    continue;  // Start tag not yet closed.
                 open = m;
             }
 
@@ -1014,14 +937,12 @@ namespace Heddle.Runtime
                     return HtmlContext.Script;
             }
 
-            // Step 2 — nearest tag boundary. The last '<' whose tag is not closed by an unquoted '>' before the
-            // block means the block sits inside that (unclosed) tag; a '>' inside a quoted attribute value (e.g.
-            // src="a>b") never counts as the tag close. No '<' at all, or a closed tag, is element text.
+            // Step 2: nearest tag boundary (unquoted '>' only counts as tag close).
             int tagStart = left.LastIndexOf('<');
             if (tagStart < 0 || HasUnquotedGreaterThan(left, tagStart + 1))
                 return HtmlContext.None; // element text — the default element-text encoder is correct.
 
-            // Step 3 — inside a tag: Attribute or Url by quote parity over the tag text T.
+            // Step 3: classify by quote parity and attribute name.
             string tagText = left.Substring(tagStart);
             int doubleQuotes = CountChar(tagText, '"');
             int singleQuotes = CountChar(tagText, '\'');
@@ -1057,8 +978,9 @@ namespace Heddle.Runtime
                 : HtmlContext.Attribute;
         }
 
-        /// <summary>The literal-only left text the classifier scans: <paramref name="workingDocument"/> left of
-        /// <paramref name="blockStart"/> with every earlier producing block's source span excised.</summary>
+        /// <summary>
+        /// Left text of <paramref name="blockStart"/> with earlier producing blocks' source spans excised.
+        /// </summary>
         private static string BuildLiteralLeft(string workingDocument, int blockStart, List<BlockPosition> leftSpans)
         {
             if (leftSpans == null || leftSpans.Count == 0)
@@ -1085,9 +1007,9 @@ namespace Heddle.Runtime
             return builder.ToString();
         }
 
-        /// <summary>The quote-aware unquoted-<c>&gt;</c> scan: walks right from <paramref name="from"/>, tracking
-        /// quoted-attribute-value state (a <c>"</c>/<c>'</c> outside a quote opens a value; only the matching quote
-        /// closes it), and reports whether a <c>&gt;</c> occurs outside any quoted value.</summary>
+        /// <summary>
+        /// Returns true if an unquoted <c>&gt;</c> exists from <paramref name="from"/> onward.
+        /// </summary>
         private static bool HasUnquotedGreaterThan(string text, int from)
         {
             char quote = '\0';
@@ -1129,20 +1051,15 @@ namespace Heddle.Runtime
             c == ':' || c == '_' || c == '-';
 
         /// <summary>
-        /// Resolves the registry name for an unnamed <c>@(...)</c> / standalone-function carrier.
-        /// A bodiless unnamed carrier resolves <c>"html"</c> (<see cref="Heddle.Extensions.EmptyHtmlExtension"/>)
-        /// under the <see cref="OutputProfile.Html"/> profile — reusing the proven
-        /// <c>[EncodeOutput]</c> pipeline — and stays the raw empty carrier under <c>Text</c>. A bodied
-        /// <c>@(X){{…}}</c> is a raw rescoping container and is never redirected. Resolving a bodiless carrier
-        /// records <see cref="CompileContext.UnnamedOutputCompiled"/> for the HED2002 directive-position warning.
+        /// Resolves carrier name: Html profile redirects bodiless unnamed carriers to EmptyHtmlExtension.
+        /// Records UnnamedOutputCompiled for HED2002.
         /// </summary>
         private static string UnnamedCarrierName(OutputItem item, CompileContext context)
         {
             bool hasBody = !string.IsNullOrEmpty(item.ParameterTemplate);
             if (!hasBody)
                 context.UnnamedOutputCompiled = true;
-            // The carrier decision itself is the shared OutputProfileRules rule (the emitter's
-            // AllocateEmptyExtension runs the identical call), so the two tiers cannot pick different carriers.
+            // Shared with emitter's AllocateEmptyExtension to ensure consistent carrier selection.
             OutputProfileRules.ResolveUnnamedCarrier(context.OutputProfile, hasBody, out var kind, out _);
             return OutputProfileRules.CarrierRegistryName(kind);
         }
@@ -1169,7 +1086,6 @@ namespace Heddle.Runtime
 
                 CheckTypes(dataType, definition.Position, compileScope, acceptType);
 
-                // Resolve the layout + slot type (cached), bind named arguments, install the binder.
                 var layout = ResolveLayoutCached(definition, compileScope);
                 var slotType = ResolveSlotType(definition, compileScope);
                 def.SlotMode = slotType != null;
@@ -1187,12 +1103,7 @@ namespace Heddle.Runtime
                         compileScope, parseContext);
                 }
 
-                // Determine the fill scope the definition BODY compiles under.
-                //  - A region body (default or materialized fill) inherits the ambient scope so sibling region
-                //    calls keep resolving their fills; when the region being compiled IS the fill, its own
-                //    name rebinds to the base default so a self-call terminates.
-                //  - A non-region definition call builds a fresh call-scoped scope from this call site's matched
-                //    fill candidates (empty/null when none) — a second call with no fills renders defaults.
+                // Region bodies inherit ambient fill scope; non-regions build call-scoped scope from matched candidates.
                 var compileContext = compileScope.CompileContext;
                 var ambientFills = compileContext.RegionFillScope;
                 RegionFillScope bodyFills;
@@ -1210,15 +1121,12 @@ namespace Heddle.Runtime
                     bodyFills = BuildRegionFillScope(definition, extensionItem, compileScope);
                 }
 
-                // Caller-content compile: model type is the slot type in slot mode, else the positional model type;
-                // the enclosing prop layout/slot type stay active (caller content is lexical).
+                // Caller content compiles with slot type (if slot mode) or dataType; enclosing layout stays active.
                 var callerModelType = slotType ?? dataType;
                 returnTypeChainedPrevious = InitializeTemplate(extension, extensionItem.ParameterTemplate,
                     callerModelType, returnTypeChainedPrevious, compileScope, parseContext, extensionItem);
 
-                // Def-body compile under this definition's own layout/slot type (save/set/restore):
-                // a region body keeps the ENCLOSING component's prop layout (a region declares no props; it
-                // borrows the component's), and the fill scope rides the same save/set/restore block.
+                // Definition body compiles under own layout/slot (save/restore); regions inherit enclosing component's layout.
                 var savedLayout = compileContext.ActivePropLayout;
                 var savedSlot = compileContext.SlotParameterType;
                 var savedFills = compileContext.RegionFillScope;
@@ -1266,11 +1174,7 @@ namespace Heddle.Runtime
                 returnTypeChainedPrevious = InitializeTemplate(extension, extensionItem.ParameterTemplate, dataType,
                     returnTypeChainedPrevious, compileScope, parseContext, extensionItem);
 
-                // A parameter-declaring extension binds its [Prop] layout and is wrapped in the
-                // parameter carrier. The wrap happens AFTER InitializeTemplate so the render type
-                // ([EncodeOutput]/[NotEncode]) and InitStart land on the INNER extension — the carrier carries
-                // neither attribute (carrier-transparency, security-sensitive). Defaults are installed even for
-                // an argument-less call (the layout is bound whenever non-empty, exactly as definitions bind).
+                // Wrap parameter-declaring extensions after InitializeTemplate so render-type attributes stay on inner extension (carrier-transparency).
                 if (PropLayout.DeclaresExtensionParameters(templateType))
                 {
                     var ownerDisplay = $"extension '{extensionItem.ExtensionName}'";
@@ -1292,11 +1196,7 @@ namespace Heddle.Runtime
         }
 
         /// <summary>
-        /// Resolves (and caches, per extension <see cref="Type"/> per compile) the [Prop] layout of a
-        /// parameter-declaring extension. The declaration-side diagnostics
-        /// (HED5007/HED5008/HED5009/HED5010/HED5015) are emitted once, positioned at the FIRST call site
-        /// of that type in the compile — a representative position (declaration faults are per-type, not per-call),
-        /// exactly as a definition's HED5009/HED5010 surface once through <see cref="ResolveLayoutCached"/>.
+        /// Resolves and caches the [Prop] layout of parameter-declaring extensions; declaration-side diagnostics (HED5007/5008/5009/5010/5015) emitted once per type.
         /// </summary>
         private static PropLayout ResolveExtensionLayoutCached(Type extensionType, CompileScope compileScope,
             string ownerDisplay, BlockPosition ownerCallPosition)
@@ -1314,9 +1214,7 @@ namespace Heddle.Runtime
         }
 
         /// <summary>
-        /// Resolves (and caches) the prop layout of <paramref name="definition"/>. Keyed by a stable
-        /// definition identity so two call sites of one definition share the layout instance across the isolated
-        /// contexts the parser produces per body.
+        /// Resolves and caches the prop layout of a definition, keyed by stable identity for sharing across parser-isolated contexts.
         /// </summary>
         private static PropLayout ResolveLayoutCached(DefinitionItem definition, CompileScope compileScope)
         {
@@ -1332,8 +1230,7 @@ namespace Heddle.Runtime
         }
 
         /// <summary>
-        /// Resolves (and caches) the named-region table of <paramref name="definition"/>, keyed by the
-        /// same stable name+position identity <see cref="ResolveLayoutCached"/> uses for props.
+        /// Resolves and caches the named-region table of a definition, keyed by the same stable identity as props.
         /// </summary>
         private static RegionLayout ResolveRegionLayoutCached(DefinitionItem definition, CompileScope compileScope)
         {
@@ -1349,13 +1246,8 @@ namespace Heddle.Runtime
         }
 
         /// <summary>
-        /// The call-site fill step. Matches the caller content's captured
-        /// <see cref="RegionFillCandidate"/>s (origin identity = the caller-content parse context, stable across
-        /// isolation copies) against the callee's region table:
-        /// a PUBLIC match retracts the parse-emitted base-not-found error and materializes the fill; a PRIVATE
-        /// match retracts and raises HED5019 (once per candidate); a candidate matching NO region keeps its
-        /// already-emitted error — byte-identical (additivity). Returns <c>null</c> when the call
-        /// site carries no matched fills.
+        /// Matches caller content's region fill candidates against callee's region table; PUBLIC matches materialize fills,
+        /// PRIVATE matches raise HED5019; unmatched candidates keep their parse-emitted errors.
         /// </summary>
         private static RegionFillScope BuildRegionFillScope(DefinitionItem definition, OutputItem extensionItem,
             CompileScope compileScope)
@@ -1370,9 +1262,7 @@ namespace Heddle.Runtime
             Dictionary<string, DefinitionItem> fills = null;
             RegionLayout layout = null;
 
-            // The four-step matching rule is shared (RegionFillResolver); only the table and the reactions are
-            // runtime-specific. The layout stays lazily resolved — the delegate runs only for candidates the shared
-            // rule lets past the origin filter, exactly as the inline loop did.
+            // Four-step matching rule is shared (RegionFillResolver); layout resolved lazily per candidate.
             RegionFillResolver.Resolve(candidates, callerContext.OriginIdentity,
                 (string name, out bool isPublic) =>
                 {
@@ -1420,11 +1310,7 @@ namespace Heddle.Runtime
         }
 
         /// <summary>
-        /// Removes the candidate's captured base-not-found error OBJECT from BOTH downstream
-        /// lists — the runtime-authoritative <c>CompileContext.CompileErrors</c> (the result reads only this) and
-        /// the shared parse-side <c>ParseContext.Errors</c> (the LSP union reference-dedups over it). A
-        /// parse-list-only removal would be inert: <c>DocumentParser.CopyErrorsTo</c> copied the same reference
-        /// into <c>CompileErrors</c> before compile. Idempotent across repeated outer-call-site compiles.
+        /// Removes candidate's base-not-found error from both CompileErrors and ParseContext.Errors (LSP de-dups over the latter).
         /// </summary>
         private static void RetractCandidateError(RegionFillCandidate candidate, CompileScope compileScope)
         {
@@ -1432,8 +1318,9 @@ namespace Heddle.Runtime
             candidate.Origin.Errors.Remove(candidate.Error);
         }
 
-        /// <summary>Resolves the slot parameter type, inheriting the first declared <c>out::</c> down the
-        /// base chain; HED5010 (slot form) when unresolvable.</summary>
+        /// <summary>
+        /// Resolves slot parameter type from first declared <c>out::</c> down base chain; HED5010 if unresolvable.
+        /// </summary>
         private static ExType ResolveSlotType(DefinitionItem definition, CompileScope compileScope)
         {
             var slotName = SlotRules.SlotTypeName(definition);
@@ -1457,12 +1344,7 @@ namespace Heddle.Runtime
         }
 
         /// <summary>
-        /// Binds a call site's named arguments against <paramref name="layout"/>: builds the frozen prototype (defaults +
-        /// converted constant arguments) and the dynamic slot plan, emitting HED5001/HED5003/HED5004 per argument
-        /// and HED5002 for any unbound required slot. Argument values are native expressions compiled in the
-        /// caller's context (evaluated against <c>scope.Parent()</c> at bind).
-        /// <paramref name="ownerDisplay"/> is the complete owner noun phrase — <c>definition '&lt;name&gt;'</c> or
-        /// <c>extension '&lt;name&gt;'</c> — interpolated verbatim into the HED5001/HED5002/HED5003 messages.
+        /// Binds named arguments: builds frozen prototype and dynamic slot plan, emitting HED5001/5003/5004 per argument and HED5002 for unbound required slots.
         /// </summary>
         private static PropsBinder BindProps(PropLayout layout, string ownerDisplay, OutputItem extensionItem,
             CompileScope compileScope, ParseContext parseContext)
@@ -1502,8 +1384,7 @@ namespace Heddle.Runtime
                     var param = NativeExpressionCompiler.Compile(arg.Value, compileScope, parseContext, out var argType);
                     if (param == null)
                     {
-                        // The argument expression itself failed (error already recorded); mark bound so a
-                        // spurious HED5002 does not pile on.
+                        // Error already recorded; mark bound to prevent spurious HED5002.
                         bound[slot.Index] = true;
                         continue;
                     }
@@ -1566,8 +1447,9 @@ namespace Heddle.Runtime
                 $"Prop '{slot.Name}' of {ownerDisplay} expects {slot.Type.Type}, but the argument type is {argName}.";
         }
 
-        /// <summary>Builds the boxed-value converter for a dynamic argument that widens numerically (the boxed
-        /// value's runtime type must become the prop type); <c>null</c> when no runtime conversion is needed.</summary>
+        /// <summary>
+        /// Builds boxed-value converter for numeric widening; <c>null</c> when no runtime conversion needed.
+        /// </summary>
         private static Func<object, object> BuildNumericConvert(Type argType, Type propType)
         {
             var argUnderlying = Nullable.GetUnderlyingType(argType) ?? argType;
@@ -1634,8 +1516,7 @@ namespace Heddle.Runtime
         {
             modelType ??= typeof(object);
             chainedType ??= typeof(object);
-            // The truth table is the shared RenderTypeRules.Derive — the emitter's
-            // DerivedRenderTypeLiteral evaluates the same function over the symbol-side flags.
+            // Shared with emitter's DerivedRenderTypeLiteral to ensure consistent render type evaluation.
             var extensionType = extension.GetType();
             RenderType directRender = RenderTypeRules.Derive(
                 extensionType.IsHaveAttribute<EncodeOutputAttribute>(true),

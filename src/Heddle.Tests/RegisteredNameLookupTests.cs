@@ -129,8 +129,7 @@ namespace Heddle.Tests
             Assert.True(PrecompiledTemplates.TryGet("templates/report.heddle", out var byKey));
             Assert.True(PrecompiledTemplates.TryGet("BuildReport.heddle", out var byName));
             Assert.Same(byKey, byName);
-            // The entry keeps reporting its key, never the name it was reached through: the key is the identity the
-            // staleness check and every diagnostic message are written against.
+            // The entry reports its key (used for staleness checks and diagnostics), not the lookup spelling.
             Assert.Equal("templates/report.heddle", byName.Key);
             Assert.Equal("BuildReport.heddle", byName.RegisteredName);
         }
@@ -185,8 +184,6 @@ namespace Heddle.Tests
             Assert.False(PrecompiledTemplates.TryGet("BuildReport", out _));
         }
 
-        // ---- Resolution order: keys win, whatever the registration order ----------------------------------
-
         /// <summary>
         /// <para>The resolution-order decision, in the direction where the <b>name registers first</b>: assembly A's
         /// template is named <c>shared/banner.heddle</c>, then assembly B turns up owning that spelling as its real
@@ -204,7 +201,6 @@ namespace Heddle.Tests
 
             Assert.True(PrecompiledTemplates.TryGet("shared/banner.heddle", out var afterB));
             Assert.Equal("shared/banner.heddle", afterB.Key);
-            // A's template is untouched: its own key still resolves to it.
             Assert.True(PrecompiledTemplates.TryGet("templates/report.heddle", out var a));
             Assert.Equal("templates/report.heddle", a.Key);
         }
@@ -243,17 +239,11 @@ namespace Heddle.Tests
             Assert.Equal("shared/banner.heddle", keyFirst.Key);
         }
 
-        // ---- HED7104: the new collision class ------------------------------------------------------------
-
         /// <summary>
-        /// <para><b>The collision class the build tier cannot see.</b> Within one compilation a name that collides
-        /// with another template's key is <c>HED7004</c>. Across assemblies nothing at build time can know: the
-        /// generator reads referenced assemblies' symbols, but a manifest's rows live in a
-        /// <c>GetTemplates</c> method <em>body</em>, which is IL and not symbol metadata. So the collision is
-        /// detectable only where both manifests are present — at registration — and it reports through the fallback
-        /// callback, the channel the runtime tier already uses for everything a host needs told about its
-        /// precompiled assemblies.</para>
-        /// <para>Here the key registers first, so the name is refused at insert.</para>
+        /// <para><b>The collision class the build tier cannot see.</b> Within one compilation a name colliding
+        /// with another template's key is <c>HED7004</c>. Across assemblies the collision is detectable only at
+        /// registration where both manifests are present, and it reports through the fallback callback using
+        /// <c>HED7104</c>.</para>
         /// </summary>
         [Fact]
         public void ANameCollidingWithAnotherAssemblysKeyReportsHed7104()
@@ -269,7 +259,6 @@ namespace Heddle.Tests
             Assert.Equal("HED7104", evt.DiagnosticId);
             Assert.Equal(b, evt.AssemblyName);
             Assert.Contains("shared/banner.heddle", evt.Detail);
-            // The detail names who owns the spelling, which is the only actionable part of the report.
             Assert.Contains(a, evt.Detail);
         }
 
@@ -311,10 +300,8 @@ namespace Heddle.Tests
             Assert.Equal(PrecompiledFallbackReason.RegisteredNameUnavailable, evt.Reason);
             Assert.Equal(b, evt.AssemblyName);
 
-            // First-come kept it.
             Assert.True(PrecompiledTemplates.TryGet("Shared", out var entry));
             Assert.Equal("a/first.heddle", entry.Key);
-            // And the loser is still reachable by its own key.
             Assert.True(PrecompiledTemplates.TryGet("b/second.heddle", out _));
         }
 
@@ -327,11 +314,8 @@ namespace Heddle.Tests
             PrecompiledTemplates.OnFallback = _ => { };
 
             Register("A", Entry("shared/banner.heddle", "Shared.heddle"));
-
-            // A colliding name: no throw.
             Register("B", Entry("b/second.heddle", "Shared.heddle"));
 
-            // A duplicate key: still a throw, and still transactional.
             Pending["B"] = new[] { Entry("shared/banner.heddle") };
             var ab = AssemblyBuilder.DefineDynamicAssembly(
                 new AssemblyName("HeddleNameAsm_Dup_" + Guid.NewGuid().ToString("N")),
@@ -361,20 +345,10 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// <para>The registration path has no silent drop. A <c>RegisteredName</c> that fails the shared key rule —
-        /// containing <c>..</c>, a trailing separator, or whitespace — is now reported. The generator cannot emit such
-        /// a name (a name that fails normalization is <c>HED7004</c> at build time and never reaches a manifest), so
-        /// the population is hand-written, third-party, or emitted by a tool that skipped the rule. That is the
-        /// population most in need of being told.</para>
-        /// <para>It reports through the same channel and the same id as a collision: from the host's side the outcome
-        /// is identical — a name expected to resolve does not, yet the template is still reachable by its key. A name
-        /// resolves to an entry whose every row the gauntlet already re-checks, so per-request re-validation of the
-        /// name would re-validate nothing.</para>
-        /// <para>One mutation survives: indexing the refused spelling alongside the report passes every test because
-        /// <see cref="PrecompiledTemplates.TryGet"/> normalizes before consulting the name index, so a spelling outside
-        /// <c>TryNormalize</c>'s range is unreachable by any lookup; the eviction and arbitration arms compare against
-        /// normalized keys and names only; and <see cref="PrecompiledTemplates.Entries"/> reads the key index. The
-        /// mutant is extensionally equal — unreachable state, not defect — and the observable half is the report.</para>
+        /// <para>Unnormalizable names (containing <c>..</c>, trailing separator, or whitespace) are reported
+        /// via <c>HED7104</c> like collisions, with the report checked because
+        /// <see cref="PrecompiledTemplates.TryGet"/> consultation order alone would mask an implementation that
+        /// parked the refused spelling in the index.</para>
         /// </summary>
         [Theory]
         [InlineData("../escape")]
@@ -393,13 +367,10 @@ namespace Heddle.Tests
             Assert.Equal(PrecompiledFallbackReason.RegisteredNameUnavailable, evt.Reason);
             Assert.Equal("HED7104", evt.DiagnosticId);
             Assert.Equal(a, evt.AssemblyName);
-            // The report has to name the spelling that was refused and the template that asked for it; otherwise a
-            // host with fifty templates is told only that something, somewhere, lost a name.
+            // Report must identify the refused spelling and template; otherwise the host cannot diagnose the issue.
             Assert.Contains(unusable, evt.Detail);
             Assert.Contains("templates/report.heddle", evt.Detail);
 
-            // The addition is what was lost, and nothing else: the template is still reachable by its key, and the
-            // refused spelling resolves to nothing.
             Assert.True(PrecompiledTemplates.TryGet("templates/report.heddle", out var entry));
             Assert.Equal("templates/report.heddle", entry.Key);
             Assert.False(PrecompiledTemplates.TryGet(unusable, out _));
@@ -423,18 +394,10 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// <para>Two templates in the <em>same</em> manifest, one naming the other's key. The build tier refuses this
-        /// at <c>HED7004</c>, so a first-party manifest cannot carry it — but a hand-written or third-party manifest
-        /// can, and the registry must be order-independent within one assembly rather than depending on the order
-        /// <c>GetTemplates</c> happened to list its rows. That is why keys are staged for the whole manifest before
-        /// any name is considered.</para>
-        /// <para><b>The report is asserted, not just the resolution</b>, and that distinction was found by mutation
-        /// testing. Checking a name against the pre-registration keys instead of this manifest's staged ones
-        /// <em>survived</em> while only the resolution was asserted: the name went into the name index in violation
-        /// of the disjointness invariant, yet the lookup still returned the key owner because
-        /// <see cref="PrecompiledTemplates.TryGet"/> consults keys first. Two redundant guards masking each other
-        /// is exactly the shape a mutation survives, so the invariant is now pinned where it is established —
-        /// the name is refused, and the host is told.</para>
+        /// <para>Keys are staged for the whole manifest before any name to ensure order-independence within one
+        /// assembly. The report is asserted (not just resolution) because
+        /// <see cref="PrecompiledTemplates.TryGet"/> consulting keys first masks an implementation that also
+        /// indexes refused names.</para>
         /// </summary>
         [Theory]
         [InlineData(false)]
@@ -451,7 +414,7 @@ namespace Heddle.Tests
             Assert.True(PrecompiledTemplates.TryGet("shared/banner.heddle", out var entry));
             Assert.Equal("shared/banner.heddle", entry.Key);
 
-            // The name was refused rather than parked in the index behind a key that shadows it.
+            // Must verify refusal; key lookup alone masks an implementation that also indexes the name.
             var evt = Assert.Single(events);
             Assert.Equal(PrecompiledFallbackReason.RegisteredNameUnavailable, evt.Reason);
             Assert.Contains("shared/banner.heddle", evt.Detail);

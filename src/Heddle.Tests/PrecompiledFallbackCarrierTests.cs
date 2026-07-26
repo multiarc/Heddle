@@ -10,27 +10,13 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// <para><b>One field must not carry two kinds of key.</b> Through 2.0 the fallback event had a single
-    /// <c>Key</c> property which held a <em>template key</em> for the per-request reasons and an <em>assembly
-    /// name</em> for the registration-time ones (<c>SchemaVersionUnsupported</c>,
-    /// <c>EngineVersionIncompatible</c>, and <c>RegisteredNameUnavailable</c>). A host could only
-    /// tell which of the two it had by switching on <c>Reason</c>, i.e. by re-deriving a fact the event already
-    /// knew, and the moment `HED7104` made the value actionable that inference became load-bearing. The event now
-    /// carries <see cref="PrecompiledFallbackEvent.TemplateKey"/> and
-    /// <see cref="PrecompiledFallbackEvent.AssemblyName"/> as separate properties, exactly one of which is
-    /// populated.</para>
-    ///
-    /// <para><b>Why the union property was removed rather than narrowed.</b> Keeping <c>Key</c> and quietly
-    /// restricting it to template keys is a behavioural break with no compile-time signal — a 2.0 host that reads
-    /// <c>Key</c> to log which assembly was rejected would start logging null and never be told. Removing it is a
-    /// binary break, which the compiler reports at the one site that has to change.</para>
-    ///
-    /// <para><b>The mapping is pinned from both sides, which is the point of this fixture.</b> The code side is the
-    /// two factories: each refuses a reason belonging to the other carrier, and the classifier behind them is an
-    /// exhaustive switch that refuses a reason it does not know at all — so a reason added later cannot be raised
-    /// without being classified. The declaration side is <see cref="AssemblyScoped"/> below, checked against the
-    /// whole enum by <see cref="EveryReasonPopulatesExactlyOneCarrier"/>: a new reason absent from the table fails,
-    /// and a table row the code disagrees with fails. Neither direction can be made green by editing one place.</para>
+    /// <para>The event had one <c>Key</c> property carrying both template keys (per-request) and assembly names
+    /// (registration-time). Split into separate <see cref="PrecompiledFallbackEvent.TemplateKey"/> and
+    /// <see cref="PrecompiledFallbackEvent.AssemblyName"/> properties to force compile-time errors at call sites
+    /// instead of silent null on narrowing.</para>
+    /// <para>The mapping is pinned from both directions: factories exhaust the enum and refuse wrong reasons;
+    /// <see cref="AssemblyScoped"/> and <see cref="EveryReasonPopulatesExactlyOneCarrier"/> ensure new reasons
+    /// cannot be added to one place only.</para>
     /// </summary>
     public class PrecompiledFallbackCarrierTests
     {

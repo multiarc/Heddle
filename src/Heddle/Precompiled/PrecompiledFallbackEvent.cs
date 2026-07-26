@@ -89,16 +89,11 @@ namespace Heddle.Precompiled
         {
             switch (reason)
             {
-                // Registration-time: the manifest, or one of its rows, was rejected wholesale. There is no single
-                // template to name — the schema/engine arms reject every template in the assembly at once, and a lost
-                // registered name is a spelling that belongs to no template afterwards.
                 case PrecompiledFallbackReason.SchemaVersionUnsupported:
                 case PrecompiledFallbackReason.EngineVersionIncompatible:
                 case PrecompiledFallbackReason.RegisteredNameUnavailable:
                     return true;
 
-                // Per-request: a resolved entry failed the gauntlet, or a lookup missed on case alone. Each is about
-                // exactly one template, and the assembly it came from is discoverable from the entry.
                 case PrecompiledFallbackReason.UnsupportedFunction:
                 case PrecompiledFallbackReason.OptionsMismatch:
                 case PrecompiledFallbackReason.ExtensionBindingMismatch:

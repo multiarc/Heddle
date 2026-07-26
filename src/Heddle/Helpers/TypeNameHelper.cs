@@ -7,15 +7,15 @@ namespace Heddle.Helpers
     internal static class TypeNameHelper
     {
         private static readonly string[][] Keywords = new string[][] {
-            null,           // 1 character 
-            new string[] {  // 2 characters
+            null,
+            new string[] {
                 "as",
                 "do",
                 "if",
                 "in",
                 "is",
             },
-            new string[] {  // 3 characters
+            new string[] {
                 "for",
                 "int",
                 "new",
@@ -23,7 +23,7 @@ namespace Heddle.Helpers
                 "ref",
                 "try",
             },
-            new string[] {  // 4 characters
+            new string[] {
                 "base",
                 "bool",
                 "byte",
@@ -40,7 +40,7 @@ namespace Heddle.Helpers
                 "uint",
                 "void",
             },
-            new string[] {  // 5 characters
+            new string[] {
                 "break",
                 "catch",
                 "class",
@@ -56,7 +56,7 @@ namespace Heddle.Helpers
                 "using",
                 "while",
             },
-            new string[] {  // 6 characters
+            new string[] {
                 "double",
                 "extern",
                 "object",
@@ -73,7 +73,7 @@ namespace Heddle.Helpers
                 "unsafe",
                 "ushort",
             },
-            new string[] {  // 7 characters 
+            new string[] {
                 "checked",
                 "decimal",
                 "default",
@@ -82,7 +82,7 @@ namespace Heddle.Helpers
                 "private",
                 "virtual",
             },
-            new string[] {  // 8 characters 
+            new string[] {
                 "abstract",
                 "continue",
                 "delegate",
@@ -94,7 +94,7 @@ namespace Heddle.Helpers
                 "readonly",
                 "volatile",
             },
-            new string[] {  // 9 characters
+            new string[] {
                 "__arglist",
                 "__makeref",
                 "__reftype",
@@ -103,7 +103,7 @@ namespace Heddle.Helpers
                 "protected",
                 "unchecked",
             },
-            new string[] {  // 10 characters
+            new string[] {
                 "__refvalue",
                 "stackalloc",
             },
@@ -151,8 +151,7 @@ namespace Heddle.Helpers
                         GetTypeArgumentsOutput(typeRef.GetTypeInfo().GenericTypeArguments, currentTypeArgStart, numTypeArgs, sb);
                         currentTypeArgStart += numTypeArgs;
 
-                        // Arity can be in the middle of a nested type name, so we might have a . or + after it. 
-                        // Skip it if so. 
+                        // Arity can appear mid-nested-type-name followed by . or +, so skip it.
                         if (i < baseType.Length && (baseType[i] == '+' || baseType[i] == '.'))
                         {
                             sb.Append(".");
@@ -172,8 +171,7 @@ namespace Heddle.Helpers
 
         private static string CreateEscapedIdentifier(string name)
         {
-            // Any identifier started with two consecutive underscores are 
-            // reserved by CSharp.
+            // Identifiers starting with two underscores are reserved by C#.
             if (IsKeyword(name) || IsPrefixTwoUnderscore(name))
             {
                 return "@" + name;
@@ -210,8 +208,7 @@ namespace Heddle.Helpers
                     sb.Append(", ");
                 }
 
-                // it's possible that we call GetTypeArgumentsOutput with an empty typeArguments collection.  This is the case
-                // for open types, so we want to just output the brackets and commas. 
+                // For open types, typeArguments may be empty; output brackets and commas regardless.
                 if (i < typeArguments.Length)
                     sb.Append(typeArguments[i].GetTypeOutput());
             }

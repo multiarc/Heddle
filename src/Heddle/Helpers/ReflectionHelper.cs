@@ -47,11 +47,8 @@ namespace Heddle.Helpers
                     string shortName;
                     if (type.IsNested)
                     {
-                        // Canonical stored keys are CLR metadata names ('+' between declaring types,
-                        // e.g. Outer+Nested). A dotted alias (Outer.Nested) is registered additionally,
-                        // because the template lexer cannot accept '+'; both keys point at the same Type.
-                        // If a real namespaced type shares the dotted spelling, the alias lands in the
-                        // same list and surfaces as the existing "ambiguous" error rather than a silent pick.
+                        // Store both CLR metadata form (Outer+Nested) and dotted alias (Outer.Nested)
+                        // since the template lexer cannot accept '+'.
                         StringBuilder shortNameBuilder = new StringBuilder();
                         shortNameBuilder.Append(type.Name);
                         var parent = type.DeclaringType;

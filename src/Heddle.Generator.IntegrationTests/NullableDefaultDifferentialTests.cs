@@ -13,9 +13,7 @@ namespace Heddle.Generator.IntegrationTests
     {
         private const string Header = "@model(){{System.String}}@\\\n";
 
-        /// <summary>An <c>int</c> constant default on a <c>long?</c> prop. The frozen prototype must hold the widened
-        /// boxed <see cref="long"/> the runtime's <c>Convert.ChangeType</c> produces; the rendered type name is what
-        /// makes that observable rather than argued.</summary>
+        /// <summary>Constant default on a nullable prop must be widened and boxed correctly (int default on long?).</summary>
         [Fact]
         public void NullableWideningDefaultPrecompilesAndReproducesTheBoxedType()
         {
@@ -30,8 +28,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("n=5/Int64:hi", precompiled);
         }
 
-        /// <summary>The identity-lift row: an <c>int</c> default on an inherited <c>int?</c> slot, re-declared as
-        /// <c>int</c>.</summary>
+        /// <summary>Constant default on nullable prop with matching type (int default on int?).</summary>
         [Fact]
         public void NullableIdentityDefaultPrecompilesAndMatches()
         {

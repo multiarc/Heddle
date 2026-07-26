@@ -3,17 +3,10 @@ using Xunit;
 
 namespace Heddle.Tests
 {
-    /// <summary>
-    /// <see cref="TemplateOptions.ValidateModelType"/> is deliberately excluded from
-    /// <see cref="TemplateOptions.Equals(TemplateOptions)"/>/<see cref="TemplateOptions.GetHashCode"/>
-    /// (following the <see cref="TemplateOptions.RenderBudget"/>/<see cref="TemplateOptions.MaxRecursionCount"/>
-    /// precedent): it changes failure handling, never the bytes of a successful render, so it must not
-    /// fragment template caches. The copy-constructor round-trip is covered by
-    /// <see cref="TemplateOptionsCompletenessTests"/> automatically.
-    /// </summary>
+    /// <summary><see cref="TemplateOptions.ValidateModelType"/> is deliberately excluded from
+    /// Equals/GetHashCode: it changes failure handling, not render bytes, so must not fragment caches.</summary>
     public class TemplateOptionsValidateModelTypeTests
     {
-        /// <summary>Two options differing only by the flag are equal and hash identically.</summary>
         [Fact]
         public void EqualityAndHashIgnoreValidateModelType()
         {

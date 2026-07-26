@@ -7,15 +7,13 @@ using Xunit;
 
 namespace Heddle.Tests
 {
-    /// <summary>A top-level model for the imported-definition-body fixture (a simple short name the template
-    /// type parser resolves without the nested-type <c>+</c> separator).</summary>
+    /// <summary>Test model for imported-definition-body fixtures.</summary>
     public class ImportOriginModel { public string Title { get; set; } }
 
     /// <summary>
-    /// White-box (IVT) coverage of the <c>ImportOrigin</c> marker: entries produced by an imported file's parse
-    /// or call-site compile carry the marker (path + site); nested A→B→C imports end site-anchored in A's
-    /// coordinates with C's path (shared-instance re-anchor); the flag-off compile stamps nothing; and the
-    /// scope-map <c>Record</c> is skipped for import-marked compiles (foreign offsets stay out of the map).
+    /// The <c>ImportOrigin</c> marker: imported files carry path and site; nested imports end site-anchored
+    /// at the top-level import block with the deepest file's path; flag-off stamps nothing; import-marked
+    /// compiles skip the scope-map record.
     /// </summary>
     public class ImportOriginTests
     {
@@ -56,15 +54,12 @@ namespace Heddle.Tests
             var marked = context.CompileErrors.FirstOrDefault(e => e.ImportOrigin != null);
             Assert.NotNull(marked);
             Assert.Contains("import-origin-broken.heddle", marked.ImportOrigin.Path);
-            // Site anchors at the @<< block in the importing document (starts at offset 0 here).
             Assert.Equal(0, marked.ImportOrigin.Site.StartIndex);
         }
 
         [Fact]
         public void ImportedDefinitionBodyCompileErrorIsStamped()
         {
-            // @lib_card() compiles the imported (pinned) definition body at this call site → HED0001 on the body's
-            // NoSuchMember read; the funnel bracket (stamp site 4) marks it with the library origin.
             var context = CompileInline(
                 "@<<{{import-origin-badmember-lib.heddle}}\n@lib_card()", typeof(ImportOriginModel));
             var marked = context.CompileErrors.FirstOrDefault(
@@ -76,8 +71,6 @@ namespace Heddle.Tests
         [Fact]
         public void NestedImportsEndSiteAnchoredInTopDocumentWithDeepestPath()
         {
-            // A imports B imports C(broken). The C error is stamped during B's parse and re-anchored by A's import
-            // block: Path keeps the deepest file (C), Site bubbles to A's coordinates.
             var context = CompileFixture("import-origin-a");
             var marked = context.CompileErrors.FirstOrDefault(e => e.ImportOrigin != null);
             Assert.NotNull(marked);
@@ -99,8 +92,7 @@ namespace Heddle.Tests
             var context = CompileInline(
                 "@<<{{import-origin-badmember-lib.heddle}}\n@lib_card()", typeof(ImportOriginModel));
             Assert.NotNull(context.ScopeMap);
-            // The importing document is short; the imported definition body's foreign span (its @(NoSuchMember)
-            // offset in the library file) must not appear as a recorded entry.
+            // Imported definition body's offsets must not appear in the scope map (foreign offsets stay out).
             int docLength = context.ScopeMap.Entries.Count == 0 ? 0 : context.ScopeMap.Entries.Max(e => e.Offset + e.Length);
             Assert.True(docLength <= "@<<{{import-origin-badmember-lib.heddle}}\n@lib_card()".Length + 1,
                 "No recorded span should extend past the analyzed document length.");

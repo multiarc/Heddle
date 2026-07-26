@@ -6,13 +6,8 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>
-    /// The editor arm of the diagnostic-projection-equivalence corpus. The same
-    /// <see cref="DiagnosticCorpusVectors"/> table the run tier asserts against is asserted here against what a
-    /// workspace-configured <c>HeddleLanguageService</c> actually publishes — so the editor and the engine agree
-    /// on every diagnostic, and a channel that stopped draining fails here.
-    /// <para>The service is constructed with default options to validate default-enabled profile behavior.
-    /// The <c>encodingLint</c> fixture is silent under <c>Text</c> and fires under <c>Html</c>, so its row passing
-    /// here confirms an unconfigured editor lints exactly as the build of record.</para>
+    /// Validates that editor diagnostics match the shared <see cref="DiagnosticCorpusVectors"/> table, ensuring
+    /// editor and engine agreement. Service uses default options; <c>encodingLint</c> confirms profile behavior.
     /// </summary>
     public class DiagnosticProjectionCorpusLspTests
     {

@@ -48,7 +48,6 @@ namespace Heddle.Tests
             Assert.True(book.AddOrReplace("slug", Overload(First, "Slug(int)", "System.Int32")));
 
             Assert.Equal(2, book.Overloads("slug").Count);
-            // One container, one row, count 2 — the shape the gauntlet compares against the live registry.
             Assert.Equal(new[] { First }, book.Containers("slug"));
             Assert.Equal(2, book.OverloadCount("slug", First));
         }

@@ -32,10 +32,6 @@ namespace Heddle.Generator.IntegrationTests
         private static Diagnostic[] Unbindable(DifferentialHarness.GenResult gen) =>
             gen.Diagnostics.Where(d => d.Id == HeddleDiagnosticIds.BuildFunctionCallNotBindable).ToArray();
 
-        // -------------------------------------------------------------------------------------------------
-        // The proof half: Ambiguous / None over typed arguments is a build error.
-        // -------------------------------------------------------------------------------------------------
-
         /// <summary>The shipped counter-example. <c>min(1, 2u)</c> leaves <c>(long,long)</c>, <c>(double,double)</c>
         /// and <c>(decimal,decimal)</c> all at rank <c>(1,1)</c>, so the flat Pareto front has three members. The
         /// build must say so — at Error, positioned in the <c>.heddle</c> file, naming the call and the candidate
@@ -55,10 +51,8 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("min(long, long)", message);
             Assert.Contains("min(double, double)", message);
             Assert.Contains("min(decimal, decimal)", message);
-            // The author is told which runtime error this is the build-time twin of, and what to do about it.
             Assert.Contains(HeddleDiagnosticIds.AmbiguousFunctionCall, message);
 
-            // The template is still not precompiled — the error replaces the silence, not the refusal.
             DifferentialHarness.ExpectDegrade(gen, key);
         }
 
@@ -117,10 +111,6 @@ namespace Heddle.Generator.IntegrationTests
                 e => e.DiagnosticId == HeddleDiagnosticIds.AmbiguousFunctionCall);
         }
 
-        // -------------------------------------------------------------------------------------------------
-        // The side condition: an argument the estimator could not type proves nothing, so it stays silent.
-        // -------------------------------------------------------------------------------------------------
-
         /// <summary>
         /// <b>The side condition.</b> <c>Payload</c> is <c>object</c>-typed, which the estimator classifies as
         /// <see cref="OperandCategory.Unknown"/> on purpose (an object-typed operand carries no usable static facts).
@@ -166,12 +156,6 @@ namespace Heddle.Generator.IntegrationTests
             DifferentialHarness.ExpectPrecompiled(gen, key);
         }
 
-        // -------------------------------------------------------------------------------------------------
-        // Exports. Arbitrary host [ExportFunctions] signatures run through the same ranker, and the measurement
-        // showing the ranker never changes a winner was taken over the built-in table only — it does not carry to
-        // host overload sets, so the error has to behave for exports too.
-        // -------------------------------------------------------------------------------------------------
-
         /// <summary>A host export set with the same collision shape: <c>blend(long, long)</c> and
         /// <c>blend(double, double)</c> both rank <c>(1,1)</c> for <c>(int, uint)</c>.</summary>
         [Fact]
@@ -188,7 +172,6 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("blend(long, long)", message);
             Assert.Contains("blend(double, double)", message);
 
-            // And the runtime agrees, over the registry the host actually builds from the same exports.
             var options = new TemplateOptions();
             var registry = new Runtime.Expressions.FunctionRegistry();
             registry.RegisterFrom(typeof(TemplateFunctions).Assembly);
@@ -224,10 +207,6 @@ namespace Heddle.Generator.IntegrationTests
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
         }
 
-        // -------------------------------------------------------------------------------------------------
-        // One report per call site.
-        // -------------------------------------------------------------------------------------------------
-
         /// <summary>The binder is consulted twice per call — once by the operand-kind estimator that guards the
         /// enclosing operator, once by the emission walk — and the writer's per-<c>CallNode</c> memo is what makes
         /// that one report rather than two.</summary>
@@ -241,8 +220,7 @@ namespace Heddle.Generator.IntegrationTests
 
         /// <summary>A definition body reached from two call sites reports its illegal call once, not once per
         /// caller — the shape most likely to double-report. It holds because the writer records only on its
-        /// per-<c>CallNode</c> memo miss; the emitter's seen-set is belt-and-braces and, as its comment says, has no
-        /// reachable trigger today (deleting it reddens nothing).</summary>
+        /// per-<c>CallNode</c> memo miss.</summary>
         [Fact]
         public void ADefinitionBodyCalledTwiceReportsItsCallOnce()
         {
@@ -293,10 +271,6 @@ namespace Heddle.Generator.IntegrationTests
             // Two reports, still zero precompiled output.
             DifferentialHarness.ExpectDegrade(gen, key);
         }
-
-        // -------------------------------------------------------------------------------------------------
-        // The soundness assumption the side condition rests on, pinned so it cannot rot silently.
-        // -------------------------------------------------------------------------------------------------
 
         /// <summary>
         /// The generator's name-keyed rank model answers <c>IsReferenceAssignable</c> <b>false</b> by construction —

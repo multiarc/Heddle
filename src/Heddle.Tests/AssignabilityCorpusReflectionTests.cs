@@ -52,8 +52,7 @@ namespace Heddle.Tests
             foreach (var row in AssignabilityCorpus.Rows)
                 families.Add(row.Family);
 
-            // The seed families the corpus must always carry. Losing one silently is how a disagreement class
-            // stops being tested.
+            // Losing a seed family silently breaks test coverage.
             foreach (var required in new[]
                      {
                          "identity", "reference", "boxing", "nullable", "nullable-correction-A",

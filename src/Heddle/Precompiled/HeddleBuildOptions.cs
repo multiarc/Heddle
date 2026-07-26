@@ -3,20 +3,9 @@ using Heddle.Data;
 
 namespace Heddle.Precompiled
 {
-    /// <summary>
-    /// <para>The one option names + defaults table. The MSBuild property names the generator reads and
-    /// the effective default of every option, stated once and compiled into both <c>Heddle</c> (which initializes
-    /// <see cref="TemplateOptions"/> from it) and the <c>Heddle.Generator</c> analyzer (whose <c>ConfigReader</c> is
-    /// a thin adapter over the parse helpers here). Before this file the table existed three times — the props XML,
-    /// <c>ConfigReader</c>, and both <c>TemplateOptions</c> constructors — and a one-sided default change flips every
-    /// template to <c>OptionsMismatch</c>.</para>
-    /// <para><b>The props defaults stay.</b> <c>HeddleTemplateRoot</c>'s default is
-    /// <c>$(MSBuildProjectDirectory)</c>, expressible only in MSBuild, and the properties are consumer-visible after
-    /// import. The XML therefore remains a second physical statement of the five scalar defaults, guarded by the
-    /// props↔code↔runtime lockstep test rather than by hand.</para>
-    /// <para>Roslyn-free and IO-free by construction: the analyzer's <c>AnalyzerConfigOptions</c> never crosses into
-    /// this file, and the parse helpers report failure as a <c>bool</c> rather than a diagnostic.</para>
-    /// </summary>
+    /// <summary>The centralized option names and defaults table, stated once and used by both <c>Heddle</c> and
+    /// <c>Heddle.Generator</c> analyzer. MSBuild property defaults stay in XML (guarded by lockstep test); this file
+    /// is Roslyn-free and IO-free by construction.</summary>
     public static class HeddleBuildOptions
     {
         /// <summary>The <c>build_property.</c> prefix the compiler puts on a <c>CompilerVisibleProperty</c>.</summary>

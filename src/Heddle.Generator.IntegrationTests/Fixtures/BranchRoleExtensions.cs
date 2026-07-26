@@ -5,8 +5,6 @@ using Heddle.Data;
 using Heddle.Exceptions;
 using Heddle.Runtime;
 
-// Exports the custom branch-role trio (and the bodiless zebra-style participant) to the dynamic backend so a
-// custom-trio template resolves the same [ExtensionName] types on both tiers.
 [assembly: ExportExtensions(
     typeof(Heddle.Generator.IntegrationTests.Fixtures.YellExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.BeginExtension),
@@ -27,11 +25,7 @@ using Heddle.Runtime;
     typeof(Heddle.Generator.IntegrationTests.Fixtures.DriftContainer.NestedYellExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.DriftBaseExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.DriftInheritedExtension),
-    // These nine were declared in this assembly and exercised by its tests, but never exported — so the
-    // runtime never registered them while the generator bound them anyway. Closing the discovery-scope gap made the
-    // omission load-bearing: the export list is now the single declaration of what this fixture assembly
-    // contributes, and both tiers read it. (Registration is inert for a malformed [Prop] set — the declaration
-    // faults are raised when a template calls the extension, not when it registers.)
+    // These nine were never exported before, closing the discovery-scope gap by making the export list the single source of truth.
     typeof(Heddle.Generator.IntegrationTests.Fixtures.HookedExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.MalformedDupExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.MalformedReservedExtension),

@@ -93,10 +93,7 @@ namespace Heddle.Runtime {
             return resultTree;
         }
 
-        /// <summary>The static-piece walk: the segmentation itself lives once in
-        /// <see cref="DocumentShaping.SlicePieces{T}"/>, shared with the emitter's body walk so the precompiled
-        /// <c>P0..Pn</c> constants are the same strings this method produces. The pair-building is the only
-        /// runtime-specific part.</summary>
+        /// <summary>Segments document into static pieces and processors; shared with emitter so <c>P0..Pn</c> constants match.</summary>
         private static DataProcessor[] GetDocumentPieces(ICollection<IDataProcessor> processors, string document)
         {
             List<DataProcessor> optimized = new List<DataProcessor>();
@@ -111,12 +108,8 @@ namespace Heddle.Runtime {
         }
 
         /// <summary>
-        /// <para>Whether a body execution of this document must be provisioned with a
-        /// <see cref="ScopeLocals"/> frame: <c>true</c> iff the compiled document statically contains a
-        /// <c>[ScopeChannel]</c> participant. Nested bodies are separate documents and do not
-        /// contribute — the flag is strictly per body level.</para>
-        /// <para>Computed once in the constructor over the pre-optimization element tree (recursing nested
-        /// chain parameters); immutable afterwards — safe to read from concurrent renders.</para>
+        /// Whether a body execution must provision a <see cref="ScopeLocals"/> frame: <c>true</c> iff the document
+        /// contains a <c>[ScopeChannel]</c> participant. Computed once, immutable and thread-safe.
         /// </summary>
         internal bool NeedsLocals { get; }
 
@@ -150,8 +143,7 @@ namespace Heddle.Runtime {
         {
             if (item == null)
                 return false;
-            // Carrier transparency: a parameter-declaring [ScopeChannel] extension stands behind the
-            // attribute-less ExtensionParameterCarrier — unwrap so its body still provisions a locals frame.
+            // Unwrap ExtensionParameterCarrier to reach the [ScopeChannel] extension it wraps.
             var extension = (item.Extension as Core.ExtensionParameterCarrier)?.Inner ?? item.Extension;
             if (extension != null &&
                 extension.GetType().IsHaveAttribute<ScopeChannelAttribute>(true))
@@ -221,7 +213,7 @@ namespace Heddle.Runtime {
                 _processor = processor;
             }
 
-            //This rendering protection is deliberate. If underlying extension cannot produce string then output is empty.
+            // Guard: if extension cannot produce a string, degrade to empty.
             public string Execute(in Scope scope) => _processor.ProcessData(scope) as string ?? string.Empty;
 
             public void Render(in Scope scope)

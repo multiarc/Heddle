@@ -77,6 +77,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.False(gen.Diagnostics.Any(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error));
             Assert.NotNull(gen.Assembly);
 
+            // Child not precompiled; dynamic-compiled from disk in mixed mode.
             var dir = Path.Combine(Path.GetTempPath(), "heddle_ptest_" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(dir);
             try

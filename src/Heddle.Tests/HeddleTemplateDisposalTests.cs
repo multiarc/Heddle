@@ -76,11 +76,8 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>Builds a template whose runtime document is the counting witness (via the internal fields).
-        /// The render snapshot derives the strategy from the document
-        /// (<c>doc.Strategy</c> — the store-block invariant is <c>_processStrategy == _runtimeDocument.Strategy</c>
-        /// on the dynamic path), so a custom strategy must be installed as the document's OWN strategy for the
-        /// witness state to be one a production publish could actually produce.</summary>
+        /// <summary>Builds a template with the counting witness; installs the strategy as the document's own
+        /// strategy to match the store-block invariant (<c>_processStrategy == _runtimeDocument.Strategy</c>).</summary>
         private static HeddleTemplate CreateWitnessTemplate(CountingRuntimeDocument document, IProcessStrategy strategy)
         {
             var template = new HeddleTemplate();
@@ -166,14 +163,14 @@ namespace Heddle.Tests
             }
             Assert.True(strategy.Entered.Wait(TimeSpan.FromSeconds(30)), "renders did not enter the strategy");
 
-            template.Dispose();   // must not block and must not tear down while renders are active
+            template.Dispose();
             Assert.Equal(0, document.DisposeCount);
 
             strategy.Gate.Set();
             await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(TimeSpan.FromSeconds(30)));
             foreach (var task in tasks)
             {
-                // IsCompleted also guards the timeout path: a still-blocked render fails here.
+                // Guard against silent timeout: IsCompleted false means render still blocked.
                 Assert.True(task.IsCompleted && task.Exception == null, task.Exception?.ToString());
             }
 

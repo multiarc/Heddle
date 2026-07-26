@@ -11,7 +11,6 @@ namespace Heddle.LanguageServices.Completion
     {
         internal static DefinitionTarget GetDefinition(DocumentAnalysis analysis, int offset)
         {
-            // Import / partial site → the target file at position 0.
             foreach (var link in analysis.Imports)
             {
                 if (offset >= link.Offset && offset < link.Offset + link.Length && link.ResolvedPath != null)
@@ -22,7 +21,6 @@ namespace Heddle.LanguageServices.Completion
             if (string.IsNullOrEmpty(word))
                 return null;
 
-            // A prop named-argument name inside a definition call → the prop declaration span.
             var context = ContextDetector.Detect(analysis, offset, out _);
             if (context.Kind == CompletionContextKind.NamedArgument)
             {
@@ -32,7 +30,6 @@ namespace Heddle.LanguageServices.Completion
                     return new DefinitionTarget(callee.SourcePath, prop.DeclarationOffset, prop.DeclarationLength);
             }
 
-            // Definition call/name → the surviving registry entry's header.
             var definition = analysis.Definitions.FirstOrDefault(d => d.Name == word);
             if (definition != null)
                 return new DefinitionTarget(definition.SourcePath, definition.Offset, definition.Length);

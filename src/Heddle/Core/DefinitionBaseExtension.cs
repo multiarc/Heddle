@@ -94,9 +94,7 @@ namespace Heddle.Core
             }
             else
             {
-                // A chained-into definition with no caller body takes its content from the chained channel — the
-                // producer to its right (@heading():emphasis()). Otherwise (a caller body, or no producer) the
-                // caller body is the content, exactly as @box(){{...}} threads it.
+                // Mirrors RenderData: chained producer for content when no caller body, else caller body.
                 chained = ReceivesChainedValue && !InnerExist ? scope.ChainedData : GetInnerResult(scope);
                 chainedData = scope.Chain(chained);
             }
@@ -123,8 +121,7 @@ namespace Heddle.Core
                 }
                 else
                 {
-                    // Chained-into definition with no caller body: content is the chained producer's output;
-                    // otherwise the caller body. Mirrors ProcessData.
+                    // Mirrors ProcessData: chained producer for content when no caller body, else caller body.
                     var chained = ReceivesChainedValue && !InnerExist ? scope.ChainedData : GetInnerResult(scope);
                     chainedData = scope.Chain(chained);
                 }

@@ -22,8 +22,6 @@ namespace Heddle.Generator.IntegrationTests
         private const string FeedType = "Heddle.Generator.IntegrationTests.Fixtures.RegionFeed";
         private const string ArticleType = "Heddle.Generator.IntegrationTests.Fixtures.RegionArticle";
 
-        // The flagship 'feed' component: two public regions (one typed), one private region, props, the single
-        // @out() slot, and the @item(this) region call nested inside the @list body (the depth trap).
         private static readonly string Feed =
             "@model(){{" + FeedType + "}}@\\\n" +
             "@%<feed(theme: string = \"light\", title: string = \"Home\")>{{" +
@@ -60,7 +58,7 @@ namespace Heddle.Generator.IntegrationTests
         {
             var t = Feed + "@feed()";
             var gen = DifferentialHarness.Generate(new[] { ("views/region-defaults.heddle", t) });
-            Assert.NotEmpty(gen.TemplateSources); // natively precompiled — no un-precompile reason
+            Assert.NotEmpty(gen.TemplateSources);
             var (pre, dyn) = RenderBoth("views/region-defaults.heddle", t, Model());
             Assert.Equal(dyn, pre);
             Assert.Contains("<h2 class=\"light\">Home</h2><ul><li>A</li><li>B</li></ul><hr class=\"light\">", pre);
@@ -86,11 +84,10 @@ namespace Heddle.Generator.IntegrationTests
                     "@feed(){{@%<heading:heading>{{<h2 class=\"hero\">Latest</h2>}}" +
                     "<item:item>{{<li>@(Title)#@(Id)</li>}}%@<p class=\"lede\">intro</p>}}";
             var gen = DifferentialHarness.Generate(new[] { ("views/region-full.heddle", t) });
-            Assert.NotEmpty(gen.TemplateSources); // native, not fallback
+            Assert.NotEmpty(gen.TemplateSources);
             var (pre, dyn) = RenderBoth("views/region-full.heddle", t, Model());
             Assert.Equal(dyn, pre);
-            // The FILLED bytes at depth — a top-level-only fill install would render the default '<li>A</li>' on
-            // both tiers and pass the differential while failing this pin.
+            // FILLED bytes at depth must propagate (top-level fills alone would fail this pin).
             Assert.Contains(
                 "<h2 class=\"hero\">Latest</h2><ul><li>A#1</li><li>B#2</li></ul><hr class=\"light\"><p class=\"lede\">intro</p>",
                 pre);
@@ -129,7 +126,7 @@ namespace Heddle.Generator.IntegrationTests
         {
             var t = Feed + "@feed(){{@%<heading:heading>{{[wrap:@heading()]}}%@}}";
             var gen = DifferentialHarness.Generate(new[] { ("views/region-selfcall.heddle", t) });
-            Assert.NotEmpty(gen.TemplateSources); // native — no recursion, no fallback
+            Assert.NotEmpty(gen.TemplateSources);
             var (pre, dyn) = RenderBoth("views/region-selfcall.heddle", t, Model());
             Assert.Equal(dyn, pre);
             Assert.Contains("[wrap:<h2 class=\"light\">Home</h2>]", pre);
@@ -161,12 +158,6 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("<hr class=\"dark\">", pre);
         }
 
-        // The fixtures below were rewritten when the generator behavior was corrected. Until then it was STRICTER than
-        // the engine: any fault verdict un-precompiled the whole template *silently*, and the tentative base-not-found
-        // error was filtered out entirely. The generator now reacts to each verdict exactly as HeddleCompiler.BuildRegionFillScope
-        // reacts. The assertion shape follows: the pin is the *twin relationship* — same condition, same position, matching
-        // error on both tiers.
-
         [Fact]
         public void PrivateOverrideRaisesTheMatchingErrorOnBothTiers()
         {
@@ -177,14 +168,12 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal(DiagnosticSeverity.Error, build.Severity);
             Assert.Contains("'divider'", build.GetMessage());
             Assert.Contains("'feed'", build.GetMessage());
-            // The tentative base-not-found error is RETRACTED, exactly as the runtime retracts it before raising —
-            // the user gets one error about privacy, not two about two different things.
+            // Tentative base-not-found error is retracted; one privacy error, not two.
             Assert.DoesNotContain(gen.Diagnostics, d => d.GetMessage().Contains("Base definition divider"));
 
             var dynamic = new HeddleTemplate(t, new CompileContext(new TemplateOptions(), typeof(RegionFeed)));
             Assert.False(dynamic.CompileResult.Success);
             var runtimeError = Assert.Single(dynamic.CompileResult.ErrorList.Where(e => e.DiagnosticId == "HED5019"));
-            // Same anchoring: both tiers point at the override declaration.
             Assert.Equal(runtimeError.Position.StartIndex,
                 TemplateOffsetOf(t, "views/region-private.heddle", build));
         }
@@ -195,8 +184,7 @@ namespace Heddle.Generator.IntegrationTests
             var t = Feed + "@feed(){{@%<ghost:ghost>{{x}}%@}}";
             var gen = DifferentialHarness.Generate(new[] { ("views/region-dangling.heddle", t) });
 
-            // Skipped as the runtime skips it — no refusal, no HED7024 — and its parse-emitted error now reaches
-            // the build channel instead of waiting for the first dynamic render.
+            // Error reaches build channel, not deferred to first dynamic render.
             Assert.DoesNotContain(gen.Diagnostics, d => d.Id == "HED7024");
             var build = Assert.Single(gen.Diagnostics.Where(
                 d => d.Severity == DiagnosticSeverity.Error &&
@@ -206,8 +194,6 @@ namespace Heddle.Generator.IntegrationTests
             Assert.False(dynamic.CompileResult.Success);
             var runtimeError = Assert.Single(dynamic.CompileResult.ErrorList.Where(
                 e => e.Error == "Base definition ghost couldn't be found"));
-            // This used to be `Assert.NotNull(build)` — which Assert.Single had already guaranteed, so it could not fail.
-            // The twin relationship this fixture exists to pin includes the anchor: same offset on both tiers.
             Assert.Equal(runtimeError.Position.StartIndex,
                 TemplateOffsetOf(t, "views/region-dangling.heddle", build));
         }
@@ -230,13 +216,12 @@ namespace Heddle.Generator.IntegrationTests
             Assert.True(lineSpan.IsValid, "the build diagnostic is not anchored in any file");
             Assert.Equal(key, lineSpan.Path);
 
-            // Independent derivation: line start + character, over the same bytes the generator was handed.
             var text = SourceText.From(template);
             var start = lineSpan.StartLinePosition;
             Assert.InRange(start.Line, 0, text.Lines.Count - 1);
             var offset = text.Lines[start.Line].Start + start.Character;
 
-            // The reported line/character and the reported span must describe the same point.
+            // Verify line/character maps to the span's start.
             Assert.Equal(diagnostic.Location.SourceSpan.Start, offset);
             return offset;
         }
@@ -269,9 +254,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void UntypedRegionWithValueArgumentSilentlyDegrades()
         {
-            // An untyped region called with an explicit value: its dynamic body typing is the argument's type,
-            // which the emitter does not reproduce — left silently un-precompiled, rendered identically
-            // by the dynamic tier.
+            // Untyped region with explicit value: emitter cannot reproduce, silently un-precompiled.
             var t = "@model(){{" + FeedType + "}}@\\\n" +
                     "@%<panel>{{@%<:head>{{[x]}}%@@head(Articles)}} :: " + FeedType + "%@\n@panel()";
             var dynamic = AssertNotPrecompiledAndCompileDynamic("views/region-abstract.heddle", t);
@@ -282,9 +265,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void InnerDefinitionShadowingFunctionConvergesToDynamicTier()
         {
-            // 'upper' is a default-table function name; the inner definition shadows it and the dynamic tier
-            // resolves definition-first. The generator emits the DEFINITION too — a deliberate, pinned
-            // byte change (definitions are resolved before functions).
+            // 'upper' shadows default function; generator must emit DEFINITION too.
             var t = "@model(){{" + FeedType + "}}@\\\n" +
                     "@%<wrap>{{@%<upper>{{[DEF]}}%@@upper()}} :: " + FeedType + "%@\n@wrap()";
             var gen = DifferentialHarness.Generate(new[] { ("views/region-shadow.heddle", t) });

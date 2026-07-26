@@ -24,7 +24,6 @@ namespace Heddle.Tests
             public bool B { get; set; }
         }
 
-        // Opener (no [ScopeChannel] by contract — not drift).
         [ExtensionName("dbegin")]
         [BranchRole(BranchRole.Opener)]
         public class DBeginExtension : AbstractExtension
@@ -33,7 +32,6 @@ namespace Heddle.Tests
             public override void RenderData(in Scope scope) { }
         }
 
-        // Continuation WITHOUT [ScopeChannel] — drift (HED3005).
         [ExtensionName("dbetween")]
         [BranchRole(BranchRole.Continuation)]
         public class DBetweenExtension : AbstractExtension
@@ -42,7 +40,6 @@ namespace Heddle.Tests
             public override void RenderData(in Scope scope) { }
         }
 
-        // Terminal WITHOUT [ScopeChannel] — drift (HED3005).
         [ExtensionName("dfinish")]
         [BranchRole(BranchRole.Terminal)]
         public class DFinishExtension : AbstractExtension

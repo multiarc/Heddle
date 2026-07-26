@@ -33,8 +33,7 @@ namespace Heddle.Extensions
 
             if (slotType != null)
             {
-                // Slot-declaring definition body: every @out must pass a value; a slot-mode @out is
-                // bodiless; the value's static type must be assignable to the slot type (rows 1–4, no boxing).
+                // In slot-declaring contexts, every @out must pass a value; its type must be assignable to the slot type.
                 _slotMode = true;
                 _composedGuard = source != null && source.IsChainedConsumer;
 
@@ -73,8 +72,7 @@ namespace Heddle.Extensions
 
             if (hasValue)
             {
-                // @out with a value where no slot parameter is declared — including the formerly
-                // accepted-and-ignored @out(X)/@out(true). Two message forms: inside vs outside a definition body.
+                // @out(value) requires a slot parameter; different error message inside vs outside definition body.
                 bool insideDefinition = initContext.ParseContext != null && initContext.ParseContext.InDefintionContext;
                 var message = insideDefinition
                     ? "'@out' with a value requires the enclosing definition to declare a slot parameter: '<name(out:: Type)>'."
@@ -117,8 +115,7 @@ namespace Heddle.Extensions
 
             if (!InnerExist)
             {
-                // Value-emitter convention: static-only body is inert, so emit chained value only—matching ProcessData.
-                // Stringify non-strings to avoid silent drops.
+                // Static-only body is inert, so emit chained value; stringify non-strings to avoid silent drops.
                 var chained = scope.ChainedData;
                 scope.Renderer.Render(chained is string chainedString ? chainedString : chained?.ToString());
                 return;

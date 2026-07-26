@@ -10,12 +10,8 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Snapshot goldens for the seven <c>generated-code.md</c> example families: static text + typed member paths,
-    /// native expressions, embedded C# verbatim, <c>:: dynamic</c>, a props definition, a branch set, and function
-    /// calls (shim-bound built-in + unresolvable cases). Each snapshots the generator's actual output (every generated
-    /// source, in hint-name order, plus the reported diagnostics) so the emitted shape is pinned; a shape regression
-    /// fails the snapshot. Rendered through <c>Verify</c>/<c>Verify.SourceGenerators</c> over <c>CSharpGeneratorDriver</c>.
-    /// The generated text is deterministic and produced by the netstandard2.0 generator, so one golden serves every test TFM.
+    /// Snapshot goldens for the generator: each test pins the generated shape and diagnostics so regressions in
+    /// emission are visible. The generated text is deterministic (netstandard2.0 generator), so one golden serves every test TFM.
     /// </summary>
     public class GeneratorSnapshotTests
     {
@@ -26,8 +22,6 @@ namespace Heddle.Generator.Tests
             return Verifier.Verify(Render(run)).UseDirectory("Snapshots");
         }
 
-        /// <summary>A deterministic textual snapshot of the generator run: every generated source in hint-name order
-        /// followed by the reported diagnostics (id, severity, mapped span, message) in a stable order.</summary>
         private static string Render(GeneratorRun run)
         {
             var sb = new StringBuilder();

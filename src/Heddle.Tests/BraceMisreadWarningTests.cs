@@ -11,11 +11,8 @@ using Heddle.TestCorpus;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The HED4005 <c>{{ … }}</c>-in-text misread lint: a bare
-    /// <c>{{ Title }}</c> in body text renders literal braces, warns once per occurrence (positioned at the
-    /// <c>{{</c>), and suggests <c>@(Title)</c>. Never fires inside a real subtemplate body, a raw region,
-    /// a definition body, or an <c>@&lt;&lt;</c> import block; never fires on operator/colon bodies. The
-    /// corpus scan asserts zero HED4005 across every pre-existing fixture.
+    /// HED4005 warns on <c>{{ Title }}</c> in text, rendering literal braces.
+    /// Tests verify it does not fire in subtemplates, raw regions, imports, or operator/colon bodies.
     /// </summary>
     public class BraceMisreadWarningTests
     {

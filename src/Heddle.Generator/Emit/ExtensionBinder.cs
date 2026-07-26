@@ -190,9 +190,7 @@ namespace Heddle.Generator.Emit
             if (nameAttr == null || abstractExtension == null)
                 return new ExtensionBinder(byName, unbindable, driftTypes);
 
-            // All of these may be null against an older engine reference that predates the attribute — then
-            // every Info.Role is null, HasScopeChannel/HasEncodeOutput/HasNotEncode false, and Parameters empty;
-            // the reads below degrade safely.
+            // Attribute symbols may be null against an older engine reference; reads degrade safely.
             var symbols = new AttrSymbols
             {
                 NameAttr = nameAttr,
@@ -209,9 +207,7 @@ namespace Heddle.Generator.Emit
                 PropAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.PropAttribute")
             };
 
-            // The runtime registers the engine's own extensions first (TemplateFactory.LoadBaseExtensions) and only
-            // then walks the host's assemblies, so the engine assembly leads here too — that order is what lets a
-            // host subclass of a built-in take the name over through the assignability rule rather than collide.
+            // Engine assembly first; the host's assemblies then walk same order as runtime to let subclasses override built-ins.
             var assemblies = new List<IAssemblySymbol>();
             var engine = abstractExtension.ContainingAssembly;
             if (engine != null)
@@ -222,8 +218,6 @@ namespace Heddle.Generator.Emit
                 if (!SymbolEqualityComparer.Default.Equals(referenced, engine))
                     assemblies.Add(referenced);
 
-            // Per assembly: collect what the runtime would load from it, then order by the runtime's
-            // [DataType]/[ChainedType] interface-ness key (LoadExtensions' OrderBy/ThenBy — stable, false first).
             var exportAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.ExportExtensionsAttribute");
             var candidates = new List<Candidate>();
             foreach (var assembly in assemblies)
@@ -234,7 +228,6 @@ namespace Heddle.Generator.Emit
                 candidates.AddRange(StableOrderBy(perAssembly, c => c.OrderingKey));
             }
 
-            // AddExtensions sorts [ExtensionReplace] candidates last, stably, across the whole sequence.
             foreach (var candidate in StableOrderBy(candidates, c => c.Replaces ? 1 : 0))
                 Register(candidate, symbols, byName, unbindable, driftTypes);
 
@@ -269,11 +262,11 @@ namespace Heddle.Generator.Emit
             foreach (var name in candidate.Names)
             {
                 if (name.Length == 0)
-                    continue; // the unnamed carrier is emitted directly, not through the custom binder.
+                    continue;
 
                 if (!candidate.Bindable)
                 {
-                    // Discovered by the runtime, unbindable here: the name must NOT reach HED7006 — it resolves.
+                    // Name must not reach HED7006 — runtime will find it.
                     if (!byName.ContainsKey(name) && !unbindable.ContainsKey(name))
                         unbindable[name] = candidate.UnbindableReason;
                     continue;
@@ -284,8 +277,6 @@ namespace Heddle.Generator.Emit
                     info = BuildInfo(candidate.Type, symbols);
                     built = true;
 
-                    // A Continuation/Terminal that cannot read the channel it depends on.
-                    // Additive; no built-in violates this constraint, so this is empty for engine-only compilations.
                     if (info.IsBranchParticipant && !info.HasScopeChannel)
                         driftTypes.Add(info.GlobalName);
                 }
@@ -307,9 +298,7 @@ namespace Heddle.Generator.Emit
                     case ExtensionRegistrationVerdict.KeepIncumbent:
                         break;
                     default:
-                        // The runtime throws TemplateOverrideException here — a host wiring error the build must
-                        // not turn into a build failure. The name degrades to dynamic with a recorded reason and
-                        // the first render surfaces the real problem.
+                        // Host wiring error: degrade to dynamic instead of failing the build.
                         byName.Remove(name);
                         unbindable[name] = "extension name '" + name + "' is claimed by unrelated types (" +
                                            incumbent.BareTypeName + ", " + SymbolTypeIdentity.FullName(candidate.Type) +
@@ -371,9 +360,7 @@ namespace Heddle.Generator.Emit
                 if (!SymbolEqualityComparer.Default.Equals(attr.AttributeClass, exportAttr))
                     continue;
 
-                // `All` is set by the parameterless constructor alone (the two others take types), so no
-                // constructor arguments means "everything in this assembly" — and the runtime stops reading this
-                // assembly's attributes at that point.
+                // Parameterless constructor = All; stops reading this assembly's attributes.
                 if (attr.ConstructorArguments.Length == 0)
                 {
                     CollectTypes(assembly.GlobalNamespace, symbols, candidates);
@@ -406,10 +393,7 @@ namespace Heddle.Generator.Emit
             }
         }
 
-        /// <summary>Walks namespaces <b>and nested types</b>. The old scan enumerated
-        /// <c>INamespaceSymbol.GetTypeMembers()</c> only, so an extension declared inside a container class was
-        /// invisible to the build tier while the runtime's <c>Assembly.GetTypes()</c> registered it — the template
-        /// degraded before the two identity spellings could even be compared.</summary>
+        /// <summary>Walks namespaces and nested types; omitting nested types caused runtime/build divergence.</summary>
         private static void CollectTypes(INamespaceSymbol ns, AttrSymbols symbols, List<Candidate> candidates)
         {
             foreach (var type in ns.GetTypeMembers())
@@ -427,8 +411,6 @@ namespace Heddle.Generator.Emit
 
         private static void InspectType(INamedTypeSymbol type, AttrSymbols symbols, List<Candidate> candidates)
         {
-            // The runtime's discovery predicate, verbatim (TemplateFactory.LoadExtensions):
-            // t.IsImplement<IExtension>() && t.IsHaveAttribute<ExtensionNameAttribute>(true).
             if (!ImplementsExtension(type, symbols))
                 return;
 
@@ -436,9 +418,7 @@ namespace Heddle.Generator.Emit
             if (names.Count == 0)
                 return;
 
-            // The generator's *bindability* test, applied after discovery, never before it: the emitted code
-            // reproduces the AbstractExtension render protocol, so an IExtension-direct implementor (or an
-            // abstract/non-class declaration) genuinely cannot be bound — but the runtime still registers it.
+            // Bindability (generator's constraint, applied after discovery): code reproduces AbstractExtension protocol only.
             string unbindableReason = null;
             if (type.IsAbstract || type.TypeKind != TypeKind.Class)
                 unbindableReason = "extension type '" + SymbolTypeIdentity.FullName(type) + "' is not instantiable";
@@ -589,10 +569,7 @@ namespace Heddle.Generator.Emit
             if (propAttr == null)
                 return EmptyParameters;
 
-            // The walk stops AT System.Object, matching PropLayoutCore.StopsAtObject and the
-            // runtime's `t != typeof(object)` guard. The old unconditional `t != null` walk read [Prop]
-            // declarations off object itself — harmless today (object declares none) but a silent layer-count
-            // divergence from the tier that owns the slot indices.
+            // Must stop at System.Object to match the dynamic tier's layer-count logic.
             var layers = new List<INamedTypeSymbol>();
             for (var t = type; t != null && t.SpecialType != SpecialType.System_Object; t = t.BaseType)
                 layers.Add(t);
@@ -607,13 +584,10 @@ namespace Heddle.Generator.Emit
                         continue;
                     if (attr.ConstructorArguments.Length != 2)
                         continue;
-                    // A null name is ADMITTED (not skipped): dropping it would silently treat the extension as
-                    // parameter-less while the dynamic tier rejects the declaration — ResolveExtensionPropLayout
-                    // diagnoses it as HED7017 (the dynamic tier's HED5015 name-validity twin).
+                    // Null names are admitted; they diverge from the dynamic tier only if skipped.
                     var name = attr.ConstructorArguments[0].Value as string;
 
-                    // The unusable-type verdict is decided by SymbolTypeFacts.IsUsableAsPropType — the shared
-                    // predicate expressed over ITypeFacts — so the build tier and runtime share the same rule.
+                    // Type usability uses SymbolTypeFacts.IsUsableAsPropType to match the dynamic tier.
                     var typeSymbol = attr.ConstructorArguments[1].Value as ITypeSymbol;
 
                     var parameter = new PropParameter
@@ -627,8 +601,6 @@ namespace Heddle.Generator.Emit
                     {
                         if (namedArg.Key == "Default" && !namedArg.Value.IsNull)
                         {
-                            // A typeof default decodes as an ITypeSymbol value; primitives/strings/enums as their
-                            // boxed CLR value. DefaultType is the argument's own type — the HED5009-twin source.
                             parameter.DefaultValue = namedArg.Value.Value;
                             parameter.DefaultType = namedArg.Value.Type;
                         }

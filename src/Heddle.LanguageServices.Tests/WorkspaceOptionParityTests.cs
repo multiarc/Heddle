@@ -30,9 +30,7 @@ namespace Heddle.LanguageServices.Tests
             [nameof(TemplateOptions.MaxRecursionCount)] = "maxRecursionCount",
         };
 
-        /// <summary>The named exclusions. Each entry is a decision with a reason, and the reason is the test's
-        /// documentation: an option lands here only because analysis cannot use it, not because wiring it was
-        /// inconvenient.</summary>
+        /// <summary>Exclusions documented with reasons why analysis cannot use them.</summary>
         public static readonly IReadOnlyDictionary<string, string> Excluded = new Dictionary<string, string>
         {
             [nameof(TemplateOptions.TemplateName)] =
@@ -73,7 +71,6 @@ namespace Heddle.LanguageServices.Tests
                 ". Wire it to a .heddle-lsp.json key in WorkspaceConfig, or add it to the exclusion list in this " +
                 "test with the reason analysis cannot use it.");
 
-            // …and nothing on either list has been deleted from TemplateOptions without the list following.
             foreach (var name in Wired.Keys.Concat(Excluded.Keys))
                 Assert.Contains(name, properties);
 
@@ -89,8 +86,7 @@ namespace Heddle.LanguageServices.Tests
                 Assert.Equal(pair.Value, WorkspaceConfig.ConfigKey(pair.Key));
         }
 
-        /// <summary>The keys WorkspaceConfig actually reads are exactly the wired set plus the LSP-specific
-        /// <c>assemblies</c> — so the table above cannot describe a surface the reader does not implement.</summary>
+        /// <summary>Reader keys are exactly the wired set plus LSP-specific 'assemblies'.</summary>
         [Fact]
         public void TheReadersKeysAreExactlyTheWiredSetPlusAssemblies()
         {
@@ -106,10 +102,7 @@ namespace Heddle.LanguageServices.Tests
             Assert.DoesNotContain(WorkspaceConfig.AssembliesKey, declared);
         }
 
-        /// <summary>Where an option also exists as an MSBuild property in the shared table, the two names agree
-        /// under the same rule (<c>Heddle</c> prefix dropped, camelCased). <c>rootPath</c> is the one documented
-        /// divergence: the MSBuild property is <c>HeddleTemplateRoot</c> while the option — and therefore the
-        /// key — is <c>RootPath</c>, the established <see cref="TemplateOptions"/> spelling.</summary>
+        /// <summary>MSBuild property names agree per the camelCase rule, except <c>rootPath</c> which uses the <see cref="TemplateOptions"/> spelling.</summary>
         [Fact]
         public void KeysAgreeWithTheSharedTablesMsBuildPropertyNames()
         {
@@ -126,8 +119,7 @@ namespace Heddle.LanguageServices.Tests
             Assert.Equal("rootPath", Wired[nameof(TemplateOptions.RootPath)]);
         }
 
-        /// <summary>An absent key yields the runtime's default — asserted against a freshly constructed
-        /// <see cref="TemplateOptions"/>, not against a copy of the numbers.</summary>
+        /// <summary>Absent keys yield runtime defaults.</summary>
         [Fact]
         public void AbsentKeysYieldTheRuntimeDefaults()
         {
@@ -142,8 +134,7 @@ namespace Heddle.LanguageServices.Tests
             Assert.Empty(options.ConfigurationMessages);
         }
 
-        /// <summary>The same holds for a bare options object (no config file at all) — the property initializers
-        /// read the shared table too, so the two construction paths cannot disagree.</summary>
+        /// <summary>Bare options match runtime defaults via shared table.</summary>
         [Fact]
         public void ABareOptionsObjectCarriesTheSameDefaults()
         {
@@ -156,7 +147,7 @@ namespace Heddle.LanguageServices.Tests
             Assert.Equal(runtime.MaxRecursionCount, bare.MaxRecursionCount);
         }
 
-        /// <summary>The editor's default profile is the engine's <c>Html</c>, not the <c>Text</c> it used to be.</summary>
+        /// <summary>Default profile is Html, matching the engine.</summary>
         [Fact]
         public void TheDefaultProfileIsTheEnginesHtml()
         {

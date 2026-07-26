@@ -20,9 +20,8 @@ namespace Heddle.Native
 
         private static volatile DependencyContext _dependencyContext;
 
-        // The assembly registry carries no Microsoft.CodeAnalysis type — the metadata-reference concern moved to
-        // RoslynReferenceProvider (reached only past the C#-tier feature switch), so the trimmer can drop the whole
-        // Roslyn graph. The cache value is simply the deduped assembly.
+        // No Microsoft.CodeAnalysis types here — metadata references moved to RoslynReferenceProvider
+        // (behind feature switch), so trimmer can drop whole Roslyn graph.
         private static readonly ConcurrentDictionary<AssemblyName, Assembly> AssemblyCache =
             new ConcurrentDictionary<AssemblyName, Assembly>(AssemblyNameEqualityComparer.Instance);
 
@@ -325,7 +324,7 @@ namespace Heddle.Native
 
             WalkReferenceAssemblies(typeof(DynamicAttribute).GetTypeInfo().Assembly);
 #if NETSTANDARD2_0
-            //without this reference, net48 target doesn't work from CodeAnalysis context
+            // Required for net48 to work from CodeAnalysis context.
             AssemblyLoadSafe(new AssemblyName(NetStandardAssemblyFullName), WalkReferenceAssemblies);
 #endif
             WalkReferenceAssemblies(typeof(CSharpArgumentInfo).GetTypeInfo().Assembly);
@@ -363,10 +362,8 @@ namespace Heddle.Native
             }
         }
 
-        /// <summary>The sole Roslyn-typed member of the assembly-helper surface. Called only from the C#-tier compile
-        /// paths behind the <c>Heddle.CSharpTierEnabled</c> switch, so a trimmed publish that turns the switch off
-        /// makes this (and <see cref="RoslynReferenceProvider"/>) dead — the whole <c>Microsoft.CodeAnalysis</c>
-        /// graph drops out of the bundle.</summary>
+        /// <summary>Sole Roslyn-typed member; called only from C#-tier compile paths behind
+        /// <c>Heddle.CSharpTierEnabled</c> switch, so trimmed publishes with the switch off make this dead.</summary>
         internal static List<Microsoft.CodeAnalysis.MetadataReference> GetApplicationReferences()
         {
             EnsureApplicationAssembliesWalked();

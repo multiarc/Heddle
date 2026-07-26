@@ -10,9 +10,7 @@ using Heddle.Runtime.Expressions;
 namespace Heddle.LanguageServices.Completion
 {
     /// <summary>
-    /// Builds completion items as a pure projection of the analysis: typed members via the
-    /// scope map + the member-tier filter, definitions/extensions/functions from the live registries, props from
-    /// the definition declarations. Never guesses when types are unknown.
+    /// Builds completion items from the analysis. Never guesses when types are unknown.
     /// </summary>
     internal static class CompletionProvider
     {
@@ -78,8 +76,6 @@ namespace Heddle.LanguageServices.Completion
 
                 case CompletionContextKind.RegionOverride:
                 {
-                    // Offer the callee's PUBLIC region names at a call-body '<' override position,
-                    // inserting the '<name:name>' fill form's name pair.
                     var callee = analysis.Definitions.FirstOrDefault(d => d.Name == context.CallName);
                     if (callee == null)
                         return CompletionResult.Empty;
@@ -196,9 +192,7 @@ namespace Heddle.LanguageServices.Completion
             return $"{ret} {o.Name}({pars})";
         }
 
-        /// <summary>The reader-facing spelling of a type in completion/hover text. The alias table is the shared
-        /// one; the fallback (a full <see cref="ExType"/> spelling) is what makes this surface's policy its
-        /// own.</summary>
+        /// <summary>Display name for a type: shared alias table with <see cref="ExType"/> fallback.</summary>
         internal static string Friendly(Type type)
         {
             if (type == null || type == typeof(void)) return "void";

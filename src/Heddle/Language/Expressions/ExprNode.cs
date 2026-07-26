@@ -18,7 +18,6 @@ namespace Heddle.Language.Expressions
         public BlockPosition Position { get; }
     }
 
-    /// <summary>A binary operator applied to two operands.</summary>
     public sealed class BinaryNode : ExprNode
     {
         public BinaryNode(ExprOperator op, ExprNode left, ExprNode right, BlockPosition position) : base(position)
@@ -33,7 +32,6 @@ namespace Heddle.Language.Expressions
         public ExprNode Right { get; }
     }
 
-    /// <summary>A unary operator applied to a single operand.</summary>
     public sealed class UnaryNode : ExprNode
     {
         public UnaryNode(ExprOperator op, ExprNode operand, BlockPosition position) : base(position)
@@ -98,7 +96,6 @@ namespace Heddle.Language.Expressions
         public ExprNode Target { get; }
     }
 
-    /// <summary>An indexer access <c>target[args]</c>.</summary>
     public sealed class IndexNode : ExprNode
     {
         public IndexNode(ExprNode target, IReadOnlyList<ExprNode> arguments, BlockPosition position) : base(position)

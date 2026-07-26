@@ -120,7 +120,7 @@ namespace Heddle.Generator.Tests
             var idle = Probe("Idle");
             cache.Get(kept);
             cache.Get(idle);
-            cache.Get(kept);          // `kept` is now the more recently used of the two
+            cache.Get(kept);
 
             cache.Get(Probe("New"));
 
@@ -140,8 +140,7 @@ namespace Heddle.Generator.Tests
 
             Assert.Equal(0, cache.Count);
 
-            // And the cache is still usable afterwards: `Clear` has to leave the eviction bookkeeping consistent
-            // with the entries, not merely empty the entries.
+            // Clear must leave eviction bookkeeping consistent with entries.
             var after = Probe("Z");
             Assert.NotNull(cache.Get(after));
             Assert.True(cache.Contains(after));

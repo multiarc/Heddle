@@ -4,16 +4,12 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// C2-R7 escape-set exhaustive coverage for the three context encoders (<c>@attr</c>, <c>@js</c>, <c>@url</c>),
-    /// exercised directly against <see cref="ContextEncoders"/>: every normative character individually, a
-    /// passthrough string proving the original reference is returned unchanged (allocation-conscious, C2-R1), and the
-    /// stringify contract (invariant culture). All non-printable/high code points are built numerically so no literal
-    /// control byte lives in this source file.
+    /// Tests <c>@attr</c>, <c>@js</c>, <c>@url</c> context encoders: each escape individually, verifies passthrough
+    /// returns original reference (allocation-conscious), and stringification under invariant culture. Control
+    /// characters are generated, not literal.
     /// </summary>
     public class ContextEncodersTests
     {
-        // ---- @attr (C2-R2): & < > " ' ----
-
         [Theory]
         [InlineData("&", "&amp;")]
         [InlineData("<", "&lt;")]
@@ -39,8 +35,6 @@ namespace Heddle.Tests
             Assert.Same("", ContextEncoders.EscapeAttribute(""));
             Assert.Null(ContextEncoders.EscapeAttribute(null));
         }
-
-        // ---- @js (C2-R3) ----
 
         [Theory]
         [InlineData("\\", "\\\\")]
@@ -88,7 +82,7 @@ namespace Heddle.Tests
         [Fact]
         public void Js_BlocksScriptClose_ButLeavesGtAndSlash()
         {
-            // Only '<' is escaped (blocks </script>); '>' and '/' are left as-is.
+            // Only '<' is escaped (blocks </script>); '>' and '/' are not.
             Assert.Equal("\\u003C/script>", ContextEncoders.EscapeJs("</script>"));
         }
 
@@ -106,8 +100,6 @@ namespace Heddle.Tests
             Assert.Null(ContextEncoders.EscapeJs(null));
         }
 
-        // ---- @url (C2-R4): Uri.EscapeDataString semantics ----
-
         [Theory]
         [InlineData(" ", "%20")]
         [InlineData("&", "%26")]
@@ -123,7 +115,6 @@ namespace Heddle.Tests
         [Fact]
         public void Url_NonAscii_Utf8PercentEncoded()
         {
-            // U+00E9 'e-acute' -> UTF-8 0xC3 0xA9 -> "%C3%A9" (uppercase hex).
             var input = ((char)0x00E9).ToString();
             Assert.Equal("%C3%A9", ContextEncoders.EscapeUrl(input));
         }
@@ -141,8 +132,6 @@ namespace Heddle.Tests
             Assert.Same("", ContextEncoders.EscapeUrl(""));
             Assert.Null(ContextEncoders.EscapeUrl(null));
         }
-
-        // ---- Stringify (C2-R1): non-string input under invariant culture ----
 
         [Fact]
         public void Stringify_NonString_UsesInvariantCulture()

@@ -132,7 +132,7 @@ namespace Heddle.LanguageServices
                         }
                         catch
                         {
-                            // unresolvable dependency surfaces later as a logged instantiation failure
+                            // Surfaces later as a logged instantiation failure.
                         }
                     }
                 }
