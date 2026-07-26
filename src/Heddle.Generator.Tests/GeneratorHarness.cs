@@ -98,6 +98,10 @@ namespace Heddle.Generator.Tests
             var tpa = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
             var refs = tpa.Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
+                // The generator is an analyzer, not a reference; since phase 5 links the runtime's option types into
+                // it (D7), referencing both would make those names ambiguous (CS0433) in the generated code.
+                .Where(p => !string.Equals(Path.GetFileNameWithoutExtension(p), "Heddle.Generator",
+                    StringComparison.OrdinalIgnoreCase))
                 .Select(p => (MetadataReference)MetadataReference.CreateFromFile(p))
                 .ToList();
             refs.Add(MetadataReference.CreateFromFile(
@@ -116,14 +120,46 @@ namespace Heddle.Generator.Tests
             return RunTexts(texts, globalOptions, perFileOptions);
         }
 
-        public static GeneratorRun RunTexts(
-            IReadOnlyList<AdditionalText> texts,
+        /// <summary>Phase 3: a run whose compilation carries C# sources — needed by anything that depends on an
+        /// assembly-level attribute (<c>[assembly: ExportFunctions(...)]</c>) or on source-declared extension
+        /// types, which an empty compilation cannot express.</summary>
+        public static GeneratorRun RunWithSources(
+            IReadOnlyList<(string path, string content)> templates,
+            IReadOnlyList<string> sources,
             Dictionary<string, string> globalOptions = null,
             Dictionary<string, Dictionary<string, string>> perFileOptions = null)
         {
+            var trees = sources.Select(src => CSharpSyntaxTree.ParseText(src)).ToArray();
+            return RunTexts(templates.Select(t => (AdditionalText)new TestAdditionalText(t.path, t.content)).ToList(),
+                globalOptions, perFileOptions, syntaxTrees: trees);
+        }
+
+        /// <summary>Phase 5 D6: a compilation in which the <c>Heddle</c> assembly is not visible among
+        /// <c>ReferencedAssemblySymbols</c> — the aliased/embedded/ILMerged shape that used to make the generator
+        /// fabricate a <c>"2.0.0"</c> engine version. The generated manifest is not compiled here (it cannot be,
+        /// without the runtime types); only the generator's own output and diagnostics are under test.</summary>
+        public static GeneratorRun RunWithoutHeddleReference(
+            IReadOnlyList<(string path, string content)> templates,
+            Dictionary<string, string> globalOptions = null,
+            Dictionary<string, Dictionary<string, string>> perFileOptions = null)
+        {
+            var references = References
+                .Where(r => !(r.Display ?? string.Empty).EndsWith("Heddle.dll", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            return RunTexts(templates.Select(t => (AdditionalText)new TestAdditionalText(t.path, t.content)).ToList(),
+                globalOptions, perFileOptions, references);
+        }
+
+        public static GeneratorRun RunTexts(
+            IReadOnlyList<AdditionalText> texts,
+            Dictionary<string, string> globalOptions = null,
+            Dictionary<string, Dictionary<string, string>> perFileOptions = null,
+            IReadOnlyList<MetadataReference> references = null,
+            IReadOnlyList<SyntaxTree> syntaxTrees = null)
+        {
             var compilation = CSharpCompilation.Create("HeddleGenTest",
-                Array.Empty<SyntaxTree>(),
-                References,
+                syntaxTrees ?? (IEnumerable<SyntaxTree>) Array.Empty<SyntaxTree>(),
+                references ?? References,
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
             var additionalTexts = texts.ToImmutableArray();

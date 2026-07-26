@@ -1,0 +1,101 @@
+namespace Heddle.Language.Binding
+{
+    /// <summary>One conformance row: <c>target.IsAssignableFrom(source)</c> must equal <see cref="Expected"/> on
+    /// both tiers.</summary>
+    internal struct AssignabilityRow
+    {
+        internal AssignabilityRow(string source, string target, bool expected, string family)
+        {
+            Source = source;
+            Target = target;
+            Expected = expected;
+            Family = family;
+        }
+
+        internal string Source { get; }
+        internal string Target { get; }
+        internal bool Expected { get; }
+
+        /// <summary>The row family, so a failure names what class of disagreement re-opened.</summary>
+        internal string Family { get; }
+
+        public override string ToString() => Family + ": " + Source + " -> " + Target;
+    }
+
+    /// <summary>
+    /// Phase 3 (F6): the shared assignability conformance corpus. One data source, two drivers — a reflection-side
+    /// test in <c>Heddle.Tests</c> and a symbol-side test in <c>Heddle.Generator.Tests</c> — in the
+    /// <c>DefaultFunctionLockstepTests</c> mould.
+    /// <para>The relation itself cannot be shared (it <em>is</em> the type graph); what this corpus pins is that
+    /// the Roslyn adapter's corrections land it on the <b>CLR's</b> answer, including the two nullable rows where
+    /// Roslyn's conversion classification and the CLR disagree in opposite directions, and the variance /
+    /// <c>ValueTuple</c> rows the research named as the anticipated-but-untested third disagreement class.</para>
+    /// <para><b>Expected values were generated from live reflection</b> (2026-07-26,
+    /// <c>target.IsAssignableFrom(source)</c> over .NET 10) and committed — the corpus asserts "the Roslyn adapter
+    /// equals the CLR", never "equals what the author believed". The reflection-side driver re-derives them from
+    /// the live relation on every run, so a wrong committed value is a red build on both sides.</para>
+    /// <para>Spellings are both legal C# (for the symbol driver's <c>typeof</c> probe) and resolvable by
+    /// <c>ReflectionHelper.ResolveType</c> (for the reflection driver).</para>
+    /// </summary>
+    internal static class AssignabilityCorpus
+    {
+        internal static readonly AssignabilityRow[] Rows =
+        {
+            // Identity / reference
+            new AssignabilityRow("System.String", "System.String", true, "identity"),
+            new AssignabilityRow("System.Object", "System.Object", true, "identity"),
+            new AssignabilityRow("System.String", "System.Object", true, "reference"),
+            new AssignabilityRow("System.Object", "System.String", false, "reference"),
+
+            // Boxing
+            new AssignabilityRow("System.Int32", "System.Object", true, "boxing"),
+            new AssignabilityRow("System.Int32", "System.IComparable", true, "boxing"),
+            new AssignabilityRow("System.Int32", "System.Enum", false, "boxing"),
+            new AssignabilityRow("System.Decimal", "System.Object", true, "boxing"),
+            new AssignabilityRow("System.DateTime", "System.ValueType", true, "boxing"),
+
+            // Nullable lift — the two correction rows. Roslyn classifies (1) ImplicitNullable and (2) boxing;
+            // the CLR answers true and false respectively, and the adapter must return the CLR answer.
+            new AssignabilityRow("System.Int32", "System.Nullable<System.Int32>", true, "nullable-correction-A"),
+            new AssignabilityRow("System.Nullable<System.Int32>", "System.IComparable", false, "nullable-correction-C"),
+            new AssignabilityRow("System.Nullable<System.Int32>", "System.Int32", false, "nullable"),
+
+            // Nullable-to-nullable (assignability, distinct from conversion legality)
+            new AssignabilityRow("System.Nullable<System.Int32>", "System.Nullable<System.Int64>", false, "nullable"),
+            new AssignabilityRow("System.Nullable<System.Int32>", "System.Nullable<System.Int32>", true, "nullable"),
+
+            // Numeric — pins that widening legality never leaks into the assignability answer.
+            new AssignabilityRow("System.Int32", "System.Int64", false, "numeric"),
+
+            // Interface / hierarchy
+            new AssignabilityRow("System.ArgumentException", "System.Exception", true, "hierarchy"),
+            new AssignabilityRow("System.Exception", "System.ArgumentException", false, "hierarchy"),
+            new AssignabilityRow("System.String", "System.IComparable", true, "hierarchy"),
+            new AssignabilityRow("System.Collections.Generic.IList<System.Int32>",
+                "System.Collections.Generic.ICollection<System.Int32>", true, "hierarchy"),
+            new AssignabilityRow("System.Collections.Generic.List<System.String>",
+                "System.Collections.Generic.IEnumerable<System.String>", true, "hierarchy"),
+            new AssignabilityRow("System.String", "System.Collections.Generic.IEnumerable<System.Char>", true,
+                "hierarchy"),
+
+            // Variance probes — the anticipated third-disagreement class (value-type type arguments).
+            new AssignabilityRow("System.Collections.Generic.IEnumerable<System.String>",
+                "System.Collections.Generic.IEnumerable<System.Object>", true, "variance"),
+            new AssignabilityRow("System.Collections.Generic.IEnumerable<System.Int32>",
+                "System.Collections.Generic.IEnumerable<System.Object>", false, "variance"),
+
+            // ValueTuple probes
+            new AssignabilityRow("(System.Int32, System.String)", "(System.Int32, System.String)", true, "valuetuple"),
+            new AssignabilityRow("(System.Int32, System.String)", "(System.Int64, System.String)", false, "valuetuple"),
+            new AssignabilityRow("System.ValueTuple<System.Int32, System.String>",
+                "(System.Int32, System.String)", true, "valuetuple"),
+
+            // Array
+            new AssignabilityRow("System.String[]", "System.Object[]", true, "array"),
+            new AssignabilityRow("System.Int32[]", "System.Object[]", false, "array"),
+            new AssignabilityRow("System.Int32[]", "System.Array", true, "array"),
+            new AssignabilityRow("System.Int32[]", "System.Collections.Generic.IEnumerable<System.Int32>", true,
+                "array"),
+        };
+    }
+}

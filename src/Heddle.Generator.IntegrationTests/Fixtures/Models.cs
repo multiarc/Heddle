@@ -82,6 +82,59 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public string Label { get; set; }
     }
 
+    // ---------------------------------------------------------------------------------------------------------
+    // Phase 4 (generator plan) — the operator-guard differential corpus. One model carrying an operand of every
+    // category the shared classification table distinguishes, so each of the seven documented deviations from C#
+    // gets a named template rather than being covered "by not happening to appear in the corpus".
+    // ---------------------------------------------------------------------------------------------------------
+    public enum OrderStatus
+    {
+        Draft = 0,
+        Open = 1,
+        Closed = 2
+    }
+
+    [System.Flags]
+    public enum OrderFlags
+    {
+        None = 0,
+        Rush = 1,
+        Gift = 2
+    }
+
+    /// <summary>A value type carrying both a user-defined <b>operator</b> (which the native tier honors) and
+    /// user-defined <b>implicit conversions</b> (which it deliberately does not consult) — deviation 6.</summary>
+    public readonly struct Money
+    {
+        public Money(decimal amount) => Amount = amount;
+
+        public decimal Amount { get; }
+
+        public static implicit operator Money(decimal value) => new Money(value);
+
+        public static implicit operator decimal(Money value) => value.Amount;
+
+        public static Money operator +(Money left, Money right) => new Money(left.Amount + right.Amount);
+
+        public override string ToString() => Amount.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    public sealed class Order
+    {
+        public string Name { get; set; }
+        public int Count { get; set; }
+        public OrderStatus Status { get; set; }
+        public OrderFlags Flags { get; set; }
+        public Money Total { get; set; }
+        public bool? Approved { get; set; }
+        public Manufacturer Maker { get; set; }
+        public Address Where { get; set; }
+
+        /// <summary>Visible to the typed member tier (an internal getter passes the runtime filter) but invisible to
+        /// the dynamic tier's binder, which binds in <c>Heddle</c>'s context — the OQ3 asymmetry.</summary>
+        internal string Secret { get; set; }
+    }
+
     // Phase 8 (post-2.0) extension-parameter fixture model.
     public sealed class GridModel
     {

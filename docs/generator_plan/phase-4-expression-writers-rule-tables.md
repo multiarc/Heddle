@@ -208,8 +208,8 @@ internal readonly struct MemberFacts
 }
 ```
 
-`MemberVisibility.IsAccessible(in MemberFacts f)` under the OQ1 recommendation
-(runtime-normative):
+`MemberVisibility.IsAccessible(in MemberFacts f)` under the OQ1 ruling (resolved user,
+2026-07-25: runtime behavior is normative):
 
 | Fact | Verdict |
 | --- | --- |

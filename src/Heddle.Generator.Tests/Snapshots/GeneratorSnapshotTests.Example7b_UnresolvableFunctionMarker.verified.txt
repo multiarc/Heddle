@@ -3,7 +3,7 @@
 #pragma warning disable
 [assembly: global::Heddle.Precompiled.HeddleCompiledTemplates(
     manifestType:  typeof(global::Heddle.Generated.__HeddleManifest),
-    schemaVersion: 2,
+    schemaVersion: 5,
     engineVersion: "2.0.0")]
 
 namespace Heddle.Generated
@@ -37,3 +37,4 @@ namespace Heddle.Generated
 
 // ==== diagnostics ====
 HED7014 Warning (2,3): Function 'nosuchfn9000' is neither a default built-in nor exported by a referenced assembly, so it cannot be precompiled (delegate-only registrations are not representable in metadata). Export it with [ExportFunctions] on a public static container to precompile it; otherwise this template renders through the dynamic path at run time.
+HED7018 Warning (none): Heddle template 'views/unresolved.heddle' is not under the template root '<unset>', so its directory is dropped and it registers under the flattened key 'unresolved.heddle'. Set HeddleTemplateRoot to a directory containing it, or give the item an explicit Key metadata.

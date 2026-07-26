@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using Heddle.Language.Binding;
 
 namespace Heddle.Runtime.Expressions
 {
@@ -79,17 +80,12 @@ namespace Heddle.Runtime.Expressions
                 throw new ArgumentNullException(nameof(name));
             if (staticMethod == null)
                 throw new ArgumentNullException(nameof(staticMethod));
-            if (!staticMethod.IsStatic)
-                throw new ArgumentException("A registered function method must be static.", nameof(staticMethod));
-            if (staticMethod.ContainsGenericParameters)
-                throw new ArgumentException("A registered function method must not be an open generic.", nameof(staticMethod));
-            if (staticMethod.ReturnType == typeof(void))
-                throw new ArgumentException("A registered function method must return a value.", nameof(staticMethod));
-            foreach (var parameter in staticMethod.GetParameters())
-            {
-                if (parameter.ParameterType.IsByRef || parameter.ParameterType.IsPointer)
-                    throw new ArgumentException("A registered function method must not have ref/out/pointer parameters.", nameof(staticMethod));
-            }
+            // Phase 3 (F2): the four eligibility rejections are the shared ExportRules predicate — the same one the
+            // generator now applies, so its manifest overload counts can no longer include a method this method
+            // refuses. The throws (and their exact messages) are unchanged.
+            var rejection = ExportRules.Evaluate(DescribeMethod(staticMethod));
+            if (rejection != ExportRejection.None)
+                throw new ArgumentException(ExportRules.RejectionMessage(rejection), nameof(staticMethod));
 
             EnsureMutable();
             AddOrReplace(FunctionEntry.FromMethod(name, staticMethod));
@@ -131,17 +127,16 @@ namespace Heddle.Runtime.Expressions
 
             bool isStaticClass = container.IsClass && container.IsAbstract && container.IsSealed;
             bool isPublic = container.IsPublic || container.IsNestedPublic;
-            if (!isStaticClass || !isPublic)
-                throw new ArgumentException(
-                    $"[ExportFunctions] container '{container.FullName}' must be a public static class.");
+            if (!ExportRules.IsContainerEligible(isStaticClass, isPublic))
+                throw new ArgumentException(ExportRules.ContainerIneligibleMessage(container.FullName));
 
             foreach (var method in container.GetMethods(BindingFlags.Public | BindingFlags.Static |
                                                         BindingFlags.DeclaredOnly))
             {
-                if (method.IsSpecialName)
+                if (!ExportRules.IsCandidate(DescribeMethod(method)))
                     continue; // operators / property accessors are not exportable functions
 
-                var name = method.Name.ToLowerInvariant();
+                var name = ExportRules.FunctionName(method.Name);
                 try
                 {
                     Register(name, method);
@@ -149,10 +144,40 @@ namespace Heddle.Runtime.Expressions
                 catch (ArgumentException e)
                 {
                     throw new ArgumentException(
-                        $"[ExportFunctions] method '{container.FullName}.{method.Name}' is not an eligible function: {e.Message}",
+                        ExportRules.MethodIneligibleMessage(container.FullName, method.Name,
+                            ExportRules.Evaluate(DescribeMethod(method))),
                         e);
                 }
             }
+        }
+
+        /// <summary>Phase 3 (F2): the shared eligibility record for one reflected method — the reflection adapter of
+        /// <see cref="ExportedMethodFacts"/>. <c>ParameterTypeKeys</c> uses <c>Type.FullName</c>, the same spelling
+        /// the symbol side produces, so signature identity means the same thing on both tiers.</summary>
+        internal static ExportedMethodFacts DescribeMethod(MethodInfo method)
+        {
+            var parameters = method.GetParameters();
+            var keys = new string[parameters.Length];
+            bool byRefOrPointer = false;
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                var type = parameters[i].ParameterType;
+                if (type.IsByRef || type.IsPointer)
+                    byRefOrPointer = true;
+                keys[i] = type.FullName ?? type.Name;
+            }
+
+            return new ExportedMethodFacts
+            {
+                Name = method.Name,
+                IsStatic = method.IsStatic,
+                IsPublic = method.IsPublic,
+                IsOpenGeneric = method.ContainsGenericParameters,
+                ReturnsVoid = method.ReturnType == typeof(void),
+                HasByRefOrPointerParameter = byRefOrPointer,
+                IsSpecialName = method.IsSpecialName,
+                ParameterTypeKeys = keys
+            };
         }
 
         /// <summary>

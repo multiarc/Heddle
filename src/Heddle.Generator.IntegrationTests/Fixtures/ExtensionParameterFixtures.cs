@@ -214,4 +214,22 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
             return "n=" + scope.GetParameter("n") + ":" + (scope.ModelData?.ToString() ?? string.Empty);
         }
     }
+
+    /// <summary>
+    /// Phase 1 (WI3 / D4): a <c>Nullable&lt;W&gt;</c>-typed prop with a widening constant default. The default's
+    /// own type is <c>int</c> and the slot is <c>long?</c>, so the conversion goes through the
+    /// widen-then-lift branch of the shared rule and the frozen prototype must store the same boxed
+    /// <see cref="long"/> the runtime's <c>Convert.ChangeType</c> produces — the byte-exactness half of the row.
+    /// </summary>
+    [ExtensionName("nullableLiftDefault")]
+    [Prop("n", typeof(long?), Default = 5)]
+    public sealed class NullableLiftDefaultExtension : EchoExtensionBase
+    {
+        public override object ProcessData(in Scope scope)
+        {
+            var value = scope.GetParameter("n");
+            return "n=" + value + "/" + (value?.GetType().Name ?? "null") + ":" +
+                   (scope.ModelData?.ToString() ?? string.Empty);
+        }
+    }
 }

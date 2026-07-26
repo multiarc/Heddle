@@ -38,8 +38,9 @@ beyond what the matrix lists.
 | WI4 | `Heddle.Generator.Tests/ParticipantScanLockstepTests.cs` | lockstep | shared `ParticipantScan` verdict == `RuntimeDocument` `NeedsLocals` for every compiled fixture in the differential corpus; the shadowed-name fixture (`scope-shadowed-branch-name.heddle` — a definition named after a `[ScopeChannel]` extension) asserts the documented over-provision branch explicitly (OQ4's trigger) |
 | WI5 | `Heddle.Tests/SlotRulesTests.cs` | unit theory | the five-way `HasOutValue` over every `CallParameter` shape (native expr / chain param / C# expr / prop args / first model segment / none); slot-type walk over base chains incl. re-declared and absent slot types |
 | WI5 | `Heddle.Generator.IntegrationTests/SlotAndDefaultOutputTests.cs` (existing, unchanged) | regression gate | byte-identical before/after delegation — the extraction's no-op proof |
-| WI6 | `Heddle.Tests/RegionFillResolverTests.cs` | unit theory | all five verdicts (`Matched`/`ForeignOrigin`/`Dangling`/`PrivateRegion`/`DefaultMissing`) from constructed parse trees; the generator-refuses/runtime-continues asymmetry asserted as intentional (cross-referencing OQ3) |
-| WI6 | `RegionTests` / `CompositionTests` (existing, unchanged) | regression gate | emitter adapter is behavior-neutral |
+| WI6 | `Heddle.Tests/RegionFillResolverTests.cs` | unit theory | all five verdicts (`Matched`/`ForeignOrigin`/`Dangling`/`PrivateRegion`/`DefaultMissing`) from constructed parse trees; per verdict, both sides' reactions asserted to **match** (skip with parse-emitted error kept / retract + materialize / retract + error) per the OQ3 match-principle ruling |
+| WI6 | `Heddle.Generator.IntegrationTests` additions — `region-fill-dangling.heddle`, `region-fill-private.heddle` | differential + negative (positioned diagnostic) | dangling: both tiers surface the same parse-emitted base-not-found error and the generator does not refuse to precompile; private: dynamic compile raises `HED5019`, precompiled build fails with the positioned twin ID (asserted in the same test — the WI2 twin pattern) |
+| WI6 | `RegionTests` / `CompositionTests` (existing, unchanged) | regression gate | emitter adapter is behavior-neutral for correct templates |
 | WI7 | `Heddle.Generator.Tests/CallTargetLockstepTests.cs` | lockstep theory | precedence rows: fill beats definition beats extension beats function; definition shadows a branch keyword; bodiless known-function compiles as function; chain-param / C#-expr shapes refuse the function path; both dispatch sites (emitter, `HeddleCompiler`) agree with the classifier per row |
 | WI7 | same suite | invariant test | `DefaultFunctionTable` names ∩ built-in `[ExtensionName]` names = ∅ (the comment-only invariant made executable) |
 | WI8 | `Heddle.Tests/EmbeddedCSharpNamesPinTests.cs` | pin | both embedded `.tcs` resources declare parameters spelled exactly `EmbeddedCSharpNames.Model/Chained/Root`, in that order; reviewed once by mutation (rename → red) |
@@ -61,7 +62,7 @@ across tiers; fixtures under the `strategy-` stem:
 | `strategy-single-processor.heddle` | single-part `Execute` (no concat) == runtime single-element strategy |
 | `strategy-empty-body.heddle` | empty body returns `string.Empty` on both tiers |
 | `strategy-alternation.heddle` | head piece / interleaved processors / tail piece ordering (the offset-walk contract) |
-| `strategy-nonstring-value.heddle` | a processor returning a boxed non-string on the value path drops to `string.Empty` on both tiers — the pinned coercion rail; this fixture is the tripwire OQ2's future rail change must consciously edit |
+| `strategy-nonstring-value.heddle` | a processor returning a boxed non-string on the value path drops to `string.Empty` on both tiers — the pinned coercion rail; this fixture is the tripwire the rail change's joint landing (OQ2, resolved: the joint-land rule) must consciously edit |
 | `strategy-adjacent-processors.heddle` | zero-length pieces between adjacent processors: no empty-piece divergence between `GetDocumentPieces` and the emitted shape |
 
 ## Corpus guardrail entries (added to the shared differential corpus)

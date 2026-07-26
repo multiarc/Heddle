@@ -56,6 +56,13 @@ namespace Heddle.Generator.IntegrationTests
         // definition and falls back to the dynamic path, so it carries no precompiled entry to compare — its
         // correctness is pinned by the runtime golden (Heddle.Tests MultilineOverrideOffsetRegressionTests).
         [InlineData("regr-def-inner-comment.heddle")]
+        // Generator plan phase 2 WI1 — the clamp-drift fixture: an INDENTED @<< composition import on the
+        // document's last line, importing a file with a zero-output directive. The imported chain keeps the
+        // import-site offset while the import's own (widened) line is removed, leaving that offset past the end of
+        // the shortened working document. Before the clamp fix the emitter threw IndexOutOfRangeException inside
+        // WidenToWholeLine and the template silently lost precompilation; RenderInCorpus's ExpectPrecompiled is
+        // what makes that regression a red build, and the byte assertion covers the rest.
+        [InlineData("shaper-clamp-overshoot.heddle")]
         public void ModelLessCorpusTemplateRendersIdentically(string name)
         {
             var dir = CorpusDir();

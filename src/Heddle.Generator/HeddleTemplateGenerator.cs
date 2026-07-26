@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Globalization;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Text;
 using Heddle.Generator.Diagnostics;
 using Heddle.Generator.Emit;
@@ -29,11 +27,13 @@ namespace Heddle.Generator
     {
         private sealed class TemplateFile
         {
-            public TemplateFile(AdditionalText text, string content, string keyMetadata, bool readable, string readError)
+            public TemplateFile(AdditionalText text, string content, string keyMetadata, bool precompile,
+                bool readable, string readError)
             {
                 Text = text;
                 Content = content;
                 KeyMetadata = keyMetadata;
+                Precompile = precompile;
                 Readable = readable;
                 ReadError = readError;
             }
@@ -41,6 +41,11 @@ namespace Heddle.Generator
             public AdditionalText Text { get; }
             public string Content { get; }
             public string KeyMetadata { get; }
+
+            /// <summary>The <c>Precompile</c> item metadata (phase 5, Q5.1 ruling). <c>false</c> is the per-item
+            /// opt-out: the file still serves <c>@&lt;&lt;</c> imports, but emits no entry point and no manifest
+            /// entry. Absent, empty, or unparsable metadata means <c>true</c> — today's behavior.</summary>
+            public bool Precompile { get; }
 
             /// <summary>False when the <c>AdditionalFiles</c> source could not be read/decoded (HED7001).</summary>
             public bool Readable { get; }
@@ -50,12 +55,14 @@ namespace Heddle.Generator
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
             var templates = context.AdditionalTextsProvider
-                .Where(t => t.Path.EndsWith(".heddle", StringComparison.OrdinalIgnoreCase))
+                .Where(t => TemplateKey.HasTemplateExtension(t.Path))
                 .Combine(context.AnalyzerConfigOptionsProvider)
                 .Select((pair, ct) =>
                 {
                     var options = pair.Right.GetOptions(pair.Left);
                     options.TryGetValue("build_metadata.AdditionalFiles.Key", out var key);
+                    options.TryGetValue("build_metadata.AdditionalFiles.Precompile", out var precompileMetadata);
+                    var precompile = !(bool.TryParse(precompileMetadata, out var optIn) && !optIn);
                     string content = string.Empty;
                     bool readable = true;
                     string readError = null;
@@ -78,7 +85,7 @@ namespace Heddle.Generator
                         readError = ex.Message;
                     }
 
-                    return new TemplateFile(pair.Left, content, key, readable, readError);
+                    return new TemplateFile(pair.Left, content, key, precompile, readable, readError);
                 })
                 .Collect();
 
@@ -114,7 +121,7 @@ namespace Heddle.Generator
         private static void Emit(SourceProductionContext spc, ImmutableArray<TemplateFile> templates,
             ConfigResult configResult, Compilation compilation)
         {
-            var engineVersion = ResolveEngineVersion(compilation);
+            var engineVersion = ResolveEngineVersion(spc, compilation);
             foreach (var optionError in configResult.Errors)
                 spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.OptionParseError, Location.None,
                     optionError.Value, optionError.Property, optionError.Expected));
@@ -145,6 +152,14 @@ namespace Heddle.Generator
             // D21 discovery: [ExportFunctions] over the compilation's own + referenced assemblies, computed once.
             var exports = Heddle.Generator.Binding.FunctionExportResolver.Build(compilation);
 
+            // HED7021 (phase 3 / Q3.6): an [ExportFunctions] container the runtime's RegisterFrom would throw on.
+            // Once per compilation, at Location.None — the attribute lives in the consuming assembly, not in a
+            // template — and at Error severity, because the runtime errors and the build must not mask a host
+            // configuration mistake until first render.
+            foreach (var container in exports.IneligibleContainers)
+                spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.IneligibleExportContainer,
+                    Location.None, container.Reason));
+
             // D-ROLE-5 drift (§6.5): report HED7016 once per compilation for any branch Continuation/Terminal that
             // lacks [ScopeChannel]. Additive — empty for engine-only compilations (no built-in violates R11).
             foreach (var driftType in ExtensionBinder.Build(compilation).DriftTypes)
@@ -161,7 +176,13 @@ namespace Heddle.Generator
                     continue;
                 }
 
-                var key = DeriveKey(template, config.TemplateRoot);
+                // Precompile="false" (Q5.1 ruling): the per-item opt-out. The file is already in the import map
+                // built above, so every @<< that references it still resolves (no HED7011 on importers) — it simply
+                // contributes no entry point and no manifest entry, which is what `Remove` could never express.
+                if (!template.Precompile)
+                    continue;
+
+                var key = DeriveKey(template, config.TemplateRoot, out var outOfRoot);
                 if (key == null)
                 {
                     // HED7004: an explicit Key metadata that is empty/whitespace or normalizes to an invalid key.
@@ -171,6 +192,14 @@ namespace Heddle.Generator
                             Location.None, template.KeyMetadata, template.Text.Path));
                     continue;
                 }
+
+                // HED7018 (D3): the template is not under HeddleTemplateRoot and carries no explicit Key, so its
+                // directory silently vanished from the key. Behavior is unchanged — the flattened key still
+                // registers — but the condition is now visible, and it explains any HED7002 that follows.
+                if (outOfRoot)
+                    spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.TemplateOutsideRoot, Location.None,
+                        template.Text.Path,
+                        string.IsNullOrEmpty(config.TemplateRoot) ? "<unset>" : config.TemplateRoot, key));
 
                 // HED7002: two templates in one compilation normalize to the same key (position: the second file).
                 if (seenKeys.TryGetValue(key, out var firstPath))
@@ -207,7 +236,7 @@ namespace Heddle.Generator
                 try
                 {
                     var emitter = new TemplateEmitter(key, sanitized, ns, cleanDocument, template.Content, parsed, config, compilation, exports, template.Text.Path);
-                    var result = emitter.Emit(ComputeContentHash(template.Content));
+                    var result = emitter.Emit(ContentHash.HashText(template.Content));
 
                     // Emitter-produced Roslyn diagnostics (HED7005 surrogate, HED7006/HED7015 extension binding),
                     // reported in every result branch at their .heddle span.
@@ -217,6 +246,27 @@ namespace Heddle.Generator
                         foreach (var d in result.Diagnostics)
                             spc.ReportDiagnostic(Diagnostic.Create(d.Descriptor,
                                 ToLocation(template.Text, text, d.Position), d.Args));
+                    }
+
+                    // Phase 1 D7/WI6 (Q1.3's match principle): the tentative base-not-found error a region-fill
+                    // candidate carries is filtered out of the parse-channel drain above, because whether it stands
+                    // is only known once the emitter has matched the call sites. Now that the emit has run, forward
+                    // every candidate error it did NOT retract — the exact set the dynamic compile leaves in its
+                    // error list for the same template. Gated on a completed body build: when the emitter degraded
+                    // for an unrelated reason it never visited the call sites, so it has no verdict to report and
+                    // the dynamic tier stays the one that raises (the pre-phase-1 behavior, unchanged).
+                    if (result.RetractedCandidateErrors != null)
+                    {
+                        var candidateText = template.Text.GetText();
+                        foreach (var candidate in parsed.RegionFillCandidates)
+                        {
+                            if (candidate.Error == null || result.RetractedCandidateErrors.Contains(candidate.Error))
+                                continue;
+                            spc.ReportDiagnostic(Diagnostic.Create(
+                                GeneratorDiagnostics.Forwarded(candidate.Error.DiagnosticId, isWarning: false),
+                                ToLocation(template.Text, candidateText, candidate.Error.Position),
+                                candidate.Error.Error));
+                        }
                     }
 
                     if (result.Emitted)
@@ -246,9 +296,21 @@ namespace Heddle.Generator
                     // A template the emitter does not yet cover (result.UnsupportedReason) is simply left
                     // un-precompiled: no entry, no source — the render takes the byte-identical dynamic path.
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Emitter defect on this template: degrade to the dynamic path rather than break the build.
+                    // Fallback-legitimacy ruling (Q2.2 → D12a): catch-and-degrade is legitimate only for a
+                    // researched set of conditions, and an exception out of the emitter is not one of them. Every
+                    // *intentional* refusal already leaves through a return path — result.IsMarker (HED7014
+                    // fallback marker) or result.UnsupportedReason (unsupported construct) — so an exception here
+                    // is a defect and must surface.
+                    //
+                    // Reported per template rather than rethrown: letting it escape downgrades the failure to the
+                    // compiler's CS8785 *warning* and discards the generator's entire contribution — every other
+                    // template's source and the manifest with it. An error diagnostic reds the build reliably while
+                    // the pass continues, so one defective template neither hides itself nor un-precompiles the
+                    // rest.
+                    spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.EmitterFault, Location.None,
+                        template.Text.Path, ex.GetType().Name, ex.Message));
                 }
             }
 
@@ -309,24 +371,20 @@ namespace Heddle.Generator
             foreach (var candidate in parseContext.RegionFillCandidates)
                 candidateErrors.Add(candidate.Error);
 
-            foreach (var error in parseContext.Errors)
+            // Phase 6 D5: one drain rule, shared with the language server and the runtime's CompileResult. The
+            // generator's own policy is the retract pre-filter above and the Roslyn location mapping below;
+            // everything else — which channels, severity by subtype, id and Fix passthrough, reference dedupe —
+            // is stated once in HeddleDiagnosticProjection. The generator runs no compile-channel stage yet, so
+            // it drains the parse channels; when it gains one, channel-completeness comes for free.
+            foreach (var entry in HeddleDiagnosticProjection.Drain(parseContext, e => !candidateErrors.Contains(e)))
             {
-                if (candidateErrors.Contains(error))
-                    continue;
-                hadErrors = true;
-                var location = ToLocation(template.Text, sourceText, error.Position);
-                var descriptor = error.DiagnosticId != null
-                    ? new DiagnosticDescriptor(error.DiagnosticId, "Heddle template error",
-                        "{0}", "Heddle.Precompile", DiagnosticSeverity.Error, true)
-                    : GeneratorDiagnostics.ForwardedError;
-                spc.ReportDiagnostic(Diagnostic.Create(descriptor, location, error.Error));
-            }
-
-            foreach (var warning in parseContext.Warnings)
-            {
-                var location = ToLocation(template.Text, sourceText, warning.Position);
-                spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.ForwardedWarning, location,
-                    warning.Error));
+                if (!entry.IsWarning)
+                    hadErrors = true;
+                var location = ToLocation(template.Text, sourceText,
+                    new BlockPosition(entry.Offset, entry.Length));
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    GeneratorDiagnostics.Forwarded(entry.Id, entry.IsWarning), location,
+                    GeneratorDiagnostics.ForwardedMessage(entry.Message, entry.Fix)));
             }
 
             return parseContext;
@@ -377,7 +435,7 @@ namespace Heddle.Generator
             sb.AppendLine("#pragma warning disable");
             sb.AppendLine("[assembly: global::Heddle.Precompiled.HeddleCompiledTemplates(");
             sb.AppendLine($"    manifestType:  typeof(global::{ns}.__HeddleManifest),");
-            sb.AppendLine("    schemaVersion: 2,");
+            sb.AppendLine($"    schemaVersion: {PrecompiledSchema.CurrentSchemaVersion},");
             sb.AppendLine($"    engineVersion: \"{engineVersion}\")]");
             sb.AppendLine();
             sb.AppendLine($"namespace {ns}");
@@ -407,18 +465,6 @@ namespace Heddle.Generator
             sb.AppendLine("}");
 
             spc.AddSource("__HeddleManifest.g.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
-        }
-
-        private static string ComputeContentHash(string content)
-        {
-            using (var sha = SHA256.Create())
-            {
-                var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(content));
-                var sb = new StringBuilder(bytes.Length * 2);
-                foreach (var b in bytes)
-                    sb.Append(b.ToString("x2", CultureInfo.InvariantCulture));
-                return sb.ToString();
-            }
         }
 
         /// <summary>D11 naming: the key's segments PascalCased, identifier-invalid characters mapped to <c>_</c>,
@@ -470,37 +516,53 @@ namespace Heddle.Generator
             return result.Length == 0 ? "_" : result;
         }
 
-        private static string DeriveKey(TemplateFile template, string templateRoot)
+        private static string DeriveKey(TemplateFile template, string templateRoot) =>
+            DeriveKey(template, templateRoot, out _);
+
+        /// <summary>The key↔path derivation, on the shared <see cref="TemplateKey"/> rules (phase 5 D2). Explicit
+        /// <c>Key</c> metadata wins; otherwise the path is made relative to <c>HeddleTemplateRoot</c>. A template
+        /// outside the root keeps the historical flattened-filename key — removing it would un-precompile projects
+        /// that rely on flat lookups — but sets <paramref name="outOfRoot"/> so the caller can report HED7018 (D3);
+        /// the silent directory-drop is the bug (05 F3).</summary>
+        private static string DeriveKey(TemplateFile template, string templateRoot, out bool outOfRoot)
         {
-            var raw = !string.IsNullOrEmpty(template.KeyMetadata)
-                ? template.KeyMetadata
-                : Relative(template.Text.Path, templateRoot);
+            outOfRoot = false;
+            string raw;
+            if (!string.IsNullOrEmpty(template.KeyMetadata))
+            {
+                raw = template.KeyMetadata;
+            }
+            else if (TemplateKey.TryMakeRelative(template.Text.Path, templateRoot, out var rooted))
+            {
+                return rooted;
+            }
+            else
+            {
+                outOfRoot = true;
+                raw = System.IO.Path.GetFileName(template.Text.Path);
+            }
+
             return TemplateKey.TryNormalize(raw, out var key) ? key : null;
         }
 
-        private static string Relative(string path, string root)
-        {
-            if (string.IsNullOrEmpty(root))
-                return System.IO.Path.GetFileName(path);
-            var normalizedRoot = root.Replace('\\', '/').TrimEnd('/');
-            var normalizedPath = path.Replace('\\', '/');
-            if (normalizedPath.StartsWith(normalizedRoot + "/", StringComparison.OrdinalIgnoreCase))
-                return normalizedPath.Substring(normalizedRoot.Length + 1);
-            return System.IO.Path.GetFileName(path);
-        }
-
-        private static string ResolveEngineVersion(Compilation compilation)
+        /// <summary>The manifest's <c>engineVersion</c> (phase 5 D6). Primary source: the referenced <c>Heddle</c>
+        /// assembly's own identity. When it is not visible — an extern alias, an embedded or ILMerged engine — the
+        /// generator falls back to <b>its own</b> assembly version and says so (HED7019): the generator versions in
+        /// lockstep with the engine, so the fallback tracks reality, where the previous hardcoded <c>"2.0.0"</c>
+        /// literal would have gone stale the release after it was written while the runtime's compatibility gate
+        /// decided whole-assembly registration on it (05 F5).</summary>
+        private static string ResolveEngineVersion(SourceProductionContext spc, Compilation compilation)
         {
             foreach (var reference in compilation.SourceModule.ReferencedAssemblySymbols)
             {
                 if (string.Equals(reference.Identity.Name, "Heddle", StringComparison.Ordinal))
-                {
-                    var v = reference.Identity.Version;
-                    return string.Format(CultureInfo.InvariantCulture, "{0}.{1}.{2}", v.Major, v.Minor, v.Build);
-                }
+                    return PrecompiledSchema.FormatEngineVersion(reference.Identity.Version);
             }
 
-            return "2.0.0";
+            var self = PrecompiledSchema.FormatEngineVersion(
+                typeof(HeddleTemplateGenerator).Assembly.GetName().Version ?? new Version(0, 0, 0));
+            spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.EngineVersionUnresolved, Location.None, self));
+            return self;
         }
     }
 }

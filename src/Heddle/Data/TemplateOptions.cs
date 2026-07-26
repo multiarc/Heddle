@@ -117,27 +117,23 @@ namespace Heddle.Data {
         /// </summary>
         public bool ValidateModelType { get; set; }
 
-        public TemplateOptions()
+        public TemplateOptions() : this((string) null)
         {
-            FileNamePostfix = string.Empty;
-            RootPath = AppContext.BaseDirectory;
-            TemplateName = string.Empty;
-            EnableFileChangeCheck = false;
-            ExpressionMode = ExpressionMode.Native;
-            MaxRecursionCount = 100;
-            OutputProfile = OutputProfile.Html;
-            TrimDirectiveLines = true;
         }
 
+        /// <summary>Every default comes from the shared <see cref="Heddle.Precompiled.HeddleBuildOptions"/> table
+        /// (phase 5 D8) — the same table the generator's option reader and the MSBuild props defaults are pinned
+        /// against, so a build-time and a run-time default can no longer drift into a permanent
+        /// <c>OptionsMismatch</c>. The parameterless constructor chains here rather than restating them.</summary>
         public TemplateOptions(string templateName) {
             FileNamePostfix = string.Empty;
             RootPath = AppContext.BaseDirectory;
             TemplateName = templateName ?? string.Empty;
             EnableFileChangeCheck = false;
-            ExpressionMode = ExpressionMode.Native;
-            MaxRecursionCount = 100;
-            OutputProfile = OutputProfile.Html;
-            TrimDirectiveLines = true;
+            ExpressionMode = Heddle.Precompiled.HeddleBuildOptions.DefaultExpressionMode;
+            MaxRecursionCount = Heddle.Precompiled.HeddleBuildOptions.DefaultMaxRecursionCount;
+            OutputProfile = Heddle.Precompiled.HeddleBuildOptions.DefaultOutputProfile;
+            TrimDirectiveLines = Heddle.Precompiled.HeddleBuildOptions.DefaultTrimDirectiveLines;
         }
 
         public TemplateOptions(TemplateOptions value, string templateName = null)
@@ -159,7 +155,16 @@ namespace Heddle.Data {
             ValidateModelType = value.ValidateModelType;   // P4-Q2: copied, but not part of Equals/GetHashCode or the fingerprint
         }
 
-        public string FullPath => RootPath + TemplateName + FileNamePostfix;
+        /// <summary>The composed on-disk path of this template — <b>the</b> composition rule, which
+        /// <c>FileReader.GetFileName</c> now reads rather than restates (generator plan phase 6 D8/WI10).
+        /// Previously this was a naive <c>RootPath + TemplateName + FileNamePostfix</c> concatenation while the
+        /// reader used <see cref="System.IO.Path.Combine(string,string)"/>, so a host that set
+        /// <c>RootPath</c> without a trailing separator got a defective string here — visible as
+        /// <c>ImportOrigin</c>/<c>ImportedFrom</c> text — while resolution silently worked. The comment at
+        /// <c>HeddleTemplate</c> records a shipped bug from a previous divergence of this same pair; there is now
+        /// only one statement of the rule to diverge from.</summary>
+        public string FullPath =>
+            System.IO.Path.Combine(RootPath ?? string.Empty, TemplateName + FileNamePostfix);
 
         public bool Equals(TemplateOptions other)
         {

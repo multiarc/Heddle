@@ -56,17 +56,37 @@ namespace Heddle.Precompiled
         public static AbstractExtension BindDefinition(IProcessStrategy body, IProcessStrategy callerContent,
             object[] props, PrecompiledPropSetter[] dynamicSetters, RenderType renderType, bool needsLocals,
             bool slotMode, int maxRecursionCount, int line, int column)
+            => BindDefinition(body, callerContent, props, dynamicSetters, renderType, needsLocals, needsLocals,
+                slotMode, maxRecursionCount, line, column);
+
+        /// <summary>
+        /// Per-carrier locals overload (generator plan phase 1 D2). The two carriers a definition call site builds
+        /// host <b>different</b> documents — the inner carrier the definition body, the outer carrier the invocation
+        /// site's caller content — and the dynamic tier derives each one's frame-provisioning flag from its own
+        /// <c>RuntimeDocument.NeedsLocals</c> (<c>AbstractExtension.InitStart</c>). The older overloads apply one
+        /// flag to both, which suppresses the deliberate frame-<i>clearing</i> a non-participating body gets under a
+        /// provisioned parent (<c>AbstractExtension.GetInnerResult</c>) — that is a behavior change, not a harmless
+        /// over-provision, so the flags are split here.
+        /// <para>The existing overloads are retained and unchanged: assemblies emitted by older generator versions
+        /// keep binding, and passing the same value twice is byte-identical to them.</para>
+        /// </summary>
+        /// <param name="bodyNeedsLocals">Frame provisioning for the definition <b>body</b> (the inner carrier).</param>
+        /// <param name="callerContentNeedsLocals">Frame provisioning for the invocation site's <b>caller content</b>
+        /// (the outer carrier).</param>
+        public static AbstractExtension BindDefinition(IProcessStrategy body, IProcessStrategy callerContent,
+            object[] props, PrecompiledPropSetter[] dynamicSetters, RenderType renderType, bool bodyNeedsLocals,
+            bool callerContentNeedsLocals, bool slotMode, int maxRecursionCount, int line, int column)
         {
             var position = new BlockPosition(line, column);
 
             var inner = new DefinitionBaseExtension();
-            inner.BindPrecompiled(body, renderType, needsLocals, position);
+            inner.BindPrecompiled(body, renderType, bodyNeedsLocals, position);
             inner.SetMaxRecursion(maxRecursionCount);
 
             var outer = new DefinitionBaseExtension { DefinitionParameterTemplate = inner };
             // The outer carrier's body is the caller content; it is pre-rendered onto the chained channel (non-slot)
             // or projected lazily via the SlotContent carrier (slot mode).
-            outer.BindPrecompiled(callerContent, renderType, needsLocals, position);
+            outer.BindPrecompiled(callerContent, renderType, callerContentNeedsLocals, position);
             outer.SetMaxRecursion(maxRecursionCount);
             outer.SlotMode = slotMode;
             if (props != null || (dynamicSetters != null && dynamicSetters.Length != 0))
@@ -298,20 +318,12 @@ namespace Heddle.Precompiled
                 return entry.Strategy;
 
             var opts = options ?? new TemplateOptions();
-            var templateName = StripHeddleExtension(key);
+            var templateName = TemplateKey.StripTemplateExtension(key);
             var childOptions = new TemplateOptions(opts, templateName);
             var template = new Heddle.HeddleTemplate(new CompileContext(childOptions, childModelType ?? ExType.Dynamic));
             if (!template.CompileResult.Success)
                 throw new TemplateCompileException(template.CompileResult.ErrorList);
             return new DynamicPartialStrategy(template);
-        }
-
-        private static string StripHeddleExtension(string key)
-        {
-            const string ext = ".heddle";
-            return key.EndsWith(ext, StringComparison.OrdinalIgnoreCase)
-                ? key.Substring(0, key.Length - ext.Length)
-                : key;
         }
 
         /// <summary>Wraps a dynamically-compiled partial template as an <see cref="IProcessStrategy"/> so a precompiled
@@ -327,6 +339,59 @@ namespace Heddle.Precompiled
 
             public void Render(in Scope scope) =>
                 scope.Renderer.Render(_template.Generate(scope.ModelData, scope.ChainedData));
+        }
+
+        /// <summary>
+        /// One dynamic member hop — the single implementation of the dynamic tier's member access, shared by the
+        /// engine and by generated precompiled code (phase 4 D11 / OQ3).
+        /// <para>A <c>null</c> receiver propagates <c>null</c>, exactly like the engine's per-hop
+        /// <c>Condition(input == null, null, Dynamic(GetMember …))</c>, so a chain of these calls reproduces the
+        /// dynamic member path hop for hop.</para>
+        /// <para><b>Binder context.</b> The member is bound in <b>Heddle's</b> assembly context, not the calling
+        /// assembly's. Generated code used to emit an inline <c>(dynamic)</c> cast chain, which binds in the
+        /// consumer's context and therefore resolved the consumer's <c>internal</c> members — members the engine's
+        /// own dynamic tier cannot see. Routing both tiers through this helper makes that choice exist once.
+        /// Note the deliberate asymmetry it preserves: the <i>typed</i> member tier accepts an <c>internal</c>
+        /// getter regardless of assembly, while the dynamic tier does not. Reproducing the engine's behavior is the
+        /// OQ3 ruling; harmonizing the two tiers would widen visibility and is a breaking-window candidate.</para>
+        /// <para>Thread-safe: call sites are cached per member name and the DLR's own polymorphic inline cache
+        /// handles the per-receiver-type dispatch.</para>
+        /// </summary>
+        /// <param name="receiver">The object to read the member from; <c>null</c> yields <c>null</c>.</param>
+        /// <param name="name">The member name, ordinal and case-sensitive.</param>
+        /// <returns>The member value, or <c>null</c> when <paramref name="receiver"/> is <c>null</c>.</returns>
+        public static object DynamicMember(object receiver, string name)
+        {
+            if (receiver == null)
+                return null;
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+            var site = DynamicMemberSites.GetOrAdd(name, CreateMemberSite);
+            return site.Target(site, receiver);
+        }
+
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string,
+                System.Runtime.CompilerServices.CallSite<Func<System.Runtime.CompilerServices.CallSite, object, object>>>
+            DynamicMemberSites =
+                new System.Collections.Concurrent.ConcurrentDictionary<string,
+                    System.Runtime.CompilerServices.CallSite<Func<System.Runtime.CompilerServices.CallSite, object, object>>>(
+                    StringComparer.Ordinal);
+
+        private static System.Runtime.CompilerServices.CallSite<Func<System.Runtime.CompilerServices.CallSite, object, object>>
+            CreateMemberSite(string name)
+        {
+            // typeof(Runtime.Parameters.DynamicParameter) is the engine's own binder context — the same type the
+            // dynamic tier passes, so both tiers see the identical member set.
+            var binder = Microsoft.CSharp.RuntimeBinder.Binder.GetMember(
+                Microsoft.CSharp.RuntimeBinder.CSharpBinderFlags.None, name,
+                typeof(Runtime.Parameters.DynamicParameter),
+                new[]
+                {
+                    Microsoft.CSharp.RuntimeBinder.CSharpArgumentInfo.Create(
+                        Microsoft.CSharp.RuntimeBinder.CSharpArgumentInfoFlags.None, null)
+                });
+            return System.Runtime.CompilerServices.CallSite<Func<System.Runtime.CompilerServices.CallSite, object, object>>
+                .Create(binder);
         }
 
         private sealed class LocalsFrameStrategy : IProcessStrategy

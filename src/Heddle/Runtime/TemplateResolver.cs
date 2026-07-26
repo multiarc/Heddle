@@ -13,7 +13,6 @@ namespace Heddle.Runtime {
 
         private readonly string[] _partialPath = {@"\views\partial\{1}\{0}", @"\views\partial\{0}", @"\views\{1}\{0}", @"\views\{0}"};
 
-        private const string FileExtension = ".heddle";
 
         private Dictionary<string, HeddleTemplate> TemplatesCache { get; }
 
@@ -107,7 +106,9 @@ namespace Heddle.Runtime {
                 searchedLocations = new[] { Path.Combine(_rootPath, viewName) };
                 return null;
             case TemplatePathType.View:
-                path = Search(viewName, controllerName, searchType, profile, trim, out searchedLocations, out result);
+                // The View arm builds its own options below and ignores the caller's context, so the registry
+                // consult inside Search synthesizes the same ones (null = synthesize).
+                path = Search(viewName, controllerName, searchType, profile, trim, null, out searchedLocations, out result);
                 if (result != null)
                     return result;
                 options = new TemplateOptions(Path.GetFileNameWithoutExtension(path))
@@ -121,7 +122,10 @@ namespace Heddle.Runtime {
                 };
                 return Create(path, new CompileContext(options) { ControllerName = controllerName });
             case TemplatePathType.PartialView:
-                path = Search(viewName, controllerName, searchType, profile, trim, out searchedLocations, out result);
+                // The PartialView arm hands the caller's context straight to Create when it has one, so the consult
+                // must run the gauntlet against exactly those options.
+                path = Search(viewName, controllerName, searchType, profile, trim, context?.Options,
+                    out searchedLocations, out result);
                 if (result != null)
                     return result;
                 options = new TemplateOptions(Path.GetFileNameWithoutExtension(path))
@@ -148,18 +152,26 @@ namespace Heddle.Runtime {
         public string Search(string viewName, string controllerName, TemplatePathType searchType,
             out IEnumerable<string> searchedLocations, out HeddleTemplate cached)
         {
-            return Search(viewName, controllerName, searchType, _defaultProfile, _trimDirectiveLines,
+            return Search(viewName, controllerName, searchType, _defaultProfile, _trimDirectiveLines, null,
                 out searchedLocations, out cached);
         }
 
         private string Search(string viewName, string controllerName, TemplatePathType searchType,
-            OutputProfile profile, bool trim, out IEnumerable<string> searchedLocations, out HeddleTemplate cached)
+            OutputProfile profile, bool trim, TemplateOptions requestOptions,
+            out IEnumerable<string> searchedLocations, out HeddleTemplate cached)
         {
             if (viewName == null) throw new ArgumentNullException(nameof(viewName));
             if (controllerName == null) throw new ArgumentNullException(nameof(controllerName));
+            // Host-path munging, deliberately distinct from the key grammar (phase 5 D4/WI7). The extension itself
+            // comes from the shared TemplateKey.TemplateExtension; the three surrounding rules do NOT fold onto
+            // TemplateKey's — this side appends only when the name has no extension at all (a `.txt` view stays
+            // `.txt`), rejects `..` as a substring, and folds `~/` anywhere, while TemplateKey appends on a
+            // dot-less final segment, rejects `..` per segment, and strips only a leading `~/`. Substituting one
+            // for the other would change resolver behavior; the shared grammar governs *keys*, which is where the
+            // registry consult below maps into it.
             if (!Path.HasExtension(viewName))
             {
-                viewName += FileExtension;
+                viewName += TemplateKey.TemplateExtension;
             }
             if (viewName.Contains(".."))
                 throw new ArgumentException("The view path cannot contain parent directory specifier ..");
@@ -169,21 +181,42 @@ namespace Heddle.Runtime {
                 case TemplatePathType.None:
                     throw new TemplateCreateException("Search is not eligiable to non hosted views.");
                 case TemplatePathType.View:
-                    return Search(viewName, controllerName, _viewPath, profile, trim, out searchedLocations, out cached);
+                    return Search(viewName, controllerName, _viewPath, profile, trim, requestOptions, out searchedLocations, out cached);
                 case TemplatePathType.PartialView:
-                    return Search(viewName, controllerName, _partialPath, profile, trim, out searchedLocations, out cached);
+                    return Search(viewName, controllerName, _partialPath, profile, trim, requestOptions, out searchedLocations, out cached);
                 case TemplatePathType.Master:
-                    return Search(viewName, controllerName, _masterPath, profile, trim, out searchedLocations, out cached);
+                    return Search(viewName, controllerName, _masterPath, profile, trim, requestOptions, out searchedLocations, out cached);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(searchType));
             }
         }
 
-        private string Search(string viewName, string controllerName, string[] locations, OutputProfile profile, bool trim, out IEnumerable<string> searchedLocations, out HeddleTemplate cached) {
+        /// <summary>The hosted probe ladder. Phase 5 D11 makes it three tiers — <b>registry</b>, then cache, then
+        /// disk, each in location order — mirroring the <see cref="TemplatePathType.None"/> arm, which has consulted
+        /// the registry ahead of both tiers since phase 7. Tier order beats location order, exactly as it already
+        /// did for the cache: a cached location-2 template has always won over a location-1 file on disk.</summary>
+        private string Search(string viewName, string controllerName, string[] locations, OutputProfile profile, bool trim,
+            TemplateOptions requestOptions, out IEnumerable<string> searchedLocations, out HeddleTemplate cached) {
             if (viewName == null) throw new ArgumentNullException(nameof(viewName));
             if (controllerName == null) throw new ArgumentNullException(nameof(controllerName));
             if (locations == null) throw new ArgumentNullException(nameof(locations));
             List<string> searched = new List<string>();
+            foreach (var path in locations) {
+                var relativePath = string.Format(path, viewName, controllerName);
+                // No second key grammar: the candidate's root-relative path goes through the same shared
+                // TemplateKey rules the generator derives its keys with ('\'->'/', leading separator stripped,
+                // '..' rejected) — equivalently TryMakeRelative(Path.Combine(_rootPath, relativePath), _rootPath).
+                if (!TemplateKey.TryNormalize(relativePath, out var key))
+                    continue;
+                var options = requestOptions ?? HostedOptions(Path.Combine(_rootPath, relativePath), profile, trim);
+                // A miss, or a Fallback-policy gauntlet failure (an options fingerprint built Native cannot answer
+                // these arms' FullCSharp request), falls through to the unchanged cache/disk ladder.
+                if (PrecompiledTemplates.TryResolve(key, options, out var entry)) {
+                    cached = new HeddleTemplate(entry.Strategy, options.Encoder, options.RenderBudget);
+                    searchedLocations = null;
+                    return Path.Combine(_rootPath, relativePath);
+                }
+            }
             foreach (var path in locations) {
                 var relativePath = string.Format(path, viewName, controllerName);
                 var fullPath = Path.Combine(_rootPath, relativePath);
@@ -206,6 +239,21 @@ namespace Heddle.Runtime {
             searchedLocations = searched;
             return null;
         }
+
+        /// <summary>The effective options a hosted (<c>View</c>/<c>PartialView</c>/<c>Master</c>) arm would hand to
+        /// <see cref="Create"/> — the same shape the View arm builds below, including
+        /// <see cref="ExpressionMode.FullCSharp"/>, so the gauntlet's fingerprint step judges the registry entry
+        /// against the request that would actually be compiled.</summary>
+        private TemplateOptions HostedOptions(string fullPath, OutputProfile profile, bool trim) =>
+            new TemplateOptions(Path.GetFileNameWithoutExtension(fullPath))
+            {
+                EnableFileChangeCheck = _checkFileChange,
+                FileNamePostfix = Path.GetExtension(fullPath),
+                RootPath = _rootPath,
+                ExpressionMode = ExpressionMode.FullCSharp,
+                OutputProfile = profile,
+                TrimDirectiveLines = trim,
+            };
 
         /// <summary>Registry consult for a <see cref="TemplatePathType.None"/> request (D7). Derives the request's
         /// effective options (the caller's when present, else a synthesized view carrying this resolver's

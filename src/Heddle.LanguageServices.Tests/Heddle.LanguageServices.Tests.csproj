@@ -39,6 +39,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Phase 6 D12.6: the line-rule golden vectors, authored once in Heddle.Tests and asserted by every
+         surface that maps an offset to a position. Plain data, no Heddle dependency. -->
+    <Compile Include="..\Heddle.Tests\LineIndexVectors.cs" Link="Shared\LineIndexVectors.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Phase 9 D14: the shared cross-host contract fixtures, copied so DemoContractTests can load them. -->
     <None Include="..\Heddle.Demo.Wasm\contract-fixtures\*.json"
           Link="contract-fixtures\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />

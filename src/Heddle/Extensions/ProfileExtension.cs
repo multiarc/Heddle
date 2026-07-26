@@ -14,6 +14,7 @@ namespace Heddle.Extensions
     /// concurrent renders like every directive extension.</para>
     /// </summary>
     [ExtensionName("profile")]
+    [ZeroOutput]
     public class ProfileExtension : AbstractExtension
     {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
@@ -23,16 +24,13 @@ namespace Heddle.Extensions
             base.InitStart(initContext, dataType, chainedType, parent);
             var value = (GetInnerResult(Scope.Null) ?? string.Empty).Trim();
 
-            OutputProfile profile;
-            if (string.Equals(value, "text", StringComparison.OrdinalIgnoreCase))
-                profile = OutputProfile.Text;
-            else if (string.Equals(value, "html", StringComparison.OrdinalIgnoreCase))
-                profile = OutputProfile.Html;
-            else
+            // Phase 1 D11: the trim + ordinal-ignore-case match is the shared OutputProfileRules rule — the same
+            // one the emitter's @profile scan and the language server's option parsing run.
+            if (!OutputProfileRules.TryParseProfile(value, out var profile))
             {
                 initContext.CompileScope.CompileErrors.Add(
-                    $"Unknown output profile '{value}'. Valid values: text, html.".ToError(Position,
-                        HeddleDiagnosticIds.UnknownOutputProfile));
+                    $"Unknown output profile '{value}'. Valid values: {OutputProfileRules.ValidProfileValues}."
+                        .ToError(Position, HeddleDiagnosticIds.UnknownOutputProfile));
                 return null;
             }
 

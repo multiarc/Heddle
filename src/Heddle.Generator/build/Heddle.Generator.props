@@ -11,14 +11,18 @@
     <CompilerVisibleProperty Include="HeddleEmitUtf8Pieces" />
   </ItemGroup>
 
-  <!-- Per-item metadata surfaced as build_metadata.AdditionalFiles.* -->
+  <!-- Per-item metadata surfaced as build_metadata.AdditionalFiles.*. Phase 5 (Q5.1 ruling): `Name` is gone —
+       it was declared but never read, so it had no effect to preserve; `Precompile` is now wired as the per-item
+       opt-out (the file stays in the @<< import map, but emits no entry point and no manifest entry). -->
   <ItemGroup>
     <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Key" />
-    <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Name" />
     <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Precompile" />
   </ItemGroup>
 
-  <!-- Defaults (stated explicitly; flipped together with the engine defaults in the 2.0 window). -->
+  <!-- Defaults (stated explicitly; flipped together with the engine defaults in the 2.0 window). The normative
+       table is Heddle.Precompiled.HeddleBuildOptions (phase 5 D8) — HeddleTemplateRoot's default is expressible
+       only here, so this XML stays a second physical statement and the props↔code↔runtime lockstep test proves the
+       two never diverge. -->
   <PropertyGroup>
     <HeddleOutputProfile Condition="'$(HeddleOutputProfile)' == ''">Html</HeddleOutputProfile>
     <HeddleExpressionMode Condition="'$(HeddleExpressionMode)' == ''">Native</HeddleExpressionMode>

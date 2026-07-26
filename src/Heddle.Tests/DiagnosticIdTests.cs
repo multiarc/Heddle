@@ -1,5 +1,10 @@
+using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using Heddle.Data;
 using Heddle.Strings.Core;
 using Xunit;
@@ -57,7 +62,15 @@ namespace Heddle.Tests
                 "HED5001", "HED5002", "HED5003", "HED5004", "HED5005", "HED5006",
                 "HED5007", "HED5008", "HED5009", "HED5010", "HED5011", "HED5012",
                 "HED5013", "HED5014", "HED5015", "HED5016", "HED5017", "HED5018",
-                "HED5019", "HED5020"
+                "HED5019", "HED5020",
+                // The HED7xxx block gained constants in the generator↔engine code-sharing program's phase 6
+                // (D12.1) — the ids already shipped, as Roslyn descriptors and PrecompiledFallbackEvent codes;
+                // what they lacked was a reflectable home, so nothing could gate them.
+                "HED7001", "HED7002", "HED7003", "HED7004", "HED7005", "HED7006", "HED7007",
+                "HED7008", "HED7009", "HED7010", "HED7011", "HED7012", "HED7013", "HED7014",
+                "HED7015", "HED7016", "HED7017", "HED7018", "HED7019", "HED7020", "HED7021", "HED7022",
+                "HED7023", "HED7024",
+                "HED7101", "HED7102", "HED7103"
             };
 
             var constants = typeof(HeddleDiagnosticIds)
@@ -69,6 +82,88 @@ namespace Heddle.Tests
             Assert.Equal(expected.Count, constants.Count);
             Assert.Equal(expected, new HashSet<string>(constants));
             Assert.Equal(constants.Count, constants.Distinct().Count());
+        }
+
+        /// <summary>
+        /// <para>Generator plan phase 6 D12.3, the runtime half of the docs gate: the normative
+        /// <c>docs/spec/common/cross-cutting-decisions.md</c> claimed-ID registry and
+        /// <see cref="HeddleDiagnosticIds"/> agree in both directions over the <c>HED0xxx</c>–<c>HED5xxx</c>
+        /// blocks — no constant outside a claimed row, no claimed runtime row without a constant. The
+        /// <c>HED7xxx</c> half (code ⇄ registry ⇄ <c>docs/precompilation.md</c>) is asserted generator-side,
+        /// where the descriptors live.</para>
+        /// <para>Documented exclusions: <c>HED6xxx</c>/<c>HED8xxx</c> are reserved-unclaimed (no four-digit
+        /// row), <c>HED9001</c> is deliberately not public surface (the registry row says so), and the
+        /// <c>HED7xxx</c> block is the generator/precompiled-runtime block.</para>
+        /// </summary>
+        [Fact]
+        public void ConstantsAndTheClaimedIdRegistryAgree()
+        {
+            var claimed = ClaimedIds(ReadSpec("cross-cutting-decisions.md"));
+            var constants = new HashSet<string>(typeof(HeddleDiagnosticIds)
+                .GetFields()
+                .Where(f => f.IsLiteral && f.FieldType == typeof(string))
+                .Select(f => (string)f.GetRawConstantValue()));
+
+            var unclaimed = constants.Where(id => !claimed.Contains(id)).OrderBy(id => id, StringComparer.Ordinal);
+            Assert.True(!unclaimed.Any(),
+                "HeddleDiagnosticIds constants missing a claimed-ID registry row: " + string.Join(", ", unclaimed));
+
+            var missing = claimed
+                .Where(id => !RegistryOnly.Contains(id) && !constants.Contains(id))
+                .OrderBy(id => id, StringComparer.Ordinal)
+                .ToList();
+            Assert.True(missing.Count == 0,
+                "Claimed registry rows with no HeddleDiagnosticIds constant: " + string.Join(", ", missing));
+        }
+
+        /// <summary>Claimed IDs the runtime deliberately does not surface as a public constant, each named here
+        /// rather than silently absent. <c>HED9001</c> is the feature-switch guard: its registry row records that
+        /// it is an internal id (<c>HeddleFeatures.CSharpTierDisabledDiagnosticId</c>) precisely because that
+        /// phase added no public API surface.</summary>
+        private static readonly HashSet<string> RegistryOnly = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "HED9001"
+        };
+
+        /// <summary>
+        /// Expands the claimed-ID registry table's first cells. Grammar (printed on failure): a row whose first
+        /// cell is <c>`HEDaaaa`</c> or <c>`HEDaaaa`–`HEDbbbb`</c>; IDs named in the Owner/Notes cells are
+        /// deliberately ignored, so a cross-reference never silently claims an ID.
+        /// </summary>
+        private static HashSet<string> ClaimedIds(string markdown)
+        {
+            // The registry section only: D1's block-allocation table above it states ranges (HED0001-HED0999)
+            // in the same row shape, and a block reservation is not an ID claim.
+            const string heading = "## Claimed diagnostic IDs (registry)";
+            var start = markdown.IndexOf(heading, StringComparison.Ordinal);
+            Assert.True(start >= 0, "Claimed-ID registry section '" + heading + "' not found.");
+            var end = markdown.IndexOf("\n## ", start + heading.Length, StringComparison.Ordinal);
+            markdown = end < 0 ? markdown.Substring(start) : markdown.Substring(start, end - start);
+
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            foreach (Match match in Regex.Matches(markdown,
+                         @"^\| `HED(?<from>\d{4})`(?:[–-]`HED(?<to>\d{4})`)? \|", RegexOptions.Multiline))
+            {
+                var from = int.Parse(match.Groups["from"].Value, CultureInfo.InvariantCulture);
+                var to = match.Groups["to"].Success
+                    ? int.Parse(match.Groups["to"].Value, CultureInfo.InvariantCulture)
+                    : from;
+                for (var i = from; i <= to; i++)
+                    ids.Add("HED" + i.ToString("D4", CultureInfo.InvariantCulture));
+            }
+
+            Assert.True(ids.Count > 0,
+                "No claimed-ID rows parsed. Expected rows of the form: | `HEDaaaa` | … | or " +
+                "| `HEDaaaa`–`HEDbbbb` | … |");
+            return ids;
+        }
+
+        /// <summary>Locates a spec file from this test source's own path, so the gate works on every TFM
+        /// (including net48) without probing the output directory.</summary>
+        private static string ReadSpec(string name, [CallerFilePath] string here = null)
+        {
+            var repo = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here), "..", ".."));
+            return File.ReadAllText(Path.Combine(repo, "docs", "spec", "common", name));
         }
     }
 }

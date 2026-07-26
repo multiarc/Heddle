@@ -62,8 +62,9 @@ detection). This phase's obligations on that surface, recorded here so the Phase
 bind them:
 
 - the accessibility answer must be expressible as a **decision table over `MemberAccess`**
-  (public / assembly / famORassem / other), so the OQ1 `ProtectedOrInternal` row is an explicit
-  table entry, not emergent behavior;
+  (public / assembly / famORassem / other), so the OQ1 `ProtectedOrInternal` row (resolved,
+  user, 2026-07-25: `hidden` — follow runtime) is an explicit table entry, not emergent
+  behavior;
 - `[Hidden]` detection must compare the **fully-qualified metadata name**
   `Heddle.Attributes.HiddenAttribute` on both sides (the symbol side currently matches any
   attribute *named* `HiddenAttribute` — `SymbolTypeResolver.cs:229`);

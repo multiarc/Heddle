@@ -12,13 +12,12 @@ namespace Heddle.Precompiled
     /// the dynamic path proceeds untouched.</summary>
     public static class PrecompiledTemplates
     {
-        internal const string Hed7102 = "HED7102";
-        internal const string Hed7103 = "HED7103";
+        internal const string Hed7102 = Data.HeddleDiagnosticIds.PrecompiledManifestRejected;
+        internal const string Hed7103 = Data.HeddleDiagnosticIds.PrecompiledKeyCaseMismatch;
         // Phase 8 D7: the engine accepts schemaVersion 1 (phase 7 generator) and 2 (phase 8 generator, u8 twins +
         // WritePiece piece routing). A schema-1 assembly keeps registering and renders on all three sinks — its pieces
         // simply transcode via the sink adapters, exactly as a schema-2 template built without the u8 opt-in.
-        private const int MinSupportedSchemaVersion = 1;
-        private const int MaxSupportedSchemaVersion = 2;
+        // The window itself lives in the shared PrecompiledSchema (phase 5 D5), which the generator also emits from.
 
         private sealed class Snapshot
         {
@@ -71,12 +70,11 @@ namespace Heddle.Precompiled
 
             var assemblyName = assembly.GetName().Name ?? assembly.FullName;
 
-            if (attribute.SchemaVersion < MinSupportedSchemaVersion ||
-                attribute.SchemaVersion > MaxSupportedSchemaVersion)
+            if (!PrecompiledSchema.IsSupported(attribute.SchemaVersion))
             {
                 RaiseFallback(new PrecompiledFallbackEvent(assemblyName,
                     PrecompiledFallbackReason.SchemaVersionUnsupported,
-                    $"SchemaVersion: manifest={attribute.SchemaVersion} supported={MinSupportedSchemaVersion}-{MaxSupportedSchemaVersion}",
+                    $"SchemaVersion: manifest={attribute.SchemaVersion} supported={PrecompiledSchema.MinSupportedSchemaVersion}-{PrecompiledSchema.MaxSupportedSchemaVersion}",
                     Hed7102));
                 return;
             }
@@ -198,7 +196,7 @@ namespace Heddle.Precompiled
             runtimeVersion = typeof(PrecompiledTemplates).Assembly.GetName().Version ?? new Version(0, 0, 0, 0);
             if (!Version.TryParse(manifestVersion, out var parsed))
                 return false;
-            return parsed.Major == runtimeVersion.Major && parsed <= runtimeVersion;
+            return PrecompiledSchema.IsEngineCompatible(parsed, runtimeVersion);
         }
 
         private static void RaiseFallback(PrecompiledFallbackEvent evt)

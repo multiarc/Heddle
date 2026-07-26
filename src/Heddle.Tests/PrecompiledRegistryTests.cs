@@ -124,13 +124,13 @@ namespace Heddle.Tests
         {
             PrecompiledFallbackEvent? captured = null;
             PrecompiledTemplates.OnFallback = e => captured = e;
-            // Phase 8 D7: the engine now accepts {1, 2}; an unsupported version is one outside that range (3).
-            var asm = BuildAssembly(typeof(RegManifestOne), 3, CompatibleVersion, "HeddleTestAsm_Schema_" + Guid.NewGuid().ToString("N"));
+            // Phase 1 (D2): the engine now accepts {1, 2, 3, 4, 5}; an unsupported version is one outside that range.
+            var asm = BuildAssembly(typeof(RegManifestOne), 6, CompatibleVersion, "HeddleTestAsm_Schema_" + Guid.NewGuid().ToString("N"));
             PrecompiledTemplates.Register(asm);
             Assert.False(PrecompiledTemplates.TryGet("reg/one.heddle", out _));
             Assert.NotNull(captured);
             Assert.Equal(PrecompiledFallbackReason.SchemaVersionUnsupported, captured.Value.Reason);
-            Assert.Equal("SchemaVersion: manifest=3 supported=1-2", captured.Value.Detail);
+            Assert.Equal("SchemaVersion: manifest=6 supported=1-5", captured.Value.Detail);
             Assert.Equal("HED7102", captured.Value.DiagnosticId);
         }
 

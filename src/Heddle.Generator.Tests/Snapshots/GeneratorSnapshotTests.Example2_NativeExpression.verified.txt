@@ -60,7 +60,7 @@ namespace Heddle.Generated
 #pragma warning disable
 [assembly: global::Heddle.Precompiled.HeddleCompiledTemplates(
     manifestType:  typeof(global::Heddle.Generated.__HeddleManifest),
-    schemaVersion: 2,
+    schemaVersion: 5,
     engineVersion: "2.0.0")]
 
 namespace Heddle.Generated
@@ -93,4 +93,4 @@ namespace Heddle.Generated
 }
 
 // ==== diagnostics ====
-(none)
+HED7018 Warning (none): Heddle template 'views/sum.heddle' is not under the template root '<unset>', so its directory is dropped and it registers under the flattened key 'sum.heddle'. Set HeddleTemplateRoot to a directory containing it, or give the item an explicit Key metadata.

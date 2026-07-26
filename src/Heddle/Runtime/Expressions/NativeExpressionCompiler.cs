@@ -384,138 +384,59 @@ namespace Heddle.Runtime.Expressions
             return Expression.Invoke(Expression.Constant(chosen.Target, chosen.Target.GetType()), finalArgs);
         }
 
-        private enum BindOutcome { Bound, None, Ambiguous }
+        /// <summary>
+        /// The reflection fact source for the shared overload ranker (phase 4 D10). The rank logic itself —
+        /// <c>ConversionRank</c>/<c>TryRank</c>/<c>Dominates</c> and the Pareto tier bind — now lives once in
+        /// <see cref="OverloadRank"/>, where the generator's linked build consults the identical rule instead of
+        /// delegating overload selection to the consumer's C# compiler.
+        /// </summary>
+        private sealed class ReflectionRankModel : IRankModel<Type>
+        {
+            public static readonly ReflectionRankModel Instance = new ReflectionRankModel();
+
+            public bool AreSame(Type a, Type b) => a == b;
+
+            public bool IsObject(Type type) => type == typeof(object);
+
+            public bool IsValueType(Type type) => type.IsValueType;
+
+            public bool TryGetNullableUnderlying(Type type, out Type underlying)
+            {
+                underlying = Nullable.GetUnderlyingType(type);
+                return underlying != null;
+            }
+
+            public NumericKind KindOf(Type type) => NumericTable.FromClrType(type);
+
+            public bool IsReferenceAssignable(Type from, Type to) => to.IsAssignableFrom(from);
+        }
+
+        private static RankArgument<Type> ToRankArgument(Expression arg) =>
+            IsNullLiteral(arg) ? RankArgument<Type>.Null() : RankArgument<Type>.Of(arg.Type);
+
+        private static RankCandidate<Type> ToRankCandidate(FunctionEntry entry) =>
+            new RankCandidate<Type>(entry.ParameterTypes, entry.HasParamsArray, entry.ParamsElementType);
 
         private static BindOutcome BindOverload(IReadOnlyList<FunctionEntry> overloads, Expression[] args,
             out FunctionEntry chosen, out bool expanded)
         {
-            var outcome = BindTier(overloads, args, false, out chosen);
-            expanded = false;
-            if (outcome != BindOutcome.None)
-                return outcome;
-            expanded = true;
-            return BindTier(overloads, args, true, out chosen);
-        }
+            var candidates = new RankCandidate<Type>[overloads.Count];
+            for (int i = 0; i < overloads.Count; i++)
+                candidates[i] = ToRankCandidate(overloads[i]);
+            var rankArgs = new RankArgument<Type>[args.Length];
+            for (int i = 0; i < args.Length; i++)
+                rankArgs[i] = ToRankArgument(args[i]);
 
-        private static BindOutcome BindTier(IReadOnlyList<FunctionEntry> overloads, Expression[] args, bool expanded,
-            out FunctionEntry chosen)
-        {
-            chosen = null;
-            var candidates = new List<(FunctionEntry entry, int[] ranks)>();
-            foreach (var entry in overloads)
-            {
-                if (TryRank(entry, args, expanded, out var ranks))
-                    candidates.Add((entry, ranks));
-            }
-
-            if (candidates.Count == 0)
-                return BindOutcome.None;
-
-            var nonDominated = new List<(FunctionEntry entry, int[] ranks)>();
-            foreach (var candidate in candidates)
-            {
-                bool dominated = candidates.Any(other => other.entry != candidate.entry && Dominates(other.ranks, candidate.ranks));
-                if (!dominated)
-                    nonDominated.Add(candidate);
-            }
-
-            if (nonDominated.Count == 1)
-            {
-                chosen = nonDominated[0].entry;
-                return BindOutcome.Bound;
-            }
-
-            return BindOutcome.Ambiguous;
-        }
-
-        private static bool Dominates(int[] a, int[] b)
-        {
-            bool strictlyBetter = false;
-            for (int i = 0; i < a.Length; i++)
-            {
-                if (a[i] > b[i])
-                    return false;
-                if (a[i] < b[i])
-                    strictlyBetter = true;
-            }
-
-            return strictlyBetter;
-        }
-
-        private static bool TryRank(FunctionEntry entry, Expression[] args, bool expanded, out int[] ranks)
-        {
-            ranks = null;
-            if (!expanded)
-            {
-                if (entry.ParameterTypes.Length != args.Length)
-                    return false;
-                var result = new int[args.Length];
-                for (int i = 0; i < args.Length; i++)
-                {
-                    int rank = ConversionRank(args[i], entry.ParameterTypes[i]);
-                    if (rank < 0)
-                        return false;
-                    result[i] = rank;
-                }
-
-                ranks = result;
-                return true;
-            }
-
-            if (!entry.HasParamsArray)
-                return false;
-            int fixedCount = entry.ParameterTypes.Length - 1;
-            if (args.Length < fixedCount)
-                return false;
-            var elementType = entry.ParamsElementType;
-            var vector = new int[args.Length];
-            for (int i = 0; i < fixedCount; i++)
-            {
-                int rank = ConversionRank(args[i], entry.ParameterTypes[i]);
-                if (rank < 0)
-                    return false;
-                vector[i] = rank;
-            }
-
-            for (int i = fixedCount; i < args.Length; i++)
-            {
-                int rank = ConversionRank(args[i], elementType);
-                if (rank < 0)
-                    return false;
-                vector[i] = rank + 1; // expanded params ranked slightly worse than a fixed match
-            }
-
-            ranks = vector;
-            return true;
+            var binding = OverloadRank.Bind(ReflectionRankModel.Instance, candidates, rankArgs);
+            expanded = binding.Expanded;
+            chosen = binding.Outcome == BindOutcome.Bound ? overloads[binding.Index] : null;
+            return binding.Outcome;
         }
 
         /// <summary>Conversion rank: exact = 0, widening/reference/lifting = 1, boxing to object = 2; -1 = none.</summary>
         private static int ConversionRank(Expression arg, Type parameterType)
         {
-            if (IsNullLiteral(arg))
-            {
-                if (!parameterType.IsValueType || Nullable.GetUnderlyingType(parameterType) != null)
-                    return 1;
-                return -1;
-            }
-
-            var argType = arg.Type;
-            if (argType == parameterType)
-                return 0;
-            if (parameterType == typeof(object))
-                return 2;
-            if (NumericPromotion.IsImplicitNumeric(argType, parameterType))
-                return 1;
-            if (!argType.IsValueType && parameterType.IsAssignableFrom(argType))
-                return 1;
-            if (argType.IsValueType && Nullable.GetUnderlyingType(parameterType) == argType)
-                return 1;
-            var argUnderlying = Nullable.GetUnderlyingType(argType);
-            var paramUnderlying = Nullable.GetUnderlyingType(parameterType);
-            if (argUnderlying != null && paramUnderlying != null &&
-                (argUnderlying == paramUnderlying || NumericPromotion.IsImplicitNumeric(argUnderlying, paramUnderlying)))
-                return 1;
-            return -1;
+            return OverloadRank.ConversionRank(ReflectionRankModel.Instance, ToRankArgument(arg), parameterType);
         }
 
         private static bool IsConvertibleTo(Expression arg, Type parameterType)
@@ -1140,7 +1061,7 @@ namespace Heddle.Runtime.Expressions
         private Expression FailBinary(BinaryNode node, Type leftType, Type rightType)
         {
             return Fail(node.Position, HeddleDiagnosticIds.BinaryOperatorNotDefined,
-                $"Operator '{Symbol(node.Operator)}' is not defined for operand types {FriendlyName(leftType)} and {FriendlyName(rightType)}.");
+                $"Operator '{OperatorLexeme.ForBinary(node.Operator)}' is not defined for operand types {FriendlyName(leftType)} and {FriendlyName(rightType)}.");
         }
 
         private Expression Fail(BlockPosition position, string diagnosticId, string message)
@@ -1148,30 +1069,6 @@ namespace Heddle.Runtime.Expressions
             _failed = true;
             _compileScope.CompileErrors.Add(message.ToError(position, diagnosticId));
             return null;
-        }
-
-        private static string Symbol(ExprOperator op)
-        {
-            switch (op)
-            {
-                case ExprOperator.Add: return "+";
-                case ExprOperator.Subtract: return "-";
-                case ExprOperator.Multiply: return "*";
-                case ExprOperator.Divide: return "/";
-                case ExprOperator.Modulo: return "%";
-                case ExprOperator.LeftShift: return "<<";
-                case ExprOperator.RightShift: return ">>";
-                case ExprOperator.LessThan: return "<";
-                case ExprOperator.LessThanOrEqual: return "<=";
-                case ExprOperator.GreaterThan: return ">";
-                case ExprOperator.GreaterThanOrEqual: return ">=";
-                case ExprOperator.Equal: return "==";
-                case ExprOperator.NotEqual: return "!=";
-                case ExprOperator.And: return "&";
-                case ExprOperator.ExclusiveOr: return "^";
-                case ExprOperator.Or: return "|";
-                default: return op.ToString();
-            }
         }
 
         private static string FriendlyName(ExprNode _)

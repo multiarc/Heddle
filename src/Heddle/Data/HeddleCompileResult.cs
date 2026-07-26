@@ -9,8 +9,10 @@ namespace Heddle.Data
 
     public sealed class HeddleCompileResult
     {
-        private readonly List<LinePosition> _positions = new List<LinePosition>();
-        private readonly int[] _lineOffsetsSearch;
+        /// <summary>The shared line rule (phase 6 D6). Replaces this type's own <c>Split('\n')</c> table, whose
+        /// leading-<c>'\r'</c> offset bump made <c>"\n\r"</c> sequences and CRLF blank lines report a line and
+        /// column the build tier and the editor disagreed with.</summary>
+        private readonly LineIndex _lines;
 
 
         public HeddleCompileResult(bool success, string document, ParseContext context)
@@ -20,20 +22,7 @@ namespace Heddle.Data
             Document = document;
             Context = context;
             if (document != null)
-            {
-                var lines = document.Split('\n');
-                int offset = 0;
-                int lineNumber = 1;
-                foreach (var line in lines)
-                {
-                    if (line.Length > 0 && line[0] == '\r')
-                        offset++;
-                    _positions.Add(new LinePosition {Line = lineNumber, LineLength = line.Length, Offset = offset});
-                    lineNumber++;
-                    offset += line.Length + 1;
-                }
-                _lineOffsetsSearch = _positions.Select(p => p.Offset).ToArray();
-            }
+                _lines = new LineIndex(document);
         }
 
         public ParseContext Context { get; }
@@ -57,15 +46,12 @@ namespace Heddle.Data
             {
                 foreach (var error in Errors.Where(e => e.LinePosition == null))
                 {
-                    var index = Array.BinarySearch(_lineOffsetsSearch, error.Position.StartIndex);
-                    if (index < 0)
-                        index = ~index - 1;
-                    var line = _positions[index];
+                    _lines.ToZeroBased(error.Position.StartIndex, out var line, out var column);
                     error.LinePosition = new LinePosition
                     {
-                        Line = line.Line,
-                        LineLength = Math.Min(line.LineLength, error.Position.Length),
-                        Offset = error.Position.StartIndex - line.Offset
+                        Line = line + 1,
+                        LineLength = Math.Min(_lines.LineLength(line), error.Position.Length),
+                        Offset = column
                     };
                 }
             }

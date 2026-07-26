@@ -204,6 +204,113 @@ namespace Heddle.Data
         /// document-scope <c>&lt;name&gt;</c> keeps the pre-existing id-less duplicate message.</summary>
         public const string DuplicateRegionDeclaration = "HED5020";
 
+        // The HED7xxx block — build-time generator (HED70xx) and precompiled-runtime registration/fallback
+        // (HED71xx). Generator plan phase 6 D4/D12.1: the ids already ship (as Roslyn descriptors in
+        // Heddle.Generator and as PrecompiledFallbackEvent codes here), but they were the one block not
+        // reflectable from this class, so no completeness test could see them. The constants are additive —
+        // nothing renumbers — and they are what lets HeddleDiagnosticCatalog be gated as a bijection.
+
+        /// <summary>An <c>AdditionalFiles</c> <c>.heddle</c> source could not be read at generation time.</summary>
+        public const string BuildUnreadableFile = "HED7001";
+
+        /// <summary>Two templates in one compilation normalize to the same key.</summary>
+        public const string BuildDuplicateKey = "HED7002";
+
+        /// <summary>Two template keys differ only by case, so ordinal lookup makes one shadow the other.</summary>
+        public const string BuildCaseOnlyKeyTwin = "HED7003";
+
+        /// <summary>Explicit <c>Key</c> item metadata is empty, or carries a <c>.</c>/<c>..</c> segment.</summary>
+        public const string BuildInvalidKeyMetadata = "HED7004";
+
+        /// <summary>A static piece contains an unpaired surrogate, so the <c>u8</c> twins are suppressed.</summary>
+        public const string BuildSurrogatePiece = "HED7005";
+
+        /// <summary>A named extension resolves to no <c>[ExtensionName]</c> type in any referenced assembly.</summary>
+        public const string BuildExtensionNotBindable = "HED7006";
+
+        /// <summary>The <c>@model</c>/<c>::</c> type name resolves in neither the compilation nor its
+        /// references.</summary>
+        public const string BuildUnresolvableModelType = "HED7007";
+
+        /// <summary>The build-tier twin of <see cref="PropertyNotFound"/>: a member path does not resolve on the
+        /// model type.</summary>
+        public const string BuildUnresolvableMember = "HED7008";
+
+        /// <summary>An MSBuild build-option value is unparsable.</summary>
+        public const string BuildOptionParseError = "HED7009";
+
+        /// <summary>Two template keys sanitize to one generated entry-class identifier.</summary>
+        public const string BuildDuplicateSanitizedName = "HED7010";
+
+        /// <summary>An <c>@&lt;&lt;</c> import is not among the compilation's <c>.heddle</c>
+        /// <c>AdditionalFiles</c>.</summary>
+        public const string BuildImportNotIncluded = "HED7011";
+
+        /// <summary>The wrapper for a forwarded front-end <b>error</b> carrying no id of its own; an entry that
+        /// has an id is forwarded under that id (phase 6 D2).</summary>
+        public const string BuildForwardedError = "HED7012";
+
+        /// <summary>The wrapper for a forwarded front-end <b>warning</b> carrying no id of its own.</summary>
+        public const string BuildForwardedWarning = "HED7013";
+
+        /// <summary>A called function is delegate-only, so it is not representable in assembly metadata and
+        /// cannot be precompiled; the template renders through the dynamic path.</summary>
+        public const string BuildUnresolvableFunction = "HED7014";
+
+        /// <summary>A bound extension overrides a compile-time hook the generator cannot evaluate.</summary>
+        public const string BuildExtensionOverridesHook = "HED7015";
+
+        /// <summary>The build-tier twin of <see cref="BranchRoleMissingScopeChannel"/>.</summary>
+        public const string BuildBranchRoleMissingScopeChannel = "HED7016";
+
+        /// <summary>The build-tier twin of the declaration-side malformed-<c>[Prop]</c> diagnostics
+        /// (<see cref="DuplicatePropDeclaration"/>, <see cref="PropRedeclarationMismatch"/>,
+        /// <see cref="PropDefaultNotConvertible"/>, <see cref="UnresolvedPropType"/>,
+        /// <see cref="ReservedPropName"/>).</summary>
+        public const string BuildMalformedExtensionParameter = "HED7017";
+
+        /// <summary>A template outside <c>HeddleTemplateRoot</c> with no explicit <c>Key</c> registers under a
+        /// flattened filename key.</summary>
+        public const string BuildTemplateOutsideRoot = "HED7018";
+
+        /// <summary>The <c>Heddle</c> assembly is not visible among the compilation's references, so the manifest
+        /// records the generator's own version as <c>engineVersion</c>.</summary>
+        public const string BuildEngineVersionUnresolved = "HED7019";
+
+        /// <summary>The template emitter threw — a generator defect rather than a template error.</summary>
+        public const string BuildEmitterFault = "HED7020";
+
+        /// <summary>An <c>[ExportFunctions]</c> container that is not a public static class — the runtime throws
+        /// <c>ArgumentException</c> when it registers the assembly, so the build fails the same way (Q3.6's
+        /// match-principle ruling) instead of silently skipping the container.</summary>
+        public const string BuildIneligibleExportContainer = "HED7021";
+
+        /// <summary>An <c>@profile(){{…}}</c> value that is neither <c>text</c> nor <c>html</c> — the build-time
+        /// twin of the runtime's <see cref="UnknownOutputProfile"/> (HED2001). Phase 1 D3: the emitter used to
+        /// ignore the directive and precompile output the dynamic tier refuses to compile at all.</summary>
+        public const string BuildUnknownOutputProfile = "HED7022";
+
+        /// <summary>A model/prop/slot type name several types answer to, unsettled by the template's
+        /// <c>@using</c> imports — the build-time twin of the runtime's "the type name is ambigous" throw.</summary>
+        public const string BuildAmbiguousTypeName = "HED7023";
+
+        /// <summary>A call-site fill of a region the definition declares <b>private</b> — the build-time twin of
+        /// the runtime's <see cref="RegionNotPublic"/> (HED5019). Phase 1 D7 / Q1.3's match principle: the
+        /// generator reacts to the region-fill verdict exactly as the dynamic engine does, so the error surfaces
+        /// at build instead of waiting for the first dynamic render.</summary>
+        public const string BuildRegionNotPublic = "HED7024";
+
+        /// <summary>A precompiled entry failed the run-time gauntlet, so the render degrades to the dynamic
+        /// tier (carried on <c>PrecompiledFallbackEvent.DiagnosticId</c>).</summary>
+        public const string PrecompiledGauntletFallback = "HED7101";
+
+        /// <summary>A precompiled manifest is rejected whole — unsupported schema version, or an engine version
+        /// the runtime is not compatible with.</summary>
+        public const string PrecompiledManifestRejected = "HED7102";
+
+        /// <summary>A registry lookup missed on case alone; informational, never a failure.</summary>
+        public const string PrecompiledKeyCaseMismatch = "HED7103";
+
         // Phase 9 (HED9001) is intentionally NOT a public constant here: the phase adds no public API surface
         // (see the phase 9 spec's Public API contract). Its stable code lives on the internal
         // Heddle.Runtime.HeddleFeatures.CSharpTierDisabledDiagnosticId, surfaced through HeddleCompileError.DiagnosticId.

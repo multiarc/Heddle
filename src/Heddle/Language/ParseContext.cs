@@ -433,8 +433,9 @@ namespace Heddle.Language {
                     defaultValue = ExpressionAstBuilder.DecodeDefaultLiteral(defaultCtx.def_literal(), this, out _);
                 }
 
-                if (string.Equals(name, "out", StringComparison.Ordinal) ||
-                    string.Equals(name, "this", StringComparison.Ordinal))
+                // The reserved-name set is shared vocabulary (phase 6 D4): the same list backs PropLayout's
+                // attribute-source twin and the generator's emitter twin, so a change lands in one place.
+                if (HeddleDiagnosticCatalog.PropFaults.IsReserved(name))
                 {
                     var fix = string.Equals(name, "out", StringComparison.Ordinal)
                         ? " Declare the slot parameter with 'out:: Type'."

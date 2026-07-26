@@ -16,6 +16,24 @@ namespace Heddle.Precompiled
     /// </summary>
     public static class TemplateKey
     {
+        /// <summary>The one template file extension (phase 5 D4). Its MSBuild twin — the
+        /// <c>**\*.heddle</c> glob in <c>Heddle.Generator.targets</c> — is XML and cannot reference this const; it
+        /// carries a comment naming this member as normative.</summary>
+        public const string TemplateExtension = ".heddle";
+
+        /// <summary>Whether a path or key carries the template extension. <b>Case-insensitive</b> — the policy both
+        /// pre-existing sites (generator discovery, partial-name stripping) already used.</summary>
+        public static bool HasTemplateExtension(string pathOrKey) =>
+            pathOrKey != null &&
+            pathOrKey.EndsWith(TemplateExtension, StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>Drops the template extension when present, yielding the template <i>name</i>; otherwise returns
+        /// the input unchanged.</summary>
+        public static string StripTemplateExtension(string pathOrKey) =>
+            HasTemplateExtension(pathOrKey)
+                ? pathOrKey.Substring(0, pathOrKey.Length - TemplateExtension.Length)
+                : pathOrKey;
+
         /// <summary>
         /// Normalizes a resolver-relative path into the canonical precompiled key.
         /// </summary>
@@ -41,6 +59,46 @@ namespace Heddle.Precompiled
         public static bool TryNormalize(string relativePath, out string key)
         {
             return TryNormalizeCore(relativePath, out key, out _);
+        }
+
+        /// <summary>
+        /// <para>Derives the canonical key of a template file from its path and the template root — the build-side
+        /// half of the key↔path pair (phase 5 D2). Returns <c>false</c> when <paramref name="path"/> is not under
+        /// <paramref name="root"/>: there is <b>no</b> filename fallback here, because silently dropping the
+        /// directory produces a key no runtime lookup can hit (05 F3). A caller that wants the historical flattened
+        /// key must ask for it explicitly, and say so.</para>
+        /// <para><b>Two case domains, deliberately.</b> The root-prefix test is
+        /// <see cref="StringComparison.OrdinalIgnoreCase"/> — it compares <i>filesystem paths</i>, and MSBuild
+        /// routinely varies drive-letter and directory casing on Windows. Everything after the prefix — the key —
+        /// preserves case exactly and compares <see cref="StringComparer.Ordinal"/>, per this type's contract.</para>
+        /// </summary>
+        /// <param name="path">The template file's path (either separator convention).</param>
+        /// <param name="root">The template root the key is relative to.</param>
+        /// <param name="key">The normalized key on success; <c>null</c> otherwise.</param>
+        /// <returns><c>true</c> when the path is under the root and the relative part is a valid key.</returns>
+        public static bool TryMakeRelative(string path, string root, out string key)
+        {
+            key = null;
+            if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(root))
+                return false;
+
+            var normalizedRoot = root.Replace('\\', '/').TrimEnd('/');
+            var normalizedPath = path.Replace('\\', '/');
+            if (!normalizedPath.StartsWith(normalizedRoot + "/", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            return TryNormalize(normalizedPath.Substring(normalizedRoot.Length + 1), out key);
+        }
+
+        /// <summary>The inverse of <see cref="TryMakeRelative"/> (phase 5 D2): the on-disk path a key names under a
+        /// root, with <c>/</c> re-separated for the running platform. Used by the staleness check to find the file a
+        /// manifest entry was built from.</summary>
+        public static string ToPath(string key, string root)
+        {
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+            return System.IO.Path.Combine(root ?? string.Empty,
+                key.Replace('/', System.IO.Path.DirectorySeparatorChar));
         }
 
         private static bool TryNormalizeCore(string relativePath, out string key, out string error)
@@ -91,10 +149,11 @@ namespace Heddle.Precompiled
                 return false;
             }
 
-            // Step 6 — append '.heddle' when the final segment carries no extension.
+            // Step 6 — append the template extension when the final segment carries no extension (D4: the rule is
+            // expressed against the shared const; the "no '.' in the final segment" trigger is unchanged).
             var last = segments[segments.Length - 1];
             if (last.IndexOf('.') < 0)
-                segments[segments.Length - 1] = last + ".heddle";
+                segments[segments.Length - 1] = last + TemplateExtension;
 
             // Steps 7 & 8 — case preserved; rejoin with '/'.
             key = string.Join("/", segments);

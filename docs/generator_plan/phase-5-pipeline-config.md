@@ -2,28 +2,47 @@
 
 ## Header
 
-- **Status:** proposed — not started
+- **Status:** implemented (2026-07-25) — WI1–WI10 landed; see [Implementation record](#implementation-record).
+  Both open questions were resolved (user, 2026-07-25) and folded in as committed scope (D11, D12,
+  WI8–WI10) — see the [open-questions register](open-questions.md#phase-5--pipeline-config).
+  All three diagnostics ship as planned: `HED7018`, `HED7019` and `HED7020` are claimed to this
+  phase in the [registry](../spec/common/cross-cutting-decisions.md#claimed-diagnostic-ids-registry)
+  (registry order is claim order, and this phase reached spec first).
 - **Goal (one line):** One canonical definition each for the five pipeline-level contracts the
   generator and runtime currently restate by hand — content hash, key↔path derivation, the
   `.heddle` extension rule, schema/engine versioning, and the option names/defaults table — with
   the four live bugs in that surface fixed first ([05 F1](../research/generator-code-sharing/05-pipeline-config.md),
   F3, F5, F8) and the identity-bearing option types linked into the generator so the manifest
-  fingerprint is constructed, not transcribed.
+  fingerprint is constructed, not transcribed; plus the two ruled behavior items this phase now
+  owns — precompiled-registry consultation in every resolver arm (D11) and the
+  fallback-legitimacy overhaul of the generator's blanket catch and the gauntlet's degrade
+  policy (D12).
 - **Depends on:** nothing in this initiative — the fix-first group and every shared artifact here
   are independently shippable. Phase 5 *unblocks* other phases: it owns
   `Precompiled/ContentHash.cs` (co-reported by [06 F1](../research/generator-code-sharing/06-diagnostics-utilities.md);
   phase 6 references it), and it owns the `<Compile>` links for `OutputProfile`/`ExpressionMode`/
-  `PrecompiledOptionsFingerprint`/`PrecompiledCapabilities` that phases 1 and 3 consume.
+  `PrecompiledOptionsFingerprint`/`PrecompiledCapabilities` that phases 1 and 3 consume. Phase 5
+  additionally **feeds phases 1–3 the fallback-legitimacy taxonomy** (D12): phases 1/2 supply
+  the intentional-refusal taxonomy it consumes, and phase 3 coordinates the binding-mismatch
+  classes; WI10's generation-time half is sequenced after phase 2's WI1 clamp fix (D12a).
 - **Changes an externally-visible contract:** no rendered byte, no option default, no schema
-  version, and no public runtime API shape changes. Three externally-*observable* deltas, all
-  additive or contract-restoring: (1) the runtime staleness check starts hashing the decoded
+  version, and no public runtime API shape changes ship directly from this phase. Five
+  externally-*observable* deltas: (1) the runtime staleness check starts hashing the decoded
   template text instead of raw file bytes, so BOM'd/UTF-16 templates that today permanently fail
   `StaleContent` start being served precompiled (D1 — a defect fix toward the documented
-  behavior, analyzed under Back-compat); (2) two new build **warnings** (`HED7018`, `HED7019`)
+  behavior, analyzed under Back-compat); (2) three new build diagnostics — warnings `HED7018`,
+  `HED7019` and error `HED7020` —
   claimed per the [registry rules](../spec/common/cross-cutting-decisions.md#claimed-diagnostic-ids-registry);
   (3) the engine-version fallback string in manifests built without a visible `Heddle` reference
   changes from the literal `"2.0.0"` to the generator's own assembly version (identical today,
-  correct in the future — D6).
+  correct in the future — D6); (4) the `View`/`PartialView`/`Master` resolver arms start
+  consulting the precompiled registry, so hosted lookups that key- and options-match a manifest
+  are served precompiled instead of always compiling dynamically (D11 — byte-identical output
+  under the parity contract; the documented "stays fully dynamic" sentence is updated); (5) the
+  **default** gauntlet/registration behavior for the must-surface fallback classes changes from
+  silent degrade to a surfaced error — behavioral and window-governed, so it is *proposed* here
+  and routed through the [next-window candidate register](../spec/common/breaking-windows.md#next-window-candidate-register),
+  not shipped directly (D12b).
 
 ## Goal
 
@@ -74,6 +93,13 @@ rule to one shared netstandard2.0 source file linked into the generator by the e
 `Precompiled/TemplateKey.cs` and `Precompiled/DefaultFunctionTable.cs`), and adds the lockstep
 tests that make future drift a red build instead of a silent runtime fallback.
 
+The 2026-07-25 rulings added two committed behavior items on top of the de-duplication scope:
+registry consultation in every resolver arm (Q5.2 → D11/WI9), and — because this phase owns both
+the generator's blanket `catch (Exception)` site and the runtime's gauntlet-policy machinery —
+the cross-phase **fallback-legitimacy** work ruled under Q2.2 (→ D12/WI10): replace
+catch-and-degrade with a small researched legitimate-fallback set, and make everything else
+surface as an error.
+
 ## Non-goals / scope boundary
 
 - **No option default changes and no option renames.** Defaults are window-governed per
@@ -90,10 +116,15 @@ tests that make future drift a red build instead of a silent runtime fallback.
   netstandard2.0** — the hard constraints from the
   [research overview](../research/generator-code-sharing/00-overview.md) hold throughout.
   `AnalyzerConfigOptions` reading stays generator-side as a thin shim (D8).
-- **No new behavior for the resolver's `View`/`PartialView`/`Master` arms.** Whether those arms
-  should consult the precompiled registry is a genuine behavior question — recorded in Open
-  questions (OQ2) with a recommendation, not decided here. `TemplateResolver.Search`'s folding
-  onto `TemplateKey` (WI7) is a byte-identical refactor only.
+- **The must-surface default flip does not ship outside a window.** D12b's change to the
+  *default* fallback behavior (surfaced error instead of silent degrade for the must-surface
+  classes) is behavioral and window-governed per
+  [breaking-windows.md](../spec/common/breaking-windows.md); this phase ships the taxonomy, the
+  generation-time fix, and the candidate-register entry with the proposed mechanism — the
+  default flip itself lands inside a ratified window. (The former non-goal excluding the
+  `View`/`PartialView`/`Master` arms is superseded by the Q5.2 ruling — that work is now
+  committed scope, D11/WI9; `TemplateResolver.Search`'s folding onto `TemplateKey` in WI7
+  remains a byte-identical refactor that WI9 then builds on.)
 - **No change to `TemplateOptions.Equals`/`GetHashCode` or the resolver `CacheKey`.** Verification
   for this plan found the research's restatement #2 slightly off: `TemplateOptions.Equals`
   (`src/Heddle/Data/TemplateOptions.cs:164-167`) compares `FileNamePostfix`/`TemplateName`/
@@ -112,8 +143,10 @@ tests that make future drift a red build instead of a silent runtime fallback.
 The runtime/manifest contract is authoritative: where a rule already has one true home
 (`TemplateKey` normalization, the gauntlet's check order, the registry's `Ordinal` key
 comparisons), the generator converges on it. Where the canonical form is genuinely a choice, the
-choice is recorded below as a decision with rationale. Only the two truly user-facing choices go
-to Open questions.
+choice is recorded below as a decision with rationale. The two truly user-facing choices that
+originally went to Open questions are now ruled (user, 2026-07-25) and folded in as D-items
+(OQ1 → WI8; OQ2 → D11), alongside the cross-phase fallback-legitimacy responsibility assigned
+by Q2.2's ruling (D12).
 
 ### D1 — Canonical content-hash input: the decoded template text, on both sides
 
@@ -336,6 +369,122 @@ to Open questions.
   under `RootPath` must mirror their build-time root-relative layout) next to the staleness
   section — a docs deliverable, not a mechanism.
 
+### D11 — Registry consultation in every resolver arm (Q5.2 ruling)
+
+- **Decision.** The registry-first posture of the `TemplatePathType.None` arm
+  (`ConsultPrecompiled`, `src/Heddle/Runtime/TemplateResolver.cs:73-80,214-234`) is extended to
+  `View`/`PartialView`/`Master`. The seam is the private `Search` probe ladder
+  (`TemplateResolver.cs:182-208`), which all three arms share (Master is reached only through the
+  public `Search`): a **registry sweep** over the arm's search locations, in location order, is
+  added ahead of the existing cache sweep and disk sweep — a three-tier ladder mirroring today's
+  two-tier cache-then-disk shape. A registry hit runs the normal gauntlet against the arm's
+  *real* effective options (the same `TemplateOptions` the arm would hand to `Create`, including
+  the MVC arms' `ExpressionMode.FullCSharp`, `TemplateResolver.cs:118,132`) and, on a pass,
+  returns the precompiled-adapter `HeddleTemplate` through the existing `out cached` parameter —
+  so `View`/`PartialView` return it from `GetTemplate` and `Master` callers receive it from
+  `Search`, with no public-signature change. A miss or gauntlet failure falls through to the
+  unchanged cache/disk ladder, exactly as the `None` arm behaves today.
+- **Key mapping, pinned (this is where the "easy fix" can go wrong).** The consult runs *after*
+  `Search`'s existing munging (extension append, `..` rejection, `~/` fold, `/`→`\`,
+  `TemplateResolver.cs:160-166`). For each location pattern, the candidate **root-relative** path
+  is `string.Format(pattern, viewName, controllerName)` — the same string today combined with
+  `_rootPath` for the cache/disk probes — and it maps to a registry key by trimming the leading
+  separator and normalizing via the shared `TemplateKey` rules (`\`→`/` + `TryNormalize`;
+  equivalently `TemplateKey.TryMakeRelative(Path.Combine(_rootPath, rel), _rootPath, out key)` —
+  the WI2 helper, which is why WI9 depends on it). No second key grammar is introduced: build
+  side and resolver side derive keys through the same shared code, which is the whole point of
+  this phase.
+- **Precedence, pinned.** Tier order beats location order: registry sweep, then cache sweep,
+  then disk sweep, each in location order. A registry hit at a later location therefore wins
+  over an earlier location's on-disk file — the precedence question OQ2 flagged — because that
+  is already the resolver's shape today: a *cached* template at location 2 beats a location-1
+  disk file (the two-loop ladder at `:187-204`), and the `None` arm already places the registry
+  above both (`:73-85`). Option agreement needs no special-casing: the gauntlet's fingerprint
+  step refuses a `Native`-built manifest for a `FullCSharp` request by construction
+  (`PrecompiledGauntlet.CheckOptions`).
+- **Docs.** The [precompilation.md](../precompilation.md#the-registry--for-dynamic-call-sites)
+  sentence "hosted view/partial-view search paths stay fully dynamic" is rewritten to describe
+  the consult (a documented-behavior update carried in WI9; behavior analysis under
+  Back-compat). The user's expectation that this is a small fix is noted — the mechanism is
+  small; the key-mapping and precedence rules above are made explicit precisely because they are
+  the parts a small fix would get subtly wrong.
+
+### D12 — Fallback legitimacy: surface defects, degrade only for the researched set (Q2.2 ruling)
+
+The ruling (the register's
+[fallback-legitimacy principle](open-questions.md#phase-5--pipeline-config)): catch-and-degrade
+is legitimate only for a small, researched set of conditions; everything else is an error that
+must surface. Phase 5 owns both halves — the generation-time catch site and the runtime
+gauntlet-policy machinery.
+
+**D12a — Generation-time: the blanket catch is removed; emitter defects become `HED7020` errors.**
+
+- **Verified current state.** `HeddleTemplateGenerator.cs:249-252` wraps the whole per-template
+  emit in `catch (Exception) { /* degrade to the dynamic path */ }`. Every *intentional* degrade
+  already flows through refusal **return** paths, not exceptions: `result.IsMarker` (fallback-
+  marker entry + `HED7014`, `:231-245`) and `result.UnsupportedReason` (no entry, no source,
+  `:246-247`). Phase 2 makes the same observation from the shaping side ("after the WI1 clamp
+  fix, any exception out of the shaping code is a defect") — so once phase 2's WI1 clamp fix
+  lands, an exception escaping the emitter has no legitimate meaning: it is a defect and must
+  surface.
+- **Surfacing mechanism, verified.** With no catch at all, the Roslyn driver wraps a generator
+  exception and the compiler reports **`CS8785` "Generator failed to generate source" — a
+  *warning*, and the generator's entire contribution is discarded** (every template's source
+  *and* the manifest). That fails the ruling twice: warning severity does not reliably surface
+  (clean-build gates pass), and one defective template silently un-precompiles every other one.
+- **Decision.** Catch per-template, report a new **error `HED7020` "Heddle template emitter
+  failed"** naming the template path and the exception type/message (at the template's location
+  where a position is recoverable, else `Location.None`), emit nothing for that template, and
+  continue the pass — the error reds the build (surfacing guaranteed, unlike `CS8785`), while
+  the remaining templates and the manifest still emit, which keeps IDE/incremental behavior
+  sane. Rejected alternatives: *bare pass-through* (downgrades to the `CS8785` warning and
+  cancels the whole pass, per above); *report-then-rethrow* (reds the build twice and still
+  cancels the pass — the rethrow adds nothing the error diagnostic doesn't already guarantee).
+  `HED7020` is claimed from the registry and added to the docs table per D3's rules.
+
+**D12b — Runtime: the `PrecompiledFallbackReason` taxonomy and the default-policy change.**
+
+Every reason (`src/Heddle/Precompiled/PrecompiledFallbackReason.cs`), classified against the
+gauntlet/registration sites (`PrecompiledGauntlet.cs:21-56`, `PrecompiledTemplates.cs:63-119,162-181`),
+with the argument each classification rests on:
+
+| Reason (site) | Class | Argument |
+| --- | --- | --- |
+| `StaleContent` (gauntlet step 4) | **Legitimate fallback** | The canonical case the ruling names: the on-disk template changed after build — stale cached data; dynamic recompile is the *correct* semantics, and `EnableFileChangeCheck` exists to request exactly this tracking |
+| `StaleImport` (gauntlet step 4) | **Legitimate fallback** | Same argument, one hop out: an import changed under an unchanged root template — genuine change tracking |
+| `UnsupportedFunction` (gauntlet step 0, marker entry) | **Legitimate fallback** | Not a runtime discovery at all — the *build* refused intentionally (delegate-only function, warned `HED7014`) and recorded the marker; the phases-1/2 intentional-refusal taxonomy is the upstream authority that keeps this class closed |
+| `OptionsMismatch` (gauntlet step 1) | **Legitimate fallback** (by-request divergence) | Options are per-request degrees of freedom the host legitimately exercises — the same template served `Text` for mail and `Html` precompiled is a designed miss of the fingerprinted point, not a defect; the mechanism cannot distinguish a deliberate off-fingerprint request from a misconfigured one, so the class stays legitimate with the `OnFallback` event as the visibility channel |
+| `ExtensionBindingMismatch` (gauntlet step 2) | **Must-surface** (provisional; phase 3 coordinates) | After phase 3's Q3.3 work the generator binds through the full runtime replacement precedence — a residual mismatch then means the deployed binding set genuinely differs from what was built (assembly/package skew); silently rendering dynamic with *different bindings than the build declared* is exactly the hazard the ruling targets |
+| `FunctionBindingMismatch` (gauntlet step 3) | **Must-surface** for default-registry divergence (provisional; phase 3 coordinates) | Declaring-type/overload drift under the *default* registry signals assembly skew — a defect. The one arguable sub-case: a *per-request* export registry (`options.Functions`) diverging by host choice is options-shaped legitimacy; WI10's research with phase 3 decides whether the class splits on that detail |
+| `SchemaVersionUnsupported` (registration) | **Must-surface** | A manifest outside the runtime's schema window means the deployable pairs generator and engine packages out of contract — a packaging defect that today silently un-precompiles an *entire assembly* behind an opt-in callback (`Hed7102`); nothing about it is stale data or change tracking |
+| `EngineVersionIncompatible` (registration) | **Must-surface** | Same argument: version skew between the manifest's engine and the running engine is a deployment/packaging defect, and whole-assembly silent rejection is the worst place to be quiet |
+| `CaseMismatch` (lookup shadow index) | **Informational — out of scope** | Never a gauntlet failure and never degrades anything: a registry lookup *miss* is contractually never a failure; the `HED7103` event is a diagnostic aid and stays as-is |
+| duplicate key (registration) | **Already surfaces** | `PrecompiledTemplates.Register` throws `PrecompiledRegistrationException` (`PrecompiledTemplates.cs:110`) — the existing precedent that registration defects throw; D12b extends that posture to the two version gates above |
+
+- **Behavior change proposed for the must-surface classes, under the DEFAULT policy.** Today the
+  default is `PrecompiledMismatchPolicy.Fallback` (`TemplateOptions.cs:47-54`): every gauntlet
+  failure silently recompiles dynamically, with visibility only via the opt-in `OnFallback`
+  callback; only opt-in `Strict` throws (`PrecompiledTemplates.TryResolve`,
+  `PrecompiledTemplates.cs:170-180`). Proposed end state: per-request must-surface classes throw
+  `PrecompiledMismatchException` **by default**; the registration-time classes make `Register`
+  throw instead of silently ignoring the assembly; legitimate classes keep today's fallback +
+  event. Mechanism recommendation: a **default-policy change with an explicit opt-out** (a
+  policy value preserving blanket degrade, e.g. per-class or `DegradeAll`) rather than a
+  new mandatory diagnostic surface — because a diagnostic surface still requires host wiring,
+  and opt-in-silent-by-default is precisely the shape of the current bug. The implementing spec
+  makes the final mechanism call.
+- **Back-compat routing.** Changing the *default* fallback behavior is behavioral and a breaking
+  change for hosts relying on silent degrade — it is filed in the
+  [next-window candidate register](../spec/common/breaking-windows.md#next-window-candidate-register)
+  by WI10 with the taxonomy as its evidence, and the default flip lands only inside a ratified
+  window. What ships from this phase now: the taxonomy (spec'd next to the mismatch-policy
+  section of [precompilation.md](../precompilation.md#the-validation-gauntlet-and-mismatch-policy)),
+  the D12a generation-time fix, and any purely additive visibility improvements.
+- **Cross-phase contract.** Phases 1/2 own the intentional-refusal taxonomy (everything the
+  build refuses on purpose must reach the runtime as a *return-shaped* refusal — marker entry or
+  no-entry — never an exception); phase 3 co-owns the final classification of the two binding
+  classes; phases 1–3 consume the taxonomy table as the closed list of legitimate degrades.
+
 ### Work items (ordered)
 
 | # | Work item | Ships | Depends on |
@@ -347,30 +496,46 @@ to Open questions.
 | WI5 | **Options table** — `Precompiled/HeddleBuildOptions.cs` + link; `ConfigReader` shim; `TemplateOptions` ctor de-duplication; props↔code↔runtime defaults lockstep test | F6 (D8) | WI3 (enums linked) |
 | WI6 | **Manifest builder** — merge the twin builders; constant consolidation; assert the existing integration compile gate covers a manifest with ≥1 marker entry | F7 (D9) | WI3 |
 | WI7 | **Extension rule + resolver folding** — `TemplateExtension`/`Has`/`Strip` on `TemplateKey`; converge the four C# sites; re-express `TemplateResolver.Search`'s munging (`:160-166`) on the shared helpers, byte-identical (existing resolver tests + goldens are the gate) | F4 (D4) | — |
-| WI8 | **Item metadata + docs + registry test** — implement the OQ1 ruling (wire `Precompile`, drop `Name` — or as ruled); precompilation.md updates (metadata section, diagnostics rows `HED7017`–`HED7019`, D10 root paragraph); HED7xxx registry test (code ↔ docs table ↔ registry) | F8 (OQ1) | OQ1 ruled |
+| WI8 | **Item metadata + docs + registry test** — implement the OQ1 ruling (committed 2026-07-25: wire `Precompile` as the per-item opt-out — stays in the `@<<` import map, emits no entry point and no manifest entry; remove `Name`'s `CompilerVisibleItemMetadata`/targets lines); precompilation.md updates (metadata section, diagnostics rows `HED7017`–`HED7020`, D10 root paragraph); HED7xxx registry test (code ↔ docs table ↔ registry) | F8 fix (OQ1 ruling) | — |
+| WI9 | **Resolver registry consultation** — registry sweep as the first tier of the private `Search` ladder for `View`/`PartialView`/`Master`; key mapping via the shared `TemplateKey` helpers; hit returned through `out cached` as the precompiled adapter; tests per arm (hit/miss/gauntlet-failure, tier-precedence vectors incl. later-location registry hit vs earlier-location disk file, `FullCSharp`-vs-`Native` fingerprint refusal); precompilation.md "stays fully dynamic" sentence rewritten | Q5.2 ruling (D11) | WI2 (`TryMakeRelative`), WI7 (shared extension/munging helpers) |
+| WI10 | **Fallback legitimacy** — delete the blanket `catch (Exception)`; `HED7020` error descriptor + registry/docs rows + fault-injection test proving per-template error, continued pass, intact manifest; the D12b taxonomy researched path-by-path with phases 1/2 (intentional refusals) and phase 3 (binding classes) and spec'd into precompilation.md; next-window candidate entry filed with the proposed default-policy mechanism | Q2.2 ruling (D12) | phase 2 WI1 (clamp fix) for the catch removal; phases 1–3 review for the final taxonomy |
 
 WI1–WI4 are the fix-first group — independently shippable, no cross-dependencies, matching the
 [synthesis sequencing](../research/generator-code-sharing/07-recommendations.md#recommended-sequencing)
-("bug fixes first"). WI3 is the unblock point for phases 1 and 3.
+("bug fixes first"). WI3 is the unblock point for phases 1 and 3; WI10's taxonomy is the unblock
+point for the phases-1–3 fallback-legitimacy consumers.
 
 ## Dependencies & ordering
 
-- **Depends on:** no other phase. All shared files land in `src/Heddle/Precompiled/` with
-  individual `<Compile Include>` links — the folder's established pattern (`TemplateKey.cs`,
+- **Phase 0 posture (landed):** every test in this phase runs under the gauntlet-crossing guardrails — see the
+  [precompiled-tier posture](../spec/common/testing-standards.md#precompiled-tier-posture) rule. This phase's
+  fix-first group un-skips phase 0's quarantined
+  `BomTemplate_StaysOnThePrecompiledTier_UnderFileBackedStaleness` fixture (F1) as acceptance evidence.
+
+- **Depends on:** no other phase for WI1–WI9. All shared files land in `src/Heddle/Precompiled/`
+  with individual `<Compile Include>` links — the folder's established pattern (`TemplateKey.cs`,
   `DefaultFunctionTable.cs`); nothing waits on the `Language/**` glob or any other phase's
-  extraction.
+  extraction. WI10 has two soft cross-phase edges: the catch removal (D12a) is sequenced after
+  phase 2's WI1 clamp fix (the last known legitimate thrower inside the emit path), and the
+  final taxonomy classification is reviewed with phases 1/2 (intentional-refusal taxonomy) and
+  phase 3 (binding-mismatch classes) — the research and drafting need not wait.
 - **Owns for others:** `Precompiled/ContentHash.cs` (phase 6 references it for its co-report of
   the hash duplication, [06 F1](../research/generator-code-sharing/06-diagnostics-utilities.md));
   the `OutputProfile`/`ExpressionMode`/`PrecompiledOptionsFingerprint`/`PrecompiledCapabilities`
-  links (phases 1 and 3 consume the typed enums for `RenderType`/emitter and binding work).
+  links (phases 1 and 3 consume the typed enums for `RenderType`/emitter and binding work); and
+  the **fallback-legitimacy taxonomy** (D12b) — the closed list of legitimate degrades that
+  phases 1–3 consume (phases 1/2 keep intentional refusals return-shaped against it; phase 3
+  aligns its binding-mismatch handling to it).
   Per [D5 of the cross-cutting decisions](../spec/common/cross-cutting-decisions.md#d5--implementation-follows-the-owning-plans-declared-order),
   those phases may assume this phase's artifacts once the initiative's declared order places
   phase 5 ahead of them; if the initiative sequences differently, WI3 is extractable as a
   standalone first item.
 - **Internal ordering:** WI1–WI4 in any order (parallelizable); then WI5/WI6 (need WI3); WI7 any
-  time; WI8 last (needs the OQ1 ruling and collects the docs/registry deliverables).
-- **Unblocks:** phases 1, 3 (links), phase 6 (ContentHash reference, and the forwarded-diagnostic
-  work that shares the `HED7018`/`HED7019` registry conventions).
+  time; WI9 after WI2/WI7; WI10's taxonomy research any time, its catch removal after phase 2
+  WI1; WI8 last (collects the docs/registry deliverables, now including the `HED7020` row).
+- **Unblocks:** phases 1, 3 (links; taxonomy), phase 2 (taxonomy), phase 6 (ContentHash
+  reference, and the forwarded-diagnostic work that shares the `HED7018`–`HED7020` registry
+  conventions).
 
 ## Back-compat / impact
 
@@ -388,10 +553,14 @@ WI1–WI4 are the fix-first group — independently shippable, no cross-dependen
   text. Had the opposite canonical form (raw bytes) been chosen, every shipped BOM'd-template
   manifest would stay permanently stale *and* the generator would need banned file IO — D1's
   choice is the only one with an empty migration.
-- **Two new warnings** (`HED7018`, `HED7019`): additive diagnostics, claimed per
-  [D1 registry rules](../spec/common/cross-cutting-decisions.md#d1--stable-diagnostic-ids-hedxxxx);
-  builds that were clean stay clean unless they have the (currently silent) defect the warning
-  names. No new errors.
+- **Three new diagnostics** (`HED7018`, `HED7019` warnings; `HED7020` error): additive, claimed
+  per [D1 registry rules](../spec/common/cross-cutting-decisions.md#d1--stable-diagnostic-ids-hedxxxx);
+  builds that were clean stay clean unless they have the (currently silent) defect the
+  diagnostic names. `HED7020` is the deliberate exception to "no new errors": a build that today
+  goes green while an emitter defect silently un-precompiles a template goes red instead —
+  defect-surfacing per the fallback-legitimacy ruling, precedented as a fix (the degrade it
+  replaces was never contractual; the dynamic path it hid is unchanged and still available by
+  removing the template from precompilation).
 - **Engine-version fallback string** (D6): byte-identical today (`"2.0.0"` from a 2.0.0
   generator); future generators emit their own version instead of a stale literal — strictly
   more correct against the runtime gate.
@@ -407,9 +576,24 @@ WI1–WI4 are the fix-first group — independently shippable, no cross-dependen
 - **`TemplateResolver.Search` folding (WI7):** byte-identical refactor; the host-thrown
   `ArgumentException` for `..` and all search-location semantics are preserved (side-specific
   reactions stay side-specific; only the rule expression is shared).
-- **`Precompile`/`Name` metadata (OQ1):** wiring `Precompile` is additive (absent/empty metadata
-  ⇒ today's behavior); dropping `Name` removes something that has never had an effect — either
-  ruling has an empty migration, which is why it can sit in an Open question without blocking.
+- **`Precompile`/`Name` metadata (OQ1, ruled):** wiring `Precompile` is additive (absent/empty
+  metadata ⇒ today's behavior); dropping `Name` removes something that has never had an effect —
+  the ruled outcome has an empty migration.
+- **Resolver registry consultation (D11):** behavioral but parity-protected — hosted lookups
+  that key- and options-match a manifest start serving precompiled where they always compiled
+  dynamically. Rendered bytes are identical (the precompiled==dynamic parity contract); the
+  observable effects are the removal of dynamic compile cost and new `OnFallback` events on
+  gauntlet failures along hosted paths. The one precedence delta — a later-location registry
+  hit now wins over an earlier-location disk file — mirrors the cache tier's existing behavior
+  (D11) and is documented with the precompilation.md rewrite of the "stays fully dynamic"
+  sentence. Not window material by the D1 argument (defect-fix/additive toward the
+  precompilation pitch), but the documented-behavior change is called out in the Header.
+- **Fallback-legitimacy default flip (D12b): window-governed, not shipped here.** The proposal
+  to surface must-surface classes under the *default* policy is a breaking-window candidate —
+  hosts relying on silent degrade (deploying skewed assemblies knowingly, or serving mixed
+  registries) would start seeing thrown `PrecompiledMismatchException`s / failed `Register`
+  calls. WI10 files the candidate with the taxonomy as evidence and the proposed opt-out
+  mechanism; until a window ratifies it, runtime behavior under the default policy is unchanged.
 
 ## Risks & mitigations
 
@@ -423,6 +607,10 @@ WI1–WI4 are the fix-first group — independently shippable, no cross-dependen
 | Merging the marker/normal manifest builders subtly changes marker-entry text | The integration suite's registration tests already exercise marker entries (HED7014 corpus); WI6 adds the explicit "manifest with ≥1 marker entry compiles and registers" assertion; diff-review of emitted text for one marker fixture is part of the PR | S |
 | The props↔code defaults test reads MSBuild XML with a hand parser and goes stale if props structure changes | The test asserts presence *and* value of each of the six defaulted properties by name; a structural change that breaks the parse is a red test, which is the desired failure mode | S |
 | Phases 1/3 start before WI3 lands and re-link or re-model the enums divergently | Dependencies & ordering names WI3 as the extractable first item; the initiative's declared order (cross-cutting D5) makes the links this phase's deliverable — other phases reference, never duplicate | S |
+| WI9's key mapping diverges from the build-side derivation, so hosted lookups miss (or hit the wrong entry) despite matching layouts | No second key grammar: the consult goes through the same shared `TemplateKey` helpers the generator uses (WI2/WI7); per-arm round-trip vectors (pattern → key → manifest hit) are part of WI9's tests | M |
+| WI9's tier precedence (registry over disk across locations) surprises a host that overrides a view by dropping a file at an earlier search location | Precedence mirrors the existing cache tier (a cached location-2 template already beats a location-1 file today); gauntlet staleness under `EnableFileChangeCheck` still yields to changed files; documented in the precompilation.md rewrite | S |
+| Removing the blanket catch (D12a) reds builds on latent emitter defects that today degrade silently | That is the ruling's intent — but sequencing after phase 2's WI1 clamp fix removes the known thrower first, phase 0's corpus sweep flushes latent defects pre-release, and `HED7020` names the template and exception so the failure is actionable; per-template catch keeps one defect from cancelling the pass | M |
+| A must-surface classification in D12b is wrong (a genuinely legitimate degrade starts throwing after the window) | Each class carries its argument in the taxonomy table; phases 1/2/3 review their classes before the spec lands; the default flip is window-gated with an explicit opt-out policy, so a misclassification is recoverable without a hotfix | M |
 
 ## Success criteria
 
@@ -437,7 +625,7 @@ WI1–WI4 are the fix-first group — independently shippable, no cross-dependen
       in-root round-trip vector; `TryMakeRelative` returns `false` (never a flattened key) for
       out-of-root paths; the generator reports `HED7018` exactly once per out-of-root,
       non-`Key`-annotated template and still registers the flattened key.
-- [ ] `HED7018` and `HED7019` exist in `GeneratorDiagnostics`, the
+- [ ] `HED7018`, `HED7019`, and `HED7020` exist in `GeneratorDiagnostics`, the
       [claimed-IDs registry](../spec/common/cross-cutting-decisions.md#claimed-diagnostic-ids-registry),
       and the [precompilation.md](../precompilation.md#build-time-diagnostics) table — and the new
       HED7xxx registry test fails if any of the three disagrees (including the pre-existing
@@ -458,11 +646,28 @@ WI1–WI4 are the fix-first group — independently shippable, no cross-dependen
       option in the table — and no default value differs from the pre-change tree.
 - [ ] One manifest-entry builder serves normal and marker entries; the integration suite compiles
       and registers a manifest containing both kinds against the real `Heddle` reference.
+- [ ] `<HeddleTemplate Precompile="false"/>` keeps the template in the `@<<` import map (no
+      `HED7011` on importers) while emitting no entry point and no manifest entry; absent/empty
+      metadata is byte-identical to today; no `Name` metadata declaration remains in the
+      props/targets.
+- [ ] Every resolver arm consults the precompiled registry: for each of
+      `None`/`View`/`PartialView`/`Master`, a key- and options-matched request returns the
+      precompiled adapter with zero dynamic compiles; tier precedence (registry > cache > disk,
+      each in location order) holds on the WI9 vectors; a `Native`-built manifest is refused for
+      the arms' `FullCSharp` requests by the fingerprint step; misses and gauntlet failures fall
+      through to today's byte-identical dynamic path.
+- [ ] The generator contains no blanket `catch (Exception)`: a fault-injected emitter exception
+      produces exactly one `HED7020` **error** naming the template and exception, the build
+      fails, and every other template's source plus the manifest still emit.
+- [ ] The D12b taxonomy is spec'd with every `PrecompiledFallbackReason` member (plus
+      registration duplicate-key) classified legitimate-fallback / must-surface / informational
+      with its argument, reviewed by phases 1/2 (intentional refusals) and phase 3 (binding
+      classes) — and the must-surface default-flip candidate is filed in the
+      [next-window candidate register](../spec/common/breaking-windows.md#next-window-candidate-register)
+      with the proposed opt-out mechanism.
 - [ ] The full regression gate ([testing-standards](../spec/common/testing-standards.md#regression-gates))
       is green in one combined run: all TFMs, goldens byte-identical, no grammar diff, and the
       precompiled==dynamic differential corpus unchanged.
-- [ ] Both Open questions carry a maintainer ruling recorded in the implementing spec before WI8
-      completes (the plan's recommendations are the provisional defaults).
 
 ## Validation scenarios
 
@@ -478,41 +683,39 @@ WI1–WI4 are the fix-first group — independently shippable, no cross-dependen
 | `PrecompiledSchema.CurrentSchemaVersion` edited to 3 without touching Max (simulated) | The `Min ≤ Current ≤ Max` invariant test fails |
 | A default flipped in `Heddle.Generator.props` only (simulated) | The props↔code↔runtime defaults lockstep test fails naming the property |
 | The resolver serving the existing golden corpus after WI7 | Byte-identical output; all resolver/search tests green with no golden change |
+| An MVC `View` lookup whose `\views\{controller}\{view}` candidate key- and options-matches a registered manifest entry | Precompiled adapter returned through the `Search` ladder's registry tier; zero parses/compiles; rendered bytes identical to the dynamic serve |
+| A registry hit at search location 2 while location 1 has the view on disk | The registry entry serves (tier precedence, matching today's cache-over-disk behavior); under `EnableFileChangeCheck` a stale hash still falls through to the disk ladder |
+| A `Native`-fingerprinted manifest entry requested through a `View` arm (`FullCSharp`) | Gauntlet `OptionsMismatch`; `OnFallback` event; the dynamic path serves — no special-casing in the resolver |
+| `<HeddleTemplate Precompile="false"/>` on an import-only layout file | No entry point, no manifest entry; every `@<<` referencing it still resolves (no `HED7011`); dropping the metadata restores today's output byte-for-byte |
+| A fault-injected exception from `TemplateEmitter.Emit` for one template in a ten-template project | One `HED7020` error naming that template and the exception; the build fails; the other nine sources and the manifest are still produced (no `CS8785`, no whole-pass cancellation) |
+| A deployable pairing a schema-3 manifest with this runtime, after the D12b window lands the default flip (simulated) | `Register` throws (must-surface class) unless the host opted into the degrade policy; before the window: today's silent ignore + `HED7102` event, unchanged |
 
 ## Open questions
 
-Both are user-facing surface choices; each carries a recommendation as the provisional default
-per [spec-conventions](../spec/common/spec-conventions.md#no-open-questions), to be closed as a
-decision record in the implementing spec.
+None remain. Both questions were ruled by the user on 2026-07-25; the rulings are folded into
+the decisions and work items above, and the
+[open-questions register](open-questions.md#phase-5--pipeline-config) records them (with Q2.2's
+ruling assigning this phase a new cross-phase responsibility). Closure notes:
 
-- **OQ1 — `Precompile`/`Name` item metadata ([05 F8](../research/generator-code-sharing/05-pipeline-config.md)): wire or remove?**
-  *Recommendation: wire `Precompile`, remove `Name`.* `Precompile="false"` expresses something
-  `Remove` cannot: verification shows the generator's `@<<` import map is built from
-  `AdditionalFiles` (`HeddleTemplateGenerator.cs:132-138`), so `Remove`-ing an import-only layout
-  file — the workaround [precompilation.md](../precompilation.md#setup) currently teaches — takes
-  it out of the import map and turns every `@<<` referencing it into `HED7011`. Wiring
-  `Precompile="false"` as "stays in the import map, emits no entry point and no manifest entry"
-  closes that gap additively (absent/empty metadata ⇒ unchanged behavior) and makes the already
-  declared, already shipped metadata truthful. `Name`, by contrast, has no defined meaning `Key`
-  doesn't already cover (the docs state `Key` sets both lookup key and class name) and `Name` is
-  also a reserved-feeling MSBuild metadata name — remove its `CompilerVisibleItemMetadata` and
-  targets lines rather than inventing semantics. If the maintainer prefers strict minimalism,
-  removing *both* is defensible (docs already say only `Key` is read) — but then the import-only
-  exclusion gap should be recorded as a known limitation.
-- **OQ2 — Should the `View`/`PartialView`/`Master` resolver arms consult the precompiled
-  registry ([05 F4 note](../research/generator-code-sharing/05-pipeline-config.md))?**
-  Today only the `TemplatePathType.None` arm consults it (`TemplateResolver.cs:77`); MVC-style
-  hosted lookups always parse and compile dynamically, regardless of key agreement — documented
-  behavior ([precompilation.md](../precompilation.md#the-registry--for-dynamic-call-sites):
-  "hosted view/partial-view search paths stay fully dynamic"). *Recommendation: not in this
-  phase, yes as a later additive item.* Doing it right requires mapping each search-location
-  candidate (`\views\{controller}\{view}` …) to a root-relative key and consulting in search
-  order before the file probe — a design with its own precedence questions (registry hit vs
-  earlier-location file on disk) that deserves its own decision record; bolting it on here would
-  couple a behavior change to a de-duplication phase. The registry-consult seam
-  (`ConsultPrecompiled`) and the WI2 `TryMakeRelative` helper are the enablers this phase leaves
-  in place; the revisit trigger is a host asking for zero-compile MVC view serving (the
-  precompilation pitch applied to hosted lookups).
+- **OQ1 — resolved (user, 2026-07-25): "Wire pre-compilation properly."** The plan's
+  recommendation is applied: `Precompile` is implemented as the per-item opt-out — the template
+  stays in the `@<<` import map, emits no entry point and no manifest entry — and `Name` is
+  removed (its `CompilerVisibleItemMetadata` and targets lines deleted rather than inventing
+  semantics). WI8, formerly conditional on this ruling, is committed. The original analysis
+  (import-map rationale, `HeddleTemplateGenerator.cs:132-138`; `Remove`-workaround gap) stands
+  as the design record for the WI.
+- **OQ2 — resolved (user, 2026-07-25): "Yes, we should work with pre-compiled templates
+  everywhere, most likely this is an easy fix."** The `View`/`PartialView`/`Master` arms consult
+  the precompiled registry — in scope as D11/WI9, superseding this plan's earlier
+  not-in-this-phase recommendation. The enablers the plan had left in place
+  (`ConsultPrecompiled`, `TemplateResolver.cs:77,214-234`; the WI2 `TryMakeRelative` helper) are
+  exactly what WI9 builds on. The user's easy-fix expectation is noted — and D11 spells out the
+  key mapping and tier precedence explicitly because those are where the small fix can go wrong.
+- **New cross-phase responsibility (from Q2.2's ruling — the register's fallback-legitimacy
+  principle):** this phase owns the blanket-catch site (`HeddleTemplateGenerator.cs:249-252`)
+  and the gauntlet-policy machinery, so it owns the path-by-path research and the
+  legitimate-fallback vs must-surface taxonomy — D12/WI10, feeding phases 1–3 and routing the
+  default-policy flip through the breaking-windows register.
 
 ## External grounding
 
@@ -531,7 +734,14 @@ decision record in the implementing spec.
 | Linked-`<Compile>` precedent incl. `Precompiled/` files; lockstep-test precedent | `src/Heddle.Generator/Heddle.Generator.csproj:49-63`; `src/Heddle.Tests/DefaultFunctionLockstepTests.cs` |
 | MSBuild default changes are window-governed; 2.0 window item 5 flipped generator defaults with the engine | [breaking-windows.md](../spec/common/breaking-windows.md); [records.md — 2.0 as-shipped record](../spec/records.md#the-20-breaking-window--as-shipped-record) |
 | `HED7017` last-claimed build-time ID; registry rules; `HED7017` absent from the precompilation.md diagnostics table | [cross-cutting-decisions.md — registry](../spec/common/cross-cutting-decisions.md#claimed-diagnostic-ids-registry); `src/Heddle.Generator/Diagnostics/GeneratorDiagnostics.cs`; [precompilation.md](../precompilation.md#build-time-diagnostics) (table ends at `HED7016` — verified) |
+| Only the `None` arm consults the registry; `Search` munges then runs a two-tier (cache, disk) location ladder; MVC arms set `ExpressionMode.FullCSharp` | `src/Heddle/Runtime/TemplateResolver.cs:72-85` (`ConsultPrecompiled` at `:77`, method at `:214-234`), `:118,132`, `:148-208` — re-verified for the D11 fold |
+| Blanket `catch (Exception)` degrade; intentional refusals are return-shaped (`IsMarker` / `UnsupportedReason`), not exceptions | `src/Heddle.Generator/HeddleTemplateGenerator.cs:207-252` (catch at `:249-252`, marker branch `:231-245`, unsupported comment `:246-247`) |
+| An uncaught generator exception surfaces as compiler **warning** `CS8785` and discards the generator's entire contribution | [Roslyn source-generators design doc](https://github.com/dotnet/roslyn/blob/main/docs/features/source-generators.md) (`GeneratorDriver` wraps user-code exceptions; the generator no longer contributes to the output) — basis for D12a's error-diagnostic decision |
+| Gauntlet check order (marker, options, extensions, functions, staleness) and per-reason failure sites; `PrecompiledFallbackReason` members incl. informational `CaseMismatch` | `src/Heddle/Precompiled/PrecompiledGauntlet.cs:21-56,58-184`; `src/Heddle/Precompiled/PrecompiledFallbackReason.cs` |
+| Default policy is `Fallback` (silent degrade + opt-in `OnFallback`); `Strict` throws in `TryResolve`; `Register` silently ignores version-gated assemblies but **throws** on duplicate keys | `src/Heddle/Data/TemplateOptions.cs:47-54`; `src/Heddle/Precompiled/PrecompiledTemplates.cs:63-119` (gates `:74-90`, duplicate-key throw `:110`), `:162-181` |
+| Phase 2 pins "after the WI1 clamp fix, any exception out of the shaping code is a defect" — D12a's sequencing premise | [phase-2-document-shaper.md](phase-2-document-shaper.md) (Goal/D-item notes around its WI1 clamp fix) |
 | Research findings and cross-area synthesis this plan resolves | [05-pipeline-config.md](../research/generator-code-sharing/05-pipeline-config.md) (F1–F8); [07-recommendations.md](../research/generator-code-sharing/07-recommendations.md) (drift items 2, 11, 15; Tier 1/2 layout; sequencing) |
+| The rulings this revision folds (Q5.1, Q5.2, and Q2.2's cross-phase assignment) | [open-questions register](open-questions.md#phase-5--pipeline-config) (user, 2026-07-25; fallback-legitimacy principle in the register preamble) |
 
 Verification corrections recorded while grounding this plan (per
 [spec-conventions](../spec/common/spec-conventions.md#relationship-to-the-owning-plan), carried
@@ -543,3 +753,74 @@ noted in Non-goals as an adjacent finding this phase does not own. The research'
 MSBuild-only). Line references `props:23-28` (not `:23-31`) and `HashFile` at
 `PrecompiledGauntlet.cs:186-191` (not `:185-190`) drifted by 1–3 lines from the research's
 citations; all substantive claims held.
+
+
+## Implementation record
+
+Landed 2026-07-25. `dotnet build Heddle.sln -c Debug` green; `dotnet test Heddle.sln -c Debug` green
+with the four remaining phase-1/3/4 quarantined skips (×2 TFMs) and no others — phase 0's
+`BomTemplate_StaysOnThePrecompiledTier_UnderFileBackedStaleness` fixture is **un-skipped and green**,
+this phase's acceptance evidence for WI1.
+
+### Where the work landed
+
+| WI | Files |
+| --- | --- |
+| WI1 | new `src/Heddle/Precompiled/ContentHash.cs` + csproj link; `PrecompiledGauntlet.HashFile` decodes before hashing (dead `HashBytes`/`ToHex` deleted); `HeddleTemplateGenerator.ComputeContentHash` deleted; `PrecompiledTemplateInfo.ContentHash` doc corrected; `ContentHashLockstepTests.cs`; BOM fixture un-skipped in `QuarantinedDriftFixtures.cs` |
+| WI2 | `TemplateKey.TryMakeRelative`/`ToPath`; `HeddleTemplateGenerator.DeriveKey` rewritten (`Relative` deleted) with the out-of-root signal; both gauntlet reconstitutions on `ToPath`; `HED7018` descriptor + registry row + docs row; `PipelineContractTests.cs`, `PipelineDiagnosticsTests.cs` |
+| WI3 | four `<Compile>` links (`OutputProfile`, `ExpressionMode`, `PrecompiledOptionsFingerprint`, `PrecompiledCapabilities`); `GlobalConfig` retyped to enums; `ConfigReader` parses through the shared table; `TemplateEmitter.IsHtml`/mode compares are enum compares; `FingerprintExpr` constructs a real fingerprint; `CapabilitiesExpr` uses `nameof`; arity test in `PipelineContractTests` |
+| WI4 | new `src/Heddle/Precompiled/PrecompiledSchema.cs` + link; `PrecompiledTemplates` consts retired onto it; `EmitManifest` interpolates `CurrentSchemaVersion`; `ResolveEngineVersion` formats through `FormatEngineVersion` and falls back to the generator's own version with `HED7019` |
+| WI5 | new `src/Heddle/Precompiled/HeddleBuildOptions.cs` + link; `ConfigReader` reduced to a lookup-lambda adapter; `TemplateOptions()` chains the named ctor and both read the shared defaults; props↔code↔runtime lockstep test |
+| WI6 | `BuildManifestEntry`/`BuildMarkerManifestEntry` merged into one marker-flagged builder (+ `FingerprintExpr`, `MarkerFunctionBindingsArray`); `MixedManifestCompileGateTests.cs` |
+| WI7 | `TemplateKey.TemplateExtension`/`HasTemplateExtension`/`StripTemplateExtension`; generator discovery, `PrecompiledRuntime.StripHeddleExtension`, `TemplateResolver`'s `FileExtension` const and `TryNormalizeCore`'s append step converged; MSBuild glob annotated |
+| WI8 | `Precompile` wired as the per-item opt-out and `Name` removed (props/targets); precompilation.md metadata section, `HED7017`–`HED7019` diagnostics rows, registry-consult rewrite, staleness/root-pairing/taxonomy sections; HED7xxx registry lockstep test |
+| WI9 | `TemplateResolver.Search`'s private ladder gains a registry tier for `View`/`PartialView`/`Master` (+ `HostedOptions`); `HostedResolverRegistryTests.cs` |
+| WI10 | blanket `catch (Exception)` replaced by a per-template `HED7020` **error** (descriptor + registry row + docs row); `TemplateEmitter.FaultInjector` test seam; the D12b taxonomy spec'd into precompilation.md and the default-flip filed in the next-window candidate register |
+
+### Corrections to this plan, recorded against source
+
+- **`TemplateResolver.Search`'s munging does not fold onto `TemplateKey` byte-identically** (WI7).
+  The three rules are genuinely different: the resolver appends the extension only when the name has
+  *no* extension at all (`Path.HasExtension`, so a `.txt` view stays `.txt`) while `TemplateKey`
+  appends on a dot-less final segment; the resolver rejects `..` as a *substring* while `TemplateKey`
+  rejects it per segment; the resolver folds `~/` *anywhere* while `TemplateKey` strips only a leading
+  one. Only the extension const is shared; the divergence is now documented at the call site. The key
+  grammar is shared where it actually governs identity — WI9's registry consult normalizes each
+  candidate's root-relative path through `TemplateKey.TryNormalize`, which is exactly
+  `TryMakeRelative(Path.Combine(_rootPath, rel), _rootPath)` without the redundant round trip.
+- **Linking the option enums into the analyzer breaks any project that references both assemblies.**
+  `OutputProfile`/`ExpressionMode`/`PrecompiledOptionsFingerprint`/`PrecompiledCapabilities` now exist
+  in `Heddle` *and* `Heddle.Generator`, so `CS0433` fires wherever both are referenced. Consumers are
+  unaffected (the generator ships as an analyzer, never as a reference), but three test-side fixes were
+  needed and are the pattern for any future link: the integration suite's generator reference is
+  aliased (`Aliases="generator"`, one `extern alias` in `DifferentialHarness`), and both generator test
+  harnesses filter `Heddle.Generator.dll` out of the reference set they hand to the compilations they
+  create. The plan did not anticipate this.
+- **The snapshot goldens changed by exactly one line each** (`HED7018`). Every snapshot fixture lives
+  at `views/<name>.heddle` with no `HeddleTemplateRoot` set, which is precisely the out-of-root
+  condition D3 makes visible. The **generated code is byte-identical** in all eight snapshots — that
+  diff is the byte-neutrality evidence for WI3/WI6's emitter rework.
+- **`Precompile`'s parse rule is stated here, not in the plan.** Only an explicit boolean `false` opts
+  out; absent, empty, and unparsable metadata all mean "precompile", so the change is additive by
+  construction (no new diagnostic for a typo — an item-level `HED7009` twin was not in scope).
+- **`PrecompiledTemplateInfo.ContentHash`'s XML doc described a contract no shipped manifest ever
+  satisfied for BOM'd files**, exactly as D1 predicted; corrected in the same change.
+- Line references verified accurate except: the blanket catch was at `:249-252` as cited but the
+  `Relative` helper ran `:481-490` (cited `:473-490` covers `DeriveKey` too), and `HashFile`/`HashBytes`/
+  `ToHex` occupied `:186-205`.
+
+### Byte-neutrality evidence
+
+Every extraction WI is byte-neutral by acceptance gate, verified in one combined run: the eight
+generator snapshots differ only in the new HED7018 diagnostic line (generated C# byte-identical); the
+corpus differential and render-parity suites, the resolver-path corpus sweep, and the golden corpus are
+unchanged; `src/Heddle.Language/generated/` has no diff. Two goldens changed, both spec-backed and
+additive: the `Heddle` public-API surface (the four new shared types plus the three new `TemplateKey`
+members) and the snapshot diagnostic lines above.
+
+### Not implemented
+
+Nothing from the work-item table. Two items deliberately remain proposals rather than shipped
+behavior, as the plan requires: D12b's default-policy flip (filed in the next-window candidate register, runtime behavior
+unchanged) and the provisional classification of the two binding-mismatch classes, which phase 3
+co-owns and finalizes.

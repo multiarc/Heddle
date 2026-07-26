@@ -4,6 +4,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Heddle.Data;
+using Heddle.Language.Members;
 
 namespace Heddle.Runtime.Parameters
 {
@@ -28,6 +29,10 @@ namespace Heddle.Runtime.Parameters
         /// Builds the null-safe property-hop chain over <paramref name="objectInput"/> (an object-typed
         /// expression). A hop off a null reference yields <c>default(T)</c> of the hop's property type.
         /// Shared by the member tier and the native-expression tier so both hop identically.
+        /// <para>Phase 4 D8: the branch decision itself is <see cref="MemberHopRule.Form"/>, the same function the
+        /// generator's <c>MemberPathWriter</c> maps to text. The two null-guarded forms collapse to one expression
+        /// shape here — the split only matters where C#'s <c>?.</c> would widen a non-nullable value property to
+        /// <c>Nullable&lt;T&gt;</c>, which expression trees never do.</para>
         /// </summary>
         internal static Expression BuildNullSafePropertyChain(Expression objectInput,
             IEnumerable<(Type type, PropertyInfo property)> getModelParameter)
@@ -36,7 +41,10 @@ namespace Heddle.Runtime.Parameters
             foreach (var parameter in getModelParameter)
             {
                 var input = result ?? Expression.Convert(objectInput, parameter.type);
-                if (parameter.type.IsValueType)
+                var propertyType = parameter.property.PropertyType;
+                var form = MemberHopRule.Form(parameter.type.IsValueType,
+                    propertyType.IsValueType && Nullable.GetUnderlyingType(propertyType) == null);
+                if (form == HopForm.Direct)
                 {
                     result = Expression.MakeMemberAccess(input, parameter.property);
                 }
@@ -45,7 +53,7 @@ namespace Heddle.Runtime.Parameters
                     result = Expression.Condition(
                         Expression.Equal(input,
                             Expression.Constant(null, parameter.type)
-                        ), Expression.Default(parameter.property.PropertyType),
+                        ), Expression.Default(propertyType),
                         Expression.MakeMemberAccess(input, parameter.property));
                 }
             }

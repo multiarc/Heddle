@@ -53,6 +53,7 @@ namespace Heddle.LanguageServer
                 _workspaceRoot = ResolveWorkspaceRoot(@params);
                 var options = BuildOptions(_workspaceRoot, @params?.InitializationOptions);
                 _service = new HeddleLanguageService(options) { LogSink = LogSink };
+                LogConfigurationMessages(options);
                 _initialized = true;
             }
 
@@ -120,6 +121,7 @@ namespace Heddle.LanguageServer
                 var options = BuildOptions(_workspaceRoot, @params?.Settings);
                 _service?.Dispose();
                 _service = new HeddleLanguageService(options) { LogSink = LogSink };
+                LogConfigurationMessages(options);
             }
 
             foreach (var uri in _buffers.Keys.ToArray())
@@ -316,6 +318,16 @@ namespace Heddle.LanguageServer
             var (sl, sc) = analysis.Lines.OffsetToPosition(offset);
             var (el, ec) = analysis.Lines.OffsetToPosition(offset + length);
             return new LspProtocol.Range(new LspProtocol.Position(sl, sc), new LspProtocol.Position(el, ec));
+        }
+
+        /// <summary>Forwards the workspace-config complaints (phase 6 D10/WI9) to the client's log. A config typo
+        /// keeps the option's default and says so here; it never becomes a diagnostic and never stops analysis.</summary>
+        private void LogConfigurationMessages(HeddleLanguageServiceOptions options)
+        {
+            if (options?.ConfigurationMessages == null)
+                return;
+            foreach (var message in options.ConfigurationMessages)
+                LogSink(message);
         }
 
         private void LogSink(string message)

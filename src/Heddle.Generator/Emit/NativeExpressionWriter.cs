@@ -15,11 +15,22 @@ namespace Heddle.Generator.Emit
     /// reconstructs by hand. The one type-sensitive spot is member-path null-safety, resolved through
     /// <see cref="SymbolTypeResolver"/> (protocol rule 6). A construct the writer can not yet reproduce faithfully
     /// returns null, so the emitter degrades the template to the dynamic path.
+    /// <para>Phase 4 D6 narrows "strict C# subset" to what it always meant: operators emit verbatim only where the
+    /// shared <see cref="NativeOperatorRules"/> table says C# and the native tier agree. The seven documented
+    /// deviations, and every operand whose static facts the estimator cannot pin down, degrade instead — which is
+    /// what stops the consumer's C# compiler from having an opinion about rendered output.</para>
     /// </summary>
     internal sealed class NativeExpressionWriter
     {
         private static readonly Dictionary<string, string> DefaultShims = BuildDefaultShims();
         private static readonly Dictionary<string, int> DefaultOverloadCounts = BuildDefaultOverloadCounts();
+
+        private readonly Dictionary<ExprNode, OperandKind> _estimates = new Dictionary<ExprNode, OperandKind>();
+        private readonly Dictionary<CallNode, DefaultFunctionBinder.Binding> _bindings =
+            new Dictionary<CallNode, DefaultFunctionBinder.Binding>();
+
+        private readonly Dictionary<CallNode, ExportFunctionBinder.Binding> _exportBindings =
+            new Dictionary<CallNode, ExportFunctionBinder.Binding>();
 
         private readonly SymbolTypeResolver _resolver;
         private readonly ITypeSymbol _modelType;
@@ -27,20 +38,23 @@ namespace Heddle.Generator.Emit
         private readonly FunctionExportResolver _exports;
         private bool _usedModel;
         private readonly HashSet<string> _usedDefaultFunctions = new HashSet<string>();
-        private readonly Dictionary<string, (string Aqn, int OverloadCount)> _usedExports =
-            new Dictionary<string, (string, int)>(System.StringComparer.Ordinal);
+        private readonly List<(string Name, string Aqn, int OverloadCount)> _usedExports =
+            new List<(string, string, int)>();
         private readonly List<(string Name, Heddle.Strings.Core.BlockPosition Position)> _unresolvableFunctions =
             new List<(string, Heddle.Strings.Core.BlockPosition)>();
         private readonly List<SymbolMemberResolver.MemberFailure> _memberFailures =
             new List<SymbolMemberResolver.MemberFailure>();
 
+        private readonly SymbolTypeFacts _typeFacts;
+
         public NativeExpressionWriter(SymbolTypeResolver resolver, ITypeSymbol modelType, string modelLocal,
-            FunctionExportResolver exports = null)
+            FunctionExportResolver exports = null, SymbolTypeFacts typeFacts = null)
         {
             _resolver = resolver;
             _modelType = modelType;
             _modelLocal = modelLocal;
             _exports = exports;
+            _typeFacts = typeFacts;
         }
 
         public bool UsedModel => _usedModel;
@@ -50,9 +64,11 @@ namespace Heddle.Generator.Emit
         public IEnumerable<string> UsedDefaultFunctions => _usedDefaultFunctions;
 
         /// <summary>Discovered <c>[ExportFunctions]</c> names bound directly to their container in this expression
-        /// (D21): the function name mapped to its container AQN-sans-version target and overload count — one
-        /// manifest <c>FunctionBindings</c> row per name.</summary>
-        public IEnumerable<KeyValuePair<string, (string Aqn, int OverloadCount)>> UsedExports => _usedExports;
+        /// (D21): the function name with its container AQN-sans-version target and that container's overload count.
+        /// Phase 3 (OQ2): a name exported by more than one container yields one row <b>per container</b>, matching
+        /// the runtime's merged registry — the gauntlet compares each row's count exactly, and the old
+        /// first-container-wins single row made every merged name a permanent FunctionBindingMismatch.</summary>
+        public IReadOnlyList<(string Name, string Aqn, int OverloadCount)> UsedExports => _usedExports;
 
         /// <summary>Function names in this expression resolvable from neither the default table nor any referenced
         /// export (the OQ1 delegate-only remainder, D21): each name with its <c>.heddle</c> position. When non-empty,
@@ -114,8 +130,13 @@ namespace Heddle.Generator.Emit
             // built-in binds through the public PrecompiledFunctions shim (BuiltInFunctions is internal). A name in
             // *both* a container export and the default table is a merged forwarder group — not yet emitted, so the
             // template degrades to the dynamic path. A name in neither is unsupported here (HED7014 handled by the
-            // emitter). In every case the consumer's C# compiler resolves the overload over the same candidate set
-            // as the runtime registry, so the phase 1 D12 rank is reproduced by construction (differential-gated).
+            // emitter).
+            // Phase 4 D10: a default built-in's overload is now selected by the shared OverloadRank core — Heddle's
+            // flat Pareto rank — and emitted cast-pinned to the winning signature, instead of being handed to the
+            // consumer's C# compiler whose betterness rules are a different algorithm. An ambiguous or inapplicable
+            // call degrades, so the two tiers reach the same verdict for min(1, 2u) instead of one rendering and the
+            // other raising HED1013. Export calls carry no parameter-type metadata, so they keep resolving through
+            // the consumer's compiler for now (phase 3 owns export signature discovery).
             bool isDefault = DefaultShims.TryGetValue(call.Name, out var shim);
             bool hasExport = _exports != null && _exports.TryGet(call.Name, out var export);
 
@@ -140,10 +161,36 @@ namespace Heddle.Generator.Emit
 
             if (hasExport)
             {
-                _exports.TryGet(call.Name, out var e);
-                _usedExports[call.Name] = (e.ContainerAqnSansVersion, e.OverloadCount);
-                var method = e.MethodNamesByFunction[call.Name];
-                return e.ContainerGlobalName + "." + method + "(" + string.Join(", ", args) + ")";
+                // Phase 3 (F2): exports now carry full signatures, so the SHARED ranker chooses the overload and the
+                // call is emitted cast-pinned — the same treatment built-ins have had since phase 4. A call the
+                // ranker refuses (ambiguous under the flat Pareto rank, inapplicable, or carrying an argument the
+                // estimator cannot type) degrades, which is the runtime's own verdict rather than whatever C#
+                // betterness would have picked.
+                var exportBinding = BindExportCall(call);
+                if (exportBinding == null)
+                    return null;
+
+                for (int i = 0; i < args.Length; i++)
+                    if (exportBinding.ArgumentCasts[i] != null)
+                        args[i] = "(" + exportBinding.ArgumentCasts[i] + ")(" + args[i] + ")";
+
+                _exports.TryGet(call.Name, out var entry);
+                foreach (var row in entry.ManifestRows)
+                    if (!_usedExports.Contains((call.Name, row.Aqn, row.OverloadCount)))
+                        _usedExports.Add((call.Name, row.Aqn, row.OverloadCount));
+
+                return exportBinding.Overload.ContainerGlobalName + "." + exportBinding.Overload.MethodName +
+                       "(" + string.Join(", ", args) + ")";
+            }
+
+            var binding = BindDefaultCall(call);
+            if (binding == null)
+                return null;
+
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (binding.ArgumentCasts[i] != null)
+                    args[i] = "(" + binding.ArgumentCasts[i] + ")(" + args[i] + ")";
             }
 
             _usedDefaultFunctions.Add(call.Name);
@@ -199,30 +246,35 @@ namespace Heddle.Generator.Emit
 
         private string WriteUnary(UnaryNode node)
         {
+            var op = OperatorLexeme.ForUnary(node.Operator);
+            if (op == null)
+                return null;
+            // Operands are written first even though the guard may discard the result: writing is what records
+            // member-path failures (HED7008) and unresolvable function names (HED7014), and a degrading operator
+            // must not silence a diagnostic the emitter would otherwise report.
             var operand = Write(node.Operand);
             if (operand == null)
                 return null;
-            string op;
-            switch (node.Operator)
-            {
-                case ExprOperator.Not: op = "!"; break;
-                case ExprOperator.Negate: op = "-"; break;
-                case ExprOperator.UnaryPlus: op = "+"; break;
-                case ExprOperator.OnesComplement: op = "~"; break;
-                default: return null;
-            }
-
+            if (NativeOperatorRules.ClassifyUnary(node.Operator, Estimate(node.Operand)) != OperatorVerdict.Supported)
+                return null;
             return "(" + op + operand + ")";
         }
 
         private string WriteBinary(BinaryNode node)
         {
+            var op = OperatorLexeme.ForBinary(node.Operator);
+            if (op == null)
+                return null;
             var left = Write(node.Left);
             var right = Write(node.Right);
             if (left == null || right == null)
                 return null;
-            var op = BinarySymbol(node.Operator);
-            if (op == null)
+            // Phase 4 D6: the native tier deliberately deviates from C# at seven points, so emitting `(l op r)`
+            // verbatim is only sound where the shared classification table says the two agree. Everything else
+            // degrades to the dynamic tier, where the runtime's own compiler — the semantics of record — evaluates
+            // the expression (or raises its own positioned error). Never the consumer's compiler's opinion.
+            if (NativeOperatorRules.Classify(node.Operator, Estimate(node.Left), Estimate(node.Right)) !=
+                OperatorVerdict.Supported)
                 return null;
             return "(" + left + " " + op + " " + right + ")";
         }
@@ -234,74 +286,139 @@ namespace Heddle.Generator.Emit
             var f = Write(node.WhenFalse);
             if (c == null || t == null || f == null)
                 return null;
+            if (NativeOperatorRules.ClassifyTernary(Estimate(node.Condition), Estimate(node.WhenTrue),
+                    Estimate(node.WhenFalse)) != OperatorVerdict.Supported)
+                return null;
             return "(" + c + " ? " + t + " : " + f + ")";
         }
 
-        private static string BinarySymbol(ExprOperator op)
+        #region Operand-kind estimation (the generator's facts adapter for the shared rule tables)
+
+        /// <summary>
+        /// The static-kind estimate for a sub-expression, as the shared rule tables see it (phase 4 D3/D6). Anything
+        /// the estimator cannot type confidently is <see cref="OperandKind.Unknown"/>, and every rule degrades on
+        /// Unknown — the estimator is only ever allowed to be conservative, never optimistic. Memoized because the
+        /// operator guards estimate the same sub-trees the emission walk then re-visits.
+        /// </summary>
+        private OperandKind Estimate(ExprNode node)
         {
-            switch (op)
+            if (node == null)
+                return OperandKind.Unknown;
+            if (_estimates.TryGetValue(node, out var cached))
+                return cached;
+            var estimate = EstimateCore(node);
+            _estimates[node] = estimate;
+            return estimate;
+        }
+
+        private OperandKind EstimateCore(ExprNode node)
+        {
+            switch (node)
             {
-                case ExprOperator.Add: return "+";
-                case ExprOperator.Subtract: return "-";
-                case ExprOperator.Multiply: return "*";
-                case ExprOperator.Divide: return "/";
-                case ExprOperator.Modulo: return "%";
-                case ExprOperator.LeftShift: return "<<";
-                case ExprOperator.RightShift: return ">>";
-                case ExprOperator.LessThan: return "<";
-                case ExprOperator.LessThanOrEqual: return "<=";
-                case ExprOperator.GreaterThan: return ">";
-                case ExprOperator.GreaterThanOrEqual: return ">=";
-                case ExprOperator.Equal: return "==";
-                case ExprOperator.NotEqual: return "!=";
-                case ExprOperator.And: return "&";
-                case ExprOperator.ExclusiveOr: return "^";
-                case ExprOperator.Or: return "|";
-                case ExprOperator.AndAlso: return "&&";
-                case ExprOperator.OrElse: return "||";
-                case ExprOperator.Coalesce: return "??";
-                default: return null;
+                case LiteralNode literal:
+                    return literal.LiteralError != null ? OperandKind.Unknown : EstimateLiteral(literal.Value);
+                case PathNode path:
+                    return EstimatePath(path);
+                case CallNode call:
+                    return EstimateCall(call);
+                case UnaryNode unary:
+                    return NativeOperatorRules.UnaryResult(unary.Operator, Estimate(unary.Operand));
+                case BinaryNode binary:
+                    return NativeOperatorRules.BinaryResult(binary.Operator, Estimate(binary.Left),
+                        Estimate(binary.Right));
+                case TernaryNode ternary:
+                {
+                    var whenTrue = Estimate(ternary.WhenTrue);
+                    var whenFalse = Estimate(ternary.WhenFalse);
+                    return NativeOperatorRules.TernaryResult(whenTrue, whenFalse);
+                }
+                default:
+                    return OperandKind.Unknown;   // IndexNode / MethodCallNode / ThisNode — never emitted here
             }
         }
-    }
 
-    /// <summary>Round-trips a decoded literal value to an invariant C# literal preserving its CLR type.</summary>
-    internal static class LiteralFormatter
-    {
-        public static string Format(object value)
+        private static OperandKind EstimateLiteral(object value)
         {
             switch (value)
             {
-                case null: return "null";
-                case bool b: return b ? "true" : "false";
-                case string s: return PieceWriter.Escape(s);
-                case char c: return "'" + EscapeChar(c) + "'";
-                case int i: return i.ToString(CultureInfo.InvariantCulture);
-                case uint ui: return ui.ToString(CultureInfo.InvariantCulture) + "U";
-                case long l: return l.ToString(CultureInfo.InvariantCulture) + "L";
-                case ulong ul: return ul.ToString(CultureInfo.InvariantCulture) + "UL";
-                case float f: return f.ToString("R", CultureInfo.InvariantCulture) + "F";
-                case double d: return d.ToString("R", CultureInfo.InvariantCulture) + "D";
-                case decimal m: return m.ToString(CultureInfo.InvariantCulture) + "M";
-                default: return null;
+                case null: return OperandKind.Null;
+                case bool _: return OperandKind.Of(OperandCategory.Bool);
+                case string _: return OperandKind.Of(OperandCategory.String);
+                default:
+                    return OperandKind.Numeric(NumericTable.FromClrType(value.GetType()), false);
             }
         }
 
-        private static string EscapeChar(char c)
+        private OperandKind EstimatePath(PathNode path)
         {
-            switch (c)
-            {
-                case '\'': return "\\'";
-                case '\\': return "\\\\";
-                case '\n': return "\\n";
-                case '\r': return "\\r";
-                case '\t': return "\\t";
-                case '\0': return "\\0";
-                default:
-                    if (c < 0x20)
-                        return "\\u" + ((int) c).ToString("x4");
-                    return c.ToString();
-            }
+            if (path.Target != null || path.RootRef || _modelType == null)
+                return OperandKind.Unknown;
+            var resolution = _resolver.ResolvePath(_modelType, path.Segments);
+            return resolution.Kind == SymbolTypeResolver.PathKind.Resolved
+                ? SymbolFacts.Classify(resolution.ResultType)
+                : OperandKind.Unknown;
         }
+
+        /// <summary>A built-in contributes the return type of the overload the <b>shared ranker</b> selects, so
+        /// <c>len(s) &gt; 0</c> and <c>min(1, 2) &gt; 0</c> both keep precompiling while a call the ranker refuses
+        /// (ambiguous, inapplicable, or carrying an operand the estimator cannot type) contributes nothing. Since
+        /// phase 3 an <b>export</b> call does the same — it now carries the signatures the ranker needs.</summary>
+        private OperandKind EstimateCall(CallNode call)
+        {
+            if (_exports != null && _exports.TryGet(call.Name, out _))
+            {
+                var exportBinding = BindExportCall(call);
+                return exportBinding == null
+                    ? OperandKind.Unknown
+                    : SymbolFacts.Classify(exportBinding.ReturnType);
+            }
+
+            var binding = BindDefaultCall(call);
+            return binding == null ? OperandKind.Unknown : DefaultFunctionBinder.ReturnKind(binding.Row);
+        }
+
+        /// <summary>Resolves a default built-in call against the shared candidate rows with the shared ranker, or
+        /// null when the name is not a built-in, is shadowed by an export, or the ranker refuses it. Memoized: the
+        /// operator guards and the emission walk both ask.</summary>
+        /// <summary>Resolves an export call against its merged overload set with the shared ranker, memoized like
+        /// the built-in path.</summary>
+        private ExportFunctionBinder.Binding BindExportCall(CallNode call)
+        {
+            if (_exportBindings.TryGetValue(call, out var cached))
+                return cached;
+
+            ExportFunctionBinder.Binding binding = null;
+            if (_typeFacts != null && _exports != null && _exports.TryGet(call.Name, out var entry))
+            {
+                var argKinds = new OperandKind[call.Arguments.Count];
+                for (int i = 0; i < argKinds.Length; i++)
+                    argKinds[i] = Estimate(call.Arguments[i]);
+                binding = ExportFunctionBinder.TryBind(_typeFacts, entry.Overloads, argKinds);
+            }
+
+            _exportBindings[call] = binding;
+            return binding;
+        }
+
+        private DefaultFunctionBinder.Binding BindDefaultCall(CallNode call)
+        {
+            if (_bindings.TryGetValue(call, out var cached))
+                return cached;
+
+            DefaultFunctionBinder.Binding binding = null;
+            bool shadowedByExport = _exports != null && _exports.TryGet(call.Name, out _);
+            if (!shadowedByExport && DefaultShims.ContainsKey(call.Name))
+            {
+                var argKinds = new OperandKind[call.Arguments.Count];
+                for (int i = 0; i < argKinds.Length; i++)
+                    argKinds[i] = Estimate(call.Arguments[i]);
+                binding = DefaultFunctionBinder.TryBind(call.Name, argKinds);
+            }
+
+            _bindings[call] = binding;
+            return binding;
+        }
+
+        #endregion
     }
 }

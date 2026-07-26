@@ -14,8 +14,10 @@ namespace Heddle.Generator.IntegrationTests
     /// returns a <see cref="HeddleTemplate"/> in precompiled-adapter mode, byte-identical to the dynamic engine. A
     /// gauntlet failure falls back (Fallback) or throws (Strict).
     /// </summary>
+    /// <para>Phase 0 WI3: derives from <see cref="PrecompiledRegistryTestBase"/> so the process-global registry is
+    /// cleared around every test — the same isolation the gauntlet-crossing suites rely on.</para>
     [Collection("PrecompiledRegistry")]
-    public class ResolverIntegrationTests
+    public class ResolverIntegrationTests : PrecompiledRegistryTestBase
     {
         private const string CartType = "Heddle.Generator.IntegrationTests.Fixtures.Cart";
 

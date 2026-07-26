@@ -133,7 +133,14 @@ namespace Heddle.Runtime {
             }
             catch (KeyNotFoundException)
             {
-                compileContext.CompileErrors.Add($"Cannot find extension <{templateName}>".ToError(absoluteTextPosition));
+                // Phase 3: HED0002's documented trigger is exactly this — "an extension name could not be resolved
+                // by TemplateFactory.Create" — but the raise site carried no id, so the constant and its registry
+                // row had no producer anywhere in src/. The id is kept and made to fire rather than retired: the
+                // condition is real and reachable (a name the compiler classified as an extension that the live
+                // registry does not hold), and it is narrower than HED1001, which covers "neither an extension nor
+                // a registered function".
+                compileContext.CompileErrors.Add($"Cannot find extension <{templateName}>"
+                    .ToError(absoluteTextPosition, Data.HeddleDiagnosticIds.ExtensionNotFound));
                 return null;
             }
             catch (ArgumentException e)

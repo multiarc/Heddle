@@ -2,7 +2,13 @@
 
 ## Header
 
-- **Status:** proposed — not started
+- **Status:** **implemented (2026-07-26)** — WI1–WI8 landed in the first pass (2026-07-25),
+  WI9–WI11 and the `CSharpTypeNames`↔`NumericKind` reconciliation in the second, once phases 1, 4
+  and 5 had shipped the artifacts they own (`OutputProfileRules`, `CSharpEscape`,
+  `HeddleBuildOptions` / `TemplateKey.TryMakeRelative`). Q6.2's full options parity shipped with
+  WI9, including the LSP default-profile flip to `Html`. See
+  [Implementation record](#implementation-record). All open questions resolved
+  (user, 2026-07-25) and folded in (see *Open questions* and the [register](open-questions.md))
 - **Goal (one line):** One diagnostic identity across build tier, run tier, and editor — a shared
   diagnostic catalog and projection, one line-index rule, and one copy each of the small utility
   tables (C# type names, name sanitization, profile/mode tokens, escape/surrogate scans) — opened
@@ -14,7 +20,9 @@
   borders WI7), [Phase 4 — expression writers](phase-4-expression-writers.md) (owns the shared
   `CSharpEscape` that WI11 coordinates with), [Phase 5 — pipeline &
   config](phase-5-pipeline-config.md) (owns the `TemplateKey.Relativize` extension WI10 adopts,
-  and owns `ContentHash` — excluded here). **WI1–WI8 have no cross-phase dependency and can start
+  owns the shared `HeddleBuildOptions` names/defaults table WI9 sources its option names and
+  defaults from — a dependency the Q6.2 ruling strengthens — and owns `ContentHash` — excluded
+  here). **WI1–WI8 have no cross-phase dependency and can start
   immediately**; only WI9–WI11 bind to other phases' artifacts, per
   [D5](../spec/common/cross-cutting-decisions.md#d5--implementation-follows-the-owning-plans-declared-order).
 - **Changes an externally-visible contract:** yes, three diagnostics-surface deltas, none of them
@@ -23,9 +31,10 @@
   suppresses; (b) `HeddleCompileResult` column reporting changes for documents with `\n\r`
   sequences or CRLF blank lines when the three line indexes reconcile; (c) the LSP's default
   output profile aligns with the engine's (`Html`), surfacing `HED2004`-class lints in editors
-  that never configured `outputProfile`. All three are analyzed against
-  [breaking-windows.md](../spec/common/breaking-windows.md) in *Back-compat / impact*; the
-  recommendation is fix-not-window for all three, with maintainer ratification recorded as OQ1/OQ2.
+  that never configured `outputProfile` — and the LSP config surface widens to full
+  runtime-options parity (additive keys; see D10). All three are analyzed against
+  [breaking-windows.md](../spec/common/breaking-windows.md) in *Back-compat / impact*; all three
+  are **ratified fix-not-window** (user rulings, 2026-07-25 — see *Open questions*).
 
 ## Goal
 
@@ -158,6 +167,14 @@ already describe HED7013 as the wrapper for warnings "carrying no id" — the co
 which makes this a defect fix against shipped documentation, not a contract change. *Symmetry:*
 the error path one loop above already forwards real IDs; two rules for one seam is exactly the
 drift D1-the-registry exists to prevent.
+
+**Ratified and generalized — the early-surfacing principle (user, 2026-07-25, Q6.1).** The
+ruling confirms D2 as a fix and broadens it into a stated program principle: *if a diagnostic
+can surface early, it must* — on **both** tiers, runtime and generator alike. D2 is that
+principle applied to build-time forwarding; the principle also governs any future decision about
+which diagnostics forward, through which channel, and at what severity (an option that surfaces
+a diagnostic earlier is preferred over one that defers it). The migration-note line for the
+stale `NoWarn HED7013` edge stays (see *Back-compat / impact*).
 
 **Alternatives rejected.** Keeping `HED7013` and embedding the real ID in the message text
 (unsuppressable individually; diverges from both the LSP and the error path; turns the ID into
@@ -364,7 +381,7 @@ production change.
 hand-synchronized is a second copy, not an oracle; the harness's job is differential
 *render* checking, not naming-rule checking).
 
-### D10 — Profile/mode token adoption in the LSP, with the policy reconciliation recorded
+### D10 — Full runtime-options parity in the LSP config; profile/mode token adoption, with the policy reconciliation recorded
 
 **Decision.** When phase 1's `OutputProfileRules.TryParseProfile`/`TryParseExpressionMode` land,
 `WorkspaceConfig` (`src/Heddle.LanguageServices/WorkspaceConfig.cs:43-51, :70-78`) parses through
@@ -382,6 +399,45 @@ each host keeps its own *reaction*, the *token set* and the *defaults* unify:
   `expressionMode` (its `Native` default already agrees; unknown token gains the log line instead
   of silent fallback).
 - **Emitter** `@profile()` scan: phase 1's item; pointer only (see Non-goals).
+
+**Full options parity (user ruling, 2026-07-25, Q6.2).** The LSP follows the same configuration
+surface the runtime permits and **wires all options** — not just the default profile.
+`.heddle-lsp.json` keys map 1:1 to the option names in phase 5's shared `HeddleBuildOptions`
+names/defaults table (camelCase, `Heddle` prefix dropped; the table records the key beside the
+MSBuild property name so the mapping is data, not convention — today's shipped keys already
+follow the rule, with `rootPath` kept as the established `TemplateOptions.RootPath` spelling of
+`HeddleTemplateRoot`); defaults follow the runtime's, sourced from the same table. Enumerated
+against `src/Heddle/Data/TemplateOptions.cs` (verified 2026-07-25):
+
+- **Wired today** (`WorkspaceConfig.cs:31-52`, `DocumentAnalyzer.BuildTemplateOptions`,
+  `DocumentAnalyzer.cs:91-104`): `rootPath` (→ `RootPath`; LSP-resolved against the workspace
+  root), `outputProfile` (→ `OutputProfile`; default flips to `Html` per this D-item),
+  `expressionMode` (→ `ExpressionMode`, default `Native`), `fileNamePostfix`
+  (→ `FileNamePostfix`, default empty), plus the LSP-specific `assemblies` key — the config-file
+  representation of `TemplateOptions.Functions` and extension exports via the one-shot export
+  scan (object-valued options have no literal JSON form).
+- **Added for parity:** `trimDirectiveLines` (→ `TrimDirectiveLines`, default `true`) and
+  `maxRecursionCount` (→ `MaxRecursionCount`, default `100`) — both compile-affecting options
+  the analyzer currently leaves at constructor defaults with no way to configure, so a workspace
+  that compiles with either non-default today cannot make the editor match the build of record.
+- **Documented exclusions** (each named in the WI9 completeness test, not silently absent):
+  `TemplateName` (per-document identity, derived per file), `Functions` (object-valued —
+  represented by `assemblies`), `Data` (render input), `EnableFileChangeCheck` (render-cache
+  invalidation), `PrecompiledMismatchPolicy`, `RenderBudget`, `ValidateModelType` (render-time
+  failure handling and limits — never read by analysis), `Encoder` (render-time encoding,
+  object-valued, no lint depends on it), `AllowCSharp` (obsolete bridge — the key is
+  `expressionMode`), `ProvideLanguageFeatures` (always `true` in the LSP — it *is* the
+  analyzer's operating mode, `DocumentAnalyzer.cs:95`). The generator-only
+  `HeddleEmitUtf8Pieces` row of the shared table has no analysis meaning and gets no key.
+- **Gate:** WI9 adds a completeness test over `TemplateOptions`' public properties — every
+  property is either wired to a key or on the exclusion list, in the pattern of the repo's
+  existing `TemplateOptions` completeness test
+  ([coding standards](../spec/common/coding-standards.md#api-design-and-compatibility)) — so a
+  future runtime option must be wired or explicitly excluded, never forgotten.
+
+This strengthens WI9's cross-phase dependency: beyond phase 1's parse functions, WI9 now binds
+to phase 5's `HeddleBuildOptions` table (phase 5 WI5) as the single source of option names and
+defaults.
 
 **Rationale.** [06 F8](../research/generator-code-sharing/06-diagnostics-utilities.md): four
 parsers, four policies, and one genuinely wrong default — an LSP workspace without an explicit
@@ -468,6 +524,10 @@ suite (splits the gate from the suite that runs on every TFM and every dev machi
 
 ## Dependencies & ordering
 
+- **Phase 0 posture (landed):** every test in this phase runs under the gauntlet-crossing guardrails — see the
+  [precompiled-tier posture](../spec/common/testing-standards.md#precompiled-tier-posture) rule. This phase owns
+  no quarantined phase 0 fixture.
+
 Work items in dependency order. WI1–WI8 are self-contained within this phase; WI9–WI11 bind to
 other phases' shipped artifacts per
 [D5](../spec/common/cross-cutting-decisions.md#d5--implementation-follows-the-owning-plans-declared-order)
@@ -483,14 +543,16 @@ and may be reordered after WI8 without penalty if those phases land in a differe
 | WI6 | `Language/HeddleDiagnosticProjection.cs` + LSP/generator adoption + projection-equivalence corpus test | D5, D12 (5) | WI5 |
 | WI7 | `Helpers/CSharpTypeNames.cs` + four reflection-side adoptions + symbol-adapter key-lockstep test | D7 | — (parallel any time; phase 3 consumes it later) |
 | WI8 | `InternalsVisibleTo` + delete both `SanitizeName` mirrors | D9 | — |
-| WI9 | `WorkspaceConfig` adoption of `TryParseProfile`/`TryParseExpressionMode` + default alignment + log-line policy | D10 | **Phase 1** `OutputProfileRules` shipped |
+| WI9 | `WorkspaceConfig` full options parity: adoption of `TryParseProfile`/`TryParseExpressionMode`, default alignment, log-line policy, the `trimDirectiveLines`/`maxRecursionCount` keys, names/defaults sourced from `HeddleBuildOptions`, and the wired-or-excluded completeness test | D10 | **Phase 1** `OutputProfileRules` shipped; **Phase 5** `HeddleBuildOptions` (its WI5) shipped |
 | WI10 | LSP `RenderPath` → `TemplateKey.Relativize`; `TemplateOptions.FullPath` → `FileReader` rule (the `FullPath` half has no external dependency and may ship with WI8) | D8 | **Phase 5** `Relativize` shipped (RenderPath half only) |
 | WI11 | Escape core fold + surrogate-scan dedupe; differential harness green | D11 | Coordination with **Phase 4** `CSharpEscape` (fold direction decided by land order) |
 
 Cross-phase coordination summary: **phase 1** owns the parse functions WI9 adopts and the
 emitter's `@profile` silent-ignore fix; **phase 3** owns the spelling parser that will consume
 WI7's alias tables; **phase 4** owns `CSharpEscape` (WI11 folds into it if it exists first);
-**phase 5** owns `TemplateKey.Relativize`, `ContentHash`, `DeriveKey`, and `HeddleBuildOptions`.
+**phase 5** owns `TemplateKey.Relativize`, `ContentHash`, `DeriveKey`, and `HeddleBuildOptions`
+(whose names/defaults table WI9 consumes for the LSP's full options parity, per the Q6.2
+ruling).
 No file in this phase is written by another phase; the shared-file link lines this phase adds to
 `Heddle.Generator.csproj` are `Data/HeddleDiagnosticCatalog.cs`, `Data/LineIndex.cs`,
 `Helpers/CSharpTypeNames.cs` (the projection rides the existing `Language/**` glob).
@@ -501,9 +563,9 @@ Analyzed against [D2](../spec/common/cross-cutting-decisions.md#d2--breaking-cha
 / [breaking-windows.md](../spec/common/breaking-windows.md). **No change in this phase alters
 rendered template output**; every delta is on the diagnostics/tooling surface. The
 breaking-window policy governs byte- and behavior-breaking changes to templates and hosts; the
-recommendation for each delta below is **fix, not window item**, with the reasoning stated and
-maintainer ratification recorded (OQ1/OQ2). None of these rows is proposed for the
-next-window candidate register.
+verdict for each delta below is **fix, not window item**, with the reasoning stated —
+**ratified by the user rulings of 2026-07-25** (see *Open questions*). None of these rows is
+proposed for the next-window candidate register.
 
 - **Forwarded-warning IDs (D2/WI3).** A build warning that previously surfaced as `HED7013` will
   surface under its real front-end ID once such warnings exist in the forwarded stream (today's
@@ -513,7 +575,8 @@ next-window candidate register.
   ID the LSP already shows) starts working. Under `TreatWarningsAsErrors` with a stale
   `NoWarn HED7013`, a build could newly fail — this is the one hard edge, and it gets a
   migration-note line ("if you suppressed HED7013 wholesale, suppress the specific IDs or keep
-  both during transition"). Verdict: **fix** — the shipped documentation
+  both during transition"). Verdict: **fix — ratified (user, 2026-07-25, Q6.1)**, under the
+  early-surfacing principle recorded in D2; the shipped documentation
   (`GeneratorDiagnostics.cs:6-7`, `docs/precompilation.md:202`) already promises this behavior;
   aligning code to documented contract is the defect-fix side of the breaking-change rules, and
   the additive-window rule ("new options default to current behavior") is not implicated because
@@ -531,11 +594,14 @@ next-window candidate register.
   [golden change policy](../spec/common/testing-standards.md#fixtures-and-goldens). Verdict: fix —
   the current behavior contradicts `LineMap`'s documented equivalence claim and is an
   implementation artifact, not a documented contract.
-- **LSP default output profile (D10/WI9).** Workspaces without `outputProfile` in
-  `.heddle-lsp.json` start receiving `Html`-profile lints (`HED2004` class) in the editor —
-  new true positives matching what the build of record already enforces. No build behavior
-  changes. Verdict: fix (editor-only, alignment with the 2.0 default flip); release-note line
-  documents `"outputProfile": "text"` as the opt-out.
+- **LSP default output profile and options parity (D10/WI9).** Workspaces without
+  `outputProfile` in `.heddle-lsp.json` start receiving `Html`-profile lints (`HED2004` class)
+  in the editor — new true positives matching what the build of record already enforces. No
+  build behavior changes. The parity keys (`trimDirectiveLines`, `maxRecursionCount`) are
+  purely additive: an absent key keeps the runtime default the analyzer already used implicitly,
+  so existing workspaces see no delta from them. Verdict: fix — **ratified (user, 2026-07-25,
+  Q6.2)**, editor-only, alignment with the 2.0 default flip; release-note line documents
+  `"outputProfile": "text"` as the opt-out.
 - **`TemplateOptions.FullPath` (D8/WI10).** Composed paths gain proper separator handling via
   `Path.Combine`; strings shown as `ImportOrigin`/`ImportedFrom` may change separators for hosts
   that set `RootPath` without a trailing separator — previously those produced a defective
@@ -560,7 +626,7 @@ next-window candidate register.
 | `TreatWarningsAsErrors` + stale `NoWarn HED7013` breaks a consumer build after D2 (when id-carrying warnings enter the forwarded stream) | Migration-note line in the shipping release's notes (the D2 delta is documented-contract alignment; the note is the [window-policy](../spec/common/breaking-windows.md) deliverable shape applied voluntarily to a fix) | M |
 | The `HeddleCompileResult` line-rule delta invalidates an unknown number of checked-in goldens or downstream log parsers | Pre-measure: WI1's golden vectors run against the current implementation to enumerate affected shapes (`\n\r`, CRLF blank lines) before WI4 lands; goldens change once, attributed, per the fix-forward rule | S |
 | Projection adoption in the generator accidentally widens its drain to compile-channel sources it cannot yet position/report correctly | WI6 keeps the generator on `Drain(ParseContext)` only; the `Drain(ParseContext, CompileContext)` overload is consumed by the LSP alone until a later phase gives the generator compile-channel stages — the seam exists, the behavior change does not | S |
-| Cross-phase file collisions (phase 4's `CSharpEscape`, phase 1's `OutputProfileRules`, phase 5's `TemplateKey`) land in overlapping files or duplicate helpers | File ownership table in *Dependencies & ordering*; WI9–WI11 explicitly bind to shipped artifacts, and the D11 fold direction is decided by land order with the second-lander performing the fold | M |
+| Cross-phase file collisions (phase 4's `CSharpEscape`, phase 1's `OutputProfileRules`, phase 5's `TemplateKey`/`HeddleBuildOptions`) land in overlapping files or duplicate helpers | File ownership table in *Dependencies & ordering*; WI9–WI11 explicitly bind to shipped artifacts, and the D11 fold direction is decided by land order with the second-lander performing the fold | M |
 | `InternalsVisibleTo` addition fails on signing mismatch | Verified up front: the integration-test project signs with the same `heddle.snk` (`Heddle.Generator.IntegrationTests.csproj:8-9`); the key text is copied from the existing `:32` entry | S |
 | net48 test leg cannot locate the docs files for D12.3 | Anchor via `[CallerFilePath]` of the test source (compile-time constant, TFM-independent), not `AppContext.BaseDirectory` probing | S |
 
@@ -594,6 +660,13 @@ Measurable, checkable statements a spec can turn into tests.
 - [ ] The LSP under a config-less workspace produces the same profile-dependent lint set the
       generator produces for the same template; an unknown `outputProfile` token yields a logged
       message naming the accepted tokens and never a crash or silent `Text`.
+- [ ] Every analysis-applicable `TemplateOptions` option is wired through `.heddle-lsp.json`
+      (`rootPath`, `outputProfile`, `expressionMode`, `fileNamePostfix`, `trimDirectiveLines`,
+      `maxRecursionCount`, plus the LSP-specific `assemblies`) with its key name and default
+      sourced from the shared `HeddleBuildOptions` table; every other `TemplateOptions` property
+      is on D10's named exclusion list; the WI9 completeness test fails when a new
+      `TemplateOptions` member is neither wired nor excluded, and the defaults it asserts equal
+      the runtime's.
 - [ ] Full regression gate green in one combined run per the
       [testing standards](../spec/common/testing-standards.md#regression-gates): solution build,
       all-TFM tests, grammar-stability (no grammar change licensed here), goldens byte-identical
@@ -612,28 +685,37 @@ Measurable, checkable statements a spec can turn into tests.
 | An error at a given offset in a CRLF document with blank lines, rendered via build diagnostic, LSP squiggle, and `CompileResult.ToString()` | Same line and column everywhere (1-based vs 0-based per surface convention); the pre-WI4 `ToString()` off-by-one on such documents is demonstrably gone |
 | `min(1, 2u)`-style hover/completion text, an HED1012 signature error, and the generator's symbol binding for `nint` (a deliberately unlisted alias) | All three surfaces agree because they read one alias table; the symbol adapter's key-lockstep test names any set divergence including the documented `dynamic` exclusion |
 | A workspace with no `.heddle-lsp.json` opening a template with a bare `@(value)` in an attribute under `Html`-default | The editor shows HED2004 exactly as the build would; adding `"outputProfile": "text"` removes it |
+| A `.heddle-lsp.json` with `"trimDirectiveLines": false` and `"maxRecursionCount": 3` | The analyzer's `TemplateOptions` carries exactly those values — analysis matches a runtime compile under the same options wherever the compile path reads them; an absent key yields the runtime default from the shared table |
 | Rename `SanitizeName`'s mapping rule experimentally | `Heddle.Generator.IntegrationTests` fails to compile or its differential tests fail loudly — no silent `FindEntryPoint` → null degradation |
 | A `.heddle` static piece containing `\v` and a lone surrogate | Emitted string and char literals spell escapes identically via the one core; HED7005 fires from the single surrogate scan; rendered bytes unchanged |
 
 ## Open questions
 
-Maintainer-level items, each with the provisional default this plan proceeds on (per the
-[no-open-questions discipline](../spec/common/spec-conventions.md#no-open-questions), the spec
-elaborating this plan records these as closed decisions or an `OPEN-QUESTIONS.md` register).
+**All three are resolved (user, 2026-07-25)** — recorded in the
+[open-questions register](open-questions.md) as Q6.1–Q6.3 and folded into this plan. None
+remain open; per the
+[no-open-questions discipline](../spec/common/spec-conventions.md#no-open-questions), the
+elaborating spec records them as closed decisions.
 
-- **OQ1 — Ratify D2 as a fix, not a breaking-window item.** Provisional default: fix (alignment
-  with shipped documentation; no rendered-output change; migration-note line for the
-  `NoWarn HED7013` edge). Trigger to reconsider: maintainer judges the `TreatWarningsAsErrors`
-  edge to warrant scheduling into the
-  [next-window register](../spec/common/breaking-windows.md#next-window-candidate-register)
-  instead — in which case WI3 ships the Fix-suffix half only and the ID half waits for the window.
-- **OQ2 — Ratify the LSP default-profile alignment (D10).** Provisional default: align to `Html`.
-  Trigger to reconsider: field reports of text-templating workspaces (codegen-heavy users) for
-  whom the new lints are noise — the opt-out (`"outputProfile": "text"`) exists either way.
-- **OQ3 — Catalog `MessageFormat` end-state.** Provisional default: consumed rows only (HED7xxx +
-  F2 twins); runtime raise sites keep their inline text as the single owner. Trigger to revisit:
-  the next initiative that adds a diagnostic *area* (a natural moment to route new raise sites
-  through `Catalog.Format` from day one), or a second observed intra-runtime message drift.
+- **OQ1 / Q6.1 — Ratify D2 as a fix, not a breaking-window item.** **Resolved (user,
+  2026-07-25): fix, confirmed — and broadened into a stated principle.** The user's ruling: "If
+  we can surface diagnostics early — we must do that; this is relevant for both runtime and for
+  generator." Diagnostics surface as early as possible on **both** tiers; the principle is
+  recorded in D2 and guides any future forwarding/severity decision. WI3 ships whole (real IDs +
+  Fix forwarded at build time); the migration-note line for the stale `NoWarn HED7013` edge
+  stays (*Back-compat / impact*).
+- **OQ2 / Q6.2 — LSP default-profile alignment (D10).** **Resolved (user, 2026-07-25): align —
+  and go further.** The LSP follows the same configuration surface the runtime permits and
+  wires **all** options: full parity with the runtime option set and defaults, with names and
+  defaults sourced from phase 5's shared `HeddleBuildOptions` table and `.heddle-lsp.json` keys
+  mapping 1:1 to the shared names. D10 and WI9 are expanded accordingly (option enumeration,
+  exclusion list, completeness gate, strengthened phase-5 dependency); the opt-out
+  (`"outputProfile": "text"`) exists either way.
+- **OQ3 / Q6.3 — Catalog `MessageFormat` end-state.** **Resolved (user, 2026-07-25):
+  recommendation applied** — consumed rows only (HED7xxx + F2 twins); runtime raise sites keep
+  their inline text as the single owner. No design change. The revisit triggers stand: the next
+  initiative that adds a diagnostic *area* (a natural moment to route new raise sites through
+  `Catalog.Format` from day one), or a second observed intra-runtime message drift.
 
 ## External grounding
 
@@ -655,7 +737,9 @@ elaborating this plan records these as closed decisions or an `OPEN-QUESTIONS.md
 | Linked-`<Compile>` sharing mechanism and existing linked set (IDs, `LinePosition`, `TemplateKey`, `Language/**` glob) | `Heddle.Generator.csproj:50-62` *(verified)*; [07 — proposed layout](../research/generator-code-sharing/07-recommendations.md) |
 | `InternalsVisibleTo` for the LSP on the runtime assembly | `src/Heddle/Properties/AssemblyInfo.cs:10` *(verified)* |
 | Consolidation order and the drift-#8/#10 rankings this phase resolves | [07 — confirmed live drift, recommended sequencing](../research/generator-code-sharing/07-recommendations.md) |
+| The LSP wires four analysis-applicable options plus `assemblies`; `TrimDirectiveLines`/`MaxRecursionCount` sit at ctor defaults with no config key; `ProvideLanguageFeatures` is hardwired `true`; the full `TemplateOptions` surface behind D10's enumeration | `src/Heddle/Data/TemplateOptions.cs`, `src/Heddle.LanguageServices/WorkspaceConfig.cs:18-63`, `src/Heddle.LanguageServices/DocumentAnalyzer.cs:91-104` *(verified 2026-07-25)* |
 | ID registry authority, amendments mechanism, breaking-window policy, testing loop | [cross-cutting-decisions.md](../spec/common/cross-cutting-decisions.md), [breaking-windows.md](../spec/common/breaking-windows.md), [testing-standards.md](../spec/common/testing-standards.md) |
+| The Q6.1–Q6.3 rulings this plan folds | [open-questions register](open-questions.md) *(user, 2026-07-25)* |
 
 Supplement: [phase-6-diagnostics-utilities-catalog.md](phase-6-diagnostics-utilities-catalog.md) —
 the diagnostic-catalog schema, row inventory, factory signatures, and test mechanics backing D4
@@ -663,3 +747,247 @@ and D12.
 
 *(Verify at implementation:* all line numbers above were pinned against the working tree on
 2026-07-25; re-confirm before relying on them — the anchor symbols are named beside each.*)*
+
+## Implementation record
+
+**Partial landing, 2026-07-25 — WI1–WI8 only.** WI9 (LSP options parity), WI10 (`RenderPath` /
+`TemplateOptions.FullPath`) and WI11 (escape/surrogate fold) are **not** in this landing; the
+deferred remainder and its blockers are named in the *Status* header. `dotnet build Heddle.sln -c
+Debug` green; `dotnet test Heddle.sln -c Debug` green across `Heddle.Tests`,
+`Heddle.Generator.Tests`, `Heddle.LanguageServices.Tests`, `Heddle.Generator.IntegrationTests` and
+`Heddle.Tool.Tests`, with the three remaining phase-1/3 quarantined skips (×2 TFMs) untouched.
+
+### Where the work landed
+
+| WI | Files |
+| --- | --- |
+| WI1 | `src/Heddle.Tests/LineIndexVectors.cs` (the golden table, linked into the generator and LSP suites), `LineIndexTests.cs` (red on 11 vectors against the pre-extraction `HeddleCompileResult`), `DiagnosticIdTests.ConstantsAndTheClaimedIdRegistryAgree` (`[CallerFilePath]`-anchored claimed-registry gate, both directions) |
+| WI2 | **no change needed** — `docs/precompilation.md` already carries the `HED7017` row, and the code↔registry↔docs lockstep that would have caught the gap already exists (`PipelineDiagnosticsTests.EveryGeneratorDiagnosticIdIsClaimedInTheRegistryAndListedInTheDocsTable`). Both landed with phase 5; the plan's "red today: HED7017" is stale. WI1's runtime-side gate is the direction that was still unguarded and is now closed |
+| WI3 | `HeddleTemplateGenerator.ParseAndReport`; `GeneratorDiagnostics.Forwarded(id, isWarning)` + `ForwardedMessage(message, fix)`; `src/Heddle.Generator.Tests/ForwardedDiagnosticTests.cs` |
+| WI4 | new `src/Heddle/Data/LineIndex.cs` + csproj link; `HeddleCompileResult`'s `Split('\n')` table and leading-`\r` bump deleted; `Emit/LineMapper.cs` and `LanguageServices/LineMap.cs` reduced to wrappers; `LineMapperAgreementTests.cs`, `LineMapAgreementTests.cs` |
+| WI5 | new `src/Heddle/Data/HeddleDiagnosticCatalog.cs` (+ `HeddleDiagnosticSeverity`, `HeddleDiagnosticInfo`, `PropFaults`) + csproj link; 23 `HED7xxx` constants added to `HeddleDiagnosticIds` (public, additive — golden updated); `GeneratorDiagnostics` descriptors become `FromCatalog` projections; `PrecompiledGauntlet`/`PrecompiledTemplates` id consts point at the shared ones; reserved-name set consumed by `ParseContext`, `PropLayout` and `TemplateEmitter`; `src/Heddle.Tests/DiagnosticCatalogTests.cs`, `src/Heddle.Generator.Tests/DiagnosticCatalogTests.cs` |
+| WI6 | new `src/Heddle/Language/HeddleDiagnosticProjection.cs` (parse channels, glob-linked) + `HeddleDiagnosticProjection.Runtime.cs` (compile channels, excluded via a widened `**\*.Runtime.cs` exclude); generator and `DocumentAnalyzer.ProjectDiagnostics` both drain through it; `src/Heddle.Tests/DiagnosticProjectionTests.cs` |
+| WI7 | new `src/Heddle/Helpers/CSharpTypeNames.cs` + csproj link; `ReflectionHelper.CSharpTypes` deleted (the resolver calls `TryGetType`), `FunctionEntry.FriendlyName` and `CompletionProvider.Friendly` delegate, `TypeNameHelper`'s dead `system.*` switch removed; `SymbolTypeResolver.Keywords` documented as the adapter; `CSharpTypeNamesTests.cs`, `AliasTableLockstepTests.cs` |
+| WI8 | `Heddle.Generator.csproj` `InternalsVisibleTo` for `Heddle.Generator.IntegrationTests`; `DifferentialHarness.SanitizeKey` and `PartialTests.Sanitize` reduced to calls on `HeddleTemplateGenerator.SanitizeName` |
+
+### Corrections to the plan, recorded per [spec-conventions](../spec/common/spec-conventions.md)
+
+- **The HED7017 doc gap is already closed** (WI2 above), and so is the `code → docs` direction of
+  D12.3 for the `HED7xxx` block. The plan's D12.3 bullet and WI1 row ("red today: HED7017") were
+  written against a tree that predates phase 5.
+- **The "compile channel the generator never drains" claim holds, with one sharpening.** Verified
+  against the current source: `ParseContext.Warnings` has exactly one producer, the id-less SLL
+  fallback at `DocumentParser.cs:66-73`, which carries a `Fix`; every id-carrying warning
+  (`HED1016`, `HED2002`, `HED2003`, `HED2004`, `HED3001`, `HED3002`, `HED3004`, `HED3005`,
+  `HED4002`, `HED4005`, `HED5011`) is added to `CompileWarnings`, and the generator runs no
+  compile-channel stage. So the day-one user-visible delta of WI3 is the appended `Fix` sentence,
+  exactly as *Back-compat* predicted; the real-ID rule is armed, not yet fired. WI6 deliberately
+  keeps the generator on the parse-channel overload (the risk table's mitigation), so this stays
+  true after the projection landed.
+- **`HED0002` (`ExtensionNotFound`) has no raise site.** The constant and the registry row exist;
+  nothing in `src/` assigns it. Catalogued as an error like its siblings; worth a look from
+  whichever phase touches extension resolution.
+- **`TypeNameHelper.GetBaseTypeOutput`'s alias switch was unreachable**, not merely duplicated: it
+  switches on `Type.Name.ToLowerInvariant()` against `"system.int32"`-style keys, and `Type.Name`
+  is never namespace-qualified — `ExType(typeof(int)).ToString()` returns `Int32` today, verified
+  by probe before the change. The dead branch was **removed** rather than repaired: this spelling
+  feeds `ExType.ToString()` through error text and generated code, so making it a keyword mapping
+  is a behavior change for the owner of type-name formatting (phase 3) to make deliberately. The
+  research's "five tables" count is right; one of the five was never consulted.
+- **`MessageFormat` scope, as shipped.** Q6.3's "consumed rows only" resolves in practice to the
+  `HED70xx` block alone: those rows are formatted by the descriptor projection. The F2 twin
+  vocabularies did *not* migrate to catalog formatting — unifying `HED0001`/`HED7008`,
+  `HED3005`/`HED7016` and `HED5007`–`HED5015`/`HED7017` wording means restructuring the two
+  `[Prop]` validators and the member-path resolvers, which is phase 3's `PropLayoutCore<TType>` +
+  fault-enum and member-path-core work. What *did* ship from that group is the shared
+  `PropFaults.ReservedNames` set (three consumers, one list); `PropFaults.FaultOrder` is left to
+  phase 3, because an ordered fault list with no consumer is the second copy D4 exists to prevent.
+  A gate (`OnlyRowsWithASecondConsumerCarryMessageProse`) pins the scope so widening it is a
+  decision, not a drift.
+
+### Deltas a user can see
+
+- **Forwarded warnings gain their `Fix`** (`"{message} Fix: {fix}"`). Today that is exactly the
+  SLL-fallback warning, which keeps `HED7013` because it carries no id.
+- **Forwarded diagnostics carry their real id when they have one**, on the warning path as well as
+  the error path, at their subtype's severity. No shipped warning exercises this yet (see the
+  correction above), so the migration note for a stale `NoWarn HED7013` remains a forward-looking
+  deliverable.
+- **`HeddleCompileResult` columns** for `"\n\r"` sequences and CRLF blank lines. Measured, not
+  estimated: of the eight golden documents, five (LF, plain CRLF, lone-`'\r'`, no-EOL, empty) were
+  already canonical and are unchanged; three shifted — `"a\r\n\r\nb"` reported offset 5 (the `b`)
+  as `2,1` and now reports `3,0`; `"a\n\rb"` reported offset 3 as `2,0` and now reports `2,1`;
+  `"a\nb\r\n\rc\n"` reported offset 5 as `2,3` and now reports `3,0`. Build-tier and editor
+  positions are unchanged, as D6 intended. No existing golden captured an affected document, so
+  the "goldens change once" allowance was not spent.
+- **Signature/completion text** for the aliases the two hand-written copies omitted: `uint`,
+  `byte`, `char`, `float`, `short`, `ushort`, `sbyte`, `ulong` now display as their C# keyword
+  rather than their CLR name in `HED1012`/`HED1013` text and completion lists — the "all three
+  surfaces agree because they read one alias table" outcome the Validation-scenarios table asks
+  for. No test or golden pinned the old spelling.
+
+### Byte-neutrality
+
+No rendered-output path was touched. The generator's diff is confined to diagnostic reporting, the
+`LineMapper` wrapper (pinned value-for-value by `LineMapperAgreementTests` over the shared golden
+vectors) and the reserved-name predicate (same set, same order). The differential, corpus-render,
+resolver-sweep and snapshot suites in `Heddle.Generator.IntegrationTests` and
+`Heddle.Generator.Tests` are green with zero fallback events.
+
+### Concurrency note
+
+Phase 4 was landing `PrecompiledRuntime.DynamicMember` and the schema-version bump during this
+pass. Two shared artifacts move with it and are **not** this phase's to update: the
+`PrecompiledSchema` version in the generator snapshots (`schemaVersion: 2 → 3`) and the three
+`public-api-heddle.txt` rows for `DynamicMember` / `DynamicMemberRoutingSchemaVersion` /
+`EmitsDynamicMemberRouting`. The golden's phase-6 delta — the 23 additive `HED7xxx` constants — is
+applied.
+
+---
+
+## Implementation record — second pass (2026-07-26): WI9, WI10, WI11 + the alias/numeric reconciliation
+
+The first pass's record above stands unchanged. This pass lands the deferred remainder, which was
+waiting on artifacts other phases own; all of them have since shipped. `dotnet build Heddle.sln -c
+Debug` green; `dotnet test Heddle.sln -c Debug` green — **4808 passed, 0 failed, 0 skipped**
+(4680 before, +128 from this pass's new tests × their TFM legs). The program's quarantine register
+is still empty.
+
+### Where the work landed
+
+| WI | Files |
+| --- | --- |
+| WI9 | `src/Heddle.LanguageServices/WorkspaceConfig.cs` (rewritten: shared parsers, six keys, config-message channel), `HeddleLanguageServiceOptions.cs` (+`TrimDirectiveLines`, `MaxRecursionCount`, `ConfigurationMessages`; profile/mode defaults re-sourced from `HeddleBuildOptions`), `DocumentAnalyzer.BuildTemplateOptions`, `src/Heddle.LanguageServer/LspServer.cs` (`LogConfigurationMessages`), `editors/vscode/package.json` + `src/extension.ts` (mirror settings), `docs/editor-support.md`; gates in `src/Heddle.LanguageServices.Tests/WorkspaceOptionParityTests.cs` and `WorkspaceConfigTests.cs` |
+| WI10 | `src/Heddle/Data/TemplateOptions.cs` (`FullPath` → `Path.Combine`), `src/Heddle/FileReader.cs` (`GetFileName` → `_options.FullPath`; the duplicated `_templateName` field deleted), `src/Heddle.LanguageServices/DocumentAnalyzer.cs` (`RenderPath` → `TemplateKey.TryMakeRelative`); pins in `src/Heddle.Tests/TemplateOptionsFullPathTests.cs` and `src/Heddle.LanguageServices.Tests/RenderPathTests.cs` |
+| WI11 | `src/Heddle/Language/Expressions/CSharpEscape.cs` (gains `IndexOfLoneSurrogate`; `HasLoneSurrogate` derives from it), `src/Heddle.Generator/Emit/PieceWriter.cs` (`Escape`/`HasLoneSurrogate`/`IndexOfLoneSurrogate` deleted), `Emit/TemplateEmitter.cs` (10 call sites re-pointed); pin in `src/Heddle.Generator.Tests/LoneSurrogateScanTests.cs` |
+| Reconciliation | `src/Heddle/Helpers/CSharpTypeNames.cs` (`SymbolExcludedAlias` → `DynamicAlias`, doc corrected), `src/Heddle.Tests/CSharpTypeNamesTests.cs`, two new arms in `src/Heddle.Generator.Tests/AliasTableLockstepTests.cs` |
+
+### The LSP default-profile decision (Q6.2)
+
+**Aligned: the editor's default output profile is now `Html`,** the engine's and the build tier's.
+The plan flagged this as a decision separable from adopting the shared parsers, so it is recorded
+as one. Three things decide it in the same direction. It is the *documented* default —
+`docs/precompilation.md`'s "generator defaults track the engine defaults" and
+`TemplateOptions.OutputProfile`'s own XML doc both say `Html` since 2.0; the LSP was the only
+surface holding a different opinion, and holding it silently. The delta is **new true positives**:
+the editor starts showing exactly the `HED2004`-class lints the build of record already emits for
+the same files — under `Text` the editor was not being conservative, it was hiding real build
+warnings. And the opt-out is one line (`"outputProfile": "text"`), which is *also* what such a
+workspace should be passing its host, so the fix surfaces a latent config gap rather than creating
+one.
+
+**User-visible back-compat consequence.** A workspace with no `outputProfile` in
+`.heddle-lsp.json` (and a VS Code user who never set `heddle.compile.outputProfile`) sees new
+diagnostics in the editor on next upgrade. No build behavior changes, no rendered byte changes, and
+nothing new can fail a build. Documented in `docs/editor-support.md` as a warning callout naming
+the opt-out. The VS Code extension's mirror default moved with it — it forwards every setting
+including unset ones, so leaving it at `"text"` would have pinned the old behavior for every VS
+Code user regardless of the server's default.
+
+### WI9 — the completeness gate, as it stands
+
+`WorkspaceOptionParityTests` walks `TemplateOptions`' public instance properties and requires each
+to be *wired* or *named* — six wired, eleven excluded, and the gate goes red on a seventeenth
+property that is neither. Companion arms assert the key-naming rule (`ConfigKey` = the option's own
+name, camelCased), that the reader's key set is exactly the wired set plus `assemblies`, that the
+key names agree with `HeddleBuildOptions`' `Heddle`-stripped MSBuild property names, and that an
+absent key yields the value a freshly constructed `TemplateOptions` carries.
+
+- **Wired:** `rootPath`, `outputProfile`, `expressionMode`, `fileNamePostfix` (already there;
+  profile default flipped, both now parsing through `OutputProfileRules`), plus the two parity
+  additions `trimDirectiveLines` and `maxRecursionCount`. Booleans and integers accept their JSON
+  kind *or* the string spelling the MSBuild property accepts, through
+  `HeddleBuildOptions.TryReadBool`/`TryReadPositiveInt`.
+- **Excluded, with the reason each carries in the test:** `TemplateName` (per-document identity),
+  `FullPath` (computed, not an input), `Functions` (object-valued — `assemblies` is its config
+  form), `Data` (render input), `EnableFileChangeCheck` (render-cache invalidation),
+  `PrecompiledMismatchPolicy` (the analyzer never consults the precompiled registry),
+  `RenderBudget`, `ValidateModelType`, `Encoder` (render-time limits/handling/encoding),
+  `AllowCSharp` (obsolete bridge — `expressionMode` is the key), `ProvideLanguageFeatures` (the
+  analyzer's operating mode, hardwired `true`). `FullPath` is an addition to D10's list: it is a
+  public property, so the reflection walk sees it, and "computed" is a reason like any other.
+- **Reaction policy, unchanged from D10:** an unknown token or a wrong JSON kind keeps the default
+  and adds a line to `HeddleLanguageServiceOptions.ConfigurationMessages`, which `LspServer`
+  forwards to `window/logMessage`. No `HED` id was minted; `HED6xxx` stays reserved-unclaimed and
+  `HED7025` is still the next free generator id.
+
+### Corrections to the plan, recorded per [spec-conventions](../spec/common/spec-conventions.md)
+
+- **WI11's fold was almost entirely already done, in the right direction.** Phase 4 landed
+  `CSharpEscape` *and* retired `NativeExpressionWriter.EscapeChar` and `PieceWriter`'s escape
+  table; phase 1 landed `PieceWriter.IndexOfLoneSurrogate`. What was actually left was the D11
+  sentence the first pass could not act on: the *index*-returning scan still lived generator-side
+  next to the shared bool-returning one, i.e. the two loops D11 exists to collapse were simply in
+  two different assemblies instead of two different methods. The fold moved the index form into
+  `CSharpEscape` and **defined** `HasLoneSurrogate(s) => IndexOfLoneSurrogate(s) >= 0`. The
+  generator copies are now dead and deleted: `PieceWriter` retains only `EmitPiece`, and the
+  emitter's ten `PieceWriter.Escape` call sites read `CSharpEscape.StringLiteral` directly, so the
+  generator has no name of its own for either rule. Repo-wide there is now **exactly one**
+  string-escape implementation, one char-escape implementation and one lone-surrogate loop, all in
+  `CSharpEscape` — closing the *Success criteria* grep-level check for the escape/surrogate row.
+- **Phase 3's `SymbolExcludedAlias` claim holds in full, and the constant was a misnomer.**
+  Verified against source: `SymbolTypeResolver.Keywords` carries all sixteen aliases including
+  `dynamic → SpecialType.System_Object`, `CSharpTypeNames.Aliases` maps `dynamic → typeof(object)`,
+  and `AliasTableLockstepTests` already had the value-agreement third arm plus a
+  `DynamicIsNoLongerAnExclusion` fact. But the shared file still *called* the constant
+  `SymbolExcludedAlias` and documented the symbol side as "`AliasNames` minus the exclusion" — a
+  stale statement of a removed policy, in the file whose whole job is to be the one true statement.
+  Renamed to `DynamicAlias` with the reason it is still special (it shares `typeof(object)`, so the
+  *display* direction skips it) and the class doc corrected to say the key sets are equal in full.
+- **The alias↔`NumericKind` boundary had no gate at all**, which is what the first pass suspected.
+  Two arms added to `AliasTableLockstepTests`: every alias classifies to the *same* `NumericKind`
+  from its CLR type (`NumericTable.FromClrType`) and from its `SpecialType`
+  (`SymbolFacts.ToNumericKind`); and every non-`None` `NumericKind` is reachable from some alias.
+  Measured today: the twelve numeric kinds and the twelve numeric aliases correspond exactly, with
+  `bool`/`object`/`string`/`dynamic` as the four non-numeric aliases. An `nint`/`nuint` addition to
+  either side alone now fails the build tier's test suite, which is the property the first pass
+  asked for.
+- **`FullPath`'s divergence was live, not theoretical.** Measured before the change:
+  `RootPath="/a/b"`, `TemplateName="t"`, `FileNamePostfix=".heddle"` produced `"/a/bt.heddle"`
+  while `FileReader.GetFileName()` opened `"/a/b/t.heddle"` — the exact defect shape the
+  `HeddleTemplate` comment records as an already-shipped bug. It is now literally one rule:
+  `GetFileName()` returns `_options.FullPath`, and `FileReader`'s duplicate `_templateName` field
+  is gone.
+- **`RenderPath`'s prefix strip carried a defect the plan did not name.** The legacy body is
+  transcribed verbatim into `RenderPathTests` as the characterization oracle; eight vectors agree
+  with the new body and two deltas are measured and pinned. The interesting one:
+  `StartsWith(rootFull)` with no separator check rendered `/rootx/a.heddle` under root `/root` as
+  the *relative key* `x/a.heddle` — the editor displaying a file outside the workspace as if it
+  were inside it. `TemplateKey.TryMakeRelative` requires the separator. The second delta is the
+  root path itself, which used to render as the empty string and now renders absolute.
+
+### Deltas a user can see
+
+- **Editor lints under the `Html` profile by default** — see the decision section above.
+- **Two new `.heddle-lsp.json` keys** (`trimDirectiveLines`, `maxRecursionCount`) and two new VS
+  Code settings. Purely additive: an absent key is the runtime default the analyzer already used
+  implicitly.
+- **A bad `.heddle-lsp.json` value now says so.** Previously an unknown `outputProfile` silently
+  became `Text` and an unknown `expressionMode` silently became `Native`; both now keep the
+  configured default and log a line naming the accepted values.
+- **`ImportOrigin`/`ImportedFrom` strings** for hosts that set `RootPath` without a trailing
+  separator gain the separator (`"/a/bt.heddle"` → `"/a/b/t.heddle"`), and an import origin outside
+  the workspace root is displayed absolute instead of as a bogus relative key.
+- **No generated-source delta at all.** The `\a \b \f \v` char-literal spelling change D11
+  predicted was already spent by phase 4's `CSharpEscape` landing; WI11 as executed here moves no
+  emitted byte.
+
+### Byte-neutrality
+
+No rendered-output path and no emitted-source path was touched. WI11 is a pure relocation of a
+scan whose twelve-vector output table was pinned against the pre-fold body first and re-asserted
+against the post-fold one (`LoneSurrogateScanTests`); the only behavioral difference is that
+`HasLoneSurrogate(null)` returns `false` instead of throwing, and no caller passes `null`. WI9 and
+WI10 are editor- and presentation-surface only. Evidence: the eight
+`GeneratorSnapshotTests.*.verified.txt` files are untouched (no `.received.*` produced), and the
+differential, corpus-render-parity, resolver-sweep and hosted-registry suites in
+`Heddle.Generator.IntegrationTests` are green with zero fallback events, on both TFM legs.
+
+### Not implemented, and why
+
+- **The compile-channel drain (`README`'s known program-level gap) is still open.** Nothing in
+  WI9–WI11 touches the generator's drain, so the eleven id-carrying warnings still never reach a
+  build diagnostic. Closing it is not a phase-6 remainder: it needs the generator to *run*
+  compile-channel stages, which is pipeline work no phase 0–6 schedules.
+- **`PropFaults.FaultOrder` and the twin-vocabulary message unification** remain phase 3's, per the
+  first pass's hand-off. Unchanged here.

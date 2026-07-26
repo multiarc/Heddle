@@ -53,7 +53,9 @@ namespace Heddle.Precompiled
 
         public bool IsDynamic { get; }
 
-        /// <summary>SHA-256 (lowercase hex) of the template file's raw bytes.</summary>
+        /// <summary>SHA-256 (lowercase hex) of the template's <b>decoded text</b> re-encoded as UTF-8 without a BOM
+        /// — the canonical staleness identity computed by <see cref="ContentHash.HashText"/> on both tiers
+        /// (phase 5 D1). Encoding-only differences (a BOM added, a UTF-16 re-save) therefore do not read as stale.</summary>
         public string ContentHash { get; }
 
         public IReadOnlyList<PrecompiledImport> Imports { get; }

@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Status:** proposed — not started
+- **Status:** implemented (2026-07-25) — WI1–WI9 landed; see [Implementation record](#implementation-record).
 - **Goal (one line):** One implementation of every byte-affecting document-shaping machine —
   `WidenToWholeLine` (drift fixed first, shippable alone), the five position-rebasing passes, the
   branch-set strip machine, generic piece slicing, and the region-fill matching rule — shared
@@ -85,10 +85,14 @@ generator snapshots unchanged before/after is an acceptance gate, not an aspirat
   machinery is re-hosted (as strip-machine observer callbacks), never re-worded. No new `HED*` ID
   is claimed; the [registry](../spec/common/cross-cutting-decisions.md#claimed-diagnostic-ids-registry)
   is untouched.
-- **The generator's silent `catch (Exception)` degrade** (`HeddleTemplateGenerator.cs:249-252`)
-  stays as-is. Making emitter defects visible (a build-time info/warning on degrade) is a
-  diagnostics-area concern ([06](../research/generator-code-sharing/06-diagnostics-utilities.md))
-  and is recorded as an open question for ownership, not silently absorbed here.
+- **The generator's `catch (Exception)` degrade** (`HeddleTemplateGenerator.cs:249-252`) is not
+  restructured here. Per the Q2.2 ruling ([register](open-questions.md) — the fallback-legitimacy
+  principle), **[Phase 5](phase-5-pipeline-config.md) owns** the catch-site restructure and the
+  legitimate-fallback vs must-surface taxonomy research; this phase's contribution is its
+  taxonomy input only: the shaper's intentional refusals travel as return values (eligibility
+  classification, region-fill verdicts), never as exceptions — so after the WI1 clamp fix, any
+  exception escaping the shaping code is a defect that must surface, not a legitimate degrade
+  condition. See the hand-off note in Dependencies & ordering.
 - **No grammar change, no public API change.** Everything added is `internal`; the grammar-stability
   gate applies in its default "no diff" form.
 
@@ -375,28 +379,36 @@ generator snapshots unchanged before/after is an acceptance gate, not an aspirat
   the generator side).
 - **Grounding.** [02 — headline and F2 extraction notes](../research/generator-code-sharing/02-document-shaper.md).
 
-### D10 — Minor dispositions: delete `DocumentsCache.cs`; document (not fix) the empty-default-chain asymmetry
+### D10 — Minor dispositions: delete `DocumentsCache.cs`; align the empty-default-chain handling to the runtime
 
 - **Decision.**
   1. `src/Heddle/Runtime/DocumentsCache.cs` — verified 100% commented-out (every line of the class
      body, lines 2 onward) — is **deleted** in WI8. Dead code in the runtime's shaping
      neighborhood is noise for every future reader of this area; git history keeps it.
   2. The empty-default-chain asymmetry — `DocumentShaper.cs:72-78` skips default chains with
-     `Chain == null || Count == 0`, while `CompileBody` (`HeddleCompiler.cs:143-177`) still adds a
-     zero-length `DocumentElement` when `chainedType` is non-null — is **left as-is and
-     documented**: a code comment at both sites naming the counterpart, plus a characterization
-     test pinning the runtime's current strategy selection for the affected shape (the extra
-     zero-length element defeats the single-element fast path at `RuntimeDocument.cs:58-73` and
-     participates in the `totalLength` full-optimize test at `:74-91` — strategy, not bytes;
-     verified). Aligning the runtime (skipping empty default chains) is byte-neutral but changes
-     strategy selection, i.e. performance behavior, and therefore needs benchmark evidence and a
-     maintainer call — recorded as an open question, not smuggled into a byte-neutral refactor.
+     `Chain == null || Count == 0`, while `CompileBody` (`HeddleCompiler.cs:143-177`) adds a
+     zero-length `DocumentElement` when `chainedType` is non-null — is **resolved by aligning the
+     generator to the runtime** (Q2.1 ruling, [register](open-questions.md): the runtime dynamic
+     engine is the primary source of truth; the generator must match logically wherever
+     applicable). `DocumentShaper.Shape` stops skipping such chains and models the runtime's
+     zero-length element. Bytes are unaffected (the element renders nothing); the effect is
+     **strategy-selection parity** — the runtime's extra element defeats the single-element fast
+     path at `RuntimeDocument.cs:58-73` and participates in the `totalLength` full-optimize test
+     at `:74-91` (strategy, not bytes; verified), and the generator now models the same element
+     list instead of silently diverging from it. The characterization test pins the **matched**
+     behavior: both sides produce the zero-length element for the affected shape.
 - **Rationale.** The deletion is the only change in this phase with zero behavioral surface at
-  all; the asymmetry is real but its blast radius is strategy selection on an edge shape, and the
-  phase's byte-neutrality gate must stay clean of deliberate behavior changes.
+  all. The alignment follows the match principle: strategy selection is runtime behavior the
+  generator must model, and letting the two shapers disagree on the element list is exactly the
+  drift class this phase exists to kill. Because bytes are unaffected on both tiers, the D11 byte
+  gate stays clean; the change is scoped to WI8 and pinned by its characterization test rather
+  than hiding inside an extraction move.
 - **Alternatives rejected.** Reviving `DocumentsCache` (nothing references it; the caching
-  conventions it sketched are superseded by `ResolveLayoutCached`-style keyed caches); fixing the
-  asymmetry inside this phase (violates the extraction-is-byte-and-behavior-neutral discipline).
+  conventions it sketched are superseded by `ResolveLayoutCached`-style keyed caches);
+  leave-and-document with a divergence pin (this plan's pre-ruling default — superseded by the
+  Q2.1 ruling); aligning the runtime to the generator instead (backwards — the runtime is the
+  source of truth, and changing its strategy selection would need benchmark evidence for no
+  parity gain).
 - **Grounding.** [02 — minors](../research/generator-code-sharing/02-document-shaper.md);
   `DocumentsCache.cs` and `RuntimeDocument.OptimizeCallTree` re-read.
 
@@ -409,9 +421,11 @@ generator snapshots unchanged before/after is an acceptance gate, not an aspirat
   `MultilineOverrideOffsetRegressionTests.cs`'s cross-file differential); the generator snapshot
   goldens (`src/Heddle.Generator.Tests/GeneratorSnapshotTests.cs`) unchanged — extraction must not
   alter one emitted byte of generated source, including every `P0..Pn` piece constant; and the
-  grammar-stability check in its default no-diff form. WI1 is the only item licensed to change an
-  observable outcome, and only the one analyzed in Back-compat (tier selection for the overshoot
-  class).
+  grammar-stability check in its default no-diff form. WI1 and WI8 are the only items licensed to
+  change an observable outcome: WI1 the tier-selection change analyzed in Back-compat (the
+  overshoot class), WI8 the generator-side default-chain alignment (D10/Q2.1 — byte-neutral by
+  construction, the zero-length element renders nothing; only the modeled element list and thus
+  strategy-selection parity changes, pinned by its characterization test).
 - **Rationale.** "Refactor proven byte-identical" is this repo's established discipline (the
   testing standards' fix-forward rule; the benchmark program's gate-before-timing posture); the
   shaping code decides bytes, so nothing weaker is credible.
@@ -423,12 +437,25 @@ generator snapshots unchanged before/after is an acceptance gate, not an aspirat
 
 ## Dependencies & ordering
 
+- **Phase 0 posture (landed):** every test in this phase runs under the gauntlet-crossing guardrails — see the
+  [precompiled-tier posture](../spec/common/testing-standards.md#precompiled-tier-posture) rule; each extraction's
+  byte-neutrality gate now includes the resolver-path corpus sweep with zero fallback events.
+
 - **Depends on:** nothing merged — WI1 can start immediately. Cross-phase touchpoints:
   [Phase 1](phase-1-template-emitter.md) owns the zero-output attribute (WI7's guard hands over to
   it), the `ParticipantScan` fix (referenced, untouched here), and the emitter-side adoption of
   `RegionFillResolver` (WI6 leaves a forward pointer). The BranchRole Tier-1 link
   ([07 Tier 1](../research/generator-code-sharing/07-recommendations.md)) is deliberately **not** a
   dependency — `BranchKind` is self-contained (D5).
+- **Hand-off to Phase 5 (Q2.2):** the `catch (Exception)` restructure at
+  `HeddleTemplateGenerator.cs:249-252` is owned by [Phase 5](phase-5-pipeline-config.md) under the
+  fallback-legitimacy principle ([register](open-questions.md)): the blanket catch is replaced
+  with a specific, researched catch set covering only conditions that genuinely warrant fallback;
+  everything else throws and passes through. This phase supplies Phase 5's taxonomy research with
+  its input: the shaper has **no** intentional degrade conditions that arrive via exception — its
+  refusals are return values (eligibility classification, region-fill verdicts), and the WI1
+  clamp fix removes the one known thrower — so any exception out of the shaping code is a defect
+  that must surface, never a fallback trigger.
 - **Unblocks:** Phase 1's piece-emission work (consumes `SlicePieces<T>`, WI5) and its
   `RegionFillResolver` emitter adoption (WI6); every later shaping-adjacent fix in either tier
   (lands once, in the shared file).
@@ -467,7 +494,8 @@ rebased positions). These tests are written against the current code and must no
 WI4 swap the internals: they are the definition of "byte-neutral" at machine granularity, per the
 [extraction map](phase-2-document-shaper-extraction-map.md)'s pin list.
 *Done when:* both twins are green against the pre-extraction code and cover every row of the
-extraction map's pin column.
+extraction map's pin column except pin 10, which lands with WI8 and asserts the post-alignment
+matched behavior (D10/Q2.1).
 
 **WI3 — `Language/DocumentShaping.cs`: trim predicate, safe string ops, five machines; both sides swap.**
 *Files:* new `src/Heddle/Language/DocumentShaping.cs`; `src/Heddle/Runtime/HeddleCompiler.cs` and
@@ -516,11 +544,13 @@ mirrored the way `DefaultFunctionLockstepTests` mirrors its table.
 (verified by temporary mutation during development, then reverted).
 
 **WI8 — Dispositions.**
-*Files:* delete `src/Heddle/Runtime/DocumentsCache.cs`; comments at `DocumentShaper.Shape`'s
-default-chain loop and `CompileBody`'s default-chain loop; characterization test for the
-empty-default-chain strategy shape (D10).
-*Done when:* solution builds on all TFMs; the characterization test pins today's strategy
-selection.
+*Files:* delete `src/Heddle/Runtime/DocumentsCache.cs`;
+`src/Heddle.Generator/Emit/DocumentShaper.cs` (the `Shape` default-chain loop stops skipping
+`Chain == null || Count == 0` and models the runtime's zero-length element, per D10/Q2.1);
+characterization test for the empty-default-chain shape.
+*Done when:* solution builds on all TFMs; the characterization test pins the **matched**
+behavior — both sides produce the zero-length element for the affected shape — and the D11 gate
+is green (the alignment is byte-neutral; only the modeled element list changes).
 
 **WI9 — Exit gate.**
 One combined run of the full D11 gate plus testing-standards gate 4 (compile benchmarks in
@@ -564,6 +594,10 @@ against head source:
   suite, generator snapshots, and every branch/region diagnostic pinned unchanged. No public API
   is added or changed (everything `internal`); no `TemplateOptions` surface is touched; the
   grammar is untouched.
+- **Default-chain alignment (WI8, Q2.1):** byte-neutral by construction — the runtime's behavior
+  is unchanged and the zero-length element renders nothing on either tier; only the generator's
+  modeled element list (strategy-selection parity) changes. Not a breaking change; no window
+  needed.
 - **`DocumentsCache.cs` deletion:** no references exist (fully commented out); binary-compat
   irrelevant (internal, dead).
 - **Packaging/build:** the shared files ride the existing link glob — no csproj change, no new
@@ -614,8 +648,10 @@ Measurable, checkable statements a spec can turn into tests.
       `GeneratorSnapshotTests` byte-identical; grammar-stability no-diff; compile benchmarks
       within BenchmarkDotNet error with no allocation increase.
 - [ ] `src/Heddle/Runtime/DocumentsCache.cs` no longer exists; the solution builds on all TFMs.
-- [ ] The empty-default-chain characterization test pins current strategy selection, and both
-      default-chain loops carry the cross-referencing comment.
+- [ ] The empty-default-chain characterization test pins the **matched** behavior (D10/Q2.1):
+      `DocumentShaper.Shape` models the runtime's zero-length element (no skip), both sides
+      produce the same element list for the affected shape, and the test turns red if either
+      side reintroduces the skip.
 
 ## Validation scenarios
 
@@ -634,20 +670,25 @@ Measurable, checkable statements a spec can turn into tests.
 
 ## Open questions
 
-1. **Empty-default-chain alignment (authority ambiguous).** The generator skips empty default
-   chains; the runtime materializes a zero-length element that changes strategy selection (never
-   bytes) for chained bodies. Which behavior is *intended* is not derivable from source — the file
-   otherwise claims verbatim parity, but the runtime's element also predates the generator.
-   Default carried by this plan: leave both, document, pin with a characterization test (D10).
-   Trigger to revisit: benchmark evidence that skipping re-enables the single-element fast path on
-   a real workload, plus a maintainer ruling on which side is canonical.
-2. **Ownership of a degrade-visibility diagnostic.** The `catch (Exception)` swallow at
-   `HeddleTemplateGenerator.cs:249-252` is what made Finding 1 silent; a build-time
-   info/warning ("template X degraded to the dynamic path: <reason>") would make the whole class
-   of regressions visible. It is a generator-diagnostics concern (HED70xx block,
-   [06](../research/generator-code-sharing/06-diagnostics-utilities.md) territory) — this phase
-   records the need and defers the decision to the diagnostics-owning phase rather than claiming
-   an ID here.
+None remain — both questions this plan raised are resolved and folded in
+([register](open-questions.md)):
+
+1. **Q2.1 — Empty-default-chain asymmetry. Resolved (user, 2026-07-25):** the runtime dynamic
+   engine is the primary source of truth; the generator must match logically wherever
+   applicable. `DocumentShaper` stops skipping empty default chains and models the runtime's
+   zero-length element; bytes are unaffected, and the characterization pin asserts the
+   **matched** behavior. Folded into D10 and WI8 (disposition changed from "leave + document +
+   divergence pin" to "align to runtime") and the extraction map's pipeline/pin tables.
+2. **Q2.2 — Blanket `catch (Exception)` degrade. Resolved (user, 2026-07-25) — the
+   fallback-legitimacy principle:** stop swallowing; the blanket catch becomes a specific,
+   researched catch set covering only conditions that genuinely warrant fallback (stale cached
+   data, genuine change-tracking logic), and every other exception throws and passes through.
+   **[Phase 5](phase-5-pipeline-config.md) owns** the catch site
+   (`HeddleTemplateGenerator.cs:249-252`) and the fallback-taxonomy research; this plan's
+   original deferral to the diagnostics area is superseded. Phase 2 contributes its taxonomy
+   input — the shaper refuses via return values, and after the WI1 clamp fix any exception out
+   of the shaping code is a defect that must surface. Folded into the Non-goals bullet and the
+   Phase 5 hand-off note in Dependencies & ordering.
 
 ## External grounding
 
@@ -663,3 +704,137 @@ Measurable, checkable statements a spec can turn into tests.
 | Lockstep-test precedent | `src/Heddle.Tests/DefaultFunctionLockstepTests.cs` |
 | Differential and snapshot gates | `src/Heddle.Tests/PrecompiledRuntimeTests.cs`; `src/Heddle.Tests/MultilineOverrideOffsetRegressionTests.cs`; `src/Heddle.Generator.Tests/GeneratorSnapshotTests.cs` |
 | Byte-change policy, breaking windows, golden change policy, benchmark gate | [cross-cutting D2](../spec/common/cross-cutting-decisions.md#d2--breaking-changes-land-only-in-ratified-breaking-windows); [breaking-windows.md](../spec/common/breaking-windows.md); [testing-standards](../spec/common/testing-standards.md); [coding-standards](../spec/common/coding-standards.md) |
+
+---
+
+## Implementation record
+
+Landed 2026-07-25. `dotnet build Heddle.sln -c Debug` green; `dotnet test Heddle.sln -c Debug` green
+(3028 passed, 0 failed, 8 skipped — the four quarantined fixtures × two TFMs; phase 5, running
+concurrently, un-skipped its own BOM fixture from the phase-0 register, taking the skip count from
+10 to 8. No phase-2 change touches a quarantined fixture).
+
+### Where the work landed
+
+| WI | Files |
+| --- | --- |
+| WI1 | `src/Heddle.Generator/Emit/DocumentShaper.cs` (`WidenToWholeLine` clamp, ported verbatim); fixtures `src/Heddle.Tests/TestTemplate/shaper-clamp-overshoot.heddle` + `shaper-clamp-imported.heddle` (+ their `<None Update>` copy rows in `Heddle.Tests.csproj`, and the corpus rows in `CorpusDifferentialTests`/`CorpusRenderParityTests`); `src/Heddle.Generator.Tests/DocumentShaperAdapterTests.cs`; `src/Heddle.Tests/ShaperClampFixtureTests.cs` |
+| WI2 | `src/Heddle.Tests/DocumentShapingCharacterizationTests.cs` and its generator twin `src/Heddle.Generator.Tests/DocumentShapingCharacterizationTests.cs` (identical vectors and literals); `Heddle.Generator.Tests.csproj` gains the `gen` extern alias so the generator's linked copy of the parse model is addressable beside the runtime's |
+| WI3 | new `src/Heddle/Language/DocumentShaping.cs`; deletions + call rewires in `src/Heddle/Runtime/HeddleCompiler.cs` and `src/Heddle.Generator/Emit/DocumentShaper.cs`; `src/Heddle.Tests/DocumentShapingPassOrderLockstepTests.cs` |
+| WI4 | `DocumentShaping.BranchKind` + `IBranchStripObserver` + `StripBranchSets`/`CollectGap`/`ApplyGaps`; `HeddleCompiler.ProcessBranchSets` → driver + `BranchSetDiagnostics` observer; `DocumentShaper.ClassifierFor` (with the `Participant` mapping) and the new `hasScopeChannel` seam threaded from `TemplateEmitter.HasScopeChannel` |
+| WI5 | `DocumentShaping.SlicePieces<T>`; `RuntimeDocument.GetDocumentPieces` and `TemplateEmitter.PopulateBody` both rewired onto it |
+| WI6 | new `src/Heddle/Language/RegionFillResolver.cs`; `HeddleCompiler.BuildRegionFillScope` → driver; forward-pointer comment on `TemplateEmitter.TryBuildGeneratorFillScope`; `src/Heddle.Tests/RegionFillResolverTests.cs` |
+| WI7 | `src/Heddle.Tests/ZeroOutputLockstepTests.cs` (runtime ground truth) + the mirror assertion in `DocumentShaperAdapterTests.EmitterDirectiveListMatchesTheLocksteppedMirror` |
+| WI8 | `src/Heddle/Runtime/DocumentsCache.cs` deleted; `DocumentShaper.Shape` stops skipping empty default chains; `TemplateEmitter`'s element callback emits no segment for the zero-length element; pin 10 in `DocumentShaperAdapterTests` |
+| WI9 | combined `dotnet test Heddle.sln -c Debug` run (goldens, differentials, generator snapshots, phase-0 resolver sweep) + the compile-path benchmark note below |
+
+### The clamp drift (WI1), as actually found
+
+- **Generator side, before:** `WidenToWholeLine` dereferenced `document[left - 1]` from an unclamped
+  `block.StartIndex` and scanned from an unclamped `StartIndex + Length`; tested `right ==
+  document.Length` where the runtime tests `right >= document.Length`; and returned the **original**
+  block on both not-whole-line exits where the runtime returns the **clamped** span.
+- **Runtime side:** correct — the clamp is the authority and moved unchanged.
+- **Reproducer (checked in):** an *indented* `@<<{{…}}` composition import on the document's **last
+  line**, importing a file that carries a zero-output directive. The imported chain is re-based to
+  the import-site offset with zero length (`HeddleMainListener`), then `RemoveDefinitions` widens the
+  import block to its whole line — leading whitespace included — so the working document becomes
+  shorter than that stored offset. `RemoveEmptyItem`'s widen probe then dereferences past the end.
+  Verified pre-fix: `IndexOutOfRangeException`, swallowed by `HeddleTemplateGenerator`'s per-template
+  `catch (Exception)`; the un-indented variant of the same shape stays in bounds and always worked.
+- **Byte-neutrality:** the fixture's runtime render is unchanged (`ShaperClampFixtureTests`), and it
+  now carries a manifest entry whose precompiled render is byte-identical to the dynamic one
+  (`CorpusRenderParityTests`, whose `RenderInCorpus` asserts `ExpectPrecompiled` first). Tier
+  selection is the only user-visible change.
+- **Sub-case 3 re-verified at head:** still unreachable as divergent bytes. The three callers of the
+  generator's `WidenToWholeLine` are exactly `RemoveDefinitions`, `RemoveEmptyItem` and
+  `TrimHiddenRemnantLines`'s bounds-guarded probe — no fourth — and on out-of-bounds input the
+  pre-fix code either threw inside the predicate or returned an overshooting block that
+  `string.Remove` immediately rejected. The plan's recorded correction stands.
+
+### Divergences found per machine, and which side won
+
+The runtime was normative everywhere, per the authority convention; nothing in the extraction
+required choosing the generator's semantics.
+
+| Machine | Divergence before unification | Normative side |
+| --- | --- | --- |
+| `ShiftBySkippedTokens` | none beyond brace style | runtime body moved |
+| `TrimHiddenRemnantLines` + `ShiftListsAfter` | none beyond brace style; the bug-fix rationale comment existed twice and now exists once | runtime body + comment moved |
+| `RemoveDefinitions` | callee only (`ExStringBuilder.ApplyRemove` vs the local safe `ApplyRemove`) | runtime body, safe callee (D3) |
+| `ReplaceRawOutput` | callee only (`ExStringBuilder.Replace` vs `ReplaceSpan`) | runtime body, safe callee (D3) |
+| `RemoveEmptyItem` | callee only | runtime body, safe callee |
+| Branch strip (`StripBranchSets`/`CollectGap`/`ApplyGaps`) | the generator's private enum had **four** kinds — a `[ScopeChannel]` non-role extension fell into `default:` instead of `Participant`; the runtime additionally interleaved HED3001–HED3005 and the orphan machine | runtime: one `BranchKind` with `Participant`, diagnostics re-hosted as an observer |
+| `SlicePieces<T>` | none — the two walks were semantically identical, including the `StartIndex == offset` and trailing-remainder cases | runtime walk generalized; the emitter's mid-walk degrade became the `bool`-returning `onElement` D6 pre-authorized |
+| Region-fill matching | same four-step rule, different tables (cached `RegionLayout.TryGet` vs a flat ordinal scan) and — by design — different reactions | runtime rule shape; reactions stay per-side behind the verdict enum |
+
+### Deviations from the plan, recorded
+
+- **`IBranchStripObserver` has three events, not two.** The runtime's diagnostic order inside one
+  block is HED3005 → HED3001 (gap) → HED3002/3/4: the scope-channel warning fires *before* gap
+  collection and the orphan machine *after* it. A single "block classified" event could not preserve
+  that, so the interface is `OnClassified` / `OnGapCollected` / `OnBlockCompleted`. D5 explicitly
+  left the exact shape to the spec.
+- **`SlicePieces<T>` takes `IEnumerable<T>`, not `IReadOnlyList<T>`.** `OptimizeCallTree` hands
+  `GetDocumentPieces` an `ICollection<IDataProcessor>`; both call sites only enumerate.
+- **`DocumentShaper.Shape` gained a `hasScopeChannel` parameter.** The `Participant` mapping (D5)
+  needs the binder answer the emitter already computes; the parameter is optional and defaults to
+  "never a participant", which is byte-identical to the pre-WI4 `default:` arm.
+- **`Heddle.Generator.Tests.csproj` gained `Aliases="global,gen"`** on its generator reference. The
+  generator links the shared `Heddle.Language` sources, so `ParseContext`/`DocumentShaping` exist in
+  both referenced assemblies; the WI2 twin needs to name the generator's copy. Existing tests keep
+  the global alias, so nothing else changed.
+- **WI2's pre-swap capture was done by reflection, not by a committed pre-swap test.** The vectors
+  were driven through the pre-extraction `HeddleCompiler` privates and the pre-extraction
+  `DocumentShaper.StripBranchSets` before any code moved; the captured outputs are the literals now
+  committed. Pin 7's literals are the one exception — the strip vectors were re-derived by hand from
+  the machine's documented transitions after the move, with the branch suites
+  (`BranchSetCompilerTests`, `BranchingGoldenTests`, `BranchProtocolTests`,
+  `BranchRoleDriftDiagnosticTests`, `BranchConcurrencyTests`) as the behavioral pin either side of
+  the swap.
+- **Two `BlockPosition` shapes named in the extraction map's pin list are unconstructible.**
+  `BlockPosition`'s constructor rejects a negative `StartIndex`, so the "negative start" widen vector
+  and the "chain inside the widened whitespace tail" remove-empty vector cannot be built at all —
+  the shift would throw in the constructor on either side, pre- or post-extraction. Replaced with the
+  reachable clamp classes (start past end, length past end, empty document).
+
+### Corrections to this plan, recorded against source
+
+- **`@import` is a removal tombstone, not a live zero-output extension.** It is on the emitter's
+  four-name directive list but every call site raises HED4003 (import-removal-spec D4/D5), so the
+  WI7 guard can never observe it compiling. The guard pins that exact set — `import` is the only
+  unprobeable name, and a second one joining it is red.
+- **The Q2.1 alignment cannot reproduce the runtime's `chainedType != null` gate.** The runtime adds
+  the zero-length element for an empty default chain iff the body was compiled with a non-null
+  chained type; `DocumentShaper.Shape` has no chained type in scope (its driver classifies
+  eligibility, it does not compile items). The generator therefore models the element
+  unconditionally — a superset that is byte-neutral because the element renders nothing on either
+  tier, and that removes the skip the ruling was about.
+- **`docs/generator_plan/README.md` line-number citations for `DocumentShaper.cs` are now stale** by
+  construction (the file shrank from 398 to ~120 lines). Member names remain the stable anchors.
+
+### Byte-neutrality evidence
+
+One combined `dotnet test Heddle.sln -c Debug` run, green on every TFM the box can run
+(`Heddle.Tests` net6.0 is unavailable here — pre-existing SDK gap): golden corpus (`*GoldenTests`,
+`ErgoTrimPreambleGoldenPair`, `TrimDirectiveLinesTests`) with zero golden diffs; the differential
+contract (`PrecompiledRuntimeTests`, `MultilineOverrideOffsetRegressionTests`,
+`CorpusRenderParityTests`, the ~130 `Heddle.Generator.IntegrationTests` differentials); the generator
+snapshots (`GeneratorSnapshotTests`) byte-identical, which is the `P0..Pn` proof for WI5; phase 0's
+gauntlet-crossing resolver sweep (`CorpusResolverSweepTests`, `ResolverPathHarnessTests`) with zero
+fallback events; and the grammar-stability check in its default no-diff form. The only intentional
+observable changes are WI1's tier selection for the overshoot class and WI8's generator-side element
+list, each pinned by its own test.
+
+### WI9 — compile-path benchmark note
+
+The D3 safe pair is **allocation-equivalent by construction**, not merely by measurement:
+`ExStringBuilder.ApplyRemove` is `Replace(start, len, "", source)` and `ExStringBuilder.Replace`
+allocates exactly one string, as do `string.Remove` and the two-`Substring` concat that replaced
+them. No shaping pass allocates anything else it did not allocate before, and the render path is
+untouched (the passes run once per compiled body). `TemplateParseBenchmarks` was run under
+BenchmarkDotNet on the post-change tree as a sanity check; a paired before/after run on this box was
+not attempted, per the standing note that local wall-clock comparisons on this workstation are not
+trustworthy evidence. The D3 revisit trigger therefore stays unarmed; if a future paired run on
+benchmark hardware shows a compile-path regression beyond BenchmarkDotNet's reported error, that
+trigger is the recorded response.

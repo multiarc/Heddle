@@ -7,6 +7,7 @@ using System.Threading;
 using Heddle.Data;
 using Heddle.Helpers;
 using Heddle.Language;
+using Heddle.Precompiled;
 using Heddle.Runtime;
 using Heddle.Strings.Core;
 
@@ -88,6 +89,12 @@ namespace Heddle.LanguageServices
                 diagnostics, definitions, imports, scopes, csharpUsed);
         }
 
+        /// <summary>Projects the workspace options onto the engine's own options object. Generator plan phase 6
+        /// D10/WI9 (Q6.2): <b>every</b> analysis-applicable option is carried across — the editor compiles a
+        /// document under the same option set the build of record uses, and the fallbacks when no workspace
+        /// options exist are the shared <see cref="HeddleBuildOptions"/> defaults rather than a second opinion
+        /// about what the defaults are. <c>ProvideLanguageFeatures</c> is hardwired: it <i>is</i> the analyzer's
+        /// operating mode, not a workspace choice.</summary>
         private TemplateOptions BuildTemplateOptions(Heddle.Runtime.Expressions.FunctionRegistry functions)
         {
             return new TemplateOptions
@@ -96,30 +103,32 @@ namespace Heddle.LanguageServices
                 RootPath = string.IsNullOrEmpty(_options?.RootPath)
                     ? AppContext.BaseDirectory
                     : _options.RootPath,
-                OutputProfile = _options?.OutputProfile ?? OutputProfile.Text,
-                ExpressionMode = _options?.ExpressionMode ?? ExpressionMode.Native,
+                OutputProfile = _options?.OutputProfile ?? HeddleBuildOptions.DefaultOutputProfile,
+                ExpressionMode = _options?.ExpressionMode ?? HeddleBuildOptions.DefaultExpressionMode,
                 FileNamePostfix = _options?.FileNamePostfix ?? string.Empty,
+                TrimDirectiveLines = _options?.TrimDirectiveLines ?? HeddleBuildOptions.DefaultTrimDirectiveLines,
+                MaxRecursionCount = _options?.MaxRecursionCount ?? HeddleBuildOptions.DefaultMaxRecursionCount,
                 Functions = functions
             };
         }
 
+        /// <summary>Drains through the shared projection (phase 6 D5) and layers this host's one policy on top:
+        /// an entry stamped with import provenance is re-anchored to a zero-width range at the import site and
+        /// its message prefixed with the rendered origin path. Which channels are drained, severity by subtype,
+        /// id and fix passthrough and the reference dedupe are no longer this file's rules — they are the rules,
+        /// stated once, that the build tier and <c>HeddleCompileResult</c> read too.</summary>
         private IReadOnlyList<HeddleDiagnostic> ProjectDiagnostics(CompileContext compileContext,
             ParseContext parseContext)
         {
-            var seen = new HashSet<HeddleCompileError>();
             var result = new List<HeddleDiagnostic>();
-
-            void Add(HeddleCompileError entry)
+            foreach (var entry in HeddleDiagnosticProjection.Drain(compileContext, parseContext))
             {
-                if (entry == null || !seen.Add(entry))
-                    return;
-                var severity = entry is HeddleCompileWarning
+                var severity = entry.IsWarning
                     ? HeddleDiagnosticSeverity.Warning
                     : HeddleDiagnosticSeverity.Error;
-                var fix = (entry as HeddleCompileWarning)?.Fix;
-                int offset = entry.Position.StartIndex;
-                int length = entry.Position.Length;
-                string message = entry.Error;
+                int offset = entry.Offset;
+                int length = entry.Length;
+                string message = entry.Message;
                 string importedFrom = null;
 
                 var origin = entry.ImportOrigin;
@@ -128,21 +137,12 @@ namespace Heddle.LanguageServices
                     importedFrom = RenderPath(origin.Path);
                     offset = origin.Site.StartIndex;
                     length = 0;
-                    message = $"imported '{importedFrom}': {entry.Error}";
+                    message = $"imported '{importedFrom}': {entry.Message}";
                 }
 
-                result.Add(new HeddleDiagnostic(entry.DiagnosticId, message, fix, severity, offset, length,
+                result.Add(new HeddleDiagnostic(entry.Id, message, entry.Fix, severity, offset, length,
                     importedFrom));
             }
-
-            foreach (var error in compileContext.CompileErrors)
-                Add(error);
-            foreach (var warning in compileContext.CompileWarnings)
-                Add(warning);
-            foreach (var error in parseContext.Errors)
-                Add(error);
-            foreach (var warning in parseContext.Warnings)
-                Add(warning);
 
             return result;
         }
@@ -266,26 +266,34 @@ namespace Heddle.LanguageServices
             return new ImportLink(kind, match.Index, match.Length, raw, resolved);
         }
 
-        private string RenderPath(string path)
+        private string RenderPath(string path) => RenderPath(path, _options?.RootPath);
+
+        /// <summary>
+        /// The display spelling of an import/partial origin: the template key it would have under
+        /// <paramref name="root"/>, or the absolute path in <c>/</c> form when it has none. Generator plan phase 6
+        /// D8/WI10 — the relativization itself is <see cref="TemplateKey.TryMakeRelative"/>, phase 5's shared rule
+        /// with its documented two-case-domain policy, so this is the fourth hand-rolled prefix strip deleted
+        /// rather than the fourth maintained.
+        /// <para>Adopting it fixes a real defect the strip carried: a bare <c>StartsWith(rootFull)</c> matched a
+        /// <i>sibling</i> directory whose name began with the root's (<c>/root</c> vs <c>/rootx/a</c>) and rendered
+        /// it as the relative key <c>x/a</c>. The shared rule requires a separator after the root.</para>
+        /// <para>The LSP-only part that stays: a path outside the root is still shown absolute with <c>\</c>
+        /// normalized to <c>/</c>, because an editor must display <i>something</i> for a file it cannot key.</para>
+        /// </summary>
+        internal static string RenderPath(string path, string root)
         {
             if (string.IsNullOrEmpty(path))
                 return path;
-            var root = _options?.RootPath;
             if (!string.IsNullOrEmpty(root))
             {
                 try
                 {
-                    var full = Path.GetFullPath(path);
-                    var rootFull = Path.GetFullPath(root);
-                    if (full.StartsWith(rootFull, StringComparison.OrdinalIgnoreCase))
-                    {
-                        var rel = full.Substring(rootFull.Length).TrimStart('/', '\\');
-                        return rel.Replace('\\', '/');
-                    }
+                    if (TemplateKey.TryMakeRelative(Path.GetFullPath(path), Path.GetFullPath(root), out var key))
+                        return key;
                 }
                 catch
                 {
-                    // fall through to absolute
+                    // malformed path or root — fall through to absolute
                 }
             }
 

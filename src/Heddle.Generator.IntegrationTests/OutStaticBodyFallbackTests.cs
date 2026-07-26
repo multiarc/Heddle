@@ -20,17 +20,6 @@ namespace Heddle.Generator.IntegrationTests
     /// </summary>
     public class OutStaticBodyFallbackTests
     {
-        private static bool IsPrecompiled(string manifest, string key)
-        {
-            var marker = "key: \"" + key + "\"";
-            var at = manifest?.IndexOf(marker, StringComparison.Ordinal) ?? -1;
-            if (at < 0)
-                return false; // no manifest entry -> full dynamic fallback
-            var next = manifest.IndexOf("key: \"", at + marker.Length, StringComparison.Ordinal);
-            var block = next < 0 ? manifest.Substring(at) : manifest.Substring(at, next - at);
-            return !block.Contains("strategy: null"); // strategy: null == marker (not precompiled)
-        }
-
         private static string RenderDynamic(string content, string model)
         {
             var t = new HeddleTemplate(content, new CompileContext(new TemplateOptions(), new ExType(typeof(string))));
@@ -51,9 +40,9 @@ namespace Heddle.Generator.IntegrationTests
             Assert.False(gen.Diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error),
                 "Unexpected generator error: " + string.Join("; ", gen.Diagnostics.Select(d => d.ToString())));
 
-            // Documented tier fallback: a bodied @out does not precompile — no bound strategy for it.
-            Assert.False(IsPrecompiled(gen.ManifestSource ?? string.Empty, "views/bodied-out.heddle"),
-                "Expected a dynamic-tier fallback (bodied @out), but the template precompiled.");
+            // Documented tier fallback (phase 0 D5: declared, not inferred): a bodied @out does not precompile —
+            // no bound strategy and no entry class for it.
+            DifferentialHarness.ExpectDegrade(gen, "views/bodied-out.heddle");
 
             // The runtime backend renders the corrected output: no chained-value-plus-inert-body double-render.
             Assert.Equal(expected, RenderDynamic(template, value));

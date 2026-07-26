@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Heddle.Data;
 using Heddle.Helpers;
 using Heddle.Language;
+using Heddle.Language.Binding;
 using Heddle.Strings.Core;
 
 namespace Heddle.Runtime.Expressions
@@ -63,6 +64,44 @@ namespace Heddle.Runtime.Expressions
             });
         }
 
+        /// <summary>
+        /// Phase 3 (OQ4): the extension's resolved slot layout as a single string — ordered
+        /// <c>name:&lt;slot type AQN&gt;</c> pairs joined with <c>|</c> — for the manifest's prop-layout
+        /// fingerprint row and the gauntlet check that compares it against the live extension type.
+        /// <para>Built by the same shared <see cref="PropLayoutCore"/> the compile path uses, with faults
+        /// discarded: a malformed declaration set is not this method's business (the compile path diagnoses it),
+        /// and the fingerprint of whatever layout the core produces is exactly what the generator's frozen
+        /// prototype was indexed against. Returns <c>null</c> for a parameter-less extension, which is what makes
+        /// the gauntlet check vacuous where there is nothing to check.</para>
+        /// </summary>
+        internal static string Fingerprint(Type extensionType)
+        {
+            if (extensionType == null || !DeclaresExtensionParameters(extensionType))
+                return null;
+
+            var slots = PropLayoutCore.Build(ReadDeclarations(extensionType), ReflectionTypeFacts.Instance,
+                DiscardingSink.Instance, out _);
+            return PropLayoutCore.Fingerprint(slots, ReflectionTypeFacts.Instance);
+        }
+
+        private sealed class DiscardingSink : IPropLayoutSink<Type>
+        {
+            internal static readonly DiscardingSink Instance = new DiscardingSink();
+
+            public void Fault(PropFault fault, PropDeclaration<Type> declaration, Type relatedType,
+                string relatedDisplay)
+            {
+            }
+
+            public bool TryConvertDefault(PropDeclaration<Type> declaration, Type targetType, out object converted,
+                out string sourceDisplay)
+            {
+                sourceDisplay = null;
+                return PropConversion.TryConvertLiteral(declaration.DefaultValue, declaration.DefaultValue == null,
+                    targetType, out converted);
+            }
+        }
+
         /// <summary>Phase 8 (D5): true iff <paramref name="extensionType"/> (or a base — <c>[Prop]</c> is
         /// <c>Inherited = true</c>) declares at least one extension parameter. The cheap gate the relaxed
         /// HED5005 check consults without building the full layout.</summary>
@@ -83,99 +122,97 @@ namespace Heddle.Runtime.Expressions
         internal static PropLayout ResolveFromExtension(Type extensionType, CompileScope compileScope,
             string ownerDisplay, BlockPosition ownerCallPosition)
         {
-            var slots = new List<PropSlot>();
-            var byName = new Dictionary<string, PropSlot>(StringComparer.Ordinal);
+            // Phase 3 (F4): the sequencing, indexing and fault ordering now live in the shared
+            // Language/Binding/PropLayoutCore, which the generator's emitter drives over Roslyn symbols. This
+            // method is the reflection adapter: decode the layers into declarations, hand the core an
+            // ITypeFacts<Type> and a sink, and re-shape the resulting slots.
+            var declarations = ReadDeclarations(extensionType);
+            var sink = new ReflectionPropSink(compileScope, ownerDisplay, ownerCallPosition);
+            var built = PropLayoutCore.Build(declarations, ReflectionTypeFacts.Instance, sink, out _);
 
-            // Base-type chain, outermost (deepest base) first — [Prop] is Inherited = true, so a subclass layers
-            // its own declarations over its base's, exactly as a derived definition does.
+            var slots = new List<PropSlot>(built.Count);
+            var byName = new Dictionary<string, PropSlot>(StringComparer.Ordinal);
+            foreach (var slot in built)
+            {
+                var resolved = new PropSlot
+                {
+                    Name = slot.Name,
+                    Type = slot.Type,
+                    Index = slot.Index,
+                    HasDefault = slot.HasDefault,
+                    DefaultBoxed = slot.DefaultBoxed,
+                    Position = ownerCallPosition
+                };
+                slots.Add(resolved);
+                byName.Add(resolved.Name, resolved);
+            }
+
+            return new PropLayout(slots, byName);
+        }
+
+        /// <summary>The reflection side's layer walk: the base-type chain outermost (deepest base) first, stopping
+        /// <b>at</b> <c>typeof(object)</c> (<see cref="PropLayoutCore.StopsAtObject"/>). <c>[Prop]</c> is
+        /// <c>Inherited = true</c>, so a subclass layers its own declarations over its base's exactly as a derived
+        /// definition does — which is why each layer is read with <c>inherit: false</c>.</summary>
+        private static List<PropDeclaration<Type>> ReadDeclarations(Type extensionType)
+        {
             var layers = new List<Type>();
             for (var t = extensionType; t != null && t != typeof(object); t = t.BaseType)
                 layers.Add(t);
             layers.Reverse();
 
-            foreach (var layer in layers)
+            var declarations = new List<PropDeclaration<Type>>();
+            for (int level = 0; level < layers.Count; level++)
             {
-                var attrs = layer.GetCustomAttributes(typeof(Attributes.PropAttribute), inherit: false);
-                var seenAtLevel = new HashSet<string>(StringComparer.Ordinal);
+                var attrs = layers[level].GetCustomAttributes(typeof(Attributes.PropAttribute), inherit: false);
                 foreach (Attributes.PropAttribute attr in attrs)
                 {
-                    var name = attr.Name;
-
-                    // A null/empty/whitespace name is not a usable parameter name (the attribute source admits
-                    // what the definition grammar cannot) — the name-validity fault class, HED5015's row (D6).
-                    if (string.IsNullOrWhiteSpace(name))
+                    declarations.Add(new PropDeclaration<Type>
                     {
-                        compileScope.CompileErrors.Add(
-                            $"A [Prop] parameter name on {ownerDisplay} is null or empty."
-                                .ToError(ownerCallPosition, HeddleDiagnosticIds.ReservedPropName));
-                        continue;
-                    }
-
-                    // The two ParseContext def-header pre-checks, re-raised over the attribute source (D6).
-                    if (name == "out" || name == "this")
-                    {
-                        compileScope.CompileErrors.Add(
-                            $"'{name}' is reserved and cannot be used as a prop name."
-                                .ToError(ownerCallPosition, HeddleDiagnosticIds.ReservedPropName));
-                        continue;
-                    }
-
-                    if (!seenAtLevel.Add(name))
-                    {
-                        compileScope.CompileErrors.Add(
-                            $"Prop '{name}' is declared more than once on {ownerDisplay}."
-                                .ToError(ownerCallPosition, HeddleDiagnosticIds.DuplicatePropDeclaration));
-                        continue;
-                    }
-
-                    // An unusable Type (null / open generic / pointer / by-ref) cannot type a parameter (HED5010;
-                    // the typeof() argument makes an unresolved *name* impossible — D6 correction).
-                    var clrType = attr.Type;
-                    if (clrType == null || clrType.ContainsGenericParameters || clrType.IsPointer || clrType.IsByRef)
-                    {
-                        compileScope.CompileErrors.Add(
-                            $"Cannot resolve type for prop '{name}' of {ownerDisplay}."
-                                .ToError(ownerCallPosition, HeddleDiagnosticIds.UnresolvedPropType));
-                        continue;
-                    }
-
-                    ExType type = clrType;
-                    bool hasDefault = attr.Default != null || attr.Optional;
-                    if (byName.TryGetValue(name, out var existing))
-                    {
-                        // Inherited re-declaration: keep the base slot index; the re-declared type must be
-                        // assignable to the inherited type, else HED5008 (the shared byName rule).
-                        if (!existing.Type.Type.IsType(type.Type))
-                        {
-                            compileScope.CompileErrors.Add(
-                                $"Prop '{name}' is re-declared with type {type.Type}, which is not assignable to the inherited type {existing.Type.Type}."
-                                    .ToError(ownerCallPosition, HeddleDiagnosticIds.PropRedeclarationMismatch));
-                            continue;
-                        }
-
-                        existing.Type = type;
-                        existing.Position = ownerCallPosition;
-                        ApplyDefaultCore(name, hasDefault, attr.Default, type, existing, ownerCallPosition,
-                            compileScope);
-                    }
-                    else
-                    {
-                        var slot = new PropSlot
-                        {
-                            Name = name,
-                            Type = type,
-                            Index = slots.Count,
-                            Position = ownerCallPosition
-                        };
-                        ApplyDefaultCore(name, hasDefault, attr.Default, type, slot, ownerCallPosition,
-                            compileScope);
-                        slots.Add(slot);
-                        byName.Add(name, slot);
-                    }
+                        Name = attr.Name,
+                        Type = attr.Type,
+                        Level = level,
+                        HasDefault = attr.Default != null || attr.Optional,
+                        DefaultValue = attr.Default
+                    });
                 }
             }
 
-            return new PropLayout(slots, byName);
+            return declarations;
+        }
+
+        /// <summary>The dynamic tier's fault sink: every fault class maps to its shipped <c>HED50xx</c> id and the
+        /// shared message text (<c>HeddleDiagnosticCatalog.PropFaults</c>), positioned at the first call site —
+        /// the extension's attribute source is C# and has no template position.</summary>
+        private sealed class ReflectionPropSink : IPropLayoutSink<Type>
+        {
+            private readonly CompileScope _compileScope;
+            private readonly string _ownerDisplay;
+            private readonly BlockPosition _position;
+
+            internal ReflectionPropSink(CompileScope compileScope, string ownerDisplay, BlockPosition position)
+            {
+                _compileScope = compileScope;
+                _ownerDisplay = ownerDisplay;
+                _position = position;
+            }
+
+            public void Fault(PropFault fault, PropDeclaration<Type> declaration, Type relatedType,
+                string relatedDisplay)
+            {
+                var message = HeddleDiagnosticCatalog.PropFaults.Message(fault, declaration.Name, _ownerDisplay,
+                    ReflectionTypeFacts.Instance.Display(declaration.Type), relatedDisplay);
+                _compileScope.CompileErrors.Add(
+                    message.ToError(_position, HeddleDiagnosticCatalog.PropFaults.RuntimeDiagnosticId(fault)));
+            }
+
+            public bool TryConvertDefault(PropDeclaration<Type> declaration, Type targetType, out object converted,
+                out string sourceDisplay)
+            {
+                bool isNull = declaration.DefaultValue == null;
+                sourceDisplay = declaration.DefaultValue?.GetType().Name ?? "null";
+                return PropConversion.TryConvertLiteral(declaration.DefaultValue, isNull, targetType, out converted);
+            }
         }
 
         internal static PropLayout Resolve(DefinitionItem definition, CompileScope compileScope)
