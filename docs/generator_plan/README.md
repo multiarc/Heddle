@@ -296,6 +296,35 @@ destroyed implementer work (phase 3's prop-layout fingerprint check), which had 
 from its red test. Future runs of this shape should commit each phase before review, and reviewers
 that mutate should work on a clone.
 
+### Finding 10 — the item metadata never worked from a real project (found 2026-07-26, fixed)
+
+The sharpest finding of the post-implementation work, because it invalidates a *delivered*
+acceptance claim rather than an unverified one.
+
+`Heddle.Generator.targets` restated each `HeddleTemplate` metadatum as
+`<Key>%(HeddleTemplate.Key)</Key>` inside an `Include="@(HeddleTemplate)"` transform. The transform
+already copies every metadatum, and **outside a target a cross-item `%()` reference evaluates to the
+empty string** — so each element *overwrote* the copied value with `""`. `Key` was inert.
+`Precompile="false"` was inert. `Name` was inert.
+
+So **phase 5's Q5.1 deliverable — "wire `Precompile` properly" — did not work end to end**, and its
+acceptance tests could not have shown it: every suite injects `build_metadata.*` directly into the
+analyzer-config provider and **no test crosses the targets file at all**. The phase reported the
+work as landed in good faith; the gap was in what the tests could see, which is the same failure
+mode the six phase audits found repeatedly, here reaching a shipped MSBuild surface.
+
+It also reframes Q8.12. The record said `Name` was dead code and removing it was harmless — true as
+far as it went, but the reason all three were dead was the targets file, not the metadata's
+existence. Restoring `Name` (the user's ruling) is what surfaced it.
+
+Fixed by deleting the restatements. Gated two ways, because one would not have caught it:
+structurally by `PipelineContractTests.EveryDeclaredItemMetadataIsReadByTheGeneratorAndNotNulledByTheTargets`
+(set equality *plus* a refusal of any future restatement), and behaviourally by the sample gallery,
+which is the only place a real MSBuild evaluation runs.
+
+**Standing lesson:** a build-surface contract verified only through injected analyzer-config values
+is unverified. Where a claim depends on MSBuild evaluation, something must actually evaluate MSBuild.
+
 ## Known program-level gap — the compile-channel drain is unscheduled
 
 Recorded during implementation (2026-07-25), because no phase owns it.
