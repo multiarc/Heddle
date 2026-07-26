@@ -106,7 +106,7 @@ file-backed sub-mode is the only way any test can ever catch hash-rule drift.
 `Heddle.Tests`/`Heddle.Performance`/`Heddle.LanguageServices` grants) so the integration suite can
 call `PrecompiledTemplates.ResetForTests()` between tests. Resolver-path tests join the existing
 `[Collection("PrecompiledRegistry")]` with `DisableParallelization = true`
-([ResolverIntegrationTests.cs:99-100](../../src/Heddle.Generator.IntegrationTests/ResolverIntegrationTests.cs));
+([ResolverIntegrationTests.cs:12,91](../../src/Heddle.Generator.IntegrationTests/ResolverIntegrationTests.cs));
 the unique-key tagging convention (`wi8-<tag>`) is kept as defense in depth.
 
 **Rationale.** The registry is process-global; without reset, corpus-scale registration would leak

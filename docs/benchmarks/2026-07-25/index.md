@@ -330,7 +330,7 @@ Two further notes on this row:
   well below this machine's measured 126 B/ns `memcpy` floor. The ceiling constant is conservative
   for this hardware, not the Askama figure implausible.
 - The fixture also exercises a known `@<<` layout-extend limitation documented in
-  [GoldenCorpus/README.md](../../../src/Heddle.Performance/GoldenCorpus/README.md), which is why the
+  [GoldenCorpus/README.md](../../../benchmarks/dotnet/GoldenCorpus/README.md), which is why the
   golden output is the fragment sequence rather than a full chrome-bearing page.
 
 ### Nothing in this run is optimised away

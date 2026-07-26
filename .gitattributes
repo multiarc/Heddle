@@ -30,9 +30,9 @@ src/Heddle.Demo.Wasm/contract-fixtures/**         text eol=lf
 # Golden oracle corpus: the *.golden.html files intentionally end WITHOUT a trailing newline and must
 # round-trip byte-exact on every platform, so they are pinned -text (no smudging at all) rather than
 # eol=lf. The JSON sidecars are ordinary LF text.
-src/Heddle.Performance/GoldenCorpus/*.golden.html -text
-src/Heddle.Performance/GoldenCorpus/*.verify.json text eol=lf
-src/Heddle.Performance/GoldenCorpus/manifest.json text eol=lf
+benchmarks/dotnet/GoldenCorpus/*.golden.html -text
+benchmarks/dotnet/GoldenCorpus/*.verify.json text eol=lf
+benchmarks/dotnet/GoldenCorpus/manifest.json text eol=lf
 
 # Rust benchmark harness: composed-page fragment data must round-trip byte-exact (-text); template
 # files are ordinary LF text (the harness erases their line endings, but LF keeps diffs clean).
