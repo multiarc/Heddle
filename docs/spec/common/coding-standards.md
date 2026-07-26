@@ -83,6 +83,37 @@ paragraph length, is noise. Prefer none over ceremonial. The exceptions that ear
 **Applies to existing code too.** When touching a file, strip the citations you find; do not preserve
 them for symmetry, and do not add new ones to match neighbours that still carry them.
 
+### A comment exists only if the code cannot carry the meaning itself
+
+**Default to no comment.** Before writing one, try to make the comment unnecessary: a clearer name, a
+named local instead of an inline expression, an extracted method whose name is the sentence you were
+about to write, an early return that removes the case you were about to explain. Better code beats a
+comment about worse code every time, and the comment is the option of last resort — not the polite
+thing to add on the way past.
+
+Write a comment only when the meaning **cannot** live in the code:
+
+- a **why** that no naming can express — a guard against a real failure, an ordering that matters, a
+  deliberate omission that reads like a bug, a workaround for external behaviour;
+- a **constraint a future edit would silently violate** — "must stay in sync with X", "callers rely on
+  this being ordinal";
+- a **test's scenario**, where the test name cannot carry it alone.
+
+Never write a comment that restates the line below it, narrates what the reader can see, marks
+sections (`// helpers`), or exists so the method "has documentation". Deleting such a comment loses
+nothing, and leaving it costs every future reader the time to discover that.
+
+**Public API documentation is exempt from "only if necessary" — a public member is documented — but not
+from being useful.** Its job is to tell a caller what they cannot see: the contract, the units, what
+counts as valid input, what happens on failure, what the caller now owns. Calibrate the length to
+that: too long and the contract drowns in prose nobody finishes; too short and it restates the
+signature (`/// <summary>Gets the name.</summary>`) while answering nothing. If a summary says only
+what the name already says, it is not documentation.
+
+One test for everything above: **read it as someone who has never seen this change.** If the comment
+tells them something the code cannot, keep it. If it tells them what they would have known anyway,
+delete it and, where the code was the reason they would not have known, fix the code instead.
+
 ## Language and target frameworks
 
 - Libraries ([Heddle](../../../src/Heddle/Heddle.csproj),
