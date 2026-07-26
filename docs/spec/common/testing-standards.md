@@ -191,3 +191,31 @@ The rule:
   [`.gitattributes`](../../../.gitattributes) per the rule above; byte-order marks are independent
   of that pin and get their own assertion, because a BOM-bearing fixture is either deliberate
   coverage or an accident and the two must be distinguishable.
+
+## Documentation currency
+
+Prose is an artifact with a maintainer, and a wrong sentence in a normative document is a latent bug
+rather than an untidiness — one has already been demonstrated to instruct a reader into breaking
+working code.
+
+- **A change that alters an observable behaviour names the documents that describe it, in the same
+  landing, and either updates them or records why not.** For four surfaces the named list is derived
+  rather than remembered: diagnostic ids (`DiagnosticIdTests` — every shipped id named in a published
+  page, and in the page the registry's owner column links), option names and defaults
+  (`WorkspaceOptionParityTests` — the documented settings table and the editor's contributed defaults),
+  public members (`PublicApiDocMentionTests` — documented `Type.Member` mentions against the API
+  goldens), and versions (`VersionConsistencyTests`). Links and line citations are covered separately
+  (`DocumentationLinkTests`). For everything else the list is a review obligation, and the rule's value
+  is that it exists to be pointed at.
+- **What cannot be gated is dated.** A document whose claims have been verified against source carries
+  a footer naming the commit and the date, and marks the individual claims some gate covers. That
+  marker is what makes documentation authority conditional: a marked claim outranks the
+  implementations, an unmarked one is evidence of intent, so a contradiction between it and both tiers
+  agreeing is investigated and recorded rather than obeyed.
+- **Recorded so the gap is not later mistaken for an oversight, the following are *not* gateable:**
+  prose accuracy about behaviour no test observes; the accuracy of a rationale or a design argument;
+  overstatement ("all", "every", "never", "exactly one") except where the quantity is machine-
+  countable; whether a document's *omissions* matter; and the ordering and emphasis choices that make
+  prose useful or misleading without any individual sentence being false. Pretending otherwise
+  produces either a gate that checks something trivial and calls it coverage, or a gate people
+  disable.
