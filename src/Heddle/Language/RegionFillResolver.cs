@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Heddle.Language
 {
-    /// <summary>The per-candidate outcome of the region-fill matching rule (generator plan phase 2 D7). The
+    /// <summary>The per-candidate outcome of the region-fill matching rule. The
     /// <em>decision</em> is shared; the <em>reactions</em> are each backend's own — the runtime retracts and
     /// raises HED5019, the generator un-precompiles — which is why this is a verdict rather than a bool.</summary>
     internal enum RegionFillVerdict
@@ -26,7 +26,7 @@ namespace Heddle.Language
     internal delegate bool TryLookupRegion(string name, out bool isPublic);
 
     /// <summary>
-    /// <para>Generator plan phase 2 D7 — the call-site region-fill matching rule, written once. Both backends
+    /// <para>The call-site region-fill matching rule, written once. Both backends
     /// already shared the materialization leaf (<see cref="DefinitionMaterializer"/>); this is the four-step
     /// decision <em>around</em> it that they duplicated with different table representations: origin-identity
     /// filter → region lookup → public gate → region-default fetch → materialize.</para>
@@ -62,7 +62,7 @@ namespace Heddle.Language
                 }
 
                 // The region default of THIS call site's isolated callee instance — the fill layers over it, so a
-                // self-call inside the override body resolves to this site's own base default (D4 steps 4/5).
+                // self-call inside the override body resolves to this site's own base default.
                 DefinitionItem regionDefault = null;
                 calleeDefinition?.Context?.DefinitionsBlock?.Definitions.TryGetValue(candidate.Name,
                     out regionDefault);

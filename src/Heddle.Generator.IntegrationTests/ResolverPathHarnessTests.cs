@@ -4,11 +4,10 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 0 WI2 (D2) — <see cref="DifferentialHarness.RenderViaResolver"/>'s own coverage: the WI8-shape template
-    /// from <see cref="ResolverIntegrationTests"/> renders byte-identically to the dynamic engine through the full
-    /// registration → resolver → per-request gauntlet → precompiled-adapter seam, in both sub-modes (registry-only and
-    /// file-backed with the staleness check on). This is the seam no test crossed before this phase: the direct-invoke
-    /// harness bypasses <c>Register</c>, <c>ConsultPrecompiled</c>, and every <c>PrecompiledGauntlet</c> check.
+    /// <see cref="DifferentialHarness.RenderViaResolver"/>'s own coverage: templates render byte-identically to the dynamic
+    /// engine through the full registration → resolver → per-request gauntlet → precompiled-adapter seam, in both sub-modes
+    /// (registry-only and file-backed with the staleness check on). This is the seam the direct-invoke harness bypasses:
+    /// <c>Register</c>, <c>ConsultPrecompiled</c>, and every <c>PrecompiledGauntlet</c> check.
     /// </summary>
     [Collection("PrecompiledRegistry")]
     public class ResolverPathHarnessTests : PrecompiledRegistryTestBase

@@ -74,9 +74,8 @@ namespace Heddle.Extensions
             var parentScope = scope.Parent();
             var format = GetInnerResult(parentScope);
 
-            // Phase 8 D10: format through the one span funnel on net6+ (empty format ≡ "G" ≡ ToString(InvariantCulture));
-            // the coercion + its three catch-and-render-nothing handlers are unchanged, and downlevel keeps the
-            // string-based form verbatim (ISpanFormattable does not exist there).
+            // Format through the one span funnel on net6+ (empty format ≡ "G" ≡ ToString(InvariantCulture));
+            // downlevel keeps the string-based form (ISpanFormattable does not exist there).
             if (model is int data)
             {
 #if NET6_0_OR_GREATER

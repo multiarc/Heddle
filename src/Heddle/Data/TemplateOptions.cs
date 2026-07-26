@@ -43,10 +43,10 @@ namespace Heddle.Data {
         public object Data { get; set; }
 
         /// <summary>
-        /// <para>Governs handling when a precompiled template entry exists for a lookup but fails the
-        /// per-request validation gauntlet (phase 7 D8). <see cref="PrecompiledMismatchPolicy.Fallback"/>
-        /// (default) recompiles dynamically and raises <c>HED7101</c>; <see cref="PrecompiledMismatchPolicy.Strict"/>
-        /// throws. A registry miss is unaffected by this setting.</para>
+        /// <para>Governs handling when a precompiled template entry exists for a lookup but fails the per-request
+        /// validation gauntlet. <see cref="PrecompiledMismatchPolicy.Fallback"/> (default) recompiles dynamically and
+        /// raises <c>HED7101</c>; <see cref="PrecompiledMismatchPolicy.Strict"/> throws. A registry miss is unaffected
+        /// by this setting.</para>
         /// <para>Copied by the copy constructor; deliberately absent from <see cref="Equals(TemplateOptions)"/>/
         /// <see cref="GetHashCode"/> and the resolver cache key — it changes failure handling, never output
         /// bytes.</para>
@@ -121,10 +121,10 @@ namespace Heddle.Data {
         {
         }
 
-        /// <summary>Every default comes from the shared <see cref="Heddle.Precompiled.HeddleBuildOptions"/> table
-        /// (phase 5 D8) — the same table the generator's option reader and the MSBuild props defaults are pinned
-        /// against, so a build-time and a run-time default can no longer drift into a permanent
-        /// <c>OptionsMismatch</c>. The parameterless constructor chains here rather than restating them.</summary>
+        /// <summary>Every default comes from the shared <see cref="Heddle.Precompiled.HeddleBuildOptions"/> table —
+        /// the same table the generator's option reader and the MSBuild props defaults are pinned against, so a
+        /// build-time and a run-time default can no longer drift into a permanent <c>OptionsMismatch</c>. The
+        /// parameterless constructor chains here rather than restating them.</summary>
         public TemplateOptions(string templateName) {
             FileNamePostfix = string.Empty;
             RootPath = AppContext.BaseDirectory;
@@ -151,18 +151,16 @@ namespace Heddle.Data {
             TrimDirectiveLines = value.TrimDirectiveLines;
             PrecompiledMismatchPolicy = value.PrecompiledMismatchPolicy;
             Encoder = value.Encoder;
-            RenderBudget = value.RenderBudget;   // C1: copied, but not part of Equals/GetHashCode or the fingerprint
-            ValidateModelType = value.ValidateModelType;   // P4-Q2: copied, but not part of Equals/GetHashCode or the fingerprint
+            RenderBudget = value.RenderBudget;   // Copied, but not part of Equals/GetHashCode or the fingerprint.
+            ValidateModelType = value.ValidateModelType;   // Copied, but not part of Equals/GetHashCode or the fingerprint.
         }
 
         /// <summary>The composed on-disk path of this template — <b>the</b> composition rule, which
-        /// <c>FileReader.GetFileName</c> now reads rather than restates (generator plan phase 6 D8/WI10).
-        /// Previously this was a naive <c>RootPath + TemplateName + FileNamePostfix</c> concatenation while the
-        /// reader used <see cref="System.IO.Path.Combine(string,string)"/>, so a host that set
-        /// <c>RootPath</c> without a trailing separator got a defective string here — visible as
-        /// <c>ImportOrigin</c>/<c>ImportedFrom</c> text — while resolution silently worked. The comment at
-        /// <c>HeddleTemplate</c> records a shipped bug from a previous divergence of this same pair; there is now
-        /// only one statement of the rule to diverge from.</summary>
+        /// <c>FileReader.GetFileName</c> now reads rather than restates. Previously this was a naive
+        /// <c>RootPath + TemplateName + FileNamePostfix</c> concatenation while the reader used
+        /// <see cref="System.IO.Path.Combine(string,string)"/>, so a host that set <c>RootPath</c> without a trailing
+        /// separator got a defective string here — visible as <c>ImportOrigin</c>/<c>ImportedFrom</c> text — while
+        /// resolution silently worked. There is now only one statement of the rule to diverge from.</summary>
         public string FullPath =>
             System.IO.Path.Combine(RootPath ?? string.Empty, TemplateName + FileNamePostfix);
 
@@ -194,8 +192,8 @@ namespace Heddle.Data {
         {
             unchecked {
                 var hash = ((((TemplateName?.GetHashCode() ?? 0) * 397) ^ (int) OutputProfile) * 397) ^ (TrimDirectiveLines ? 1 : 0);
-                // By-reference identity (B2-R6): TextEncoder does not override GetHashCode, so its default is
-                // reference-based — a different encoder instance yields a different key.
+                // By-reference identity: TextEncoder does not override GetHashCode, so its default is reference-based
+                // — a different encoder instance yields a different key.
                 return (hash * 397) ^ (Encoder != null ? System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Encoder) : 0);
             }
         }

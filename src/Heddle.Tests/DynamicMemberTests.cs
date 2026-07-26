@@ -17,11 +17,11 @@ namespace Heddle.Tests
     }
 
     /// <summary>
-    /// Phase 4 WI9 (D11 / 04 F8 / OQ3) — <see cref="PrecompiledRuntime.DynamicMember"/> is the single implementation
-    /// of a dynamic member hop. Generated code used to inline a <c>(dynamic)</c> cast chain, which binds in the
-    /// <b>consumer's</b> assembly context and therefore saw the consumer's <c>internal</c> members — members the
-    /// engine's own dynamic tier, binding in <c>Heddle</c>'s context, cannot see. The rule is not code-sharable, so
-    /// the fix is making the choice exist once; these tests pin what that once-chosen behavior is.
+    /// <see cref="PrecompiledRuntime.DynamicMember"/> is the single implementation of a dynamic member hop.
+    /// Generated code used to inline a <c>(dynamic)</c> cast chain, which binds in the <b>consumer's</b> assembly
+    /// context and therefore saw the consumer's <c>internal</c> members — members the engine's own dynamic tier,
+    /// binding in <c>Heddle</c>'s context, cannot see. The rule is not code-sharable, so the fix is making the
+    /// choice exist once; these tests pin what that once-chosen behavior is.
     /// </summary>
     public class DynamicMemberTests
     {
@@ -59,9 +59,9 @@ namespace Heddle.Tests
         [Fact]
         public void BindsInHeddlesContext_SoAForeignInternalMemberStaysInvisible()
         {
-            // The OQ3 ruling, pinned: the engine's behavior is normative and the generator reproduces it. Note the
-            // deliberate asymmetry this preserves — the *typed* member tier accepts an internal getter regardless of
-            // assembly; harmonizing the two is a breaking-window candidate, not a drift fix.
+            // The engine's behavior is normative and the generator reproduces it. Note the deliberate asymmetry
+            // this preserves — the *typed* member tier accepts an internal getter regardless of assembly;
+            // harmonizing the two is a breaking-window candidate, not a drift fix.
             Assert.Throws<RuntimeBinderException>(
                 () => PrecompiledRuntime.DynamicMember(new DynamicHopModel { Secret = "s" }, "Secret"));
         }

@@ -33,9 +33,7 @@ namespace Heddle.Core
         {
             if (_processStrategy == null)
                 return _innerResult;
-            // Phase 3 D2/D5: install the body's local-context frame. A participating body gets a fresh
-            // frame; a non-participating body under a provisioned parent gets a cleared (null) frame so it
-            // never sees the parent's; otherwise the incoming scope passes through unchanged (fast path).
+            // Three scope-frame cases: fresh frame if body needs locals; cleared if parent provisioned but body doesn't; passthrough (fast path) otherwise.
             if (_needsLocals)
                 return _processStrategy.Execute(scope.WithLocals(new ScopeLocals()));
             if (scope.Locals != null)
@@ -72,10 +70,7 @@ namespace Heddle.Core
         }
 
         /// <summary>
-        /// Phase 7 D5 (<c>PrecompiledRuntime.Bind</c>): installs a generated body on this pre-constructed extension,
-        /// reproducing what <see cref="InitStart"/> does for a subtemplate — store the body strategy, apply the
-        /// render type, record the frame-provisioning flag, and set the source position — without a
-        /// <c>RuntimeDocument</c>. Called once, from a generated static initializer (thread-safe via CLR type-init);
+        /// Install a precompiled body without a <c>RuntimeDocument</c>. Thread-safe via CLR type-init;
         /// the extension is never mutated after it returns.
         /// </summary>
         internal void BindPrecompiled(IProcessStrategy body, RenderType renderType, bool needsLocals,

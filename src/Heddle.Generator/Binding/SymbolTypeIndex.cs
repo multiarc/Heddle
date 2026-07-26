@@ -5,17 +5,17 @@ using Microsoft.CodeAnalysis;
 namespace Heddle.Generator.Binding
 {
     /// <summary>
-    /// Phase 3 (F8 / Q3.5): the build tier's mirror of <c>ReflectionHelper</c>'s global name index, so model type
-    /// names resolve by the <b>runtime's</b> rule rather than a different one.
+    /// The build tier's mirror of <c>ReflectionHelper</c>'s global name index, so model type names resolve by
+    /// the <b>runtime's</b> rule rather than a different one.
     /// <para>The runtime indexes every type of every loaded assembly under its metadata short name
     /// (<c>C`1</c>, <c>Outer+Inner</c>, plus a dotted <c>Outer.Inner</c> alias because the template lexer cannot
     /// accept <c>+</c>) and its namespace-qualified full name, then resolves: exactly one hit wins; several hits are
     /// settled by the template's <c>@using</c> imports; a tie the imports do not settle is the "ambigous" error.
     /// This class builds the same index over the compilation and its referenced assemblies.</para>
     /// <para>The generator's previous rule was unrelated: first <c>@using</c> match, then an <b>implicit</b>
-    /// <c>System</c>/<c>System.Collections.Generic</c> fallback the runtime does not have. That is the one
-    /// non-fallback-safe edge in F8 — <c>:: List</c> could bind to different types on the two tiers, and emitted
-    /// typed code then types member hops off the wrong type. The implicit namespaces are gone.</para>
+    /// <c>System</c>/<c>System.Collections.Generic</c> fallback the runtime does not have. This created a risk where
+    /// <c>:: List</c> could bind to different types on the two tiers, and emitted typed code would type member hops
+    /// off the wrong type. The implicit namespaces are gone.</para>
     /// </summary>
     internal sealed class SymbolTypeIndex
     {
@@ -126,7 +126,7 @@ namespace Heddle.Generator.Binding
             // Several claimants — the imports settle it, or the name is ambiguous. This is the rule the runtime's
             // short-name arm used to break by taking the first assembly-scan-ordered import match: an
             // order-dependent silent pick the build tier cannot reproduce by construction. Both tiers now raise
-            // the ambiguity instead (phase 3, Q3.5 / OQ5's escape clause).
+            // the ambiguity instead.
             INamedTypeSymbol single = null;
             int matches = 0;
             foreach (var candidate in candidates)

@@ -6,32 +6,21 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// <para>Q8.12 / Q8.25: the <c>Name</c> item metadata as an <b>additional import name</b>. Phase 5 deleted the
-    /// metadata on a register entry reading "<c>Name</c> removed per the recommendation"; the ask had only ever been
-    /// to wire <c>Precompile</c>. <c>Name</c> was genuinely dead — declared <c>CompilerVisibleItemMetadata</c>, never
-    /// mapped onto <c>AdditionalFiles</c> by <c>Heddle.Generator.targets</c>, never read — so its removal changed no
-    /// behaviour and <c>samples/codegen-t4-successor</c>'s <c>Name="BuildReport"</c> was always ignored. The defect
-    /// was that the feature was never wired, not that the metadata existed.</para>
-    /// <para><b>The first implementation of it was wrong, and this fixture is the corrected one.</b> Q8.12 landed
-    /// <c>Name</c> as a <em>second spelling of <c>Key</c></em> — one setting, so it shared every downstream rule. That
-    /// is an <em>override</em>: it replaced the path-derived key, and every <c>@&lt;&lt;</c> that named the file
-    /// stopped resolving and drew HED7011. Q8.25 corrects it. <c>Name</c> is <b>additive</b>: the template keeps its
-    /// path-derived (or explicit <c>Key</c>) registration key <em>and</em> gains the registered name, so both spellings
-    /// resolve and nothing that resolved before stops resolving.</para>
-    /// <para><b>What that makes of each rule</b>, re-derived rather than carried over from the override premise:
+    /// <para>The <c>Name</c> item metadata as an <b>additional import name</b>, distinct from the registration <c>Key</c>.
+    /// Where an earlier implementation replaced the key with the name (causing existing imports to fail), this corrected
+    /// version is additive: the template keeps its path-derived or explicit key and gains the registered name as an
+    /// additional spelling. Both spellings resolve, and nothing that resolved before stops resolving.</para>
+    /// <para>Behavioral coverage:</para>
     /// <list type="bullet">
-    /// <item>The registration key, the manifest row, the generated entry-class identifier and the emitted
-    /// <c>#line</c> file are all untouched by <c>Name</c>. Only <c>Key</c> moves the key.</item>
-    /// <item>HED7002 and HED7003 are over keys only — a name registers no manifest row and is never a registry
-    /// lookup, so it can neither duplicate a key nor case-shadow one.</item>
-    /// <item>HED7018 is suppressed by <c>Key</c> only: an additive <c>Name</c> leaves the flattened out-of-root key
-    /// in place, still unasked-for, so the warning is still about something real.</item>
-    /// <item><c>Key</c> + <c>Name</c> is <b>not</b> a conflict — it is two names for one template, which is the whole
-    /// point. The override implementation reported HED7004 for it; that report is gone.</item>
-    /// <item>HED7004 keeps a <c>Name</c> arm for the two ways a name is <em>unusable</em>: a value the normalizer
-    /// refuses, and a spelling another template already answers to. Neither un-precompiles the template — a broken
-    /// addition costs the addition and nothing else.</item>
-    /// <item>HED7028 is new: importing a named template by its key resolves, and says so.</item>
+    /// <item>The registration key, manifest row, generated entry-class identifier, and <c>#line</c> file are untouched
+    /// by <c>Name</c>. Only <c>Key</c> moves the key.</item>
+    /// <item>HED7002 and HED7003 apply to keys only; a name registers no manifest row and is never a registry lookup.</item>
+    /// <item>HED7018 (out-of-root warning) is suppressed by <c>Key</c> only; an additive <c>Name</c> leaves the flattened
+    /// key in place and unasked-for, so the warning stands.</item>
+    /// <item><c>Key</c> + <c>Name</c> together are two names for one template, not a conflict: two registration spellings.</item>
+    /// <item>HED7004 covers unusable names: a value the normalizer refuses, or a spelling another template's key already
+    /// answers to. A broken name costs only the name, not the template's key.</item>
+    /// <item>HED7028 advises when a named template is imported by its key instead of its preferred name spelling.</item>
     /// </list></para>
     /// </summary>
     public class TemplateNameMetadataTests
@@ -71,11 +60,8 @@ namespace Heddle.Generator.Tests
         private static IEnumerable<Diagnostic> WithId(GeneratorRun run, string id) =>
             run.GeneratorDiagnostics.Where(d => d.Id == id);
 
-        // ---- Additive resolution: both spellings resolve --------------------------------------------------
-
-        /// <summary>The correction itself (Q8.25). A named template imported <b>by its path</b> still resolves. This
-        /// is the test that reddened under the override implementation, with exactly HED7011, and it is the whole
-        /// reason the implementation changed: "nothing that resolved before may stop resolving".</summary>
+        /// <summary>A named template imported <b>by its path</b> still resolves, testing the core invariant: nothing
+        /// that resolved before may stop resolving.</summary>
         [Fact]
         public void ANamedTemplateIsStillImportableByItsPath()
         {
@@ -159,18 +145,11 @@ namespace Heddle.Generator.Tests
             Assert.DoesNotContain("THE-REPORT", Source(run, "class Page"));
         }
 
-        // ---- What Name does NOT change ------------------------------------------------------------------
-
         /// <summary>
-        /// <para>The registration key is untouched: the manifest row's <c>key</c> and the generated entry class stay
-        /// path-derived. Under the override implementation this test's expectations were the exact inverse.</para>
-        /// <para><b>Q8.30 changed one of them.</b> This test used to assert
-        /// <c>DoesNotContain("BuildReport", manifest)</c> — the manifest carried keys only, because Q8.25 scoped
-        /// <c>Name</c> to build-time import resolution. The manifest now carries the name in its <em>own</em> field, so
-        /// the assertion becomes the sharper one it should always have been: the name does not move the <c>key</c>, the
-        /// entry class or the <c>#line</c> file, and it appears in exactly one place, as <c>registeredName</c>. The
-        /// blanket "the string does not appear" form could not distinguish "the name is recorded as a name" from "the
-        /// name replaced the key", which is the confusion the whole Q8.12→Q8.25→Q8.30 sequence is about.</para>
+        /// <para>The registration key is untouched by <c>Name</c>: the manifest row's <c>key</c> and the generated
+        /// entry class stay path-derived. The test asserts that <c>Name</c> appears as a distinct <c>registeredName</c>
+        /// field in the manifest, not as the key, to ensure the name is recorded additively rather than as a replacement.
+        /// </para>
         /// </summary>
         [Fact]
         public void NameIsRecordedAsANameAndDoesNotChangeTheKeyOrTheEntryClass()
@@ -271,10 +250,8 @@ namespace Heddle.Generator.Tests
         }
 
         /// <summary><c>Key</c> and <c>Name</c> together are <b>two names for one template</b>, not a conflict: the key
-        /// is what <c>Key</c> says, and the name is an extra import spelling on top. The override implementation
-        /// reported HED7004 here, on the reasoning that there was "no defensible precedence between two equally
-        /// explicit requests" — with <c>Name</c> additive there is no precedence to settle, because the two requests
-        /// are about different things.</summary>
+        /// determines the registration key, and the name is an additional import spelling. No precedence to settle
+        /// because they serve different purposes.</summary>
         [Fact]
         public void KeyAndNameTogetherAreTwoNamesForOneTemplateNotAConflict()
         {
@@ -290,8 +267,6 @@ namespace Heddle.Generator.Tests
             Assert.Contains("BANNER-TEXT", Source(run, "class ByKey"));
             Assert.Contains("BANNER-TEXT", Source(run, "class ByName"));
         }
-
-        // ---- HED7002 / HED7003: keys only ---------------------------------------------------------------
 
         /// <summary>A name is not a key, so it cannot duplicate one: HED7002's population is unchanged by the feature.
         /// The collision is real, but it is an <em>import-name</em> collision and is reported as HED7004 against the
@@ -346,8 +321,6 @@ namespace Heddle.Generator.Tests
             Assert.Single(WithId(twin, "HED7003"));
         }
 
-        // ---- HED7004: the two ways a name is unusable ---------------------------------------------------
-
         /// <summary>A <c>Name</c> the normalizer rejects is an error, not a silent no-op: the user asked for an import
         /// name and did not get one. It does <b>not</b> un-precompile the template — the key is unaffected, so the
         /// broken addition costs only the addition.</summary>
@@ -380,8 +353,8 @@ namespace Heddle.Generator.Tests
             Assert.DoesNotContain("key: \"", Manifest(run));
         }
 
-        /// <summary>A name another template's <b>key</b> already answers to cannot be registered — registering it
-        /// would be the override this correction removes — so it draws HED7004 against the name.</summary>
+        /// <summary>A name that another template's key already answers to cannot be registered, drawing HED7004 against
+        /// the name.</summary>
         [Fact]
         public void ANameASiblingsKeyAlreadyAnswersToReportsHed7004()
         {
@@ -437,13 +410,9 @@ namespace Heddle.Generator.Tests
             Assert.Contains("BANNER-TEXT", Source(run, "class Page"));
         }
 
-        // ---- HED7018: only Key suppresses --------------------------------------------------------------
-
-        /// <summary>HED7018 says "your directory silently vanished from the key and you did not ask for that". An
-        /// explicit <c>Key</c> <em>is</em> asking for the key it names, so it suppresses. An additive <c>Name</c> is
-        /// not: the flattened key still exists, is still what the registry and the staleness check use, and is still
-        /// unasked-for — so the warning is about something real and must stand. Q8.12 recorded the opposite (a
-        /// <c>Name</c> suppressed it too), which was correct only while <c>Name</c> replaced the key.</summary>
+        /// <summary>HED7018 warns when a directory is flattened from the registration key without being requested.
+        /// An explicit <c>Key</c> asks for the key it names and suppresses the warning. An additive <c>Name</c> does
+        /// not affect the key: the flattened key still exists and is still unasked-for, so the warning stands.</summary>
         [Fact]
         public void OnlyAnExplicitKeySuppressesTheOutOfRootWarning()
         {
@@ -464,9 +433,7 @@ namespace Heddle.Generator.Tests
             Assert.Contains("key: \"banner.heddle\"", Manifest(withName));
         }
 
-        // ---- HED7028: the advisory ----------------------------------------------------------------------
-
-        /// <summary>HED7028: importing a named template by its key works, and the build says the name-first spelling
+        /// <summary>Importing a named template by its key works; the build advises the name-first spelling
         /// is preferred. A warning at the importer's <c>@&lt;&lt;{{…}}</c> block — guidance, never a break, which is
         /// asserted by the absence of any error and by the import having actually resolved.</summary>
         [Fact]
@@ -563,17 +530,9 @@ namespace Heddle.Generator.Tests
             Assert.Empty(WithId(run, "HED7028"));
         }
 
-        // ---- Q8.28 / Q8.29: an opted-out item is validated and advised ---------------------------------
-
-        /// <summary>
-        /// <para>Q8.28. The diagnostics loop used to <c>continue</c> on <c>!Precompile</c> <em>before</em> key
-        /// derivation, so a malformed <c>Name</c> on an import-only item produced <b>no diagnostic at all</b>: the name
-        /// silently failed to register, and every <c>@&lt;&lt;</c> that used it drew HED7011 at the <em>importer</em> —
-        /// pointing at a file that was written correctly, about a fault in a different file.</para>
-        /// <para>That population is not an edge case: a <c>Precompile="false"</c> partial under a friendly name is the
-        /// primary use case for the <c>Name</c>/<c>Precompile</c> pair, so it was precisely the case whose faults were
-        /// unreportable.</para>
-        /// </summary>
+        /// <summary>A malformed <c>Name</c> on an opted-out item must be validated and reported, even though the item
+        /// does not precompile. Opted-out items participate in the import graph and their registration faults need to be
+        /// visible at the defining file, not deferred to importers.</summary>
         [Theory]
         [InlineData("../escape")]
         [InlineData("  ")]
@@ -646,10 +605,8 @@ namespace Heddle.Generator.Tests
             Assert.Contains("BANNER-TEXT", Source(run, "class Page"));
         }
 
-        /// <summary>Q8.29: HED7028 fires for an import inside an opted-out file. The advisory is raised by the
-        /// <em>importer</em>, and an opted-out importer never parsed, so the case the advisory is most for — a named
-        /// partial imported by path from another partial — could not be advised. Q8.28 and Q8.29 are one defect from
-        /// either end and get the same answer: an opted-out template is still a participant in the import graph.
+        /// <summary>HED7028 fires for an import inside an opted-out file. Opted-out templates participate in the import
+        /// graph and trigger advisories on their imports, even though they do not generate output themselves.
         /// </summary>
         [Fact]
         public void Hed7028FiresForAnImportInsideAnOptedOutFile()
@@ -707,8 +664,6 @@ namespace Heddle.Generator.Tests
             Assert.Single(WithId(run, "HED7011"));
         }
 
-        // ---- #line: the file, and its relativity (Q8.12 separation, Q8.31 carrier) ---------------------
-
         /// <summary>The <c>#line</c> file names the <b>file</b>, the key names the <b>registration</b>. Conflating them
         /// was invisible while every key was path-derived — the two strings were equal — and an explicit <c>Key</c>
         /// makes it observable: the generated code's mapped spans pointed at a path that exists nowhere. A <c>Name</c>
@@ -732,15 +687,10 @@ namespace Heddle.Generator.Tests
         }
 
         /// <summary>
-        /// <para>Q8.27's relativity marking, <b>as Q8.31 relocated it</b>. Under the template root the <c>#line</c>
-        /// file is root-relative — an absolute path would be right for one machine and would bake that machine's
-        /// layout into every checked-in generated-source golden, so the form stays relative and is <em>labelled</em>
-        /// instead of being churned. What changed is where the label lives: Q8.27 emitted a comment line under
-        /// <c>// &lt;auto-generated/&gt;</c>, and Q8.31 makes it the manifest row's <c>linePathForm</c>, because a
-        /// comment is unreadable to the tools that would want it (a stack-trace symbolizer, an IDE, the LSP).</para>
-        /// <para>Both halves are asserted together — the form is recorded <em>and</em> the comment is gone — so an
-        /// implementation that added the manifest field without removing the prose cannot pass. Two carriers for one
-        /// fact is the state this closes.</para>
+        /// <para>Under the template root the <c>#line</c> file is root-relative — an absolute path would bake one
+        /// machine's layout into every checked-in golden. The form is recorded in the manifest's <c>linePathForm</c>
+        /// field rather than as a comment, because comments are unreadable to stack-trace symbolizers, IDEs, or LSP.
+        /// </para>
         /// </summary>
         [Fact]
         public void UnderTheRootTheLineFileIsRootRelativeAndTheFormIsRecordedInTheManifest()
@@ -752,14 +702,13 @@ namespace Heddle.Generator.Tests
             Assert.Contains("\"templates/report.heddle\"", source);
             Assert.Contains("linePathForm: global::Heddle.Precompiled.PrecompiledLinePathForm.RootRelative",
                 Manifest(run));
-            // The comment Q8.27 added is gone from the generated file.
+            // The line-path form is recorded in the manifest, not as a comment in generated code.
             Assert.DoesNotContain("#line file names below", source);
         }
 
-        /// <summary>Q8.27, the absolute half, likewise relocated. Outside the root there is no anchor to be relative
-        /// to, so the template's own path is emitted — absolute in a real build, which is what a <c>#line</c> is for —
-        /// and the manifest records <em>which</em> form it is. This replaces a bare-filename fallback that named no
-        /// openable file and collided across directories.</summary>
+        /// <summary>Outside the template root there is no anchor for relativity, so the template's own path is emitted
+        /// in the <c>#line</c> directive (absolute in a real build), and the manifest records this form. This replaces
+        /// a bare-filename fallback that was not openable and collided across directories.</summary>
         [Fact]
         public void OutsideTheRootTheLineFileIsTheTemplatesOwnPathAndTheFormIsRecorded()
         {

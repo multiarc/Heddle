@@ -11,10 +11,9 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 WI10 (raison-d'être): rendering a precompiled template is a lookup, not a parse-and-compile. Hooking
-    /// <see cref="AppDomain.AssemblyLoad"/> around the render, no ANTLR (<c>Heddle.Language</c>/<c>Antlr4</c>) or
-    /// Roslyn (<c>Microsoft.CodeAnalysis</c>) assembly load is triggered — the precompiled path never enters the
-    /// dynamic front end.
+    /// Rendering a precompiled template is a lookup, not a parse-and-compile. Hooking <see cref="AppDomain.AssemblyLoad"/>
+    /// around the render, no ANTLR (<c>Heddle.Language</c>/<c>Antlr4</c>) or Roslyn (<c>Microsoft.CodeAnalysis</c>) assembly
+    /// load is triggered — the precompiled path never enters the dynamic front end.
     /// </summary>
     [Collection("PrecompiledRegistry")]
     public class StartupProbeTests

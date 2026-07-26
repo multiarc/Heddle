@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace Heddle.Data
 {
     /// <summary>
-    /// Phase 3 (F4): one prop-declaration fault class. Declaration order <b>is</b> the runtime's validation order
+    /// One prop-declaration fault class. Declaration order <b>is</b> the runtime's validation order
     /// (see <c>HeddleDiagnosticCatalog.PropFaults.FaultOrder</c>); the shared <c>PropLayoutCore</c> is the only
     /// evaluator, so both tiers report the same fault for the same declaration in the same sequence.
     /// </summary>
@@ -69,14 +69,13 @@ namespace Heddle.Data
     }
 
     /// <summary>
-    /// <para>The id → row table: the single <b>code-side</b> registry of Heddle diagnostic identity (generator
-    /// plan phase 6 D4). Before it, id → (title, severity, message) was maintained in four unsynchronized
-    /// places — the raise sites here, the generator's Roslyn <c>DiagnosticDescriptor</c>s, and two markdown
-    /// tables — and had already drifted.</para>
+    /// <para>The id → row table: the single <b>code-side</b> registry of Heddle diagnostic identity. Before it,
+    /// id → (title, severity, message) was maintained in four unsynchronized places — the raise sites here,
+    /// the generator's Roslyn <c>DiagnosticDescriptor</c>s, and two documentation tables — and had already
+    /// drifted.</para>
     /// <para>Pure data over <see cref="string"/> and a two-value enum: no Roslyn, no dependencies, netstandard2.0,
     /// so the file links into the source generator as-is and the generator's descriptor factory is the only place
-    /// that touches <c>DiagnosticDescriptor</c>. The docs-side registries
-    /// (<c>docs/spec/common/cross-cutting-decisions.md</c>, <c>docs/precompilation.md</c>) are gated against this
+    /// that touches <c>DiagnosticDescriptor</c>. The documentation-side registries are gated against this
     /// table by <c>DiagnosticIdTests</c> and the generator's registry lockstep test.</para>
     /// <para><b>Content authority.</b> For a runtime-raised id the raise site is authoritative for severity;
     /// <see cref="HeddleDiagnosticInfo.MessageFormat"/> stays <c>null</c> there, because the raise site is also
@@ -96,13 +95,11 @@ namespace Heddle.Data
             public static readonly string[] ReservedNames = { "out", "this" };
 
             /// <summary>
-            /// Phase 3 (F4): the fault classes a prop-declaration list can produce, <b>in the runtime's validation
+            /// The fault classes a prop-declaration list can produce, <b>in the runtime's validation
             /// order</b> — the order <c>PropLayout.ResolveFromExtension</c> applies them in per declaration.
             /// <para>The shared <c>PropLayoutCore</c> evaluates the checks in exactly this sequence on both tiers,
             /// so "same fault, same declaration, same order" is a property the lockstep test can assert rather
-            /// than a coincidence of two hand-kept validators. Phase 6 deferred this list to phase 3 precisely
-            /// because an ordered fault vocabulary with no consumer would be the second copy the program exists to
-            /// prevent.</para>
+            /// than a coincidence of two hand-kept validators.</para>
             /// </summary>
             public static readonly PropFault[] FaultOrder =
             {
@@ -136,7 +133,7 @@ namespace Heddle.Data
             }
 
             /// <summary>
-            /// Phase 3 (from phase 6 WI5): the <b>one</b> fault sentence both tiers quote. The dynamic tier used to
+            /// The <b>one</b> fault sentence both tiers quote. The dynamic tier used to
             /// spell these five conditions one way (<c>HED5007</c>/<c>HED5008</c>/<c>HED5009</c>/<c>HED5010</c>/
             /// <c>HED5015</c>) and the build tier another (<c>HED7017</c>'s fault fragment), for the same rule
             /// evaluated by the same shared core. <paramref name="owner"/> is the complete owner noun phrase
@@ -276,8 +273,8 @@ namespace Heddle.Data
             Add(HeddleDiagnosticIds.BuildCaseOnlyKeyTwin, "Case-only template key twin", warning,
                 "Templates '{0}' and '{1}' differ only by case; ordinal-case-sensitive keys make one shadow the " +
                 "other");
-            // Q8.12 generalized the message: the fault class is "this item's explicit key metadata is unusable", and
-            // the metadata is now spellable two ways (Key, Name) with a third instance of the same fault — two
+            // The message is deliberately general: the fault class is "this item's explicit key metadata is
+            // unusable", and the metadata is spellable two ways (Key, Name) with a third instance of the same fault — two
             // spellings naming two different keys. One id, one call site; {1} names the offending metadata and says
             // why, so a new spelling or a new reason needs no new descriptor.
             Add(HeddleDiagnosticIds.BuildInvalidKeyMetadata, "Invalid Heddle template key metadata", error,
@@ -348,7 +345,7 @@ namespace Heddle.Data
                 "{0} The Heddle runtime rejects the same call with {1} when it compiles this template, so the " +
                 "build reports it here rather than pre-compiling a call it has already proved illegal. Cast an " +
                 "argument to one candidate's parameter type, or change the argument list to match one candidate.");
-            // Q8.25. Unlike HED7004 — "this item's explicit key metadata is unusable" — nothing here is unusable:
+            // Unlike HED7004 — "this item's explicit key metadata is unusable" — nothing here is unusable:
             // the import resolved. The advice is about which of two working spellings to prefer, so it is its own
             // fault class at its own severity and needs its own id.
             Add(HeddleDiagnosticIds.BuildNamedTemplateImportedByKey,

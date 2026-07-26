@@ -5,7 +5,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Enum defaults, options identity (phase 2 D6), and CompileContext profile plumbing (D4):
+    /// Enum defaults, options identity, and CompileContext profile plumbing:
     /// initialization from options, child-context snapshotting of the effective (possibly directive-flipped)
     /// profile, and effective-vs-options precedence.
     /// </summary>

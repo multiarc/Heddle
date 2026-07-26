@@ -74,7 +74,6 @@ namespace Heddle.Tests
             var target = new HeddleTemplate("@(@ 1_000 + 0b1010 + 0xFF_FF )",
                 new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp }));
             Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
-            // 1000 + 0b1010 (10) + 0xFFFF (65535) = 66545
             Assert.Equal("66545", target.Generate(null));
         }
 
@@ -684,9 +683,9 @@ namespace Heddle.Tests
             };
             var target = new HeddleTemplate(new CompileContext(options));
             Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
-            // Phase 4 D5: vc-test deliberately combines '<default> -> ()' with two '@default()' by-name calls
-            // to pin override layering across three renders — exactly two HED4002 double-render warnings, both
-            // naming 'default', and nothing else. The warning does not alter output (the golden below proves it).
+            // vc-test deliberately combines '<default> -> ()' with two '@default()' by-name calls to pin override
+            // layering across three renders — exactly two HED4002 double-render warnings, both naming 'default',
+            // and nothing else. The warning does not alter output (the golden below proves it).
             var doubleRenderWarnings = target.Context.CompileWarnings
                 .Where(w => w.DiagnosticId == HeddleDiagnosticIds.DefinitionRendersTwice)
                 .ToList();

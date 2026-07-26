@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis;
 namespace Heddle.Generator.Binding
 {
     /// <summary>
-    /// The retention contract around <see cref="SymbolTypeIndex"/>'s per-<see cref="Compilation"/> index (Q8.17).
+    /// The retention contract around <see cref="SymbolTypeIndex"/>'s per-<see cref="Compilation"/> index.
     /// <para>Building the index walks every type of the compilation and of every referenced assembly, so reuse
     /// across the many model-type resolutions of one generator pass is worth having. Keeping the built indexes
     /// forever is not: a <see cref="Compilation"/> is immutable, the IDE creates a new one per keystroke-batch,

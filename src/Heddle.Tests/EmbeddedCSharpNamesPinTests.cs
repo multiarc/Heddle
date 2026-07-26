@@ -8,12 +8,12 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Generator plan phase 1 WI8 (D9) — the embedded-C# identifier contract. The dynamic tier declares
-    /// <c>model</c>/<c>chained</c>/<c>root</c> as the parameter list of the method it generates from two embedded
-    /// <c>.tcs</c> resources; the emitter declares the model one as a local and refuses expressions naming the
-    /// other two. Because the <c>.tcs</c> side is literal template text, the consts cannot flow into it — so this
-    /// pin reads the resources and asserts the spelling instead. Renaming a <c>.tcs</c> parameter silently changes
-    /// what a pasted C# expression means on the dynamic tier only; this test is the tripwire.
+    /// The embedded-C# identifier contract. The dynamic tier declares <c>model</c>/<c>chained</c>/<c>root</c>
+    /// as the parameter list of the method it generates from two embedded <c>.tcs</c> resources; the emitter
+    /// declares the model one as a local and refuses expressions naming the other two. Because the <c>.tcs</c>
+    /// side is literal template text, the consts cannot flow into it — so this pin reads the resources and
+    /// asserts the spelling instead. Renaming a <c>.tcs</c> parameter silently changes what a pasted C# expression
+    /// means on the dynamic tier only; this test is the tripwire.
     /// <para>Verified by mutation during review: renaming <c>chained</c> in either resource reds this test naming
     /// the const that no longer matches.</para>
     /// </summary>

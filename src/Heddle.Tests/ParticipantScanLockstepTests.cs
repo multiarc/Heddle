@@ -14,9 +14,9 @@ using Heddle.TestCorpus;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Generator plan phase 1 WI1/WI4 (D2/D5) — the <c>[ScopeChannel]</c> participant scan.
+    /// The <c>[ScopeChannel]</c> participant scan.
     /// <para>Two things are pinned here. First, the <b>characterization</b>: <see cref="LegacyLeftmostScan"/> is a
-    /// verbatim transcription of the generator's pre-phase-1 probe (<c>TemplateEmitter.ScanHostsParticipant</c>
+    /// verbatim transcription of the generator's pre-phase probe (<c>TemplateEmitter.ScanHostsParticipant</c>
     /// and the twin in <c>PopulateBody</c>, both of which looked at <c>chain.Chain[0]</c> only). It is kept so the
     /// divergence set the fix closes is stated as data rather than recalled from a plan.</para>
     /// <para>Second, the <b>lockstep</b>: the shared parse-level scan must agree with the runtime's compiled-tree
@@ -28,22 +28,6 @@ namespace Heddle.Tests
     /// </summary>
     public class ParticipantScanLockstepTests
     {
-        // -------------------------------------------------------------------------------------------------
-        // Characterization pin (captured verbatim from the pre-extraction bodies, before the code moved).
-        //
-        //     private bool ScanHostsParticipant(ParseContext ctx)
-        //     {
-        //         if (ctx?.OutputChains == null)
-        //             return false;
-        //         foreach (var chain in ctx.OutputChains)
-        //         {
-        //             var lm = chain.Chain != null && chain.Chain.Count > 0 ? chain.Chain[0].ExtensionName : null;
-        //             if (lm != null && _extensionBinder.TryResolve(lm, out var i) && i.HasScopeChannel)
-        //                 return true;
-        //         }
-        //         return false;
-        //     }
-        // -------------------------------------------------------------------------------------------------
         private static bool LegacyLeftmostScan(ParseContext ctx, Func<string, bool> hasScopeChannel)
         {
             if (ctx?.OutputChains == null)

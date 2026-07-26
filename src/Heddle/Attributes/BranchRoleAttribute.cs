@@ -10,7 +10,7 @@ namespace Heddle.Attributes
     /// set through the <see cref="Heddle.Data.Scope"/> channel.</para>
     /// <para>Inherited by derived extensions; checked at compile time only. Continuation and Terminal
     /// extensions read the channel and must also carry <see cref="ScopeChannelAttribute"/>; an Opener
-    /// publishes opportunistically and must not (see docs/custom-extensions.md).</para>
+    /// publishes opportunistically and must not carry it.</para>
     /// </summary>
     [AttributeUsage(AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
     public sealed class BranchRoleAttribute : Attribute

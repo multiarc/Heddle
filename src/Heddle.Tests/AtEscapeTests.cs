@@ -10,8 +10,8 @@ using Heddle.TestCorpus;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 2 (post-2.0) WI1/D2 — the <c>@@</c> → literal-<c>@</c> escape. Each test pins one row of the D2
-    /// tokenization table: greedy left-to-right pairing, the comment-adjacency guard (<c>@@*</c> stays
+    /// The <c>@@</c> → literal-<c>@</c> escape. Each test pins one row of the tokenization rules:
+    /// greedy left-to-right pairing, the comment-adjacency guard (<c>@@*</c> stays
     /// directive-<c>@</c> + comment), the odd-run tail error, and the <c>SUB_BLOCK</c> mirror. The golden
     /// fixture proves the escape composes in a document and the render is stable.
     /// </summary>
@@ -92,7 +92,7 @@ namespace Heddle.Tests
         public void OddRunTailErrors()
         {
             // Odd run: the leading '@@' pairs greedily to a literal '@'; the leftover lone '@' opens a
-            // directive with no call — the same HED0003 error class as today (D2/D-BC1).
+            // directive with no call — the same HED0003 error class as before the escape existed.
             var t = Compile("@@@", typeof(object));
             Assert.False(t.CompileResult.Success);
             var error = Assert.Single(t.CompileResult.ErrorList);
@@ -103,9 +103,8 @@ namespace Heddle.Tests
         public void CommentAdjacentAtAtUnchanged()
         {
             // The comment-adjacency guard: '@@*' is NOT an escape — the first '@' opens a directive, the
-            // second begins a comment '@*c*@', and the following call reduces exactly as today
-            // (template.heddle:57's shape). The render is identical to the comment-free equivalent:
-            // no literal '@' and no literal '*c*' appear.
+            // second begins a comment '@*c*@', and the following call reduces exactly as today.
+            // The render is identical to the comment-free equivalent: no literal '@' and no literal '*c*' appear.
             const string guarded = "@%\n<badge>\n{{P}}\n%@\n@@*c*@badge()";
             const string baseline = "@%\n<badge>\n{{P}}\n%@\n@badge()";
             var rendered = Render(guarded);
@@ -142,8 +141,8 @@ namespace Heddle.Tests
         [Fact]
         public void AtEscapeCommentAdjacentGolden()
         {
-            // WI1 guard regression: the '@@*comment*@call(…)' shape at top level AND inside a SUB_BLOCK
-            // body (mirroring template.heddle:57) stays byte-identical — the guard suppresses the escape.
+            // Guard regression: the '@@*comment*@call(…)' shape at top level and inside a subtemplate body
+            // stays byte-identical — the guard suppresses the escape.
             HeddleTemplate.Configure(typeof(AtEscapeTests).GetTypeInfo().Assembly);
             var document = File.ReadAllText("TestTemplate/at-escape-comment-adjacent.heddle").Replace("\r\n", "\n");
             var t = new HeddleTemplate(document, new CompileContext(new TemplateOptions(), typeof(object)));

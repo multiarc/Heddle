@@ -17,11 +17,11 @@ using SymbolTypeFacts = gen::Heddle.Generator.Binding.SymbolTypeFacts;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Phase 3 (F4) — the <b>symbol-side</b> driver of the shared <see cref="PropLayoutCore"/>. Every case mirrors
-    /// one in <c>Heddle.Tests.PropLayoutCoreReflectionTests</c>: same declaration list, same expected slot order,
-    /// same ordered fault sequence, same sentences. Slot indices are the wire format between the generator's
-    /// frozen <c>object[]</c> prototype and the runtime's <c>ExtensionParameterCarrier</c>, and a disagreement
-    /// there is silent wrong rendered output — which is why this pair exists rather than one test per tier.
+    /// The <b>symbol-side</b> driver of the shared <see cref="PropLayoutCore"/>, mirroring the reflection-side tests
+    /// in <c>Heddle.Tests.PropLayoutCoreReflectionTests</c> with identical scenarios and assertions. Slot indices are
+    /// the wire format between the generator's frozen <c>object[]</c> prototype and the runtime's
+    /// <c>ExtensionParameterCarrier</c>; a mismatch produces silent wrong rendered output, so this pair verifies both
+    /// sides agree on slot order and fault sequences.
     /// </summary>
     public class PropLayoutCoreSymbolTests
     {
@@ -89,8 +89,8 @@ class Generic<T> { public static readonly System.Type G = typeof(System.Collecti
             {
                 converted = declaration.DefaultValue;
                 sourceDisplay = declaration.DefaultValue?.GetType().Name ?? "null";
-                // The probe only exercises reference/identity defaults; conversion legality itself is the
-                // emitter's DefaultConvertible, pinned by the extension-parameter differentials.
+                // The probe only exercises reference/identity defaults; conversion legality is verified in tests
+                // that cover the emitter's DefaultConvertible behavior.
                 return declaration.DefaultValue == null
                     ? targetType.IsReferenceType
                     : Probe.Facts.IsAssignableFrom(targetType,

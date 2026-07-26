@@ -12,12 +12,11 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// <para>Generator plan phase 2 WI2 — the machine-level characterization pins for the shared document-shaping
-    /// core (<c>DocumentShaping</c>). Every expectation in this file was <b>captured from the runtime
-    /// implementation before the extraction moved it</b> (the pre-swap <c>HeddleCompiler</c> privates, driven
-    /// through reflection over the same vector table); the extraction is byte-neutral exactly when these literals
-    /// still hold. They are the definition of "byte-neutral" at machine granularity — never regenerate one to
-    /// absorb a diff.</para>
+    /// <para>The machine-level characterization pins for the shared document-shaping core (<c>DocumentShaping</c>).
+    /// Every expectation in this file was <b>captured from the runtime implementation before the extraction moved it</b>
+    /// (the pre-swap <c>HeddleCompiler</c> privates, driven through reflection over the same vector table); the extraction
+    /// is byte-neutral exactly when these literals still hold. They are the definition of "byte-neutral" at machine
+    /// granularity — never regenerate one to absorb a diff.</para>
     /// <para>This is the generator-side twin of <c>Heddle.Tests.DocumentShapingCharacterizationTests</c>, driving
     /// the <b>generator's linked copy</b> of the shared file through the same vectors with the same literals: the
     /// pair is the parity pin that makes "the two shapers agree" a checked fact rather than a claim.</para>

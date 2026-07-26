@@ -11,13 +11,11 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 (post-2.0) — named content regions across the generator/precompiled layers (WI4 gate). Per OQ1
-    /// the differential asserts NATIVE precompiled parity on region defaults AND on overridden region fills
-    /// (never via fallback): the Pass fixtures must produce a generated source (no un-precompile reason) and
-    /// match the dynamic tier byte-for-byte. The depth fixtures additionally pin the FILLED bytes (the BLOCKER-A
-    /// guard — both tiers would miss a non-propagating fill identically, so the differential alone cannot catch
-    /// it). The pre-decided negative branch: erroring region templates and the plain sibling-override idiom are
-    /// NOT precompiled — the dynamic tier owns them (review C / D11).
+    /// Named content regions across the generator/precompiled layers. The differential asserts NATIVE precompiled
+    /// parity on region defaults AND on overridden region fills (never via fallback): pass fixtures must produce a
+    /// generated source and match the dynamic tier byte-for-byte. Depth fixtures additionally pin the FILLED bytes
+    /// to ensure fills propagate. Erroring region templates and the plain sibling-override idiom are NOT precompiled —
+    /// the dynamic tier owns them.
     /// </summary>
     public class RegionTests
     {
@@ -57,7 +55,7 @@ namespace Heddle.Generator.IntegrationTests
             return new HeddleTemplate(content, new CompileContext(new TemplateOptions(), typeof(RegionFeed)));
         }
 
-        [Fact] // region_feed_defaults — the F1 win: inner-definition calls precompile natively
+        [Fact]
         public void RegionDefaultsPrecompileNativelyAndMatch()
         {
             var t = Feed + "@feed()";
@@ -68,7 +66,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("<h2 class=\"light\">Home</h2><ul><li>A</li><li>B</li></ul><hr class=\"light\">", pre);
         }
 
-        [Fact] // a bare inner-definition-call fixture (no regions semantics beyond an inner def)
+        [Fact]
         public void BareInnerDefinitionCallPrecompiles()
         {
             var t = "@model(){{" + FeedType + "}}@\\\n" +
@@ -81,7 +79,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("[A][B]", pre);
         }
 
-        [Fact] // region_feed_full — overridden fills precompile NATIVELY (OQ1), incl. the typed fill AT DEPTH
+        [Fact]
         public void RegionFillsPrecompileNativelyIncludingDepth()
         {
             var t = Feed +
@@ -91,14 +89,14 @@ namespace Heddle.Generator.IntegrationTests
             Assert.NotEmpty(gen.TemplateSources); // the OQ1 gate: native, not fallback
             var (pre, dyn) = RenderBoth("views/region-full.heddle", t, Model());
             Assert.Equal(dyn, pre);
-            // The BLOCKER-A golden: the FILLED bytes at depth — a top-level-only fill install would render the
-            // default '<li>A</li>' on both tiers and pass the differential while failing this pin.
+            // The FILLED bytes at depth — a top-level-only fill install would render the default '<li>A</li>' on
+            // both tiers and pass the differential while failing this pin.
             Assert.Contains(
                 "<h2 class=\"hero\">Latest</h2><ul><li>A#1</li><li>B#2</li></ul><hr class=\"light\"><p class=\"lede\">intro</p>",
                 pre);
         }
 
-        [Fact] // region_fill_at_depth — minimal isolate: region call nested inside an @if body
+        [Fact]
         public void FillReachesRegionCallInsideBranchBody()
         {
             var t = "@model(){{" + FeedType + "}}@\\\n" +
@@ -112,7 +110,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.DoesNotContain("[default]", pre);
         }
 
-        [Fact] // region_feed_two_calls — call-scoped fills; the un-filled second call renders defaults
+        [Fact]
         public void TwoCallsAreIndependentlyScoped()
         {
             var t = Feed +
@@ -126,7 +124,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("<h2 class=\"light\">Home</h2>", parts[1]);
         }
 
-        [Fact] // region_selfcall_to_default — a fill body's self-call resolves the base default, natively
+        [Fact]
         public void SelfCallInsideFillResolvesBaseDefaultNatively()
         {
             var t = Feed + "@feed(){{@%<heading:heading>{{[wrap:@heading()]}}%@}}";
@@ -137,7 +135,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("[wrap:<h2 class=\"light\">Home</h2>]", pre);
         }
 
-        [Fact] // region_sibling_from_fill — a fill body calling a sibling region resolves the sibling's entry
+        [Fact]
         public void SiblingCallInsideFillResolvesSiblingFill()
         {
             var t = "@model(){{" + FeedType + "}}@\\\n" +
@@ -150,7 +148,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("[h:[f-filled]]", pre);
         }
 
-        [Fact] // region_props_compose — props and regions independent, both natively precompiled
+        [Fact]
         public void PropsAndRegionsCompose()
         {
             var t = Feed +
@@ -163,17 +161,13 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("<hr class=\"dark\">", pre);
         }
 
-        // ---------------------------------------------------------------------------------------------------
-        // Phase 1 WI6 (D7 / Q1.3's match principle) rewrote the two fixtures below. Until phase 1 the generator was
-        // STRICTER than the engine it must match: any fault verdict un-precompiled the whole template *silently*,
-        // and the tentative base-not-found error a fill candidate carries was filtered out of the build channel
-        // entirely — so the user saw nothing at build and the error only appeared on the first dynamic render.
-        // The generator now reacts to each verdict exactly as HeddleCompiler.BuildRegionFillScope reacts, and the
-        // assertion shape follows: the pin is the *twin relationship* — same condition, same position, matching
-        // error on both tiers — asserted in one test, the WI2 pattern.
-        // ---------------------------------------------------------------------------------------------------
+        // The fixtures below were rewritten when the generator behavior was corrected. Until then it was STRICTER than
+        // the engine: any fault verdict un-precompiled the whole template *silently*, and the tentative base-not-found
+        // error was filtered out entirely. The generator now reacts to each verdict exactly as HeddleCompiler.BuildRegionFillScope
+        // reacts. The assertion shape follows: the pin is the *twin relationship* — same condition, same position, matching
+        // error on both tiers.
 
-        [Fact] // region_private_override — build raises HED7024, the twin of the dynamic tier's HED5019
+        [Fact]
         public void PrivateOverrideRaisesTheMatchingErrorOnBothTiers()
         {
             var t = Feed + "@feed(){{@%<divider:divider>{{<hr class=\"dark\">}}%@}}";
@@ -195,7 +189,7 @@ namespace Heddle.Generator.IntegrationTests
                 TemplateOffsetOf(t, "views/region-private.heddle", build));
         }
 
-        [Fact] // region_dangling_override — build forwards the same base-not-found error the dynamic compile keeps
+        [Fact]
         public void DanglingOverrideSurfacesTheSameErrorOnBothTiers()
         {
             var t = Feed + "@feed(){{@%<ghost:ghost>{{x}}%@}}";
@@ -212,9 +206,8 @@ namespace Heddle.Generator.IntegrationTests
             Assert.False(dynamic.CompileResult.Success);
             var runtimeError = Assert.Single(dynamic.CompileResult.ErrorList.Where(
                 e => e.Error == "Base definition ghost couldn't be found"));
-            // Q8.16: this used to be `Assert.NotNull(build)` — which Assert.Single had already guaranteed, so it
-            // could not fail. The twin relationship this fixture exists to pin includes the anchor, so assert it:
-            // same offset on both tiers, exactly as the private-override twin above.
+            // This used to be `Assert.NotNull(build)` — which Assert.Single had already guaranteed, so it could not fail.
+            // The twin relationship this fixture exists to pin includes the anchor: same offset on both tiers.
             Assert.Equal(runtimeError.Position.StartIndex,
                 TemplateOffsetOf(t, "views/region-dangling.heddle", build));
         }
@@ -248,7 +241,7 @@ namespace Heddle.Generator.IntegrationTests
             return offset;
         }
 
-        [Fact] // patterns_sibling_shell — the sibling-override idiom keeps the silent degrade (D11)
+        [Fact]
         public void SiblingOverrideIdiomStaysUnprecompiledAndCorrectDynamically()
         {
             var t = "@model(){{" + FeedType + "}}@\\\n" +
@@ -263,7 +256,7 @@ namespace Heddle.Generator.IntegrationTests
                 dynamic.Generate(Model()).Trim());
         }
 
-        [Fact] // region_sibling_selfcall — D11 boundary: NO recursive precompiled code for a self-calling sibling
+        [Fact]
         public void SelfCallingSiblingOverrideIsNotPrecompiledAndTerminatesDynamically()
         {
             var t = "@model(){{" + FeedType + "}}@\\\n" +
@@ -273,7 +266,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal("[over:[base]]", dynamic.Generate(Model()).Trim());
         }
 
-        [Fact] // region_abstract_model — the generator's pre-existing limit: silently un-precompiled, no diagnostic
+        [Fact]
         public void UntypedRegionWithValueArgumentSilentlyDegrades()
         {
             // An untyped region called with an explicit value: its dynamic body typing is the argument's type,
@@ -286,7 +279,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal("[x]", dynamic.Generate(Model()).Trim());
         }
 
-        [Fact] // region_ctx_shadow — F7 convergence: a nested inner def shadowing a same-named function it calls
+        [Fact]
         public void InnerDefinitionShadowingFunctionConvergesToDynamicTier()
         {
             // 'upper' is a default-table function name; the inner definition shadows it and the dynamic tier
@@ -307,7 +300,7 @@ namespace Heddle.Generator.IntegrationTests
             yield return new object[] { new RegionFeed { Articles = new List<RegionArticle>() } };
         }
 
-        [Theory] // differential over model shapes for the flagship fill
+        [Theory]
         [MemberData(nameof(Models))]
         public void FlagshipFillParityAcrossModels(RegionFeed model)
         {

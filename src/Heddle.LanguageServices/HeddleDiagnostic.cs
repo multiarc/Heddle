@@ -9,11 +9,11 @@ namespace Heddle.LanguageServices
     }
 
     /// <summary>
-    /// Positioned diagnostic projected from <c>HeddleCompileError</c>/<c>HeddleCompileWarning</c> (phase 6 D10).
+    /// Positioned diagnostic projected from <c>HeddleCompileError</c>/<c>HeddleCompileWarning</c>.
     /// <see cref="Id"/> is the stable <c>HEDxxxx</c> code or null (legacy) — the LSP <c>Diagnostic.code</c>;
-    /// <see cref="Fix"/> carries the warning's remediation or null. Import-attributed entries arrive re-anchored
-    /// per D25 (zero <see cref="Length"/> at the import site, prefixed <see cref="Message"/>,
-    /// <see cref="ImportedFrom"/> set).
+    /// <see cref="Fix"/> carries the warning's remediation or null. Import-attributed entries arrive re-anchored:
+    /// zero <see cref="Length"/> at the import site, prefixed <see cref="Message"/>,
+    /// <see cref="ImportedFrom"/> set.
     /// </summary>
     public sealed class HeddleDiagnostic
     {
@@ -37,7 +37,7 @@ namespace Heddle.LanguageServices
         public int Length { get; }
 
         /// <summary>Workspace-relative (or absolute, when outside RootPath) path of the imported/partial file whose
-        /// analysis produced this entry (D25); null for diagnostics of the analyzed document itself.</summary>
+        /// analysis produced this entry; null for diagnostics of the analyzed document itself.</summary>
         public string ImportedFrom { get; }
     }
 }

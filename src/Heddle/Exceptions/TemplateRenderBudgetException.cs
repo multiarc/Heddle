@@ -4,13 +4,13 @@ namespace Heddle.Exceptions
 {
     /// <summary>
     /// <para>Thrown when a render exceeds a <see cref="Heddle.Data.RenderBudget"/> limit configured on
-    /// <c>TemplateOptions.RenderBudget</c> (C1-R5). Enforced at the renderer seam, which has no template position, so
+    /// <c>TemplateOptions.RenderBudget</c>. Enforced at the renderer seam, which has no template position, so
     /// unlike compile diagnostics this exception carries **no source location** — the accepted deviation is that per-op
     /// position tracking would tax the render hot path. <see cref="Kind"/>, <see cref="Limit"/>, and
     /// <see cref="Observed"/> identify the breach; for <see cref="RenderBudgetKind.RenderTime"/> both values are in
     /// milliseconds.</para>
     /// <para>On a streaming sink (<c>TextWriter</c>/<c>IBufferWriter</c>) any output already written stays written —
-    /// the caller owns the sink and MUST treat this exception as "abort the response" (C1-R6).</para>
+    /// the caller owns the sink and MUST treat this exception as "abort the response".</para>
     /// </summary>
     public class TemplateRenderBudgetException : TemplateProcessingException
     {

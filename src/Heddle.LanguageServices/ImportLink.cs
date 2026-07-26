@@ -1,6 +1,6 @@
 namespace Heddle.LanguageServices
 {
-    /// <summary>Kind of an <see cref="ImportLink"/> (D16): an <c>@&lt;&lt;</c> import or an <c>@partial</c> target.</summary>
+    /// <summary>Kind of an <see cref="ImportLink"/>: an <c>@&lt;&lt;</c> import or an <c>@partial</c> target.</summary>
     public enum ImportLinkKind
     {
         Import,
@@ -8,7 +8,7 @@ namespace Heddle.LanguageServices
     }
 
     /// <summary>
-    /// An <c>@&lt;&lt;</c> import or <c>@partial</c> target resolved with engine rules (D16);
+    /// An <c>@&lt;&lt;</c> import or <c>@partial</c> target resolved with engine rules;
     /// <see cref="ResolvedPath"/> is null when the file does not exist.
     /// </summary>
     public sealed class ImportLink

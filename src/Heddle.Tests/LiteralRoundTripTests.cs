@@ -7,17 +7,17 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 4 WI1 (D2) — the literal formatter is the documented inverse of the AST decoder, so
-    /// <c>decode(format(v))</c> must return <c>v</c> bit-for-bit and with the identical CLR type. The generator runs
-    /// inside the compiler process and the runtime never re-formats a literal (the compiler keeps the decoder's boxed
-    /// value), so a formatter that does not round-trip makes the same template compute a different value precompiled
-    /// than at runtime — <i>depending on which machine built it</i>. That is exactly what <c>ToString("R")</c> did
-    /// for <c>double</c> under a .NET Framework host.
+    /// The literal formatter is the documented inverse of the AST decoder, so <c>decode(format(v))</c> must return
+    /// <c>v</c> bit-for-bit and with the identical CLR type. The generator runs inside the compiler process and the
+    /// runtime never re-formats a literal (the compiler keeps the decoder's boxed value), so a formatter that does
+    /// not round-trip makes the same template compute a different value precompiled than at runtime — depending on
+    /// which machine built it. That is exactly what <c>ToString("R")</c> did for <c>double</c> under a .NET Framework
+    /// host.
     /// <para>The randomized legs use a fixed seed so a failure is reproducible; the corner cases are enumerated.
     /// Values the decoder rejects by its own range rules (NaN, ±∞) can never come out of it, so the formatter never
     /// sees them and they are out of scope.</para>
-    /// <para>WI7 relocated the formatter into <c>Heddle</c>, so this test lives in the runtime suite — which is
-    /// what puts it on the <b>net48</b> leg, the exact TFM where <c>"R"</c> misbehaves, and what makes a future
+    /// <para>The formatter lives in <c>Heddle</c> rather than the generator, so this test lives in the runtime
+    /// suite — which puts it on the <b>net48</b> leg, the exact TFM where <c>"R"</c> misbehaves, and makes a future
     /// decoder change break a shared test instead of only breaking generated code.</para>
     /// </summary>
     public class LiteralRoundTripTests
@@ -167,9 +167,9 @@ namespace Heddle.Tests
         [Fact]
         public void IntMinValue_RetypesToLong_TheDocumentedDeviation3()
         {
-            // docs/native-expressions.md deviation 3: '-2147483648' types as long, because the sign is a unary
-            // operator over a first-fit magnitude literal and 2147483648 does not fit int. The *value* is identical;
-            // pinned here so the round-trip property's one type exception stays deliberate.
+            // '-2147483648' types as long, because the sign is a unary operator over a first-fit magnitude literal
+            // and 2147483648 does not fit int. The *value* is identical; pinned here so this type exception stays
+            // deliberate.
             Assert.Equal(-2147483648L, RoundTrip(int.MinValue));
         }
 
@@ -182,7 +182,7 @@ namespace Heddle.Tests
             Assert.Equal("0.100000001F", LiteralFormatter.Format(0.1f));
         }
 
-        // ---- The format-identity guard (phase-4 audit, 2026-07-26) ------------------------------------------
+        // ---- The format-identity guard ----------------------------
         //
         // Why the round-trip sweeps above cannot carry drift #9 on their own: on .NET Core "R" *is* the
         // shortest-round-trippable form, so every one of the 60 000 values round-trips identically under the bug.

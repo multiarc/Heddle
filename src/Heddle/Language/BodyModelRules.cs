@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Heddle.Language
 {
-    /// <summary>Where a nested body's <c>ModelData</c> comes from (generator plan phase 1 D12).</summary>
+    /// <summary>Where a nested body's <c>ModelData</c> comes from.</summary>
     internal enum BodyModelSource
     {
         /// <summary>The enclosing body's model — the host re-scopes with <c>scope.Parent()</c>.</summary>
@@ -28,7 +28,7 @@ namespace Heddle.Language
         DeclaredOrParent
     }
 
-    /// <summary>What a nested body sees on the chained channel (generator plan phase 1 D12).</summary>
+    /// <summary>What a nested body sees on the chained channel.</summary>
     internal enum ChainedModelSource
     {
         /// <summary>Nothing host-specific; the ambient chained value.</summary>
@@ -39,7 +39,7 @@ namespace Heddle.Language
     }
 
     /// <summary>
-    /// <para>Generator plan phase 1 D12 (area 01 F3) — the body model-typing table. Which model a nested body is
+    /// <para>The body model-typing table. Which model a nested body is
     /// typed by is one of the highest-blast-radius rules in the emitter: a mistyped body changes which member,
     /// overload and conversion the emitted C# binds, and therefore the rendered value. Until this file the rule
     /// existed <em>only</em> as prose comments on each emission branch, guarded by an "is this the engine
@@ -65,15 +65,12 @@ namespace Heddle.Language
         private static readonly Dictionary<string, (BodyModelSource Body, ChainedModelSource Chained)> Table =
             new Dictionary<string, (BodyModelSource, ChainedModelSource)>(StringComparer.Ordinal)
             {
-                // The branch trio: bodies execute under scope.Parent(), so the model stays the enclosing one.
                 ["if"] = (BodyModelSource.Parent, ChainedModelSource.None),
                 ["ifnot"] = (BodyModelSource.Parent, ChainedModelSource.None),
                 ["elif"] = (BodyModelSource.Parent, ChainedModelSource.None),
                 ["elseif"] = (BodyModelSource.Parent, ChainedModelSource.None),
                 ["else"] = (BodyModelSource.Parent, ChainedModelSource.None),
-                // @for re-scopes each iteration with scope.Parent(i): enclosing model, boxed index chained.
                 ["for"] = (BodyModelSource.Parent, ChainedModelSource.Int32Index),
-                // @list types the element body by the sequence's element type (dynamic when non-generic).
                 ["list"] = (BodyModelSource.ElementOfData, ChainedModelSource.None)
             };
 

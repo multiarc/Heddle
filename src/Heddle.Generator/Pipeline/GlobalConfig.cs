@@ -3,10 +3,10 @@ using Heddle.Data;
 
 namespace Heddle.Generator.Pipeline
 {
-    /// <summary>The compilation-wide build options (phase 7 D16 step 2), a value-equatable model of primitives —
+    /// <summary>The compilation-wide build options, a value-equatable model of primitives —
     /// safe to hold in the incremental pipeline. Mirrors the identity-bearing <c>TemplateOptions</c> triple plus the
     /// baked <c>MaxRecursionCount</c>, the generated namespace, the template root, and the u8 toggle.
-    /// <para>Phase 5 D7: the identity-bearing pair are the runtime's own <see cref="Data.OutputProfile"/>/
+    /// <para>The identity-bearing pair are the runtime's own <see cref="Data.OutputProfile"/>/
     /// <see cref="Data.ExpressionMode"/> enums (linked source), not strings — so the emitter cannot bake a profile
     /// or mode the runtime does not have, and the hand-rolled ordinal string compares collapse to enum compares
     /// (strictly stronger for the incremental pipeline's equality).</para></summary>

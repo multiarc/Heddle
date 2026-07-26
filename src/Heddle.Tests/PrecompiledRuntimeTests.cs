@@ -8,7 +8,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 7 D5/D20 (WI4 runtime side): the <see cref="PrecompiledRuntime"/> render funnel. Hand-built strategies
+    /// The <see cref="PrecompiledRuntime"/> render funnel. Hand-built strategies
     /// reproducing the generated-code shape (example 1: static pieces + a bound <c>EmptyExtension</c> over member
     /// paths, per-hop null-safe) must render <b>byte-identical</b> to the dynamic engine — the differential contract
     /// the generator's emitter will target.

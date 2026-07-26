@@ -4,11 +4,11 @@ using Heddle.Runtime;
 namespace Heddle.Language
 {
     /// <summary>
-    /// The runtime <c>CompileContext</c> adapters over the shared <see cref="DocumentParser"/> core (phase 7 D4).
+    /// The runtime <c>CompileContext</c> adapters over the shared <see cref="DocumentParser"/> core.
     /// Kept in a separate partial file so the generator's shared-source compile (which has no <c>CompileContext</c>)
     /// excludes this file. Each adapter builds a <see cref="ParserSettings"/> from the compile context's options,
     /// runs the shared core, then copies the front-end diagnostics collected on the <see cref="ParseContext"/> into
-    /// the compile context — the single copy point the D4 seam funnels all front-end errors through.
+    /// the compile context — the single point every front-end error is copied through.
     /// </summary>
     public static partial class DocumentParser
     {

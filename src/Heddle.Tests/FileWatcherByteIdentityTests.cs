@@ -5,9 +5,9 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 1 back-compat gate (R5): templates that never take the watcher path — inline compiles and
-    /// flag-off file compiles — render byte-identically to the pre-phase baseline; no watcher is installed
-    /// and no reload state is allocated for them.
+    /// Back-compat gate: templates that never take the watcher path — inline compiles and flag-off file compiles —
+    /// render byte-identically to the pre-watcher baseline; no watcher is installed and no reload state is
+    /// allocated for them.
     /// </summary>
     public class FileWatcherByteIdentityTests
     {

@@ -7,11 +7,9 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Generator plan phase 2 WI1 — the runtime half of the clamp-drift fixture. The runtime is the fixed point:
-    /// its <c>WidenToWholeLine</c> has always clamped, so this template's bytes are unchanged by the phase. The
-    /// generator-side twins are <c>Heddle.Generator.Tests.DocumentShaperAdapterTests</c> (working document) and
-    /// <c>CorpusRenderParityTests</c>/<c>CorpusDifferentialTests</c> (the fixture now precompiles and renders
-    /// byte-identically instead of silently degrading).
+    /// The runtime half of the clamp-drift fixture. The runtime is the fixed point: its
+    /// <c>WidenToWholeLine</c> has always clamped, so this template's bytes are unchanged. The fixture now
+    /// precompiles and renders byte-identically instead of silently degrading.
     /// </summary>
     public class ShaperClampFixtureTests
     {

@@ -11,38 +11,24 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 0 WI6 (D6) — the <b>quarantine register</b>. Each fixture below is a guarded, gauntlet-crossing test of a
-    /// known live drift from the research program. Every one of them fails on today's code, so each ships explicitly
-    /// skipped with its owning phase and drift named in the <c>Skip</c> string: the owning phase's fix-first group
-    /// un-skips its fixture as acceptance evidence. Phase 0 must land green without masking anything, so a fixture is
-    /// never weakened to make it pass — it is quarantined instead.
-    /// <para><b>An unexplained or orphaned skip in this file is a review failure.</b> The register is:</para>
+    /// The <b>quarantine register</b>. Each fixture below is a guarded, gauntlet-crossing test of a known live drift.
+    /// Every one of them fails on today's code, so each ships explicitly skipped with its issue named in the <c>Skip</c>
+    /// string: the fix group un-skips its fixture as acceptance evidence. The register is:
     /// <list type="table">
-    /// <item><term>phase 5 F1</term><description>content-hash input mismatch — BOM'd file under file-backed
-    /// staleness.</description></item>
-    /// <item><term>phase 3 F1</term><description>nested/generic AQN identity — a nested extension type; <b>fixed</b> by
-    /// phase 3, un-skipped.</description></item>
-    /// <item><term>phase 3 F3</term><description>inherited <c>[ExtensionName]</c> subclass — <b>fixed</b> by phase 3,
-    /// un-skipped.</description></item>
-    /// <item><term>phase 1 F11</term><description>non-leftmost <c>[ScopeChannel]</c> participant — <b>fixed</b> by
-    /// phase 1 (WI1/WI4); un-skipped and reshaped (the drift is latent on the precompiled tier — see the
-    /// fixture's own note).</description></item>
-    /// <item><term>phase 4 F3</term><description>overload-rank tie (<c>min(1, 2u)</c>) — <b>fixed</b> by phase 4
-    /// WI8, un-skipped; reshaped twice (phase 4 WI8, then Q8.1 which replaced the pinned build-tier <i>silence</i>
-    /// with the HED7025 error — see the fixture's own note).</description></item>
+    /// <item><description>content-hash input mismatch — BOM'd file under file-backed staleness (<b>fixed</b>, un-skipped).</description></item>
+    /// <item><description>nested/generic AQN identity — a nested extension type (<b>fixed</b>, un-skipped).</description></item>
+    /// <item><description>inherited <c>[ExtensionName]</c> subclass (<b>fixed</b>, un-skipped).</description></item>
+    /// <item><description>non-leftmost <c>[ScopeChannel]</c> participant (<b>fixed</b>, un-skipped; the drift is latent on the precompiled tier — see the fixture's own note).</description></item>
+    /// <item><description>overload-rank tie (<c>min(1, 2u)</c>) (<b>fixed</b>, un-skipped; reshaped to report HED7025 error — see the fixture's own note).</description></item>
     /// </list>
     /// </summary>
     [Collection("PrecompiledRegistry")]
     public class QuarantinedDriftFixtures : PrecompiledRegistryTestBase
     {
-        // ---------------------------------------------------------------------------------------------------
-        // phase 5 F1 — content-hash input mismatch. FIXED by phase 5 WI1 (D1); un-skipped as its acceptance evidence.
-        // The generator hashes Roslyn's decoded SourceText re-encoded as UTF-8 without a BOM; the runtime used to
-        // hash the raw file byte stream, so any .heddle file saved with a BOM (or as UTF-16) failed
-        // PrecompiledGauntlet.CheckStaleness on every request under EnableFileChangeCheck and silently took the
-        // dynamic path. Verified red at authoring time: PrecompiledMismatchException(StaleContent) —
-        // "Content: 'drift-bom.heddle' hash mismatch". Both sides now hash decoded text through ContentHash.HashText.
-        // ---------------------------------------------------------------------------------------------------
+        // Content-hash input mismatch (FIXED). The generator hashes Roslyn's decoded SourceText re-encoded as UTF-8
+        // without a BOM; the runtime used to hash the raw file byte stream, so any .heddle file saved with a BOM
+        // (or as UTF-16) failed PrecompiledGauntlet.CheckStaleness on every request under EnableFileChangeCheck and
+        // silently took the dynamic path. Both sides now hash decoded text through ContentHash.HashText.
         [Fact]
         public void BomTemplate_StaysOnThePrecompiledTier_UnderFileBackedStaleness()
         {
@@ -82,17 +68,12 @@ namespace Heddle.Generator.IntegrationTests
             }
         }
 
-        // ---------------------------------------------------------------------------------------------------
-        // phase 3 F1 — nested/generic AQN identity. FIXED by phase 3 (WI1/WI2); un-skipped as its acceptance
-        // evidence.
-        // The manifest's identity string is "<CLR full type name>, <assembly simple name>". The generator built it
-        // from Roslyn's FullyQualifiedFormat (Ns.Outer.Inner); the runtime builds type.FullName (Ns.Outer+Inner).
-        // Verified red at authoring time *earlier* than the plan predicted: ExtensionBinder.CollectTypes enumerated
-        // namespace members only and never descended into nested types, so the template degraded at build time
-        // (manifest entry Absent) before the AQN strings could ever be compared. Both halves are fixed: the scan
-        // now recurses through INamedTypeSymbol.GetTypeMembers(), and both tiers format the identity through the
-        // shared Precompiled/AqnFormatter, which joins nesting segments with '+'.
-        // ---------------------------------------------------------------------------------------------------
+        // Nested/generic AQN identity (FIXED). The manifest's identity string is "<CLR full type name>, <assembly simple
+        // name>". The generator built it from Roslyn's FullyQualifiedFormat (Ns.Outer.Inner); the runtime builds
+        // type.FullName (Ns.Outer+Inner). ExtensionBinder.CollectTypes enumerated namespace members only and never
+        // descended into nested types, so templates degraded at build time before the AQN strings could be compared.
+        // Both halves are fixed: the scan now recurses through INamedTypeSymbol.GetTypeMembers(), and both tiers
+        // format the identity through the shared Precompiled/AqnFormatter.
         [Fact]
         public void NestedExtensionType_BindsAndCrossesTheGauntlet()
         {
@@ -101,18 +82,11 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal(dyn, precompiled);
         }
 
-        // ---------------------------------------------------------------------------------------------------
-        // phase 3 F3 — inherited [ExtensionName].
-        // The runtime reads [ExtensionName] with inherit: true, so DriftInheritedExtension registers under
-        // "driftbase" and replaces its base (IsAssignableFrom). The generator's declared-only GetAttributes() read
-        // never sees the subclass and binds the base. Verified red at authoring time:
-        // PrecompiledMismatchException(ExtensionBindingMismatch) — "manifest=…DriftBaseExtension
-        // live=…DriftInheritedExtension" — on every render, permanently.
-        // ---------------------------------------------------------------------------------------------------
-        // FIXED by phase 3 (WI3); un-skipped as its acceptance evidence. ExtensionBinder now reads
-        // [ExtensionName] over the base-type chain (the same walk the file already used for [BranchRole],
-        // [ScopeChannel] and [Prop]) and resolves the resulting collision through the shared
-        // ExtensionRegistrationRules precedence — so the subclass takes the name on the build tier too.
+        // Inherited [ExtensionName] (FIXED). The runtime reads [ExtensionName] with inherit: true, so an inherited
+        // extension registers under the base name and replaces its base (IsAssignableFrom). The generator's declared-only
+        // GetAttributes() read never saw the subclass and bound the base. ExtensionBinder now reads [ExtensionName] over
+        // the base-type chain (the same walk used for [BranchRole], [ScopeChannel] and [Prop]) and resolves the
+        // collision through the shared ExtensionRegistrationRules precedence — so the subclass takes the name on both tiers.
         [Fact]
         public void InheritedExtensionNameSubclass_CrossesTheGauntlet()
         {
@@ -121,40 +95,17 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal(dyn, precompiled);
         }
 
-        // ---------------------------------------------------------------------------------------------------
-        // phase 1 F11 — needsLocals / [ScopeChannel] participant detection. RESOLVED by phase 1 (WI1/WI4);
-        // un-skipped, and RESHAPED, because what phase 0 recorded as "verified red earlier than the plan
-        // predicted" turned out to be the whole story rather than a detail.
+        // Needslocals / [ScopeChannel] participant detection (FIXED). RuntimeDocument.ComputeNeedsLocals walks every
+        // item of a chain and recurses into nested chain parameters; the generator probed chain.Chain[0] only. Both
+        // generator probes are replaced with the shared, full-chain, parameter-recursing Language/ParticipantScan.
         //
-        // The drift: RuntimeDocument.ComputeNeedsLocals walks every item of a chain and recurses into nested chain
-        // parameters; the generator probed chain.Chain[0] only. Phase 1 replaced both generator probes with the
-        // shared, full-chain, parameter-recursing Language/ParticipantScan, so the rule now exists once and the
-        // scan-level divergence is closed by construction (ParticipantScanLockstepTests drives it directly,
-        // including the shadowed-name over-provision Q1.4 rules to keep).
+        // This fixture could not keep the original Assert.Equal(dyn, precompiled) because the shape still does not
+        // reach the precompiled tier: every way a participant can sit non-leftmost is a shape the emitter refuses
+        // for an unrelated, pre-existing reason. The scan gap remains latent on the precompiled tier.
         //
-        // Why this fixture could not keep its original assertion. Assert.Equal(dyn, precompiled) needs the shape to
-        // REACH the precompiled tier, and it still does not: every way a participant can sit non-leftmost is a
-        // shape the emitter refuses for an unrelated, pre-existing reason — a multi-item chain is "chained call",
-        // and a nested chain parameter naming an extension is "chain item extension". Phase 1 did not lift either
-        // refusal (neither is a drift; both are emitter coverage), so the scan gap remains LATENT on the
-        // precompiled tier and a byte comparison of @yell(@row()) would compare two dynamic renders — vacuous.
-        //
-        // What it asserts instead, following the precedent phase 4 set for its overload-tie fixture: the
-        // conjunction the drift actually needs.
-        //   (1) DEGRADE PARITY. The control shape degrades identically to a participant-free twin of the same
-        //       syntax, so the latency is pinned as a fact rather than a memory — if a later phase teaches the
-        //       emitter nested chain parameters, THIS assertion goes red and forces the byte comparison back.
-        //   (2) THE OBSERVABLE HALF OF THE SAME DRIFT. What used to stand here was "@row()@row()" — two LEFTMOST
-        //       participants, i.e. a shape the old buggy probe already handled, so nothing about it could
-        //       distinguish fixed from unfixed. It was decorative and is replaced: the neighbour is now the
-        //       per-carrier flag asymmetry, which IS observable, so reverting either half of WI1 reddens this
-        //       fixture rather than only its sibling suite.
-        //
-        // What was DROPPED: a third clause re-asserting ParticipantScan.BodyHostsParticipant("@(else())"), which
-        // was a verbatim copy of ParticipantScanLockstepTests.TheLegacyProbeMissesANestedChainParameterParticipant.
-        // The scan rule's own coverage — the legacy-probe characterization, the runtime lockstep and the
-        // whole-corpus sweep — lives there, in Heddle.Tests, and is not duplicated here.
-        // ---------------------------------------------------------------------------------------------------
+        // Instead, the fixture asserts two things: (1) DEGRADE PARITY — the control shape degrades identically to
+        // a participant-free twin, so latency is pinned as fact; (2) THE OBSERVABLE HALF — the per-carrier flag
+        // asymmetry, which is observable and pinned here.
         [Fact]
         public void NonLeftmostScopeChannelParticipant_ProvisionsLocalsOnBothTiers()
         {
@@ -189,40 +140,13 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("unseen", precompiled);
         }
 
-        // ---------------------------------------------------------------------------------------------------
-        // phase 4 F3 — function overload selection. FIXED by phase 4 WI8 (D10); un-skipped as its acceptance
-        // evidence.
-        // The runtime's rank vector is flat (every widening ranks 1), so min(1, 2u) leaves (long,long),
-        // (double,double) and (decimal,decimal) non-dominated → HED1013 ambiguity. The generator delegated
-        // resolution to the consumer's C# compiler, which picks Min(long, long) and emitted a template that renders.
-        // Verified red at authoring time: the precompiled tier renders while the dynamic compile fails with
-        // "HED1013: The call to function 'min' is ambiguous …" — the two tiers disagree about whether the template
-        // is even legal.
-        //
-        // Both sides now consult the shared OverloadRank core, which encodes Heddle's flat Pareto rank (OQ2:
-        // the runtime is normative). The fixture's assertion had to change shape with the fix, and deliberately got
-        // *stronger* rather than weaker: the drift was "one tier renders, the other rejects", so the post-fix
-        // property is verdict identity — and a template both tiers reject has no rendered bytes for the original
-        // Assert.Equal(dyn, precompiled) to compare. It is asserted here as the conjunction the drift actually
-        // needed: the ambiguous call is refused at build time *and* the dynamic tier raises HED1013 (identical
-        // verdicts), while the resolvable tie next to it still precompiles and renders byte-identically (proving
-        // the guard resolves rather than blanket-degrades).
-        //
-        // RESHAPED A SECOND TIME by Q8.1 (ruled user, 2026-07-26) — stated here rather than overwritten, because
-        // this fixture's history is now two reshapes deep and the second one *reverses* an assertion the first one
-        // added. Phase 4's reshape wrote `Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == Error)`, which
-        // pinned the build tier's SILENCE as if silence were the fix. It was not: both post-implementation reviewers
-        // and phase 4's own audit independently found that a green build for a template the generator has already
-        // PROVED illegal (BindOutcome.Ambiguous out of the shared core) violates the match principle ("errors always
-        // match" — the tiers agreed on legality and disagreed only on when the author learns) and the
-        // fallback-legitimacy principle ("everything else surfaces as an error" — the refusal was legitimate, the
-        // silence was not). The ruling made it HED7025.
-        //
-        // So the same conjunction is pinned, on the corrected verdict: the build reports HED7025 at Error *and* the
-        // dynamic tier raises HED1013, which is still verdict identity — now identity of the *error*, not of the
-        // shrug. The resolvable-neighbour clause is unchanged and still load-bearing: it is what rules out a blanket
-        // degradation masquerading as a fix, and it now also rules out a blanket *error*.
-        // ---------------------------------------------------------------------------------------------------
+        // Function overload selection (FIXED). The runtime's rank vector is flat (every widening ranks 1), so
+        // min(1, 2u) leaves three non-dominated candidates → HED1013 ambiguity. The generator delegated resolution
+        // to the consumer's C# compiler, which picked one and emitted a template that renders. The two tiers disagreed
+        // about whether the template was legal. Both sides now consult the shared OverloadRank core. The fixture asserts
+        // verdict identity: the ambiguous call is refused at build time with HED7025 *and* the dynamic tier raises HED1013
+        // (identical error verdicts), while the resolvable tie next to it still precompiles and renders byte-identically
+        // (proving the guard resolves rather than blanket-degrades).
         [Fact]
         public void OverloadTie_ResolvesIdenticallyOnBothTiers()
         {

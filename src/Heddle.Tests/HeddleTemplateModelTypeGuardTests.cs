@@ -8,11 +8,11 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 4 WI3 — the opt-in Release model-type guard (<see cref="TemplateOptions.ValidateModelType"/>,
-    /// P4-Q2): opted in, a wrong-typed model throws the same "Type mismatch. Need X but got Y"
+    /// The opt-in Release model-type guard (<see cref="TemplateOptions.ValidateModelType"/>):
+    /// opted in, a wrong-typed model throws the same "Type mismatch. Need X but got Y"
     /// <see cref="TemplateProcessingException"/> the <c>DEBUG</c> guard has always thrown; off (the default),
     /// Release behavior is unchanged; <c>DEBUG</c> always validates regardless of the flag; the precompiled
-    /// adapter is skipped in both configurations (the documented known limit).
+    /// adapter is skipped in both configurations (a known limit).
     /// </summary>
     public class HeddleTemplateModelTypeGuardTests
     {
@@ -73,7 +73,7 @@ namespace Heddle.Tests
 #endif
 
         /// <summary>
-        /// The documented known limit: a precompiled-adapter template (no compile-time model type to check
+        /// A known limit: a precompiled-adapter template (no compile-time model type to check
         /// against) is never validated, even with the opt-in requested — mirroring the DEBUG guard's skip.
         /// </summary>
         [Fact]

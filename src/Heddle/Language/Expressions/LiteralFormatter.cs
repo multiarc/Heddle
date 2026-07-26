@@ -5,15 +5,15 @@ namespace Heddle.Language.Expressions
     /// <summary>
     /// Round-trips a decoded literal value to an invariant C# literal preserving its exact CLR type and value — the
     /// documented <b>inverse</b> of the AST decoder (<see cref="ExpressionAstBuilder"/>: integer first-fit typing,
-    /// suffix-driven real typing, the C# escape set). Phase 4 D9 moved it here from the generator so both halves of
-    /// that inverse pair compile into the same assembly and the round-trip property is a shared test rather than a
-    /// comment: a decoder change now breaks a test instead of only breaking generated code.
+    /// suffix-driven real typing, the C# escape set). Both halves compile into the same assembly so the round-trip
+    /// property is a shared test rather than a comment — a decoder change now breaks a test instead of only breaking
+    /// generated code.
     /// <para>The runtime never re-formats a literal — the native-expression compiler keeps the decoder's boxed value
-    /// — so the formatter's only correctness requirement is <c>decode(format(v)) == v</c> bit-for-bit. That is why
-    /// reals use <c>G9</c>/<c>G17</c> and never <c>"R"</c> (phase 4 D2): <c>"R"</c> is documented as
-    /// non-round-tripping for <c>double</c> under a .NET Framework host, which is exactly where the generator runs
-    /// when the build host is Visual Studio or the desktop <c>VBCSCompiler</c>. Ugly-but-exact text
-    /// (<c>0.10000000000000001</c>) is the correct trade in generated source.</para>
+    /// — so the formatter's only correctness requirement is <c>decode(format(v)) == v</c> bit-for-bit. Reals use
+    /// <c>G9</c>/<c>G17</c> (not <c>"R"</c>) because <c>"R"</c> is documented as non-round-tripping for <c>double</c>
+    /// under .NET Framework, which is where the generator runs when the build host is Visual Studio or the desktop
+    /// <c>VBCSCompiler</c>. Ugly-but-exact text (<c>0.10000000000000001</c>) is the correct choice for generated
+    /// source.</para>
     /// </summary>
     internal static class LiteralFormatter
     {

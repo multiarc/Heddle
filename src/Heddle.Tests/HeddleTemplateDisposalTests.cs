@@ -9,12 +9,11 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 4 WI1 — the lock-free disposal synchronization on <see cref="HeddleTemplate"/>
+    /// The lock-free disposal synchronization on <see cref="HeddleTemplate"/>
     /// (Interlocked <c>_runners</c>, the <c>_disposeAfterComplete</c> fence, and the one-shot CAS-guarded
-    /// <c>Teardown</c>). The stress tests are probabilistic regression witnesses (test-with, per the spec's
-    /// TDD verdict): a green run corroborates but the D1 memory-ordering proof carries the guarantee —
-    /// no teardown while any render executes, an idempotent non-blocking <c>Dispose</c>, and a balanced
-    /// runner count.
+    /// <c>Teardown</c>). The stress tests are probabilistic regression witnesses: a green run corroborates
+    /// but the memory-ordering argument carries the guarantee — no teardown while any render executes, an
+    /// idempotent non-blocking <c>Dispose</c>, and a balanced runner count.
     /// </summary>
     public class HeddleTemplateDisposalTests
     {
@@ -78,7 +77,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>Builds a template whose runtime document is the counting witness (via the internal fields).
-        /// Phase 1 reconciliation: the render snapshot derives the strategy from the document
+        /// The render snapshot derives the strategy from the document
         /// (<c>doc.Strategy</c> — the store-block invariant is <c>_processStrategy == _runtimeDocument.Strategy</c>
         /// on the dynamic path), so a custom strategy must be installed as the document's OWN strategy for the
         /// witness state to be one a production publish could actually produce.</summary>
@@ -98,7 +97,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// D1 stress witness: <c>Dispose()</c> racing many concurrent renders never tears the document down
+        /// Stress witness: <c>Dispose()</c> racing many concurrent renders never tears the document down
         /// under an executing render — every render that began completes with untruncated, uncorrupted output,
         /// and any <see cref="ObjectDisposedException"/> comes only from a render that had not begun
         /// (<c>EnterRender</c> throws before the render body starts).
@@ -135,7 +134,7 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>D1: <c>Dispose()</c> twice on an idle instance tears down exactly once and never throws.</summary>
+        /// <summary><c>Dispose()</c> twice on an idle instance tears down exactly once and never throws.</summary>
         [Fact]
         public void DisposeIsIdempotent()
         {
@@ -149,7 +148,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// D1 deferred teardown: <c>Dispose()</c> during N gate-blocked renders returns immediately without
+        /// Deferred teardown: <c>Dispose()</c> during N gate-blocked renders returns immediately without
         /// tearing down; teardown happens exactly once, after the last render exits, and no in-flight render threw.
         /// </summary>
         [Fact]
@@ -184,7 +183,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// D1: high-iteration concurrent renders with no dispose leave the Interlocked runner count balanced
+        /// High-iteration concurrent renders with no dispose leave the Interlocked runner count balanced
         /// at zero (the pre-fix non-atomic <c>++</c>/<c>--</c> could tear), every render succeeds, and a
         /// subsequent clean <c>Dispose</c> takes the immediate path (a later render throws
         /// <see cref="ObjectDisposedException"/>).

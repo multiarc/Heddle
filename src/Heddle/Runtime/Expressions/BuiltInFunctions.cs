@@ -152,7 +152,7 @@ namespace Heddle.Runtime.Expressions
         /// <summary>
         /// The HED4001 message format (a single <c>{0}</c> for the offending step). Shared verbatim by the
         /// static <see cref="NativeExpressionCompiler"/> literal check and the render-time guard below so the
-        /// two enforcement layers can never diverge (phase 4 D3).
+        /// two enforcement layers can never diverge.
         /// </summary>
         internal const string RangeStepMessageFormat =
             "Function 'range' requires a positive step, but {0} was supplied — a zero or negative step never terminates the loop.";
@@ -163,7 +163,7 @@ namespace Heddle.Runtime.Expressions
         /// <summary>
         /// Three-argument <c>range(start, last, step)</c>. A non-positive <paramref name="step"/> would make
         /// <c>ForIndexExtension</c>'s <c>Last</c>-exclusive loop never terminate (or silently render nothing),
-        /// so it throws at render — the sole sanctioned built-in throw (phase 4 D3). A statically-visible
+        /// so it throws at render — the sole sanctioned built-in throw. A statically-visible
         /// literal step is caught earlier as HED4001; this covers the model-driven case.
         /// </summary>
         internal static Heddle.Models.Range Range(int start, int last, int step)

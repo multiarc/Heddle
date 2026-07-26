@@ -11,9 +11,9 @@ namespace Heddle.Data {
         public string Error { get; set; }
 
         /// <summary>
-        /// The phase 6 D25 import-provenance marker; non-null (only when <c>ProvideLanguageFeatures</c> is on)
-        /// when this entry was produced by an imported/partial file's parse or call-site compile. Internal — the
-        /// public shape (<see cref="ToString()"/>, positions) is untouched; the LSP facade reads it to re-anchor.
+        /// The import-provenance marker; non-null (only when <c>ProvideLanguageFeatures</c> is on) when this entry
+        /// was produced by an imported/partial file's parse or call-site compile. Internal — the public shape
+        /// (<see cref="ToString()"/>, positions) is untouched; the LSP facade reads it to re-anchor.
         /// </summary>
         internal ImportOrigin ImportOrigin { get; set; }
 

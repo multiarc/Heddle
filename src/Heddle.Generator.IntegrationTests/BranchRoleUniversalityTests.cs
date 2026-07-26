@@ -8,7 +8,7 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// WI6 (§8.3) — generator-tier universality of the <see cref="Heddle.Attributes.BranchRoleAttribute"/> contract
+    /// Generator-tier universality of the <see cref="Heddle.Attributes.BranchRoleAttribute"/> contract
     /// with a non-engine custom trio (<c>begin</c>/<c>between</c>/<c>finish</c>, the bodiless <c>flag</c>/<c>gate</c>
     /// pair, and the zebra-style <c>row</c> participant), all resolved from the referenced test assembly:
     /// <list type="bullet">
@@ -17,8 +17,8 @@ namespace Heddle.Generator.IntegrationTests
     /// <item>a bodiless custom role opener binds via the generic custom path (manifest row + render parity);</item>
     /// <item>the generator's role-based strip machine removes inter-block text on the precompiled tier exactly as the
     /// runtime does (differential parity);</item>
-    /// <item>the §5.3.3a fix: a precompiled body binding a bodiless <c>[ScopeChannel]</c> extension now provisions a
-    /// locals frame and renders without throwing.</item>
+    /// <item>a precompiled body binding a bodiless <c>[ScopeChannel]</c> extension provisions a locals frame and
+    /// renders without throwing.</item>
     /// </list>
     /// </summary>
     public class BranchRoleUniversalityTests
@@ -34,7 +34,7 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         // ------------------------------------------------------------------------------------------------
-        // §8.3 bullet 1 — a bodied custom-branch trio is NOT precompiled (no manifest entry), draws NO HED7015,
+        // A bodied custom-branch trio is NOT precompiled (no manifest entry), draws NO HED7015,
         // and the dynamic tier renders it with full role semantics (parity with the built-in @if/@elif/@else).
         // ------------------------------------------------------------------------------------------------
         [Theory]
@@ -48,13 +48,13 @@ namespace Heddle.Generator.IntegrationTests
 
             var gen = DifferentialHarness.Generate(new[] { ("views/custom-trio.heddle", custom) });
 
-            // No error diagnostics at all, and specifically no HED7015 (the canonical InitStart override is R12, not
-            // an authoring error — §6.3.3).
+            // No error diagnostics at all, and specifically no HED7015: overriding InitStart is a legitimate part of
+            // the role contract, not an authoring error.
             Assert.DoesNotContain(gen.Diagnostics, d => d.Id == "HED7015");
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
 
             // Not precompiled: the bodied custom-branch call degrades the whole template to the dynamic tier, so the
-            // manifest carries no bound strategy for this key (phase 0 D5 — the degrade is declared, not inferred).
+            // manifest carries no bound strategy for this key — the degrade is declared, not inferred.
             DifferentialHarness.ExpectDegrade(gen, "views/custom-trio.heddle");
 
             // The dynamic tier renders with full role semantics — byte-identical to the built-in family.
@@ -66,7 +66,7 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         // ------------------------------------------------------------------------------------------------
-        // §8.3 bullet 2 — a bodiless custom role opener (no hook override) binds via the generic custom path:
+        // A bodiless custom role opener (no hook override) binds via the generic custom path:
         // it precompiles, records a manifest binding row, and renders byte-identically to the dynamic engine.
         // ------------------------------------------------------------------------------------------------
         [Theory]
@@ -95,7 +95,7 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         // ------------------------------------------------------------------------------------------------
-        // §8.3 bullet 3 — strip parity: a precompiling custom-trio template (bodiless flag opener + gate
+        // Strip parity: a precompiling custom-trio template (bodiless flag opener + gate
         // continuation) has its inter-block text removed by the generator's role-based strip machine exactly as the
         // runtime does, proven by byte-for-byte differential render.
         // ------------------------------------------------------------------------------------------------
@@ -112,11 +112,9 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         // ------------------------------------------------------------------------------------------------
-        // §8.3 bullet 4 / §5.3.3a — the HostsParticipant fix: a precompiled body binding a bodiless zebra-style
-        // [ScopeChannel] extension now provisions a locals frame (keyed off HasScopeChannel) so scope.Publish no
-        // longer throws at render. Byte-identical to the dynamic engine.
-        // (Built-in-only templates' generated source is unchanged — covered by the existing GeneratorSnapshotTests
-        // goldens and BranchTests; referenced here, not regenerated.)
+        // The HostsParticipant fix: a precompiled body binding a bodiless zebra-style [ScopeChannel] extension
+        // provisions a locals frame (keyed off HasScopeChannel) so scope.Publish does not throw at render.
+        // Byte-identical to the dynamic engine.
         // ------------------------------------------------------------------------------------------------
         [Fact]
         public void HostsParticipantFix_BodilessScopeChannelExtension_ProvisionsLocalsAndRenders()

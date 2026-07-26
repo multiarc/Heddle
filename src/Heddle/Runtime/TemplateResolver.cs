@@ -52,7 +52,7 @@ namespace Heddle.Runtime {
         }
 
         // The cache is keyed by full path AND output profile AND trimming so one resolver can serve the same
-        // file under any combination without a collision (phase 2 D8 / phase 4 D10). Enum ToString() has fixed
+        // file under any combination without a collision. Enum ToString() has fixed
         // casing, so the OrdinalIgnoreCase comparer is harmless on the suffix.
         private static string CacheKey(string fullPath, OutputProfile profile, bool trimDirectiveLines) =>
             fullPath + "|" + profile + (trimDirectiveLines ? "|trim" : string.Empty);
@@ -64,13 +64,13 @@ namespace Heddle.Runtime {
             TemplateOptions options;
             string path;
             // The effective profile/trimming for this operation: the caller's context options win, else the
-            // resolver default (phase 2 D8 / phase 4 D10). Probe and write always agree because Create keys on
+            // resolver default. Probe and write always agree because Create keys on
             // the same values.
             OutputProfile profile = context?.Options.OutputProfile ?? _defaultProfile;
             bool trim = context?.Options.TrimDirectiveLines ?? _trimDirectiveLines;
             switch (searchType) {
             case TemplatePathType.None:
-                // Registry-first (phase 7 D7/D17): consult before the cache probe and file check so a registered
+                // Registry-first: consult before the cache probe and file check so a registered
                 // manifest is looked up, not parsed and compiled. A miss (or a Fallback-policy gauntlet failure)
                 // falls through to the unchanged dynamic path; with zero manifests this is one volatile read.
                 if (ConsultPrecompiled(viewName, context, profile, trim, out result)) {
@@ -162,7 +162,7 @@ namespace Heddle.Runtime {
         {
             if (viewName == null) throw new ArgumentNullException(nameof(viewName));
             if (controllerName == null) throw new ArgumentNullException(nameof(controllerName));
-            // Host-path munging, deliberately distinct from the key grammar (phase 5 D4/WI7). The extension itself
+            // Host-path munging, deliberately distinct from the key grammar. The extension itself
             // comes from the shared TemplateKey.TemplateExtension; the three surrounding rules do NOT fold onto
             // TemplateKey's — this side appends only when the name has no extension at all (a `.txt` view stays
             // `.txt`), rejects `..` as a substring, and folds `~/` anywhere, while TemplateKey appends on a
@@ -191,9 +191,9 @@ namespace Heddle.Runtime {
             }
         }
 
-        /// <summary>The hosted probe ladder. Phase 5 D11 makes it three tiers — <b>registry</b>, then cache, then
-        /// disk, each in location order — mirroring the <see cref="TemplatePathType.None"/> arm, which has consulted
-        /// the registry ahead of both tiers since phase 7. Tier order beats location order, exactly as it already
+        /// <summary>The hosted probe ladder — three tiers: <b>registry</b>, then cache, then
+        /// disk, each in location order — mirroring the <see cref="TemplatePathType.None"/> arm, which also consults
+        /// the registry ahead of both tiers. Tier order beats location order, exactly as it already
         /// did for the cache: a cached location-2 template has always won over a location-1 file on disk.</summary>
         private string Search(string viewName, string controllerName, string[] locations, OutputProfile profile, bool trim,
             TemplateOptions requestOptions, out IEnumerable<string> searchedLocations, out HeddleTemplate cached) {
@@ -255,7 +255,7 @@ namespace Heddle.Runtime {
                 TrimDirectiveLines = trim,
             };
 
-        /// <summary>Registry consult for a <see cref="TemplatePathType.None"/> request (D7). Derives the request's
+        /// <summary>Registry consult for a <see cref="TemplatePathType.None"/> request. Derives the request's
         /// effective options (the caller's when present, else a synthesized view carrying this resolver's
         /// profile/trim/root/change-check), then <see cref="PrecompiledTemplates.TryResolve"/>. A hit returns a
         /// <see cref="HeddleTemplate"/> in precompiled-adapter mode; a miss or Fallback failure returns false.</summary>
@@ -275,7 +275,7 @@ namespace Heddle.Runtime {
             if (!PrecompiledTemplates.TryResolve(viewName, options, out var entry))
                 return false;
 
-            // B2/C1: carry the request's output encoder and render budget onto the precompiled-adapter render (the
+            // Carry the request's output encoder and render budget onto the precompiled-adapter render (the
             // adapter has no CompileContext to read options from at render time).
             result = new HeddleTemplate(entry.Strategy, options.Encoder, options.RenderBudget);
             return true;

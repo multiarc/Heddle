@@ -7,8 +7,8 @@ using Xunit;
 namespace Heddle.Tests.Streaming
 {
     /// <summary>
-    /// Phase 8 WI2 — adapter-level tests for <see cref="Utf8ScopeRenderer"/> and <see cref="TextWriterScopeRenderer"/>,
-    /// independent of the engine. Pins the D5 two-tier transcode (single-call ≤ 5 461 UTF-16 units, chunked above),
+    /// Adapter-level tests for <see cref="Utf8ScopeRenderer"/> and <see cref="TextWriterScopeRenderer"/>,
+    /// independent of the engine. Pins the two-tier transcode (single-call ≤ 5 461 UTF-16 units, chunked above),
     /// the tier boundary rows, the <c>RenderUtf8</c> straight copy, and GetSpan-contract compliance via the stingy
     /// writer. The oracle is always <c>Encoding.UTF8.GetBytes(input)</c>. Runs on every test TFM incl. net48.
     /// </summary>
@@ -132,7 +132,7 @@ namespace Heddle.Tests.Streaming
         public void Utf8_LoneSurrogate_ReplacedWithFffd()
         {
             // A dynamic value may carry a lone surrogate at run time (HED7005 only guards static pieces). Encoding.UTF8
-            // replaces it with U+FFFD (EF BF BD), identically in the adapter and in the oracle — D5 ill-formed parity.
+            // replaces it with U+FFFD (EF BF BD), identically in the adapter and in the oracle.
             var input = "a\uD83Db";   // lone high surrogate
             var w = new TestBufferWriter();
             new Utf8ScopeRenderer(w).Render(input);

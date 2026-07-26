@@ -60,7 +60,7 @@ namespace Heddle.Runtime.Expressions
             ParseContext parseContext, out ExType resultType)
         {
             // 'this' as a whole expression is the model passthrough — compiles to the existing EmptyParameter so
-            // it works on dynamic scopes too, exactly like the empty member path (D5).
+            // it works on dynamic scopes too, exactly like the empty member path.
             if (expression is ThisNode)
             {
                 resultType = compileScope.ScopeType;
@@ -93,7 +93,7 @@ namespace Heddle.Runtime.Expressions
 
             if (compiler._usesProps)
             {
-                // Props-aware delegate shape (D9): a fourth object[] parameter bound to scope.PropsData. Emitted
+                // Props-aware delegate shape: a fourth object[] parameter bound to scope.PropsData. Emitted
                 // only when the tree contains a prop root; prop-free expressions keep today's 3-arg shape.
                 var propsLambda = Expression.Lambda<Func<object, object, object, object[], object>>(
                     boxed, compiler._model, compiler._chained, compiler._root, compiler._props);
@@ -146,7 +146,7 @@ namespace Heddle.Runtime.Expressions
 
         private Expression VisitThis(ThisNode node)
         {
-            // As an operand or path root, 'this' is a typed operand following the phase 1 dynamic-operand rule.
+            // As an operand or path root, 'this' is a typed operand following the dynamic-operand rule.
             _foldable = false;
             var scopeType = _compileScope.ScopeType;
             if (scopeType.IsDynamic)
@@ -175,7 +175,7 @@ namespace Heddle.Runtime.Expressions
             }
             else
             {
-                // Phase 5 (D9): a body prop read wins on the first segment (never for :: root refs, handled above).
+                // A body prop read wins on the first segment (never for :: root refs, handled above).
                 var propExpr = TryVisitPropRoot(path);
                 if (propExpr != null)
                     return propExpr;
@@ -202,7 +202,7 @@ namespace Heddle.Runtime.Expressions
         }
 
         /// <summary>
-        /// Native-tier body prop read (D9): when the path's first segment names a prop in the active layout,
+        /// Native-tier body prop read: when the path's first segment names a prop in the active layout,
         /// roots the read at <c>Convert(props[index], propType)</c> and hops the remaining segments; sets the
         /// props-aware delegate flag. Returns <c>null</c> when the segment is not a prop (ordinary model root).
         /// </summary>
@@ -367,10 +367,10 @@ namespace Heddle.Runtime.Expressions
                     return formatError;
             }
 
-            // HED4001 (phase 4 D3): the built-in three-argument range with a statically-visible non-positive
+            // HED4001: the built-in three-argument range with a statically-visible non-positive
             // literal (or sign-prefixed literal) step is a compile error, positioned at the step argument.
             // Scoped to the built-in MethodInfo by reference — a host-replaced 'range' governs its own step
-            // rules. More complex constant shapes fall through to the render-time guard (phase 1 D17).
+            // rules. More complex constant shapes fall through to the render-time guard.
             if (chosen.Method != null && chosen.Method == RangeThreeArgMethod && call.Arguments.Count == 3 &&
                 TryGetLiteralIntStep(call.Arguments[2], out var step) && step <= 0)
             {
@@ -385,7 +385,7 @@ namespace Heddle.Runtime.Expressions
         }
 
         /// <summary>
-        /// The reflection fact source for the shared overload ranker (phase 4 D10). The rank logic itself —
+        /// The reflection fact source for the shared overload ranker. The rank logic itself —
         /// <c>ConversionRank</c>/<c>TryRank</c>/<c>Dominates</c> and the Pareto tier bind — now lives once in
         /// <see cref="OverloadRank"/>, where the generator's linked build consults the identical rule instead of
         /// delegating overload selection to the consumer's C# compiler.

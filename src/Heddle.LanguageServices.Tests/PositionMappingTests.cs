@@ -4,8 +4,8 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>
-    /// The phase 6 D11 position-mapping torture set: UTF-16 offset ↔ (line, character) round-trips against
-    /// hand-computed expectations across LF and CRLF, with <c>\r</c> belonging to the terminated line.
+    /// Position mapping: UTF-16 offset ↔ (line, character) round-trips against hand-computed expectations across
+    /// LF and CRLF, with <c>\r</c> belonging to the terminated line.
     /// </summary>
     public class PositionMappingTests
     {

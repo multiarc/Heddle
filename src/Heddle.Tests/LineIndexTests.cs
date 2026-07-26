@@ -7,19 +7,16 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// <para>Generator plan phase 6 D6/D12.6: the golden vectors for the one canonical line rule — a line starts
-    /// at offset 0 and after each <c>'\n'</c>; <c>'\r'</c> is never a terminator by itself; a <c>'\r'</c> adjacent
-    /// to a <c>'\n'</c> belongs to the line that <c>'\n'</c> terminates; offsets and columns count UTF-16 code
-    /// units. The table (<see cref="LineIndexVectors"/>) is asserted here against <see cref="LineIndex"/> and
-    /// against the surface that renders a position to a user, <see cref="HeddleCompileResult"/>; the generator's
-    /// <c>LineMapper</c> and the LSP's <c>LineMap</c> assert the same table in their own suites.</para>
-    /// <para>Pre-extraction characterization (captured 2026-07-25 from the <c>Split('\n')</c> plus
-    /// leading-<c>'\r'</c> offset bump <see cref="HeddleCompileResult"/> used before WI4): the bump made three of
-    /// the eight documents disagree with the canonical rule — <c>"a\r\n\r\nb"</c> reported offset 5 (<c>b</c>) as
-    /// <c>3,0</c>→<c>2,1</c>, <c>"a\n\rb"</c> reported offset 3 as <c>2,1</c>→<c>2,0</c>, and
-    /// <c>"a\nb\r\n\rc\n"</c> reported offset 5 as <c>3,0</c>→<c>2,3</c>. LF-only, plain CRLF, lone-<c>'\r'</c>,
-    /// no-EOL and empty documents were already canonical, which is why the build tier's and the editor's
-    /// positions (both always <c>'\n'</c>-only) are unchanged by the reconciliation.</para>
+    /// <para>Golden vectors for the canonical line rule: a line starts at offset 0 or after each <c>'\n'</c>;
+    /// <c>'\r'</c> never terminates a line by itself; <c>'\r'</c> adjacent to <c>'\n'</c> belongs to the line
+    /// <c>'\n'</c> terminates; offsets and columns count UTF-16 code units. The table (<see cref="LineIndexVectors"/>)
+    /// is asserted here against <see cref="LineIndex"/> and against the surface that renders a position to a user,
+    /// <see cref="HeddleCompileResult"/>; the generator's <c>LineMapper</c> and the LSP's <c>LineMap</c> assert the
+    /// same table in their own suites.</para>
+    /// <para>Pre-extraction characterization (before the split-based rule): the leading-<c>'\r'</c> offset bump
+    /// made three of the eight documents disagree with the canonical rule — <c>"a\r\n\r\nb"</c>, <c>"a\n\rb"</c>,
+    /// and <c>"a\nb\r\n\rc\n"</c> reported positions incorrectly. LF-only, plain CRLF, lone-<c>'\r'</c>, no-EOL and
+    /// empty documents were already canonical.</para>
     /// </summary>
     public class LineIndexTests
     {

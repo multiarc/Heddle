@@ -51,7 +51,7 @@ namespace Heddle.Language.Binding
         /// shape — so a declaration list with two faults reports both, in declaration order.</summary>
         void Fault(PropFault fault, PropDeclaration<TType> declaration, TType relatedType, string relatedDisplay);
 
-        /// <summary>Applies the D2 default-conversion rule. Returns false (having reported nothing) when the
+        /// <summary>Applies the default-conversion rule. Returns false (having reported nothing) when the
         /// default cannot be converted; the core then raises <see cref="PropFault.DefaultNotConvertible"/> so the
         /// fault ordering stays owned here. <paramref name="sourceDisplay"/> names the default's own type for the
         /// shared message.</summary>
@@ -60,7 +60,7 @@ namespace Heddle.Language.Binding
     }
 
     /// <summary>
-    /// Phase 3 (F4): the <b>one</b> implementation of extension/definition prop-layout sequencing and slot
+    /// The <b>one</b> implementation of extension/definition prop-layout sequencing and slot
     /// indexing — the highest-payoff extraction in the binding layer, because slot indices are a wire format and a
     /// disagreement is silent wrong rendered output rather than a fallback.
     /// <para>Rules are the runtime's (<c>PropLayout.ResolveFromExtension</c>), verbatim: validation order per
@@ -200,7 +200,7 @@ namespace Heddle.Language.Binding
         }
 
         /// <summary>
-        /// Phase 3 (OQ4): the slot layout as one string — ordered <c>name:&lt;slot type AQN&gt;</c> pairs joined
+        /// The slot layout as one string — ordered <c>name:&lt;slot type AQN&gt;</c> pairs joined
         /// with <c>|</c>. The manifest carries the build tier's value and the gauntlet recomputes the run tier's
         /// from the live extension type; the AQN comes from the one <c>AqnFormatter</c> through each side's
         /// <see cref="ITypeFacts{TType}"/>, so equal layouts give byte-equal strings. <c>null</c> for an empty

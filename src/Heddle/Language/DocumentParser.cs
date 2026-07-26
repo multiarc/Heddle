@@ -13,7 +13,7 @@ namespace Heddle.Language
     /// Parses document and creates template cache that can be used multiple times as source template representation, also used to replace templates with data multiple times (template source preserved).
     /// </summary>
     /// <remarks>
-    /// The <see cref="ParserSettings"/>-based methods here are the shared front-end core (phase 7 D4): they carry no
+    /// The <see cref="ParserSettings"/>-based methods here are the shared front-end core: they carry no
     /// dependency on the runtime <c>CompileContext</c>, so this file compiles into the <c>Heddle.Generator</c>
     /// analyzer as a linked shared source. The runtime <c>CompileContext</c> adapters live in the sibling partial
     /// <c>DocumentParser.Runtime.cs</c>, which the generator does not compile.

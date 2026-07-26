@@ -2,7 +2,7 @@ namespace Heddle.Precompiled
 {
     /// <summary>
     /// <para>Which form the <c>#line</c> file names in a precompiled template's generated source are in
-    /// (schema 3, Q8.31). Q8.27 answered the same question with a comment line under
+    /// (schema 3). An earlier design answered the same question with a comment line under
     /// <c>// &lt;auto-generated/&gt;</c>; a reader could act on that, but a stack-trace symbolizer, an IDE or the
     /// LSP cannot. The choice is manifest data now and the comment is gone — one carrier, machine-readable, and
     /// the generated file stops carrying prose about its own layout.</para>

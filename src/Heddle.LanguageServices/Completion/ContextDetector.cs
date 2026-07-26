@@ -11,7 +11,7 @@ namespace Heddle.LanguageServices.Completion
         RootMembers,
         NamedArgument,
 
-        /// <summary>Phase 7 (WI5): a call-body region-override position — <c>@feed(){{ @% &lt;│ %@ }}</c>.
+        /// <summary>A call-body region-override position — <c>@feed(){{ @% &lt;│ %@ }}</c>.
         /// <see cref="CompletionContext.CallName"/> carries the enclosing call's name; the provider offers the
         /// callee's PUBLIC region names.</summary>
         RegionOverride
@@ -37,8 +37,8 @@ namespace Heddle.LanguageServices.Completion
     }
 
     /// <summary>
-    /// Classifies the completion context from the text before the offset plus the innermost scope span (phase 6
-    /// D12 detection table, first match wins). Text-driven so it stays robust on the incomplete input a user types.
+    /// Classifies the completion context from the text before the offset plus the innermost scope span;
+    /// first match wins. Text-driven so it stays robust on the incomplete input a user types.
     /// </summary>
     internal static class ContextDetector
     {
@@ -53,18 +53,18 @@ namespace Heddle.LanguageServices.Completion
             while (i >= 0 && (text[i] == ' ' || text[i] == '\t'))
                 i--;
 
-            // Rule 3 — member of a resolved prefix (anchor '.').
+            // Member of a resolved prefix (anchor '.').
             if (i >= 0 && text[i] == '.')
             {
                 var (prefix, rootRef) = ReadPathBefore(text, i);
                 return new CompletionContext(CompletionContextKind.MemberOfPrefix, prefix, rootRef, null);
             }
 
-            // Rule 4 — root-model members (anchor '::').
+            // Root-model members (anchor '::').
             if (i >= 1 && text[i] == ':' && text[i - 1] == ':')
                 return new CompletionContext(CompletionContextKind.RootMembers, null, true, null);
 
-            // Rules 2/5 — inside call parens.
+            // Inside call parens.
             if (TryFindEnclosingCall(text, offset, out var callName, out var openParen))
             {
                 var defProps = FindDefinitionProps(analysis, callName);
@@ -73,7 +73,7 @@ namespace Heddle.LanguageServices.Completion
                 return new CompletionContext(CompletionContextKind.ExpressionPosition, null, false, callName);
             }
 
-            // Phase 7 (WI5) — region-override position: a '<' anchor (optionally mid-word) at an override
+            // Region-override position: a '<' anchor (optionally mid-word) at an override
             // position of a definition block inside a call body ({{ … }} of a '@name(...)' call). Offers the
             // callee's public region names for the '<name:name>' override form; the '@%'/'}}' anchor guard keeps
             // plain HTML tags in body text from triggering it.
@@ -89,7 +89,7 @@ namespace Heddle.LanguageServices.Completion
                 }
             }
 
-            // Rule 6 — callable names after '@' or a chain ':'.
+            // Callable names after '@' or a chain ':'.
             if (i >= 0 && text[i] == '@')
                 return new CompletionContext(CompletionContextKind.CallableNames, null, false, null);
             if (i >= 0 && text[i] == ':' && (i == 0 || text[i - 1] != ':'))
@@ -98,7 +98,7 @@ namespace Heddle.LanguageServices.Completion
             return CompletionContext.None;
         }
 
-        /// <summary>Phase 7 (WI5): the name of the call whose <c>{{ … }}</c> body encloses
+        /// <summary>The name of the call whose <c>{{ … }}</c> body encloses
         /// <paramref name="position"/>, or null. Scans backwards balancing <c>}}</c>/<c>{{</c> pairs; the
         /// unbalanced enclosing <c>{{</c> must follow a <c>@name(...)</c> call shape.</summary>
         private static string FindEnclosingCallBodyName(string text, int position)

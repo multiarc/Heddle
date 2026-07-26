@@ -7,13 +7,11 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Generator plan phase 2 WI6 (pin 9) — the verdict-level pins for the shared region-fill matching rule
-    /// (<see cref="RegionFillResolver"/>). What is pinned here is the shared <em>decision</em>, including its
-    /// lazy-lookup contract — no region table is consulted for a candidate the origin filter rejects.
-    /// <para>Phase 1 WI6 added the <see cref="VerdictReactions"/> theory below. Phase 2's version of this comment
-    /// recorded the reactions as deliberately asymmetric ("the runtime retracts and raises HED5019, the generator
-    /// un-precompiles"); Q1.3's match-principle ruling removed that asymmetry, so the reaction per verdict is now
-    /// itself a contract and is asserted rather than described.</para>
+    /// The verdict-level pins for the shared region-fill matching rule (<see cref="RegionFillResolver"/>).
+    /// What is pinned here is the shared <em>decision</em>, including its lazy-lookup contract — no region
+    /// table is consulted for a candidate the origin filter rejects.
+    /// <para>The reaction per verdict is a contract: both backends map each verdict to the same observable
+    /// facts (error retraction, fill installation, error raising). This table specifies the contract.</para>
     /// </summary>
     public class RegionFillResolverTests
     {

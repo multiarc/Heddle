@@ -6,23 +6,24 @@ using Microsoft.CodeAnalysis;
 namespace Heddle.Generator.Binding
 {
     /// <summary>
-    /// Discovers declaratively exported host functions (phase 7 D21 / OQ1 resolution): the assembly-level
+    /// Discovers declaratively exported host functions: the assembly-level
     /// <c>Heddle.Attributes.ExportFunctionsAttribute</c> on the compilation's own assembly and its referenced
     /// assemblies. Each container is a <c>public static</c> class; every <b>eligible</b> public static method is one
-    /// function named <c>MethodInfo.Name.ToLowerInvariant()</c> (phase 6 D24). Generated calls bind <b>directly</b>
+    /// function named <c>MethodInfo.Name.ToLowerInvariant()</c>. Generated calls bind <b>directly</b>
     /// to the discovered container (no shim, no runtime registry), and the manifest records the container as AQN
     /// sans version — the exact shape the gauntlet compares against the live registry.
-    /// <para>Phase 3 (F2) moved three rules here from hand transcription into the shared
-    /// <see cref="ExportRules"/>/<see cref="ExportBookkeeping{TPayload}"/> core:</para>
+    /// <para>Three rules live in the shared
+    /// <see cref="ExportRules"/>/<see cref="ExportBookkeeping{TPayload}"/> core rather than being transcribed
+    /// here by hand:</para>
     /// <list type="bullet">
     /// <item><description><b>method eligibility</b> — the runtime refuses open generics, <c>void</c> returns and
     /// <c>ref</c>/<c>out</c>/pointer parameters; this resolver used to count them, and because the gauntlet compares
     /// overload counts exactly in both directions, one <c>void Log(string)</c> helper permanently un-precompiled
     /// every template calling any function from that container;</description></item>
-    /// <item><description><b>merge across containers</b> (OQ2) — a second container exporting the same name adds its
+    /// <item><description><b>merge across containers</b> — a second container exporting the same name adds its
     /// overloads rather than being ignored, so the manifest rows match the live merged registry;</description></item>
     /// <item><description><b>container eligibility</b> — an ineligible container is <c>HED7021</c> at
-    /// <b>Error</b> severity (Q3.6's match-principle ruling), not a silent skip: the runtime throws
+    /// <b>Error</b> severity, not a silent skip: the runtime throws
     /// <c>ArgumentException</c> at <c>RegisterFrom</c>, so the build fails the same way instead of masking a host
     /// configuration error until first render.</description></item>
     /// </list>
@@ -119,8 +120,8 @@ namespace Heddle.Generator.Binding
             var assemblies = new List<IAssemblySymbol> { compilation.Assembly };
             assemblies.AddRange(compilation.SourceModule.ReferencedAssemblySymbols);
 
-            // The bookkeeping accumulates every container's contribution under one name (OQ2: merge). The order
-            // fed in is the documented one: compilation assembly first, then referenced assemblies, then per
+            // The bookkeeping accumulates every container's contribution under one name (merge, not replace). The
+            // order fed in is: compilation assembly first, then referenced assemblies, then per
             // assembly the attribute declaration order — the only thing it can change is which of two
             // identical-signature registrations survives, which is the runtime's replace-on-identical rule.
             var bookkeeping = new ExportBookkeeping<ExportOverloadInfo>();
@@ -199,10 +200,9 @@ namespace Heddle.Generator.Binding
                 if (!ExportRules.IsCandidate(facts))
                     continue;
 
-                // Verified against the runtime while implementing (a correction to the plan's framing of F2): an
-                // ineligible METHOD is not a silent over-count on one tier — RegisterContainer wraps the
+                // An ineligible METHOD is not a silent over-count on one tier — RegisterContainer wraps the
                 // ArgumentException and rethrows, so the whole container fails to register and the host throws at
-                // startup. Under the match principle that is a build error, not an excluded manifest row.
+                // startup. That is a build error, not an excluded manifest row.
                 var rejection = ExportRules.Evaluate(facts);
                 if (rejection != ExportRejection.None)
                 {

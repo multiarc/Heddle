@@ -1,11 +1,11 @@
 namespace Heddle.Language.Expressions
 {
     /// <summary>
-    /// The one <see cref="ExprOperator"/> → C# lexeme table (phase 4 D4/F5). Before this file the same list lived in
-    /// three places — the generator's <c>BinarySymbol</c> plus its inline unary lexemes, the runtime's error-text
-    /// <c>Symbol</c> (which never carried <c>&amp;&amp;</c>/<c>||</c>/<c>??</c>), and the AST builder's token
-    /// mapping — so adding an operator meant four touch points and a transposed <c>&amp;</c>/<c>&amp;&amp;</c> in the
-    /// generator was a silent miscompile rather than a build break.
+    /// The single <see cref="ExprOperator"/> → C# lexeme table. Before this file the same list lived in three
+    /// places — the generator's <c>BinarySymbol</c> plus inline unary lexemes, the runtime's error-text <c>Symbol</c>
+    /// (which never carried <c>&amp;&amp;</c>/<c>||</c>/<c>??</c>), and the AST builder's token mapping — adding an
+    /// operator meant four touch points, and a transposed <c>&amp;</c>/<c>&amp;&amp;</c> in the generator was a
+    /// silent miscompile rather than a build break.
     /// <para>Roslyn-free and netstandard2.0-clean: this file compiles into <c>Heddle</c> and is linked into the
     /// generator by the existing <c>Language\**</c> glob, beside <see cref="ExprOperator"/> itself.</para>
     /// </summary>

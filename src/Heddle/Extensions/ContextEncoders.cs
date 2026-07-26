@@ -5,10 +5,10 @@ using System.Text;
 namespace Heddle.Extensions
 {
     /// <summary>
-    /// C2 — allocation-conscious escapers for the context-encoding extensions (<c>@attr</c>, <c>@js</c>,
+    /// Allocation-conscious escapers for the context-encoding extensions (<c>@attr</c>, <c>@js</c>,
     /// <c>@url</c>). Every method scans first and returns the original string reference unchanged when no character
     /// needs escaping; a <see cref="StringBuilder"/> is allocated only when at least one character must be rewritten
-    /// (C2-R1). netstandard2.0-compatible (no span APIs).
+    /// netstandard2.0-compatible (no span APIs).
     /// </summary>
     internal static class ContextEncoders
     {
@@ -20,12 +20,12 @@ namespace Heddle.Extensions
 
         /// <summary>Stringifies a non-null value for a context encoder: a string passes through unchanged, anything
         /// else is rendered with <see cref="Convert.ToString(object, IFormatProvider)"/> under the invariant culture
-        /// (C2-R1, matching <c>@string</c>).</summary>
+        /// (matching <c>@string</c>).</summary>
         internal static string Stringify(object model)
             => model as string ?? Convert.ToString(model, CultureInfo.InvariantCulture);
 
         /// <summary>
-        /// HTML-attribute context (C2-R2). Escapes exactly <c>&amp;</c>, <c>&lt;</c>, <c>&gt;</c>, <c>"</c>,
+        /// HTML-attribute context. Escapes exactly <c>&amp;</c>, <c>&lt;</c>, <c>&gt;</c>, <c>"</c>,
         /// <c>'</c> — the attribute-significant characters including both quote styles, so the output is safe in
         /// single- and double-quoted attribute values alike. (Not a strict superset of the default HTML encoder,
         /// which also escapes <c>'</c> and the Latin-1 160-255 range.)
@@ -71,7 +71,7 @@ namespace Heddle.Extensions
         }
 
         /// <summary>
-        /// JS string-literal contents (C2-R3). Produces the <i>contents</i> of a string literal — the caller writes
+        /// JS string-literal contents. Produces the <i>contents</i> of a string literal — the caller writes
         /// the surrounding quotes. Escapes <c>\</c>, <c>"</c>, <c>'</c>, backtick, U+000A→<c>\n</c>, U+000D→<c>\r</c>,
         /// U+2028/U+2029 (JS line terminators), <c>&lt;</c>→<c><</c> (blocks <c>&lt;/script&gt;</c>),
         /// <c>&amp;</c>→<c>&</c>, and every remaining C0 control as <c>\u00XX</c>.
@@ -151,7 +151,7 @@ namespace Heddle.Extensions
         }
 
         /// <summary>
-        /// URL component context (C2-R4): the <see cref="Uri.EscapeDataString(string)"/> semantics (RFC 3986 —
+        /// URL component context: the <see cref="Uri.EscapeDataString(string)"/> semantics (RFC 3986 —
         /// unreserved characters kept, everything else percent-encoded, UTF-8 based). Encodes a single component
         /// (a query value or path segment), not a whole URL. Returns the original reference when every character is
         /// unreserved (the case in which <see cref="Uri.EscapeDataString(string)"/> is the identity).

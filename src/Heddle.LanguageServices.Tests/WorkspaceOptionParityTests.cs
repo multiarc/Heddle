@@ -10,14 +10,12 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>
-    /// <para><b>The WI9 completeness gate</b> (generator plan phase 6 D10, ruling Q6.2). The editor follows the
-    /// same configuration surface the runtime permits: every public <see cref="TemplateOptions"/> property is
-    /// either wired to a <c>.heddle-lsp.json</c> key or named on the exclusion list below <i>with its reason</i>.
-    /// A future runtime option must be wired or explicitly excluded — never forgotten, which is what this test
-    /// goes red on.</para>
-    /// <para>The second half of the ruling is the defaults: the keys' names and the values an absent key yields
-    /// come from the shared <see cref="HeddleBuildOptions"/> table, so the editor cannot hold a different opinion
-    /// about what the default is than the build tier and the engine do.</para>
+    /// <para>Workspace option completeness gate: the editor follows the same configuration surface the runtime
+    /// permits. Every public <see cref="TemplateOptions"/> property is either wired to a <c>.heddle-lsp.json</c> key
+    /// or named on the exclusion list below <i>with its reason</i>. A future runtime option must be wired or
+    /// explicitly excluded — never forgotten.</para>
+    /// <para>The keys' names and default values come from the shared <see cref="HeddleBuildOptions"/> table, so the
+    /// editor and engine always agree on what the default is.</para>
     /// </summary>
     public class WorkspaceOptionParityTests
     {
@@ -73,7 +71,7 @@ namespace Heddle.LanguageServices.Tests
             Assert.True(unaccounted.Count == 0,
                 "TemplateOptions gained " + string.Join(", ", unaccounted) +
                 ". Wire it to a .heddle-lsp.json key in WorkspaceConfig, or add it to the exclusion list in this " +
-                "test with the reason analysis cannot use it (generator plan phase 6 D10).");
+                "test with the reason analysis cannot use it.");
 
             // …and nothing on either list has been deleted from TemplateOptions without the list following.
             foreach (var name in Wired.Keys.Concat(Excluded.Keys))
@@ -158,8 +156,7 @@ namespace Heddle.LanguageServices.Tests
             Assert.Equal(runtime.MaxRecursionCount, bare.MaxRecursionCount);
         }
 
-        /// <summary>The Q6.2 default alignment itself, pinned by value: the editor's default profile is the
-        /// engine's <c>Html</c>, not the <c>Text</c> it used to be.</summary>
+        /// <summary>The editor's default profile is the engine's <c>Html</c>, not the <c>Text</c> it used to be.</summary>
         [Fact]
         public void TheDefaultProfileIsTheEnginesHtml()
         {

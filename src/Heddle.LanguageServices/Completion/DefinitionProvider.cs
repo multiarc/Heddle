@@ -3,7 +3,7 @@ using System.Linq;
 namespace Heddle.LanguageServices.Completion
 {
     /// <summary>
-    /// Go-to-definition (phase 6 D16/D26): a definition reference targets the surviving registry entry's header
+    /// Go-to-definition: a definition reference targets the surviving registry entry's header
     /// span in its owning file; an <c>@&lt;&lt;</c>/<c>@partial</c> site targets the resolved file at 0..0; a
     /// prop named-argument targets the <c>PropDeclaration</c> span. Unresolvable → null (never a guess).
     /// </summary>
@@ -32,7 +32,7 @@ namespace Heddle.LanguageServices.Completion
                     return new DefinitionTarget(callee.SourcePath, prop.DeclarationOffset, prop.DeclarationLength);
             }
 
-            // Definition call/name → the surviving registry entry's header (D26 — analysis.Definitions holds it).
+            // Definition call/name → the surviving registry entry's header.
             var definition = analysis.Definitions.FirstOrDefault(d => d.Name == word);
             if (definition != null)
                 return new DefinitionTarget(definition.SourcePath, definition.Offset, definition.Length);

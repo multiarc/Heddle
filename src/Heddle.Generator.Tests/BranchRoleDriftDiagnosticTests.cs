@@ -14,10 +14,10 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// WI7 / D-ROLE-5 (§6.5): the optional generator drift diagnostic <c>HED7016</c> fires for a branch
-    /// <c>Continuation</c>/<c>Terminal</c> that omits <c>[ScopeChannel]</c> (it can never read the branch state at
-    /// render time, R11), and never fires for the compliant engine built-ins or a compliant custom trio. The
-    /// diagnostic is additive: emitting it does not change any generated source or existing diagnostics.
+    /// The optional generator drift diagnostic <c>HED7016</c> fires for a branch <c>Continuation</c>/<c>Terminal</c>
+    /// that omits <c>[ScopeChannel]</c> (it can never read the branch state at render time), and never fires for the
+    /// compliant engine built-ins or a compliant custom trio. The diagnostic is additive: emitting it does not change
+    /// any generated source or existing diagnostics.
     /// </summary>
     public class BranchRoleDriftDiagnosticTests
     {
@@ -28,9 +28,9 @@ namespace Heddle.Generator.Tests
             var tpa = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
             var refs = tpa.Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
-                // Heddle.Generator is an *analyzer*, never a reference — and since phase 3 (F9) it carries linked
-                // copies of runtime types (Heddle.Attributes.BranchRole), so handing it to a probe compilation
-                // alongside Heddle.dll makes those names ambiguous (CS0433). Same filter the harnesses apply.
+                // Heddle.Generator is an *analyzer*, never a reference — and it carries linked copies of runtime
+                // types (Heddle.Attributes.BranchRole), so handing it to a probe compilation alongside Heddle.dll
+                // makes those names ambiguous (CS0433). Same filter the harnesses apply.
                 .Where(p => !string.Equals(Path.GetFileNameWithoutExtension(p), "Heddle.Generator",
                     StringComparison.OrdinalIgnoreCase))
                 .Select(p => (MetadataReference)MetadataReference.CreateFromFile(p))

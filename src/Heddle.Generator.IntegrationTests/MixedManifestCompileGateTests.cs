@@ -5,13 +5,12 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 5 WI6 (D9): the twin manifest-entry builders — thirteen named constructor arguments duplicated
-    /// verbatim, differing in five lines — merged into one builder taking a marker flag. Since the
-    /// <c>PrecompiledTemplateInfo</c> argument <i>names</i> cannot come from <c>nameof</c> (the type pulls
-    /// <c>IProcessStrategy</c> and is not linkable into the analyzer), this suite's compile-and-register gate is the
-    /// guard: a renamed or reordered constructor parameter is a red build here.
-    /// <para>The assertion the phase adds is explicit coverage of a manifest containing <b>both</b> kinds of entry
-    /// at once, which is the shape the merged builder has to keep producing.</para>
+    /// The twin manifest-entry builders — thirteen named constructor arguments duplicated verbatim, differing in five
+    /// lines — merged into one builder taking a marker flag. Since the <c>PrecompiledTemplateInfo</c> argument <i>names</i>
+    /// cannot come from <c>nameof</c> (the type pulls <c>IProcessStrategy</c> and is not linkable into the analyzer), this
+    /// suite's compile-and-register gate is the guard: a renamed or reordered constructor parameter is a red build here.
+    /// <para>The suite covers a manifest containing <b>both</b> kinds of entry at once — the shape the merged builder has to
+    /// keep producing.</para>
     /// </summary>
     [Collection("PrecompiledRegistry")]
     public class MixedManifestCompileGateTests : PrecompiledRegistryTestBase

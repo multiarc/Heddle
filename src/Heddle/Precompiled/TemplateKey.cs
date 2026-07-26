@@ -4,7 +4,7 @@ using System.Text;
 namespace Heddle.Precompiled
 {
     /// <summary>
-    /// <para>The shared key-normalization rule for precompiled templates (phase 7 D1). One pure function,
+    /// <para>The shared key-normalization rule for precompiled templates. One pure function,
     /// one source file, compiled into both <c>Heddle</c> (runtime lookup) and the <c>Heddle.Generator</c>
     /// analyzer (build-time emit) so emit-time and lookup-time keys are byte-identical by construction.</para>
     /// <para>Keys are the template's path relative to the resolver root, with backslashes unified to
@@ -16,7 +16,7 @@ namespace Heddle.Precompiled
     /// </summary>
     public static class TemplateKey
     {
-        /// <summary>The one template file extension (phase 5 D4). Its MSBuild twin — the
+        /// <summary>The one template file extension. Its MSBuild twin — the
         /// <c>**\*.heddle</c> glob in <c>Heddle.Generator.targets</c> — is XML and cannot reference this const; it
         /// carries a comment naming this member as normative.</summary>
         public const string TemplateExtension = ".heddle";
@@ -63,9 +63,9 @@ namespace Heddle.Precompiled
 
         /// <summary>
         /// <para>Derives the canonical key of a template file from its path and the template root — the build-side
-        /// half of the key↔path pair (phase 5 D2). Returns <c>false</c> when <paramref name="path"/> is not under
+        /// half of the key↔path pair. Returns <c>false</c> when <paramref name="path"/> is not under
         /// <paramref name="root"/>: there is <b>no</b> filename fallback here, because silently dropping the
-        /// directory produces a key no runtime lookup can hit (05 F3). A caller that wants the historical flattened
+        /// directory produces a key no runtime lookup can hit. A caller that wants the historical flattened
         /// key must ask for it explicitly, and say so.</para>
         /// <para><b>Two case domains, deliberately.</b> The root-prefix test is
         /// <see cref="StringComparison.OrdinalIgnoreCase"/> — it compares <i>filesystem paths</i>, and MSBuild
@@ -90,7 +90,7 @@ namespace Heddle.Precompiled
             return TryNormalize(normalizedPath.Substring(normalizedRoot.Length + 1), out key);
         }
 
-        /// <summary>The inverse of <see cref="TryMakeRelative"/> (phase 5 D2): the on-disk path a key names under a
+        /// <summary>The inverse of <see cref="TryMakeRelative"/>: the on-disk path a key names under a
         /// root, with <c>/</c> re-separated for the running platform. Used by the staleness check to find the file a
         /// manifest entry was built from.</summary>
         public static string ToPath(string key, string root)
@@ -105,20 +105,16 @@ namespace Heddle.Precompiled
         {
             key = null;
 
-            // Step 1 — reject null/whitespace input.
             if (string.IsNullOrWhiteSpace(relativePath))
             {
                 error = "A template key must be a non-empty, non-whitespace relative path.";
                 return false;
             }
 
-            // Step 2 — unify separators.
             var path = relativePath.Replace('\\', '/');
 
-            // Step 3 — collapse runs of '/'.
             path = CollapseSlashes(path);
 
-            // Step 4 — strip a leading '~/', then every leading './', then any leading '/'.
             if (path.StartsWith("~/", StringComparison.Ordinal))
                 path = path.Substring(2);
             while (path.StartsWith("./", StringComparison.Ordinal))
@@ -126,7 +122,6 @@ namespace Heddle.Precompiled
             while (path.Length > 0 && path[0] == '/')
                 path = path.Substring(1);
 
-            // Step 5 — split, reject '.'/'..' and empty (trailing-separator) segments.
             var segments = path.Split('/');
             for (var i = 0; i < segments.Length; i++)
             {
@@ -149,13 +144,11 @@ namespace Heddle.Precompiled
                 return false;
             }
 
-            // Step 6 — append the template extension when the final segment carries no extension (D4: the rule is
-            // expressed against the shared const; the "no '.' in the final segment" trigger is unchanged).
+            // The rule is expressed against the shared const; the trigger is "no '.' in the final segment".
             var last = segments[segments.Length - 1];
             if (last.IndexOf('.') < 0)
                 segments[segments.Length - 1] = last + TemplateExtension;
 
-            // Steps 7 & 8 — case preserved; rejoin with '/'.
             key = string.Join("/", segments);
             error = null;
             return true;

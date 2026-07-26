@@ -5,9 +5,8 @@ using Xunit;
 
 namespace Heddle.Tests
 {
-    /// <summary>Two types with the same short name in two different namespaces — the short-name tie Q3.5's ruling
-    /// is about. Both namespaces can be imported at once, which is what used to make the runtime pick the first in
-    /// assembly-scan order.</summary>
+    /// <summary>Two types with the same short name in two different namespaces. Both namespaces can be imported at
+    /// once, which is what used to make the runtime pick the first in assembly-scan order.</summary>
     public class TieProbe { }
 }
 
@@ -57,9 +56,9 @@ namespace Heddle.Tests
             };
             yield return new object[] { "(int, string)", new string[0],
                 "System.ValueTuple`2[System.Int32,System.String]" };
-            // Q8.3: a one-element tuple IS legal — `(int)` is ValueTuple<int>. The shared parser required two
-            // elements when it was written, so the build tier refused a spelling the run tier accepted; folding the
-            // runtime onto the parser is what surfaced it. An empty element is still rejected.
+            // A one-element tuple IS legal — `(int)` is ValueTuple<int>. The shared parser required two elements when
+            // written, so the build tier refused a spelling the run tier accepted; folding the runtime onto the parser
+            // is what surfaced it. An empty element is still rejected.
             yield return new object[] { "(int)", new string[0], "System.ValueTuple`1[System.Int32]" };
             yield return new object[] { "()", new string[0], "UNRESOLVED" };
             // Surrounding whitespace on a top-level spelling is tolerated by the shared parser (it trims every

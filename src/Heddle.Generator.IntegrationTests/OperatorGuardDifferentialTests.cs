@@ -8,16 +8,13 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 4 WI2/WI5 (D3→D6) — the differential corpus for the "deviations from C#" set
-    /// ([docs/native-expressions.md] deviations 1–7). Before the shared
-    /// <c>NativeOperatorRules</c> table the generator emitted <c>(left op right)</c> with no operand typing at all,
-    /// which broke in two opposite directions at once: mixed-type equality produced <b>CS0019 in the consumer's
+    /// The differential corpus for cases where the generator and runtime differ on operator validity. Before the
+    /// shared <c>NativeOperatorRules</c> table the generator emitted <c>(left op right)</c> with no operand typing
+    /// at all, which broke in two opposite directions: mixed-type equality produced <b>CS0019 in the consumer's
     /// build</b> for a template the runtime accepts, while enum arithmetic and <c>enum &amp; 0</c> produced valid C#
     /// that <i>renders</i> where the runtime raises a positioned error.
     /// <para>Each entry asserts the shape that closes its half: the template degrades at build time (so no raw C#
-    /// operator reaches the consumer's compiler — <c>DifferentialHarness.Generate</c> itself fails the test if the
-    /// generated code does not compile), and the dynamic tier — the semantics of record — then supplies the single
-    /// verdict both tiers share.</para>
+    /// operator reaches the consumer's compiler), and the dynamic tier supplies the single verdict both tiers share.</para>
     /// </summary>
     public class OperatorGuardDifferentialTests
     {
@@ -63,7 +60,6 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal(expected, template.Generate(model));
         }
 
-        // --- Deviation 1: == / != on unrelated or mixed types -------------------------------------------------
 
         [Fact]
         public void MixedTypeEquality_CompilesTheConsumerProject_AndDegrades()
@@ -97,7 +93,6 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal(dyn, precompiled);
         }
 
-        // --- Deviation 4: enum arithmetic -----------------------------------------------------------------------
 
         [Fact]
         public void EnumArithmetic_DegradesInsteadOfRendering()
@@ -108,7 +103,6 @@ namespace Heddle.Generator.IntegrationTests
                 HeddleDiagnosticIds.BinaryOperatorNotDefined);
         }
 
-        // --- Deviation 5: the `enum & 0` literal case ------------------------------------------------------------
 
         [Fact]
         public void EnumBitwiseWithZeroLiteral_DegradesInsteadOfRendering()
@@ -119,7 +113,6 @@ namespace Heddle.Generator.IntegrationTests
                 HeddleDiagnosticIds.BinaryOperatorNotDefined);
         }
 
-        // --- Deviation 6: user-defined implicit conversions -------------------------------------------------------
 
         [Fact]
         public void UserImplicitConversion_IsNeverConsultedByTheConsumersCompiler()
@@ -141,7 +134,6 @@ namespace Heddle.Generator.IntegrationTests
                 new Order { Total = new Money(2.5m) }, "value: 5.0\n");
         }
 
-        // --- Deviation 7: bool? logicals ---------------------------------------------------------------------------
 
         [Fact]
         public void NullableBoolLogical_DegradesInsteadOfRendering()
@@ -150,7 +142,6 @@ namespace Heddle.Generator.IntegrationTests
                 HeddleDiagnosticIds.LogicalOperatorRequiresBool);
         }
 
-        // --- Illegal promotions (HED1008 class) --------------------------------------------------------------------
 
         [Fact]
         public void IllegalNumericPromotion_DegradesInsteadOfRendering()
@@ -160,14 +151,11 @@ namespace Heddle.Generator.IntegrationTests
                 HeddleDiagnosticIds.BinaryOperatorNotDefined);
         }
 
-        // --- The unary and ternary halves of the guard ------------------------------------------------------------
-        //
-        // Added by the phase-4 audit (2026-07-26) to close a surviving mutant: deleting the `Supported` guards from
-        // `WriteUnary` *and* `WriteTernary` together reddened **zero** tests in all three suites, even though D3/D6
-        // and the success criteria both say "binaries/unaries/ternaries". The binary half had eight named entries;
-        // the other two arities rode along on the shared estimator with no differential coverage at all, so the
-        // unconditional-emit defect they were fixed for could have been reintroduced silently. One entry per verdict
-        // class per arity, mirroring the binary rows above.
+        // The unary and ternary halves of the guard. Deleting the `Supported` guards from `WriteUnary` and
+        // `WriteTernary` together reddened zero tests in all three suites, even though the success criteria say all
+        // arities should be covered. The binary half had eight named entries; the other two arities rode along with
+        // no differential coverage, so the unconditional-emit defect they were fixed for could have been
+        // reintroduced silently. One entry per verdict class per arity here, mirroring the binary rows above.
 
         [Fact]
         public void UnaryNegateOnAnEnum_DegradesInsteadOfEmitting()
@@ -208,13 +196,11 @@ namespace Heddle.Generator.IntegrationTests
                 new Order { Tag = new Label("x") }, "value: n=tostring:x\n");
         }
 
-        // --- The shift row: a wide count is CS0019 in the consumer's build --------------------------------------
-        //
-        // Also a surviving mutant closed by the phase-4 audit: deleting the shift row's `RequiresRuntimeSemantics`
-        // arm entirely — emitting lifted shifts and wide shift counts verbatim — reddened zero tests. C# defines
-        // `<<` only for an int-typed (or implicitly-int) count, while the runtime narrows *any* integral count to
-        // int, so `Count << Big` is a hard consumer-build error precompiled and a rendering expression at run time:
-        // the CS0019 class this phase exists to close, on a row no fixture reached.
+        // The shift row: a wide count is CS0019 in the consumer's build. Deleting the shift row's
+        // `RequiresRuntimeSemantics` arm entirely — emitting lifted shifts and wide shift counts verbatim — reddened
+        // zero tests. C# defines `<<` only for an int-typed (or implicitly-int) count, while the runtime narrows
+        // *any* integral count to int, so `Count << Big` is a hard consumer-build error precompiled and a rendering
+        // expression at run time — a case no fixture reached until this coverage was added.
 
         [Fact]
         public void WideShiftCount_DegradesAndRendersTheRuntimeResult()
@@ -249,7 +235,6 @@ namespace Heddle.Generator.IntegrationTests
                 HeddleDiagnosticIds.TernaryArmsNoCommonType);
         }
 
-        // --- The coverage floor: the shapes that must keep precompiling ---------------------------------------------
 
         [Theory]
         [InlineData("guard/keep-arith.heddle", "Count * 2 + 1")]

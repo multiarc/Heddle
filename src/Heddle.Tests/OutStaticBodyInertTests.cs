@@ -40,8 +40,6 @@ namespace Heddle.Tests
             return t.Generate(model, chained);
         }
 
-        // ---- The double-render: chained value present + an inert static body ---------------------------------------
-
         [Fact]
         public void ForIndexWithStaticBody_EmitsIndexOnly_NotIndexPlusBody()
         {
@@ -69,8 +67,6 @@ namespace Heddle.Tests
                 Render("[@out(){{BODY}}]", typeof(string), null));
         }
 
-        // ---- Render/Process parity for the SAME bodied @out() (the STRING case) ------------------------------------
-
         [Fact]
         public void RenderAndProcessAgree_ForStaticBodyOut_StringChained()
         {
@@ -84,8 +80,6 @@ namespace Heddle.Tests
             Assert.Equal("[]", renderPath);
             Assert.Equal(renderPath, processPath);
         }
-
-        // ---- The dynamic-body transform is unaffected (InnerExist branch in both paths) ---------------------------
 
         [Fact]
         public void ForIndexWithDynamicBody_RendersTheTransform()
@@ -102,8 +96,6 @@ namespace Heddle.Tests
             Assert.Equal("[<CH>]",
                 Render("[@out(){{<@(this)>}}]", typeof(string), null, "CH"));
         }
-
-        // ---- The bodiless @out() (the common case) is unchanged ---------------------------------------------------
 
         [Fact]
         public void BodilessOut_EmitsChainedValue_Unchanged()

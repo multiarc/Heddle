@@ -9,10 +9,10 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 8 (WI9) — the dynamic-tier extension-parameter matrix: the <c>[Prop]</c> declaration surface, the
-    /// relaxed HED5005 gate, the reused call-time HED5001–HED5004 and declaration-side
-    /// HED5007/HED5008/HED5009/HED5010/HED5015, call-site symmetry with definition props, the sandbox gate, and
-    /// the F6 encoding-preservation rows. Errors are asserted as positioned diagnostics, never bare failures.
+    /// The dynamic-tier extension-parameter matrix: the <c>[Prop]</c> declaration surface, the relaxed HED5005
+    /// gate, the reused call-time HED5001–HED5004 and declaration-side HED5007/HED5008/HED5009/HED5010/HED5015,
+    /// call-site symmetry with definition props, the sandbox gate, and the encoding-preservation rows. Errors are
+    /// asserted as positioned diagnostics, never bare failures.
     /// </summary>
     public class ExtensionParametersTests
     {

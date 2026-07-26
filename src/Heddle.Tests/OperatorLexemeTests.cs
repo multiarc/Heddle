@@ -6,7 +6,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 4 WI3 (D4 / 04 F5) — the operator lexeme table. The drift this guards is structural: adding an
+    /// The operator lexeme table. The drift this guards is structural: adding an
     /// <see cref="ExprOperator"/> member used to be four touch points, and the asymmetry hid the damage (a missing
     /// generator row degraded silently, a missing runtime row only garbled error text, and a <b>transposed</b> row —
     /// <c>&amp;</c> for <c>&amp;&amp;</c> — was valid C# with different semantics). The supported set is now derived

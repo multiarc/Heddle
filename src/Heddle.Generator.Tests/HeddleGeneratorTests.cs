@@ -75,9 +75,9 @@ namespace Heddle.Generator.Tests
             Assert.DoesNotContain(run.GeneratorDiagnostics, d => d.Severity == DiagnosticSeverity.Error);
         }
 
-        [Fact] // Both-tier parity (import-removal-spec G1): an @import() template surfaces the HED4003 removal ERROR
-               // at build time, forwarded from the shared parse layer (HeddleMainListener.ExitExtension_id), so the
-               // precompiled tier carries the identical id/severity/message/position as the dynamic tier.
+        [Fact] // Both-tier parity: an @import() template surfaces the HED4003 removal ERROR at build time,
+               // forwarded from the shared parse layer, so the precompiled tier carries the identical
+               // id/severity/message/position as the dynamic tier.
         public void LegacyImportEmitsHed4003AtTheCallSite()
         {
             var run = GeneratorHarness.Run(new[]

@@ -9,10 +9,10 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Generator plan phase 6 D12.2/D12.4 — the runtime half of the catalog gates. Diagnostic identity
-    /// (id → title, severity, and the message knowledge that genuinely has two consumers) lives in exactly one
-    /// code-side table; these keep it bijective with <see cref="HeddleDiagnosticIds"/> and keep every populated
-    /// format string well-formed. The descriptor-equality half runs generator-side, where Roslyn types live.
+    /// The runtime half of the catalog gates. Diagnostic identity (id → title, severity, and the message
+    /// knowledge that genuinely has two consumers) lives in exactly one code-side table; these keep it bijective
+    /// with <see cref="HeddleDiagnosticIds"/> and keep every populated format string well-formed. The
+    /// descriptor-equality half runs generator-side, where Roslyn types live.
     /// </summary>
     public class DiagnosticCatalogTests
     {
@@ -76,7 +76,7 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>The <c>MessageFormat</c> column is scoped to rows with a second consumer (Q6.3): the
+        /// <summary>The <c>MessageFormat</c> column is scoped to rows with a second consumer: the
         /// <c>HED70xx</c> block, whose text the generator's descriptor projection formats. A runtime-raised id's
         /// message has exactly one owner — its raise site — so populating it here would create the second copy
         /// the catalog exists to remove.</summary>

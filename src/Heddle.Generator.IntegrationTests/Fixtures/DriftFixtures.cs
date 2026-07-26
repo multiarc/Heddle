@@ -2,14 +2,9 @@ using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
 
-// Phase 0 WI6 (D6) fixture types for the quarantined drift register. Each exists only to give a known live drift an
-// executable shape; each is exported to the dynamic backend through the combined [assembly: ExportExtensions(...)]
-// list in BranchRoleExtensions.cs. The names ("driftnested", "driftbase") are used by no other suite, so registering
-// them changes nothing for the rest of the tests even while the drift fixtures sit skipped.
-
 namespace Heddle.Generator.IntegrationTests.Fixtures
 {
-    /// <summary>Container for the <b>nested</b>-type AQN drift fixture (phase 3 F1). Reflection spells the nested
+    /// <summary>Container for the <b>nested</b>-type AQN drift fixture. Reflection spells the nested
     /// type <c>Ns.DriftContainer+NestedYellExtension</c>; the generator's Roslyn
     /// <c>FullyQualifiedFormat</c> spelling is <c>Ns.DriftContainer.NestedYellExtension</c> — the two identity
     /// strings never match, so the gauntlet's extension check rejects the entry on every request.</summary>
@@ -26,7 +21,7 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         }
     }
 
-    /// <summary>Base of the inherited-<c>[ExtensionName]</c> drift pair (phase 3 F3). Declares the name; the runtime
+    /// <summary>Base of the inherited-<c>[ExtensionName]</c> drift pair. Declares the name; the runtime
     /// reads <c>[ExtensionName]</c> with <c>inherit: true</c>, so the subclass below claims the same name and
     /// (being assignable to this type) replaces it in the live table.</summary>
     [ExtensionName("driftbase")]

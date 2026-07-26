@@ -15,11 +15,10 @@ namespace Heddle.Precompiled
         internal const string Hed7102 = Data.HeddleDiagnosticIds.PrecompiledManifestRejected;
         internal const string Hed7103 = Data.HeddleDiagnosticIds.PrecompiledKeyCaseMismatch;
         internal const string Hed7104 = Data.HeddleDiagnosticIds.PrecompiledRegisteredNameUnavailable;
-        // The accepted schema window lives in the shared PrecompiledSchema (phase 5 D5), which the generator also
-        // emits from; see MinSupportedSchemaVersion for why 2.1 raises the floor to 3 (Q8.2 — the RELEASED schema 1–2
-        // manifests reference a PrecompiledExtensionBinding constructor that no longer exists, so accepting them
-        // faults here instead of falling back). The window is a point: {1, 2} shipped and are now excluded, the three
-        // unreleased bumps above 2 were collapsed into one, so 3 is the only shape this engine reads.
+        // The accepted schema window (shared in PrecompiledSchema, which the generator also uses): schemas 1–2 were
+        // the only released versions, but manifests built against them reference a PrecompiledExtensionBinding
+        // constructor that no longer exists, so accepting them would cause startup faults instead of graceful fallback.
+        // Three unreleased increments above 2 were collapsed into one, so 3 is the only shape this engine reads.
 
         private sealed class Snapshot
         {
@@ -43,7 +42,7 @@ namespace Heddle.Precompiled
             public Dictionary<string, string> Shadow { get; }
             public HashSet<string> Assemblies { get; }
 
-            /// <summary>The registered-name index (Q8.30) — a <b>second</b> index rather than extra rows in
+            /// <summary>The registered-name index — a <b>second</b> index rather than extra rows in
             /// <see cref="ByKey"/>, which is what makes key precedence structural. Invariant, enforced from both
             /// directions in <see cref="Register"/>: no spelling is present here and in <see cref="ByKey"/> at the
             /// same time.</summary>
@@ -69,16 +68,16 @@ namespace Heddle.Precompiled
         /// <summary>Per-request/registration fallback and diagnostic callback (HED71xx). Invoked outside locks.</summary>
         public static Action<PrecompiledFallbackEvent> OnFallback { get; set; }
 
-        /// <summary>Integration-supplied binding matcher; null = AQN-sans-version default (D9).</summary>
+        /// <summary>Integration-supplied binding matcher; null = AQN-sans-version default.</summary>
         public static Func<PrecompiledExtensionBinding, Type, bool> BindingResolver { get; set; }
 
-        /// <summary>All registered entries (including fallback-marker entries, D21). Snapshot; safe to enumerate.</summary>
+        /// <summary>All registered entries (including fallback-marker entries). Snapshot; safe to enumerate.</summary>
         public static IReadOnlyCollection<PrecompiledTemplateInfo> Entries =>
             Volatile.Read(ref _snapshot).ByKey.Values.ToArray();
 
         /// <summary>Reads the assembly's <see cref="HeddleCompiledTemplatesAttribute"/>, runs the schema/engine gate,
-        /// instantiates the manifest once, and adds its entries transactionally (D2). Idempotent per assembly;
-        /// thread-safe; repeatable — the correction to <c>AssemblyHelper.Configure</c>'s one-shot gate (D7).</summary>
+        /// instantiates the manifest once, and adds its entries transactionally. Idempotent per assembly;
+        /// thread-safe; repeatable — supports reconfiguration after the one-shot assembly-load gate.</summary>
         public static void Register(Assembly assembly)
         {
             if (assembly == null)
@@ -89,7 +88,7 @@ namespace Heddle.Precompiled
                 return;
 
             // Never null in practice; defaulted rather than left null because the fallback event's assembly carrier
-            // is now required to be populated (Q8.33) and a diagnostic must not become a throw.
+            // must always be populated and a diagnostic must not become a throw.
             var assemblyName = assembly.GetName().Name ?? assembly.FullName ?? "<unknown assembly>";
 
             if (!PrecompiledSchema.IsSupported(attribute.SchemaVersion))
@@ -109,7 +108,7 @@ namespace Heddle.Precompiled
                 return;
             }
 
-            // HED7104 reports (Q8.30) are collected under the lock and raised after it: OnFallback is host code and
+            // HED7104 reports are collected under the lock and raised after it: OnFallback is host code and
             // must never run while the registration lock is held.
             List<PrecompiledFallbackEvent> lostNames = null;
 
@@ -157,8 +156,8 @@ namespace Heddle.Precompiled
 
                 }
 
-                // Pass 2 — names, over the whole manifest's keys, mirroring the build tier's two-pass import map
-                // (Q8.25). Keys-first is what makes `Name` additive rather than an override, at both tiers: every key
+                // Pass 2 — names, over the whole manifest's keys, mirroring the build tier's two-pass import map.
+                // Keys-first is what makes `Name` additive rather than an override, at both tiers: every key
                 // is already known when the first name is considered, so a name can never displace one.
                 foreach (var template in templates)
                 {
@@ -167,12 +166,12 @@ namespace Heddle.Precompiled
 
                     var key = TemplateKey.Normalize(template.Key);
 
-                    // A name the shared key rule refuses (Q8.32(b)). The generator cannot emit one — a malformed
-                    // `Name` is HED7004 at build time and never reaches a manifest — so this arm is reached only by a
-                    // manifest no build tier vetted, which is exactly the population that most needs telling. It used
-                    // to `continue` in silence, the one wholly silent drop in registration; it now reports through the
-                    // same HED7104 channel as the two collision arms, because from the host's side the outcome is the
-                    // same: a name it expected to resolve does not, and the template is still reachable by its key.
+                    // A name the shared key rule refuses. The generator cannot emit one — a malformed `Name` is
+                    // HED7004 at build time and never reaches a manifest — so this arm is reached only by a manifest
+                    // no build tier vetted, which is exactly the population that most needs telling. It used to `continue`
+                    // in silence, the one wholly silent drop in registration; it now reports through the same HED7104
+                    // channel as the two collision arms, because from the host's side the outcome is the same: a name
+                    // it expected to resolve does not, and the template is still reachable by its key.
                     if (!TemplateKey.TryNormalize(template.RegisteredName, out var name))
                     {
                         (lostNames ?? (lostNames = new List<PrecompiledFallbackEvent>())).Add(
@@ -191,7 +190,7 @@ namespace Heddle.Precompiled
 
                     // The insert-time half of the invariant: the spelling belongs to a key, or to a name that got
                     // there first. Either way the addition is refused and the loser is told — it is not a throw,
-                    // because a broken addition costs the addition and nothing more (Q8.25's rule, applied here).
+                    // because a broken addition costs only the addition, not the template's registration.
                     string owner = null;
                     if (keyOwner.TryGetValue(name, out var keyHolder))
                         owner = "the template key of '" + keyHolder + "'";
@@ -226,15 +225,15 @@ namespace Heddle.Precompiled
 
         /// <summary>
         /// <para>Normalizes <paramref name="key"/> then performs an ordinal lookup — <b>keys first, registered names
-        /// second</b> (Q8.30). A case-only miss fires the shadow-index
+        /// second</b>. A case-only miss fires the shadow-index
         /// <see cref="PrecompiledFallbackReason.CaseMismatch"/> callback (HED7103) and returns false.</para>
         /// <para>The parameter is still called <c>key</c> because that is what it is for every caller that has one; a
         /// registered name is an additional spelling of the same lookup, not a second lookup. The order is the
         /// decision, not an implementation detail: a spelling that names one template's key and another's registered
         /// name resolves to the <b>key</b> owner, always, and independently of the order the two assemblies
-        /// registered in. A name is an addition, and an addition that displaced an existing spelling would be the
-        /// override Q8.25 corrected; the build tier's import map resolves the same way round, so neither tier can
-        /// disagree with the other about what a spelling means.</para>
+        /// registered in. A name is an addition, and an addition that displaced an existing spelling would be an
+        /// override rather than an addition; the build tier's import map resolves the same way round, so neither tier
+        /// can disagree with the other about what a spelling means.</para>
         /// <para>The name index is consulted only after the key index misses <em>and</em> is guaranteed disjoint from
         /// it by <see cref="Register"/>, so the ordering here is belt-and-braces rather than the only guard — a
         /// shadowed name cannot be in the index to be found.</para>
@@ -264,7 +263,7 @@ namespace Heddle.Precompiled
             return false;
         }
 
-        /// <summary>Runs the per-request validation gauntlet for a resolved entry (D7/D8). Returns the first
+        /// <summary>Runs the per-request validation gauntlet for a resolved entry. Returns the first
         /// failure as a <see cref="PrecompiledFallbackEvent"/> or <c>null</c> on success. Exposed so integration/host
         /// code can validate coverage; the resolver adapter calls this before rendering through
         /// <see cref="PrecompiledTemplateInfo.Strategy"/>.</summary>
@@ -278,7 +277,7 @@ namespace Heddle.Precompiled
         }
 
         /// <summary>
-        /// <para>The aggregate <b>post-configuration</b> validation pass (Q8.32 subset A): runs the same gauntlet
+        /// <para>The aggregate <b>post-configuration</b> validation pass: runs the same gauntlet
         /// <see cref="Validate"/> runs over <b>every</b> registered entry and returns all failures together, before
         /// any render. Call it once the host has finished configuring — assemblies registered, extensions bound,
         /// functions registered — and log or fail the startup on the report.</para>
@@ -325,7 +324,7 @@ namespace Heddle.Precompiled
                 (IReadOnlyList<PrecompiledFallbackEvent>)failures ?? Array.Empty<PrecompiledFallbackEvent>());
         }
 
-        /// <summary>Resolves a precompiled entry for a request (phase 7 D7/D8): normalized lookup, then the
+        /// <summary>Resolves a precompiled entry for a request: normalized lookup, then the
         /// per-request gauntlet under the request's <see cref="TemplateOptions"/>. On a gauntlet pass returns true
         /// with the entry; on a registry miss returns false (the dynamic path proceeds untouched). On a gauntlet
         /// failure the <see cref="OnFallback"/> callback fires; under <see cref="PrecompiledMismatchPolicy.Strict"/>

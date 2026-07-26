@@ -10,9 +10,9 @@ using Heddle.Runtime.Expressions;
 namespace Heddle.LanguageServices.Completion
 {
     /// <summary>
-    /// Builds completion items as a pure projection of the analysis (phase 6 D12/D13): typed members via the
+    /// Builds completion items as a pure projection of the analysis: typed members via the
     /// scope map + the member-tier filter, definitions/extensions/functions from the live registries, props from
-    /// the definition declarations. Never guesses when types are unknown (D12 rule 7).
+    /// the definition declarations. Never guesses when types are unknown.
     /// </summary>
     internal static class CompletionProvider
     {
@@ -78,7 +78,7 @@ namespace Heddle.LanguageServices.Completion
 
                 case CompletionContextKind.RegionOverride:
                 {
-                    // Phase 7 (WI5): offer the callee's PUBLIC region names at a call-body '<' override position,
+                    // Offer the callee's PUBLIC region names at a call-body '<' override position,
                     // inserting the '<name:name>' fill form's name pair.
                     var callee = analysis.Definitions.FirstOrDefault(d => d.Name == context.CallName);
                     if (callee == null)
@@ -141,7 +141,7 @@ namespace Heddle.LanguageServices.Completion
             if (types.Any(t => t == null || t.IsDynamic))
                 return Array.Empty<CompletionItem>();
 
-            // Name-based intersection across the recorded call-site types (D13).
+            // Name-based intersection across the recorded call-site types.
             Dictionary<string, List<PropertyInfo>> byName = null;
             foreach (var type in types)
             {
@@ -197,9 +197,8 @@ namespace Heddle.LanguageServices.Completion
         }
 
         /// <summary>The reader-facing spelling of a type in completion/hover text. The alias table is the shared
-        /// one (phase 6 D7) — this used to be a verbatim copy of <c>FunctionEntry.FriendlyName</c>, which existed
-        /// only because that method is private; the fallback (a full <see cref="ExType"/> spelling) is what makes
-        /// this surface's policy its own.</summary>
+        /// one; the fallback (a full <see cref="ExType"/> spelling) is what makes this surface's policy its
+        /// own.</summary>
         internal static string Friendly(Type type)
         {
             if (type == null || type == typeof(void)) return "void";

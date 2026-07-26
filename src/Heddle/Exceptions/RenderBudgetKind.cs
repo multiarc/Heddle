@@ -1,7 +1,7 @@
 namespace Heddle.Exceptions
 {
     /// <summary>Which <see cref="Heddle.Data.RenderBudget"/> limit a
-    /// <see cref="TemplateRenderBudgetException"/> reports (C1-R5).</summary>
+    /// <see cref="TemplateRenderBudgetException"/> reports.</summary>
     public enum RenderBudgetKind
     {
         /// <summary><see cref="Heddle.Data.RenderBudget.MaxOutputChars"/> exceeded.</summary>

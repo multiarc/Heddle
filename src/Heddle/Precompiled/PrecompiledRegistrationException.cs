@@ -3,7 +3,7 @@ using System;
 namespace Heddle.Precompiled
 {
     /// <summary>Thrown by <see cref="PrecompiledTemplates.Register"/> when a staged key ordinally equals an
-    /// already-registered key (phase 7 D2). Registration is transactional — nothing from the staged manifest was
+    /// already-registered key. Registration is transactional — nothing from the staged manifest was
     /// published when this throws. v1 ships no replace flag; the message names the reserved future mechanism.</summary>
     public class PrecompiledRegistrationException : Exception
     {

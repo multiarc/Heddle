@@ -6,14 +6,13 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>
-    /// The editor arm of the projection-equivalence corpus (generator plan phase 6 D12.5). The same
-    /// <see cref="DiagnosticCorpusVectors"/> table the run tier asserts against, asserted here against what a
-    /// workspace-configured <c>HeddleLanguageService</c> actually publishes — so "the editor and the engine agree
-    /// on every diagnostic" is a test rather than a claim, and a channel the editor stopped draining fails here.
-    /// <para>The service is constructed with default options on purpose: this is also the end-to-end pin of the
-    /// Q6.2 default flip. The <c>encodingLint</c> fixture is silent under <c>Text</c> and fires under
-    /// <c>Html</c>, so its row passing here means an unconfigured editor now lints exactly as the build of
-    /// record does.</para>
+    /// The editor arm of the diagnostic-projection-equivalence corpus. The same
+    /// <see cref="DiagnosticCorpusVectors"/> table the run tier asserts against is asserted here against what a
+    /// workspace-configured <c>HeddleLanguageService</c> actually publishes — so the editor and the engine agree
+    /// on every diagnostic, and a channel that stopped draining fails here.
+    /// <para>The service is constructed with default options to validate default-enabled profile behavior.
+    /// The <c>encodingLint</c> fixture is silent under <c>Text</c> and fires under <c>Html</c>, so its row passing
+    /// here confirms an unconfigured editor lints exactly as the build of record.</para>
     /// </summary>
     public class DiagnosticProjectionCorpusLspTests
     {
@@ -50,8 +49,8 @@ namespace Heddle.LanguageServices.Tests
             }
         }
 
-        /// <summary>The opt-out half of the same flip: the fixture that depends on the profile goes quiet when the
-        /// workspace configures <c>text</c>, and the corpus records what that quiet looks like.</summary>
+        /// <summary>Validates the opt-out case: when the workspace configures the <c>text</c> profile,
+        /// profile-dependent fixtures go quiet, and we assert the corpus records that state.</summary>
         [Fact]
         public void ConfiguringTheTextProfileYieldsTheCorpusTextRows()
         {

@@ -17,11 +17,11 @@ namespace Heddle.Language.Members
     }
 
     /// <summary>
-    /// The null-safe hop decision, stated once (phase 4 D8 / 04 F4). "Member hops are already null-safe, so a
-    /// separate <c>?.</c> operator would be redundant" (<c>docs/native-expressions.md</c>) is a language rule that
-    /// used to live as two independent encodings — <c>MemberPathWriter</c>'s three text branches and
-    /// <c>ModelParameter.BuildNullSafePropertyChain</c>'s two expression branches — whose only equivalence guarantee
-    /// was that each file's doc comment named the other. Now both branch on this function.
+    /// The null-safe hop decision, stated once to prevent divergence. Member hops are already null-safe, so a
+    /// separate <c>?.</c> operator would be redundant. This logic used to live in two places independently —
+    /// <c>MemberPathWriter</c>'s text branches and <c>ModelParameter.BuildNullSafePropertyChain</c>'s expression
+    /// branches — with their only equivalence guarantee being cross-file doc comments. Now both branch on this
+    /// function.
     /// </summary>
     internal static class MemberHopRule
     {

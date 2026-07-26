@@ -5,7 +5,7 @@ using Heddle.Strings.Core;
 namespace Heddle.LanguageServices
 {
     /// <summary>
-    /// Immutable snapshot of one analyzed document version (phase 6 D10). Every member is a projection of engine
+    /// Immutable snapshot of one analyzed document version. Every member is a projection of engine
     /// data; safe to share across threads.
     /// </summary>
     public sealed class DocumentAnalysis
@@ -40,7 +40,7 @@ namespace Heddle.LanguageServices
         public IReadOnlyList<ImportLink> Imports { get; }
         public ScopeMapView Scopes { get; }
 
-        /// <summary>True when the Roslyn (C# tier) pass ran for this analysis (D9).</summary>
+        /// <summary>True when the Roslyn (C# tier) pass ran for this analysis.</summary>
         public bool CSharpTierUsed { get; }
     }
 }

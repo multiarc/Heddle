@@ -4,9 +4,6 @@ using Heddle.Data;
 
 namespace Heddle.Exceptions
 {
-    /// <summary>
-    /// Parse Exception, at any stage can be raised
-    /// </summary>
     public sealed class TemplateParseException : TemplateCompileException
     {
 

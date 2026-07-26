@@ -16,7 +16,7 @@ namespace Heddle.Language.Binding
     }
 
     /// <summary>
-    /// Phase 3 (F2/OQ2): the runtime's <c>AddOrReplace</c> merge semantics, stated once — a second container
+    /// The runtime's <c>AddOrReplace</c> merge semantics, stated once — a second container
     /// exporting the same function name <b>adds</b> its overloads to the same name, and only an identical signature
     /// replaces. The generator's first-container-wins rule is what this replaces: two containers exporting
     /// <c>slugify</c> merged at run time while the build tier bound only the first, so the gauntlet saw a live

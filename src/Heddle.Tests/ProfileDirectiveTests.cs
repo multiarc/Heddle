@@ -8,7 +8,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The <c>@profile()</c> compile-time directive (phase 2 D2, D4, D13): both flip directions, the
+    /// The <c>@profile()</c> compile-time directive: both flip directions, the
     /// HED2001 unknown/empty/whitespace error, the HED2002 after-output warning (position + Fix + still
     /// applied), body-scoped isolation, and clean block removal (no residue where the directive stood).
     /// </summary>

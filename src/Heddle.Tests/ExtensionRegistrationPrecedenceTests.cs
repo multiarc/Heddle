@@ -43,12 +43,11 @@ namespace Heddle.Tests.RegistrationPrecedence
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Q8.3 — the registration-precedence rule, asserted on the <b>run tier</b>.
-    /// <para>Phase 3 extracted the rule into <see cref="ExtensionRegistrationRules"/>, but only the generator
-    /// called it: <c>TemplateFactory.AddExtensions</c> kept its own inlined copy, so mutating the shared file
-    /// reddened one generator test and zero runtime tests. A shared file that only one side calls is a
-    /// transcription that <em>reads</em> as a source of truth, which is worse than no extraction, because the
-    /// record claims otherwise.</para>
+    /// The registration-precedence rule, asserted on the <b>run tier</b>.
+    /// <para>The rule was extracted into <see cref="ExtensionRegistrationRules"/>, but only the generator called it;
+    /// <c>TemplateFactory.AddExtensions</c> kept its own inlined copy, so mutating the shared file reddened one
+    /// generator test and zero runtime tests. A shared file that only one side calls is a transcription that
+    /// <em>reads</em> as a source of truth, which is worse than no extraction, because the record claims otherwise.</para>
     /// <para>These are the runtime-side assertions that had no existence before: the three verdicts through the
     /// public <see cref="TemplateFactory.AddExtensions"/> seam, plus the ordering rule that decides which candidate
     /// is the incumbent in the first place. Mutating <see cref="ExtensionRegistrationRules"/> now reddens them.</para>

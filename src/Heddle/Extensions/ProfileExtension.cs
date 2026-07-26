@@ -24,7 +24,7 @@ namespace Heddle.Extensions
             base.InitStart(initContext, dataType, chainedType, parent);
             var value = (GetInnerResult(Scope.Null) ?? string.Empty).Trim();
 
-            // Phase 1 D11: the trim + ordinal-ignore-case match is the shared OutputProfileRules rule — the same
+            // The trim + ordinal-ignore-case match is the shared OutputProfileRules rule — the same
             // one the emitter's @profile scan and the language server's option parsing run.
             if (!OutputProfileRules.TryParseProfile(value, out var profile))
             {

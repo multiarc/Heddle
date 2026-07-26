@@ -5,7 +5,7 @@ using Heddle.Data;
 namespace Heddle.Runtime.Expressions
 {
     /// <summary>
-    /// The single implementation of the D10 rule-4 conversion set (identity; implicit numeric widening;
+    /// The single implementation of the prop conversion set (identity; implicit numeric widening;
     /// <c>T</c>→<c>T?</c> lifting; reference assignability; boxing to <see cref="object"/>; the <c>null</c>
     /// literal). Used verbatim for prop defaults (HED5009), named-argument type checks (HED5003), and — with
     /// <paramref name="allowBoxToObject"/> = false — slot-value checks (HED5014). Keeps prop-narrowing and

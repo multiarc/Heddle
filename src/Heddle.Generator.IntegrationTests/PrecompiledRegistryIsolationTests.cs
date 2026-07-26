@@ -6,14 +6,14 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 0 WI3 (D3) — registry isolation for every gauntlet-crossing suite. The precompiled registry is
-    /// process-global and <see cref="PrecompiledTemplates.Register"/> throws
-    /// <c>PrecompiledRegistrationException</c> on a duplicate key, so corpus-scale registration would otherwise leak
-    /// keys across tests and turn HED7002 duplicate detection into cross-test flakiness. Deriving from this base
-    /// clears the registry before and after each test; joining <c>[Collection("PrecompiledRegistry")]</c>
-    /// (<c>DisableParallelization = true</c>) keeps the resets from racing another test's registration.
-    /// <para><see cref="PrecompiledTemplates.ResetForTests"/> is <c>internal</c> — reachable here only through the
-    /// one <c>InternalsVisibleTo</c> grant this phase adds to the engine's <c>AssemblyInfo.cs</c>.</para>
+    /// Registry isolation for every gauntlet-crossing suite. The precompiled registry is process-global and
+    /// <see cref="PrecompiledTemplates.Register"/> throws <c>PrecompiledRegistrationException</c> on a duplicate key,
+    /// so corpus-scale registration would otherwise leak keys across tests and turn HED7002 duplicate detection into
+    /// cross-test flakiness. Deriving from this base clears the registry before and after each test; joining
+    /// <c>[Collection("PrecompiledRegistry")]</c> (<c>DisableParallelization = true</c>) keeps the resets from racing
+    /// another test's registration.
+    /// <para><see cref="PrecompiledTemplates.ResetForTests"/> is <c>internal</c> — reachable here only through an
+    /// <c>InternalsVisibleTo</c> grant in the engine's <c>AssemblyInfo.cs</c>.</para>
     /// </summary>
     public abstract class PrecompiledRegistryTestBase : IDisposable
     {
@@ -33,10 +33,10 @@ namespace Heddle.Generator.IntegrationTests
     }
 
     /// <summary>
-    /// Phase 0 WI3 — the leakage canary. Two tests register the same key; each must see a registry containing only
-    /// its own registration. If the per-test reset ever stops running (or the collection stops being serialized),
-    /// the second test throws <c>PrecompiledRegistrationException</c> instead of quietly inheriting the first test's
-    /// entry — the failure this canary exists to make loud.
+    /// The leakage canary. Two tests register the same key; each must see a registry containing only its own
+    /// registration. If the per-test reset ever stops running (or the collection stops being serialized), the second
+    /// test throws <c>PrecompiledRegistrationException</c> instead of quietly inheriting the first test's entry —
+    /// the failure this canary exists to make loud.
     /// </summary>
     [Collection("PrecompiledRegistry")]
     public class PrecompiledRegistryLeakageCanaryTests : PrecompiledRegistryTestBase
@@ -83,7 +83,7 @@ namespace Heddle.Generator.IntegrationTests
     }
 
     /// <summary>
-    /// Phase 0 WI1 — the sentinel's own unit tests: save/restore, the expected/unexpected split, and the
+    /// The sentinel's own unit tests: save/restore, the expected/unexpected split, and the
     /// <see cref="FallbackGuard.GuardedOptions"/> factory. No generator involved; the events are raised through the
     /// public <see cref="PrecompiledTemplates.OnFallback"/> hook directly.
     /// </summary>

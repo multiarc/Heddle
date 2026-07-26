@@ -9,12 +9,11 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 8 (WI9) — extension-parameter differentials: a bodiless parameter-declaring custom extension binds
-    /// its <c>[Prop]</c> layout at build time (frozen prototype + dynamic setters via
-    /// <c>PrecompiledRuntime.BindExtension</c>) and renders byte-identically with the dynamic backend; the
-    /// encode-attribute alignment (F6/H1 parameterized, P8-J-E1/D8/WI5b plain custom) keeps both tiers
-    /// self-encoding; malformed <c>[Prop]</c> declarations draw <c>HED7017</c>; and the F7 guard keeps the
-    /// precompiled tier from silently dropping named args the dynamic tier rejects (HED5005).
+    /// Extension-parameter differentials: a bodiless parameter-declaring custom extension binds its <c>[Prop]</c>
+    /// layout at build time (frozen prototype + dynamic setters via <c>PrecompiledRuntime.BindExtension</c>) and
+    /// renders byte-identically with the dynamic backend; the encode-attribute alignment keeps both tiers
+    /// self-encoding; malformed <c>[Prop]</c> declarations draw <c>HED7017</c>; and a guard keeps the precompiled
+    /// tier from silently dropping named args the dynamic tier rejects (HED5005).
     /// </summary>
     public class ExtensionParametersDifferentialTests
     {
@@ -49,13 +48,13 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void BodiedParameterCallFallsBackAndDynamicRendersParameters()
         {
-            // A bodied custom call keeps the existing dynamic-tier fallback (D7): the generator emits no entry
-            // class for the template, and the dynamic tier renders it — parameters and all.
+            // A bodied custom call keeps the existing dynamic-tier fallback: the generator emits no entry class for
+            // the template, and the dynamic tier renders it — parameters and all.
             var t = "@model(){{System.String}}@\\\n@grid(this, columns: 4){{body}}\n";
             var gen = DifferentialHarness.Generate(new[] { ("views/gridbodied.heddle", t) });
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
             Assert.Empty(gen.TemplateSources);   // degraded — no .g.cs
-            DifferentialHarness.ExpectDegrade(gen, "views/gridbodied.heddle");   // phase 0 D5: declared intent
+            DifferentialHarness.ExpectDegrade(gen, "views/gridbodied.heddle");   // Declared fallback intent
 
             var dynamicTemplate = new HeddleTemplate(t,
                 new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(), typeof(string)));
@@ -66,7 +65,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void EncodedGridCrossTierSelfEncodesIdentically()
         {
-            // F6/H1: [EncodeOutput] + [Prop] — the precompiled inner self-encodes because
+            // [EncodeOutput] + [Prop] — the precompiled inner self-encodes because
             // AllocateParameterizedExtension emits RenderType.Encode and BindExtension applies it to the inner.
             var t = "@model(){{System.String}}@\\\n@encodedGrid(this, columns: 4)\n";
             var (pre, dyn) = DifferentialHarness.Render("views/encgrid.heddle", t, typeof(string), "a&b");
@@ -78,9 +77,9 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void EncodedBareCrossTierAlignsPlainCustomRenderType()
         {
-            // P8-J-E1 / D8 / WI5b: the plain (no-parameter) custom path derives Encode from [EncodeOutput]
-            // instead of hard-coding Raw. Against the pre-fix hard-coded Raw the precompiled tier would emit the
-            // markup un-encoded while the dynamic tier encodes — this row would FAIL.
+            // The plain (no-parameter) custom path derives Encode from [EncodeOutput] instead of hard-coding Raw.
+            // Against the pre-fix hard-coded Raw the precompiled tier would emit the markup un-encoded while the
+            // dynamic tier encodes — this row would FAIL.
             var t = "@model(){{System.String}}@\\\n@encodedBare(this)\n";
 
             // Non-vacuity: the precompiled path must actually be taken — the generated source binds the site
@@ -113,9 +112,8 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// Phase 3 (F4, and the twin-vocabulary unification phase 6 handed over): the malformed-[Prop] sentence is
-        /// now produced once, by <c>HeddleDiagnosticCatalog.PropFaults.Message</c>, and quoted verbatim by both
-        /// tiers — the build tier's <c>HED7017</c> and the dynamic tier's
+        /// The malformed-[Prop] sentence is now produced once, by <c>HeddleDiagnosticCatalog.PropFaults.Message</c>,
+        /// and quoted verbatim by both tiers — the build tier's <c>HED7017</c> and the dynamic tier's
         /// <c>HED5007</c>/<c>HED5008</c>/<c>HED5009</c>/<c>HED5010</c>/<c>HED5015</c>. The sentences asserted here
         /// are the shared ones verbatim; the cross-tier half (same fault, same order, same words, from the same
         /// declaration list) is pinned by the two-driver <c>PropLayoutCore</c> lockstep tests, because these
@@ -175,7 +173,7 @@ namespace Heddle.Generator.IntegrationTests
             var gen = DifferentialHarness.Generate(new[] { ("views/yellnamed.heddle", t) });
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
             Assert.Empty(gen.TemplateSources);   // degraded — the named args were not bound away
-            DifferentialHarness.ExpectDegrade(gen, "views/yellnamed.heddle");   // phase 0 D5: declared intent
+            DifferentialHarness.ExpectDegrade(gen, "views/yellnamed.heddle");   // Declared fallback intent
 
             var dynamicTemplate = new HeddleTemplate(t,
                 new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(), typeof(string)));

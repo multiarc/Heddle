@@ -6,7 +6,7 @@ using System.Text.Encodings.Web;
 namespace Heddle.Data
 {
     /// <summary>
-    /// <see cref="IScopeRenderer"/> over a host-supplied <see cref="TextWriter"/> (phase 8 D2/D4). Write-through: no
+    /// <see cref="IScopeRenderer"/> over a host-supplied <see cref="TextWriter"/>. Write-through: no
     /// internal buffering, and the writer is never flushed or disposed — the host owns its lifecycle (the
     /// <c>Response.BodyWriter</c> contract). Single render ownership: not thread-safe; a new instance is constructed
     /// per render.
@@ -21,7 +21,7 @@ namespace Heddle.Data
             _writer = writer ?? throw new ArgumentNullException(nameof(writer));
         }
 
-        // B2: the effective output encoder for this render, set by the render entry point (null = legacy path).
+        // The effective output encoder for this render, set by the render entry point (null = legacy path).
         internal void SetOutputEncoder(TextEncoder encoder) => _outputEncoder = encoder;
         TextEncoder IEncoderCarrier.Encoder => _outputEncoder;
 

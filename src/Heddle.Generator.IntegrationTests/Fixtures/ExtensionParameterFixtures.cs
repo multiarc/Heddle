@@ -3,10 +3,8 @@ using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
 
-// Phase 8 (WI9) — extension-parameter fixtures. Exported to the dynamic backend via the combined
-// [assembly: ExportExtensions(...)] list in BranchRoleExtensions.cs (single assembly-level list; the malformed
-// fixtures join it too so the DIFFERENTIAL dynamic side resolves the names — the generator resolves them by
-// [ExtensionName] regardless).
+// Extension-parameter fixtures. The malformed fixtures are exported so the differential dynamic side can resolve
+// the names — the generator resolves them by [ExtensionName] regardless.
 
 namespace Heddle.Generator.IntegrationTests.Fixtures
 {
@@ -45,7 +43,7 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         }
     }
 
-    /// <summary>The F6/H1 fixture: <c>[EncodeOutput]</c> AND a <c>[Prop]</c> — the carrier must stay
+    /// <summary><c>[EncodeOutput]</c> AND a <c>[Prop]</c> — the carrier must stay
     /// attribute-transparent so the inner still self-encodes on both tiers (an XSS-class guard). Emits
     /// markup-significant characters so Encode vs Raw differ in bytes.</summary>
     [ExtensionName("encodedGrid")]
@@ -65,8 +63,8 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         }
     }
 
-    /// <summary>The P8-J-E1 / D8 / WI5b fixture: a NO-parameter <c>[EncodeOutput]</c> custom extension shaped to
-    /// provably hit <c>AllocateCustomExtension</c> — no <c>InitStart</c>/<c>CompleteInit</c> override (so
+    /// <summary>A NO-parameter <c>[EncodeOutput]</c> custom extension shaped to provably hit
+    /// <c>AllocateCustomExtension</c> — no <c>InitStart</c>/<c>CompleteInit</c> override (so
     /// <c>OverridesHook == false</c> and a bodiless call binds through the plain custom path, not the dynamic
     /// fallback), <c>[EncodeOutput]</c> without <c>[NotEncode]</c> (derived render type <c>Encode</c>, the
     /// previously-divergent value), markup-significant output (Encode vs Raw differ in bytes).</summary>
@@ -165,8 +163,6 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         }
     }
 
-    // ---- The Nullable<T> re-declaration trio (the H2-c3 cross-tier oracle) ----
-
     /// <summary>Base: <c>c: IComparable</c>.</summary>
     [Prop("c", typeof(IComparable), Optional = true)]
     public abstract class IfaceBaseExtension : EchoExtensionBase
@@ -216,10 +212,10 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
     }
 
     /// <summary>
-    /// Phase 1 (WI3 / D4): a <c>Nullable&lt;W&gt;</c>-typed prop with a widening constant default. The default's
+    /// A <c>Nullable&lt;W&gt;</c>-typed prop with a widening constant default. The default's
     /// own type is <c>int</c> and the slot is <c>long?</c>, so the conversion goes through the
     /// widen-then-lift branch of the shared rule and the frozen prototype must store the same boxed
-    /// <see cref="long"/> the runtime's <c>Convert.ChangeType</c> produces — the byte-exactness half of the row.
+    /// <see cref="long"/> the runtime's <c>Convert.ChangeType</c> produces — the byte-exactness requirement.
     /// </summary>
     [ExtensionName("nullableLiftDefault")]
     [Prop("n", typeof(long?), Default = 5)]

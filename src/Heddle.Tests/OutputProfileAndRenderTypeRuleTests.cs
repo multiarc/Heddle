@@ -6,7 +6,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Generator plan phase 1 WI11 (D11) — the two encoding-deciding rule files. These carry the same blast radius
+    /// The two encoding-deciding rule files. These carry the same blast radius
     /// as an XSS regression: if the build tier and the run tier ever disagree about which carrier a bodiless
     /// <c>@(…)</c> binds, or about what <c>[EncodeOutput]</c> means, one tier emits unencoded output. The rules are
     /// now one function each; these theories enumerate them exhaustively so a unilateral edit is a red test.
@@ -77,7 +77,7 @@ namespace Heddle.Tests
             Assert.Equal(expected, RenderTypeRules.Derive(hasEncodeOutput, hasNotEncode));
         }
 
-        /// <summary>Q8.14 — the veto row's reachability, pinned. <c>[NotEncode]</c> is
+        /// <summary>The veto row's reachability, pinned. <c>[NotEncode]</c> is
         /// <see cref="AttributeTargets.Property"/> while <c>[EncodeOutput]</c> is <see cref="AttributeTargets.Class"/>,
         /// so an extension <em>type</em> carrying both is not a state any C# (or VB/F#) declaration can express — the
         /// compiler rejects the application outright (CS0592), which the build tier's
@@ -85,7 +85,7 @@ namespace Heddle.Tests
         /// from forged/IL-authored metadata, and there both tiers evaluate this same function and get
         /// <see cref="RenderType.Raw"/> — indistinguishable from an extension carrying neither attribute, so no tier
         /// diverges and there is nothing to diagnose. Widening the attribute's targets makes the contradiction
-        /// declarable and reopens Q8.14's two diagnostics; this test is what says so out loud.</summary>
+        /// declarable and reopens related diagnostics; this test is what says so out loud.</summary>
         [Fact]
         public void TheNotEncodeVetoRowIsUnreachableFromAnyDeclaration()
         {

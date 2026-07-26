@@ -41,8 +41,6 @@ namespace Heddle.Tests
             Assert.Equal(segments, path.Segments.ToArray());
         }
 
-        // ---- Call side: named arguments (PP01–PP14) ----
-
         [Fact]
         public void PP01_PositionalMemberPlusNamedArguments()
         {
@@ -177,8 +175,6 @@ namespace Heddle.Tests
             Assert.Equal("html", chain[1].ExtensionName);
         }
 
-        // ---- Definition side: prop declarations & slots (PP15–PP24) ----
-
         [Fact]
         public void PP15_TwoPropsWithDecodedDefaults()
         {
@@ -270,8 +266,6 @@ namespace Heddle.Tests
             Assert.Equal("string[]", def.PropDeclarations[0].TypeName);
         }
 
-        // ---- Negative corpus: positioned HED0003 (NP01–NP15) ----
-
         [Theory]
         [InlineData("@card(Article, style: @ Model.X )")]     // NP01 C# tier as named-argument value
         [InlineData("@card(Article, style: a():b())")]        // NP02 nested chain as named-argument value
@@ -295,8 +289,6 @@ namespace Heddle.Tests
             Assert.NotEmpty(ctx.Errors);
             Assert.Contains(ctx.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.SyntaxError);
         }
-
-        // ---- Editor-token classification under ProvideLanguageFeatures ----
 
         private static List<HeddleTokenType> Tokens(string template)
         {

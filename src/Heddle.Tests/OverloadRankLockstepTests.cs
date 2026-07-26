@@ -9,7 +9,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 4 WI8 (D10 / 04 F3) — the characterization pin for the overload-rank extraction.
+    /// The characterization pin for the overload-rank extraction.
     /// <para><b>Legacy*</b> is the pre-extraction body, transcribed verbatim from
     /// <c>NativeExpressionCompiler.ConversionRank</c>/<c>Dominates</c> before they moved. The sweep is exhaustive
     /// over a type matrix that includes every numeric primitive, the lifted forms, <c>object</c>, <c>string</c>, a

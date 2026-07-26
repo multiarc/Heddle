@@ -7,11 +7,11 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Generator plan phase 1 WI10 (D12) — the body model-typing table. Until this phase the rule existed only as
-    /// prose comments on each emission branch, so a change to (say) <c>ListExtension</c>'s element-type derivation
-    /// silently kept the old generator typing. The table is now data; this suite is the run-tier half of its
-    /// conformance (the build-tier half asserts the emitter's branches cite the same rows), driven end-to-end
-    /// through real renders rather than through the resolvers, so it is the observable typing that is pinned.
+    /// The body model-typing table. The rule used to live only as prose comments on each emission branch, so a
+    /// change to (say) <c>ListExtension</c>'s element-type derivation silently kept the old generator typing. The
+    /// table is now data; this suite is the run-tier half of its conformance (the build-tier half asserts the
+    /// emitter's branches use the same rows), driven end-to-end through real renders rather than through the
+    /// resolvers, so it is the observable typing that is pinned.
     /// </summary>
     public class BodyModelRuleTableTests
     {
@@ -34,12 +34,8 @@ namespace Heddle.Tests
             Assert.Equal(BodyModelRules.PinnedNames.OrderBy(n => n), registered.OrderBy(n => n));
         }
 
-        // -----------------------------------------------------------------------------------------------------
-        // The rows are read as PREDICTIONS about observable output, never asserted against themselves. The three
-        // tests that used to stand here ("Assert.Equal(Parent, table[\"if\"].Body)") could not fail for any reason
-        // other than someone editing both the table and the test, which is not coverage. Each row below computes
-        // the expected rendered text FROM the row, so a changed row makes the prediction wrong and the test red.
-        // -----------------------------------------------------------------------------------------------------
+        // The rows are predictions about observable output: each row computes the expected rendered text FROM the row,
+        // so a changed row makes the prediction wrong and the test red.
 
         private const string PersonHeader = "@model(){{Heddle.Tests.BodyModelRuleTableTests+Person}}@\\\n";
 

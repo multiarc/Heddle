@@ -1,6 +1,6 @@
 namespace Heddle.Language.Binding
 {
-    /// <summary>Phase 3 (F3): the outcome of offering one extension candidate to a registry that may already hold
+    /// <summary>The outcome of offering one extension candidate to a registry that may already hold
     /// an incumbent under the same name.</summary>
     internal enum ExtensionRegistrationVerdict
     {
@@ -23,7 +23,7 @@ namespace Heddle.Language.Binding
     }
 
     /// <summary>
-    /// Phase 3 (F3): the extension-registration precedence rule, stated once for both tiers.
+    /// The extension-registration precedence rule, stated once for both tiers.
     /// <para>Runtime authority is <c>TemplateFactory.AddExtensions</c>: candidates are enumerated with
     /// <c>[ExtensionReplace]</c> ones last; a name collision is resolved by replacing the incumbent when the
     /// candidate declares <c>Replace</c> <b>or</b> when <c>incumbent.IsAssignableFrom(candidate)</c>, and by

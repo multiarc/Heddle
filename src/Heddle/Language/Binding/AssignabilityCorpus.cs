@@ -23,7 +23,7 @@ namespace Heddle.Language.Binding
     }
 
     /// <summary>
-    /// Phase 3 (F6): the shared assignability conformance corpus. One data source, two drivers — a reflection-side
+    /// The shared assignability conformance corpus. One data source, two drivers — a reflection-side
     /// test in <c>Heddle.Tests</c> and a symbol-side test in <c>Heddle.Generator.Tests</c> — in the
     /// <c>DefaultFunctionLockstepTests</c> mould.
     /// <para>The relation itself cannot be shared (it <em>is</em> the type graph); what this corpus pins is that
@@ -41,13 +41,11 @@ namespace Heddle.Language.Binding
     {
         internal static readonly AssignabilityRow[] Rows =
         {
-            // Identity / reference
             new AssignabilityRow("System.String", "System.String", true, "identity"),
             new AssignabilityRow("System.Object", "System.Object", true, "identity"),
             new AssignabilityRow("System.String", "System.Object", true, "reference"),
             new AssignabilityRow("System.Object", "System.String", false, "reference"),
 
-            // Boxing
             new AssignabilityRow("System.Int32", "System.Object", true, "boxing"),
             new AssignabilityRow("System.Int32", "System.IComparable", true, "boxing"),
             new AssignabilityRow("System.Int32", "System.Enum", false, "boxing"),
@@ -67,7 +65,6 @@ namespace Heddle.Language.Binding
             // Numeric — pins that widening legality never leaks into the assignability answer.
             new AssignabilityRow("System.Int32", "System.Int64", false, "numeric"),
 
-            // Interface / hierarchy
             new AssignabilityRow("System.ArgumentException", "System.Exception", true, "hierarchy"),
             new AssignabilityRow("System.Exception", "System.ArgumentException", false, "hierarchy"),
             new AssignabilityRow("System.String", "System.IComparable", true, "hierarchy"),
@@ -84,13 +81,11 @@ namespace Heddle.Language.Binding
             new AssignabilityRow("System.Collections.Generic.IEnumerable<System.Int32>",
                 "System.Collections.Generic.IEnumerable<System.Object>", false, "variance"),
 
-            // ValueTuple probes
             new AssignabilityRow("(System.Int32, System.String)", "(System.Int32, System.String)", true, "valuetuple"),
             new AssignabilityRow("(System.Int32, System.String)", "(System.Int64, System.String)", false, "valuetuple"),
             new AssignabilityRow("System.ValueTuple<System.Int32, System.String>",
                 "(System.Int32, System.String)", true, "valuetuple"),
 
-            // Array
             new AssignabilityRow("System.String[]", "System.Object[]", true, "array"),
             new AssignabilityRow("System.Int32[]", "System.Object[]", false, "array"),
             new AssignabilityRow("System.Int32[]", "System.Array", true, "array"),

@@ -13,11 +13,11 @@ namespace Heddle.TestCorpus
         Precompiles,
 
         /// <summary>A HED7014 fallback-marker entry: present in the manifest with <c>strategy: null</c>.
-        /// <para><b>Zero entries carry this today, and that is a finding, not an omission.</b> Phase 7's survey
-        /// re-check found every non-precompiling corpus entry is <i>Absent</i> from the manifest (a whole-template
-        /// degrade), never a marker — so <c>CorpusDifferentialTests</c>' <c>markers</c> set was computed and then
-        /// never asserted, a dead bucket. The tier is kept and now asserted <b>positively</b> (an empty set is still
-        /// a pinned set), because a template that starts emitting a marker must redden something.</para></summary>
+        /// <para><b>Zero entries carry this today, and that is a finding, not an omission.</b> Every non-precompiling
+        /// corpus entry is <i>Absent</i> from the manifest (a whole-template degrade), never a marker — so
+        /// <c>CorpusDifferentialTests</c>' <c>markers</c> set was computed and then never asserted, a dead bucket.
+        /// The tier is kept and now asserted <b>positively</b> (an empty set is still a pinned set), because a
+        /// template that starts emitting a marker must redden something.</para></summary>
         DegradesToMarker,
 
         /// <summary>No manifest entry at all — the whole template degraded to the dynamic tier, output-safely.</summary>
@@ -51,7 +51,7 @@ namespace Heddle.TestCorpus
         ResolveOnly,
     }
 
-    /// <summary>One corpus entry's declared intent. One row per <c>.heddle</c> file, no exceptions — D3's two
+    /// <summary>One corpus entry's declared intent. One row per <c>.heddle</c> file, no exceptions — the two
     /// completeness gates assert both directions.</summary>
     internal sealed class CorpusIntentRow
     {
@@ -77,15 +77,16 @@ namespace Heddle.TestCorpus
         public string Why { get; }
 
         /// <summary>This file intentionally carries a UTF-8 byte-order mark. Deliberate coverage, not an accident:
-        /// phase 5's F1 fix is about hashing BOM'd templates correctly, and until this flag existed a deliberate BOM
-        /// and an accidental one were indistinguishable. Independent of line-ending pinning — <c>.gitattributes</c>'
-        /// <c>eol=lf</c> governs newlines and says nothing whatsoever about byte-order marks.</summary>
+        /// hashing BOM-bearing templates correctly is a pinned behaviour, and until this flag existed a deliberate
+        /// BOM and an accidental one were indistinguishable. Independent of line-ending pinning —
+        /// <c>.gitattributes</c>' <c>eol=lf</c> governs newlines and says nothing whatsoever about byte-order
+        /// marks.</summary>
         public bool Bom { get; }
     }
 
     /// <summary>
-    /// Phase 7 D3 — the intent table: every shared-corpus entry declares, in one compile-checked place, how the build
-    /// tier must classify it and how the sweep may exercise it.
+    /// The intent table: every shared-corpus entry declares, in one compile-checked place, how the build tier must
+    /// classify it and how the sweep may exercise it.
     /// <para>A C# table rather than a filename convention (encodes one axis at most, unenforceable, mis-classifies on
     /// rename, cannot carry a reason), rather than an in-template header comment (it would change the bytes of the
     /// artifact whose whole value is byte fidelity), and rather than a TSV/JSON sidecar (needs a parser and a schema,
@@ -97,7 +98,8 @@ namespace Heddle.TestCorpus
     internal static class CorpusIntent
     {
         /// <summary>
-        /// The one literal number that survives phase 7 (D5). Every other pin is set equality.
+        /// How many rows the table declares — the only literal count in the corpus gates, because every other pin is
+        /// set equality and needs no number.
         /// <para>It is deliberate and it is not a floor: it makes "this stage added N entries" a one-line diff a
         /// reviewer can check against the stage's stated scope, so a stage cannot smuggle in extra templates. A floor
         /// has failed in this tree twice — <c>&gt;= 25</c> against an actual 40 let fifteen templates stop
@@ -112,18 +114,10 @@ namespace Heddle.TestCorpus
         /// block).</summary>
         public static readonly IReadOnlyList<CorpusIntentRow> Rows = new[]
         {
-            // ---------------------------------------------------------------------------------------------------
-            // Tier = Precompiles (40). Transcribed from CorpusDifferentialTests.ExpectedPrecompiled; each block
-            // comment there became the relevant rows' Why.
-            //
-            // Render was not transcribed — it was MEASURED. Phase 7 WI5 rendered every precompiled entry through
-            // both backends and compared bytes: 32 of the 40 agree standalone. Before this table the sweep passed a
-            // blanket `render: false`, so because a handful of entries genuinely cannot render standalone, ALL
-            // forty lost their byte assertion and only the 10 hand-listed in CorpusRenderParityTests were compared.
-            // Per-entry Render is what turns that blanket skip into 32 byte-compared renders.
-            // ---------------------------------------------------------------------------------------------------
+            // Tier = Precompiles (40). Render values were measured by rendering each entry through both
+            // backends and comparing bytes: 32 of the 40 render identically model-less.
 
-            // Phase 2 (post-2.0) fixtures: pure text + @@ escapes collapse to raw, and pure static text precompiles.
+            // Pure text plus @@ escapes collapses to raw, and pure static text precompiles.
             new CorpusIntentRow("at-escape.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "Pure text plus @@ escapes collapses to a raw write, so the emitter binds it with no model."),
             new CorpusIntentRow("brace-misread.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
@@ -212,7 +206,7 @@ namespace Heddle.TestCorpus
                 "The optimized-document flagship; model-less, byte-pinned by CorpusRenderParityTests, and BOM-bearing.",
                 bom: true),
 
-            // Streaming fixtures (phase 8).
+            // Streaming fixtures.
             new CorpusIntentRow("streaming-large.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "Streaming fixture: pure static text, so it precompiles on the dynamic tier and renders identically."),
             new CorpusIntentRow("streaming-unicode.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
@@ -226,10 +220,8 @@ namespace Heddle.TestCorpus
             new CorpusIntentRow("trycompile-parity-typed.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "A typed @(Name) document against a dynamic model; renders empty standalone on both tiers."),
 
-            // ---------------------------------------------------------------------------------------------------
             // Tier = FallsBackSafely (17). Every one is ABSENT from the manifest — a whole-template degrade, not a
             // marker. Each is output-safe: the dynamic tier renders it and a runtime golden pins the bytes.
-            // ---------------------------------------------------------------------------------------------------
 
             new CorpusIntentRow("at-escape-comment-adjacent.heddle", CorpusTier.FallsBackSafely, CorpusRender.Standalone,
                 "Falls back on its definition call sites; pinned by its runtime golden (AtEscapeTests), and it renders model-less on the dynamic tier."),
@@ -273,11 +265,9 @@ namespace Heddle.TestCorpus
                 "Whitespace-torture document with FullCSharp expressions the emitter refuses; HeddleTemplateTests owns its bytes.",
                 bom: true),
 
-            // ---------------------------------------------------------------------------------------------------
             // Tier = FrontEndError (5). Deliberate parse errors the shared front end reports and the generator
             // forwards as build errors. These assert the diagnostic's IDENTITY, not offsets into a hand-counted
-            // string, which is why they are corpus entries at all (D4's carve-out (e) keeps position probes inline).
-            // ---------------------------------------------------------------------------------------------------
+            // string, which is why they are corpus entries at all; position probes stay inline in their own tests.
 
             new CorpusIntentRow("ergo-import-broken.heddle", CorpusTier.FrontEndError, CorpusRender.ResolveOnly,
                 "Imports a target that does not resolve; the front end errors and the generator forwards it."),
@@ -313,7 +303,7 @@ namespace Heddle.TestCorpus
             }
         }
 
-        /// <summary>The declared intent for one corpus file. Throws naming the file on a miss — the D3 gate that
+        /// <summary>The declared intent for one corpus file. Throws naming the file on a miss — the gate that
         /// makes "contributing a template requires declaring what it is for" a mechanism rather than a request.
         /// </summary>
         public static CorpusIntentRow For(string name)
@@ -327,12 +317,12 @@ namespace Heddle.TestCorpus
 
         public static bool TryGet(string name, out CorpusIntentRow row) => ByName.TryGetValue(name, out row);
 
-        /// <summary>Every declared file name, ordinal-sorted. The declared half of D3's completeness gates.</summary>
+        /// <summary>Every declared file name, ordinal-sorted. The declared half of the completeness gates.</summary>
         public static IReadOnlyList<string> DeclaredNames() =>
             Rows.Select(r => r.Name).OrderBy(n => n, StringComparer.Ordinal).ToList();
 
-        /// <summary>Every declared file name in one tier, ordinal-sorted. The right-hand side of D5's set equality.
-        /// </summary>
+        /// <summary>Every declared file name in one tier, ordinal-sorted. The right-hand side of the per-tier set
+        /// equality.</summary>
         public static IReadOnlyList<string> NamesWithTier(CorpusTier tier) =>
             Rows.Where(r => r.Tier == tier).Select(r => r.Name).OrderBy(n => n, StringComparer.Ordinal).ToList();
 
@@ -344,8 +334,8 @@ namespace Heddle.TestCorpus
         public static IReadOnlyList<string> BomNames() =>
             Rows.Where(r => r.Bom).Select(r => r.Name).OrderBy(n => n, StringComparer.Ordinal).ToList();
 
-        /// <summary>Formats a symmetric difference as a review-ready message. The point of D5: making the gate green
-        /// requires naming the specific file whose classification changed, which is exactly the review artifact a
+        /// <summary>Formats a symmetric difference as a review-ready message. Making the gate green then requires
+        /// naming the specific file whose classification changed, which is exactly the review artifact a
         /// bare count was trying to force and could never produce ("expected 40, got 39" names nothing).</summary>
         public static string Describe(string what, IEnumerable<string> declared, IEnumerable<string> observed)
         {

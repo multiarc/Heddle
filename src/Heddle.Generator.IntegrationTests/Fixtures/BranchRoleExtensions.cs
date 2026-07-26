@@ -6,7 +6,7 @@ using Heddle.Exceptions;
 using Heddle.Runtime;
 
 // Exports the custom branch-role trio (and the bodiless zebra-style participant) to the dynamic backend so a
-// custom-trio template resolves the same [ExtensionName] types on both tiers — the WI6 (§8.3) universality gate.
+// custom-trio template resolves the same [ExtensionName] types on both tiers.
 [assembly: ExportExtensions(
     typeof(Heddle.Generator.IntegrationTests.Fixtures.YellExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.BeginExtension),
@@ -17,7 +17,6 @@ using Heddle.Runtime;
     typeof(Heddle.Generator.IntegrationTests.Fixtures.RowExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.PeekExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.NoteExtension),
-    // Phase 8 (WI9): the extension-parameter fixtures the cross-tier differential renders on the dynamic side.
     typeof(Heddle.Generator.IntegrationTests.Fixtures.GridExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.GridReqExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.EncodedGridExtension),
@@ -25,11 +24,10 @@ using Heddle.Runtime;
     typeof(Heddle.Generator.IntegrationTests.Fixtures.NarrowItemExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableNarrowItemExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableLiftDefaultExtension),
-    // Phase 0 (WI6): the quarantined drift-register fixtures. Their names are used by no other suite.
     typeof(Heddle.Generator.IntegrationTests.Fixtures.DriftContainer.NestedYellExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.DriftBaseExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.DriftInheritedExtension),
-    // Q8.4: these nine were declared in this assembly and exercised by its tests, but never exported — so the
+    // These nine were declared in this assembly and exercised by its tests, but never exported — so the
     // runtime never registered them while the generator bound them anyway. Closing the discovery-scope gap made the
     // omission load-bearing: the export list is now the single declaration of what this fixture assembly
     // contributes, and both tiers read it. (Registration is inert for a malformed [Prop] set — the declaration

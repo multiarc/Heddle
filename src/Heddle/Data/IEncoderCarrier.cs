@@ -1,7 +1,7 @@
 namespace Heddle.Data
 {
     /// <summary>
-    /// Internal renderer capability (B2): exposes the effective output <see cref="System.Text.Encodings.Web.TextEncoder"/>
+    /// Internal renderer capability: exposes the effective output <see cref="System.Text.Encodings.Web.TextEncoder"/>
     /// carried by a renderer for this render, or <c>null</c> to select the legacy <c>WebUtility.HtmlEncode</c> path.
     /// The single seam through which the HTML-encode sites (<see cref="HtmlEncodedRenderer"/> and
     /// <see cref="Heddle.Core.AbstractHtmlExtension"/>) discover the configured <c>TemplateOptions.Encoder</c> without

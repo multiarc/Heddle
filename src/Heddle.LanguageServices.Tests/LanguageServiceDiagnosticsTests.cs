@@ -7,8 +7,8 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>
-    /// The phase 6 diagnostics scenario matrix (success criterion 2): engine <c>HED*</c> diagnostics projected
-    /// with ID + span, the D25 import re-anchoring, and the D24 exported-function resolution (no false HED1001).
+    /// Diagnostics projection scenarios: engine <c>HED*</c> diagnostics are projected with ID + span,
+    /// imported diagnostics are re-anchored to the import site, and exported functions are resolved (no false HED1001).
     /// </summary>
     public class LanguageServiceDiagnosticsTests
     {
@@ -49,7 +49,7 @@ namespace Heddle.LanguageServices.Tests
         [Fact]
         public void ScannedExportedFunctionCallDrawsNoHed1001()
         {
-            // titlecase is a D24-scanned export → registered in the workspace registry, so the engine resolves it.
+            // titlecase is a scanned export registered in the workspace registry, so the engine resolves it.
             var a = Analyze("@model(){{Corpus.Blog}}\n@(titlecase(Title))");
             Assert.DoesNotContain(a.Diagnostics, x => x.Id == "HED1001");
         }
@@ -73,7 +73,7 @@ namespace Heddle.LanguageServices.Tests
             Assert.Equal(0, d.Length);
         }
 
-        // ---- Phase 8 (WI7): extension parameters surface transitively through HeddleCompiler.Compile ----
+        // ---- Extension parameters surface transitively through HeddleCompiler.Compile ----
 
         [Fact]
         public void ParameterDeclaringExtensionCallCompilesCleanInLsp()

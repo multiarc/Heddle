@@ -7,7 +7,7 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Generator plan phase 6 D11 / WI11 — the characterization pin for the lone-surrogate scan, captured against
+    /// The characterization pin for the lone-surrogate scan, captured against
     /// the pre-fold <c>PieceWriter.IndexOfLoneSurrogate</c> body and re-asserted, vector for vector, against the
     /// folded <c>CSharpEscape</c> core. Every expectation below was measured before the move, so an index that
     /// shifts is a red test rather than a review question.
@@ -47,8 +47,8 @@ namespace Heddle.Generator.Tests
             Assert.Equal(expected, gen::Heddle.Language.Expressions.CSharpEscape.IndexOfLoneSurrogate(Decode(codeUnits)));
         }
 
-        /// <summary>The bool form is <i>defined</i> as the index form's sign after the fold (D11: "turning today's
-        /// coincidence of equivalence into a definition"); the same table proves the two agreed before it.</summary>
+        /// <summary>The bool form is <i>defined</i> as the index form's sign after the fold — what was a
+        /// coincidence of equivalence became a definition; the same table proves the two agreed before it.</summary>
         [Theory]
         [MemberData(nameof(Vectors))]
         public void HasLoneSurrogateIsTheSignOfTheIndex(string codeUnits, int expected)
@@ -58,7 +58,7 @@ namespace Heddle.Generator.Tests
 
         /// <summary>The index form has always tolerated <c>null</c> (the emitter scans an optional document with
         /// it); after the fold the bool form inherits that tolerance instead of throwing, which is the one
-        /// behavioral widening WI11 carries — no caller passed <c>null</c> to it.</summary>
+        /// behavioral widening the fold carries — no caller passed <c>null</c> to it.</summary>
         [Fact]
         public void NullScansAsNoLoneSurrogate()
         {

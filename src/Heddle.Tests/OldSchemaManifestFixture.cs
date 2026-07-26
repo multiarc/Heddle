@@ -11,7 +11,7 @@ namespace Heddle.Tests
     /// <para>Builds a <b>genuine released-schema precompiled manifest assembly</b> — one whose IL references
     /// <c>PrecompiledExtensionBinding..ctor(string, string)</c>, the two-argument constructor the <b>shipped
     /// v2.0.0</b> generator emitted and that <b>no longer exists in metadata</b> since the prop-layout fingerprint
-    /// landed as an optional third parameter rather than as a real overload (Q8.2, review finding P1).</para>
+    /// landed as an optional third parameter rather than as a real overload.</para>
     ///
     /// <para><b>Which schemas this is about, verified against the tag.</b> At <c>v2.0.0</c> the generator emitted
     /// <c>schemaVersion: 2</c>, the engine accepted <c>1–2</c>, and the two-argument constructor was real. Schemas 1

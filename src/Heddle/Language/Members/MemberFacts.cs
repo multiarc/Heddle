@@ -32,20 +32,18 @@ namespace Heddle.Language.Members
         public MemberAccess Access { get; }
 
         /// <summary>Matched by <b>full metadata name</b> — <c>Heddle.Attributes.HiddenAttribute</c> — on both sides.
-        /// The generator's historic unqualified-name match let a foreign <c>*.HiddenAttribute</c> hide a member the
-        /// runtime happily exposed; phase 3's adoption corrects that adapter.</summary>
+        /// The generator's historic unqualified-name match could let a foreign <c>*.HiddenAttribute</c> hide a member
+        /// the runtime happily exposed; matching the full name prevents this.</summary>
         public bool HasHidden { get; }
 
         public bool IsStatic { get; }
     }
 
     /// <summary>
-    /// The one policy point for the documented member-tier sandbox filter
-    /// (<c>docs/native-expressions.md</c>, "The sandbox"): a path segment binds to a readable, non-<c>[Hidden]</c>
-    /// instance property whose getter is public-or-internal. Phase 4 D7 / OQ1 (resolved user, 2026-07-25) makes the
-    /// <b>runtime's</b> observable accept/reject behavior normative and the generator conform downward — widening
-    /// anything here (accepting <c>protected internal</c>, surfacing base-interface members) is a breaking-window
-    /// candidate, never a drift fix.
+    /// The policy for the member-tier sandbox filter: a path segment binds to a readable, non-<c>[Hidden]</c>
+    /// instance property whose getter is public-or-internal. The <b>runtime's</b> observable accept/reject behavior
+    /// is normative; the generator conforms downward. Widening the filter (accepting <c>protected internal</c>,
+    /// surfacing base-interface members) is a breaking-window item, never a drift fix.
     /// </summary>
     internal static class MemberVisibility
     {
@@ -54,11 +52,10 @@ namespace Heddle.Language.Members
 
         /// <summary>
         /// The filter, parameterized by where the property was declared.
-        /// <para><paramref name="declaredOnReceiver"/> is the one place reflection's <i>capability</i> becomes
-        /// policy: <c>Type.GetProperty</c> never surfaces an inherited non-public property, so an
-        /// <c>internal</c> getter on a base class is not-found in the runtime today. Under the OQ1 ruling that
-        /// behavior is normative, so the shared walk encodes it as a rule instead of leaving it as an accident of
-        /// which reflection overload each side happened to call.</para>
+        /// <para><paramref name="declaredOnReceiver"/> is where reflection's <i>capability</i> becomes policy:
+        /// <c>Type.GetProperty</c> never surfaces an inherited non-public property, so an <c>internal</c>
+        /// getter on a base class is not-found. This behavior is normative, so the shared walk encodes it as a
+        /// rule instead of leaving it as an accident of which reflection overload each side called.</para>
         /// </summary>
         public static bool IsAccessible(in MemberFacts facts, bool declaredOnReceiver)
         {
@@ -66,9 +63,8 @@ namespace Heddle.Language.Members
                 return false;
             if (facts.HasHidden)
                 return false;
-            // Error-shape fix (phase 4 D7): a static property is not-found rather than an unpositioned
-            // ArgumentException out of Expression.MakeMemberAccess on one tier and consumer-side CS0176 on the
-            // other. Neither tier ever rendered such a template.
+            // Static properties return not-found rather than ArgumentException (Expression.MakeMemberAccess) or
+            // CS0176 error, which can differ between tiers.
             if (facts.IsStatic)
                 return false;
 
@@ -79,7 +75,7 @@ namespace Heddle.Language.Members
                 case MemberAccess.Internal:
                     return declaredOnReceiver;
                 default:
-                    // protected / protected internal / private protected / private — all rejected, runtime-normative.
+                    // Align with runtime: non-public members rejected.
                     return false;
             }
         }

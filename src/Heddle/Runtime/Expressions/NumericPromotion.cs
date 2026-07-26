@@ -6,7 +6,7 @@ namespace Heddle.Runtime.Expressions
     /// <summary>
     /// Table-driven C# numeric-promotion knowledge shared by the native-expression operator compiler
     /// and the function-overload resolver. Works over reflected <see cref="Type"/>s at compile time.
-    /// <para>Phase 4 D5: the tables themselves now live once, in <see cref="NumericTable"/> under
+    /// <para>The tables themselves live once, in <see cref="NumericTable"/> under
     /// <c>Language/Expressions/</c>, where the generator's linked build sees the identical data. This type keeps its
     /// public shape and is a thin <see cref="Type"/>-keyed façade over that lattice; the exhaustive 13×13 lockstep
     /// sweep in the test suite pins the delegation against the pre-extraction bodies.</para>

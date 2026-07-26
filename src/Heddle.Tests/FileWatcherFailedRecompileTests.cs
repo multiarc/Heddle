@@ -4,9 +4,9 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 1 D4/D5 — a failed watcher recompile (edited source that no longer compiles) keeps the
-    /// last-good document published and renderable, and surfaces the failure on <c>CompileResult</c>
-    /// (no new diagnostic channel); a subsequent good edit recovers.
+    /// A failed watcher recompile (edited source that no longer compiles) keeps the last-good document published
+    /// and renderable, and surfaces the failure on <c>CompileResult</c> (no new diagnostic channel); a subsequent
+    /// good edit recovers.
     /// </summary>
     public class FileWatcherFailedRecompileTests
     {

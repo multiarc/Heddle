@@ -9,12 +9,11 @@ namespace Heddle.Generator.Emit
     /// The emitter-side driver over the shared document-shaping core (<see cref="DocumentShaping"/>) — skipped-token
     /// alignment, remnant-line trimming, definition/import removal, raw-output splice, branch-set adjacency strip,
     /// and zero-output-chain removal — run against the parsed <see cref="ParseContext"/> so the emitter derives the
-    /// exact same static-piece boundaries the runtime <c>RuntimeDocument</c> derives. Generator plan phase 2 (D4/D9)
-    /// moved every pass body into <c>Heddle.Language.DocumentShaping</c>, linked into this project by the
-    /// <c>..\Heddle\Language\**\*.cs</c> glob; what remains here is generator representation only — the
-    /// <see cref="Element"/>/<see cref="Result"/> surface, the pass sequence, and the classification adapters.
-    /// The HED300x branch-set diagnostics stay in the runtime compiler (it passes the shared machine an observer;
-    /// the generator passes none), not in the generator.
+    /// exact same static-piece boundaries the runtime <c>RuntimeDocument</c> derives. The shared pass bodies live in
+    /// <c>Heddle.Language.DocumentShaping</c>, linked into this project by the <c>..\Heddle\Language\**\*.cs</c> glob;
+    /// what remains here is generator representation only — the <see cref="Element"/>/<see cref="Result"/> surface,
+    /// the pass sequence, and the classification adapters. The HED300x branch-set diagnostics stay in the runtime
+    /// compiler (it passes the shared machine an observer; the generator passes none), not in the generator.
     /// </summary>
     internal static class DocumentShaper
     {
@@ -78,10 +77,8 @@ namespace Heddle.Generator.Emit
 
             foreach (var chain in parseContext.DefaultChains)
             {
-                // Q2.1 (plan D10): the generator no longer skips an empty default chain. The runtime models one as
-                // a zero-length DocumentElement with an empty call chain at document end
-                // (HeddleCompiler.CompileBody), which renders nothing but participates in element-list identity
-                // and strategy selection; the emitter models the same element and emits no segment for it.
+                // The generator models an empty default chain as a zero-length element with an empty call chain at
+                // document end, which renders nothing but participates in element-list identity and strategy selection.
                 if (!isZeroOutput(chain))
                     elements.Add(new Element(chain, new BlockPosition(workingDocument.Length, 0)));
             }
@@ -103,7 +100,7 @@ namespace Heddle.Generator.Emit
                     return DocumentShaping.BranchKind.Other;
                 var name = leftmost.ExtensionName;
                 if (isDefinition(name))
-                    return DocumentShaping.BranchKind.Other;   // definition-first guard kept (R8)
+                    return DocumentShaping.BranchKind.Other;   // definition-first guard
                 switch (roleOf(name))
                 {
                     case BranchRole.Opener:       return DocumentShaping.BranchKind.Opener;
@@ -112,7 +109,7 @@ namespace Heddle.Generator.Emit
                 }
 
                 return hasScopeChannel(name)
-                    ? DocumentShaping.BranchKind.Participant   // R10 — byte-equal to Other today (both disarm)
+                    ? DocumentShaping.BranchKind.Participant   // byte-equal to Other today (both disarm)
                     : DocumentShaping.BranchKind.Other;
             };
     }

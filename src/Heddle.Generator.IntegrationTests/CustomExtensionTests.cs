@@ -6,10 +6,10 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 D9 / WI6 — custom <c>[ExtensionName]</c> extensions bind from referenced assemblies (never inlined) so
-    /// custom-extension templates precompile, rendering byte-identically with the dynamic backend. A resolved
-    /// extension that overrides a compile-time hook is refused (<c>HED7015</c>); an extension-only call shape whose
-    /// name resolves nowhere is <c>HED7006</c>.
+    /// Custom <c>[ExtensionName]</c> extensions bind from referenced assemblies (never inlined) so custom-extension
+    /// templates precompile, rendering byte-identically with the dynamic backend. A resolved extension that
+    /// overrides a compile-time hook is refused (<c>HED7015</c>); an extension-only call shape whose name resolves
+    /// nowhere is <c>HED7006</c>.
     /// </summary>
     public class CustomExtensionTests
     {
@@ -52,7 +52,7 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void HookOverridingCustomExtensionReportsHed7015()
         {
-            // @hooked resolves to HookedExtension, which overrides InitStart — unevaluable at build time (D22).
+            // @hooked resolves to HookedExtension, which overrides InitStart — unevaluable at build time.
             var t = "@model(){{System.String}}@\\\n@hooked(this)\n";
             var gen = DifferentialHarness.Generate(new[] { ("views/hooked.heddle", t) });
             var hed7015 = gen.Diagnostics.FirstOrDefault(d => d.Id == "HED7015");

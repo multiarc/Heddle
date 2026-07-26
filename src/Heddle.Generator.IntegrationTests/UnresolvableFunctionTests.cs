@@ -5,11 +5,10 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 D21 / OQ1 remainder — a function name resolvable from neither the default table nor any referenced
-    /// <c>[ExportFunctions]</c> export (a delegate-only registration, not representable in metadata) degrades the
-    /// template to a <b>HED7014 fallback marker</b>: a positioned build warning, a null-target function-binding row
-    /// in the manifest, and <b>no</b> generated <c>.g.cs</c>. The runtime gauntlet short-circuits the marker to the
-    /// dynamic path (README D8/D21).
+    /// A function name resolvable from neither the default table nor any referenced <c>[ExportFunctions]</c> export
+    /// (a delegate-only registration, not representable in metadata) degrades the template to a <b>HED7014 fallback marker</b>:
+    /// a positioned build warning, a null-target function-binding row in the manifest, and <b>no</b> generated <c>.g.cs</c>.
+    /// The runtime gauntlet short-circuits the marker to the dynamic path.
     /// </summary>
     public class UnresolvableFunctionTests
     {

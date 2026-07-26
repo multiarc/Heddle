@@ -9,7 +9,7 @@ using Heddle.Runtime.Expressions;
 
 namespace Heddle.Precompiled
 {
-    /// <summary>The per-request validation gauntlet (phase 7 D7/D8/D9/D21). Runs the pinned ordered checks against a
+    /// <summary>The per-request validation gauntlet. Runs the pinned ordered checks against a
     /// resolved <see cref="PrecompiledTemplateInfo"/> and the request's effective <see cref="TemplateOptions"/>,
     /// returning the first failure as a <see cref="PrecompiledFallbackEvent"/> (with the pinned detail string) or
     /// <c>null</c> when every check passes. Pure apart from the optional staleness step's file reads.</summary>
@@ -20,7 +20,7 @@ namespace Heddle.Precompiled
         internal static PrecompiledFallbackEvent? Validate(PrecompiledTemplateInfo entry, TemplateOptions options,
             Func<PrecompiledExtensionBinding, Type, bool> bindingResolver)
         {
-            // Step 0 — marker short-circuit (D21).
+            // Step 0 — marker short-circuit.
             if (!entry.IsPrecompiled)
             {
                 var name = entry.FunctionBindings.FirstOrDefault(r => r.TargetTypeName == null).Name ?? "?";
@@ -85,7 +85,7 @@ namespace Heddle.Precompiled
                     return Fail(entry.Key, PrecompiledFallbackReason.ExtensionBindingMismatch,
                         $"Extension '{binding.Name}': manifest={binding.ExtensionTypeName} live={AqnSansVersion(liveType)}");
 
-                // Phase 3 OQ4 — the identity check above proves the manifest and the live registry name the same
+                // The identity check above proves the manifest and the live registry name the same
                 // type, not that the type still lays its [Prop] slots out the same way. An extension package that
                 // gains or re-orders a slot keeps its AQN, so without this row the render writes values into the
                 // wrong slots. Vacuous when the fingerprint is absent, which is a parameter-less extension: the row
@@ -196,7 +196,7 @@ namespace Heddle.Precompiled
             return null;
         }
 
-        /// <summary>Decode-then-hash (phase 5 D1): the file is read with BOM detection (a BOM is honored and
+        /// <summary>Decode-then-hash: the file is read with BOM detection (a BOM is honored and
         /// stripped; no BOM means UTF-8) and its <b>decoded text</b> is hashed through the shared
         /// <see cref="ContentHash"/> rule — the same input the generator hashed at build time. Hashing the raw byte
         /// stream here is what made every BOM'd/UTF-16 template permanently <c>StaleContent</c>.</summary>
@@ -207,7 +207,7 @@ namespace Heddle.Precompiled
                 return ContentHash.HashText(reader.ReadToEnd());
         }
 
-        /// <summary>Phase 3 (F1): the manifest identity string, produced by the shared <see cref="AqnFormatter"/>
+        /// <summary>The manifest identity string, produced by the shared <see cref="AqnFormatter"/>
         /// through its reflection adapter — the same rule the generator's Roslyn adapter applies, so a nested or
         /// generic container can no longer spell its identity two different ways.</summary>
         internal static string AqnSansVersion(Type type) => ReflectionTypeIdentity.AqnSansVersion(type);

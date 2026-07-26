@@ -11,12 +11,11 @@ using Heddle.TestCorpus;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 3 (post-2.0) — the HED2004 HTML-context encoding lint: a bare bodiless <c>@(value)</c> under an
-    /// explicitly declared <c>Html</c> profile sitting in an attribute / <c>&lt;script&gt;</c> / URL position
-    /// warns once, positioned at the <c>@(</c>, suggesting the matching context encoder (<c>@attr</c> /
-    /// <c>@js</c> / <c>@url</c>) or <c>@raw</c>. Never fires off the Html profile (R3 gate), never on a named
-    /// encoder / opt-out / bodied carrier (D2), and never changes rendered bytes (the byte-neutrality goldens
-    /// and the corpus gate). The matrix rows mirror the phase 3 spec's testing plan one-to-one.
+    /// The HED2004 HTML-context encoding lint: a bare bodiless <c>@(value)</c> under an explicitly declared
+    /// <c>Html</c> profile sitting in an attribute / <c>&lt;script&gt;</c> / URL position warns once, positioned
+    /// at the <c>@(</c>, suggesting the matching context encoder (<c>@attr</c> / <c>@js</c> / <c>@url</c>) or
+    /// <c>@raw</c>. Never fires outside the Html profile, never on a named encoder / opt-out / bodied carrier,
+    /// and never changes rendered bytes (the byte-neutrality goldens and the corpus gate).
     /// </summary>
     public class HtmlContextLintTests
     {

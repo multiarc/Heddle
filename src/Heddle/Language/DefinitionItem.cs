@@ -67,27 +67,27 @@ namespace Heddle.Language {
         public bool HasDefaultOutput { get; internal set; }
 
         /// <summary>
-        /// Phase 7 D2: true for a definition declared inside a component body — a named content region
+        /// True for a definition declared inside a component body — a named content region
         /// (public via <c>&lt;:name&gt;</c> or a private inner <c>&lt;name&gt;</c>). Never true for a
         /// document-scope definition. Copied by the copy ctor; deliberately NOT part of
         /// <see cref="OverrideWith"/>'s field-copy list (the sibling idiom must not clobber region-ness).
         /// </summary>
         internal bool IsRegion { get; set; }
 
-        /// <summary>Phase 7 D2: the <c>&lt;:name&gt;</c> public-region form. Meaningful only when
+        /// <summary>The <c>&lt;:name&gt;</c> public-region form. Meaningful only when
         /// <see cref="IsRegion"/> is true.</summary>
         internal bool IsPublicRegion { get; set; }
 
         /// <summary>
-        /// Phase 7 D3: the directly-declared regions of this component's body (declaration order), appended on
+        /// The directly-declared regions of this component's body (declaration order), appended on
         /// the <c>EnterDef</c> store-success path only, so a rejected duplicate never lands here. Empty for a
-        /// region-less definition — the region table is additive metadata (D9).
+        /// region-less definition — the region table is additive metadata.
         /// </summary>
         internal System.Collections.Generic.IReadOnlyList<RegionDeclaration> Regions { get; set; } =
             System.Array.Empty<RegionDeclaration>();
 
         /// <summary>
-        /// Phase 7 D5: true for a call-body <c>&lt;x:x&gt;</c> whose base is unresolved — a captured
+        /// True for a call-body <c>&lt;x:x&gt;</c> whose base is unresolved — a captured
         /// <see cref="RegionFillCandidate"/>. Such an item is never registered into any
         /// <see cref="DefinitionBlock"/> (it must not self-shadow the region default a self-call resolves to).
         /// </summary>

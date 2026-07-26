@@ -8,7 +8,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// D9 body prop resolution: props win over model members (with the HED5011 shadowing warning),
+    /// Body prop resolution: props win over model members (with the HED5011 shadowing warning),
     /// <c>this.&lt;name&gt;</c> is the explicit model escape, <c>::</c> root refs skip props, and prop reads stay
     /// statically typed even in a <c>:: dynamic</c> definition.
     /// </summary>

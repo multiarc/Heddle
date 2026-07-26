@@ -3,15 +3,15 @@ using System;
 namespace Heddle.Data
 {
     /// <summary>
-    /// Sink-agnostic write helpers for extension authors (phase 8 D10). The single funnel through which the formatter
-    /// built-ins (and custom extensions formatting values) reach the renderer, so the per-TFM span/UTF-8 ladder lives
-    /// in exactly one place. Stateless.
+    /// Sink-agnostic write helpers for extension authors. The single funnel through which the formatter built-ins
+    /// (and custom extensions formatting values) reach the renderer, so the per-TFM span/UTF-8 ladder lives in
+    /// exactly one place. Stateless.
     /// </summary>
     public static class ScopeRendererExtensions
     {
         /// <summary>Span write against any renderer: dispatches to <see cref="ISpanScopeRenderer"/> when implemented,
         /// otherwise materializes the string (the documented downlevel cost for external renderers that never learned
-        /// spans — every engine renderer implements <see cref="ISpanScopeRenderer"/> after phase 8).</summary>
+        /// spans — every engine renderer implements <see cref="ISpanScopeRenderer"/>).</summary>
         public static void Render(this IScopeRenderer renderer, ReadOnlySpan<char> data)
         {
             if (renderer is ISpanScopeRenderer s)
@@ -53,7 +53,7 @@ namespace Heddle.Data
                 return;
             }
 
-            // String tier: the exact pre-phase call, the semantic definition of the other two tiers.
+            // String tier: the semantic definition of the other two tiers.
             renderer.Render(value.ToString(format, formatProvider));
         }
 #endif

@@ -6,17 +6,16 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>
-    /// Generator plan phase 6 D8 / WI10 — <c>DocumentAnalyzer.RenderPath</c> is now
-    /// <c>TemplateKey.TryMakeRelative</c> (phase 5's shared relativization, with its documented two-case-domain
-    /// policy) plus the LSP's own absolute-path fallback. The fourth hand-rolled prefix strip is deleted.
-    /// <para>The legacy body below is the pre-change implementation transcribed <b>verbatim</b> — the
-    /// characterization oracle. Every vector is checked against it, and the three vectors where the two
-    /// deliberately differ are named, with the legacy answer recorded, so the delta this WI ships is measured
-    /// rather than remembered.</para>
+    /// <c>DocumentAnalyzer.RenderPath</c> refactored to use <c>TemplateKey.TryMakeRelative</c> (shared relativization
+    /// with documented two-case-domain policy) plus the LSP's own absolute-path fallback, replacing the previous
+    /// hand-rolled prefix strip.
+    /// <para>The legacy body below is the pre-change implementation transcribed <b>verbatim</b> — the characterization
+    /// oracle. Every vector is checked against it, and the three vectors where the two deliberately differ are named,
+    /// with the legacy answer recorded as evidence of the behavioral delta.</para>
     /// </summary>
     public class RenderPathTests
     {
-        #region Legacy body — verbatim pre-WI10 DocumentAnalyzer.RenderPath
+        #region Legacy body — verbatim pre-refactor DocumentAnalyzer.RenderPath
 
         private static string LegacyRenderPath(string path, string root)
         {

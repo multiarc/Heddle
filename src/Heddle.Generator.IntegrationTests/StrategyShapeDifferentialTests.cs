@@ -3,33 +3,29 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Generator plan phase 1 WI12 (D13 / area 01 F2) — the generated strategy shape and the value-path coercion
-    /// rail, pinned as differentials because the two sides cannot share the code: the runtime picks among four
-    /// strategies (including a full-static short-circuit and a single-processor fast path), while the generator
-    /// emits one <c>Render</c>/<c>Execute</c> pair per body. Those are optimization twins of the same contract,
-    /// and every byte of every template flows through them.
-    /// <para>The contract, restated (the normative text lives in the phase spec): a body is a document-ordered
-    /// alternation of literal pieces and processor calls — head piece, interleaved processors, tail piece; the
-    /// render path writes pieces straight to the sink; the value path coerces every processor result with
-    /// <c>as string ?? string.Empty</c> and concatenates in document order, with the empty/single/concat three-case
-    /// shape.</para>
-    /// <para><b>Joint-land rule (Q1.2).</b> <c>OutExtension</c> flags a planned change to the non-string rail.
-    /// When it ships, the runtime rail, the emitted <c>Execute</c> shape and the spec text move in ONE landing —
-    /// and <see cref="TheEmittedValuePathCarriesThePinnedCoercionRail"/> is the tripwire that landing must
-    /// consciously edit. Authoring-time verification found no present mismatch: both tiers implement the
-    /// <c>as string ?? string.Empty</c> rail today.</para>
+    /// The generated strategy shape and the value-path coercion rail, pinned as differentials because the two sides
+    /// cannot share the code: the runtime picks among four strategies (including a full-static short-circuit and a
+    /// single-processor fast path), while the generator emits one <c>Render</c>/<c>Execute</c> pair per body. Those are
+    /// optimization twins of the same contract, and every byte of every template flows through them.
+    /// <para>The contract: a body is a document-ordered alternation of literal pieces and processor calls — head piece,
+    /// interleaved processors, tail piece; the render path writes pieces straight to the sink; the value path coerces
+    /// every processor result with <c>as string ?? string.Empty</c> and concatenates in document order, with the
+    /// empty/single/concat three-case shape.</para>
+    /// <para><b>Joint-land rule.</b> <c>OutExtension</c> flags a planned change to the non-string rail. When it ships,
+    /// the runtime rail, the emitted <c>Execute</c> shape and the spec text move in ONE landing — and
+    /// <see cref="TheEmittedValuePathCarriesThePinnedCoercionRail"/> is the tripwire that landing must consciously edit.
+    /// Both tiers currently implement the <c>as string ?? string.Empty</c> rail.</para>
     /// </summary>
     public class StrategyShapeDifferentialTests
     {
         private const string Header = "@model(){{System.String}}@\\\n";
 
         /// <summary>
-        /// The Q8.13 vehicle: a definition whose body splices its caller content with <c>@out()</c>. A definition
-        /// call's caller content is the one construct that reaches a body's <c>Execute</c> — i.e. the value path —
-        /// from the render path on BOTH tiers (<c>DefinitionBaseExtension.RenderData</c> calls
-        /// <c>GetInnerResult</c>; the emitter binds the same body as <c>callerContent:</c>). Every other route into
-        /// the value path is a <c>:</c> chain, and the emitter degrades every multi-item chain to the dynamic tier,
-        /// so a chained fixture would compare the dynamic engine against itself.
+        /// A definition whose body splices its caller content with <c>@out()</c>. A definition call's caller content
+        /// is the one construct that reaches a body's <c>Execute</c> — i.e. the value path — from the render path on
+        /// BOTH tiers (<c>DefinitionBaseExtension.RenderData</c> calls <c>GetInnerResult</c>; the emitter binds the
+        /// same body as <c>callerContent:</c>). Every other route into the value path is a <c>:</c> chain, and the
+        /// emitter degrades every multi-item chain to the dynamic tier.
         /// </summary>
         private const string WrapDefinition = "@%\n<wrap>{{<w>@out()</w>}}\n%@\n";
 
@@ -51,8 +47,7 @@ namespace Heddle.Generator.IntegrationTests
                 Header + "just text").Trim());
         }
 
-        /// <summary>strategy-single-processor — the single-part <c>Execute</c> (no <c>string.Concat</c>) against
-        /// the runtime's single-element strategy.</summary>
+        /// <summary>The single-part <c>Execute</c> (no <c>string.Concat</c>) against the runtime's single-element strategy.</summary>
         [Fact]
         public void SingleProcessorBody()
         {
@@ -60,15 +55,14 @@ namespace Heddle.Generator.IntegrationTests
                 Header + "@(this)").Trim());
         }
 
-        /// <summary>strategy-empty-body — an empty nested body returns <c>string.Empty</c> on both tiers.</summary>
+        /// <summary>An empty nested body returns <c>string.Empty</c> on both tiers.</summary>
         [Fact]
         public void EmptyNestedBody()
         {
             AssertParity("views/strategy-empty-body.heddle", Header + "[@if(this){{}}]");
         }
 
-        /// <summary>strategy-alternation — head piece / interleaved processors / tail piece ordering, i.e. the
-        /// offset-walk contract itself.</summary>
+        /// <summary>Head piece / interleaved processors / tail piece ordering, the offset-walk contract itself.</summary>
         [Fact]
         public void HeadInterleavedAndTailOrdering()
         {
@@ -76,8 +70,8 @@ namespace Heddle.Generator.IntegrationTests
                 Header + "A-@(this)-B-@(this)-C").Trim());
         }
 
-        /// <summary>strategy-adjacent-processors — zero-length pieces between adjacent processors must not produce
-        /// an empty-piece divergence between <c>GetDocumentPieces</c> and the emitted shape.</summary>
+        /// <summary>Zero-length pieces between adjacent processors must not produce an empty-piece divergence
+        /// between <c>GetDocumentPieces</c> and the emitted shape.</summary>
         [Fact]
         public void AdjacentProcessorsWithNoTextBetweenThem()
         {
@@ -86,15 +80,12 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// strategy-nonstring-value — <b>the rail tripwire</b>. The value path coerces every processor result with
-        /// <c>ProcessData(scope) as string ?? string.Empty</c>: the runtime's strategies do it in
-        /// <c>RuntimeDocument</c>, the generator emits the identical expression into every <c>Execute</c>. The
-        /// coercion is asserted against the emitted source, because it is the emitted <em>shape</em> the joint-land
-        /// rule constrains — a rail change that touched only the runtime would leave this text standing.
-        /// <para>The companion render-path row below pins the observable asymmetry the rail change is about: a
-        /// boxed non-string (the <c>@for</c> index a non-slot <c>@out()</c> returns) is stringified by the render
-        /// path and dropped by the value path. Both tiers agree today, which is the "no present mismatch" finding
-        /// Q1.2's ruling asked for; when the rail changes, both of these rows must be edited together.</para>
+        /// <b>The rail tripwire</b>. The value path coerces every processor result with <c>ProcessData(scope) as string ?? string.Empty</c>:
+        /// the runtime's strategies do it in <c>RuntimeDocument</c>, the generator emits the identical expression into every <c>Execute</c>.
+        /// The coercion is asserted against the emitted source, because it is the emitted <em>shape</em> the joint-land rule constrains.
+        /// <para>The companion render-path row below pins the observable asymmetry: a boxed non-string (the <c>@for</c> index a non-slot
+        /// <c>@out()</c> returns) is stringified by the render path and dropped by the value path. Both tiers currently agree; when
+        /// the rail changes, both of these rows must be edited together.</para>
         /// </summary>
         [Fact]
         public void TheEmittedValuePathCarriesThePinnedCoercionRail()
@@ -112,9 +103,8 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("return string.Concat(", source);
         }
 
-        /// <summary>The render-path companion: a boxed <see cref="int"/> on the chained channel is stringified,
-        /// identically on both tiers. Pinned so the rail change has to confront the asymmetry rather than
-        /// discover it.</summary>
+        /// <summary>The render-path companion: a boxed <see cref="int"/> on the chained channel is stringified
+        /// identically on both tiers, pinned so the rail change must confront the asymmetry.</summary>
         [Fact]
         public void BoxedNonStringOnTheChainedChannelStringifiesIdenticallyOnBothTiers()
         {
@@ -124,27 +114,15 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// strategy-nonstring-value-bytes — <b>the byte-level pin of the normative §4 asymmetry</b> (Q8.13). The two
-        /// rows above pin the rail as emitted <em>shape</em> and the render path as bytes; neither drives a boxed
-        /// non-string through the <em>value</em> path, so the drop itself — the observable half of §4 — was pinned
-        /// nowhere on either tier.
-        /// <para>One template, one <c>@for</c> body, two readers of the <b>same</b> chained value (the loop index,
-        /// a boxed <see cref="int"/>):</para>
-        /// <list type="bullet">
-        /// <item><c>R@if(this){{[@out()]}}</c> — reached on the <b>render path</b>, so
-        /// <c>OutExtension.RenderData</c> stringifies it: <c>[0]</c>, <c>[1]</c>.</item>
-        /// <item><c>V@wrap(){{[@out()|@if(this){{S}}]}}</c> — the caller content of a definition call, which both
-        /// tiers evaluate through the body's <c>Execute</c>, so the <b>value path</b>'s
-        /// <c>as string ?? string.Empty</c> drops it: <c>[|S]</c>, with nothing where the index was.</item>
-        /// </list>
-        /// <para>Because the two readers are siblings in one body they see the identical chained object, so the
-        /// empty is provably the rail dropping a live non-<see cref="string"/> value and not a null or an unreached
-        /// call. The <c>|@if(this){{S}}</c> arm is the control in the other direction: on the same value path, a
-        /// <see cref="string"/>-returning processor and the literal pieces around it are carried, so a rail that
-        /// dropped everything could not pass either.</para>
-        /// <para>The assertion is the absolute expected bytes <b>and</b> tier equality (via
-        /// <see cref="AssertParity"/>). Tier equality alone would stay green if the joint-land rule's landing
-        /// changed both tiers together — which is exactly the moment this row must be edited consciously.</para>
+        /// <b>The byte-level pin of the rail asymmetry</b>. The two rows above pin the rail as emitted <em>shape</em>
+        /// and the render path as bytes; neither drives a boxed non-string through the <em>value</em> path, so the drop
+        /// itself was pinned nowhere on either tier.
+        /// <para>One template, one <c>@for</c> body, two readers of the <b>same</b> chained value (the loop index, a boxed
+        /// <see cref="int"/>): <c>R@if(this){{[@out()]}}</c> reached on the render path (stringifies via <c>OutExtension.RenderData</c>)
+        /// and <c>V@wrap(){{[@out()|@if(this){{S}}]}}</c> the caller content of a definition call (evaluated through the body's
+        /// <c>Execute</c>, drops via <c>as string ?? string.Empty</c>).</para>
+        /// <para>The assertion is the absolute expected bytes <b>and</b> tier equality. Tier equality alone would stay green if
+        /// the joint-land rule's landing changed both tiers together — which is exactly when this row must be edited consciously.</para>
         /// </summary>
         [Fact]
         public void BoxedNonStringOnTheValuePathIsDroppedIdenticallyOnBothTiers()
@@ -155,18 +133,17 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// The rail's three-case shape (§3) drops the non-string in every one of them, on both tiers — and on the
-        /// runtime side each row lands on a <em>different</em> one of <c>RuntimeDocument</c>'s strategies, which §3
-        /// calls byte-equivalent optimizations of the one rail rather than a second rail. That claim was untested for
-        /// a non-string value:
+        /// The rail's three-case shape drops the non-string in every one of them, on both tiers. Each row lands on a
+        /// <em>different</em> one of <c>RuntimeDocument</c>'s strategies, which are byte-equivalent optimizations of
+        /// the one rail rather than a second rail. That claim was untested for a non-string value:
         /// <list type="bullet">
         /// <item><c>{{@out()}}</c> — one processor, no pieces: <c>SingleStrategy</c> against the emitted
         /// single-part <c>Execute</c> (no <c>string.Concat</c>).</item>
         /// <item><c>{{@out()@if(this){{S}}}}</c> — two adjacent processors covering the whole body:
         /// <c>OptimizedStrategy</c> against the emitted <c>string.Concat</c>.</item>
         /// <item><c>{{[@out()]}}</c> — processors interleaved with literal pieces: <c>NormalStrategy</c>, whose
-        /// <c>?? element.Piece</c> fallback §3 names as part of the same rail. A processor element carries a null
-        /// <c>Piece</c>, so the fallback must reach <c>string.Empty</c> and not the body text.</item>
+        /// <c>?? element.Piece</c> fallback is part of the same rail. A processor element carries a null <c>Piece</c>,
+        /// so the fallback must reach <c>string.Empty</c> and not the body text.</item>
         /// </list>
         /// </summary>
         [Theory]

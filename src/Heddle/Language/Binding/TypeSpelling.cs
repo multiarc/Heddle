@@ -42,10 +42,10 @@ namespace Heddle.Language.Binding
     }
 
     /// <summary>
-    /// Phase 3 (F8): the reflection-free type-spelling parser, shared.
+    /// The reflection-free type-spelling parser, shared.
     /// <para>It was already reflection-free imperative code inside <c>ReflectionHelper</c>
-    /// (<c>ExtractGenericArguments</c>, <c>TryFindMatchingAngleBracket</c>, <c>SplitTopLevelArguments</c>) — the
-    /// research's "directly sharable, linkable today" item. The generator supported <b>none</b> of
+    /// (<c>ExtractGenericArguments</c>, <c>TryFindMatchingAngleBracket</c>, <c>SplitTopLevelArguments</c>) —
+    /// directly extractable to share between tiers. The generator supported <b>none</b> of
     /// <c>List&lt;int&gt;</c>, <c>T[]</c>, <c>(int, string)</c> or dotted-nested spellings, so whole feature areas
     /// silently never precompiled: fallback-safe, but permanent.</para>
     /// <para>The grammar handled here: a dotted chain where any segment may carry a type-argument list
@@ -78,8 +78,8 @@ namespace Heddle.Language.Binding
             {
                 // Arity 1 is legal: `(int)` is `System.ValueTuple<int>`, which is what the reflection tier has
                 // always resolved it to. The shared parser originally required two elements, so the build tier
-                // refused a spelling the run tier accepted — a drift introduced by the extraction itself, found
-                // when the runtime was folded onto this parser (Q8.3). An EMPTY element is still malformed: `()`
+                // refused a spelling the run tier accepted — a drift introduced by the extraction itself, which
+                // was found and fixed when the runtime was folded onto this parser. An EMPTY element is still malformed: `()`
                 // splits to one empty part, which fails when the element is resolved below.
                 var parts = SplitTopLevelArguments(spelling.Substring(1, spelling.Length - 2));
                 if (parts.Count == 0)

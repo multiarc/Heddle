@@ -9,9 +9,6 @@ using Heddle.Native;
 
 namespace Heddle.Helpers
 {
-    /// <summary>
-    /// Extends AttributeSet to perform more helper methods for Type reflection
-    /// </summary>
     internal class ReflectionHelper
     {
         private static readonly Regex WhitespaceChars = new Regex(@"\s+", RegexOptions.Compiled | RegexOptions.Singleline);
@@ -128,8 +125,8 @@ namespace Heddle.Helpers
             return IsType(value.GetType());
         }
 
-        // The alias table lives in CSharpTypeNames (phase 6 D7) — one data source for the parse direction here,
-        // the display direction in signature/hover text, and the build tier's symbol-side adapter.
+        // The alias table lives in CSharpTypeNames — single source for parse direction here,
+        // display direction in signature/hover text, and build tier's symbol-side adapter.
         private static Type ResolveCsharpType(string typeName) =>
             CSharpTypeNames.TryGetType(typeName, out var result) ? result : null;
 
@@ -209,16 +206,9 @@ namespace Heddle.Helpers
                         return types[0];
                     }
 
-                    // Phase 3 (Q3.5 / OQ5 escape clause): a short-name tie is disambiguated by the imports, and a
-                    // tie the imports do NOT settle is the SAME "ambigous" error the dotted/full-name arms above
-                    // already raise. It used to be `types.FirstOrDefault(t => imports.Contains(t.Namespace))` — a
-                    // first-match pick over an assembly-scan-ordered list, so with two imported namespaces both
-                    // carrying the name the resolved type depended on assembly load order. That is not a rule the
-                    // build tier can match by construction, and reproducing it would bake load order into build
-                    // output; it also contradicted this file's own comment at RegisterType, which states that a
-                    // dotted-alias collision "surfaces as the existing ambiguous error rather than a silent pick".
-                    // Both tiers are fixed together and stay matched (the generator raises HED7023 for the same
-                    // input). Behaviour is otherwise unchanged: one match still resolves, no match still fails.
+                    // A short-name tie is disambiguated by imports; a tie the imports do NOT settle
+                    // is the same "ambigous" error that dotted/full-name arms raise. This matches the build tier
+                    // behavior (the generator raises HED7023 for the same input).
                     var matches = types.Where(t => imports.Contains(t.Namespace)).ToList();
                     if (matches.Count == 1)
                     {
@@ -278,14 +268,9 @@ namespace Heddle.Helpers
         }
 
         /// <summary>
-        /// Resolves a template-spelled type name. The <b>grammar</b> — the tuple/array/generic/simple dispatch, the
-        /// dotted-chain-with-per-segment-arity rewrite, top-level argument splitting and angle-bracket matching — is
-        /// the shared <see cref="TypeSpelling"/> parser (Q8.3); this method supplies the reflection type universe
-        /// through <see cref="ReflectionTypeLookup"/> and maps the parser's fault back onto the
-        /// <see cref="InvalidOperationException"/> messages callers already catch.
-        /// <para>Phase 3 recorded the parser as "split out of <c>ReflectionHelper</c>". It was not: the shared file
-        /// was a re-implementation and these methods stayed live, so the generator and the runtime were parsing the
-        /// same grammar twice again. This is the actual split.</para>
+        /// Resolves a template-spelled type name using the shared <see cref="TypeSpelling"/> parser for grammar and
+        /// <see cref="ReflectionTypeLookup"/> for the reflection type universe. Maps parser faults back to
+        /// <see cref="InvalidOperationException"/> messages.
         /// </summary>
         public static Type ResolveType(string typeName, ICollection<string> imports)
         {

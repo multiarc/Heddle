@@ -20,9 +20,9 @@ namespace Heddle.Native
 
         private static volatile DependencyContext _dependencyContext;
 
-        // Phase 9 D4: the assembly registry carries no Microsoft.CodeAnalysis type — the metadata-reference concern
-        // moved to RoslynReferenceProvider (reached only past the C#-tier feature switch), so the trimmer can drop
-        // the whole Roslyn graph. The cache value is simply the deduped assembly.
+        // The assembly registry carries no Microsoft.CodeAnalysis type — the metadata-reference concern moved to
+        // RoslynReferenceProvider (reached only past the C#-tier feature switch), so the trimmer can drop the whole
+        // Roslyn graph. The cache value is simply the deduped assembly.
         private static readonly ConcurrentDictionary<AssemblyName, Assembly> AssemblyCache =
             new ConcurrentDictionary<AssemblyName, Assembly>(AssemblyNameEqualityComparer.Instance);
 
@@ -68,7 +68,6 @@ namespace Heddle.Native
             }
             catch (BadImageFormatException)
             {
-                //native or wrong-bitness assembly, skip load issues
             }
         }
 
@@ -81,11 +80,11 @@ namespace Heddle.Native
         private static readonly List<AssemblyName> ModelNames = new List<AssemblyName>();
 
         /// <summary>
-        /// Phase 6 D14/D3: adds the workspace model assemblies to the static assembly list so engine
-        /// type resolution (<see cref="ReflectionHelper.ResolveType(string, ICollection{string})"/>) can see their
-        /// types, invalidates the type caches and reconfigures the name maps. The registration is tracked so
-        /// <see cref="UnregisterModelAssemblies"/> can remove exactly these entries on reload — otherwise the
-        /// static caches would pin a collectible model <c>AssemblyLoadContext</c> forever (the reload-leak root).
+        /// Adds the workspace model assemblies to the static assembly list so engine type resolution
+        /// (<see cref="ReflectionHelper.ResolveType(string, ICollection{string})"/>) can see their types, invalidates
+        /// the type caches and reconfigures the name maps. The registration is tracked so
+        /// <see cref="UnregisterModelAssemblies"/> can remove exactly these entries on reload — otherwise the static
+        /// caches would pin a collectible model <c>AssemblyLoadContext</c> forever (the reload-leak root).
         /// </summary>
         public static void RegisterModelAssemblies(IReadOnlyList<Assembly> assemblies)
         {
@@ -113,10 +112,10 @@ namespace Heddle.Native
         }
 
         /// <summary>
-        /// Phase 6 D14/D3: removes every assembly registered by <see cref="RegisterModelAssemblies"/> from the
-        /// static lists and cache, invalidates the type caches and reconfigures — clearing the engine-side
-        /// references so a collectible model context can actually collect after <c>Unload()</c>. C#-tier metadata
-        /// references are held only in a weak per-assembly cache (RoslynReferenceProvider) and need no eviction here.
+        /// Removes every assembly registered by <see cref="RegisterModelAssemblies"/> from the static lists and cache,
+        /// invalidates the type caches and reconfigures — clearing the engine-side references so a collectible model
+        /// context can actually collect after <c>Unload()</c>. C#-tier metadata references are held only in a weak
+        /// per-assembly cache (RoslynReferenceProvider) and need no eviction here.
         /// </summary>
         public static void UnregisterModelAssemblies()
         {
@@ -185,10 +184,7 @@ namespace Heddle.Native
         public static IReadOnlyList<Type> GetAssemblyExportedTypes(AssemblyName assemblyName)
         {
             if (_allTypes == null)
-            {
-                //ensure init
                 GetAllTypes();
-            }
 
             return AssemblyExportedTypes.GetValueOrDefault(assemblyName);
         }
@@ -196,10 +192,7 @@ namespace Heddle.Native
         public static IEnumerable<Type> GetAssemblyExportedTypes()
         {
             if (_allTypes == null)
-            {
-                //ensure init
                 GetAllTypes();
-            }
 
             return AssemblyExportedTypes.SelectMany(ex => ex.Value);
         }
@@ -370,10 +363,10 @@ namespace Heddle.Native
             }
         }
 
-        /// <summary>Phase 9 D4: the sole Roslyn-typed member of the assembly-helper surface. Called only from the
-        /// C#-tier compile paths behind the <c>Heddle.CSharpTierEnabled</c> switch, so a trimmed publish that turns
-        /// the switch off makes this (and <see cref="RoslynReferenceProvider"/>) dead — the whole
-        /// <c>Microsoft.CodeAnalysis</c> graph drops out of the bundle.</summary>
+        /// <summary>The sole Roslyn-typed member of the assembly-helper surface. Called only from the C#-tier compile
+        /// paths behind the <c>Heddle.CSharpTierEnabled</c> switch, so a trimmed publish that turns the switch off
+        /// makes this (and <see cref="RoslynReferenceProvider"/>) dead — the whole <c>Microsoft.CodeAnalysis</c>
+        /// graph drops out of the bundle.</summary>
         internal static List<Microsoft.CodeAnalysis.MetadataReference> GetApplicationReferences()
         {
             EnsureApplicationAssembliesWalked();

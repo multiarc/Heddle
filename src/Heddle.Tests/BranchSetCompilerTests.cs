@@ -10,10 +10,10 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The phase 3 compile-time scan corpus (D10, rows C01–C19): interleaved-text stripping (silent for
-    /// whitespace, HED3001 once per non-whitespace gap), comment/<c>@\</c> gaps, directive-between-branches,
-    /// CRLF/LF parity, two-sets, imported zero-length blocks, definition-shadowed names, and the orphan rows
-    /// (HED3002/HED3003/HED3004) — each asserting rendered bytes and the exact positioned diagnostic set.
+    /// The compile-time scan corpus: interleaved-text stripping (silent for whitespace, HED3001 once per
+    /// non-whitespace gap), comment/<c>@\</c> gaps, directive-between-branches, CRLF/LF parity, two-sets,
+    /// imported zero-length blocks, definition-shadowed names, and the orphan rows (HED3002/HED3003/HED3004)
+    /// — each asserting rendered bytes and the exact positioned diagnostic set.
     /// </summary>
     public class BranchSetCompilerTests
     {
@@ -38,7 +38,6 @@ namespace Heddle.Tests
             Assert.InRange(diag.Position.StartIndex, at, at + marker.Length + 1);
         }
 
-        // C01 — whitespace-only gap stripped silently.
         [Fact]
         public void C01_WhitespaceGapStrippedSilently()
         {
@@ -49,7 +48,6 @@ namespace Heddle.Tests
             Assert.Equal("2", t.Generate(new Model { A = false }));
         }
 
-        // C02 — non-whitespace gap stripped with exactly one HED3001 at the @else.
         [Fact]
         public void C02_NonWhitespaceGapStrippedWithOneWarning()
         {
@@ -63,7 +61,6 @@ namespace Heddle.Tests
             Assert.Equal("2", t.Generate(new Model { A = false }));
         }
 
-        // C03 — text before the @if and after the last branch renders (stripping is set-internal only).
         [Fact]
         public void C03_TextOutsideSetRenders()
         {
@@ -73,7 +70,6 @@ namespace Heddle.Tests
             Assert.Equal("before 2 after", t.Generate(new Model { A = false }));
         }
 
-        // C04 — comment between blocks is excised pre-scan; the remaining gap is whitespace → silent.
         [Fact]
         public void C04_CommentGapIsSilentSetIntact()
         {
@@ -84,7 +80,6 @@ namespace Heddle.Tests
             Assert.Equal("2", t.Generate(new Model { A = false }));
         }
 
-        // C05 — @\-trimmed whitespace between blocks: hidden channel, no warning, set intact.
         [Fact]
         public void C05_TrimmedWhitespaceGapIsSilent()
         {
@@ -95,7 +90,6 @@ namespace Heddle.Tests
             Assert.Equal("2", t.Generate(new Model { A = false }));
         }
 
-        // C06 — a directive block (@using) is Other: ends stripping adjacency but not the orphan state.
         [Fact]
         public void C06_DirectiveBetweenBranchesKeepsSetOpen()
         {

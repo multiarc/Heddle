@@ -3,7 +3,7 @@ using Heddle.Language.Expressions;
 namespace Heddle.Language.Binding
 {
     /// <summary>
-    /// Phase 3 (F6): the type-system seam the shared binding rule-cores answer their questions through.
+    /// The type-system seam the shared binding rule-cores answer their questions through.
     /// <para>The assignability relation cannot be shared imperatively — it <em>is</em> the type graph, and each side
     /// already has an engine for it (reflection's <c>Type.IsAssignableFrom</c>; Roslyn's
     /// <c>Compilation.ClassifyConversion</c> plus a hierarchy walk). What drifted was never the graph but the

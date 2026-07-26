@@ -11,7 +11,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 7 D7/D8/D9/D21 per-request validation gauntlet: the ordered checks (marker → options → extensions →
+    /// Per-request validation gauntlet: the ordered checks (marker → options → extensions →
     /// functions → staleness) with the pinned reason and detail strings.
     /// </summary>
     public class PrecompiledGauntletTests

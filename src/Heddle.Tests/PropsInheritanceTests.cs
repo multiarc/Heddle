@@ -33,7 +33,7 @@ namespace Heddle.Tests
             return PropLayout.Resolve(definition, scope);
         }
 
-        [Fact] // roadmap criterion 3 — an untyped definition binds one shared layout across two call sites
+        [Fact]
         public void TwoSitesShareOneLayoutInstanceWhileBodyMonomorphises()
         {
             using var scope = new CompileScope(new CompileContext(new TemplateOptions(), typeof(PropRoot)));
@@ -92,7 +92,7 @@ namespace Heddle.Tests
             Assert.Equal("hi", content.DefaultBoxed);
         }
 
-        [Fact] // HED5008
+        [Fact]
         public void ReTypeNotAssignableIsError()
         {
             var t = Compile("@% " + CardBase +
@@ -114,7 +114,7 @@ namespace Heddle.Tests
             Assert.Equal("[boxed|False]", t.Generate(new PropRoot { Article = new PropArticle() }).Trim());
         }
 
-        [Fact] // HED5007
+        [Fact]
         public void DuplicatePropInHeader()
         {
             var t = Compile("@% <card(a: int, a: int)>{{x}} :: PropArticle %@", typeof(PropRoot));
@@ -123,7 +123,7 @@ namespace Heddle.Tests
                 e => e.DiagnosticId == HeddleDiagnosticIds.DuplicatePropDeclaration);
         }
 
-        [Fact] // HED5009
+        [Fact]
         public void InconvertibleDefault()
         {
             var t = Compile("@% <pad(width: int = \"x\")>{{@(width)}} :: PropArticle %@\n@pad(Article)",
@@ -133,7 +133,7 @@ namespace Heddle.Tests
                 e => e.DiagnosticId == HeddleDiagnosticIds.PropDefaultNotConvertible);
         }
 
-        [Fact] // HED5010 (prop form)
+        [Fact]
         public void UnresolvedPropType()
         {
             var t = Compile("@% <x(a: NoSuch.Type)>{{x}} :: PropArticle %@\n@x(Article)", typeof(PropRoot));
@@ -141,7 +141,7 @@ namespace Heddle.Tests
             Assert.Contains(t.CompileResult.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.UnresolvedPropType);
         }
 
-        [Fact] // HED5010 (slot form)
+        [Fact]
         public void UnresolvedSlotType()
         {
             var t = Compile("@% <x(out:: NoSuch.Type)>{{@out(this)}} :: PropArticle %@\n@x(Article){{y}}",
@@ -151,7 +151,7 @@ namespace Heddle.Tests
                 e => e.DiagnosticId == HeddleDiagnosticIds.UnresolvedPropType && e.Error.Contains("slot"));
         }
 
-        [Fact] // HED5015 (out reserved)
+        [Fact]
         public void ReservedPropNameOut()
         {
             var t = Compile("@% <card(out: PropArticle)>{{x}} :: PropArticle %@", typeof(PropRoot));
@@ -160,7 +160,7 @@ namespace Heddle.Tests
                 e => e.DiagnosticId == HeddleDiagnosticIds.ReservedPropName && e.Error.Contains("out::"));
         }
 
-        [Fact] // HED5015 (this reserved)
+        [Fact]
         public void ReservedPropNameThis()
         {
             var t = Compile("@% <card(this: int)>{{x}} :: PropArticle %@", typeof(PropRoot));
@@ -168,7 +168,7 @@ namespace Heddle.Tests
             Assert.Contains(t.CompileResult.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.ReservedPropName);
         }
 
-        [Fact] // HED5016
+        [Fact]
         public void InvalidSlotDeclaration()
         {
             var t = Compile("@% <card(foo:: PropArticle)>{{x}} :: PropArticle %@", typeof(PropRoot));
@@ -176,7 +176,7 @@ namespace Heddle.Tests
             Assert.Contains(t.CompileResult.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.InvalidSlotDeclaration);
         }
 
-        [Fact] // HED5017
+        [Fact]
         public void MultipleSlotDeclarations()
         {
             var t = Compile("@% <x(out:: PropArticle, out:: PropMenu)>{{x}} :: PropArticle %@", typeof(PropRoot));

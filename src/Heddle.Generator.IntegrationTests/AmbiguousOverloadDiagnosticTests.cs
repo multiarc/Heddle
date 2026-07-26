@@ -8,7 +8,7 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Q8.1 (ruled user, 2026-07-26) — <b>HED7025</b>. The generator used to run the shared <c>OverloadRank</c> core,
+    /// <b>HED7025</b>. The generator used to run the shared <c>OverloadRank</c> core,
     /// obtain <c>BindOutcome.Ambiguous</c> — a <i>proof</i> that the runtime will refuse the call — and then report
     /// nothing at all, so a provably illegal template got a green build and a hard <c>HED1013</c> at first render.
     /// That contradicted both the <b>match principle</b> ("errors always match") and the
@@ -101,8 +101,7 @@ namespace Heddle.Generator.IntegrationTests
                 e => e.DiagnosticId == HeddleDiagnosticIds.NoFunctionOverload);
         }
 
-        /// <summary>The build error and the runtime error are the same verdict about the same template — the match
-        /// principle stated as a test rather than as prose.</summary>
+        /// <summary>The build error and the runtime error are the same verdict about the same template.</summary>
         [Fact]
         public void TheBuildErrorAndTheRuntimeErrorAreTheSameVerdict()
         {
@@ -168,9 +167,9 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         // -------------------------------------------------------------------------------------------------
-        // Exports. Phase 3 routed arbitrary host [ExportFunctions] signatures through the same ranker, and
-        // phase 4's WI10 measurement (0-of-480 winner changes) explicitly does NOT carry to host overload
-        // sets — so the error has to behave for exports, not only for the shipped built-in table.
+        // Exports. Arbitrary host [ExportFunctions] signatures run through the same ranker, and the measurement
+        // showing the ranker never changes a winner was taken over the built-in table only — it does not carry to
+        // host overload sets, so the error has to behave for exports too.
         // -------------------------------------------------------------------------------------------------
 
         /// <summary>A host export set with the same collision shape: <c>blend(long, long)</c> and
@@ -272,12 +271,10 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains(reported, d => d.GetMessage().Contains("'max'"));
         }
 
-        /// <summary>Two illegal call sites in <i>one</i> template report <b>twice</b>. This pin previously recorded
-        /// the opposite — the body build abandoned at the first construct it could not write, so the second call was
-        /// never reached — and said in as many words that a later change making the emitter continue past an
-        /// unwritable construct should redden here and decide deliberately. <b>Q8.19 (ruled user, 2026-07-26) is that
-        /// decision:</b> the element walk now records the refusal, skips the element and keeps walking, so both calls
-        /// are reported at their own spans and the author fixes both in one pass.
+        /// <summary>Two illegal call sites in <i>one</i> template report <b>twice</b>. The body build used to abandon
+        /// at the first construct it could not write, so the second call was never reached; the element walk now
+        /// records the refusal, skips the element and keeps walking, so both calls are reported at their own spans
+        /// and the author fixes both in one pass.
         /// <para>Refusal still propagates — the walk returns "refused" at the end, so the template still does not
         /// precompile. <c>ExpectDegrade</c> asserts that half, because collecting diagnostics must never become
         /// emitting past a refusal.</para></summary>

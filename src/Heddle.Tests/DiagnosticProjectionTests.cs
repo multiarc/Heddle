@@ -8,11 +8,11 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Generator plan phase 6 D5/D12.5 — the one drain rule. Which channels a host drains, how it decides
-    /// severity, whether it carries the id and the fix, and how it de-duplicates were three different answers in
-    /// three hosts: the language server had the complete rule, the generator had a partial one (parse channels
-    /// only, severity by which collection the entry sat in, no fix, warning ids dropped), and
-    /// <see cref="HeddleCompileResult"/> had a third rendering. These pin the rule they now share.
+    /// The one drain rule: which channels a host drains, how it decides severity, whether it carries the id and
+    /// the fix, and how it de-duplicates used to differ across three hosts. The language server had the complete
+    /// rule, the generator had a partial one (parse channels only, severity by which collection the entry sat in,
+    /// no fix, warning ids dropped), and <see cref="HeddleCompileResult"/> had a third. These pin the rule they
+    /// now share.
     /// </summary>
     public class DiagnosticProjectionTests
     {

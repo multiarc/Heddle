@@ -4,9 +4,9 @@ namespace Heddle.Language.Expressions
 {
     /// <summary>
     /// The twelve numeric primitives the native tier promotes over, plus <see cref="None"/> for "not a numeric
-    /// primitive" (phase 4 D5/F7). Keying the conversion tables on this enum instead of <see cref="Type"/> or
-    /// Roslyn's <c>SpecialType</c> is what makes the operator-legality and overload-rank rules expressible in one
-    /// Roslyn-free file — the fact sources stay per-side adapters, the lattice is shared.
+    /// primitive". Keying conversion tables on this enum instead of <see cref="Type"/> or Roslyn's
+    /// <c>SpecialType</c> makes the operator-legality and overload-rank rules expressible in one Roslyn-free file —
+    /// fact sources stay per-side adapters while the lattice is shared.
     /// </summary>
     internal enum NumericKind
     {
@@ -26,12 +26,12 @@ namespace Heddle.Language.Expressions
     }
 
     /// <summary>
-    /// The C# implicit-numeric-conversion (§10.2.3) and binary/unary promotion tables, re-keyed on
-    /// <see cref="NumericKind"/> (phase 4 D5). Transcribed from the runtime's <c>NumericPromotion</c>
-    /// <see cref="Type"/>-keyed table and diffed against the generator's <c>SpecialType</c>-keyed twin in
-    /// <c>TemplateEmitter</c>; the two agreed entry-for-entry, and this file is what stops that agreement from
-    /// rotting. Every function returns false/<see cref="NumericKind.None"/> for <see cref="NumericKind.None"/>
-    /// rather than throwing, so callers can feed unclassified operands safely.
+    /// The C# implicit-numeric-conversion (§10.2.3) and binary/unary promotion tables, keyed on
+    /// <see cref="NumericKind"/>. Transcribed from the runtime's <c>NumericPromotion</c> <see cref="Type"/>-keyed table
+    /// and diffed against the generator's <c>SpecialType</c>-keyed twin in <c>TemplateEmitter</c>; they agreed
+    /// entry-for-entry, and this file is what stops that agreement from rotting. Every function returns
+    /// false/<see cref="NumericKind.None"/> for <see cref="NumericKind.None"/> rather than throwing, so callers can
+    /// feed unclassified operands safely.
     /// <para>BCL types only (<see cref="FromClrType"/> takes a <see cref="Type"/>); no Roslyn, netstandard2.0-clean.</para>
     /// </summary>
     internal static class NumericTable

@@ -14,18 +14,15 @@ using LspProtocol = Heddle.LanguageServer.Protocol;
 namespace Heddle.LanguageServer
 {
     /// <summary>
-    /// The hand-rolled LSP 3.17 layer (phase 6 D4–D8): thin StreamJsonRpc target methods, each a projection of a
-    /// <see cref="HeddleLanguageService"/> call plus DTO mapping. Full-document sync, 300 ms debounce,
-    /// request-forced analysis. No compiler logic lives here.
+    /// Thin StreamJsonRpc target methods, each a projection of a <see cref="HeddleLanguageService"/> call
+    /// plus DTO mapping. Full-document sync, 300 ms debounce, request-forced analysis. No compiler logic lives here.
     /// </summary>
     internal sealed class LspServer
     {
         /// <summary>The version <c>heddle-lsp --version</c> prints and the LSP <c>initialize</c> response reports as
-        /// <c>serverInfo.version</c>. Q8.11: this was a hand-maintained <c>const "1.0.0"</c> while the package shipped
-        /// 2.0.0, and the one test that touched it compared it against itself, so nothing could notice. It is now read
-        /// off this assembly — whose version is the single <c>VersionPrefix</c> in <c>Directory.Build.props</c> — with
-        /// the source-revision suffix Source Link appends (<c>2.1.0+&lt;sha&gt;</c>) trimmed. Derived, not stated, so
-        /// there is no second statement of the release line left here to drift.</summary>
+        /// <c>serverInfo.version</c>. It is read off this assembly's
+        /// <see cref="AssemblyInformationalVersionAttribute"/>, with the source-revision suffix trimmed. Derived,
+        /// not stated, so there is no second statement of the release line left here to drift.</summary>
         internal static readonly string InformationalVersion = ReadInformationalVersion();
 
         private static string ReadInformationalVersion()
@@ -61,8 +58,6 @@ namespace Heddle.LanguageServer
             _rpc = rpc;
         }
 
-        // ---- Lifecycle -----------------------------------------------------------------------------------------
-
         [JsonRpcMethod("initialize", UseSingleObjectParameterDeserialization = true)]
         public LspProtocol.InitializeResult Initialize(LspProtocol.InitializeParams @params)
         {
@@ -81,7 +76,7 @@ namespace Heddle.LanguageServer
                     TextDocumentSync = new LspProtocol.TextDocumentSyncOptions
                     {
                         OpenClose = true,
-                        Change = 1, // Full
+                        Change = 1,
                         Save = new LspProtocol.SaveOptions()
                     },
                     CompletionProvider = new LspProtocol.CompletionOptions
@@ -131,7 +126,7 @@ namespace Heddle.LanguageServer
         [JsonRpcMethod("workspace/didChangeConfiguration", UseSingleObjectParameterDeserialization = true)]
         public void DidChangeConfiguration(LspProtocol.DidChangeConfigurationParams @params)
         {
-            // v1: re-read the workspace file/settings and rebuild. The one-shot export scan never re-runs (D23/D24).
+            // Re-read the workspace file/settings and rebuild on config changes.
             lock (_lifecycleGate)
             {
                 if (!_initialized)
@@ -145,8 +140,6 @@ namespace Heddle.LanguageServer
             foreach (var uri in _buffers.Keys.ToArray())
                 AnalyzeAndPublish(uri);
         }
-
-        // ---- Document sync -------------------------------------------------------------------------------------
 
         [JsonRpcMethod("textDocument/didOpen", UseSingleObjectParameterDeserialization = true)]
         public void DidOpen(LspProtocol.DidOpenTextDocumentParams @params)
@@ -189,8 +182,6 @@ namespace Heddle.LanguageServer
             _service?.Close(UriToPath(uri));
             PublishDiagnostics(uri, null, Array.Empty<LspProtocol.Diagnostic>());
         }
-
-        // ---- Features ------------------------------------------------------------------------------------------
 
         [JsonRpcMethod("textDocument/completion", UseSingleObjectParameterDeserialization = true)]
         public LspProtocol.CompletionItem[] Completion(LspProtocol.CompletionParams @params, CancellationToken ct)
@@ -247,8 +238,6 @@ namespace Heddle.LanguageServer
                 ? Array.Empty<int>()
                 : SemanticTokensBuilder.Build(analysis));
         }
-
-        // ---- Internals -----------------------------------------------------------------------------------------
 
         private void ScheduleDebounced(string uri)
         {
@@ -338,8 +327,8 @@ namespace Heddle.LanguageServer
             return new LspProtocol.Range(new LspProtocol.Position(sl, sc), new LspProtocol.Position(el, ec));
         }
 
-        /// <summary>Forwards the workspace-config complaints (phase 6 D10/WI9) to the client's log. A config typo
-        /// keeps the option's default and says so here; it never becomes a diagnostic and never stops analysis.</summary>
+        /// <summary>Forwards workspace-configuration warnings to the client's log. A configuration error keeps
+        /// the option's default and logs a message; it never becomes a diagnostic and never stops analysis.</summary>
         private void LogConfigurationMessages(HeddleLanguageServiceOptions options)
         {
             if (options?.ConfigurationMessages == null)
@@ -356,8 +345,7 @@ namespace Heddle.LanguageServer
 
         private static HeddleLanguageServiceOptions BuildOptions(string root, JsonElement? settings)
         {
-            // File wins over client settings (D18); v1 precedence: a present .heddle-lsp.json is authoritative,
-            // otherwise the forwarded client settings, otherwise a bare typeless workspace.
+            // A present .heddle-lsp.json file is authoritative; otherwise forwarded client settings; otherwise a bare typeless workspace.
             var filePath = string.IsNullOrEmpty(root)
                 ? WorkspaceConfig.FileName
                 : Path.Combine(root, WorkspaceConfig.FileName);

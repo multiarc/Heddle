@@ -9,13 +9,12 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 WI8 (D7/D8/D17): a host that registers a compiled manifest renders from the precompiled strategy —
-    /// <see cref="TemplateResolver"/> consults <see cref="PrecompiledTemplates"/> before the cache/file probe and
-    /// returns a <see cref="HeddleTemplate"/> in precompiled-adapter mode, byte-identical to the dynamic engine. A
-    /// gauntlet failure falls back (Fallback) or throws (Strict).
+    /// A host that registers a compiled manifest renders from the precompiled strategy — <see cref="TemplateResolver"/>
+    /// consults <see cref="PrecompiledTemplates"/> before the cache/file probe and returns a <see cref="HeddleTemplate"/>
+    /// in precompiled-adapter mode, byte-identical to the dynamic engine. A gauntlet failure falls back (Fallback) or throws (Strict).
     /// </summary>
-    /// <para>Phase 0 WI3: derives from <see cref="PrecompiledRegistryTestBase"/> so the process-global registry is
-    /// cleared around every test — the same isolation the gauntlet-crossing suites rely on.</para>
+    /// <para>Derives from <see cref="PrecompiledRegistryTestBase"/> so the process-global registry is cleared around every
+    /// test — the same isolation the gauntlet-crossing suites rely on.</para>
     [Collection("PrecompiledRegistry")]
     public class ResolverIntegrationTests : PrecompiledRegistryTestBase
     {

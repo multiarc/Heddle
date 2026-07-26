@@ -6,14 +6,13 @@ using Microsoft.CodeAnalysis.CSharp;
 namespace Heddle.Generator.Binding
 {
     /// <summary>
-    /// Phase 3 (F6): the <b>Roslyn</b> adapter of <see cref="ITypeFacts{TType}"/>. This is the one place the
+    /// The <b>Roslyn</b> adapter of <see cref="ITypeFacts{TType}"/>. This is the one place the
     /// generator knows the CLR assignability relation — replacing <c>TemplateEmitter.RedeclarationAssignable</c>,
     /// the second partial encoding inside <c>DefaultConvertible</c>, and the third <c>Nullable&lt;T&gt;</c>
-    /// spelling in <c>SymbolTypeResolver.IsNonNullableValueType</c> (which used <c>ConstructedFrom</c> where the
-    /// emitter used <c>OriginalDefinition</c>).
-    /// <para>The two verified Roslyn-vs-CLR disagreements are corrected here and nowhere else; the shared
+    /// spelling in <c>SymbolTypeResolver.IsNonNullableValueType</c>.
+    /// <para>Two verified Roslyn-vs-CLR disagreements are corrected here and nowhere else; the shared
     /// assignability conformance corpus generates its expectations from live reflection, so the corrections are
-    /// held to "the Roslyn adapter equals the CLR", never to what a comment claims.</para>
+    /// held to "the Roslyn adapter equals the CLR".</para>
     /// </summary>
     internal sealed class SymbolTypeFacts : ITypeFacts<ITypeSymbol>
     {
@@ -97,7 +96,7 @@ namespace Heddle.Generator.Binding
         public bool TryGetNullableUnderlying(ITypeSymbol type, out ITypeSymbol underlying)
         {
             // OriginalDefinition, not ConstructedFrom: the two agree for every Nullable<T> a template can name,
-            // but only one spelling survives here (phase 3 collapses the generator's three).
+            // but unified here to use one spelling.
             if (type is INamedTypeSymbol named &&
                 named.OriginalDefinition?.SpecialType == SpecialType.System_Nullable_T &&
                 named.TypeArguments.Length == 1)
@@ -161,13 +160,12 @@ namespace Heddle.Generator.Binding
         public string FormatAqn(ITypeSymbol type) =>
             SymbolTypeIdentity.AqnSansVersion(type as INamedTypeSymbol);
 
-        /// <summary>Phase 3 (from phase 6 WI5): the type spelling shared diagnostic messages quote. Deliberately
-        /// <b>not</b> <c>FullyQualifiedFormat</c>: that aliases special types (<c>int</c>), while the dynamic
-        /// tier's twin of the same message interpolates <c>Type.ToString()</c> (<c>System.Int32</c>). Dropping the
-        /// alias option is what makes the two tiers' prop-fault sentences byte-identical for the primitive cases
-        /// that dominate them. (Constructed generics still differ — reflection spells them
-        /// <c>List`1[System.Int32]</c> and no Roslyn format produces that; the <em>wording</em> is unified, the
-        /// type rendering stays each tier's own.)</summary>
+        /// <summary>The type spelling shared diagnostic messages quote. Deliberately <b>not</b>
+        /// <c>FullyQualifiedFormat</c>: that aliases special types (<c>int</c>), while the dynamic tier's twin
+        /// of the same message interpolates <c>Type.ToString()</c> (<c>System.Int32</c>). Dropping the alias option
+        /// makes the two tiers' prop-fault sentences byte-identical for the primitive cases that dominate them.
+        /// (Constructed generics still differ — reflection spells them <c>List`1[System.Int32]</c> and no Roslyn
+        /// format produces that; the <em>wording</em> is unified, the type rendering stays each tier's own.)</summary>
         private static readonly SymbolDisplayFormat DiagnosticFormat = SymbolDisplayFormat.FullyQualifiedFormat
             .WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Omitted)
             .WithMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers);

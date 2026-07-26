@@ -6,14 +6,12 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Generator plan phase 6 D8 / WI10 — <c>TemplateOptions.FullPath</c> composes a path by the same rule
-    /// <c>FileReader.GetFileName</c> resolves one with. The two used to differ (naive concatenation vs
-    /// <see cref="Path.Combine"/>), and the comment at <c>HeddleTemplate.cs</c> records a shipped bug from a
-    /// previous divergence of exactly this pair — so the fix is stated as "one of them <i>is</i> the other",
-    /// pinned here from both directions.
-    /// <para>The vectors below were measured against the pre-change concatenation first; the "was" column in each
-    /// case comment is that measurement, so the delta this WI ships is recorded rather than asserted from
-    /// memory.</para>
+    /// <c>TemplateOptions.FullPath</c> composes a path by the same rule <c>FileReader.GetFileName</c> resolves
+    /// one with. The two used to differ (naive concatenation vs <see cref="Path.Combine"/>), and previous code
+    /// recorded a shipped bug from a divergence of this pair — so the fix is stated as "one of them <i>is</i> the
+    /// other", pinned here from both directions.
+    /// <para>The expected values below were measured against the previous implementation to show the delta from
+    /// this fix.</para>
     /// </summary>
     public class TemplateOptionsFullPathTests
     {

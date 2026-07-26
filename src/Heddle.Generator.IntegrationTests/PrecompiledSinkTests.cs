@@ -15,9 +15,9 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 8 D7 (WI7) — the precompiled-backend sink lanes. The differential byte lane renders each template through
-    /// the generated string / TextWriter / IBufferWriter&lt;byte&gt; entry points and asserts they match the dynamic
-    /// runtime string render (byte sink UTF-8-normalized), with <c>HeddleEmitUtf8Pieces</c> both off and on.
+    /// The precompiled-backend sink lanes. The differential byte lane renders each template through the generated
+    /// string / TextWriter / IBufferWriter&lt;byte&gt; entry points and asserts they match the dynamic runtime string
+    /// render (byte sink UTF-8-normalized), with <c>HeddleEmitUtf8Pieces</c> both off and on.
     /// <see cref="Utf8FastPath_OptedInPieces_BypassTranscode"/> proves an opted-in template's static pieces reach the
     /// byte sink via the zero-transcode <c>RenderUtf8</c> branch (no <c>GetSpan(len*3)</c> transcode request).
     /// </summary>

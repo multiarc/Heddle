@@ -4,17 +4,15 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 4 D10/WI8, added by the phase-4 audit (2026-07-26) to close a **surviving mutant**: deleting
-    /// cast-pinning outright — <c>DefaultFunctionBinder</c> emitting every resolved built-in call with no argument
-    /// casts at all — reddened **zero** tests across all three suites. D10's whole mechanism ("emit the call with
-    /// explicit casts to the chosen overload's parameter types, which pins the consumer's C# compiler to the same
-    /// overload by making it an exact match") was therefore unpinned: the ranker's *refusals* were covered by the
-    /// overload-tie fixture, but nothing observed that a resolved call carries the pin.
-    /// <para>The mutant is <i>currently</i> extensionally harmless for the shipped built-in table — WI10 measured
-    /// 0 of 480 argument combinations binding to a different overload under C# betterness than under Heddle's flat
-    /// rank — but that is a property of today's first-party signatures, not of the mechanism, and phase 3 routed
-    /// host <c>[ExportFunctions]</c> overload sets (arbitrary signatures, where WI10's measurement explicitly does
-    /// not carry) through the same <c>ArgumentCasts</c> path. So the pin asserts the emitted text.</para>
+    /// Cast-pinning of resolved function calls. A **surviving mutant**: deleting cast-pinning outright —
+    /// <c>DefaultFunctionBinder</c> emitting every resolved built-in call with no argument casts at all — reddened
+    /// **zero** tests across all three suites. The mechanism ("emit the call with explicit casts to the chosen
+    /// overload's parameter types, which pins the consumer's C# compiler to the same overload by making it an exact
+    /// match") was therefore unpinned: the ranker's *refusals* were covered by the overload-tie fixture, but nothing
+    /// observed that a resolved call carries the pin.
+    /// <para>The mutant is currently extensionally harmless for the shipped built-in table, but that is a property of
+    /// today's first-party signatures, not of the mechanism. Host <c>[ExportFunctions]</c> overload sets (arbitrary
+    /// signatures) are routed through the same <c>ArgumentCasts</c> path, so the pin must be observed as emitted text.</para>
     /// </summary>
     public class OverloadCastPinTests
     {

@@ -2,9 +2,9 @@ namespace Heddle.Data
 {
     /// <summary>
     /// <para>Stable diagnostic-ID constants surfaced by <see cref="HeddleCompileError"/> and consumed by
-    /// tooling (see the cross-cutting diagnostic-ID registry).</para>
-    /// <para>IDs are allocated in per-phase blocks — <c>HED0xxx</c> for pre-existing core diagnostics and
-    /// <c>HED1xxx</c> for the phase 1 native-expression tier. An ID once shipped is never reused or
+    /// tooling.</para>
+    /// <para>IDs are allocated in per-feature blocks — <c>HED0xxx</c> for core diagnostics,
+    /// <c>HED1xxx</c> for the native-expression tier. An ID once shipped is never reused or
     /// renumbered.</para>
     /// </summary>
     public static class HeddleDiagnosticIds
@@ -20,8 +20,8 @@ namespace Heddle.Data
         public const string SyntaxError = "HED0003";
 
         /// <summary>A chained/model return type is assignable to none of an extension's declared
-        /// <c>[DataType]</c>s (pre-existing <c>CheckTypes</c> message; assigned as touched in phase 4 —
-        /// notably <c>@for(Name)</c> with a non-<c>int</c>/<c>Range</c> value).</summary>
+        /// <c>[DataType]</c>s (pre-existing <c>CheckTypes</c> message; notably <c>@for(Name)</c> with a
+        /// non-<c>int</c>/<c>Range</c> value).</summary>
         public const string ReturnTypeMismatch = "HED0004";
 
         /// <summary>A native-expression function name matched neither the registry nor an extension/definition.</summary>
@@ -136,7 +136,7 @@ namespace Heddle.Data
         /// raw region. Suggests <c>@(identifier)</c>.</summary>
         public const string LiquidStyleInterpolationMisread = "HED4005";
 
-        // Phase 5 — props & slots.
+        // Props & slots.
 
         /// <summary>A named argument's name is not declared by the target definition's prop layout.</summary>
         public const string UnknownProp = "HED5001";
@@ -192,7 +192,7 @@ namespace Heddle.Data
         /// <summary>A slot-mode <c>@out(expr)</c> carries a <c>{{ … }}</c> body.</summary>
         public const string SlotValueWithBody = "HED5018";
 
-        // Phase 7 (post-2.0) — named content regions.
+        // Named content regions.
 
         /// <summary>A call-body region override (<c>&lt;name:name&gt;</c>) targets a region the callee declares
         /// <b>private</b> (a plain inner <c>&lt;name&gt;</c>, not <c>&lt;:name&gt;</c>). Raised at the compile-time
@@ -205,10 +205,10 @@ namespace Heddle.Data
         public const string DuplicateRegionDeclaration = "HED5020";
 
         // The HED7xxx block — build-time generator (HED70xx) and precompiled-runtime registration/fallback
-        // (HED71xx). Generator plan phase 6 D4/D12.1: the ids already ship (as Roslyn descriptors in
-        // Heddle.Generator and as PrecompiledFallbackEvent codes here), but they were the one block not
-        // reflectable from this class, so no completeness test could see them. The constants are additive —
-        // nothing renumbers — and they are what lets HeddleDiagnosticCatalog be gated as a bijection.
+        // (HED71xx). The ids already ship (as Roslyn descriptors in Heddle.Generator and as
+        // PrecompiledFallbackEvent codes here), but they were the one block not reflectable from this class,
+        // so no completeness test could see them. The constants are additive — nothing renumbers — and they
+        // are what lets HeddleDiagnosticCatalog be gated as a bijection.
 
         /// <summary>An <c>AdditionalFiles</c> <c>.heddle</c> source could not be read at generation time.</summary>
         public const string BuildUnreadableFile = "HED7001";
@@ -247,7 +247,7 @@ namespace Heddle.Data
         public const string BuildImportNotIncluded = "HED7011";
 
         /// <summary>The wrapper for a forwarded front-end <b>error</b> carrying no id of its own; an entry that
-        /// has an id is forwarded under that id (phase 6 D2).</summary>
+        /// has an id is forwarded under that id.</summary>
         public const string BuildForwardedError = "HED7012";
 
         /// <summary>The wrapper for a forwarded front-end <b>warning</b> carrying no id of its own.</summary>
@@ -281,13 +281,13 @@ namespace Heddle.Data
         public const string BuildEmitterFault = "HED7020";
 
         /// <summary>An <c>[ExportFunctions]</c> container that is not a public static class — the runtime throws
-        /// <c>ArgumentException</c> when it registers the assembly, so the build fails the same way (Q3.6's
-        /// match-principle ruling) instead of silently skipping the container.</summary>
+        /// <c>ArgumentException</c> when it registers the assembly, so the build fails the same way instead of
+        /// silently skipping the container.</summary>
         public const string BuildIneligibleExportContainer = "HED7021";
 
         /// <summary>An <c>@profile(){{…}}</c> value that is neither <c>text</c> nor <c>html</c> — the build-time
-        /// twin of the runtime's <see cref="UnknownOutputProfile"/> (HED2001). Phase 1 D3: the emitter used to
-        /// ignore the directive and precompile output the dynamic tier refuses to compile at all.</summary>
+        /// twin of the runtime's <see cref="UnknownOutputProfile"/> (HED2001). Without it the emitter ignored
+        /// the directive and precompiled output the dynamic tier refuses to compile at all.</summary>
         public const string BuildUnknownOutputProfile = "HED7022";
 
         /// <summary>A model/prop/slot type name several types answer to, unsettled by the template's
@@ -295,22 +295,22 @@ namespace Heddle.Data
         public const string BuildAmbiguousTypeName = "HED7023";
 
         /// <summary>A call-site fill of a region the definition declares <b>private</b> — the build-time twin of
-        /// the runtime's <see cref="RegionNotPublic"/> (HED5019). Phase 1 D7 / Q1.3's match principle: the
-        /// generator reacts to the region-fill verdict exactly as the dynamic engine does, so the error surfaces
+        /// the runtime's <see cref="RegionNotPublic"/> (HED5019). The generator reacts to the region-fill
+        /// verdict exactly as the dynamic engine does, so the error surfaces
         /// at build instead of waiting for the first dynamic render.</summary>
         public const string BuildRegionNotPublic = "HED7024";
 
         /// <summary>A function call the shared overload ranker <b>proved</b> illegal — an ambiguous flat-Pareto
         /// front (<see cref="AmbiguousFunctionCall"/>, HED1013) or no applicable overload
-        /// (<see cref="NoFunctionOverload"/>, HED1012) — over arguments the generator could type. Q8.1's ruling:
-        /// the generator had already computed the illegality and then reported nothing, so a provably illegal
+        /// (<see cref="NoFunctionOverload"/>, HED1012) — over arguments the generator could type. The generator
+        /// had already computed the illegality and then reported nothing, so a provably illegal
         /// template got a green build and a hard run-time error at first render. Reported only when no argument
         /// estimate is <c>Unknown</c>; an argument the estimator cannot type proves nothing and still degrades
         /// silently.</summary>
         public const string BuildFunctionCallNotBindable = "HED7025";
 
         /// <summary>An <c>@&lt;&lt;</c> import names a template by its registration key while that template also
-        /// carries a <c>Name</c> item metadatum. Q8.25: <c>Name</c> is <b>additive</b>, so both spellings resolve and
+        /// carries a <c>Name</c> item metadatum. <c>Name</c> is <b>additive</b>, so both spellings resolve and
         /// the import is not a fault — this is an advisory that the name-first spelling is the preferred one for a
         /// named template. A genuinely new fault class: every other HED70xx key diagnostic reports something
         /// unusable, and this one reports something that works.</summary>
@@ -328,15 +328,15 @@ namespace Heddle.Data
         public const string PrecompiledKeyCaseMismatch = "HED7103";
 
         /// <summary>A template's registered <c>Name</c> could not be added as a lookup spelling because another
-        /// registered template already answers to it — as its key, or as its own registered name (Q8.30). A
+        /// registered template already answers to it — as its key, or as its own registered name. A
         /// <b>runtime</b> id because the collision spans assemblies: within one compilation the build tier reports
         /// the same fault as <c>HED7004</c>, but a referenced assembly's manifest rows live in a
         /// <c>GetTemplates</c> method body, which is IL rather than symbol metadata, so nothing at build time can
         /// see them. The template itself stays registered under its key — only the addition is lost.</summary>
         public const string PrecompiledRegisteredNameUnavailable = "HED7104";
 
-        // Phase 9 (HED9001) is intentionally NOT a public constant here: the phase adds no public API surface
-        // (see the phase 9 spec's Public API contract). Its stable code lives on the internal
+        // HED9001 is intentionally NOT a public constant here: the C# expression tier adds no public API
+        // surface. Its stable code lives on the internal
         // Heddle.Runtime.HeddleFeatures.CSharpTierDisabledDiagnosticId, surfaced through HeddleCompileError.DiagnosticId.
     }
 }

@@ -5,32 +5,16 @@ using System.Collections.ObjectModel;
 namespace Heddle.Helpers
 {
     /// <summary>
-    /// <para>The C# type-alias table, stated once (generator plan phase 6 D7). Two projections of one data
-    /// source: <see cref="Aliases"/> maps an alias a template may <i>write</i> (<c>int</c>, <c>string</c>,
-    /// <c>dynamic</c>) to its CLR type, and <see cref="TryGetDisplayName"/> maps a CLR type back to the alias a
-    /// user should <i>read</i> in signature text, hover cards and completion lists.</para>
-    /// <para>Before this file the same knowledge existed as five tables across four projects whose key sets
-    /// already differed, so adding an alias changed what a template could write without changing what the build
-    /// tier could bind or what an error message displayed. The build tier's Roslyn-side map
-    /// (<c>SymbolTypeResolver</c>) cannot share the <see cref="Type"/> values, so it stays an adapter keyed on
-    /// <see cref="AliasNames"/> — a key-set equality, and since phase 3 (Q3.5) a
-    /// <i>value</i> agreement, that its own test asserts, which turns a silent three-way divergence into a red
-    /// build. <b>There is no symbol-side exclusion any more:</b> phase 6 shipped one, <c>dynamic</c>, and phase 3
-    /// removed it — the run tier resolves <c>dynamic</c> to <c>typeof(object)</c>, so a build-tier-only refusal
-    /// of the spelling contradicted the match principle. The alias key sets are equal in full.</para>
-    /// <para>The numeric subset of this table and phase 4's <c>NumericKind</c> lattice are held in lockstep by
-    /// <c>AliasTableLockstepTests</c>: every alias whose CLR type has a numeric kind, and every numeric kind, must
-    /// account for each other, so an <c>nint</c>/<c>nuint</c> addition cannot land on one side alone.</para>
-    /// <para>Dependency-free and netstandard2.0: the generator links this file, and a later phase's
-    /// spelling parser consumes <see cref="Aliases"/> without restructuring it.</para>
+    /// <para>Single source of truth for C# type aliases, stated once to prevent divergence. <see cref="Aliases"/>
+    /// maps template-written aliases to CLR types; <see cref="TryGetDisplayName"/> maps types back to user-readable
+    /// aliases for signatures and completion lists. The numeric subset is held in lockstep with
+    /// <c>NumericKind</c> by <c>AliasTableLockstepTests</c>. Dependency-free netstandard2.0.</para>
     /// </summary>
     internal static class CSharpTypeNames
     {
-        /// <summary>The <c>dynamic</c> alias. It is the one alias that does not own its CLR type — it shares
-        /// <see cref="object"/>'s — so the display direction skips it and prints <c>object</c>. It is <b>not</b> a
-        /// symbol-side exclusion: phase 3 (Q3.5) gave the build tier the same row, mapped to
-        /// <c>System.Object</c>. Named rather than spelled inline so the one place it is treated specially is
-        /// greppable from the lockstep tests.</summary>
+        /// <summary>The <c>dynamic</c> alias, which shares <see cref="object"/>'s CLR type so the display
+        /// direction prints <c>object</c> instead. Both tiers share this row to avoid silently diverging.
+        /// Named as a constant so the one place it is treated specially is greppable.</summary>
         public const string DynamicAlias = "dynamic";
 
         private static readonly Dictionary<string, Type> AliasToType = new Dictionary<string, Type>(StringComparer.Ordinal)
@@ -53,8 +37,6 @@ namespace Heddle.Helpers
             { DynamicAlias, typeof(object) }
         };
 
-        // The display direction. `dynamic` shares typeof(object) with `object`, and `object` is the spelling a
-        // reader expects for a CLR type, so the display map carries the alias set minus that one duplicate.
         private static readonly Dictionary<Type, string> TypeToAlias = BuildTypeToAlias();
 
         private static readonly ReadOnlyCollection<string> Names =

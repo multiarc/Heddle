@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// <para>The golden offset→position vectors for the canonical line rule (generator plan phase 6 D6/D12.6):
+    /// <para>The golden offset→position vectors for the canonical line rule:
     /// LF, CRLF, a CRLF blank line, a <c>"\n\r"</c> sequence, a lone <c>'\r'</c>, a mixed document, one without a
     /// trailing newline, and the empty document — with one expected 1-based line and 0-based column per offset
     /// from 0 to <c>Length</c> inclusive.</para>

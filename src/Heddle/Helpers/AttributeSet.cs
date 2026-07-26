@@ -5,9 +5,6 @@ using System.Linq;
 using System.Reflection;
 
 namespace Heddle.Helpers {
-    /// <summary>
-    /// Attribute set helper to simple check existance/get attribute of any type/property/field etc.
-    /// </summary>
     internal class AttributeSet {
         private List<Attribute> _attributes;
 
@@ -26,9 +23,6 @@ namespace Heddle.Helpers {
             ParseAttributes(attributes);
         }
 
-        /// <summary>
-        /// Gets list of custom attributes of type/property/field etc.
-        /// </summary>
         public ReadOnlyCollection<Attribute> AllAttributes => new ReadOnlyCollection<Attribute>(_attributes);
 
         private void ParseAttributes (IEnumerable<object> attributes)
@@ -39,9 +33,6 @@ namespace Heddle.Helpers {
             _attributes.AddRange(attributes.Cast<Attribute>());
         }
 
-        /// <summary>
-        /// Gets attribute existance in type
-        /// </summary>
         /// <param name="attributeType">Attribute type to check</param>
         /// <returns>Returns true if attribute exists</returns>
         public bool GetIsPresentAttribute (Type attributeType)
@@ -52,9 +43,6 @@ namespace Heddle.Helpers {
             return AllAttributes.Any(a => a.GetType() == attributeType);
         }
 
-        /// <summary>
-        /// Get attribute by type
-        /// </summary>
         /// <typeparam name="T">Type indicating which attribute need to get</typeparam>
         /// <returns>First Attribute object found of type T</returns>
         public T GetAttribute<T> ()
@@ -62,11 +50,6 @@ namespace Heddle.Helpers {
             return AllAttributes.Where(a => a is T).Cast<T>().FirstOrDefault();
         }
 
-        /// <summary>
-        /// Get typed attribute. Look into all custome attributes. Return collection of attributes found.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
         public IEnumerable<T> GetAttributes<T> ()
         {
             return AllAttributes.Where(a => a is T).Cast<T>();

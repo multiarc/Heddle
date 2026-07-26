@@ -9,10 +9,10 @@ using Heddle.Precompiled;
 namespace Heddle.LanguageServices
 {
     /// <summary>
-    /// <para>Reads the workspace <c>.heddle-lsp.json</c> (phase 6 D18) and produces a
+    /// <para>Reads the workspace <c>.heddle-lsp.json</c> and produces a
     /// <see cref="HeddleLanguageServiceOptions"/>. Relative paths resolve against the workspace root. A present
     /// file wins field-by-field over any client-supplied defaults (applied by the caller by merging first).</para>
-    /// <para><b>Full options parity (generator plan phase 6 D10/WI9, ruling Q6.2).</b> The editor follows the same
+    /// <para><b>Full options parity.</b> The editor follows the same
     /// configuration surface the runtime permits: every analysis-applicable <see cref="TemplateOptions"/> option has
     /// a key here, with its <b>name</b> the camelCase of the option's own property name and its <b>default</b> taken
     /// from <see cref="HeddleBuildOptions"/> — the one names/defaults table the MSBuild props and
@@ -24,7 +24,7 @@ namespace Heddle.LanguageServices
     /// a template author's typo is a compile error (<c>HED2001</c>), a build property's is a build diagnostic
     /// (<c>HED7009</c>), and a workspace-config typo must never break editing — so it keeps the default and adds a
     /// line to <see cref="HeddleLanguageServiceOptions.ConfigurationMessages"/>, which the server logs. No
-    /// <c>HED</c> id is minted for it; <c>HED6xxx</c> stays reserved-unclaimed per the registry.</para>
+    /// <c>HED</c> id is minted for it; <c>HED6xxx</c> stays reserved-unclaimed.</para>
     /// </summary>
     internal static class WorkspaceConfig
     {

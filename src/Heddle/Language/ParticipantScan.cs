@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace Heddle.Language
 {
     /// <summary>
-    /// <para>Generator plan phase 1 D5 — the <b>parse-level</b> <c>[ScopeChannel]</c> participant scan, written
+    /// <para>The <b>parse-level</b> <c>[ScopeChannel]</c> participant scan, written
     /// once. A body "hosts a participant" when any call reachable from its output chains resolves to an extension
     /// carrying <c>[ScopeChannel]</c>; the hosting body then provisions a <c>ScopeLocals</c> frame so
     /// <c>Scope.Publish</c>/<c>Scope.TryRead</c> have somewhere to live.</para>
@@ -12,11 +12,11 @@ namespace Heddle.Language
     /// <c>RuntimeDocument.ComputeNeedsLocals</c>: <b>every</b> item of a chain, recursing into nested chain
     /// parameters — not just the leftmost item. Per-side knowledge (a symbol attribute read on the build tier, a
     /// reflected attribute with inheritance on the run tier) enters through <paramref name="hasScopeChannel"/>.</para>
-    /// <para><b>Documented over-provision (Q1.4, ruling: keep).</b> This scan runs <i>before</i> definition
+    /// <para><b>Deliberate over-provision.</b> This scan runs <i>before</i> definition
     /// resolution, so a definition shadowing a <c>[ScopeChannel]</c> extension name is still counted as a
     /// participant. Over-provisioning only ever adds a frame nothing reads — publish/read happens exclusively
     /// inside <c>[ScopeChannel]</c> participants — so it is behavior-invisible and emit-time only. The tightening
-    /// (a <c>definitionExists</c> predicate) is deferred to the named trigger in the plan's OQ4.</para>
+    /// (a <c>definitionExists</c> predicate) is deferred until the wasted frame is worth the extra coupling.</para>
     /// </summary>
     internal static class ParticipantScan
     {

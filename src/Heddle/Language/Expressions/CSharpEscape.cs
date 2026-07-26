@@ -3,11 +3,11 @@ using System.Text;
 namespace Heddle.Language.Expressions
 {
     /// <summary>
-    /// The single C# <c>string</c>/<c>char</c> literal escape table (phase 4 D9 / 04 F6+F9). Before this file the
-    /// same alphabet lived in three disagreeing copies — the generator's per-char <c>EscapeChar</c> (no
-    /// <c>\a \b \f \v</c>), <c>PieceWriter.Escape</c> (no <c>'</c>), and the AST decoder's accept set — and
-    /// <b>neither</b> generator copy guarded a lone surrogate in a literal, so an unpaired <c>D800–DFFF</c> code
-    /// unit was written raw into generated source. The union of the three, plus the lone-surrogate rule, is here.
+    /// The single C# <c>string</c>/<c>char</c> literal escape table. Before this file the same alphabet lived in
+    /// three disagreeing copies — the generator's per-char <c>EscapeChar</c> (no <c>\a \b \f \v</c>),
+    /// <c>PieceWriter.Escape</c> (no <c>'</c>), and the AST decoder's accept set — neither copy guarded lone
+    /// surrogates, so unpaired <c>D800–DFFF</c> code units were written raw into generated source. This unifies the
+    /// three and adds the lone-surrogate guard.
     /// <para>Emission always uses the shortest canonical form; the decoder still accepts the full documented set
     /// (<c>\' \" \\ \0 \a \b \e \f \n \r \t \v \xH…H \uHHHH \UHHHHHHHH</c>) and is unchanged. Output is
     /// byte-identical to the previous <c>PieceWriter.Escape</c> for every input containing no lone surrogate.</para>
@@ -84,15 +84,14 @@ namespace Heddle.Language.Expressions
 
         /// <summary>Whether <paramref name="value"/> contains an unpaired surrogate code unit. Such a string has no
         /// UTF-8 encoding, so it is ineligible for a <c>"…"u8</c> twin — its <c>string</c> literal is still emitted,
-        /// escaped. Phase 6 D11/WI11: <b>defined</b> as the sign of <see cref="IndexOfLoneSurrogate"/> rather than a
-        /// second loop that happens to agree with it.</summary>
+        /// escaped. Defined as the sign of <see cref="IndexOfLoneSurrogate"/> rather than a second loop to ensure
+        /// consistency.</summary>
         public static bool HasLoneSurrogate(string value) => IndexOfLoneSurrogate(value) >= 0;
 
         /// <summary>The char index of the first unpaired UTF-16 surrogate in <paramref name="value"/>, or -1 —
-        /// the position <c>HED7005</c> reports. <c>null</c> scans clear. Phase 6 D11/WI11 folded this scan in from
-        /// the generator's <c>PieceWriter</c>, where it lived beside a second, bool-returning copy of the same
-        /// loop; the escape table above is the third consumer of the same "is this code unit paired" question, so
-        /// all three now read one answer.</summary>
+        /// the position <c>HED7005</c> reports. <c>null</c> scans clear. This centralizes a check that previously
+        /// had three separate implementations; the escape table above, the generator's <c>PieceWriter</c>, and the
+        /// runtime all now share one answer.</summary>
         public static int IndexOfLoneSurrogate(string value)
         {
             if (value == null)

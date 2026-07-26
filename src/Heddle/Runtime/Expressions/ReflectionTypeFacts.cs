@@ -7,7 +7,7 @@ using Heddle.Precompiled;
 namespace Heddle.Runtime.Expressions
 {
     /// <summary>
-    /// Phase 3 (F6): the <b>reflection</b> adapter of <see cref="ITypeFacts{TType}"/> — a thin veneer over
+    /// The <b>reflection</b> adapter of <see cref="ITypeFacts{TType}"/> — a thin veneer over
     /// <see cref="Type"/>. It carries no corrections: reflection <em>is</em> the authority the Roslyn adapter is
     /// corrected toward.
     /// </summary>

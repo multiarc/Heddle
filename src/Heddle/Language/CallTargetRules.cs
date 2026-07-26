@@ -2,7 +2,7 @@ using System;
 
 namespace Heddle.Language
 {
-    /// <summary>What a standalone <c>@name(…)</c> call resolves to (generator plan phase 1 D8).</summary>
+    /// <summary>What a standalone <c>@name(…)</c> call resolves to.</summary>
     internal enum CallTargetKind
     {
         /// <summary>An ambient region fill overrides the name at this call site.</summary>
@@ -26,7 +26,7 @@ namespace Heddle.Language
     }
 
     /// <summary>
-    /// <para>Generator plan phase 1 D8 (area 01 F14) — the name-resolution precedence for a standalone call,
+    /// <para>The name-resolution precedence for a standalone call,
     /// written once. The order is: ambient fill scope → enclosing definitions → extension → registered function
     /// (extension wins a name collision) → unknown. Per-side knowledge enters as predicates; the
     /// <em>emission</em> per kind stays each backend's own, because the emitter's <c>out</c>/<c>partial</c>/branch/

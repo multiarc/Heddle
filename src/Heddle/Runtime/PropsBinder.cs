@@ -5,11 +5,11 @@ using Heddle.Runtime.Parameters;
 namespace Heddle.Runtime
 {
     /// <summary>
-    /// The per-call-site props binder (D7). Holds a frozen prototype array (defaults + constant arguments,
+    /// The per-call-site props binder. Holds a frozen prototype array (defaults + constant arguments,
     /// converted and boxed once at compile) and a dynamic slot plan. When the plan is empty the frozen array
     /// itself is returned — shared across invocations, renders, and threads, never written after construction.
     /// Otherwise a per-invocation clone plus one store per dynamic slot, each argument evaluated against the
-    /// caller view (<c>scope.Parent()</c>, D8).
+    /// caller view (<c>scope.Parent()</c>).
     /// </summary>
     internal sealed class PropsBinder
     {

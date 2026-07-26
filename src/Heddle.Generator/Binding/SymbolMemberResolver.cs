@@ -5,15 +5,15 @@ using Microsoft.CodeAnalysis;
 namespace Heddle.Generator.Binding
 {
     /// <summary>
-    /// Milestone 2 (D3 / WI11): describes a <b>genuine</b> member-path failure for <c>HED7008</c>. It reuses
-    /// <see cref="SymbolTypeResolver.ResolvePath"/> — the same tier-order property walk milestone 1 uses to type
-    /// hops — and produces a diagnostic only when the walk fails with <see cref="SymbolTypeResolver.PathKind.Failed"/>
-    /// (a property that does not exist on a resolved, non-dynamic receiver — exactly the condition the runtime member
-    /// tier raises as <c>HED0001</c>). A <see cref="SymbolTypeResolver.PathKind.DynamicHop"/> or a resolved path never
-    /// produces a failure, so a safe dynamic member access is never turned into a build error. Because the symbol
-    /// resolver is at least as permissive as the runtime's reflection walk (it also sees inherited-interface and
-    /// explicitly-implemented members), a symbol <c>Failed</c> implies the runtime fails too — the reconciliation the
-    /// milestone requires (no safe fallback becomes a hard error unless it is a genuine unresolvable symbol).
+    /// Describes a <b>genuine</b> member-path failure for <c>HED7008</c>. It reuses
+    /// <see cref="SymbolTypeResolver.ResolvePath"/> to type member hops and produces a diagnostic only when
+    /// the walk fails with <see cref="SymbolTypeResolver.PathKind.Failed"/> (a property that does not exist on
+    /// a resolved, non-dynamic receiver — exactly the condition the runtime member tier raises as <c>HED0001</c>).
+    /// A <see cref="SymbolTypeResolver.PathKind.DynamicHop"/> or a resolved path never produces a failure, so a
+    /// safe dynamic member access is never turned into a build error. Because the symbol resolver is at least as
+    /// permissive as the runtime's reflection walk (it also sees inherited-interface and explicitly-implemented
+    /// members), a symbol <c>Failed</c> implies the runtime fails too — making this reconciliation safe (no safe
+    /// fallback becomes a hard error unless it is a genuine unresolvable symbol).
     /// </summary>
     internal static class SymbolMemberResolver
     {

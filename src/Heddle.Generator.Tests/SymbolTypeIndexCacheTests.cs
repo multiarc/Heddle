@@ -10,12 +10,11 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Q8.17 — the retention contract of the per-<see cref="Compilation"/> type index. The cache used to be a bare
-    /// static dictionary that pinned every compilation the process had ever seen; in an IDE session a compilation
-    /// is created per keystroke-batch and is never handed back, so every entry but the newest is unreachable and
-    /// simply retained. These tests pin the three parts of the ruling — an operation API, observable occupancy
-    /// against a stated capacity, and eviction that counts <i>age</i> and not only size — plus the invariant that
-    /// makes any of it safe: <b>what the cache holds can never change what resolution answers</b>.
+    /// The retention contract of the per-<see cref="Compilation"/> type index. In IDE scenarios where compilations
+    /// accumulate per keystroke-batch and are never handed back, a bare static cache would retain every entry. These
+    /// tests pin the three parts of the solution: an operation API, observable occupancy bounded by capacity, and
+    /// eviction that counts <i>age</i>, not only size. The invariant enabling all of it: <b>what the cache holds can
+    /// never change what resolution answers</b>.
     /// </summary>
     public class SymbolTypeIndexCacheTests
     {

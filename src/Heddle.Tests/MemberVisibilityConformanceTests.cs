@@ -57,14 +57,13 @@ namespace Foreign
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 4 WI6 (D7 / 04 F1) — the member-visibility conformance corpus, run against the <b>reflection</b> facts
-    /// adapter. The rows are the shared data both adapters must agree on; the generator's Roslyn adapter runs the
-    /// same rows once phase 3 adopts the core, which is what turns "the two resolvers happen to agree" into
-    /// "a divergent policy is structurally impossible".
-    /// <para>Every verdict below is the <b>runtime's current observable behavior</b> — the OQ1 ruling (resolved
-    /// user, 2026-07-25). Where a plain-English reading of the sandbox contract would be more generous (accepting a
-    /// <c>protected internal</c> getter, surfacing a base-interface member), that generosity is a breaking-window
-    /// candidate, not a drift fix, and the row here pins the narrow behavior on purpose.</para>
+    /// The member-visibility conformance corpus, run against the <b>reflection</b> facts adapter. The rows are the
+    /// shared data both adapters must agree on; the generator's Roslyn adapter runs the same rows, which turns "the
+    /// two resolvers happen to agree" into "a divergent policy is structurally impossible".
+    /// <para>Every verdict below reflects the <b>runtime's current observable behavior</b> (resolved). Where a
+    /// plain-English reading of the sandbox contract would be more generous (accepting a <c>protected internal</c>
+    /// getter, surfacing a base-interface member), that generosity is a breaking-window candidate, not a drift fix,
+    /// and the row here pins the narrow behavior on purpose.</para>
     /// </summary>
     public class MemberVisibilityConformanceTests
     {
@@ -157,7 +156,6 @@ namespace Heddle.Tests
             Assert.Equal(visible.Count, visible.Distinct(StringComparer.Ordinal).Count());
         }
 
-        // ---- The policy function itself ---------------------------------------------------------------------
 
         [Fact]
         public void PolicyTable()
@@ -189,7 +187,6 @@ namespace Heddle.Tests
             Assert.True(MemberVisibility.IsAccessible(new MemberFacts(true, MemberAccess.Public, false, false)));
         }
 
-        // ---- The hop rule (D8) -------------------------------------------------------------------------------
 
         [Fact]
         public void HopFormTable()

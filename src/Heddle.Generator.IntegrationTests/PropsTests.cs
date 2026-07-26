@@ -6,10 +6,10 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 props (generated-code.md example 5, all-constant call sites): the definition prop layout resolves over
-    /// symbols; an all-constant call site shares one frozen <c>object[]</c> prototype installed on the definition-body
-    /// scope via <c>BindDefinition</c>; body reads go through <c>PrecompiledRuntime.Prop(in scope, i)</c> resolved
-    /// prop-first. Differential-gated against the runtime <c>PropsBinder</c>.
+    /// Props with all-constant call sites: the definition prop layout resolves over symbols; an all-constant call
+    /// site shares one frozen <c>object[]</c> prototype installed on the definition-body scope via <c>BindDefinition</c>;
+    /// body reads go through <c>PrecompiledRuntime.Prop(in scope, i)</c> resolved prop-first. Differential-gated against
+    /// the runtime <c>PropsBinder</c>.
     /// </summary>
     public class PropsTests
     {

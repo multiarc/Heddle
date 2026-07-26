@@ -8,8 +8,8 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 9 D4 — the <c>Heddle.CSharpTierEnabled</c> trim-time feature switch and its HED9001 guard. The switch
-    /// is an <see cref="AppContext"/> boolean; assembly test parallelization is disabled
+    /// The <c>Heddle.CSharpTierEnabled</c> trim-time feature switch and its HED9001 guard. The switch is an
+    /// <see cref="AppContext"/> boolean; assembly test parallelization is disabled
     /// (<c>CollectionBehavior(DisableTestParallelization = true)</c>), so flipping it here cannot race other tests.
     /// Every test restores the switch to the enabled state in a <c>finally</c> so the default-behavior rows and the
     /// rest of the suite see the unchanged engine.

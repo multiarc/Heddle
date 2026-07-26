@@ -5,12 +5,10 @@ using Microsoft.CodeAnalysis;
 namespace Heddle.Generator.Binding
 {
     /// <summary>
-    /// Phase 3 (F2, closing phase 4's WI8 remainder): resolves an <c>[ExportFunctions]</c> call with the
-    /// <b>shared</b> <see cref="OverloadRank"/> core.
-    /// <para>Until this landed, export calls carried no parameter-type metadata at all — the resolver recorded one
-    /// cased method name per function — so the shared ranker had nothing to rank and the emitted call was handed to
-    /// the consumer's C# compiler, whose betterness rules are not Heddle's flat Pareto rank. Cast-pinned emission
-    /// therefore covered default built-ins only. <c>FunctionExportResolver</c> now discovers full signatures, so an
+    /// Resolves an <c>[ExportFunctions]</c> call with the <b>shared</b> <see cref="OverloadRank"/> core.
+    /// <para>Without parameter-type metadata the shared ranker has nothing to rank and the emitted call falls to
+    /// the consumer's C# compiler, whose betterness rules are not Heddle's flat Pareto rank.
+    /// <c>FunctionExportResolver</c> discovers full signatures, so an
     /// export call ranks exactly as a built-in does: degrade when the ranker reports ambiguity or inapplicability,
     /// otherwise emit cast-pinned to the winning signature so the consumer's compiler has no choice left to make.</para>
     /// </summary>
@@ -44,7 +42,7 @@ namespace Heddle.Generator.Binding
 
             public NumericKind KindOf(ITypeSymbol type) => _facts.GetNumericKind(type);
 
-            /// <summary>The reference-conversion arm, answered by the same CLR relation the rest of this phase
+            /// <summary>The reference-conversion arm, answered by the same CLR relation the rest of the binder
             /// uses — the generator can decide it here (unlike the default table's name-keyed model, which has to
             /// answer false).</summary>
             public bool IsReferenceAssignable(ITypeSymbol from, ITypeSymbol to) =>
@@ -56,12 +54,11 @@ namespace Heddle.Generator.Binding
         /// argument cannot be given a precise static type, when no overload is applicable, or when the flat Pareto
         /// front has more than one member (the runtime's <c>HED1013</c> verdict, which the build tier must reach
         /// too rather than letting C# betterness pick a winner the runtime would refuse).
-        /// <para>Q8.1: <paramref name="refusal"/> separates the last two from the first. An ambiguous or
+        /// <para><paramref name="refusal"/> separates the last two from the first. An ambiguous or
         /// inapplicable front over arguments the estimator <i>typed</i> is a proof that the host's own registry will
         /// refuse the call, so the build reports <c>HED7025</c>; an untypeable argument proves nothing and still
-        /// degrades in silence. This path carries arbitrary host signatures — phase 4's WI10 measurement (0-of-480
-        /// winner changes over the shipped built-in table) explicitly does not carry here — so the distinction
-        /// matters more, not less, than it does for the built-ins.</para>
+        /// degrades in silence. This path carries arbitrary host signatures rather than the shipped built-in table,
+        /// so the distinction matters more, not less, than it does for the built-ins.</para>
         /// </summary>
         internal static Binding TryBind(SymbolTypeFacts facts, string name,
             IReadOnlyList<FunctionExportResolver.ExportOverloadInfo> overloads, IReadOnlyList<OperandKind> argKinds,
@@ -72,9 +69,9 @@ namespace Heddle.Generator.Binding
                 return null;
 
             // One candidate — no choice to make, so no ranking is needed and none is imposed. This keeps the
-            // pre-phase-3 reach for the ordinary single-overload export (whose arguments the estimator often
-            // cannot type, e.g. `this`) while the ranker governs exactly the case it exists for: a merged or
-            // overloaded name where the runtime and C# betterness could disagree.
+            // ordinary single-overload export in reach (its arguments the estimator often cannot type, e.g.
+            // `this`) while the ranker governs exactly the case it exists for: a merged or overloaded name where
+            // the runtime and C# betterness could disagree.
             if (overloads.Count == 1 && overloads[0].Method.Parameters.Length == argKinds.Count)
             {
                 refusal = BindRefusal.Bound;
@@ -97,7 +94,7 @@ namespace Heddle.Generator.Binding
 
                 var type = ToSymbol(facts.Compilation, argKinds[i]);
                 if (type == null)
-                    // THE SIDE CONDITION (Q8.1). Degrade-on-doubt: an untypeable argument cannot be ranked, so any
+                    // THE SIDE CONDITION. Degrade-on-doubt: an untypeable argument cannot be ranked, so any
                     // front computed past this point would describe the generator's ignorance rather than the host
                     // registry's verdict. Leaving before Bind runs is what keeps this a silent degrade.
                     return null;
@@ -127,7 +124,7 @@ namespace Heddle.Generator.Binding
             var binding = OverloadRank.Bind(new SymbolRankModel(facts), candidates, args);
             if (binding.Outcome != BindOutcome.Bound)
             {
-                // Ambiguous / inapplicable over fully typed arguments — the host registry's own verdict (Q8.1).
+                // Ambiguous / inapplicable over fully typed arguments — the host registry's own verdict.
                 refusal = Refuse(name, binding.Outcome, overloads, args);
                 return null;
             }

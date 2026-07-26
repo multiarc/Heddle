@@ -5,11 +5,11 @@ using Microsoft.CodeAnalysis;
 
 namespace Heddle.Generator.Diagnostics
 {
-    /// <summary>The generator's Roslyn <see cref="DiagnosticDescriptor"/>s (phase 7 D13): the <c>HED7xxx</c> block
+    /// <summary>The generator's Roslyn <see cref="DiagnosticDescriptor"/>s: the <c>HED7xxx</c> block
     /// used directly as the diagnostic <c>Id</c>, category <c>"Heddle.Precompile"</c>. Forwarded front-end
-    /// diagnostics — errors and warnings alike (phase 6 D2) — keep their own IDs; an ID-less forwarded entry is
+    /// diagnostics — errors and warnings alike — keep their own IDs; an ID-less forwarded entry is
     /// wrapped as <c>HED7012</c>/<c>HED7013</c>.
-    /// <para>Every descriptor is a <b>projection</b> of its <see cref="HeddleDiagnosticCatalog"/> row (phase 6 D4):
+    /// <para>Every descriptor is a <b>projection</b> of its <see cref="HeddleDiagnosticCatalog"/> row:
     /// id, title and severity are stated once, in the shared netstandard2.0 data table the runtime and the
     /// language server read too, and this class contributes only the Roslyn shape. The named fields stay so every
     /// call site is unchanged; what is gone is the second registry they used to be.</para></summary>
@@ -37,11 +37,11 @@ namespace Heddle.Generator.Diagnostics
                 ? DiagnosticSeverity.Warning
                 : DiagnosticSeverity.Error;
 
-        /// <summary>The descriptor for a forwarded front-end diagnostic (generator plan phase 6 D2/D3): the
+        /// <summary>The descriptor for a forwarded front-end diagnostic: the
         /// front end's own <c>HEDxxxx</c> id with a passthrough <c>"{0}"</c> format — it has already formatted
         /// the message — at the severity its entry subtype declares, and the catalog's title when the id is
         /// catalogued. An entry carrying no id falls back to <see cref="ForwardedError"/>/
-        /// <see cref="ForwardedWarning"/>, the contract <c>docs/precompilation.md</c> states for
+        /// <see cref="ForwardedWarning"/> — the contract for
         /// <c>HED7012</c>/<c>HED7013</c>. Descriptors are cached per (id, severity) because generators run
         /// in-IDE and one template can raise the same id many times.</summary>
         public static DiagnosticDescriptor Forwarded(string id, bool isWarning)
@@ -59,10 +59,10 @@ namespace Heddle.Generator.Diagnostics
             });
         }
 
-        /// <summary>The build-time message for a forwarded entry (phase 6 D3): the front end's own text plus the
+        /// <summary>The build-time message for a forwarded entry: the front end's own text plus the
         /// warning's <c>Fix</c> as a trailing sentence when it carries one. The build surface has the least
-        /// interactive tooling of the three, so dropping the remediation text there — as it did until phase 6 —
-        /// withheld the most help from the user who needed it most.</summary>
+        /// interactive tooling of the three, so dropping the remediation text there
+        /// withholds the most help from the user who needs it most.</summary>
         public static string ForwardedMessage(string message, string fix) =>
             string.IsNullOrEmpty(fix) ? message : message + " Fix: " + fix;
 
@@ -76,40 +76,40 @@ namespace Heddle.Generator.Diagnostics
 
         /// <summary>Explicit <c>Key</c> or <c>Name</c> metadata the generator cannot use: a value that is
         /// empty/whitespace, carries a <c>.</c>/<c>..</c> segment, or normalizes to an empty string — or (the
-        /// <c>Name</c> arm, Q8.25) an import name another template already answers to.</summary>
+        /// <c>Name</c> arm) an import name another template already answers to.</summary>
         public static readonly DiagnosticDescriptor InvalidKeyMetadata =
             FromCatalog(HeddleDiagnosticIds.BuildInvalidKeyMetadata);
 
-        /// <summary>Q8.25: an <c>@&lt;&lt;</c> import names a template by its registration key while that template also
+        /// <summary>An <c>@&lt;&lt;</c> import names a template by its registration key while that template also
         /// carries a registered <c>Name</c>. Both spellings resolve — <c>Name</c> is additive — so this is advice on
         /// the preferred spelling, never a break. Reported at the <c>@&lt;&lt;{{…}}</c> block in the importer.</summary>
         public static readonly DiagnosticDescriptor NamedTemplateImportedByKey =
             FromCatalog(HeddleDiagnosticIds.BuildNamedTemplateImportedByKey);
 
         /// <summary>A static piece contains an unpaired surrogate; the u8 twin is suppressed for the template
-        /// (string output unaffected — D15).</summary>
+        /// (string output unaffected).</summary>
         public static readonly DiagnosticDescriptor SurrogatePiece =
             FromCatalog(HeddleDiagnosticIds.BuildSurrogatePiece);
 
-        /// <summary>D9 / WI6: a named extension resolves to no <c>[ExtensionName]</c> type in any referenced assembly
+        /// <summary>A named extension resolves to no <c>[ExtensionName]</c> type in any referenced assembly
         /// (position: the call). Fires only for an extension-only call shape — a bodied call — so a function-compatible
         /// bare call is never misclassified (that path draws HED7014).</summary>
         public static readonly DiagnosticDescriptor ExtensionNotBindable =
             FromCatalog(HeddleDiagnosticIds.BuildExtensionNotBindable);
 
-        /// <summary>D22 / WI6: a bound extension outside the engine assembly overrides <c>InitStart</c>/
+        /// <summary>A bound extension outside the engine assembly overrides <c>InitStart</c>/
         /// <c>CompleteInit</c> — compile-time logic the generator cannot evaluate; precompiled binding would silently
         /// skip it (position: the call).</summary>
         public static readonly DiagnosticDescriptor ExtensionOverridesHook =
             FromCatalog(HeddleDiagnosticIds.BuildExtensionOverridesHook);
 
-        /// <summary>Milestone 2 (D3): the <c>@model</c>/<c>::</c> type name does not resolve in the compilation or
+        /// <summary>The <c>@model</c>/<c>::</c> type name does not resolve in the compilation or
         /// its references — a genuine typo/unresolvable symbol reported natively before the C# compiler sees the
         /// generated code (position: the directive).</summary>
         public static readonly DiagnosticDescriptor UnresolvableModelType =
             FromCatalog(HeddleDiagnosticIds.BuildUnresolvableModelType);
 
-        /// <summary>Milestone 2 (D3): a member path does not resolve on the model type, mirroring the runtime member
+        /// <summary>A member path does not resolve on the model type, mirroring the runtime member
         /// tier order (position: the path). Only fires for a genuine property-not-found on a resolved, non-dynamic
         /// model — the same failure the runtime raises as HED0001, surfaced natively at the template span.</summary>
         public static readonly DiagnosticDescriptor UnresolvableMember =
@@ -139,20 +139,20 @@ namespace Heddle.Generator.Diagnostics
         public static readonly DiagnosticDescriptor CaseOnlyKeyTwin =
             FromCatalog(HeddleDiagnosticIds.BuildCaseOnlyKeyTwin);
 
-        /// <summary>D21 / OQ1 remainder: a called function name is neither a default built-in nor exported by any
+        /// <summary>A called function name is neither a default built-in nor exported by any
         /// referenced assembly (a delegate-only registration, not representable in assembly metadata), so there is
         /// nothing for build-time discovery to bind against. The template is left un-precompiled with a
         /// fallback-marker manifest entry; it renders through the dynamic path at run time.</summary>
         public static readonly DiagnosticDescriptor UnresolvableFunction =
             FromCatalog(HeddleDiagnosticIds.BuildUnresolvableFunction);
 
-        /// <summary>D-ROLE-5 drift (§6.5): a branch <c>Continuation</c>/<c>Terminal</c> extension (<c>[BranchRole]</c>)
-        /// does not carry <c>[ScopeChannel]</c>, so its <c>TryRead</c> of the branch state always misses at render
-        /// (R11). Additive and never fired by the built-ins, which all comply.</summary>
+        /// <summary>A branch <c>Continuation</c>/<c>Terminal</c> extension (<c>[BranchRole]</c>)
+        /// does not carry <c>[ScopeChannel]</c>, so its <c>TryRead</c> of the branch state always misses at
+        /// render. Additive and never fired by the built-ins, which all comply.</summary>
         public static readonly DiagnosticDescriptor BranchRoleMissingScopeChannel =
             FromCatalog(HeddleDiagnosticIds.BuildBranchRoleMissingScopeChannel);
 
-        /// <summary>Phase 8 (D6/WI8): the generator twin of the dynamic tier's malformed-<c>[Prop]</c> declaration
+        /// <summary>The generator twin of the dynamic tier's malformed-<c>[Prop]</c> declaration
         /// diagnostics (HED5007/HED5008/HED5009/HED5010/HED5015) — the generator does not run
         /// <c>HeddleCompiler</c>, so without this a malformed extension parameter declaration would degrade
         /// silently on the build tier. <c>{1}</c> names the specific fault (duplicate/reserved name,
@@ -161,7 +161,7 @@ namespace Heddle.Generator.Diagnostics
         public static readonly DiagnosticDescriptor MalformedExtensionParameter =
             FromCatalog(HeddleDiagnosticIds.BuildMalformedExtensionParameter);
 
-        /// <summary>Phase 5 (D3): a template is not under <c>HeddleTemplateRoot</c> and carries no explicit
+        /// <summary>A template is not under <c>HeddleTemplateRoot</c> and carries no explicit
         /// <c>Key</c> metadata, so its directory is dropped and it registers under a flattened filename key that no
         /// root-relative runtime lookup can hit. Behavior is unchanged (the flattened key still registers) — the
         /// warning makes the previously silent degrade visible, and explains a HED7002 raised by two out-of-root
@@ -169,7 +169,7 @@ namespace Heddle.Generator.Diagnostics
         public static readonly DiagnosticDescriptor TemplateOutsideRoot =
             FromCatalog(HeddleDiagnosticIds.BuildTemplateOutsideRoot);
 
-        /// <summary>Phase 5 (D12a): the emitter threw while generating a template — a <b>generator defect</b>, not a
+        /// <summary>The emitter threw while generating a template — a <b>generator defect</b>, not a
         /// template authoring error. Every intentional refusal already leaves the emitter through a return path (a
         /// HED7014 fallback-marker result, or an unsupported-construct reason), so an exception has no legitimate
         /// meaning and must surface instead of degrading silently to the dynamic path. Reported per template and at
@@ -177,7 +177,7 @@ namespace Heddle.Generator.Diagnostics
         public static readonly DiagnosticDescriptor EmitterFault =
             FromCatalog(HeddleDiagnosticIds.BuildEmitterFault);
 
-        /// <summary>Phase 5 (D6): the <c>Heddle</c> assembly was not found among the compilation's referenced
+        /// <summary>The <c>Heddle</c> assembly was not found among the compilation's referenced
         /// assemblies (aliased, embedded, or ILMerged), so the manifest's <c>engineVersion</c> is the generator's own
         /// version rather than an observed one. The runtime's engine-compatibility gate then decides whole-assembly
         /// registration on a heuristic — a warning, not an error, because precompilation is contractually additive
@@ -185,44 +185,43 @@ namespace Heddle.Generator.Diagnostics
         public static readonly DiagnosticDescriptor EngineVersionUnresolved =
             FromCatalog(HeddleDiagnosticIds.BuildEngineVersionUnresolved);
 
-        /// <summary>Phase 3 (F2 / Q3.6): an <c>[assembly: ExportFunctions(...)]</c> container that is not a public
+        /// <summary>An <c>[assembly: ExportFunctions(...)]</c> container that is not a public
         /// static class. The runtime raises a hard <c>ArgumentException</c> from
-        /// <c>FunctionRegistry.RegisterFrom</c>, so under the program's match principle the build errors rather
-        /// than masking a host configuration error until first render — which is what the previous silent skip
-        /// did. <c>{0}</c> is the runtime's own message for the same container, so the two tiers say the same
+        /// <c>FunctionRegistry.RegisterFrom</c>, so the build errors rather
+        /// than masking a host configuration error until first render.
+        /// <c>{0}</c> is the runtime's own message for the same container, so the two tiers say the same
         /// thing. Reported once per ineligible container, at <see cref="Location.None"/>: the attribute lives in
         /// the consuming assembly, not in any template.</summary>
         public static readonly DiagnosticDescriptor IneligibleExportContainer =
             FromCatalog(HeddleDiagnosticIds.BuildIneligibleExportContainer);
 
-        /// <summary>Phase 3 (F8 / Q3.5): a type name several types answer to, which the template's <c>@using</c>
+        /// <summary>A type name several types answer to, which the template's <c>@using</c>
         /// imports do not settle. The runtime throws "the type name is ambigous" for the same input (on both the
-        /// dotted and — since phase 3 fixed it — the short-name arm), so the build tier raises a matching error
+        /// dotted and the short-name arm), so the build tier raises a matching error
         /// rather than binding one of the candidates and emitting typed code off a type the runtime might not
         /// choose. Position: the directive that named the type.</summary>
         public static readonly DiagnosticDescriptor AmbiguousTypeName =
             FromCatalog(HeddleDiagnosticIds.BuildAmbiguousTypeName);
 
-        /// <summary>Phase 1 (D3 / F1): an <c>@profile(){{…}}</c> value that is neither <c>text</c> nor <c>html</c>.
-        /// The runtime rejects the template outright (HED2001); the emitter used to ignore the directive and
+        /// <summary>An <c>@profile(){{…}}</c> value that is neither <c>text</c> nor <c>html</c>.
+        /// The runtime rejects the template outright (HED2001); ignoring the directive would
         /// precompile a template whose rendered output the dynamic tier would never produce — and the options
         /// fingerprint, which keeps the <em>compile-time</em> profile, cannot catch it. Position: the directive.</summary>
         public static readonly DiagnosticDescriptor UnknownOutputProfile =
             FromCatalog(HeddleDiagnosticIds.BuildUnknownOutputProfile);
 
-        /// <summary>Phase 1 (D7 / Q1.3): a call-site fill of a private region — the build-time twin of the
+        /// <summary>A call-site fill of a private region — the build-time twin of the
         /// runtime's HED5019. Reproduces the runtime's reaction to the <c>Private</c> region-fill verdict
         /// (retract the parse-emitted base-not-found error, raise once per candidate) so the two tiers report the
         /// same error at the same position. Position: the override declaration.</summary>
         public static readonly DiagnosticDescriptor RegionNotPublic =
             FromCatalog(HeddleDiagnosticIds.BuildRegionNotPublic);
 
-        /// <summary>Q8.1 (ruled 2026-07-26): a function call the <b>shared</b> overload ranker proved illegal —
+        /// <summary>A function call the <b>shared</b> overload ranker proved illegal —
         /// <c>BindOutcome.Ambiguous</c> (the runtime's HED1013) or <c>BindOutcome.None</c> (HED1012) — over
-        /// arguments the estimator could type. Until this landed the generator computed that verdict and then
-        /// reported nothing, so a provably illegal template built green and failed at first render: a silence
-        /// against both the match principle and the fallback-legitimacy principle, and the exact shape
-        /// <see cref="IneligibleExportContainer"/> (HED7021) was created to fix on the phase-3 side.
+        /// arguments the estimator could type. Without it the generator would compute that verdict and then
+        /// report nothing, so a provably illegal template builds green and fails at first render — the same
+        /// silence <see cref="IneligibleExportContainer"/> (HED7021) exists to prevent.
         /// <para><b>The side condition is load-bearing.</b> It fires only when every argument estimate is
         /// describable; an <c>Unknown</c> estimate leaves the ranker with nothing to rank, so the refusal is a
         /// generator limitation rather than a proof and still degrades silently. <c>{0}</c> is the runtime-shaped

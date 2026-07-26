@@ -62,19 +62,16 @@ namespace Heddle.Tests
             yield return R("@(I / 2)", 3 / 2);
             yield return R("@(Dec + Dec)", 2.5m + 2.5m);
 
-            // Shift and bitwise (ints).
             yield return R("@(I << 2)", 3 << 2);
             yield return R("@(Flags & 4)", 6 & 4);
             yield return R("@(Flags | 1)", 6 | 1);
             yield return R("@(I ^ 1)", 3 ^ 1);
             yield return R("@(~I)", ~3);
 
-            // Enum bitwise (same enum type).
             yield return R("@(EnumA & EnumB)", (Color.Red | Color.Green) & Color.Green);
             yield return R("@(EnumA | EnumB)", (Color.Red | Color.Green) | Color.Green);
             yield return R("@(~EnumA)", ~(Color.Red | Color.Green));
 
-            // Relational / equality (liftToNull:false).
             yield return R("@(I < L)", 3 < 10L);
             yield return R("@(I == 3)", 3 == 3);
             yield return R("@(I != 3)", 3 != 3);
@@ -84,26 +81,22 @@ namespace Heddle.Tests
             yield return R("@(Date < Date2)", new DateTime(2020, 1, 1) < new DateTime(2020, 1, 2));
             yield return R("@(Obj == S)", Equals((object)"ab", (object)"ab"));
 
-            // Logical and unary.
             yield return R("@(B && true)", true && true);
             yield return R("@(B || false)", true || false);
             yield return R("@(!B)", !true);
             yield return R("@(-I)", -3);
             yield return R("@(-UI)", -(uint)4);         // unary minus on uint => long
 
-            // String concatenation.
             yield return R("@(S + I)", "ab" + 3);
             yield return R("@(S + S)", "ab" + "ab");
             yield return R("@(C + 1)", 'A' + 1);         // char + int => int
 
-            // ?? and ?: typing.
             yield return R("@(NI + 1)", (int?)null + 1);  // lifted -> null
             yield return R("@(NI ?? 0)", (int?)null ?? 0);
             yield return R("@(NIv ?? 0)", (int?)7 ?? 0);
             yield return R("@(NI ?? L)", (long?)(int?)null ?? 10L);
             yield return R("@(B ? I : L)", true ? 3L : 10L);
 
-            // Constant folding (literal-only tree).
             yield return R("@(2 + 2 * 2)", 2 + 2 * 2);
         }
 #pragma warning restore CS0464, CS0472, CS0458

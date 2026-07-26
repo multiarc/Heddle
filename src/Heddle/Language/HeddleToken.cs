@@ -24,7 +24,7 @@ namespace Heddle.Language
         LineTerminate,
         DefOutputOnEnd,
         ParseError,
-        // Appended by phase 1 (native expressions) — values stay stable because they are appended.
+        // Native-expression kinds, appended at the end so the existing values stay stable.
         Operator,
         Literal,
         FunctionName

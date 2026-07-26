@@ -8,10 +8,10 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 <c>@profile</c> document-order flip (phase 2 D4, README D22): the emitter tracks the running output
-    /// profile and binds each unnamed <c>@(…)</c> carrier to EmptyExtension (Text) or EmptyHtmlExtension (Encode) by
-    /// the profile active at that document position — flipped by <c>@profile(){{html|text}}</c>. Differential-gated
-    /// against the runtime, which flips <c>context.OutputProfile</c> in the same order.
+    /// The <c>@profile</c> document-order flip: the emitter tracks the running output profile and binds each unnamed
+    /// <c>@(…)</c> carrier to EmptyExtension (Text) or EmptyHtmlExtension (Encode) by the profile active at that
+    /// document position — flipped by <c>@profile(){{html|text}}</c>. Differential-gated against the runtime, which
+    /// flips <c>context.OutputProfile</c> in the same order.
     /// </summary>
     public class ProfileFlipTests
     {
@@ -41,12 +41,11 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// Generator plan phase 1 WI2 (D3) — the unknown-<c>@profile</c> twin. The runtime rejects
-        /// <c>@profile(){{htlm}}</c> outright with HED2001 and never compiles the template. The emitter used to
-        /// fall through the string match with a comment asserting "the template falls back" — it does not: nothing
-        /// else refuses, so the template pre-compiled with the flip silently ignored and rendered output the
-        /// dynamic tier would never produce. Neither could the gauntlet catch it: the options fingerprint keeps the
-        /// COMPILE-TIME profile, not the post-flip value. Asserted as the twin relationship in one test.
+        /// The unknown-<c>@profile</c> twin. The runtime rejects <c>@profile(){{htlm}}</c> outright with HED2001 and
+        /// never compiles the template. The emitter used to fall through the string match with a comment asserting
+        /// "the template falls back" — it does not: nothing else refuses, so the template pre-compiled with the flip
+        /// silently ignored and rendered output the dynamic tier would never produce. The options fingerprint keeps
+        /// the COMPILE-TIME profile, not the post-flip value. Asserted as the twin relationship in one test.
         /// </summary>
         [Fact]
         public void UnknownProfileValueIsABuildErrorAndTheRuntimeTwinIsHed2001()

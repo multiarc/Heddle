@@ -22,7 +22,7 @@ namespace Heddle.Runtime
 {
     public class CSharpContext
     {
-        // Phase 9 D4: the only Microsoft.CodeAnalysis-typed static of this class lives in a nested holder so it is
+        // The only Microsoft.CodeAnalysis-typed static of this class lives in a nested holder so it is
         // reached (and its type-initializer run) only from the C#-tier body behind the feature switch — a trimmed
         // publish with the switch off drops the holder with the rest of the Roslyn graph.
         private static class RoslynDisplay
@@ -134,7 +134,7 @@ namespace Heddle.Runtime
                     $"[{expressionOptions.Position}]<{expressionOptions.ExtensionName}> Expression cannot be null or empty");
             }
 
-            // Phase 9 D4 — the parse-time Roslyn entry. When the C#-tier feature switch is trimmed off, this is a
+            // The parse-time Roslyn entry. When the C#-tier feature switch is trimmed off, this is a
             // constant-true early return, so the Roslyn body below (and the ITypeSymbol-typed ResolveTypeReference)
             // become dead code the linker removes. The method still records the C# expression; the single HED9001 is
             // surfaced later by ContextCompilation.Compile. Behavior is identical when the switch is left on (default).

@@ -2,7 +2,7 @@ namespace Heddle.Data
 {
     /// <summary>
     /// Controls what happens when a precompiled template entry exists for a lookup but fails the per-request
-    /// validation gauntlet (phase 7 D8). A registry <b>miss</b> is unaffected by this policy — strictness
+    /// validation gauntlet. A registry <b>miss</b> is unaffected by this policy — strictness
     /// polices divergence, not coverage.
     /// </summary>
     public enum PrecompiledMismatchPolicy

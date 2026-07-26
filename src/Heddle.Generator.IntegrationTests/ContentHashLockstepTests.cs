@@ -10,10 +10,10 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 5 WI1 (D1) lockstep gate for the content-hash rule. The generator's emitted manifest hash, the runtime
+    /// Lockstep gate for the content-hash rule. The generator's emitted manifest hash, the runtime
     /// gauntlet's <c>HashFile</c>, and the pinned rule restated in this file must agree for every supported
-    /// on-disk encoding — the drift that made every BOM'd/UTF-16 template permanently <c>StaleContent</c>
-    /// (05 F1). The generator half runs the <b>real</b> generator over the same characters; the runtime half reads
+    /// on-disk encoding — a divergence here is what once made every BOM'd/UTF-16 template permanently
+    /// <c>StaleContent</c>. The generator half runs the <b>real</b> generator over the same characters; the runtime half reads
     /// real bytes off disk, so a decoder divergence is a red test rather than a silent per-request fallback.
     /// </summary>
     public class ContentHashLockstepTests
@@ -68,7 +68,7 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>An encoding-only re-save (the same characters, a different on-disk byte shape) is not an edit —
-        /// the whole point of hashing the text domain (D1).</summary>
+        /// the whole point of hashing the text domain.</summary>
         [Fact]
         public void EncodingOnlyResaveDoesNotChangeTheRuntimeHash()
         {

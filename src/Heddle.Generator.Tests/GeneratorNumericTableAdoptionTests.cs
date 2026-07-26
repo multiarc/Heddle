@@ -11,12 +11,10 @@ using TemplateEmitter = gen::Heddle.Generator.Emit.TemplateEmitter;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Phase 4 D5/WI4, completed by the phase-4 audit (2026-07-26). The plan's success criterion is "exactly one"
-    /// numeric-kind table, and its non-goals deferred the emitter's <c>SpecialType</c>-keyed copy of the §10.2.3
-    /// widening table to phase 1 while claiming "the lockstep test covers both existing copies". That claim was
-    /// false: <c>NumericTableLockstepTests</c> compares the shared table to the <b>runtime's</b> pre-extraction
-    /// body only, and <b>no</b> test referenced the emitter's copy at all — it could have drifted a row in silence,
-    /// changing which prop defaults precompile and what cast the emitter writes.
+    /// The numeric-kind table consolidation. The emitter's <c>SpecialType</c>-keyed copy of the widening table was
+    /// never tested against the shared table: <c>NumericTableLockstepTests</c> compares the shared table to the
+    /// <b>runtime's</b> pre-extraction body only, and no test referenced the emitter's copy at all — it could have
+    /// drifted a row in silence, changing which prop defaults precompile and what cast the emitter writes.
     /// <para><c>TemplateEmitter.IsImplicitNumericWidening</c> is now a two-line adapter over
     /// <see cref="NumericTable.IsImplicit"/>. <b>Legacy*</b> below is the deleted table, transcribed verbatim, and
     /// the sweep is exhaustive over every <see cref="SpecialType"/> member — so the fold is characterized rather

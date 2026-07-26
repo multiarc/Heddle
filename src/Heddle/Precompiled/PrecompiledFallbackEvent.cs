@@ -3,16 +3,16 @@ using System;
 namespace Heddle.Precompiled
 {
     /// <summary>The per-request/registration diagnostic payload delivered to
-    /// <see cref="PrecompiledTemplates.OnFallback"/> (phase 7 D7/D8). <see cref="Detail"/> is the pinned per-reason
+    /// <see cref="PrecompiledTemplates.OnFallback"/>. <see cref="Detail"/> is the pinned per-reason
     /// format string; <see cref="DiagnosticId"/> is one of
     /// <c>HED7101</c>/<c>HED7102</c>/<c>HED7103</c>/<c>HED7104</c>.
-    /// <para><b>Two carriers, exactly one populated (Q8.33).</b> A per-request event is about one template and
+    /// <para><b>Two carriers, exactly one populated.</b> A per-request event is about one template and
     /// carries <see cref="TemplateKey"/>; a registration-time event (<c>SchemaVersionUnsupported</c>,
     /// <c>EngineVersionIncompatible</c>, <c>RegisteredNameUnavailable</c>) is about an assembly, has no one
     /// template to name, and carries <see cref="AssemblyName"/>. Through 2.0 both meanings shared a single
     /// <c>Key</c> property and a host had to re-derive which one it held by switching on <see cref="Reason"/>;
     /// that property is removed in 2.1 rather than narrowed, so the change is a compile error at the reading site
-    /// instead of a silent null (see <c>docs/spec/common/breaking-windows.md</c>).</para>
+    /// instead of a silent null.</para>
     /// <para>The mapping is not a convention: an event can only be built through <see cref="ForTemplate"/> or
     /// <see cref="ForAssembly"/>, each of which refuses a reason belonging to the other carrier and refuses a
     /// blank carrier, and the classifier behind them refuses a reason it does not know — so a reason added later
@@ -82,7 +82,7 @@ namespace Heddle.Precompiled
 
         /// <summary>The reason→carrier mapping, as an exhaustive switch rather than a set membership test: a reason
         /// nobody has classified falls to the <c>default</c> and throws, so it cannot be raised at all. That is the
-        /// code half of the pin Q8.33 asked for; the declaration half lives in
+        /// code half of the carrier pin; the declaration half lives in
         /// <c>PrecompiledFallbackCarrierTests</c>, which checks this classification against the whole enum in both
         /// directions.</summary>
         private static bool IsAssemblyScoped(PrecompiledFallbackReason reason)

@@ -8,10 +8,10 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Generator plan phase 2 WI3 — the pass-order lockstep. <c>DocumentShaping</c>'s header states the relative
-    /// order of the shared passes as a normative contract; the two drivers are legitimately different programs, so
-    /// nothing but a test keeps them sequencing it the same way. This reads both driver bodies and asserts the
-    /// shared-pass call sequence in each equals the contract. A reordering on one side alone is a red build.
+    /// The pass-order lockstep: <c>DocumentShaping</c>'s header states the relative order of the shared passes
+    /// as a normative contract. The two drivers are legitimately different programs, so nothing but a test keeps
+    /// them sequencing it the same way. This reads both driver bodies and asserts the shared-pass call sequence
+    /// in each equals the contract. A reordering on one side alone is a red build.
     /// </summary>
     public class DocumentShapingPassOrderLockstepTests
     {

@@ -10,9 +10,9 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// Phase 3 (F2) — <c>[ExportFunctions]</c> discovery against the shared rule-core. The three drifts pinned here
-    /// are the ones the gauntlet's exact overload-count comparison made load-bearing: which methods count, whether
-    /// a second container's overloads merge, and what a container the runtime refuses does to the build.
+    /// <c>[ExportFunctions]</c> discovery against the shared rule-core. The three drifts pinned here are the ones the
+    /// gauntlet's exact overload-count comparison made load-bearing: which methods count, whether a second container's
+    /// overloads merge, and what a container the runtime refuses does to the build.
     /// </summary>
     public class ExportDiscoveryTests
     {

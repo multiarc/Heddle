@@ -6,11 +6,11 @@ using Heddle.Strings.Core;
 namespace Heddle.Language
 {
     /// <summary>
-    /// <para>Generator plan phase 2 (D2/D4) — the single implementation of every byte-affecting document-shaping
+    /// <para>The single implementation of every byte-affecting document-shaping
     /// machine. Both backends drive it: the runtime <c>HeddleCompiler.CompileBody</c> and the build-time
     /// <c>DocumentShaper.Shape</c>. It used to exist twice as hand-maintained copies, which is how the
     /// <see cref="WidenToWholeLine"/> clamp drift shipped; every offset-arithmetic fix now lands here once.</para>
-    /// <para><b>Normative pass ordering</b> (D4) — both drivers invoke these in this relative order, and the
+    /// <para><b>Normative pass ordering</b> — both drivers invoke these in this relative order, and the
     /// lockstep test asserts they still do:</para>
     /// <list type="number">
     /// <item><see cref="ShiftBySkippedTokens"/> — rebase onto the hidden-token-excised clean document.</item>
@@ -24,12 +24,12 @@ namespace Heddle.Language
     /// type outside the already-linked parse model — it is compiled into the generator by the
     /// <c>..\Heddle\Language\**\*.cs</c> glob in <c>Heddle.Generator.csproj</c> with zero csproj edits, so any
     /// violation is a red generator build rather than a latent defect. That is also why the string operations
-    /// below are the safe pair (D3) rather than <c>ExStringBuilder</c>'s <c>unsafe</c> equivalents, which cannot
+    /// below are the safe pair rather than <c>ExStringBuilder</c>'s <c>unsafe</c> equivalents, which cannot
     /// be linked; the runtime's other <c>ExStringBuilder</c> consumers are untouched.</para>
     /// </summary>
     internal static class DocumentShaping
     {
-        // ---- Safe string operations (D3): semantically equal to ExStringBuilder.ApplyRemove/Replace. ----
+        // ---- Safe string operations: semantically equal to ExStringBuilder.ApplyRemove/Replace. ----
 
         /// <summary>Removes <paramref name="element"/> from <paramref name="source"/> and returns the removed
         /// length (the shift <c>seed</c> every rebasing loop applies).</summary>
@@ -47,12 +47,12 @@ namespace Heddle.Language
         // ---- The whole-line trim predicate. ----
 
         /// <summary>
-        /// <para>Phase 4 D6 — the whole-line trim predicate, evaluated against the working document at the
+        /// <para>The whole-line trim predicate, evaluated against the working document at the
         /// moment of removal. A removed span is widened to its whole line iff the block occupies the line by
         /// itself: only spaces/tabs to the left back to a line terminator or document start, and only
         /// spaces/tabs then one line terminator (or EOF) to the right. Both sides must pass. A returned span
         /// equal to the input means "not whole-line — remove exactly as today".</para>
-        /// <para>Allocation-free; a plain char loop shared by all TFMs (cross-cutting D7). Handles a
+        /// <para>Allocation-free; a plain char loop shared by all TFMs. Handles a
         /// zero-length probe (the remnant-line case) without a special case — the scans meet across the empty
         /// span and the predicate degenerates to "is this line whitespace-only".</para>
         /// </summary>
@@ -166,7 +166,7 @@ namespace Heddle.Language
         }
 
         /// <summary>
-        /// Pass 2 (phase 4 D6/D8 step 2) — removes comment-only remnant lines when trimming is on. A whole-line
+        /// Pass 2 — removes comment-only remnant lines when trimming is on. A whole-line
         /// comment leaves a bare terminator in the working document (the lexer excised only the hidden comment
         /// token). Each <see cref="ParseContext.SkippedTokens"/> entry is mapped to its clean-document position
         /// (original start minus the summed lengths of prior hidden tokens — the list is in document order),
@@ -260,7 +260,7 @@ namespace Heddle.Language
             }
         }
 
-        /// <summary>Pass 3 — removes every definition/import block. D8 step 3: each span is widened to its whole
+        /// <summary>Pass 3 — removes every definition/import block. Each span is widened to its whole
         /// line first when trimming is on; the shift loops compare against the <em>original</em> block boundaries
         /// (the widening only extends into whitespace, so no chain/raw sits between them and the shift set is the
         /// same — only the removed length grows).</summary>
@@ -322,7 +322,7 @@ namespace Heddle.Language
             }
         }
 
-        /// <summary>Pass 6 — removes one zero-output chain. D8 step 6: widen a whole-line zero-output chain to
+        /// <summary>Pass 6 — removes one zero-output chain. A whole-line zero-output chain is widened to
         /// swallow its line when trimming is on. The widening only ever extends into surrounding
         /// whitespace/newline, so the "chains after this block" predicate (unchanged, against the
         /// <em>original</em> position) still selects exactly the positions needing the shift; only the shift
@@ -349,7 +349,7 @@ namespace Heddle.Language
         // ---- Pass 5: the branch-set adjacency strip machine. ----
 
         /// <summary>
-        /// The branch classification both backends map into (D5). Defined once here so the runtime cannot gain a
+        /// The branch classification both backends map into. Defined once here so the runtime cannot gain a
         /// kind the generator silently misses — the <c>Participant</c>/<c>Other</c> collapse that used to be
         /// "benign only because both disarm" is now a checked shape. Deliberately independent of either
         /// <c>BranchRole</c> enum, so this file needs no attribute or Roslyn types.
@@ -365,8 +365,8 @@ namespace Heddle.Language
 
         /// <summary>
         /// The strip machine's event stream, consumed by the runtime to re-host its HED3001–HED3005 diagnostics
-        /// and its orphan state machine without duplicating the machine they observe (D5). The generator passes
-        /// no observer. Three events rather than the plan's two, because the runtime's diagnostic <em>order</em>
+        /// and its orphan state machine without duplicating the machine they observe. The generator passes
+        /// no observer. Three events rather than two, because the runtime's diagnostic <em>order</em>
         /// within one block is HED3005 → HED3001 (gap) → HED3002/3/4: the scope-channel check runs before gap
         /// collection and the orphan machine after it, so a single "classified" event could not preserve it.
         /// </summary>
@@ -487,7 +487,7 @@ namespace Heddle.Language
             }
         }
 
-        // ---- Piece slicing (D6). ----
+        // ---- Piece slicing. ----
 
         /// <summary>
         /// <para>The static-piece segmentation walk, shared by <c>RuntimeDocument.GetDocumentPieces</c> and the
