@@ -1090,3 +1090,13 @@ which is the bookkeeping failure this section exists to correct.
   silent-pass failure mode E9 actually names. **No code change.** E9's wording is amended to say
   *inputs* and to state the outputs case explicitly, since the rule as written read as covering both.
   *Where it lives:* [testing-standards.md — test-input single-sourcing](../spec/common/testing-standards.md).
+
+  **Follow-on (2026-07-26): the same misreading had already licensed a relocation, and it is reverted.**
+  Phase 7's D1 moved the whole corpus out of `src/Heddle.Tests/TestTemplate/` into a neutral
+  `src/TestCorpus/` on the theory that a shared input should not live inside one consumer. Same
+  correction applies: *"Build artifacts and build related copies does not conflict logically with the
+  fact that input is stored elsewhere — it's just a build copy, not a logical issue."* The move was
+  executed and reverted (`ac1d0b4`, preserved at branch `wip/phase7-corpus-move`); D1 is rewritten so the
+  corpus stays put and only the *sharing mechanism* — one props file, `Content` links, per-consumer
+  output copies — is built. `testing-standards` gained a sentence saying a build copy is not a second
+  home, because the rule as written kept being read as a storage-location rule.

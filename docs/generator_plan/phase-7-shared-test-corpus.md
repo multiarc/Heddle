@@ -98,7 +98,34 @@ concrete consequences follow, each of which the tree needs:
 
 ## Design direction
 
-### D1 — Physical home: one neutral directory, shared by MSBuild `Content` links, not a project
+### D1 — Physical home: **the corpus does not move** (revised 2026-07-26)
+
+**Decision (revised — supersedes the struck-through original below).** The corpus **stays where it
+is**, in `src/Heddle.Tests/TestTemplate/`. Nothing relocates.
+
+The original decision moved it to a neutral `src/TestCorpus/` on the reasoning that a shared input
+should not live inside one consumer. That reasoning was rejected (user, 2026-07-26): *"Build artifacts
+and build related copies does not conflict logically with the fact that input is stored elsewhere —
+it's just a build copy, not a logical issue."* Copying an input into a consumer's output directory so a
+test can read it is a **build copy**. It is not a second home for the input, and it creates no
+ownership question to solve by relocation. Test inputs are the git-tracked artifacts; they live in
+tracked folders, and which project directory holds them is a filing detail, not a correctness property.
+
+**What survives, and it is the whole point of the phase:** sharing is still one MSBuild props file that
+every consuming test project imports with a single line, globbing the corpus as `Content` with `Link`
+and `CopyToOutputDirectory` so each consumer gets its own copy in its own output directory. The props
+file simply points at the existing directory instead of a new one. The generator suites become
+consumers of the same files the engine suites already use — which is what makes the ~130 inline-string
+feature templates able to cross the precompiled gauntlet, and that gap, not the folder layout, is what
+phase 7 exists to close.
+
+**Cost of the reversal, stated:** the relocation was executed once and reverted (`ac1d0b4`); the full
+move is preserved at branch `wip/phase7-corpus-move` if any part of it is wanted. The revert cost
+nothing but the move itself — no test changed meaning, because a rename of an input the build copies
+anyway is invisible to every reader.
+
+<details>
+<summary>Superseded original (do not implement)</summary>
 
 **Decision.** The corpus moves to a neutral, project-independent home — `src/TestCorpus/` — with
 `templates/` holding the `.heddle` files and their sibling goldens. Sharing is one MSBuild props
@@ -145,6 +172,8 @@ which is precisely what produced the path traversal.
   where it caused the problem, and every consumer's link path still hard-codes a sibling project's
   directory layout.
 - *`git` submodule / separate repo.* Rejected as absurd for in-tree test assets.
+
+</details>
 
 ### D2 — The traversal is deleted, not hardened; corpus access becomes one shared accessor
 
