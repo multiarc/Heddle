@@ -110,8 +110,6 @@ namespace Heddle.Tests
                 Assert.Equal(OperatorVerdict.NotDefined, NativeOperatorRules.ClassifyUnary(op, numeric));
         }
 
-        // ---- The seven documented deviations, as data ------------------------------------------------------
-
         [Fact]
         public void Deviation1_MixedAndUnrelatedEqualityIsNeverEmitted()
         {
@@ -125,7 +123,6 @@ namespace Heddle.Tests
                     NativeOperatorRules.Classify(op, reference, reference));
                 Assert.Equal(OperatorVerdict.RequiresRuntimeSemantics,
                     NativeOperatorRules.Classify(op, OperandKind.Of(OperandCategory.Enum), i32));
-                // …while the shapes that really are identical stay emittable.
                 Assert.Equal(OperatorVerdict.Supported, NativeOperatorRules.Classify(op, i32, i32));
                 Assert.Equal(OperatorVerdict.Supported, NativeOperatorRules.Classify(op, str, OperandKind.Null));
             }
@@ -203,7 +200,6 @@ namespace Heddle.Tests
             var nb = OperandKind.Of(OperandCategory.Bool, true);
             foreach (var op in new[] { ExprOperator.And, ExprOperator.Or, ExprOperator.ExclusiveOr })
             {
-                // Matched pairs stay emittable; only the mismatch is refused.
                 Assert.Equal(OperatorVerdict.Supported, NativeOperatorRules.Classify(op, b, b));
                 Assert.Equal(OperatorVerdict.Supported, NativeOperatorRules.Classify(op, nb, nb));
                 Assert.Equal(OperatorVerdict.NotDefined, NativeOperatorRules.Classify(op, b, nb));
@@ -212,8 +208,7 @@ namespace Heddle.Tests
 
             var result = Compile("B & NB");
             Assert.False(result.Success);
-            // Contained: the compile-item catch turns it into a collected error, never an escaping throw and never
-            // a render. Documented as a diagnostic-shape defect out of phase 4's scope.
+            // Contained: the compile-item catch turns it into a collected error, never an escaping throw and never a render.
             Assert.Contains(result.ErrorList, e => e.Exception != null);
             Assert.DoesNotContain(result.ErrorList,
                 e => e.DiagnosticId == HeddleDiagnosticIds.BinaryOperatorNotDefined);

@@ -1393,7 +1393,7 @@ namespace Heddle.Runtime
                     {
                         case RegionFillVerdict.Dangling:
                         case RegionFillVerdict.DefaultMissing:
-                            // genuinely dangling (or declared but not stored) — the parse-emitted error stays (D5)
+                            // Genuinely dangling (or declared but not stored) — the parse-emitted error stays.
                             break;
 
                         case RegionFillVerdict.Private:
@@ -1647,19 +1647,6 @@ namespace Heddle.Runtime
             };
             return extension.InitStart(initContext, modelType, chainedType, compileScope.ScopeType);
         }
-
-        //private static void CheckTypes(PropertyInfo property, BlockPosition extensionPosition, CompileContext context, params Type[] dataTypes)
-        //{
-        //    if (property != null && dataTypes.Any() && dataTypes.All(type => !(type ?? typeof (object)).IsType(property.PropertyType)))
-        //    {
-        //        context.CompileErrors.Add
-        //            (string.Format
-        //                (CultureInfo.InvariantCulture, "Property {0} have Type {1} but any of [{2}] expected.",
-        //                    property.Name,
-        //                    property.PropertyType.FullName,
-        //                    string.Join(", ", dataTypes.Select(t => t.FullName))).ToError(extensionPosition));
-        //    }
-        //}
 
         private static void CheckTypes(ExType returnType, BlockPosition extensionPosition, CompileScope compileScope,
             params ExType[] dataTypes)

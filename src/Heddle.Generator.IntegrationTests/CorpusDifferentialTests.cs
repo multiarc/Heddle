@@ -16,27 +16,19 @@ namespace Heddle.Generator.IntegrationTests
     /// <b>front-end error fixture</b> whose error the generator forwards. Every non-fixture template's generated
     /// <c>.g.cs</c> is required to compile (compile-safety). Byte-for-byte render parity for the supported families is
     /// covered by the family-specific differential suites with representative models.
-    /// <para>The classification is no longer two hand-maintained <c>HashSet</c>s and a corpus file count in this file.
-    /// It is read from <see cref="CorpusIntent"/>, and every pin is <b>set equality reported as a symmetric
-    /// difference</b>. Both replaced pins were counts, and both had already gone wrong in this tree: a <c>&gt;= 25</c>
-    /// floor sat against an actual 40 (fifteen templates could stop precompiling in silence), and the <c>&gt;= 40</c>
-    /// floor that replaced it here sat against an actual 62 beside a comment claiming "~45". A count is
-    /// rubber-stampable — a stage that changes a classification is made green by editing one digit, and the commit
-    /// looks identical either way. Set equality cannot be: making it green requires naming the file that moved and
-    /// writing down why, in its intent row.</para>
+    /// <para>The classification is read from <see cref="CorpusIntent"/>, and every pin is <b>set equality reported as a symmetric
+    /// difference</b>. Set equality forces the commit message to name the file that changed and why in its intent row,
+    /// preventing silent classification drifts.</para>
     /// </summary>
     public class CorpusDifferentialTests
     {
         [Fact]
         public void CorpusClassificationIsPinnedAndPrecompiledCodeCompiles()
         {
-            // No assembly-path rewrite, no `../../..` climb out of bin/<cfg>/<tfm>, and therefore no
-            // "the corpus was not found for this TFM" assert to bolt on top of one. The corpus is Content-copied
-            // into this project's own output; a miss throws from the accessor with the path in the message.
+            // The corpus is Content-copied into this project's own output; a miss throws from the accessor.
             var templates = TestCorpusIndex.Load();
 
-            // Every corpus file has exactly one intent row and vice versa. Asserted here as well as in the engine
-            // tier's gate because this suite would otherwise happily classify a template nobody declared.
+            // Asserted here because this suite would otherwise happily classify a template nobody declared.
             AssertIntentIsTotal();
 
             var extra = DifferentialHarness.EngineTestModelReferences();

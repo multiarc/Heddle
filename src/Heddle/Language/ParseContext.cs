@@ -118,8 +118,6 @@ namespace Heddle.Language {
             }
             if (definitionName != null)
             {
-                //DefinitionItem definition;
-                //if (DefinitionsBlock.Definitions.TryGetValue(definitionName, out definition) && definition.BaseDefinition != null)
                 if (DefinitionsBlock.Definitions.ContainsKey(definitionName))
                 {
                     var item = new DefinitionItem(DefinitionsBlock.Definitions[definitionName]);
@@ -224,7 +222,6 @@ namespace Heddle.Language {
                     HasDefaultOutput = chain != null,
                     PropDeclarations = noBaseProps,
                     SlotTypeName = noBaseSlot,
-                    // Phase 7 D2: a plain <name> parsed inside a definition body is a private region.
                     IsRegion = InDefintionContext
                 };
             } else {
@@ -246,10 +243,9 @@ namespace Heddle.Language {
                 HeddleCompileError baseNotFound = null;
                 if (baseDefenition == null)
                 {
-                    // Phase 7 D5 (emit-then-retract): the base-not-found error keeps its exact text/position and
-                    // is emitted at parse into the shared Errors list, exactly as today. The error object is
-                    // captured below on the fill candidate so a compile-time public-region match can retract the
-                    // identical instance from BOTH downstream lists; a genuinely dangling <x:x> retracts nothing.
+                    // Emit-then-retract: the base-not-found error is captured below on the fill candidate
+                    // so a compile-time public-region match can retract the identical instance from BOTH
+                    // downstream lists (parse Errors and compile CompileErrors); a genuinely dangling <x:x> retracts nothing.
                     baseNotFound = $"Base definition {baseName} couldn't be found".ToError(GetAbsoluteBlockPosition(context));
                     Errors.Add(baseNotFound);
                 }
@@ -287,10 +283,9 @@ namespace Heddle.Language {
                     SlotTypeName = baseSlot
                 };
 
-                // Phase 7 D5/D12: only an unresolved-base <x:x> (same name both sides) becomes a region-fill
-                // candidate. It is flagged so the listener never registers it into any DefinitionsBlock, and the
-                // captured error object makes the compile-time retract possible. A <x:y> with an unresolved base
-                // keeps today's plain error and is never a candidate.
+                // Only an unresolved-base <x:x> (same name both sides) becomes a region-fill candidate. It is flagged
+                // so the listener never registers it into any DefinitionsBlock, and the captured error object makes
+                // the compile-time retract possible. A <x:y> with an unresolved base keeps the plain error and is never a candidate.
                 if (baseNotFound != null && string.Equals(definitionName, baseName, StringComparison.Ordinal))
                 {
                     item.IsFillCandidate = true;
@@ -824,14 +819,10 @@ namespace Heddle.Language {
             }
         }
 
-        #region Helpers
-
         private static Dictionary<ParseContext, ParseContext> _isolatedSet;
 
         private static HashSet<ParseContext> _isolatedList;
 
         private static readonly object LockObject = new object();
-
-        #endregion
     }
 }
