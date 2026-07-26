@@ -216,10 +216,16 @@ engine's rendered bytes are unchanged, except for the items under **Changed (bre
 
 ### Compatibility
 
-- Precompiled projects must be rebuilt with the 2.0 `Heddle.Generator` when upgrading the engine; 1.x
-  manifests are rejected by the engine-version gate and fall back (or throw under
+- Precompiled projects must be rebuilt with the matching `Heddle.Generator` when upgrading the engine:
+  a manifest outside the engine's schema window, or built by an incompatible generator version, is
+  rejected at registration and the assembly's templates fall back (or throw under
   `PrecompiledMismatchPolicy.Strict`). `Heddle.Generator` and `Heddle` are version-locked — pair the
   matching versions.
+
+  **Corrected 2026-07-26.** This entry originally said *"1.x manifests are rejected by the
+  engine-version gate"*. No 1.x manifest has ever existed: pre-compilation shipped **in 2.0.0**, so
+  there is nothing from 1.x for the gate to reject and it has never fired for one. The rebuild
+  requirement is real and stated above; the 1.x rejection path was not.
 
 ## [1.0.0]
 
