@@ -704,6 +704,13 @@ non-deterministic gate, no stable failure, and this repo's gates are all determi
   `IsReferenceish(left) && IsReferenceish(right)` guard locally → tests redden (or, if they do not,
   that is criterion 2's missing pin, found the right way). Restore, correct the sentence, re-run:
   green, and the sentence now describes what the guard does.
+
+  **Executed 2026-07-26.** With the guard replaced by `if (true)`, exactly one test reddened:
+  `OperatorGuardDifferentialTests.MixedTypeEquality_CompilesTheConsumerProject_AndDegrades` (26 in the
+  suite, 25 still green), which is the pin criterion 2 asked for and it already existed — the trap was
+  therefore in the prose alone, and a doc-trusting agent would have been stopped by a red build rather
+  than shipping the silent `false`. Guard restored, suite green, and the sentence now states the
+  predicate plus an explicit "do not widen this" with the reason.
 - **Undocumented-ID gate.** Delete `HED5019`'s mention from `language-reference.md` → the D4 gate
   reddens naming `HED5019` and the owning document. Add a registry row for a fictional `HED1099`
   with `native-expressions.md` as owner → the gate reddens naming the missing doc row.
