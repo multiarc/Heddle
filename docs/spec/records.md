@@ -31,6 +31,17 @@ throws). Documented in the [CHANGELOG](../../CHANGELOG.md) and
 [precompilation.md](../precompilation.md). Rationale preserved: the gate exists so a
 byte-changing window can never be masked by stale generated code.
 
+> **Appended correction, 2026-07-26 (this record is append-only, so the paragraph above stands as
+> ratified and this note supersedes it).** The paragraph describes a case that cannot occur.
+> **Pre-compilation shipped in 2.0.0**, so no 1.x manifest has ever existed, no gate has ever fired
+> for one, and there is no population of "precompiled assemblies from 1.x" to fall back. What is true
+> is the *rationale* — the engine-version and schema gates exist so stale generated code cannot mask a
+> byte-changing window — and that mechanism did ship and does fire, for manifests built by an
+> incompatible **2.x** generator. Why the claim survived: it was reasoned from the gate's existence
+> rather than from the release history, the same failure mode policy rule 5 exists to catch, and it
+> propagated into the CHANGELOG's Compatibility section (corrected there directly, that file being
+> editable). Recorded rather than deleted so the reasoning error is visible, not just its result.
+
 **Explicitly excluded from the 2.0 window:** the default-encoder *swap* (item 2 — a
 [next-window candidate](common/breaking-windows.md#next-window-candidate-register) gated
 on the shipped `Encoder` pin soaking); `[NotEncode]` type deletion (needs its own
