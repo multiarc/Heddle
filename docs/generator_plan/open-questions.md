@@ -1150,6 +1150,37 @@ which is the bookkeeping failure this section exists to correct.
   a nit to smooth over. **Until this is ruled, phase 0's D4 coverage residue stays open**: ~130 feature
   tests still never cross the gauntlet.
 
+  **Ruling (user, 2026-07-26): share what is genuinely shared; do not unify what is not.** *"I don't see a
+  problem changing folder for cross-project artifacts and make links from various places. Add in scope. We
+  don't have to reuse everything. Some things are unique to particular project. Do not relocate or change
+  those (tests is a good example to that). Some tests are common as per requirement of generator match
+  dynamic runtime and others don't in which case do not relocate or change anything as this scope is huge
+  with no reasonable benefits for unification."*
+
+  This is **option 2, with relocation permitted for the artifacts that are actually cross-project.** Two
+  halves, and the second is the one that closes the phase:
+
+  *What is shared moves and is linked.* An artifact more than one project needs may live in a common folder
+  and be linked from each consumer — that mechanism already exists from stage 0 and is not in question.
+
+  *What is not shared stays exactly where it is.* A test whose two tiers feed **different inputs** and
+  assert **different outputs** is not two copies of one test; it is two tests that happen to share a
+  substring. `[@out(){{BODY}}]` expecting `[CH]` on one tier and `[]` on the other is the clearest case.
+  Those are **not touched** — not relocated, not rewritten, not unified. The requirement that drives sharing
+  is *the generator matching the dynamic runtime*; where a fixture is not serving that requirement, unifying
+  it buys nothing and costs a large, risky migration.
+
+  So the fixture-model unification option is **declined**: reconciling `RegionFeedModel`/`RegionFeed`,
+  `sealed`, and `RegionSpecialArticle` across two projects, then choosing between short-name and AQN
+  spelling, would change what each suite tests in order to make the text identical. The plan's "18
+  character-for-character duplicates" claim is corrected in place — the honest number is 18 shared
+  *substrings*, and D4's headline overstated it.
+
+  **Phase 0's D4 coverage residue is closed by this ruling, not left open.** The residue asked that feature
+  templates cross the gauntlet; the ruling's answer is that they do so where the match requirement applies
+  and are left alone where it does not. Any remaining inline template must therefore be justified by *not*
+  being a match-requirement fixture — which is a per-fixture judgement recorded in the intent table, not a
+  backlog item.
 - **Q8.43 — `CorpusTier.DegradesToMarker` has no members, and the bucket it was promoted from was
   never asserted. Keep it?** *(opened 2026-07-26; not blocking.)*
 
@@ -1165,6 +1196,15 @@ which is the bookkeeping failure this section exists to correct.
   former names the condition, the latter is one fewer concept. Recorded because the two differ in
   failure *message* quality, which is the whole argument for D5.
 
+  **Ruling (user, 2026-07-26): fix it.** The tier is not to be quietly kept as a pinned empty set. Either
+  the corpus gains a real `HED7014` marker entry so the tier describes something that exists, or the tier
+  goes — and since the marker *is* real engine behaviour (a delegate-only function yields a manifest row
+  with a null entry point, which the Q8.19 landing pinned separately), the fix is to **populate it**: add
+  the marker fixture, so the declared tier and the observed set agree by containing something.
+
+  The underlying defect is the one worth not repeating: the suite computed a `markers` set and asserted
+  **nothing** about it, so a bucket that had emptied out looked healthy. Whatever shape the fix takes, the
+  set must be asserted, not merely computed.
 - **Q8.44 — Should the props file serve `Heddle.Generator.Tests` and `Heddle.LanguageServices.Tests`
   too?** *(opened 2026-07-26; not blocking.)*
 
@@ -1177,3 +1217,9 @@ which is the bookkeeping failure this section exists to correct.
   only if that ruling changes. Recorded so the two-of-four gap reads as a scoping decision rather than
   an oversight. (`Heddle.Performance` is out by the Q7.2 change-nothing ruling and its path-traversal
   helper remains **accepted residue** — do not "fix" it.)
+
+  **Ruling (user, 2026-07-26): the same rule as Q8.42** — *"in case it is useful in more than one place
+  then create as a common file and reuse, otherwise leave as inline."* Two consumers is enough to justify
+  the shared props file; a third and fourth project are added only if they actually need the corpus, never
+  for symmetry. Nothing to change today: the file serves the two projects that consume it, which is exactly
+  the rule.
