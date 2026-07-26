@@ -34,11 +34,19 @@ to agree; a template shape written as an inline string in `Heddle.Generator.Inte
 *and again* as an inline string in `Heddle.Tests/RegionTests.cs` drifts for exactly the same reason.
 The two tiers are then verified against two texts, and the whole point of a differential suite —
 that build tier and run tier are handed identical input — silently stops being true. Nothing
-detects it. Surveying for this phase found the duplication is real and literal: **18 distinct
-template literals appear character-for-character in both `Heddle.Tests` and the generator suites**
-(the region/props/`@out` families; see [External grounding](#external-grounding)). Those 18 are the
-lucky ones — they still agree. There is no gate that keeps them agreeing, and one edit on one side
-is all it takes.
+detects it. Surveying for this phase found duplication: **18 distinct template literals appear
+character-for-character in both `Heddle.Tests` and the generator suites** (the region/props/`@out`
+families; see [External grounding](#external-grounding)).
+
+**Corrected in place, 2026-07-26.** Those 18 are **shared substrings, not shared templates.** Executing
+the phase re-ran the survey and found that not one of them is a whole template on either side: they sit
+inside differently-composed documents whose preludes, model spellings and asserted outputs already
+differ. A shared substring inside two different tests is a weaker defect than this paragraph argued —
+in the `@out` family the two tiers feed different inputs and expect different outputs, so they are two
+tests that happen to overlap textually rather than two copies of one test. The overstatement mattered
+because it made stage 1 look mechanical when single-sourcing it would have required changing what each
+suite tests; see [Q8.42](open-questions.md) for the ruling and
+[Why stages 1–5 stopped before starting](#why-stages-15-stopped-before-starting) for the evidence.
 
 The program's own thesis, applied to its own evidence: **a template shape should exist exactly
 once, and both tiers should compile the same bytes.** That is not an aesthetic preference. Four
@@ -664,6 +672,31 @@ failure this phase exists to remove — a half-migrated corpus with two homes an
 agree. The cost is recorded as **Q8.42**; stages 2–5 inherit the same blocker, since they are the same
 families at greater volume.
 
+### Disposition (ruling, 2026-07-26)
+
+**Stages 1–5 do not run, and that is the answer rather than a deferral.** [Q8.42](open-questions.md) was
+ruled to option 2 — narrow the migration, share what is genuinely shared, and leave the rest exactly
+where it is:
+
+- The **fixture-model unification is declined.** Reconciling `RegionFeedModel`/`RegionFeed`, `sealed`
+  and `RegionSpecialArticle` across two projects, then choosing between the bare short name and the AQN,
+  would change what each suite tests in order to make two texts identical — and would drop whichever of
+  the two model-spelling paths lost, since each tier currently exercises a different one.
+- A test whose tiers are fed **different inputs** and asserted against **different outputs** is **not
+  touched** — not relocated, not rewritten, not unified. `[@out(){{BODY}}]` expecting `[CH]` on one tier
+  and `[]` on the other is the clearest case, and the `@out`/chained-definition/body-model families are
+  all of this kind.
+- The shared-vector duplication the `DocumentShapingCharacterizationTests` pairs represent keeps its
+  existing home: the `LineIndexVectors` / `DiagnosticCorpusVectors` linked-file pattern already solves
+  it, and a `.heddle` corpus is the wrong mechanism for expected-output vectors.
+
+What remains true is what stage 0 bought: the mechanism, the declared intent with a written reason per
+entry, set-equality gating, and 10 → 32 byte-compared renders. What is retracted is the framing that an
+inline template is by itself a debt. The requirement that drives sharing is the generator matching the
+dynamic runtime; where a fixture does not serve that requirement, unifying it buys nothing. So
+**phase 0's D4 coverage residue is closed by this ruling**, and the phase is complete at stage 0 plus
+[F1's marker fixture](#findings) rather than stopped short of stages it should not have run.
+
 ## Validation scenarios
 
 - **Layout-change canary.** Rename a consuming project's output layout (or build a different
@@ -742,7 +775,10 @@ docs):
   diagnostic-fixture name set are likewise triplicated. `Heddle.Generator.IntegrationTests.csproj`
   has **no** corpus wiring of any kind.
 - **Cross-tier literal duplication:** 18 distinct template literals (length > 14) appear
-  character-for-character in both `src/Heddle.Tests` and the generator suites — concentrated in
+  character-for-character in both `src/Heddle.Tests` and the generator suites. **Corrected in place,
+  2026-07-26: these are shared *substrings*.** Re-measured at execution time the count is 31 literals
+  over 14 characters, ~21 of them template-ish, and **none is a whole template on either side** — they
+  are concentrated in
   `RegionTests.cs` ↔ `Heddle.Generator.IntegrationTests/RegionTests.cs` (e.g.
   `@feed(theme: "dark"){{@%<heading:heading>{{<h2 class="@(theme)">@(title)</h2>}}%@}}`,
   `@panel(){{@%<head:head>{{[h:@foot()]}}<foot:foot>{{[f-filled]}}%@}}`) and
