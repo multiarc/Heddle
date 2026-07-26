@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using Heddle.Attributes;
 using Heddle.Data;
 using Heddle.Exceptions;
@@ -30,7 +31,15 @@ namespace Heddle.Runtime {
     /// <summary>Discovery, registration, and instantiation of template extensions at compile time.</summary>
     public static class TemplateFactory
     {
-        private static readonly Dictionary<string, Type> Heddle = new Dictionary<string, Type>();
+        /// <summary>
+        /// The name → extension-type registry, published copy-on-write. Reads are lock-free and always see one whole
+        /// registration; a write builds a copy under <see cref="RegistrationLock"/> and publishes it in one assignment.
+        /// The old shape mutated a shared dictionary while unlocked readers enumerated it, so a host registering an
+        /// assembly while another thread compiled could make a valid template draw a phantom diagnostic.
+        /// </summary>
+        private static Dictionary<string, Type> _registry = new Dictionary<string, Type>(StringComparer.Ordinal);
+
+        private static readonly object RegistrationLock = new object();
 
         private static readonly HashSet<Assembly> ExportScanned = new HashSet<Assembly>();
 
@@ -51,11 +60,18 @@ namespace Heddle.Runtime {
 
             lock (ExportScanned)
             {
-                if (!ExportScanned.Add(assembly))
+                if (ExportScanned.Contains(assembly))
                     return;
             }
 
             AddExtensions(ExportedExtensions(assembly));
+
+            // Marked only after the registration succeeds. Marking first made a failed Register unrepeatable: the
+            // host caught the exception, called Register again, and got a silent no-op.
+            lock (ExportScanned)
+            {
+                ExportScanned.Add(assembly);
+            }
         }
 
         private static IEnumerable<ExtensionType> ExportedExtensions(Assembly assembly)
@@ -100,28 +116,37 @@ namespace Heddle.Runtime {
         public static void AddExtensions(IEnumerable<ExtensionType> toAdd)
         {
             if (toAdd == null) throw new ArgumentNullException(nameof(toAdd));
-            foreach (var type in toAdd.OrderBy(ext => ext.Replace))
+
+            lock (RegistrationLock)
             {
-                if (type.Type == null || type.Name == null )
-                    throw new ArgumentException();
-
-                bool hasIncumbent = Heddle.TryGetValue(type.Name, out var incumbent);
-                var verdict = ExtensionRegistrationRules.Resolve(hasIncumbent, type.Replace,
-                    hasIncumbent && incumbent.IsAssignableFrom(type.Type));
-
-                switch (verdict)
+                // Built on a copy and published at the end, so a rejected registration leaves the live registry
+                // untouched rather than half-applied.
+                var next = new Dictionary<string, Type>(_registry, StringComparer.Ordinal);
+                foreach (var type in toAdd.OrderBy(ext => ext.Replace))
                 {
-                    case ExtensionRegistrationVerdict.Register:
-                        Heddle.Add(type.Name, type.Type);
-                        break;
-                    case ExtensionRegistrationVerdict.Replace:
-                        Heddle[type.Name] = type.Type;
-                        break;
-                    default:
-                        // Resolve never returns KeepIncumbent in this context.
-                        throw new TemplateOverrideException(
-                            $"Cannot override <{type.Name}> Extension, <{type.Type}> is not inherited from <{incumbent}>");
+                    if (type.Type == null || type.Name == null )
+                        throw new ArgumentException();
+
+                    bool hasIncumbent = next.TryGetValue(type.Name, out var incumbent);
+                    var verdict = ExtensionRegistrationRules.Resolve(hasIncumbent, type.Replace,
+                        hasIncumbent && incumbent.IsAssignableFrom(type.Type));
+
+                    switch (verdict)
+                    {
+                        case ExtensionRegistrationVerdict.Register:
+                            next.Add(type.Name, type.Type);
+                            break;
+                        case ExtensionRegistrationVerdict.Replace:
+                            next[type.Name] = type.Type;
+                            break;
+                        default:
+                            // Resolve never returns KeepIncumbent in this context.
+                            throw new TemplateOverrideException(
+                                $"Cannot override <{type.Name}> Extension, <{type.Type}> is not inherited from <{incumbent}>");
+                    }
                 }
+
+                Volatile.Write(ref _registry, next);
             }
         }
 
@@ -136,7 +161,7 @@ namespace Heddle.Runtime {
                 throw new ArgumentNullException(nameof(templateName));
             try
             {
-                var extensionType = Heddle[templateName];
+                var extensionType = Volatile.Read(ref _registry)[templateName];
                 var resultExtension = CreateExtension(extensionType);
                 resultExtension.Position = absoluteTextPosition;
                 return resultExtension;
@@ -158,7 +183,7 @@ namespace Heddle.Runtime {
         /// <summary>True when an extension with this exact name is registered.</summary>
         internal static bool Exists(string name)
         {
-            return name != null && Heddle.ContainsKey(name);
+            return name != null && Volatile.Read(ref _registry).ContainsKey(name);
         }
 
         /// <summary>
@@ -168,17 +193,14 @@ namespace Heddle.Runtime {
         /// </summary>
         internal static IReadOnlyCollection<string> RegisteredNames()
         {
-            lock (Heddle)
-            {
-                return new List<string>(Heddle.Keys);
-            }
+            return new List<string>(Volatile.Read(ref _registry).Keys);
         }
 
         /// <summary>Ordinal registry lookup for the branch-set scan's participant classification (compile-time only).</summary>
         internal static bool TryGetExtensionType(string name, out Type type)
         {
             if (name != null)
-                return Heddle.TryGetValue(name, out type);
+                return Volatile.Read(ref _registry).TryGetValue(name, out type);
             type = null;
             return false;
         }
@@ -199,9 +221,25 @@ namespace Heddle.Runtime {
         /// </summary>
         /// <param name="assembly">Assembly to load extensions from.</param>
         /// <returns>All discovered extensions.</returns>
+        /// <summary>
+        /// Every extension candidate in an assembly. A type that cannot be loaded is skipped rather than aborting the
+        /// registration: `[ExportExtensions]` in its parameterless form reaches every type in the assembly, and one
+        /// unresolvable reference — a plugin built against a version the host does not have — would otherwise throw
+        /// <see cref="ReflectionTypeLoadException"/> out of the host's startup call.
+        /// </summary>
         internal static IEnumerable<ExtensionType> LoadExtensions (Assembly assembly)
         {
-            return LoadExtensions(assembly.GetTypes());
+            Type[] types;
+            try
+            {
+                types = assembly.GetTypes();
+            }
+            catch (ReflectionTypeLoadException e)
+            {
+                types = e.Types.Where(t => t != null).ToArray();
+            }
+
+            return LoadExtensions(types);
         }
 
         internal static IEnumerable<ExtensionType> LoadExtensions(IEnumerable<Type> extensions)

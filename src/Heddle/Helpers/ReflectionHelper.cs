@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Heddle.Language.Binding;
 using Heddle.Native;
 
@@ -15,23 +16,44 @@ namespace Heddle.Helpers
 
         private readonly Type _innerType;
 
-        private static Dictionary<string, List<Type>> _shortNames;
+        /// <summary>
+        /// The two name maps, published as one immutable object. A reader must never see a half-built map: the old
+        /// shape assigned each field a fresh empty dictionary and then filled it, while readers looked them up without
+        /// the lock — so a concurrent `Register` made a valid template fail to resolve a type it had just resolved.
+        /// Both maps live here so a reader cannot observe a new short-name map against an old full-name one either.
+        /// </summary>
+        private sealed class NameMaps
+        {
+            public NameMaps(Dictionary<string, List<Type>> shortNames, Dictionary<string, List<Type>> fullNames)
+            {
+                ShortNames = shortNames;
+                FullNames = fullNames;
+            }
 
-        private static Dictionary<string, List<Type>> _fullNames;
+            public Dictionary<string, List<Type>> ShortNames { get; }
+
+            public Dictionary<string, List<Type>> FullNames { get; }
+        }
+
+        private static NameMaps _maps = new NameMaps(
+            new Dictionary<string, List<Type>>(), new Dictionary<string, List<Type>>());
 
         static ReflectionHelper()
         {
             Reconfigure();
         }
 
+        /// <summary>
+        /// Rebuilds the name maps from the current assembly set and publishes them in one write, so a concurrent
+        /// resolve sees either the whole old set or the whole new one.
+        /// </summary>
         public static void Reconfigure()
         {
+            var shortNames = new Dictionary<string, List<Type>>();
+            var fullNames = new Dictionary<string, List<Type>>();
             var assemblies = AssemblyHelper.GetAssemblies();
             lock (assemblies)
             {
-                _shortNames = new Dictionary<string, List<Type>>();
-                _fullNames = new Dictionary<string, List<Type>>();
-
                 foreach (var type in assemblies.SelectMany(a =>
                 {
                     try
@@ -60,17 +82,19 @@ namespace Heddle.Helpers
                         shortName = shortNameBuilder.ToString();
 
                         var dottedAlias = shortName.Replace('+', '.');
-                        _shortNames.AddOrUpdate(dottedAlias, () => new List<Type> {type}, l => l.Add(type));
-                        _fullNames.AddOrUpdate(type.Namespace + "." + dottedAlias, () => new List<Type> {type}, l => l.Add(type));
+                        shortNames.AddOrUpdate(dottedAlias, () => new List<Type> {type}, l => l.Add(type));
+                        fullNames.AddOrUpdate(type.Namespace + "." + dottedAlias, () => new List<Type> {type}, l => l.Add(type));
                     }
                     else
                     {
                         shortName = type.Name;
                     }
-                    _shortNames.AddOrUpdate(shortName, () => new List<Type> {type}, l => l.Add(type));
-                    _fullNames.AddOrUpdate(type.Namespace + "." + shortName, () => new List<Type> {type}, l => l.Add(type));
+                    shortNames.AddOrUpdate(shortName, () => new List<Type> {type}, l => l.Add(type));
+                    fullNames.AddOrUpdate(type.Namespace + "." + shortName, () => new List<Type> {type}, l => l.Add(type));
                 }
             }
+
+            Volatile.Write(ref _maps, new NameMaps(shortNames, fullNames));
         }
 
         public ReflectionHelper(Type innerType)
@@ -127,6 +151,12 @@ namespace Heddle.Helpers
 
         private static Type ResolveSimpleType(string typeName, ICollection<string> imports)
         {
+            // One read of the published snapshot: both maps must come from the same rebuild, or a resolve racing a
+            // Register can consult a new short-name map against an old full-name one.
+            var maps = Volatile.Read(ref _maps);
+            var shortNames = maps.ShortNames;
+            var fullNames = maps.FullNames;
+
             if (typeName.Contains(","))
             {
                 var result = Type.GetType(typeName, false);
@@ -152,7 +182,7 @@ namespace Heddle.Helpers
             }
             if (typeName.Contains("."))
             {
-                if (_fullNames.TryGetValue(typeName, out var types))
+                if (fullNames.TryGetValue(typeName, out var types))
                 {
                     if (types.Count == 1)
                     {
@@ -161,7 +191,7 @@ namespace Heddle.Helpers
                     foreach (var import in imports)
                     {
                         var fullName = import + "." + typeName;
-                        if (_fullNames.TryGetValue(fullName, out types))
+                        if (fullNames.TryGetValue(fullName, out types))
                         {
                             if (types.Count == 1)
                             {
@@ -177,7 +207,7 @@ namespace Heddle.Helpers
                 foreach (var import in imports)
                 {
                     var fullName = import + "." + typeName;
-                    if (_fullNames.TryGetValue(fullName, out types))
+                    if (fullNames.TryGetValue(fullName, out types))
                     {
                         if (types.Count == 1)
                         {
@@ -194,7 +224,7 @@ namespace Heddle.Helpers
                 Type result = ResolveCsharpType(typeName);
                 if (result != null)
                     return result;
-                if (_shortNames.TryGetValue(typeName, out var types))
+                if (shortNames.TryGetValue(typeName, out var types))
                 {
                     if (types.Count == 1)
                     {
