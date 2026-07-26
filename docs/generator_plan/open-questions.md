@@ -719,6 +719,10 @@ question, the ruling or default, and where it is folded.
   exactly the case whose faults are unreportable. The fix is small — derive and report the name for
   every readable item, before the `Precompile` gate — but it is a new diagnostic population on a
   previously silent path, so it is a ruling and not a tidy-up.
+  **Ruling (user, 2026-07-26): fix it and add a diagnostic.** Derive and validate key *and* name for
+  opted-out items too, reporting the same faults an included item would raise, plus a diagnostic for
+  anything with no existing home (claim `HED7029` if needed). The population whose faults are
+  currently unreportable is exactly the population the feature is for.
 - **Q8.29 — `HED7028` cannot fire for an import-only *named* template, which is the case it is most
   for.** The advisory is raised from `ParseAndReport`, which only runs for items that reach the
   emit loop; the *importer* is what raises it, so a named `Precompile="false"` partial imported by
@@ -726,6 +730,10 @@ question, the ruling or default, and where it is folded.
   another* `Precompile="false"` partial is not, because that importer never parses. Whether the
   advisory should reach imports inside opted-out files is the same question as Q8.28 from the other
   end, and the answer probably has to be the same one.
+  **Ruling (user, 2026-07-26): same answer as Q8.28.** `HED7028` must be able to fire for an import
+  inside an opted-out file. The two are one defect seen from either end — an opted-out template is
+  still a participant in the import graph, so it must be parsed enough to validate and advise even
+  though it contributes no entry point and no manifest entry.
 - **Q8.30 — Nothing pins that a registered `Name` is *not* a runtime registry key.** Q8.25 scopes
   `Name` to `@<<` import resolution on the user's words ("an optional additional name register for
   import to use"). The generator honours that — the manifest carries only keys — and
@@ -735,6 +743,19 @@ question, the ruling or default, and where it is folded.
   nothing reddens, and the two surfaces would silently disagree about what a name is. A one-line
   negative assertion would close it; whether the runtime *should* answer to names at all is the
   larger question underneath, and is a ruling.
+  **Ruling (user, 2026-07-26) — scope EXPANDED: the engine must support name search.** The user's
+  words: *"Add an assert for engine behavior to support name search, obvious and should be derived
+  from `Name` being a useful key for import, including other answers like adding a diagnostics
+  required."*
+
+  This **reverses the import-only scope** the Q8.25 landing assumed. If `Name` is a useful key for
+  imports it is a useful key full stop: a template registered under a name should resolve by that name
+  at run time as well as at build time, and the asymmetry was an artifact of the wiring rather than a
+  designed boundary. So the manifest carries the registered name, the runtime registry/resolver
+  consults it, and a lookup by name resolves the same template a lookup by key does. The assertion
+  asked for is of **that** behaviour — not, as this question originally proposed, that a runtime name
+  lookup misses. Diagnostics this requires (most obviously a name colliding with another template's
+  key across the registry) are in scope. Manifest schema change — coordinate the bump with Q8.31.
 - **Q8.31 — The `#line` relativity marker is prose in generated code, not a machine-readable
   form.** Q8.27's marking is a comment line. That is exactly what the ruling asked for (a reader
   can tell which form a `#line` is in) and it is what the snapshots pin, but a *tool* — a stack-trace
@@ -742,3 +763,7 @@ question, the ruling or default, and where it is folded.
   programmatically, the honest carrier is the manifest (which already records per-template
   metadata), not a comment. Recorded so the choice is visible rather than discovered later; no
   consumer needs it today.
+  **Ruling (user, 2026-07-26): record the choice in the manifest and remove the comment from generated
+  code.** The `#line` path form becomes machine-readable manifest data instead of prose in the
+  generated file, and the header comment Q8.27 added is deleted. One schema bump shared with Q8.30,
+  which also adds a manifest field.
