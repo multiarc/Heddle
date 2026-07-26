@@ -3,8 +3,12 @@
 The consolidated Q&A register for the seven phases. Numbering is `Q<phase>.<n>`, matching each
 phase plan's own Open-questions section.
 
-**All questions are resolved (user, 2026-07-25) and folded into the phases — the plans are at
-DoR.** Each entry below records the question, the ruling, and the folding target. Two rulings
+**Pre-authoring questions (Q0.1–Q6.3): all resolved (user, 2026-07-25) and folded into the phases.**
+**Post-implementation questions (Q7.1–Q8.8): OPEN, awaiting ruling** — see
+[the section below](#post-implementation-questions-opened-2026-07-26--open-awaiting-ruling). They were
+opened after the phases landed, by the two post-implementation reviews and the six phase audits.
+
+Each resolved entry below records the question, the ruling, and the folding target. Two rulings
 carry a program-wide principle referenced by several phases:
 
 - **The match principle (Q1.3, generalized by Q2.1/Q3.5/Q3.6):** the runtime dynamic engine is
@@ -143,3 +147,106 @@ carry a program-wide principle referenced by several phases:
 - **Q6.3 — Diagnostic-catalog `MessageFormat` end-state.** **Ruling: recommendation
   applied** — consumed rows only; revisit on the named triggers. *Folded into:* phase 6
   (unchanged).
+
+---
+
+# Post-implementation questions (opened 2026-07-26) — **OPEN, awaiting ruling**
+
+Everything above was resolved before the phases were authored. The questions below were opened
+*after* the seven phases landed, by the two post-implementation reviews and the six phase audits.
+They are recorded here because this file — not a phase plan — is the register: the Q7.* entries in
+particular were written into
+[phase-7-shared-test-corpus.md](phase-7-shared-test-corpus.md) and initially missed this file,
+which is the bookkeeping failure this section exists to correct.
+
+**None of these are folded into anything yet.** Each names a default so work can proceed under a
+stated assumption if a ruling does not arrive, per the convention the resolved sections use.
+
+## Phase 7 — shared test corpus
+
+- **Q7.1 — Do `src/Heddle.LanguageServices.Tests/Corpus`' three `.heddle` templates join the shared
+  corpus?** They serve editor-tier completion/hover/diagnostics, for which the "renders correctly"
+  axis does not exist; joining would need a fourth `Tier` value (`EditorOnly`).
+  **Default if unruled:** stay separate; revisit if the editor tier ever needs a shape the corpus
+  already has.
+- **Q7.2 — Do the benchmark and sample corpora converge, and should `TestCorpus.props` serve
+  `Heddle.Performance` regardless?** `src/Heddle.Performance/TestTemplates` (9),
+  `benchmarks/dotnet/templates/**` (18) and `samples/**/templates` (9) are governed by the parity
+  contract and the golden-corpus spec, whose byte requirements are stricter and differently
+  motivated. Separately, `Heddle.Performance` carries a **fourth copy of the path-traversal helper**
+  — the same failure class phase 7 D2 deletes. **Default if unruled:** template sets do *not*
+  converge, but the props file serves `Heddle.Performance` so the traversal dies everywhere.
+- **Q7.3 — Delete or relocate the six checked-in written artifacts** (`test-<name>.html` × 5,
+  `test.html`)? They sit inside the corpus directory and are written by tests via
+  `File.WriteAllText` into a tree three projects would copy from. They look like debugging aids, but
+  confirming that requires ruling that nothing reads them. **Default if unruled:** delete.
+- **Q7.4 — Is migration stage 5 ("the remaining feature-shape families") in phase 7 or a
+  follow-on?** D4's criteria scope stages 1–4 definitively; stage 5's edge is soft, and a ruling
+  lets stages 0–4 be sized. **Default if unruled:** follow-on, so phase 7 has a hard boundary.
+
+## Post-audit behavioural questions
+
+- **Q8.1 — The overload-tie silent degrade: make it a build error?** Both reviewers and phase 4's
+  own audit agree the current state violates two ratified principles. The generator **has already
+  computed** the illegality (`BindOutcome.Ambiguous` from the shared `OverloadRank` core) and then
+  reports nothing, so a provably-illegal template gets a **green build with zero diagnostics** and a
+  hard `HED1013` at first render. That contradicts the **match principle** ("errors always match")
+  and the **fallback-legitimacy principle** ("everything else surfaces as an error" — the closest
+  legitimate analogue, `UnsupportedFunction`, is legitimate *because* the build refused on purpose
+  **and warned** `HED7014`). Phase 4's reshaped quarantine fixture currently *pins the silence*
+  (`Assert.DoesNotContain(… Severity == Error)`).
+  The fix needs a new diagnostic ID (**next free is `HED7025`**) and a load-bearing side condition:
+  report only when the outcome is `Ambiguous`/`None` **and** no argument estimate is `Unknown`,
+  because today's `null` return conflates "provably ambiguous" with "an argument I could not type".
+  **This is a build-surface change — a project that builds today would start failing.**
+  **Default if unruled:** do nothing; the violation stays recorded in the README findings.
+- **Q8.2 — The P1 binary break: which mechanism?** *(Partially ruled: the user has ruled "bump to
+  2.1 and resolve as a binary breaking change".)* What remains open is the **gate**:
+  `PrecompiledExtensionBinding`'s 2-arg `.ctor` no longer exists in metadata, while
+  `MinSupportedSchemaVersion = 1` still *accepts* manifests that reference it — so the fault lands
+  as a `MissingMethodException` out of `Register()` at host startup rather than as a clean rejection.
+  Raising `MinSupportedSchemaVersion` to 4 exactly excludes the faulting set (schema 1–3 manifests
+  were built against the 2-arg ctor; 4+ against the 3-arg). **Default if unruled:** bump the version
+  to 2.1, raise `MinSupportedSchemaVersion` to 4 so the gate rejects cleanly instead of faulting,
+  add a binary fixture built at the old schema so the rejection is *demonstrated*, and record the
+  break in the CHANGELOG and `breaking-windows.md`.
+- **Q8.3 — Fold the runtime onto the two remaining generator-only "shared" cores?**
+  `Language/Binding/ExtensionRegistrationRules.cs` and `Language/Binding/TypeSpelling.cs` are called
+  **only** by the generator; the runtime still hand-inlines both rules
+  (`TemplateFactory.AddExtensions`, `ReflectionHelper`). Mutating the shared copy reddens **zero**
+  runtime tests, so the files are transcriptions rather than sources of truth — the "reads as fixed
+  and is not" shape. `ExportBookkeeping<TPayload>` has no test at all.
+  **Default if unruled:** fold, because a shared file one tier ignores is worse than no extraction.
+- **Q8.4 — Model `[ExportExtensions]` in the generator's extension discovery?** The runtime only
+  scans assemblies carrying the attribute; the generator scans all referenced assemblies, so it
+  binds and precompiles extensions the runtime will never register → a permanent silent per-request
+  fallback. Pre-existing and fallback-safe, but it is a live instance of the failure mode the
+  program exists to eliminate, and no phase owns it.
+  **Default if unruled:** close it, since "fallback-safe" is exactly the excuse that let two of the
+  fifteen drifts ship.
+- **Q8.5 — Fix `TemplateEmitter.StripGlobal`'s hard-coded assembly name?** It builds a bare dotted
+  type name and feeds it to `RecordExtensionBinding`, whose `assembly` parameter **defaults to the
+  literal `"Heddle"`**. For a user-defined nested or out-of-engine branch-role extension the
+  manifest records `Ns.Outer.Inner, Heddle` where the gauntlet computes
+  `Ns.Outer+Inner, <realAsm>` — drift #6's shape surviving on a path **no fixture exercises**.
+  Phase 3's success criterion claimed zero remaining inline `global::`-strip AQN constructions.
+  **Default if unruled:** fix, with a fixture that reproduces it first (TDD).
+- **Q8.6 — Schedule the compile-channel drain?** Recorded as a program-level gap: the generator
+  runs no compile-channel stage, so eleven id-carrying warnings (`HED1016`, `HED2002`–`HED2004`,
+  `HED3001`–`HED3005`, `HED4002`, `HED4005`, `HED5011`) still never reach a build diagnostic, and
+  phase 6's forwarded-ID fix is correct but **latent** — nothing can fire it. Q6.1's ruling ("if
+  diagnostics can surface early, they must — on both tiers") is therefore unmet for those eleven.
+  Phase 6's assessment: realistically a small phase, not a work item.
+  **Default if unruled:** leave unscheduled and recorded.
+- **Q8.7 — `docs/native-expressions.md` deviation 1 is wrong.** It states `==`/`!=` on "unrelated
+  reference/**mixed** types" compiles to a total `object.Equals`; the runtime guards with
+  `IsReferenceish(left) && IsReferenceish(right)`, so `string == int` is `HED1008` on **both** tiers.
+  Under the authority convention this document outranks both implementations, so the wrong sentence
+  is a live trap: aligning to it would introduce a bug in the name of fixing drift.
+  **Default if unruled:** fix the sentence in a docs pass; no code change.
+- **Q8.8 — `net48`/`net6.0` verification.** `net48` is `Condition="'$(OS)' == 'Windows_NT'"` and has
+  never run on this box; `net6.0` aborts with `MSB4181`. **Drift #9 (`ToString("R")`) can only be
+  observed on `net48`** — `"R"` genuinely is shortest-round-trippable on CoreCLR, so the fix's
+  *sufficiency* is unverified even though a revert is now caught by 23 cases. The user has said
+  Windows will be checked separately. **Default if unruled:** treat drift #9 as unclosed until that
+  run happens.
