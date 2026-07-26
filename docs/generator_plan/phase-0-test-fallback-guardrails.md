@@ -148,17 +148,25 @@ than a test-count ratio.
 > the standing rule D8 records in [testing-standards](../spec/common/testing-standards.md) — it is
 > how new areas are supposed to arrive, not a backfill anyone has done.
 >
-> **Residue owner: [phase 7 — shared test corpus](phase-7-shared-test-corpus.md)** (stage 0
-> implemented 2026-07-26; the migration stages that would close *this* residue are stopped with cause
-> — see its [implementation record](phase-7-shared-test-corpus.md#implementation-record-2026-07-26)
-> and **Q8.42**. The mechanism exists; the backfill does not, so this residue is still open). Its diagnosis is that D8's rule was recorded as prose with no mechanism behind it:
+> **Residue owner: [phase 7 — shared test corpus](phase-7-shared-test-corpus.md)**. **Closed
+> 2026-07-26 by the Q8.42 ruling, not by a backfill.** Stage 0 landed the mechanism; the migration
+> stages that would have moved the remaining feature templates were then ruled *not to run* where they
+> would change what a suite tests. The residue asked that feature templates cross the gauntlet, and the
+> answer is that they do so where the generator-matches-runtime requirement applies and are left alone
+> where it does not — a template whose two tiers are fed different inputs and asserted against different
+> outputs is not one template in two places. So an inline template is no longer a debt item: it is a
+> per-fixture judgement, and the judgement is recorded in the corpus intent table for everything that
+> *is* shared. See the phase's
+> [implementation record](phase-7-shared-test-corpus.md#implementation-record-2026-07-26) and **Q8.42**.
+> Its diagnosis is that D8's rule was recorded as prose with no mechanism behind it:
 > contributing a template means hand-adding a row to `Heddle.Tests.csproj`'s 112-file list and
 > reaching it from another project by assembly-path traversal, so the rule cannot bind. Phase 7
 > supplies the mechanism — one shared corpus home with declared per-entry intent, membership gated
 > by set equality rather than the count this phase's WI4 pinned — and then backfills the feature
 > shapes in reviewable stages. It also records the sharper form of the argument: hand-kept duplicate
 > **test inputs** are hand-kept duplicate **rules** one level up, and this program's own suites carry
-> 18 template literals duplicated character-for-character across the two tiers.
+> 18 template literals duplicated across the two tiers — **corrected in place, 2026-07-26: shared
+> *substrings*, none of them a whole template on either side.**
 
 ### D5 — Intent is declared: `ExpectPrecompiled` is the default, `ExpectDegrade` is explicit
 
