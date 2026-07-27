@@ -54,13 +54,20 @@ namespace Heddle.Tests
             Assert.DoesNotContain("STATIC-IN-LIB", actual); // Imported static text never transfers
         }
 
+        /// <summary>The import that is not there is named, positioned over its own directive, and classifiable. It
+        /// used to arrive as a zero-width marker at the document start — what is left when the read throws and is
+        /// caught far from where it happened.</summary>
         [Fact]
         public void I09_ComposeImportOfMissingFileErrorsAtOrigin()
         {
-            var t = CompileInline("@<<{{ergo-import-does-not-exist.heddle}}");
+            const string directive = "@<<{{ergo-import-does-not-exist.heddle}}";
+            var t = CompileInline(directive);
             Assert.False(t.CompileResult.Success);
-            Assert.Contains(t.CompileResult.Errors,
-                e => e.Position.StartIndex == 0 && e.Position.Length == 0);
+            var error = Assert.Single(t.CompileResult.Errors);
+            Assert.Equal(HeddleDiagnosticIds.ComposeImportUnreadable, error.DiagnosticId);
+            Assert.Equal(0, error.Position.StartIndex);
+            Assert.Equal(directive.Length, error.Position.Length);
+            Assert.Contains("ergo-import-does-not-exist.heddle", error.Error);
         }
     }
 }

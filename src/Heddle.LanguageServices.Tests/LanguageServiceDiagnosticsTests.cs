@@ -73,6 +73,23 @@ namespace Heddle.LanguageServices.Tests
             Assert.Equal(0, d.Length);
         }
 
+        /// <summary>
+        /// A buffer whose import does not exist yet is an ordinary editing state — the path is half typed, or the
+        /// file is mid-rename. The read runs inside the parse tree walk, which the analyzer's own guard does not
+        /// cover, so it threw straight out of the analysis and the document got no diagnostics at all: not for the
+        /// missing import, and not for anything else in it either.
+        /// </summary>
+        [Fact]
+        public void AMissingImportIsReportedInsteadOfEndingTheAnalysis()
+        {
+            var a = Analyze("@model(){{Corpus.Blog}}\n@<<{{no-such-lib.heddle}}@\\\n@(Nonexistent)",
+                rootPath: CorpusDir);
+
+            Assert.Contains(a.Diagnostics, x => x.Id == "HED4009");
+            // The rest of the document is still analysed.
+            Assert.Contains(a.Diagnostics, x => x.Id == "HED0001");
+        }
+
         // ---- Extension parameters surface transitively through HeddleCompiler.Compile ----
 
         [Fact]

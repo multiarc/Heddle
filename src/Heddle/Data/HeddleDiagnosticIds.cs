@@ -131,6 +131,9 @@ namespace Heddle.Data
         /// remaining imports are skipped.</summary>
         public const string ComposeImportFanOut = "HED4008";
 
+        /// <summary>An <c>@&lt;&lt;</c> composition import names a file that cannot be read; the import is skipped.</summary>
+        public const string ComposeImportUnreadable = "HED4009";
+
         /// <summary>A named argument's name is not declared by the target definition's prop layout.</summary>
         public const string UnknownProp = "HED5001";
 

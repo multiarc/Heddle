@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Heddle.Data;
 using Heddle.Exceptions;
@@ -339,7 +340,23 @@ namespace Heddle.Language {
 
                 _settings.ImportExpansionsRemaining--;
 
-                string document = _settings.ReadImport(path);
+                // An import whose file is not there is an ordinary editing state — a rename in progress, a path being
+                // typed — and the read runs inside the tree walk, outside the parser's own guard. Letting it throw
+                // took the whole analysis down and published nothing at all, on a document the reader was mid-edit.
+                string document;
+                try
+                {
+                    document = _settings.ReadImport(path);
+                }
+                catch (Exception e) when (e is IOException || e is UnauthorizedAccessException ||
+                                          e is ArgumentException || e is NotSupportedException)
+                {
+                    CurrentParseContext.Errors.Add(
+                        ($"The '@<<' import '{path}' cannot be read: {e.Message} The import is skipped.")
+                        .ToError(CurrentParseContext.GetAbsoluteBlockPosition(context),
+                            HeddleDiagnosticIds.ComposeImportUnreadable));
+                    return;
+                }
 
                 bool markProvenance = CurrentParseContext.ProvideLanguageFeatures;
                 ImportOrigin origin = null;
