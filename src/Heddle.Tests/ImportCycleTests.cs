@@ -93,6 +93,24 @@ namespace Heddle.Tests
         }
 
         /// <summary>
+        /// An import naming a file that is not there is a document state, not a program fault: the path is being
+        /// typed, or the file is mid-rename. The read happens inside the tree walk, which the parser's own guard
+        /// does not cover, so it threw out of the parse and took every other diagnostic in the document with it.
+        /// </summary>
+        [Fact]
+        public void AnImportThatCannotBeReadIsReportedAndTheRestOfTheDocumentStillParses()
+        {
+            var settings = new ParserSettings { RootPath = System.IO.Path.Combine("<none>", "no-such-directory") };
+
+            var context = DocumentParser.Parse(
+                "@<<{{missing.heddle}}@\\\n@import(){{legacy.heddle}}@\\\ntail", settings, out var clean);
+
+            Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportUnreadable);
+            Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.LegacyImportDirective);
+            Assert.Contains("tail", clean);
+        }
+
+        /// <summary>
         /// Repetition and depth are not the only ways an import graph grows. A document already parsed and popped is
         /// parsed again the next time it is reached, so a graph where every file imports the next one twice is
         /// acyclic, twenty levels deep, and expands to two million parses with nothing reported — and at the depth

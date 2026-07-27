@@ -144,6 +144,7 @@ TYPE Heddle.Data.HeddleDiagnosticIds
   FIELD System.String ComposeImportCycle
   FIELD System.String ComposeImportFanOut
   FIELD System.String ComposeImportNotTopLevel
+  FIELD System.String ComposeImportUnreadable
   FIELD System.String DefinitionHasNoProps
   FIELD System.String DefinitionRendersTwice
   FIELD System.String DuplicatePropArgument

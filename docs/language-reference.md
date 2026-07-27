@@ -1094,6 +1094,12 @@ level** of a document — nesting it inside a subtemplate (an `@if`/`@for` body,
 a definition body) is a compile error (**`HED4004`**), because composition merges definitions and
 re‑bases chains into the document as a whole and has no well‑defined meaning at a nested scope.
 
+An import that names a file the engine cannot read — not there yet, renamed, or a path the platform
+rejects — is a compile error (**`HED4009`**) positioned at the `@<<` directive, naming the read
+failure; that import is skipped and the rest of the document still compiles. This is the ordinary
+state of a document being edited, which is why it is a diagnostic rather than a thrown error: an
+editor analysing the buffer keeps reporting everything else about it.
+
 Imports may nest, and two branches may import the same library. What they may not do is form a
 **cycle** — an import that reaches a document already being imported. That is a compile error
 (**`HED4006`**) naming the chain that closes it; the repeated import is skipped and the rest of the
