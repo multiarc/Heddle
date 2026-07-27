@@ -49,6 +49,34 @@ namespace Heddle.Language
             HeddleParser.HeddleContext tree;
             parser.RemoveErrorListeners();
             parser.AddErrorListener(syntaxErrorListener);
+
+            // Bounds nesting for everything below — the parser's own descent, the tree walk, and the AST and chain
+            // builders, all of which recurse over a structure this keeps shallow enough to survive.
+            var depthGuard = new ParseDepthGuard();
+            parser.AddParseListener(depthGuard);
+            try
+            {
+                return ParseBounded(context, settings, parser, syntaxErrorListener, stream, tokens, errorFrom,
+                    depthGuard);
+            }
+            catch (ParseDepthExceededException)
+            {
+                context.Errors.Add(new HeddleCompileError
+                {
+                    Error = "Template is nested too deeply to compile (limit " + ParseDepthGuard.MaxDepth +
+                            " levels). Reduce the depth of the expression, chain, or block nesting.",
+                    Position = new BlockPosition(0, 0),
+                    DiagnosticId = HeddleDiagnosticIds.TemplateNestedTooDeeply
+                });
+                return string.Empty;
+            }
+        }
+
+        private static string ParseBounded(ParseContext context, ParserSettings settings,
+            HeddleParser parser, HeddleSyntaxErrorListener syntaxErrorListener, AntlrInputStream stream,
+            CommonTokenStream tokens, int errorFrom, ParseDepthGuard depthGuard)
+        {
+            HeddleParser.HeddleContext tree;
             if (!settings.ProvideLanguageFeatures)
             {
                 bool needRetryIfFailed = false;
@@ -59,7 +87,7 @@ namespace Heddle.Language
                 }
                 catch (ParseCanceledException e)
                 {
-                    tree = ParseDiagnosticMode(stream, parser, syntaxErrorListener);
+                    tree = ParseDiagnosticMode(stream, parser, syntaxErrorListener, depthGuard);
                     syntaxErrorListener.Context.Warnings.Add(new HeddleCompileWarning
                     {
                         Error = e.Message,
@@ -71,7 +99,7 @@ namespace Heddle.Language
 
                 if (needRetryIfFailed && context.Errors.Count > errorFrom)
                 {
-                    tree = ParseDiagnosticMode(stream, parser, syntaxErrorListener);
+                    tree = ParseDiagnosticMode(stream, parser, syntaxErrorListener, depthGuard);
                 }
             }
             else
@@ -85,6 +113,9 @@ namespace Heddle.Language
                 return tree.GetText();
             }
 
+            // Before anything recurses over the tree.
+            ParseDepthGuard.EnsureTreeWithinLimit(tree);
+
             var walker = new ParseTreeWalker();
             var listener = new HeddleMainListener(context, settings);
 
@@ -93,32 +124,19 @@ namespace Heddle.Language
                     .Where(t => t.Channel == Lexer.Hidden)
                     .Select(t => new BlockPosition(t)));
 
-            try
-            {
-                walker.Walk(listener, tree);
-            }
-            catch (InsufficientExecutionStackException)
-            {
-                // Expression and chain construction recurse once per operator or level. Deep enough input used to
-                // exhaust the stack, and a StackOverflowException cannot be caught — the process simply died. The
-                // builders now fail catchably instead, and the fault becomes an ordinary compile error.
-                context.Errors.Add(new HeddleCompileError
-                {
-                    Error = "Template is nested too deeply to compile. Reduce the depth of the expression, " +
-                            "chain, or block nesting.",
-                    Position = new BlockPosition(0, 0),
-                    DiagnosticId = HeddleDiagnosticIds.TemplateNestedTooDeeply
-                });
-            }
+            walker.Walk(listener, tree);
 
             return tree.GetText();
         }
 
         private static HeddleParser.HeddleContext ParseDiagnosticMode(AntlrInputStream stream, HeddleParser parser,
-            HeddleSyntaxErrorListener syntaxErrorListener)
+            HeddleSyntaxErrorListener syntaxErrorListener, ParseDepthGuard depthGuard)
         {
             stream.Reset();
             parser.Reset();
+            // The second attempt of a two-stage parse shares the guard with the first, whose count was abandoned
+            // partway when the attempt failed.
+            depthGuard.Reset();
             syntaxErrorListener.Clear();
             parser.Interpreter.PredictionMode = PredictionMode.LL_EXACT_AMBIG_DETECTION;
             return parser.heddle();

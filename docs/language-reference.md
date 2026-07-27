@@ -1098,15 +1098,16 @@ Imports may nest, and two branches may import the same library. What they may no
 (**`HED4006`**) naming the chain that closes it; the repeated import is skipped and the rest of the
 document still compiles.
 
-Depth has a limit in the same spirit, though a partial one. When Heddle's own tree walk runs out of
-stack building a very deep expression or chain, it reports a compile error (**`HED4007`**) instead of
-letting the process die. The threshold is the available stack rather than a fixed count, and sits far
-above anything hand-written.
+Depth has a limit in the same spirit. An expression, chain, or block nesting deeper than **1000 levels**
+is a compile error (**`HED4007`**) rather than something that exhausts the compiler's stack. The limit is
+a fixed count, not a measurement of available memory, so a template behaves the same on every host — and
+it sits far above anything hand-written, where a few dozen levels is already deep. The same bound applies
+at build time in the source generator, where an unbounded parse would take down the compiler rather than
+fail the build.
 
-**Known limit.** Right-associative shapes — a long run of prefix `!` or `-`, deeply nested conditional
-operators, a long `??` chain — recurse inside the parser itself, before Heddle's walk is reached, and
-a sufficiently deep one still terminates the process. Do not compile untrusted templates of unbounded
-depth without an input size limit in front of them.
+**Known limit.** A single run of many thousands of *prefix* operators (`!`, `-`) can still exhaust the
+stack inside the parser's own lookahead, before the depth bound is reached. Roughly 3000 is safe and
+5000 is not. No other shape is affected. If you compile untrusted templates, put a size limit in front.
 
 **`@import(){{ path }}` — removed.** The old compile‑time include
 ([ImportExtension.cs](../src/Heddle/Extensions/Archived/ImportExtension.cs)) merged nothing into the
