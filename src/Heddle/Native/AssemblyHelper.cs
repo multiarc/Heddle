@@ -174,6 +174,10 @@ namespace Heddle.Native
             ReflectionHelper.Reconfigure();
         }
 
+        /// <summary>The former name of <see cref="Register"/>, kept so existing callers keep compiling — the same
+        /// courtesy the public <see cref="HeddleTemplate.Configure(Assembly)"/> extends.</summary>
+        public static void Configure(Assembly assembly) => Register(assembly);
+
         /// <summary>
         /// Adds workspace model assemblies so engine type resolution
         /// (<see cref="ReflectionHelper.ResolveType(string, ICollection{string})"/>) can see their types. The

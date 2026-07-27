@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -6,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Heddle.Data;
 using Heddle.Helpers;
 using Heddle.Native;
 using Heddle.Runtime;
@@ -161,6 +163,69 @@ namespace Heddle.Tests
             Assert.NotNull(ReflectionHelper.ResolveType($"ProbeNamespace{suffix}.{typeName}"));
         }
 
+        /// <summary>
+        /// The engine must not <b>load</b> anything — the half of the promise its siblings do not cover. They pin
+        /// that an observed assembly takes no extension name, which is about scanning; a review showed the deleted
+        /// transitive load walk could be restored lazily and the entire suite stayed green.
+        /// <para>Stated as behaviour: an assembly that is referenced by a loaded assembly but has not itself been
+        /// loaded must still not be loaded after the engine has observed, compiled and rendered. This is also what
+        /// makes the published rule true that naming a model type in an assembly the host has never touched does not
+        /// resolve it: were the closure walked, it would.</para>
+        /// <para><b>What it does not cover.</b> A walk that runs <i>once</i>, at startup, has already run before this
+        /// test can build its probe, so a one-shot closure walk still passes — verified, not assumed. Closing that
+        /// needs a child process comparing the loaded set before and after the engine is first touched, which no
+        /// suite here does. What reddens is any walk on an observation pass, which is where both the deleted walk and
+        /// the review's reimplementation of it lived.</para>
+        /// </summary>
+        [Fact]
+        public void ObservingAndRenderingLoadsNoReferencedAssembly()
+        {
+            var suffix = Guid.NewGuid().ToString("N").Substring(0, 12);
+            var leafPath = WriteProbe(LeafSource(suffix), out var leafName);
+            var referrer = Assembly.LoadFrom(WriteProbeReferencing(suffix, leafPath));
+
+            Assert.Contains(leafName, referrer.GetReferencedAssemblies().Select(n => n.Name));
+            Assert.DoesNotContain(leafName, LoadedNames());
+
+            AssemblyHelper.GetAssemblies();
+            using (var template = new HeddleTemplate("@model(){{dynamic}}@(Length)",
+                       new CompileContext(new TemplateOptions())))
+            {
+                Assert.True(template.CompileResult.Success);
+                template.Generate("probe");
+            }
+
+            Assert.DoesNotContain(leafName, LoadedNames());
+        }
+
+        private static IEnumerable<string> LoadedNames()
+        {
+            return AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetName().Name);
+        }
+
+        private static string LeafSource(string suffix) => $@"
+namespace LeafNamespace{suffix}
+{{
+    public class Leaf{suffix} {{ public int Value {{ get; set; }} }}
+}}";
+
+        /// <summary>Emits an assembly whose public surface uses the leaf's type, so the reference is real and the
+        /// runtime still has no reason to load it until something touches that type.</summary>
+        private static string WriteProbeReferencing(string suffix, string leafPath)
+        {
+            var source = $@"
+namespace ReferrerNamespace{suffix}
+{{
+    public class Referrer{suffix}
+    {{
+        public LeafNamespace{suffix}.Leaf{suffix} Make() => new LeafNamespace{suffix}.Leaf{suffix}();
+    }}
+}}";
+            var references = AssemblyHelper.GetApplicationReferences();
+            references.Add(MetadataReference.CreateFromFile(leafPath));
+            return WriteBytes(Compile(source, references, out var name), name);
+        }
+
         /// <summary>Loads into a collectible context and unloads it, in its own frame. A debug build keeps every
         /// local of a method rooted until that method returns, so doing this inline leaves the context uncollectable
         /// and the loaded-assembly count never falls.</summary>
@@ -207,8 +272,20 @@ namespace ProbeNamespace{suffix}
         /// <summary>Emits the probe to a real file and returns the path, loading nothing.</summary>
         private static string WriteProbe(string source)
         {
-            var bytes = Emit(source, out var assemblyName);
-            var path = Path.Combine(Path.GetTempPath(), assemblyName + ".dll");
+            return WriteProbe(source, out _);
+        }
+
+        private static string WriteProbe(string source, out string assemblyName)
+        {
+            var bytes = Compile(source, AssemblyHelper.GetApplicationReferences(), out assemblyName);
+            return WriteBytes(bytes, assemblyName);
+        }
+
+        /// <summary>Writes beside the test assembly, not to the temp directory: a referenced probe has to be
+        /// <b>findable</b> for the negative assertion to mean the runtime chose not to load it.</summary>
+        private static string WriteBytes(byte[] bytes, string assemblyName)
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, assemblyName + ".dll");
             File.WriteAllBytes(path, bytes);
             return path;
         }
@@ -220,11 +297,16 @@ namespace ProbeNamespace{suffix}
 
         private static byte[] Emit(string source, out string assemblyName)
         {
+            return Compile(source, AssemblyHelper.GetApplicationReferences(), out assemblyName);
+        }
+
+        private static byte[] Compile(string source, List<MetadataReference> references, out string assemblyName)
+        {
             assemblyName = "Probe" + Guid.NewGuid().ToString("N");
             var compilation = CSharpCompilation.Create(
                 assemblyName,
                 new[] { CSharpSyntaxTree.ParseText(source) },
-                AssemblyHelper.GetApplicationReferences(),
+                references,
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
             using var stream = new MemoryStream();

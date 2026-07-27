@@ -29,7 +29,7 @@ namespace Heddle.Performance
         [GlobalSetup]
         public void Setup()
         {
-            AssemblyHelper.Register(typeof(Program).Assembly);
+            AssemblyHelper.Configure(typeof(Program).Assembly);
             _home = new HeddleTemplate(new CompileContext(new TemplateOptions("home")
             {
                 FileNamePostfix = ".heddle",
