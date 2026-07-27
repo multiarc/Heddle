@@ -37,42 +37,6 @@ namespace Heddle.Runtime
 
         private static readonly HeddleTemplate PreparseGenerator;
 
-        private static readonly ConcurrentDictionary<string, PreparseResult> PrecompilationCache =
-            new ConcurrentDictionary<string, PreparseResult>();
-
-        /// <summary>
-        /// One preparse outcome: what the expression evaluated to, its type, and the diagnostics producing it raised.
-        /// <para>The diagnostics belong to the entry because the same generated code must report the same thing every
-        /// time it is compiled. Caching only the value made diagnostics an accident of ordering — the first caller
-        /// received them and every later one silently got none.</para>
-        /// <para><b>Only the message survives; the position does not.</b> The key is the generated C#, which says
-        /// nothing about where in which document the expression sits, so replaying a stored position stamped the
-        /// first caller's coordinates onto every later one — a one-line document being told its error is on line
-        /// four. Each caller re-stamps its own. This was a real regression the first time these were cached, and it
-        /// was worse than the fault it replaced: an editor navigates by position.</para>
-        /// <para><see cref="Generation"/> is the observed-assembly generation the entry was produced under. A
-        /// failure that only failed because an assembly had not been registered yet must not outlive the
-        /// registration — cached forever, it turned a fault that healed on the next compile into a permanent one
-        /// decided by load order.</para>
-        /// </summary>
-        private sealed class PreparseResult
-        {
-            public PreparseResult(OptionalValue<object> value, ExType type, string[] diagnostics, int generation)
-            {
-                Value = value;
-                Type = type;
-                Diagnostics = diagnostics;
-                Generation = generation;
-            }
-
-            public OptionalValue<object> Value { get; }
-            public ExType Type { get; }
-            public string[] Diagnostics { get; }
-            public int Generation { get; }
-
-            public bool Failed => Diagnostics.Length > 0;
-        }
-
         static CSharpContext()
         {
             string document = null;
@@ -199,13 +163,13 @@ namespace Heddle.Runtime
                     InitErrors.Errors);
             var generatedCode = PreparseGenerator.Generate(expressionOptions);
             var generation = Native.AssemblyHelper.Generation;
-            if (!PrecompilationCache.TryGetValue(generatedCode, out var cached) || IsStale(cached, generation))
+            if (!PreparseCache.TryGet(generatedCode, out var cached) || IsStale(cached, generation))
             {
                 var firstDiagnostic = context.CompileErrors.Count;
                 var preparsed = Preparse(generatedCode, context, expressionOptions);
                 cached = new PreparseResult(preparsed.Item1, preparsed.Item2,
                     context.CompileErrors.Skip(firstDiagnostic).Select(e => e.Error).ToArray(), generation);
-                PrecompilationCache[generatedCode] = cached;
+                PreparseCache.Store(generatedCode, cached);
             }
             else
             {

@@ -210,11 +210,16 @@ namespace Heddle.Native
 
         /// <summary>
         /// Removes every assembly registered by <see cref="RegisterModelAssemblies"/> and reconfigures, so a
-        /// collectible model context can actually collect after <c>Unload()</c>. C#-tier metadata references are held
-        /// only in a weak per-assembly cache and need no eviction here.
+        /// collectible model context can actually collect after <c>Unload()</c>. The C#-tier preparse cache is
+        /// dropped too: a cached success carries the expression's result type, which for a workspace model type
+        /// belongs to the context being unloaded. C#-tier metadata references need no eviction, but they do decide
+        /// <i>when</i> the unload completes — a reference built over an assembly's in-memory metadata holds that
+        /// assembly loaded while a caller still has it (see <see cref="RoslynReferenceProvider"/>), so the context
+        /// goes once the last compilation using it does.
         /// </summary>
         public static void UnregisterModelAssemblies()
         {
+            Runtime.PreparseCache.Clear();
             lock (Assemblies)
             {
                 foreach (var assembly in ModelAssemblies)

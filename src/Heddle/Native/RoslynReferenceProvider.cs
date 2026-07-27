@@ -6,9 +6,15 @@ using Microsoft.CodeAnalysis;
 namespace Heddle.Native
 {
     /// <summary>
-    /// Isolates Roslyn types for trimming when <c>Heddle.CSharpTierEnabled</c> is off. Caches references per
-    /// <see cref="Assembly"/> in <see cref="ConditionalWeakTable{TKey,TValue}"/>, avoiding pinning of
-    /// collectible model assemblies — reload-leak invariant preserved without manual eviction.
+    /// Isolates Roslyn types for trimming when <c>Heddle.CSharpTierEnabled</c> is off, and caches one
+    /// <see cref="MetadataReference"/> per <see cref="Assembly"/>.
+    /// <para><b>The cache does not by itself decide when an assembly can go.</b> A reference built over an
+    /// assembly's in-memory metadata points at memory the runtime frees when the assembly's load context unloads,
+    /// so the assembly is anchored to the reference (see <see cref="Owners"/>): while any caller still holds a
+    /// reference, its assembly stays loaded. That defers a collectible context's unload until the last compilation
+    /// built against it is finished; it does not prevent one. The engine holds no reference of its own — the
+    /// per-assembly cache is keyed weakly and the two tables form a cycle the collector resolves — so an unload
+    /// completes as soon as callers let go.</para>
     /// </summary>
     internal static class RoslynReferenceProvider
     {
@@ -60,7 +66,8 @@ namespace Heddle.Native
             return reference;
         }
 
-        /// <summary>Keeps an assembly alive for exactly as long as a reference built over its metadata is.</summary>
+        /// <summary>Keeps an assembly alive for exactly as long as a reference built over its metadata is — the
+        /// deliberate trade: a deferred unload rather than a read of freed metadata.</summary>
         private static readonly ConditionalWeakTable<MetadataReference, Assembly> Owners =
             new ConditionalWeakTable<MetadataReference, Assembly>();
 
@@ -96,9 +103,10 @@ namespace Heddle.Native
         /// Builds a reference from the metadata the runtime already has mapped, for assemblies that exist only in
         /// memory — every assembly in a single-file or WASM publish, and the byte-loaded model and extension
         /// assemblies the language service hands us.
-        /// <para>The blob is owned by the runtime and lives as long as the assembly does. Nothing needs to free it,
-        /// and holding the reference in a table keyed weakly by that same assembly keeps the two lifetimes together:
-        /// a collectible context can still unload, taking its references with it.</para>
+        /// <para>The blob is owned by the runtime and freed when the assembly's load context unloads, so a reference
+        /// over it is only safe while the assembly is loaded. That is what <see cref="Owners"/> guarantees; the
+        /// alternative is copying the metadata, which would cost a second image of every in-memory assembly — every
+        /// assembly at all in a single-file or WASM publish.</para>
         /// </summary>
         private static unsafe MetadataReference FromLoadedImage(Assembly assembly)
         {
