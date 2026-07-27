@@ -14,12 +14,12 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// B2-R10 — <see cref="TemplateOptions.Encoder"/> behavior: a custom encoder is invoked at every HTML-encode site
+    /// <see cref="TemplateOptions.Encoder"/> behavior: a custom encoder is invoked at every HTML-encode site
     /// (Html-profile bare output and <c>[EncodeOutput]</c> extensions), never at non-encode sites (<c>@raw</c>,
     /// <see cref="OutputProfile.Text"/> bare output, literal text); the <c>null</c> default is byte-identical to the
-    /// legacy <see cref="WebUtility.HtmlEncode(string)"/> path (B2-R3); the encoder flows through the span/UTF-8 sink
-    /// paths; parallel renders over one options instance are safe (B2-R7 thread-model); and <c>Encoder</c> keys the
-    /// options identity by reference (B2-R6).
+    /// legacy <see cref="WebUtility.HtmlEncode(string)"/> path; the encoder flows through the span/UTF-8 sink
+    /// paths; parallel renders over one options instance are safe; and <c>Encoder</c> keys the options identity by
+    /// reference.
     /// </summary>
     public class EncoderOptionTests
     {

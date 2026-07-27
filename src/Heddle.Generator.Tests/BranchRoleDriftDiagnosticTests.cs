@@ -184,7 +184,7 @@ namespace OkBranch
         public void Hed7016DoesNotFireForCompliantTrioOrBuiltIns()
         {
             Assert.Empty(RunGenerator(CompliantTrioSource).Where(d => d.Id == "HED7016"));
-            // No custom source at all — only the engine built-ins (all R11-compliant).
+            // No custom source at all — only the engine built-ins, which all carry the pairing.
             Assert.Empty(RunGenerator(null).Where(d => d.Id == "HED7016"));
         }
 
