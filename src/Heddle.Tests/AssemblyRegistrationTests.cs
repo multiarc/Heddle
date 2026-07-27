@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.Loader;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Heddle.Helpers;
@@ -123,6 +125,55 @@ namespace Heddle.Tests
             Assert.NotNull(ReflectionHelper.ResolveType($"ProbeNamespace{suffix}.{typeName}"));
         }
 
+        /// <summary>
+        /// The same promise as <see cref="AnAssemblyLoadedAfterTheFirstResolutionStillResolves"/>, reached the way it
+        /// actually broke. Observation skipped its work whenever the loaded-assembly <b>count</b> matched the last
+        /// pass, and a count cannot tell "nothing happened" from "one assembly went away and another arrived" — the
+        /// exact shape of an unloaded collectible context, which is a scenario the engine supports and which the
+        /// language service performs on every model reload. The assembly loaded in that window stayed invisible, and
+        /// stayed invisible on retry, until some unrelated later load disturbed the count.
+        /// </summary>
+        [Fact]
+        public void AnAssemblyLoadedAfterACollectibleUnloadStillResolves()
+        {
+            Assert.NotNull(ReflectionHelper.ResolveType("System.DateTime"));
+
+            // Everything that could itself observe happens up front. Compiling the probe reads the reference set, so
+            // emitting it after the unload would disturb the count and repair the very state under test.
+            var suffix = Guid.NewGuid().ToString("N").Substring(0, 12);
+            var typeName = "AfterUnload" + suffix;
+            var probePath = WriteProbe(ProbeSource(suffix, "afterunload" + suffix, typeName));
+            var scratchBytes = Emit(ProbeSource(Guid.NewGuid().ToString("N").Substring(0, 12), "s", "S"), out _);
+
+            var unloaded = LoadIntoCollectibleContextAndUnload(scratchBytes);
+            for (var i = 0; i < 12 && unloaded.IsAlive; i++)
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+            }
+
+            Assert.False(unloaded.IsAlive,
+                "the collectible context must actually collect, or the count never drops and nothing is being tested");
+
+            // One assembly gone, one arriving: the count lands exactly where observation last left it.
+            Assembly.LoadFrom(probePath);
+
+            Assert.NotNull(ReflectionHelper.ResolveType($"ProbeNamespace{suffix}.{typeName}"));
+        }
+
+        /// <summary>Loads into a collectible context and unloads it, in its own frame. A debug build keeps every
+        /// local of a method rooted until that method returns, so doing this inline leaves the context uncollectable
+        /// and the loaded-assembly count never falls.</summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static WeakReference LoadIntoCollectibleContextAndUnload(byte[] assembly)
+        {
+            var context = new AssemblyLoadContext("collectible-probe", isCollectible: true);
+            context.LoadFromStream(new MemoryStream(assembly));
+            AssemblyHelper.GetAssemblies();
+            context.Unload();
+            return new WeakReference(context);
+        }
+
         [Fact]
         public void RegisterRejectsNull()
         {
@@ -150,10 +201,16 @@ namespace ProbeNamespace{suffix}
         /// non-empty <see cref="Assembly.Location"/> — the shape the observation path accepts.</summary>
         private static Assembly CompileToFileAndLoad(string source)
         {
+            return Assembly.LoadFrom(WriteProbe(source));
+        }
+
+        /// <summary>Emits the probe to a real file and returns the path, loading nothing.</summary>
+        private static string WriteProbe(string source)
+        {
             var bytes = Emit(source, out var assemblyName);
             var path = Path.Combine(Path.GetTempPath(), assemblyName + ".dll");
             File.WriteAllBytes(path, bytes);
-            return Assembly.LoadFrom(path);
+            return path;
         }
 
         private static Assembly CompileAndLoad(string source)

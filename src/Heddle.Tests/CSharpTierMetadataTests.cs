@@ -41,21 +41,24 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// The whole reference set, taken the way the C#-tier compile path takes it, must not thin out when the
-        /// assemblies behind it are file-less. Pins the population rather than one probe: a provider that special-cases
-        /// a single assembly but still drops framework metadata would leave the tier just as dead.
+        /// Every non-dynamic assembly offered must come back as a reference, whether or not it has a file. Pins the
+        /// population rather than one probe: what killed the tier was not a single dropped assembly but a rule that
+        /// silently thinned the whole set, and a set short by one framework assembly fails just as total.
         /// </summary>
         [Fact]
-        public void NoObservedAssemblyIsDroppedFromTheReferenceSet()
+        public void NoAssemblyIsDroppedFromTheReferenceSet()
         {
             var observed = AssemblyHelper.GetAssemblies();
-            int expected;
+            List<Assembly> offered;
             lock (observed)
             {
-                expected = observed.Count(a => a != null && !a.IsDynamic);
+                offered = observed.Where(a => a != null && !a.IsDynamic).ToList();
             }
 
-            Assert.Equal(expected, AssemblyHelper.GetApplicationReferences().Count);
+            Assert.NotEmpty(offered);
+            offered.Add(Assembly.Load(EmitProbe()));
+
+            Assert.Equal(offered.Count, RoslynReferenceProvider.Build(offered).Count);
         }
 
         /// <summary>
@@ -93,11 +96,14 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// Compiling the same broken template twice in one process must report the same thing twice. The C#-tier
-        /// preparse cache used to store the value and drop the diagnostics, so the first caller received the errors
-        /// and every later one received none, fell through to a different compile path, and got a different list —
-        /// diagnostics decided by process history, which is exactly what a long-running host or an editor recompiling
-        /// on each keystroke experiences.
+        /// Compiling the same broken template twice in one process must report the same thing twice — a long-running
+        /// host, and an editor recompiling on each keystroke, get the second answer far more often than the first.
+        /// <para><b>This is a guard, not a red-verified pin, and the distinction is worth stating.</b> The preparse
+        /// cache did drop its diagnostics, so a repeat fell through to the full compile instead of replaying them;
+        /// that is fixed. But with the public keys no longer corrupt, both paths now produce identical text and
+        /// positions, so removing the replay leaves this test green. It is kept because the property it states is the
+        /// one the two paths must keep agreeing on, and it is the divergence — not the mechanism — that would
+        /// matter.</para>
         /// </summary>
         [Fact]
         public void TheSameFailingExpressionReportsTheSameDiagnosticsEveryTime()

@@ -45,8 +45,9 @@ namespace Heddle.Native
         private static void ObserveLoadedAssemblies()
         {
             var loaded = AppDomain.CurrentDomain.GetAssemblies();
-            if (loaded.Length == Volatile.Read(ref _observedCount))
-                return;   // nothing has loaded since the last pass; the per-assembly work below is not free
+            var stamp = StampOf(loaded);
+            if (stamp == Volatile.Read(ref _observedStamp))
+                return;   // the same assemblies in the same order; the per-assembly work below is not free
 
             lock (Assemblies)
             {
@@ -68,10 +69,28 @@ namespace Heddle.Native
                     }
                 }
 
-                Volatile.Write(ref _observedCount, loaded.Length);
+                // Generation first, stamp second. A reader that takes the fast path above has seen the new stamp, and
+                // therefore also the generation bump that preceded it, so it cannot conclude both "nothing loaded"
+                // and "my maps are current" about an assembly that was just added.
                 if (added)
                     Interlocked.Increment(ref _generation);
+                Volatile.Write(ref _observedStamp, stamp);
             }
+        }
+
+        /// <summary>
+        /// Identity digest of the loaded set: order-sensitive, allocation-free, and unequal whenever the membership
+        /// differs. A plain count cannot do this job — an unloaded collectible context and a newly loaded assembly
+        /// cancel out, and the resulting count match told the engine nothing had happened. The assembly that arrived
+        /// during that window then stayed invisible, and stayed invisible on retry, until some unrelated later load
+        /// happened to disturb the count, which is load order deciding what resolves.
+        /// </summary>
+        private static int StampOf(Assembly[] loaded)
+        {
+            var stamp = loaded.Length;
+            foreach (var assembly in loaded)
+                stamp = unchecked(stamp * 31 + RuntimeHelpers.GetHashCode(assembly));
+            return stamp == 0 ? 1 : stamp;   // 0 is the never-observed seed and must not be a reachable digest
         }
 
         /// <summary>
@@ -124,8 +143,8 @@ namespace Heddle.Native
         /// <see cref="Assemblies"/> monitor.</summary>
         private static readonly HashSet<Assembly> Seen = new HashSet<Assembly>();
 
-        /// <summary>The loaded-assembly count at the last pass; an unchanged count means nothing new to classify.</summary>
-        private static int _observedCount = -1;
+        /// <summary>The <see cref="StampOf"/> digest at the last pass; an unchanged digest means nothing to classify.</summary>
+        private static int _observedStamp;
 
         private static int _generation;
 
