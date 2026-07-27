@@ -198,6 +198,7 @@ namespace Heddle.Data
             Add(HeddleDiagnosticIds.ExtensionNotFound, "Extension not found", error);
             Add(HeddleDiagnosticIds.SyntaxError, "Template syntax error", error);
             Add(HeddleDiagnosticIds.ReturnTypeMismatch, "Chained value type mismatch", error);
+            Add(HeddleDiagnosticIds.CompilationFailed, "Compilation failed", error);
 
             Add(HeddleDiagnosticIds.UnknownFunction, "Unknown function", error);
             Add(HeddleDiagnosticIds.ExtensionCalledAsFunction, "Extension called as a function", error);

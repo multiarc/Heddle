@@ -52,7 +52,7 @@ namespace Heddle.Tests
         {
             var expected = new HashSet<string>
             {
-                "HED0001", "HED0002", "HED0003", "HED0004",
+                "HED0001", "HED0002", "HED0003", "HED0004", "HED0005",
                 "HED1001", "HED1002", "HED1003", "HED1004", "HED1005", "HED1006", "HED1007",
                 "HED1008", "HED1009", "HED1010", "HED1011", "HED1012", "HED1013", "HED1014",
                 "HED1015", "HED1016", "HED1017",

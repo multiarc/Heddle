@@ -140,6 +140,7 @@ TYPE Heddle.Data.HeddleDiagnosticIds
   FIELD System.String BuildUnresolvableMember
   FIELD System.String BuildUnresolvableModelType
   FIELD System.String CoalesceLeftNotNullable
+  FIELD System.String CompilationFailed
   FIELD System.String ComposeImportCycle
   FIELD System.String ComposeImportFanOut
   FIELD System.String ComposeImportNotTopLevel

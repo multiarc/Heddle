@@ -22,6 +22,10 @@ namespace Heddle.Data
         /// <summary>A chained/model return type is assignable to none of an extension's declared <c>[DataType]</c>s.</summary>
         public const string ReturnTypeMismatch = "HED0004";
 
+        /// <summary>Compiling one call in the document failed for a reason no other diagnostic covers; the attached
+        /// <see cref="HeddleCompileError.Exception"/> is the fault.</summary>
+        public const string CompilationFailed = "HED0005";
+
         /// <summary>A native-expression function name matched neither the registry nor an extension/definition.</summary>
         public const string UnknownFunction = "HED1001";
 

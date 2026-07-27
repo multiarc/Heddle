@@ -104,12 +104,7 @@ namespace Heddle.Runtime
                     }
                     catch (Exception e)
                     {
-                        compileScope.CompileErrors.Add(new HeddleCompileError
-                        {
-                            Exception = e,
-                            Position = item.Position,
-                            Error = $"Error while compiling {item.ExtensionName}"
-                        });
+                        compileScope.CompileErrors.Add(CompileItemFault(item, e));
                     }
 
                     hasProducerToRight = true;
@@ -148,12 +143,7 @@ namespace Heddle.Runtime
                     }
                     catch (Exception e)
                     {
-                        compileScope.CompileErrors.Add(new HeddleCompileError
-                        {
-                            Exception = e,
-                            Position = item.Position,
-                            Error = $"Error while compiling {item.ExtensionName}"
-                        });
+                        compileScope.CompileErrors.Add(CompileItemFault(item, e));
                     }
 
                     hasProducerToRight = true;
@@ -166,6 +156,26 @@ namespace Heddle.Runtime
             }
 
             return new RuntimeDocument(workingDocument, documentElements.ToArray(), compileScope);
+        }
+
+        /// <summary>
+        /// The last resort for a call that failed to compile for a reason no rule anticipated. It carries an id like
+        /// every other compile error, so a host can classify it, and it says what failed and why: without the
+        /// exception's own message the text was "Error while compiling " for an unnamed call, which told a reader
+        /// nothing at all.
+        /// </summary>
+        private static HeddleCompileError CompileItemFault(OutputItem item, Exception exception)
+        {
+            var subject = string.IsNullOrEmpty(item.ExtensionName)
+                ? "an expression"
+                : $"'@{item.ExtensionName}'";
+            return new HeddleCompileError
+            {
+                Exception = exception,
+                Position = item.Position,
+                DiagnosticId = HeddleDiagnosticIds.CompilationFailed,
+                Error = $"Compiling {subject} failed: {exception.Message}"
+            };
         }
 
         private enum OrphanState
