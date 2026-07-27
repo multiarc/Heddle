@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Threading;
 using Heddle.Data;
 using Heddle.Language;
 using Xunit;
@@ -21,9 +22,49 @@ namespace Heddle.Tests
     {
         private const int PastTheLimit = ParseDepthGuardLimit + 500;
 
-        /// <summary>Mirrors the engine's own limit; a copy rather than a link, because a test that reads the value it
-        /// is checking against cannot notice the value changing.</summary>
-        private const int ParseDepthGuardLimit = 1000;
+        /// <summary>
+        /// Mirrors the engine's own limit. The copy exists so a change to the production value cannot pass
+        /// unnoticed — and it failed at that once already: the value moved 1000 → 300 while this constant stayed at
+        /// 1000, and because the test depths are far past both, nothing went red. A copy only notices if something
+        /// compares it, which is what <see cref="TheGuardsLimitIsTheValueMeasuredAgainstTheSmallestSupportedStack"/>
+        /// now does.
+        /// </summary>
+        private const int ParseDepthGuardLimit = 300;
+
+        /// <summary>
+        /// The limit is not an arbitrary round number: it is chosen to sit below the depth at which the smallest
+        /// stack the engine can be hosted on runs out, so the bound is reached before the process dies. Moving it
+        /// upward silently — which is exactly what happened while this went unasserted — restores the crash on a
+        /// 1 MB thread, and no other test in the repo observes the value at all.
+        /// </summary>
+        [Fact]
+        public void TheGuardsLimitIsTheValueMeasuredAgainstTheSmallestSupportedStack()
+        {
+            Assert.Equal(ParseDepthGuardLimit, ParseDepthGuard.MaxDepth);
+        }
+
+        /// <summary>
+        /// The property the limit exists for, stated directly: on a 1 MB stack — the Windows default, and what the
+        /// thread pool hands out — a parser-recursive shape past the bound must report rather than kill the process.
+        /// The measured crash depth there is just over 300, so this is the margin the number was chosen for.
+        /// </summary>
+        [Theory]
+        [InlineData("!")]
+        [InlineData("~")]
+        public void APrefixRunPastTheLimitIsReportedOnASmallStack(string op)
+        {
+            var document = "@model(){{dynamic}}@(" + new string(op[0], ParseDepthGuardLimit + 100) + "true)";
+            ParseContext context = null;
+
+            var thread = new Thread(
+                () => context = DocumentParser.Parse(document, new ParserSettings { RootPath = "<none>" }, out _),
+                1024 * 1024);
+            thread.Start();
+            thread.Join();
+
+            Assert.NotNull(context);
+            Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.TemplateNestedTooDeeply);
+        }
 
         [Fact]
         public void APrefixOperatorRunIsReportedInsteadOfKillingTheProcess()

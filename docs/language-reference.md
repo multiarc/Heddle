@@ -1116,12 +1116,12 @@ a measurement of available memory, so a template behaves the same on every host.
 The same bounds apply at build time in the source generator, where an unbounded parse would take down the
 compiler rather than fail the build.
 
-**Known limit.** Prefix operators (`!`, `-`, `+`, `~`) and the right-associative `?:` and `??` recurse
-inside the parser's own lookahead, which consumes stack faster than the bound counts it. The 300-level
-bound is set below the point where a 1 MB thread — the Windows and thread-pool default — runs out, so
-these are reported rather than fatal there; a host running the compiler on a smaller stack than that
-should reduce its input size accordingly. If you compile untrusted templates, put a size limit in front
-of the compiler regardless.
+**Why the limit is where it is.** Prefix operators (`!`, `-`, `+`, `~`) and the right-associative `?:`
+and `??` are parsed by recursive descent, so each one costs a stack frame — far more stack per level than
+a block does. On a 1 MB thread, which is the Windows and thread-pool default, those shapes run out at a
+little over 300 levels, so the bound is set just below that and is reached first. A host that runs the
+compiler on a smaller stack should reduce its input size to match. If you compile untrusted templates,
+put a size limit in front of the compiler regardless.
 
 **`@import(){{ path }}` — removed.** The old compile‑time include
 ([ImportExtension.cs](../src/Heddle/Extensions/Archived/ImportExtension.cs)) merged nothing into the
