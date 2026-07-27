@@ -226,7 +226,8 @@ namespace Heddle.Tests
             for (var round = 0; round < 3; round++)
             {
                 DocumentParser.Parse("@<<{{lib.heddle}}@\\\nroot", settings, out _);
-                Assert.Equal(ParserSettings.MaxImportExpansions - 1, settings.ImportExpansionsRemaining);
+                Assert.Equal(ParserSettings.MaxImportExpansions - 1,
+                    ImportParseState.Current.ImportExpansionsRemaining);
             }
         }
 
@@ -320,6 +321,52 @@ namespace Heddle.Tests
                     context.Errors.Any(e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportCycle),
                     "the cycle went unreported on round " + round);
             }
+        }
+
+        /// <summary>
+        /// <see cref="ParserSettings"/> is a public configuration object a host is invited to build once and reuse,
+        /// and <see cref="DocumentParser.Parse(string, ParserSettings, out string)"/> takes it. The import stack and
+        /// the report budgets lived on it, so two documents parsing at once shared them: each saw the other's
+        /// imports as its own and reported cycles and depth limits that were not there, and the cycle message —
+        /// built by joining that stack while another thread appended to it — threw straight out of the parse.
+        /// </summary>
+        [Fact]
+        public void OneSettingsObjectServesConcurrentParsesWithoutCrossTalk()
+        {
+            var library = new Dictionary<string, string>
+            {
+                ["a.heddle"] = "@<<{{a1.heddle}}@\\\n",
+                ["a1.heddle"] = "@<<{{a2.heddle}}@\\\n",
+                ["a2.heddle"] = "@%<a>{{A}} :: dynamic%@",
+                ["b.heddle"] = "@<<{{b1.heddle}}@\\\n",
+                ["b1.heddle"] = "@<<{{b2.heddle}}@\\\n",
+                ["b2.heddle"] = "@%<b>{{B}} :: dynamic%@"
+            };
+            var settings = new ParserSettings
+            {
+                RootPath = "<none>",
+                ImportReader = path => library.TryGetValue(path, out var text) ? text : string.Empty
+            };
+
+            var faults = new System.Collections.Concurrent.ConcurrentQueue<string>();
+            System.Threading.Tasks.Parallel.For(0, 64, i =>
+            {
+                var root = i % 2 == 0 ? "a" : "b";
+                try
+                {
+                    var context = DocumentParser.Parse("@<<{{" + root + ".heddle}}@\\\nroot", settings, out _);
+                    foreach (var error in context.Errors)
+                        faults.Enqueue(error.DiagnosticId + ": " + error.Error);
+                }
+                catch (Exception e)
+                {
+                    faults.Enqueue(e.GetType().Name + ": " + e.Message);
+                }
+            });
+
+            Assert.True(faults.IsEmpty,
+                "a shared settings object must not make one parse's imports visible to another; " + faults.Count +
+                " faults, first: " + faults.FirstOrDefault());
         }
 
         private static ParseContext Parse(string document, IReadOnlyDictionary<string, string> library)

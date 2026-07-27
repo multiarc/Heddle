@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 
 namespace Heddle.Language
@@ -42,16 +41,6 @@ namespace Heddle.Language
         /// </summary>
         public Func<string, string> ImportIdentifier { get; set; }
 
-        /// <summary>
-        /// The imports currently being parsed, outermost first. An <c>@&lt;&lt;</c> import parses the imported
-        /// document in place, so a document that imports its way back to one already on this list would recurse until
-        /// the stack ran out — and a <c>StackOverflowException</c> cannot be caught, so a template typo took the whole
-        /// process down instead of producing a compile error.
-        /// <para>Held here because this object is what threads through the nested parse. Parsing a document is
-        /// single-threaded, and every push is unwound in a <c>finally</c>.</para>
-        /// </summary>
-        internal List<string> ActiveImports { get; } = new List<string>();
-
         /// <summary>Reads the content of an <c>@&lt;&lt;</c> import, through <see cref="ImportReader"/> when set and
         /// through the default file read otherwise (the pre-seam behavior).</summary>
         internal string ReadImport(string importPath)
@@ -86,8 +75,6 @@ namespace Heddle.Language
         /// </summary>
         internal const int DefaultCycleReportBudget = 32;
 
-        internal int CycleReportBudget { get; set; } = DefaultCycleReportBudget;
-
         /// <summary>
         /// How many <c>@&lt;&lt;</c> imports one top-level parse will expand in total. Depth is not the only way an
         /// import graph grows: a document that imports the same file twice, and whose imports do the same, is
@@ -98,25 +85,6 @@ namespace Heddle.Language
         /// a template renders; the total is bounded instead, and the overflow is reported.</para>
         /// </summary>
         internal const int MaxImportExpansions = 1024;
-
-        internal int ImportExpansionsRemaining { get; set; } = MaxImportExpansions;
-
-        /// <summary>Whether this parse has already described the fan-out overflow. Every import past the bound is
-        /// skipped, and there can be very many of them; the reader needs to be told once.</summary>
-        internal bool ImportFanOutReported { get; set; }
-
-        /// <summary>Restores the per-parse budgets at the start of a top-level parse. Without this they were per
-        /// settings object rather than per parse, so a host reusing one — the type and the overload taking it are
-        /// both public — stopped describing cycles altogether after the thirty-second, while still skipping
-        /// them.</summary>
-        internal void BeginTopLevelParse()
-        {
-            if (ActiveImports.Count != 0)
-                return;
-            CycleReportBudget = DefaultCycleReportBudget;
-            ImportExpansionsRemaining = MaxImportExpansions;
-            ImportFanOutReported = false;
-        }
 
         /// <summary>
         /// The identity an <c>@&lt;&lt;</c> import is recognised by when detecting a cycle — <see cref="ImportIdentifier"/>

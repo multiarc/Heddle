@@ -292,12 +292,13 @@ namespace Heddle.Language {
             if (!string.IsNullOrWhiteSpace(path))
             {
                 var importKey = _settings.ImportIdentity(path);
-                if (_settings.ActiveImports.Contains(importKey))
+                var parseState = ImportParseState.Current;
+                if (parseState.ActiveImports.Contains(importKey))
                 {
-                    if (_settings.CycleReportBudget > 0)
+                    if (parseState.CycleReportBudget > 0)
                     {
-                        _settings.CycleReportBudget--;
-                        var chain = string.Join(" -> ", _settings.ActiveImports.Concat(new[] { importKey }));
+                        parseState.CycleReportBudget--;
+                        var chain = string.Join(" -> ", parseState.ActiveImports.Concat(new[] { importKey }));
                         CurrentParseContext.Errors.Add(
                             $"A '@<<' composition import cycle: {chain}. The repeated import is skipped."
                                 .ToError(CurrentParseContext.GetAbsoluteBlockPosition(context),
@@ -309,7 +310,7 @@ namespace Heddle.Language {
 
                 // Depth, which the cycle check above cannot see: a chain of thousands of distinct files contains no
                 // repeat and still parses itself onto the floor, because each import parses in place.
-                if (_settings.ActiveImports.Count >= ParserSettings.MaxImportDepth)
+                if (parseState.ActiveImports.Count >= ParserSettings.MaxImportDepth)
                 {
                     CurrentParseContext.Errors.Add(
                         ($"'@<<' composition imports nest deeper than {ParserSettings.MaxImportDepth} levels. " +
@@ -322,11 +323,11 @@ namespace Heddle.Language {
                 // Fan-out, which neither the cycle guard nor the depth guard can see: a document already parsed and
                 // popped is parsed again every time it is reached, so a shallow acyclic graph that imports each
                 // file twice expands two to the power of its levels.
-                if (_settings.ImportExpansionsRemaining <= 0)
+                if (parseState.ImportExpansionsRemaining <= 0)
                 {
-                    if (!_settings.ImportFanOutReported)
+                    if (!parseState.FanOutReported)
                     {
-                        _settings.ImportFanOutReported = true;
+                        parseState.FanOutReported = true;
                         CurrentParseContext.Errors.Add(
                             ($"This document expands more than {ParserSettings.MaxImportExpansions} '@<<' " +
                              "composition imports. Every repeat of an import is parsed again, so a file imported " +
@@ -338,7 +339,7 @@ namespace Heddle.Language {
                     return;
                 }
 
-                _settings.ImportExpansionsRemaining--;
+                parseState.ImportExpansionsRemaining--;
 
                 // An import whose file is not there is an ordinary editing state — a rename in progress, a path being
                 // typed — and the read runs inside the tree walk, outside the parser's own guard. Letting it throw
@@ -376,14 +377,14 @@ namespace Heddle.Language {
                     isolatedContext.ImportOrigin = origin;
                 isolatedContext.OutputChains.Clear();
                 isolatedContext.SkippedTokens.Clear();
-                _settings.ActiveImports.Add(importKey);
+                parseState.ActiveImports.Add(importKey);
                 try
                 {
                     DocumentParser.Parse(document, isolatedContext, _settings/*, true*/);
                 }
                 finally
                 {
-                    _settings.ActiveImports.RemoveAt(_settings.ActiveImports.Count - 1);
+                    parseState.ActiveImports.RemoveAt(parseState.ActiveImports.Count - 1);
                 }
                 CurrentParseContext.DefaultChains.Clear();
                 CurrentParseContext.DefaultChains.AddRange(isolatedContext.DefaultChains);
