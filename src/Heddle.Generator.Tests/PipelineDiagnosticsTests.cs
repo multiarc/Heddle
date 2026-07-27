@@ -162,6 +162,26 @@ namespace Heddle.Generator.Tests
             Assert.DoesNotContain(run.GeneratedSourceTexts, s => s.Contains("class _layout"));
         }
 
+        /// <summary>
+        /// Imports resolve by template key here — the generator serves them from the files it was handed, not from
+        /// disk — so `page`, `~/page.heddle` and `/page.heddle` all name one template. The cycle guard identified
+        /// them by file path instead, so it saw six documents where there is one and explored their permutations:
+        /// the import budget ran out before the repeat was recognised, on a file that imports only itself.
+        /// </summary>
+        [Fact]
+        public void ASelfImportUnderManyKeySpellingsIsOneDocumentToTheCycleGuard()
+        {
+            var spellings = new[] { "page", "page.heddle", "~/page.heddle", "/page.heddle", "~/page", "/page" };
+            var document = string.Concat(spellings.Select(s => "@<<{{" + s + "}}@\\\n"));
+
+            var run = GeneratorHarness.Run(new[] { ("/repo/app/page.heddle", document) },
+                globalOptions: Root("/repo/app"));
+
+            Assert.Contains(run.GeneratorDiagnostics, d => d.GetMessage().Contains("composition import cycle"));
+            Assert.DoesNotContain(run.GeneratorDiagnostics,
+                d => d.GetMessage().Contains("composition imports"));
+        }
+
         [Theory]
         [InlineData("true")]
         [InlineData("")]
