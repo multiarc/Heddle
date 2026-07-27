@@ -68,13 +68,14 @@ where C# has a lifted operator this tier has none:
 | Expression | C# | Here |
 | --- | --- | --- |
 | `@(FlagNullable == Flag)` (`bool?` vs `bool`) | lifted, compiles | `HED1008` |
-| `@(FlagNullable & Flag)` (`bool?` vs `bool`) | lifted, compiles | **no diagnostic** — an id‑less *"Error while compiling"* |
+| `@(FlagNullable & Flag)` (`bool?` vs `bool`) | lifted, compiles | `HED0005`, the compile-item catch-all |
 | `@(N < 3)` (`int?` vs `int`) | lifted, compiles | lifted, compiles |
 
 The bitwise row is a **known defect, not a deviation**: every comparable illegality in this tier is a
 positioned `HED1008`, and that one shape reaches `Expression.And` unguarded. Both tiers agree on
-refusing it, so it is not drift — it is a missing diagnostic, and it is filed rather than papered
-over here. `NativeOperatorRules.ClassifyBitwise` carries the same verdict at build time.
+refusing it, so it is not drift — it is the wrong diagnostic rather than a wrong answer, and it is
+filed rather than papered over here. `NativeOperatorRules.ClassifyBitwise` carries the same verdict at
+build time.
 
 The `null` **literal** is separate from a `null`-valued `Nullable<T>`: `@(x < null)` and
 `@(3 == null)` are `HED1008`, exactly as C# rejects them.

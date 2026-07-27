@@ -254,6 +254,7 @@ silently.
 | --- | --- | --- |
 | `HED0001`–`HED0003` | Core engine | Pre-existing diagnostics (resolver / legacy shapes / syntax listener) |
 | `HED0004` | Core engine | Pre-existing `CheckTypes` return-type message |
+| `HED0005` | Core engine | The compile-item catch-all — one call in the document threw while being compiled for a reason no other diagnostic covers. Positioned at the call, carrying the exception; the text names the call and the fault. Before it, this class of failure reached callers with no id at all |
 | `HED1001`–`HED1017` | [native-expressions.md](../../native-expressions.md) | Native-expression tier |
 | `HED2001`–`HED2003` | [built-in-extensions.md](../../built-in-extensions.md#html-encoding) | Output profiles |
 | `HED2004` | Shipped in 2.0.0; this registry row is the live normative home | HTML-context encoding lint (`MissingContextEncoder`) — warning; bare `@(value)` in an attribute/`<script>`/URL position under an explicitly declared `Html` profile without the matching `@attr`/`@js`/`@url` encoder |

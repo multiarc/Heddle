@@ -206,6 +206,10 @@ namespace Heddle.Tests
             Assert.Contains(result.ErrorList, e => e.Exception != null);
             Assert.DoesNotContain(result.ErrorList,
                 e => e.DiagnosticId == HeddleDiagnosticIds.BinaryOperatorNotDefined);
+            // Wrong diagnostic, not no diagnostic: the catch-all is classifiable, and says what failed and why.
+            var caught = Assert.Single(result.ErrorList, e => e.Exception != null);
+            Assert.Equal(HeddleDiagnosticIds.CompilationFailed, caught.DiagnosticId);
+            Assert.Contains(caught.Exception.Message, caught.Error);
 
             // The sibling mismatch the runtime *does* guard, for contrast — same operand pair, real diagnostic.
             var equality = Compile("B == NB");
