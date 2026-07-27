@@ -47,7 +47,7 @@ public class PropsRenderBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        AssemblyHelper.Register(typeof(PropsRenderBenchmarks).GetTypeInfo().Assembly);
+        AssemblyHelper.Configure(typeof(PropsRenderBenchmarks).GetTypeInfo().Assembly);
 
         _noProps = new HeddleTemplate(
             "@% <card>{{<article><h2>@(Title)</h2><p>@(Summary)</p></article>}} :: Heddle.Performance.PropsRenderBenchmarks.Article %@\n@card(this)",
