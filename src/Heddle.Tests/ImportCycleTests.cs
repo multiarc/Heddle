@@ -114,6 +114,74 @@ namespace Heddle.Tests
                 "cycle reporting must not multiply across spellings; got " + context.Errors.Count);
         }
 
+        /// <summary>
+        /// Two documents, each importing the other under a <b>different spelling of the other's path</b> — so no raw
+        /// spelling ever repeats, and only a normalised key can see the cycle. The sibling test above cannot
+        /// distinguish: its documents each import their own spelling, so the raw key repeats at depth two and the
+        /// cycle is reported either way.
+        /// </summary>
+        [Fact]
+        public void ACycleWhoseSpellingsNeverRepeatIsStillCaught()
+        {
+            var library = new Dictionary<string, string>
+            {
+                ["a.heddle"] = "@<<{{./b.heddle}}@\\\n",
+                ["./b.heddle"] = "@<<{{d0/../a.heddle}}@\\\n",
+                ["d0/../a.heddle"] = "@<<{{.//b.heddle}}@\\\n",
+                [".//b.heddle"] = "@<<{{./d0/../a.heddle}}@\\\n",
+                ["./d0/../a.heddle"] = "end"
+            };
+
+            var context = Parse("@<<{{a.heddle}}@\\\nroot", library);
+
+            Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportCycle);
+        }
+
+        /// <summary>A cycle reached under many spellings must not be described combinatorially. Eight spellings once
+        /// produced 863,109 diagnostics at build time; the budget caps the description, never the skipping.</summary>
+        [Fact]
+        public void CycleReportingIsBoundedHoweverManySpellingsReachIt()
+        {
+            var spellings = Enumerable.Range(0, 8).Select(i => string.Concat(Enumerable.Repeat("./", i)) + "a.heddle")
+                .ToArray();
+            var body = string.Concat(spellings.Select(p => "@<<{{" + p + "}}@\\\n"));
+            var library = spellings.ToDictionary(p => p, _ => body);
+
+            var context = Parse(body + "root", library);
+
+            Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportCycle);
+            Assert.True(context.Errors.Count <= 64,
+                "cycle descriptions must stay bounded; got " + context.Errors.Count);
+        }
+
+        /// <summary>
+        /// A settings object is reusable, and both the type and the overload taking it are public. The cycle-report
+        /// budget lived on it and was never restored, so a host that reused one stopped reporting cycles after the
+        /// thirty-second parse — still skipping the import, but silently.
+        /// </summary>
+        [Fact]
+        public void ReusingOneSettingsObjectKeepsReportingCycles()
+        {
+            var library = new Dictionary<string, string>
+            {
+                ["a.heddle"] = "@<<{{b.heddle}}@\\\nfrom a",
+                ["b.heddle"] = "@<<{{a.heddle}}@\\\nfrom b"
+            };
+            var settings = new ParserSettings
+            {
+                RootPath = "<none>",
+                ImportReader = path => library.TryGetValue(path, out var text) ? text : string.Empty
+            };
+
+            for (var round = 0; round < 40; round++)
+            {
+                var context = DocumentParser.Parse("@<<{{a.heddle}}@\\\nroot", settings, out _);
+                Assert.True(
+                    context.Errors.Any(e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportCycle),
+                    "the cycle went unreported on round " + round);
+            }
+        }
+
         private static ParseContext Parse(string document, IReadOnlyDictionary<string, string> library)
         {
             var settings = new ParserSettings

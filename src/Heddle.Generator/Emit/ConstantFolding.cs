@@ -62,9 +62,7 @@ namespace Heddle.Generator.Emit
                         return Folded.Constant(minimum);
                     if (value.Kind == NumericKind.UInt || value.Kind == NumericKind.ULong)
                         return Folded.Unknown;   // negating unsigned is a type question, not an overflow one
-                    return value.IsIntegral || value.Kind == NumericKind.Decimal
-                        ? Apply(value, Numeric.Zero(value.Kind), ExprOperator.Negate)
-                        : Folded.Constant(value);
+                    return Apply(value, Numeric.Zero(value.Kind), ExprOperator.Negate);
                 default:
                     return Folded.Unknown;
             }
@@ -281,7 +279,12 @@ namespace Heddle.Generator.Emit
                                 : checked((ulong)value._signed));
                             return true;
                         case NumericKind.UInt:
-                            result = Unsigned(kind, value._unsigned);
+                            // The signed field is where an Int keeps its value. Reading the unsigned one made every
+                            // int operand promoted to uint arrive as zero, so (4294967295u + 1) folded as
+                            // (4294967295 + 0) and was emitted, and (5 - 1u) folded as (0 - 1) and was refused.
+                            result = Unsigned(kind, value.Kind == NumericKind.UInt || value.Kind == NumericKind.ULong
+                                ? value._unsigned
+                                : checked((uint)value._signed));
                             return true;
                         default:
                             result = Signed(kind, value.Kind == NumericKind.UInt ? (long)value._unsigned : value._signed);
@@ -327,7 +330,11 @@ namespace Heddle.Generator.Emit
                     case NumericKind.Decimal:
                         return new Numeric(a.Kind, 0, 0, Decimals(a._decimal, b._decimal, op), 0d);
                     case NumericKind.UInt:
-                        return Unsigned(a.Kind, checked((uint)Unsigneds(a._unsigned, b._unsigned, op)));
+                        // Complement narrows deliberately rather than checked: ~5u is 4294967290u, and computing it
+                        // in ulong then narrowing under check made every complement look like an overflow.
+                        return op == ExprOperator.OnesComplement
+                            ? Unsigned(a.Kind, ~(uint)a._unsigned)
+                            : Unsigned(a.Kind, checked((uint)Unsigneds(a._unsigned, b._unsigned, op)));
                     case NumericKind.ULong:
                         return Unsigned(a.Kind, Unsigneds(a._unsigned, b._unsigned, op));
                     case NumericKind.Int:

@@ -51,6 +51,7 @@ namespace Heddle.Language
 
             // Bounds nesting for everything below — the parser's own descent, the tree walk, and the AST and chain
             // builders, all of which recurse over a structure this keeps shallow enough to survive.
+            settings.BeginTopLevelParse();
             var depthGuard = new ParseDepthGuard();
             parser.AddParseListener(depthGuard);
             try
