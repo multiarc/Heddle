@@ -78,13 +78,34 @@ namespace Heddle.Language
 
         internal int CycleReportBudget { get; set; } = DefaultCycleReportBudget;
 
-        /// <summary>Restores the budget at the start of a top-level parse. Without this the counter was per settings
-        /// object rather than per parse, so a host reusing one — the type and the overload taking it are both
-        /// public — stopped describing cycles altogether after the thirty-second, while still skipping them.</summary>
+        /// <summary>
+        /// How many <c>@&lt;&lt;</c> imports one top-level parse will expand in total. Depth is not the only way an
+        /// import graph grows: a document that imports the same file twice, and whose imports do the same, is
+        /// acyclic and shallow and still expands two to the power of its levels — every expansion re-reads and
+        /// re-parses a document that was already parsed and popped, because the cycle guard only knows what is
+        /// currently on the stack. At the depth ceiling that is upwards of 10^19 parses with nothing reported.
+        /// <para>Each expansion contributes the imported document's output, so collapsing repeats would change what
+        /// a template renders; the total is bounded instead, and the overflow is reported.</para>
+        /// </summary>
+        internal const int MaxImportExpansions = 1024;
+
+        internal int ImportExpansionsRemaining { get; set; } = MaxImportExpansions;
+
+        /// <summary>Whether this parse has already described the fan-out overflow. Every import past the bound is
+        /// skipped, and there can be very many of them; the reader needs to be told once.</summary>
+        internal bool ImportFanOutReported { get; set; }
+
+        /// <summary>Restores the per-parse budgets at the start of a top-level parse. Without this they were per
+        /// settings object rather than per parse, so a host reusing one — the type and the overload taking it are
+        /// both public — stopped describing cycles altogether after the thirty-second, while still skipping
+        /// them.</summary>
         internal void BeginTopLevelParse()
         {
-            if (ActiveImports.Count == 0)
-                CycleReportBudget = DefaultCycleReportBudget;
+            if (ActiveImports.Count != 0)
+                return;
+            CycleReportBudget = DefaultCycleReportBudget;
+            ImportExpansionsRemaining = MaxImportExpansions;
+            ImportFanOutReported = false;
         }
 
         /// <summary>

@@ -123,6 +123,10 @@ namespace Heddle.Data
         /// <summary>An expression, chain, or block nesting is too deep to build without exhausting the stack.</summary>
         public const string TemplateNestedTooDeeply = "HED4007";
 
+        /// <summary>One parse expanded more <c>@&lt;&lt;</c> composition imports than the engine will process; the
+        /// remaining imports are skipped.</summary>
+        public const string ComposeImportFanOut = "HED4008";
+
         /// <summary>A named argument's name is not declared by the target definition's prop layout.</summary>
         public const string UnknownProp = "HED5001";
 

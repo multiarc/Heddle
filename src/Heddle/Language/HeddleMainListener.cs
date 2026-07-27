@@ -318,6 +318,27 @@ namespace Heddle.Language {
                     return;
                 }
 
+                // Fan-out, which neither the cycle guard nor the depth guard can see: a document already parsed and
+                // popped is parsed again every time it is reached, so a shallow acyclic graph that imports each
+                // file twice expands two to the power of its levels.
+                if (_settings.ImportExpansionsRemaining <= 0)
+                {
+                    if (!_settings.ImportFanOutReported)
+                    {
+                        _settings.ImportFanOutReported = true;
+                        CurrentParseContext.Errors.Add(
+                            ($"This document expands more than {ParserSettings.MaxImportExpansions} '@<<' " +
+                             "composition imports. Every repeat of an import is parsed again, so a file imported " +
+                             "from several places multiplies out; the remaining imports are skipped.")
+                            .ToError(CurrentParseContext.GetAbsoluteBlockPosition(context),
+                                HeddleDiagnosticIds.ComposeImportFanOut));
+                    }
+
+                    return;
+                }
+
+                _settings.ImportExpansionsRemaining--;
+
                 string document = _settings.ReadImport(path);
 
                 bool markProvenance = CurrentParseContext.ProvideLanguageFeatures;

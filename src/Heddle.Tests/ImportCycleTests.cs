@@ -93,6 +93,85 @@ namespace Heddle.Tests
         }
 
         /// <summary>
+        /// Repetition and depth are not the only ways an import graph grows. A document already parsed and popped is
+        /// parsed again the next time it is reached, so a graph where every file imports the next one twice is
+        /// acyclic, twenty levels deep, and expands to two million parses with nothing reported — and at the depth
+        /// ceiling, to more parses than a machine will ever finish. The total is bounded and the overflow described.
+        /// </summary>
+        [Fact]
+        public void AnAcyclicImportFanOutIsBoundedAndReported()
+        {
+            const int levels = 20;
+            var library = new Dictionary<string, string>();
+            for (var i = 0; i < levels; i++)
+            {
+                var next = "@<<{{f" + (i + 1) + ".heddle}}@\\\n";
+                library["f" + i + ".heddle"] = next + next;
+            }
+
+            library["f" + levels + ".heddle"] = "leaf";
+
+            var reads = 0;
+            var settings = new ParserSettings
+            {
+                RootPath = "<none>",
+                ImportReader = path =>
+                {
+                    reads++;
+                    return library.TryGetValue(path, out var text) ? text : string.Empty;
+                }
+            };
+
+            var context = DocumentParser.Parse("@<<{{f0.heddle}}@\\\nroot", settings, out _);
+
+            Assert.True(reads <= ParserSettings.MaxImportExpansions,
+                "an acyclic import graph must not multiply out; it read " + reads + " documents");
+            Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportFanOut);
+        }
+
+        /// <summary>The overflow is described once. Every import past the bound is skipped, and a graph that reaches
+        /// the bound has thousands of them left — one diagnostic per skip would bury the document's real errors.</summary>
+        [Fact]
+        public void TheFanOutOverflowIsDescribedOnce()
+        {
+            const int levels = 20;
+            var library = new Dictionary<string, string>();
+            for (var i = 0; i < levels; i++)
+            {
+                var next = "@<<{{f" + (i + 1) + ".heddle}}@\\\n";
+                library["f" + i + ".heddle"] = next + next;
+            }
+
+            library["f" + levels + ".heddle"] = "leaf";
+
+            var context = Parse("@<<{{f0.heddle}}@\\\nroot", library);
+
+            Assert.Single(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportFanOut);
+        }
+
+        /// <summary>The bound is per parse, not per settings object: a host reusing one must not find its second
+        /// document refused because the first spent the budget.</summary>
+        [Fact]
+        public void TheFanOutBudgetIsRestoredForEachTopLevelParse()
+        {
+            var library = new Dictionary<string, string>
+            {
+                ["lib.heddle"] = "@%<lib>{{l}} :: dynamic%@"
+            };
+            var settings = new ParserSettings
+            {
+                RootPath = "<none>",
+                ImportReader = path => library.TryGetValue(path, out var text) ? text : string.Empty
+            };
+
+            for (var round = 0; round < 3; round++)
+            {
+                DocumentParser.Parse("@<<{{lib.heddle}}@\\\nroot", settings, out _);
+                Assert.Equal(ParserSettings.MaxImportExpansions - 1, settings.ImportExpansionsRemaining);
+            }
+        }
+
+        /// <summary>
         /// One file is one document however its path is spelled. Keying the cycle guard on the raw spelling let
         /// <c>./a.heddle</c> and <c>d/../a.heddle</c> pass as different documents, so a cycle walked straight past
         /// it — and because every unseen spelling pushed another level, the parse explored permutations: eight

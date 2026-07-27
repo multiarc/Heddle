@@ -236,6 +236,7 @@ namespace Heddle.Data
             Add(HeddleDiagnosticIds.LiquidStyleInterpolationMisread, "Liquid-style interpolation misread", warning);
             Add(HeddleDiagnosticIds.ComposeImportCycle, "Composition import cycle", error);
             Add(HeddleDiagnosticIds.TemplateNestedTooDeeply, "Template nested too deeply", error);
+            Add(HeddleDiagnosticIds.ComposeImportFanOut, "Composition import fan-out too large", error);
 
             Add(HeddleDiagnosticIds.UnknownProp, "Unknown prop", error);
             Add(HeddleDiagnosticIds.MissingRequiredProp, "Missing required prop", error);
