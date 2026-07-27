@@ -39,8 +39,10 @@ namespace Heddle.Language
         /// out — overflows on the parser-recursive shapes at around 350 levels, so the crash always arrived first and
         /// a source generator inside MSBuild died on a template a few hundred characters long. Measured last-safe
         /// depths were 300 at 1 MB, 500 at 2 MB, 800 at 4 MB.
-        /// <para>300 still sits an order of magnitude above hand-written work: it allows roughly a hundred nested
-        /// blocks, where a deeply layered layout reaches a few dozen.</para>
+        /// <para>300 allows about a hundred nested blocks — a block costs three rules — against the few dozen a
+        /// deeply layered layout reaches. Blocks are the tightest dimension by far and the margin there is roughly
+        /// 2.5×, not the order of magnitude it is tempting to claim; every other shape has far more room (around 290
+        /// chained operators or indexers, and member paths cost nothing at all).</para>
         /// </summary>
         internal const int MaxDepth = 300;
 

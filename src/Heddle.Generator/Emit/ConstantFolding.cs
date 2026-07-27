@@ -58,10 +58,10 @@ namespace Heddle.Generator.Emit
                         ? Apply(value.Promoted(), Numeric.Zero(value.Promoted().Kind), ExprOperator.OnesComplement)
                         : Folded.Unknown;
                 case ExprOperator.Negate:
-                    if (value.TryNegateLiteralMinimum(out var minimum))
-                        return Folded.Constant(minimum);
-                    if (value.Kind == NumericKind.UInt || value.Kind == NumericKind.ULong)
-                        return Folded.Unknown;   // negating unsigned is a type question, not an overflow one
+                    if (value.Kind == NumericKind.UInt)
+                        return Folded.Constant(Numeric.LongFrom(value));   // C# converts a negated uint to long
+                    if (value.Kind == NumericKind.ULong)
+                        return Folded.Unknown;   // negating a ulong is a type error, not an overflow one
                     return Apply(value, Numeric.Zero(value.Kind), ExprOperator.Negate);
                 default:
                     return Folded.Unknown;
@@ -171,29 +171,6 @@ namespace Heddle.Generator.Emit
 
             internal static Numeric Zero(NumericKind kind) => new Numeric(kind, 0, 0, 0m, 0d);
 
-            /// <summary>
-            /// C# reads <c>-2147483648</c> as one <c>int</c> constant rather than a negation of an unsigned literal,
-            /// and likewise at the <c>long</c> boundary. Without this the value keeps the unsigned type its digits
-            /// implied, and an expression that overflows <c>int</c> looks like it fits.
-            /// </summary>
-            internal bool TryNegateLiteralMinimum(out Numeric result)
-            {
-                if (Kind == NumericKind.UInt && _unsigned == 2147483648UL)
-                {
-                    result = Signed(NumericKind.Int, int.MinValue);
-                    return true;
-                }
-
-                if (Kind == NumericKind.ULong && _unsigned == 9223372036854775808UL)
-                {
-                    result = Signed(NumericKind.Long, long.MinValue);
-                    return true;
-                }
-
-                result = default;
-                return false;
-            }
-
             private static Numeric Signed(NumericKind kind, long value) => new Numeric(kind, value, 0, 0m, 0d);
             private static Numeric Unsigned(NumericKind kind, ulong value) => new Numeric(kind, 0, value, 0m, 0d);
 
@@ -232,9 +209,10 @@ namespace Heddle.Generator.Emit
                 a = default;
                 b = default;
                 var kind = Wider(x, y);
-                if (kind == NumericKind.ULong &&
-                    ((x.Kind != NumericKind.ULong && x.Kind != NumericKind.UInt && x.IsIntegral) ||
-                     (y.Kind != NumericKind.ULong && y.Kind != NumericKind.UInt && y.IsIntegral)))
+                // Only a NEGATIVE signed operand makes a ulong pairing a type error; a non-negative integer
+                // constant converts implicitly, which is how `ulong + 'a'` is legal C#. Refusing to decide for
+                // every signed operand let that pairing through to break the host's build.
+                if (kind == NumericKind.ULong && (IsNegative(x) || IsNegative(y)))
                 {
                     return false;
                 }
@@ -248,6 +226,16 @@ namespace Heddle.Generator.Emit
             /// <c>uint</c>, so <c>0 - 3000000000</c> is unsigned arithmetic and underflows — which is why C# rejects
             /// it, and why treating the pair as <c>long</c> here let it through to break the host's build.
             /// </summary>
+            private static bool IsNegative(Numeric value)
+            {
+                return value.Kind != NumericKind.UInt && value.Kind != NumericKind.ULong && value._signed < 0;
+            }
+
+            internal static Numeric LongFrom(Numeric value)
+            {
+                return Signed(NumericKind.Long, -(long)value._unsigned);
+            }
+
             private static NumericKind Wider(Numeric x, Numeric y)
             {
                 if (x.Kind == NumericKind.Double || y.Kind == NumericKind.Double) return NumericKind.Double;

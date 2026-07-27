@@ -150,7 +150,9 @@ namespace Heddle.Tests
             var context = Parse(body + "root", library);
 
             Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportCycle);
-            Assert.True(context.Errors.Count <= 64,
+            // 64 is what this fixture produces with the budget removed, so asserting that bound would have been
+            // satisfied by the unguarded behaviour. The budget is 32.
+            Assert.True(context.Errors.Count <= ParserSettings.DefaultCycleReportBudget,
                 "cycle descriptions must stay bounded; got " + context.Errors.Count);
         }
 

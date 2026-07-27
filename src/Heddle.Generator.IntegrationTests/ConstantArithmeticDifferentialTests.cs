@@ -32,7 +32,6 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("(2147483646+1)+1")]
         [InlineData("(2147483647+0)+(1+0)")]
         [InlineData("+2147483647+1")]
-        [InlineData("-2147483648-1")]
         [InlineData("0-3000000000")]
         [InlineData("2147483647*2")]
         [InlineData("2000000000+2000000000")]
@@ -44,6 +43,7 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("1u-2")]
         [InlineData("3000000000u*2u")]
         [InlineData("79228162514264337593543950335m+1m")]
+        [InlineData("-79228162514264337593543950335m-1m")]
         public void ConstantOverflowDegradesInsteadOfBreakingTheBuild(string expression)
         {
             var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
@@ -63,6 +63,9 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("(1+1)/0")]
         [InlineData("1.0m/0m")]
         [InlineData("1L/0")]
+        [InlineData("(-1u)/0")]
+        [InlineData("(-1u)%0")]
+        [InlineData("1/(-0u)")]
         public void ConstantDivisionByZeroDegradesInsteadOfBreakingTheBuild(string expression)
         {
             var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
@@ -96,6 +99,10 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("4294967295u-1")]
         [InlineData("2u*3u")]
         [InlineData("-2147483648")]
+        [InlineData("-2147483648-1")]
+        [InlineData("(-2147483648u)-1")]
+        [InlineData("-(2147483648)-1")]
+        [InlineData("-1u")]
         [InlineData("~0")]
         [InlineData("+5")]
         public void LegalArithmeticStillPrecompiles(string expression)
@@ -104,6 +111,27 @@ namespace Heddle.Generator.IntegrationTests
 
             Assert.Empty(generated.Diagnostics);
             DifferentialHarness.ExpectPrecompiled(generated, Key);
+        }
+
+        /// <summary>
+        /// A <c>ulong</c> meeting a <c>char</c>. C# converts a non-negative integer constant to <c>ulong</c>
+        /// implicitly, so this is legal C# and folds — and refusing to decide for every signed operand emitted it
+        /// straight into a host build that then failed with <c>CS0220</c>.
+        /// <para>Written without the <c>Length +</c> wrapper the other cases use: <c>int + ulong</c> is refused by
+        /// the runtime operator rules before the fold is ever consulted, so the wrapper hid this entire column.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("18446744073709551615 + 'a'")]
+        [InlineData("'a' + 18446744073709551615")]
+        [InlineData("18446744073709551615 * 'a'")]
+        public void AUnsignedLongMeetingACharDegradesInsteadOfBreakingTheBuild(string expression)
+        {
+            const string key = "views/ulongchar.heddle";
+            var generated = DifferentialHarness.Generate(
+                new[] { (key, "@model(){{string}}@(" + expression + ")|@(Length)") });
+
+            Assert.Empty(generated.Diagnostics);
+            DifferentialHarness.ExpectDegrade(generated, key);
         }
     }
 }
