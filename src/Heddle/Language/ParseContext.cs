@@ -678,6 +678,9 @@ namespace Heddle.Language {
         private OutputItem CreateItem(HeddleParser.CallContext context, string callNameOverride = null) {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
+            // Chains nest through this, one frame per level, so a long enough chain exhausted the stack and killed
+            // the process outright. Fails catchably instead, while there is still room to unwind.
+            System.Runtime.CompilerServices.RuntimeHelpers.EnsureSufficientExecutionStack();
             var extensionId = context.extension_id();
             var memberExpr = context.member_expression();
             if (extensionId != null) {

@@ -93,7 +93,23 @@ namespace Heddle.Language
                     .Where(t => t.Channel == Lexer.Hidden)
                     .Select(t => new BlockPosition(t)));
 
-            walker.Walk(listener, tree);
+            try
+            {
+                walker.Walk(listener, tree);
+            }
+            catch (InsufficientExecutionStackException)
+            {
+                // Expression and chain construction recurse once per operator or level. Deep enough input used to
+                // exhaust the stack, and a StackOverflowException cannot be caught — the process simply died. The
+                // builders now fail catchably instead, and the fault becomes an ordinary compile error.
+                context.Errors.Add(new HeddleCompileError
+                {
+                    Error = "Template is nested too deeply to compile. Reduce the depth of the expression, " +
+                            "chain, or block nesting.",
+                    Position = new BlockPosition(0, 0),
+                    DiagnosticId = HeddleDiagnosticIds.TemplateNestedTooDeeply
+                });
+            }
 
             return tree.GetText();
         }

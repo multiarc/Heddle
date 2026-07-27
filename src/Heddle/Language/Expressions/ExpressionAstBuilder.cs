@@ -23,6 +23,12 @@ namespace Heddle.Language.Expressions
 
         internal static ExprNode Build(HeddleParser.ExprContext ctx, ParseContext parseContext)
         {
+            // One frame per operator, so a flat run of them recurses as deep as the expression is long. Around five
+            // thousand terms exhausted the stack, and a StackOverflowException cannot be caught: a single template
+            // took the whole process with it. This throws something catchable while there is still stack to unwind
+            // on, and the compile boundary turns it into a positioned error like any other malformed template.
+            System.Runtime.CompilerServices.RuntimeHelpers.EnsureSufficientExecutionStack();
+
             switch (ctx)
             {
                 case HeddleParser.ThisExprContext thisExpr:

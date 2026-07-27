@@ -190,10 +190,15 @@ what to change.
 **Decision.** Choosing *which* assemblies exist, and *when* they are registered, belongs to the
 integration layer, never to the engine. Concretely, in order of force:
 
-- **The engine must not load or scan assemblies by default.** No discovery walk, no module
-  initializer, no `AppDomain`/`DependencyContext` enumeration on any render or registration path.
-  Whatever the engine consults, the host handed it — the shape
-  `PrecompiledTemplates.Register(assembly)` already has.
+- **The engine must not load assemblies, and must take nothing from one it did not.** No discovery
+  walk, no module initializer, no `DependencyContext` closure walk, and nothing an assembly is
+  merely *referenced by* is pulled in. Whatever the engine acts on, the host loaded or handed it —
+  the shape `PrecompiledTemplates.Register(assembly)` already has.
+  <br>Enumerating what the host has *already* loaded is not loading, and is how observation works
+  (see below): `AppDomain.CurrentDomain.GetAssemblies()` is read on the resolution and registration
+  paths, deliberately. An earlier wording of this bullet forbade that enumeration outright while the
+  paragraph below prescribed it — a contradiction that would have led anyone resolving drift against
+  it to delete observation and reintroduce load-order dependence.
 - **The engine may report.** A registration that creates a potential conflict draws a diagnostic —
   a warning, or an exception where the situation is genuinely unresolvable. Reporting is the
   engine's business; deciding for the host is not.
@@ -258,6 +263,7 @@ silently.
 | `HED4003` | Shipped in 2.0.0 | `@import()` **removal error** — the legacy include is removed in 2.0.0; positioned at the call, severity error, naming `@<<`/`@partial`. The normative message/trigger/position live in [language-reference.md](../../language-reference.md#imports---) and the [2.0 window record](../records.md#the-20-breaking-window--as-shipped-record) (item 6) |
 | `HED4004` | [language-reference.md](../../language-reference.md#imports---) | `@<<` composition import nested inside a subtemplate (not top-level); import skipped, positioned at the `@<<` directive |
 | `HED4006` | [language-reference.md](../../language-reference.md#imports---) | `@<<` composition import cycle — an import reaches a document already being imported; the repeated import is skipped and the chain named, positioned at the `@<<` directive |
+| `HED4007` | [language-reference.md](../../language-reference.md#imports---) | Expression, chain, or block nesting too deep to build; reported instead of exhausting the stack, positioned at the document start |
 | `HED5001`–`HED5018` | [language-reference.md](../../language-reference.md#props-nameprop-type--default) | Props & slots |
 | `HED5019`–`HED5020` | Shipped in 2.0.0; this registry row is the live normative home | Named content regions (compile errors, fire only on the public-region surface): `HED5019` `RegionNotPublic` (a call-body override targets a callee's **private** region); `HED5020` `DuplicateRegionDeclaration` (two public regions with the same name — raised by upgrading the id-less `EnterDef` duplicate error). A region-override narrowing mismatch reuses the pre-existing id-less `WalkValidateDefinitionType` error (no new id); a typed-override member error reuses `HED0001` |
 | `HED6xxx` | — reserved, none claimed | Tooling-only messages are not compile diagnostics |

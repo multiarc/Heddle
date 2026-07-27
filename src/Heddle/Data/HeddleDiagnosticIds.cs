@@ -120,6 +120,9 @@ namespace Heddle.Data
         /// reported and the repeat import skipped.</summary>
         public const string ComposeImportCycle = "HED4006";
 
+        /// <summary>An expression, chain, or block nesting is too deep to build without exhausting the stack.</summary>
+        public const string TemplateNestedTooDeeply = "HED4007";
+
         /// <summary>A named argument's name is not declared by the target definition's prop layout.</summary>
         public const string UnknownProp = "HED5001";
 
