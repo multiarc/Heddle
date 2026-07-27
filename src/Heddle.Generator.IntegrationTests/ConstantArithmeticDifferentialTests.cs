@@ -44,6 +44,16 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("3000000000u*2u")]
         [InlineData("79228162514264337593543950335m+1m")]
         [InlineData("-79228162514264337593543950335m-1m")]
+        // Shifts, bitwise operators and a constant conditional are constant expressions to C# as much as `+` is,
+        // and each of these overflows through one of them.
+        [InlineData("(1<<1)+2147483647")]
+        [InlineData("(1>>0)+2147483647")]
+        [InlineData("(3&1)+2147483647")]
+        [InlineData("(2|1)+2147483647")]
+        [InlineData("(3^2)+2147483647")]
+        [InlineData("(true?1:0)+2147483647")]
+        [InlineData("(false?0:1)+2147483647")]
+        [InlineData("(1<<30)*4")]
         public void ConstantOverflowDegradesInsteadOfBreakingTheBuild(string expression)
         {
             var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
@@ -66,6 +76,20 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("(-1u)/0")]
         [InlineData("(-1u)%0")]
         [InlineData("1/(-0u)")]
+        // A zero reached through an operator the fold does not evaluate is still a constant zero to C#.
+        [InlineData("(1&1)/0")]
+        [InlineData("(1|1)/0")]
+        [InlineData("(1^0)/0")]
+        [InlineData("(1<<1)/0")]
+        [InlineData("(2>>1)/0")]
+        [InlineData("(true?1:1)/0")]
+        [InlineData("1/(1&0)")]
+        [InlineData("1/(0|0)")]
+        [InlineData("1/(1^1)")]
+        [InlineData("1/(0<<3)")]
+        [InlineData("1/(1>>1)")]
+        [InlineData("1/(true?0:1)")]
+        [InlineData("1%(1&0)")]
         public void ConstantDivisionByZeroDegradesInsteadOfBreakingTheBuild(string expression)
         {
             var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
@@ -105,6 +129,22 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("-1u")]
         [InlineData("~0")]
         [InlineData("+5")]
+        // The other half of deciding shifts, bitwise operators and constant conditionals: none of these faults, and
+        // a fold that refused them would move every template containing one off the precompiled tier.
+        [InlineData("(1<<4)+1")]
+        [InlineData("(1<<31)+0")]
+        [InlineData("(1<<32)+0")]
+        [InlineData("(-1>>1)+0")]
+        [InlineData("(1L<<62)+1")]
+        [InlineData("(2147483647&1)+1")]
+        [InlineData("(2147483647|0)-1")]
+        [InlineData("(2147483647^2147483647)+1")]
+        [InlineData("(true?1:2147483647)+1")]
+        [InlineData("(false?2147483647:1)+1")]
+        [InlineData("(1<<2)/2")]
+        [InlineData("Length<<2")]
+        [InlineData("1<<Length")]
+        [InlineData("Length&1")]
         public void LegalArithmeticStillPrecompiles(string expression)
         {
             var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });

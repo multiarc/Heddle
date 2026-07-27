@@ -37,9 +37,34 @@ namespace Heddle.Generator.Emit
                     return FoldUnary(unary);
                 case BinaryNode binary:
                     return FoldBinary(binary);
+                case TernaryNode ternary:
+                    return FoldTernary(ternary);
                 default:
                     return Folded.Unknown;
             }
+        }
+
+        /// <summary>
+        /// A conditional over a constant condition is a constant expression to C#, so <c>(true?1:1)/0</c> is a
+        /// build error and the arm has to be followed. Both arms are folded whichever is taken: C# reports a fault
+        /// in the arm it will discard just the same.
+        /// </summary>
+        private static Folded FoldTernary(TernaryNode node)
+        {
+            var condition = Fold(node.Condition);
+            var whenTrue = Fold(node.WhenTrue);
+            var whenFalse = Fold(node.WhenFalse);
+            if (condition.Rejected || whenTrue.Rejected || whenFalse.Rejected)
+                return Folded.Refused;
+            if (!(node.Condition is LiteralNode literal) || !(literal.Value is bool taken))
+                return Folded.Unknown;
+            if (!whenTrue.IsConstant || !whenFalse.IsConstant)
+                return Folded.Unknown;
+            // The conditional's type is the common type of both arms, not the taken one's: `true ? 1 : 1L` is a
+            // long, and folding it as an int would refuse arithmetic C# accepts.
+            if (!Numeric.Unify(whenTrue.Value, whenFalse.Value, out var a, out var b))
+                return Folded.Unknown;
+            return Folded.Constant(taken ? a : b);
         }
 
         private static Folded FoldUnary(UnaryNode node)
@@ -75,6 +100,11 @@ namespace Heddle.Generator.Emit
             if (!left.IsConstant || !right.IsConstant)
                 return left.Rejected || right.Rejected ? Folded.Refused : Folded.Unknown;
 
+            // A shift is not a promoted pair: the left operand keeps its own type and the count is taken modulo the
+            // operand's width, so unifying the two would give the result the wrong type.
+            if (node.Operator == ExprOperator.LeftShift || node.Operator == ExprOperator.RightShift)
+                return FoldShift(left.Value, right.Value, node.Operator);
+
             if (!Numeric.Unify(left.Value, right.Value, out var a, out var b))
                 return Folded.Unknown;
 
@@ -92,9 +122,26 @@ namespace Heddle.Generator.Emit
                 case ExprOperator.Subtract:
                 case ExprOperator.Multiply:
                     return Apply(a, b, node.Operator);
+                case ExprOperator.And:
+                case ExprOperator.Or:
+                case ExprOperator.ExclusiveOr:
+                    // Bitwise on integers cannot fault, but its result feeds operators that can, and leaving it
+                    // undecided is what let `(1&1)/0` reach the host's compiler as a division by constant zero.
+                    return a.IsIntegral ? Folded.Constant(Numeric.Evaluate(a, b, node.Operator)) : Folded.Unknown;
                 default:
                     return Folded.Unknown;
             }
+        }
+
+        /// <summary>
+        /// Shifts never overflow or throw — the count is masked to the operand's width — so the fold always
+        /// succeeds, and what it is for is giving the operators above it a value to decide on.
+        /// </summary>
+        private static Folded FoldShift(Numeric value, Numeric count, ExprOperator op)
+        {
+            if (!value.IsIntegral || !count.TryAsShiftCount(out var places))
+                return Folded.Unknown;
+            return Folded.Constant(Numeric.Shift(value, places, op));
         }
 
         /// <summary>Evaluates in the unified type, checked, so an overflow C# would report becomes a refusal here.</summary>
@@ -196,6 +243,62 @@ namespace Heddle.Generator.Emit
 
             /// <summary>The type a lone operand takes on use — narrower-than-int is already stored as int.</summary>
             internal Numeric Promoted() => this;
+
+            /// <summary>The shift count, which C# requires to be an <c>int</c>. Anything else is a type error the
+            /// compiler owns, so it is left undecided.</summary>
+            internal bool TryAsShiftCount(out int places)
+            {
+                places = 0;
+                switch (Kind)
+                {
+                    case NumericKind.Int:
+                        places = (int)_signed;
+                        return true;
+                    case NumericKind.UInt:
+                        if (_unsigned > int.MaxValue)
+                            return false;
+                        places = (int)_unsigned;
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+
+            /// <summary>C#'s shift: the count is masked to the operand's width, and the result keeps the operand's
+            /// type.</summary>
+            internal static Numeric Shift(Numeric value, int places, ExprOperator op)
+            {
+                bool left = op == ExprOperator.LeftShift;
+                switch (value.Kind)
+                {
+                    case NumericKind.UInt:
+                    {
+                        var operand = (uint)value._unsigned;
+                        var count = places & 31;
+                        return Unsigned(NumericKind.UInt, left ? operand << count : operand >> count);
+                    }
+
+                    case NumericKind.Long:
+                    {
+                        var count = places & 63;
+                        return Signed(NumericKind.Long, left ? value._signed << count : value._signed >> count);
+                    }
+
+                    case NumericKind.ULong:
+                    {
+                        var count = places & 63;
+                        return Unsigned(NumericKind.ULong,
+                            left ? value._unsigned << count : value._unsigned >> count);
+                    }
+
+                    default:
+                    {
+                        var operand = (int)value._signed;
+                        var count = places & 31;
+                        return Signed(NumericKind.Int, left ? operand << count : operand >> count);
+                    }
+                }
+            }
 
             /// <summary>
             /// C#'s binary numeric promotion, reduced to the cases that can fault: if either side is
@@ -356,6 +459,9 @@ namespace Heddle.Generator.Emit
                     case ExprOperator.Divide: return a / b;
                     case ExprOperator.Modulo: return a % b;
                     case ExprOperator.OnesComplement: return ~a;
+                    case ExprOperator.And: return a & b;
+                    case ExprOperator.Or: return a | b;
+                    case ExprOperator.ExclusiveOr: return a ^ b;
                     // Negating an unsigned constant is a type error, not an overflow; leave it to the compiler.
                     default: return a;
                 }
@@ -372,6 +478,9 @@ namespace Heddle.Generator.Emit
                     case ExprOperator.Modulo: return a % b;
                     case ExprOperator.Negate: return checked(-a);
                     case ExprOperator.OnesComplement: return ~a;
+                    case ExprOperator.And: return a & b;
+                    case ExprOperator.Or: return a | b;
+                    case ExprOperator.ExclusiveOr: return a ^ b;
                     default: return a;
                 }
             }
