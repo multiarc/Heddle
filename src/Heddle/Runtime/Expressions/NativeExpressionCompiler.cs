@@ -258,10 +258,9 @@ namespace Heddle.Runtime.Expressions
                     indices[i] = args[i].Type == typeof(int) ? args[i] : Expression.Convert(args[i], typeof(int));
                 }
 
-                Expression access = args.Length == 1
-                    ? Expression.ArrayIndex(target, indices[0])
-                    : Expression.ArrayIndex(target, indices);
-                return NullSafeTarget(target, access, elementType);
+                return NullSafeTarget(target, elementType, receiver => args.Length == 1
+                    ? Expression.ArrayIndex(receiver, indices[0])
+                    : Expression.ArrayIndex(receiver, indices));
             }
 
             var indexer = FindIndexer(targetType, args);
@@ -271,17 +270,26 @@ namespace Heddle.Runtime.Expressions
             var converted = new Expression[args.Length];
             for (int i = 0; i < args.Length; i++)
                 converted[i] = ConvertTo(args[i], indexParams[i].ParameterType);
-            Expression indexerAccess = Expression.Property(target, indexer, converted);
-            return NullSafeTarget(target, indexerAccess, indexer.PropertyType);
+            return NullSafeTarget(target, indexer.PropertyType,
+                receiver => Expression.Property(receiver, indexer, converted));
         }
 
-        private static Expression NullSafeTarget(Expression target, Expression access, Type resultType)
+        /// <summary>
+        /// Guards <paramref name="access"/> with a null test on its receiver. The receiver is bound to a local and
+        /// the access is built over that local, because writing the target into both the test and the access would
+        /// evaluate it twice — and nest, so an indexed path would pay two to the power of its length.
+        /// </summary>
+        private static Expression NullSafeTarget(Expression target, Type resultType,
+            Func<Expression, Expression> access)
         {
             if (target.Type.IsValueType)
-                return access;
-            return Expression.Condition(
-                Expression.Equal(target, Expression.Constant(null, target.Type)),
-                Expression.Default(resultType), access);
+                return access(target);
+            var receiver = Expression.Variable(target.Type);
+            return Expression.Block(new[] { receiver },
+                Expression.Assign(receiver, target),
+                Expression.Condition(
+                    Expression.Equal(receiver, Expression.Constant(null, target.Type)),
+                    Expression.Default(resultType), access(receiver)));
         }
 
         private static PropertyInfo FindIndexer(Type type, Expression[] args)

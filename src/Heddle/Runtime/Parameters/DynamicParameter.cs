@@ -22,6 +22,10 @@ namespace Heddle.Runtime.Parameters
         {
             var inputParameter = Expression.Parameter(typeof(object));
 
+            // Each hop tests its receiver and then binds through it, so the receiver is held in a local: naming it
+            // twice in the tree would duplicate every hop below it, and with it the call site and the member read.
+            var receivers = new List<ParameterExpression>();
+            var bindings = new List<Expression>();
             Expression result = null;
             foreach (var name in names)
             {
@@ -29,18 +33,21 @@ namespace Heddle.Runtime.Parameters
                 {
                     CSharpArgumentInfo.Create(CSharpArgumentInfoFlags.None, null)
                 });
-                var input = result ?? inputParameter;
+                var receiver = Expression.Variable(typeof(object));
+                receivers.Add(receiver);
+                bindings.Add(Expression.Assign(receiver, result ?? inputParameter));
                 result = Expression.Condition(
-                    Expression.Equal(input,
+                    Expression.Equal(receiver,
                         Expression.Constant(null, typeof(object))
                     ), Expression.Constant(null, typeof(object)),
-                    DynamicExpression.Dynamic(binder, typeof(object), input));
+                    DynamicExpression.Dynamic(binder, typeof(object), receiver));
             }
 
             if (result == null)
                 throw new ArgumentException();
 
-            return Expression.Lambda<Func<object, object>>(result, inputParameter);
+            bindings.Add(result);
+            return Expression.Lambda<Func<object, object>>(Expression.Block(receivers, bindings), inputParameter);
         }
 
         public void Dispose()
