@@ -38,11 +38,11 @@ namespace Heddle.Generated
 #line hidden
                 scope.Renderer.Render(P0);
 #line (2, 6) - (2, 13) "views/version.heddle"
-                E0.RenderData(scope.Model((object)((m == null ? default(int) : m.Major))));
+                E0.RenderData(scope.Model((object)((m?.Major ?? default(int)))));
 #line hidden
                 scope.Renderer.Render(P1);
 #line (2, 15) - (2, 22) "views/version.heddle"
-                E1.RenderData(scope.Model((object)((m == null ? default(int) : m.Minor))));
+                E1.RenderData(scope.Model((object)((m?.Minor ?? default(int)))));
 #line hidden
                 scope.Renderer.Render(P2);
 #line default
@@ -52,9 +52,9 @@ namespace Heddle.Generated
             {
                 var m = (global::System.Version)scope.ModelData;
 #line (2, 6) - (2, 13) "views/version.heddle"
-                var v0 = E0.ProcessData(scope.Model((object)((m == null ? default(int) : m.Major)))) as string ?? string.Empty;
+                var v0 = E0.ProcessData(scope.Model((object)((m?.Major ?? default(int))))) as string ?? string.Empty;
 #line (2, 15) - (2, 22) "views/version.heddle"
-                var v1 = E1.ProcessData(scope.Model((object)((m == null ? default(int) : m.Minor)))) as string ?? string.Empty;
+                var v1 = E1.ProcessData(scope.Model((object)((m?.Minor ?? default(int))))) as string ?? string.Empty;
 #line hidden
                 return string.Concat(P0, v0, P1, v1, P2);
 #line default

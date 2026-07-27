@@ -40,7 +40,10 @@ namespace Heddle.Generator.Emit
                         current = current + "." + hop.Name;
                         break;
                     case HopForm.NullDefaultConditional:
-                        current = $"({current} == null ? default({hop.PropertyTypeName}) : {current}.{hop.Name})";
+                        // `?.` on a non-nullable value member widens to Nullable<T>, so the null case is written back
+                        // out with `??`. Naming the receiver once matters: a conditional spelling would evaluate
+                        // everything to its left twice, and the engine evaluates it once.
+                        current = $"({current}?.{hop.Name} ?? default({hop.PropertyTypeName}))";
                         break;
                     default:
                         current = current + "?." + hop.Name;

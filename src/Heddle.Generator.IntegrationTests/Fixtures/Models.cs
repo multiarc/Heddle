@@ -61,6 +61,47 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public TreeNode Next { get; set; }
     }
 
+    /// <summary>
+    /// A link whose getters report being read. Both tiers walk the same path, so both must charge the model the
+    /// same number of getter calls — a template that reads a logging, lazy, or query-backed property must not
+    /// behave differently depending on which backend rendered it.
+    /// </summary>
+    public sealed class CountingChain
+    {
+        public static int Reads;
+
+        private CountingChain _next;
+        private int _value;
+
+        public CountingChain Next
+        {
+            get
+            {
+                Reads++;
+                return _next;
+            }
+            set => _next = value;
+        }
+
+        public int Value
+        {
+            get
+            {
+                Reads++;
+                return _value;
+            }
+            set => _value = value;
+        }
+
+        public static CountingChain Of(int hops)
+        {
+            var head = new CountingChain { _value = 42 };
+            for (int i = 0; i < hops; i++)
+                head = new CountingChain { _next = head, _value = 42 };
+            return head;
+        }
+    }
+
     public sealed class Article
     {
         public string Title { get; set; }
