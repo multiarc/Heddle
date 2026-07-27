@@ -64,7 +64,10 @@ namespace Heddle.Native
             var hashCode = 0;
             if (obj.Name != null)
             {
-                hashCode = obj.Name.GetHashCode();
+                // Case-insensitively, because Equals compares names that way. Hashing case-sensitively let two names
+                // that compare equal land in different buckets, so the cache could hold both and the same assembly
+                // could be added twice — making every type in it ambiguous.
+                hashCode = StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Name);
             }
 
             if (obj.Version != null)
@@ -82,7 +85,9 @@ namespace Heddle.Native
             {
                 hashCode = (hashCode * 97) ^ token.Length;
 
-                if (token.Length > 0)
+                // A token is eight bytes or empty; reading eight from anything shorter would throw out of a
+                // GetHashCode call, which callers have no reason to guard.
+                if (token.Length >= sizeof(ulong))
                     hashCode = (hashCode * 397) ^ BitConverter.ToUInt64(token, 0).GetHashCode();
             }
 

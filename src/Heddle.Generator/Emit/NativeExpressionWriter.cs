@@ -235,6 +235,8 @@ namespace Heddle.Generator.Emit
             var op = OperatorLexeme.ForUnary(node.Operator);
             if (op == null)
                 return null;
+            if (ConstantFolding.CompilerWouldReject(node))
+                return null;
             var operand = Write(node.Operand);
             if (operand == null)
                 return null;
@@ -247,6 +249,11 @@ namespace Heddle.Generator.Emit
         {
             var op = OperatorLexeme.ForBinary(node.Operator);
             if (op == null)
+                return null;
+            // Degrade rather than emit something the host's compiler will reject: the engine discovers a constant
+            // divide-by-zero or overflow when it renders, C# refuses to build it at all, and the tier whose behaviour
+            // is the contract is the one that renders.
+            if (ConstantFolding.CompilerWouldReject(node))
                 return null;
             var left = Write(node.Left);
             var right = Write(node.Right);
