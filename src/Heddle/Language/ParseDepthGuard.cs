@@ -33,9 +33,16 @@ namespace Heddle.Language
     /// </summary>
     internal sealed class ParseDepthGuard : IParseTreeListener
     {
-        /// <summary>Far above any hand-written template — a deeply nested layout reaches perhaps a few dozen levels —
-        /// and far below where the parser runs out of stack on a small thread.</summary>
-        internal const int MaxDepth = 1000;
+        /// <summary>
+        /// Chosen against the smallest stack the engine can be hosted on, not against the roomiest. At 1000 the bound
+        /// was unreachable where it mattered most: a 1 MB stack — the Windows default, and what the thread pool hands
+        /// out — overflows on the parser-recursive shapes at around 350 levels, so the crash always arrived first and
+        /// a source generator inside MSBuild died on a template a few hundred characters long. Measured last-safe
+        /// depths were 300 at 1 MB, 500 at 2 MB, 800 at 4 MB.
+        /// <para>300 still sits an order of magnitude above hand-written work: it allows roughly a hundred nested
+        /// blocks, where a deeply layered layout reaches a few dozen.</para>
+        /// </summary>
+        internal const int MaxDepth = 300;
 
         private int _depth;
 

@@ -984,7 +984,8 @@ inline body attached to a call.
 ```
 
 Because the body is itself a full template, subtemplates may contain text, output blocks,
-nested definitions, imports, and raw blocks — to any depth. A call hands its subtemplate to
+nested definitions, imports, and raw blocks — nested as deeply as you like within the compiler's
+depth limit (see [Imports](#imports---)). A call hands its subtemplate to
 its extension; `@list(Articles){{ … }}`, for instance, renders its body once per element with
 the element as the current model:
 
@@ -1098,19 +1099,29 @@ Imports may nest, and two branches may import the same library. What they may no
 (**`HED4006`**) naming the chain that closes it; the repeated import is skipped and the rest of the
 document still compiles.
 
-Depth has a limit in the same spirit. An expression, chain, or block nesting deeper than **1000 levels**
-is a compile error (**`HED4007`**) rather than something that exhausts the compiler's stack. The limit is
-a fixed count, not a measurement of available memory, so a template behaves the same on every host — and
-it sits far above anything hand-written, where a few dozen levels is already deep. The same bound applies
-at build time in the source generator, where an unbounded parse would take down the compiler rather than
-fail the build.
+Depth has a limit in the same spirit. Nesting beyond what the compiler can carry is a compile error
+(**`HED4007`**) rather than something that exhausts its stack, and the limit is a fixed count rather than
+a measurement of available memory, so a template behaves the same on every host. Two bounds apply:
 
-**Known limit.** A single run of many thousands of *prefix* operators (`!`, `-`, `+`, `~`) can still
-exhaust the stack inside the parser's own lookahead, before the depth bound is reached — on this
-project's Linux CI, roughly 3000 levels is safe and 5000 is not. Treat those numbers as indicative
-rather than a contract: the threshold moves with the thread's stack size, and a 1 MB stack (the usual
-default on Windows, and what thread pools hand out) fails earlier. If you compile untrusted templates,
-put a size limit in front of the compiler.
+- **Parse nesting — 300 levels**, counted in grammar rules rather than in constructs you can see. A block
+  such as `@if(...){{ … }}` costs about three, so roughly a hundred nested blocks reach it; a chain of
+  operators in one expression costs one each. The figure is set against the smallest stack the engine can
+  be hosted on — a 1 MB thread, which is the Windows and thread-pool default — rather than the largest, so
+  that it is reached before the stack is. It remains far above hand-written templates, where a few dozen
+  levels of nesting is already unusual.
+- **`@<<` import nesting — 64 levels.** Imports are counted separately because each one parses another
+  document in place. This bounds the depth of a chain, not how many imports a document may have: a file
+  with hundreds of sibling imports is unaffected.
+
+The same bounds apply at build time in the source generator, where an unbounded parse would take down the
+compiler rather than fail the build.
+
+**Known limit.** Prefix operators (`!`, `-`, `+`, `~`) and the right-associative `?:` and `??` recurse
+inside the parser's own lookahead, which consumes stack faster than the bound counts it. The 300-level
+bound is set below the point where a 1 MB thread — the Windows and thread-pool default — runs out, so
+these are reported rather than fatal there; a host running the compiler on a smaller stack than that
+should reduce its input size accordingly. If you compile untrusted templates, put a size limit in front
+of the compiler regardless.
 
 **`@import(){{ path }}` — removed.** The old compile‑time include
 ([ImportExtension.cs](../src/Heddle/Extensions/Archived/ImportExtension.cs)) merged nothing into the

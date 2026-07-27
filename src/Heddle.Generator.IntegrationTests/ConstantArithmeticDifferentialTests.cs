@@ -12,6 +12,10 @@ namespace Heddle.Generator.IntegrationTests
     /// class used <c>@model(){{dynamic}}</c> throughout — under which a constant-only expression degrades anyway, for
     /// reasons that have nothing to do with the fold. Deleting the entire fix left all 876 generator tests green.
     /// A typed model is what makes a degrade attributable to the thing being tested.</para>
+    /// <para><b>Mixed int/uint pairs are here because their absence hid a defect.</b> The class had no case pairing an
+    /// unsuffixed uint-range literal with a small int, and behind that gap the fold read an <c>int</c>'s value out of
+    /// the wrong field — so every int promoted to <c>uint</c> arrived as zero. Fuzzing against the real compiler
+    /// found 2,081 expressions that broke the host build and 1,636 that were needlessly degraded.</para>
     /// </summary>
     public class ConstantArithmeticDifferentialTests
     {
@@ -33,6 +37,11 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("2147483647*2")]
         [InlineData("2000000000+2000000000")]
         [InlineData("4294967295u+1u")]
+        [InlineData("4294967295u+1")]
+        [InlineData("0u-5")]
+        [InlineData("2*3000000000")]
+        [InlineData("2147483648*2")]
+        [InlineData("1u-2")]
         [InlineData("3000000000u*2u")]
         [InlineData("79228162514264337593543950335m+1m")]
         public void ConstantOverflowDegradesInsteadOfBreakingTheBuild(string expression)
@@ -81,6 +90,11 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("1L+2147483647")]
         [InlineData("2000000000L*3")]
         [InlineData("3000000000+1")]
+        [InlineData("3000000000/2")]
+        [InlineData("5-1u")]
+        [InlineData("~5u")]
+        [InlineData("4294967295u-1")]
+        [InlineData("2u*3u")]
         [InlineData("-2147483648")]
         [InlineData("~0")]
         [InlineData("+5")]

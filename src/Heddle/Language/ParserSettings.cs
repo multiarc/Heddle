@@ -74,7 +74,18 @@ namespace Heddle.Language
         /// eight spellings yielded 863,109 diagnostics at build time. The import is still skipped once the budget is
         /// spent; only the description stops.
         /// </summary>
-        internal int CycleReportBudget { get; set; } = 32;
+        internal const int DefaultCycleReportBudget = 32;
+
+        internal int CycleReportBudget { get; set; } = DefaultCycleReportBudget;
+
+        /// <summary>Restores the budget at the start of a top-level parse. Without this the counter was per settings
+        /// object rather than per parse, so a host reusing one — the type and the overload taking it are both
+        /// public — stopped describing cycles altogether after the thirty-second, while still skipping them.</summary>
+        internal void BeginTopLevelParse()
+        {
+            if (ActiveImports.Count == 0)
+                CycleReportBudget = DefaultCycleReportBudget;
+        }
 
         /// <summary>
         /// The identity an <c>@&lt;&lt;</c> import is recognised by when detecting a cycle. Distinct from
