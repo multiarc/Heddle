@@ -187,6 +187,7 @@ TYPE Heddle.Data.HeddleDiagnosticIds
   FIELD System.String SlotValueWithBody
   FIELD System.String SlotValueWithoutSlot
   FIELD System.String SyntaxError
+  FIELD System.String TemplateNestedTooDeeply
   FIELD System.String TernaryArmsNoCommonType
   FIELD System.String TernaryConditionNotBool
   FIELD System.String TypedModelRequired

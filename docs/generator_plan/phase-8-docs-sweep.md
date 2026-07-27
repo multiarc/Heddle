@@ -1106,3 +1106,66 @@ under a claim only checkable if all are listed. Two test names claimed more than
   the correct invocation is `--capture out` after deleting the directory.
 - **WI6 was reported met and was not**, on both halves of its own done-when. Both are now done.
 - **WI7/WI12's "the surface was already correct"** understated a gap D5 had itself named.
+
+## Second independent review (2026-07-27)
+
+A second pair of reviewers ran against `66c5a60` with no knowledge of the first pair's findings, and
+a third agent mutation-tested the coverage claims. Fifteen defects were confirmed. The pattern worth
+recording is not any single one:
+
+**Three were unfixed halves of defects this record already listed as closed.** Not regressions —
+parts of the stated property that were never fixed while the record said they were.
+
+- The single-file fix changed `AssemblyHelper` and wrote a D11 rule covering "type resolution **and
+  C#-tier metadata**". The metadata half still gated on `Assembly.Location`, in
+  `RoslynReferenceProvider`. Measured on a real `PublishSingleFile` host: 23 observed assemblies, **0**
+  metadata references, every C#-tier template failing with "Predefined type 'System.Object' is not
+  defined". The language service hit the same gate from the other side, because it byte-loads model
+  assemblies — a document whose model resolved fine for `@model` drew 11 errors the moment an
+  expression used the C# tier.
+- The load-order fix wrote "load order does not decide what resolves". Still false, via an ABA in the
+  count gate added for performance: `_observedCount` counted every loaded assembly including the
+  excluded collectibles, so an unload plus a load restored the count and observation concluded nothing
+  had happened. Demonstrated 3/3, and **sticky** — the type stayed unresolvable until an unrelated
+  later load repaired it. The optimisation created it.
+- "The engine loads nothing" was pinned only for scanning. Restoring the deleted transitive load walk
+  lazily passed all 1,832 tests. Commit `519a30f`'s message claims that reddens; it reddens the scan,
+  not the load, and the message did not distinguish them.
+
+**Mutation testing found three of four checked defects entirely unpinned.** Returning a constant
+`"DEADBEEF"` as every public key passed 1,832 tests despite 100 invocations. Deleting the `Location`
+guard passed. The cached-failure path had no test at all.
+
+New and serious: the generated tier **rejected templates the engine renders** — `@(2147483647+1)`
+renders `-2147483648` dynamically and was a `CS0220` build error precompiled, with no Heddle
+diagnostic and a manifest still claiming success. `ToHexString` used `"X"` instead of `"X2"`, voiding
+every emitted `InternalsVisibleTo` grant. The preparse cache dropped diagnostics, so the same template
+reported 1 error then 5 in one process. Import cycles killed the process outright.
+
+### Not fixed, and why
+
+- **Deep right-associative expressions still terminate the process.** A long run of prefix `!`/`-`,
+  nested conditionals, or a `??` chain recurses inside ANTLR's generated parser, upstream of any
+  Heddle code. Heddle's own tree walk is now guarded and reports `HED4007`, which fixes the flat,
+  parenthesised and indexer shapes — but only where enough stack remains for the parse itself, and
+  that threshold moves with stack size and build configuration. Measured: at depth 6000 a release
+  build on an 8 MB stack reports `HED4007`; the same input on a 64 MB stack parses cleanly, and on the
+  test host's smaller stack it dies. No fixed-depth test is portable, so none was kept — a test that
+  crashes the run is worse than none. Bounding the parse itself is the real fix and is not attempted
+  here. The published limit is documented in the language reference.
+- **The preparse-cache fix has no demonstrated red.** It is correct and saves a redundant Roslyn
+  compile per repeated failure, but once the public keys were fixed both paths produced identical text
+  and positions, so removing the replay leaves the suite green. Stated in the test rather than implied
+  away.
+- **The no-load pin does not catch a one-shot startup walk**, which has already run before the probe
+  can be built. Verified, not assumed; recorded in the test. Catching it needs a child process.
+- **`Heddle.Performance` keeps one change** — the removal of its per-project `<Version>`, from the
+  version-centralisation sweep. Restoring it would redden that sweep's gate. A knowing exception to a
+  ruling that said "at all", not an oversight. Its three source files are restored.
+- **Stale phase-record claims** the verifier catalogued (schema 4→5 where the shipped value is 3; "82
+  rows" against 85; "62 templates" against 63; `HED7025` recorded as absent when it ships) are
+  corrected here rather than in each section that states them. That is a compromise: a reader lands on
+  the delivery section, not this one.
+- **`CorpusRenderParityTests` remains a hand-maintained list** of 10 against 32 eligible templates,
+  ungated. Partially mitigated by `CorpusResolverSweepTests`, which is set-equality gated but exercises
+  the resolver path rather than whole-corpus render.

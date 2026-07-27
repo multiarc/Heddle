@@ -1098,6 +1098,16 @@ Imports may nest, and two branches may import the same library. What they may no
 (**`HED4006`**) naming the chain that closes it; the repeated import is skipped and the rest of the
 document still compiles.
 
+Depth has a limit in the same spirit, though a partial one. When Heddle's own tree walk runs out of
+stack building a very deep expression or chain, it reports a compile error (**`HED4007`**) instead of
+letting the process die. The threshold is the available stack rather than a fixed count, and sits far
+above anything hand-written.
+
+**Known limit.** Right-associative shapes — a long run of prefix `!` or `-`, deeply nested conditional
+operators, a long `??` chain — recurse inside the parser itself, before Heddle's walk is reached, and
+a sufficiently deep one still terminates the process. Do not compile untrusted templates of unbounded
+depth without an input size limit in front of them.
+
 **`@import(){{ path }}` — removed.** The old compile‑time include
 ([ImportExtension.cs](../src/Heddle/Extensions/Archived/ImportExtension.cs)) merged nothing into the
 importing document and had surprising, offset-dependent isolation semantics. It no longer
