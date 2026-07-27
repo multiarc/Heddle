@@ -3,51 +3,39 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Heddle.TestCorpus;
-using Microsoft.CodeAnalysis;
 using Xunit;
 
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Render parity: for the model-less corpus templates that precompile (definition default output, overrides/
-    /// layering, import composition), renders the real <c>TestTemplate/**</c> file through both backends and asserts
-    /// byte-identical output — the render-correctness gate the classification-only <see cref="CorpusDifferentialTests"/>
-    /// does not itself provide. Imports resolve from the corpus directory on the dynamic side and from the whole-corpus
+    /// Render parity: for every corpus template the intent table declares model-less and precompiling, renders the
+    /// real <c>TestTemplate/**</c> file through both backends and asserts byte-identical output — the
+    /// render-correctness gate the classification-only <see cref="CorpusDifferentialTests"/> does not itself provide.
+    /// Imports resolve from the corpus directory on the dynamic side and from the whole-corpus
     /// <c>AdditionalFiles</c> set on the precompiled side.
+    /// <para>The set comes from the intent table rather than a hand-written list. It was ten names against
+    /// thirty-two eligible templates, with nothing to notice the other twenty-two — a template could be added,
+    /// declared standalone and precompiling, and never rendered by this gate at all.</para>
     /// </summary>
     public class CorpusRenderParityTests
     {
+        /// <summary>Entries declared model-less (both backends render them without a model) and precompiling.</summary>
+        public static IEnumerable<object[]> StandaloneRenderable() =>
+            CorpusIntent.Rows
+                .Where(r => r.Tier == CorpusTier.Precompiles && r.Render == CorpusRender.Standalone)
+                .Select(r => r.Name)
+                .OrderBy(n => n, StringComparer.Ordinal)
+                .Select(n => new object[] { n });
+
         [Theory]
-        [InlineData("optimized-document.heddle")]
-        [InlineData("ergo-double-render.heddle")]
-        [InlineData("ergo-import-library.heddle")]
-        [InlineData("ergo-import-composition.heddle")]
-        [InlineData("branching-partial-parent.heddle")]
-        [InlineData("profile-partial-parent.heddle")]
-        [InlineData("profile-flagship.heddle")]
-        [InlineData("profile-directive.heddle")]
-        // Hidden-token offset regression: a single-file multi-line definition body with an inner comment must
-        // render byte-identically across the precompiled and runtime backends (the enclosing-block trim fix lives
-        // in both backends' DocumentShaper/HeddleCompiler). The cross-file override page layers an imported
-        // definition and falls back to the dynamic path, so it carries no precompiled entry to compare — its
-        // correctness is pinned by the runtime golden (Heddle.Tests MultilineOverrideOffsetRegressionTests).
-        [InlineData("regr-def-inner-comment.heddle")]
-        // The clamp-drift fixture: an INDENTED @<< composition import on the document's last line, importing a
-        // file with a zero-output directive. The imported chain keeps the import-site offset while the import's
-        // own (widened) line is removed, leaving that offset past the end of the shortened working document.
-        // Before the clamp fix the emitter threw IndexOutOfRangeException inside WidenToWholeLine and the
-        // template silently lost precompilation; RenderInCorpus's ExpectPrecompiled is what makes that regression
-        // a red build, and the byte assertion covers the rest.
-        [InlineData("shaper-clamp-overshoot.heddle")]
+        [MemberData(nameof(StandaloneRenderable))]
         public void ModelLessCorpusTemplateRendersIdentically(string name)
         {
             // The corpus is in THIS project's own output directory (TestCorpus.props), so locating it is
-            // AppContext.BaseDirectory and nothing else. The assembly-path rewrite + `../../..` climb that stood
-            // here, and the hard assert that had to be bolted on top of it, are both gone.
+            // AppContext.BaseDirectory and nothing else.
             var dir = TestCorpusIndex.CorpusDir;
             // FrontEndError entries carry deliberate parse errors; excluded so the rest of the corpus generates
-            // cleanly (imports still resolve from what remains). The set is read from the intent table, not
-            // hand-copied into a third HashSet as it was here.
+            // cleanly (imports still resolve from what remains). The set is read from the intent table.
             var corpus = TestCorpusIndex.Load(includeFrontEndErrorFixtures: false);
             var target = corpus.FirstOrDefault(t => Path.GetFileName(t.key) == name);
             Assert.False(target.content == null, "Corpus template not found: " + name);
@@ -56,6 +44,23 @@ namespace Heddle.Generator.IntegrationTests
                 corpus, target.key, target.content, typeof(object), null, dir,
                 extraReferences: DifferentialHarness.EngineTestModelReferences());
             Assert.Equal(dyn, precompiled);
+        }
+
+        /// <summary>
+        /// The declared set and the corpus on disk agree by name, so a template declared standalone-and-precompiling
+        /// but absent — or renamed — is a red build rather than a theory case that quietly stops existing.
+        /// </summary>
+        [Fact]
+        public void EveryDeclaredStandaloneEntryIsInTheCorpus()
+        {
+            var declared = new HashSet<string>(StandaloneRenderable().Select(row => (string)row[0]),
+                StringComparer.Ordinal);
+            var present = new HashSet<string>(
+                TestCorpusIndex.Load(includeFrontEndErrorFixtures: false).Select(t => Path.GetFileName(t.key)),
+                StringComparer.Ordinal);
+
+            Assert.True(declared.Count > 0, "the intent table declares no standalone precompiling entries");
+            Assert.Equal(new HashSet<string>(declared.Where(present.Contains), StringComparer.Ordinal), declared);
         }
     }
 }

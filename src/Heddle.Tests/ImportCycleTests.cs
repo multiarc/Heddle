@@ -290,9 +290,12 @@ namespace Heddle.Tests
 
             Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportCycle);
             // 64 is what this fixture produces with the budget removed, so asserting that bound would have been
-            // satisfied by the unguarded behaviour. The budget is 32.
-            Assert.True(context.Errors.Count <= ParserSettings.DefaultCycleReportBudget,
+            // satisfied by the unguarded behaviour. The bound is written out rather than read from the engine:
+            // comparing against the budget itself made the test agree with any budget, including one raised past
+            // what the fixture can produce, at which point it stops observing anything.
+            Assert.True(context.Errors.Count <= 32,
                 "cycle descriptions must stay bounded; got " + context.Errors.Count);
+            Assert.Equal(32, ParserSettings.DefaultCycleReportBudget);
         }
 
         /// <summary>

@@ -101,7 +101,7 @@ namespace Heddle.Data
         /// <summary>A branch terminal (such as <c>@else</c>) was given a condition parameter, which is ignored.</summary>
         public const string ElseConditionIgnored = "HED3004";
 
-        /// <summary>A branch continuation/terminal extension (<c>[BranchRole]</c>) lacks <c>[ScopeChannel]</c>, causing branch state read misses at render time (R11 drift).</summary>
+        /// <summary>A branch continuation/terminal extension (<c>[BranchRole]</c>) lacks <c>[ScopeChannel]</c>, so it misses branch state reads at render time.</summary>
         public const string BranchRoleMissingScopeChannel = "HED3005";
 
         /// <summary>The literal step argument of the built-in <c>range</c> is zero or negative (non-terminating loop).</summary>
@@ -124,7 +124,8 @@ namespace Heddle.Data
         /// reported and the repeat import skipped.</summary>
         public const string ComposeImportCycle = "HED4006";
 
-        /// <summary>An expression, chain, or block nesting is too deep to build without exhausting the stack.</summary>
+        /// <summary>Nesting is too deep to build without exhausting the stack: an expression, chain, or block
+        /// past the parse-depth bound, or <c>@&lt;&lt;</c> composition imports past the import-depth bound.</summary>
         public const string TemplateNestedTooDeeply = "HED4007";
 
         /// <summary>One parse expanded more <c>@&lt;&lt;</c> composition imports than the engine will process; the

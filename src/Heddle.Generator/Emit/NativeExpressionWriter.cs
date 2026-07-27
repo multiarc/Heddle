@@ -77,8 +77,9 @@ namespace Heddle.Generator.Emit
         public IReadOnlyList<(string Name, Heddle.Strings.Core.BlockPosition Position)> UnresolvableFunctions =>
             _unresolvableFunctions;
 
-        /// <summary>Genuine member-path failures in this expression (a property not found on a resolved, non-dynamic
-        /// receiver — milestone 2 / HED7008). Drained by the emitter and reported at the <c>.heddle</c> span.</summary>
+        /// <summary>Genuine member-path failures in this expression — a property not found on a resolved,
+        /// non-dynamic receiver (<c>HED7008</c>). Drained by the emitter and reported at the <c>.heddle</c>
+        /// span.</summary>
         public IReadOnlyList<SymbolMemberResolver.MemberFailure> MemberFailures => _memberFailures;
 
         /// <summary>Function calls the <b>shared</b> overload ranker <i>proved</i> illegal — an
