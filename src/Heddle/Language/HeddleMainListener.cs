@@ -290,6 +290,17 @@ namespace Heddle.Language {
             var path = string.Concat(context.text().Select(t => t.GetText()));
             if (!string.IsNullOrWhiteSpace(path))
             {
+                var importKey = _settings.ResolveImportPath(path);
+                if (_settings.ActiveImports.Contains(importKey))
+                {
+                    var chain = string.Join(" -> ", _settings.ActiveImports.Concat(new[] { importKey }));
+                    CurrentParseContext.Errors.Add(
+                        $"A '@<<' composition import cycle: {chain}. The repeated import is skipped."
+                            .ToError(CurrentParseContext.GetAbsoluteBlockPosition(context),
+                                HeddleDiagnosticIds.ComposeImportCycle));
+                    return;
+                }
+
                 string document = _settings.ReadImport(path);
 
                 bool markProvenance = CurrentParseContext.ProvideLanguageFeatures;
@@ -310,7 +321,15 @@ namespace Heddle.Language {
                     isolatedContext.ImportOrigin = origin;
                 isolatedContext.OutputChains.Clear();
                 isolatedContext.SkippedTokens.Clear();
-                DocumentParser.Parse(document, isolatedContext, _settings/*, true*/);
+                _settings.ActiveImports.Add(importKey);
+                try
+                {
+                    DocumentParser.Parse(document, isolatedContext, _settings/*, true*/);
+                }
+                finally
+                {
+                    _settings.ActiveImports.RemoveAt(_settings.ActiveImports.Count - 1);
+                }
                 CurrentParseContext.DefaultChains.Clear();
                 CurrentParseContext.DefaultChains.AddRange(isolatedContext.DefaultChains);
                 CurrentParseContext.DefinitionsBlock.Definitions.Clear();

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace Heddle.Language
@@ -30,6 +31,16 @@ namespace Heddle.Language
         /// collected import map, records the transitive closure, and never touches the file system.
         /// </summary>
         public Func<string, string> ImportReader { get; set; }
+
+        /// <summary>
+        /// The imports currently being parsed, outermost first. An <c>@&lt;&lt;</c> import parses the imported
+        /// document in place, so a document that imports its way back to one already on this list would recurse until
+        /// the stack ran out — and a <c>StackOverflowException</c> cannot be caught, so a template typo took the whole
+        /// process down instead of producing a compile error.
+        /// <para>Held here because this object is what threads through the nested parse. Parsing a document is
+        /// single-threaded, and every push is unwound in a <c>finally</c>.</para>
+        /// </summary>
+        internal List<string> ActiveImports { get; } = new List<string>();
 
         /// <summary>Reads the content of an <c>@&lt;&lt;</c> import, through <see cref="ImportReader"/> when set and
         /// through the default file read otherwise (the pre-seam behavior).</summary>
