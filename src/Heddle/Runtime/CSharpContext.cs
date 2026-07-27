@@ -37,8 +37,29 @@ namespace Heddle.Runtime
 
         private static readonly HeddleTemplate PreparseGenerator;
 
-        private static readonly ConcurrentDictionary<string, Tuple<OptionalValue<object>, ExType>> PrecompilationCache =
-            new ConcurrentDictionary<string, Tuple<OptionalValue<object>, ExType>>();
+        private static readonly ConcurrentDictionary<string, PreparseResult> PrecompilationCache =
+            new ConcurrentDictionary<string, PreparseResult>();
+
+        /// <summary>
+        /// One preparse outcome: what the expression evaluated to, its type, and the diagnostics producing it raised.
+        /// <para>The diagnostics belong to the entry because the same generated code must report the same thing every
+        /// time it is compiled. Caching only the value made diagnostics an accident of ordering — the first caller
+        /// received them and every later one silently got none, so a host compiling the same broken template twice
+        /// saw two different error lists.</para>
+        /// </summary>
+        private sealed class PreparseResult
+        {
+            public PreparseResult(OptionalValue<object> value, ExType type, HeddleCompileError[] diagnostics)
+            {
+                Value = value;
+                Type = type;
+                Diagnostics = diagnostics;
+            }
+
+            public OptionalValue<object> Value { get; }
+            public ExType Type { get; }
+            public HeddleCompileError[] Diagnostics { get; }
+        }
 
         static CSharpContext()
         {
@@ -165,7 +186,26 @@ namespace Heddle.Runtime
                 throw new TemplateCompileException("Cannot compile base C# generation templates",
                     InitErrors.Errors);
             var generatedCode = PreparseGenerator.Generate(expressionOptions);
-            var result = PrecompilationCache.GetOrAdd(generatedCode, code =>
+            if (!PrecompilationCache.TryGetValue(generatedCode, out var cached))
+            {
+                var firstDiagnostic = context.CompileErrors.Count;
+                var preparsed = Preparse(generatedCode, context, expressionOptions);
+                cached = new PreparseResult(preparsed.Item1, preparsed.Item2,
+                    context.CompileErrors.Skip(firstDiagnostic).ToArray());
+                PrecompilationCache.TryAdd(generatedCode, cached);
+            }
+            else
+            {
+                context.CompileErrors.AddRange(cached.Diagnostics);
+            }
+
+            objectType = cached.Type;
+            return cached.Value;
+        }
+
+        private Tuple<OptionalValue<object>, ExType> Preparse(string code, CompileContext context,
+            ExpressionOptions expressionOptions)
+        {
             {
                 var tree = CSharpSyntaxTree.ParseText(code);
                 var assemblySet = AssemblyHelper.GetApplicationReferences();
@@ -203,9 +243,7 @@ namespace Heddle.Runtime
 
                 var objType = ResolveTypeReference(context, expressionOptions, typeInfo.Type);
                 return new Tuple<OptionalValue<object>, ExType>(new OptionalValue<object>(null, false), objType);
-            });
-            objectType = result.Item2;
-            return result.Item1;
+            }
         }
 
         private ExType ResolveTypeReference(CompileContext context,
