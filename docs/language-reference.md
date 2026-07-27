@@ -1118,10 +1118,14 @@ compiler rather than fail the build.
 
 **Why the limit is where it is.** Prefix operators (`!`, `-`, `+`, `~`) and the right-associative `?:`
 and `??` are parsed by recursive descent, so each one costs a stack frame — far more stack per level than
-a block does. On a 1 MB thread, which is the Windows and thread-pool default, those shapes run out at a
-little over 300 levels, so the bound is set just below that and is reached first. A host that runs the
-compiler on a smaller stack should reduce its input size to match. If you compile untrusted templates,
-put a size limit in front of the compiler regardless.
+a block does. The bound is set below where those shapes exhaust a 1 MB thread, which is the Windows and
+thread-pool default, so it is reached first there.
+
+**Known limit.** That bound covers the parser's descent only. A long run of prefix operators also drives
+ANTLR's *prediction* into deep recursion, which the counter cannot see — the rule depth is still in single
+figures when the stack runs out — so a sufficiently long run terminates the process at any stack size.
+This is upstream ([antlr/antlr4#744](https://github.com/antlr/antlr4/issues/744)) and no fixed count fixes
+it. If you compile untrusted templates, put a size limit in front of the compiler.
 
 **`@import(){{ path }}` — removed.** The old compile‑time include
 ([ImportExtension.cs](../src/Heddle/Extensions/Archived/ImportExtension.cs)) merged nothing into the

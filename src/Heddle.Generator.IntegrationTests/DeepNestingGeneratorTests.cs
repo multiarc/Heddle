@@ -11,7 +11,7 @@ namespace Heddle.Generator.IntegrationTests
     /// </summary>
     public class DeepNestingGeneratorTests
     {
-        private const int PastTheLimit = 1500;
+        private const int PastTheLimit = 400;
 
         [Theory]
         [InlineData("prefix")]

@@ -34,17 +34,20 @@ namespace Heddle.Language
     internal sealed class ParseDepthGuard : IParseTreeListener
     {
         /// <summary>
-        /// Chosen against the smallest stack the engine can be hosted on, not against the roomiest. At 1000 the bound
-        /// was unreachable where it mattered most: a 1 MB stack — the Windows default, and what the thread pool hands
-        /// out — overflows on the parser-recursive shapes at around 350 levels, so the crash always arrived first and
-        /// a source generator inside MSBuild died on a template a few hundred characters long. Measured last-safe
-        /// depths were 300 at 1 MB, 500 at 2 MB, 800 at 4 MB.
-        /// <para>300 allows about a hundred nested blocks — a block costs three rules — against the few dozen a
+        /// Chosen against the smallest stack the engine can be hosted on, in the configuration it ships in. Both parts
+        /// matter and the second was got wrong once: 300 was derived from a Debug build, where a 1 MB thread survives
+        /// to 503, while a <b>Release</b> build — what a source generator actually runs as — dies at 284 and the
+        /// guard fired at 293, so it could never fire first. Measured last-safe depths, Release on a 1 MB thread:
+        /// 284 for prefix operators and <c>?:</c>, 287 for <c>??</c>, 574 for parentheses.
+        /// <para>This bounds the parser's own descent. It does <b>not</b> bound ANTLR's prediction, which recurses
+        /// separately: a long enough prefix run exhausts the stack inside <c>ParserATNSimulator</c> with the rule
+        /// depth still in single figures, at any stack size. No fixed count can see that one.</para>
+        /// <para>250 allows about eighty nested blocks — a block costs three rules — against the few dozen a
         /// deeply layered layout reaches. Blocks are the tightest dimension by far and the margin there is roughly
-        /// 2.5×, not the order of magnitude it is tempting to claim; every other shape has far more room (around 290
+        /// 2.5×, not the order of magnitude it is tempting to claim; every other shape has far more room (around 240
         /// chained operators or indexers, and member paths cost nothing at all).</para>
         /// </summary>
-        internal const int MaxDepth = 300;
+        internal const int MaxDepth = 250;
 
         private int _depth;
 
