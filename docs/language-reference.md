@@ -1112,6 +1112,13 @@ a measurement of available memory, so a template behaves the same on every host.
 - **`@<<` import nesting — 64 levels.** Imports are counted separately because each one parses another
   document in place. This bounds the depth of a chain, not how many imports a document may have: a file
   with hundreds of sibling imports is unaffected.
+- **`@<<` imports expanded — 1024 in total, per document compiled.** Depth is not the only way an import
+  graph grows. Each repeat of an import is parsed again — that is what lets it contribute its output at
+  each position — so a file imported from two places in a document that is itself imported from two
+  places multiplies out: sixteen such levels are acyclic, well inside the depth limit, and expand to a
+  hundred thousand parses. Past the total, the remaining imports are skipped and a compile error
+  (**`HED4008`**) says so once. Ordinary composition is nowhere near it; reaching it means a library is
+  being pulled in along many paths at once, and naming it in one place fixes the multiplication.
 
 The same bounds apply at build time in the source generator, where an unbounded parse would take down the
 compiler rather than fail the build.
