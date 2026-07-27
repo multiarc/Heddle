@@ -41,20 +41,28 @@ namespace Heddle.Native
             var reference = CreateSafe(assembly);
             if (reference != null)
             {
-#if NETSTANDARD2_0
                 lock (Cache)
                 {
                     if (Cache.TryGetValue(assembly, out cached))
                         return cached;
                     Cache.Add(assembly, reference);
+                    // The reverse edge, and it is what keeps the reference safe to use. For an assembly with no file
+                    // behind it the reference points at metadata the runtime owns, which unloading its load context
+                    // frees — and a caller can hold the reference long after the engine has let the assembly go. The
+                    // read then lands on freed memory: an AccessViolationException, which cannot be caught, or a
+                    // silently corrupt compile. Anchoring the assembly to the reference defers the unload until the
+                    // last holder is finished. The two tables form a cycle only the collector needs to understand,
+                    // and it does: neither entry keeps the other alive once both are unreachable.
+                    Owners.Add(reference, assembly);
                 }
-#else
-                reference = Cache.GetValue(assembly, _ => CreateSafe(assembly) ?? reference);
-#endif
             }
 
             return reference;
         }
+
+        /// <summary>Keeps an assembly alive for exactly as long as a reference built over its metadata is.</summary>
+        private static readonly ConditionalWeakTable<MetadataReference, Assembly> Owners =
+            new ConditionalWeakTable<MetadataReference, Assembly>();
 
         private static MetadataReference CreateSafe(Assembly assembly)
         {

@@ -44,21 +44,33 @@ namespace Heddle.Runtime
         /// One preparse outcome: what the expression evaluated to, its type, and the diagnostics producing it raised.
         /// <para>The diagnostics belong to the entry because the same generated code must report the same thing every
         /// time it is compiled. Caching only the value made diagnostics an accident of ordering — the first caller
-        /// received them and every later one silently got none, so a host compiling the same broken template twice
-        /// saw two different error lists.</para>
+        /// received them and every later one silently got none.</para>
+        /// <para><b>Only the message survives; the position does not.</b> The key is the generated C#, which says
+        /// nothing about where in which document the expression sits, so replaying a stored position stamped the
+        /// first caller's coordinates onto every later one — a one-line document being told its error is on line
+        /// four. Each caller re-stamps its own. This was a real regression the first time these were cached, and it
+        /// was worse than the fault it replaced: an editor navigates by position.</para>
+        /// <para><see cref="Generation"/> is the observed-assembly generation the entry was produced under. A
+        /// failure that only failed because an assembly had not been registered yet must not outlive the
+        /// registration — cached forever, it turned a fault that healed on the next compile into a permanent one
+        /// decided by load order.</para>
         /// </summary>
         private sealed class PreparseResult
         {
-            public PreparseResult(OptionalValue<object> value, ExType type, HeddleCompileError[] diagnostics)
+            public PreparseResult(OptionalValue<object> value, ExType type, string[] diagnostics, int generation)
             {
                 Value = value;
                 Type = type;
                 Diagnostics = diagnostics;
+                Generation = generation;
             }
 
             public OptionalValue<object> Value { get; }
             public ExType Type { get; }
-            public HeddleCompileError[] Diagnostics { get; }
+            public string[] Diagnostics { get; }
+            public int Generation { get; }
+
+            public bool Failed => Diagnostics.Length > 0;
         }
 
         static CSharpContext()
@@ -186,21 +198,35 @@ namespace Heddle.Runtime
                 throw new TemplateCompileException("Cannot compile base C# generation templates",
                     InitErrors.Errors);
             var generatedCode = PreparseGenerator.Generate(expressionOptions);
-            if (!PrecompilationCache.TryGetValue(generatedCode, out var cached))
+            var generation = Native.AssemblyHelper.Generation;
+            if (!PrecompilationCache.TryGetValue(generatedCode, out var cached) || IsStale(cached, generation))
             {
                 var firstDiagnostic = context.CompileErrors.Count;
                 var preparsed = Preparse(generatedCode, context, expressionOptions);
                 cached = new PreparseResult(preparsed.Item1, preparsed.Item2,
-                    context.CompileErrors.Skip(firstDiagnostic).ToArray());
-                PrecompilationCache.TryAdd(generatedCode, cached);
+                    context.CompileErrors.Skip(firstDiagnostic).Select(e => e.Error).ToArray(), generation);
+                PrecompilationCache[generatedCode] = cached;
             }
             else
             {
-                context.CompileErrors.AddRange(cached.Diagnostics);
+                foreach (var message in cached.Diagnostics)
+                    context.CompileErrors.Add(message.ToError(expressionOptions.Position));
             }
 
             objectType = cached.Type;
             return cached.Value;
+        }
+
+        /// <summary>
+        /// A cached <b>failure</b> is only trustworthy while the assembly set that produced it is. An expression
+        /// naming a type in an assembly the host had not registered yet fails, and must be retried once it has been —
+        /// otherwise the first attempt decides the answer for the life of the process, and whether a template
+        /// compiles comes down to load order. A cached success stays valid: nothing a later registration adds can
+        /// take a type away.
+        /// </summary>
+        private static bool IsStale(PreparseResult cached, int generation)
+        {
+            return cached.Failed && cached.Generation != generation;
         }
 
         private Tuple<OptionalValue<object>, ExType> Preparse(string code, CompileContext context,

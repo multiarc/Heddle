@@ -73,6 +73,47 @@ namespace Heddle.Tests
             Assert.DoesNotContain(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportCycle);
         }
 
+        /// <summary>
+        /// Depth is a separate question from repetition, and the cycle guard cannot see it. A chain of thousands of
+        /// distinct files contains no cycle at all and still parses itself onto the floor, because every import
+        /// parses in place. Five thousand twenty-byte files did exactly that.
+        /// </summary>
+        [Fact]
+        public void AnUnboundedImportChainIsReportedInsteadOfKillingTheProcess()
+        {
+            const int length = 4000;
+            var library = new Dictionary<string, string>();
+            for (var i = 0; i < length; i++)
+                library["f" + i + ".heddle"] = "@<<{{f" + (i + 1) + ".heddle}}@\\\n";
+            library["f" + length + ".heddle"] = "end";
+
+            var context = Parse("@<<{{f0.heddle}}@\\\nroot", library);
+
+            Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.TemplateNestedTooDeeply);
+        }
+
+        /// <summary>
+        /// One file is one document however its path is spelled. Keying the cycle guard on the raw spelling let
+        /// <c>./a.heddle</c> and <c>d/../a.heddle</c> pass as different documents, so a cycle walked straight past
+        /// it — and because every unseen spelling pushed another level, the parse explored permutations: eight
+        /// spellings produced 863,109 diagnostics at build time.
+        /// </summary>
+        [Fact]
+        public void ACycleIsCaughtHoweverTheImportPathIsSpelled()
+        {
+            var spellings = new[] { "a.heddle", "./a.heddle", ".//a.heddle", "d0/../a.heddle", "./d0/../a.heddle" };
+            var body = string.Concat(spellings.Select(p => "@<<{{" + p + "}}@\\\n"));
+            var library = new Dictionary<string, string>();
+            foreach (var spelling in spellings)
+                library[spelling] = body;
+
+            var context = Parse(body + "root", library);
+
+            Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportCycle);
+            Assert.True(context.Errors.Count < 200,
+                "cycle reporting must not multiply across spellings; got " + context.Errors.Count);
+        }
+
         private static ParseContext Parse(string document, IReadOnlyDictionary<string, string> library)
         {
             var settings = new ParserSettings

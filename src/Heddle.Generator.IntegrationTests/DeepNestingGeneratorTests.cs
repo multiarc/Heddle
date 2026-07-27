@@ -23,7 +23,9 @@ namespace Heddle.Generator.IntegrationTests
         {
             var generated = DifferentialHarness.Generate(new[] { ("views/deep.heddle", Document(shape)) });
 
-            Assert.NotEmpty(generated.Diagnostics);
+            // The id, not merely "a diagnostic": 1500 prefix operators also produce ordinary syntax errors, so
+            // asserting non-empty would pass without the bound ever being reached.
+            Assert.Contains(generated.Diagnostics, d => d.Id == "HED4007");
         }
 
         /// <summary>Ordinary depth must still precompile, or the guard would be the worse defect.</summary>
@@ -39,6 +41,7 @@ namespace Heddle.Generator.IntegrationTests
             var generated = DifferentialHarness.Generate(new[] { ("views/ordinary.heddle", document) });
 
             Assert.Empty(generated.Diagnostics);
+            DifferentialHarness.ExpectPrecompiled(generated, "views/ordinary.heddle");
         }
 
         private static string Document(string shape)
