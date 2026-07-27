@@ -670,6 +670,7 @@ TYPE Heddle.Language.ParseContext
 TYPE Heddle.Language.ParserSettings
   CTOR()
   PROP System.Boolean ProvideLanguageFeatures {get;set;}
+  PROP System.Func<System.String, System.String> ImportIdentifier {get;set;}
   PROP System.Func<System.String, System.String> ImportReader {get;set;}
   PROP System.String RootPath {get;set;}
 TYPE Heddle.Language.PropDeclaration

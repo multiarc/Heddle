@@ -384,13 +384,22 @@ namespace Heddle.Generator
 
             // HED7028: imports resolved by key spelling of named templates (prefer name spelling).
             var nonPreferredImports = new List<KeyValuePair<string, string>>();
+            // One normaliser, shared: the cycle guard has to call an import the same document the reader does.
+            // Resolving imports by template key while identifying them by file path gave one document as many
+            // identities as it had spellings — `views/a`, `~/views/a.heddle`, `/views/a.heddle` are all the same
+            // template here — and the guard then walked their permutations before noticing the repeat.
+            Func<string, string> identity = importPath =>
+                TemplateKey.TryNormalize(importPath, out var key) ? key : importPath;
+
             var settings = new ParserSettings
             {
                 RootPath = string.Empty,
                 ProvideLanguageFeatures = false,
+                ImportIdentifier = identity,
                 ImportReader = importPath =>
                 {
-                    if (TemplateKey.TryNormalize(importPath, out var k) && importMap.TryGetValue(k, out var content))
+                    var k = identity(importPath);
+                    if (importMap.TryGetValue(k, out var content))
                     {
                         if (nameByKeySpelling.TryGetValue(k, out var preferred) &&
                             !nonPreferredImports.Exists(p => string.Equals(p.Key, importPath, StringComparison.Ordinal)))

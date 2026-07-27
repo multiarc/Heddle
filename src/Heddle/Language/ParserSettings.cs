@@ -33,6 +33,16 @@ namespace Heddle.Language
         public Func<string, string> ImportReader { get; set; }
 
         /// <summary>
+        /// The identity <see cref="ImportReader"/> resolves an import path to — what makes two spellings the same
+        /// document. Set it whenever <see cref="ImportReader"/> is set, from the same normaliser the reader itself
+        /// uses: a reader that resolves by something other than the file system gives one document several
+        /// file-system identities, and the cycle guard then sees several documents where there is one, exploring
+        /// their permutations before it notices. When <c>null</c>, identity is the canonicalised file path, which is
+        /// what the default disk reader resolves by.
+        /// </summary>
+        public Func<string, string> ImportIdentifier { get; set; }
+
+        /// <summary>
         /// The imports currently being parsed, outermost first. An <c>@&lt;&lt;</c> import parses the imported
         /// document in place, so a document that imports its way back to one already on this list would recurse until
         /// the stack ran out — and a <c>StackOverflowException</c> cannot be caught, so a template typo took the whole
@@ -109,13 +119,17 @@ namespace Heddle.Language
         }
 
         /// <summary>
-        /// The identity an <c>@&lt;&lt;</c> import is recognised by when detecting a cycle. Distinct from
+        /// The identity an <c>@&lt;&lt;</c> import is recognised by when detecting a cycle — <see cref="ImportIdentifier"/>
+        /// when the host resolves imports itself, and the canonicalised path otherwise. Distinct from
         /// <see cref="ResolveImportPath"/>, which is the provenance string shown to a reader and must keep its exact
         /// spelling: <c>a.heddle</c>, <c>./a.heddle</c> and <c>d/../a.heddle</c> are one file, and treating them as
         /// three let a cycle walk straight past the guard.
         /// </summary>
         internal string ImportIdentity(string importPath)
         {
+            if (ImportIdentifier != null)
+                return ImportIdentifier(importPath);
+
             var combined = ResolveImportPath(importPath);
             try
             {

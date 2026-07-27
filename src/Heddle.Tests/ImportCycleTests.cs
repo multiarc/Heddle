@@ -1,7 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Heddle.Data;
 using Heddle.Language;
+using Heddle.Precompiled;
 using Xunit;
 
 namespace Heddle.Tests
@@ -90,6 +92,45 @@ namespace Heddle.Tests
             var context = Parse("@<<{{f0.heddle}}@\\\nroot", library);
 
             Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.TemplateNestedTooDeeply);
+        }
+
+        /// <summary>
+        /// A host that resolves imports itself — the generator resolves them by template key, from files it was
+        /// handed rather than from disk — must have the cycle guard call an import the same document its reader
+        /// does. Keying the guard on the file path while the reader keyed on the template key gave one document as
+        /// many identities as it had spellings, and the guard walked their permutations before noticing the repeat:
+        /// six spellings of one self-importing file were read a thousand times instead of six.
+        /// </summary>
+        [Fact]
+        public void TheCycleGuardFollowsTheReadersOwnNotionOfIdentity()
+        {
+            var spellings = new[]
+            {
+                "views/a", "views/a.heddle", "~/views/a.heddle", "/views/a.heddle", "~/views/a", "/views/a"
+            };
+            var document = string.Concat(spellings.Select(p => "@<<{{" + p + "}}@\\\n"));
+            var library = new Dictionary<string, string> { ["views/a.heddle"] = document };
+            Func<string, string> identity = path => TemplateKey.TryNormalize(path, out var key) ? key : path;
+
+            var reads = 0;
+            var settings = new ParserSettings
+            {
+                RootPath = string.Empty,
+                ImportIdentifier = identity,
+                ImportReader = path =>
+                {
+                    reads++;
+                    return library.TryGetValue(identity(path), out var text) ? text : string.Empty;
+                }
+            };
+
+            var context = DocumentParser.Parse(document, settings, out _);
+
+            Assert.True(reads <= spellings.Length,
+                "one document must be read once per import that names it, not once per permutation of its " +
+                "spellings; it was read " + reads + " times");
+            Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportCycle);
+            Assert.DoesNotContain(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportFanOut);
         }
 
         /// <summary>
