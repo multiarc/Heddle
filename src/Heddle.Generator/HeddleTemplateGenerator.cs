@@ -357,7 +357,10 @@ namespace Heddle.Generator
                 {
                     // Report per template (not rethrow): rethrow downgrades to warning and discards contribution;
                     // error diagnostic reds build and continues, isolating defective template.
-                    spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.EmitterFault, Location.None,
+                    // Positioned at the template's start where the text can still be read: reporting at Location.None
+                    // put the path in the message only, leaving nothing for the IDE's error list to navigate to.
+                    spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.EmitterFault,
+                        ToLocation(template.Text, SafeText(template.Text), default),
                         template.Text.Path, ex.GetType().Name, ex.Message));
                 }
             }
@@ -485,6 +488,20 @@ namespace Heddle.Generator
             }
 
             return new BlockPosition(0, 0);
+        }
+
+        /// <summary>Reads a template's text without letting the read itself become a second fault — this runs on the
+        /// path that is already handling one.</summary>
+        private static SourceText SafeText(AdditionalText text)
+        {
+            try
+            {
+                return text.GetText();
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static Location ToLocation(AdditionalText text, SourceText sourceText, BlockPosition position)
