@@ -200,24 +200,20 @@ namespace Heddle.Generator.Emit
             /// <summary>
             /// C#'s binary numeric promotion, reduced to the cases that can fault: if either side is
             /// <c>double</c> the result is <c>double</c>, else <c>decimal</c>, else <c>ulong</c>, else <c>long</c>,
-            /// else <c>uint</c>, else <c>int</c>. The one combination C# rejects outright — <c>ulong</c> with a
-            /// signed type — is reported as undecidable rather than as a fault, since it is a type error the emitter
-            /// has no business diagnosing here.
-            /// </summary>
+            /// <c>uint</c>, else <c>int</c>. A pairing C# genuinely rejects — <c>ulong</c> with a negative signed
+            /// constant — falls out of <see cref="Convert"/>'s checked cast, which overflows and reports the pair as
+            /// undecidable. An explicit guard for it here was dead code: the cast already covered every case.            /// </summary>
             internal static bool Unify(Numeric x, Numeric y, out Numeric a, out Numeric b)
             {
                 a = default;
                 b = default;
                 var kind = Wider(x, y);
-                // Only a NEGATIVE signed operand makes a ulong pairing a type error; a non-negative integer
-                // constant converts implicitly, which is how `ulong + 'a'` is legal C#. Refusing to decide for
-                // every signed operand let that pairing through to break the host's build.
-                if (kind == NumericKind.ULong && (IsNegative(x) || IsNegative(y)))
-                {
-                    return false;
-                }
-
                 return Convert(x, kind, out a) && Convert(y, kind, out b);
+            }
+
+            internal static Numeric LongFrom(Numeric value)
+            {
+                return Signed(NumericKind.Long, -(long)value._unsigned);
             }
 
             /// <summary>
@@ -226,16 +222,6 @@ namespace Heddle.Generator.Emit
             /// <c>uint</c>, so <c>0 - 3000000000</c> is unsigned arithmetic and underflows — which is why C# rejects
             /// it, and why treating the pair as <c>long</c> here let it through to break the host's build.
             /// </summary>
-            private static bool IsNegative(Numeric value)
-            {
-                return value.Kind != NumericKind.UInt && value.Kind != NumericKind.ULong && value._signed < 0;
-            }
-
-            internal static Numeric LongFrom(Numeric value)
-            {
-                return Signed(NumericKind.Long, -(long)value._unsigned);
-            }
-
             private static NumericKind Wider(Numeric x, Numeric y)
             {
                 if (x.Kind == NumericKind.Double || y.Kind == NumericKind.Double) return NumericKind.Double;

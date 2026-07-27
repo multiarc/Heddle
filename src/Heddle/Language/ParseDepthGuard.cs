@@ -45,7 +45,10 @@ namespace Heddle.Language
         /// <para>250 allows about eighty nested blocks — a block costs three rules — against the few dozen a
         /// deeply layered layout reaches. Blocks are the tightest dimension by far and the margin there is roughly
         /// 2.5×, not the order of magnitude it is tempting to claim; every other shape has far more room (around 240
-        /// chained operators or indexers, and member paths cost nothing at all).</para>
+        /// chained operators or indexers, and member paths cost nothing to
+        /// <i>parse</i> — though they are not free to compile: a null-safe hop currently duplicates its receiver, so
+        /// a long chain is exponential downstream of this guard, which is a separate defect and not one a depth
+        /// bound can address).</para>
         /// </summary>
         internal const int MaxDepth = 250;
 
