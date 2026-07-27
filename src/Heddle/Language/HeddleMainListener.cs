@@ -290,14 +290,31 @@ namespace Heddle.Language {
             var path = string.Concat(context.text().Select(t => t.GetText()));
             if (!string.IsNullOrWhiteSpace(path))
             {
-                var importKey = _settings.ResolveImportPath(path);
+                var importKey = _settings.ImportIdentity(path);
                 if (_settings.ActiveImports.Contains(importKey))
                 {
-                    var chain = string.Join(" -> ", _settings.ActiveImports.Concat(new[] { importKey }));
+                    if (_settings.CycleReportBudget > 0)
+                    {
+                        _settings.CycleReportBudget--;
+                        var chain = string.Join(" -> ", _settings.ActiveImports.Concat(new[] { importKey }));
+                        CurrentParseContext.Errors.Add(
+                            $"A '@<<' composition import cycle: {chain}. The repeated import is skipped."
+                                .ToError(CurrentParseContext.GetAbsoluteBlockPosition(context),
+                                    HeddleDiagnosticIds.ComposeImportCycle));
+                    }
+
+                    return;
+                }
+
+                // Depth, which the cycle check above cannot see: a chain of thousands of distinct files contains no
+                // repeat and still parses itself onto the floor, because each import parses in place.
+                if (_settings.ActiveImports.Count >= ParserSettings.MaxImportDepth)
+                {
                     CurrentParseContext.Errors.Add(
-                        $"A '@<<' composition import cycle: {chain}. The repeated import is skipped."
-                            .ToError(CurrentParseContext.GetAbsoluteBlockPosition(context),
-                                HeddleDiagnosticIds.ComposeImportCycle));
+                        ($"'@<<' composition imports nest deeper than {ParserSettings.MaxImportDepth} levels. " +
+                         "The import is skipped.")
+                        .ToError(CurrentParseContext.GetAbsoluteBlockPosition(context),
+                            HeddleDiagnosticIds.TemplateNestedTooDeeply));
                     return;
                 }
 

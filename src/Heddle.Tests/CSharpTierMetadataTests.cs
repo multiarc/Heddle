@@ -119,6 +119,82 @@ namespace Heddle.Tests
             Assert.Equal(first, third);
         }
 
+        /// <summary>
+        /// The cache key is the generated C#, which says nothing about where the expression sits, so a replayed
+        /// diagnostic must take the position of the caller receiving it. Storing the first caller's position stamped
+        /// a one-line document with an error on line four — worse than the missing diagnostics it replaced, because
+        /// an editor navigates by position.
+        /// <para><b>A guard, not a red-verified pin.</b> Replaying a fixed position instead of the caller's leaves
+        /// this green, because two documents sharing an expression do not reliably share a cache entry here. The
+        /// re-stamp is still correct — a stored position is meaningless against a key that does not encode one — but
+        /// the reproduction the reviewers built is not one this suite can hold, and saying so is better than a test
+        /// that implies otherwise.</para>
+        /// </summary>
+        [Fact]
+        public void ARepeatedFailingExpressionIsReportedAtEachCallersOwnPosition()
+        {
+            const string expression = "@(@ shared_missing_symbol )";
+            var early = "@model(){{dynamic}}" + expression;
+            var late = "@model(){{dynamic}}\n\n\nfiller text\n" + expression;
+
+            var earlyFirst = Position(early);
+            var lateAfter = Position(late);
+
+            Assert.NotEqual(earlyFirst, lateAfter);
+            Assert.Equal(earlyFirst, Position(early));
+        }
+
+        /// <summary>
+        /// A cached <b>failure</b> must not outlive the assembly set that produced it. An expression naming a type
+        /// the host had not registered yet fails; once registered it has to succeed. Caching the failure forever
+        /// turned a fault that healed on the next compile into a permanent one decided by load order — the property
+        /// the observation gate exists to prevent.
+        /// </summary>
+        [Fact]
+        public void AFailureCachedBeforeRegistrationDoesNotSurviveIt()
+        {
+            var suffix = Guid.NewGuid().ToString("N").Substring(0, 12);
+            var source = $@"namespace LateNs{suffix} {{ public static class Late{suffix} {{ public static string V() => ""late""; }} }}";
+            var bytes = EmitNamed(source, out var assemblyName);
+            var path = Path.Combine(AppContext.BaseDirectory, assemblyName + ".dll");
+            File.WriteAllBytes(path, bytes);
+
+            var document = $"@model(){{{{dynamic}}}}@(@ LateNs{suffix}.Late{suffix}.V() )";
+            Assert.False(Compiles(document), "the type is not loaded yet, so this must fail first");
+
+            HeddleTemplate.Register(Assembly.LoadFrom(path));
+
+            Assert.True(Compiles(document),
+                "a failure cached before the assembly was registered outlived the registration");
+        }
+
+        private static bool Compiles(string document)
+        {
+            using var template = new HeddleTemplate(document,
+                new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp }));
+            return template.CompileResult.Success;
+        }
+
+        private static int Position(string document)
+        {
+            using var template = new HeddleTemplate(document,
+                new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp }));
+            Assert.False(template.CompileResult.Success);
+            return template.CompileResult.ErrorList.First().Position.StartIndex;
+        }
+
+        private static byte[] EmitNamed(string source, out string assemblyName)
+        {
+            assemblyName = "LateProbe" + Guid.NewGuid().ToString("N");
+            var compilation = CSharpCompilation.Create(assemblyName,
+                new[] { CSharpSyntaxTree.ParseText(source) },
+                AssemblyHelper.GetApplicationReferences(),
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            using var stream = new MemoryStream();
+            Assert.True(compilation.Emit(stream).Success);
+            return stream.ToArray();
+        }
+
         private static IReadOnlyList<string> CompileErrors(string document)
         {
             using var template = new HeddleTemplate(document,

@@ -60,5 +60,41 @@ namespace Heddle.Language
         {
             return Path.Combine(RootPath ?? string.Empty, importPath);
         }
+
+        /// <summary>
+        /// How deep <c>@&lt;&lt;</c> imports may nest. Each one parses the imported document in place, so depth is stack
+        /// depth; a chain of five thousand distinct files — no cycle anywhere — exhausted it. The cycle guard catches
+        /// repeats, which is a different question from depth.
+        /// </summary>
+        internal const int MaxImportDepth = 64;
+
+        /// <summary>
+        /// How many import cycles one parse will report before it stops describing them. A cycle is reported per
+        /// offending edge, and a document reaching the same file under many spellings produced them combinatorially —
+        /// eight spellings yielded 863,109 diagnostics at build time. The import is still skipped once the budget is
+        /// spent; only the description stops.
+        /// </summary>
+        internal int CycleReportBudget { get; set; } = 32;
+
+        /// <summary>
+        /// The identity an <c>@&lt;&lt;</c> import is recognised by when detecting a cycle. Distinct from
+        /// <see cref="ResolveImportPath"/>, which is the provenance string shown to a reader and must keep its exact
+        /// spelling: <c>a.heddle</c>, <c>./a.heddle</c> and <c>d/../a.heddle</c> are one file, and treating them as
+        /// three let a cycle walk straight past the guard.
+        /// </summary>
+        internal string ImportIdentity(string importPath)
+        {
+            var combined = ResolveImportPath(importPath);
+            try
+            {
+                return Path.GetFullPath(combined);
+            }
+            catch (Exception)
+            {
+                // A root that is not a real path — tests and in-memory readers use one — cannot be canonicalised.
+                // The raw spelling is still a usable key; it just cannot see through '..'.
+                return combined;
+            }
+        }
     }
 }

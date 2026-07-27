@@ -95,6 +95,40 @@ namespace Heddle.Tests
                 e => e.DiagnosticId == HeddleDiagnosticIds.TemplateNestedTooDeeply);
         }
 
+        /// <summary>
+        /// The same bound, on a document that <b>also</b> has a syntax error. The error return path calls
+        /// <c>GetText()</c>, which recurses over the whole tree, and it used to run before the tree was ever
+        /// measured — so one stray <c>@(</c> handed the overflow straight back. An editor's document has a syntax
+        /// error most of the time, which is where this mattered most.
+        /// </summary>
+        [Theory]
+        [InlineData("@(")]
+        [InlineData("@if(")]
+        public void ADeepTemplateThatAlsoHasASyntaxErrorIsStillBounded(string trailer)
+        {
+            var document = "@model(){{dynamic}}@(" +
+                           string.Join("+", Enumerable.Repeat("1", PastTheLimit)) + ")" + trailer;
+
+            var context = DocumentParser.Parse(document, new ParserSettings { RootPath = "<none>" }, out _);
+
+            Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.TemplateNestedTooDeeply);
+        }
+
+        /// <summary>
+        /// Unbalanced closers underflow the lexer's mode stack, and the exception escaped the compile rather than
+        /// becoming a diagnostic. Six characters were enough. Malformed input is the one thing a template engine is
+        /// guaranteed to be handed.
+        /// </summary>
+        [Theory]
+        [InlineData("@(1)}}")]
+        [InlineData("@model(){{dynamic}}@(1)}}}}")]
+        public void UnbalancedClosersAreReportedRatherThanThrown(string document)
+        {
+            var context = DocumentParser.Parse(document, new ParserSettings { RootPath = "<none>" }, out _);
+
+            Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.SyntaxError);
+        }
+
         private static void AssertReportsDepth(string document)
         {
             var context = DocumentParser.Parse(document, new ParserSettings { RootPath = "<none>" }, out _);

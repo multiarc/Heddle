@@ -1105,9 +1105,12 @@ it sits far above anything hand-written, where a few dozen levels is already dee
 at build time in the source generator, where an unbounded parse would take down the compiler rather than
 fail the build.
 
-**Known limit.** A single run of many thousands of *prefix* operators (`!`, `-`) can still exhaust the
-stack inside the parser's own lookahead, before the depth bound is reached. Roughly 3000 is safe and
-5000 is not. No other shape is affected. If you compile untrusted templates, put a size limit in front.
+**Known limit.** A single run of many thousands of *prefix* operators (`!`, `-`, `+`, `~`) can still
+exhaust the stack inside the parser's own lookahead, before the depth bound is reached — on this
+project's Linux CI, roughly 3000 levels is safe and 5000 is not. Treat those numbers as indicative
+rather than a contract: the threshold moves with the thread's stack size, and a 1 MB stack (the usual
+default on Windows, and what thread pools hand out) fails earlier. If you compile untrusted templates,
+put a size limit in front of the compiler.
 
 **`@import(){{ path }}` — removed.** The old compile‑time include
 ([ImportExtension.cs](../src/Heddle/Extensions/Archived/ImportExtension.cs)) merged nothing into the

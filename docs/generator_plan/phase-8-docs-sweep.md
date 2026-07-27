@@ -1156,6 +1156,9 @@ reported 1 error then 5 in one process. Import cycles killed the process outrigh
   coalesce, flat, parenthesis, indexer and block nesting now report `HED4007` at 3000, 20000 and 100000
   levels. The bound is source-linked into the generator, so a build-time parse can no longer take down the
   compiler instead of failing the build.
+  <br>**Correction to the sentence above, which was false when written:** prefix runs were listed among the shapes
+  reporting `HED4007` "at 3000, 20000 and 100000". They are not — prefix at 20000 stack-overflows, as the residual
+  note two sentences later said. Both claims were written in the same commit; the residual one was right.
   <br>**Residual:** a run of several thousand *prefix* operators still exhausts the stack inside ANTLR's
   own lookahead before the bound is reached — 3000 survives, 5000 does not. That is the ATN simulator's
   recursion, upstream (antlr/antlr4#744), and not reachable from a grammar or a listener. Documented in the
@@ -1176,3 +1179,47 @@ reported 1 error then 5 in one process. Import cycles killed the process outrigh
 - **`CorpusRenderParityTests` remains a hand-maintained list** of 10 against 32 eligible templates,
   ungated. Partially mitigated by `CorpusResolverSweepTests`, which is set-equality gated but exercises
   the resolver path rather than whole-corpus render.
+
+
+## Third independent review (2026-07-27)
+
+Two more reviewers, no knowledge of the previous cycles. Twelve confirmed findings. **The pattern held again, and
+this time it produced a regression rather than a gap.**
+
+- **The depth bound was bypassed on the error path.** `EnsureTreeWithinLimit` was placed *after* the early
+  `return tree.GetText()` that fires when a parse reported errors — and `GetText()` recurses over the whole tree.
+  A deep left-associative run plus one stray `@(` still killed the process (exit 134, 52,309 `RuleContext.GetText()`
+  frames). Both reviewers found it independently. It mattered most exactly where the bound was sold hardest: an
+  editor's document has a syntax error most of the time, and the generator *is* the compiler.
+- **The diagnostics cache fix was itself a regression, twice over.** Replaying a stored position stamped the first
+  caller's coordinates onto every later one — a one-line document told its error was on line four. Positions were
+  correct before that commit. And the cache was never invalidated when the assembly set changed, so a failure cached
+  before a host registered an assembly outlived the registration permanently: a fault that used to heal on the next
+  compile became load-order-decided forever, which is precisely the property the observation gate one file over
+  exists to prevent.
+- **`ConstantFolding` was wrong in both directions** because it widened every integer to `long` and lost the operand
+  type. Five classes still broke the host build (`(2147483647+0)+(1+0)`, `+2147483647+1`, `uint` overflow, `decimal`
+  overflow), and legal C# was refused, taking whole templates off the precompiled tier. Rewritten to track the type
+  C# evaluates in, including the constant `int`→`uint` conversion and the `-2147483648` literal rule.
+- **Its test class could not fail.** Every case used `@model(){{dynamic}}`, under which constant-only expressions
+  degrade anyway — deleting the entire fold left all 876 generator tests green. Typed models now make a degrade
+  attributable; deleting the fold reddens 17 of 32.
+- **Two unbounded import shapes.** Depth was measured per document, so a chain of 4000 distinct files — no cycle
+  anywhere — exhausted the stack. And the cycle key was the raw spelling, so `./a.heddle` and `d/../a.heddle` read as
+  different documents: a cycle walked past the guard, and eight spellings produced 863,109 diagnostics at build time.
+- **A six-character template threw.** `@(1)}}` underflowed the lexer's mode stack and the `InvalidOperationException`
+  escaped the compile. Unrelated to depth, pre-existing, found by a test written for something else.
+- **Two fixes from the previous cycle were entirely unpinned** — the `AssemblyNameEqualityComparer` hash and
+  `HED7020`'s location both revert green.
+
+### Still not fixed
+
+- **Prefix-operator runs of several thousand** still exhaust ANTLR's own lookahead (antlr/antlr4#744). The published
+  numbers are now marked indicative rather than contractual, because the threshold moves with stack size — a 1 MB
+  stack, the Windows and thread-pool default, fails earlier than this box's 8 MB.
+- **The position re-stamp has no demonstrated red.** Replaying a fixed position leaves the suite green, because two
+  documents sharing an expression do not reliably share a cache entry here. The fix is still right; the test says
+  plainly that it is a guard.
+- **`CorpusRenderParityTests`** remains 10 hand-listed templates against 32 eligible, ungated.
+- **`RoslynReferenceProvider` builds each reference twice on a cache miss** — pre-existing, now fixed as part of
+  anchoring the assembly, but worth noting it was found by review and not by any test.
