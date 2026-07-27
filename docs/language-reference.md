@@ -1093,6 +1093,11 @@ level** of a document — nesting it inside a subtemplate (an `@if`/`@for` body,
 a definition body) is a compile error (**`HED4004`**), because composition merges definitions and
 re‑bases chains into the document as a whole and has no well‑defined meaning at a nested scope.
 
+Imports may nest, and two branches may import the same library. What they may not do is form a
+**cycle** — an import that reaches a document already being imported. That is a compile error
+(**`HED4006`**) naming the chain that closes it; the repeated import is skipped and the rest of the
+document still compiles.
+
 **`@import(){{ path }}` — removed.** The old compile‑time include
 ([ImportExtension.cs](../src/Heddle/Extensions/Archived/ImportExtension.cs)) merged nothing into the
 importing document and had surprising, offset-dependent isolation semantics. It no longer

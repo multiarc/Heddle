@@ -116,6 +116,10 @@ namespace Heddle.Data
         /// <summary>A literal <c>{{ identifier }}</c> in body text renders verbatim braces; use <c>@(identifier)</c> to interpolate (warning only).</summary>
         public const string LiquidStyleInterpolationMisread = "HED4005";
 
+        /// <summary>An <c>@&lt;&lt;</c> composition import reaches a document already being imported; the cycle is
+        /// reported and the repeat import skipped.</summary>
+        public const string ComposeImportCycle = "HED4006";
+
         /// <summary>A named argument's name is not declared by the target definition's prop layout.</summary>
         public const string UnknownProp = "HED5001";
 
