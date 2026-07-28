@@ -173,5 +173,23 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Empty(generated.Diagnostics);
             DifferentialHarness.ExpectDegrade(generated, key);
         }
+
+        /// <summary>
+        /// A property whose type cannot be made nullable. Writing the null-safe hop as <c>x?.M ?? default(T)</c>
+        /// widens the member to <c>T?</c>, and a ref struct has no such form — so the generated code failed the
+        /// consumer's build with <c>CS8978</c>, no Heddle diagnostic, and no degrade. The generator must never emit
+        /// code the host's compiler rejects; where the widening is impossible the receiver is spelled twice instead.
+        /// </summary>
+        [Fact]
+        public void ARefStructPropertyEmitsCodeThatCompiles()
+        {
+            const string key = "views/refstruct.heddle";
+            var generated = DifferentialHarness.Generate(new[]
+            {
+                (key, "@model(){{Heddle.Generator.IntegrationTests.Fixtures.RefStructModel}}@(Buf.Length)")
+            });
+
+            Assert.Empty(generated.Diagnostics);
+        }
     }
 }

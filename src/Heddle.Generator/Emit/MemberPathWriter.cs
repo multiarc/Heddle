@@ -12,18 +12,24 @@ namespace Heddle.Generator.Emit
     {
         internal readonly struct HopEmit
         {
-            public HopEmit(bool receiverIsValueType, bool propertyIsNonNullableValue, string propertyTypeName, string name)
+            public HopEmit(bool receiverIsValueType, bool propertyIsNonNullableValue, string propertyTypeName,
+                string name, bool propertyIsNullableConstructible = true)
             {
                 ReceiverIsValueType = receiverIsValueType;
                 PropertyIsNonNullableValue = propertyIsNonNullableValue;
                 PropertyTypeName = propertyTypeName;
                 Name = name;
+                PropertyIsNullableConstructible = propertyIsNullableConstructible;
             }
 
             public bool ReceiverIsValueType { get; }
             public bool PropertyIsNonNullableValue { get; }
             public string PropertyTypeName { get; }
             public string Name { get; }
+
+            /// <summary>Whether <c>T?</c> exists for this property's type. A ref struct — <c>Span&lt;T&gt;</c> and
+            /// friends — cannot be made nullable, so <c>?.</c> on one does not compile.</summary>
+            public bool PropertyIsNullableConstructible { get; }
         }
 
         /// <summary>Writes the null-safe accessor for the typed <paramref name="hops"/> rooted at
@@ -43,7 +49,13 @@ namespace Heddle.Generator.Emit
                         // `?.` on a non-nullable value member widens to Nullable<T>, so the null case is written back
                         // out with `??`. Naming the receiver once matters: a conditional spelling would evaluate
                         // everything to its left twice, and the engine evaluates it once.
-                        current = $"({current}?.{hop.Name} ?? default({hop.PropertyTypeName}))";
+                        // Unless the widening is impossible: a ref struct has no nullable form, and `?.` on one is a
+                        // compile error in the consumer's project. There the receiver is spelled twice, which is what
+                        // this form has always done for such a type — correctness first, and no ref-struct hop can
+                        // be deep enough for the duplication to matter, since it can only ever be the last one.
+                        current = hop.PropertyIsNullableConstructible
+                            ? $"({current}?.{hop.Name} ?? default({hop.PropertyTypeName}))"
+                            : $"({current} == null ? default({hop.PropertyTypeName}) : {current}.{hop.Name})";
                         break;
                     default:
                         current = current + "?." + hop.Name;
