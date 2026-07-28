@@ -20,6 +20,40 @@ namespace Heddle.Language
 
         internal static ImportParseState Current => _current ?? (_current = new ImportParseState());
 
+        /// <summary>Set while a host's import reader runs; a parse beginning inside that window is its own.</summary>
+        internal bool InHostCallback { get; set; }
+
+        /// <summary>Marks the host-callback window. The flag is restored rather than cleared, because one reader may
+        /// legitimately run inside another.</summary>
+        internal static bool EnterHostCallback()
+        {
+            var previous = Current.InHostCallback;
+            Current.InHostCallback = true;
+            return previous;
+        }
+
+        internal static void ExitHostCallback(bool previous)
+        {
+            Current.InHostCallback = previous;
+        }
+
+        /// <summary>Swaps in fresh state for a parse that began inside a host callback, returning the state to put
+        /// back. Returns null when this is an ordinary parse and nothing needs swapping.</summary>
+        internal static ImportParseState BeginIsolatedParse()
+        {
+            if (_current == null || !_current.InHostCallback)
+                return null;
+            var outer = _current;
+            _current = new ImportParseState();
+            return outer;
+        }
+
+        internal static void EndIsolatedParse(ImportParseState outer)
+        {
+            if (outer != null)
+                _current = outer;
+        }
+
         /// <summary>The imports currently being expanded, outermost first. An <c>@&lt;&lt;</c> import parses the
         /// imported document in place, so a document that imports its way back to one already on this list would
         /// recurse until the stack ran out — and a <c>StackOverflowException</c> cannot be caught, so a template

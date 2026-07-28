@@ -84,7 +84,7 @@ namespace Heddle.Language
         /// <para>Each expansion contributes the imported document's output, so collapsing repeats would change what
         /// a template renders; the total is bounded instead, and the overflow is reported.</para>
         /// </summary>
-        internal const int MaxImportExpansions = 1024;
+        internal const int MaxImportExpansions = 16384;
 
         /// <summary>
         /// The identity an <c>@&lt;&lt;</c> import is recognised by when detecting a cycle — <see cref="ImportIdentifier"/>
