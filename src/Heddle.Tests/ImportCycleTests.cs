@@ -218,7 +218,7 @@ namespace Heddle.Tests
         [Fact]
         public void TheFanOutBoundIsTheValueThatWasChosen()
         {
-            Assert.Equal(1024, ParserSettings.MaxImportExpansions);
+            Assert.Equal(16384, ParserSettings.MaxImportExpansions);
         }
 
         [Fact]
@@ -409,6 +409,45 @@ namespace Heddle.Tests
             var context = DocumentParser.Parse("@<<{{gone.heddle}}@\\\ntail", settings, out _);
 
             Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportUnreadable);
+        }
+
+
+        /// <summary>
+        /// A host may resolve an import by parsing — a registry that compiles lazily does exactly that — which
+        /// re-enters the parser on the same thread while an import stack is already on it. That inner parse is its
+        /// own: it must not see the outer parse's imports as its own and report a cycle that is not there, and it
+        /// must hand the outer parse's state back untouched.
+        /// <para><b>A guard, not a red-verified pin.</b> Removing the isolation leaves this green: the import is read
+        /// before its name is pushed, so at this nesting the outer stack is empty and the inner parse resets anyway.
+        /// A review reproduced the false cycle from a deeper outer parse; this fixture does not reach that shape, and
+        /// saying so is better than a test that implies it does.</para>
+        /// </summary>
+        [Fact]
+        public void AParseBegunInsideAnImportReaderIsIndependentOfTheOuterParse()
+        {
+            var inner = new Dictionary<string, string> { ["a.heddle"] = "inner body" };
+            var innerErrors = new List<string>();
+
+            var settings = new ParserSettings
+            {
+                RootPath = "<none>",
+                ImportReader = path =>
+                {
+                    // Resolving by parsing, with a document that imports the same name the outer parse is expanding.
+                    var nested = DocumentParser.Parse("@<<{{a.heddle}}@\\\nnested", new ParserSettings
+                    {
+                        RootPath = "<none>",
+                        ImportReader = p => inner.TryGetValue(p, out var t) ? t : string.Empty
+                    }, out _);
+                    innerErrors.AddRange(nested.Errors.Select(e => e.DiagnosticId));
+                    return "outer body";
+                }
+            };
+
+            var context = DocumentParser.Parse("@<<{{a.heddle}}@\\\nroot", settings, out _);
+
+            Assert.DoesNotContain(HeddleDiagnosticIds.ComposeImportCycle, innerErrors);
+            Assert.DoesNotContain(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportCycle);
         }
 
         private static ParseContext Parse(string document, IReadOnlyDictionary<string, string> library)

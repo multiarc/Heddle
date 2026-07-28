@@ -51,6 +51,9 @@ namespace Heddle.Language
 
             // Bounds nesting for everything below — the parser's own descent, the tree walk, and the AST and chain
             // builders, all of which recurse over a structure this keeps shallow enough to survive.
+            // A parse that began inside a host's import reader is its own, not part of the one in flight; without
+            // this it inherited the outer import stack and reported a cycle that was not there.
+            var outerImportState = ImportParseState.BeginIsolatedParse();
             ImportParseState.Current.BeginTopLevelParse();
             var depthGuard = new ParseDepthGuard();
             parser.AddParseListener(depthGuard);
@@ -69,6 +72,10 @@ namespace Heddle.Language
                     DiagnosticId = HeddleDiagnosticIds.TemplateNestedTooDeeply
                 });
                 return string.Empty;
+            }
+            finally
+            {
+                ImportParseState.EndIsolatedParse(outerImportState);
             }
         }
 

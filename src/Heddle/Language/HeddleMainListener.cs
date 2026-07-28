@@ -349,6 +349,7 @@ namespace Heddle.Language {
                 // — both escaped a narrower catch and took the parse down, which is the failure this guard exists to
                 // stop.
                 string document;
+                var outerCallback = ImportParseState.EnterHostCallback();
                 try
                 {
                     document = _settings.ReadImport(path);
@@ -360,6 +361,10 @@ namespace Heddle.Language {
                         .ToError(CurrentParseContext.GetAbsoluteBlockPosition(context),
                             HeddleDiagnosticIds.ComposeImportUnreadable));
                     return;
+                }
+                finally
+                {
+                    ImportParseState.ExitHostCallback(outerCallback);
                 }
 
                 if (document == null)
