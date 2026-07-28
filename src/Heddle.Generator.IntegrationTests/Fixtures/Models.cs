@@ -211,4 +211,11 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public System.Collections.Generic.List<RegionArticle> Articles { get; set; }
         public bool ShowHeading { get; set; }
     }
+
+    /// <summary>A model whose property type has no nullable form. Emitting `?.` against one does not compile,
+    /// which the generated tier learned the hard way.</summary>
+    public sealed class RefStructModel
+    {
+        public System.ReadOnlySpan<char> Buf => System.MemoryExtensions.AsSpan("hello");
+    }
 }

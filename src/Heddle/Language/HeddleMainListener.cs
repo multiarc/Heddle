@@ -344,16 +344,29 @@ namespace Heddle.Language {
                 // An import whose file is not there is an ordinary editing state — a rename in progress, a path being
                 // typed — and the read runs inside the tree walk, outside the parser's own guard. Letting it throw
                 // took the whole analysis down and published nothing at all, on a document the reader was mid-edit.
+                // Any exception, not the disk reader's set: ImportReader is a public seam a host supplies, and the
+                // two idiomatic ways to say "no such import" — returning null, and letting a dictionary lookup throw
+                // — both escaped a narrower catch and took the parse down, which is the failure this guard exists to
+                // stop.
                 string document;
                 try
                 {
                     document = _settings.ReadImport(path);
                 }
-                catch (Exception e) when (e is IOException || e is UnauthorizedAccessException ||
-                                          e is ArgumentException || e is NotSupportedException)
+                catch (Exception e)
                 {
                     CurrentParseContext.Errors.Add(
                         ($"The '@<<' import '{path}' cannot be read: {e.Message} The import is skipped.")
+                        .ToError(CurrentParseContext.GetAbsoluteBlockPosition(context),
+                            HeddleDiagnosticIds.ComposeImportUnreadable));
+                    return;
+                }
+
+                if (document == null)
+                {
+                    CurrentParseContext.Errors.Add(
+                        ($"The '@<<' import '{path}' cannot be read: the import reader returned no content. " +
+                         "The import is skipped.")
                         .ToError(CurrentParseContext.GetAbsoluteBlockPosition(context),
                             HeddleDiagnosticIds.ComposeImportUnreadable));
                     return;

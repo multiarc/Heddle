@@ -210,6 +210,17 @@ namespace Heddle.Tests
 
         /// <summary>The bound is per parse, not per settings object: a host reusing one must not find its second
         /// document refused because the first spent the budget.</summary>
+        /// <summary>
+        /// The bound itself, not merely that some bound is enforced. Asserting only against
+        /// <see cref="ParserSettings.MaxImportExpansions"/> agrees with any value it is raised to — the same defect
+        /// this file already fixed for the cycle-report budget, and missed for the bound added beside it.
+        /// </summary>
+        [Fact]
+        public void TheFanOutBoundIsTheValueThatWasChosen()
+        {
+            Assert.Equal(1024, ParserSettings.MaxImportExpansions);
+        }
+
         [Fact]
         public void TheFanOutBudgetIsRestoredForEachTopLevelParse()
         {
@@ -370,6 +381,34 @@ namespace Heddle.Tests
             Assert.True(faults.IsEmpty,
                 "a shared settings object must not make one parse's imports visible to another; " + faults.Count +
                 " faults, first: " + faults.FirstOrDefault());
+        }
+
+
+        /// <summary>
+        /// <see cref="ParserSettings.ImportReader"/> is a public seam a host supplies, so it is untrusted input to
+        /// the parser. The two idiomatic ways for one to say "no such import" — returning null, and letting a lookup
+        /// throw — both escaped the read guard and took the parse down, which is the failure the guard was added to
+        /// stop for the disk reader.
+        /// </summary>
+        [Fact]
+        public void AnImportReaderThatReturnsNullIsReportedRatherThanThrown()
+        {
+            var settings = new ParserSettings { RootPath = "<none>", ImportReader = _ => null };
+
+            var context = DocumentParser.Parse("@<<{{gone.heddle}}@\\\ntail", settings, out _);
+
+            Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportUnreadable);
+        }
+
+        [Fact]
+        public void AnImportReaderThatThrowsIsReportedRatherThanThrown()
+        {
+            var library = new Dictionary<string, string>();
+            var settings = new ParserSettings { RootPath = "<none>", ImportReader = path => library[path] };
+
+            var context = DocumentParser.Parse("@<<{{gone.heddle}}@\\\ntail", settings, out _);
+
+            Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportUnreadable);
         }
 
         private static ParseContext Parse(string document, IReadOnlyDictionary<string, string> library)

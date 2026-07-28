@@ -2119,7 +2119,8 @@ namespace Heddle.Generator.Emit
                     hop.Receiver.IsValueType,
                     SymbolTypeResolver.IsNonNullableValueType(hop.Property),
                     SymbolTypeResolver.FullyQualified(hop.Property),
-                    hop.Name));
+                    hop.Name,
+                    !hop.Property.IsRefLikeType));
             }
 
             return hops;
