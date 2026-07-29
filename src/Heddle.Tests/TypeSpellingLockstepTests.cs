@@ -65,6 +65,17 @@ namespace Heddle.Tests
             yield return new object[] { "TieProbe", new[] { "Heddle.Tests", "Heddle.Tests.TieAlpha" }, "AMBIGUOUS" };
 
             yield return new object[] { "NoSuchTypeAnywhere", new string[0], "UNRESOLVED" };
+
+            // No tier has a nullable suffix. The grammar takes `?` as part of the name, no type answers to it, and
+            // both tiers have to say so — the build side lifted `int?` to `Nullable<int>` on its own and bound a
+            // strategy for a template the engine will not compile on any path.
+            yield return new object[] { "int?", new string[0], "UNRESOLVED" };
+            yield return new object[] { "System.Int32?", new string[0], "UNRESOLVED" };
+            yield return new object[] { "System.String?", new string[0], "UNRESOLVED" };
+            yield return new object[] { "TieProbe?", new[] { "Heddle.Tests.TieAlpha" }, "UNRESOLVED" };
+            // The spelling that does mean a lifted value type, and resolves on both tiers.
+            yield return new object[] { "System.Nullable<int>", new string[0],
+                "System.Nullable`1[System.Int32]" };
         }
 
         [Theory]

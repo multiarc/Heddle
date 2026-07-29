@@ -1634,3 +1634,65 @@ classified to save a `GetName()` per observation pass. Correctly guarded and hon
 untested, and removed anyway: nobody measured the cost it addresses, and the file it touches has had
 three defects this session. The same rule that left `ThreadLocal` alone after measuring applies to
 changing something without measuring.
+
+## Twelfth review cycle (2026-07-29)
+
+Both reviewers found the same newly-introduced defect, and the fix disagreed with both of them.
+
+### The rule the previous cycle guessed at
+
+Making the `:: dynamic` slot refusal per call site rested on an assumption: that the engine compiles
+such a body against the value the caller actually passes. It does not. `CompileModelAccessor` takes a
+dynamic exit before resolving anything whenever the callee declares `:: dynamic`, so a bare call or a
+member-path argument gives the body `ExType.Dynamic` and every `@out(this)` inside it is `HED5014`.
+Two of six call forms precompiled templates the engine refuses outright.
+
+The two reviewers proposed different corrections — one a matrix, one a conservative `this`-only rule.
+Measuring the engine showed the matrix right and the conservative rule wrong in the other direction:
+a *caller's prop read* keeps its static type through a `:: dynamic` definition, because the prop-read
+path runs before the dynamic check. The fix mirrors the engine rather than either proposal, and it is
+not a refusal of those call forms — `dynamic` is carried in as the body's model, so an `@out` of a
+literal or of the definition's own prop stays typed and stays precompiled. Only an `@out` that reads
+the model is refused, which is exactly the engine's rule.
+
+### Both tests for that fix passed for the wrong reason
+
+`AssertEngineRefuses` grepped for the id. `HED5014` has two messages — "not assignable" and "must have
+a static type" — so the test could not tell which rule it had reproduced. And both tests were
+`ExpectDegrade`-only, which cannot fail against the parent commit, where *everything* degraded. They
+are rebuilt to name the exact type pair and to carry a precompiling half, and were checked by
+re-inserting the parent's blanket refusal: they now fail there, on the positive half.
+
+That is the general lesson worth keeping: **a test that only asserts a degrade cannot distinguish a
+rule from a blanket refusal.** Every degrade assertion needs a paired case that must still precompile.
+
+### "Complete" was not complete
+
+The type-nameability verdicts recursed into array elements but not type arguments, so nine spellings —
+`Span<char>[]`, `List<Math>`, `Nullable<Span<char>>`, `(Span<char>, int)` and others — still emitted a
+`.g.cs` the consumer cannot compile. One `Classify` now serves both entry points, and the only verdict
+that varies by position is ref-struct-ness: allowed for a bare hop type, refused as a model, an array
+element or a type argument.
+
+And of some nineteen verdict arms, only six were pinned; eight could be deleted with every generator
+test green. All nineteen were mutated one at a time. Sixteen went red. **The three that did not were
+deleted** — each was a second copy of a walk the recursion already performed.
+
+### A prelude the runtime never had
+
+`@model(){{int?}}` bound a strategy for a template the engine cannot resolve at all: a `?`-suffix
+prelude existed in the generator and in no shared grammar. Checking all four positions rather than the
+brief's assurance showed the runtime accepts `?` **nowhere** — and that `:: T?` on a definition does
+not "work" either, it silently drops the `?` and compiles the body against the unlifted type. The
+prelude is deleted and `?` now reaches the same `HED7007` the engine's refusal mirrors. Rows added to
+both lockstep corpora, whose stated job was this parity and which had none.
+
+### Smaller
+
+The null literal types as `System.Object` to the engine and as "cannot say" to the emitter, so
+`@out(null)` into a typed slot precompiled what the engine refuses. A property whose type is merely
+*unusable* — a pointer, `void` — was raising the author-facing `HED7030` reserved for faults an author
+can fix; the fault is carried now rather than collapsed into a boolean. And a dotted `@model` whose
+last segment happened to name a real type emitted raw text with no diagnostic at all; the existence
+check is a dot-bounded suffix match now, generous to a bare name and strict about namespace segments
+the author actually wrote.

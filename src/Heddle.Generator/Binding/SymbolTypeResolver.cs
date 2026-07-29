@@ -42,6 +42,14 @@ namespace Heddle.Generator.Binding
         internal sealed class PathResolution
         {
             public PathKind Kind;
+
+            /// <summary>Why an <see cref="PathKind.Inaccessible"/> hop was refused, which decides whether anyone
+            /// reports it. <see cref="NameFault.Unnameable"/> is a name this assembly is merely not allowed to
+            /// mention — the author can act on that, and HED7030 says so. <see cref="NameFault.Unusable"/> is a
+            /// property of the type itself with no remedy but a different model, so naming the member in a warning
+            /// would be pointing at code that is not wrong.</summary>
+            public NameFault Fault;
+
             public List<Hop> Hops = new List<Hop>();
             public int DynamicIndex = -1;
             public ITypeSymbol ResultType;
@@ -71,17 +79,12 @@ namespace Heddle.Generator.Binding
             if (string.IsNullOrEmpty(text))
                 return null;
 
-            if (text.Length > 1 && text[text.Length - 1] == '?')
-            {
-                var underlying = ResolveModelType(text.Substring(0, text.Length - 1).Trim(), usings);
-                if (underlying == null)
-                    return null;
-                if (!underlying.IsValueType)
-                    return underlying;   // T? on a reference type is just T
-                var nullable = _compilation.GetTypeByMetadataName("System.Nullable`1");
-                return nullable != null ? nullable.Construct(underlying) : underlying;
-            }
-
+            // No `?` prelude here, deliberately. The runtime resolves a type spelling through the same shared
+            // grammar and that grammar has no nullable suffix, so `@model(){{int?}}` is a template the engine will
+            // not compile at all — on any of its paths. Lifting it to `Nullable<int>` on this side alone bound a
+            // strategy for it and rendered it, which is the one outcome the two tiers must never differ on. The
+            // `::`, prop and slot positions never see a `?`: the grammar takes their type name as an identifier and
+            // the suffix is not part of one.
             var lookup = new SymbolTypeLookup(_compilation, usings);
             if (TypeSpelling.TryResolve(text, lookup, out var resolved, out var fault))
                 return resolved;
@@ -146,48 +149,62 @@ namespace Heddle.Generator.Binding
             }
         }
 
-        /// <summary>Checks whether any type named <paramref name="text"/> exists in the compilation or references.</summary>
+        /// <summary>
+        /// Whether any type in the compilation or its references answers to <paramref name="text"/> — the last gate
+        /// before HED7007 calls a <c>@model</c> spelling a typo, so it has to be generous about the ways the runtime
+        /// finds a type and exact about the ways it does not.
+        /// <para>The spelling is matched against fully-qualified names as a <b>dot-bounded suffix</b>. That keeps the
+        /// bare-name case generous — <c>Article</c> matches <c>Ns.Article</c>, because the runtime resolves an
+        /// unqualified name by scanning what is loaded, and an import the emitter did not model would make it bind —
+        /// while a spelling that wrote namespace segments has to be right about them. Matching on the last segment
+        /// alone said yes to <c>Nope.Nope.Article</c> off an unrelated <c>Article</c>, and the raw spelling went on
+        /// to become the entry point's parameter type: four CS0246 against a <c>.g.cs</c>, and not one diagnostic of
+        /// Heddle's own. A trailing <c>?</c> is not stripped either — no tier's grammar has one, so a spelling that
+        /// carries it answers to nothing and should be told so.</para>
+        /// </summary>
         public bool TypeNameExistsAnywhere(string text)
         {
             if (string.IsNullOrEmpty(text))
                 return false;
-            var name = text;
-            if (name.Length > 1 && name[name.Length - 1] == '?')
-                name = name.Substring(0, name.Length - 1).Trim();
-            if (Keywords.ContainsKey(name))
+            if (Keywords.ContainsKey(text))
                 return true;
-            var dot = name.LastIndexOf('.');
-            var simple = dot >= 0 ? name.Substring(dot + 1) : name;
-            if (simple.Length == 0)
-                return false;
 
-            if (NamespaceContainsType(_compilation.GlobalNamespace, simple))
+            if (NamespaceContainsType(_compilation.GlobalNamespace, string.Empty, text))
                 return true;
             foreach (var reference in _compilation.References)
             {
                 if (_compilation.GetAssemblyOrModuleSymbol(reference) is IAssemblySymbol asm &&
-                    NamespaceContainsType(asm.GlobalNamespace, simple))
+                    NamespaceContainsType(asm.GlobalNamespace, string.Empty, text))
                     return true;
             }
 
             return false;
         }
 
-        private static bool NamespaceContainsType(INamespaceSymbol ns, string simpleName)
+        private static bool NamespaceContainsType(INamespaceSymbol ns, string prefix, string spelling)
         {
             foreach (var type in ns.GetTypeMembers())
             {
-                if (string.Equals(type.Name, simpleName, System.StringComparison.Ordinal))
+                if (IsDotBoundedSuffix(prefix + type.Name, spelling))
                     return true;
             }
 
             foreach (var child in ns.GetNamespaceMembers())
             {
-                if (NamespaceContainsType(child, simpleName))
+                if (NamespaceContainsType(child, prefix + child.Name + ".", spelling))
                     return true;
             }
 
             return false;
+        }
+
+        private static bool IsDotBoundedSuffix(string fullName, string spelling)
+        {
+            if (string.Equals(fullName, spelling, System.StringComparison.Ordinal))
+                return true;
+            return fullName.Length > spelling.Length &&
+                   fullName[fullName.Length - spelling.Length - 1] == '.' &&
+                   fullName.EndsWith(spelling, System.StringComparison.Ordinal);
         }
 
         /// <summary>The memo key: the receiver <b>symbol</b> and the segments. Not a display string — two types
@@ -270,11 +287,17 @@ namespace Heddle.Generator.Binding
                 // an error-obsolete property type puts a CS0619 in the consumer's build off a member that carries no
                 // attribute at all. The model-only restrictions are deliberately not asked here: a ref struct is
                 // writable, and a hop THROUGH one to a member of its own stays precompiled.
-                if (!IsAccessibleFromCompilation(prop) || !IsAccessibleFromCompilation(prop.GetMethod) ||
-                    IsObsoleteError(prop) || IsObsoleteError(prop.GetMethod) ||
-                    ClassifyTypeName(prop.Type, out _) != NameFault.None)
+                // The two are carried apart rather than collapsed into one boolean, because only the first is
+                // something the template's author can do anything about and only the first is worth a warning
+                // against their .heddle file.
+                var fault = !IsAccessibleFromCompilation(prop) || !IsAccessibleFromCompilation(prop.GetMethod) ||
+                            IsObsoleteError(prop) || IsObsoleteError(prop.GetMethod)
+                    ? NameFault.Unnameable
+                    : ClassifyTypeName(prop.Type, out _);
+                if (fault != NameFault.None)
                 {
                     result.Kind = PathKind.Inaccessible;
+                    result.Fault = fault;
                     result.DynamicIndex = i;
                     return result;
                 }
@@ -300,21 +323,16 @@ namespace Heddle.Generator.Binding
         /// the precompiled tier, which is a cost with nothing on the other side of it. The generated file already
         /// opens with a blanket <c>#pragma warning disable</c>, so the warning form raises nothing in the consumer's
         /// build against code they did not write, which is the only thing that had to be true for leaving it.</para>
-        /// <para>Nested spellings are walked: an array or pointer whose element type is error-obsolete, a generic
-        /// constructed over one, and a type <b>nested inside</b> one, are all just as unwritable as the bare name —
-        /// <c>Legacy.Inner</c> cannot be spelled without spelling <c>Legacy</c>, and C# reports the error on the
-        /// outer name.</para>
+        /// <para>The only nesting asked about here is the <b>containing</b> type: <c>Legacy.Inner</c> cannot be
+        /// spelled without spelling <c>Legacy</c>, and C# reports the error on the outer name. Array elements,
+        /// pointed-at types and type arguments are walked by <see cref="Classify"/>, which reaches this predicate
+        /// once per component — so an arm for them here would be a second copy of that walk, agreeing with it until
+        /// the day it did not.</para>
         /// </summary>
         public static bool IsObsoleteError(ISymbol symbol)
         {
             if (symbol == null)
                 return false;
-
-            if (symbol is IArrayTypeSymbol array)
-                return IsObsoleteError(array.ElementType);
-
-            if (symbol is IPointerTypeSymbol pointer)
-                return IsObsoleteError(pointer.PointedAtType);
 
             foreach (var attribute in symbol.GetAttributes())
             {
@@ -330,14 +348,8 @@ namespace Heddle.Generator.Binding
 
             // Only for types. A member inherited from an error-obsolete base is read off the derived name, which the
             // compiler does not object to, so walking a member's container would degrade templates that compile.
-            if (symbol is INamedTypeSymbol named)
-            {
-                foreach (var argument in named.TypeArguments)
-                    if (IsObsoleteError(argument))
-                        return true;
-                if (IsObsoleteError(named.ContainingType))
-                    return true;
-            }
+            if (symbol is INamedTypeSymbol named && IsObsoleteError(named.ContainingType))
+                return true;
 
             return false;
         }
@@ -369,14 +381,43 @@ namespace Heddle.Generator.Binding
         /// Refused: <see cref="TypeKind.Error"/>/<see cref="TypeKind.Unknown"/> (the name does not resolve, CS0246);
         /// pointers and function pointers (CS0214 without <c>/unsafe</c>, and unboxable); type parameters and
         /// anything containing one — an open generic such as <c>List`1</c> or a type nested in one — since generated
-        /// code has no generic context to bind them in (CS0246/CS0305); an unbound generic (<c>List&lt;&gt;</c>,
-        /// CS7003); VB modules and script submissions, which C# has no syntax for; <c>System.Void</c> (CS1536,
+        /// code has no generic context to bind them in (CS0246/CS0305), an unbound <c>List&lt;&gt;</c> among them;
+        /// VB modules and script submissions, which C# has no syntax for; <c>System.Void</c> (CS1536,
         /// CS1547); a static class (CS0721/CS0723); and an anonymous type, which has no writable name at all.
         /// Restricted types — <c>TypedReference</c> and friends — need no row of their own: they are
-        /// <see cref="ITypeSymbol.IsRefLikeType"/> and so are caught as ref structs by
-        /// <see cref="ClassifyModelType"/>.</para>
+        /// <see cref="ITypeSymbol.IsRefLikeType"/> and so are caught as ref structs.</para>
+        /// <para>The question is asked of the whole spelling, not its head: an array element and a type argument are
+        /// positions a value lives in too, so <c>List&lt;System.Void&gt;</c> and <c>System.Math[]</c> are refused on
+        /// what is inside them. See <see cref="Classify"/> for the one verdict that differs by position.</para>
         /// </summary>
-        public NameFault ClassifyTypeName(ITypeSymbol type, out string reason)
+        public NameFault ClassifyTypeName(ITypeSymbol type, out string reason) =>
+            Classify(type, refStructAllowed: true, out reason);
+
+        /// <summary>
+        /// <see cref="ClassifyTypeName"/> plus the one restriction that applies only to a type a <b>model</b> value
+        /// travels in: a ref struct cannot be boxed, and every model reaches the generated entry point as an
+        /// <c>object</c> (CS1503, CS0457). Restricted types — <c>TypedReference</c>, <c>ArgIterator</c>,
+        /// <c>RuntimeArgumentHandle</c> — are ref-like and land here too.
+        /// <para>A ref struct is still perfectly writable, which is why the split exists: a hop <em>through</em> one
+        /// to a member of its own spells <c>default(Span&lt;char&gt;)</c> and compiles.</para>
+        /// </summary>
+        public NameFault ClassifyModelType(ITypeSymbol type, out string reason) =>
+            Classify(type, refStructAllowed: false, out reason);
+
+        /// <summary>
+        /// The one walk behind both, with the single verdict that varies by <b>position</b> as its parameter.
+        /// <para><paramref name="refStructAllowed"/> is true exactly where the spelling only has to be a name the
+        /// consumer's compiler accepts — the outermost type of a member hop, whose value stays in a local. It is
+        /// false wherever the value has to go somewhere a ref struct may not: boxed into a model, stored in an array
+        /// element (CS0611), or substituted for a type argument (CS9244). That is why the recursion flips it: the
+        /// element type of <c>Span&lt;char&gt;[]</c> and the type argument of <c>List&lt;Span&lt;char&gt;&gt;</c> are
+        /// both refused although <c>Span&lt;char&gt;</c> on its own is not.</para>
+        /// <para>Every other verdict holds in every position and so recurses unchanged: <c>void</c>, a static class,
+        /// a pointer and a type parameter are as unwritable inside a spelling as they are at the head of one, and
+        /// C# reports all of them on the outer name — <c>List&lt;System.Math&gt;</c> is CS0718 where the emitter
+        /// wrote it, not somewhere the author can see.</para>
+        /// </summary>
+        private NameFault Classify(ITypeSymbol type, bool refStructAllowed, out string reason)
         {
             reason = null;
             if (type == null)
@@ -387,7 +428,7 @@ namespace Heddle.Generator.Binding
                 case TypeKind.Array:
                     // An array is exactly as writable as its element type, and an element type has to be able to
                     // hold a value too — `int*[]` and `Math[]` are both rejected on the element, not the brackets.
-                    return ClassifyTypeName(((IArrayTypeSymbol) type).ElementType, out reason);
+                    return Classify(((IArrayTypeSymbol) type).ElementType, refStructAllowed: false, out reason);
                 case TypeKind.Error:
                 case TypeKind.Unknown:
                     return Unusable(type, "does not resolve to a type this compilation can name", out reason);
@@ -414,11 +455,16 @@ namespace Heddle.Generator.Binding
 
             if (type is INamedTypeSymbol named)
             {
-                if (named.IsUnboundGenericType)
-                    return Unusable(type, "is an unbound generic type", out reason);
                 if (ContainsTypeParameter(named))
                     return Unusable(type, "is an open generic type, and generated code has no generic context to " +
                                           "bind its type parameters in", out reason);
+
+                foreach (var argument in named.TypeArguments)
+                {
+                    var argumentFault = Classify(argument, refStructAllowed: false, out reason);
+                    if (argumentFault != NameFault.None)
+                        return argumentFault;
+                }
             }
 
             if (!IsAccessibleFromCompilation(type) || IsObsoleteError(type))
@@ -427,25 +473,9 @@ namespace Heddle.Generator.Binding
                 return NameFault.Unnameable;
             }
 
-            return NameFault.None;
-        }
-
-        /// <summary>
-        /// <see cref="ClassifyTypeName"/> plus the one restriction that applies only to a type a <b>model</b> value
-        /// travels in: a ref struct cannot be boxed, and every model reaches the generated entry point as an
-        /// <c>object</c> (CS1503, CS0457). Restricted types — <c>TypedReference</c>, <c>ArgIterator</c>,
-        /// <c>RuntimeArgumentHandle</c> — are ref-like and land here too.
-        /// <para>A ref struct is still perfectly writable, which is why the split exists: a hop <em>through</em> one
-        /// to a member of its own spells <c>default(Span&lt;char&gt;)</c> and compiles.</para>
-        /// </summary>
-        public NameFault ClassifyModelType(ITypeSymbol type, out string reason)
-        {
-            var fault = ClassifyTypeName(type, out reason);
-            if (fault != NameFault.None)
-                return fault;
-
-            if (type != null && type.IsRefLikeType)
-                return Unusable(type, "is a ref struct and cannot be boxed into a model", out reason);
+            if (!refStructAllowed && type.IsRefLikeType)
+                return Unusable(type, "is a ref struct: it cannot be boxed into a model, be an array element, or " +
+                                      "stand as a type argument", out reason);
 
             return NameFault.None;
         }
@@ -456,9 +486,11 @@ namespace Heddle.Generator.Binding
             return NameFault.Unusable;
         }
 
-        /// <summary>Whether a type parameter appears anywhere in the spelling — as the type itself, an array or
-        /// pointer element, a type argument, or a type argument of an enclosing type (<c>List`1.Enumerator</c> carries
-        /// no type arguments of its own but still cannot be written).</summary>
+        /// <summary>Whether a type parameter appears anywhere in the spelling — as the type itself, a type argument,
+        /// or a type argument of an enclosing type (<c>List`1.Enumerator</c> carries no type arguments of its own but
+        /// still cannot be written). Array elements and pointed-at types need no arm: <see cref="Classify"/> walks
+        /// into an array element and turns a pointer down on its kind, so either way the type parameter inside one is
+        /// reached with the same verdict.</summary>
         private static bool ContainsTypeParameter(ITypeSymbol type)
         {
             switch (type)
@@ -467,10 +499,6 @@ namespace Heddle.Generator.Binding
                     return false;
                 case ITypeParameterSymbol _:
                     return true;
-                case IArrayTypeSymbol array:
-                    return ContainsTypeParameter(array.ElementType);
-                case IPointerTypeSymbol pointer:
-                    return ContainsTypeParameter(pointer.PointedAtType);
                 case INamedTypeSymbol named:
                     foreach (var argument in named.TypeArguments)
                         if (ContainsTypeParameter(argument))

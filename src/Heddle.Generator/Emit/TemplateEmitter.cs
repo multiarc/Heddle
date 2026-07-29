@@ -357,11 +357,12 @@ namespace Heddle.Generator.Emit
             /// borrows the component's props (a region declares none of its own).</summary>
             public PropLayoutInfo RegionHostProps { get; }
 
-            /// <summary>The static type this dynamic-tier slot body's model actually carries, known from the one
-            /// call site that built the body although nothing is emitted against it. A <c>:: dynamic</c> definition
-            /// is compiled by the engine once per call site off the value passed, which is how the engine still
-            /// type-checks its <c>@out</c> values; this is the emitter's copy of that type, and its only use is the
-            /// same check. Null everywhere else — including inside a nested <c>@list</c> body, whose model is the
+            /// <summary>The model this dynamic-tier slot body was built for, known from the one call site that built
+            /// it although nothing is emitted against it. A <c>:: dynamic</c> definition is compiled by the engine
+            /// once per call site off the model that call site hands it, which is how the engine still type-checks
+            /// its <c>@out</c> values; this is the emitter's copy of that model, and its only use is the same check.
+            /// It is the compilation's <c>dynamic</c> where the engine's model is dynamic, which is a verdict and not
+            /// an absence. Null everywhere else — including inside a nested <c>@list</c> body, whose model is the
             /// element and therefore not this.</summary>
             public ITypeSymbol SlotValueModel { get; }
 
@@ -1169,17 +1170,16 @@ namespace Heddle.Generator.Emit
                         return null;
 
                     // The engine type-checks every @out value in this body against the slot type when it compiles
-                    // the body — which it does per call site, off the value actually passed. Under `:: dynamic` the
-                    // emitter types nothing in the body, but the value passed HERE has a static type all the same,
-                    // and it is precisely the type the engine would compile this body against — so the check is made
-                    // against it rather than abandoned. Refusing every `:: dynamic` slot definition instead took a
-                    // plain reusable wrapper off the precompiled tier without a word, over @out values that were all
-                    // assignable. Only a value the emitter cannot type leaves nothing to check but the caller's cast
-                    // at render, and that is what degrades.
+                    // the body — which it does per call site, off the model that call site hands it. Under
+                    // `:: dynamic` the emitter types nothing in the body, but that model is knowable here, so the
+                    // check is made against it rather than abandoned. Refusing every `:: dynamic` slot definition
+                    // instead took a plain reusable wrapper off the precompiled tier without a word, over @out
+                    // values that were all assignable. Only a caller value the emitter cannot type at all leaves
+                    // nothing to check but the caller's cast at render, and that is what degrades.
                     ITypeSymbol dynamicBodyModel = null;
                     if (defBodyCtx.IsDynamic)
                     {
-                        dynamicBodyModel = SlotValueType(cp, bctx);
+                        dynamicBodyModel = DynamicDefinitionBodyModel(cp, bctx);
                         if (dynamicBodyModel == null)
                         {
                             reason = "slot definition with a dynamic body model and an untypeable caller value";
@@ -1278,7 +1278,19 @@ namespace Heddle.Generator.Emit
         {
             reason = null;
             var valueType = SlotValueType(cp, bctx);
-            if (valueType == null || Convertible(valueType, bctx.SlotType, allowBoxToObject: false))
+            if (valueType == null)
+                return true;
+
+            // The engine's first HED5014 arm, before the conversion table is consulted at all: a slot value with no
+            // static type is refused outright. Asking C#'s table instead would say yes to every one of them —
+            // `dynamic` converts implicitly to anything — and precompile a template the engine will not compile.
+            if (valueType.TypeKind == TypeKind.Dynamic)
+            {
+                reason = "slot value is dynamic under a dynamic definition model";
+                return false;
+            }
+
+            if (Convertible(valueType, bctx.SlotType, allowBoxToObject: false))
                 return true;
 
             reason = "slot value '" + SymbolTypeResolver.FullyQualified(valueType) + "' is not assignable to slot type '" +
@@ -1286,8 +1298,9 @@ namespace Heddle.Generator.Emit
             return false;
         }
 
-        /// <summary>The static type of an <c>@out</c> value, or null where the emitter has none — an untyped model, a
-        /// computed native expression, embedded C#. Null is "cannot say", never "no type".</summary>
+        /// <summary>The type of an <c>@out</c> value, or null where the emitter has none — an untyped model, a
+        /// computed native expression, embedded C#. Null is "cannot say", never "no type"; the compilation's
+        /// <c>dynamic</c> is the opposite, a definite "no static type", which is what the engine refuses.</summary>
         private ITypeSymbol SlotValueType(CallParameter cp, BodyContext bctx)
         {
             var model = bctx.IsDynamic ? bctx.SlotValueModel : bctx.ModelSymbol;
@@ -1320,15 +1333,53 @@ namespace Heddle.Generator.Emit
                 return ResolvedTypeOf(slot.Type, rest);
             }
 
+            // A member path read off a `dynamic` model is `dynamic` in the engine too — the accessor takes its
+            // dynamic exit before it resolves a segment — and a dynamic value is one the engine will not accept.
+            if (model.TypeKind == TypeKind.Dynamic)
+                return model;
+
             return ResolvedTypeOf(model, segments);
         }
 
-        /// <summary>The symbol for a decoded literal, or null where the emitter must not claim one: the null literal,
-        /// which types as nothing, and an out-of-range numeric the compiler is about to reject anyway.</summary>
+        /// <summary>
+        /// The model type the engine compiles a <c>:: dynamic</c> definition's body against at <b>this</b> call site,
+        /// which is what the body's <c>@out</c> values are then checked against. It mirrors the engine's model
+        /// accessor: a native expression — <c>this</c>, a literal, a computed one — is compiled in the caller's own
+        /// scope and keeps its static type, and so does a read of the caller's own prop, which is tried first of all.
+        /// Everything else — a member path, a root reference, a bare <c>@name()</c> — reaches the accessor's
+        /// <c>dynamic</c> exit before it resolves anything, and the body gets a <c>dynamic</c> model. That is not a
+        /// refusal on its own: an <c>@out</c> of a literal or of the definition's own prop is still statically typed
+        /// and still checked. It is only an <c>@out</c> that reads the model which the engine then refuses.
+        /// <para>Null is "cannot say" — a computed native expression the emitter does not type, a chained value,
+        /// embedded C# — and that degrades the definition.</para>
+        /// </summary>
+        private ITypeSymbol DynamicDefinitionBodyModel(CallParameter cp, BodyContext bctx)
+        {
+            if (cp.NativeExpression != null)
+                return SlotValueType(cp, bctx);
+
+            if (!cp.IsModelTypeParameter)
+                return null;
+
+            var segments = cp.ModelParameter;
+            bool propRead = !cp.RootReference && segments != null && segments.Length > 0 &&
+                            !string.IsNullOrEmpty(segments[0]) &&
+                            bctx.Props != null && bctx.Props.ByName.ContainsKey(segments[0]);
+            return propRead ? SlotValueType(cp, bctx) : _compilation.DynamicType;
+        }
+
+        /// <summary>The symbol for a decoded literal, or null where the emitter must not claim one — an out-of-range
+        /// numeric the compiler is about to reject anyway.
+        /// <para>The null literal is not one of those. The engine types it <c>System.Object</c> and checks it like
+        /// any other value, which is why <c>@out(null)</c> into a <c>string</c> slot is a template it refuses; taking
+        /// the "cannot say" exit for it here precompiled and rendered that template instead.</para>
+        /// </summary>
         private ITypeSymbol LiteralType(LiteralNode literal)
         {
             if (literal.LiteralError != null)
                 return null;
+            if (literal.Value == null)
+                return _compilation.GetSpecialType(SpecialType.System_Object);
             switch (literal.Value)
             {
                 case bool _: return _compilation.GetSpecialType(SpecialType.System_Boolean);
@@ -2441,6 +2492,13 @@ namespace Heddle.Generator.Emit
         private void RecordMemberFailure(ITypeSymbol modelSymbol, string[] segments,
             SymbolTypeResolver.PathResolution resolution)
         {
+            // A member that is there and readable, whose type no generated code in any assembly could hold a value
+            // of. The template degrades, but there is no author-facing fault to name: HED7030 says "this assembly
+            // may not mention it", which invites an edit that would not help, and HED7008 would say the member is
+            // missing when it is not.
+            if (resolution.Fault == SymbolTypeResolver.NameFault.Unusable)
+                return;
+
             var idx = resolution.DynamicIndex;
             var receiver = resolution.Hops.Count == 0
                 ? modelSymbol
@@ -2509,8 +2567,12 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>True when <paramref name="text"/> is a plain (possibly dotted, possibly <c>?</c>-suffixed) type
-        /// name — the syntax the model-type resolver models. Open generics, arrays, tuples and whitespace forms are
-        /// excluded so an unresolved exotic model degrades to the dynamic path rather than a false HED7007.</summary>
+        /// name. Open generics, arrays, tuples and whitespace forms are excluded so an unresolved exotic model
+        /// degrades to the dynamic path rather than a false HED7007.
+        /// <para><c>?</c> is admitted although no tier's grammar has a nullable suffix, and precisely because of
+        /// that: <c>int?</c> is a name an author wrote and got wrong, not an exotic form the emitter merely does not
+        /// model, so it belongs at the HED7007 gate with a message rather than in the silent degrade.</para>
+        /// </summary>
         private static bool IsPlainTypeName(string text)
         {
             if (string.IsNullOrEmpty(text))
