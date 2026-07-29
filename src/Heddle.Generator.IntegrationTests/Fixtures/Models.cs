@@ -240,4 +240,20 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
     {
         public RefStructModel Inner { get; set; }
     }
+
+    /// <summary>Counts reads of the reference hop a ref-struct hop sits behind, and answers differently each time.
+    /// A receiver read twice is not merely slower — it is a different receiver.</summary>
+    public sealed class CountingRefStructModel
+    {
+        public static int Reads;
+
+        public RefStructModel Inner
+        {
+            get
+            {
+                Reads++;
+                return Reads == 1 ? new RefStructModel() : null;
+            }
+        }
+    }
 }

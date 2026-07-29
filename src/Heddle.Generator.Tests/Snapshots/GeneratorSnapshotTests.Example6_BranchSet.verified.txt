@@ -36,7 +36,7 @@ namespace Heddle.Generated
             {
                 var m = (global::System.Version)scope.ModelData;
 #line (2, 2) - (2, 15) "views/branch.heddle"
-                E0.RenderData(scope.Model((object)(((m?.Major ?? default(int)) > 0))));
+                E0.RenderData(scope.Model((object)(unchecked(((m?.Major ?? default(int)) > 0)))));
 #line (2, 23) - (2, 29) "views/branch.heddle"
                 E1.RenderData(scope.Model(scope.ModelData));
 #line hidden
@@ -48,7 +48,7 @@ namespace Heddle.Generated
             {
                 var m = (global::System.Version)scope.ModelData;
 #line (2, 2) - (2, 15) "views/branch.heddle"
-                var v0 = E0.ProcessData(scope.Model((object)(((m?.Major ?? default(int)) > 0)))) as string ?? string.Empty;
+                var v0 = E0.ProcessData(scope.Model((object)(unchecked(((m?.Major ?? default(int)) > 0))))) as string ?? string.Empty;
 #line (2, 23) - (2, 29) "views/branch.heddle"
                 var v1 = E1.ProcessData(scope.Model(scope.ModelData)) as string ?? string.Empty;
 #line hidden

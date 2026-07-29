@@ -83,59 +83,76 @@ namespace Heddle.Core
         {
             if (_recursionCount.Value >= _maxRecursionCount)
                 throw new TemplateProcessingException("Recursion hit it's maximum");
+            // The decrement has to survive a throw. A definition body can fail for entirely ordinary reasons — a
+            // getter that throws, a nested processing error, an exhausted render budget — and an unwound increment
+            // is never given back. A compiled template is cached and reused, so after MaxRecursionCount such
+            // requests the template stops rendering for anything on that thread, permanently, with a recursion error
+            // that describes nothing that happened.
             _recursionCount.Value++;
-            var props = BindPropsForRender(scope);
-            object chained;
-            Scope chainedData;
-            if (SlotMode)
+            try
             {
-                chained = null;
-                chainedData = scope.Chain(null).WithSlot(new SlotContent(this, scope));
-            }
-            else
-            {
-                // Mirrors RenderData: chained producer for content when no caller body, else caller body.
-                chained = ReceivesChainedValue && !InnerExist ? scope.ChainedData : GetInnerResult(scope);
-                chainedData = scope.Chain(chained);
-            }
+                var props = BindPropsForRender(scope);
+                object chained;
+                Scope chainedData;
+                if (SlotMode)
+                {
+                    chained = null;
+                    chainedData = scope.Chain(null).WithSlot(new SlotContent(this, scope));
+                }
+                else
+                {
+                    // Mirrors RenderData: chained producer for content when no caller body, else caller body.
+                    chained = ReceivesChainedValue && !InnerExist ? scope.ChainedData : GetInnerResult(scope);
+                    chainedData = scope.Chain(chained);
+                }
 
-            if (props != null)
-                chainedData = chainedData.WithProps(props);
-            var result = DefinitionParameterTemplate?.ProcessData(chainedData) ?? chained;
-            _recursionCount.Value--;
-            return result;
+                if (props != null)
+                    chainedData = chainedData.WithProps(props);
+                return DefinitionParameterTemplate?.ProcessData(chainedData) ?? chained;
+            }
+            finally
+            {
+                _recursionCount.Value--;
+            }
         }
 
         public override void RenderData(in Scope scope)
         {
             if (_recursionCount.Value >= _maxRecursionCount)
                 throw new TemplateProcessingException("Recursion hit it's maximum");
+            // Restored in a finally for the same reason as ProcessData: an increment lost to a throw is never given
+            // back, and the template it belongs to is cached.
             _recursionCount.Value++;
-            if (DefinitionParameterTemplate != null)
+            try
             {
-                var props = BindPropsForRender(scope);
-                Scope chainedData;
-                if (SlotMode)
+                if (DefinitionParameterTemplate != null)
                 {
-                    chainedData = scope.Chain(null).WithSlot(new SlotContent(this, scope));
+                    var props = BindPropsForRender(scope);
+                    Scope chainedData;
+                    if (SlotMode)
+                    {
+                        chainedData = scope.Chain(null).WithSlot(new SlotContent(this, scope));
+                    }
+                    else
+                    {
+                        // Mirrors ProcessData: chained producer for content when no caller body, else caller body.
+                        var chained = ReceivesChainedValue && !InnerExist ? scope.ChainedData : GetInnerResult(scope);
+                        chainedData = scope.Chain(chained);
+                    }
+
+                    if (props != null)
+                        chainedData = chainedData.WithProps(props);
+                    DefinitionParameterTemplate.RenderData(chainedData);
                 }
                 else
                 {
-                    // Mirrors ProcessData: chained producer for content when no caller body, else caller body.
-                    var chained = ReceivesChainedValue && !InnerExist ? scope.ChainedData : GetInnerResult(scope);
-                    chainedData = scope.Chain(chained);
+                    RenderInnerResult(scope);
                 }
-
-                if (props != null)
-                    chainedData = chainedData.WithProps(props);
-                DefinitionParameterTemplate.RenderData(chainedData);
             }
-            else
+            finally
             {
-                RenderInnerResult(scope);
+                _recursionCount.Value--;
             }
-
-            _recursionCount.Value--;
         }
     }
 }

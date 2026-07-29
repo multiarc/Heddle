@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
@@ -50,14 +51,19 @@ namespace Heddle.Generator.Emit
         private readonly SymbolTypeFacts _typeFacts;
 
         public NativeExpressionWriter(SymbolTypeResolver resolver, ITypeSymbol modelType, string modelLocal,
-            FunctionExportResolver exports = null, SymbolTypeFacts typeFacts = null)
+            FunctionExportResolver exports, SymbolTypeFacts typeFacts, Func<string> allocateHopLocal)
         {
             _resolver = resolver;
             _modelType = modelType;
             _modelLocal = modelLocal;
             _exports = exports;
             _typeFacts = typeFacts;
+            // Shared with the emitter that made this writer, so the names cannot collide with the ones it allocates
+            // for paths of its own in the same block.
+            _allocateHopLocal = allocateHopLocal;
         }
+
+        private readonly Func<string> _allocateHopLocal;
 
         public bool UsedModel => _usedModel;
 
@@ -111,6 +117,23 @@ namespace Heddle.Generator.Emit
             foreach (var row in DefaultFunctionTable.Rows)
                 map[row.Name] = map.TryGetValue(row.Name, out var c) ? c + 1 : 1;
             return map;
+        }
+
+        /// <summary>
+        /// Emits a whole expression — the entry point the emitter uses, as distinct from the recursive
+        /// <see cref="Write(ExprNode)"/> it calls for the parts.
+        /// <para>Wrapped in <c>unchecked</c>, because the engine's arithmetic is: it builds
+        /// <c>Expression.Add</c> and friends, which are the unchecked factories, so an overflow wraps and the
+        /// template renders a wrapped number. Bare operators here inherit the <em>consumer's</em> setting instead,
+        /// so a host that builds with <c>CheckForOverflowUnderflow</c> got an <c>OverflowException</c> from the
+        /// precompiled tier where the dynamic tier rendered a value — the same template, two behaviours, decided by
+        /// an MSBuild property in a project the template knows nothing about. A constant overflow is a separate
+        /// question and still degrades: the fold reports what C# would reject, and this does not change that.</para>
+        /// </summary>
+        public string WriteRoot(ExprNode node)
+        {
+            var written = Write(node);
+            return written == null ? null : "unchecked(" + written + ")";
         }
 
         /// <summary>Emits the expression, or returns null if it uses a construct the writer does not yet support.</summary>
@@ -217,6 +240,11 @@ namespace Heddle.Generator.Emit
                 return null;
             }
 
+            // An expression's operands are boxed, and a ref struct cannot be. Left to the dynamic tier, which reads
+            // it reflectively; emitted here it was CS0030 in the consumer's build over a template that renders.
+            if (SymbolTypeResolver.EndsOnRefStruct(resolution))
+                return null;
+
             _usedModel = true;
             var hops = new List<MemberPathWriter.HopEmit>(resolution.Hops.Count);
             foreach (var hop in resolution.Hops)
@@ -226,10 +254,11 @@ namespace Heddle.Generator.Emit
                     SymbolTypeResolver.IsNonNullableValueType(hop.Property),
                     SymbolTypeResolver.FullyQualified(hop.Property),
                     hop.Name,
-                    !hop.Property.IsRefLikeType));
+                    !hop.Property.IsRefLikeType,
+                    SymbolTypeResolver.FullyQualified(hop.Receiver)));
             }
 
-            return MemberPathWriter.Write(_modelLocal, hops);
+            return MemberPathWriter.Write(_modelLocal, hops, _allocateHopLocal);
         }
 
         private string WriteUnary(UnaryNode node)

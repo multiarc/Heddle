@@ -306,6 +306,24 @@ namespace Heddle.Generator.Binding
 
         private static readonly SymbolTypeFacts NullableProbe = new SymbolTypeFacts(null);
 
+        /// <summary>
+        /// Whether a resolved path ends on a ref struct. Every consumer of a path's value boxes it — a rendered
+        /// parameter is an <c>object</c>, and an expression operand is one too — and a ref struct cannot be boxed.
+        /// <para>Neither tier can produce a value here; the difference is how they say so. The engine refuses the
+        /// template with <c>HED0005</c> when it compiles it, which is a diagnostic the host can catch and report
+        /// against the template. Emitting the path put <c>CS0030</c> into the consumer's <em>build</em> instead —
+        /// no Heddle id, reported against a <c>.heddle</c> file, and unfixable without editing the model. Degrading
+        /// hands the question back to the tier whose refusal is the contract.</para>
+        /// <para>A ref struct passed <em>through</em> to a member of its own — <c>Buf.Length</c> — is a different
+        /// matter and stays precompiled: what is read there is the <c>int</c>.</para>
+        /// </summary>
+        public static bool EndsOnRefStruct(PathResolution resolution)
+        {
+            if (resolution == null || resolution.Hops.Count == 0)
+                return false;
+            return resolution.Hops[resolution.Hops.Count - 1].Property?.IsRefLikeType == true;
+        }
+
         public static string FullyQualified(ITypeSymbol type) =>
             type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
     }

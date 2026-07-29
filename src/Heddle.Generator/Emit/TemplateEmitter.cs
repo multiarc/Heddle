@@ -79,6 +79,13 @@ namespace Heddle.Generator.Emit
         private readonly StringBuilder _fieldDecls = new StringBuilder();
         private readonly StringBuilder _methodDecls = new StringBuilder();
         private int _extensionCounter;
+
+        /// <summary>Names for the locals a member path binds its receiver to. Counted across the whole generated
+        /// file rather than per expression: a pattern variable belongs to the block its statement sits in, so two
+        /// paths emitted into one block would collide on a per-path counter.</summary>
+        private int _hopLocalCounter;
+
+        private string AllocateHopLocal() => "__h" + _hopLocalCounter++;
         private int _dynEvalCounter;
         private int _dynSettersCounter;
 
@@ -710,8 +717,8 @@ namespace Heddle.Generator.Emit
             if (callTarget == CallTargetKind.Function && string.IsNullOrEmpty(item.ParameterTemplate))
             {
                 var callNode = BuildFunctionCallNode(name, cp, item.Position);
-                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts);
-                var expr = writer.Write(callNode);
+                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts, AllocateHopLocal);
+                var expr = writer.WriteRoot(callNode);
                 DrainUnresolvable(writer);
                 if (expr == null)
                 {
@@ -1756,8 +1763,8 @@ namespace Heddle.Generator.Emit
                 return false;
             }
 
-            var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts);
-            var body = writer.Write(arg.Value);
+            var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts, AllocateHopLocal);
+            var body = writer.WriteRoot(arg.Value);
             DrainUnresolvable(writer);
             if (body == null) { reason = "unwritable dynamic arg"; return false; }
             RecordFunctionUses(writer);
@@ -1911,8 +1918,14 @@ namespace Heddle.Generator.Emit
                         return false;
                     }
 
+                    if (SymbolTypeResolver.EndsOnRefStruct(res))
+                    {
+                        reason = "prop multi-hop ends on a ref struct";
+                        return false;
+                    }
+
                     var root = "((" + slot.TypeFq + ")" + propRead + ")";
-                    paramExpr = "(object)(" + MemberPathWriter.Write(root, MapHops(res)) + ")";
+                    paramExpr = "(object)(" + MemberPathWriter.Write(root, MapHops(res), AllocateHopLocal) + ")";
                     return true;
                 }
 
@@ -1938,7 +1951,13 @@ namespace Heddle.Generator.Emit
                     return false;
                 }
 
-                paramExpr = "(object)(" + MemberPathWriter.Write("m", MapHops(resolution)) + ")";
+                if (SymbolTypeResolver.EndsOnRefStruct(resolution))
+                {
+                    reason = "member path ends on a ref struct";
+                    return false;
+                }
+
+                paramExpr = "(object)(" + MemberPathWriter.Write("m", MapHops(resolution), AllocateHopLocal) + ")";
                 usesModel = true;
                 return true;
             }
@@ -1963,8 +1982,8 @@ namespace Heddle.Generator.Emit
                     return false;
                 }
 
-                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts);
-                var expr = writer.Write(cp.NativeExpression);
+                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts, AllocateHopLocal);
+                var expr = writer.WriteRoot(cp.NativeExpression);
                 DrainUnresolvable(writer);
                 if (expr == null)
                 {
@@ -2056,8 +2075,8 @@ namespace Heddle.Generator.Emit
             if (innerTarget == CallTargetKind.Function)
             {
                 var callNode = BuildFunctionCallNode(name, inner.CallParameter, inner.Position);
-                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts);
-                var expr = writer.Write(callNode);
+                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts, AllocateHopLocal);
+                var expr = writer.WriteRoot(callNode);
                 DrainUnresolvable(writer);
                 if (expr == null)
                 {
@@ -2084,22 +2103,17 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>
-        /// Dynamic-tier member access via chained <c>PrecompiledRuntime.DynamicMember</c> calls.
-        /// Avoids assembly-context divergence of inline <c>(dynamic)</c> cast. Gated on schema version.
+        /// Dynamic-tier member access, one <c>PrecompiledRuntime.DynamicMember</c> call per segment. Avoids the
+        /// assembly-context divergence of an inline <c>(dynamic)</c> cast — and, because each segment is its own
+        /// call, it hops per segment the way the engine does rather than letting one <c>?.</c> abandon the rest of
+        /// the chain.
+        /// <para>There was a pre-routing branch here for schemas below <c>DynamicMemberRoutingSchemaVersion</c>. It
+        /// could not run: both sides of that comparison are constants this same assembly reads, so the branch was
+        /// statically decided, and it wrote exactly the <c>?.</c> chain whose short-circuit the typed writer had to
+        /// be fixed for.</para>
         /// </summary>
         private static string WriteDynamicPath(string local, string[] segments)
         {
-            if (!PrecompiledSchema.EmitsDynamicMemberRouting)
-            {
-                var sb = new StringBuilder();
-                sb.Append("((dynamic)").Append(local).Append(").").Append(segments[0]);
-                for (int i = 1; i < segments.Length; i++)
-                    sb.Append("?.").Append(segments[i]);
-                var chain = sb.ToString();
-                var access = segments.Length == 1 ? "(object)" + chain : "(object)(" + chain + ")";
-                return local + " == null ? (object)null : " + access;
-            }
-
             var expr = local;
             foreach (var segment in segments)
             {
@@ -2120,7 +2134,8 @@ namespace Heddle.Generator.Emit
                     SymbolTypeResolver.IsNonNullableValueType(hop.Property),
                     SymbolTypeResolver.FullyQualified(hop.Property),
                     hop.Name,
-                    !hop.Property.IsRefLikeType));
+                    !hop.Property.IsRefLikeType,
+                    SymbolTypeResolver.FullyQualified(hop.Receiver)));
             }
 
             return hops;
