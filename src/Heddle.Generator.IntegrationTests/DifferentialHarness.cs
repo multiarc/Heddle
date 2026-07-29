@@ -151,7 +151,8 @@ namespace Heddle.Generator.IntegrationTests
         public static GenResult Generate(IReadOnlyList<(string key, string content)> templates,
             Dictionary<string, string> globalOptions = null,
             IReadOnlyList<MetadataReference> extraReferences = null,
-            Func<string, string> rewriteManifest = null)
+            Func<string, string> rewriteManifest = null,
+            bool checkOverflow = false)
         {
             RememberExtraReferences(extraReferences);
             var references = References;
@@ -216,7 +217,11 @@ namespace Heddle.Generator.IntegrationTests
                 trees, references,
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,
                     optimizationLevel: OptimizationLevel.Release,
-                    allowUnsafe: true));
+                    allowUnsafe: true,
+                    // The consumer's <CheckForOverflowUnderflow>, which the generated code is compiled under and
+                    // has no say in. The engine's arithmetic is unchecked whatever the host sets, so the emitter's
+                    // has to be too.
+                    checkOverflow: checkOverflow));
 
             using var ms = new MemoryStream();
             var emit = outputCompilation.Emit(ms);
@@ -237,9 +242,10 @@ namespace Heddle.Generator.IntegrationTests
 
         /// <summary>Renders one template through both backends, returning outputs for byte-for-byte comparison.</summary>
         public static (string precompiled, string dynamic) Render(string key, string content, Type modelType,
-            object model, Dictionary<string, string> globalOptions = null, TemplateOptions runtimeOptions = null)
+            object model, Dictionary<string, string> globalOptions = null, TemplateOptions runtimeOptions = null,
+            bool checkOverflow = false)
         {
-            var gen = Generate(new[] { (key, content) }, globalOptions);
+            var gen = Generate(new[] { (key, content) }, globalOptions, checkOverflow: checkOverflow);
             var errors = gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
             if (errors.Count != 0)
                 throw new InvalidOperationException("Generator errors: " + string.Join("\n", errors.Select(e => e.ToString())));

@@ -186,15 +186,19 @@ namespace Heddle.Runtime
         }
 
         /// <summary>
-        /// A cached <b>failure</b> is only trustworthy while the assembly set that produced it is. An expression
-        /// naming a type in an assembly the host had not registered yet fails, and must be retried once it has been —
+        /// A cached result is only trustworthy while the assembly set that produced it is. An expression naming a
+        /// type in an assembly the host had not registered yet fails, and must be retried once it has been —
         /// otherwise the first attempt decides the answer for the life of the process, and whether a template
-        /// compiles comes down to load order. A cached success stays valid: nothing a later registration adds can
-        /// take a type away.
+        /// compiles comes down to load order.
+        /// <para>A success is checked too, though it is tempting not to: the reasoning that "nothing a later
+        /// registration adds can take a type away" is wrong in the one direction that matters. Adding an assembly
+        /// can make a name ambiguous where it was not (<c>CS0104</c>), and can introduce a better overload
+        /// candidate — so an expression that compiled against the smaller set does not necessarily compile, or mean
+        /// the same thing, against the larger one.</para>
         /// </summary>
         private static bool IsStale(PreparseResult cached, int generation)
         {
-            return cached.Failed && cached.Generation != generation;
+            return cached.Generation != generation;
         }
 
         private Tuple<OptionalValue<object>, ExType> Preparse(string code, CompileContext context,

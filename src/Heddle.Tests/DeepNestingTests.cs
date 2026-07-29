@@ -48,10 +48,15 @@ namespace Heddle.Tests
         // Verifying that needs a child process comparing exit codes, which no suite here does; the limit's value is
         // asserted above instead.
         //
-        // A flat left-associative run is the one shape with no such hazard, and it is the shape the guard below
-        // catches: ANTLR rewrites left recursion into a loop, so the parser never recurses and the depth lands
-        // entirely in the tree it builds — walked with an explicit stack. It reaches the reporting path without
-        // being able to reach the crash, so what it goes red on is the report itself.
+        // A flat left-associative run is the one shape with no such hazard at this depth. ANTLR rewrites left
+        // recursion into a loop, so the parser never recurses and the depth lands entirely in the tree it builds —
+        // walked with an explicit stack. It reaches the reporting path, so what it goes red on is the report.
+        //
+        // "No hazard" is a margin, not a property. With the guard disabled a flat run of 3000 still survives and one
+        // of 5000 takes the host down — the recursion is in the AST build and the tree walk, past the report point.
+        // The depth used below is 750. That margin holds only while the limit does: raising MaxDepth toward 3000
+        // would make this test the host-killer the paragraph above is about, and the constant that pins the limit is
+        // what stands between the two.
 
         /// <summary>A run of this many additions is that many tree levels and no parser recursion at all.</summary>
         [Fact]

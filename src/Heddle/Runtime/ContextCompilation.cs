@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -22,9 +21,8 @@ namespace Heddle.Runtime
 {
     internal static class ContextCompilation
     {
-        private static readonly ConcurrentDictionary<string, Assembly> Cache =
-            new ConcurrentDictionary<string, Assembly>();
-
+        /// <summary>Serialises expression-class compilation. It used to guard a cache as well; that cache could
+        /// never be read from — see <see cref="CompileCSharp"/>.</summary>
         private static readonly object LockObj = new object();
 
         private static readonly HeddleTemplate CodeGenerator;
@@ -123,21 +121,15 @@ namespace Heddle.Runtime
                         InitErrors.Errors);
                 var code = CodeGenerator.Generate(context.CSharpContext);
 
-                // ReSharper disable once InconsistentlySynchronizedField
-                if (Cache.TryGetValue(code, out var asm))
+                // There was a cache keyed on this source. It could not work: the source declares a class named
+                // after CSharpContext.ClassGuid, a fresh Guid per context, so the key was unique per compile and
+                // measurably never hit — eight compiles of three distinct expressions produced eight adds and no
+                // reads. All it did was retain every generated source string for the life of the process. A hit
+                // would in fact have been worse than a miss: the entry class is looked up below by *this* context's
+                // guid, which another context's assembly does not contain.
                 {
-                    context.CSharpContext.CompiledAssembly = asm;
-                }
-                else
-                {
-
                     lock (LockObj)
                     {
-                        if (Cache.TryGetValue(code, out asm))
-                        {
-                            context.CSharpContext.CompiledAssembly = asm;
-                        }
-                        else
                         {
                             var tree = CSharpSyntaxTree.ParseText(code);
                             var compilation = CSharpCompilation.Create(
@@ -181,7 +173,6 @@ namespace Heddle.Runtime
                                 Native.AssemblyHelper.MarkEngineEmitted(context.CSharpContext.CompiledAssembly);
                             }
 
-                            Cache.TryAdd(code, context.CSharpContext.CompiledAssembly);
                         }
                     }
                 }

@@ -66,7 +66,9 @@ namespace Heddle.Runtime
         /// </summary>
         internal static int Epoch => Volatile.Read(ref _epoch);
 
-        /// <summary>Serves an entry only if the cache has not been dropped since its compile began.</summary>
+        /// <summary>Serves an entry only if the cache has not been dropped since its compile began, and removes it
+        /// otherwise: an entry from a spent epoch names types from a load context on its way out, and refusing to
+        /// read it while still holding it defeats the point of dropping the cache at all.</summary>
         internal static bool TryGet(string generatedCode, out PreparseResult result)
         {
             if (!Entries.TryGetValue(generatedCode, out result))
@@ -74,19 +76,29 @@ namespace Heddle.Runtime
             if (result.Epoch == Epoch)
                 return true;
 
+            Entries.TryRemove(generatedCode, out _);
             result = null;
             return false;
         }
 
-        internal static void Store(string generatedCode, PreparseResult result) =>
-            Entries[generatedCode] = result;
+        /// <summary>Stores a result only if its epoch is still current. A compile that began before a drop is exactly
+        /// the one that would otherwise refill the emptied map, and the entry it wants to add is the one holding the
+        /// context alive.</summary>
+        internal static void Store(string generatedCode, PreparseResult result)
+        {
+            if (result.Epoch == Epoch)
+                Entries[generatedCode] = result;
+        }
 
         /// <summary>Drops every entry and moves the epoch on. Called when model assemblies are unregistered, because
-        /// the types the entries name are about to go away with their load context.</summary>
+        /// the types the entries name are about to go away with their load context.
+        /// <para>Epoch first, empty second. A reader looks at the map before it looks at the epoch, so emptying
+        /// first leaves a window where it can find an entry and then read an epoch that still matches it.</para>
+        /// </summary>
         internal static void Clear()
         {
-            Entries.Clear();
             Interlocked.Increment(ref _epoch);
+            Entries.Clear();
         }
     }
 }

@@ -54,6 +54,9 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("(true?1:0)+2147483647")]
         [InlineData("(false?0:1)+2147483647")]
         [InlineData("(1<<30)*4")]
+        // A negative shift count is masked to the operand width, so this is a large positive number that then
+        // overflows. Folding it as a zero shift instead reports no fault and emits a build error.
+        [InlineData("(1<<(0-2))*4")]
         public void ConstantOverflowDegradesInsteadOfBreakingTheBuild(string expression)
         {
             var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
@@ -175,10 +178,37 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
+        /// Deciding whether a shift is legal is only half of it — the other half is the number it produces, and no
+        /// test anywhere compared one. C# masks a shift count to the operand's width (five bits for 32-bit, six for
+        /// 64-bit), which makes a negative count a large positive one and a count past the width wrap around; the
+        /// engine's expression tree does the same, and the two have to agree digit for digit.
+        /// </summary>
+        [Theory]
+        [InlineData("Length<<2")]
+        [InlineData("Length>>1")]
+        [InlineData("1<<Length")]
+        [InlineData("Length<<33")]
+        [InlineData("Length<<(0-1)")]
+        [InlineData("Length>>(0-3)")]
+        [InlineData("(0-Length)>>1")]
+        [InlineData("(0-1)>>Length")]
+        [InlineData("1L<<Length")]
+        [InlineData("1L<<(Length+60)")]
+        public void AShiftProducesTheSameNumberOnBothTiers(string expression)
+        {
+            const string key = "views/shift-parity.heddle";
+            var (precompiled, dyn) = DifferentialHarness.Render(
+                key, "@model(){{string}}@(" + expression + ")", typeof(string), "hello");
+
+            Assert.Equal(dyn, precompiled);
+        }
+
+        /// <summary>
         /// A property whose type cannot be made nullable. Writing the null-safe hop as <c>x?.M ?? default(T)</c>
         /// widens the member to <c>T?</c>, and a ref struct has no such form — so the generated code failed the
         /// consumer's build with <c>CS8978</c>, no Heddle diagnostic, and no degrade. The generator must never emit
-        /// code the host's compiler rejects; where the widening is impossible the receiver is spelled twice instead.
+        /// code the host's compiler rejects; where the widening is impossible the receiver is bound to a local and
+        /// tested there.
         /// </summary>
         [Fact]
         public void ARefStructPropertyEmitsCodeThatCompiles()

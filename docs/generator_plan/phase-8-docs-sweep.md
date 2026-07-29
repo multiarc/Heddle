@@ -1283,3 +1283,85 @@ suspected. Each fix below was demonstrated red before it was made, except where 
 - Everything else platform-shaped is now written down in
   [unverified-platform-surface.md](unverified-platform-surface.md), including a declared `net6.0`
   test container that fails to start while `dotnet test` still exits 0.
+
+## Eighth review cycle (2026-07-29)
+
+Two reviewers, independent. They agreed on the most important finding, which is that the
+previous round's fix introduced a defect of its own — the same pattern this record has noted
+three times before.
+
+### The fix that broke something else
+
+**A ref-struct hop off a reference receiver read that receiver twice.** The non-nullable-value
+hop form has always spelled its receiver twice, because a ref struct has no nullable form to
+widen into and the null test has to be written out. That was harmless while the receiver was
+always the model local. Parenthesising the chain — the previous round's fix — made the form
+*compile* for a deep prefix, and the duplication became reachable: `Inner.Buf.Length` over a
+getter that answers differently on its second call renders a value on the engine and throws
+`NullReferenceException` on the generated tier. The commit before had turned that same template
+into a loud `CS8978`; the fix converted a build failure into silent wrong output.
+
+Fixed by binding the receiver with a type pattern, which names it once. The names come from a
+counter owned by the emitter and shared with every expression writer it makes, because a pattern
+variable belongs to the block its statement is in and two paths in one block would collide.
+
+### Found alongside it
+
+- **A path ending *on* a ref struct emitted `CS0030`.** Every consumer of a path's value boxes
+  it, and a ref struct cannot be boxed. Pre-existing, and a build break in the consumer's project.
+  Neither tier can render this — measured, after a first draft of this entry claimed the engine
+  could: the engine refuses the template with `HED0005` at compile time. That is the difference
+  worth having. An id and a position a host can report beat a raw `CS0030` against a `.heddle`
+  file, so the shape degrades and the engine's refusal is the one the reader sees. Reading
+  *through* a ref struct to a member of its own is unaffected — what leaves that path is an `int`.
+- **Generated arithmetic inherited the consumer's `CheckForOverflowUnderflow`.** The engine's
+  arithmetic is built from the unchecked expression-tree factories, so it wraps whatever the host
+  sets; bare operators do not. The same template rendered `1410065408` on one tier and threw
+  `OverflowException` on the other, decided by an MSBuild property in a project the template
+  knows nothing about. Emitted expressions are wrapped in `unchecked` now. Constant overflow is a
+  separate question and still degrades.
+- **A failed render permanently poisoned a compiled template.** The definition recursion counter
+  was incremented and decremented without a `try/finally`, so any throw in between kept the
+  increment. Templates are cached and reused, so a hundred bad requests retired the template on
+  that thread for good — for healthy requests too, with a recursion error describing nothing that
+  happened. Both tiers. Nothing in the repo asserted the recursion guard at all.
+- **A C#-tier compilation cache that could never be read from.** Its key was the generated source,
+  which names a class after a fresh `Guid` per compile. Measured: eight compiles of three distinct
+  expressions, eight adds, zero hits. It retained every generated source string for the life of
+  the process. A hit would have been worse than a miss — the entry class is looked up by the
+  *current* context's guid, which another context's assembly does not contain.
+- **An assembly that lost a name collision was retired for good.** It was marked classified before
+  the name was claimed, so the loser was skipped on every later pass and stayed invisible to type
+  resolution even after the name was freed.
+- **A cached preparse *success* was never invalidated.** The reasoning was that nothing a later
+  registration adds can take a type away. It can: a new assembly can make a name ambiguous
+  (`CS0104`) or introduce a better overload candidate. Successes are generation-checked now, and
+  the cache drops a spent entry rather than merely refusing to read it.
+- **The unreachable half of `WriteDynamicPath`** wrote exactly the `?.` chain whose short-circuit
+  the typed writer had just been fixed for. Both sides of its gate are constants this assembly
+  reads, so it was statically decided. Deleted.
+
+### Gaps the reviewers found in the previous round's tests
+
+Every one of these was a property claimed by a commit message and pinned by nothing: negative
+shift-count folding (`if (places < 0) places = 0;` reddened 0 of 587 tests while producing a real
+host-build break), shift results never byte-compared anywhere at all, `ImportIdentity`'s catch
+unreachable by any test, `ResolveOnly` satisfied by `Assert.ThrowsAny<Exception>` — including the
+harness falling over — and the `Assembly.LoadFrom` in the differential harness. All now pinned
+except the last two noted below.
+
+### Not fixed
+
+- **An `internal` property on a model type from a *referenced* assembly hard-errors the host
+  build.** The engine renders it; Roslyn's default `MetadataImportOptions.Public` hides it, so the
+  generator reports `HED7008` at error severity. The two candidate fixes are both bad: degrading
+  on any metadata receiver disables `HED7008` for nearly every real model, and leaving it means
+  valid templates break builds. This is a policy decision with a large blast radius and it is not
+  one to make while clearing a review queue.
+- **The epoch ordering is reasoning, not evidence.** Reversing either the drop-after-removal
+  ordering or the read-epoch-before-the-assembly-set ordering leaves every suite green, and a test
+  that races to observe the difference passes by luck when it is wrong. The argument is written at
+  each site; the tests pin only the primitive those sites rely on.
+- **`Assembly.LoadFrom` in the differential harness is unpinned**, and one reviewer argues it hides
+  a real engine property rather than testing it: a model type can bind at build time and fail at
+  run time depending on what has been loaded. Worth its own test; it does not have one.

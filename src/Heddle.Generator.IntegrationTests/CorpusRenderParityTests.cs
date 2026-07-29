@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Heddle.Exceptions;
 using Heddle.TestCorpus;
 using Xunit;
 
@@ -57,7 +58,12 @@ namespace Heddle.Generator.IntegrationTests
         [MemberData(nameof(DeclaredResolveOnly))]
         public void AnEntryDeclaredResolveOnlyGenuinelyDoesNotRender(string name)
         {
-            Assert.ThrowsAny<Exception>(() => RenderModelLess(name));
+            var refusal = Assert.ThrowsAny<Exception>(() => RenderModelLess(name));
+
+            // Not merely "something threw". A harness failure — a missing fixture, a build-time degrade where one
+            // was not declared — throws too, and would let a row keep its exemption for a reason that has nothing
+            // to do with the template. What earns the exemption is the engine itself refusing to render it.
+            Assert.IsType<TemplateProcessingException>(refusal);
         }
 
         /// <summary>

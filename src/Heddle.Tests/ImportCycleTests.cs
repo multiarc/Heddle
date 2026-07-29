@@ -460,6 +460,23 @@ namespace Heddle.Tests
             Assert.DoesNotContain(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportCycle);
         }
 
+        /// <summary>
+        /// An import path the file system cannot canonicalise. The identity the cycle guard keys on is normally
+        /// <c>Path.GetFullPath</c>, which rejects an embedded NUL here and rejects several more characters on .NET
+        /// Framework — and the whole parse ran inside that call. A path a reader could not have resolved anyway is
+        /// no reason to lose the document's diagnostics along with it; the raw spelling is a worse key, not a
+        /// broken one, and it still tells two imports apart.
+        /// </summary>
+        [Fact]
+        public void AnImportPathThatCannotBeCanonicalisedStillParses()
+        {
+            var library = new Dictionary<string, string> { ["ok.heddle"] = "imported" };
+            var context = Parse("@<<{{bad\0name.heddle}}@\\\n@<<{{ok.heddle}}@\\\nroot", library);
+
+            Assert.DoesNotContain(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportCycle);
+            Assert.DoesNotContain(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.TemplateNestedTooDeeply);
+        }
+
         private static ParseContext Parse(string document, IReadOnlyDictionary<string, string> library)
         {
             var settings = new ParserSettings

@@ -39,10 +39,10 @@ namespace Heddle.Generator.IntegrationTests
                 Assert.Equal(backends.dynamic(), backends.precompiled());
         }
 
-        /// <summary>A ref-struct hop has to be spelled against its receiver twice — it has no nullable form to widen
-        /// into — and that receiver is itself a null-conditional chain here. Spelling that chain into the read half
-        /// re-applies the propagation to a type that cannot carry it, which is a compile error in the generated
-        /// source rather than a wrong answer.</summary>
+        /// <summary>A ref-struct hop cannot use <c>?.</c> for its null test — there is no nullable form to widen
+        /// into — so the receiver has to be named some other way, and here that receiver is itself a
+        /// null-conditional chain. Respelling the chain into the read half re-applied the propagation to a type that
+        /// cannot carry it: a compile error in the generated source rather than a wrong answer.</summary>
         [Fact]
         public void ARefStructHopBehindAReferenceHopCompiles()
         {
@@ -55,6 +55,66 @@ namespace Heddle.Generator.IntegrationTests
 
             Assert.Equal(dyn, precompiled);
             Assert.Equal("5", precompiled);
+        }
+
+        /// <summary>
+        /// A ref-struct hop has no nullable form, so its null test cannot be written with <c>?.</c> and the receiver
+        /// has to be named. Naming it by respelling the expression reads it twice, and the engine reads it once —
+        /// which is not a performance difference: a getter that answers differently the second time turns a rendered
+        /// value into a <c>NullReferenceException</c> on one tier only.
+        /// </summary>
+        [Fact]
+        public void ARefStructHopReadsItsReceiverOnce()
+        {
+            const string key = "views/counting-ref-struct.heddle";
+            const string template =
+                "@model(){{Heddle.Generator.IntegrationTests.Fixtures.CountingRefStructModel}}@(Inner.Buf.Length)";
+            var backends = DifferentialHarness.DeferredWithOptions(
+                key, template, typeof(CountingRefStructModel), new CountingRefStructModel(), new TemplateOptions());
+
+            // Each backend is invoked exactly once: the model answers differently on every read, so a second call
+            // would be measuring a different model.
+            CountingRefStructModel.Reads = 0;
+            string precompiled = null;
+            var precompiledError = Record.Exception(() => precompiled = backends.precompiled());
+            var precompiledReads = CountingRefStructModel.Reads;
+
+            CountingRefStructModel.Reads = 0;
+            string dyn = null;
+            var dynamicError = Record.Exception(() => dyn = backends.dynamic());
+            var dynamicReads = CountingRefStructModel.Reads;
+
+            Assert.Equal(1, dynamicReads);
+            Assert.Equal(dynamicReads, precompiledReads);
+            Assert.Equal(dynamicError?.GetType(), precompiledError?.GetType());
+            Assert.Equal(dyn, precompiled);
+        }
+
+        /// <summary>
+        /// A ref struct read <em>through</em> to a member of its own is fine — what leaves the path is an
+        /// <c>int</c>. The ref struct itself as the path's value is not: every consumer boxes it, and a ref struct
+        /// cannot be boxed.
+        /// <para>Neither tier can render this, and that is not the point. The engine refuses it with
+        /// <c>HED0005</c> when it compiles the template — an id, a position, something a host can report. Emitting
+        /// it put <c>CS0030</c> into the consumer's build instead: no Heddle id, reported against a
+        /// <c>.heddle</c> file. Degrading is what lets the engine's refusal be the one the reader sees.</para>
+        /// </summary>
+        [Fact]
+        public void APathEndingOnARefStructDegradesInsteadOfBreakingTheBuild()
+        {
+            const string key = "views/ref-struct-as-value.heddle";
+            const string template =
+                "@model(){{Heddle.Generator.IntegrationTests.Fixtures.NestedRefStructModel}}@(Inner.Buf)";
+
+            var gen = DifferentialHarness.Generate(new[] { (key, template) });
+            DifferentialHarness.ExpectDegrade(gen, key);
+            Assert.DoesNotContain(gen.Diagnostics,
+                d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
+
+            // And the refusal the degrade hands off to is a real one, with an id.
+            var dynamicTemplate = new Heddle.HeddleTemplate(template,
+                new Heddle.Runtime.CompileContext(typeof(NestedRefStructModel)));
+            Assert.False(dynamicTemplate.CompileResult.Success);
         }
 
         /// <summary>The same paths with the intermediate reference present: the value is there, so neither tier has

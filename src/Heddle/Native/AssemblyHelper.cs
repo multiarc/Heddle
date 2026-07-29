@@ -60,13 +60,19 @@ namespace Heddle.Native
                         continue;
                     // Reference identity, because GetName() allocates an AssemblyName per call and this runs on every
                     // type resolution — the already-seen case must not pay for one.
-                    if (!Seen.Add(assembly))
+                    if (Seen.Contains(assembly))
                         continue;
-                    if (AssemblyCache.TryAdd(assembly.GetName(), assembly))
-                    {
-                        Assemblies.Add(assembly);
-                        added = true;
-                    }
+                    // Marked classified only once it actually is. Marking before the name was taken retired the
+                    // loser of a collision permanently: skipped on every later pass, invisible to type resolution
+                    // for the life of the process, and still invisible after the assembly it collided with was
+                    // unregistered and the name freed. The cost of not marking it is one GetName() per pass for as
+                    // long as the collision lasts, which is normally never.
+                    if (!AssemblyCache.TryAdd(assembly.GetName(), assembly))
+                        continue;
+
+                    Assemblies.Add(assembly);
+                    Seen.Add(assembly);
+                    added = true;
                 }
 
                 // Generation first, stamp second. A reader that takes the fast path above has seen the new stamp, and

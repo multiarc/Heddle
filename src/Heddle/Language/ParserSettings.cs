@@ -54,10 +54,21 @@ namespace Heddle.Language
         }
 
         /// <summary>The display/provenance path for an import — <c>Path.Combine(RootPath, importPath)</c>, matching
-        /// the pre-seam <c>ImportOrigin.Path</c> value. Only consulted on the language-feature (LSP) path.</summary>
+        /// the pre-seam <c>ImportOrigin.Path</c> value. Only consulted on the language-feature (LSP) path.
+        /// <para>A path the combine refuses — <c>&lt;</c>, <c>&gt;</c> and <c>|</c> are refused on .NET Framework —
+        /// falls back to the spelling as written. This is a label shown to a reader, and the editor asking for it is
+        /// looking at a document mid-edit; a label that reads a little worse beats an analysis that produces
+        /// nothing.</para></summary>
         internal string ResolveImportPath(string importPath)
         {
-            return Path.Combine(RootPath ?? string.Empty, importPath);
+            try
+            {
+                return Path.Combine(RootPath ?? string.Empty, importPath);
+            }
+            catch (Exception)
+            {
+                return importPath;
+            }
         }
 
         /// <summary>
