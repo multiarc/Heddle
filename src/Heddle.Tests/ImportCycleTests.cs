@@ -91,7 +91,17 @@ namespace Heddle.Tests
 
             var context = Parse("@<<{{f0.heddle}}@\\\nroot", library);
 
-            Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.TemplateNestedTooDeeply);
+            // The id is shared with expression and block nesting, which is a different fault with a different
+            // remedy; only the message says which of the two a reader is looking at. It also says where the ceiling
+            // is — the reader's next question — and that the import was dropped rather than partially expanded.
+            var reported = context.Errors
+                .Where(e => e.DiagnosticId == HeddleDiagnosticIds.TemplateNestedTooDeeply).ToList();
+            Assert.NotEmpty(reported);
+            Assert.All(reported, e =>
+            {
+                Assert.Contains("'@<<' composition imports nest deeper than 64 levels", e.Error);
+                Assert.Contains("The import is skipped", e.Error);
+            });
         }
 
         /// <summary>

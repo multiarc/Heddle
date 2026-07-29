@@ -11,6 +11,21 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public string City { get; set; }
     }
 
+    /// <summary>A reference hop onto a nullable value, then a member of that value. The engine substitutes a default
+    /// at the hop that failed and keeps walking, so <c>Inner.Maybe.HasValue</c> over a null <c>Inner</c> reads
+    /// <c>HasValue</c> off <c>default(int?)</c>.</summary>
+    public sealed class NullableHopModel
+    {
+        public NullableHolder Inner { get; set; }
+    }
+
+    public sealed class NullableHolder
+    {
+        public int? Maybe { get; set; }
+
+        public System.DateTime? When { get; set; }
+    }
+
     public sealed class Product
     {
         public string Name { get; set; }
@@ -217,5 +232,12 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
     public sealed class RefStructModel
     {
         public System.ReadOnlySpan<char> Buf => System.MemoryExtensions.AsSpan("hello");
+    }
+
+    /// <summary>Puts the ref-struct hop behind a reference hop, so the receiver it is spelled against is itself the
+    /// result of a null-conditional.</summary>
+    public sealed class NestedRefStructModel
+    {
+        public RefStructModel Inner { get; set; }
     }
 }

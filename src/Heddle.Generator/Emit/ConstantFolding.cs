@@ -221,14 +221,13 @@ namespace Heddle.Generator.Emit
             private static Numeric Signed(NumericKind kind, long value) => new Numeric(kind, value, 0, 0m, 0d);
             private static Numeric Unsigned(NumericKind kind, ulong value) => new Numeric(kind, 0, value, 0m, 0d);
 
+            /// <summary>The CLR types a template literal can carry. A narrower integer is not among them: the
+            /// language has no <c>byte</c> or <c>short</c> suffix, so the smallest a written number ever arrives as
+            /// is <c>int</c>. Rows for the narrower types would model a promotion that has nothing to promote.</summary>
             internal static bool From(object literal, out Numeric result)
             {
                 switch (literal)
                 {
-                    case sbyte v: result = Signed(NumericKind.Int, v); return true;
-                    case byte v: result = Signed(NumericKind.Int, v); return true;
-                    case short v: result = Signed(NumericKind.Int, v); return true;
-                    case ushort v: result = Signed(NumericKind.Int, v); return true;
                     case char v: result = Signed(NumericKind.Int, v); return true;
                     case int v: result = Signed(NumericKind.Int, v); return true;
                     case uint v: result = Unsigned(NumericKind.UInt, v); return true;
@@ -264,8 +263,10 @@ namespace Heddle.Generator.Emit
                 }
             }
 
-            /// <summary>C#'s shift: the count is masked to the operand's width, and the result keeps the operand's
-            /// type.</summary>
+            /// <summary>C#'s shift, in C#: the result keeps the operand's type, and the count is masked to that
+            /// type's width — to five bits for a 32-bit operand and six for a 64-bit one — by the very operators
+            /// written below. Masking it again here would compute the same number twice and read as though the
+            /// language did not already do it.</summary>
             internal static Numeric Shift(Numeric value, int places, ExprOperator op)
             {
                 bool left = op == ExprOperator.LeftShift;
@@ -274,28 +275,20 @@ namespace Heddle.Generator.Emit
                     case NumericKind.UInt:
                     {
                         var operand = (uint)value._unsigned;
-                        var count = places & 31;
-                        return Unsigned(NumericKind.UInt, left ? operand << count : operand >> count);
+                        return Unsigned(NumericKind.UInt, left ? operand << places : operand >> places);
                     }
 
                     case NumericKind.Long:
-                    {
-                        var count = places & 63;
-                        return Signed(NumericKind.Long, left ? value._signed << count : value._signed >> count);
-                    }
+                        return Signed(NumericKind.Long, left ? value._signed << places : value._signed >> places);
 
                     case NumericKind.ULong:
-                    {
-                        var count = places & 63;
                         return Unsigned(NumericKind.ULong,
-                            left ? value._unsigned << count : value._unsigned >> count);
-                    }
+                            left ? value._unsigned << places : value._unsigned >> places);
 
                     default:
                     {
                         var operand = (int)value._signed;
-                        var count = places & 31;
-                        return Signed(NumericKind.Int, left ? operand << count : operand >> count);
+                        return Signed(NumericKind.Int, left ? operand << places : operand >> places);
                     }
                 }
             }

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Threading;
 using Heddle.Data;
 
 namespace Heddle.Runtime
@@ -20,18 +21,23 @@ namespace Heddle.Runtime
     /// </summary>
     internal sealed class PreparseResult
     {
-        public PreparseResult(OptionalValue<object> value, ExType type, string[] diagnostics, int generation)
+        public PreparseResult(OptionalValue<object> value, ExType type, string[] diagnostics, int generation,
+            int epoch)
         {
             Value = value;
             Type = type;
             Diagnostics = diagnostics;
             Generation = generation;
+            Epoch = epoch;
         }
 
         public OptionalValue<object> Value { get; }
         public ExType Type { get; }
         public string[] Diagnostics { get; }
         public int Generation { get; }
+
+        /// <summary>The <see cref="PreparseCache.Epoch"/> in force when this entry's compile began.</summary>
+        public int Epoch { get; }
 
         public bool Failed => Diagnostics.Length > 0;
     }
@@ -48,14 +54,39 @@ namespace Heddle.Runtime
         private static readonly ConcurrentDictionary<string, PreparseResult> Entries =
             new ConcurrentDictionary<string, PreparseResult>();
 
-        internal static bool TryGet(string generatedCode, out PreparseResult result) =>
-            Entries.TryGetValue(generatedCode, out result);
+        private static int _epoch;
+
+        /// <summary>
+        /// Counts the times the cache has been dropped. An entry is produced by a compile that takes measurable time,
+        /// and one already running when the drop happens still stores its result afterwards — into the map that was
+        /// just emptied. Emptying alone therefore does not mean the next reader sees nothing: it can see exactly the
+        /// entry the drop existed to remove, naming a type from the load context that has since gone.
+        /// <para>So a reader compares epochs rather than trusting the map. A compile stamps the epoch it began under,
+        /// and an entry stamped with an older one is not served no matter when it arrived.</para>
+        /// </summary>
+        internal static int Epoch => Volatile.Read(ref _epoch);
+
+        /// <summary>Serves an entry only if the cache has not been dropped since its compile began.</summary>
+        internal static bool TryGet(string generatedCode, out PreparseResult result)
+        {
+            if (!Entries.TryGetValue(generatedCode, out result))
+                return false;
+            if (result.Epoch == Epoch)
+                return true;
+
+            result = null;
+            return false;
+        }
 
         internal static void Store(string generatedCode, PreparseResult result) =>
             Entries[generatedCode] = result;
 
-        /// <summary>Drops every entry. Called when model assemblies are unregistered, because the types the
-        /// entries name are about to go away with their load context.</summary>
-        internal static void Clear() => Entries.Clear();
+        /// <summary>Drops every entry and moves the epoch on. Called when model assemblies are unregistered, because
+        /// the types the entries name are about to go away with their load context.</summary>
+        internal static void Clear()
+        {
+            Entries.Clear();
+            Interlocked.Increment(ref _epoch);
+        }
     }
 }

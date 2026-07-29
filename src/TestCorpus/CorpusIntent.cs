@@ -33,13 +33,17 @@ namespace Heddle.TestCorpus
         /// renders on BOTH backends and the bytes agree.</summary>
         Standalone,
 
-        /// <summary>Crosses the gauntlet in the sweep (resolve-only), but byte parity is owned by the named family
-        /// differential suite because a standalone render cannot type the model the template declares.</summary>
+        /// <summary>The entry declares a model, so the path that matters is byte-pinned by the named family
+        /// differential suite — a standalone render cannot type it. Its model-less path is still rendered and
+        /// byte-compared alongside <see cref="Standalone"/>, because it is free coverage and because a row that
+        /// stops rendering at all has changed into something this column no longer describes.</summary>
         WithModel,
 
         /// <summary>Not standalone-renderable at all — a fragment that is only meaningful when imported (a bare
         /// <c>@else</c> continuation), an entry whose own text is a deliberate parse error, or one that names a
-        /// function only a host registration supplies. Resolved, never rendered by a shared harness.</summary>
+        /// function only a host registration supplies. Resolved, never rendered by a shared harness.
+        /// <para>This is the value that takes an entry out of byte-parity coverage, so it is the one that has to be
+        /// earned: a precompiling entry declaring it is rendered anyway, and must genuinely fail to render.</para></summary>
         ResolveOnly,
     }
 

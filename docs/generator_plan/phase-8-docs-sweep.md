@@ -1223,3 +1223,63 @@ this time it produced a regression rather than a gap.**
 - **`CorpusRenderParityTests`** remains 10 hand-listed templates against 32 eligible, ungated.
 - **`RoslynReferenceProvider` builds each reference twice on a cache miss** — pre-existing, now fixed as part of
   anchoring the assembly, but worth noting it was found by review and not by any test.
+
+## Closing round (2026-07-29)
+
+Everything the review cycles had left confirmed-but-unfixed, plus the items they had marked
+suspected. Each fix below was demonstrated red before it was made, except where stated.
+
+### The two that were wrong output, not just wrong shape
+
+- **`?.` abandons the rest of the chain; the engine defaults one hop and keeps walking.** The
+  emitter wrote a member path as one null-conditional chain, so `Inner.Maybe.HasValue` over a
+  null `Inner` produced nothing at all, while the engine read `HasValue` off `default(int?)` and
+  produced `False`. Two tiers, two different renderable answers, no diagnostic on either. The
+  `.Value` form of the same path diverged the other way: the engine threw
+  `InvalidOperationException` and the generated tier rendered empty. Fixed by ending the chain
+  with parentheses before a plain `.` — `(a?.B).C` reads `C` off the default, which is the hop
+  the engine performs. Four of four null-hop cases were red; all four now agree, values and
+  exceptions alike.
+- **A ref-struct hop behind a reference hop did not compile.** The ref-struct form spells its
+  receiver twice, and spelling a propagating chain into the read half re-applies `?.` to a type
+  with no nullable form: `Inner.Buf.Length` emitted two `CS8978`s into the consumer's build. The
+  same parenthesisation fixes it. Found by asking what else the chain-propagation rule touched,
+  not by any existing test.
+
+### The rest
+
+- **The preparse cache could serve exactly the entry the drop existed to remove.** Dropping it
+  ran *before* the assemblies were unregistered, and a compile already in flight stores its
+  result afterwards — into the map that was just emptied. Entries now carry the epoch their
+  compile began under and are refused if it has moved; the drop happens after the removal, so an
+  epoch that is current implies the removal is complete.
+- **`HED4007` had no message pin at either of its two producers**, which are unrelated faults
+  with unrelated remedies — expression nesting and `@<<` import nesting. Collapsing both messages
+  to one vague string was green. Both are now pinned, and the parse-depth path has a test again:
+  a flat left-associative run reaches the reporting path without being able to reach the crash,
+  because ANTLR loops left recursion rather than recursing.
+- **The corpus render column was a declaration nothing measured.** `ResolveOnly` removes an entry
+  from byte-parity coverage on its own say-so, and seven entries declared `WithModel` sat outside
+  the gate while rendering identically all along. Everything not declared `ResolveOnly` is now
+  rendered and compared, and everything declared `ResolveOnly` is rendered too — to prove it
+  cannot be. This closes the item the third review left open.
+- **The differential harness was order-dependent.** Handing an assembly to Roslyn equips only the
+  precompiled side; the dynamic reference resolves model types over what is actually loaded in
+  the process. Corpus templates naming engine test models compiled or failed depending on whether
+  an earlier test in the same run had happened to load `Heddle.Tests.dll` — visible as two
+  unrelated cases going red under a mutation that only changed scheduling. The harness now loads
+  what it references.
+- **Dead arithmetic removed.** `Numeric.From` carried rows for `sbyte`/`byte`/`short`/`ushort`,
+  which no template literal can produce — the language has no suffix for them, so the smallest a
+  written number arrives as is `int`. `Numeric.Shift` masked its count to the operand width, which
+  is what the C# `<<` and `>>` it is written in already do.
+
+### Not fixed, and unverifiable here
+
+- **`Path.Combine` rejects `<`, `>` and `|` on .NET Framework** and accepts them on .NET Core.
+  The combine was moved inside `ImportIdentity`'s guard so a throw degrades the cache key instead
+  of killing the parse — but nothing on this box can make it throw, so that change is reasoning,
+  not evidence.
+- Everything else platform-shaped is now written down in
+  [unverified-platform-surface.md](unverified-platform-surface.md), including a declared `net6.0`
+  test container that fails to start while `dotnet test` still exits 0.

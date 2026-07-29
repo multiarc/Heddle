@@ -42,16 +42,39 @@ namespace Heddle.Tests
             Assert.Equal(ParseDepthGuardLimit, ParseDepthGuard.MaxDepth);
         }
 
-        // The property this bound exists for cannot be asserted in-process. A test that parses past the limit
-        // on a small stack does not go red when the property breaks — it takes the test host down, which is how a
-        // previous attempt aborted the Release run after 1143 of 1865 tests. Verifying it needs a child process
-        // comparing exit codes, which no suite here does; the limit's value is asserted above instead.
+        // The property this bound exists for cannot be asserted in-process for the shapes that recurse inside ANTLR.
+        // A test that parses one of those past the limit does not go red when the property breaks — it takes the
+        // test host down, which is how a previous attempt aborted the Release run after 1143 of 1865 tests.
+        // Verifying that needs a child process comparing exit codes, which no suite here does; the limit's value is
+        // asserted above instead.
+        //
+        // A flat left-associative run is the one shape with no such hazard, and it is the shape the guard below
+        // catches: ANTLR rewrites left recursion into a loop, so the parser never recurses and the depth lands
+        // entirely in the tree it builds — walked with an explicit stack. It reaches the reporting path without
+        // being able to reach the crash, so what it goes red on is the report itself.
 
+        /// <summary>A run of this many additions is that many tree levels and no parser recursion at all.</summary>
+        [Fact]
+        public void AFlatRunPastTheLimitIsReported()
+        {
+            AssertReportsDepth("@(" + string.Join("+", Enumerable.Repeat("1", PastTheLimit)) + ")");
+        }
+
+        /// <summary>
+        /// Two unrelated conditions report <c>HED4007</c> — this one, and <c>@&lt;&lt;</c> imports nested past their
+        /// own bound — so the id alone tells a reader nothing about which happened or what to shorten. The message
+        /// is the only thing that distinguishes them, and it carries the limit that was hit.
+        /// </summary>
         private static void AssertReportsDepth(string document)
         {
             var context = DocumentParser.Parse(document, new ParserSettings { RootPath = "<none>" }, out _);
 
-            Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.TemplateNestedTooDeeply);
+            var reported = Assert.Single(context.Errors
+                .Where(e => e.DiagnosticId == HeddleDiagnosticIds.TemplateNestedTooDeeply));
+            Assert.Contains("nested too deeply to compile (limit " + ParseDepthGuardLimit + " levels)",
+                reported.Error);
+            Assert.Contains("expression, chain, or block nesting", reported.Error);
+            Assert.DoesNotContain("@<<", reported.Error);
         }
     }
 }
