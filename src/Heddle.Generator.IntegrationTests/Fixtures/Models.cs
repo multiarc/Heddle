@@ -321,6 +321,38 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public string Bad => "bad";
     }
 
+    /// <summary>An error-obsolete <b>value</b> type, so the emitter's null-safe form has to spell it in a
+    /// <c>default(T)</c> rather than merely reading through it.</summary>
+    [System.Obsolete("gone", true)]
+    public struct ObsoleteErrorValue
+    {
+        public int Amount { get; set; }
+    }
+
+    /// <summary>
+    /// A perfectly nameable model with a perfectly nameable property whose <b>type</b> no consumer may name. The
+    /// declaration is legal C# only because the property carries an <c>[Obsolete]</c> of its own — an obsolete
+    /// context suppresses the diagnostic on the type it mentions — and that one is warning-level, which the emitter
+    /// deliberately lets through. So neither the property nor the model raises anything, and the type the generated
+    /// <c>default(T)</c> spells is a CS0619.
+    /// </summary>
+    public sealed class ObsoletePropertyTypeModel
+    {
+        [System.Obsolete("prefer nothing")]
+        public ObsoleteErrorValue Balance { get; set; }
+    }
+
+    /// <summary>A nameable type nested inside one that is not: C# reports the error on the <b>outer</b> name, which
+    /// no spelling of the inner one can avoid.</summary>
+    [System.Obsolete("gone", true)]
+    public class ObsoleteOuterModel
+    {
+        public sealed class Inner
+        {
+            public string Title => "inner";
+        }
+    }
+
     /// <summary>The deprecation that must NOT degrade — warning-level <c>[Obsolete]</c> on the type and on a member.
     /// It is a note to the author, not a refusal, and a rule that could not tell the two apart would take every
     /// deprecated model in a codebase off the precompiled tier without saying so.</summary>

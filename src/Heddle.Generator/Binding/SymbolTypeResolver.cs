@@ -265,8 +265,14 @@ namespace Heddle.Generator.Binding
                 // Same class of refusal, different word from the compiler: reflection ignores [Obsolete] entirely,
                 // so the engine reads an error-obsolete member and renders, while the generated read of it is a
                 // CS0619 in the consumer's build — again attributed to a .heddle file it cannot be fixed from.
+                // The member's own name is only half of what the read spells. The emitter writes the property's TYPE
+                // as well — `default(T)` in the null-safe form, the receiver's own name in the ref-struct form — so
+                // an error-obsolete property type puts a CS0619 in the consumer's build off a member that carries no
+                // attribute at all. The model-only restrictions are deliberately not asked here: a ref struct is
+                // writable, and a hop THROUGH one to a member of its own stays precompiled.
                 if (!IsAccessibleFromCompilation(prop) || !IsAccessibleFromCompilation(prop.GetMethod) ||
-                    IsObsoleteError(prop) || IsObsoleteError(prop.GetMethod))
+                    IsObsoleteError(prop) || IsObsoleteError(prop.GetMethod) ||
+                    ClassifyTypeName(prop.Type, out _) != NameFault.None)
                 {
                     result.Kind = PathKind.Inaccessible;
                     result.DynamicIndex = i;
@@ -294,8 +300,10 @@ namespace Heddle.Generator.Binding
         /// the precompiled tier, which is a cost with nothing on the other side of it. The generated file already
         /// opens with a blanket <c>#pragma warning disable</c>, so the warning form raises nothing in the consumer's
         /// build against code they did not write, which is the only thing that had to be true for leaving it.</para>
-        /// <para>Nested spellings are walked: an array of an error-obsolete element type, or a generic constructed
-        /// over one, is just as unwritable as the bare name.</para>
+        /// <para>Nested spellings are walked: an array or pointer whose element type is error-obsolete, a generic
+        /// constructed over one, and a type <b>nested inside</b> one, are all just as unwritable as the bare name —
+        /// <c>Legacy.Inner</c> cannot be spelled without spelling <c>Legacy</c>, and C# reports the error on the
+        /// outer name.</para>
         /// </summary>
         public static bool IsObsoleteError(ISymbol symbol)
         {
@@ -304,6 +312,9 @@ namespace Heddle.Generator.Binding
 
             if (symbol is IArrayTypeSymbol array)
                 return IsObsoleteError(array.ElementType);
+
+            if (symbol is IPointerTypeSymbol pointer)
+                return IsObsoleteError(pointer.PointedAtType);
 
             foreach (var attribute in symbol.GetAttributes())
             {
@@ -317,14 +328,157 @@ namespace Heddle.Generator.Binding
                     return true;
             }
 
+            // Only for types. A member inherited from an error-obsolete base is read off the derived name, which the
+            // compiler does not object to, so walking a member's container would degrade templates that compile.
             if (symbol is INamedTypeSymbol named)
             {
                 foreach (var argument in named.TypeArguments)
                     if (IsObsoleteError(argument))
                         return true;
+                if (IsObsoleteError(named.ContainingType))
+                    return true;
             }
 
             return false;
+        }
+
+        /// <summary>Why generated code cannot write a type's name.</summary>
+        internal enum NameFault
+        {
+            None,
+
+            /// <summary>Accessibility or error-obsolescence: the type is a perfectly ordinary one that this
+            /// particular assembly is not allowed to mention. Author-fixable, so it is worth reporting (HED7030).
+            /// </summary>
+            Unnameable,
+
+            /// <summary>A type no generated code could ever hold a value of, whoever compiled it. Nothing to report:
+            /// the only remedy is a different model, and the engine serves the template either way.</summary>
+            Unusable,
+        }
+
+        /// <summary>
+        /// Whether generated code in the consumer's assembly may write <paramref name="type"/>'s name where a
+        /// <b>value</b> of it lives — a local, a <c>default(T)</c>, a cast target, a field. Everything the emitter
+        /// spells is such a position, and a name the emitter may spell but the consumer's compiler rejects ends the
+        /// same way every time: an error against a <c>.g.cs</c>, attributed to a <c>.heddle</c> file, that the
+        /// consumer cannot fix from the template. The engine binds by reflection, which asks none of these questions,
+        /// so it renders (or refuses on its own terms) regardless — degrading hands the template back to it.
+        /// <para>The list is meant to be complete over <see cref="TypeKind"/> rather than grown one reported defect
+        /// at a time. Nameable: class, struct, enum, interface, delegate, <c>dynamic</c>, and arrays of those.
+        /// Refused: <see cref="TypeKind.Error"/>/<see cref="TypeKind.Unknown"/> (the name does not resolve, CS0246);
+        /// pointers and function pointers (CS0214 without <c>/unsafe</c>, and unboxable); type parameters and
+        /// anything containing one — an open generic such as <c>List`1</c> or a type nested in one — since generated
+        /// code has no generic context to bind them in (CS0246/CS0305); an unbound generic (<c>List&lt;&gt;</c>,
+        /// CS7003); VB modules and script submissions, which C# has no syntax for; <c>System.Void</c> (CS1536,
+        /// CS1547); a static class (CS0721/CS0723); and an anonymous type, which has no writable name at all.
+        /// Restricted types — <c>TypedReference</c> and friends — need no row of their own: they are
+        /// <see cref="ITypeSymbol.IsRefLikeType"/> and so are caught as ref structs by
+        /// <see cref="ClassifyModelType"/>.</para>
+        /// </summary>
+        public NameFault ClassifyTypeName(ITypeSymbol type, out string reason)
+        {
+            reason = null;
+            if (type == null)
+                return NameFault.None;
+
+            switch (type.TypeKind)
+            {
+                case TypeKind.Array:
+                    // An array is exactly as writable as its element type, and an element type has to be able to
+                    // hold a value too — `int*[]` and `Math[]` are both rejected on the element, not the brackets.
+                    return ClassifyTypeName(((IArrayTypeSymbol) type).ElementType, out reason);
+                case TypeKind.Error:
+                case TypeKind.Unknown:
+                    return Unusable(type, "does not resolve to a type this compilation can name", out reason);
+                case TypeKind.Pointer:
+                case TypeKind.FunctionPointer:
+                    return Unusable(type, "is a pointer type, which generated code cannot name outside an unsafe " +
+                                          "context", out reason);
+                case TypeKind.TypeParameter:
+                    return Unusable(type, "is a type parameter, and generated code has no generic context to bind " +
+                                          "it in", out reason);
+                case TypeKind.Module:
+                case TypeKind.Submission:
+                    return Unusable(type, "is not a type C# has a syntax for", out reason);
+            }
+
+            if (type.SpecialType == SpecialType.System_Void)
+                return Unusable(type, "is 'void', which cannot be a parameter, a local or a cast target", out reason);
+
+            if (type.IsStatic)
+                return Unusable(type, "is a static type and cannot hold a value", out reason);
+
+            if (type.IsAnonymousType)
+                return Unusable(type, "is an anonymous type and has no name to write", out reason);
+
+            if (type is INamedTypeSymbol named)
+            {
+                if (named.IsUnboundGenericType)
+                    return Unusable(type, "is an unbound generic type", out reason);
+                if (ContainsTypeParameter(named))
+                    return Unusable(type, "is an open generic type, and generated code has no generic context to " +
+                                          "bind its type parameters in", out reason);
+            }
+
+            if (!IsAccessibleFromCompilation(type) || IsObsoleteError(type))
+            {
+                reason = "'" + FullyQualified(type) + "' cannot be named by generated code";
+                return NameFault.Unnameable;
+            }
+
+            return NameFault.None;
+        }
+
+        /// <summary>
+        /// <see cref="ClassifyTypeName"/> plus the one restriction that applies only to a type a <b>model</b> value
+        /// travels in: a ref struct cannot be boxed, and every model reaches the generated entry point as an
+        /// <c>object</c> (CS1503, CS0457). Restricted types — <c>TypedReference</c>, <c>ArgIterator</c>,
+        /// <c>RuntimeArgumentHandle</c> — are ref-like and land here too.
+        /// <para>A ref struct is still perfectly writable, which is why the split exists: a hop <em>through</em> one
+        /// to a member of its own spells <c>default(Span&lt;char&gt;)</c> and compiles.</para>
+        /// </summary>
+        public NameFault ClassifyModelType(ITypeSymbol type, out string reason)
+        {
+            var fault = ClassifyTypeName(type, out reason);
+            if (fault != NameFault.None)
+                return fault;
+
+            if (type != null && type.IsRefLikeType)
+                return Unusable(type, "is a ref struct and cannot be boxed into a model", out reason);
+
+            return NameFault.None;
+        }
+
+        private static NameFault Unusable(ITypeSymbol type, string what, out string reason)
+        {
+            reason = "'" + FullyQualified(type) + "' " + what;
+            return NameFault.Unusable;
+        }
+
+        /// <summary>Whether a type parameter appears anywhere in the spelling — as the type itself, an array or
+        /// pointer element, a type argument, or a type argument of an enclosing type (<c>List`1.Enumerator</c> carries
+        /// no type arguments of its own but still cannot be written).</summary>
+        private static bool ContainsTypeParameter(ITypeSymbol type)
+        {
+            switch (type)
+            {
+                case null:
+                    return false;
+                case ITypeParameterSymbol _:
+                    return true;
+                case IArrayTypeSymbol array:
+                    return ContainsTypeParameter(array.ElementType);
+                case IPointerTypeSymbol pointer:
+                    return ContainsTypeParameter(pointer.PointedAtType);
+                case INamedTypeSymbol named:
+                    foreach (var argument in named.TypeArguments)
+                        if (ContainsTypeParameter(argument))
+                            return true;
+                    return ContainsTypeParameter(named.ContainingType);
+                default:
+                    return false;
+            }
         }
 
         /// <summary>Whether generated code in the compilation's own assembly may name <paramref name="symbol"/>.
