@@ -437,6 +437,7 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 | `HED7025` | A function call the shared overload ranker proved illegal — ambiguous under Heddle's flat Pareto rank (`HED1013`), or no applicable overload (`HED1012`). Fires only when every argument estimate is typed: an argument the generator cannot describe proves nothing about the runtime and still degrades silently. |
 
 | `HED7028` | An `@<<` import names a template by its registration key while the template also carries a `Name`. Both spellings resolve — `Name` adds an import name, it never replaces the key — so this is a warning recommending the name-first spelling for a named template. |
+| `HED7030` | A model type, or a member on one, that this assembly may not name: an `internal` type or `internal` member declared in a *referenced* assembly. The engine binds it by reflection and renders normally, and generated code cannot name it at all, so the template degrades to the dynamic tier under a warning. Make it public, or grant the consuming assembly `[InternalsVisibleTo]`, to precompile it. |
 
 Member/type errors in milestone 1 arrive as C# errors remapped to the template span via
 `#line`; milestone 2 replaces the covered ones with native `HED7007`/`HED7008`.

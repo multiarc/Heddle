@@ -107,6 +107,12 @@ namespace Heddle.Generator.Diagnostics
         public static readonly DiagnosticDescriptor UnresolvableMember =
             FromCatalog(HeddleDiagnosticIds.BuildUnresolvableMember);
 
+        /// <summary>A model type or model member the engine reads by reflection and generated code may not name —
+        /// <c>internal</c> in a referenced assembly. The template degrades to the dynamic tier rather than
+        /// pre-compiling a name the consumer's build would reject (position: the directive, or the path).</summary>
+        public static readonly DiagnosticDescriptor InaccessibleModelSymbol =
+            FromCatalog(HeddleDiagnosticIds.BuildInaccessibleModelSymbol);
+
         public static readonly DiagnosticDescriptor OptionParseError =
             FromCatalog(HeddleDiagnosticIds.BuildOptionParseError);
 

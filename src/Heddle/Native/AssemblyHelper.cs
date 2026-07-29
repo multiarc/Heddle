@@ -233,23 +233,36 @@ namespace Heddle.Native
                     AssemblyCache.TryRemove(name, out _);
                 ModelAssemblies.Clear();
                 ModelNames.Clear();
-                Interlocked.Increment(ref _generation);
+
+                // The bump and the cache's retarget are one expression on purpose. As two statements they were an
+                // ordering to get right — drop the cache before the generation moves and a compile still running
+                // from before this call re-fills the emptied map with a result naming the types being unloaded, and
+                // pins their load context. Written this way there is no order to choose and no second value to pass.
+                Runtime.PreparseCache.Retarget(Interlocked.Increment(ref _generation));
             }
 
-            // Removal first, drop second. A compile already running when this began still stores its result, and
-            // dropping the cache before the assemblies were gone left that result — computed against the very types
-            // being unloaded — sitting in an otherwise-empty map for the next reader to find.
-            Runtime.PreparseCache.Clear();
             ReflectionHelper.Reconfigure();
         }
 
         /// <summary>Sole Roslyn-typed member; called only from C#-tier compile paths behind
         /// <c>Heddle.CSharpTierEnabled</c> switch, so trimmed publishes with the switch off make this dead.</summary>
-        internal static List<Microsoft.CodeAnalysis.MetadataReference> GetApplicationReferences()
+        internal static List<Microsoft.CodeAnalysis.MetadataReference> GetApplicationReferences() =>
+            GetApplicationReferences(out _);
+
+        /// <summary>
+        /// The reference set and the <see cref="Generation"/> it was taken at, read together under one monitor.
+        /// <para>They are handed out as a pair because a caller that caches the compile's result has to stamp it
+        /// with the generation of the set the compile actually used, and reading the counter separately made that a
+        /// rule about statement order: read it afterwards and a compile that raced a registration is stamped current
+        /// and served forever, having compiled against the older set. Taken here, the pairing is a fact rather than
+        /// a convention.</para>
+        /// </summary>
+        internal static List<Microsoft.CodeAnalysis.MetadataReference> GetApplicationReferences(out int generation)
         {
             ObserveLoadedAssemblies();
             lock (Assemblies)
             {
+                generation = _generation;
                 return RoslynReferenceProvider.Build(Assemblies.ToArray());
             }
         }

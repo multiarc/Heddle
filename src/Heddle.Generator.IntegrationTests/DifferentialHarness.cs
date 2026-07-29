@@ -84,10 +84,18 @@ namespace Heddle.Generator.IntegrationTests
                     if (string.IsNullOrEmpty(path) || !File.Exists(path))
                         continue;
                     ExtraReferencePaths[Path.GetFileNameWithoutExtension(path)] = path;
-                    // Handing the assembly to Roslyn only equips the precompiled side. The dynamic reference
-                    // resolves a model type by name over the assemblies actually loaded in the process, so a corpus
-                    // template naming one of these types compiled or failed depending on whether some earlier test
-                    // in the same run had happened to load it — the same suite passed or failed on scheduling.
+                    // Handing the assembly to Roslyn only equips the precompiled side. The engine resolves a model
+                    // type by name over the assemblies actually LOADED in the process, so a corpus template naming
+                    // one of these types compiled or failed depending on whether some earlier test in the same run
+                    // had happened to load it — the same suite passed or failed on scheduling.
+                    //
+                    // This load stays, and it is deliberate rather than incidental: a differential test asks whether
+                    // two tiers produce the same bytes from the same inputs, and "the model assembly is loaded" is an
+                    // input. Leaving it to scheduling does not test the divergence, it just randomises which suite
+                    // reports it. The divergence itself — build-time binding over compilation *references* against
+                    // run-time binding over *loaded* assemblies — is a real engine property with real consequences
+                    // for hosts, and it is asserted head-on in ModelResolutionLoadOrderTests, which also pins this
+                    // very line. Delete it and that suite reddens.
                     Assembly.LoadFrom(path);
                 }
             }
@@ -266,6 +274,20 @@ namespace Heddle.Generator.IntegrationTests
             var dyn = dynamicTemplate.Generate(model);
 
             return (precompiled, dyn);
+        }
+
+        /// <summary>Renders an already-generated template through its precompiled entry. For tests that must run the
+        /// generator and the engine at separate moments — the other entry points do both inside one call, which is
+        /// no use when what is under test is what happens to the process between them.</summary>
+        public static string RenderGenerated(GenResult gen, string key, object model,
+            TemplateOptions options = null)
+        {
+            ExpectPrecompiled(gen, key);
+            var entryType = FindEntryTypeByKey(gen.Assembly, key)
+                            ?? throw new InvalidOperationException("Generated entry class not found for key: " + key);
+            var root = (IProcessStrategy) entryType
+                .GetField("Root", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static).GetValue(null);
+            return PrecompiledRuntime.GenerateString(root, model, null, null, options ?? new TemplateOptions());
         }
 
         /// <summary>Renders one template through both backends with explicit <see cref="TemplateOptions"/>,

@@ -220,7 +220,8 @@ namespace Heddle.Generator.Emit
             var resolution = _resolver.ResolvePath(_modelType, path.Segments);
             if (resolution.Kind != SymbolTypeResolver.PathKind.Resolved)
             {
-                if (resolution.Kind == SymbolTypeResolver.PathKind.Failed)
+                if (resolution.Kind == SymbolTypeResolver.PathKind.Failed ||
+                    resolution.Kind == SymbolTypeResolver.PathKind.Inaccessible)
                 {
                     var idx = resolution.DynamicIndex;
                     var receiver = resolution.Hops.Count == 0
@@ -233,7 +234,8 @@ namespace Heddle.Generator.Emit
                             : path.Segments[path.Segments.Count - 1];
                         _memberFailures.Add(new SymbolMemberResolver.MemberFailure(
                             SymbolTypeResolver.FullyQualified(receiver), member,
-                            MemberPathWriter.Display(path.Segments), path.Position));
+                            MemberPathWriter.Display(path.Segments), path.Position,
+                            resolution.Kind == SymbolTypeResolver.PathKind.Inaccessible));
                     }
                 }
 
