@@ -21,6 +21,7 @@ namespace Heddle.Tests
     /// </summary>
     public class AssemblyRegistrationTests
     {
+
         /// <summary>
         /// An explicit static constructor is the shape that force-loaded the entry assembly's whole reference closure
         /// at type init, and <c>beforefieldinit</c> is present exactly when a type declares none.
@@ -218,20 +219,27 @@ namespace Heddle.Tests
             // Out of a context of its own, so observation never sees it and only the registration puts it in play —
             // the shape a workspace's model assemblies arrive in.
             var host = new AssemblyLoadContext("collision-probe", isCollectible: true);
+            // Unregistration is process-wide — there is no per-assembly form — so the cleanup runs only on the paths
+            // that left this test's registration in place. Calling it unconditionally would also drop registrations
+            // made by whatever ran before, which is safe today only because this suite forbids parallel collections.
+            var registered = false;
             try
             {
                 AssemblyHelper.RegisterModelAssemblies(new[] { host.LoadFromStream(new MemoryStream(registeredBytes)) });
+                registered = true;
 
                 // From disk, because that is what lands in the default context — the only one observation looks at.
                 var loaded = Assembly.LoadFrom(WriteBytes(loadedBytes, identity));
                 Assert.DoesNotContain(loaded, Observed());
 
                 AssemblyHelper.UnregisterModelAssemblies();
+                registered = false;
                 Assert.Contains(loaded, Observed());
             }
             finally
             {
-                AssemblyHelper.UnregisterModelAssemblies();
+                if (registered)
+                    AssemblyHelper.UnregisterModelAssemblies();
                 host.Unload();
             }
         }
@@ -349,13 +357,10 @@ namespace ProbeNamespace{suffix}
         }
 
         /// <summary>Writes beside the test assembly, not to the temp directory: a referenced probe has to be
-        /// <b>findable</b> for the negative assertion to mean the runtime chose not to load it.</summary>
-        private static string WriteBytes(byte[] bytes, string assemblyName)
-        {
-            var path = Path.Combine(AppContext.BaseDirectory, assemblyName + ".dll");
-            File.WriteAllBytes(path, bytes);
-            return path;
-        }
+        /// <b>findable</b> for the negative assertion to mean the runtime chose not to load it. Cleaned up at
+        /// process exit — see <see cref="ProbeAssemblyFiles"/> for why not sooner.</summary>
+        private static string WriteBytes(byte[] bytes, string assemblyName) =>
+            ProbeAssemblyFiles.WriteBesideTestAssembly(bytes, assemblyName);
 
         private static Assembly CompileAndLoad(string source)
         {

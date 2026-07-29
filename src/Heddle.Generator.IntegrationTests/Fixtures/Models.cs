@@ -303,4 +303,40 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
     internal sealed class InternalDerivedModel : PublicTitleBase
     {
     }
+
+    /// <summary>A model the consumer's compiler refuses to let anyone name. Reflection ignores <c>[Obsolete]</c>
+    /// altogether, so the engine renders this exactly like any other model.</summary>
+    [System.Obsolete("gone", true)]
+    public sealed class ObsoleteErrorModel
+    {
+        public string Title => "obsolete";
+    }
+
+    /// <summary>The member half: the type may be named, one of its properties may not.</summary>
+    public sealed class ObsoleteMemberModel
+    {
+        public string Title => "public";
+
+        [System.Obsolete("gone", true)]
+        public string Bad => "bad";
+    }
+
+    /// <summary>The deprecation that must NOT degrade — warning-level <c>[Obsolete]</c> on the type and on a member.
+    /// It is a note to the author, not a refusal, and a rule that could not tell the two apart would take every
+    /// deprecated model in a codebase off the precompiled tier without saying so.</summary>
+    [System.Obsolete("prefer something else")]
+    public sealed class DeprecatedModel
+    {
+        [System.Obsolete("prefer Title")]
+        public string Legacy => "legacy";
+
+        public string Title => "deprecated";
+    }
+
+    /// <summary>A static class as a model: nothing the engine minds, since it never declares a parameter of the
+    /// model's type, and impossible for generated code, which does.</summary>
+    public static class StaticModel
+    {
+        public static string Title => "static";
+    }
 }

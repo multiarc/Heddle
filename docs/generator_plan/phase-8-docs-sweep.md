@@ -1490,3 +1490,91 @@ A hop whose *property type* is internal still emits a name the consumer cannot c
 where the member check sits would falsely degrade the ordinary `m?.Inner?.Name` shape, where no
 type name is ever written; doing it properly needs a form-aware check at the point of emission.
 Recorded rather than half-fixed.
+
+## Tenth review cycle (2026-07-29)
+
+Two reviewers, independent, over the commit above. Four of the eight findings were introduced by
+it — the same pattern this record has now noted four times.
+
+### The memo the widening added
+
+Path resolution was memoised last cycle to stop the accessibility probe running per keystroke, and
+the key was a **display string**: the receiver's fully-qualified name plus the segments joined by a
+dot. Two references each declaring `Dup.Thing` produce one key, so the second walk was answered with
+the first's resolved type — which decides the null-safety form, the numeric widening, the formatter
+and the member name written into the file. The same key also made `["A.B"]` and `["A","B"]` one
+question. The key is now the receiver **symbol** under `SymbolEqualityComparer` and a separator no
+identifier can carry. Nothing end-to-end reaches it today, which is why it is pinned at the resolver
+rather than through a template, and the test says so.
+
+### A guard whose only test the same commit ate
+
+Widening the accessibility gate from `@model()` to every type the emitter spells left the
+`@model()` arm itself unpinned: the one test covering it survives on the *member* rule the same
+commit added, because its fixture's member is declared on the internal type. Removing the `@model()`
+call now reddens a test whose model declares its member on a public base — six `CS0122`, measured.
+
+### `[Obsolete(…, error: true)]` broke the consumer's build
+
+Reflection ignores `[Obsolete]` entirely, so the engine renders; every generated mention of the name
+is a `CS0619` against a `.g.cs` the consumer did not write, attributed to a `.heddle` file and
+carrying no Heddle id. Same class as `HED7030` and it takes the same id and the same degrade, on the
+type and on the member. The **warning** form deliberately does not degrade: it is a note to the
+author, taking every deprecated model in a codebase off the precompiled tier would be a large silent
+cost, and the generated file's blanket `#pragma warning disable` already keeps `CS0618` out of the
+build. `HED7030`'s message is broadened to say what is true of both causes rather than naming
+accessibility alone.
+
+### A static class as `@model()`
+
+`CS0721`: a static type cannot be a parameter, and the entry point takes the model as one. The
+direct sibling of last cycle's ref-struct arm, for the other type kind that cannot be a parameter,
+and it degrades the same way — the engine declares no such parameter and renders the template.
+
+### `HED5014` was engine-only
+
+The engine type-checks every `@out` value against the declared slot type and refuses the template;
+the emitter checked only that it was inside a slot definition, so the same template precompiled and
+rendered — or threw `InvalidCastException` from the caller-content cast, depending on whether the
+caller's body happened to read a member. The emitter now runs the engine's own conversion table,
+with the same `allowBoxToObject: false` the slot caller passes, wherever it can type the value.
+
+Where it cannot, it degrades in one shape and not the other, and the difference is deliberate. A
+slot definition declaring `:: dynamic` degrades: the engine compiles such a body per call site off
+the value actually passed, the emitter compiles one body for every call site, and there is nothing
+to check against. An `@out(this)` inside an `@list` body keeps precompiling: the element type is
+information the emitter deliberately does not guess, and refusing every one of them would take the
+ordinary per-item slot projection — the canonical use of the feature — off the precompiled tier to
+catch a case the caller's cast already throws on. That gap is stated in the code.
+
+### Two invalidations that could not fire
+
+`InvalidateObservation` exists for a loaded assembly that **lost** a name collision, which is
+exactly the case where `TryAdd` fails — and two of its three call sites sat inside the success
+branch. Every `Configure(assembly)` therefore forced a full re-classification pass that could not
+reach a different answer. Both are removed; the one in `UnregisterModelAssemblies`, where a name is
+actually freed, is real and pinned.
+
+### Probe assemblies, 58 of them
+
+The registration and C#-tier suites write a GUID-named `.dll` beside the test binaries — they have
+to, for "this has never been loaded" to be a fact and for a referenced-but-unloaded probe to be
+findable — and deleted none of them. They cannot be deleted when the test that wrote them ends
+either: the file is loaded by then, and the C# tier builds its reference set from the locations of
+every observed assembly, so removing one mid-run leaves an unrelated suite short of a reference
+(measured — it reddens `NoAssemblyIsDroppedFromTheReferenceSet`). They are now deleted at process
+exit, best effort. The collision test's `finally` also called the process-global unregister
+unconditionally, which would clear another suite's registrations; it now runs only on the paths that
+left its own registration in place.
+
+### Measured, and not a defect
+
+`DefinitionBaseExtension` holds one `ThreadLocal<int>` per definition per compiled template and
+never disposes it, which was reported as an unbounded per-thread slot table across reloads. It is
+not: `ThreadLocal<T>` carries a finalizer that returns the id, so ids recycle without `Dispose`.
+Measured on this box — 200,000 definition instances over 10,000 compile-and-render cycles left the
+per-thread slot array at **256** entries, flat from the first round; 10,000 cycles of a
+single-definition template left it at 1024. The array tracks the peak number of instances awaiting
+finalization, not the number ever created. A tight allocation loop that outruns the finalizer does
+grow it (100,000 abandoned instances in a loop reached 131,072 slots), which is a shape no template
+workload has. Nothing changed.

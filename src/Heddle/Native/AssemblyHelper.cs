@@ -161,6 +161,11 @@ namespace Heddle.Native
         /// loads or unloads when the registration goes away, so the digest is unchanged, the pass returns before
         /// reaching it, and "later" never arrives until some unrelated assembly happens to load. That is the freed
         /// name staying unusable for a length of time decided by nothing to do with it.</para>
+        /// <para>Only <b>un</b>registration calls this, and that is the whole set. Registration can only ever take a
+        /// name that was free, which classifies no assembly that was not classifiable a moment earlier — so a pass
+        /// forced after one re-walks every loaded assembly to reach exactly the conclusion it reached last time.
+        /// It was called there too, and every <c>Configure(assembly)</c> paid for a full re-classification that
+        /// could not change an answer.</para>
         /// </summary>
         private static void InvalidateObservation() => Volatile.Write(ref _observedStamp, 0);
 
@@ -185,7 +190,6 @@ namespace Heddle.Native
                 {
                     Assemblies.Add(assembly);
                     Interlocked.Increment(ref _generation);
-                    InvalidateObservation();
                 }
             }
 
@@ -221,7 +225,6 @@ namespace Heddle.Native
                     ModelAssemblies.Add(assembly);
                     ModelNames.Add(name);
                     Interlocked.Increment(ref _generation);
-                    InvalidateObservation();
                 }
             }
 

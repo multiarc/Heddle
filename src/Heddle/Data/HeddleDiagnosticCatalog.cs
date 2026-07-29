@@ -350,15 +350,17 @@ namespace Heddle.Data
                 "Named Heddle template imported by key rather than by its registered name", warning,
                 "Import '{0}' resolves a template that has a registered Name '{1}'. Both spellings resolve; prefer " +
                 "'{1}' for a template with a registered name.");
-            // One id for the type and the member, because from the consumer's side they are one situation with one
-            // remedy: something the engine reads by reflection is spelled in a way this assembly may not write.
-            // Splitting them would say the same sentence twice at two ids.
+            // One id for the type and the member, and for accessibility and error-obsolescence, because from the
+            // consumer's side they are one situation with one shape: something the engine reads by reflection is
+            // spelled in a way this assembly's compiler rejects. Splitting them would say the same sentence at
+            // several ids.
             Add(HeddleDiagnosticIds.BuildInaccessibleModelSymbol,
-                "Model symbol not accessible from this compilation", warning,
-                "'{0}' is not accessible from this compilation, so this template cannot be precompiled and renders " +
-                "through the dynamic path at run time. The engine binds it by reflection, which ignores assembly " +
-                "boundaries, so the rendered output is unchanged. Make it public, or grant this assembly access " +
-                "with [InternalsVisibleTo], to precompile the template.");
+                "Model symbol cannot be named by generated code", warning,
+                "'{0}' cannot be named by code generated into this compilation, so this template cannot be " +
+                "precompiled and renders through the dynamic path at run time. The engine binds it by reflection, " +
+                "which ignores both assembly boundaries and [Obsolete], so the rendered output is unchanged. Make " +
+                "it public or grant this assembly access with [InternalsVisibleTo] if it is internal, or drop the " +
+                "[Obsolete(..., error: true)] if it carries one, to precompile the template.");
             Add(HeddleDiagnosticIds.BuildEmitterFault, "Heddle template emitter fault", error,
                 "The Heddle template emitter failed on '{0}': {1}: {2}. This is a generator defect rather than a " +
                 "template error — please report it; setting Precompile=\"false\" on the item unblocks the build " +
