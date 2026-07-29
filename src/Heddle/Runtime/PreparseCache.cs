@@ -57,8 +57,10 @@ namespace Heddle.Runtime
         private static readonly Dictionary<string, PreparseResult> Entries =
             new Dictionary<string, PreparseResult>();
 
-        /// <summary>The generation every entry in <see cref="Entries"/> was computed against. Starts at a value no
-        /// real generation can take, so the first store adopts rather than matches.</summary>
+        /// <summary>The generation every entry in <see cref="Entries"/> was computed against, or a sentinel below
+        /// every real one while there are none. Nothing turns on which sentinel: an empty map serves nothing whatever
+        /// generation it claims, and the first store adopts the caller's either way. It reads as "no generation held
+        /// yet" rather than as a generation, and that is all it is for.</summary>
         private static int _generation = -1;
 
         /// <summary>

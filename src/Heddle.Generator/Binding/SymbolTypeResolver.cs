@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using Heddle.Language.Binding;
 using Heddle.Language.Members;
@@ -189,7 +190,26 @@ namespace Heddle.Generator.Binding
             return false;
         }
 
+        private readonly Dictionary<string, PathResolution> _paths =
+            new Dictionary<string, PathResolution>(System.StringComparer.Ordinal);
+
+        /// <summary>
+        /// Walks <paramref name="segments"/> off <paramref name="start"/>, typing each hop.
+        /// <para>Memoized. Every path is resolved at least twice — once to decide the operand's type and once to
+        /// write it — and in an editor the whole walk runs again on each keystroke.</para>
+        /// </summary>
         public PathResolution ResolvePath(ITypeSymbol start, IReadOnlyList<string> segments)
+        {
+            var key = (start == null ? "<null>" : start.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)) +
+                      " " + string.Join(".", segments);
+            if (_paths.TryGetValue(key, out var memoized))
+                return memoized;
+            var resolved = ResolvePathCore(start, segments);
+            _paths[key] = resolved;
+            return resolved;
+        }
+
+        private PathResolution ResolvePathCore(ITypeSymbol start, IReadOnlyList<string> segments)
         {
             var result = new PathResolution();
             ITypeSymbol current = start;
@@ -212,9 +232,22 @@ namespace Heddle.Generator.Binding
                 var prop = FindProperty(current, segments[i]);
                 if (prop == null)
                 {
-                    result.Kind = HiddenByAccessibility(current, segments[i])
-                        ? PathKind.Inaccessible
-                        : PathKind.Failed;
+                    // Absent from the symbol model. Whether that is a typo or a member this compilation is merely
+                    // not shown is settled by the caller that reports — see HiddenByAccessibility — because
+                    // settling it costs a second compilation and most callers here never report anything.
+                    result.Kind = PathKind.Failed;
+                    result.DynamicIndex = i;
+                    return result;
+                }
+
+                // Present, and the engine's own visibility policy accepts it, but generated code in this assembly
+                // may not name it. That happens whenever the model arrives as a source compilation rather than as
+                // a compiled file — a project-to-project reference in any workspace — where Roslyn shows the
+                // internal member instead of hiding it, and the emitter wrote it straight into a `.g.cs` the
+                // consumer's build then rejected with CS0122.
+                if (!IsAccessibleFromCompilation(prop) || !IsAccessibleFromCompilation(prop.GetMethod))
+                {
+                    result.Kind = PathKind.Inaccessible;
                     result.DynamicIndex = i;
                     return result;
                 }
@@ -250,8 +283,13 @@ namespace Heddle.Generator.Binding
         /// two were reported identically — at error severity — so a valid template failed the consumer's build.</para>
         /// <para>A source receiver is answered without the probe. Roslyn shows a compilation every member of its own
         /// types, so a miss there is genuine, and the probe compilation carries no source to find it in anyway.</para>
+        /// <para><b>Called only where a diagnostic is about to be written.</b> It costs a whole second compilation,
+        /// and the walk that produces the miss runs on every typed hop of every template — including from the
+        /// operand-type estimator, which reports nothing, and for receivers whose misses are suppressed outright.
+        /// Asking here rather than there is the difference between one probe per reported member and one per
+        /// keystroke over a half-typed name.</para>
         /// </summary>
-        private bool HiddenByAccessibility(ITypeSymbol receiver, string name)
+        internal bool HiddenByAccessibility(ITypeSymbol receiver, string name)
         {
             if (receiver == null || _compilation == null)
                 return false;
@@ -259,8 +297,13 @@ namespace Heddle.Generator.Binding
                 if (location.IsInSource)
                     return false;
 
-            var mapped = MapToFullMetadataView(receiver);
-            return mapped != null && MemberPathWalk.TryFind(SymbolMemberModel.Instance, mapped, name, out _);
+            foreach (var mapped in MapToFullMetadataView(receiver))
+            {
+                if (MemberPathWalk.TryFind(SymbolMemberModel.Instance, mapped, name, out _))
+                    return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -272,27 +315,35 @@ namespace Heddle.Generator.Binding
         private static readonly ConditionalWeakTable<Compilation, Compilation> FullMetadataViews =
             new ConditionalWeakTable<Compilation, Compilation>();
 
-        private ITypeSymbol MapToFullMetadataView(ITypeSymbol type)
+        /// <summary>
+        /// The candidates for <paramref name="type"/> in the full-metadata view — every one of them, because the
+        /// singular lookup answers null when a name appears in more than one reference. Two assemblies carrying the
+        /// same type name is ordinary in a large reference closure, and treating it as "not found" put the member
+        /// failure back at error severity over a template the engine renders, which is the fault this probe exists
+        /// to prevent. Ambiguity is a reason to be careful about which type is meant, not a reason to conclude the
+        /// member is a typo: if any candidate declares it, it degrades.
+        /// </summary>
+        private ImmutableArray<INamedTypeSymbol> MapToFullMetadataView(ITypeSymbol type)
         {
+            // Arrays, pointers and type parameters carry no user members to be hidden.
             if (!(type is INamedTypeSymbol named))
-                return null;   // arrays, pointers and type parameters carry no user members to be hidden
+                return ImmutableArray<INamedTypeSymbol>.Empty;
 
-            var metadataName = MetadataNameOf(named.OriginalDefinition);
+            var metadataName = MetadataNameOf(named);
             if (metadataName == null)
-                return null;
+                return ImmutableArray<INamedTypeSymbol>.Empty;
 
             var view = FullMetadataViews.GetValue(_compilation, compilation =>
                 CSharpCompilation.Create("HeddleMetadataProbe", null, compilation.References,
                     new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,
                         metadataImportOptions: MetadataImportOptions.All)));
 
-            // Null on ambiguity across references as well as on absence; either way this side proves nothing and the
-            // caller keeps the answer it already had.
-            return view.GetTypeByMetadataName(metadataName);
+            return view.GetTypesByMetadataName(metadataName);
         }
 
-        /// <summary>The CLR name <see cref="Compilation.GetTypeByMetadataName"/> reads — nested types joined by
-        /// <c>+</c>, generic arity as a backtick suffix (already in <see cref="ISymbol.MetadataName"/>).</summary>
+        /// <summary>The CLR name <see cref="Compilation.GetTypesByMetadataName"/> reads — nested types joined by
+        /// <c>+</c>, generic arity as a backtick suffix, which <see cref="ISymbol.MetadataName"/> already carries on
+        /// a constructed type as well as on its definition.</summary>
         private static string MetadataNameOf(INamedTypeSymbol type)
         {
             var name = type.MetadataName;

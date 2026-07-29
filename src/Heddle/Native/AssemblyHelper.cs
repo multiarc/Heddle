@@ -152,6 +152,18 @@ namespace Heddle.Native
         /// <summary>The <see cref="StampOf"/> digest at the last pass; an unchanged digest means nothing to classify.</summary>
         private static int _observedStamp;
 
+        /// <summary>
+        /// Forgets the last pass, so the next one classifies every loaded assembly again rather than trusting the
+        /// digest.
+        /// <para>The digest describes what the host has <b>loaded</b>, and registration changes what is
+        /// <b>named</b> — two different things the fast path cannot tell apart. A loaded assembly that lost a name
+        /// collision to a registered one is deliberately left unclassified so it can win the name later; but nothing
+        /// loads or unloads when the registration goes away, so the digest is unchanged, the pass returns before
+        /// reaching it, and "later" never arrives until some unrelated assembly happens to load. That is the freed
+        /// name staying unusable for a length of time decided by nothing to do with it.</para>
+        /// </summary>
+        private static void InvalidateObservation() => Volatile.Write(ref _observedStamp, 0);
+
         private static int _generation;
 
         /// <summary>Increments whenever the observed or registered set changes; a cached view of the set is stale when
@@ -173,6 +185,7 @@ namespace Heddle.Native
                 {
                     Assemblies.Add(assembly);
                     Interlocked.Increment(ref _generation);
+                    InvalidateObservation();
                 }
             }
 
@@ -208,6 +221,7 @@ namespace Heddle.Native
                     ModelAssemblies.Add(assembly);
                     ModelNames.Add(name);
                     Interlocked.Increment(ref _generation);
+                    InvalidateObservation();
                 }
             }
 
@@ -233,6 +247,7 @@ namespace Heddle.Native
                     AssemblyCache.TryRemove(name, out _);
                 ModelAssemblies.Clear();
                 ModelNames.Clear();
+                InvalidateObservation();
 
                 // The bump and the cache's retarget are one expression on purpose. As two statements they were an
                 // ordering to get right — drop the cache before the generation moves and a compile still running

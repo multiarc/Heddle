@@ -233,7 +233,7 @@ namespace Heddle.Generator.Emit
                             ? path.Segments[idx]
                             : path.Segments[path.Segments.Count - 1];
                         _memberFailures.Add(new SymbolMemberResolver.MemberFailure(
-                            SymbolTypeResolver.FullyQualified(receiver), member,
+                            receiver, member,
                             MemberPathWriter.Display(path.Segments), path.Position,
                             resolution.Kind == SymbolTypeResolver.PathKind.Inaccessible));
                     }

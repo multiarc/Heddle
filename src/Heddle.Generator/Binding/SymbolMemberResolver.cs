@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Heddle.Strings.Core;
 using Microsoft.CodeAnalysis;
 
@@ -12,18 +11,23 @@ namespace Heddle.Generator.Binding
     {
         internal readonly struct MemberFailure
         {
-            public MemberFailure(string receiverType, string member, string path, BlockPosition position,
+            public MemberFailure(ITypeSymbol receiver, string member, string path, BlockPosition position,
                 bool inaccessible = false)
             {
-                ReceiverType = receiverType;
+                Receiver = receiver;
                 Member = member;
                 Path = path;
                 Position = position;
                 Inaccessible = inaccessible;
             }
 
+            /// <summary>The receiver at the failing segment. Carried as a symbol rather than a name because telling
+            /// "not there" from "not shown to this compilation" means looking at its members again, and that question
+            /// is deferred to whoever actually writes a diagnostic.</summary>
+            public ITypeSymbol Receiver { get; }
+
             /// <summary>The fully-qualified type of the receiver at the failing segment (HED7008 arg 0).</summary>
-            public string ReceiverType { get; }
+            public string ReceiverType => SymbolTypeResolver.FullyQualified(Receiver);
 
             /// <summary>The failing segment name (HED7008 arg 1).</summary>
             public string Member { get; }
@@ -34,28 +38,10 @@ namespace Heddle.Generator.Binding
             /// <summary>The <c>.heddle</c> span (absolute template coordinates).</summary>
             public BlockPosition Position { get; }
 
-            /// <summary>The member is there and the engine reads it; only this compilation cannot see it. Reported as
-            /// the HED7030 degrade rather than the HED7008 error — the template renders, so the build must not fail.</summary>
+            /// <summary>The member resolved and this compilation may not name it — the half of the question the walk
+            /// answers for free. The other half, a member the symbol model was never shown at all, costs a probe and
+            /// is asked at report time.</summary>
             public bool Inaccessible { get; }
-        }
-
-        /// <summary>Resolves <paramref name="segments"/> off <paramref name="start"/>; returns a
-        /// <see cref="MemberFailure"/> only when the walk genuinely fails (property not found), otherwise null.</summary>
-        public static MemberFailure? TryDescribeFailure(SymbolTypeResolver resolver, ITypeSymbol start,
-            IReadOnlyList<string> segments, BlockPosition position)
-        {
-            if (resolver == null || start == null || segments == null || segments.Count == 0)
-                return null;
-
-            var res = resolver.ResolvePath(start, segments);
-            if (res.Kind != SymbolTypeResolver.PathKind.Failed)
-                return null;
-
-            var idx = res.DynamicIndex;
-            var receiver = res.Hops.Count == 0 ? start : res.Hops[res.Hops.Count - 1].Property;
-            var member = idx >= 0 && idx < segments.Count ? segments[idx] : segments[segments.Count - 1];
-            return new MemberFailure(SymbolTypeResolver.FullyQualified(receiver), member,
-                string.Join(".", segments), position);
         }
     }
 }

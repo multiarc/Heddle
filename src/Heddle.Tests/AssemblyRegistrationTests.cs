@@ -198,6 +198,73 @@ namespace Heddle.Tests
             Assert.DoesNotContain(leafName, LoadedNames());
         }
 
+        /// <summary>
+        /// Two assemblies with one identity: one registered by a host out of a context of its own, one the host later
+        /// loads normally. The registered one holds the name, so the loaded one is passed over — deliberately, and
+        /// without being written off, because the name may be given back.
+        /// <para>Giving it back is where this used to stop. Unregistration frees the name but loads and unloads
+        /// nothing, so the digest that decides whether a classifying pass is worth doing is unchanged, the pass
+        /// returns before reaching the assembly, and the freed name stays unusable until something unrelated happens
+        /// to load. The same assertion catches the other half: an assembly marked classified <i>before</i> the name
+        /// was actually taken is skipped for the life of the process, and no unregistration can bring it back.</para>
+        /// </summary>
+        [Fact]
+        public void AFreedNameIsRetakenByTheLoadedAssemblyThatLostIt()
+        {
+            var identity = "HeddleCollisionProbe" + Guid.NewGuid().ToString("N");
+            var registeredBytes = CompileAs(identity, "namespace CollisionProbe { public class Registered { } }");
+            var loadedBytes = CompileAs(identity, "namespace CollisionProbe { public class Loaded { } }");
+
+            // Out of a context of its own, so observation never sees it and only the registration puts it in play —
+            // the shape a workspace's model assemblies arrive in.
+            var host = new AssemblyLoadContext("collision-probe", isCollectible: true);
+            try
+            {
+                AssemblyHelper.RegisterModelAssemblies(new[] { host.LoadFromStream(new MemoryStream(registeredBytes)) });
+
+                // From disk, because that is what lands in the default context — the only one observation looks at.
+                var loaded = Assembly.LoadFrom(WriteBytes(loadedBytes, identity));
+                Assert.DoesNotContain(loaded, Observed());
+
+                AssemblyHelper.UnregisterModelAssemblies();
+                Assert.Contains(loaded, Observed());
+            }
+            finally
+            {
+                AssemblyHelper.UnregisterModelAssemblies();
+                host.Unload();
+            }
+        }
+
+        // Two orderings inside ObserveLoadedAssemblies are NOT pinned here, and cannot be from inside this process.
+        // That the generation is bumped before the digest is written, and that GetApplicationReferences reads the
+        // generation under the same monitor it builds the reference set under, are both statements about what no
+        // concurrent caller can observe: with one thread the order of two writes made before a lock is released is
+        // unobservable, and a test that races to catch the wrong order passes by luck when the code is wrong. They
+        // are arguments made where the code makes them impossible, not properties a test can assert.
+
+        /// <summary>A copy taken under the list's monitor, which callers that enumerate are required to hold.</summary>
+        private static Assembly[] Observed()
+        {
+            var assemblies = AssemblyHelper.GetAssemblies();
+            lock (assemblies)
+                return assemblies.ToArray();
+        }
+
+        private static byte[] CompileAs(string assemblyName, string source)
+        {
+            var compilation = CSharpCompilation.Create(assemblyName,
+                new[] { CSharpSyntaxTree.ParseText(source) },
+                AssemblyHelper.GetApplicationReferences(),
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            using var stream = new MemoryStream();
+            var result = compilation.Emit(stream);
+            Assert.True(result.Success,
+                string.Join("\n", result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+                    .Select(d => d.GetMessage())));
+            return stream.ToArray();
+        }
+
         private static IEnumerable<string> LoadedNames()
         {
             return AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetName().Name);
