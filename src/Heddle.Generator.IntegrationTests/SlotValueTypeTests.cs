@@ -16,16 +16,35 @@ namespace Heddle.Generator.IntegrationTests
     {
         private const string ArticleType = "Heddle.Generator.IntegrationTests.Fixtures.Article";
         private const string MenuType = "Heddle.Generator.IntegrationTests.Fixtures.Menu";
+        private const string OptionType = "Heddle.Generator.IntegrationTests.Fixtures.MenuOption";
 
         private static string Definition(string slotType, string bodyModel) =>
             "@%\n<frame(out:: " + slotType + ")>{{[@out(this)]}} :: " + bodyModel + "\n%@\n";
 
-        private static void AssertEngineRefuses(string template, System.Type modelType)
+        /// <summary>The engine's own verdict, asserted on its message and not only on the id. <c>HED5014</c> carries
+        /// two distinct rules — a slot value with no static type at all, and one whose type does not fit — and a test
+        /// that greps for the id alone cannot tell which of them it just reproduced, so it goes on passing when the
+        /// template it describes has stopped being the one it means.</summary>
+        private static void AssertEngineRefuses(string template, System.Type modelType, string message)
         {
             var dynamicTemplate = new HeddleTemplate(template, new CompileContext(new TemplateOptions(), modelType));
             Assert.False(dynamicTemplate.CompileResult.Success);
-            Assert.Contains("HED5014", dynamicTemplate.CompileResult.ToString());
+            var text = dynamicTemplate.CompileResult.ToString();
+            Assert.Contains("HED5014", text);
+            Assert.Contains(message, text);
         }
+
+        private static void AssertEngineAccepts(string template, System.Type modelType)
+        {
+            var dynamicTemplate = new HeddleTemplate(template, new CompileContext(new TemplateOptions(), modelType));
+            Assert.True(dynamicTemplate.CompileResult.Success, dynamicTemplate.CompileResult.ToString());
+        }
+
+        private static string Mismatch(string valueType, string slotType) =>
+            "The slot value type " + valueType + " is not assignable to the declared slot parameter type " +
+            slotType + ".";
+
+        private const string NoStaticType = "The slot value must have a static type, but it is 'dynamic' here.";
 
         /// <summary>The reference mismatch: the definition's model is a <c>string</c> and its slot takes an
         /// <c>Article</c>. The engine names the two types and refuses; the precompiled tier rendered
@@ -38,7 +57,7 @@ namespace Heddle.Generator.IntegrationTests
                            "@frame(this){{[q]}}\n";
 
             DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
-            AssertEngineRefuses(template, typeof(string));
+            AssertEngineRefuses(template, typeof(string), Mismatch("System.String", ArticleType));
         }
 
         /// <summary>The same refusal with the caller's content reading a member, which is what turned the divergence
@@ -51,7 +70,7 @@ namespace Heddle.Generator.IntegrationTests
                            "@frame(this){{[@(Title)]}}\n";
 
             DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
-            AssertEngineRefuses(template, typeof(string));
+            AssertEngineRefuses(template, typeof(string), Mismatch("System.String", ArticleType));
         }
 
         /// <summary>A slot value that would have to be boxed. The engine asks its conversion table with boxing
@@ -65,7 +84,7 @@ namespace Heddle.Generator.IntegrationTests
                            "@frame(this){{[q]}}\n";
 
             DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
-            AssertEngineRefuses(template, typeof(int));
+            AssertEngineRefuses(template, typeof(int), Mismatch("System.Int32", "System.Object"));
         }
 
         /// <summary>
@@ -83,7 +102,7 @@ namespace Heddle.Generator.IntegrationTests
                            "@frame(this){{[q]}}\n";
 
             DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
-            AssertEngineRefuses(template, typeof(string));
+            AssertEngineRefuses(template, typeof(string), Mismatch("System.String", ArticleType));
         }
 
         /// <summary>
@@ -106,38 +125,133 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// The half of the <c>:: dynamic</c> rule that must stay a refusal. Called from inside a <c>@list</c> body,
-        /// the value handed to the definition is the list element, whose type the emitter deliberately does not
-        /// guess — so there is no type to check the body's <c>@out</c> against and nothing but the caller-content
-        /// cast to fail on at render, which is not where the engine reports it.
+        /// The call forms that hand a <c>:: dynamic</c> definition's body a model with no static type at all. The
+        /// engine's model accessor takes its dynamic exit for a member path, and its bare-call twin does the same
+        /// with nothing to resolve; only a native expression or a read of the caller's own prop survives with a
+        /// static type. Every <c>@out</c> in the body that reads that model is then refused for having no static
+        /// type — the other half of <c>HED5014</c>, and not the assignability half. The emitter had been typing both
+        /// forms off the caller's own model, which is a type the engine never gives this body, so it precompiled and
+        /// rendered templates the engine will not compile at all.
         /// </summary>
-        [Fact]
-        public void ASlotDefinitionWithADynamicBodyModelDegradesWhenTheCallerValueCannotBeTyped()
+        [Theory]
+        [InlineData("bare", ArticleType, "@frame()", "this")]
+        // An `object` slot is the row that has to be asked before the conversion table rather than through it: C#
+        // gives `dynamic` an identity conversion to `object`, so the table would wave this one through while the
+        // engine refuses it like every other value with no static type.
+        [InlineData("bare-object-slot", "object", "@frame()", "this")]
+        [InlineData("member-path", "System.String", "@frame(Title)", "this")]
+        // And the same again read one level down: a member path off a dynamic model is dynamic in its turn, so the
+        // body's own `@out(Title)` is refused for the same reason its model was.
+        [InlineData("out-path", "System.String", "@frame(Title)", "Title")]
+        public void ACallFormThatGivesTheBodyADynamicModelDegrades(string name, string slotType, string call,
+            string outValue)
         {
-            const string key = "views/slot-value-dynamic-body-untypeable.heddle";
-            var template = "@model(){{" + MenuType + "}}" +
-                           "@%\n<frame(out:: " + ArticleType + ")>{{[@out(this)]}} :: dynamic\n%@\n" +
-                           "@list(Options){{@frame(this)}}\n";
+            var key = "views/slot-value-dynamic-model-" + name + ".heddle";
+            var template = "@model(){{" + ArticleType + "}}@%\n<frame(out:: " + slotType + ")>{{[@out(" + outValue +
+                           ")]}} :: dynamic\n%@\n" + call + "{{[q]}}\n";
 
             DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
+            AssertEngineRefuses(template, typeof(Article), NoStaticType);
         }
 
         /// <summary>
-        /// Two call sites into one <c>:: dynamic</c> slot definition, the first passing a value that fits and the
-        /// second one that does not. The body is emitted once and cached, so the check has to be part of what the
-        /// cache is keyed on — otherwise the first call site's verdict stands for the second, which then precompiles
-        /// having been checked against a type it never passes. The engine refuses the template at the second call.
+        /// The cost control for the rule above, and why the dynamic model is not simply a refusal of the call form:
+        /// the engine hands this body a <c>dynamic</c> model too, and still type-checks the <c>@out</c> because the
+        /// value read is the definition's own prop and not the model. Both tiers precompile and render it.
+        /// </summary>
+        [Fact]
+        public void ADynamicModelStillPrecompilesWhenTheOutValueNeverReadsIt()
+        {
+            const string key = "views/slot-value-dynamic-model-prop.heddle";
+            var template = "@model(){{" + ArticleType + "}}@%\n" +
+                           "<frame(label: string, out:: System.String)>{{[@out(label)]}} :: dynamic\n%@\n" +
+                           "@frame(label: \"L\"){{[q]}}\n";
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template, typeof(Article),
+                new Article { Title = "T" });
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal("[[q]]\n", dyn);
+        }
+
+        /// <summary>
+        /// A read of the <em>caller's</em> prop, which the engine resolves before it ever asks whether the callee is
+        /// <c>:: dynamic</c> — so the body keeps the prop's static type and the <c>@out</c> is checked against it.
+        /// The mismatching row is what proves the type is the prop's and not something the emitter guessed: an
+        /// <c>int</c> prop into a <c>string</c> slot is named by the engine in full.
+        /// </summary>
+        [Theory]
+        [InlineData("fits", "string", "\"L\"", true)]
+        [InlineData("misfits", "int", "3", false)]
+        public void ACallerPropReadKeepsItsStaticTypeThroughADynamicDefinition(string name, string propType,
+            string argument, bool precompiles)
+        {
+            var key = "views/slot-value-dynamic-model-caller-prop-" + name + ".heddle";
+            var template = "@model(){{" + ArticleType + "}}@%\n" +
+                           "<frame(out:: System.String)>{{[@out(this)]}} :: dynamic\n" +
+                           "<outer(p: " + propType + ")>{{@frame(p){{[q]}}}} :: " + ArticleType + "\n%@\n" +
+                           "@outer(this, p: " + argument + ")\n";
+
+            var gen = DifferentialHarness.Generate(new[] { (key, template) });
+            if (precompiles)
+            {
+                DifferentialHarness.ExpectPrecompiled(gen, key);
+                AssertEngineAccepts(template, typeof(Article));
+            }
+            else
+            {
+                DifferentialHarness.ExpectDegrade(gen, key);
+                AssertEngineRefuses(template, typeof(Article), Mismatch("System.Int32", "System.String"));
+            }
+        }
+
+        /// <summary>
+        /// The <c>:: dynamic</c> caller value the emitter genuinely cannot type: inside a <c>@list</c> body the model
+        /// is the element, whose type the emitter deliberately does not guess. The engine types it and compiles the
+        /// template happily, so this degrade is a cost paid and not a divergence caught — which is why the fitting
+        /// single-call file next to it has to keep precompiling, or the "cannot say" exit would be swallowing the
+        /// whole rule.
+        /// </summary>
+        [Fact]
+        public void ADynamicSlotDefinitionDegradesWhenTheCallerValueCannotBeTyped()
+        {
+            const string listKey = "views/slot-value-dynamic-body-untypeable.heddle";
+            const string directKey = "views/slot-value-dynamic-body-typeable.heddle";
+            const string definition = "@%\n<frame(out:: " + OptionType + ")>{{[@out(this)]}} :: dynamic\n%@\n";
+            var listTemplate = "@model(){{" + MenuType + "}}" + definition +
+                               "@list(Options){{@frame(this){{[@(Label)]}}}}\n";
+            var directTemplate = "@model(){{" + OptionType + "}}" + definition +
+                                 "@frame(this){{[@(Label)]}}\n";
+
+            var gen = DifferentialHarness.Generate(new[] { (listKey, listTemplate), (directKey, directTemplate) });
+            DifferentialHarness.ExpectDegrade(gen, listKey);
+            DifferentialHarness.ExpectPrecompiled(gen, directKey);
+            AssertEngineAccepts(listTemplate, typeof(Menu));
+        }
+
+        /// <summary>
+        /// Two call sites into one <c>:: dynamic</c> slot definition, each passing <c>this</c> out of a differently
+        /// typed enclosing body — the same call form, two models. The body is emitted once and cached, so the model
+        /// it was checked against has to be part of what the cache is keyed on; otherwise the first call site's
+        /// verdict stands for the second, which precompiles having been checked against a type it never passes. The
+        /// single-call-site file is the other half of the pin: a key that refused every repeat call would satisfy the
+        /// degrade on its own.
         /// </summary>
         [Fact]
         public void TheSecondCallSiteIntoADynamicSlotDefinitionIsCheckedOnItsOwnValue()
         {
-            const string key = "views/slot-value-dynamic-body-two-call-sites.heddle";
-            var template = "@model(){{" + ArticleType + "}}" +
-                           "@%\n<frame(out:: " + ArticleType + ")>{{[@out(this)]}} :: dynamic\n%@\n" +
-                           "@frame(this){{[X]}}@frame(Title){{[Y]}}\n";
+            const string bothKey = "views/slot-value-two-call-sites.heddle";
+            const string oneKey = "views/slot-value-one-call-site.heddle";
+            const string preamble = "@model(){{" + ArticleType + "}}@%\n" +
+                                    "<frame(out:: System.String)>{{[@out(this)]}} :: dynamic\n" +
+                                    "<fits>{{@frame(this){{[X]}}}} :: System.String\n" +
+                                    "<misfits>{{@frame(this){{[Y]}}}} :: System.Int32\n%@\n";
+            const string bothTemplate = preamble + "@fits(\"s\")@misfits(5)\n";
+            const string oneTemplate = preamble + "@fits(\"s\")\n";
 
-            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
-            AssertEngineRefuses(template, typeof(Article));
+            var gen = DifferentialHarness.Generate(new[] { (bothKey, bothTemplate), (oneKey, oneTemplate) });
+            DifferentialHarness.ExpectDegrade(gen, bothKey);
+            DifferentialHarness.ExpectPrecompiled(gen, oneKey);
+            AssertEngineRefuses(bothTemplate, typeof(Article), Mismatch("System.Int32", "System.String"));
         }
 
         /// <summary>
@@ -147,17 +261,52 @@ namespace Heddle.Generator.IntegrationTests
         /// rendered what the engine will not compile.
         /// </summary>
         [Theory]
-        [InlineData("int", "5")]
-        [InlineData("string", "\"q\"")]
-        [InlineData("bool", "true")]
-        public void ALiteralSlotValueOfAnUnrelatedTypeDegrades(string name, string literal)
+        [InlineData("int", "5", "System.Int32")]
+        [InlineData("string", "\"q\"", "System.String")]
+        [InlineData("bool", "true", "System.Boolean")]
+        public void ALiteralSlotValueOfAnUnrelatedTypeDegrades(string name, string literal, string clr)
         {
             var key = "views/slot-value-literal-" + name + ".heddle";
             var template = "@model(){{" + MenuType + "}}@%\n<frame(out:: " + ArticleType + ")>{{[@out(" + literal +
                            ")]}} :: " + MenuType + "\n%@\n@frame(this){{[q]}}\n";
 
             DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
-            AssertEngineRefuses(template, typeof(Menu));
+            AssertEngineRefuses(template, typeof(Menu), Mismatch(clr, ArticleType));
+        }
+
+        /// <summary>
+        /// The null literal, which the engine does not treat as an absence of type: it compiles it as a constant of
+        /// <c>System.Object</c> and checks that against the slot type like any other value, so <c>@out(null)</c> is
+        /// refused for every slot type but <c>object</c> — including a reference type, and including a
+        /// <c>Nullable&lt;T&gt;</c>, neither of which C#'s own rules would object to. The emitter read the null
+        /// literal as "cannot say" and precompiled all three.
+        /// </summary>
+        [Theory]
+        [InlineData("string", "string")]
+        [InlineData("int", "int")]
+        [InlineData("nullable", "System.Nullable<System.Int32>")]
+        public void ANullSlotValueDegradesBecauseTheEngineTypesItAsObject(string name, string slotType)
+        {
+            var key = "views/slot-value-null-" + name + ".heddle";
+            var template = "@model(){{" + MenuType + "}}@%\n<frame(out:: " + slotType + ")>{{[@out(null)]}} :: " +
+                           MenuType + "\n%@\n@frame(this){{[q]}}\n";
+
+            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
+            AssertEngineRefuses(template, typeof(Menu), "The slot value type System.Object is not assignable");
+        }
+
+        /// <summary>The cost control: an <c>object</c> slot takes the null literal on both tiers — the engine's own
+        /// conversion table says identity — so typing it is a check and not a refusal of <c>null</c>.</summary>
+        [Fact]
+        public void ANullSlotValueStillPrecompilesForAnObjectSlot()
+        {
+            const string key = "views/slot-value-null-object.heddle";
+            var template = "@model(){{" + MenuType + "}}@%\n<frame(out:: object)>{{[@out(null)]}} :: " + MenuType +
+                           "\n%@\n@frame(this){{[q]}}\n";
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template, typeof(Menu), new Menu());
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal("[[q]]\n", dyn);
         }
 
         /// <summary>The cost control: a literal the slot type does accept — identically on both tiers, boxing

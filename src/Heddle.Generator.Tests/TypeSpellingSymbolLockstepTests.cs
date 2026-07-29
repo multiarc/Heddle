@@ -66,9 +66,42 @@ namespace Probe.Nest { public class Outer { public class Inner { } } }";
         [InlineData("Probe.Only.UniqueProbe", "Probe.Only.UniqueProbe")]
         [InlineData("UniqueProbe", "Probe.Only.UniqueProbe")]
         [InlineData("NoSuchTypeAnywhere", "UNRESOLVED")]
+        // No tier has a nullable suffix. The grammar takes `?` as part of the name, no type answers to it, and both
+        // tiers have to say so — this side lifted `int?` to `Nullable<int>` on its own and bound a strategy for a
+        // template the engine will not compile on any path.
+        [InlineData("int?", "UNRESOLVED")]
+        [InlineData("System.Int32?", "UNRESOLVED")]
+        [InlineData("System.String?", "UNRESOLVED")]
+        [InlineData("Probe.Only.UniqueProbe?", "UNRESOLVED")]
+        // The spelling that does mean a lifted value type, and resolves on both tiers.
+        [InlineData("System.Nullable<int>", "int?")]
         public void SpellingsResolveAsTheRuntimeResolvesThem(string spelling, string expected)
         {
             Assert.Equal(expected, Resolve(spelling));
+        }
+
+        /// <summary>
+        /// The last gate before HED7007 calls a <c>@model</c> spelling a typo, asked directly because the templates
+        /// that reach it are the ones whose spelling resolves to no symbol — and by then the only thing standing
+        /// between a wrong name and the entry point's parameter type is this answer.
+        /// <para>Generous where the runtime is: an unqualified name, and a dotted tail an import would complete,
+        /// both answer yes. Exact where the runtime is: every segment the author wrote has to be part of a real
+        /// name, and a nullable suffix is part of no name on either tier.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("UniqueProbe", true)]
+        [InlineData("Probe.Only.UniqueProbe", true)]
+        [InlineData("Only.UniqueProbe", true)]
+        [InlineData("Nope.Nope.UniqueProbe", false)]
+        [InlineData("Probe.Nope.UniqueProbe", false)]
+        [InlineData("NoSuchTypeAnywhere", false)]
+        [InlineData("int", true)]
+        [InlineData("int?", false)]
+        [InlineData("UniqueProbe?", false)]
+        [InlineData("Probe.Only.UniqueProbe?", false)]
+        public void ASpellingIsOnlyKnownWhenEverySegmentOfItIs(string spelling, bool exists)
+        {
+            Assert.Equal(exists, Resolver.TypeNameExistsAnywhere(spelling));
         }
 
         [Fact]

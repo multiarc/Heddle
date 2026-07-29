@@ -120,6 +120,31 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal("hello\n", Dynamic(template, typeof(StaticModel), null));
         }
 
+        /// <summary>
+        /// The refusal with no author-facing fault behind it. A member whose type no generated code could hold a
+        /// value of is present, visible and readable; the only thing wrong with it is the type, and the only remedy
+        /// is a different model. HED7030 is reserved for the ones the author can act on — it says this assembly may
+        /// not mention the name, and it names the member, so on this it would invite an accessibility edit that
+        /// cannot help. The template still degrades, silently, exactly as a ref-struct model does.
+        /// <para>The contrast is the <c>error-obsolete-property-type</c> row of <see cref="Hostile"/>: same
+        /// position, same code path, a name this assembly is merely not allowed to mention — and there HED7030 is
+        /// the whole point.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("member-path", "@(Handle)\n")]
+        [InlineData("native-expression", "@(Handle == Handle)\n")]
+        public void AMemberWhoseTypeNoGeneratedCodeCanHoldDegradesWithoutAnAuthorFacingWarning(string name,
+            string body)
+        {
+            var key = "views/unusable-property-type-" + name + ".heddle";
+            var template = "@model(){{" + Fixtures + "UnusablePropertyTypeModel}}@\\\n" + body;
+            var gen = DifferentialHarness.Generate(new[] { (key, template) });
+
+            Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Id == "HED7030" || d.Id == "HED7008");
+            DifferentialHarness.ExpectDegrade(gen, key);
+        }
+
         private const string Fixtures = "Heddle.Generator.IntegrationTests.Fixtures.";
 
         /// <summary>
@@ -152,6 +177,24 @@ namespace Heddle.Generator.IntegrationTests
                     "hello\n", null },
                 // Arrays are as writable as their element type and no more.
                 { "array-of-static", "System.Math[]", "hello\n", false, "hello\n", null },
+
+                // Nested positions. An array element and a type argument each hold a value, so the verdict is asked
+                // of them too — and a ref struct, which is perfectly writable on its own, is refused in both
+                // (CS0611, CS9244). Everything else is refused wherever it appears.
+                { "array-of-ref-struct", "System.Span<System.Char>[]", "hello\n", false, null, null },
+                { "array-of-readonly-ref-struct", "System.ReadOnlySpan<System.Char>[]", "hello\n", false, null,
+                    null },
+                { "array-of-restricted", "System.TypedReference[]", "hello\n", false, null, null },
+                { "jagged-array-of-ref-struct", "System.Span<System.Char>[][]", "hello\n", false, null, null },
+                { "type-argument-static", "System.Collections.Generic.List<System.Math>", "hello\n", false, "hello\n",
+                    null },
+                { "type-argument-ref-struct", "System.Collections.Generic.List<System.Span<System.Char>>", "hello\n",
+                    false, null, null },
+                { "type-argument-void", "System.Collections.Generic.List<System.Void>", "hello\n", false, null,
+                    null },
+                { "nullable-of-ref-struct", "System.Nullable<System.Span<System.Char>>", "hello\n", false, null,
+                    null },
+                { "tuple-of-ref-struct", "(System.Span<System.Char>, System.Int32)", "hello\n", false, null, null },
 
                 // Ordinary types this assembly is not allowed to mention. Author-fixable, so HED7030.
                 { "array-of-error-obsolete", Fixtures + "ObsoleteErrorModel[]", "hello\n", true, "hello\n", null },
@@ -200,15 +243,57 @@ namespace Heddle.Generator.IntegrationTests
 
             var modelType = fixtureName == null ? typeof(object) : Fixture(Fixtures + fixtureName);
             var model = fixtureName == null ? null : Activator.CreateInstance(modelType);
-            var dynamicTemplate = new HeddleTemplate(template, new CompileContext(new TemplateOptions(), modelType));
             if (engineOutput == null)
             {
-                Assert.False(dynamicTemplate.CompileResult.Success);
+                Assert.False(EngineServes(template, modelType));
                 return;
             }
 
+            var dynamicTemplate = new HeddleTemplate(template, new CompileContext(new TemplateOptions(), modelType));
             Assert.True(dynamicTemplate.CompileResult.Success, dynamicTemplate.CompileResult.ToString());
             Assert.Equal(engineOutput, dynamicTemplate.Generate(model));
+        }
+
+        /// <summary>
+        /// The cost control for asking the verdict of a whole spelling rather than its head. Nesting is the ordinary
+        /// case — a list of models, an array of them, a tuple, a lifted value — and a recursion that refused any of
+        /// these would take a large share of real templates off the precompiled tier to catch the handful above.
+        /// </summary>
+        [Theory]
+        [InlineData("list", "System.Collections.Generic.List<System.String>")]
+        [InlineData("array", Fixtures + "Article[]")]
+        [InlineData("jagged-array", Fixtures + "Article[][]")]
+        [InlineData("dictionary", "System.Collections.Generic.Dictionary<System.String,System.Int32>")]
+        [InlineData("nullable", "System.Nullable<System.Int32>")]
+        [InlineData("tuple", "(System.Int32, System.String)")]
+        public void AnOrdinaryNestedSpellingStillPrecompiles(string name, string modelSpelling)
+        {
+            var key = "views/nested-ok-" + name + ".heddle";
+            var template = "@model(){{" + modelSpelling + "}}@\\\nhello\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, template) });
+
+            Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+        }
+
+        /// <summary>Whether the dynamic tier compiles the template at all. A spelling the engine's reflection cannot
+        /// turn into a <c>Type</c> throws out of the constructor rather than recording a compile error — two shapes
+        /// of the same answer, and which one a row gets is not what these rows are about.</summary>
+        private static bool EngineServes(string template, Type modelType)
+        {
+            try
+            {
+                return new HeddleTemplate(template, new CompileContext(new TemplateOptions(), modelType))
+                    .CompileResult.Success;
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
+            catch (ArgumentException)
+            {
+                return false;
+            }
         }
     }
 }

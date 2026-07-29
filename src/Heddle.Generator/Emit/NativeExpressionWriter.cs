@@ -220,8 +220,12 @@ namespace Heddle.Generator.Emit
             var resolution = _resolver.ResolvePath(_modelType, path.Segments);
             if (resolution.Kind != SymbolTypeResolver.PathKind.Resolved)
             {
-                if (resolution.Kind == SymbolTypeResolver.PathKind.Failed ||
-                    resolution.Kind == SymbolTypeResolver.PathKind.Inaccessible)
+                // Unusable is the one refusal with no author-facing fault behind it — the member is there and
+                // readable, its type is simply one no generated code could hold a value of — so it degrades in
+                // silence rather than reaching a diagnostic that names the member.
+                if ((resolution.Kind == SymbolTypeResolver.PathKind.Failed ||
+                     resolution.Kind == SymbolTypeResolver.PathKind.Inaccessible) &&
+                    resolution.Fault != SymbolTypeResolver.NameFault.Unusable)
                 {
                     var idx = resolution.DynamicIndex;
                     var receiver = resolution.Hops.Count == 0

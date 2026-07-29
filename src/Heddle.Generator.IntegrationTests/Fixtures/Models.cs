@@ -342,6 +342,16 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public ObsoleteErrorValue Balance { get; set; }
     }
 
+    /// <summary>A perfectly nameable model with a perfectly nameable, perfectly visible property whose <b>type</b>
+    /// no generated code could hold a value of in any assembly. Nothing about it is the template author's doing and
+    /// nothing they can write in the template changes it, which is what separates it from the obsolete and internal
+    /// fixtures above.</summary>
+    public sealed unsafe class UnusablePropertyTypeModel
+    {
+        public int* Handle => null;
+        public string Title => "ok";
+    }
+
     /// <summary>A nameable type nested inside one that is not: C# reports the error on the <b>outer</b> name, which
     /// no spelling of the inner one can avoid.</summary>
     [System.Obsolete("gone", true)]
