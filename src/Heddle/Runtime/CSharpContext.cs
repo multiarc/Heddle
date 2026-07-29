@@ -162,17 +162,14 @@ namespace Heddle.Runtime
                 throw new TemplateCompileException("Cannot compile base C# generation templates",
                     InitErrors.Errors);
             var generatedCode = PreparseGenerator.Generate(expressionOptions);
-            var generation = Native.AssemblyHelper.Generation;
-            // Read before the assembly set below is: an unregistration drops the cache and moves the epoch on only
-            // after it has removed the assemblies, so a compile that observes the new epoch is compiling against the
-            // set that survived it, and one that observes the old epoch has its result rejected on the way back out.
-            var epoch = PreparseCache.Epoch;
-            if (!PreparseCache.TryGet(generatedCode, out var cached) || IsStale(cached, generation))
+            if (!PreparseCache.TryGet(generatedCode, AssemblyHelper.Generation, out var cached))
             {
                 var firstDiagnostic = context.CompileErrors.Count;
-                var preparsed = Preparse(generatedCode, context, expressionOptions);
+                // The generation comes back out of the compile rather than being read around it: it is the one the
+                // reference set was taken at, so the entry can only ever be stamped with the set it was built from.
+                var preparsed = Preparse(generatedCode, context, expressionOptions, out var generation);
                 cached = new PreparseResult(preparsed.Item1, preparsed.Item2,
-                    context.CompileErrors.Skip(firstDiagnostic).Select(e => e.Error).ToArray(), generation, epoch);
+                    context.CompileErrors.Skip(firstDiagnostic).Select(e => e.Error).ToArray(), generation);
                 PreparseCache.Store(generatedCode, cached);
             }
             else
@@ -185,28 +182,12 @@ namespace Heddle.Runtime
             return cached.Value;
         }
 
-        /// <summary>
-        /// A cached result is only trustworthy while the assembly set that produced it is. An expression naming a
-        /// type in an assembly the host had not registered yet fails, and must be retried once it has been —
-        /// otherwise the first attempt decides the answer for the life of the process, and whether a template
-        /// compiles comes down to load order.
-        /// <para>A success is checked too, though it is tempting not to: the reasoning that "nothing a later
-        /// registration adds can take a type away" is wrong in the one direction that matters. Adding an assembly
-        /// can make a name ambiguous where it was not (<c>CS0104</c>), and can introduce a better overload
-        /// candidate — so an expression that compiled against the smaller set does not necessarily compile, or mean
-        /// the same thing, against the larger one.</para>
-        /// </summary>
-        private static bool IsStale(PreparseResult cached, int generation)
-        {
-            return cached.Generation != generation;
-        }
-
         private Tuple<OptionalValue<object>, ExType> Preparse(string code, CompileContext context,
-            ExpressionOptions expressionOptions)
+            ExpressionOptions expressionOptions, out int generation)
         {
             {
                 var tree = CSharpSyntaxTree.ParseText(code);
-                var assemblySet = AssemblyHelper.GetApplicationReferences();
+                var assemblySet = AssemblyHelper.GetApplicationReferences(out generation);
                 var compilation = CSharpCompilation.Create(null, new[] {tree}, assemblySet);
                 var diagnostics = compilation.GetDiagnostics();
                 if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))

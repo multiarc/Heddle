@@ -256,4 +256,30 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
             }
         }
     }
+
+    /// <summary>
+    /// A model with an <c>internal</c> readable property. The engine reads it — the member tier accepts a
+    /// public-or-internal getter declared on the receiver — but a compilation that only <i>references</i> this
+    /// assembly cannot: Roslyn imports no member from metadata that the importing assembly could not name, so the
+    /// generator sees a type with <c>Title</c> and nothing else.
+    /// <para>This fixture only carries its point from a <b>referenced</b> assembly. The generator's compilation
+    /// references the test assembly as metadata, which is what makes it one.</para>
+    /// </summary>
+    public sealed class InternalMemberModel
+    {
+        public string Title => "public";
+
+        internal string Secret => "s3cret";
+
+        /// <summary>The near miss: invisible to a referencing compilation for the same reason <see cref="Secret"/>
+        /// is, and rejected by the engine too, so the tiers agree it is an error.</summary>
+        private string Hidden => "no";
+    }
+
+    /// <summary>An <c>internal</c> model type: nameable by the engine, which resolves model types by reflection over
+    /// loaded assemblies, and un-nameable by generated code in any other assembly.</summary>
+    internal sealed class InternalModel
+    {
+        public string Title => "hidden";
+    }
 }

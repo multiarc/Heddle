@@ -126,6 +126,7 @@ TYPE Heddle.Data.HeddleDiagnosticIds
   FIELD System.String BuildForwardedWarning
   FIELD System.String BuildFunctionCallNotBindable
   FIELD System.String BuildImportNotIncluded
+  FIELD System.String BuildInaccessibleModelSymbol
   FIELD System.String BuildIneligibleExportContainer
   FIELD System.String BuildInvalidKeyMetadata
   FIELD System.String BuildMalformedExtensionParameter

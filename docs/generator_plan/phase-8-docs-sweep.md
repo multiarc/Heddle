@@ -1365,3 +1365,59 @@ except the last two noted below.
 - **`Assembly.LoadFrom` in the differential harness is unpinned**, and one reviewer argues it hides
   a real engine property rather than testing it: a model type can bind at build time and fail at
   run time depending on what has been loaded. Worth its own test; it does not have one.
+
+## The three the eighth cycle left open (2026-07-29)
+
+All three are now closed. Two of them turned out to be worse, or differently shaped, than the
+review described — which is the argument for fixing rather than filing.
+
+### The build break was in two halves, and only one was the one reported
+
+The report was that an `internal` **member** on a model type in a referenced assembly draws
+`HED7008` at error severity while the engine renders it. True, and confirmed: Roslyn's default
+metadata import makes such a member *absent* from the symbol model rather than inaccessible, so
+it is indistinguishable from a typo. (It does honour `[InternalsVisibleTo]`, so a consumer with
+legitimate access sees it.)
+
+The other half was assumed to behave the same way and does not. Internal **types** *are* imported
+from metadata regardless of accessibility, so no diagnostic fired at all — the emitter resolved
+the type, wrote its fully-qualified name into a generated cast, and the consumer's build died on
+a wall of `CS0122` against `.g.cs`, with no Heddle id and no `.heddle` position. Worse than the
+reported symptom and reachable by exactly the same model.
+
+The obvious fix — degrade whenever the receiver came from metadata — was rejected: models
+normally live in referenced assemblies, so that is precisely where `HED7008` earns its keep, and
+it would have downgraded every genuine typo to a warning. What went in instead is a second view
+of the *same references* opened with `MetadataImportOptions.All`, built lazily and only on the
+path about to report a failure, held weakly against the compilation it describes. A member the
+engine's own visibility policy accepts *there* and this compilation cannot see is hidden, not
+missing. So: internal member → degrade under `HED7030` (warning); **private** member → still
+`HED7008`, because the engine rejects private too and the tiers agree; typo → still `HED7008`.
+Source receivers skip the probe, since Roslyn shows a compilation every member of its own types.
+
+### The epoch was a second counter for something one counter already knew
+
+Introduced in the previous round to close a window; the same round then made staleness
+generation-strict, which subsumed it. Removed. The cache now holds one assembly generation at a
+time, and everything it must not do follows from that: a result computed against a superseded set
+is refused admission, one from a newer set retires the map on the way in, and a reader asking at a
+generation the map is not holding gets nothing.
+
+The point of the shape is that the two orderings the reviewers could reverse without reddening
+anything no longer exist to be reversed. `GetApplicationReferences` hands out the reference set
+and its generation from one lock-held read, so an entry can only be stamped with the set it was
+built from; and the unregistration is now a single expression, so the bump cannot happen without
+the retarget. One correction on top: a reader whose generation is *older* than the map's must not
+retire it, or a straggler arriving after an unregistration throws away every entry the current
+set just built.
+
+### The harness suppression is now the subject of a test rather than a side effect
+
+The two tiers do not bind a model type from the same world — the generator resolves over the
+compilation's *references*, the engine over the assemblies the process has actually *loaded*. So
+`@model(){{X}}` can bind at build time and fail at first render, depending on what else the
+process touched. That is a real property with a real consequence for hosts, and the harness's
+`Assembly.LoadFrom` was quietly suppressing the only place it was visible. It stays — a
+differential test asks whether two tiers emit the same bytes from the same inputs, and "the model
+assembly is loaded" is an input — but the property is now asserted head-on against a GUID-named
+assembly built at test time, and a second test pins the suppression itself.

@@ -1,7 +1,9 @@
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Heddle.Language.Binding;
 using Heddle.Language.Members;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace Heddle.Generator.Binding
 {
@@ -17,7 +19,10 @@ namespace Heddle.Generator.Binding
 
         public SymbolTypeResolver(Compilation compilation) => _compilation = compilation;
 
-        internal enum PathKind { Resolved, DynamicHop, Failed }
+        /// <summary><see cref="Inaccessible"/> is a <see cref="Failed"/> this compilation is not entitled to call a
+        /// failure: the member is there in metadata and the engine's own visibility policy accepts it, but nothing
+        /// generated into the consumer's assembly could name it.</summary>
+        internal enum PathKind { Resolved, DynamicHop, Failed, Inaccessible }
 
         internal readonly struct Hop
         {
@@ -207,7 +212,9 @@ namespace Heddle.Generator.Binding
                 var prop = FindProperty(current, segments[i]);
                 if (prop == null)
                 {
-                    result.Kind = PathKind.Failed;
+                    result.Kind = HiddenByAccessibility(current, segments[i])
+                        ? PathKind.Inaccessible
+                        : PathKind.Failed;
                     result.DynamicIndex = i;
                     return result;
                 }
@@ -224,6 +231,83 @@ namespace Heddle.Generator.Binding
         /// <summary>Member lookup uses the shared MemberPathWalk through a Roslyn adapter, aligned with runtime behavior.</summary>
         private static IPropertySymbol FindProperty(ITypeSymbol type, string name) =>
             MemberPathWalk.TryFind(SymbolMemberModel.Instance, type, name, out var found) ? found : null;
+
+        /// <summary>Whether generated code in the compilation's own assembly may name <paramref name="symbol"/>.
+        /// The emitter writes fully-qualified type names into the consumer's assembly, so a name it may not write is
+        /// not a name it may pre-compile.</summary>
+        public bool IsAccessibleFromCompilation(ISymbol symbol) =>
+            symbol == null || _compilation == null ||
+            _compilation.IsSymbolAccessibleWithin(symbol, _compilation.Assembly);
+
+        /// <summary>
+        /// Whether the <b>engine</b> would find <paramref name="name"/> on <paramref name="receiver"/> although this
+        /// compilation's symbol model has no such member — the member exists in metadata and only accessibility
+        /// hides it.
+        /// <para>Roslyn imports from a metadata reference only what the importing assembly could legally name, so an
+        /// <c>internal</c> member on a model type in a referenced assembly is not <i>inaccessible</i> in the symbol
+        /// model, it is <b>absent</b> from it, and indistinguishable from a typo. The engine reads it: reflection
+        /// ignores assembly boundaries and the member tier accepts an internal getter declared on the receiver. The
+        /// two were reported identically — at error severity — so a valid template failed the consumer's build.</para>
+        /// <para>A source receiver is answered without the probe. Roslyn shows a compilation every member of its own
+        /// types, so a miss there is genuine, and the probe compilation carries no source to find it in anyway.</para>
+        /// </summary>
+        private bool HiddenByAccessibility(ITypeSymbol receiver, string name)
+        {
+            if (receiver == null || _compilation == null)
+                return false;
+            foreach (var location in receiver.Locations)
+                if (location.IsInSource)
+                    return false;
+
+            var mapped = MapToFullMetadataView(receiver);
+            return mapped != null && MemberPathWalk.TryFind(SymbolMemberModel.Instance, mapped, name, out _);
+        }
+
+        /// <summary>
+        /// The same references opened with <see cref="MetadataImportOptions.All"/> — as close to reflection's view,
+        /// and therefore the engine's, as the symbol model gets. Built per compilation and only on the path that is
+        /// about to report a member failure, which is rare; held weakly against the compilation it describes so it
+        /// dies with it rather than accumulating one per keystroke in the IDE.
+        /// </summary>
+        private static readonly ConditionalWeakTable<Compilation, Compilation> FullMetadataViews =
+            new ConditionalWeakTable<Compilation, Compilation>();
+
+        private ITypeSymbol MapToFullMetadataView(ITypeSymbol type)
+        {
+            if (!(type is INamedTypeSymbol named))
+                return null;   // arrays, pointers and type parameters carry no user members to be hidden
+
+            var metadataName = MetadataNameOf(named.OriginalDefinition);
+            if (metadataName == null)
+                return null;
+
+            var view = FullMetadataViews.GetValue(_compilation, compilation =>
+                CSharpCompilation.Create("HeddleMetadataProbe", null, compilation.References,
+                    new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,
+                        metadataImportOptions: MetadataImportOptions.All)));
+
+            // Null on ambiguity across references as well as on absence; either way this side proves nothing and the
+            // caller keeps the answer it already had.
+            return view.GetTypeByMetadataName(metadataName);
+        }
+
+        /// <summary>The CLR name <see cref="Compilation.GetTypeByMetadataName"/> reads — nested types joined by
+        /// <c>+</c>, generic arity as a backtick suffix (already in <see cref="ISymbol.MetadataName"/>).</summary>
+        private static string MetadataNameOf(INamedTypeSymbol type)
+        {
+            var name = type.MetadataName;
+            var outermost = type;
+            for (var outer = type.ContainingType; outer != null; outer = outer.ContainingType)
+            {
+                name = outer.MetadataName + "+" + name;
+                outermost = outer;
+            }
+
+            var ns = outermost.ContainingNamespace;
+            if (ns == null || ns.IsGlobalNamespace)
+                return name;
+            return ns.ToDisplayString() + "." + name;
+        }
 
         /// <summary>The Roslyn adapter of the shared member model.</summary>
         private sealed class SymbolMemberModel : ITypeModel<ITypeSymbol, IPropertySymbol>

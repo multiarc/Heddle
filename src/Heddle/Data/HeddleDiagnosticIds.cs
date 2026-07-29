@@ -290,6 +290,10 @@ namespace Heddle.Data
         /// <summary>An <c>@&lt;&lt;</c> import uses the template's registration key when a <c>Name</c> metadatum exists (both spellings work; advisory to prefer <c>Name</c>).</summary>
         public const string BuildNamedTemplateImportedByKey = "HED7028";
 
+        /// <summary>A model type or model member the engine binds reflectively but generated code in the consumer's
+        /// assembly may not name, so the template renders through the dynamic path instead.</summary>
+        public const string BuildInaccessibleModelSymbol = "HED7030";
+
         /// <summary>A precompiled entry failed the run-time gauntlet, so the render degrades to the dynamic
         /// tier (carried on <c>PrecompiledFallbackEvent.DiagnosticId</c>).</summary>
         public const string PrecompiledGauntletFallback = "HED7101";

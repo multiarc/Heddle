@@ -184,6 +184,22 @@ namespace Heddle.Generator.Emit
             if (!isDynamic)
             {
                 _modelSymbol = _resolver.ResolveModelType(_modelTypeText, _usings);
+                if (_modelSymbol != null && !_resolver.IsAccessibleFromCompilation(_modelSymbol))
+                {
+                    // HED7030: an internal model type in a referenced assembly resolves here — types are imported
+                    // from metadata whatever their accessibility — but no code generated into the consumer's
+                    // assembly may name it. Emitting the cast anyway put a wall of CS0122 on generated .g.cs into
+                    // the consumer's build, carrying no Heddle id and no .heddle position. The engine binds the
+                    // type by reflection and renders it, so the dynamic tier is the tier that can serve it.
+                    _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.InaccessibleModelSymbol,
+                        _modelDirectivePosition, SymbolTypeResolver.FullyQualified(_modelSymbol)));
+                    return new Result
+                    {
+                        Emitted = false, Diagnostics = _diagnostics,
+                        UnsupportedReason = "model type is not accessible from this compilation"
+                    };
+                }
+
                 if (_modelSymbol != null)
                     modelType = SymbolTypeResolver.FullyQualified(_modelSymbol);
                 else if (_resolver.LastFault == Heddle.Language.Binding.TypeSpellingFault.Ambiguous)
@@ -1945,7 +1961,8 @@ namespace Heddle.Generator.Emit
                 if (resolution.Kind != SymbolTypeResolver.PathKind.Resolved)
                 {
                     // HED7008: property-not-found on typed model (same as runtime HED0001).
-                    if (resolution.Kind == SymbolTypeResolver.PathKind.Failed)
+                    if (resolution.Kind == SymbolTypeResolver.PathKind.Failed ||
+                        resolution.Kind == SymbolTypeResolver.PathKind.Inaccessible)
                         RecordMemberFailure(bctx.ModelSymbol, segments, resolution);
                     reason = "member path (" + resolution.Kind + ")";
                     return false;
@@ -2218,8 +2235,7 @@ namespace Heddle.Generator.Emit
             {
                 var seenKey = mf.Path + "@" + mf.Position.StartIndex;
                 if (_seenMemberFailures.Add(seenKey))
-                    _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.UnresolvableMember,
-                        mf.Position, mf.ReceiverType, mf.Member, mf.Path));
+                    _diagnostics.Add(MemberDiagnostic(mf));
             }
 
             // HED7025: defensive guard against duplicate reports (failure mode is asymmetric: noise vs discovery in build log).
@@ -2263,9 +2279,19 @@ namespace Heddle.Generator.Emit
             var member = idx >= 0 && idx < segments.Length ? segments[idx] : segments[segments.Length - 1];
             var seenKey = display + "@" + at;
             if (_seenMemberFailures.Add(seenKey))
-                _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.UnresolvableMember,
-                    position, SymbolTypeResolver.FullyQualified(receiver), member, display));
+                _diagnostics.Add(MemberDiagnostic(new SymbolMemberResolver.MemberFailure(
+                    SymbolTypeResolver.FullyQualified(receiver), member, display, position,
+                    resolution.Kind == SymbolTypeResolver.PathKind.Inaccessible)));
         }
+
+        /// <summary>HED7008 for a member that is not there, HED7030 for one this compilation merely cannot see. The
+        /// second is not a template fault, so it degrades the template instead of failing the build.</summary>
+        private static EmitDiagnostic MemberDiagnostic(SymbolMemberResolver.MemberFailure failure) =>
+            failure.Inaccessible
+                ? new EmitDiagnostic(GeneratorDiagnostics.InaccessibleModelSymbol, failure.Position,
+                    failure.ReceiverType + "." + failure.Member)
+                : new EmitDiagnostic(GeneratorDiagnostics.UnresolvableMember, failure.Position,
+                    failure.ReceiverType, failure.Member, failure.Path);
 
         /// <summary>True when <paramref name="text"/> is a plain (possibly dotted, possibly <c>?</c>-suffixed) type
         /// name — the syntax the model-type resolver models. Open generics, arrays, tuples and whitespace forms are

@@ -12,12 +12,14 @@ namespace Heddle.Generator.Binding
     {
         internal readonly struct MemberFailure
         {
-            public MemberFailure(string receiverType, string member, string path, BlockPosition position)
+            public MemberFailure(string receiverType, string member, string path, BlockPosition position,
+                bool inaccessible = false)
             {
                 ReceiverType = receiverType;
                 Member = member;
                 Path = path;
                 Position = position;
+                Inaccessible = inaccessible;
             }
 
             /// <summary>The fully-qualified type of the receiver at the failing segment (HED7008 arg 0).</summary>
@@ -31,6 +33,10 @@ namespace Heddle.Generator.Binding
 
             /// <summary>The <c>.heddle</c> span (absolute template coordinates).</summary>
             public BlockPosition Position { get; }
+
+            /// <summary>The member is there and the engine reads it; only this compilation cannot see it. Reported as
+            /// the HED7030 degrade rather than the HED7008 error — the template renders, so the build must not fail.</summary>
+            public bool Inaccessible { get; }
         }
 
         /// <summary>Resolves <paramref name="segments"/> off <paramref name="start"/>; returns a
