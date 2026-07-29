@@ -22,6 +22,7 @@ using Heddle.Runtime;
     typeof(Heddle.Generator.IntegrationTests.Fixtures.NarrowItemExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableNarrowItemExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableLiftDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.BoxedDefaultExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.DriftContainer.NestedYellExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.DriftBaseExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.DriftInheritedExtension),

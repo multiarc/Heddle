@@ -15,6 +15,7 @@ namespace Heddle.Generator.IntegrationTests
     public class SlotValueTypeTests
     {
         private const string ArticleType = "Heddle.Generator.IntegrationTests.Fixtures.Article";
+        private const string MenuType = "Heddle.Generator.IntegrationTests.Fixtures.Menu";
 
         private static string Definition(string slotType, string bodyModel) =>
             "@%\n<frame(out:: " + slotType + ")>{{[@out(this)]}} :: " + bodyModel + "\n%@\n";
@@ -68,10 +69,11 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// The same mismatch under a definition that declares <c>:: dynamic</c>. The engine still catches it — it
-        /// compiles a definition body per call site, off the type actually passed — while the emitter compiles one
-        /// body for all of them and has no type to check against, so the definition is handed back to the tier that
-        /// does. This is the shape the defect was reported in.
+        /// The same mismatch under a definition that declares <c>:: dynamic</c>. The engine compiles a definition
+        /// body per call site, off the type actually passed, so it still catches it; the emitter emits one untyped
+        /// body for every call site but the value passed at <em>this</em> one has a static type all the same, and
+        /// that is the type the engine would compile this body against. This is the shape the defect was reported
+        /// in.
         /// </summary>
         [Fact]
         public void ASlotDefinitionWithADynamicBodyModelDegrades()
@@ -82,6 +84,98 @@ namespace Heddle.Generator.IntegrationTests
 
             DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
             AssertEngineRefuses(template, typeof(string));
+        }
+
+        /// <summary>
+        /// The cost control for the rule above, and the reason it is a per-call-site check rather than a blanket
+        /// refusal of <c>:: dynamic</c> slot definitions: a reusable wrapper whose slot value fits is an ordinary
+        /// shape, both tiers produce the same bytes for it, and refusing it took it off the precompiled tier with no
+        /// diagnostic to say so.
+        /// </summary>
+        [Fact]
+        public void ASlotDefinitionWithADynamicBodyModelStillPrecompilesWhenTheCallerValueFits()
+        {
+            const string key = "views/slot-value-dynamic-body-assignable.heddle";
+            var template = "@model(){{" + ArticleType + "}}" + Definition(ArticleType, "dynamic") +
+                           "@frame(this){{[@(Title)]}}\n";
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template, typeof(Article),
+                new Article { Title = "T" });
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal("[[T]]\n", dyn);
+        }
+
+        /// <summary>
+        /// The half of the <c>:: dynamic</c> rule that must stay a refusal. Called from inside a <c>@list</c> body,
+        /// the value handed to the definition is the list element, whose type the emitter deliberately does not
+        /// guess — so there is no type to check the body's <c>@out</c> against and nothing but the caller-content
+        /// cast to fail on at render, which is not where the engine reports it.
+        /// </summary>
+        [Fact]
+        public void ASlotDefinitionWithADynamicBodyModelDegradesWhenTheCallerValueCannotBeTyped()
+        {
+            const string key = "views/slot-value-dynamic-body-untypeable.heddle";
+            var template = "@model(){{" + MenuType + "}}" +
+                           "@%\n<frame(out:: " + ArticleType + ")>{{[@out(this)]}} :: dynamic\n%@\n" +
+                           "@list(Options){{@frame(this)}}\n";
+
+            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
+        }
+
+        /// <summary>
+        /// Two call sites into one <c>:: dynamic</c> slot definition, the first passing a value that fits and the
+        /// second one that does not. The body is emitted once and cached, so the check has to be part of what the
+        /// cache is keyed on — otherwise the first call site's verdict stands for the second, which then precompiles
+        /// having been checked against a type it never passes. The engine refuses the template at the second call.
+        /// </summary>
+        [Fact]
+        public void TheSecondCallSiteIntoADynamicSlotDefinitionIsCheckedOnItsOwnValue()
+        {
+            const string key = "views/slot-value-dynamic-body-two-call-sites.heddle";
+            var template = "@model(){{" + ArticleType + "}}" +
+                           "@%\n<frame(out:: " + ArticleType + ")>{{[@out(this)]}} :: dynamic\n%@\n" +
+                           "@frame(this){{[X]}}@frame(Title){{[Y]}}\n";
+
+            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
+            AssertEngineRefuses(template, typeof(Article));
+        }
+
+        /// <summary>
+        /// A literal slot value. Its type is not an estimate the emitter has to be careful about — the parser
+        /// decoded it, and the engine types the same literal the same way when it refuses the template — yet it
+        /// took the "cannot say" exit reserved for values with no static type, and the template precompiled and
+        /// rendered what the engine will not compile.
+        /// </summary>
+        [Theory]
+        [InlineData("int", "5")]
+        [InlineData("string", "\"q\"")]
+        [InlineData("bool", "true")]
+        public void ALiteralSlotValueOfAnUnrelatedTypeDegrades(string name, string literal)
+        {
+            var key = "views/slot-value-literal-" + name + ".heddle";
+            var template = "@model(){{" + MenuType + "}}@%\n<frame(out:: " + ArticleType + ")>{{[@out(" + literal +
+                           ")]}} :: " + MenuType + "\n%@\n@frame(this){{[q]}}\n";
+
+            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
+            AssertEngineRefuses(template, typeof(Menu));
+        }
+
+        /// <summary>The cost control: a literal the slot type does accept — identically on both tiers, boxing
+        /// excluded — still precompiles, so the new typing is a check and not a refusal of literals.</summary>
+        [Theory]
+        [InlineData("int", "int", "5", "5")]
+        [InlineData("widened", "long", "5", "5")]
+        [InlineData("string", "string", "\"q\"", "q")]
+        public void AnAssignableLiteralSlotValueStillPrecompiles(string name, string slotType, string literal,
+            string expected)
+        {
+            var key = "views/slot-value-literal-ok-" + name + ".heddle";
+            var template = "@model(){{" + MenuType + "}}@%\n<frame(out:: " + slotType + ")>{{[@out(" + literal +
+                           ")]}} :: " + MenuType + "\n%@\n@frame(this){{[@(this)]}}\n";
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template, typeof(Menu), new Menu());
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal("[[" + expected + "]]\n", dyn);
         }
 
         public static TheoryData<string, string, string, System.Type, object> Assignable() =>

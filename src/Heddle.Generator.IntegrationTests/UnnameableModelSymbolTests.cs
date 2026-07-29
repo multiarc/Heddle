@@ -119,5 +119,96 @@ namespace Heddle.Generator.IntegrationTests
 
             Assert.Equal("hello\n", Dynamic(template, typeof(StaticModel), null));
         }
+
+        private const string Fixtures = "Heddle.Generator.IntegrationTests.Fixtures.";
+
+        /// <summary>
+        /// Every shape the emitter can be handed that the consumer's compiler will not accept, in one place, so the
+        /// question "which kinds are covered" is answered by reading a table rather than by enumerating
+        /// <see cref="Microsoft.CodeAnalysis.TypeKind"/> again. Columns: the <c>@model</c> spelling, the body, whether
+        /// the refusal is one the author can act on (accessibility or error-obsolescence, which report HED7030 —
+        /// everything else has no remedy but a different model and degrades silently), the engine's output, and the
+        /// fixture type to hand the engine.
+        /// <para>Not here, because they need more than a model spelling: the project-reference (<c>CompilationReference</c>)
+        /// shape, in <c>InaccessibleModelSymbolTests</c>; and the definition-model, slot-type and prop-type positions,
+        /// which the same suite pins for the same reason. Not here because no template can spell them: anonymous
+        /// types, function pointers, VB modules and script submissions.</para>
+        /// </summary>
+        public static TheoryData<string, string, string, bool, string, string> Hostile() =>
+            new TheoryData<string, string, string, bool, string, string>
+            {
+                // Kinds that can never carry a model, whoever compiles the generated file.
+                { "static-class", Fixtures + "StaticModel", "hello\n", false, "hello\n", null },
+                { "ref-struct", "System.Span<char>", "hello\n", false, "hello\n", null },
+                { "restricted-type", "System.TypedReference", "hello\n", false, "hello\n", null },
+                { "void", "System.Void", "hello\n", false, "hello\n", null },
+                { "pointer", "System.Int32*", "hello\n", false, null, null },
+                { "pointer-array", "System.Int32*[]", "hello\n", false, null, null },
+                { "open-generic", "System.Collections.Generic.List`1", "hello\n", false, "hello\n", null },
+                { "open-generic-two-args", "System.Collections.Generic.Dictionary`2", "hello\n", false, "hello\n", null },
+                { "open-value-tuple", "System.ValueTuple`2", "hello\n", false, "hello\n", null },
+                // Carries no type argument of its own; the one it cannot write belongs to the type it is nested in.
+                { "nested-in-open-generic", "System.Collections.Generic.List`1.Enumerator", "hello\n", false,
+                    "hello\n", null },
+                // Arrays are as writable as their element type and no more.
+                { "array-of-static", "System.Math[]", "hello\n", false, "hello\n", null },
+
+                // Ordinary types this assembly is not allowed to mention. Author-fixable, so HED7030.
+                { "array-of-error-obsolete", Fixtures + "ObsoleteErrorModel[]", "hello\n", true, "hello\n", null },
+                { "error-obsolete-type", Fixtures + "ObsoleteErrorModel", "@(Title)\n", true, "obsolete\n",
+                    "ObsoleteErrorModel" },
+                { "nested-under-error-obsolete", Fixtures + "ObsoleteOuterModel.Inner", "@(Title)\n", true, "inner\n",
+                    "ObsoleteOuterModel+Inner" },
+                { "error-obsolete-property-type", Fixtures + "ObsoletePropertyTypeModel", "@(Balance.Amount)\n", true,
+                    "0\n", "ObsoletePropertyTypeModel" },
+                { "error-obsolete-getter", Fixtures + "ObsoleteMemberModel", "@(Bad)\n", true, "bad\n",
+                    "ObsoleteMemberModel" },
+                { "internal-type", Fixtures + "InternalModel", "@(Title)\n", true, "hidden\n", "InternalModel" },
+                { "internal-member", Fixtures + "InternalMemberModel", "@(Secret)\n", true, "s3cret\n",
+                    "InternalMemberModel" },
+            };
+
+        /// <summary>
+        /// Each row degrades, raises no error, and leaves the engine to do whatever it does — render, or refuse on
+        /// its own terms with a message naming the template. What none of them may do is put a C# error in the
+        /// consumer's build: <see cref="DifferentialHarness.Generate"/> compiles what it generated, so a row that
+        /// slips through the guard reddens on the generated code and not merely on an assertion.
+        /// </summary>
+        [Theory]
+        [MemberData(nameof(Hostile))]
+        public void AModelTheConsumersCompilerWouldRejectDegrades(string name, string modelSpelling, string body,
+            bool reportable, string engineOutput, string fixtureName)
+        {
+            var key = "views/hostile-" + name + ".heddle";
+            var template = "@model(){{" + modelSpelling + "}}@\\\n" + body;
+            var gen = DifferentialHarness.Generate(new[] { (key, template) });
+
+            Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            DifferentialHarness.ExpectDegrade(gen, key);
+
+            var reported = gen.Diagnostics.Where(d => d.Id == "HED7030").ToList();
+            if (reportable)
+            {
+                var hed7030 = Assert.Single(reported);
+                Assert.Equal(DiagnosticSeverity.Warning, hed7030.Severity);
+                Assert.Contains(key, hed7030.Location.GetLineSpan().Path);
+            }
+            else
+            {
+                Assert.Empty(reported);
+            }
+
+            var modelType = fixtureName == null ? typeof(object) : Fixture(Fixtures + fixtureName);
+            var model = fixtureName == null ? null : Activator.CreateInstance(modelType);
+            var dynamicTemplate = new HeddleTemplate(template, new CompileContext(new TemplateOptions(), modelType));
+            if (engineOutput == null)
+            {
+                Assert.False(dynamicTemplate.CompileResult.Success);
+                return;
+            }
+
+            Assert.True(dynamicTemplate.CompileResult.Success, dynamicTemplate.CompileResult.ToString());
+            Assert.Equal(engineOutput, dynamicTemplate.Generate(model));
+        }
     }
 }

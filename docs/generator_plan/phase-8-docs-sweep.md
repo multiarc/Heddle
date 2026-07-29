@@ -1578,3 +1578,59 @@ single-definition template left it at 1024. The array tracks the peak number of 
 finalization, not the number ever created. A tight allocation loop that outruns the finalizer does
 grow it (100,000 abandoned instances in a loop reached 131,072 slots), which is a shape no template
 workload has. Nothing changed.
+
+## Eleventh review cycle (2026-07-29)
+
+Two reviewers, independent, each in its own worktree after the previous pair broke each other's
+builds by probing the same tree at once.
+
+### The enumeration was the defect
+
+Three commits in a row had widened the same guard by one type kind, and each time a reviewer found
+more: static classes, then ref structs, then error-obsolete types, and this cycle `void`, unbound
+generics, pointers, error-obsolete *containing* types and error-obsolete *property* types. Five
+separate findings that were one incomplete answer to a single question — *can generated code in the
+consumer's assembly name this type, take it as a parameter, and cast `object` to it?*
+
+Answered properly this time, and split in two, which is the part worth keeping. `ClassifyTypeName`
+asks whether a name may be written where a value of it lives; `ClassifyModelType` adds ref-struct-ness,
+the one restriction that applies only to a value that has to box into `object`. That split is what
+lets `Buf.Length` stay precompiled while `Span<char>` as a model degrades — the distinction the
+ad-hoc guards kept blurring. Every `TypeKind` now has a recorded verdict, `void` is caught by
+`SpecialType` rather than by kind (it is a `Struct`), and `ContainsTypeParameter` walks array and
+pointer elements, type arguments *and* containing types.
+
+One of the five was not a type-kind problem at all: an `@model` text that resolves to **no symbol**
+was emitted verbatim as the entry point's parameter type, which is why `System.Int32*` never reached
+any guard. Fixed where the symbol is resolved rather than where the kinds are listed.
+
+### A degrade is a cost, and last cycle's paid it
+
+The `:: dynamic` slot refusal added last cycle was over-broad: a reusable wrapper whose `@out` values
+are all assignable lost the precompiled tier silently, with both tiers producing identical bytes.
+Nothing reddened, because only two corpus templates declare a slot and both use typed body models.
+The refusal is now per call site, against the static type the caller actually passes — strictly more
+precompilation than before, and it still refuses only the case that genuinely cannot be decided.
+
+Fixing it surfaced a second hole: the definition body is cached per definition and fills, so with two
+call sites into one `:: dynamic` definition the first one's verdict stood for the second. The cache
+key gained the slot-value model — as an ordinal id under `SymbolEqualityComparer`, not a display
+string, because two distinct types can share a fully-qualified name. That lesson came from the path-memo
+collision two cycles earlier; this is the first time the loop has reused one of its own findings.
+
+### A reproduction that did not reproduce
+
+The property-type case was reported with a repro that does not compile: `public Money Balance` where
+`Money` is error-obsolete is itself `CS0619`, so the model could never have been built. The defect is
+real, but reaching it needs the property to carry its own *warning*-level `[Obsolete]` — an obsolete
+context suppresses the diagnostic on the types it mentions — or a model library not rebuilt since the
+type was deprecated. Worth recording because the report was accepted on its reasoning and the
+reasoning was checked against the compiler rather than against the reviewer.
+
+### Reverted
+
+An unmeasured micro-optimisation came in with the fixes — marking a registered assembly as already
+classified to save a `GetName()` per observation pass. Correctly guarded and honestly flagged as
+untested, and removed anyway: nobody measured the cost it addresses, and the file it touches has had
+three defects this session. The same rule that left `ThreadLocal` alone after measuring applies to
+changing something without measuring.

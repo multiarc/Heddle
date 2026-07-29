@@ -202,6 +202,21 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         }
     }
 
+    /// <summary>A value-type default on an <c>object</c>-typed prop — the one arm of the default conversion that
+    /// needs boxing, and the reason prop defaults ask the conversion table with boxing switched on while a slot
+    /// value asks with it switched off.</summary>
+    [ExtensionName("boxedDefault")]
+    [Prop("n", typeof(object), Default = 5)]
+    public sealed class BoxedDefaultExtension : EchoExtensionBase
+    {
+        public override object ProcessData(in Scope scope)
+        {
+            var value = scope.GetParameter("n");
+            return "n=" + value + "/" + (value?.GetType().Name ?? "null") + ":" +
+                   (scope.ModelData?.ToString() ?? string.Empty);
+        }
+    }
+
     /// <summary>Widening default <c>int</c> into <c>long?</c>: must produce boxed <see cref="long"/>, not <c>int</c>.</summary>
     [ExtensionName("nullableLiftDefault")]
     [Prop("n", typeof(long?), Default = 5)]
