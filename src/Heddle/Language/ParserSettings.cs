@@ -98,16 +98,19 @@ namespace Heddle.Language
             if (ImportIdentifier != null)
                 return ImportIdentifier(importPath);
 
-            var combined = ResolveImportPath(importPath);
             try
             {
-                return Path.GetFullPath(combined);
+                return Path.GetFullPath(ResolveImportPath(importPath));
             }
             catch (Exception)
             {
                 // A root that is not a real path — tests and in-memory readers use one — cannot be canonicalised.
                 // The raw spelling is still a usable key; it just cannot see through '..'.
-                return combined;
+                // The combine is inside the guard as well as the canonicalisation: on .NET Framework it is the
+                // combine that rejects a path containing '<', '>' or '|', and a template is free to contain one.
+                // Nothing here is worth taking a parse down for — a key that cannot see through '..' is a worse key,
+                // not a broken one.
+                return importPath;
             }
         }
     }

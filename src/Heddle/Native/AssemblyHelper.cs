@@ -219,7 +219,6 @@ namespace Heddle.Native
         /// </summary>
         public static void UnregisterModelAssemblies()
         {
-            Runtime.PreparseCache.Clear();
             lock (Assemblies)
             {
                 foreach (var assembly in ModelAssemblies)
@@ -231,6 +230,10 @@ namespace Heddle.Native
                 Interlocked.Increment(ref _generation);
             }
 
+            // Removal first, drop second. A compile already running when this began still stores its result, and
+            // dropping the cache before the assemblies were gone left that result — computed against the very types
+            // being unloaded — sitting in an otherwise-empty map for the next reader to find.
+            Runtime.PreparseCache.Clear();
             ReflectionHelper.Reconfigure();
         }
 

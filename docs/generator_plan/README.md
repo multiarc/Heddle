@@ -388,6 +388,14 @@ This is a scope gap in the program, not a defect in phase 6. Closing it means gi
 the work of running compile-channel stages in the generator and draining them through the shared
 projection; until then the early-surfacing principle is unmet for those eleven diagnostics.
 
+## Unverified platform surface
+
+See [unverified-platform-surface.md](unverified-platform-surface.md). Every verification claim
+in this program was measured on Linux with .NET 8 and .NET 10 only. That page records what was
+therefore *not* measured — .NET Framework's `netstandard2.0` behaviour, Windows, culture, and a
+declared `net6.0` test container that fails to start while the run still exits 0 — so the gap is
+legible later rather than inferred from a green build.
+
 ## Open questions
 
 See [open-questions.md](open-questions.md) for the Q&A register. **All 21 questions are

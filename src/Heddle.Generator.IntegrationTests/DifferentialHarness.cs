@@ -84,6 +84,11 @@ namespace Heddle.Generator.IntegrationTests
                     if (string.IsNullOrEmpty(path) || !File.Exists(path))
                         continue;
                     ExtraReferencePaths[Path.GetFileNameWithoutExtension(path)] = path;
+                    // Handing the assembly to Roslyn only equips the precompiled side. The dynamic reference
+                    // resolves a model type by name over the assemblies actually loaded in the process, so a corpus
+                    // template naming one of these types compiled or failed depending on whether some earlier test
+                    // in the same run had happened to load it — the same suite passed or failed on scheduling.
+                    Assembly.LoadFrom(path);
                 }
             }
         }

@@ -163,12 +163,16 @@ namespace Heddle.Runtime
                     InitErrors.Errors);
             var generatedCode = PreparseGenerator.Generate(expressionOptions);
             var generation = Native.AssemblyHelper.Generation;
+            // Read before the assembly set below is: an unregistration drops the cache and moves the epoch on only
+            // after it has removed the assemblies, so a compile that observes the new epoch is compiling against the
+            // set that survived it, and one that observes the old epoch has its result rejected on the way back out.
+            var epoch = PreparseCache.Epoch;
             if (!PreparseCache.TryGet(generatedCode, out var cached) || IsStale(cached, generation))
             {
                 var firstDiagnostic = context.CompileErrors.Count;
                 var preparsed = Preparse(generatedCode, context, expressionOptions);
                 cached = new PreparseResult(preparsed.Item1, preparsed.Item2,
-                    context.CompileErrors.Skip(firstDiagnostic).Select(e => e.Error).ToArray(), generation);
+                    context.CompileErrors.Skip(firstDiagnostic).Select(e => e.Error).ToArray(), generation, epoch);
                 PreparseCache.Store(generatedCode, cached);
             }
             else
