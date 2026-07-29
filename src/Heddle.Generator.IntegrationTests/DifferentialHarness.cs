@@ -31,6 +31,10 @@ namespace Heddle.Generator.IntegrationTests
 
         private static readonly IReadOnlyList<MetadataReference> References = BuildReferences();
 
+        /// <summary>The reference set every generated compilation starts from. Exposed for suites that have to build
+        /// a model assembly of their own before handing it back as an extra reference.</summary>
+        internal static IReadOnlyList<MetadataReference> BaseReferences => References;
+
         /// <summary>
         /// The engine test models (<c>Heddle.Tests.dll</c>), loaded from <see cref="AppContext.BaseDirectory"/>
         /// and required for corpus model binding. Throws if not found.

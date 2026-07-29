@@ -1,8 +1,10 @@
+using System.Collections.Generic;
 using System.Linq;
 using Heddle.Data;
 using Heddle.Generator.IntegrationTests.Fixtures;
 using Heddle.Runtime;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Xunit;
 
 namespace Heddle.Generator.IntegrationTests
@@ -20,6 +22,7 @@ namespace Heddle.Generator.IntegrationTests
     {
         private const string InternalMember = "Heddle.Generator.IntegrationTests.Fixtures.InternalMemberModel";
         private const string InternalType = "Heddle.Generator.IntegrationTests.Fixtures.InternalModel";
+        private const string InternalDerived = "Heddle.Generator.IntegrationTests.Fixtures.InternalDerivedModel";
 
         private static string Dynamic(string content, System.Type modelType, object model)
         {
@@ -112,6 +115,125 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal(DiagnosticSeverity.Error, hed7008.Severity);
             Assert.Contains("Secrett", hed7008.GetMessage());
             Assert.DoesNotContain(gen.Diagnostics, d => d.Id == "HED7030");
+        }
+
+        /// <summary>
+        /// A definition's own model type. The guard sat on the <c>@model</c> directive only, and every type below it
+        /// resolved the same way and was written into the same kind of cast — so a template whose <c>@model</c> is
+        /// public and whose definition names the internal type produced exactly the wall of CS0122 in generated code
+        /// that the directive-level guard exists to prevent.
+        /// <para>The member is declared on a public base on purpose. A member of the internal type itself is caught
+        /// one layer earlier, by the rule about members this assembly may not name, and would leave the rule about
+        /// <i>types</i> untested. <see cref="DifferentialHarness.Generate"/> compiles what it generates, so removing
+        /// the type guard reddens this on the generated code, not merely on the diagnostic.</para>
+        /// </summary>
+        [Fact]
+        public void AnInternalTypeOnADefinitionDegradesRatherThanEmittingACastTheConsumerCannotCompile()
+        {
+            const string key = "views/internal-definition-type.heddle";
+            var template = "@%<card>{{[@(Title)]}} :: " + InternalDerived + "%@\\\n@card()\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, template) });
+
+            Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            var hed7030 = Assert.Single(gen.Diagnostics.Where(d => d.Id == "HED7030"));
+            Assert.Contains("InternalDerivedModel", hed7030.GetMessage());
+            DifferentialHarness.ExpectDegrade(gen, key);
+        }
+
+        /// <summary>The slot type, which types the caller's content body and is written into its cast the same way,
+        /// from a definition whose own model type is beyond reproach.</summary>
+        [Fact]
+        public void AnInternalSlotTypeDegradesRatherThanEmittingACastTheConsumerCannotCompile()
+        {
+            const string key = "views/internal-slot-type.heddle";
+            var template = "@%\n<frame(out:: " + InternalDerived + ")>{{[@out(this)]}} :: dynamic\n%@\n" +
+                           "@frame(this){{[@(Title)]}}\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, template) });
+
+            Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            var hed7030 = Assert.Single(gen.Diagnostics.Where(d => d.Id == "HED7030"));
+            Assert.Contains("InternalDerivedModel", hed7030.GetMessage());
+            DifferentialHarness.ExpectDegrade(gen, key);
+        }
+
+        /// <summary>
+        /// A prop's declared type. Unlike the two above, no template shape was found that reaches the generated cast
+        /// through a prop — nothing an accessible model can offer has an inaccessible type, so the prop cannot be
+        /// supplied — and this degraded with or without the guard. What it did not do was <b>say so</b>, and a
+        /// build-time refusal nobody is told about is one that did not happen as far as the reader is concerned.
+        /// </summary>
+        [Fact]
+        public void AnInternalPropTypeDegradesAudiblyRatherThanSilently()
+        {
+            const string key = "views/internal-prop-type.heddle";
+            var template = "@%<card(thing: " + InternalDerived + ")>{{[@(thing.Title)]}} :: dynamic%@\\\n@card()\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, template) });
+
+            Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            var hed7030 = Assert.Single(gen.Diagnostics.Where(d => d.Id == "HED7030"));
+            Assert.Contains("InternalDerivedModel", hed7030.GetMessage());
+            DifferentialHarness.ExpectDegrade(gen, key);
+        }
+
+        private const string ProjectModelSource = @"
+namespace Workspace.Models
+{
+    public sealed class ProjectReferencedModel
+    {
+        public string Title => ""public"";
+        internal string Secret => ""s3cret"";
+    }
+}";
+
+        /// <summary>The same model library, handed over the way a workspace hands one over: as a compilation rather
+        /// than as a file on disk.</summary>
+        private static IReadOnlyList<MetadataReference> ProjectReference() =>
+            new[]
+            {
+                CSharpCompilation.Create("Workspace.Models",
+                        new[] { CSharpSyntaxTree.ParseText(ProjectModelSource) },
+                        DifferentialHarness.BaseReferences,
+                        new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
+                    .ToMetadataReference()
+            };
+
+        /// <summary>
+        /// The same internal member, reached through a <b>project</b> reference rather than a compiled file. Roslyn
+        /// gives a project-to-project reference a <c>CompilationReference</c>, and a compilation shows every member
+        /// of its own types — so the member is present in the symbol model, accessible to nobody, and the walk that
+        /// decided "hidden" by the member being <i>absent</i> never fired. The path resolved, the emitter wrote it,
+        /// and the consumer's build died on CS0122 in generated code. Every solution-level build in a workspace is
+        /// this shape; the file reference the other tests use is the exception, not the rule.
+        /// </summary>
+        [Fact]
+        public void AnInternalMemberOnAProjectReferencedModelDegradesRatherThanEmittingACS0122()
+        {
+            const string key = "views/project-ref-member.heddle";
+            const string template = "@model(){{Workspace.Models.ProjectReferencedModel}}@\\\n@(Secret)\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, template) },
+                extraReferences: ProjectReference());
+
+            Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            var hed7030 = Assert.Single(gen.Diagnostics.Where(d => d.Id == "HED7030"));
+            Assert.Equal(DiagnosticSeverity.Warning, hed7030.Severity);
+            Assert.Contains("ProjectReferencedModel.Secret", hed7030.GetMessage());
+            DifferentialHarness.ExpectDegrade(gen, key);
+        }
+
+        /// <summary>The public member of the same project-referenced model still pre-compiles — the new refusal is
+        /// about what the generated assembly may name, not about where the model came from.</summary>
+        [Fact]
+        public void APublicMemberOnAProjectReferencedModelStillPrecompiles()
+        {
+            const string key = "views/project-ref-public.heddle";
+            const string template = "@model(){{Workspace.Models.ProjectReferencedModel}}@\\\n@(Title)\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, template) },
+                extraReferences: ProjectReference());
+
+            Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Id == "HED7030");
+            Assert.Equal(DifferentialHarness.ManifestState.Precompiled,
+                DifferentialHarness.ClassifyInManifest(gen.ManifestSource, key));
         }
 
         /// <summary>The public member on the same type still pre-compiles: the degrade is scoped to what is actually

@@ -528,6 +528,14 @@ Two well‑known identifiers are available in embedded C#:
 There is also a `chained` value available to extensions such as `@for` (the loop index);
 see [`Scope`](csharp-api.md#scope-the-data-view-during-rendering).
 
+> **Arithmetic is unchecked.** An embedded C# expression is compiled inside `unchecked(…)`, so an
+> overflow wraps rather than throwing — including a constant overflow, which C# would otherwise reject
+> at compile time (`CS0220`). This matches [native expressions](native-expressions.md), which are built
+> from the unchecked expression-tree factories, and it is what lets a
+> [precompiled](precompilation.md) template behave the same when the consuming project sets
+> `<CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>` — a setting the template knows nothing
+> about. Write the check yourself (`checked(…)`) if you want one.
+
 > **Parser nuance.** A C# expression is just a run of C# tokens up to the matching `)`, so
 > nested parentheses inside it (as in `@Foo(1)`) are part of the expression. The named call
 > form `@x(@Foo(1))` and the unnamed form `@(@Foo(1))` therefore classify those tokens

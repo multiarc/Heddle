@@ -117,6 +117,71 @@ namespace Heddle.Generator.IntegrationTests
             Assert.False(dynamicTemplate.CompileResult.Success);
         }
 
+        /// <summary>
+        /// Two ref-struct hops in one expression. Each has to name its receiver in a local of its own, because the
+        /// pattern that names it is a declaration and C# lets a name be declared once per scope. Every other use of
+        /// the allocator produces one local per generated file, so a single template with a single such hop is
+        /// indifferent to what the allocator returns — and the whole suite was.
+        /// </summary>
+        [Fact]
+        public void TwoRefStructHopsInOneExpressionGetDistinctLocals()
+        {
+            const string key = "views/two-ref-struct-hops.heddle";
+            const string template =
+                "@model(){{Heddle.Generator.IntegrationTests.Fixtures.NestedRefStructModel}}@\\\n" +
+                "@(Inner.Buf.Length + Inner.Buf.Length)";
+            var model = new NestedRefStructModel { Inner = new RefStructModel() };
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template, typeof(NestedRefStructModel), model);
+
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal("10", precompiled);
+        }
+
+        /// <summary>
+        /// A ref struct as the <b>model</b>, which the hop rule never looked at — it guards the far end of a path,
+        /// and a model type is not the far end of anything. Every generated entry point takes the model twice, once
+        /// as a typed parameter and once as a cast off an <c>object</c>, and a ref struct can be neither: the
+        /// parameter is refused where the strategy hands it over and the cast is refused outright, so the consumer's
+        /// build broke on a template that had nothing wrong with its syntax.
+        /// <para>The engine <em>compiles</em> this one and refuses it at render, with a catchable exception naming
+        /// the mismatch. That is a far better answer than a broken build, and only the dynamic tier can give it.</para>
+        /// </summary>
+        [Fact]
+        public void ARefStructModelDegradesInsteadOfBreakingTheBuild()
+        {
+            const string key = "views/ref-struct-model.heddle";
+            const string template = "@model(){{System.ReadOnlySpan<char>}}@\\\n@(Length)";
+
+            var gen = DifferentialHarness.Generate(new[] { (key, template) });
+            DifferentialHarness.ExpectDegrade(gen, key);
+            Assert.DoesNotContain(gen.Diagnostics,
+                d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
+
+            // The engine's own answer, which the degrade exists to let through: it compiles, and says what is wrong
+            // when asked to render.
+            var dynamicTemplate = new Heddle.HeddleTemplate(template,
+                new Heddle.Runtime.CompileContext(typeof(System.ReadOnlySpan<char>)));
+            Assert.True(dynamicTemplate.CompileResult.Success, dynamicTemplate.CompileResult.ToString());
+            var error = Assert.ThrowsAny<Heddle.Exceptions.TemplateProcessingException>(
+                () => dynamicTemplate.Generate("hello"));
+            Assert.Contains("Type mismatch", error.Message, System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>A ref struct as a <b>definition's</b> model type — the same refusal one level down, where the
+        /// generated body casts the scope's <c>object</c> to it.</summary>
+        [Fact]
+        public void ARefStructDefinitionModelDegradesInsteadOfBreakingTheBuild()
+        {
+            const string key = "views/ref-struct-definition-model.heddle";
+            const string template = "@%<card>{{[@(Length)]}} :: System.ReadOnlySpan<char>%@\\\n@card()\n";
+
+            var gen = DifferentialHarness.Generate(new[] { (key, template) });
+            DifferentialHarness.ExpectDegrade(gen, key);
+            Assert.DoesNotContain(gen.Diagnostics,
+                d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
+        }
+
         /// <summary>The same paths with the intermediate reference present: the value is there, so neither tier has
         /// to invent one. This is the half that was already green, and it has to stay that way — a fix that makes
         /// the null case agree by breaking the non-null case has traded one divergence for another.</summary>

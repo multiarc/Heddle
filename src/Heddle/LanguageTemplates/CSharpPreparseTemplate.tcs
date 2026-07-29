@@ -10,7 +10,7 @@ namespace Heddle.Runtime {
 
 		public static object PreProcessData(@(ModelType) model, @(ChainedType) chained, @(RootModelType) root)
 		{
-			return @(Expression);
+			return unchecked(@(Expression));
 		}
 	}
 }

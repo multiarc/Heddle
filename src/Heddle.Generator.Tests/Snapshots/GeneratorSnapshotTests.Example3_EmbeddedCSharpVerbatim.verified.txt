@@ -35,7 +35,7 @@ namespace Heddle.Generated
 #line hidden
                 scope.Renderer.Render(P0);
 #line (2, 6) - (2, 21) "views/embed.heddle"
-                E0.RenderData(scope.Model((object)(model.Length)));
+                E0.RenderData(scope.Model((object)(unchecked(model.Length))));
 #line hidden
                 scope.Renderer.Render(P1);
 #line default
@@ -45,7 +45,7 @@ namespace Heddle.Generated
             {
                 var model = (string)scope.ModelData;
 #line (2, 6) - (2, 21) "views/embed.heddle"
-                var v0 = E0.ProcessData(scope.Model((object)(model.Length))) as string ?? string.Empty;
+                var v0 = E0.ProcessData(scope.Model((object)(unchecked(model.Length)))) as string ?? string.Empty;
 #line hidden
                 return string.Concat(P0, v0, P1);
 #line default

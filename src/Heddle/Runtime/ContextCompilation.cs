@@ -113,105 +113,108 @@ namespace Heddle.Runtime
             }
         }
 
+        /// <summary>
+        /// Compiles the scope's embedded C# expressions into one assembly and binds each generated method back to
+        /// its parameter.
+        /// <para>Arithmetic here is unchecked, and the class template says so in the generated source rather than
+        /// leaving it to <see cref="CSharpCompilationOptions"/>. The option settles the run-time case; it cannot
+        /// settle the constant one, which C# checks whatever the compilation is configured to do. The engine's other
+        /// expression tier builds <c>Expression.Add</c> and friends, which wrap, so the same template text has to
+        /// wrap here too — and the precompiled tier, which pastes this text into the consumer's assembly under
+        /// settings neither the engine nor the template chooses, wraps it for the same reason.</para>
+        /// </summary>
         private static void CompileCSharp(CompileScope context)
         {
+            if (!InitErrors.Success)
+                throw new TemplateCompileException("Cannot compile base C# generation templates",
+                    InitErrors.Errors);
+            var code = CodeGenerator.Generate(context.CSharpContext);
+
+            // There was a cache keyed on this source. It could not work: the source declares a class named
+            // after CSharpContext.ClassGuid, a fresh Guid per context, so the key was unique per compile and
+            // measurably never hit — eight compiles of three distinct expressions produced eight adds and no
+            // reads. All it did was retain every generated source string for the life of the process. A hit
+            // would in fact have been worse than a miss: the entry class is looked up below by *this* context's
+            // guid, which another context's assembly does not contain.
+            lock (LockObj)
             {
-                if (!InitErrors.Success)
-                    throw new TemplateCompileException("Cannot compile base C# generation templates",
-                        InitErrors.Errors);
-                var code = CodeGenerator.Generate(context.CSharpContext);
-
-                // There was a cache keyed on this source. It could not work: the source declares a class named
-                // after CSharpContext.ClassGuid, a fresh Guid per context, so the key was unique per compile and
-                // measurably never hit — eight compiles of three distinct expressions produced eight adds and no
-                // reads. All it did was retain every generated source string for the life of the process. A hit
-                // would in fact have been worse than a miss: the entry class is looked up below by *this* context's
-                // guid, which another context's assembly does not contain.
+                var tree = CSharpSyntaxTree.ParseText(code);
+                var compilation = CSharpCompilation.Create(
+                    context.CompileContext.ScopeType + "_" + context.CSharpContext.ClassGuid.ToString("N"),
+                    new[] {tree},
+                    AssemblyHelper.GetApplicationReferences(),
+                    new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                        .WithSpecificDiagnosticOptions(
+                            new Dictionary<string, ReportDiagnostic>
+                            {
+                                {"CS1701", ReportDiagnostic.Suppress}, // Binding redirects
+                                {"CS1702", ReportDiagnostic.Suppress},
+                                {"CS1705", ReportDiagnostic.Suppress}
+                            }).WithOptimizationLevel(OptimizationLevel.Release)
+                        .WithGeneralDiagnosticOption(ReportDiagnostic.Default)
+                        .WithPlatform(Platform.AnyCpu));
+                var diagnostics = compilation.GetDiagnostics();
+                if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
                 {
-                    lock (LockObj)
-                    {
-                        {
-                            var tree = CSharpSyntaxTree.ParseText(code);
-                            var compilation = CSharpCompilation.Create(
-                                context.CompileContext.ScopeType + "_" + context.CSharpContext.ClassGuid.ToString("N"),
-                                new[] {tree},
-                                AssemblyHelper.GetApplicationReferences(),
-                                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-                                    .WithSpecificDiagnosticOptions(
-                                        new Dictionary<string, ReportDiagnostic>
-                                        {
-                                            {"CS1701", ReportDiagnostic.Suppress}, // Binding redirects
-                                            {"CS1702", ReportDiagnostic.Suppress},
-                                            {"CS1705", ReportDiagnostic.Suppress}
-                                        }).WithOptimizationLevel(OptimizationLevel.Release)
-                                    .WithGeneralDiagnosticOption(ReportDiagnostic.Default)
-                                    .WithPlatform(Platform.AnyCpu));
-                            var diagnostics = compilation.GetDiagnostics();
-                            if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
-                            {
-                                context.CompileContext.CompileErrors.AddRange(FormatErrors(diagnostics,
-                                    context.CSharpContext.Methods.First().Position));
-                                return;
-                            }
-
-                            using (var codeStream = new MemoryStream())
-                            {
-                                using var symbolStream = new MemoryStream();
-                                var results = compilation.Emit(codeStream, symbolStream,
-                                    options: new EmitOptions(
-                                        debugInformationFormat: DebugInformationFormat.PortablePdb));
-                                if (!results.Success)
-                                {
-                                    context.CompileContext.CompileErrors.AddRange(FormatErrors(results.Diagnostics,
-                                        context.CSharpContext.Methods.First().Position));
-                                    return;
-                                }
-
-                                context.CSharpContext.CompiledAssembly =
-                                    Assembly.Load(codeStream.ToArray(), symbolStream.ToArray());
-                                // Ours, not the host's: observation must not map its types.
-                                Native.AssemblyHelper.MarkEngineEmitted(context.CSharpContext.CompiledAssembly);
-                            }
-
-                        }
-                    }
+                    context.CompileContext.CompileErrors.AddRange(FormatErrors(diagnostics,
+                        context.CSharpContext.Methods.First().Position));
+                    return;
                 }
 
-                var classType =
-                    context.CSharpContext.CompiledAssembly.GetType(
-                        $"Heddle.Runtime.CSE_{context.CSharpContext.ClassGuid:N}");
-                var methodNumber = 0;
-                foreach (var expressionCompilation in context.CSharpContext.Methods)
+                using (var codeStream = new MemoryStream())
                 {
-                    if (expressionCompilation.RuntimeCallParameter is CompiledParameter compiledParameter)
+                    using var symbolStream = new MemoryStream();
+                    var results = compilation.Emit(codeStream, symbolStream,
+                        options: new EmitOptions(
+                            debugInformationFormat: DebugInformationFormat.PortablePdb));
+                    if (!results.Success)
                     {
-                        var method = classType.GetMethod(
-                            $"ProcessData_{expressionCompilation.ExtensionName}{methodNumber}",
-                            BindingFlags.Public | BindingFlags.Static);
-                        if (method != null)
-                        {
-                            var modelParameter = Expression.Parameter(typeof(object));
-                            var chainedParameter = Expression.Parameter(typeof(object));
-                            var rootParameter = Expression.Parameter(typeof(object));
-                            compiledParameter.ParameterImplementation = Expression
-                                .Lambda<Func<object, object, object, object>>(Expression.Convert(Expression.Call(null,
-                                            method,
-                                            Expression.Convert(modelParameter, expressionCompilation.ModelType.Type),
-                                            Expression.Convert(chainedParameter,
-                                                expressionCompilation.ChainedType.Type),
-                                            Expression.Convert(rootParameter,
-                                                expressionCompilation.RootModelType.Type)),
-                                        typeof(object)),
-                                    modelParameter,
-                                    chainedParameter,
-                                    rootParameter).Compile();
-                            methodNumber++;
-                        }
+                        context.CompileContext.CompileErrors.AddRange(FormatErrors(results.Diagnostics,
+                            context.CSharpContext.Methods.First().Position));
+                        return;
                     }
-                }
 
-                context.CSharpContext.Compiled = true;
+                    context.CSharpContext.CompiledAssembly =
+                        Assembly.Load(codeStream.ToArray(), symbolStream.ToArray());
+                    // Ours, not the host's: observation must not map its types.
+                    Native.AssemblyHelper.MarkEngineEmitted(context.CSharpContext.CompiledAssembly);
+                }
             }
+
+            var classType =
+                context.CSharpContext.CompiledAssembly.GetType(
+                    $"Heddle.Runtime.CSE_{context.CSharpContext.ClassGuid:N}");
+            var methodNumber = 0;
+            foreach (var expressionCompilation in context.CSharpContext.Methods)
+            {
+                if (expressionCompilation.RuntimeCallParameter is CompiledParameter compiledParameter)
+                {
+                    var method = classType.GetMethod(
+                        $"ProcessData_{expressionCompilation.ExtensionName}{methodNumber}",
+                        BindingFlags.Public | BindingFlags.Static);
+                    if (method != null)
+                    {
+                        var modelParameter = Expression.Parameter(typeof(object));
+                        var chainedParameter = Expression.Parameter(typeof(object));
+                        var rootParameter = Expression.Parameter(typeof(object));
+                        compiledParameter.ParameterImplementation = Expression
+                            .Lambda<Func<object, object, object, object>>(Expression.Convert(Expression.Call(null,
+                                        method,
+                                        Expression.Convert(modelParameter, expressionCompilation.ModelType.Type),
+                                        Expression.Convert(chainedParameter,
+                                            expressionCompilation.ChainedType.Type),
+                                        Expression.Convert(rootParameter,
+                                            expressionCompilation.RootModelType.Type)),
+                                    typeof(object)),
+                                modelParameter,
+                                chainedParameter,
+                                rootParameter).Compile();
+                        methodNumber++;
+                    }
+                }
+            }
+
+            context.CSharpContext.Compiled = true;
         }
 
         internal static IEnumerable<HeddleCompileError> FormatErrors(ImmutableArray<Diagnostic> diagnostics, BlockPosition position)

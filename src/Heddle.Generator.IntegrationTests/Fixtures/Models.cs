@@ -276,10 +276,31 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         private string Hidden => "no";
     }
 
+    /// <summary>A model whose one member fails on demand — the ordinary kind of failure a definition body has to be
+    /// able to survive, since the carrier that ran it is cached for the life of the process.</summary>
+    public sealed class ExplodingModel
+    {
+        public bool Explode { get; set; }
+
+        public string Value => Explode ? throw new System.InvalidOperationException("boom") : "ok";
+    }
+
     /// <summary>An <c>internal</c> model type: nameable by the engine, which resolves model types by reflection over
     /// loaded assemblies, and un-nameable by generated code in any other assembly.</summary>
     internal sealed class InternalModel
     {
         public string Title => "hidden";
+    }
+
+    /// <summary>The member half and the type half pulled apart. <see cref="Title"/> is declared on a public base, so
+    /// a referencing compilation may name it and the member check has nothing to object to — while the type it is
+    /// read off still cannot appear in that compilation's source. Only a guard on the type itself catches this.</summary>
+    public abstract class PublicTitleBase
+    {
+        public string Title => "inherited";
+    }
+
+    internal sealed class InternalDerivedModel : PublicTitleBase
+    {
     }
 }

@@ -184,21 +184,11 @@ namespace Heddle.Generator.Emit
             if (!isDynamic)
             {
                 _modelSymbol = _resolver.ResolveModelType(_modelTypeText, _usings);
-                if (_modelSymbol != null && !_resolver.IsAccessibleFromCompilation(_modelSymbol))
-                {
-                    // HED7030: an internal model type in a referenced assembly resolves here — types are imported
-                    // from metadata whatever their accessibility — but no code generated into the consumer's
-                    // assembly may name it. Emitting the cast anyway put a wall of CS0122 on generated .g.cs into
-                    // the consumer's build, carrying no Heddle id and no .heddle position. The engine binds the
-                    // type by reflection and renders it, so the dynamic tier is the tier that can serve it.
-                    _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.InaccessibleModelSymbol,
-                        _modelDirectivePosition, SymbolTypeResolver.FullyQualified(_modelSymbol)));
+                if (!CanWriteTypeName(_modelSymbol, _modelDirectivePosition, out var modelReason))
                     return new Result
                     {
-                        Emitted = false, Diagnostics = _diagnostics,
-                        UnsupportedReason = "model type is not accessible from this compilation"
+                        Emitted = false, Diagnostics = _diagnostics, UnsupportedReason = modelReason
                     };
-                }
 
                 if (_modelSymbol != null)
                     modelType = SymbolTypeResolver.FullyQualified(_modelSymbol);
@@ -1455,6 +1445,9 @@ namespace Heddle.Generator.Emit
                 return default;
             }
 
+            if (!CanWriteTypeName(sym, def.Position, out reason))
+                return default;
+
             var fq = SymbolTypeResolver.FullyQualified(sym);
             return new BodyContext("(" + fq + ")", sym, false);
         }
@@ -1514,7 +1507,7 @@ namespace Heddle.Generator.Emit
                 foreach (var decl in layer.PropDeclarations)
                 {
                     var sym = _resolver.ResolveModelType(decl.TypeName, _usings);
-                    if (sym == null)
+                    if (sym == null || !CanWriteTypeName(sym, layer.Position, out _))
                     {
                         layout.Failed = true;
                         continue;
@@ -1838,6 +1831,7 @@ namespace Heddle.Generator.Emit
             if (slotName == null) { reason = "slot definition without slot type"; return default; }
             var sym = _resolver.ResolveModelType(slotName, _usings);
             if (sym == null) { reason = "unresolved slot type '" + slotName + "'"; return default; }
+            if (!CanWriteTypeName(sym, def.Position, out reason)) return default;
             var fq = SymbolTypeResolver.FullyQualified(sym);
             return new BodyContext("(" + fq + ")", sym, false);
         }
@@ -2059,7 +2053,14 @@ namespace Heddle.Generator.Emit
                 return false;
             }
 
-            paramExpr = "(object)(" + csharp + ")";
+            // Wrapped, for the same reason the native writer wraps: the engine compiles this very text into an
+            // assembly of its own with overflow checking off, unconditionally, while this copy is compiled by the
+            // consumer under whatever <CheckForOverflowUnderflow> that project happens to set. Pasted bare, the same
+            // template rendered a wrapped number in one project and threw OverflowException in the next, decided by
+            // an MSBuild property the template knows nothing about. The wrapper also settles the constant case,
+            // which no compilation option can: C# checks a constant expression whatever the compilation says, so
+            // only a syntactic unchecked makes the two tiers fold it the same way.
+            paramExpr = "(object)(unchecked(" + csharp + "))";
             usesCSharpModel = true;
             return true;
         }
@@ -2235,7 +2236,8 @@ namespace Heddle.Generator.Emit
             {
                 var seenKey = mf.Path + "@" + mf.Position.StartIndex;
                 if (_seenMemberFailures.Add(seenKey))
-                    _diagnostics.Add(MemberDiagnostic(mf));
+                    _diagnostics.Add(MemberDiagnostic(mf,
+                        IsInaccessibleRatherThanMissing(mf.Receiver, mf.Member, mf.Inaccessible)));
             }
 
             // HED7025: defensive guard against duplicate reports (failure mode is asymmetric: noise vs discovery in build log).
@@ -2279,19 +2281,68 @@ namespace Heddle.Generator.Emit
             var member = idx >= 0 && idx < segments.Length ? segments[idx] : segments[segments.Length - 1];
             var seenKey = display + "@" + at;
             if (_seenMemberFailures.Add(seenKey))
-                _diagnostics.Add(MemberDiagnostic(new SymbolMemberResolver.MemberFailure(
-                    SymbolTypeResolver.FullyQualified(receiver), member, display, position,
-                    resolution.Kind == SymbolTypeResolver.PathKind.Inaccessible)));
+                _diagnostics.Add(MemberDiagnostic(
+                    new SymbolMemberResolver.MemberFailure(receiver, member, display, position),
+                    IsInaccessibleRatherThanMissing(receiver, member,
+                        resolution.Kind == SymbolTypeResolver.PathKind.Inaccessible)));
         }
+
+        /// <summary>Whether the failing hop is one this compilation is merely not shown, rather than one that is not
+        /// there. Asked at the one point a member failure becomes a diagnostic: the probe behind it builds a second
+        /// compilation, and every other caller of the member walk throws the answer away.</summary>
+        private bool IsInaccessibleRatherThanMissing(ITypeSymbol receiver, string member, bool alreadyKnown) =>
+            alreadyKnown || _resolver.HiddenByAccessibility(receiver, member);
 
         /// <summary>HED7008 for a member that is not there, HED7030 for one this compilation merely cannot see. The
         /// second is not a template fault, so it degrades the template instead of failing the build.</summary>
-        private static EmitDiagnostic MemberDiagnostic(SymbolMemberResolver.MemberFailure failure) =>
-            failure.Inaccessible
+        private static EmitDiagnostic MemberDiagnostic(SymbolMemberResolver.MemberFailure failure,
+            bool inaccessible) =>
+            inaccessible
                 ? new EmitDiagnostic(GeneratorDiagnostics.InaccessibleModelSymbol, failure.Position,
                     failure.ReceiverType + "." + failure.Member)
                 : new EmitDiagnostic(GeneratorDiagnostics.UnresolvableMember, failure.Position,
                     failure.ReceiverType, failure.Member, failure.Path);
+
+        private readonly HashSet<string> _seenInaccessibleTypes = new HashSet<string>(System.StringComparer.Ordinal);
+
+        /// <summary>
+        /// Whether generated code may be written against <paramref name="type"/> at all — asked of every type the
+        /// emitter spells into a cast: the model, a definition's model, a slot type, a prop's type. Both refusals
+        /// end the same way if they go unasked, in the consumer's build failing on code the consumer did not write.
+        /// <para>Accessibility first. Types are imported from metadata whatever theirs is, so an <c>internal</c> type
+        /// in a referenced assembly resolves here and its fully-qualified name goes straight into a cast the build
+        /// then rejects with CS0122 — no Heddle id, no <c>.heddle</c> position, and unfixable without editing the
+        /// model. The engine binds it by reflection, which ignores assembly boundaries, so the dynamic tier renders
+        /// it unchanged; HED7030 says so and the template degrades.</para>
+        /// <para>Then a ref struct, which cannot be a generated entry point's model at all: the scope carries the
+        /// model as <c>object</c> and a ref struct cannot be boxed, so the parameter and the cast are both errors
+        /// (CS1503, CS0457) in the consumer's project. The engine <em>compiles</em> such a template and refuses it at
+        /// render, with a catchable exception naming the mismatch — a far better answer than a broken build, and one
+        /// only the dynamic tier can give, so this degrades without a diagnostic of its own.</para>
+        /// </summary>
+        private bool CanWriteTypeName(ITypeSymbol type, BlockPosition position, out string reason)
+        {
+            reason = null;
+            if (type == null)
+                return true;
+
+            var fq = SymbolTypeResolver.FullyQualified(type);
+            if (!_resolver.IsAccessibleFromCompilation(type))
+            {
+                if (_seenInaccessibleTypes.Add(fq + "@" + position.StartIndex))
+                    _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.InaccessibleModelSymbol, position, fq));
+                reason = "'" + fq + "' is not accessible from this compilation";
+                return false;
+            }
+
+            if (type.IsRefLikeType)
+            {
+                reason = "'" + fq + "' is a ref struct and cannot carry a model";
+                return false;
+            }
+
+            return true;
+        }
 
         /// <summary>True when <paramref name="text"/> is a plain (possibly dotted, possibly <c>?</c>-suffixed) type
         /// name — the syntax the model-type resolver models. Open generics, arrays, tuples and whitespace forms are

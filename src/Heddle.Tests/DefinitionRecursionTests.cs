@@ -46,6 +46,31 @@ namespace Heddle.Tests
             Assert.Equal(healthy, template.Generate(new RecursionProbeModel { Explode = false }));
         }
 
+        /// <summary>
+        /// The same rule on the other entry point. A definition reached for its <i>value</i> rather than for its
+        /// rendering — which is what a call inside another definition's caller content is — runs through
+        /// <c>ProcessData</c>, and that copy of the counter is a separate one to get wrong. Every existing test
+        /// reaches the rendering half; this shape is the one that does not.
+        /// </summary>
+        [Fact]
+        public void AFailedValueProducingRenderDoesNotSpendTheRecursionBudgetEither()
+        {
+            const string document =
+                "@%<card>{{@(Value)}} :: Heddle.Tests.RecursionProbeModel%@\\\n" +
+                "@%<frame>{{[@out()]}} :: Heddle.Tests.RecursionProbeModel%@\\\n" +
+                "@frame(){{@card()}}";
+            var template = new HeddleTemplate(document, new CompileContext(typeof(RecursionProbeModel)));
+            Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
+
+            var healthy = template.Generate(new RecursionProbeModel { Explode = false });
+
+            var options = new TemplateOptions();
+            for (var i = 0; i < options.MaxRecursionCount * 2; i++)
+                Assert.ThrowsAny<Exception>(() => template.Generate(new RecursionProbeModel { Explode = true }));
+
+            Assert.Equal(healthy, template.Generate(new RecursionProbeModel { Explode = false }));
+        }
+
         /// <summary>The guard itself still fires — giving the budget back on failure must not give it back on the
         /// way down a genuine recursion.</summary>
         [Fact]

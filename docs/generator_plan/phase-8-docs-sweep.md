@@ -1421,3 +1421,72 @@ process touched. That is a real property with a real consequence for hosts, and 
 differential test asks whether two tiers emit the same bytes from the same inputs, and "the model
 assembly is loaded" is an input — but the property is now asserted head-on against a GUID-named
 assembly built at test time, and a second test pins the suppression itself.
+
+## Ninth review cycle (2026-07-29)
+
+Two reviewers, independent. Both led with the same finding, and it is the shape this record keeps
+returning to: the previous round fixed a class of defect on one code path and wrote the commit
+message as though it had fixed the class.
+
+### The fix that covered one of two paths
+
+**Embedded C# arithmetic was still not `unchecked`.** The previous round wrapped the native
+expression writer; the C# tier pastes the author's expression through a different method, and it
+was left bare. So the sentence in that commit message — a template that renders a wrapped number
+in one project and throws `OverflowException` in the next, decided by an MSBuild property it knows
+nothing about — went on being true for anyone using `ExpressionMode.FullCSharp`.
+
+Fixing it needed a decision the native case did not. C# checks a *constant* expression whatever
+the compilation is configured to do, so wrapping only the generator would have moved
+`@(@100000 * 100000 * 100000)` from "both tiers refuse" to "precompiled renders, engine refuses" —
+trading one divergence for another. Both sides are wrapped instead, engine included.
+
+**That changes the engine, and the cost is real:** a constant overflow in embedded C# used to be a
+compile error and now wraps. The argument for accepting it is that the engine was already
+inconsistent with itself — its native tier builds `Expression.Multiply`, which is unchecked, so
+the identical template has always wrapped silently there. Written up in the language reference
+with `checked(…)` as the escape hatch rather than left for someone to discover.
+
+### Guards scoped narrower than the defect they were written for
+
+Three separate instances, all found this cycle:
+
+- **`HED7030` missed a `CompilationReference`.** It detected an internal member by its *absence*
+  from the symbol model, which is true only of a metadata reference. A Roslyn workspace hands the
+  generator a `CompilationReference` for a project-to-project reference, where the member is
+  present — so it resolved and was emitted, and the consumer's build died on `CS0122` in `.g.cs`.
+  Detection-by-absence and detection-by-accessibility are two halves and only one had been built.
+- **The accessibility gate guarded `@model()` alone.** Definition, slot and prop model types each
+  resolved a type and wrote its name into a cast without asking whether this assembly may name it.
+- **`EndsOnRefStruct` guarded hops, not the model.** `@model(){{System.ReadOnlySpan<char>}}` emitted
+  a signature that cannot compile, while the engine accepts the template and reports an ordinary
+  catchable error at render.
+
+### The accessibility probe reverted to the bug on ambiguity
+
+`GetTypeByMetadataName` returns null when a name is found in more than one reference, and the
+caller kept the answer it already had — `HED7008` at error severity, over a template the engine
+renders. The plural `GetTypesByMetadataName` degrades instead. The same probe was also being built
+on *every* member miss, including from the estimator, which never reports: in an editor that is one
+extra compilation per keystroke through a half-typed member name. It now sits behind the reporting
+decision, and path resolution is memoised.
+
+### Six properties that nothing pinned, two of them one day old
+
+Each was demonstrated by mutating the production code and watching every suite stay green:
+hop-local name uniqueness (a constant name leaves 567 integration tests green and breaks a real
+template with `CS0128`); the `ProcessData` half of the definition recursion guard; both
+`PreparseCache` retire rules; and all three `AssemblyHelper` orderings. One of the newest tests was
+also retargeting the process-global cache into a band it never left, silently disabling the C# tier
+cache for every test that ran after it.
+
+Two of the `AssemblyHelper` orderings **cannot** be pinned — they are claims about what no
+concurrent caller can observe, and a racing test passes by luck when the code is wrong. That is
+written in the test file in plain words rather than covered by a test that would imply more.
+
+### Declined, deliberately
+
+A hop whose *property type* is internal still emits a name the consumer cannot compile. Checking it
+where the member check sits would falsely degrade the ordinary `m?.Inner?.Name` shape, where no
+type name is ever written; doing it properly needs a form-aware check at the point of emission.
+Recorded rather than half-fixed.
