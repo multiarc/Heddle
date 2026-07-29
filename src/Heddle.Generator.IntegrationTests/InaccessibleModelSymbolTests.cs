@@ -80,6 +80,31 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
+        /// The <c>@model</c> directive's own type guard, pinned on a model whose member the guard above cannot
+        /// stand in for. <see cref="InternalDerivedModel"/> declares <see cref="PublicTitleBase.Title"/> on a public
+        /// base, so the member-level rule about names this assembly may not spell has nothing to object to and the
+        /// path resolves — leaving the type guard as the only thing between the emitter and six CS0122 against
+        /// <c>.g.cs</c>, one per cast and parameter carrying the internal name.
+        /// <para>The test above cannot pin it: its model's member is declared on the internal type itself, so the
+        /// member rule refuses it first and the type rule is never reached.</para>
+        /// </summary>
+        [Fact]
+        public void AnInternalModelTypeWithAPublicInheritedMemberDegradesRatherThanEmittingACastTheConsumerCannotCompile()
+        {
+            const string key = "views/internal-model-inherited-member.heddle";
+            var template = "@model(){{" + InternalDerived + "}}@\\\n@(Title)\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, template) });
+
+            Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            var hed7030 = Assert.Single(gen.Diagnostics.Where(d => d.Id == "HED7030"));
+            Assert.Contains("InternalDerivedModel", hed7030.GetMessage());
+            Assert.Contains(key, hed7030.Location.GetLineSpan().Path);
+            DifferentialHarness.ExpectDegrade(gen, key);
+
+            Assert.Equal("inherited\n", Dynamic(template, typeof(InternalDerivedModel), new InternalDerivedModel()));
+        }
+
+        /// <summary>
         /// The near miss the degrade must not swallow. A <c>private</c> member is visible in the full-metadata view
         /// the emitter consults, so only applying the <b>engine's own</b> visibility policy there keeps this an
         /// error — the engine rejects a private getter too, and both tiers must refuse the same template.

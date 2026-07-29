@@ -21,6 +21,7 @@ namespace Heddle.Tests
     /// </summary>
     public class CSharpTierMetadataTests
     {
+
         /// <summary>
         /// An assembly with no file behind it must still yield metadata to compile against. This is not an edge
         /// case: in a single-file or WASM publish <b>no</b> assembly has a location, so a provider that requires one
@@ -156,8 +157,7 @@ namespace Heddle.Tests
             var suffix = Guid.NewGuid().ToString("N").Substring(0, 12);
             var source = $@"namespace LateNs{suffix} {{ public static class Late{suffix} {{ public static string V() => ""late""; }} }}";
             var bytes = EmitNamed(source, out var assemblyName);
-            var path = Path.Combine(AppContext.BaseDirectory, assemblyName + ".dll");
-            File.WriteAllBytes(path, bytes);
+            var path = ProbeAssemblyFiles.WriteBesideTestAssembly(bytes, assemblyName);
 
             var document = $"@model(){{{{dynamic}}}}@(@ LateNs{suffix}.Late{suffix}.V() )";
             Assert.False(Compiles(document), "the type is not loaded yet, so this must fail first");

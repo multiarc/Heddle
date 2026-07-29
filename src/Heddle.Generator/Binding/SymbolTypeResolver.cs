@@ -190,8 +190,26 @@ namespace Heddle.Generator.Binding
             return false;
         }
 
-        private readonly Dictionary<string, PathResolution> _paths =
-            new Dictionary<string, PathResolution>(System.StringComparer.Ordinal);
+        /// <summary>The memo key: the receiver <b>symbol</b> and the segments. Not a display string — two types
+        /// carrying the same fully-qualified name is ordinary in a large reference closure, and keying on the name
+        /// handed the second one the first one's <see cref="PathResolution.ResultType"/>, which decides the
+        /// null-safety form, the numeric widening, the formatter and the member name the emitter writes. The
+        /// separator is one no identifier can contain, so <c>["A.B"]</c> and <c>["A","B"]</c> stay distinct.</summary>
+        private readonly Dictionary<(ITypeSymbol Start, string Path), PathResolution> _paths =
+            new Dictionary<(ITypeSymbol, string), PathResolution>(PathKeyComparer.Instance);
+
+        private sealed class PathKeyComparer : IEqualityComparer<(ITypeSymbol Start, string Path)>
+        {
+            internal static readonly PathKeyComparer Instance = new PathKeyComparer();
+
+            public bool Equals((ITypeSymbol Start, string Path) x, (ITypeSymbol Start, string Path) y) =>
+                SymbolEqualityComparer.Default.Equals(x.Start, y.Start) &&
+                string.Equals(x.Path, y.Path, System.StringComparison.Ordinal);
+
+            public int GetHashCode((ITypeSymbol Start, string Path) key) =>
+                unchecked((key.Start == null ? 0 : SymbolEqualityComparer.Default.GetHashCode(key.Start)) * 397 ^
+                          key.Path.GetHashCode());
+        }
 
         /// <summary>
         /// Walks <paramref name="segments"/> off <paramref name="start"/>, typing each hop.
@@ -200,8 +218,7 @@ namespace Heddle.Generator.Binding
         /// </summary>
         public PathResolution ResolvePath(ITypeSymbol start, IReadOnlyList<string> segments)
         {
-            var key = (start == null ? "<null>" : start.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)) +
-                      " " + string.Join(".", segments);
+            var key = (start, string.Join("\0", segments));
             if (_paths.TryGetValue(key, out var memoized))
                 return memoized;
             var resolved = ResolvePathCore(start, segments);
@@ -245,7 +262,11 @@ namespace Heddle.Generator.Binding
                 // a compiled file — a project-to-project reference in any workspace — where Roslyn shows the
                 // internal member instead of hiding it, and the emitter wrote it straight into a `.g.cs` the
                 // consumer's build then rejected with CS0122.
-                if (!IsAccessibleFromCompilation(prop) || !IsAccessibleFromCompilation(prop.GetMethod))
+                // Same class of refusal, different word from the compiler: reflection ignores [Obsolete] entirely,
+                // so the engine reads an error-obsolete member and renders, while the generated read of it is a
+                // CS0619 in the consumer's build — again attributed to a .heddle file it cannot be fixed from.
+                if (!IsAccessibleFromCompilation(prop) || !IsAccessibleFromCompilation(prop.GetMethod) ||
+                    IsObsoleteError(prop) || IsObsoleteError(prop.GetMethod))
                 {
                     result.Kind = PathKind.Inaccessible;
                     result.DynamicIndex = i;
@@ -264,6 +285,47 @@ namespace Heddle.Generator.Binding
         /// <summary>Member lookup uses the shared MemberPathWalk through a Roslyn adapter, aligned with runtime behavior.</summary>
         private static IPropertySymbol FindProperty(ITypeSymbol type, string name) =>
             MemberPathWalk.TryFind(SymbolMemberModel.Instance, type, name, out var found) ? found : null;
+
+        /// <summary>
+        /// Whether <paramref name="symbol"/> carries <c>[Obsolete(…, error: true)]</c> — the attribute form that
+        /// makes every mention of the name a compile <b>error</b> (CS0619/CS0672) rather than a warning.
+        /// <para>Only the error form counts. Reflection ignores <c>[Obsolete]</c> altogether, so both forms render
+        /// on the engine; degrading on the warning form as well would take every deprecated-but-working model off
+        /// the precompiled tier, which is a cost with nothing on the other side of it. The generated file already
+        /// opens with a blanket <c>#pragma warning disable</c>, so the warning form raises nothing in the consumer's
+        /// build against code they did not write, which is the only thing that had to be true for leaving it.</para>
+        /// <para>Nested spellings are walked: an array of an error-obsolete element type, or a generic constructed
+        /// over one, is just as unwritable as the bare name.</para>
+        /// </summary>
+        public static bool IsObsoleteError(ISymbol symbol)
+        {
+            if (symbol == null)
+                return false;
+
+            if (symbol is IArrayTypeSymbol array)
+                return IsObsoleteError(array.ElementType);
+
+            foreach (var attribute in symbol.GetAttributes())
+            {
+                var attributeClass = attribute.AttributeClass;
+                if (attributeClass == null ||
+                    !string.Equals(attributeClass.MetadataName, "ObsoleteAttribute", System.StringComparison.Ordinal) ||
+                    attributeClass.ContainingNamespace?.ToDisplayString() != "System")
+                    continue;
+                var arguments = attribute.ConstructorArguments;
+                if (arguments.Length >= 2 && arguments[1].Value is bool isError && isError)
+                    return true;
+            }
+
+            if (symbol is INamedTypeSymbol named)
+            {
+                foreach (var argument in named.TypeArguments)
+                    if (IsObsoleteError(argument))
+                        return true;
+            }
+
+            return false;
+        }
 
         /// <summary>Whether generated code in the compilation's own assembly may name <paramref name="symbol"/>.
         /// The emitter writes fully-qualified type names into the consumer's assembly, so a name it may not write is

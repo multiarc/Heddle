@@ -303,14 +303,14 @@ namespace Heddle.Generator.Emit
         private readonly struct BodyContext
         {
             public BodyContext(string modelCast, ITypeSymbol modelSymbol, bool isDynamic, PropLayoutInfo props = null,
-                bool inSlot = false, Dictionary<string, DefinitionItem> fills = null,
+                ITypeSymbol slotType = null, Dictionary<string, DefinitionItem> fills = null,
                 PropLayoutInfo regionHostProps = null)
             {
                 ModelCast = modelCast;
                 ModelSymbol = modelSymbol;
                 IsDynamic = isDynamic;
                 Props = props;
-                InSlot = inSlot;
+                SlotType = slotType;
                 Fills = fills;
                 RegionHostProps = regionHostProps;
             }
@@ -324,9 +324,14 @@ namespace Heddle.Generator.Emit
             /// backends resolve identically.</summary>
             public PropLayoutInfo Props { get; }
 
+            /// <summary>The declared slot parameter type inside a slot-declaring definition body, null outside one.
+            /// Carried rather than a bare flag because every <c>@out(value)</c> here has to be checked against it,
+            /// the way the engine checks it when it compiles the same body.</summary>
+            public ITypeSymbol SlotType { get; }
+
             /// <summary>True inside a slot-declaring definition body: <c>@out(value)</c> projects the caller content
             /// (slot mode); outside a slot definition, an <c>@out</c> value is a runtime error the emitter refuses.</summary>
-            public bool InSlot { get; }
+            public bool InSlot => SlotType != null;
 
             /// <summary>The ambient region fill scope — <c>regionName → materialized-fill DefinitionItem</c> —
             /// the generator's parallel to the dynamic tier's <c>RegionFillScope</c> on <c>CompileContext</c>.
@@ -339,13 +344,13 @@ namespace Heddle.Generator.Emit
             public PropLayoutInfo RegionHostProps { get; }
 
             public BodyContext WithProps(PropLayoutInfo props) =>
-                new BodyContext(ModelCast, ModelSymbol, IsDynamic, props, InSlot, Fills, RegionHostProps);
+                new BodyContext(ModelCast, ModelSymbol, IsDynamic, props, SlotType, Fills, RegionHostProps);
 
-            public BodyContext AsSlot() =>
-                new BodyContext(ModelCast, ModelSymbol, IsDynamic, Props, true, Fills, RegionHostProps);
+            public BodyContext AsSlot(ITypeSymbol slotType) =>
+                new BodyContext(ModelCast, ModelSymbol, IsDynamic, Props, slotType, Fills, RegionHostProps);
 
             public BodyContext WithFills(Dictionary<string, DefinitionItem> fills, PropLayoutInfo regionHostProps) =>
-                new BodyContext(ModelCast, ModelSymbol, IsDynamic, Props, InSlot, fills, regionHostProps);
+                new BodyContext(ModelCast, ModelSymbol, IsDynamic, Props, SlotType, fills, regionHostProps);
         }
 
         /// <summary>
@@ -376,7 +381,7 @@ namespace Heddle.Generator.Emit
             {
                 var dynamicCtx = new BodyContext(null, null, true,
                     fills: bctx.Fills, regionHostProps: bctx.RegionHostProps);
-                nested = bctx.InSlot ? dynamicCtx.AsSlot() : dynamicCtx;
+                nested = bctx.InSlot ? dynamicCtx.AsSlot(bctx.SlotType) : dynamicCtx;
                 return true;
             }
 
@@ -1015,13 +1020,18 @@ namespace Heddle.Generator.Emit
         /// box-to-object; implicit numeric widening (incl. widen-then-lift to a nullable target); identity-lift;
         /// reference assignability.
         /// </summary>
-        private bool DefaultConvertible(ITypeSymbol source, ITypeSymbol target)
+        private bool DefaultConvertible(ITypeSymbol source, ITypeSymbol target) =>
+            Convertible(source, target, allowBoxToObject: true);
+
+        /// <summary>The symbol-side <c>PropConversion.CanConvertTypes</c>, flag and all: prop defaults ask with
+        /// boxing allowed, a slot value asks without it, exactly as the two runtime callers do.</summary>
+        private bool Convertible(ITypeSymbol source, ITypeSymbol target, bool allowBoxToObject)
         {
             if (source == null || target == null)
                 return false;
             if (SymbolEqualityComparer.Default.Equals(source, target))
                 return true;                                                     // identity
-            if (target.SpecialType == SpecialType.System_Object && source.IsValueType)
+            if (allowBoxToObject && target.SpecialType == SpecialType.System_Object && source.IsValueType)
                 return true;                                                     // boxing to object
 
             var sourceSpecial = source.SpecialType;
@@ -1125,7 +1135,21 @@ namespace Heddle.Generator.Emit
                 if (layout.Count > 0)
                     defBodyCtx = defBodyCtx.WithProps(layout);
                 if (slotMode)
-                    defBodyCtx = defBodyCtx.AsSlot();
+                {
+                    // The slot type first, and unconditionally: it is written into the caller-content cast, so it
+                    // has to pass the same gate as any other type the emitter spells — including reporting HED7030
+                    // for one this assembly may not name, which a refusal ordered before it would swallow.
+                    var slotCtx = SlotBodyContext(def, out reason);
+                    if (reason != null)
+                        return null;
+
+                    // The engine type-checks every @out value in this body against the slot type when it compiles
+                    // the body — which it does per call site, off the value actually passed. A dynamic body model
+                    // leaves the emitter with no type to check against and nothing but the caller's cast to fail on
+                    // at render, so the check the engine performs is handed back to the engine.
+                    if (defBodyCtx.IsDynamic) { reason = "slot definition with a dynamic body model"; return null; }
+                    defBodyCtx = defBodyCtx.AsSlot(slotCtx.ModelSymbol);
+                }
                 defBodyCtx = defBodyCtx.WithFills(bodyFills, layout.Count > 0 ? layout : null);
             }
 
@@ -1183,6 +1207,8 @@ namespace Heddle.Generator.Emit
                 // Value on @out is only valid inside a slot-declaring definition body.
                 if (!bctx.InSlot) { reason = "@out with value outside a slot definition"; return null; }
                 if (cp.PropArguments != null && cp.PropArguments.Count != 0) { reason = "@out prop arguments"; return null; }
+                if (!SlotValueAssignable(cp, bctx, out reason))
+                    return null;
                 if (!BuildParamExpr(cp, bctx, out var vParam, out var vUses, out var vCs, out reason))
                     return null;
                 var slotField = AllocateOutExtension(slotMode: true, item.Position);
@@ -1194,6 +1220,69 @@ namespace Heddle.Generator.Emit
 
             var field = AllocateOutExtension(slotMode: false, item.Position);
             return MakeCall(field, "scope.ModelData", false, item.Position);
+        }
+
+        /// <summary>
+        /// The HED5014 twin: the engine refuses a template whose <c>@out</c> value is not assignable to the declared
+        /// slot type — at compile time, with an id and a position — and the emitter precompiled the same template
+        /// and rendered it, or threw <c>InvalidCastException</c> at render where the caller's content casts the
+        /// value. Same rule, same conversion table (<c>OutExtension.InitStart</c> asks
+        /// <c>PropConversion.CanConvert(…, allowBoxToObject: false)</c>), so the slot value the engine will not take
+        /// is one the emitter refuses to precompile and the engine's refusal is what the reader gets.
+        /// <para>What this cannot answer is a value whose type is not statically known here — an <c>@out(this)</c>
+        /// inside an <c>@list</c> body, whose element type the emitter deliberately does not guess. Those keep
+        /// precompiling: the emitter has nothing to check, and refusing every one of them would take the ordinary
+        /// per-item slot projection off the precompiled tier to catch a template the caller's cast already throws
+        /// on.</para>
+        /// </summary>
+        private bool SlotValueAssignable(CallParameter cp, BodyContext bctx, out string reason)
+        {
+            reason = null;
+            var valueType = SlotValueType(cp, bctx);
+            if (valueType == null || Convertible(valueType, bctx.SlotType, allowBoxToObject: false))
+                return true;
+
+            reason = "slot value '" + SymbolTypeResolver.FullyQualified(valueType) + "' is not assignable to slot type '" +
+                     SymbolTypeResolver.FullyQualified(bctx.SlotType) + "'";
+            return false;
+        }
+
+        /// <summary>The static type of an <c>@out</c> value, or null where the emitter has none — a dynamic model, a
+        /// native expression, embedded C#. Null is "cannot say", never "no type".</summary>
+        private ITypeSymbol SlotValueType(CallParameter cp, BodyContext bctx)
+        {
+            if (bctx.IsDynamic)
+                return null;
+
+            // `this`, which is the definition body's own model.
+            if (cp.NativeExpression is ThisNode)
+                return bctx.ModelSymbol;
+
+            if (!cp.IsModelTypeParameter || cp.RootReference)
+                return null;
+
+            var segments = cp.ModelParameter;
+            if (segments == null || segments.Length == 0 || string.IsNullOrEmpty(segments[0]))
+                return bctx.ModelSymbol;
+
+            if (bctx.Props != null && bctx.Props.ByName.TryGetValue(segments[0], out var slot))
+            {
+                if (segments.Length == 1)
+                    return slot.Type;
+                var rest = new string[segments.Length - 1];
+                System.Array.Copy(segments, 1, rest, 0, rest.Length);
+                return ResolvedTypeOf(slot.Type, rest);
+            }
+
+            return ResolvedTypeOf(bctx.ModelSymbol, segments);
+        }
+
+        private ITypeSymbol ResolvedTypeOf(ITypeSymbol start, IReadOnlyList<string> segments)
+        {
+            if (start == null || start.TypeKind == TypeKind.Dynamic)
+                return null;
+            var resolution = _resolver.ResolvePath(start, segments);
+            return resolution.Kind == SymbolTypeResolver.PathKind.Resolved ? resolution.ResultType : null;
         }
 
         /// <summary>Renders the named template with the parameter as its model. Strategy resolved lazily on first render (registry first, dynamic compile second) and memoized. The name must be static text.</summary>
@@ -2314,11 +2403,16 @@ namespace Heddle.Generator.Emit
         /// then rejects with CS0122 — no Heddle id, no <c>.heddle</c> position, and unfixable without editing the
         /// model. The engine binds it by reflection, which ignores assembly boundaries, so the dynamic tier renders
         /// it unchanged; HED7030 says so and the template degrades.</para>
-        /// <para>Then a ref struct, which cannot be a generated entry point's model at all: the scope carries the
-        /// model as <c>object</c> and a ref struct cannot be boxed, so the parameter and the cast are both errors
-        /// (CS1503, CS0457) in the consumer's project. The engine <em>compiles</em> such a template and refuses it at
-        /// render, with a catchable exception naming the mismatch — a far better answer than a broken build, and one
-        /// only the dynamic tier can give, so this degrades without a diagnostic of its own.</para>
+        /// <para>Then <c>[Obsolete(…, error: true)]</c>, which is the same situation with a different word from the
+        /// compiler: reflection ignores <c>[Obsolete]</c> outright, so the engine renders the template, while every
+        /// generated mention of the name is a CS0619 in the consumer's build. A warning-level <c>[Obsolete]</c> is
+        /// left alone — it is a note to the author, not a refusal, and taking every deprecated model off the
+        /// precompiled tier would be a large silent cost for nothing.</para>
+        /// <para>Then the two type kinds that cannot be a generated entry point's model parameter at all: a ref
+        /// struct, because the scope carries the model as <c>object</c> and a ref struct cannot be boxed (CS1503,
+        /// CS0457), and a static class, which is not permitted as a parameter type or a cast target (CS0721,
+        /// CS0716). The engine renders both — it never declares a parameter — so this degrades to the tier that
+        /// can serve them, without a diagnostic of its own.</para>
         /// </summary>
         private bool CanWriteTypeName(ITypeSymbol type, BlockPosition position, out string reason)
         {
@@ -2327,17 +2421,23 @@ namespace Heddle.Generator.Emit
                 return true;
 
             var fq = SymbolTypeResolver.FullyQualified(type);
-            if (!_resolver.IsAccessibleFromCompilation(type))
+            if (!_resolver.IsAccessibleFromCompilation(type) || SymbolTypeResolver.IsObsoleteError(type))
             {
                 if (_seenInaccessibleTypes.Add(fq + "@" + position.StartIndex))
                     _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.InaccessibleModelSymbol, position, fq));
-                reason = "'" + fq + "' is not accessible from this compilation";
+                reason = "'" + fq + "' cannot be named by generated code";
                 return false;
             }
 
             if (type.IsRefLikeType)
             {
                 reason = "'" + fq + "' is a ref struct and cannot carry a model";
+                return false;
+            }
+
+            if (type.IsStatic)
+            {
+                reason = "'" + fq + "' is a static type and cannot carry a model";
                 return false;
             }
 
