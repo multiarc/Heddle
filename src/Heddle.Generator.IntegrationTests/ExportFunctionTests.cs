@@ -253,7 +253,7 @@ namespace IsolatedExports
                     new Product { Name = "n" }, runtimeOptions: RuntimeOptions(),
                     extraReferences: References());
                 Assert.Equal(objectDyn, objectPre);
-                Assert.Equal("[|ab|]\n", slotDyn);
+                Assert.Equal("[|ab|]\n", objectDyn);
             }
         }
 

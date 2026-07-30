@@ -49,6 +49,9 @@ namespace Heddle.Generator.Emit
             string RuntimeDiagnosticId)> _unbindableCalls =
             new List<(string, Heddle.Strings.Core.BlockPosition, string, string)>();
 
+        private readonly List<(string Name, Heddle.Strings.Core.BlockPosition Position, string Display)>
+            _unnameableCalls = new List<(string, Heddle.Strings.Core.BlockPosition, string)>();
+
         private readonly SymbolTypeFacts _typeFacts;
 
         public NativeExpressionWriter(SymbolTypeResolver resolver, ITypeSymbol modelType, string modelLocal,
@@ -100,6 +103,13 @@ namespace Heddle.Generator.Emit
         /// because the generator has established nothing about what the runtime will do.</para></summary>
         public IReadOnlyList<(string Name, Heddle.Strings.Core.BlockPosition Position, string Detail,
             string RuntimeDiagnosticId)> UnbindableFunctionCalls => _unbindableCalls;
+
+        /// <summary>Exported host functions this compilation may not write a call to, each with its
+        /// <c>.heddle</c> position and the signature to name in the message. Drained by the emitter as
+        /// <c>HED7030</c>, the same id a model type the consumer's compiler rejects gets — from the consumer's
+        /// side it is the same situation.</summary>
+        public IReadOnlyList<(string Name, Heddle.Strings.Core.BlockPosition Position, string Display)>
+            UnnameableFunctionCalls => _unnameableCalls;
 
         /// <summary>The shared ranker's descriptor for what a function call returns, for callers that have to type a
         /// call-site value without emitting it. <c>Unknown</c> where the ranker refuses or the name is neither a
@@ -502,10 +512,40 @@ namespace Heddle.Generator.Emit
                 binding = ExportFunctionBinder.TryBind(_typeFacts, call.Name, entry.Overloads, argKinds,
                     out var refusal);
                 RecordIfProvenIllegal(call, refusal);
+
+                if (binding != null && !CanWriteCallTo(binding.Overload, out var display))
+                {
+                    _unnameableCalls.Add((call.Name, call.Position, display));
+                    binding = null;
+                }
             }
 
             _exportBindings[call] = binding;
             return binding;
+        }
+
+        /// <summary>
+        /// Whether generated code may write a call to this export at all. The emitted call spells two names — the
+        /// container type and the method — and reflection ignores <c>[Obsolete]</c> where the consumer's compiler
+        /// does not: an export declared <c>[Obsolete(…, error: true)]</c> renders perfectly well on the dynamic
+        /// tier and stops the <em>consumer's</em> build with CS0619, off a <c>.g.cs</c> no one can edit. That is a
+        /// build the template's author did not break and cannot fix, so the template degrades instead.
+        /// <para>Warning-level <c>[Obsolete]</c> is deliberately not one of these: the generated file opens with a
+        /// blanket <c>#pragma warning disable</c>, so it raises nothing there, and refusing it would take every
+        /// deprecated helper in a host's codebase off the precompiled tier to prevent a message no one would see.
+        /// Neither is a signature the call site does not spell — an export whose <b>return</b> type the consumer
+        /// may not name compiles and renders identically, because what is written here is the method, not what it
+        /// hands back.</para>
+        /// </summary>
+        private static bool CanWriteCallTo(FunctionExportResolver.ExportOverloadInfo overload, out string display)
+        {
+            display = null;
+            if (!SymbolTypeResolver.IsObsoleteError(overload.Method) &&
+                !SymbolTypeResolver.IsObsoleteError(overload.Container))
+                return true;
+
+            display = overload.Method.ToDisplayString();
+            return false;
         }
 
         /// <summary>Records proven-illegal calls once per site to prevent duplicate reports.</summary>

@@ -410,6 +410,25 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public string Title => "deprecated";
     }
 
+    /// <summary>
+    /// One member per relation an accepted-type declaration can stand in to a value: identity, a nullable lift on
+    /// either side, generic covariance through a class and through an interface, array covariance, and two members
+    /// (<see cref="S"/>, <see cref="D"/>) that stand in none of them and must be refused.
+    /// </summary>
+    public sealed class AcceptanceModel
+    {
+        public int I { get; set; }
+        public int? Maybe { get; set; }
+        public long L { get; set; }
+        public string S { get; set; }
+        public decimal D { get; set; }
+        public System.Collections.Generic.List<string> Strs { get; set; }
+        public System.Collections.Generic.IList<string> IStrs { get; set; }
+        public string[] StrArr { get; set; }
+        public int[] Ints { get; set; }
+        public System.Collections.Generic.List<int> IntList { get; set; }
+    }
+
     /// <summary>A static class as a model: nothing the engine minds, since it never declares a parameter of the
     /// model's type, and impossible for generated code, which does.</summary>
     public static class StaticModel

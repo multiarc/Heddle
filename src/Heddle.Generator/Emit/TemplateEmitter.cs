@@ -885,12 +885,6 @@ namespace Heddle.Generator.Emit
                     return null;
                 }
 
-                if (extLayout.Failed)
-                {
-                    reason = "extension <" + name + "> declares a prop of a type this assembly cannot name";
-                    return null;
-                }
-
                 if (!TryBuildPropsPrototype(extLayout, cp, bctx, out var extPropsRef, out var extSettersRef,
                         out reason))
                     return null;   // unknown/duplicate/missing/unreproducible → safe dynamic fallback
@@ -1021,25 +1015,11 @@ namespace Heddle.Generator.Emit
                 return null;
             }
 
-            // The same gate the definition layout applies, for the same reason: a slot type is written into a cast
-            // wherever a prop read is emitted, so a type this assembly may not name has to fail the layout rather
-            // than reach the consumer's compiler. No call path today makes an extension layout the active one, so
-            // this refuses nothing that is currently emitted; it is here so that the day one does, the spelling is
-            // checked before it is written rather than after.
-            //
-            // The whole declaration list is checked before a single slot is built, so a failed layout carries no
-            // slots at all. Failing part-way through the build left a layout holding every slot up to the offending
-            // one and none after it — a layout that reads as complete to anything that does not also consult
-            // `Failed`, which was the only thing standing between the truncation and a caller.
-            foreach (var slot in built)
-            {
-                if (slot.Type == null || CanWriteTypeName(slot.Type, callPosition, out _))
-                    continue;
-                var failed = new PropLayoutInfo { Failed = true };
-                _extensionPropLayouts[name] = failed;
-                return failed;
-            }
-
+            // Deliberately no nameability gate over the slot types, unlike the definition layout: nothing on this
+            // path ever writes one. The prototype stores boxed values, the parameter-name field stores strings, the
+            // fingerprint is a manifest string, and the two places a conversion is emitted spell a numeric C#
+            // keyword or nothing at all. A definition layout does become a body's active prop layout, where a read
+            // is emitted through a cast; an extension layout never does.
             var layout = new PropLayoutInfo();
             foreach (var slot in built)
             {
@@ -1239,7 +1219,7 @@ namespace Heddle.Generator.Emit
                 }
 
                 if (defBodyCtx.IsDynamic &&
-                    !TryTypeCallSiteBody(cp, bctx, item.Position, ref defBodyCtx, out reason))
+                    !TryTypeCallSiteBody(def, cp, bctx, item.Position, ref defBodyCtx, out reason))
                     return null;
 
                 if (slotMode)
@@ -1273,14 +1253,14 @@ namespace Heddle.Generator.Emit
                     callerCtx = DefinitionBodyContext(def, out var ctxReason);
                     if (ctxReason != null) { reason = ctxReason; return null; }
 
-                    // A `:: dynamic` callee does not give its caller content an untyped model any more than it gives
-                    // its body one: the engine compiles both against the value this call site passes, so
-                    // `@frame("ab"){{@(Title)}}` is an HED0001 it raises at compile time. Emitted untyped, that read
-                    // bound dynamically and the template precompiled and rendered what the engine will not compile.
-                    // The same rule types both, so a call form the engine itself types `dynamic` — a member path —
-                    // still gets an untyped caller content and still matches.
+                    // A callee that declares no model type of its own does not give its caller content an untyped
+                    // model any more than it gives its body one: the engine compiles both against the value this
+                    // call site passes, so `@frame("ab"){{@(Title)}}` is an HED0001 it raises at compile time.
+                    // Emitted untyped, that read bound dynamically and the template precompiled and rendered what
+                    // the engine will not compile. The same rule types both, so a call form the engine itself
+                    // types `dynamic` still gets an untyped caller content and still matches.
                     if (callerCtx.IsDynamic &&
-                        !TryTypeCallSiteBody(cp, bctx, item.Position, ref callerCtx, out reason))
+                        !TryTypeCallSiteBody(def, cp, bctx, item.Position, ref callerCtx, out reason))
                         return null;
                 }
 
@@ -1469,6 +1449,11 @@ namespace Heddle.Generator.Emit
         /// <para>The rule is read off the attribute rather than written out per extension, so it covers every
         /// built-in that declares one — <c>@list</c>'s <c>IEnumerable</c> and <c>@for</c>'s <c>Range</c>/<c>int</c> —
         /// and any host extension that declares one, without a list here to keep in step.</para>
+        /// <para>"Assignable" is the <b>CLR</b> relation and is asked of the one adapter that answers it, not
+        /// re-derived here. Reproducing it as nominal identity over the base chain and the interface set answers
+        /// no to every relation the CLR admits that identity does not — generic and array covariance, and the
+        /// CLR's own <c>Nullable&lt;T&gt;</c> treatment, which alone made <c>[DataType(typeof(int?))]</c> accept
+        /// nothing whatever, not even an <c>int?</c>.</para>
         /// <para>"Cannot say" is exempt for the same reason it is everywhere else: refusing on a type the emitter
         /// never established would cost the precompiled tier over templates that are fine.</para>
         /// </summary>
@@ -1484,7 +1469,8 @@ namespace Heddle.Generator.Emit
                 valueType = underlying;
 
             foreach (var candidate in accepted)
-                if (candidate == null || candidate.TypeKind == TypeKind.Dynamic || Accepts(candidate, valueType))
+                if (candidate == null || candidate.TypeKind == TypeKind.Dynamic ||
+                    TypeFacts.IsAssignableFrom(candidate, valueType))
                     return true;
 
             var names = new List<string>(accepted.Count);
@@ -1492,22 +1478,6 @@ namespace Heddle.Generator.Emit
                 names.Add(candidate == null ? "?" : SymbolTypeResolver.FullyQualified(candidate));
             reason = "value type '" + SymbolTypeResolver.FullyQualified(valueType) +
                      "' is not one of the accepted types [" + string.Join(", ", names) + "]";
-            return false;
-        }
-
-        /// <summary>The engine's <c>Type.IsAssignableFrom</c> over symbols: identity, a base class, an implemented
-        /// interface, or the boxing every value has to <c>object</c>. Deliberately no numeric widening — reflection
-        /// has none either, which is why <c>@for</c> over a <c>long</c> is a template the engine refuses.</summary>
-        private static bool Accepts(ITypeSymbol accepted, ITypeSymbol valueType)
-        {
-            if (accepted.SpecialType == SpecialType.System_Object)
-                return true;
-            for (var t = valueType; t != null; t = t.BaseType)
-                if (SymbolEqualityComparer.Default.Equals(t, accepted))
-                    return true;
-            foreach (var iface in valueType.AllInterfaces)
-                if (SymbolEqualityComparer.Default.Equals(iface, accepted))
-                    return true;
             return false;
         }
 
@@ -1690,8 +1660,8 @@ namespace Heddle.Generator.Emit
             nullable ? _compilation.GetSpecialType(SpecialType.System_Nullable_T).Construct(type) : type;
 
         /// <summary>
-        /// Types a <c>:: dynamic</c> definition body by the model the engine compiles it against at <b>this</b> call
-        /// site.
+        /// Types a definition body that declares no model type of its own by the model the engine compiles it
+        /// against at <b>this</b> call site.
         /// <para><c>:: dynamic</c> does not declare an untyped body. The engine compiles the body once per call site
         /// off the value that call site passes, so a caller handing it a static value gets a body bound against that
         /// value's type — and a member read the type does not have is an <c>HED0001</c> the engine raises when it
@@ -1703,15 +1673,21 @@ namespace Heddle.Generator.Emit
         /// emitter merely cannot type degrades: "the emitter cannot say" and "the engine has no type" are different
         /// answers, and treating the first as the second is how a dynamically-bound body got emitted where the
         /// engine had bound one statically.</para>
+        /// <para><c>:: object</c> reaches here for the same reason and takes a different model rule. Only
+        /// <c>:: dynamic</c> makes the engine's model accessor take its dynamic exit; under <c>:: object</c> the
+        /// accessor resolves a member path statically, so <c>@frame(Name)</c> hands that body a <c>string</c> and a
+        /// read the <c>string</c> does not have is a compile-time refusal rather than a render-time throw.</para>
         /// </summary>
-        private bool TryTypeCallSiteBody(CallParameter cp, BodyContext bctx, BlockPosition position,
-            ref BodyContext defBodyCtx, out string reason)
+        private bool TryTypeCallSiteBody(DefinitionItem def, CallParameter cp, BodyContext bctx,
+            BlockPosition position, ref BodyContext defBodyCtx, out string reason)
         {
             reason = null;
-            var model = DynamicDefinitionBodyModel(cp, bctx);
+            var model = DeclaresDynamicModel(def)
+                ? DynamicDefinitionBodyModel(cp, bctx)
+                : ObjectDefinitionBodyModel(cp, bctx);
             if (model == null)
             {
-                reason = "dynamic definition body over a caller value this call site cannot type";
+                reason = "definition body over a caller value this call site cannot type";
                 return false;
             }
 
@@ -1759,6 +1735,26 @@ namespace Heddle.Generator.Emit
                             !string.IsNullOrEmpty(segments[0]) &&
                             bctx.Props != null && bctx.Props.ByName.ContainsKey(segments[0]);
             return propRead ? CallSiteValueType(cp, bctx) : _compilation.DynamicType;
+        }
+
+        /// <summary>
+        /// The model type the engine compiles an <c>:: object</c> definition's body against at <b>this</b> call
+        /// site. Unlike <c>:: dynamic</c> the accessor takes no dynamic exit here, so the value's own static type
+        /// stands whatever shape the call parameter took — including a member path, which is why
+        /// <c>@frame(Name)</c> hands such a body a <c>string</c>.
+        /// <para>The one exception is a caller whose own scope has no static type: the accessor resolves nothing
+        /// against it and the bare-call arm reads that same dynamic scope type, so the body's model is
+        /// <c>dynamic</c>. <see cref="CallSiteValueType"/> answers "cannot say" there, which is the answer a check
+        /// that must be conservative wants and the wrong one for a question about what the engine did — a
+        /// model-less document is nothing but this shape, and refusing it took every one of them off the
+        /// precompiled tier.</para>
+        /// </summary>
+        private ITypeSymbol ObjectDefinitionBodyModel(CallParameter cp, BodyContext bctx)
+        {
+            if (cp.IsModelTypeParameter && bctx.IsDynamic && bctx.DynamicBodyModel == null)
+                return _compilation.DynamicType;
+
+            return CallSiteValueType(cp, bctx);
         }
 
         /// <summary>The symbol for a decoded literal, or null where the emitter must not claim one — an out-of-range
@@ -2049,12 +2045,20 @@ namespace Heddle.Generator.Emit
             return true;
         }
 
-        /// <summary>Body-model-typing rule: <c>:: dynamic</c> is dynamic tier; declared <c>:: T</c> resolves to symbol; undeclared degrades to dynamic path.</summary>
+        /// <summary>
+        /// The model a definition's body runs under. A declared <c>:: T</c> resolves to its symbol and the body is
+        /// typed by it; anything the engine resolves to <c>System.Object</c> — <c>:: dynamic</c>, <c>:: object</c>,
+        /// and a definition that declares no model at all — leaves here needing the call site, and
+        /// <see cref="TryTypeCallSiteBody"/> supplies it.
+        /// <para>Which of the three it was still matters at the call site, so the caller passes the definition on
+        /// rather than the answer: <c>:: dynamic</c> sends the engine's model accessor down its dynamic exit and
+        /// the other two do not.</para>
+        /// </summary>
         private BodyContext DefinitionBodyContext(DefinitionItem def, out string reason)
         {
             reason = null;
             var modelTypeName = def.ModelType;
-            if (string.Equals(modelTypeName, "dynamic", System.StringComparison.Ordinal))
+            if (DeclaresDynamicModel(def))
                 return new BodyContext(null, null, true);
 
             var sym = _resolver.ResolveModelType(modelTypeName, _usings);
@@ -2067,9 +2071,24 @@ namespace Heddle.Generator.Emit
             if (!CanWriteTypeName(sym, def.Position, out reason))
                 return default;
 
+            // The engine's own predicate for "compile this body against the value the call site passes" is
+            // `acceptType == typeof(object)`, and `:: object` satisfies it exactly as `:: dynamic` does. Typing the
+            // body `object` instead made the emitter's model a supertype of the engine's at every call site: an
+            // `@for(this)` or `@list(this)` in the body was refused against a model the engine had typed `int` or
+            // `string`, and in slot mode an `@out(this)` looked like the identity `object → object` where the
+            // engine saw the box it refuses.
+            if (sym.SpecialType == SpecialType.System_Object)
+                return new BodyContext(null, null, true);
+
             var fq = SymbolTypeResolver.FullyQualified(sym);
             return new BodyContext("(" + fq + ")", sym, false);
         }
+
+        /// <summary>Whether the definition declares <c>dynamic</c>, as opposed to the <c>object</c> the engine also
+        /// resolves it to. The two share a body model — whatever the call site passes — and differ in how the
+        /// engine's model accessor reads a member path at that call site.</summary>
+        private static bool DeclaresDynamicModel(DefinitionItem def) =>
+            string.Equals(def.ModelType, "dynamic", System.StringComparison.Ordinal);
 
         private static bool DefinitionHasProps(DefinitionItem def)
             => AnyLayer(def, d => d.PropDeclarations != null && d.PropDeclarations.Count != 0);
@@ -2892,6 +2911,14 @@ namespace Heddle.Generator.Emit
                 if (_seenMemberFailures.Add(seenKey))
                     _diagnostics.Add(MemberDiagnostic(mf,
                         IsInaccessibleRatherThanMissing(mf.Receiver, mf.Member, mf.Inaccessible)));
+            }
+
+            foreach (var call in writer.UnnameableFunctionCalls)
+            {
+                var seenKey = call.Display + "@" + call.Position.StartIndex;
+                if (_seenInaccessibleTypes.Add(seenKey))
+                    _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.InaccessibleModelSymbol,
+                        call.Position, call.Display));
             }
 
             // HED7025: defensive guard against duplicate reports (failure mode is asymmetric: noise vs discovery in build log).
