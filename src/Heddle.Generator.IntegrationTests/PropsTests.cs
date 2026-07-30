@@ -262,5 +262,169 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("not assignable to the declared slot parameter type",
                 dynamicTemplate.CompileResult.ToString(), StringComparison.Ordinal);
         }
+
+        /// <summary>
+        /// The same read inside the content a call site hands a definition. The engine compiles caller content
+        /// <b>before</b> it swaps in the callee's layout — the save/restore is around the definition body alone —
+        /// so the calling definition's props are still what a first path segment names there. The emitter built
+        /// that body from the callee's model with no layout at all, and every row here diverged in its own way: a
+        /// shadowing prop read the model's member and rendered different text with no diagnostic, a prop the model
+        /// has no member of became an <c>HED7008</c> build error over a template the engine renders, and an
+        /// <c>@list</c> whose data is a prop enumerated the model member's characters instead.
+        /// <para>The last row is the near neighbour: a name the layout does not carry still reads off the callee's
+        /// model, so the caller's layout does not swallow the body.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("shadow-path", "Cols: string = \"PP\"", "[@(Cols)]", "([PP])")]
+        [InlineData("shadow-native", "Cols: string = \"PP\"", "[@(Cols + \"!\")]", "([PP!])")]
+        [InlineData("no-such-member", "label: string = \"PP\"", "[@(label)]", "([PP])")]
+        [InlineData("list-data", "Name: string = \"PP\"", "@list(Name){{[@()]}}", "([P][P])")]
+        [InlineData("unshadowed-callee-member", "n: int = 5", "[@(Name)]", "([model])")]
+        public void CallerContentKeepsTheCallingDefinitionsProps(string name, string decl, string content,
+            string expected)
+        {
+            var t = "@model(){{" + GridType + "}}@%\n" +
+                    "<inner>{{(@out())}} :: " + GridType + "\n" +
+                    "<outer(" + decl + ")>{{@inner(this){{" + content + "}}}} :: " + GridType + "\n%@\n" +
+                    "@outer(this)\n";
+            var (precompiled, dyn) = DifferentialHarness.Render("views/caller-prop-" + name + ".heddle", t,
+                typeof(GridModel), Grid());
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal(expected + "\n", dyn);
+        }
+
+        /// <summary>The same rule where the callee declares a slot: the caller content is typed by the slot type,
+        /// but the layout it reads is still the caller's.</summary>
+        [Fact]
+        public void SlotModeCallerContentKeepsThemToo()
+        {
+            const string t = "@model(){{" + GridType + "}}@%\n" +
+                             "<inner(out:: " + GridType + ")>{{(@out(this))}} :: " + GridType + "\n" +
+                             "<outer(Cols: string = \"PP\")>{{@inner(this){{[@(Cols)]}}}} :: " + GridType + "\n%@\n" +
+                             "@outer(this)\n";
+            var (precompiled, dyn) = DifferentialHarness.Render("views/caller-prop-slot.heddle", t,
+                typeof(GridModel), Grid());
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal("([PP])\n", dyn);
+        }
+
+        /// <summary>
+        /// Slot <b>mode</b> travels into caller content for the same reason the layout does: the engine installs the
+        /// callee's slot type after this text is compiled, so an <c>@out</c> here still belongs to the enclosing
+        /// slot definition. Read as "outside a slot" the two tiers disagreed twice over — a valued <c>@out</c>
+        /// dropped a template the engine renders, and a bare one precompiled and rendered a template the engine
+        /// refuses with <c>HED5013</c>.
+        /// </summary>
+        [Fact]
+        public void CallerContentInsideASlotBodyIsStillInsideTheSlot()
+        {
+            const string prefix = "@model(){{" + GridType + "}}@%\n" +
+                                  "<plain>{{(@out())}} :: " + GridType + "\n";
+            const string valued = prefix +
+                                  "<mid(out:: string)>{{[@out(\"S\")]<@plain(this){{@out(\"Q\")}}>}} :: " + GridType +
+                                  "\n%@\n@mid(this){{|@()|}}\n";
+            var (precompiled, dyn) = DifferentialHarness.Render("views/caller-slot-valued.heddle", valued,
+                typeof(GridModel), Grid());
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal("[|S|]<(|Q|)>\n", dyn);
+
+            const string bareKey = "views/caller-slot-bare.heddle";
+            const string bare = prefix +
+                                "<mid(out:: string)>{{[@out(\"S\")]<@plain(this){{@out()}}>}} :: " + GridType +
+                                "\n%@\n@mid(this){{|@()|}}\n";
+            var gen = DifferentialHarness.Generate(new[] { (bareKey, bare) });
+            DifferentialHarness.ExpectDegrade(gen, bareKey);
+
+            var dynamicTemplate = new HeddleTemplate(bare, new CompileContext(new TemplateOptions(), typeof(GridModel)));
+            Assert.False(dynamicTemplate.CompileResult.Success);
+            Assert.Contains("HED5013", dynamicTemplate.CompileResult.ToString(), StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// The type a prop <b>argument</b> is checked against. The value is resolved prop-first — the writer three
+        /// lines below the check has been doing so for a while — so the check has to be too, or the two disagree
+        /// about which value the argument even is: the emitter emitted the caller's prop and then approved it
+        /// against the shadowed member's type, boxing a <c>string</c> into an <c>int</c>-declared slot that the
+        /// engine refuses outright with <c>HED5003</c>.
+        /// <para>The two accepted rows are the near neighbours. A prop whose type <b>fits</b> the slot — including
+        /// one the model has no member of at all, which used to degrade — still precompiles and renders; and a
+        /// plain model member in the same position is unaffected.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("shadow-string-into-int", "q: int = 0", "Cols: string = \"PP\"", "Cols")]
+        [InlineData("shadow-int-into-string", "q: string = \"\"", "Name: int = 5", "Name")]
+        public void APropArgumentIsCheckedAgainstThePropItReads(string name, string calleeDecl, string callerDecl,
+            string argument)
+        {
+            var key = "views/prop-arg-" + name + ".heddle";
+            var t = "@model(){{" + GridType + "}}@%\n" +
+                    "<inner(" + calleeDecl + ")>{{[@(q)]}} :: " + GridType + "\n" +
+                    "<outer(" + callerDecl + ")>{{@inner(this, q: " + argument + ")}} :: " + GridType + "\n%@\n" +
+                    "@outer(this)\n";
+
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            DifferentialHarness.ExpectDegrade(gen, key);
+
+            var dynamicTemplate = new HeddleTemplate(t, new CompileContext(new TemplateOptions(), typeof(GridModel)));
+            Assert.False(dynamicTemplate.CompileResult.Success);
+            Assert.Contains("HED5003", dynamicTemplate.CompileResult.ToString(), StringComparison.Ordinal);
+        }
+
+        [Theory]
+        [InlineData("fitting-prop", "p: string = \"PP\"", "p", "[PP]")]
+        [InlineData("model-member", "p: string = \"PP\"", "Name", "[model]")]
+        public void APropArgumentThatFitsStillPrecompiles(string name, string callerDecl, string argument,
+            string expected)
+        {
+            var t = "@model(){{" + GridType + "}}@%\n" +
+                    "<inner(q: string = \"\")>{{[@(q)]}} :: " + GridType + "\n" +
+                    "<outer(" + callerDecl + ")>{{@inner(this, q: " + argument + ")}} :: " + GridType + "\n%@\n" +
+                    "@outer(this)\n";
+            var (precompiled, dyn) = DifferentialHarness.Render("views/prop-arg-ok-" + name + ".heddle", t,
+                typeof(GridModel), Grid());
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal(expected + "\n", dyn);
+        }
+
+        /// <summary>
+        /// A native expression over a prop inside an <c>@list</c> body. The body is emitted on the dynamic tier, and
+        /// the emitter refused every native expression there before it looked at anything — but the engine's own
+        /// compiler tries the active layout <b>before</b> it asks whether the scope has a static type, so an
+        /// expression rooted at a prop needs no model and the whole template was dropped for nothing.
+        /// <para>The rows either side are what make this a rule rather than a blanket admission: a plain prop path
+        /// and a function over a prop always worked, an expression that needs no model at all is fine, and an
+        /// expression that reads the element's own member still degrades, because that model is one the emitter has
+        /// not established here.</para>
+        /// </summary>
+        [Fact]
+        public void APropRootedExpressionNeedsNoModelInsideAListBody()
+        {
+            const string catalogType = "Heddle.Generator.IntegrationTests.Fixtures.Catalog";
+            var catalog = new Catalog { Tags = new[] { "x", "y" } };
+
+            foreach (var (name, decl, expr, expected) in new[]
+                     {
+                         ("expression", "n: int = 5", "n + 1", "[6][6]\n"),
+                         ("plain-path", "n: int = 5", "n", "[5][5]\n"),
+                         ("function", "n: string = \"q\"", "upper(n)", "[Q][Q]\n"),
+                         ("no-model-at-all", "n: int = 5", "1 + 1", "[2][2]\n"),
+                     })
+            {
+                var t = "@model(){{" + catalogType + "}}@%\n" +
+                        "<host(" + decl + ")>{{@list(Tags){{[@(" + expr + ")]}}}} :: " + catalogType + "\n%@\n" +
+                        "@host(this)\n";
+                var (precompiled, dyn) = DifferentialHarness.Render("views/list-body-prop-" + name + ".heddle", t,
+                    typeof(Catalog), catalog);
+                Assert.Equal(dyn, precompiled);
+                Assert.Equal(expected, dyn);
+            }
+
+            const string elementKey = "views/list-body-element-expression.heddle";
+            const string element = "@model(){{" + catalogType + "}}@%\n" +
+                                   "<host(n: int = 5)>{{@list(Products){{[@(Name + \"!\")]}}}} :: " + catalogType +
+                                   "\n%@\n@host(this)\n";
+            var gen = DifferentialHarness.Generate(new[] { (elementKey, element) });
+            DifferentialHarness.ExpectDegrade(gen, elementKey);
+        }
     }
 }

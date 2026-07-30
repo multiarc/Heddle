@@ -847,6 +847,7 @@ TYPE Heddle.Precompiled.PrecompiledRuntime
   METHOD System.Object DynamicMember(System.Object, System.String)
   METHOD System.Object Prop(ref Heddle.Data.Scope, System.Int32)
   METHOD System.Object RootModel(ref Heddle.Data.Scope)
+  METHOD System.String CarrierValue(System.Object)
   METHOD System.String GenerateString(Heddle.Runtime.IProcessStrategy, System.Object, System.Object, System.Object)
   METHOD System.String GenerateString(Heddle.Runtime.IProcessStrategy, System.Object, System.Object, System.Object, Heddle.Data.TemplateOptions)
   METHOD System.Void GenerateToWriter(Heddle.Runtime.IProcessStrategy, System.Object, System.Object, System.Object, System.IO.TextWriter)

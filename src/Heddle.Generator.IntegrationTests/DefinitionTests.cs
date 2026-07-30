@@ -83,5 +83,24 @@ namespace Heddle.Generator.IntegrationTests
                     "@walk(this)\n";
             AssertParity("views/def-recursion.heddle", t, typeof(TreeNode), model);
         }
+
+        /// <summary>
+        /// A definition declaring <c>:: System.String</c> whose call site hands it a chain. The declaration is
+        /// truthful — a chain call-parameter is rendered by the carrier it rides in, so the model really is text —
+        /// and the body reads <c>Length</c> off it on both tiers. Handed the producer's own <c>int</c> instead, the
+        /// generated body's cast to <c>string</c> threw <see cref="InvalidCastException"/> at render over a page the
+        /// engine prints.
+        /// </summary>
+        [Fact]
+        public void AChainValueReachesATypedDefinitionAsText()
+        {
+            const string t = "@model(){{" + ProductType + "}}@%\n" +
+                             "<probe>{{[@(Length)]}} :: System.String\n%@\n" +
+                             "@probe(len(Name))\n";
+            var (precompiled, dyn) = DifferentialHarness.Render("views/def-chain-typed.heddle", t, typeof(Product),
+                new Product { Name = "abcd" });
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal("[1]\n", dyn);
+        }
     }
 }

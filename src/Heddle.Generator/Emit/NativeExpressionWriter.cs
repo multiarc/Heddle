@@ -101,6 +101,11 @@ namespace Heddle.Generator.Emit
         public IReadOnlyList<(string Name, Heddle.Strings.Core.BlockPosition Position, string Detail,
             string RuntimeDiagnosticId)> UnbindableFunctionCalls => _unbindableCalls;
 
+        /// <summary>The shared ranker's descriptor for what a function call returns, for callers that have to type a
+        /// call-site value without emitting it. <c>Unknown</c> where the ranker refuses or the name is neither a
+        /// built-in nor an export — the caller's "cannot say".</summary>
+        public OperandKind EstimateCallReturn(CallNode call) => EstimateCall(call);
+
         public static bool IsDefaultFunction(string name) => DefaultShims.ContainsKey(name);
 
         public static int DefaultOverloadCount(string name) =>

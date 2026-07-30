@@ -434,8 +434,7 @@ namespace Heddle.Generator.Binding
 
         /// <summary>
         /// Why a <see cref="TypeKind"/> can never be written into generated C#, or null where the kind itself is no
-        /// obstacle and the rest of the walk decides. <see cref="TypeKind.Array"/> is the caller's, because it is
-        /// answered by recursion rather than by a sentence.
+        /// obstacle and the rest of the walk decides.
         /// <para>The kinds are answered here, apart from the symbol, so the table can be asked about every one of
         /// them. Two — <see cref="TypeKind.Unknown"/> and <see cref="TypeKind.Module"/> — have no C# compilation
         /// that produces a symbol carrying them, so a walk taking symbols could only ever leave those labels
@@ -480,14 +479,17 @@ namespace Heddle.Generator.Binding
             if (type == null)
                 return NameFault.None;
 
-            // An array is exactly as writable as its element type, and an element type has to be able to hold a
-            // value too — `int*[]` and `Math[]` are both rejected on the element, not the brackets.
-            if (type.TypeKind == TypeKind.Array)
-                return Classify(((IArrayTypeSymbol) type).ElementType, refStructAllowed: false, out reason);
-
+            // The kind's own verdict first, and for every kind including Array. Ordered after the array
+            // short-circuit instead, no answer the table gives about an array could ever be reached, and the
+            // verdict test's Array row was silently a second copy of the row for its element's kind.
             var kindReason = UnnameableKind(type.TypeKind);
             if (kindReason != null)
                 return Unusable(type, kindReason, out reason);
+
+            // An array the table allows is exactly as writable as its element type, and an element type has to be
+            // able to hold a value too — `int*[]` and `Math[]` are both rejected on the element, not the brackets.
+            if (type.TypeKind == TypeKind.Array)
+                return Classify(((IArrayTypeSymbol) type).ElementType, refStructAllowed: false, out reason);
 
             if (type.SpecialType == SpecialType.System_Void)
                 return Unusable(type, "is 'void', which cannot be a parameter, a local or a cast target", out reason);
