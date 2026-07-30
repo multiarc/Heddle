@@ -6,8 +6,9 @@ using Microsoft.CodeAnalysis.CSharp;
 namespace Heddle.Generator.Binding
 {
     /// <summary>
-    /// The Roslyn adapter of <see cref="ITypeFacts{TType}"/>. Two verified Roslyn-vs-CLR disagreements over
-    /// nullable domain assignability are corrected here; the shared conformance corpus enforces adapter fidelity.
+    /// The Roslyn adapter of <see cref="ITypeFacts{TType}"/>. The verified Roslyn-vs-CLR disagreements — over the
+    /// nullable domain, and over array elements the CLR reduces to one type — are corrected here; the shared
+    /// conformance corpus enforces adapter fidelity.
     /// </summary>
     internal sealed class SymbolTypeFacts : ITypeFacts<ITypeSymbol>
     {
@@ -22,15 +23,18 @@ namespace Heddle.Generator.Binding
 
         /// <summary>
         /// Reflection's <c>target.IsAssignableFrom(source)</c> over symbols: Roslyn's conversion classification
-        /// plus two explicit <c>Nullable&lt;T&gt;</c> corrections, because classification and the CLR relation
-        /// disagree over the nullable domain in <b>both</b> directions.
+        /// plus the corrections where classification and the CLR relation disagree.
         /// <list type="number">
         /// <item><description><c>int → int?</c> is CLR-assignable (the CLR's special <c>Nullable&lt;T&gt;</c>
         /// treatment) but classified <c>ImplicitNullable</c> — neither reference nor boxing — so a naive
         /// classification-based adapter answers false. Corrected toward the CLR.</description></item>
-        /// <item><description><c>int? → IComparable</c> classifies as boxing (the boxed underlying value does
-        /// implement the interface) but <c>typeof(IComparable).IsAssignableFrom(typeof(int?))</c> is false:
-        /// <c>Nullable&lt;T&gt;</c> itself implements no interfaces. Corrected toward the CLR.</description></item>
+        /// <item><description>Boxing <b>out of</b> a <c>Nullable&lt;T&gt;</c> classifies against the boxed
+        /// <c>T</c>, which reaches <c>T</c>'s interfaces and, for an enum, <c>System.Enum</c>. The CLR relates
+        /// <c>Nullable&lt;T&gt;</c> itself, whose own hierarchy is <c>ValueType</c> and <c>object</c> and nothing
+        /// more. Corrected toward the CLR.</description></item>
+        /// <item><description>Array covariance over element types the CLR reduces to one — an enum with its
+        /// underlying primitive, and each signed/unsigned integer pair — is no conversion at all to Roslyn, so a
+        /// classification-based adapter refuses <c>uint[] → int[]</c>, which the CLR admits.</description></item>
         /// </list>
         /// <para>Without a C# compilation (a non-C# host) the relation degrades to the nominal hierarchy walk,
         /// which is sound for the named-type cases every caller in this phase asks about.</para>
@@ -56,12 +60,57 @@ namespace Heddle.Generator.Binding
             if (conv.IsImplicit && conv.IsReference)
                 return true;
 
-            // Implicit boxing, except Nullable<T> to interface.
-            bool sourceNullable = TryGetNullableUnderlying(source, out _);
-            if (conv.IsImplicit && conv.IsBoxing && !(sourceNullable && target.TypeKind == TypeKind.Interface))
-                return true;
+            // Implicit boxing. A Nullable<T> source boxes to T's box, which is what the classification follows, but
+            // the CLR relation is over Nullable<T> itself — whose own hierarchy is ValueType and object and nothing
+            // else. So `int? -> IComparable` is false, and so is `DayOfWeek? -> Enum`.
+            if (conv.IsImplicit && conv.IsBoxing)
+                return !TryGetNullableUnderlying(source, out _) || HierarchyAssignable(target, source);
+
+            // Array covariance over element types the CLR treats as one, which Roslyn classifies as no conversion
+            // at all. Reducing both sides and re-asking also answers the forms this propagates through: an array
+            // interface (`uint[] -> IList<int>`) and a jagged array, whose element type is itself an array.
+            var reducedSource = ReduceArrayElements(source);
+            var reducedTarget = ReduceArrayElements(target);
+            if (!SymbolEqualityComparer.Default.Equals(reducedSource, source) ||
+                !SymbolEqualityComparer.Default.Equals(reducedTarget, target))
+                return IsAssignableFrom(reducedTarget, reducedSource);
 
             return false;
+        }
+
+        /// <summary>The same array with every element type replaced by its CLR array-element representative, or the
+        /// type unchanged where nothing reduces (so the caller can tell, and the re-ask terminates).</summary>
+        private ITypeSymbol ReduceArrayElements(ITypeSymbol type)
+        {
+            if (!(type is IArrayTypeSymbol array))
+                return type;
+
+            var element = ReduceElement(ReduceArrayElements(array.ElementType));
+            return SymbolEqualityComparer.Default.Equals(element, array.ElementType)
+                ? type
+                : _compilation.CreateArrayTypeSymbol(element, array.Rank);
+        }
+
+        /// <summary>An enum stands for its underlying primitive, and each signed/unsigned integer pair for one
+        /// representative of the pair. <c>char</c> and <c>bool</c> stand for nothing: the CLR refuses
+        /// <c>char[] -> ushort[]</c> and <c>bool[] -> byte[]</c> though the widths agree.</summary>
+        private ITypeSymbol ReduceElement(ITypeSymbol element)
+        {
+            if (element is INamedTypeSymbol named && named.EnumUnderlyingType != null)
+                element = named.EnumUnderlyingType;
+
+            var kind = SymbolFacts.ToNumericKind(element.SpecialType);
+            NumericKind reduced;
+            switch (kind)
+            {
+                case NumericKind.Byte: reduced = NumericKind.SByte; break;
+                case NumericKind.UInt16: reduced = NumericKind.Int16; break;
+                case NumericKind.UInt32: reduced = NumericKind.Int32; break;
+                case NumericKind.UInt64: reduced = NumericKind.Int64; break;
+                default: return element;
+            }
+
+            return _compilation.GetSpecialType(SymbolFacts.ToSpecialType(reduced));
         }
 
         /// <summary>The nominal hierarchy walk — base chain plus the transitive interface set. Compilation-free,

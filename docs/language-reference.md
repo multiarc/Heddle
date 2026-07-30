@@ -661,6 +661,12 @@ Generic and array type names are recognized by the lexer's type rule
 (`ID_TYPE`, [HeddleLexer.g4](../src/Heddle.Language/HeddleLexer.g4)), which accepts
 `Namespace.Type<T1, T2>[]` forms.
 
+The annotation also constrains the **call site**: when a call passes a member path or a prop —
+`@article_card(Featured)` — that value's static type must be assignable to the annotated type,
+or the template fails to compile with **HED0004** naming both. Other call forms are not checked,
+because they reach the definition with no static type to compare against it: a literal, `this`,
+a computed expression, a chain, and a path that goes through a `dynamic` hop.
+
 ### Abstract definitions and late type binding
 
 The annotation is **optional**, and leaving it off is a feature, not a shortcut. A definition

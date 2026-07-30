@@ -131,6 +131,77 @@ namespace Heddle.Generator.IntegrationTests
                 new Cart(), "[|2|]\n");
         }
 
+        // ---- The same rule reached from inside a region body ----
+
+        /// <summary>A model-less document whose component declares one prop, fills a region, and calls a
+        /// definition from that region body with the prop as the value.</summary>
+        private static string RegionDoc(string definition, string regionBody) =>
+            "@model(){{dynamic}}@%\n" + definition + "\n" +
+            "<comp(p: string = \"abcd\")>{{@%<:reg>{{" + regionBody + "}}%@@reg()}}\n%@\n@comp()\n";
+
+        private static void AssertDynamicDocRenders(string key, string template, string expected)
+        {
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template, null, null);
+            Assert.Equal(expected, dyn);
+            Assert.Equal(dyn, precompiled);
+        }
+
+        private static void AssertDynamicDocDegradesAndEngineRefuses(string key, string template, string id,
+            string message)
+        {
+            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
+            var dynamicTemplate = new HeddleTemplate(template,
+                new CompileContext(new TemplateOptions(), ExType.Dynamic));
+            Assert.False(dynamicTemplate.CompileResult.Success);
+            var text = dynamicTemplate.CompileResult.ToString();
+            Assert.Contains(id, text, StringComparison.Ordinal);
+            Assert.Contains(message, text, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// A region body runs under its host's model, and a definition it calls with one of the host's props is
+        /// typed by that prop — the engine's model accessor tries the prop read before it consults whether the
+        /// scope is dynamic, so the prop's own type stands even under a model-less document. A region body that
+        /// did not carry the host's model made every such call look untyped: the callee body was emitted
+        /// dynamically, and the whole class of checks that read a body's model stopped running on it.
+        /// </summary>
+        [Fact]
+        public void ADefinitionCalledFromARegionBodyIsTypedByTheHostsProp()
+        {
+            AssertDynamicDocRenders("views/region-host-prop.heddle",
+                RegionDoc("<d>{{[@(Length)]}}", "@d(p)"), "[4]\n");
+        }
+
+        /// <summary>The region body's own prop read, which never reaches a definition call at all. It is the cost
+        /// control for the rule above: a fix that answered "cannot say" for the host's model rather than carrying
+        /// it would leave this one standing and take the call above off the precompiled tier.</summary>
+        [Fact]
+        public void ARegionBodyReadingItsHostsPropDirectlyStillPrecompiles()
+        {
+            AssertDynamicDocRenders("views/region-host-prop-direct.heddle",
+                RegionDoc("<d>{{[@(Length)]}}", "[@(p)]"), "[abcd]\n");
+        }
+
+        /// <summary>
+        /// The refusal half, in each of the three positions that read the callee body's model: an extension whose
+        /// <c>[DataType]</c> is checked against it, a member read in the body, and a member read in the caller's
+        /// content. The engine compiles all three against the prop's <c>string</c> and refuses; a callee body
+        /// typed <c>dynamic</c> instead rendered the first, and threw at render for the other two.
+        /// </summary>
+        [Theory]
+        [InlineData("for", "<d>{{@for(this){{<@out()>}}}}", "@d(p)",
+            HeddleDiagnosticIds.ReturnTypeMismatch, "Return Type is System.String")]
+        [InlineData("member", "<d>{{[@(Nope)]}}", "@d(p)",
+            HeddleDiagnosticIds.PropertyNotFound, "Property Nope not found in Type [String]")]
+        [InlineData("caller-content", "<d>{{[@out()]}}", "@d(p){{(@(Nope))}}",
+            HeddleDiagnosticIds.PropertyNotFound, "Property Nope not found in Type [String]")]
+        public void ADefinitionCalledFromARegionBodyIsRefusedOnTheHostsPropType(string name, string definition,
+            string regionBody, string id, string message)
+        {
+            AssertDynamicDocDegradesAndEngineRefuses("views/region-host-prop-" + name + ".heddle",
+                RegionDoc(definition, regionBody), id, message);
+        }
+
         /// <summary>
         /// Where <c>:: object</c> and <c>:: dynamic</c> genuinely part. Only <c>dynamic</c> sends the engine's
         /// model accessor down its dynamic exit, so under <c>:: object</c> a member path at the call site is

@@ -536,6 +536,10 @@ namespace Heddle.Generator.Emit
         /// Neither is a signature the call site does not spell — an export whose <b>return</b> type the consumer
         /// may not name compiles and renders identically, because what is written here is the method, not what it
         /// hands back.</para>
+        /// <para>The container arm has no reachable path and is kept only so the two names the call spells are
+        /// guarded alike: naming an obsolete-error type in the <c>[ExportFunctions]</c> attribute is CS0619 in the
+        /// assembly that declares the export, which no pragma there suppresses, so such a container never reaches
+        /// a resolver.</para>
         /// </summary>
         private static bool CanWriteCallTo(FunctionExportResolver.ExportOverloadInfo overload, out string display)
         {

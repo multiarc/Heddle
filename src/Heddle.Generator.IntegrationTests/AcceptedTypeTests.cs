@@ -33,6 +33,9 @@ namespace Heddle.Generator.IntegrationTests
             IStrs = new System.Collections.Generic.List<string> { "a", "b" },
             StrArr = new[] { "a", "b" },
             Ints = new[] { 1, 2 },
+            UInts = new uint[] { 1, 2 },
+            Days = new[] { DayOfWeek.Monday },
+            Longs = new[] { 1L },
             IntList = new System.Collections.Generic.List<int> { 1, 2 }
         };
 
@@ -48,6 +51,9 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("takesseqobj(IStrs)", "[so]\n")]      // IList<string> → IEnumerable<object>, covariance
         [InlineData("takesseqobj(StrArr)", "[so]\n")]     // string[]      → IEnumerable<object>
         [InlineData("takesobjarr(StrArr)", "[oa]\n")]     // string[]      → object[], array covariance
+        [InlineData("takesintarr(Ints)", "[ia]\n")]       // int[]         → int[], identity
+        [InlineData("takesintarr(UInts)", "[ia]\n")]      // uint[]        → int[], the CLR's reduced element type
+        [InlineData("takesintarr(Days)", "[ia]\n")]       // DayOfWeek[]   → int[], an enum over that element
         [InlineData("takesstrorint(S)", "[si]\n")]        // the base declaration's string
         [InlineData("takesstrorint(I)", "[si]\n")]        // the subclass's own int
         public void AValueTheEngineAcceptsPrecompilesAndRendersTheEnginesBytes(string call, string expected)
@@ -68,6 +74,8 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("takesni(L)", "System.Int64")]           // no numeric widening in the CLR relation
         [InlineData("takesseqobj(IntList)", "System.Collections.Generic.List`1[[System.Int32")]
         [InlineData("takesobjarr(Ints)", "System.Int32[]")]
+        [InlineData("takesintarr(Longs)", "System.Int64[]")]   // a wider element is not a reduced one
+        [InlineData("takesintarr(StrArr)", "System.String[]")] // nor is a reference element
         [InlineData("takesstrorint(D)", "System.Decimal")]
         public void AValueTheEngineRefusesDegradesRatherThanPrecompiling(string call, string valueTypeName)
         {

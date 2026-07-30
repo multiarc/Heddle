@@ -56,7 +56,8 @@ namespace Heddle.Tests
             foreach (var required in new[]
                      {
                          "identity", "reference", "boxing", "nullable", "nullable-correction-A",
-                         "nullable-correction-C", "numeric", "hierarchy", "variance", "valuetuple", "array"
+                         "nullable-correction-C", "numeric", "hierarchy", "variance", "valuetuple", "array",
+                         "array-covariance"
                      })
                 Assert.Contains(required, families);
         }

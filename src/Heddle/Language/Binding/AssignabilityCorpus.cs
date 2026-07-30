@@ -49,6 +49,7 @@ namespace Heddle.Language.Binding
             new AssignabilityRow("System.Int32", "System.Object", true, "boxing"),
             new AssignabilityRow("System.Int32", "System.IComparable", true, "boxing"),
             new AssignabilityRow("System.Int32", "System.Enum", false, "boxing"),
+            new AssignabilityRow("System.DayOfWeek", "System.Enum", true, "boxing"),
             new AssignabilityRow("System.Decimal", "System.Object", true, "boxing"),
             new AssignabilityRow("System.DateTime", "System.ValueType", true, "boxing"),
 
@@ -57,6 +58,15 @@ namespace Heddle.Language.Binding
             new AssignabilityRow("System.Int32", "System.Nullable<System.Int32>", true, "nullable-correction-A"),
             new AssignabilityRow("System.Nullable<System.Int32>", "System.IComparable", false, "nullable-correction-C"),
             new AssignabilityRow("System.Nullable<System.Int32>", "System.Int32", false, "nullable"),
+
+            // The same correction with a class target rather than an interface one. Roslyn classifies the boxed
+            // enum, which does derive from Enum; the CLR relates Nullable<T> itself, whose base chain is
+            // ValueType and object and stops there. The two rows under it are the neighbours the correction must
+            // not swallow — they are on that base chain.
+            new AssignabilityRow("System.Nullable<System.DayOfWeek>", "System.Enum", false,
+                "nullable-correction-C"),
+            new AssignabilityRow("System.Nullable<System.DayOfWeek>", "System.ValueType", true, "nullable"),
+            new AssignabilityRow("System.Nullable<System.DayOfWeek>", "System.Object", true, "nullable"),
 
             // Nullable-to-nullable (assignability, distinct from conversion legality)
             new AssignabilityRow("System.Nullable<System.Int32>", "System.Nullable<System.Int64>", false, "nullable"),
@@ -91,6 +101,31 @@ namespace Heddle.Language.Binding
             new AssignabilityRow("System.Int32[]", "System.Array", true, "array"),
             new AssignabilityRow("System.Int32[]", "System.Collections.Generic.IEnumerable<System.Int32>", true,
                 "array"),
+
+            // Array covariance over element types the CLR reduces to one — each signed/unsigned integer pair, and
+            // an enum with its underlying primitive. Roslyn classifies none of these as a conversion at all, so a
+            // classification-based adapter refuses every one.
+            new AssignabilityRow("System.UInt32[]", "System.Int32[]", true, "array-covariance"),
+            new AssignabilityRow("System.Int32[]", "System.UInt32[]", true, "array-covariance"),
+            new AssignabilityRow("System.Byte[]", "System.SByte[]", true, "array-covariance"),
+            new AssignabilityRow("System.Int64[]", "System.UInt64[]", true, "array-covariance"),
+            new AssignabilityRow("System.DayOfWeek[]", "System.Int32[]", true, "array-covariance"),
+            new AssignabilityRow("System.Int32[][]", "System.UInt32[][]", true, "array-covariance"),
+            new AssignabilityRow("System.UInt32[]", "System.Collections.Generic.IList<System.Int32>", true,
+                "array-covariance"),
+            new AssignabilityRow("System.DayOfWeek[]",
+                "System.Collections.Generic.IEnumerable<System.Int32>", true, "array-covariance"),
+
+            // What the same rule must still refuse: a differing width, a value-type element into a reference-type
+            // element (the direction that is false at runtime however it is spelled), and the two same-width pairs
+            // the CLR does not reduce.
+            new AssignabilityRow("System.Int32[]", "System.Int64[]", false, "array-covariance"),
+            new AssignabilityRow("System.Int32[]", "System.ValueType[]", false, "array-covariance"),
+            new AssignabilityRow("System.DayOfWeek[]", "System.Enum[]", false, "array-covariance"),
+            new AssignabilityRow("System.Int32[]", "System.Collections.Generic.IEnumerable<System.Object>", false,
+                "array-covariance"),
+            new AssignabilityRow("System.Char[]", "System.UInt16[]", false, "array-covariance"),
+            new AssignabilityRow("System.Boolean[]", "System.Byte[]", false, "array-covariance"),
         };
     }
 }

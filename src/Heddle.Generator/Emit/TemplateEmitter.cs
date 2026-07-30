@@ -1227,6 +1227,9 @@ namespace Heddle.Generator.Emit
                 defBodyCtx = defBodyCtx.WithFills(bodyFills, layout.Count > 0 ? layout : null);
             }
 
+            if (!DeclaredModelAcceptsCallSiteValue(def, cp, bctx, out reason))
+                return null;
+
             // Compiled once per (definition identity, fill-scope digest); filled bodies are distinct from unfilled.
             var bodyInfo = GetOrBuildDefinitionBody(def, defBodyCtx, out reason);
             if (bodyInfo == null || bodyInfo.Failed)
@@ -2010,6 +2013,11 @@ namespace Heddle.Generator.Emit
         /// <summary>
         /// The body context of a region. Typed region (:: T) types by declared model; untyped bare region types by enclosing model.
         /// Either way, body borrows enclosing prop layout and never enclosing slot mode. Untyped with explicit value degrades.
+        /// <para>"The enclosing model" includes the one behind a body emitted on the dynamic tier. Rebuilding the
+        /// context without it kept the host's prop layout while dropping the host's model, and a definition called
+        /// from such a region body with one of those props looked untyped — the one shape that reaches the
+        /// model-less arm of <see cref="ObjectDefinitionBodyModel"/>, which is written for a caller that has no
+        /// model rather than for one whose model was thrown away here.</para>
         /// </summary>
         private bool TryRegionBodyContext(DefinitionItem def, CallParameter cp, BodyContext bctx,
             out BodyContext ctx, out string reason)
@@ -2030,7 +2038,8 @@ namespace Heddle.Generator.Emit
                     return false;
                 }
 
-                ctx = new BodyContext(bctx.ModelCast, bctx.ModelSymbol, bctx.IsDynamic, props: bctx.RegionHostProps);
+                ctx = new BodyContext(bctx.ModelCast, bctx.ModelSymbol, bctx.IsDynamic, props: bctx.RegionHostProps,
+                    dynamicBodyModel: bctx.DynamicBodyModel);
                 return true;
             }
 
@@ -2043,6 +2052,57 @@ namespace Heddle.Generator.Emit
 
             ctx = inner.WithProps(bctx.RegionHostProps);
             return true;
+        }
+
+        /// <summary>
+        /// Whether a definition declaring <c>:: T</c> accepts the value its call site passes. The engine compares
+        /// the two, but only where the value came out of its model accessor with a static type in hand — a read of
+        /// a body prop or a member path it resolved. A literal, <c>this</c>, a computed expression, a chain and a
+        /// path that ends in a dynamic hop all leave the accessor with no input type, and the engine then compares
+        /// the declared type with itself, which always passes.
+        /// <para>That asymmetry is the rule, not an accident of it: checking every call form would refuse
+        /// <c>@frame(5)</c> and <c>@frame(this)</c> against a <c>:: string</c> the engine compiles without
+        /// complaint. "Cannot say" is exempt for the usual reason — the emitter not having established a type is
+        /// not the engine not having one.</para>
+        /// </summary>
+        private bool DeclaredModelAcceptsCallSiteValue(DefinitionItem def, CallParameter cp, BodyContext bctx,
+            out string reason)
+        {
+            reason = null;
+            var modelTypeName = def.ModelType;
+            if (string.IsNullOrEmpty(modelTypeName) || DeclaresDynamicModel(def) ||
+                string.Equals(modelTypeName, "object", System.StringComparison.Ordinal))
+                return true;
+
+            if (cp.NativeExpression != null || (cp.ChainParameter != null && cp.ChainParameter.Count != 0))
+                return true;
+
+            // A root reference resolves against the root scope, which the engine does type — but every one of them
+            // is refused outright before anything is emitted, so this answers a question already settled.
+            if (!cp.IsModelTypeParameter || cp.RootReference)
+                return true;
+
+            var segments = cp.ModelParameter;
+            if (segments == null || segments.Length == 0 || string.IsNullOrEmpty(segments[0]))
+                return true;
+
+            var declared = _resolver.ResolveModelType(modelTypeName, _usings);
+            if (declared == null || declared.SpecialType == SpecialType.System_Object)
+                return true;
+
+            var valueType = CallSiteValueType(cp, bctx);
+            if (valueType == null || valueType.TypeKind == TypeKind.Dynamic || valueType.TypeKind == TypeKind.Error)
+                return true;
+            if (TryGetNullableUnderlying(valueType, out var underlying))
+                valueType = underlying;
+
+            if (TypeFacts.IsAssignableFrom(declared, valueType))
+                return true;
+
+            reason = "value type '" + SymbolTypeResolver.FullyQualified(valueType) +
+                     "' is not accepted by the definition model '" +
+                     SymbolTypeResolver.FullyQualified(declared) + "'";
+            return false;
         }
 
         /// <summary>

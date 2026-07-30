@@ -2381,17 +2381,29 @@ un-unwrapped declared one, so `[DataType(typeof(int?))]` accepted nothing whatev
 That declaration was entirely non-functional.
 
 The fix is not a longer enumeration. The generator already carries one adapter whose whole job is to
-answer the CLR relation over symbols, with its two verified Roslyn-vs-CLR nullable corrections and a
-shared conformance corpus driven from both tiers; the gate now asks it. Variance, array covariance and
-the nullable domain come with it, by construction rather than by list.
+answer the CLR relation over symbols, with its verified Roslyn-vs-CLR corrections and a shared
+conformance corpus driven from both tiers; the gate now asks it.
+
+> Corrected in the nineteenth cycle. This paragraph originally claimed that "variance, array covariance
+> and the nullable domain come with it, by construction rather than by list". Generic variance and the
+> nullable domain did; array covariance did not. Roslyn classifies `uint[] → int[]` as no conversion at
+> all, so the adapter refused every array pair whose element types the CLR reduces to one — twenty such
+> disagreements survived this commit, and the corpus had no row in that family to catch it. The claim was
+> the same failure mode this entry's own durable lesson names: a completeness claim nothing tests.
 
 Why no fixture caught it: no built-in is affected — `@list`'s `IEnumerable` and `@for`'s `Range`/`int`
 are exact matches at every call site the corpus has — and neither the corpus nor the samples contain a
 single host extension declaring `[DataType]`. "The corpus is byte-identical" was true and closed nothing.
 Four such extensions now exist, covering the nullable lift, generic covariance through a class and
-through an interface, array covariance, and the inherited-declaration walk; thirteen rows in both
-directions, and a mutation that accepts everything reddens five of them while a mutation back to nominal
-identity reddens six.
+through an interface, array covariance, and the inherited-declaration walk; rows in both directions, and
+two mutations that redden disjoint halves of them — an acceptance that answers yes to everything reddens
+every refusal assertion, and one back to nominal identity reddens every acceptance row that is not an
+exact match.
+
+> Corrected in the nineteenth cycle. This originally read "thirteen rows in both directions, and a
+> mutation that accepts everything reddens five of them while a mutation back to nominal identity reddens
+> six". Neither count reproduces: both mutations redden the same number of tests, and the two figures
+> were rows counted one way and tests the other.
 
 ### `:: object` is the engine's predicate; `dynamic` is a spelling
 
@@ -2429,6 +2441,10 @@ The highest-severity finding of the cycle, pre-existing and on no known-open lis
 call out as C# into the *consumer's* assembly, where the error form is CS0619. Measured four ways —
 expression position and `@out` slot position, with a `string` return and a class return — the consumer's
 build stopped, at both commits, on a `.g.cs` no one can edit, over a template that is not at fault.
+
+> Corrected in the nineteenth cycle. Three of those four cells were committed as test rows; the
+> slot-position-with-a-class-return cell was measured and then not written down. It is a row now, and it
+> reddens with the other three when the method arm of the guard is removed.
 
 The emitter already had the doctrine: a type carrying `[Obsolete(error: true)]` is one this assembly may
 not name, and the template degrades with `HED7030` rather than pre-compiling a name the build will
@@ -2499,3 +2515,137 @@ So: when a rule mirrors an engine predicate, prefer calling the one adapter that
 restating it, and when restating is unavoidable, write down the predicate's *source expression* rather
 than a prose enumeration of the cases someone thought of. An enumeration is a claim of completeness that
 nothing tests; a pointer to the source is a claim a reader can check in one step.
+
+## Nineteenth review cycle (2026-07-31)
+
+One regression, introduced by the previous commit — and introduced by the *correction* it added alongside
+a fix, not by the fix. Three pre-existing divergences, two of them in the adapter the previous cycle had
+just made load-bearing. Three inaccuracies in the eighteenth-cycle entry above, corrected in place.
+
+### A region body forgot its host's model
+
+The previous commit added an arm to the `:: object` body-model rule for a caller whose own scope has no
+static type: such a body's model is `dynamic`, because the engine's accessor resolves nothing against a
+dynamic scope. That is right for the shape it was written for — a model-less document — and wrong one
+level down, because the engine tries a *body prop read* before it consults whether the scope is dynamic.
+A prop's own type stands whatever the scope is.
+
+The arm was reachable only through one context, and only because that context was under-informed: a
+region body was rebuilt from its host's model cast, model symbol and dynamic flag while the host's
+`DynamicBodyModel` — the type the engine has in hand behind a dynamically-emitted body — was dropped.
+The region kept the host's *prop layout* and lost the host's *model*, which is the one combination that
+reaches the new arm.
+
+Measured over a model-less document whose component declares `p: string`, fills a region, and calls
+`@d(p)` from that region body, with nothing spelling `dynamic` anywhere but the `@model` directive:
+
+* `<d>{{@for(this)}}` — the engine refuses (`HED0004`, `String` against `Range`/`int`); the commit
+  precompiled it and rendered a bare newline, with no diagnostic at build or at run. The body model was
+  `dynamic`, so the accepted-type gate took its dynamic exemption and `@for`'s `[DataType]` never ran.
+* `<d>{{[@(Nope)]}}` — the engine refuses (`HED0001`, on `String`); the commit precompiled it and threw
+  `RuntimeBinderException` at render. The same through the caller's content, which is typed by the same
+  rule.
+* The parent commit degraded all three.
+
+Which of the two is the root was decided by measurement, not by argument. Adding the missing prop-read
+guard to the arm closes all three faces — and also degrades `@d(p)` with a body the engine renders
+(`[@(Length)]` over the string prop, `[4]` on both tiers), because with no host model in hand the value
+question has no answer and the guard routes to "cannot say". Carrying the host's `DynamicBodyModel` into
+the region body closes the same three faces and keeps that template precompiling. The arm was right; the
+context was under-informed. **Degrade cost: zero** — no template that precompiled correctly stopped.
+
+### `Nullable<TEnum>` reached `System.Enum`
+
+The adapter's Roslyn-boxing correction excluded exactly one target kind: an interface. `int? → IComparable`
+classifies as boxing because the boxed `int` implements it, and the CLR says false because `Nullable<T>`
+implements nothing — so the correction was written as "boxing, except a nullable into an interface".
+`System.Enum` is a class, so `DayOfWeek? → Enum` survived it, and the CLR says false there for the same
+reason: `Nullable<T>`'s base chain is `ValueType` and `object` and stops.
+
+Reachable through the shared prop-layout rule, which asks the adapter whether a re-declared prop type is
+assignable to the inherited one. An extension re-declaring an inherited `Enum` prop as `DayOfWeek?` is
+`HED5008` on the engine and refuses the template; the generated tier accepted the layout and rendered.
+The correction is now phrased as the CLR's own question — a boxing conversion out of a `Nullable<T>` is
+assignable only where the target is on `Nullable<T>`'s own hierarchy — which subsumes the interface case
+rather than sitting beside it. The neighbour that keeps it from being a refusal of nullable
+re-declarations is the same `DayOfWeek?` against a `ValueType` base, which is on that hierarchy, accepts,
+and renders the engine's bytes.
+
+### Array covariance over the CLR's reduced element types
+
+The same adapter, the other direction, and the claim the eighteenth-cycle entry got wrong. The CLR
+compares array element types after reducing an enum to its underlying primitive and each signed/unsigned
+integer pair to one representative, so `uint[] → int[]`, `byte[] ↔ sbyte[]`, `long[] ↔ ulong[]` and
+`DayOfWeek[] → int[]` are all assignable, and it propagates — through the array's own generic interfaces
+(`uint[] → IList<int>`) and through a jagged array, whose element type is itself an array. Roslyn
+classifies none of these as a conversion at all, so the adapter refused every one: twenty rows in one
+sweep, thirteen in another, all the same family. The engine renders them; the generated tier degraded.
+
+Not a regression — the nominal comparison the adapter replaced refused the same rows — but it made the
+previous cycle's "by construction rather than by list" false as written.
+
+The rule is one clause: reduce both sides' element types and re-ask. The re-ask is what answers the
+propagated forms without naming them, and it terminates because the reduction is idempotent. Direction
+safety is pinned from the other side too: `int[] → object[]` is false at runtime for value-type elements,
+and a mutation that accepts any two arrays of equal rank reddens that row along with `int[] → ValueType[]`,
+`DayOfWeek[] → Enum[]`, `char[] → ushort[]` and `bool[] → byte[]` — every same-width pair the CLR does
+*not* reduce.
+
+`AssignabilityCorpus` had four array rows, none in the disagreeing family, and no `Nullable<enum>` row.
+It has both now, with their refusing neighbours, and the reflection-side driver re-derives every
+expectation from the live CLR relation on each run, so the committed values are generated data.
+
+### A declared `:: T` was never checked against what the call site passed
+
+`<frame>{{[@()]}} :: System.String` called `@frame(Nested)` — the engine refuses (`HED0004`); the
+generated tier precompiled and rendered the `Nested`. With `:: System.Int32` and `@frame(Name)` it
+rendered the string; with a body reading `Length` it threw `InvalidCastException` at render. The
+declaration was being read as the body's model and never as a constraint on the value, so generated code
+cast the value to `T` and carried on.
+
+The engine's check is asymmetric, and mirroring the asymmetry is the whole of the fix. `CheckTypes` runs
+against the *input model type* its accessor produced, which exists only for a value the accessor resolved
+statically — a body prop read or a member path. A literal, `this`, a computed expression, a chain and a
+path ending in a dynamic hop leave it with none, and the engine then compares the declared type with
+itself and passes. So `@frame(5)`, `@frame(this)` and `@frame(len(Name))` against a `:: System.String`
+are templates the engine compiles and renders, and a stricter rule than the engine's would take all three
+off the precompiled tier. All three are pinned as must-precompile rows beside the three refusals, and a
+mutation that drops the exemptions reddens exactly those three.
+
+### The sweep
+
+Two populations, each captured at `HEAD` and in the working tree and diffed on classification, generated
+source and rendered bytes: the corpus (63 templates, through the classification and render-parity gates)
+and a 773-row grid of definition, region and accepted-type shapes — declared model × call-site value ×
+body, each in a plain document and inside a filled region body, plus every accepted-type call the fixtures
+support.
+
+* **Newly degrading: 30.** The engine refuses all thirty, and at `HEAD` all thirty were divergences —
+  twenty-four rendering a page the engine will not compile, six throwing at render. No template that both
+  tiers agreed on stopped precompiling.
+* **Bytes moved while still precompiling: 0.**
+* **Newly precompiling: 22.** All twenty-two are region bodies that can now be typed because the region
+  carries its host's model, and every one renders the engine's bytes exactly.
+* Divergences remaining in the grid: **zero**, down from thirty. The corpus sweep is byte-identical, and
+  the ten samples' goldens are unchanged.
+
+### One arm kept, marked unreachable
+
+The export guard checks both names an emitted call spells, the method and its container. The container
+arm has no reachable path: naming an obsolete-error type in `[ExportFunctions]` is CS0619 in the assembly
+that declares the export, and no pragma there suppresses it. It stays, so the two names are guarded
+alike, with a clause saying so — an arm that looks live and is not is a worse trap than one that is
+labelled.
+
+### The durable lesson
+
+The regression came in through a correction added *alongside* the fix it was correcting. The fix — re-key
+the body-model rule on the engine's predicate instead of the word `dynamic` — was right, and the arm added
+next to it to handle a scope with no static type was right for the shape it was written for. What made it
+a regression is that a correction is written against the case in front of you and inherits the fix's
+credibility, while carrying none of the fix's measurement.
+
+So: a correction bolted onto a fix needs its own reachability question, asked out loud — *which contexts
+satisfy this condition?* Here the answer was one, and that one context reached it only because it had
+been built with half its information thrown away. The condition was not the bug; it was the place the
+bug became visible. When a new arm turns out to have exactly one caller, suspect the caller.

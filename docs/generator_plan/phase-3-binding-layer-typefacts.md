@@ -73,9 +73,9 @@ bind them:
   `AllInterfaces` walk at `SymbolTypeResolver.cs:204-214` is wider and must be constrained by
   the table, not by accident).
 
-## The Roslyn adapter's nullable corrections
+## The Roslyn adapter's corrections
 
-The two verified places where Roslyn's `ClassifyConversion` and the CLR relation disagree, kept
+The verified places where Roslyn's `ClassifyConversion` and the CLR relation disagree, kept
 **only** in the Roslyn adapter with a comment block naming each (today they live in
 `RedeclarationAssignable`'s doc comment):
 
@@ -89,13 +89,29 @@ The two verified places where Roslyn's `ClassifyConversion` and the CLR relation
    interface), while `typeof(IComparable).IsAssignableFrom(typeof(int?))` is false —
    `Nullable<T>` itself implements no interfaces. The adapter corrects toward the CLR answer.
 
-   In both rows the corpus records the expected value **generated from live reflection at
+   Row 2 is one case of a wider rule and was first written as its only case. A boxing
+   conversion *out of* a `Nullable<T>` classifies against the boxed `T`, which reaches `T`'s
+   interfaces and, for an enum, `System.Enum`; the CLR relates `Nullable<T>` itself, whose own
+   hierarchy is `ValueType` and `object`. Phrasing the correction as "except an interface" left
+   `DayOfWeek?` → `System.Enum` accepted.
+
+3. `uint[]` → `int[]` (and `byte[]` ↔ `sbyte[]`, `long[]` ↔ `ulong[]`, `DayOfWeek[]` → `int[]`):
+   **CLR-assignable but no conversion at all to Roslyn.** The CLR compares array element types
+   after reducing an enum to its underlying primitive and each signed/unsigned integer pair to
+   one representative, and this propagates through the array's generic interfaces
+   (`uint[]` → `IList<int>`) and through jagged arrays. `char` and `bool` reduce to nothing —
+   `char[]` → `ushort[]` and `bool[]` → `byte[]` are false — and a value-type element never
+   reaches a reference-type one, so `int[]` → `object[]` stays false.
+
+   In every row the corpus records the expected value **generated from live reflection at
    corpus-build time**, so the prose direction above is non-load-bearing by design
    (*(verify at implementation)* — regenerate and diff the expectations before relying on
    them).
 
-A third disagreement class is anticipated but unverified (variance with value-type type
-arguments; `ValueTuple` conversions) — which is exactly why the corpus below exists.
+One anticipated disagreement class stayed unverified through implementation (variance with
+value-type type arguments; `ValueTuple` conversions): those rows agree. Array covariance is
+the one that did not, and it was found by sweeping the relation rather than by reasoning about
+it — which is exactly why the corpus below exists.
 
 ## The assignability conformance corpus
 
@@ -117,7 +133,7 @@ type systems proving they agree with it. Seed row families:
 |---|---|
 | Identity / reference | `string`→`string` T; `string`→`object` T; `object`→`string` F |
 | Boxing | `int`→`object` T; `int`→`IComparable` T; `int`→`System.Enum` F |
-| Nullable lift (the correction rows) | `int`→`int?` **CLR answer pinned by generated expectation**; `int?`→`int` F; `int?`→`IComparable` pinned by generated expectation |
+| Nullable lift (the correction rows) | `int`→`int?` **CLR answer pinned by generated expectation**; `int?`→`int` F; `int?`→`IComparable` and `DayOfWeek?`→`System.Enum` pinned by generated expectation, with `DayOfWeek?`→`ValueType`/`object` as the neighbours they must not swallow |
 | Nullable-to-nullable | `int?`→`long?` F (assignability, distinct from conversion legality); `int?`→`int?` T |
 | Numeric (assignability, not widening) | `int`→`long` F — pins that widening legality never leaks into the assignability answer |
 | Interface / hierarchy | derived→base T; base→derived F; class→implemented-interface T; interface→base-interface T |
@@ -125,6 +141,7 @@ type systems proving they agree with it. Seed row families:
 | `ValueTuple` probes | `(int,string)`→`(int,string)` T; `(int,string)`→`(long,string)` F |
 | Generic definitions/nesting | constructed→same-constructed T; open-definition rows per the `IsUsableAsPropType` boundary |
 | Array | `string[]`→`object[]` T (array covariance); `int[]`→`object[]` F |
+| Array covariance over reduced elements (the third correction family) | `uint[]`↔`int[]` T; `byte[]`→`sbyte[]` T; `DayOfWeek[]`→`int[]` T; `uint[]`→`IList<int>` T; `int[][]`→`uint[][]` T; and the refusals `int[]`→`long[]`, `int[]`→`ValueType[]`, `DayOfWeek[]`→`Enum[]`, `char[]`→`ushort[]`, `bool[]`→`byte[]` |
 
 Expected values for correction-family rows are generated from live reflection at corpus-build
 time and committed — the corpus asserts "the Roslyn adapter equals the CLR", never "equals what

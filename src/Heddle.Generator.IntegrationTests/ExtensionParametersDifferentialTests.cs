@@ -131,11 +131,33 @@ namespace Heddle.Generator.IntegrationTests
         [Theory]
         [InlineData("nullableIface")]   // IComparable <- int?: Roslyn boxing, runtime NOT assignable — must error
         [InlineData("nullableWiden")]   // int <- int?: not assignable — must error
+        [InlineData("nullableEnum")]    // Enum <- DayOfWeek?: the same, with a class target rather than an interface
         public void NullableRedeclarationTwinRejectsExactlyAsRuntime(string name)
         {
             var t = "@model(){{System.String}}@\\\n@" + name + "(this)\n";
             var gen = DifferentialHarness.Generate(new[] { ("views/" + name + ".heddle", t) });
             Assert.Contains(gen.Diagnostics, d => d.Id == "HED7017");
+
+            var dynamicTemplate = new HeddleTemplate(t,
+                new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(), typeof(string)));
+            Assert.False(dynamicTemplate.CompileResult.Success);
+            Assert.Contains(dynamicTemplate.CompileResult.ErrorList, e => e.DiagnosticId == "HED5008");
+        }
+
+        /// <summary>The neighbour of the <c>nullableEnum</c> row: the same <c>DayOfWeek?</c> re-declaration
+        /// against <c>ValueType</c>, which is on <c>Nullable&lt;T&gt;</c>'s own base chain. The layout is clean
+        /// and the call renders the engine's bytes out of generated code, so the exclusion above is a rule about
+        /// which targets a nullable reaches and not a refusal of nullable re-declarations.</summary>
+        [Fact]
+        public void ANullableRedeclarationOnTheNullableBaseChainStillAcceptsAndRendersIdentically()
+        {
+            const string t = "@model(){{System.String}}@\\\n@nullableValueType(this)\n";
+            var gen = DifferentialHarness.Generate(new[] { ("views/nullvaluetype.heddle", t) });
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Id == "HED7017");
+
+            var (pre, dyn) = DifferentialHarness.Render("views/nullvaluetype.heddle", t, typeof(string), "z");
+            Assert.Equal(dyn, pre);
+            Assert.Contains("v=none:z", dyn);
         }
 
         [Fact]

@@ -169,6 +169,43 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
     {
     }
 
+    /// <summary>Base: <c>e: Enum</c>.</summary>
+    [Prop("e", typeof(Enum), Optional = true)]
+    public abstract class EnumBaseExtension : EchoExtensionBase
+    {
+    }
+
+    /// <summary>Malformed: re-declares <c>e</c> as <c>DayOfWeek?</c>. Roslyn classifies the boxing of the
+    /// underlying enum, which does derive from <c>Enum</c>; the CLR relates <c>Nullable&lt;T&gt;</c> itself, whose
+    /// base chain is <c>ValueType</c> and stops there → HED5008 / HED7017. The class-target twin of the interface
+    /// exclusion above, which a correction phrased as "except an interface" leaves behind.</summary>
+    [ExtensionName("nullableEnum")]
+    [Prop("e", typeof(DayOfWeek?))]
+    public sealed class NullableEnumItemExtension : EnumBaseExtension
+    {
+    }
+
+    /// <summary>Base: <c>v: ValueType</c> — which is on <c>Nullable&lt;T&gt;</c>'s own base chain, where
+    /// <c>Enum</c> is not.</summary>
+    [Prop("v", typeof(ValueType), Optional = true)]
+    public abstract class ValueTypeBaseExtension : EchoExtensionBase
+    {
+    }
+
+    /// <summary>Clean: re-declares <c>v</c> as the same <c>DayOfWeek?</c> the row above declares, against the one
+    /// target the CLR does relate it to. The pair says the rule is <c>Nullable&lt;T&gt;</c>'s own hierarchy and
+    /// not "refuse every nullable re-declaration".</summary>
+    [ExtensionName("nullableValueType")]
+    [Prop("v", typeof(DayOfWeek?), Optional = true)]
+    public sealed class NullableValueTypeItemExtension : ValueTypeBaseExtension
+    {
+        public override object ProcessData(in Scope scope)
+        {
+            return "v=" + (scope.GetParameter("v")?.ToString() ?? "none") + ":" +
+                   (scope.ModelData?.ToString() ?? string.Empty);
+        }
+    }
+
     /// <summary>Base: <c>m: int</c>.</summary>
     [Prop("m", typeof(int), Default = 1)]
     public abstract class IntBaseExtension : EchoExtensionBase

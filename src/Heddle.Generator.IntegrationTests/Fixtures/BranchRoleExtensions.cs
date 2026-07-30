@@ -36,9 +36,12 @@ using Heddle.Runtime;
     typeof(Heddle.Generator.IntegrationTests.Fixtures.WideningItemExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableIfaceItemExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableWidenItemExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableEnumItemExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableValueTypeItemExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.TakesNullableIntExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.TakesObjectSequenceExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.TakesObjectArrayExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.TakesIntArrayExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.TakesStringOrIntExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.BadgedExtension))]
 
