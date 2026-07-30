@@ -352,6 +352,29 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public string Title => "ok";
     }
 
+    /// <summary>A perfectly ordinary generic with an ordinary nested value type. It becomes unnameable only when a
+    /// type argument the consumer may not spell is substituted into it, and the nested type carries no type argument
+    /// of its own to show for it.</summary>
+    public class NestingOuter<T>
+    {
+        public struct InnerValue
+        {
+            public int Amount { get; set; }
+        }
+    }
+
+    /// <summary>
+    /// A nameable member of a nameable model whose <b>type</b> is nested inside a generic constructed over a name no
+    /// consumer may write. Spelling the inner type means spelling the outer one, type argument and all, so the
+    /// <c>default(T)</c> the null-safe form emits is a CS0619 — off a property whose own declaration carries nothing
+    /// but the warning-level attribute that made it legal to declare at all.
+    /// </summary>
+    public sealed class ObsoleteContainerArgumentModel
+    {
+        [System.Obsolete("an obsolete context is the only way to declare this")]
+        public NestingOuter<ObsoleteErrorValue>.InnerValue Balance { get; set; }
+    }
+
     /// <summary>A nameable type nested inside one that is not: C# reports the error on the <b>outer</b> name, which
     /// no spelling of the inner one can avoid.</summary>
     [System.Obsolete("gone", true)]

@@ -190,35 +190,41 @@ namespace Heddle.Generator.Emit
                         Emitted = false, Diagnostics = _diagnostics, UnsupportedReason = modelReason
                     };
 
-                // An unresolved model type is emitted as the author wrote it, on the chance that the generated
-                // file's own `using` lines make it mean something. That is a defensible bet for a plain name and a
-                // bad one for anything else: `System.Int32*` resolves to no symbol, so no type check ever sees it,
-                // and the raw text became the entry point's parameter type — three CS0214 and three CS1503 against
-                // a `.g.cs`, for a model the engine refuses at compile time with a message naming the template.
-                if (_modelSymbol == null && !IsPlainTypeName(_modelTypeText))
+                if (_modelSymbol != null)
+                {
+                    modelType = SymbolTypeResolver.FullyQualified(_modelSymbol);
+                }
+                else
+                {
+                    if (_resolver.LastFault == Heddle.Language.Binding.TypeSpellingFault.Ambiguous)
+                        // HED7023: the name resolves to SEVERAL types and the imports do not settle it.
+                        // The runtime raises its "the type name is ambiguous" error for the same input, so the build
+                        // must not quietly pick one and emit typed code off a type the runtime might not choose.
+                        _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.AmbiguousTypeName,
+                            _modelDirectivePosition, _modelTypeText));
+                    else if (IsPlainTypeName(_modelTypeText) && !_resolver.TypeNameExistsAnywhere(_modelTypeText))
+                        // HED7007: a declared @model type that resolves as no symbol AND matches no type name
+                        // anywhere in the reference closure is a genuine typo/unresolvable symbol. A bare name the
+                        // runtime resolves by assembly scan (namespace-less, no @using) still degrades safely to the
+                        // dynamic path rather than false-erroring. Gated to plain type-name syntax so exotic forms
+                        // (open generics, arrays) never false-error either.
+                        _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.UnresolvableModelType,
+                            _modelDirectivePosition, _modelTypeText));
+
+                    // Whether or not there was anything to report, a spelling that named no symbol is not one the
+                    // emitter may write. It used to be emitted as the author typed it, on the chance that the
+                    // generated file meant something by it; it does not. `Fixtures.Article` and
+                    // `System.Collections.Generic.List` both pass the name-existence gate and both become the entry
+                    // point's parameter type, where the consumer's compiler answers CS0246 and CS0305 against a
+                    // `.g.cs` no one can edit — and only a template body that degraded for some other reason ever
+                    // hid it. The engine binds a model name over the assemblies actually loaded rather than the ones
+                    // this compilation references, so it is also the only tier that might still serve the template.
                     return new Result
                     {
                         Emitted = false, Diagnostics = _diagnostics,
-                        UnsupportedReason = "model type '" + _modelTypeText +
-                                            "' resolves to no symbol and is not a plain type name"
+                        UnsupportedReason = "model type '" + _modelTypeText + "' resolves to no symbol"
                     };
-
-                if (_modelSymbol != null)
-                    modelType = SymbolTypeResolver.FullyQualified(_modelSymbol);
-                else if (_resolver.LastFault == Heddle.Language.Binding.TypeSpellingFault.Ambiguous)
-                    // HED7023: the name resolves to SEVERAL types and the imports do not settle it.
-                    // The runtime raises its "the type name is ambiguous" error for the same input, so the build
-                    // must not quietly pick one and emit typed code off a type the runtime might not choose.
-                    _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.AmbiguousTypeName,
-                        _modelDirectivePosition, _modelTypeText));
-                else if (IsPlainTypeName(_modelTypeText) && !_resolver.TypeNameExistsAnywhere(_modelTypeText))
-                    // HED7007: a declared @model type that resolves as no symbol AND matches no type name
-                    // anywhere in the reference closure is a genuine typo/unresolvable symbol. A bare name the
-                    // runtime resolves by assembly scan (namespace-less, no @using) still degrades safely to the
-                    // dynamic path rather than false-erroring. Gated to plain type-name syntax so exotic forms
-                    // (open generics, arrays) never false-error either.
-                    _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.UnresolvableModelType,
-                        _modelDirectivePosition, _modelTypeText));
+                }
             }
 
             // Build the body tree (Body0 = document root; extension bodies become nested bodies).
@@ -317,7 +323,7 @@ namespace Heddle.Generator.Emit
         {
             public BodyContext(string modelCast, ITypeSymbol modelSymbol, bool isDynamic, PropLayoutInfo props = null,
                 ITypeSymbol slotType = null, Dictionary<string, DefinitionItem> fills = null,
-                PropLayoutInfo regionHostProps = null, ITypeSymbol slotValueModel = null)
+                PropLayoutInfo regionHostProps = null, ITypeSymbol dynamicBodyModel = null)
             {
                 ModelCast = modelCast;
                 ModelSymbol = modelSymbol;
@@ -326,7 +332,7 @@ namespace Heddle.Generator.Emit
                 SlotType = slotType;
                 Fills = fills;
                 RegionHostProps = regionHostProps;
-                SlotValueModel = slotValueModel;
+                DynamicBodyModel = dynamicBodyModel;
             }
 
             public string ModelCast { get; }          // "(global::T)" or null for the dynamic tier
@@ -357,26 +363,34 @@ namespace Heddle.Generator.Emit
             /// borrows the component's props (a region declares none of its own).</summary>
             public PropLayoutInfo RegionHostProps { get; }
 
-            /// <summary>The model this dynamic-tier slot body was built for, known from the one call site that built
-            /// it although nothing is emitted against it. A <c>:: dynamic</c> definition is compiled by the engine
-            /// once per call site off the model that call site hands it, which is how the engine still type-checks
-            /// its <c>@out</c> values; this is the emitter's copy of that model, and its only use is the same check.
-            /// It is the compilation's <c>dynamic</c> where the engine's model is dynamic, which is a verdict and not
-            /// an absence. Null everywhere else — including inside a nested <c>@list</c> body, whose model is the
-            /// element and therefore not this.</summary>
-            public ITypeSymbol SlotValueModel { get; }
+            /// <summary>The model the engine compiles this <c>:: dynamic</c> definition body against at the one call
+            /// site that built it. A <c>:: dynamic</c> definition is compiled by the engine once per call site off
+            /// the model that call site hands it, so the declaration does not mean "untyped" — it means "whatever
+            /// this caller passes". Where that is a real type the body is typed against it and this only keys the
+            /// body cache; where it is the compilation's <c>dynamic</c> the body genuinely has no model and this is
+            /// what the <c>@out</c> check reads. Null everywhere else — including inside a nested <c>@list</c> body,
+            /// whose model is the element and therefore not this.</summary>
+            public ITypeSymbol DynamicBodyModel { get; }
 
             public BodyContext WithProps(PropLayoutInfo props) =>
                 new BodyContext(ModelCast, ModelSymbol, IsDynamic, props, SlotType, Fills, RegionHostProps,
-                    SlotValueModel);
+                    DynamicBodyModel);
 
-            public BodyContext AsSlot(ITypeSymbol slotType, ITypeSymbol slotValueModel = null) =>
+            public BodyContext AsSlot(ITypeSymbol slotType) =>
                 new BodyContext(ModelCast, ModelSymbol, IsDynamic, Props, slotType, Fills, RegionHostProps,
-                    slotValueModel);
+                    DynamicBodyModel);
+
+            /// <summary>The same body, now typed by the model the call site actually hands it.</summary>
+            public BodyContext TypedAs(ITypeSymbol model) =>
+                new BodyContext("(" + SymbolTypeResolver.FullyQualified(model) + ")", model, false, Props, SlotType,
+                    Fills, RegionHostProps, model);
+
+            public BodyContext WithDynamicBodyModel(ITypeSymbol model) =>
+                new BodyContext(ModelCast, ModelSymbol, IsDynamic, Props, SlotType, Fills, RegionHostProps, model);
 
             public BodyContext WithFills(Dictionary<string, DefinitionItem> fills, PropLayoutInfo regionHostProps) =>
                 new BodyContext(ModelCast, ModelSymbol, IsDynamic, Props, SlotType, fills, regionHostProps,
-                    SlotValueModel);
+                    DynamicBodyModel);
         }
 
         /// <summary>
@@ -1160,6 +1174,8 @@ namespace Heddle.Generator.Emit
                     return null;
                 if (layout.Count > 0)
                     defBodyCtx = defBodyCtx.WithProps(layout);
+
+                ITypeSymbol slotType = null;
                 if (slotMode)
                 {
                     // The slot type first, and unconditionally: it is written into the caller-content cast, so it
@@ -1168,27 +1184,15 @@ namespace Heddle.Generator.Emit
                     var slotCtx = SlotBodyContext(def, out reason);
                     if (reason != null)
                         return null;
-
-                    // The engine type-checks every @out value in this body against the slot type when it compiles
-                    // the body — which it does per call site, off the model that call site hands it. Under
-                    // `:: dynamic` the emitter types nothing in the body, but that model is knowable here, so the
-                    // check is made against it rather than abandoned. Refusing every `:: dynamic` slot definition
-                    // instead took a plain reusable wrapper off the precompiled tier without a word, over @out
-                    // values that were all assignable. Only a caller value the emitter cannot type at all leaves
-                    // nothing to check but the caller's cast at render, and that is what degrades.
-                    ITypeSymbol dynamicBodyModel = null;
-                    if (defBodyCtx.IsDynamic)
-                    {
-                        dynamicBodyModel = DynamicDefinitionBodyModel(cp, bctx);
-                        if (dynamicBodyModel == null)
-                        {
-                            reason = "slot definition with a dynamic body model and an untypeable caller value";
-                            return null;
-                        }
-                    }
-
-                    defBodyCtx = defBodyCtx.AsSlot(slotCtx.ModelSymbol, dynamicBodyModel);
+                    slotType = slotCtx.ModelSymbol;
                 }
+
+                if (defBodyCtx.IsDynamic &&
+                    !TryTypeCallSiteBody(cp, bctx, slotMode, item.Position, ref defBodyCtx, out reason))
+                    return null;
+
+                if (slotMode)
+                    defBodyCtx = defBodyCtx.AsSlot(slotType);
                 defBodyCtx = defBodyCtx.WithFills(bodyFills, layout.Count > 0 ? layout : null);
             }
 
@@ -1303,7 +1307,7 @@ namespace Heddle.Generator.Emit
         /// <c>dynamic</c> is the opposite, a definite "no static type", which is what the engine refuses.</summary>
         private ITypeSymbol SlotValueType(CallParameter cp, BodyContext bctx)
         {
-            var model = bctx.IsDynamic ? bctx.SlotValueModel : bctx.ModelSymbol;
+            var model = bctx.IsDynamic ? bctx.DynamicBodyModel : bctx.ModelSymbol;
             if (bctx.IsDynamic && model == null)
                 return null;
 
@@ -1317,6 +1321,8 @@ namespace Heddle.Generator.Emit
             if (cp.NativeExpression is LiteralNode literal)
                 return LiteralType(literal);
 
+            // A root reference is "cannot say" and cannot become a divergence: BuildParamExpr refuses every one of
+            // them outright, so an `@out(::X)` degrades before anything is emitted whatever this answers.
             if (!cp.IsModelTypeParameter || cp.RootReference)
                 return null;
 
@@ -1342,6 +1348,47 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>
+        /// Types a <c>:: dynamic</c> definition body by the model the engine compiles it against at <b>this</b> call
+        /// site.
+        /// <para><c>:: dynamic</c> does not declare an untyped body. The engine compiles the body once per call site
+        /// off the value that call site passes, so a caller handing it a static value gets a body bound against that
+        /// value's type — and a member read the type does not have is an <c>HED0001</c> the engine raises when it
+        /// compiles the template. Emitting the body untyped bound those reads dynamically instead: they threw
+        /// <c>RuntimeBinderException</c> at render where the engine had refused the template outright, and where the
+        /// value was <c>null</c> — <c>@frame(null)</c>, whose model the engine types <c>System.Object</c> — the
+        /// dynamic read yielded empty and the page RENDERED what the engine will not compile at all.</para>
+        /// <para>Only a call form whose value has no static type keeps an untyped body, because there the engine has
+        /// none either. In slot mode a value the emitter cannot type at all degrades instead: the body's
+        /// <c>@out</c> values are checked against the slot type, and there would be nothing left to check them
+        /// against.</para>
+        /// </summary>
+        private bool TryTypeCallSiteBody(CallParameter cp, BodyContext bctx, bool slotMode, BlockPosition position,
+            ref BodyContext defBodyCtx, out string reason)
+        {
+            reason = null;
+            var model = DynamicDefinitionBodyModel(cp, bctx);
+            if (model == null)
+            {
+                if (!slotMode)
+                    return true;
+                reason = "slot definition with a dynamic body model and an untypeable caller value";
+                return false;
+            }
+
+            if (model.TypeKind == TypeKind.Dynamic)
+            {
+                defBodyCtx = defBodyCtx.WithDynamicBodyModel(model);
+                return true;
+            }
+
+            if (!CanWriteTypeName(model, position, out reason))
+                return false;
+
+            defBodyCtx = defBodyCtx.TypedAs(model);
+            return true;
+        }
+
+        /// <summary>
         /// The model type the engine compiles a <c>:: dynamic</c> definition's body against at <b>this</b> call site,
         /// which is what the body's <c>@out</c> values are then checked against. It mirrors the engine's model
         /// accessor: a native expression — <c>this</c>, a literal, a computed one — is compiled in the caller's own
@@ -1351,7 +1398,7 @@ namespace Heddle.Generator.Emit
         /// refusal on its own: an <c>@out</c> of a literal or of the definition's own prop is still statically typed
         /// and still checked. It is only an <c>@out</c> that reads the model which the engine then refuses.
         /// <para>Null is "cannot say" — a computed native expression the emitter does not type, a chained value,
-        /// embedded C# — and that degrades the definition.</para>
+        /// embedded C#. See <see cref="TryTypeCallSiteBody"/> for what becomes of it.</para>
         /// </summary>
         private ITypeSymbol DynamicDefinitionBodyModel(CallParameter cp, BodyContext bctx)
         {
@@ -1454,11 +1501,11 @@ namespace Heddle.Generator.Emit
         {
             reason = null;
             // Dedup key: definition identity + fill-scope digest (filled bodies are distinct from unfilled) + the
-            // slot-value model, because that is what the body's @out values are checked against and two call sites
-            // into one `:: dynamic` slot definition can pass different types. Without it the first call site's
-            // check stood for all of them, and the second precompiled unverified.
+            // call-site model, because a `:: dynamic` body is typed and type-checked against it and two call sites
+            // into one such definition can pass different types. Without it the first call site's body stood for all
+            // of them, and the second reused code emitted against a type it never passes.
             var key = def.Name + "@" + def.Position + "@" + (def.Context?.AbsoluteOffset ?? 0) +
-                      "#" + FillsDigest(bodyCtx.Fills) + "$" + SlotValueModelId(bodyCtx.SlotValueModel);
+                      "#" + FillsDigest(bodyCtx.Fills) + "$" + DynamicBodyModelId(bodyCtx.DynamicBodyModel);
             if (_definitionBodies.TryGetValue(key, out var existing))
             {
                 reason = existing.Failed ? existing.Reason : null;
@@ -1481,18 +1528,18 @@ namespace Heddle.Generator.Emit
             return info;
         }
 
-        private readonly Dictionary<ITypeSymbol, int> _slotValueModelIds =
+        private readonly Dictionary<ITypeSymbol, int> _dynamicBodyModelIds =
             new Dictionary<ITypeSymbol, int>(SymbolEqualityComparer.Default);
 
-        /// <summary>A small stable id per slot-value model. The body key is a string, and a display name is not an
+        /// <summary>A small stable id per call-site model. The body key is a string, and a display name is not an
         /// identity — two distinct types sharing a fully-qualified name is ordinary in a large reference closure,
-        /// and here that would hand one call site the other's type check.</summary>
-        private int SlotValueModelId(ITypeSymbol type)
+        /// and here that would hand one call site the other's body.</summary>
+        private int DynamicBodyModelId(ITypeSymbol type)
         {
             if (type == null)
                 return 0;
-            if (!_slotValueModelIds.TryGetValue(type, out var id))
-                _slotValueModelIds[type] = id = _slotValueModelIds.Count + 1;
+            if (!_dynamicBodyModelIds.TryGetValue(type, out var id))
+                _dynamicBodyModelIds[type] = id = _dynamicBodyModelIds.Count + 1;
             return id;
         }
 

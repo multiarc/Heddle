@@ -87,6 +87,9 @@ namespace Probe.Nest { public class Outer { public class Inner { } } }";
         /// <para>Generous where the runtime is: an unqualified name, and a dotted tail an import would complete,
         /// both answer yes. Exact where the runtime is: every segment the author wrote has to be part of a real
         /// name, and a nullable suffix is part of no name on either tier.</para>
+        /// <para>The match is a suffix of the qualified name <b>on a dot</b>, never inside an identifier: the rows
+        /// that end mid-name are what separate the two, and every row with a wrong namespace segment answers no
+        /// without ever consulting the boundary.</para>
         /// </summary>
         [Theory]
         [InlineData("UniqueProbe", true)]
@@ -95,6 +98,12 @@ namespace Probe.Nest { public class Outer { public class Inner { } } }";
         [InlineData("Nope.Nope.UniqueProbe", false)]
         [InlineData("Probe.Nope.UniqueProbe", false)]
         [InlineData("NoSuchTypeAnywhere", false)]
+        // The tail of an identifier, not of a name: 'UniqueProbe' ends in it and nothing is called it.
+        [InlineData("eProbe", false)]
+        // A namespace segment, and the tail of both 'TieProbe' and 'UniqueProbe'. A plain suffix test says yes.
+        [InlineData("Probe", false)]
+        // Every segment is a real one and only the separator between them is not a dot.
+        [InlineData("OnlyXUniqueProbe", false)]
         [InlineData("int", true)]
         [InlineData("int?", false)]
         [InlineData("UniqueProbe?", false)]

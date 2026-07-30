@@ -169,42 +169,68 @@ namespace Heddle.Generator.Binding
             if (Keywords.ContainsKey(text))
                 return true;
 
-            if (NamespaceContainsType(_compilation.GlobalNamespace, string.Empty, text))
+            if (NamespaceContainsType(_compilation.GlobalNamespace, text))
                 return true;
             foreach (var reference in _compilation.References)
             {
                 if (_compilation.GetAssemblyOrModuleSymbol(reference) is IAssemblySymbol asm &&
-                    NamespaceContainsType(asm.GlobalNamespace, string.Empty, text))
+                    NamespaceContainsType(asm.GlobalNamespace, text))
                     return true;
             }
 
             return false;
         }
 
-        private static bool NamespaceContainsType(INamespaceSymbol ns, string prefix, string spelling)
+        private static bool NamespaceContainsType(INamespaceSymbol ns, string spelling)
         {
             foreach (var type in ns.GetTypeMembers())
             {
-                if (IsDotBoundedSuffix(prefix + type.Name, spelling))
+                if (IsDotBoundedSuffix(ns, type.Name, spelling))
                     return true;
             }
 
             foreach (var child in ns.GetNamespaceMembers())
             {
-                if (NamespaceContainsType(child, prefix + child.Name + ".", spelling))
+                if (NamespaceContainsType(child, spelling))
                     return true;
             }
 
             return false;
         }
 
-        private static bool IsDotBoundedSuffix(string fullName, string spelling)
+        /// <summary>
+        /// Whether <paramref name="spelling"/> is a dot-bounded suffix of <paramref name="typeName"/> qualified by
+        /// <paramref name="ns"/>, matched segment by segment from the right rather than against a built-up string.
+        /// The walk visits every type in the whole reference closure on a path that runs per keystroke in an editor,
+        /// and composing the qualified name to compare it allocated two strings per type visited.
+        /// </summary>
+        private static bool IsDotBoundedSuffix(INamespaceSymbol ns, string typeName, string spelling)
         {
-            if (string.Equals(fullName, spelling, System.StringComparison.Ordinal))
-                return true;
-            return fullName.Length > spelling.Length &&
-                   fullName[fullName.Length - spelling.Length - 1] == '.' &&
-                   fullName.EndsWith(spelling, System.StringComparison.Ordinal);
+            int end = spelling.Length;
+            if (!ConsumeSegment(spelling, ref end, typeName))
+                return false;
+
+            for (var current = ns; ; current = current.ContainingNamespace)
+            {
+                if (end == 0)
+                    return true;
+                if (current == null || current.IsGlobalNamespace || spelling[end - 1] != '.')
+                    return false;
+                end--;
+                if (!ConsumeSegment(spelling, ref end, current.Name))
+                    return false;
+            }
+        }
+
+        /// <summary>Takes <paramref name="name"/> off the end of <paramref name="spelling"/>, moving
+        /// <paramref name="end"/> back past it, or leaves both alone and answers false.</summary>
+        private static bool ConsumeSegment(string spelling, ref int end, string name)
+        {
+            if (end < name.Length ||
+                string.CompareOrdinal(spelling, end - name.Length, name, 0, name.Length) != 0)
+                return false;
+            end -= name.Length;
+            return true;
         }
 
         /// <summary>The memo key: the receiver <b>symbol</b> and the segments. Not a display string — two types
@@ -323,11 +349,11 @@ namespace Heddle.Generator.Binding
         /// the precompiled tier, which is a cost with nothing on the other side of it. The generated file already
         /// opens with a blanket <c>#pragma warning disable</c>, so the warning form raises nothing in the consumer's
         /// build against code they did not write, which is the only thing that had to be true for leaving it.</para>
-        /// <para>The only nesting asked about here is the <b>containing</b> type: <c>Legacy.Inner</c> cannot be
-        /// spelled without spelling <c>Legacy</c>, and C# reports the error on the outer name. Array elements,
-        /// pointed-at types and type arguments are walked by <see cref="Classify"/>, which reaches this predicate
-        /// once per component — so an arm for them here would be a second copy of that walk, agreeing with it until
-        /// the day it did not.</para>
+        /// <para>The only nesting asked about here is the <b>containing</b> type's own attribute:
+        /// <c>Legacy.Inner</c> cannot be spelled without spelling <c>Legacy</c>, and C# reports the error on the
+        /// outer name. Array elements, pointed-at types and type arguments — the enclosing types' arguments
+        /// included — are walked by <see cref="Classify"/>, which reaches this predicate once per component, so an
+        /// arm for them here would be a second copy of that walk, agreeing with it until the day it did not.</para>
         /// </summary>
         public static bool IsObsoleteError(ISymbol symbol)
         {
@@ -381,9 +407,11 @@ namespace Heddle.Generator.Binding
         /// Refused: <see cref="TypeKind.Error"/>/<see cref="TypeKind.Unknown"/> (the name does not resolve, CS0246);
         /// pointers and function pointers (CS0214 without <c>/unsafe</c>, and unboxable); type parameters and
         /// anything containing one — an open generic such as <c>List`1</c> or a type nested in one — since generated
-        /// code has no generic context to bind them in (CS0246/CS0305), an unbound <c>List&lt;&gt;</c> among them;
-        /// VB modules and script submissions, which C# has no syntax for; <c>System.Void</c> (CS1536,
-        /// CS1547); a static class (CS0721/CS0723); and an anonymous type, which has no writable name at all.
+        /// code has no generic context to bind them in (CS0246/CS0305); VB modules and script submissions, which C#
+        /// has no syntax for; <c>System.Void</c> (CS1536, CS1547); a static class (CS0721/CS0723); and an anonymous
+        /// type, which has no writable name at all. An unbound <c>List&lt;&gt;</c> is refused too, but as an error
+        /// type rather than an open one: Roslyn fills its arguments with <see cref="TypeKind.Error"/> symbols, so it
+        /// is the first row that answers for it and not the type-parameter one.
         /// Restricted types — <c>TypedReference</c> and friends — need no row of their own: they are
         /// <see cref="ITypeSymbol.IsRefLikeType"/> and so are caught as ref structs.</para>
         /// <para>The question is asked of the whole spelling, not its head: an array element and a type argument are
@@ -459,11 +487,19 @@ namespace Heddle.Generator.Binding
                     return Unusable(type, "is an open generic type, and generated code has no generic context to " +
                                           "bind its type parameters in", out reason);
 
-                foreach (var argument in named.TypeArguments)
+                // Every type argument the spelling carries, the enclosing types' included. `Outer<Legacy>.Inner`
+                // has none of its own and still cannot be written without writing `Legacy`, so asking only
+                // `named.TypeArguments` let an error-obsolete argument through: the emitter spelled the property's
+                // type into a `default(T)` and the consumer's build died on CS0619, twice, off a property carrying
+                // no attribute of its own.
+                for (var spelled = named; spelled != null; spelled = spelled.ContainingType)
                 {
-                    var argumentFault = Classify(argument, refStructAllowed: false, out reason);
-                    if (argumentFault != NameFault.None)
-                        return argumentFault;
+                    foreach (var argument in spelled.TypeArguments)
+                    {
+                        var argumentFault = Classify(argument, refStructAllowed: false, out reason);
+                        if (argumentFault != NameFault.None)
+                            return argumentFault;
+                    }
                 }
             }
 
@@ -486,11 +522,12 @@ namespace Heddle.Generator.Binding
             return NameFault.Unusable;
         }
 
-        /// <summary>Whether a type parameter appears anywhere in the spelling — as the type itself, a type argument,
-        /// or a type argument of an enclosing type (<c>List`1.Enumerator</c> carries no type arguments of its own but
-        /// still cannot be written). Array elements and pointed-at types need no arm: <see cref="Classify"/> walks
-        /// into an array element and turns a pointer down on its kind, so either way the type parameter inside one is
-        /// reached with the same verdict.</summary>
+        /// <summary>Whether a type parameter stands as a type argument of the spelling or of an enclosing type
+        /// (<c>List`1.Enumerator</c> carries no type arguments of its own but still cannot be written). It answers
+        /// only for a type argument that <em>is</em> the parameter: one merely wrapped in an array or a pointer —
+        /// <c>Outer&lt;T[]&gt;.Inner</c> — is left to <see cref="Classify"/>, which walks every type argument in the
+        /// spelling and turns the parameter down on its own kind. Adding arms for those here would be a second walk
+        /// that only changes which sentence the refusal carries.</summary>
         private static bool ContainsTypeParameter(ITypeSymbol type)
         {
             switch (type)

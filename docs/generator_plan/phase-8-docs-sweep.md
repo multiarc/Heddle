@@ -1696,3 +1696,102 @@ can fix; the fault is carried now rather than collapsed into a boolean. And a do
 last segment happened to name a real type emitted raw text with no diagnostic at all; the existence
 check is a dot-bounded suffix match now, generous to a bare name and strict about namespace segments
 the author actually wrote.
+
+## Thirteenth review cycle (2026-07-30)
+
+Every finding was settled by measurement before anything was changed. Two of the six turned out to
+be something other than what was reported, and one was not a defect at all.
+
+### `:: dynamic` on a definition does not mean "untyped body"
+
+The reported defect was that a `:: dynamic` definition's body was emitted with dynamic binds even
+when the call site handed it a static value. The engine was probed over a matrix of (slot / no slot)
+× (call form) × (body expression), and the rule it actually follows is unambiguous: it compiles the
+body **once per call site, against the static type of the value that call site passes** — `this` gives
+the caller's model, a literal gives the literal's type, `null` gives `System.Object`, and only a bare
+call or a member path reaches the accessor's dynamic exit and leaves the body genuinely untyped. A
+body member the type does not carry is `HED0001`, raised when the template is compiled.
+
+The emitter already computed that model, and used it for one thing only — type-checking the body's
+`@out` values. The body itself stayed dynamic. So the tiers diverged in every cell where the model was
+static and the member missed: the generated code threw `RuntimeBinderException` at render where the
+engine had refused the template, and where the value was `null` the dynamic read yielded empty and the
+page **rendered what the engine will not compile at all**. That last shape reached the emitter only
+because the previous cycle started typing the null literal.
+
+The fix is not another check. The body is now built in a *typed* context off that same model, so the
+existing member-path machinery answers — `HED7008` and a degrade, the mirror of the engine's
+`HED0001`. All 33 probed cells now agree. It applies to plain definitions as well as slot-declaring
+ones; only slot mode still degrades on a caller value that cannot be typed at all, because there the
+`@out` check would have nothing left to check against. The body cache is keyed on the call-site model,
+so two call sites passing different types get different bodies — pinned by a two-call-site file next
+to a one-call-site one.
+
+### The deleted walk was real, and the justification for deleting it was the second defect
+
+The previous cycle removed a loop over a containing type's type arguments from `IsObsoleteError`,
+calling it a duplicate of the walk `Classify` performs. `Classify` walks a type's **own** arguments;
+nothing walked an enclosing type's. Measured at the parent commit: a property of type
+`Outer<Legacy>.Inner`, where `Legacy` is error-obsolete, is judged writable, and the consumer's build
+dies on two `CS0619` off a property that carries nothing but the warning-level attribute which made it
+legal to declare. Not theoretical — one of the two reviewers had reached that verdict having only
+tried a ref-struct argument, which C# cannot declare.
+
+The restoration is in `Classify`, not in `IsObsoleteError`. Asking there makes *every* verdict see an
+enclosing type's arguments rather than obsolescence alone, and it keeps the "one walk" property the
+deleted code was wrongly accused of breaking. It also subsumes the missing array/pointer arms of
+`ContainsTypeParameter`: `Outer<T[]>.Inner` is refused again, by the argument walk, and restoring
+those arms would only change which sentence the refusal carries. The claim was checked by mutation,
+not asserted.
+
+The entry-point route reported alongside it does not exist: `@model(){{List<Outer<Legacy>.Inner>}}`
+degrades already, because the shared spelling grammar cannot resolve a nested type of a constructed
+generic at all. Measured, and left alone.
+
+### A verdict test that pinned the answer but not the arm
+
+The completeness suite asserted only that each subject was refused and that the reason was non-empty.
+That is how the wrong deletion got authorised: with an arm gone, a different arm answered its rows,
+the suite stayed green, and mutation testing reported the arm as dead. The rows now carry the words
+their reason must contain. Two things fell out immediately: `unbound-generic` is answered by the
+**error-type** arm and not the type-parameter one — Roslyn fills an unbound generic's arguments with
+error symbols — and the row named `array-of-ref-struct` was built over `Span<T>`, the open definition,
+so it was refused for being an open generic and never consulted the ref-struct rule at all. Both are
+fixed; the `Classify` doc credited the wrong arm for the first and now says which.
+
+Nineteen mutations, one arm at a time: seventeen redden the completeness suite, and the eighteenth —
+the containing-type walk in `IsObsoleteError` — reddens the hostile-model table in the integration
+suite instead, which is where it belongs. The nineteenth is below.
+
+### The gate that reported and the emission that did not listen
+
+A `@model` spelling resolving to no symbol was written into the entry point's parameter type verbatim.
+`IntegrationTests.Fixtures.Article`, `Fixtures.Article` and `System.Collections.Generic.List` all pass
+the name-existence gate — deliberately, since the runtime binds over what is *loaded* — and all three
+put four `CS0246` or `CS0305` into the consumer's build. The engine refuses every one of them.
+
+The test added last cycle for the generous half of that gate asserted "no errors" over a body that
+degraded for an unrelated reason, so the generated file that could not compile was never built. Its
+body is static text now, and it declares the degrade and the near-neighbour that must still precompile.
+The gate is unchanged: what it diagnoses and what gets emitted are separate questions, and only the
+second one was wrong.
+
+### Measured, and not a defect
+
+`@out(::X)` — a root reference as a slot value — is never type-checked, which was reported as a latent
+hole. It cannot become one: `BuildParamExpr` refuses every root-reference call parameter outright, so
+such a template degrades before anything is emitted, whatever the type check would have said. Measured
+over four shapes, including one the engine renders and the emitter declines. A note records it so the
+next reader does not have to measure it again.
+
+### Smaller
+
+The dot-boundary rule in the name-existence gate was pinned by nothing — three separate mutations of it
+left every test green. It now carries rows that end mid-identifier, which is the only thing separating
+it from a plain suffix test, and one where every segment is real and only the separator is not a dot.
+
+That same gate composed a qualified name per type visited, over the whole reference closure, on a path
+that runs per keystroke in an editor. It matches segment by segment from the right instead. Equivalence
+was measured rather than argued — 4,097 spellings drawn from the closure, old and new answers compared,
+zero disagreements — and the allocation it removes is measured too: three full-closure misses fall from
+11,528,976 bytes to 2,206,320, the remainder being Roslyn's own member enumeration.
