@@ -255,9 +255,9 @@ namespace Heddle.Generator.IntegrationTests
         /// <summary>Renders one template through both backends, returning outputs for byte-for-byte comparison.</summary>
         public static (string precompiled, string dynamic) Render(string key, string content, Type modelType,
             object model, Dictionary<string, string> globalOptions = null, TemplateOptions runtimeOptions = null,
-            bool checkOverflow = false)
+            bool checkOverflow = false, IReadOnlyList<MetadataReference> extraReferences = null)
         {
-            var gen = Generate(new[] { (key, content) }, globalOptions, checkOverflow: checkOverflow);
+            var gen = Generate(new[] { (key, content) }, globalOptions, extraReferences, checkOverflow: checkOverflow);
             var errors = gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
             if (errors.Count != 0)
                 throw new InvalidOperationException("Generator errors: " + string.Join("\n", errors.Select(e => e.ToString())));

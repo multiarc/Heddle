@@ -106,6 +106,23 @@ namespace Heddle.Generator.Emit
         /// built-in nor an export — the caller's "cannot say".</summary>
         public OperandKind EstimateCallReturn(CallNode call) => EstimateCall(call);
 
+        /// <summary>
+        /// The <b>declared</b> return type of the overload the shared ranker picks for this call, or null where it
+        /// picks none and where the name is neither a built-in nor an export.
+        /// <para>This is what a caller typing a call-site value needs, and it is not what
+        /// <see cref="EstimateCallReturn"/> gives it: the operand descriptor names only the primitives, so every
+        /// call returning anything else — <c>range</c>, an export returning a <c>DateTime</c> or a class of the
+        /// host's — came back indistinguishable from "the generator cannot say", and the gates that refuse a value
+        /// the engine will not take exempted all of them.</para>
+        /// </summary>
+        public ITypeSymbol CallReturnType(CallNode call, Compilation compilation)
+        {
+            if (_exports != null && _exports.TryGet(call.Name, out _))
+                return BindExportCall(call)?.ReturnType;
+            var binding = BindDefaultCall(call);
+            return binding == null ? null : compilation.GetTypeByMetadataName(binding.Row.ReturnTypeName);
+        }
+
         public static bool IsDefaultFunction(string name) => DefaultShims.ContainsKey(name);
 
         public static int DefaultOverloadCount(string name) =>

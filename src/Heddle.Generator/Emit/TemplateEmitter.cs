@@ -336,7 +336,14 @@ namespace Heddle.Generator.Emit
             }
 
             public string ModelCast { get; }          // "(global::T)" or null for the dynamic tier
-            public ITypeSymbol ModelSymbol { get; }    // for member-path typing; null on the dynamic tier
+
+            /// <summary>The model's type for member-path typing. Every construction site upholds
+            /// <c>IsDynamic ⇒ ModelSymbol is null</c> — the dynamic tier has no static model to type against — so a
+            /// reader wanting "the typed model here, if any" reads this alone. A body emitted on the dynamic tier
+            /// over a model the <b>engine</b> has typed carries that type in <see cref="DynamicBodyModel"/>, which
+            /// is a different question with a different answer.</summary>
+            public ITypeSymbol ModelSymbol { get; }
+
             public bool IsDynamic { get; }
 
             /// <summary>The active prop layout: a body prop read wins over the model on the first path
@@ -687,6 +694,16 @@ namespace Heddle.Generator.Emit
             if (name == "partial")
                 return BuildPartialCall(item, cp, bctx, out reason);
 
+            // The engine checks the call value against every type the extension declares it accepts, before it
+            // compiles the call, and refuses the whole template when a statically-typed value fits none of them.
+            // Without the same check here a template the engine will not compile precompiled and rendered.
+            if (_extensionBinder.TryResolve(name, out var acceptInfo) &&
+                !AcceptedTypeSatisfied(acceptInfo, CallSiteValueType(cp, bctx), out var acceptReason))
+            {
+                reason = "'" + name + "' " + acceptReason;
+                return null;
+            }
+
             // Engine-assembly branch-role extensions (@if/@ifnot/@elif/@elseif/@else) use pinned branch emission:
             // the emitter's parent-model body typing is the built-ins' verified contract, so bytes are unchanged.
             // Non-engine role extensions deliberately fall through to the generic custom path.
@@ -721,15 +738,6 @@ namespace Heddle.Generator.Emit
 
             if (name == "list")
             {
-                // The engine checks the value against the extension's declared accepted type before it compiles the
-                // call, and refuses the whole template when a statically-typed value is not enumerable. Without the
-                // same check here a template the engine will not compile precompiled and rendered.
-                if (!EnumerableValueAccepted(CallSiteValueType(cp, bctx)))
-                {
-                    reason = "'list' value is not an enumerable type";
-                    return null;
-                }
-
                 // Element body on the dynamic tier; the enclosing prop layout, slot mode and fill scope propagate,
                 // and BodyModelRules' ElementOfData row decides the context.
                 if (!TryNestedBodyContext("list", bctx, ListElementModel(cp, bctx), out var itemCtx))
@@ -1013,20 +1021,28 @@ namespace Heddle.Generator.Emit
                 return null;
             }
 
+            // The same gate the definition layout applies, for the same reason: a slot type is written into a cast
+            // wherever a prop read is emitted, so a type this assembly may not name has to fail the layout rather
+            // than reach the consumer's compiler. No call path today makes an extension layout the active one, so
+            // this refuses nothing that is currently emitted; it is here so that the day one does, the spelling is
+            // checked before it is written rather than after.
+            //
+            // The whole declaration list is checked before a single slot is built, so a failed layout carries no
+            // slots at all. Failing part-way through the build left a layout holding every slot up to the offending
+            // one and none after it — a layout that reads as complete to anything that does not also consult
+            // `Failed`, which was the only thing standing between the truncation and a caller.
+            foreach (var slot in built)
+            {
+                if (slot.Type == null || CanWriteTypeName(slot.Type, callPosition, out _))
+                    continue;
+                var failed = new PropLayoutInfo { Failed = true };
+                _extensionPropLayouts[name] = failed;
+                return failed;
+            }
+
             var layout = new PropLayoutInfo();
             foreach (var slot in built)
             {
-                // The same gate the definition layout applies, for the same reason: a slot type is written into a
-                // cast wherever a prop read is emitted, so a type this assembly may not name has to fail the layout
-                // rather than reach the consumer's compiler. No call path today makes an extension layout the active
-                // one, so this refuses nothing that is currently emitted; it is here so that the day one does, the
-                // spelling is checked before it is written rather than after.
-                if (slot.Type != null && !CanWriteTypeName(slot.Type, callPosition, out _))
-                {
-                    layout.Failed = true;
-                    break;
-                }
-
                 var info2 = new PropSlotInfo
                 {
                     Name = slot.Name,
@@ -1256,6 +1272,16 @@ namespace Heddle.Generator.Emit
                 {
                     callerCtx = DefinitionBodyContext(def, out var ctxReason);
                     if (ctxReason != null) { reason = ctxReason; return null; }
+
+                    // A `:: dynamic` callee does not give its caller content an untyped model any more than it gives
+                    // its body one: the engine compiles both against the value this call site passes, so
+                    // `@frame("ab"){{@(Title)}}` is an HED0001 it raises at compile time. Emitted untyped, that read
+                    // bound dynamically and the template precompiled and rendered what the engine will not compile.
+                    // The same rule types both, so a call form the engine itself types `dynamic` — a member path —
+                    // still gets an untyped caller content and still matches.
+                    if (callerCtx.IsDynamic &&
+                        !TryTypeCallSiteBody(cp, bctx, item.Position, ref callerCtx, out reason))
+                        return null;
                 }
 
                 // Only the MODEL changes here. The caller's prop layout and slot mode both stay active, because the
@@ -1436,25 +1462,52 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>
-        /// Whether the engine's accepted-type check would let this value reach <c>@list</c>. The engine asks whether
-        /// the value's static type is assignable to <c>IEnumerable</c>, after unwrapping a nullable and with a value
-        /// that has no static type exempt — a <c>dynamic</c> value is decided at render, not at compile.
+        /// Whether the engine's accepted-type check would let this value reach this extension. It asks whether
+        /// the value's static type is assignable to any type the extension declares with <c>[DataType]</c>, after
+        /// unwrapping a nullable and with a value that has no static type exempt — a <c>dynamic</c> value is decided
+        /// at render, not at compile. An extension declaring no <c>[DataType]</c> accepts anything.
+        /// <para>The rule is read off the attribute rather than written out per extension, so it covers every
+        /// built-in that declares one — <c>@list</c>'s <c>IEnumerable</c> and <c>@for</c>'s <c>Range</c>/<c>int</c> —
+        /// and any host extension that declares one, without a list here to keep in step.</para>
         /// <para>"Cannot say" is exempt for the same reason it is everywhere else: refusing on a type the emitter
         /// never established would cost the precompiled tier over templates that are fine.</para>
         /// </summary>
-        private bool EnumerableValueAccepted(ITypeSymbol valueType)
+        private bool AcceptedTypeSatisfied(ExtensionBinder.Info info, ITypeSymbol valueType, out string reason)
         {
+            reason = null;
+            var accepted = info.AcceptedDataTypes;
+            if (accepted.Count == 0)
+                return true;
             if (valueType == null || valueType.TypeKind == TypeKind.Dynamic || valueType.TypeKind == TypeKind.Error)
                 return true;
             if (TryGetNullableUnderlying(valueType, out var underlying))
                 valueType = underlying;
 
-            if (valueType.SpecialType == SpecialType.System_Collections_IEnumerable)
-                return true;
-            foreach (var iface in valueType.AllInterfaces)
-                if (iface.SpecialType == SpecialType.System_Collections_IEnumerable)
+            foreach (var candidate in accepted)
+                if (candidate == null || candidate.TypeKind == TypeKind.Dynamic || Accepts(candidate, valueType))
                     return true;
 
+            var names = new List<string>(accepted.Count);
+            foreach (var candidate in accepted)
+                names.Add(candidate == null ? "?" : SymbolTypeResolver.FullyQualified(candidate));
+            reason = "value type '" + SymbolTypeResolver.FullyQualified(valueType) +
+                     "' is not one of the accepted types [" + string.Join(", ", names) + "]";
+            return false;
+        }
+
+        /// <summary>The engine's <c>Type.IsAssignableFrom</c> over symbols: identity, a base class, an implemented
+        /// interface, or the boxing every value has to <c>object</c>. Deliberately no numeric widening — reflection
+        /// has none either, which is why <c>@for</c> over a <c>long</c> is a template the engine refuses.</summary>
+        private static bool Accepts(ITypeSymbol accepted, ITypeSymbol valueType)
+        {
+            if (accepted.SpecialType == SpecialType.System_Object)
+                return true;
+            for (var t = valueType; t != null; t = t.BaseType)
+                if (SymbolEqualityComparer.Default.Equals(t, accepted))
+                    return true;
+            foreach (var iface in valueType.AllInterfaces)
+                if (SymbolEqualityComparer.Default.Equals(iface, accepted))
+                    return true;
             return false;
         }
 
@@ -1555,9 +1608,27 @@ namespace Heddle.Generator.Emit
                     // A call in this position is the engine's own value, statically typed by the function's return
                     // type — `@list(min(1, 2))` is a template it refuses with that type in the message. Leaving it
                     // "cannot say" exempted every such call from the checks the other shapes go through.
+                    //
+                    // This writer is thrown away undrained, and the refusals it may record with it. That costs
+                    // nothing: a call the ranker refuses has no return type either, so the value stays "cannot say",
+                    // no gate can refuse the template on account of it, and the writer that emits the same
+                    // expression reaches it and reports what this one saw.
                     var writer = new NativeExpressionWriter(_resolver, model, "m", _exports, TypeFacts,
                         AllocateHopLocal, props);
-                    return FromKind(writer.EstimateCallReturn(call));
+                    var kind = writer.EstimateCallReturn(call);
+
+                    // The chosen overload's DECLARED return type, not the shared descriptor of it. The descriptor
+                    // names the primitives and nothing else, so typing the call through it left `range(1, 3)` — the
+                    // one built-in returning neither string, bool nor numeric, and the one a reader reaches for to
+                    // iterate — and every host export returning a date or a class of its own indistinguishable from
+                    // a call the generator cannot type at all. `dynamic` is the exception: the engine reads a
+                    // MethodInfo, where a `dynamic` return is `System.Object`, and that is the type it checks.
+                    var returned = writer.CallReturnType(call, _compilation);
+                    if (returned == null)
+                        return FromKind(kind);
+                    if (returned.TypeKind == TypeKind.Dynamic)
+                        returned = _compilation.GetSpecialType(SpecialType.System_Object);
+                    return new ComputedValue(returned, kind);
                 }
 
                 default:
@@ -2289,7 +2360,7 @@ namespace Heddle.Generator.Emit
         {
             reason = null;
             setterExpr = null;
-            var callerModel = bctx.IsDynamic ? null : bctx.ModelSymbol;
+            var callerModel = bctx.ModelSymbol;
             // A prop-rooted argument needs no caller model — it reads the scope's props — so the absence of one is
             // only fatal when there is no layout to read either.
             if (callerModel == null && bctx.Props == null)
@@ -2566,7 +2637,7 @@ namespace Heddle.Generator.Emit
                 // — and refusing every expression on the untyped tier dropped whole templates the engine renders.
                 // The writer is the gate instead: given no model type it refuses any path that reads one, which is
                 // the same answer by the same rule, and it never claims to use a model local it has not been given.
-                var writer = new NativeExpressionWriter(_resolver, bctx.IsDynamic ? null : bctx.ModelSymbol, "m",
+                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m",
                     _exports, TypeFacts, AllocateHopLocal, bctx.Props);
                 var expr = writer.WriteRoot(cp.NativeExpression);
                 DrainUnresolvable(writer);
