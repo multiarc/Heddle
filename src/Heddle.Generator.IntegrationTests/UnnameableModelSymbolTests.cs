@@ -204,6 +204,12 @@ namespace Heddle.Generator.IntegrationTests
                     "ObsoleteOuterModel+Inner" },
                 { "error-obsolete-property-type", Fixtures + "ObsoletePropertyTypeModel", "@(Balance.Amount)\n", true,
                     "0\n", "ObsoletePropertyTypeModel" },
+                // The same fault one level further out: the property's type is nested inside a generic constructed
+                // over the unnameable name, so it carries no type argument of its own and nothing about it says so.
+                // Asking only a type's OWN arguments called this writable and the consumer's build died twice on
+                // CS0619 — off a property whose declaration carries nothing but a warning-level attribute.
+                { "error-obsolete-argument-of-containing-type", Fixtures + "ObsoleteContainerArgumentModel",
+                    "@(Balance.Amount)\n", true, "0\n", "ObsoleteContainerArgumentModel" },
                 { "error-obsolete-getter", Fixtures + "ObsoleteMemberModel", "@(Bad)\n", true, "bad\n",
                     "ObsoleteMemberModel" },
                 { "internal-type", Fixtures + "InternalModel", "@(Title)\n", true, "hidden\n", "InternalModel" },

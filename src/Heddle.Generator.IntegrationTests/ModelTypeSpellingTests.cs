@@ -109,20 +109,49 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// The other cost control, and the reason the rule is a <b>suffix</b> match and not a full-name one: a
-        /// spelling that names the tail of a real namespace is the shape an import completes, and the runtime binds
-        /// what is loaded rather than what this compilation references. Calling that a typo would turn a template
-        /// that renders into a build error, which is the direction this gate must never take. It degrades to the
-        /// tier that can bind it, without a word.
+        /// A spelling that resolves to no symbol and is not called a typo either — the tail of a real namespace is
+        /// the shape an import completes, and the runtime binds what is <em>loaded</em> rather than what this
+        /// compilation references, so reporting it would turn a template that renders into a build error. What the
+        /// build must still not do is <b>write</b> it: the spelling went verbatim into the entry point's parameter
+        /// type, and the consumer's compiler answered CS0246 (no such namespace) or CS0305 (a generic name with no
+        /// arity) against a <c>.g.cs</c> they cannot edit.
+        /// <para>The body is static text on purpose. Asked with <c>[@(Title)]</c> in it, every one of these passed
+        /// off a member-path degrade that had nothing to do with the spelling, and the generated file that could not
+        /// compile was never built at all.</para>
+        /// <para>Both halves are asserted per row: nothing is reported — <see cref="DifferentialHarness.Generate"/>
+        /// compiles the generated sources and throws if they do not build — and the template goes to the tier that
+        /// can still bind the name. The fully-qualified neighbour below is what keeps this from being a blanket
+        /// refusal of dotted spellings.</para>
         /// </summary>
-        [Fact]
-        public void ADottedModelSpellingThatNamesTheTailOfARealNamespaceIsNotCalledATypo()
+        [Theory]
+        [InlineData("namespace-tail", "IntegrationTests.Fixtures.Article")]
+        [InlineData("shorter-tail", "Fixtures.Article")]
+        // A real generic type named without its arity: the name exists, and no C# spelling of it does.
+        [InlineData("no-arity", "System.Collections.Generic.List")]
+        public void AModelSpellingThatResolvesToNoSymbolIsNeverWrittenIntoTheEntryPoint(string name, string spelling)
         {
-            const string key = "views/dotted-model-tail.heddle";
-            const string template = "@model(){{IntegrationTests.Fixtures.Article}}@\\\n[@(Title)]\n";
+            var key = "views/unwritable-model-" + name + ".heddle";
+            var template = "@model(){{" + spelling + "}}@\\\nstatic text\n";
             var gen = DifferentialHarness.Generate(new[] { (key, template) });
 
             Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Id == "HED7007");
+            DifferentialHarness.ExpectDegrade(gen, key);
+
+            Assert.False(EngineCompiles(template, typeof(object)));
+        }
+
+        /// <summary>The cost control for the rule above: the same body under a spelling that does resolve still
+        /// precompiles, so refusing to write an unresolved name is not a refusal to write a dotted one.</summary>
+        [Fact]
+        public void AModelSpellingThatResolvesStillPrecompilesWithTheSameBody()
+        {
+            const string key = "views/unwritable-model-neighbour.heddle";
+            const string template = "@model(){{" + ArticleType + "}}@\\\nstatic text\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, template) });
+
+            Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            DifferentialHarness.ExpectPrecompiled(gen, key);
         }
     }
 }

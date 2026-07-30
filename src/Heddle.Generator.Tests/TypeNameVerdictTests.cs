@@ -53,6 +53,16 @@ namespace Verdict
     {
         public object Make() => new { A = 1 };
     }
+
+    /// <summary>A generic whose nested type carries no type argument of its own, so a spelling of the nested type
+    /// is the only place the outer one's argument can be seen.</summary>
+    public class Outer<T>
+    {
+        public struct Inner { public int Amount { get; set; } }
+    }
+
+    [Obsolete(""gone"", true)]
+    public struct Legacy { public int Amount { get; set; } }
 }";
 
         private static CSharpCompilation Compile() =>
@@ -91,14 +101,34 @@ namespace Verdict
                     (ITypeSymbol) compilation.GetSpecialType(SpecialType.System_Int32)),
                 System.Collections.Immutable.ImmutableArray.Create("A"));
 
-        /// <summary>Each refusal by the symbol that reaches it, with the word its reason has to carry so a row
-        /// cannot pass off the back of a different arm.</summary>
-        public static TheoryData<string> RefusedNames() =>
-            new TheoryData<string>
+        /// <summary>
+        /// Each refusal by the symbol that reaches it, paired with the words its reason has to carry.
+        /// <para>The pairing is the whole point. Pinning the verdict alone let one arm answer another's rows the
+        /// moment that arm was deleted, so the suite stayed green over a walk that had stopped doing what it says —
+        /// and mutation testing then reported the deleted arm as dead code. It also hid a row asserting the wrong
+        /// thing: <c>array-of-ref-struct</c> named <c>Span&lt;T&gt;</c>, the open definition, and was refused for
+        /// being an open generic without the ref-struct rule ever being consulted.</para>
+        /// </summary>
+        public static TheoryData<string, string> RefusedNames() =>
+            new TheoryData<string, string>
             {
-                "error", "pointer", "function-pointer", "type-parameter", "submission", "void", "static",
-                "anonymous", "unbound-generic", "open-generic", "nested-in-open-generic",
-                "array-of-ref-struct", "array-of-pointer", "type-argument-of-type-parameter",
+                { "error", "does not resolve to a type" },
+                { "pointer", "is a pointer type" },
+                { "function-pointer", "is a pointer type" },
+                { "type-parameter", "is a type parameter" },
+                { "submission", "is not a type C# has a syntax for" },
+                { "void", "is 'void'" },
+                { "static", "is a static type" },
+                { "anonymous", "is an anonymous type" },
+                // Not the type-parameter arm: Roslyn gives an unbound generic error-typed arguments.
+                { "unbound-generic", "does not resolve to a type" },
+                { "open-generic", "is an open generic type" },
+                { "nested-in-open-generic", "is an open generic type" },
+                { "array-of-ref-struct", "is a ref struct" },
+                { "array-of-pointer", "is a pointer type" },
+                { "type-argument-of-type-parameter", "is a type parameter" },
+                { "containing-type-argument", "is a pointer type" },
+                { "array-of-type-parameter-in-containing-type", "is a type parameter" },
             };
 
         private static ITypeSymbol Subject(string name, Compilation compilation)
@@ -120,16 +150,31 @@ namespace Verdict
                 case "nested-in-open-generic":
                     return listDefinition.GetTypeMembers("Enumerator").Single();
                 case "array-of-ref-struct":
-                    return compilation.CreateArrayTypeSymbol(Named(compilation, "System.Span`1"));
+                    return compilation.CreateArrayTypeSymbol(Span(compilation));
                 case "array-of-pointer":
                     return compilation.CreateArrayTypeSymbol(compilation.CreatePointerTypeSymbol(intType));
                 case "type-argument-of-type-parameter":
                     // `List<T[]>`: the type parameter is inside a type argument, inside an array.
                     return listDefinition.Construct(
                         compilation.CreateArrayTypeSymbol(TypeParameter(compilation)));
+                case "containing-type-argument":
+                    // `Outer<int*>.Inner`: the only type argument in the spelling belongs to the enclosing type.
+                    return Nested(compilation, compilation.CreatePointerTypeSymbol(intType));
+                case "array-of-type-parameter-in-containing-type":
+                    // `Outer<T[]>.Inner`: an enclosing argument that is not itself the parameter but contains one.
+                    return Nested(compilation, compilation.CreateArrayTypeSymbol(TypeParameter(compilation)));
                 default: throw new ArgumentOutOfRangeException(nameof(name), name);
             }
         }
+
+        /// <summary><c>Verdict.Outer&lt;<paramref name="argument"/>&gt;.Inner</c>.</summary>
+        private static ITypeSymbol Nested(Compilation compilation, ITypeSymbol argument) =>
+            ((INamedTypeSymbol) Named(compilation, "Verdict.Outer`1")).Construct(argument)
+            .GetTypeMembers("Inner").Single();
+
+        private static ITypeSymbol Span(Compilation compilation) =>
+            ((INamedTypeSymbol) Named(compilation, "System.Span`1"))
+            .Construct(compilation.GetSpecialType(SpecialType.System_Char));
 
         /// <summary>
         /// Every one of them is <see cref="SymbolTypeResolver.NameFault.Unusable"/>, the verdict with no author-
@@ -140,14 +185,40 @@ namespace Verdict
         /// </summary>
         [Theory]
         [MemberData(nameof(RefusedNames))]
-        public void ANameGeneratedCodeCannotWriteIsRefusedWithoutADiagnosticToShowForIt(string name)
+        public void ANameGeneratedCodeCannotWriteIsRefusedWithoutADiagnosticToShowForIt(string name, string because)
         {
             var compilation = Compile();
             var resolver = new SymbolTypeResolver(compilation);
             var subject = Subject(name, compilation);
 
             Assert.Equal(SymbolTypeResolver.NameFault.Unusable, resolver.ClassifyTypeName(subject, out var reason));
-            Assert.False(string.IsNullOrEmpty(reason));
+            Assert.Contains(because, reason ?? string.Empty, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// The other verdict a type argument of an <b>enclosing</b> type can carry, and the one a C# author can
+        /// actually declare: <c>Outer&lt;Legacy&gt;.Inner</c> where <c>Legacy</c> is error-obsolete. Nothing about
+        /// the nested type says so — it has no type argument of its own — and asking only its own arguments called
+        /// the name writable, so the emitter spelled it and the consumer's build died on CS0619 off a property that
+        /// carries no attribute at all.
+        /// <para>Author-fixable in principle, hence <see cref="SymbolTypeResolver.NameFault.Unnameable"/> and not the
+        /// silent verdict, and the reason names the argument rather than the type that was asked about.</para>
+        /// </summary>
+        [Fact]
+        public void AnErrorObsoleteArgumentOfAnEnclosingTypeIsRefusedOnTheEnclosingSpelling()
+        {
+            var compilation = Compile();
+            var resolver = new SymbolTypeResolver(compilation);
+            var subject = Nested(compilation, Named(compilation, "Verdict.Legacy"));
+
+            Assert.Equal(SymbolTypeResolver.NameFault.Unnameable, resolver.ClassifyTypeName(subject, out var reason));
+            Assert.Contains("Verdict.Legacy", reason ?? string.Empty, StringComparison.Ordinal);
+
+            // The cost control that keeps this a rule about the argument: the same nesting over an ordinary one
+            // stays writable, so the walk is not a refusal of nested generics.
+            Assert.Equal(SymbolTypeResolver.NameFault.None,
+                resolver.ClassifyTypeName(Nested(compilation, compilation.GetSpecialType(SpecialType.System_Int32)),
+                    out _));
         }
 
         /// <summary>
