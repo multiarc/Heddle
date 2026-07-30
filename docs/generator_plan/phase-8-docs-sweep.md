@@ -1708,9 +1708,11 @@ The reported defect was that a `:: dynamic` definition's body was emitted with d
 when the call site handed it a static value. The engine was probed over a matrix of (slot / no slot)
 × (call form) × (body expression), and the rule it actually follows is unambiguous: it compiles the
 body **once per call site, against the static type of the value that call site passes** — `this` gives
-the caller's model, a literal gives the literal's type, `null` gives `System.Object`, and only a bare
-call or a member path reaches the accessor's dynamic exit and leaves the body genuinely untyped. A
-body member the type does not carry is `HED0001`, raised when the template is compiled.
+the caller's model, a literal gives the literal's type, `null` gives `System.Object`. A bare call and a
+member path reach the accessor's dynamic exit and leave the body genuinely untyped; the matrix probed
+here contained no other form, and the fourteenth cycle found several — a computed expression, a chained
+call, the value inside an `@list` body — every one of which the engine types statically. A body member
+the type does not carry is `HED0001`, raised when the template is compiled.
 
 The emitter already computed that model, and used it for one thing only — type-checking the body's
 `@out` values. The body itself stayed dynamic. So the tiers diverged in every cell where the model was
@@ -1722,8 +1724,10 @@ because the previous cycle started typing the null literal.
 The fix is not another check. The body is now built in a *typed* context off that same model, so the
 existing member-path machinery answers — `HED7008` and a degrade, the mirror of the engine's
 `HED0001`. All 33 probed cells now agree. It applies to plain definitions as well as slot-declaring
-ones; only slot mode still degrades on a caller value that cannot be typed at all, because there the
-`@out` check would have nothing left to check against. The body cache is keyed on the call-site model,
+ones — but only for the call forms in that matrix. A caller value the emitter could not type was
+handled by mode: slot mode degraded, and **plain mode kept a dynamically-bound body**, which is the
+defect this section says was closed rather than a narrower version of the fix. The fourteenth cycle
+closed it. The body cache is keyed on the call-site model,
 so two call sites passing different types get different bodies — pinned by a two-call-site file next
 to a one-call-site one.
 
@@ -1795,3 +1799,97 @@ that runs per keystroke in an editor. It matches segment by segment from the rig
 was measured rather than argued — 4,097 spellings drawn from the closure, old and new answers compared,
 zero disagreements — and the allocation it removes is measured too: three full-closure misses fall from
 11,528,976 bytes to 2,206,320, the remainder being Roslyn's own member enumeration.
+
+## Fourteenth review cycle (2026-07-30)
+
+Both reviewers landed on the same sentence in the previous cycle's own code, from different repros: the
+emitter was reading "I cannot type this" as "the engine has no type either". Everything below follows
+from that one confusion, and from measuring the engine instead of reading the generator.
+
+### "Cannot say" is not "dynamic"
+
+`TryTypeCallSiteBody` asked for the model a `:: dynamic` definition's body should be compiled against,
+and on `null` — the answer meaning *the emitter has no static type for this call-site value* — it
+returned success for a plain definition and left the body dynamically bound. The engine signals a
+genuinely untyped model separately and definitely, as `dynamic`. So every call form outside the
+previous cycle's matrix diverged: a computed native expression, a chained call, and `this` inside an
+`@list` body all carry a real static type in the engine, and the generated tier bound them dynamically.
+Measured at the parent commit, with a definition body reading a member the type does not have: the
+engine refuses at compile time in every one of them, naming the type it compiled against
+(`[Int32]`, `[String]`, `[Boolean]`, `[MenuOption]`, `[Object]`), and the generated tier precompiled
+with no diagnostic and either threw `RuntimeBinderException` at render or — where the value was `null`
+or the element was `null` — **rendered a page the engine will not compile at all**.
+
+`null` now degrades, in plain mode as in slot mode. That closes the divergence unconditionally, and it
+costs precompilation, so the second half of the work was getting the cost back rather than paying it.
+
+**Typing what the engine types.** Two rules were mirrored, both from tables that already exist:
+
+* A computed expression's type is the shared operator tables' own promotion arithmetic —
+  `NativeOperatorRules.BinaryResult` / `UnaryResult` / `ClassifyTernary`, the same tables the expression
+  writer consults before it emits anything. That gate is exactly the right one: a shape the tables call
+  `Supported` is a shape the two tiers already agree about, and a shape they do not the writer would
+  refuse to emit anyway, so nothing is lost that the writer had not already lost. The descriptor names
+  only the numeric primitives, `bool` and `string`, so a reference or enum result stays "cannot say" —
+  except `x ?? null`, whose type is `x`'s own and is carried through by symbol.
+* The model inside an `@list` body is the element type, which the host resolves as the collection's
+  `IEnumerable<T>` and falls back to `dynamic` for a collection implementing no generic form. A type
+  reaching `IEnumerable<T>` more than once is "cannot say": the host picks one by reflection order.
+
+Measured over a sweep of thirteen call-site shapes in a definition whose body reads nothing: before,
+eight of them degraded; after, one — a chained call, whose render type the emitter does not track. Over the same shapes with a body reading a missing member, the type named in the
+generator's `HED7008` and the type named in the engine's `HED0001` agree in all fourteen typed shapes,
+including the lifted one (`int?` / `Nullable<Int32>`) and the promotions (`Price * 2` is `decimal`, not
+`int`). That pairing is the test: a degrade assertion alone would pass whatever type the emitter picked,
+and a wrong type is a cast the generated body throws on.
+
+The degrade cost of the whole change, measured on the instruments: the integration suite and all ten
+samples' goldens are unchanged. One previously-declared degrade became a precompile — `@out(this)`
+inside an `@list` body, which had been recorded as a known cost, is now checked against the element
+type and renders the engine's bytes when it fits.
+
+### A prop the `@list` body was not supposed to lose
+
+The engine saves and restores the active prop layout around **definition** bodies only. An `@list` body
+nested inside a definition therefore still resolves its first path segment as a prop, before it looks
+at the element at all. The emitter built the item context with no layout, so the element's member of
+that name won instead: `<host(Name: string)>{{@list(Products){{@(Name)}}}}` rendered `[PROP]` on the
+engine and `[ELEMENT]` on the generated tier. Both precompiled, no diagnostic, different bytes — and
+the same template with the `@list` removed, or with `@if` in its place, agreed. The layout propagates
+now. The element row next to it (a name the layout does *not* carry still reads off the element) is
+what keeps this prop-first resolution rather than the layout swallowing the body.
+
+### Rows that could not fail
+
+The `null` row of the `:: dynamic` body table asserted a degrade and an empty error list, which any
+refusal satisfies. Demonstrated: refusing the null literal outright left all nine tests green, and
+refusing **every** literal call site outright failed only two rows and passed the other 672 integration
+tests. Nothing anywhere asserted that a `:: dynamic` definition called with a literal ever precompiles.
+It does now — four rows, each rendering the engine's bytes, one of them reading `Length` off a `string`
+literal so it fails both if the body is left dynamic and if it is typed as anything else. Both
+mutations redden.
+
+### Two arms nothing could reach
+
+`Classify`'s `TypeKind` switch grouped `Unknown` with `Error` and `Module` with `Submission`, and no C#
+compilation produces a symbol carrying either of the first two — so through symbols alone both labels
+could be deleted with every suite green. The previous cycle's record named one of them. The kind table
+is a function of `TypeKind` now, asked of every kind the enum declares plus a row asserting the rows
+cover the enum, so a kind Roslyn adds later arrives with no verdict and the theory does not compile
+past it. Deleting either label reddens.
+
+The same "pinned by nothing" verdict applied to the name-existence gate's global-namespace stop, which
+the previous cycle's record claimed to have covered: the rows it added end mid-identifier, and the stop
+is about running out of namespaces with spelling left over. Removing it turns every leading-dot
+spelling — `.System.Object` and its kind — from refused into accepted; the review that reported it
+counted 241 such flips over 6,857 sampled spellings. `.Probe.Only.UniqueProbe` is the row that reddens
+when the stop goes.
+
+### The durable lesson
+
+A resolver that answers `null` is answering two different questions at once, and the caller has to be
+told which. "I could not compute this" and "there is nothing to compute" lead to opposite correct
+actions — degrade versus proceed — and the cheap direction is always the wrong one, because proceeding
+is what silently produces different bytes. Where two tiers must agree, every "cannot say" belongs on
+the refusing side of the branch, and the way to keep that from costing the precompiled tier is to
+shrink the set of things that cannot be said, not to widen what "cannot say" is allowed to mean.

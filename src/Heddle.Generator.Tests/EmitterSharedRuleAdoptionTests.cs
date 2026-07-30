@@ -181,15 +181,15 @@ namespace Heddle.Generator.Tests
         }
 
         /// <summary>The <see cref="BodyModelSource.ElementOfData"/> row, read off the emitted bytes: an
-        /// <c>@list</c> element body is NOT the enclosing model — the element type is discoverable only through
-        /// <c>ListExtension.InitStart</c>'s reflection, so the body is built on the dynamic tier. This is the row
+        /// <c>@list</c> element body is NOT the enclosing model, and its reads are emitted on the dynamic tier
+        /// because what the host iterates is decided by <c>ListExtension.InitStart</c> at render. This is the row
         /// whose confusion with Parent would silently bind a member of the wrong type.</summary>
         [Fact]
         public void TheEmitterTypesAListElementBodyOnTheDynamicTier()
         {
-            // The body reads Name — a member of the ENCLOSING model. Under the ElementOfData row the emitter has no
-            // element type, so it routes the read through the dynamic member router; under Parent it would bind
-            // Person.Name statically and cast. The two emissions are textually unmistakable.
+            // The body reads Name — a member of the ENCLOSING model. Under the ElementOfData row the read goes
+            // through the dynamic member router; under Parent it would bind Person.Name statically and cast. The
+            // two emissions are textually unmistakable.
             var body = NestedBodySource("@list(Scores){{@(Name)}}");
             Assert.DoesNotContain(ModelCast, body);
             Assert.Contains("PrecompiledRuntime.DynamicMember(m, \"Name\")", body);

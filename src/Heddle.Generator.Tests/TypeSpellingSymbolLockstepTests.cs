@@ -108,6 +108,15 @@ namespace Probe.Nest { public class Outer { public class Inner { } } }";
         [InlineData("int?", false)]
         [InlineData("UniqueProbe?", false)]
         [InlineData("Probe.Only.UniqueProbe?", false)]
+        // A leading dot: every segment after it is real and the name is fully qualified, so the walk consumes the
+        // whole spelling and runs out of namespaces with the dot still unmatched. Answering yes here would let a
+        // spelling no tier resolves past the last gate before HED7007.
+        [InlineData(".Probe.Only.UniqueProbe", false)]
+        [InlineData(".UniqueProbe", false)]
+        [InlineData(".int", false)]
+        // A dot on both ends, and one segment too many in front of a fully-qualified name.
+        [InlineData("..UniqueProbe", false)]
+        [InlineData("Extra.Probe.Only.UniqueProbe", false)]
         public void ASpellingIsOnlyKnownWhenEverySegmentOfItIs(string spelling, bool exists)
         {
             Assert.Equal(exists, Resolver.TypeNameExistsAnywhere(spelling));

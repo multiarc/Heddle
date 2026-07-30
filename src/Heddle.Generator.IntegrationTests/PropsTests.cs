@@ -62,6 +62,35 @@ namespace Heddle.Generator.IntegrationTests
             AssertParity("views/hdr.heddle", t, typeof(Article), model);
         }
 
+        /// <summary>
+        /// The prop layout survives into a nested <c>@list</c> body. The engine saves and restores it around
+        /// <b>definition</b> bodies only, so inside a definition an <c>@list</c> body still resolves its first path
+        /// segment as a prop before it ever looks at the element — and the emitter, which built the item body with
+        /// no layout at all, silently read the element's member of that name instead. Both tiers precompiled and
+        /// rendered different text.
+        /// <para>The element row is the other half: a name the layout does <b>not</b> carry still reads off the
+        /// element, so this is prop-first resolution and not the layout swallowing the body.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("shadowed", "Name", "[PROP]\n")]
+        [InlineData("element", "Description", "[D]\n")]
+        public void APropSurvivesIntoANestedListBody(string name, string read, string expected)
+        {
+            const string catalogType = "Heddle.Generator.IntegrationTests.Fixtures.Catalog";
+            var t = "@model(){{" + catalogType + "}}@%\n" +
+                    "<host(Name: string)>{{@list(Products){{[@(" + read + ")]}}}} :: " + catalogType + "\n%@\n" +
+                    "@host(this, Name: \"PROP\")\n";
+            var model = new Catalog
+            {
+                Products = new List<Product> { new Product { Name = "ELEMENT", Description = "D" } }
+            };
+
+            var (precompiled, dyn) = DifferentialHarness.Render("views/list-prop-" + name + ".heddle", t,
+                typeof(Catalog), model);
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal(expected, dyn);
+        }
+
         [Theory]
         [MemberData(nameof(Articles))]
         public void NumericWideningDefault(Article model)

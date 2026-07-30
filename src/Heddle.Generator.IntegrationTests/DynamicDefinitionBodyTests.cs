@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Heddle.Data;
 using Heddle.Generator.IntegrationTests.Fixtures;
@@ -21,6 +22,8 @@ namespace Heddle.Generator.IntegrationTests
     {
         private const string ArticleType = "Heddle.Generator.IntegrationTests.Fixtures.Article";
         private const string MenuType = "Heddle.Generator.IntegrationTests.Fixtures.Menu";
+        private const string CartType = "Heddle.Generator.IntegrationTests.Fixtures.Cart";
+        private const string OrderType = "Heddle.Generator.IntegrationTests.Fixtures.Order";
 
         /// <summary>A <c>:: dynamic</c> definition read straight through, in both the plain and the slot-declaring
         /// shape — the slot machinery is a separate rule and the body typing must not be a property of it.</summary>
@@ -95,6 +98,33 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
+        /// The other half of the literal rows above, and the reason they say something: a literal call site whose
+        /// body fits the literal's type <b>precompiles</b> and renders the engine's bytes. Without this, refusing
+        /// every literal call site outright — or refusing just <c>null</c> — satisfied every literal assertion in
+        /// the suite, and "the type is <c>System.Object</c>" was indistinguishable from "the emitter gave up".
+        /// <para>The <c>string</c> row is the sharp one: <c>Length</c> exists on <c>string</c> and on nothing else
+        /// here, so it fails if the body is left dynamic <i>and</i> if it is typed as anything but
+        /// <c>string</c>.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("null", "null", "[]", "[]\n")]
+        [InlineData("int", "5", "[@()]", "[5]\n")]
+        [InlineData("string", "\"abc\"", "[@(Length)]", "[3]\n")]
+        [InlineData("bool", "true", "[@()]", "[True]\n")]
+        public void ALiteralCallSiteValuePrecompilesWhenTheBodyFitsIt(string name, string argument, string body,
+            string expected)
+        {
+            var key = "views/dynamic-body-literal-fits-" + name + ".heddle";
+            var template = "@model(){{" + ArticleType + "}}@%\n<frame>{{" + body + "}} :: dynamic\n%@\n@frame(" +
+                           argument + ")\n";
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template, typeof(Article),
+                new Article { Title = "T" });
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal(expected, dyn);
+        }
+
+        /// <summary>
         /// The call forms the engine really does hand a <c>dynamic</c> model — a bare call and a member path, whose
         /// accessor takes its dynamic exit before resolving anything. There the body has no model to be typed
         /// against on either tier, so it stays untyped and a missing member is a render-time binder failure on both,
@@ -123,6 +153,119 @@ namespace Heddle.Generator.IntegrationTests
                 new Product { Manufacturer = new Manufacturer { Name = "M" } });
             Assert.Equal(dyn, precompiled);
             Assert.Equal("[M]\n", dyn);
+        }
+
+        /// <summary>
+        /// A computed call-site value — arithmetic, a comparison, a ternary, a coalesce, a concatenation. The engine
+        /// compiles these in the caller's own scope and the body inherits the expression's static type; the emitter
+        /// left the body dynamically bound instead, so the same templates precompiled and then threw
+        /// <c>RuntimeBinderException</c> at render where the engine had refused to compile them.
+        /// <para>Each row names the type <b>twice</b> — once as the engine spells it in <c>HED0001</c>, once as the
+        /// generator spells it in <c>HED7008</c>. A degrade alone would pass whatever type the emitter had picked,
+        /// including the wrong one, and a wrong type is a cast the generated body would throw on.</para>
+        /// </summary>
+        [Theory]
+        // name          model      argument                      engine's name       generator's name
+        [InlineData("arith",    CartType,  "Count * 2",                "Int32",            "int")]
+        [InlineData("promote",  CartType,  "Price * 2",                "Decimal",          "decimal")]
+        [InlineData("unary",    CartType,  "-Count",                   "Int32",            "int")]
+        [InlineData("not",      CartType,  "!IsArchived",              "Boolean",          "bool")]
+        [InlineData("compare",  CartType,  "Count > 0",                "Boolean",          "bool")]
+        [InlineData("logical",  CartType,  "IsArchived && IsFeatured", "Boolean",          "bool")]
+        [InlineData("shift",    CartType,  "Count << 1",               "Int32",            "int")]
+        [InlineData("ternary",  CartType,  "IsArchived ? Name : Name", "String",           "string")]
+        [InlineData("coalesce", CartType,  "Name ?? \"x\"",            "String",           "string")]
+        [InlineData("concat",   CartType,  "Name + \"x\"",             "String",           "string")]
+        [InlineData("hop",      CartType,  "Nested.Amount + 1",        "Int32",            "int")]
+        [InlineData("lifted",   OrderType, "Maybe + 1",                "Nullable<Int32>",  "int?")]
+        public void AComputedCallSiteValueTypesTheBodyToTheSameTypeOnBothTiers(string name, string model,
+            string argument, string engineType, string generatorType)
+        {
+            var key = "views/dynamic-body-computed-" + name + ".heddle";
+            var template = "@model(){{" + model + "}}@%\n<frame>{{[@(Zzz)]}} :: dynamic\n%@\n@frame(" + argument + ")\n";
+
+            var gen = DifferentialHarness.Generate(new[] { (key, template) });
+            DifferentialHarness.ExpectDegrade(gen, key);
+            Assert.Contains(gen.Diagnostics, d => d.Id == "HED7008" &&
+                                                  d.GetMessage().StartsWith("'" + generatorType + "' does not contain",
+                                                      StringComparison.Ordinal));
+            AssertEngineRefuses(template, model == CartType ? typeof(Cart) : typeof(Order),
+                "Property Zzz not found in Type [" + engineType + "]");
+        }
+
+        /// <summary>The cost control for the rule above: the same computed value with a body reading a member its
+        /// type <b>does</b> have precompiles and renders the engine's bytes. <c>Length</c> is on <c>string</c> and
+        /// nowhere near <c>Cart</c>, so this fails both ways — if the body were left dynamic it would still render,
+        /// but if the emitter typed the concatenation as anything but <c>string</c> it would not compile at
+        /// all.</summary>
+        [Fact]
+        public void AComputedCallSiteValueStillPrecompilesWhenTheBodyFitsIt()
+        {
+            const string key = "views/dynamic-body-computed-hit.heddle";
+            const string template = "@model(){{" + CartType + "}}@%\n<frame>{{[@(Length)]}} :: dynamic\n%@\n" +
+                                    "@frame(Name + \"x\")\n";
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template, typeof(Cart), new Cart { Name = "N" });
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal("[2]\n", dyn);
+        }
+
+        /// <summary>
+        /// The value inside an <c>@list</c> body, which is the element the host iterates — a static type, and the
+        /// one the engine compiles the definition body against. The fitting body renders the engine's bytes; the
+        /// body reading a member the element lacks degrades, and both tiers name the element type.
+        /// </summary>
+        [Fact]
+        public void TheValueInsideAListBodyIsTheElementTypeOnBothTiers()
+        {
+            const string hitKey = "views/dynamic-body-list-element-hit.heddle";
+            const string hit = "@model(){{" + MenuType + "}}@%\n<frame>{{[@(Label)]}} :: dynamic\n%@\n" +
+                               "@list(Options){{@frame(this)}}\n";
+            var menu = new Menu { Options = new List<MenuOption> { new MenuOption { Label = "L" } } };
+
+            var (precompiled, dyn) = DifferentialHarness.Render(hitKey, hit, typeof(Menu), menu);
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal("[L]\n", dyn);
+
+            const string missKey = "views/dynamic-body-list-element-miss.heddle";
+            const string miss = "@model(){{" + MenuType + "}}@%\n<frame>{{[@(Zzz)]}} :: dynamic\n%@\n" +
+                                "@list(Options){{@frame(this)}}\n";
+
+            var gen = DifferentialHarness.Generate(new[] { (missKey, miss) });
+            DifferentialHarness.ExpectDegrade(gen, missKey);
+            Assert.Contains(gen.Diagnostics, d => d.Id == "HED7008" && d.GetMessage().Contains("MenuOption"));
+            AssertEngineRefuses(miss, typeof(Menu), "Property Zzz not found in Type [MenuOption]");
+        }
+
+        /// <summary>
+        /// A call-site value outside what the shared tables type — here a chained call, whose render type the
+        /// emitter does not track. "The emitter cannot say" is not "the engine has no type": the engine gives this
+        /// one <c>String</c>, so a body reading a member <c>String</c> lacks is a template it refuses outright, and
+        /// an untyped body would render it.
+        /// <para>The two neighbours are what keep this from being a blanket refusal: the cost of the degrade is
+        /// declared (the same call with a fitting body is a template the engine compiles and the emitter drops), and
+        /// a computed value the tables <b>do</b> type still precompiles.</para>
+        /// </summary>
+        [Fact]
+        public void AnUntypeableCallSiteValueDegradesInsteadOfKeepingAnUntypedBody()
+        {
+            const string divergeKey = "views/dynamic-body-function-value-miss.heddle";
+            const string costKey = "views/dynamic-body-function-value-fits.heddle";
+            const string typedKey = "views/dynamic-body-typed-value.heddle";
+            const string model = "@model(){{" + CartType + "}}@%\n";
+            const string diverge = model + "<frame>{{[@(Zzz)]}} :: dynamic\n%@\n@frame(len(Name))\n";
+            const string cost = model + "<frame>{{[k]}} :: dynamic\n%@\n@frame(len(Name))\n";
+            const string typed = model + "<frame>{{[k]}} :: dynamic\n%@\n@frame(Count * 2)\n";
+
+            var gen = DifferentialHarness.Generate(
+                new[] { (divergeKey, diverge), (costKey, cost), (typedKey, typed) });
+            DifferentialHarness.ExpectDegrade(gen, divergeKey);
+            DifferentialHarness.ExpectDegrade(gen, costKey);
+            DifferentialHarness.ExpectPrecompiled(gen, typedKey);
+
+            AssertEngineRefuses(diverge, typeof(Cart), "Property Zzz not found in Type [String]");
+            var accepted = new HeddleTemplate(cost, new CompileContext(new TemplateOptions(), typeof(Cart)));
+            Assert.True(accepted.CompileResult.Success, accepted.CompileResult.ToString());
         }
 
         /// <summary>

@@ -134,6 +134,13 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public string Label { get; set; }
     }
 
+    /// <summary>A collection whose element type carries no members at all — the engine types an <c>@list</c> body
+    /// over it <c>object</c>, which is a static type and not an absence of one.</summary>
+    public sealed class ObjItems
+    {
+        public System.Collections.Generic.List<object> Items { get; set; }
+    }
+
     public enum OrderStatus
     {
         Draft = 0,

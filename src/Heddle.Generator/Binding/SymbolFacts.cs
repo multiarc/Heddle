@@ -33,6 +33,30 @@ namespace Heddle.Generator.Binding
             }
         }
 
+        /// <summary>The inverse of <see cref="ToNumericKind"/>: the Roslyn <see cref="SpecialType"/> a shared
+        /// <see cref="NumericKind"/> names, or <see cref="SpecialType.None"/> for
+        /// <see cref="NumericKind.None"/>. Needed where a rule table hands back a <i>result</i> kind and the caller
+        /// has to name the type it stands for.</summary>
+        public static SpecialType ToSpecialType(NumericKind kind)
+        {
+            switch (kind)
+            {
+                case NumericKind.SByte: return SpecialType.System_SByte;
+                case NumericKind.Byte: return SpecialType.System_Byte;
+                case NumericKind.Int16: return SpecialType.System_Int16;
+                case NumericKind.UInt16: return SpecialType.System_UInt16;
+                case NumericKind.Int32: return SpecialType.System_Int32;
+                case NumericKind.UInt32: return SpecialType.System_UInt32;
+                case NumericKind.Int64: return SpecialType.System_Int64;
+                case NumericKind.UInt64: return SpecialType.System_UInt64;
+                case NumericKind.Char: return SpecialType.System_Char;
+                case NumericKind.Single: return SpecialType.System_Single;
+                case NumericKind.Double: return SpecialType.System_Double;
+                case NumericKind.Decimal: return SpecialType.System_Decimal;
+                default: return SpecialType.None;
+            }
+        }
+
         /// <summary>Strips a <c>Nullable&lt;T&gt;</c> wrapper, reporting whether one was present.</summary>
         public static ITypeSymbol Unwrap(ITypeSymbol type, out bool isNullable)
         {
