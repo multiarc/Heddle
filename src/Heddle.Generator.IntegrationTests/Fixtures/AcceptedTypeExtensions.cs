@@ -44,6 +44,17 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public override void RenderData(in Scope scope) => scope.Renderer.Render("oa");
     }
 
+    /// <summary>Accepts <c>int[]</c> — reached by an array whose element type the CLR reduces to <c>int</c>: the
+    /// unsigned partner of the same width, and an enum over that width.</summary>
+    [ExtensionName("takesintarr")]
+    [DataType(typeof(int[]))]
+    public sealed class TakesIntArrayExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) => "ia";
+
+        public override void RenderData(in Scope scope) => scope.Renderer.Render("ia");
+    }
+
     /// <summary>The declaration half of the inheritance rule: the runtime reads <c>[DataType]</c> with
     /// <c>inherit: true</c>, so this base's <c>string</c> travels to every extension derived from it. Carries no
     /// <c>[ExtensionName]</c>, so it is a declaration and not a registered extension.</summary>

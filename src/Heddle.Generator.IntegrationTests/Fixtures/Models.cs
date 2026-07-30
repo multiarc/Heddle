@@ -412,8 +412,9 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
 
     /// <summary>
     /// One member per relation an accepted-type declaration can stand in to a value: identity, a nullable lift on
-    /// either side, generic covariance through a class and through an interface, array covariance, and two members
-    /// (<see cref="S"/>, <see cref="D"/>) that stand in none of them and must be refused.
+    /// either side, generic covariance through a class and through an interface, array covariance over a
+    /// reference element and over the CLR's reduced value-type elements, and the members (<see cref="S"/>,
+    /// <see cref="D"/>, <see cref="Longs"/>) that stand in none of them and must be refused.
     /// </summary>
     public sealed class AcceptanceModel
     {
@@ -426,6 +427,9 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public System.Collections.Generic.IList<string> IStrs { get; set; }
         public string[] StrArr { get; set; }
         public int[] Ints { get; set; }
+        public uint[] UInts { get; set; }
+        public System.DayOfWeek[] Days { get; set; }
+        public long[] Longs { get; set; }
         public System.Collections.Generic.List<int> IntList { get; set; }
     }
 

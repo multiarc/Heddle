@@ -39,6 +39,11 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("expr-class", "@model(){{" + CartType + "}}@\\\n[@(rgoneobj(1))]\n")]
         [InlineData("slot-string", "@model(){{" + CartType + "}}@%\n" +
                                    "<s(out:: System.String)>{{[@out(rgonestr(1))]}} :: object\n%@\n@s(){{|@()|}}\n")]
+        // The class-return slot row declares an `object` slot rather than the returned class: the engine types a
+        // function call's slot value `System.Object`, so a slot declaring the class is HED5014 on both tiers and
+        // would pin the slot rule instead of this one.
+        [InlineData("slot-class", "@model(){{" + CartType + "}}@%\n" +
+                                  "<s(out:: System.Object)>{{[@out(rgoneobj(1))]}} :: object\n%@\n@s(){{|@()|}}\n")]
         public void AnExportTheConsumersCompilerRejectsDegradesInsteadOfBreakingTheBuild(string name, string template)
         {
             var key = "views/deprecated-export-" + name + ".heddle";

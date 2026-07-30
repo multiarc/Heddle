@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using Heddle.Data;
 using Heddle.Generator.IntegrationTests.Fixtures;
+using Heddle.Runtime;
 using Xunit;
 
 namespace Heddle.Generator.IntegrationTests
@@ -101,6 +103,68 @@ namespace Heddle.Generator.IntegrationTests
                 new Product { Name = "abcd" });
             Assert.Equal(dyn, precompiled);
             Assert.Equal("[1]\n", dyn);
+        }
+
+        private const string CartType = "Heddle.Generator.IntegrationTests.Fixtures.Cart";
+        private const string NestedType = "Heddle.Generator.IntegrationTests.Fixtures.Nested";
+
+        private static string DeclaredModelDoc(string declared, string argument) =>
+            "@model(){{" + CartType + "}}@%\n<frame>{{[@()]}} :: " + declared + "\n%@\n@frame(" + argument + ")\n";
+
+        private static Cart CartModel() => new Cart { Name = "abc", Nested = new Nested() };
+
+        /// <summary>
+        /// A declared <c>:: T</c> is a type the call site's value has to satisfy, not only the type the body is
+        /// compiled under. The engine compares them and refuses the template; the emitter took the declaration as
+        /// the body's model and never looked at what was being passed, so the value was cast to <c>T</c> in
+        /// generated code — rendering the wrong member for a reference type, and throwing
+        /// <see cref="InvalidCastException"/> where the body read one.
+        /// </summary>
+        [Theory]
+        [InlineData("System.String", "Nested", "Heddle.Generator.IntegrationTests.Fixtures.Nested",
+            "System.String")]
+        [InlineData("System.Int32", "Name", "System.String", "System.Int32")]
+        [InlineData(CartType, "Nested", "Heddle.Generator.IntegrationTests.Fixtures.Nested",
+            "Heddle.Generator.IntegrationTests.Fixtures.Cart")]
+        public void ADeclaredDefinitionModelTheCallSiteValueDoesNotSatisfyDegrades(string declared, string argument,
+            string valueTypeName, string declaredTypeName)
+        {
+            var template = DeclaredModelDoc(declared, argument);
+            var key = "views/declared-model-" + declared.Replace('.', '-') + "-" + argument + ".heddle";
+            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
+
+            var dynamicTemplate = new HeddleTemplate(template,
+                new CompileContext(new TemplateOptions(), typeof(Cart)));
+            Assert.False(dynamicTemplate.CompileResult.Success);
+            var text = dynamicTemplate.CompileResult.ToString();
+            Assert.Contains(HeddleDiagnosticIds.ReturnTypeMismatch, text, StringComparison.Ordinal);
+            Assert.Contains("Return Type is " + valueTypeName + " but any of [" + declaredTypeName + "]", text,
+                StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// The call forms the engine does <b>not</b> compare, because its model accessor hands them no input type:
+        /// a literal, <c>this</c>, and a chain, each against a declared model none of them satisfies. The engine
+        /// compiles and renders all three, so mirroring its asymmetry is what keeps them on the precompiled tier —
+        /// a rule that checked every call form would take them off it. The member-path rows that do satisfy their
+        /// declaration are here too, so the refusal above is not a refusal of member paths.
+        /// </summary>
+        [Theory]
+        [InlineData("System.String", "5", "[5]\n")]
+        [InlineData("System.String", "this", "[Heddle.Generator.IntegrationTests.Fixtures.Cart]\n")]
+        [InlineData("System.Int32", "len(Name)", "[3]\n")]
+        [InlineData("System.String", "Name", "[abc]\n")]
+        [InlineData(NestedType, "Nested", "[Heddle.Generator.IntegrationTests.Fixtures.Nested]\n")]
+        [InlineData("System.Object", "Nested", "[Heddle.Generator.IntegrationTests.Fixtures.Nested]\n")]
+        public void ACallFormTheEngineDoesNotCompareStillPrecompiles(string declared, string argument,
+            string expected)
+        {
+            var template = DeclaredModelDoc(declared, argument);
+            var key = "views/declared-model-ok-" + declared.Replace('.', '-') + "-" +
+                      argument.Replace("(", "-").Replace(")", "") + ".heddle";
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template, typeof(Cart), CartModel());
+            Assert.Equal(expected, dyn);
+            Assert.Equal(dyn, precompiled);
         }
     }
 }
