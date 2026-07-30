@@ -296,5 +296,65 @@ namespace Heddle.Generator.IntegrationTests
             DifferentialHarness.ExpectPrecompiled(gen, oneKey);
             AssertEngineRefuses(bothTemplate, typeof(Article), "Property Title not found in Type [Int32]");
         }
+
+        /// <summary>
+        /// The <b>caller's content</b> — the block the call site hands the definition — under a <c>:: dynamic</c>
+        /// callee. It is compiled against the callee's model like the body is, so the same rule types it: a call site
+        /// passing a value with a static type gets caller content bound against that type, and a member the type does
+        /// not have is the engine's <c>HED0001</c> at compile time. The emitter typed the body per call site and left
+        /// the caller content untyped, so this half went on precompiling and rendering a template the engine refuses.
+        /// </summary>
+        [Theory]
+        [InlineData("literal", "\"ab\"", "String")]
+        [InlineData("this", "this", "Cart")]
+        public void CallerContentUnderADynamicCalleeIsTypedByTheCallSiteValue(string name, string argument,
+            string engineType)
+        {
+            var key = "views/dynamic-caller-content-" + name + ".heddle";
+            var template = "@model(){{" + CartType + "}}@%\n<frame>{{[@out()]}} :: dynamic\n%@\n" +
+                           "@frame(" + argument + "){{(@(Zzz))}}\n";
+
+            var gen = DifferentialHarness.Generate(new[] { (key, template) });
+            DifferentialHarness.ExpectDegrade(gen, key);
+            Assert.Contains(gen.Diagnostics, d => d.Id == "HED7008" && d.GetMessage().Contains("Zzz"));
+            AssertEngineRefuses(template, typeof(Cart), "Property Zzz not found in Type [" + engineType + "]");
+        }
+
+        /// <summary>
+        /// The near neighbours, and why this is a typing rule rather than a refusal of caller content under a
+        /// <c>:: dynamic</c> callee. A member the call-site value <em>does</em> have still precompiles and still
+        /// renders the engine's bytes; and a call form the engine <b>itself</b> types <c>dynamic</c> — a member path,
+        /// which reaches its accessor's dynamic exit — keeps untyped caller content, so a read the value cannot
+        /// satisfy throws the same binder exception on both tiers instead of failing anyone's build.
+        /// </summary>
+        [Fact]
+        public void CallerContentStillPrecompilesWhereTheEngineCompilesIt()
+        {
+            const string fitsKey = "views/dynamic-caller-content-fits.heddle";
+            const string fits = "@model(){{" + CartType + "}}@%\n<frame>{{[@out()]}} :: dynamic\n%@\n" +
+                                "@frame(Name){{(@(Length))}}\n";
+
+            var (fitsPre, fitsDyn) = DifferentialHarness.Render(fitsKey, fits, typeof(Cart),
+                new Cart { Name = "abcd" });
+            Assert.Equal(fitsDyn, fitsPre);
+            Assert.Equal("[(4)]\n", fitsDyn);
+
+            // A member path is the engine's own dynamic exit: it compiles the template and binds the read at render,
+            // so the emitter must keep this content untyped rather than report the member missing.
+            const string dynKey = "views/dynamic-caller-content-member-path.heddle";
+            const string dynTemplate = "@model(){{" + CartType + "}}@%\n<frame>{{[@out()]}} :: dynamic\n%@\n" +
+                                       "@frame(Name){{(@(Zzz))}}\n";
+
+            var dynGen = DifferentialHarness.Generate(new[] { (dynKey, dynTemplate) });
+            DifferentialHarness.ExpectPrecompiled(dynGen, dynKey);
+            var compiled = new HeddleTemplate(dynTemplate, new CompileContext(new TemplateOptions(), typeof(Cart)));
+            Assert.True(compiled.CompileResult.Success, compiled.CompileResult.ToString());
+
+            var model = new Cart { Name = "abcd" };
+            var engineThrow = Assert.ThrowsAny<Exception>(() => compiled.Generate(model));
+            var precompiledThrow = Assert.ThrowsAny<Exception>(
+                () => DifferentialHarness.RenderGenerated(dynGen, dynKey, model));
+            Assert.Equal(engineThrow.GetType(), precompiledThrow.GetType());
+        }
     }
 }

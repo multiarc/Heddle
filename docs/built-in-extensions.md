@@ -221,6 +221,13 @@ common cases need no embedded C# at all:
 A negative or zero count renders empty (the loop condition is false immediately), matching a
 data‑driven `Count = 0`.
 
+A `Range` and an `int` are the **only** values `@for` accepts. Anything else with a static type is
+refused when the template is compiled (**HED0004**, naming the type it got and the two it wanted) — a
+`long`, a `decimal`, a `string`. That includes the *chained* forms, which is the surprising one:
+`@for((Count))` and `@for(len(Name))` hand `@for` the chain's rendered **text**, not the number, so both
+are refused. Write the expression without the chain — `@for(Count)`, `@for(len(Name) + 0)` — or wrap it
+in `range`.
+
 **`range(start, last[, step])`.** The default [function registry](native-expressions.md)
 includes `range`, which builds a `Heddle.Models.Range` — so `@for(range(...))` gives start/step
 control with no new syntax:

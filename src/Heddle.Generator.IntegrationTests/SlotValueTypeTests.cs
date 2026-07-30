@@ -330,6 +330,39 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal("[[" + expected + "]]\n", dyn);
         }
 
+        /// <summary>
+        /// A call whose return type is not one of the primitives the shared operand descriptor can name. The
+        /// descriptor answers "some other value type" for <c>range</c>, the emitter read that as "cannot say", and
+        /// the slot check exempted it — so a <c>Range</c> into an <c>object</c> slot precompiled and rendered where
+        /// the engine names both types and refuses. The call's type is the chosen overload's declared return type,
+        /// which the emitter has in hand; nothing about it was ever an estimate.
+        /// </summary>
+        [Fact]
+        public void ACallReturningANonPrimitiveIsCheckedAgainstTheSlotType()
+        {
+            const string key = "views/slot-value-call-range.heddle";
+            var template = "@model(){{" + MenuType + "}}@%\n<s(out:: object)>{{[@out(range(1, 3))]}} :: " + MenuType +
+                           "\n%@\n@s(this){{|@()|}}\n";
+
+            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
+            AssertEngineRefuses(template, typeof(Menu), Mismatch("Heddle.Models.Range", "System.Object"));
+        }
+
+        /// <summary>The near neighbour: the same call syntax whose return type the slot does take still precompiles
+        /// and still renders the engine's bytes, so the rule above is the return type deciding and not calls being
+        /// refused wholesale.</summary>
+        [Fact]
+        public void ACallWhoseReturnTypeFitsTheSlotStillPrecompiles()
+        {
+            const string key = "views/slot-value-call-int.heddle";
+            var template = "@model(){{" + MenuType + "}}@%\n<s(out:: int)>{{[@out(min(1, 2))]}} :: " + MenuType +
+                           "\n%@\n@s(this){{|@()|}}\n";
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template, typeof(Menu), new Menu());
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal("[|1|]\n", dyn);
+        }
+
         public static TheoryData<string, string, string, System.Type, object> Assignable() =>
             new TheoryData<string, string, string, System.Type, object>
             {

@@ -232,6 +232,28 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Single(Unbindable(gen));
         }
 
+        /// <summary>
+        /// An illegal call in a position where the emitter <b>types the value before it writes it</b> — an
+        /// <c>@list</c> data expression, an <c>@out</c> slot value. The typing pass builds a writer of its own and
+        /// throws it away, so a refusal that pass proves is discarded; the report has to come from the writer that
+        /// emits, and it does, because a call the ranker refuses has no return type either — the value stays "cannot
+        /// say", no accepted-type or slot-type gate can refuse on it, and the emission walk is always reached.
+        /// </summary>
+        [Theory]
+        [InlineData("list", "@list(min(1, 2u)){{<@()>}}")]
+        [InlineData("out", "@%<s(out:: int)>{{[@out(min(1, 2u))]}}%@\n@s(this){{|@()|}}")]
+        public void AnIllegalCallInATypedValuePositionIsStillReported(string name, string body)
+        {
+            var key = "overload/typed-position-" + name + ".heddle";
+            var content = "@model(){{" + OrderType + "}}@\\\n" + body + "\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, content) });
+
+            var single = Assert.Single(Unbindable(gen));
+            Assert.Equal(DiagnosticSeverity.Error, single.Severity);
+            Assert.Contains("'min'", single.GetMessage());
+            DifferentialHarness.ExpectDegrade(gen, key);
+        }
+
         /// <summary>The dedupe is per call site, not per template or per pass: two templates in one compilation each
         /// report their own illegal call.</summary>
         [Fact]

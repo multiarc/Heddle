@@ -2190,3 +2190,170 @@ contexts that carry the state it reads. Fixing every reader while one context ne
 leaves the rule exactly as broken as before, and a sweep written around the contexts that do carry it
 will report full coverage. Both lists belong in the record, written out in full, before the first fix.
 
+
+## Seventeenth review cycle (2026-07-30)
+
+The previous cycle's two enumerations — every `BodyContext` construction and whether it carries the prop
+layout, every reader of a path's first segment and whether it tries props first — were re-derived
+independently by two reviewers, and both came back complete with no wrong verdict. That is the first
+completeness claim in this series to survive two independent re-derivations, and it is worth recording
+that the enumeration approach *worked*: three cycles of "fixed it, and the same defect turned up one
+path over" ended when the lists were written out in full before the first fix. Nothing in those two
+tables moved this cycle.
+
+What did move came from the opposite direction. The gates the previous cycle added were correct about
+the shapes they were derived from and blind to a whole class next to them, and the reason is worth
+stating precisely.
+
+### A kind funnel cannot say what a name says
+
+The check that types a call-site value routes a function call through the shared operand *descriptor*:
+the ranker picks an overload, `ReturnKind` turns that overload's return type into an `OperandKind`, and
+the emitter turns the `OperandKind` back into a type symbol. The descriptor names the numeric
+primitives, `bool` and `string`, and nothing else — every other return type arrives as "some other value
+type" or "a reference", which the emitter reads as *cannot say*, which every gate exempts.
+
+`range` is the only row in the built-in table whose return type is none of those three, and it is
+exactly the built-in a reader reaches for when they want to iterate. So:
+
+* `@list(range(1, 3)){{<@()>}}` — the engine refuses the template outright (`HED0004`, naming
+  `Heddle.Models.Range` against `System.Collections.IEnumerable`); the generated tier precompiled and
+  rendered **empty**, having handed `ListExtension` a `Range` to iterate.
+* `<s(out:: object)>{{[@out(range(1, 3))]}}` — the engine refuses (`HED5014`, `Range` into
+  `System.Object`, boxing switched off for this check); the generated tier precompiled and rendered.
+
+Both were already true at the parent commit, so this is not a regression — but the commit's degrade
+sweep reads as complete and was not.
+
+The suspicion that follows by construction was measured rather than reasoned about, over a purpose-built
+export container in an assembly of the suite's own so no shared fixture moved: a host `[ExportFunctions]`
+function returning a `DateTime` or a class of its own slips **both** gates in exactly the same way, in
+`@list` position and in `@out` position. Four rows, all four confirmed.
+
+The fix is to stop funnelling: the chosen overload carries its declared return type — a metadata name in
+the built-in table, an `ITypeSymbol` for an export — and typing the call from *that* closes `range` and
+the export class by construction rather than by enumeration. `dynamic` is the one return type that must
+not be taken at face value, because there is no such thing in metadata: the engine reads a `MethodInfo`
+whose return type is `System.Object`, and that is what it checks, so the emitter maps it there too.
+Measured both ways — an export returning `dynamic` into an `object` slot precompiles and matches; into a
+`string` slot both tiers refuse — and the mapping is pinned: without it, the `object` row degrades.
+
+### `[DataType]` is a rule, not a list of extensions
+
+An extension declares the types it accepts with `[DataType]`, and the engine checks the call value
+against every one of them before it compiles the call (`HeddleCompiler.CheckTypes`, reading the
+attribute with `inherit: true` and asking `Type.IsAssignableFrom`). The emitter had that check written
+out for `@list`'s `IEnumerable` and for nothing else, which left `@for` — the only other `[DataType]`
+built-in the emitter still binds, the rest degrading on their own — unchecked. `@for` accepts a `Range`
+or an `int`; measured against the engine with `Cols = 7`, `Name = "ab"`:
+
+* `@for((Cols)){{<@()>}}` and `@for(len(Name)){{<@()>}}` — the engine refuses both (`HED0004`, naming
+  `System.String` against `[Heddle.Models.Range, System.Int32]`), because a chain call-parameter reaches
+  the extension as the carrier's rendered **text**. The parent commit rendered 7 and 2 iterations; this
+  commit's parent rendered **0**, the previous commit having taught the emitter to hand `@for` the
+  string. Both are wrong, in different ways, and neither degraded.
+* `@for(Name)` over a `string` member and `@for(Price)` over a `decimal` are the same refusal without a
+  chain in sight.
+
+Generalising costs nothing measurable: the check reads the attribute off the bound extension now and
+applies to every extension the emitter binds, `@list` included, and the whole corpus is byte-identical
+with it — same classification, same generated sources, same manifest, same diagnostics. The near
+neighbours are pinned in full: the literal, an `int` member, `range(...)`, `Count + 1` and a nullable
+`int` (which the engine unwraps before it checks) all still precompile and still render the engine's
+bytes. `[DataType]` gates for built-ins other than `@list` is closed as a known-open item; there is no
+`[DataType]`-declaring built-in the emitter binds that is not covered.
+
+Reflection's assignability is reproduced, not C#'s: identity, a base class, an implemented interface, or
+the boxing every value has to `object`. There is deliberately **no** numeric widening, because
+`Type.IsAssignableFrom` has none — which is why `@for` over a `long` is a template the engine refuses.
+
+### Caller content under a `:: dynamic` callee was still untyped
+
+The sixteenth cycle taught the emitter that `:: dynamic` does not declare an untyped body — the engine
+compiles it once per call site, off the value that call site passes — and applied that to the definition
+body only. The content the **call site** hands the definition kept the untyped context, and it is
+compiled against the same model. Swept over twenty-one shapes against the engine — a member read, a
+missing member, `this`, a native expression, a function call, `@list`, `@for`, `@if`, two adjacent
+carriers, and the same again under a `:: T` callee, under a slot-declaring callee, and over a call site
+passing a literal, a member path or `this`:
+
+* `@frame("ab"){{(@(Title))}}` and `@frame(this){{(@(Nope))}}` — the engine refuses at compile time
+  (`HED0001`, naming `String` and the caller's model respectively); the generated tier **precompiled**.
+* `@frame(Name){{(@(Length))}}` and `@frame(Name){{(@(Zzz))}}` — a member path is the engine's own
+  dynamic exit, so it compiles the template and binds at render; both tiers matched, throwing the same
+  `RuntimeBinderException` on the second. That half must keep matching, and it does: the same rule that
+  types the body types this, so a call form the engine itself types `dynamic` still gets untyped caller
+  content.
+
+Sixteen of the twenty-one matched before the fix and eighteen match after it. Three shapes degrade where
+the engine renders, unchanged by this cycle and reported rather than hidden: a native expression, a
+function call and an `@if` in caller content under a `:: dynamic` callee.
+
+### The sweep category that did not exist
+
+The sixteenth cycle's degrade sweep enumerates templates that newly **degrade**. That category cannot
+hold `@for` over a chain, which kept precompiling across the commit and rendered *different bytes* —
+seven iterations at the parent, none after. A template whose precompiled output moves while it goes on
+precompiling is invisible to a degrade sweep, and invisible to a differential test as well whenever the
+engine refuses the template, because then there is no dynamic render to compare against.
+
+So the sweep has two counts now, and this cycle reports both: **newly degrading**, and **bytes moved
+while still precompiling**. The instrument for the second is the same corpus run captured twice —
+classification, every generated `.g.cs`, the manifest and the diagnostic list — and diffed. This cycle:
+**thirteen** template shapes newly degrade and **zero** moved bytes. Every one of the thirteen is a
+template the engine refuses, checked one by one — `HED0004` for `@list(range(1, 3))`, for `@list` over a
+host export returning a class or a `DateTime`, and for `@for` over a chain value, a `string` member or a
+`decimal` member (six); `HED5014` for a `Range`, a host class, a host `DateTime` and a host `dynamic` as
+a slot value the slot cannot take (five); `HED0001` for a caller-content member read under a
+`:: dynamic` callee whose call site passes a literal or `this` (two). Across the 63-template corpus and
+the ten samples nothing moved at all, in either direction: same classification, same generated sources,
+same manifest, same diagnostics, all ten goldens unchanged.
+
+### Two smaller things, both examined rather than assumed
+
+`bctx.IsDynamic ? null : bctx.ModelSymbol` was a no-op at both sites it appeared: every construction
+site upholds `IsDynamic ⇒ ModelSymbol is null`, verified again here by reading all eleven of them. The
+guard read as though the two could disagree, so it is gone and the invariant is stated on the field
+instead, next to the pointer to `DynamicBodyModel`, which is the field that answers the *different*
+question of what the engine typed a dynamically-emitted body against.
+
+The writer the call-typing pass builds is thrown away undrained, so a refusal it proves is discarded.
+That costs nothing, and the reason is structural rather than a survey: a call the ranker refuses has no
+return type either, so the value stays "cannot say", no gate can refuse the template on account of it,
+and the writer that *emits* the same expression is always reached and reports what this one saw. Pinned
+in both gated positions — an ambiguous call as an `@list` value and as an `@out` slot value each still
+report `HED7025` at Error.
+
+### The extension prop-layout guard, and what measuring it found
+
+The gate the sixteenth cycle added — a prop whose type this assembly cannot name fails the layout —
+stopped part-way through building the layout, leaving a **truncated** one in the cache that only the
+`Failed` flag stood between and a caller. The whole declaration list is checked before a single slot is
+built now, so a failed layout carries no slots at all; the flag is unchanged and so is every observable
+behaviour.
+
+Measuring the guard for a red found the opposite of one. Built out — a host extension declaring
+`[Prop("box", typeof(InternalModel), Optional = true)]` over an `internal` type, called as
+`@hiddenProp()` — the engine renders `[box=<null>]`, and so does the generated tier **once the gate is
+removed**: identical bytes, and the generated code compiles, because no consumer of an extension prop
+layout ever spells the slot type. A required prop of that type is refused earlier for having no default;
+a dynamic setter boxes to `object` and emits no cast; an optional one writes the literal `null`. So the
+gate as written costs a working precompiled template and emits an `HED7030` telling the consumer to make
+an internal type public for no reason. It is left in place — it is outside this cycle's brief and
+removing it re-opens the case it was added for — and recorded here with the repro so the decision is
+made deliberately rather than by nobody.
+
+### The durable lesson
+
+Two rules met the same wall from opposite sides. The `@list` gate knew one extension's accepted type
+because someone wrote it down; the call-site typing knew one *shape* of return type because the
+descriptor it went through could only spell that shape. Both were correct about everything they could
+see and silent about everything else, and in both cases the fix was to read the authority instead of a
+projection of it — the `[DataType]` attribute, the overload's declared return type — after which the
+cases nobody enumerated are covered by construction.
+
+The general form: when a check has to answer "what type is this", ask what the *engine* asks and read
+the same source it reads. A shared descriptor built for a different question — here, deciding whether an
+operator may be emitted — is a lossy projection, and a lossy projection used as a type answer turns
+"I know exactly what this is" into "I cannot say" for every case outside its range. That failure is
+silent by construction, because "cannot say" is always the exempting answer.

@@ -167,5 +167,28 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal(dyn, precompiled);
             Assert.Equal("<a><b>\n", dyn);
         }
+
+        /// <summary>
+        /// The same rule over a return type that is <em>not</em> a primitive. <c>range</c> is the one built-in whose
+        /// return type is neither string, bool nor numeric, and it is the built-in a reader reaches for when they
+        /// want to iterate — so <c>@list(range(1, 3))</c> is exactly the template the enumerability gate exists to
+        /// catch, and it was the one shape the gate could not see. The call was typed through the shared operand
+        /// <em>descriptor</em>, which names only the primitives; a <c>Range</c> came back as "some other value type",
+        /// which the emitter reads as "cannot say", and every check a call-site value goes through exempted it. So
+        /// this precompiled and rendered nothing at all where the engine refuses the template outright.
+        /// </summary>
+        [Fact]
+        public void AListOverRangeIsRefusedByBothTiersBecauseARangeIsNotEnumerable()
+        {
+            const string key = "views/list-call-range.heddle";
+            const string t = "@model(){{" + CatalogType + "}}@\\\n@list(range(1, 3)){{<@()>}}\n";
+
+            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, t) }), key);
+
+            var dynamicTemplate = new HeddleTemplate(t,
+                new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(), typeof(Catalog)));
+            Assert.False(dynamicTemplate.CompileResult.Success);
+            Assert.Contains("Heddle.Models.Range", dynamicTemplate.CompileResult.ToString(), StringComparison.Ordinal);
+        }
     }
 }

@@ -53,6 +53,7 @@ namespace Heddle.Generator.Emit
         }
 
         private static readonly IReadOnlyList<PropParameter> EmptyParameters = new PropParameter[0];
+        private static readonly IReadOnlyList<ITypeSymbol> EmptyDataTypes = new ITypeSymbol[0];
 
         internal readonly struct Info
         {
@@ -60,9 +61,11 @@ namespace Heddle.Generator.Emit
                 bool overridesHook,
                 bool isEngineAssembly, BranchRole? role, bool hasScopeChannel,
                 bool hasEncodeOutput = false, bool hasNotEncode = false, bool isZeroOutput = false,
-                IReadOnlyList<PropParameter> parameters = null, INamedTypeSymbol typeSymbol = null)
+                IReadOnlyList<PropParameter> parameters = null, INamedTypeSymbol typeSymbol = null,
+                IReadOnlyList<ITypeSymbol> acceptedDataTypes = null)
             {
                 TypeSymbol = typeSymbol;
+                AcceptedDataTypes = acceptedDataTypes ?? EmptyDataTypes;
                 GlobalName = globalName;
                 BareTypeName = bareTypeName;
                 AqnSansVersion = aqnSansVersion;
@@ -80,6 +83,12 @@ namespace Heddle.Generator.Emit
             /// <summary>The bound extension's type symbol — the assignability edge the shared registration
             /// precedence rule needs when a later candidate claims the same name.</summary>
             public INamedTypeSymbol TypeSymbol { get; }
+
+            /// <summary>The types the extension declares it accepts as its call value — every <c>[DataType]</c> over
+            /// the base chain, which is what <c>HeddleCompiler</c> reads with <c>inherit: true</c> and checks the
+            /// call value against before it compiles the call at all. Empty means the extension accepts anything.
+            /// </summary>
+            public IReadOnlyList<ITypeSymbol> AcceptedDataTypes { get; }
 
             /// <summary><c>global::</c>-qualified type name for the generated <c>new …()</c>.</summary>
             public string GlobalName { get; }
@@ -453,7 +462,31 @@ namespace Heddle.Generator.Emit
                 HasAttribute(type, symbols.NotEncodeAttr),
                 HasAttribute(type, symbols.ZeroOutputAttr),
                 ReadPropParameters(type, symbols.PropAttr),
-                type);
+                type,
+                ReadDataTypes(type, symbols.DataTypeAttr));
+        }
+
+        /// <summary>Reads every <c>[DataType]</c> over the base-type chain — the attribute is repeatable and the
+        /// runtime reads it with <c>inherit: true</c>, so a subclass accepts what its base accepted as well as what
+        /// it declares itself.</summary>
+        private static IReadOnlyList<ITypeSymbol> ReadDataTypes(INamedTypeSymbol type, INamedTypeSymbol attrType)
+        {
+            if (attrType == null)
+                return EmptyDataTypes;
+
+            List<ITypeSymbol> accepted = null;
+            for (var t = type; t != null; t = t.BaseType)
+            foreach (var attr in t.GetAttributes())
+            {
+                if (!SymbolEqualityComparer.Default.Equals(attr.AttributeClass, attrType) ||
+                    attr.ConstructorArguments.Length != 1 ||
+                    !(attr.ConstructorArguments[0].Value is ITypeSymbol accepts))
+                    continue;
+                accepted ??= new List<ITypeSymbol>();
+                accepted.Add(accepts);
+            }
+
+            return (IReadOnlyList<ITypeSymbol>) accepted ?? EmptyDataTypes;
         }
 
         /// <summary>The symbol-side twin of <c>Type.IsImplement&lt;IExtension&gt;()</c> — the transitive interface
