@@ -196,15 +196,13 @@ namespace Verdict
         }
 
         /// <summary>
-        /// The kind table, asked of every <see cref="TypeKind"/> there is rather than of the kinds a C# compilation
-        /// happens to produce a symbol for. Two of them — <see cref="TypeKind.Unknown"/> and
-        /// <see cref="TypeKind.Module"/> — no C# compilation produces at all, and each shares its case group with a
-        /// neighbour, so through symbols alone both labels could be deleted with every suite green.
-        /// <para>The row per kind is also what makes the table's completeness checkable — see
-        /// <see cref="TheKindRowsCoverTheEnum"/>. Rows are keyed by <b>name</b> because the two target frameworks
-        /// run different Roslyn versions and the later one declares kinds the earlier has never heard of; a row for
-        /// a kind the running Roslyn does not declare is inert on that framework and live on the other, which is
-        /// what keeps a newly-added kind from being answered by nobody on both.</para>
+        /// The kinds the table refuses, asked of the <see cref="TypeKind"/> itself rather than of a symbol carrying
+        /// it: <see cref="TypeKind.Unknown"/> and <see cref="TypeKind.Module"/> are kinds no C# compilation
+        /// produces, and each shares its case group with a neighbour, so through symbols alone both labels could be
+        /// deleted with every suite green.
+        /// <para>Rows are keyed by <b>name</b> because the two target frameworks run different Roslyn versions and
+        /// the later one declares kinds the earlier has never heard of; a row for a kind the running Roslyn does not
+        /// declare is inert on that framework and live on the other.</para>
         /// </summary>
         [Theory]
         [InlineData("Unknown", "does not resolve to a type")]
@@ -214,47 +212,100 @@ namespace Verdict
         [InlineData("TypeParameter", "is a type parameter")]
         [InlineData("Module", "is not a type C# has a syntax for")]
         [InlineData("Submission", "is not a type C# has a syntax for")]
-        [InlineData("Class", null)]
-        [InlineData("Struct", null)]
-        // The Visual Basic spelling of the same value. It is a name the enum declares, so it needs a row, and the
-        // row is the same answer by construction.
-        [InlineData("Structure", null)]
-        [InlineData("Enum", null)]
-        [InlineData("Interface", null)]
-        [InlineData("Delegate", null)]
-        [InlineData("Dynamic", null)]
-        [InlineData("Array", null)]
-        // A C# 14 `extension` block's declaring type. It is not a position a value can live in — no property, no
-        // parameter and no `@model` spelling has one as its type — so the walk is never asked about it and it needs
-        // no sentence of its own.
-        [InlineData("Extension", null)]
-        public void EveryTypeKindHasAVerdictOfItsOwn(string kindName, string because)
+        public void AKindTheTableRefusesCarriesItsOwnSentence(string kindName, string because)
         {
             if (!Enum.TryParse<TypeKind>(kindName, out var kind))
                 return;   // this framework's Roslyn does not declare it; the other one asserts it.
 
-            var reason = SymbolTypeResolver.UnnameableKind(kind);
-            if (because == null)
-                Assert.Null(reason);
-            else
-                Assert.Contains(because, reason ?? string.Empty, StringComparison.Ordinal);
+            Assert.Contains(because, SymbolTypeResolver.UnnameableKind(kind) ?? string.Empty,
+                StringComparison.Ordinal);
         }
 
-        /// <summary>Every kind the running Roslyn declares is a row above — a kind with no row would be one whose
-        /// verdict is whatever the table's default happens to be, decided by nobody. A kind Roslyn adds later
-        /// arrives here first.</summary>
+        /// <summary>
+        /// The kinds the table lets through, each asked of a real symbol of that kind — the name the emitter would
+        /// actually write.
+        /// <para>Asking <c>UnnameableKind</c> for a null answer made these rows one assertion wearing eight hats:
+        /// they all read the same <c>default:</c> arm, so they passed and failed together and none of them was
+        /// about the kind it named. Through a symbol each row stands alone — give one kind a case of its own and
+        /// the other six stay green — and it asserts the thing that matters, that a model or a member of this kind
+        /// still gets spelled.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("Class")]
+        [InlineData("Struct")]
+        [InlineData("Enum")]
+        [InlineData("Interface")]
+        [InlineData("Delegate")]
+        [InlineData("Dynamic")]
+        [InlineData("Array")]
+        public void AKindTheTableAllowsIsWrittenForASymbolOfThatKind(string kindName)
+        {
+            var compilation = Compile();
+            var kind = (TypeKind) Enum.Parse(typeof(TypeKind), kindName);
+            var subject = OfKind(kind, compilation);
+
+            Assert.Equal(kind, subject.TypeKind);
+            Assert.Equal(SymbolTypeResolver.NameFault.None,
+                new SymbolTypeResolver(compilation).ClassifyTypeName(subject, out var reason));
+            Assert.Null(reason);
+        }
+
+        private static ITypeSymbol OfKind(TypeKind kind, Compilation compilation)
+        {
+            switch (kind)
+            {
+                case TypeKind.Class: return compilation.GetSpecialType(SpecialType.System_String);
+                case TypeKind.Struct: return compilation.GetSpecialType(SpecialType.System_Int32);
+                case TypeKind.Enum: return Named(compilation, "System.DayOfWeek");
+                case TypeKind.Interface: return compilation.GetSpecialType(SpecialType.System_IDisposable);
+                case TypeKind.Delegate: return Named(compilation, "System.Action");
+                case TypeKind.Dynamic: return compilation.DynamicType;
+                case TypeKind.Array:
+                    return compilation.CreateArrayTypeSymbol(compilation.GetSpecialType(SpecialType.System_Int32));
+                default: throw new ArgumentOutOfRangeException(nameof(kind), kind, null);
+            }
+        }
+
+        /// <summary>
+        /// The enum names no row above can honestly be about, recorded rather than given a row that would assert
+        /// nothing.
+        /// <para><c>Structure</c> is Visual Basic's spelling of <c>Struct</c> and parses to the same value, so the
+        /// <c>Struct</c> row already answers for it. That is asserted here, so it would stop being true loudly.</para>
+        /// <para><c>Extension</c> is declared only by newer Roslyn. The test process loads whatever Roslyn its
+        /// framework brings, but the generator itself compiles against Microsoft.CodeAnalysis.CSharp 4.4.0, which
+        /// does not declare the name at all — a case for it is a compile error, so no production change could make
+        /// a row about it fail. It is covered by the completeness gate and by nothing else, and there is no way to
+        /// pin it further until the generator's own Roslyn moves.</para>
+        /// </summary>
+        [Fact]
+        public void TheKindNamesNoRowCanBeAbout()
+        {
+            Assert.Equal(TypeKind.Struct, (TypeKind) Enum.Parse(typeof(TypeKind), "Structure"));
+        }
+
+        /// <summary>Names covered by <see cref="TheKindNamesNoRowCanBeAbout"/> instead of by a row.</summary>
+        private static readonly string[] KindNamesWithoutARow = { "Structure", "Extension" };
+
+        /// <summary>Every kind the running Roslyn declares is a row above, or a recorded exception — a kind with no
+        /// row would be one whose verdict is whatever the table's default happens to be, decided by nobody. A kind
+        /// Roslyn adds later arrives here first.</summary>
         [Fact]
         public void TheKindRowsCoverTheEnum()
         {
-            var covered = typeof(TypeNameVerdictTests)
-                .GetMethod(nameof(EveryTypeKindHasAVerdictOfItsOwn))
-                .GetCustomAttributes(typeof(InlineDataAttribute), false)
-                .Cast<InlineDataAttribute>()
-                .Select(d => (string) d.GetData(null).Single().First())
+            var covered = RowNames(nameof(AKindTheTableRefusesCarriesItsOwnSentence))
+                .Concat(RowNames(nameof(AKindTheTableAllowsIsWrittenForASymbolOfThatKind)))
+                .Concat(KindNamesWithoutARow)
                 .ToHashSet(StringComparer.Ordinal);
 
             Assert.Empty(Enum.GetNames(typeof(TypeKind)).Where(n => !covered.Contains(n)));
         }
+
+        private static IEnumerable<string> RowNames(string methodName) =>
+            typeof(TypeNameVerdictTests)
+                .GetMethod(methodName)
+                .GetCustomAttributes(typeof(InlineDataAttribute), false)
+                .Cast<InlineDataAttribute>()
+                .Select(d => (string) d.GetData(null).Single().First());
 
         /// <summary>
         /// The other verdict a type argument of an <b>enclosing</b> type can carry, and the one a C# author can

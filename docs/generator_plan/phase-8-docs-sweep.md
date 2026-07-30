@@ -1836,17 +1836,28 @@ costs precompilation, so the second half of the work was getting the cost back r
   `IEnumerable<T>` and falls back to `dynamic` for a collection implementing no generic form. A type
   reaching `IEnumerable<T>` more than once is "cannot say": the host picks one by reflection order.
 
-Measured over a sweep of thirteen call-site shapes in a definition whose body reads nothing: before,
-eight of them degraded; after, one — a chained call, whose render type the emitter does not track. Over the same shapes with a body reading a missing member, the type named in the
+Measured over a sweep of twenty call-site value forms handed to a definition whose body reads nothing
+(`<frame>{{[k]}} :: dynamic`), comparing this commit against its parent: the parent degrades **one** of
+the twenty (a chained call, whose render type the emitter does not track) and this commit degrades
+**two** (that one and a function call). An earlier draft of this section reported "eight of thirteen
+before, one after"; that figure is not a parent-versus-child count and no commit reproduces it — it can
+only have been measured against an intermediate working tree, after the `null`-degrades change and
+before the typing rules below were added back on top of it. Over the same shapes with a body reading a missing member, the type named in the
 generator's `HED7008` and the type named in the engine's `HED0001` agree in all fourteen typed shapes,
 including the lifted one (`int?` / `Nullable<Int32>`) and the promotions (`Price * 2` is `decimal`, not
 `int`). That pairing is the test: a degrade assertion alone would pass whatever type the emitter picked,
 and a wrong type is a cast the generated body throws on.
 
 The degrade cost of the whole change, measured on the instruments: the integration suite and all ten
-samples' goldens are unchanged. One previously-declared degrade became a precompile — `@out(this)`
-inside an `@list` body, which had been recorded as a known cost, is now checked against the element
-type and renders the engine's bytes when it fits.
+samples' goldens are unchanged.
+
+`@out(this)` inside an `@list` body inside a slot definition's own body was the reverse of a declared
+cost: at the parent it was an **unchecked precompile**. Swept over seven slot parameter types, the
+parent precompiled all seven and rendered `[[c]]` — and five of those seven are templates the engine
+refuses outright (`string`, `int`, `bool`, `decimal`, and an unrelated class, each `HED5014`: the
+element is not assignable to the declared slot type). This commit degrades exactly those five and keeps
+the two the engine accepts (the element type itself, and `object`), which is the shape a rule has and a
+blanket refusal does not.
 
 ### A prop the `@list` body was not supposed to lose
 
@@ -1893,3 +1904,82 @@ actions — degrade versus proceed — and the cheap direction is always the wro
 is what silently produces different bytes. Where two tiers must agree, every "cannot say" belongs on
 the refusing side of the branch, and the way to keep that from costing the precompiled tier is to
 shrink the set of things that cannot be said, not to widen what "cannot say" is allowed to mean.
+
+## Fifteenth review cycle (2026-07-30)
+
+One root cause with four faces, found independently by both reviewers, and it is the plainest one yet:
+**the engine resolves a native expression's path prop-first**, and two of the emitter's four paths had
+never been told.
+
+### A prop is a prop everywhere, not only in a member path
+
+`NativeExpressionCompiler` tries the active prop layout on a path's first segment before it looks at
+the scope type at all, so inside a definition body a prop shadows a model member of the same name —
+documented, supported, and the engine's only complaint about it is a shadowing warning. The emitter's
+member-path reader mirrored that. Two other paths did not:
+
+* The expression writer was constructed with the model and **no layout**, so every prop name inside an
+  arithmetic, comparison, concatenation, ternary or function argument was emitted as a member read off
+  the model.
+* The routine that types a computed call-site value resolved off the model too — it did not even take
+  the body context the layout lives on.
+
+Both faces of the first one are severe and neither needed a shadowed name to appear. A prop the model
+has **no** member of — the ordinary case, `<host(n: int = 5)>{{[@(n + 1)]}}` — resolved to nothing and
+reported `HED7008` at **Error**, so a template the engine compiles and renders broke the consumer's
+build. A prop that *did* shadow a member compiled quietly and rendered the model's value: `[8]` where
+the engine renders `[P1]`, `[t]` where the engine renders `[a][b]`, `[False]` where the engine renders
+`[True]`. Different bytes, no diagnostic, both tiers rendering.
+
+The second one was the same mistake one level up, and the previous cycle's new typing made it visible:
+a shadowed name got the shadowed *member's* type, so `Cols + 1` over a `string` prop was typed `Int32`,
+and the body built off that type reported a member the `string` it really receives has — `HED7008` at
+Error again, over a template the engine renders — or refused a `string` slot the engine fills.
+
+The fix is one sentence applied twice: give both paths the layout the member-path reader already had,
+and resolve the first segment prop-first, hopping the rest off the slot's declared type. A path whose
+first segment names a prop never falls back to the member it shadows, in either path.
+
+Measured over forty prop shapes, before and after, each against the engine: **fourteen matched, five
+rendered different bytes and twenty-one degraded** before; **thirty-nine match and one degrades** after,
+and the one is a template the engine itself refuses. Zero shapes newly degrade. Two templates that
+previously precompiled now degrade, both of them templates the engine refuses to compile: a `string`
+slot handed `int` arithmetic over a shadowed name, and a body reading `Length` off an `Int32`. The
+corpus classification is unchanged and all ten samples' goldens are unchanged.
+
+### `@list` over something that is not a list
+
+An extension declares the type it accepts, and the engine checks the call's value against it before it
+compiles anything: `@list` accepts `IEnumerable`, so `@list(Obj)` over an `object`-typed member is a
+template the engine refuses (`HED0004`). The emitter mirrored no such check, so it precompiled and
+rendered — walking a string's characters where the value happened to be a string, rendering nothing
+where it was an `int`. The check is on the value's *static* type, so a `dynamic` value and a value the
+emitter could not type are both exempt, and every enumerable shape is untouched: a `List<T>`, an array
+(which reaches `IEnumerable` through `System.Array`), a `string`, and a `List<object>` whose elements
+carry no members of their own all still precompile and still match.
+
+### Rows that were one assertion wearing eight hats
+
+The type-kind table's nine `null` rows all asked `UnnameableKind` for a null answer, which is the same
+`default:` arm nine times: they passed and failed together, and none was about the kind it named. They
+are asked of a real symbol of that kind now, through the classifier the emitter actually calls, so each
+row stands alone. The mutation that settles it: making the classifier refuse every enum type leaves the
+old rows entirely green and reddens exactly the new `Enum` row.
+
+Two names could not be given an honest row and are recorded instead of pretended. `Structure` is Visual
+Basic's spelling of `Struct` and parses to the same value, so the `Struct` row already answers for it —
+asserted, so it would stop being true loudly. `Extension` is declared only by newer Roslyn; the
+generator compiles against Microsoft.CodeAnalysis.CSharp 4.4.0, which does not declare the name at all,
+so a case for it is a compile error and no production change could make a row about it fail. It is
+covered by the completeness gate and by nothing else, and there is nothing further to pin until the
+generator's own Roslyn moves. Measured, not assumed: adding the case is `CS0117`.
+
+### The durable lesson
+
+A rule that resolves names is not implemented where it is written down; it is implemented at every
+place that resolves a name. Prop-first resolution was correct, tested and documented in the one reader
+that reads a bare member path, and simply absent from the two that read the same names inside an
+expression — so the feature worked in the shape its tests were written in and silently produced other
+bytes in every other shape. When a lookup rule is added, the question to answer is not "does the reader
+implement it" but "how many readers are there", and the answer is found by looking for every
+construction of the thing that does the reading, not by trusting that there is one.

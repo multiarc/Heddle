@@ -53,6 +53,10 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
     {
         public string Title { get; set; }
         public System.Collections.Generic.List<Product> Products { get; set; }
+
+        /// <summary>An array, which reaches <c>IEnumerable</c> through its base type rather than its own interface
+        /// list — the shape a naive enumerability check misses.</summary>
+        public string[] Tags { get; set; }
     }
 
     public sealed class GreetingModel
@@ -134,8 +138,9 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public string Label { get; set; }
     }
 
-    /// <summary>A collection whose element type carries no members at all — the engine types an <c>@list</c> body
-    /// over it <c>object</c>, which is a static type and not an absence of one.</summary>
+    /// <summary>A collection whose element type carries no members at all. <c>object</c> is a static type and not
+    /// an absence of one, so the collection is enumerable and the body over it renders — which is what tells the
+    /// enumerability rule apart from a refusal of anything the emitter cannot say much about.</summary>
     public sealed class ObjItems
     {
         public System.Collections.Generic.List<object> Items { get; set; }

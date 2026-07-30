@@ -47,5 +47,62 @@ namespace Heddle.Generator.IntegrationTests
             var t = "@model(){{" + CatalogType + "}}@\\\n@list(Products){{[@(Name) by @(Manufacturer.Name)]}}\n";
             AssertParity("views/list-nested.heddle", t, typeof(Catalog), model);
         }
+
+        /// <summary>
+        /// <c>@list</c> over a value that is not enumerable. The extension declares the type it accepts and the
+        /// engine checks the value against it before it compiles the call, so these are templates the engine
+        /// <b>refuses</b> — and the generated tier used to precompile them and render: the <c>object</c> row walked
+        /// a string's characters, the <c>int</c> row rendered nothing at all.
+        /// <para>The check is on the value's <em>static</em> type, so a collection whose elements happen to be
+        /// <c>object</c> is unaffected — that is the pair below, and it is what keeps this a type rule rather than
+        /// a refusal of anything the emitter finds hard.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("object-member", "Heddle.Generator.IntegrationTests.Fixtures.OverloadPayload", "Payload")]
+        [InlineData("int-member", "Heddle.Generator.IntegrationTests.Fixtures.OverloadPayload", "Count")]
+        [InlineData("bool-expression", "Heddle.Generator.IntegrationTests.Fixtures.OverloadPayload", "Count > 1")]
+        [InlineData("whole-model", CatalogType, "this")]
+        [InlineData("implicit-model", CatalogType, "")]
+        public void ANonEnumerableValueIsRefusedByBothTiers(string name, string modelType, string value)
+        {
+            var key = "views/list-nonenumerable-" + name + ".heddle";
+            var t = "@model(){{" + modelType + "}}@\\\n@list(" + value + "){{[@()]}}\n";
+
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            DifferentialHarness.ExpectDegrade(gen, key);
+
+            var dynamicTemplate = new HeddleTemplate(t,
+                new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(),
+                    new Heddle.Data.ExType(Type.GetType(modelType + ", Heddle.Generator.IntegrationTests"))));
+            Assert.False(dynamicTemplate.CompileResult.Success);
+            Assert.Contains("System.Collections.IEnumerable", dynamicTemplate.CompileResult.ToString(),
+                StringComparison.Ordinal);
+        }
+
+        /// <summary>The near neighbours: every enumerable shape still precompiles and still matches. An array is
+        /// here because it reaches <c>IEnumerable</c> through <c>System.Array</c> rather than its own interface
+        /// list, and a <c>List&lt;object&gt;</c> because an element type with no members of its own is still a
+        /// static type — the engine types the body <c>object</c> and enumerates it happily.</summary>
+        [Fact]
+        public void EnumerableValuesStillPrecompile()
+        {
+            var catalog = new Catalog
+            {
+                Title = "ab",
+                Tags = new[] { "x", "y" },
+                Products = new List<Product> { new Product { Name = "p" } }
+            };
+            AssertParity("views/list-array.heddle",
+                "@model(){{" + CatalogType + "}}@\\\n@list(Tags){{[@()]}}\n", typeof(Catalog), catalog);
+            AssertParity("views/list-string.heddle",
+                "@model(){{" + CatalogType + "}}@\\\n@list(Title){{[@()]}}\n", typeof(Catalog), catalog);
+            AssertParity("views/list-generic.heddle",
+                "@model(){{" + CatalogType + "}}@\\\n@list(Products){{[@(Name)]}}\n", typeof(Catalog), catalog);
+
+            const string objItemsType = "Heddle.Generator.IntegrationTests.Fixtures.ObjItems";
+            AssertParity("views/list-object-elements.heddle",
+                "@model(){{" + objItemsType + "}}@\\\n@list(Items){{[@()]}}\n", typeof(ObjItems),
+                new ObjItems { Items = new List<object> { 1, "two" } });
+        }
     }
 }

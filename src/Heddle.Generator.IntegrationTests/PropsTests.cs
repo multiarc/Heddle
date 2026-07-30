@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using Heddle.Data;
 using Heddle.Generator.IntegrationTests.Fixtures;
+using Heddle.Runtime;
 using Xunit;
 
 namespace Heddle.Generator.IntegrationTests
@@ -133,6 +135,132 @@ namespace Heddle.Generator.IntegrationTests
                     "@%<mix(n: double = 0, any: object = null)>{{[@(n)|@(any)]}} :: " + ArticleType + "%@\n" +
                     "@mix(this, n: Title.Length, any: Title)\n";
             AssertParity("views/dyn-mix.heddle", t, typeof(Article), model);
+        }
+
+        private const string GridType = "Heddle.Generator.IntegrationTests.Fixtures.GridModel";
+
+        /// <summary>The shadowing fixture: a string member and an int member, so a prop can shadow either with the
+        /// other's type and the two tiers cannot agree by accident.</summary>
+        private static GridModel Grid() => new GridModel { Name = "model", Cols = 7 };
+
+        /// <summary>
+        /// A prop read inside a <b>native expression</b> — arithmetic, comparison, concatenation, a function
+        /// argument. Prop-first resolution reached the plain member-path reader long ago, but the expression writer
+        /// was handed the model and no layout at all, so every prop name in an expression was emitted as a member
+        /// read off the model. A name the layout carried and the model did not broke the consumer's build with a
+        /// property-not-found error; a name they both carried compiled, rendered, and quietly produced the model's
+        /// value where the engine produces the prop's.
+        /// <para>The last two rows are the other half of the rule: a name the layout does <b>not</b> carry still
+        /// reads off the model, so this is prop-first resolution and not the layout swallowing every name.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("own-int", "n: int = 5", "n + 1", "[6]")]
+        [InlineData("own-string", "s: string = \"p\"", "s + \"!\"", "[p!]")]
+        [InlineData("own-compare", "n: int = 5", "n > 3", "[True]")]
+        [InlineData("own-ternary", "n: int = 5", "n > 3 ? n + 1 : n - 1", "[6]")]
+        [InlineData("own-function", "s: string = \"p\"", "upper(s)", "[P]")]
+        [InlineData("shadows-int-with-int", "Cols: int = 100", "Cols + 1", "[101]")]
+        [InlineData("shadows-int-with-string", "Cols: string = \"P\"", "Cols + \"!\"", "[P!]")]
+        [InlineData("shadows-string-with-int", "Name: int = 5", "Name + 1", "[6]")]
+        [InlineData("shadows-string-with-string", "Name: string = \"P\"", "Name + \"!\"", "[P!]")]
+        [InlineData("unshadowed-member-beside-prop", "n: int = 5", "n + Cols", "[12]")]
+        [InlineData("unshadowed-member-alone", "n: int = 5", "Cols + 1", "[8]")]
+        public void ANativeExpressionReadsAPropBeforeTheModel(string name, string decl, string expr, string expected)
+        {
+            var t = "@model(){{" + GridType + "}}@%\n" +
+                    "<host(" + decl + ")>{{[@(" + expr + ")]}} :: " + GridType + "\n%@\n" +
+                    "@host(this)\n";
+            var (precompiled, dyn) = DifferentialHarness.Render("views/native-prop-" + name + ".heddle", t,
+                typeof(GridModel), Grid());
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal(expected + "\n", dyn);
+        }
+
+        /// <summary>The same read one level down, where the prop travels into an <c>@list</c> body: the collection
+        /// is the prop's own characters, not the model member's.</summary>
+        [Fact]
+        public void APropInAListDataExpressionIsTheProp()
+        {
+            const string t = "@model(){{" + GridType + "}}@%\n" +
+                             "<host(Name: string)>{{@list(Name + \"\"){{[@()]}}}} :: " + GridType + "\n%@\n" +
+                             "@host(this, Name: \"ab\")\n";
+            var (precompiled, dyn) = DifferentialHarness.Render("views/native-prop-list.heddle", t,
+                typeof(GridModel), Grid());
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal("[a][b]\n", dyn);
+        }
+
+        /// <summary>
+        /// The type a computed call-site value is <b>judged</b> by, when the value reads a shadowed name. The
+        /// <c>:: dynamic</c> definition is typed by whatever its one caller hands it, so typing the operand off the
+        /// model gave the body <c>int</c> and made it report a member only the <c>string</c> it really receives has
+        /// — an error at build time over a template the engine compiles and renders.
+        /// <para>The second row is the near neighbour that settles that this is the prop's type deciding and not a
+        /// blanket refusal: the same shape with an <c>int</c> prop is a template the <b>engine</b> refuses
+        /// (<c>Length</c> is not on <c>Int32</c>), and there the generated tier has to stop too.</para>
+        /// </summary>
+        [Fact]
+        public void AShadowingPropsTypeDecidesADynamicDefinitionsModel()
+        {
+            const string key = "views/native-prop-dynamic-body.heddle";
+            const string t = "@model(){{" + GridType + "}}@%\n" +
+                             "<frame>{{[@(Length)]}} :: dynamic\n" +
+                             "<host(Cols: string)>{{@frame(Cols + 1)}} :: " + GridType + "\n%@\n" +
+                             "@host(this, Cols: \"P\")\n";
+            var (precompiled, dyn) = DifferentialHarness.Render(key, t, typeof(GridModel), Grid());
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal("[2]\n", dyn);
+        }
+
+        [Fact]
+        public void AnIntPropThroughTheSameShapeIsRefusedByBothTiers()
+        {
+            const string key = "views/native-prop-dynamic-body-int.heddle";
+            const string t = "@model(){{" + GridType + "}}@%\n" +
+                             "<frame>{{[@(Length)]}} :: dynamic\n" +
+                             "<host(Cols: int)>{{@frame(Cols + 1)}} :: " + GridType + "\n%@\n" +
+                             "@host(this, Cols: 5)\n";
+
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            DifferentialHarness.ExpectDegrade(gen, key);
+
+            var dynamicTemplate = new HeddleTemplate(t, new CompileContext(new TemplateOptions(), typeof(GridModel)));
+            Assert.False(dynamicTemplate.CompileResult.Success);
+            Assert.Contains("Length", dynamicTemplate.CompileResult.ToString(), StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// The same question at a <b>slot</b>, where the declared parameter type is what the value is checked
+        /// against. A string prop makes <c>Cols + 1</c> a concatenation the string slot accepts; typing the operand
+        /// off the <c>int</c> member made it arithmetic, and the emitter refused a slot the engine fills.
+        /// </summary>
+        [Fact]
+        public void AShadowingPropsTypeDecidesWhatASlotAccepts()
+        {
+            const string t = "@model(){{" + GridType + "}}@%\n" +
+                             "<frame(out:: string, Cols: string)>{{[@out(Cols + 1)]}} :: " + GridType + "\n%@\n" +
+                             "@frame(this, Cols: \"P\"){{[c]}}\n";
+            var (precompiled, dyn) = DifferentialHarness.Render("views/native-prop-slot.heddle", t,
+                typeof(GridModel), Grid());
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal("[[c]]\n", dyn);
+        }
+
+        [Fact]
+        public void AnIntPropIntoAStringSlotIsRefusedByBothTiers()
+        {
+            const string key = "views/native-prop-slot-int.heddle";
+            const string t = "@model(){{" + GridType + "}}@%\n" +
+                             "<frame(out:: string, Cols: int)>{{[@out(Cols + 1)]}} :: " + GridType + "\n%@\n" +
+                             "@frame(this, Cols: 5){{[c]}}\n";
+
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            DifferentialHarness.ExpectDegrade(gen, key);
+
+            var dynamicTemplate = new HeddleTemplate(t, new CompileContext(new TemplateOptions(), typeof(GridModel)));
+            Assert.False(dynamicTemplate.CompileResult.Success);
+            Assert.Contains("not assignable to the declared slot parameter type",
+                dynamicTemplate.CompileResult.ToString(), StringComparison.Ordinal);
         }
     }
 }

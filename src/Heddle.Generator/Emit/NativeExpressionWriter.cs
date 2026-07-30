@@ -34,6 +34,7 @@ namespace Heddle.Generator.Emit
         private readonly SymbolTypeResolver _resolver;
         private readonly ITypeSymbol _modelType;
         private readonly string _modelLocal;
+        private readonly TemplateEmitter.PropLayoutInfo _props;
         private readonly FunctionExportResolver _exports;
         private bool _usedModel;
         private readonly HashSet<string> _usedDefaultFunctions = new HashSet<string>();
@@ -51,11 +52,13 @@ namespace Heddle.Generator.Emit
         private readonly SymbolTypeFacts _typeFacts;
 
         public NativeExpressionWriter(SymbolTypeResolver resolver, ITypeSymbol modelType, string modelLocal,
-            FunctionExportResolver exports, SymbolTypeFacts typeFacts, Func<string> allocateHopLocal)
+            FunctionExportResolver exports, SymbolTypeFacts typeFacts, Func<string> allocateHopLocal,
+            TemplateEmitter.PropLayoutInfo props = null)
         {
             _resolver = resolver;
             _modelType = modelType;
             _modelLocal = modelLocal;
+            _props = props;
             _exports = exports;
             _typeFacts = typeFacts;
             // Shared with the emitter that made this writer, so the names cannot collide with the ones it allocates
@@ -212,8 +215,26 @@ namespace Heddle.Generator.Emit
             return "global::Heddle.Precompiled.PrecompiledFunctions." + shim + "(" + string.Join(", ", args) + ")";
         }
 
+        /// <summary>
+        /// The prop this path is rooted at, or null where it is not rooted at one. A body prop read wins over the
+        /// model on a path's first segment — resolution is syntactic, which is what lets both tiers agree on it by
+        /// rule rather than by coincidence — and once it does the model is out of the picture entirely: the read
+        /// either roots at the prop or the expression degrades, never falls back to the member the prop shadows.
+        /// </summary>
+        private TemplateEmitter.PropSlotInfo PropRoot(PathNode path)
+        {
+            if (path.Target != null || path.RootRef || _props == null || path.Segments.Count == 0)
+                return null;
+            _props.ByName.TryGetValue(path.Segments[0], out var slot);
+            return slot;
+        }
+
         private string WritePath(PathNode path)
         {
+            var prop = PropRoot(path);
+            if (prop != null)
+                return WritePropPath(prop, path);
+
             if (path.Target != null || path.RootRef || _modelType == null)
                 return null;
 
@@ -265,6 +286,51 @@ namespace Heddle.Generator.Emit
             }
 
             return MemberPathWriter.Write(_modelLocal, hops, _allocateHopLocal);
+        }
+
+        /// <summary>Emits the prop read: the boxed slot cast back to its declared type, then the remaining segments
+        /// hopped off that type — the same shape a prop-rooted call-site parameter emits. Null degrades the
+        /// expression; it never re-reads the model member the prop shadows.</summary>
+        private string WritePropPath(TemplateEmitter.PropSlotInfo slot, PathNode path)
+        {
+            if (slot.Type == null)
+                return null;
+
+            var read = "((" + slot.TypeFq + ")global::Heddle.Precompiled.PrecompiledRuntime.Prop(in scope, " +
+                       slot.Index + "))";
+            if (path.Segments.Count == 1)
+                return read;
+
+            if (slot.Type.TypeKind == TypeKind.Dynamic)
+                return null;
+
+            var resolution = _resolver.ResolvePath(slot.Type, Rest(path));
+            if (resolution.Kind != SymbolTypeResolver.PathKind.Resolved ||
+                SymbolTypeResolver.EndsOnRefStruct(resolution))
+                return null;
+
+            return MemberPathWriter.Write(read, TemplateEmitter.MapHops(resolution), _allocateHopLocal);
+        }
+
+        /// <summary>The static type of a prop-rooted path, or null where the remaining segments do not resolve.</summary>
+        private ITypeSymbol PropPathType(TemplateEmitter.PropSlotInfo slot, PathNode path)
+        {
+            if (slot.Type == null)
+                return null;
+            if (path.Segments.Count == 1)
+                return slot.Type;
+            if (slot.Type.TypeKind == TypeKind.Dynamic)
+                return null;
+            var resolution = _resolver.ResolvePath(slot.Type, Rest(path));
+            return resolution.Kind == SymbolTypeResolver.PathKind.Resolved ? resolution.ResultType : null;
+        }
+
+        private static IReadOnlyList<string> Rest(PathNode path)
+        {
+            var rest = new string[path.Segments.Count - 1];
+            for (int i = 1; i < path.Segments.Count; i++)
+                rest[i - 1] = path.Segments[i];
+            return rest;
         }
 
         private string WriteUnary(UnaryNode node)
@@ -369,6 +435,13 @@ namespace Heddle.Generator.Emit
 
         private OperandKind EstimatePath(PathNode path)
         {
+            var prop = PropRoot(path);
+            if (prop != null)
+            {
+                var propType = PropPathType(prop, path);
+                return propType == null ? OperandKind.Unknown : SymbolFacts.Classify(propType);
+            }
+
             if (path.Target != null || path.RootRef || _modelType == null)
                 return OperandKind.Unknown;
             var resolution = _resolver.ResolvePath(_modelType, path.Segments);
