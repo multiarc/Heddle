@@ -2357,3 +2357,145 @@ the same source it reads. A shared descriptor built for a different question —
 operator may be emitted — is a lossy projection, and a lossy projection used as a type answer turns
 "I know exactly what this is" into "I cannot say" for every case outside its range. That failure is
 silent by construction, because "cannot say" is always the exempting answer.
+
+## Eighteenth review cycle (2026-07-30)
+
+Two reviewers, working independently, found the same two regressions in the previous commit and the same
+structural gap underneath one of them. The corpus was byte-identical across that commit and could not
+have seen any of it.
+
+### Reflection's assignability was claimed, not reproduced
+
+The accepted-type gate the previous cycle generalised compares the value's type against each declared
+`[DataType]` with `SymbolEqualityComparer` over the base chain and the interface set. That is nominal
+identity. `Type.IsAssignableFrom` is not: it has generic variance, array covariance and the CLR's own
+`Nullable<T>` treatment in it. The doc comment enumerating "identity, a base class, an implemented
+interface, or the boxing to `object`" was itself the defect — the enumeration read as complete and the
+relation it described is a strict subset of the one the engine asks.
+
+Measured against the engine, six shapes the engine renders and the parent commit precompiled had started
+degrading: `int` and `int?` into `[DataType(typeof(int?))]`, `List<string>`, `IList<string>` and
+`string[]` into `IEnumerable<object>`, and `string[]` into `object[]`. The nullable rows are the sharpest
+and are not a variance subtlety: the gate unwraps the *value's* nullable and compares against the
+un-unwrapped declared one, so `[DataType(typeof(int?))]` accepted nothing whatever — not even an `int?`.
+That declaration was entirely non-functional.
+
+The fix is not a longer enumeration. The generator already carries one adapter whose whole job is to
+answer the CLR relation over symbols, with its two verified Roslyn-vs-CLR nullable corrections and a
+shared conformance corpus driven from both tiers; the gate now asks it. Variance, array covariance and
+the nullable domain come with it, by construction rather than by list.
+
+Why no fixture caught it: no built-in is affected — `@list`'s `IEnumerable` and `@for`'s `Range`/`int`
+are exact matches at every call site the corpus has — and neither the corpus nor the samples contain a
+single host extension declaring `[DataType]`. "The corpus is byte-identical" was true and closed nothing.
+Four such extensions now exist, covering the nullable lift, generic covariance through a class and
+through an interface, array covariance, and the inherited-declaration walk; thirteen rows in both
+directions, and a mutation that accepts everything reddens five of them while a mutation back to nominal
+identity reddens six.
+
+### `:: object` is the engine's predicate; `dynamic` is a spelling
+
+The engine's test for "compile this body against the value the call site passes" is
+`acceptType == typeof(object)` in `HeddleCompiler.CreateExtension`. `dynamic`, `object` and an
+undeclared model all resolve there — the parser fills in `object` when no `::` is written, and the alias
+table maps `dynamic` to `object`. Every rule in this area had been keyed on the *word* `dynamic`, so
+`:: object` still carried the whole class of divergence `:: dynamic` had, in both directions:
+
+* `<s(out:: object)>{{[@out(this)]}} :: object` called `@s(5)` — the engine refuses (`HED5014`, `Int32`
+  into `System.Object`, boxing switched off for this check); the generated tier precompiled and rendered
+  `[|5|]`. The `:: dynamic` twin degraded correctly. The emitter typed that body `object`, so `@out(this)`
+  looked like the identity `object → object`.
+* `<frame>{{@for(this)}} :: object` + `@frame(2)`, `<frame>{{@list(this)}} :: object` + `@frame("ab")`,
+  `<frame>{{[@(Length)]}} :: object` + `@frame("ab")`, the same with caller content, and the undeclared
+  form of each — the engine renders all of them and the generated tier degraded, because an `object`
+  model is a supertype of the one the engine typed and every gate over it can only over-refuse.
+
+The rule is re-keyed on the engine's predicate. `:: object` and `:: dynamic` do *not* collapse into one
+answer, though, and the difference is load-bearing: only `dynamic` sends the engine's model accessor
+down its dynamic exit, so under `:: object` a member path at the call site resolves statically and
+`@frame(Name)` hands the body a `string` — a member the `string` lacks is then a compile-time refusal
+where the `:: dynamic` twin is a render-time throw that both tiers share. Routing the two together would
+have emitted a dynamically bound read for a template the engine will not compile. Both halves are pinned.
+
+One more shape needs the engine's answer rather than the emitter's caution: a caller whose own scope has
+no static type. The accessor resolves nothing against a dynamic scope and the bare-call arm reads that
+same dynamic scope type, so the body's model is `dynamic` — not "cannot say". A model-less document is
+nothing but this shape, and answering "cannot say" took every one of them off the precompiled tier.
+
+### An `[Obsolete(…, error: true)]` export broke the consumer's build
+
+The highest-severity finding of the cycle, pre-existing and on no known-open list. Reflection ignores
+`[Obsolete]` entirely, so the engine calls such a function and renders; the generated file writes the
+call out as C# into the *consumer's* assembly, where the error form is CS0619. Measured four ways —
+expression position and `@out` slot position, with a `string` return and a class return — the consumer's
+build stopped, at both commits, on a `.g.cs` no one can edit, over a template that is not at fault.
+
+The emitter already had the doctrine: a type carrying `[Obsolete(error: true)]` is one this assembly may
+not name, and the template degrades with `HED7030` rather than pre-compiling a name the build will
+reject. The rule had simply never been asked about the *method* a call is written to. It is now, over
+both names the emitted call spells — the container type and the method. Three near neighbours keep it
+from being a refusal of exports, of `[Obsolete]`, or of the container: warning-level `[Obsolete]` raises
+nothing (the generated file opens with a blanket `#pragma warning disable`) and must keep precompiling;
+an export whose *return* type the consumer may not name compiles and renders identically, because the
+call site spells the method and not what it hands back; and the same container's undecorated export is
+unaffected. Removing the check turns all three degrading rows back into CS0619 in the generated code.
+
+### The extension prop-layout guard, reversed
+
+The previous cycle added this gate on a suspicion and recorded the suspicion honestly. Two reviewers
+have now measured it and it is a net negative, so it is gone.
+
+The verification, re-done here rather than taken on trust: the extension layout has exactly three
+consumers — the frozen props prototype, the parameter-name field and the binding row's fingerprint — and
+none of them writes a type name. The prototype stores boxed values and the only type-writing branch in
+the value formatter spells a numeric C# keyword; the parameter-name field holds strings; the fingerprint
+is a manifest string the runtime recomputes from the live type. The cast-emitting prop reader is
+unreachable from an extension layout, because every layout that becomes a body's active props is a
+*definition* layout. A dynamic setter refuses outright unless the argument type matches the slot exactly
+or widens numerically, so it too writes a keyword or nothing.
+
+Measured with a host extension declaring `[Prop("badge", typeof(InternalBadge), Optional = true)]` over
+an `internal` type: gate on, every call shape degrades with `HED7030@Warning` while the engine renders;
+gate off, all of them precompile, the generated code compiles, and the bytes match the engine — through
+the default, a literal argument and a dynamic setter alike, and through the resolver gauntlet under
+`PrecompiledMismatchPolicy.Strict`, where the fingerprint round-trips. The definition layout's identical
+gate is untouched and is not the same case: a definition layout really does become a body's active one.
+
+### A third sweep category
+
+The sweep had two counts — newly degrading, and bytes moved while still precompiling. Both reviewers
+found the same missing third: **newly precompiling**. A template that starts precompiling is new
+generated code reaching consumers, and neither existing count can hold it.
+
+This cycle, over the 58-template corpus captured twice and diffed on classification, generated source
+and rendered bytes, plus the ten samples' goldens and their generated files: **zero** newly degrading,
+**zero** moved bytes, **one** newly precompiling — a model-less template whose definition declares no
+model and whose body branches around an `@out` projection. It refused because that body was typed
+`object`; typed the engine's way its branches and projection are ordinary emissions, and it now renders
+the engine's bytes through the corpus parity gate. Its intent row moved with it.
+
+### Two tests that could not fail
+
+An assertion read `slotDyn` where `objectDyn` was meant, which left the third scenario of its own test —
+the reference conversion the engine's table *does* allow — with no byte assertion at all, only
+tier-versus-tier equality. Proven by changing that scenario's caller content: the render moved and the
+test still passed. Fixed, and the mutation now reddens it.
+
+The inherited-`[DataType]` walk had no test naming it: reading only the extension type's own attributes
+left every suite green. The behaviour is right — the runtime reads the attribute with `inherit: true` —
+and an extension declaring `int` over a base declaring `string` now pins it from both sides, with a third
+type refused on both tiers.
+
+### The durable lesson
+
+Both regressions have the same shape, and it is not the previous cycle's shape. There the fix was to
+read the authority instead of a lossy projection of it; here the authority was read and then
+*re-implemented* — `Type.IsAssignableFrom` written out as a four-case enumeration, the engine's
+`acceptType == typeof(object)` written out as a string comparison against `"dynamic"`. Both
+re-implementations were accompanied by a comment asserting fidelity, and in both cases the comment is
+what a reader would have believed instead of checking.
+
+So: when a rule mirrors an engine predicate, prefer calling the one adapter that already answers it over
+restating it, and when restating is unavoidable, write down the predicate's *source expression* rather
+than a prose enumeration of the cases someone thought of. An enumeration is a claim of completeness that
+nothing tests; a pointer to the source is a claim a reader can check in one step.

@@ -201,8 +201,8 @@ namespace Heddle.TestCorpus
             new CorpusIntentRow("trycompile-parity-typed.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "A typed @(Name) document against a dynamic model; renders empty standalone on both tiers."),
 
-            new CorpusIntentRow("branching-out-projection.heddle", CorpusTier.FallsBackSafely, CorpusRender.Standalone,
-                "An @out projection inside a branch — a bodied-output form the emitter refuses; the runtime renders it model-less."),
+            new CorpusIntentRow("branching-out-projection.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
+                "An @out projection inside a branch. It refused because its definition declares no model type and the emitter typed that body 'object', where the engine types it by the value each call site passes; typed the engine's way the body's branches and projection are all ordinary emissions."),
             new CorpusIntentRow("context-lint-corpus.heddle", CorpusTier.FallsBackSafely, CorpusRender.WithModel,
                 "The HTML-context lint corpus: its subject is parse-time HED4xxx classification, and it needs the lint suite's host setup to render."),
             new CorpusIntentRow("ctx-encoding.heddle", CorpusTier.FallsBackSafely, CorpusRender.Standalone,

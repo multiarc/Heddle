@@ -229,4 +229,34 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
                    (scope.ModelData?.ToString() ?? string.Empty);
         }
     }
+
+    /// <summary>A prop type generated code may not spell: <c>internal</c> to this assembly, so a cast written
+    /// against it in the consumer's own compilation would be CS0122. Nothing on the extension-parameter path ever
+    /// spells a prop type — the prototype stores boxed values, the parameter-name field stores strings, and the
+    /// fingerprint is a manifest string — so this is the fixture that says whether refusing such a layout prevents
+    /// anything or only costs a working template.</summary>
+    internal sealed class InternalBadge
+    {
+        public override string ToString() => "badge";
+    }
+
+    /// <summary>Declares one prop of an unnameable type and one of a perfectly ordinary one, so a test can tell
+    /// "this prop" from "this extension".</summary>
+    [ExtensionName("badged")]
+    [Prop("badge", typeof(InternalBadge), Optional = true)]
+    [Prop("size", typeof(int), Default = 2)]
+    public sealed class BadgedExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope)
+        {
+            var badge = scope.GetParameter("badge");
+            return "badge=" + (badge?.ToString() ?? "none") + "/size=" + scope.GetParameter("size") + ":" +
+                   (scope.ModelData?.ToString() ?? string.Empty);
+        }
+
+        public override void RenderData(in Scope scope)
+        {
+            scope.Renderer.Render((string) ProcessData(scope));
+        }
+    }
 }
