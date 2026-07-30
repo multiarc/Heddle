@@ -877,6 +877,12 @@ namespace Heddle.Generator.Emit
                     return null;
                 }
 
+                if (extLayout.Failed)
+                {
+                    reason = "extension <" + name + "> declares a prop of a type this assembly cannot name";
+                    return null;
+                }
+
                 if (!TryBuildPropsPrototype(extLayout, cp, bctx, out var extPropsRef, out var extSettersRef,
                         out reason))
                     return null;   // unknown/duplicate/missing/unreproducible → safe dynamic fallback
@@ -1010,6 +1016,17 @@ namespace Heddle.Generator.Emit
             var layout = new PropLayoutInfo();
             foreach (var slot in built)
             {
+                // The same gate the definition layout applies, for the same reason: a slot type is written into a
+                // cast wherever a prop read is emitted, so a type this assembly may not name has to fail the layout
+                // rather than reach the consumer's compiler. No call path today makes an extension layout the active
+                // one, so this refuses nothing that is currently emitted; it is here so that the day one does, the
+                // spelling is checked before it is written rather than after.
+                if (slot.Type != null && !CanWriteTypeName(slot.Type, callPosition, out _))
+                {
+                    layout.Failed = true;
+                    break;
+                }
+
                 var info2 = new PropSlotInfo
                 {
                     Name = slot.Name,
@@ -1241,7 +1258,15 @@ namespace Heddle.Generator.Emit
                     if (ctxReason != null) { reason = ctxReason; return null; }
                 }
 
-                callerCtx = callerCtx.WithFills(bctx.Fills, bctx.RegionHostProps);
+                // Only the MODEL changes here. The caller's prop layout and slot mode both stay active, because the
+                // engine compiles caller content BEFORE it swaps either of them: the save/restore it does around a
+                // definition body starts after this text is already compiled. Built without them, a first path
+                // segment naming one of the caller's props silently read the member of the callee's model that
+                // shares the name (or reported one that model has no member of at all), and an `@out(value)` under
+                // an enclosing slot definition looked like an `@out` outside a slot.
+                callerCtx = callerCtx.WithProps(bctx.Props).WithFills(bctx.Fills, bctx.RegionHostProps);
+                if (bctx.InSlot)
+                    callerCtx = callerCtx.AsSlot(bctx.SlotType);
                 callerBody = BuildBody(item.ParameterTemplate, item.Context, callerCtx, out reason);
                 if (callerBody == null)
                     return null;
@@ -1342,6 +1367,13 @@ namespace Heddle.Generator.Emit
 
             if (cp.NativeExpression != null)
                 return ComputedValueType(cp.NativeExpression, model, bctx.Props).Symbol;
+
+            // A chain call-parameter's value is the chain's render type, not the producer's own type: the engine
+            // reads `callParameter.RenderType`, which is the last item's InitStart return, and every chain the
+            // emitter can flatten ends in a plain carrier whose InitStart is the base one — `typeof(string)`.
+            // Answering "cannot say" here let a non-enumerable producer past the @list gate.
+            if (cp.ChainParameter != null && cp.ChainParameter.Count != 0)
+                return _compilation.GetSpecialType(SpecialType.System_String);
 
             if (bctx.IsDynamic && model == null)
                 return null;
@@ -1518,6 +1550,16 @@ namespace Heddle.Generator.Emit
                     return whenTrue;
                 }
 
+                case CallNode call:
+                {
+                    // A call in this position is the engine's own value, statically typed by the function's return
+                    // type — `@list(min(1, 2))` is a template it refuses with that type in the message. Leaving it
+                    // "cannot say" exempted every such call from the checks the other shapes go through.
+                    var writer = new NativeExpressionWriter(_resolver, model, "m", _exports, TypeFacts,
+                        AllocateHopLocal, props);
+                    return FromKind(writer.EstimateCallReturn(call));
+                }
+
                 default:
                     return ComputedValue.None;
             }
@@ -1630,6 +1672,12 @@ namespace Heddle.Generator.Emit
         private ITypeSymbol DynamicDefinitionBodyModel(CallParameter cp, BodyContext bctx)
         {
             if (cp.NativeExpression != null)
+                return CallSiteValueType(cp, bctx);
+
+            // A chain never reaches the model accessor at all: the engine compiles the chain and hands the body its
+            // render type, which is text. Answering "cannot say" here degraded `@frame(len(Name))` — a template the
+            // engine compiles with a `string` body model — off the precompiled tier entirely.
+            if (cp.ChainParameter != null && cp.ChainParameter.Count != 0)
                 return CallSiteValueType(cp, bctx);
 
             if (!cp.IsModelTypeParameter)
@@ -2241,20 +2289,45 @@ namespace Heddle.Generator.Emit
         {
             reason = null;
             setterExpr = null;
-            if (bctx.IsDynamic || bctx.ModelSymbol == null) { reason = "dynamic arg without a typed caller model"; return false; }
+            var callerModel = bctx.IsDynamic ? null : bctx.ModelSymbol;
+            // A prop-rooted argument needs no caller model — it reads the scope's props — so the absence of one is
+            // only fatal when there is no layout to read either.
+            if (callerModel == null && bctx.Props == null)
+            {
+                reason = "dynamic arg without a typed caller model";
+                return false;
+            }
+
             if (slot.Type == null) { reason = "dynamic arg with unresolved prop type"; return false; }
 
             string conversionKeyword = null;
             if (arg.Value is PathNode pn)
             {
                 if (pn.RootRef) { reason = "root-reference dynamic arg"; return false; }
-                var res = _resolver.ResolvePath(bctx.ModelSymbol, pn.Segments);
-                if (res.Kind != SymbolTypeResolver.PathKind.Resolved) { reason = "dynamic arg path (" + res.Kind + ")"; return false; }
 
-                if (!SymbolEqualityComparer.Default.Equals(res.ResultType, slot.Type) &&
+                // Prop-first, like every other reader of a path's first segment — and like the writer three lines
+                // below, which has had the layout since it was given one. Typed off the model instead, the check and
+                // the emission disagreed about which value this argument even is: the writer emitted the caller's
+                // prop while the check approved the shadowed member's type, so a string went into an int-declared
+                // slot the engine refuses outright.
+                ITypeSymbol argType;
+                if (IsPropName(pn, bctx.Props))
+                {
+                    argType = PropRootType(pn, bctx.Props);
+                    if (argType == null) { reason = "dynamic arg reads a prop this call site cannot type"; return false; }
+                }
+                else
+                {
+                    if (callerModel == null) { reason = "model-rooted dynamic arg without a typed caller model"; return false; }
+                    var res = _resolver.ResolvePath(callerModel, pn.Segments);
+                    if (res.Kind != SymbolTypeResolver.PathKind.Resolved) { reason = "dynamic arg path (" + res.Kind + ")"; return false; }
+                    argType = res.ResultType;
+                }
+
+                if (!SymbolEqualityComparer.Default.Equals(argType, slot.Type) &&
                     slot.Type.SpecialType != SpecialType.System_Object)
                 {
-                    var from = res.ResultType?.SpecialType ?? SpecialType.None;
+                    var from = argType?.SpecialType ?? SpecialType.None;
                     var to = UnderlyingSpecial(slot.Type);
                     if (from != SpecialType.None && IsImplicitNumericWidening(from, to))
                         conversionKeyword = NumericKeyword(to);
@@ -2272,7 +2345,7 @@ namespace Heddle.Generator.Emit
                 return false;
             }
 
-            var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts, AllocateHopLocal,
+            var writer = new NativeExpressionWriter(_resolver, callerModel, "m", _exports, TypeFacts, AllocateHopLocal,
                 bctx.Props);
             var body = writer.WriteRoot(arg.Value);
             DrainUnresolvable(writer);
@@ -2488,14 +2561,13 @@ namespace Heddle.Generator.Emit
                     return false;
                 }
 
-                if (bctx.IsDynamic || bctx.ModelSymbol == null)
-                {
-                    reason = "native expression without typed model";
-                    return false;
-                }
-
-                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts, AllocateHopLocal,
-                    bctx.Props);
+                // No pre-check for a typed model. The engine's own compiler tries the active prop layout BEFORE it
+                // asks whether the scope has a static type, so an expression rooted at a prop needs no model at all
+                // — and refusing every expression on the untyped tier dropped whole templates the engine renders.
+                // The writer is the gate instead: given no model type it refuses any path that reads one, which is
+                // the same answer by the same rule, and it never claims to use a model local it has not been given.
+                var writer = new NativeExpressionWriter(_resolver, bctx.IsDynamic ? null : bctx.ModelSymbol, "m",
+                    _exports, TypeFacts, AllocateHopLocal, bctx.Props);
                 var expr = writer.WriteRoot(cp.NativeExpression);
                 DrainUnresolvable(writer);
                 if (expr == null)
@@ -2513,12 +2585,20 @@ namespace Heddle.Generator.Emit
             if (!string.IsNullOrEmpty(cp.CSharpExpression))
                 return BuildCSharpExpr(cp.CSharpExpression, bctx, out paramExpr, out usesCSharpModel, out reason);
 
-            // A single-item parenthesized chain (@(upper(Name)), @(Name):... with one producer) reduces to the
-            // producer's value: the runtime wraps it in EmptyExtension carriers that only pass the value through,
-            // so flattening to one carrier over the producer expression is byte-identical.
+            // A single-item chain (@card((Cols)), @list(upper(Name))) reduces to its producer's expression — but not
+            // to its producer's VALUE. The carrier the runtime wraps it in renders what it is given, so the value
+            // that reaches the consuming extension is the carrier's text; that is why the engine types every chain
+            // call-parameter `string` (the chain's render type is the last item's InitStart return, and the default
+            // is typeof(string)). Flattened to the raw producer expression it was not byte-identical at all — only
+            // invisible while the consumer printed it. See CarrierValue for what the two tiers disagreed on.
             if (cp.ChainParameter != null && cp.ChainParameter.Count == 1)
-                return BuildChainItemExpr(cp.ChainParameter[0], bctx, out paramExpr, out usesModel, out usesCSharpModel,
-                    out reason);
+            {
+                if (!BuildChainItemExpr(cp.ChainParameter[0], bctx, out var chainExpr, out usesModel,
+                        out usesCSharpModel, out reason))
+                    return false;
+                paramExpr = "global::Heddle.Precompiled.PrecompiledRuntime.CarrierValue(" + chainExpr + ")";
+                return true;
+            }
 
             reason = "C#/chain parameter";
             return false;

@@ -1908,10 +1908,16 @@ shrink the set of things that cannot be said, not to widen what "cannot say" is 
 ## Fifteenth review cycle (2026-07-30)
 
 One root cause with four faces, found independently by both reviewers, and it is the plainest one yet:
-**the engine resolves a native expression's path prop-first**, and two of the emitter's four paths had
-never been told.
+**the engine resolves a native expression's path prop-first**, and two of the readers this cycle knew
+about had never been told.
 
-### A prop is a prop everywhere, not only in a member path
+> **Corrected by the sixteenth cycle.** "Four paths" was a count of what this cycle had looked at, not
+> of what exists. There are at least six places that resolve a path's first segment and at least six
+> that build the context the layout travels in; the sixteenth cycle enumerates both lists. Two more
+> readers were still resolving off the model after this cycle, and one whole *context* — the content a
+> call site hands a definition — never received the layout at all.
+
+### A prop is a prop in every reader, and there are more readers than this section counted
 
 `NativeExpressionCompiler` tries the active prop layout on a path's first segment before it looks at
 the scope type at all, so inside a definition body a prop shadows a model member of the same name —
@@ -1936,9 +1942,17 @@ a shadowed name got the shadowed *member's* type, so `Cols + 1` over a `string` 
 and the body built off that type reported a member the `string` it really receives has — `HED7008` at
 Error again, over a template the engine renders — or refused a `string` slot the engine fills.
 
-The fix is one sentence applied twice: give both paths the layout the member-path reader already had,
-and resolve the first segment prop-first, hopping the rest off the slot's declared type. A path whose
-first segment names a prop never falls back to the member it shadows, in either path.
+The fix is one sentence, and this cycle applied it twice: give both paths the layout the member-path
+reader already had, and resolve the first segment prop-first, hopping the rest off the slot's declared
+type. A path whose first segment names a prop never falls back to the member it shadows.
+
+> **Corrected by the sixteenth cycle.** Twice was not enough, and the sweep below could not have shown
+> it: every shape in it puts the read directly in a definition body, which is the one context that did
+> receive the layout. The prop-argument checker three lines above the writer this cycle fixed was still
+> typing its value off the model, so check and emission then disagreed about which value the argument
+> even was; and caller content never received the layout in the first place, so the same reads
+> reproduced there in full — silent wrong bytes, an `HED7008` build error, and an `@list` iterating the
+> wrong string.
 
 Measured over forty prop shapes, before and after, each against the engine: **fourteen matched, five
 rendered different bytes and twenty-one degraded** before; **thirty-nine match and one degrades** after,
@@ -1966,9 +1980,19 @@ are asked of a real symbol of that kind now, through the classifier the emitter 
 row stands alone. The mutation that settles it: making the classifier refuse every enum type leaves the
 old rows entirely green and reddens exactly the new `Enum` row.
 
+> **Corrected by the sixteenth cycle.** "Each row stands alone" held for six of the seven. The
+> classifier short-circuited an array into a recursion on its element *before* consulting the kind
+> table, so no answer the table gave about `Array` was reachable and the `Array` row was a second copy
+> of its element's row. Measured: an `Array` case left all thirty-seven green, while a `Struct` case
+> reddened `Array` as well as `Struct`. The classifier consults the table first now, so an `Array` case
+> reddens the `Array` row — which still also reddens under its element's case, because an array is
+> answered by recursing onto its element and no element type escapes that.
+
 Two names could not be given an honest row and are recorded instead of pretended. `Structure` is Visual
-Basic's spelling of `Struct` and parses to the same value, so the `Struct` row already answers for it —
-asserted, so it would stop being true loudly. `Extension` is declared only by newer Roslyn; the
+Basic's spelling of `Struct` and parses to the same value, so the `Struct` row already answers for it.
+That is asserted — but the assertion is about **Roslyn's** enum, not about anything here: no change in
+this repository can redden it, and only a Roslyn upgrade splitting the two names ever would. Calling it
+something that "would stop being true loudly" overstated what it covers. `Extension` is declared only by newer Roslyn; the
 generator compiles against Microsoft.CodeAnalysis.CSharp 4.4.0, which does not declare the name at all,
 so a case for it is a compile error and no production change could make a row about it fail. It is
 covered by the completeness gate and by nothing else, and there is nothing further to pin until the
@@ -1983,3 +2007,186 @@ expression — so the feature worked in the shape its tests were written in and 
 bytes in every other shape. When a lookup rule is added, the question to answer is not "does the reader
 implement it" but "how many readers are there", and the answer is found by looking for every
 construction of the thing that does the reading, not by trusting that there is one.
+
+## Sixteenth review cycle (2026-07-30)
+
+Three cycles running, a fix landed correctly and the same defect turned up one path over. This cycle
+started by enumerating every place the two rules live rather than by fixing the reported repros, and
+the two tables below are the durable part of it. Both were built by reading the emitter, and every row
+that should mirror the engine and did not was fixed.
+
+### Table A — every `BodyContext` in `TemplateEmitter.cs`, and whether the prop layout travels with it
+
+The engine saves and restores `ActivePropLayout` around **definition bodies only**
+(`HeddleCompiler.cs`, the block that sets it from the resolved layout and restores `savedLayout`).
+Everything else compiled under an active layout still sees it — including the content a call site hands
+a definition, which the engine compiles *before* the save/restore runs.
+
+| # | Construction site | Layout it carries | Engine's answer | Verdict |
+|---|---|---|---|---|
+| 1 | document root | none | no layout is active at the root | correct |
+| 2 | nested `@list` body (`TryNestedBodyContext`, `ElementOfData`) | the enclosing `Props` | enclosing layout still active — no restore around a `@list` body | correct (fifteenth cycle) |
+| 3 | branch / `@for` body (`TryNestedBodyContext`, `Parent`) | the whole enclosing context unchanged | same | correct |
+| 4 | untyped bare region body (`TryRegionBodyContext`) | `RegionHostProps` | region body keeps `savedLayout`, the enclosing one | correct |
+| 5 | typed region body (`TryRegionBodyContext`) | `RegionHostProps` | same | correct |
+| 6 | definition body (`DefinitionBodyContext` + `WithProps(layout)`) | the definition's **own** layout | the layout the save/restore installs | correct |
+| 7 | `:: dynamic` definition body (`DefinitionBodyContext`, then `TypedAs` / `WithDynamicBodyModel`) | own layout, preserved through both | same | correct |
+| 8 | slot-mode definition body (`AsSlot`) | own layout, preserved | same | correct |
+| 9 | **caller content** (`BuildDefinitionCall`, `SlotBodyContext`/`DefinitionBodyContext` + `WithFills`) | **none** | the **caller's** layout is still active: caller content is compiled before the save | **fixed this cycle** |
+| 10 | `SlotBodyContext` used to read the slot *type* | n/a — only `ModelSymbol` is taken | n/a | not a body |
+
+`RegionHostProps` is a second copy of `Props` at every site that sets either, so rows 4 and 5 agree
+with row 6 by construction; that is worth knowing before anyone "fixes" one of them alone.
+
+Row 9 also lost the enclosing **slot mode**, for exactly the same reason — the engine installs the
+callee's `SlotParameterType` after caller content is compiled too — and that was a second, separate
+divergence in the same line. Both travel now.
+
+### Table B — every reader of a path's first segment, and whether it tries the layout first
+
+The engine's `NativeExpressionCompiler.TryVisitPropRoot` runs **before** the scope-type check, so a
+prop-rooted path resolves with no model at all.
+
+| # | Reader | Prop-first? | Verdict |
+|---|---|---|---|
+| 1 | `BuildParamExpr`, member-path branch | yes | correct (long-standing) |
+| 2 | `BuildParamExpr`, native-expression branch → `NativeExpressionWriter` | yes, but refused outright when the tier was dynamic, before the layout was consulted | **fixed this cycle** |
+| 3 | `BuildCall`, top-level function call → `NativeExpressionWriter` | yes, and never had the dynamic-tier guard | correct |
+| 4 | `BuildChainItemExpr`, function item → `NativeExpressionWriter` | yes, no guard | correct |
+| 5 | `TryBuildDynamicSetter`, prop-argument **check** (`_resolver.ResolvePath`) | **no** — typed off the model, three lines above the writer that reads the prop | **fixed this cycle** |
+| 6 | `TryBuildDynamicSetter`, prop-argument **emission** → `NativeExpressionWriter` | yes | correct (fifteenth cycle) |
+| 7 | `NativeExpressionWriter.WritePath` | yes (`PropRoot`) | correct (fifteenth cycle) |
+| 8 | `NativeExpressionWriter.EstimatePath` | yes (`PropRoot`) | correct (fifteenth cycle) |
+| 9 | `CallSiteValueType`, member-path branch | yes | correct (fifteenth cycle) |
+| 10 | `ComputedValueType`, `PathNode` (`PropRootType` / `IsPropName`) | yes | correct (fifteenth cycle) |
+| 11 | `DynamicDefinitionBodyModel` | yes | correct (fifteenth cycle) |
+| 12 | `ResolvedTypeOf` | n/a — a helper called with a start type already chosen | not a first-segment reader |
+
+`ResolveModelType` appears in four places and reads none of them: it resolves *type names* from the
+`::` and `@model` grammar, which are never prop names.
+
+### Caller content is compiled under the caller's layout (Table A row 9)
+
+Both reviewers found this independently. The content a call site hands a definition was built from the
+**callee's** model with no layout and no slot mode, and every read in it diverged in its own way.
+Measured at the parent commit against the engine, model `GridModel { Name = "model", Cols = 7 }`:
+
+* `<outer(Cols: string = "PP")>{{@inner(this){{[@(Cols)]}}}}` — engine `([PP])`, generated `([7])`.
+  Silent, both tiers rendering, different bytes. The native form `@(Cols + "!")` is `([PP!])` against
+  `([7!])`.
+* `<outer(label: string = "PP")>` with `@(label)` — engine renders `([PP])`; the build **fails** with
+  `HED7008: 'GridModel' does not contain an accessible member 'label'`. That is the symptom the
+  previous commit's message claims to have eliminated, alive one context over.
+* `@list(Name)` in caller content, prop `"PP"` against member `"ab"` — engine `([P][P])`, generated
+  `([a][b])`: the enumerability gate had judged the *model member's* type.
+* A valued `@out` in caller content lexically inside a slot definition's body — engine renders, the
+  emitter dropped the whole template. The bare `@out()` in the same place is the reverse: the engine
+  refuses with `HED5013` and the emitter precompiled and rendered.
+
+All of them match now, and the near neighbour is in the table: a name the caller's layout does *not*
+carry still reads off the callee's model.
+
+### A prop argument is checked against the prop it reads (Table B row 5)
+
+`TryBuildDynamicSetter` typed the argument off the caller's model while the writer three lines below it
+emitted the caller's *prop*. That is worse than either half alone: the check and the emission
+disagreed about which value the argument even is. `<inner(q: int = 0)>` called as `q: Cols` with
+`<outer(Cols: string = "PP")>` rendered `[PP]` — a `string` boxed into an `int`-declared slot — where
+the engine refuses the template with `HED5003`. Reversed (`q: string`, `Cols: int`) it rendered `[5]`
+against the same refusal. It is prop-specific: a model member or a literal in the same position always
+precompiled. This was pre-existing, but the previous commit is what made the two halves disagree — at
+its parent the emission rendered the model member, which is what the check had approved.
+
+Two over-degrades fell out of the same change and were kept: a non-shadowing prop argument (`q: p`
+where the model has no `p`) now precompiles and renders, and a prop-rooted argument at a call site on
+the dynamic tier no longer needs a typed caller model.
+
+### A native expression over a prop needs no model (Table B row 2)
+
+`BuildParamExpr` refused every native expression when the context was dynamic — an `@list` body's tier
+— before it looked at the layout, so `<host(n: int = 5)>{{@list(Tags){{[@(n + 1)]}}}}` dropped the
+whole template where the engine renders `[6][6]`. The guard is gone rather than narrowed: the writer,
+given no model type, already refuses any path that reads one, which is the engine's own order and the
+engine's own answer. A constant expression that needs no model at all precompiles for the same reason,
+and that is what moved `at-escape-comment-adjacent.heddle` from `FallsBackSafely` to `Precompiles` —
+its `@if(true)` had been refused for needing a model it does not read.
+
+Still degrading, and reported rather than hidden: a native expression reading the **element's** own
+member inside an `@list` body (`@(Name + "!")` over `List<Product>`). The engine compiles it against
+the element type; the emitter has that type in `DynamicBodyModel` but emits the body's reads on the
+dynamic tier, so typing the writer off it is a change of a different shape and was left for a later
+cycle. The plain path `@(Name)` and the function form `@upper(Name)` are unaffected.
+
+### What a chain hands the next link is text, not the producer's value
+
+The flattening of a one-item chain call-parameter carried a comment claiming it was "byte-identical".
+It is not, and the comment is corrected in place. A chain call-parameter is compiled as a chain and the
+engine hands the extension `callParameter.RenderType` — the last item's `InitStart` return, which for
+every chain the emitter can flatten is `AbstractExtension`'s default `typeof(string)`. So the value is
+the carrier's **rendered text**. Flattened to the producer's own expression it was invisible wherever
+the consumer merely printed it, and wrong wherever the consumer was type-sensitive. Measured at the
+parent commit:
+
+* `@list(len(Name))` with `Name = "abcd"` — engine `<4>` (it iterates the characters of `"4"`),
+  generated **empty**. Silent, both tiers rendering.
+* `@list((Cols))` with `Cols = 7` — engine `<7>`, generated empty. Neither reviewer reported this one;
+  it is the same defect one syntax over, which is why the enumeration came first.
+* `<probe>{{[@(Length)]}} :: System.String` called as `@probe(len(Name))` — engine `[1]`, generated
+  **`InvalidCastException` at render**.
+* `@list(upper(Name))` matched all along, because `upper` already returns a string. That is the whole
+  reason this survived so long.
+
+The emitter reproduces the carrier now, through `PrecompiledRuntime.CarrierValue`, which is
+`EmptyExtension`'s own pass-through: `null` becomes the empty string, a string is itself, anything else
+is `ToString()`. The type follows: `CallSiteValueType` answers `System.String` for a chain, so the
+`@list` gate and the slot-value check judge the value the extension actually receives, and a
+`:: dynamic` definition called with a chain is typed by it instead of degrading.
+
+The sibling is a different syntax with a different answer. A multi-argument call is a *native
+expression*, not a chain — no carrier renders it — so the engine keeps the function's return type and
+refuses `@list(min(1, 2))` outright, naming `System.Int32`. `ComputedValueType` had no `CallNode` arm,
+so the gate exempted every call as "cannot say". It asks the shared ranker for the return descriptor
+now. The near neighbour that keeps this from being a refusal of all calls: `@list(substr(Title, 0, 2))`
+still precompiles and still matches.
+
+### An extension prop layout with no demonstrated red
+
+`ResolveExtensionPropLayout` filled its slot types from `[Prop]` metadata without the `CanWriteTypeName`
+gate the definition layout applies, so a slot type this assembly may not name would have been spelled
+into the cast a prop read emits. No call path makes an extension layout the *active* layout, so there
+is nothing to demonstrate and no test pretends otherwise; the gate is there so that the day one does,
+the spelling is checked before it is written. This is a guard, not a fix.
+
+### The `Array` verdict row could not fail on the arm it named
+
+`Classify` short-circuited an array into a recursion on its element before consulting `UnnameableKind`,
+so `UnnameableKind(TypeKind.Array)` was unreachable and the row testing it was a second copy of the row
+for its element's kind. Measured at the parent: an `Array` case left all thirty-seven rows green while
+each of the other six kinds reddened its own; the `Array` row did redden under the `Struct` case,
+because `int[]`'s element is `int`. The table is consulted first now — it returns null for `Array`, so
+no verdict changes — and the mutation matrix re-measured: an `Array` case reddens the `Array` row, and
+the `Class`, `Enum`, `Interface`, `Delegate` and `Dynamic` cases each redden exactly one row. `Struct`
+reddens two, its own and `Array`, and that is not removable: an array is answered by recursing onto its
+element and every element has a kind with a row. The docstring says so now instead of claiming
+independence it does not have.
+
+### Degrade sweep
+
+Every template that newly degrades is one the engine refuses, checked one by one: a prop argument whose
+prop type does not fit the slot (`HED5003`, both directions), `@list` over a native call returning a
+non-enumerable (`HED0004`), an `@out` of a chain value into a slot that is not `string` and an `@out` of
+an `int`-returning call into a `string` slot (`HED5014` each), a caller-content prop path whose
+remaining segments do not resolve off the prop's type (`HED0001`), and a bare `@out()` in caller content
+under an enclosing slot definition (`HED5013`). Nothing else newly degrades: the corpus intent table
+moved in the opposite direction only — one entry from `FallsBackSafely` to `Precompiles` — and no
+`ExpectPrecompiled` in any suite had to be relaxed.
+
+### The durable lesson
+
+The previous cycle wrote the right lesson — look for every construction of the thing that does the
+reading — and then did not carry it out, which is how the same class survived a third cycle. The
+missing step is that a lookup rule has **two** populations, not one: the readers that apply it, and the
+contexts that carry the state it reads. Fixing every reader while one context never receives the state
+leaves the rule exactly as broken as before, and a sweep written around the contexts that do carry it
+will report full coverage. Both lists belong in the record, written out in full, before the first fix.
+

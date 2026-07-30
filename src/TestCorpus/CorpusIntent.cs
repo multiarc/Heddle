@@ -108,6 +108,8 @@ namespace Heddle.TestCorpus
                 "Pure text plus @@ escapes collapses to a raw write, so the emitter binds it with no model."),
             new CorpusIntentRow("brace-misread.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "Pure static text: the HED4005 brace-misread fixture's subject is a parse-time warning, not a construct the emitter must refuse."),
+            new CorpusIntentRow("at-escape-comment-adjacent.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
+                "Model-less @@ escapes around @badge() calls under @if(true). It used to fall back because the emitter refused every native expression on the untyped tier before looking at it; the literal condition needs no model, so it now precompiles. Still pinned by its runtime golden (AtEscapeTests)."),
 
             // Definition libraries and import shells: they precompile like any plain definition library, and they
             // render standalone to the empty string on both tiers (verified, not assumed) because their whole body
@@ -199,8 +201,6 @@ namespace Heddle.TestCorpus
             new CorpusIntentRow("trycompile-parity-typed.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "A typed @(Name) document against a dynamic model; renders empty standalone on both tiers."),
 
-            new CorpusIntentRow("at-escape-comment-adjacent.heddle", CorpusTier.FallsBackSafely, CorpusRender.Standalone,
-                "Falls back on its definition call sites; pinned by its runtime golden (AtEscapeTests), and it renders model-less on the dynamic tier."),
             new CorpusIntentRow("branching-out-projection.heddle", CorpusTier.FallsBackSafely, CorpusRender.Standalone,
                 "An @out projection inside a branch — a bodied-output form the emitter refuses; the runtime renders it model-less."),
             new CorpusIntentRow("context-lint-corpus.heddle", CorpusTier.FallsBackSafely, CorpusRender.WithModel,

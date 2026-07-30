@@ -238,34 +238,41 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// A call-site value outside what the shared tables type — here a chained call, whose render type the
-        /// emitter does not track. "The emitter cannot say" is not "the engine has no type": the engine gives this
-        /// one <c>String</c>, so a body reading a member <c>String</c> lacks is a template it refuses outright, and
-        /// an untyped body would render it.
-        /// <para>The two neighbours are what keep this from being a blanket refusal: the cost of the degrade is
-        /// declared (the same call with a fitting body is a template the engine compiles and the emitter drops), and
-        /// a computed value the tables <b>do</b> type still precompiles.</para>
+        /// A chained call as the value. This is not a type the emitter has to guess at: a chain call-parameter's
+        /// value is the chain's render type, and that is <c>String</c> for every chain — the last item's
+        /// <c>InitStart</c> decides it and the base one returns <c>typeof(string)</c>. So a body reading a member
+        /// <c>String</c> lacks is a template the engine refuses, and the generated tier reports the same member on
+        /// the same type rather than degrading in silence.
+        /// <para>The neighbours keep it from being a blanket refusal in either direction: the same call with a
+        /// fitting body precompiles and matches (it used to be the declared cost of a degrade), and a computed value
+        /// the shared tables type still precompiles.</para>
         /// </summary>
         [Fact]
-        public void AnUntypeableCallSiteValueDegradesInsteadOfKeepingAnUntypedBody()
+        public void AChainedCallSiteValueTypesADynamicBodyByItsRenderType()
         {
             const string divergeKey = "views/dynamic-body-function-value-miss.heddle";
-            const string costKey = "views/dynamic-body-function-value-fits.heddle";
+            const string fitsKey = "views/dynamic-body-function-value-fits.heddle";
             const string typedKey = "views/dynamic-body-typed-value.heddle";
             const string model = "@model(){{" + CartType + "}}@%\n";
             const string diverge = model + "<frame>{{[@(Zzz)]}} :: dynamic\n%@\n@frame(len(Name))\n";
-            const string cost = model + "<frame>{{[k]}} :: dynamic\n%@\n@frame(len(Name))\n";
+            const string fits = model + "<frame>{{[k]}} :: dynamic\n%@\n@frame(len(Name))\n";
             const string typed = model + "<frame>{{[k]}} :: dynamic\n%@\n@frame(Count * 2)\n";
 
             var gen = DifferentialHarness.Generate(
-                new[] { (divergeKey, diverge), (costKey, cost), (typedKey, typed) });
+                new[] { (divergeKey, diverge), (fitsKey, fits), (typedKey, typed) });
             DifferentialHarness.ExpectDegrade(gen, divergeKey);
-            DifferentialHarness.ExpectDegrade(gen, costKey);
+            DifferentialHarness.ExpectPrecompiled(gen, fitsKey);
             DifferentialHarness.ExpectPrecompiled(gen, typedKey);
 
+            // The degrade carries the engine's own complaint, against the engine's own type.
+            Assert.Contains(gen.Diagnostics,
+                d => d.Id == "HED7008" && d.GetMessage().Contains("Zzz") && d.GetMessage().Contains("string"));
             AssertEngineRefuses(diverge, typeof(Cart), "Property Zzz not found in Type [String]");
-            var accepted = new HeddleTemplate(cost, new CompileContext(new TemplateOptions(), typeof(Cart)));
-            Assert.True(accepted.CompileResult.Success, accepted.CompileResult.ToString());
+
+            var (precompiled, dyn) = DifferentialHarness.Render(fitsKey, fits, typeof(Cart),
+                new Cart { Name = "abcd" });
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal("[k]\n", dyn);
         }
 
         /// <summary>

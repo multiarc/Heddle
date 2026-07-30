@@ -104,5 +104,68 @@ namespace Heddle.Generator.IntegrationTests
                 "@model(){{" + objItemsType + "}}@\\\n@list(Items){{[@()]}}\n", typeof(ObjItems),
                 new ObjItems { Items = new List<object> { 1, "two" } });
         }
+
+        /// <summary>
+        /// <c>@list</c> over a value the caller wrote as a chain — a function call, or a parenthesized path. The
+        /// value that reaches the extension is not the producer's own value: a chain call-parameter is rendered by
+        /// the carrier it rides in, so the engine hands <c>@list</c> the <b>text</b> and iterates its characters.
+        /// Flattened to the raw producer expression, the generated tier handed <c>@list</c> an <c>int</c> and
+        /// enumerated nothing at all — a page that rendered <c>&lt;4&gt;</c> on the engine and empty here, with no
+        /// diagnostic anywhere.
+        /// <para>The <c>upper</c> row is why this was invisible for so long: a producer that already returns a
+        /// string agrees with itself, so only a type-sensitive consumer over a non-string producer can tell the two
+        /// tiers apart.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("function-int", "len(Title)", "<2>\n")]
+        [InlineData("function-int-literal", "len(\"abcd\")", "<4>\n")]
+        [InlineData("function-string", "upper(Title)", "<A><B>\n")]
+        [InlineData("paren-int", "(Products.Count)", "<1>\n")]
+        [InlineData("paren-string", "(Title)", "<a><b>\n")]
+        public void AChainValueReachesListAsTheTextTheCarrierRenders(string name, string value, string expected)
+        {
+            var t = "@model(){{" + CatalogType + "}}@\\\n@list(" + value + "){{<@()>}}\n";
+            var catalog = new Catalog
+            {
+                Title = "ab",
+                Products = new List<Product> { new Product { Name = "p" } }
+            };
+
+            var (precompiled, dyn) = DifferentialHarness.Render("views/list-chain-" + name + ".heddle", t,
+                typeof(Catalog), catalog);
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal(expected, dyn);
+        }
+
+        /// <summary>
+        /// The other half of the same question, one syntax over. A multi-argument call is a native expression, not a
+        /// chain, so no carrier renders it and the engine keeps the function's own return type — which makes
+        /// <c>@list(min(1, 2))</c> a template it <b>refuses</b>, naming <c>System.Int32</c>. The generated tier had
+        /// nothing to say about a call's type, so the enumerability gate exempted every one of them and this
+        /// precompiled and rendered.
+        /// <para>The second half is the near neighbour: the same syntax over a function that does return something
+        /// enumerable still precompiles and still matches, so this is the return type deciding and not calls being
+        /// refused wholesale.</para>
+        /// </summary>
+        [Fact]
+        public void ANativeCallsReturnTypeDecidesWhetherListAcceptsIt()
+        {
+            const string refusedKey = "views/list-call-int.heddle";
+            const string refused = "@model(){{" + CatalogType + "}}@\\\n@list(min(1, 2)){{<@()>}}\n";
+
+            var gen = DifferentialHarness.Generate(new[] { (refusedKey, refused) });
+            DifferentialHarness.ExpectDegrade(gen, refusedKey);
+
+            var dynamicTemplate = new HeddleTemplate(refused,
+                new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(), typeof(Catalog)));
+            Assert.False(dynamicTemplate.CompileResult.Success);
+            Assert.Contains("System.Int32", dynamicTemplate.CompileResult.ToString(), StringComparison.Ordinal);
+
+            var (precompiled, dyn) = DifferentialHarness.Render("views/list-call-string.heddle",
+                "@model(){{" + CatalogType + "}}@\\\n@list(substr(Title, 0, 2)){{<@()>}}\n",
+                typeof(Catalog), new Catalog { Title = "abcd" });
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal("<a><b>\n", dyn);
+        }
     }
 }

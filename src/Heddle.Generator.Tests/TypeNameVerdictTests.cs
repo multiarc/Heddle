@@ -226,9 +226,14 @@ namespace Verdict
         /// actually write.
         /// <para>Asking <c>UnnameableKind</c> for a null answer made these rows one assertion wearing eight hats:
         /// they all read the same <c>default:</c> arm, so they passed and failed together and none of them was
-        /// about the kind it named. Through a symbol each row stands alone — give one kind a case of its own and
-        /// the other six stay green — and it asserts the thing that matters, that a model or a member of this kind
-        /// still gets spelled.</para>
+        /// about the kind it named. Through a symbol they stand apart: give <c>Class</c>, <c>Enum</c>,
+        /// <c>Interface</c>, <c>Delegate</c>, <c>Dynamic</c> or <c>Struct</c> a case of its own and only its own
+        /// row reddens.</para>
+        /// <para><c>Array</c> is the one row that is not independent, and saying otherwise was wrong: the walk
+        /// answers an array by <b>recursing onto its element</b>, so this row reddens for an <c>Array</c> case and
+        /// also for its element kind's — <c>int[]</c> under a <c>Struct</c> case. It could not redden for an
+        /// <c>Array</c> case at all until the walk started consulting the table before the recursion; there is no
+        /// element type that would decouple it, because every element has a kind with a row of its own.</para>
         /// </summary>
         [Theory]
         [InlineData("Class")]
@@ -270,7 +275,9 @@ namespace Verdict
         /// The enum names no row above can honestly be about, recorded rather than given a row that would assert
         /// nothing.
         /// <para><c>Structure</c> is Visual Basic's spelling of <c>Struct</c> and parses to the same value, so the
-        /// <c>Struct</c> row already answers for it. That is asserted here, so it would stop being true loudly.</para>
+        /// <c>Struct</c> row already answers for it. The assertion below is a property of <b>Roslyn's</b> enum, not
+        /// of anything in this repository: no change here can make it fail, and only a Roslyn upgrade that split the
+        /// two names ever would. It is a tripwire on the dependency, not coverage of the walk.</para>
         /// <para><c>Extension</c> is declared only by newer Roslyn. The test process loads whatever Roslyn its
         /// framework brings, but the generator itself compiles against Microsoft.CodeAnalysis.CSharp 4.4.0, which
         /// does not declare the name at all — a case for it is a compile error, so no production change could make

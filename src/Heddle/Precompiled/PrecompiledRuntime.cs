@@ -136,6 +136,23 @@ namespace Heddle.Precompiled
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static object RootModel(in Scope scope) => scope.RootData;
 
+        /// <summary>
+        /// The value an unnamed carrier hands on — <see cref="Heddle.Extensions.EmptyExtension"/>'s own
+        /// pass-through, reproduced for generated code that flattens a one-item chain parameter
+        /// (<c>@list(len(Name))</c>, <c>@card((Cols))</c>) instead of building the carrier.
+        /// <para>The carrier renders its input, so what the next link receives is <b>text</b>, never the producer's
+        /// own value. Handing on the raw value instead is invisible wherever the consumer just prints it and
+        /// decisive wherever the consumer is type-sensitive: <c>@list</c> over an <c>int</c> iterated nothing where
+        /// the engine iterates the digits, and a definition typed <c>:: System.String</c> threw
+        /// <see cref="System.InvalidCastException"/> at render.</para>
+        /// </summary>
+        public static string CarrierValue(object value)
+        {
+            if (value == null)
+                return string.Empty;
+            return value as string ?? value.ToString();
+        }
+
         /// <summary>Root entry: renderer creation and the internal root <see cref="Scope"/> ctor, mirroring
         /// <c>HeddleTemplate.Generate</c>. The root frame (when the document hosts branch participants) rides the
         /// strategy via <see cref="WithLocalsFrame"/>, so no locals are seeded here.</summary>
