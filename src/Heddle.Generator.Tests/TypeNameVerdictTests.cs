@@ -196,6 +196,67 @@ namespace Verdict
         }
 
         /// <summary>
+        /// The kind table, asked of every <see cref="TypeKind"/> there is rather than of the kinds a C# compilation
+        /// happens to produce a symbol for. Two of them — <see cref="TypeKind.Unknown"/> and
+        /// <see cref="TypeKind.Module"/> — no C# compilation produces at all, and each shares its case group with a
+        /// neighbour, so through symbols alone both labels could be deleted with every suite green.
+        /// <para>The row per kind is also what makes the table's completeness checkable — see
+        /// <see cref="TheKindRowsCoverTheEnum"/>. Rows are keyed by <b>name</b> because the two target frameworks
+        /// run different Roslyn versions and the later one declares kinds the earlier has never heard of; a row for
+        /// a kind the running Roslyn does not declare is inert on that framework and live on the other, which is
+        /// what keeps a newly-added kind from being answered by nobody on both.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("Unknown", "does not resolve to a type")]
+        [InlineData("Error", "does not resolve to a type")]
+        [InlineData("Pointer", "is a pointer type")]
+        [InlineData("FunctionPointer", "is a pointer type")]
+        [InlineData("TypeParameter", "is a type parameter")]
+        [InlineData("Module", "is not a type C# has a syntax for")]
+        [InlineData("Submission", "is not a type C# has a syntax for")]
+        [InlineData("Class", null)]
+        [InlineData("Struct", null)]
+        // The Visual Basic spelling of the same value. It is a name the enum declares, so it needs a row, and the
+        // row is the same answer by construction.
+        [InlineData("Structure", null)]
+        [InlineData("Enum", null)]
+        [InlineData("Interface", null)]
+        [InlineData("Delegate", null)]
+        [InlineData("Dynamic", null)]
+        [InlineData("Array", null)]
+        // A C# 14 `extension` block's declaring type. It is not a position a value can live in — no property, no
+        // parameter and no `@model` spelling has one as its type — so the walk is never asked about it and it needs
+        // no sentence of its own.
+        [InlineData("Extension", null)]
+        public void EveryTypeKindHasAVerdictOfItsOwn(string kindName, string because)
+        {
+            if (!Enum.TryParse<TypeKind>(kindName, out var kind))
+                return;   // this framework's Roslyn does not declare it; the other one asserts it.
+
+            var reason = SymbolTypeResolver.UnnameableKind(kind);
+            if (because == null)
+                Assert.Null(reason);
+            else
+                Assert.Contains(because, reason ?? string.Empty, StringComparison.Ordinal);
+        }
+
+        /// <summary>Every kind the running Roslyn declares is a row above — a kind with no row would be one whose
+        /// verdict is whatever the table's default happens to be, decided by nobody. A kind Roslyn adds later
+        /// arrives here first.</summary>
+        [Fact]
+        public void TheKindRowsCoverTheEnum()
+        {
+            var covered = typeof(TypeNameVerdictTests)
+                .GetMethod(nameof(EveryTypeKindHasAVerdictOfItsOwn))
+                .GetCustomAttributes(typeof(InlineDataAttribute), false)
+                .Cast<InlineDataAttribute>()
+                .Select(d => (string) d.GetData(null).Single().First())
+                .ToHashSet(StringComparer.Ordinal);
+
+            Assert.Empty(Enum.GetNames(typeof(TypeKind)).Where(n => !covered.Contains(n)));
+        }
+
+        /// <summary>
         /// The other verdict a type argument of an <b>enclosing</b> type can carry, and the one a C# author can
         /// actually declare: <c>Outer&lt;Legacy&gt;.Inner</c> where <c>Legacy</c> is error-obsolete. Nothing about
         /// the nested type says so — it has no type argument of its own — and asking only its own arguments called

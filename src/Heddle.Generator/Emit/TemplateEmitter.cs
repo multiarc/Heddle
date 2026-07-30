@@ -400,15 +400,18 @@ namespace Heddle.Generator.Emit
         /// <list type="bullet">
         /// <item><description><see cref="BodyModelSource.Parent"/> (the branch trio, <c>@for</c>) — the body keeps
         /// the enclosing typed context, because it executes under <c>scope.Parent()</c>.</description></item>
-        /// <item><description><see cref="BodyModelSource.ElementOfData"/> (<c>@list</c>) — the element type is
-        /// discoverable only through the host's reflected <c>InitStart</c>, so the body is built on the dynamic
-        /// tier rather than guessed. The enclosing fill scope, region props and slot mode still
+        /// <item><description><see cref="BodyModelSource.ElementOfData"/> (<c>@list</c>) — the body's reads are
+        /// emitted on the dynamic tier, because that is what the host's reflected <c>InitStart</c> decides at
+        /// render. What the element type is still known here for is the call sites <i>inside</i> the body whose own
+        /// typing depends on it. The enclosing fill scope, region props, slot mode and — the engine restores the
+        /// prop layout around <b>definition</b> bodies only — the enclosing <b>prop layout</b> all
         /// propagate.</description></item>
         /// </list>
         /// <para>A name with no pinned row, or a row naming a source the emitter has no emission for, returns
         /// <c>false</c>: the caller refuses the body and the template degrades, which is the safe direction.</para>
         /// </summary>
-        private static bool TryNestedBodyContext(string name, BodyContext bctx, out BodyContext nested)
+        private static bool TryNestedBodyContext(string name, BodyContext bctx, ITypeSymbol elementModel,
+            out BodyContext nested)
         {
             nested = bctx;
             if (!BodyModelRules.TryGet(name, out var source, out _))
@@ -419,8 +422,8 @@ namespace Heddle.Generator.Emit
 
             if (source == BodyModelSource.ElementOfData)
             {
-                var dynamicCtx = new BodyContext(null, null, true,
-                    fills: bctx.Fills, regionHostProps: bctx.RegionHostProps);
+                var dynamicCtx = new BodyContext(null, null, true, props: bctx.Props,
+                    fills: bctx.Fills, regionHostProps: bctx.RegionHostProps, dynamicBodyModel: elementModel);
                 nested = bctx.InSlot ? dynamicCtx.AsSlot(bctx.SlotType) : dynamicCtx;
                 return true;
             }
@@ -686,7 +689,7 @@ namespace Heddle.Generator.Emit
                 branchInfo.IsEngineAssembly)
             {
                 // Body model: the rule is BodyModelRules' row and it is consumed, not asserted.
-                if (!TryNestedBodyContext(name, bctx, out var branchBodyCtx))
+                if (!TryNestedBodyContext(name, bctx, null, out var branchBodyCtx))
                 {
                     reason = "no pinned body model-typing row for branch '" + name + "'";
                     return null;
@@ -713,9 +716,9 @@ namespace Heddle.Generator.Emit
 
             if (name == "list")
             {
-                // Element body on dynamic tier; element type discoverable only by reflection (InitStart).
-                // Slot mode and fill scope propagate; BodyModelRules' ElementOfData row decides context.
-                if (!TryNestedBodyContext("list", bctx, out var itemCtx))
+                // Element body on the dynamic tier; the enclosing prop layout, slot mode and fill scope propagate,
+                // and BodyModelRules' ElementOfData row decides the context.
+                if (!TryNestedBodyContext("list", bctx, ListElementModel(cp, bctx), out var itemCtx))
                 {
                     reason = "no pinned body model-typing row for 'list'";
                     return null;
@@ -741,7 +744,7 @@ namespace Heddle.Generator.Emit
             if (name == "for")
             {
                 // Body typed by enclosing model; @out() splices the boxed index (BodyModelRules row).
-                if (!TryNestedBodyContext("for", bctx, out var forBodyCtx))
+                if (!TryNestedBodyContext("for", bctx, null, out var forBodyCtx))
                 {
                     reason = "no pinned body model-typing row for 'for'";
                     return null;
@@ -1188,7 +1191,7 @@ namespace Heddle.Generator.Emit
                 }
 
                 if (defBodyCtx.IsDynamic &&
-                    !TryTypeCallSiteBody(cp, bctx, slotMode, item.Position, ref defBodyCtx, out reason))
+                    !TryTypeCallSiteBody(cp, bctx, item.Position, ref defBodyCtx, out reason))
                     return null;
 
                 if (slotMode)
@@ -1272,16 +1275,17 @@ namespace Heddle.Generator.Emit
         /// value. Same rule, same conversion table (<c>OutExtension.InitStart</c> asks
         /// <c>PropConversion.CanConvert(…, allowBoxToObject: false)</c>), so the slot value the engine will not take
         /// is one the emitter refuses to precompile and the engine's refusal is what the reader gets.
-        /// <para>What this cannot answer is a value whose type is not statically known here — an <c>@out(this)</c>
-        /// inside an <c>@list</c> body, whose element type the emitter deliberately does not guess. Those keep
-        /// precompiling: the emitter has nothing to check, and refusing every one of them would take the ordinary
-        /// per-item slot projection off the precompiled tier to catch a template the caller's cast already throws
-        /// on.</para>
+        /// <para>What this cannot answer is a value whose type is not statically known here — a chained call, or an
+        /// expression outside what the shared operator tables decide. Those keep precompiling: the emitter has
+        /// nothing to check, and refusing every one of them would take working slot projections off the precompiled
+        /// tier to catch a template the caller's cast already throws on. An <c>@out(this)</c> inside an <c>@list</c>
+        /// body is <b>not</b> one of them any more: the element type is the collection's <c>IEnumerable&lt;T&gt;</c>
+        /// argument, which is a static type and gets checked like any other.</para>
         /// </summary>
         private bool SlotValueAssignable(CallParameter cp, BodyContext bctx, out string reason)
         {
             reason = null;
-            var valueType = SlotValueType(cp, bctx);
+            var valueType = CallSiteValueType(cp, bctx);
             if (valueType == null)
                 return true;
 
@@ -1302,16 +1306,16 @@ namespace Heddle.Generator.Emit
             return false;
         }
 
-        /// <summary>The type of an <c>@out</c> value, or null where the emitter has none — an untyped model, a
-        /// computed native expression, embedded C#. Null is "cannot say", never "no type"; the compilation's
-        /// <c>dynamic</c> is the opposite, a definite "no static type", which is what the engine refuses.</summary>
-        private ITypeSymbol SlotValueType(CallParameter cp, BodyContext bctx)
+        /// <summary>The static type of the value a call site passes, or null where the emitter has none. Null is
+        /// "cannot say", never "no type"; the compilation's <c>dynamic</c> is the opposite, a definite "no static
+        /// type", which is what the engine refuses as a slot value and hands a <c>:: dynamic</c> body as its
+        /// model.</summary>
+        private ITypeSymbol CallSiteValueType(CallParameter cp, BodyContext bctx)
         {
             var model = bctx.IsDynamic ? bctx.DynamicBodyModel : bctx.ModelSymbol;
-            if (bctx.IsDynamic && model == null)
-                return null;
 
-            // `this`, which is the definition body's own model.
+            // `this`, which is the enclosing body's own model. As a whole expression it is the model passthrough and
+            // keeps the scope's type even where that type is dynamic.
             if (cp.NativeExpression is ThisNode)
                 return model;
 
@@ -1320,6 +1324,12 @@ namespace Heddle.Generator.Emit
             // let `@out(5)` into an `Article` slot precompile and render, where the engine refuses the template.
             if (cp.NativeExpression is LiteralNode literal)
                 return LiteralType(literal);
+
+            if (cp.NativeExpression != null)
+                return ComputedValueType(cp.NativeExpression, model).Symbol;
+
+            if (bctx.IsDynamic && model == null)
+                return null;
 
             // A root reference is "cannot say" and cannot become a divergence: BuildParamExpr refuses every one of
             // them outright, so an `@out(::X)` degrades before anything is emitted whatever this answers.
@@ -1348,6 +1358,152 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>
+        /// The model an <c>@list</c> body runs under, which is the element type of the collection the call site
+        /// hands it: the host resolves <c>IEnumerable&lt;T&gt;</c> and falls back to <c>dynamic</c> for a collection
+        /// that implements no generic form. Null is "cannot say" — the data expression itself has no static type
+        /// here — and is not the same answer as <c>dynamic</c>.
+        /// <para>A type reaching <c>IEnumerable&lt;T&gt;</c> more than once is "cannot say" too: the host picks one
+        /// by reflection order, which is not an order this can reproduce.</para>
+        /// </summary>
+        private ITypeSymbol ListElementModel(CallParameter cp, BodyContext bctx)
+        {
+            var dataType = CallSiteValueType(cp, bctx);
+            if (dataType == null)
+                return null;
+            if (dataType.TypeKind == TypeKind.Dynamic)
+                return dataType;
+
+            ITypeSymbol element = null;
+            foreach (var candidate in SelfAndInterfaces(dataType))
+            {
+                if (!(candidate is INamedTypeSymbol named) ||
+                    named.ConstructedFrom?.SpecialType != SpecialType.System_Collections_Generic_IEnumerable_T ||
+                    named.TypeArguments.Length != 1)
+                    continue;
+                if (element != null && !SymbolEqualityComparer.Default.Equals(element, named.TypeArguments[0]))
+                    return null;
+                element = named.TypeArguments[0];
+            }
+
+            return element ?? _compilation.DynamicType;
+        }
+
+        private static IEnumerable<ITypeSymbol> SelfAndInterfaces(ITypeSymbol type)
+        {
+            yield return type;
+            foreach (var iface in type.AllInterfaces)
+                yield return iface;
+        }
+
+        /// <summary>A computed native expression's static type together with the shared tables' descriptor of it.
+        /// The two travel as a pair because neither reconstructs the other: the null literal has a type
+        /// (<c>System.Object</c>) and a descriptor that is not that type's, and a promotion result has a descriptor
+        /// with no identity to rebuild a reference or enum type from.</summary>
+        private readonly struct ComputedValue
+        {
+            public ComputedValue(ITypeSymbol symbol, OperandKind kind) { Symbol = symbol; Kind = kind; }
+            public ITypeSymbol Symbol { get; }
+            public OperandKind Kind { get; }
+            public static ComputedValue None => new ComputedValue(null, OperandKind.Unknown);
+        }
+
+        /// <summary>
+        /// The static type the engine's native-expression compiler gives a computed call-site value — an
+        /// arithmetic, comparison, ternary or coalesce expression — in the caller's own scope.
+        /// <para>The operand descriptors and the promotion arithmetic are the shared operator tables', the same ones
+        /// the expression writer consults before it emits anything, so a shape this types is a shape the two tiers
+        /// already agree about. Everything the tables leave undecided — a function call, an indexer, a user type's
+        /// operator, an operand read off a <c>dynamic</c> receiver — is "cannot say", and the caller degrades rather
+        /// than guessing at a model the engine has typed statically.</para>
+        /// </summary>
+        private ComputedValue ComputedValueType(ExprNode node, ITypeSymbol model)
+        {
+            switch (node)
+            {
+                case LiteralNode literal:
+                {
+                    if (literal.LiteralError != null)
+                        return ComputedValue.None;
+                    var symbol = LiteralType(literal);
+                    return new ComputedValue(symbol,
+                        literal.Value == null ? OperandKind.Null : SymbolFacts.Classify(symbol));
+                }
+
+                case PathNode path:
+                {
+                    // A target-rooted or `::`-rooted path, and any path over a scope with no static type, is where
+                    // the engine's own compiler stops resolving — it refuses the expression rather than typing it.
+                    if (path.Target != null || path.RootRef || model == null || model.TypeKind == TypeKind.Dynamic)
+                        return ComputedValue.None;
+                    var resolved = ResolvedTypeOf(model, path.Segments);
+                    return resolved == null
+                        ? ComputedValue.None
+                        : new ComputedValue(resolved, SymbolFacts.Classify(resolved));
+                }
+
+                case UnaryNode unary:
+                {
+                    var operand = ComputedValueType(unary.Operand, model);
+                    return FromKind(NativeOperatorRules.UnaryResult(unary.Operator, operand.Kind));
+                }
+
+                case BinaryNode binary:
+                {
+                    var left = ComputedValueType(binary.Left, model);
+                    var right = ComputedValueType(binary.Right, model);
+                    var result = NativeOperatorRules.BinaryResult(binary.Operator, left.Kind, right.Kind);
+                    // `x ?? null` is `x`'s own type, identity included — the one supported result the descriptor
+                    // alone could not name.
+                    if (binary.Operator == ExprOperator.Coalesce && right.Kind.Category == OperandCategory.NullLiteral &&
+                        result.Category != OperandCategory.Unknown)
+                        return left;
+                    return FromKind(result);
+                }
+
+                case TernaryNode ternary:
+                {
+                    var condition = ComputedValueType(ternary.Condition, model);
+                    var whenTrue = ComputedValueType(ternary.WhenTrue, model);
+                    var whenFalse = ComputedValueType(ternary.WhenFalse, model);
+                    if (NativeOperatorRules.ClassifyTernary(condition.Kind, whenTrue.Kind, whenFalse.Kind) !=
+                        OperatorVerdict.Supported)
+                        return ComputedValue.None;
+                    return whenTrue;
+                }
+
+                default:
+                    return ComputedValue.None;
+            }
+        }
+
+        /// <summary>Names the type a shared result descriptor stands for. Only the categories the descriptor
+        /// identifies completely — the numeric primitives, <c>bool</c>, <c>string</c> — can be named; a reference,
+        /// enum or other struct result carries no identity and stays "cannot say".</summary>
+        private ComputedValue FromKind(OperandKind kind)
+        {
+            switch (kind.Category)
+            {
+                case OperandCategory.String:
+                    return new ComputedValue(_compilation.GetSpecialType(SpecialType.System_String), kind);
+                case OperandCategory.Bool:
+                    return new ComputedValue(
+                        Lift(_compilation.GetSpecialType(SpecialType.System_Boolean), kind.IsNullable), kind);
+                case OperandCategory.Numeric:
+                {
+                    var special = SymbolFacts.ToSpecialType(kind.Kind);
+                    if (special == SpecialType.None)
+                        return ComputedValue.None;
+                    return new ComputedValue(Lift(_compilation.GetSpecialType(special), kind.IsNullable), kind);
+                }
+                default:
+                    return ComputedValue.None;
+            }
+        }
+
+        private ITypeSymbol Lift(ITypeSymbol type, bool nullable) =>
+            nullable ? _compilation.GetSpecialType(SpecialType.System_Nullable_T).Construct(type) : type;
+
+        /// <summary>
         /// Types a <c>:: dynamic</c> definition body by the model the engine compiles it against at <b>this</b> call
         /// site.
         /// <para><c>:: dynamic</c> does not declare an untyped body. The engine compiles the body once per call site
@@ -1357,21 +1513,19 @@ namespace Heddle.Generator.Emit
         /// <c>RuntimeBinderException</c> at render where the engine had refused the template outright, and where the
         /// value was <c>null</c> — <c>@frame(null)</c>, whose model the engine types <c>System.Object</c> — the
         /// dynamic read yielded empty and the page RENDERED what the engine will not compile at all.</para>
-        /// <para>Only a call form whose value has no static type keeps an untyped body, because there the engine has
-        /// none either. In slot mode a value the emitter cannot type at all degrades instead: the body's
-        /// <c>@out</c> values are checked against the slot type, and there would be nothing left to check them
-        /// against.</para>
+        /// <para>Only a call form the engine <b>itself</b> types <c>dynamic</c> keeps an untyped body. A value the
+        /// emitter merely cannot type degrades: "the emitter cannot say" and "the engine has no type" are different
+        /// answers, and treating the first as the second is how a dynamically-bound body got emitted where the
+        /// engine had bound one statically.</para>
         /// </summary>
-        private bool TryTypeCallSiteBody(CallParameter cp, BodyContext bctx, bool slotMode, BlockPosition position,
+        private bool TryTypeCallSiteBody(CallParameter cp, BodyContext bctx, BlockPosition position,
             ref BodyContext defBodyCtx, out string reason)
         {
             reason = null;
             var model = DynamicDefinitionBodyModel(cp, bctx);
             if (model == null)
             {
-                if (!slotMode)
-                    return true;
-                reason = "slot definition with a dynamic body model and an untypeable caller value";
+                reason = "dynamic definition body over a caller value this call site cannot type";
                 return false;
             }
 
@@ -1397,13 +1551,13 @@ namespace Heddle.Generator.Emit
         /// <c>dynamic</c> exit before it resolves anything, and the body gets a <c>dynamic</c> model. That is not a
         /// refusal on its own: an <c>@out</c> of a literal or of the definition's own prop is still statically typed
         /// and still checked. It is only an <c>@out</c> that reads the model which the engine then refuses.
-        /// <para>Null is "cannot say" — a computed native expression the emitter does not type, a chained value,
-        /// embedded C#. See <see cref="TryTypeCallSiteBody"/> for what becomes of it.</para>
+        /// <para>Null is "cannot say" — a computed expression outside what the shared operator tables decide, a
+        /// chained value, embedded C#. See <see cref="TryTypeCallSiteBody"/> for what becomes of it.</para>
         /// </summary>
         private ITypeSymbol DynamicDefinitionBodyModel(CallParameter cp, BodyContext bctx)
         {
             if (cp.NativeExpression != null)
-                return SlotValueType(cp, bctx);
+                return CallSiteValueType(cp, bctx);
 
             if (!cp.IsModelTypeParameter)
                 return null;
@@ -1412,7 +1566,7 @@ namespace Heddle.Generator.Emit
             bool propRead = !cp.RootReference && segments != null && segments.Length > 0 &&
                             !string.IsNullOrEmpty(segments[0]) &&
                             bctx.Props != null && bctx.Props.ByName.ContainsKey(segments[0]);
-            return propRead ? SlotValueType(cp, bctx) : _compilation.DynamicType;
+            return propRead ? CallSiteValueType(cp, bctx) : _compilation.DynamicType;
         }
 
         /// <summary>The symbol for a decoded literal, or null where the emitter must not claim one — an out-of-range

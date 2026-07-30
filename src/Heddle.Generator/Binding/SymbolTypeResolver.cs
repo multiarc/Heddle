@@ -433,6 +433,35 @@ namespace Heddle.Generator.Binding
             Classify(type, refStructAllowed: false, out reason);
 
         /// <summary>
+        /// Why a <see cref="TypeKind"/> can never be written into generated C#, or null where the kind itself is no
+        /// obstacle and the rest of the walk decides. <see cref="TypeKind.Array"/> is the caller's, because it is
+        /// answered by recursion rather than by a sentence.
+        /// <para>The kinds are answered here, apart from the symbol, so the table can be asked about every one of
+        /// them. Two — <see cref="TypeKind.Unknown"/> and <see cref="TypeKind.Module"/> — have no C# compilation
+        /// that produces a symbol carrying them, so a walk taking symbols could only ever leave those labels
+        /// asserted by nothing; grouped with a neighbour, deleting one changed no answer at all.</para>
+        /// </summary>
+        internal static string UnnameableKind(TypeKind kind)
+        {
+            switch (kind)
+            {
+                case TypeKind.Error:
+                case TypeKind.Unknown:
+                    return "does not resolve to a type this compilation can name";
+                case TypeKind.Pointer:
+                case TypeKind.FunctionPointer:
+                    return "is a pointer type, which generated code cannot name outside an unsafe context";
+                case TypeKind.TypeParameter:
+                    return "is a type parameter, and generated code has no generic context to bind it in";
+                case TypeKind.Module:
+                case TypeKind.Submission:
+                    return "is not a type C# has a syntax for";
+                default:
+                    return null;
+            }
+        }
+
+        /// <summary>
         /// The one walk behind both, with the single verdict that varies by <b>position</b> as its parameter.
         /// <para><paramref name="refStructAllowed"/> is true exactly where the spelling only has to be a name the
         /// consumer's compiler accepts — the outermost type of a member hop, whose value stays in a local. It is
@@ -451,26 +480,14 @@ namespace Heddle.Generator.Binding
             if (type == null)
                 return NameFault.None;
 
-            switch (type.TypeKind)
-            {
-                case TypeKind.Array:
-                    // An array is exactly as writable as its element type, and an element type has to be able to
-                    // hold a value too — `int*[]` and `Math[]` are both rejected on the element, not the brackets.
-                    return Classify(((IArrayTypeSymbol) type).ElementType, refStructAllowed: false, out reason);
-                case TypeKind.Error:
-                case TypeKind.Unknown:
-                    return Unusable(type, "does not resolve to a type this compilation can name", out reason);
-                case TypeKind.Pointer:
-                case TypeKind.FunctionPointer:
-                    return Unusable(type, "is a pointer type, which generated code cannot name outside an unsafe " +
-                                          "context", out reason);
-                case TypeKind.TypeParameter:
-                    return Unusable(type, "is a type parameter, and generated code has no generic context to bind " +
-                                          "it in", out reason);
-                case TypeKind.Module:
-                case TypeKind.Submission:
-                    return Unusable(type, "is not a type C# has a syntax for", out reason);
-            }
+            // An array is exactly as writable as its element type, and an element type has to be able to hold a
+            // value too — `int*[]` and `Math[]` are both rejected on the element, not the brackets.
+            if (type.TypeKind == TypeKind.Array)
+                return Classify(((IArrayTypeSymbol) type).ElementType, refStructAllowed: false, out reason);
+
+            var kindReason = UnnameableKind(type.TypeKind);
+            if (kindReason != null)
+                return Unusable(type, kindReason, out reason);
 
             if (type.SpecialType == SpecialType.System_Void)
                 return Unusable(type, "is 'void', which cannot be a parameter, a local or a cast target", out reason);

@@ -205,27 +205,30 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// The <c>:: dynamic</c> caller value the emitter genuinely cannot type: inside a <c>@list</c> body the model
-        /// is the element, whose type the emitter deliberately does not guess. The engine types it and compiles the
-        /// template happily, so this degrade is a cost paid and not a divergence caught — which is why the fitting
-        /// single-call file next to it has to keep precompiling, or the "cannot say" exit would be swallowing the
-        /// whole rule.
+        /// An <c>@out(this)</c> inside an <c>@list</c> body, where the value is the element the host iterates. The
+        /// element type is a real static type — the host resolves the collection's <c>IEnumerable&lt;T&gt;</c> — so
+        /// the slot check applies there like anywhere else: a fitting element renders the engine's bytes, and an
+        /// element the slot cannot take degrades on the same refusal the engine raises. Refusing the shape wholesale
+        /// would have taken the ordinary per-item slot projection off the precompiled tier.
         /// </summary>
         [Fact]
-        public void ADynamicSlotDefinitionDegradesWhenTheCallerValueCannotBeTyped()
+        public void AnOutValueInsideAListBodyIsCheckedAgainstTheElementType()
         {
-            const string listKey = "views/slot-value-dynamic-body-untypeable.heddle";
-            const string directKey = "views/slot-value-dynamic-body-typeable.heddle";
-            const string definition = "@%\n<frame(out:: " + OptionType + ")>{{[@out(this)]}} :: dynamic\n%@\n";
-            var listTemplate = "@model(){{" + MenuType + "}}" + definition +
-                               "@list(Options){{@frame(this){{[@(Label)]}}}}\n";
-            var directTemplate = "@model(){{" + OptionType + "}}" + definition +
-                                 "@frame(this){{[@(Label)]}}\n";
+            const string fitsKey = "views/slot-value-list-element-fits.heddle";
+            var fits = "@model(){{" + MenuType + "}}@%\n<frame(out:: " + OptionType + ")>{{[@out(this)]}} :: dynamic\n%@\n" +
+                       "@list(Options){{@frame(this){{[@(Label)]}}}}\n";
 
-            var gen = DifferentialHarness.Generate(new[] { (listKey, listTemplate), (directKey, directTemplate) });
-            DifferentialHarness.ExpectDegrade(gen, listKey);
-            DifferentialHarness.ExpectPrecompiled(gen, directKey);
-            AssertEngineAccepts(listTemplate, typeof(Menu));
+            var (precompiled, dyn) = DifferentialHarness.Render(fitsKey, fits, typeof(Menu),
+                new Menu { Options = new System.Collections.Generic.List<MenuOption> { new MenuOption { Label = "L" } } });
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal("[[L]]\n", dyn);
+
+            const string misfitsKey = "views/slot-value-list-element-misfits.heddle";
+            var misfits = "@model(){{" + MenuType + "}}@%\n<frame(out:: " + ArticleType + ")>{{[@out(this)]}} :: dynamic\n%@\n" +
+                          "@list(Options){{@frame(this){{[q]}}}}\n";
+
+            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (misfitsKey, misfits) }), misfitsKey);
+            AssertEngineRefuses(misfits, typeof(Menu), Mismatch(OptionType, ArticleType));
         }
 
         /// <summary>
