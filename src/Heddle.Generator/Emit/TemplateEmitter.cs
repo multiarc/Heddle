@@ -363,13 +363,18 @@ namespace Heddle.Generator.Emit
             /// borrows the component's props (a region declares none of its own).</summary>
             public PropLayoutInfo RegionHostProps { get; }
 
-            /// <summary>The model the engine compiles this <c>:: dynamic</c> definition body against at the one call
-            /// site that built it. A <c>:: dynamic</c> definition is compiled by the engine once per call site off
-            /// the model that call site hands it, so the declaration does not mean "untyped" — it means "whatever
-            /// this caller passes". Where that is a real type the body is typed against it and this only keys the
-            /// body cache; where it is the compilation's <c>dynamic</c> the body genuinely has no model and this is
-            /// what the <c>@out</c> check reads. Null everywhere else — including inside a nested <c>@list</c> body,
-            /// whose model is the element and therefore not this.</summary>
+            /// <summary>The model behind a body emitted on the dynamic tier, where <see cref="ModelSymbol"/> is
+            /// null but the engine still has a static type in hand.
+            /// <para>Two bodies set it. A <c>:: dynamic</c> definition body carries the model of the one call site
+            /// that built it: the engine compiles such a definition once per call site off the model that call site
+            /// hands it, so the declaration does not mean "untyped", it means "whatever this caller passes". A
+            /// nested <c>@list</c> body carries the <b>element</b> type, which is that body's model for exactly the
+            /// same reason — the reads are emitted dynamically, but the call sites inside the body are typed by it.
+            /// Where the value is the compilation's <c>dynamic</c> the body genuinely has no static model, and that
+            /// is what the <c>@out</c> check reads. Null on the typed tier and in a body with neither source.</para>
+            /// <para>This is part of the definition-body cache key (see <c>DynamicBodyModelId</c>): two call sites
+            /// that hand the same <c>:: dynamic</c> definition different models get different bodies, so anything
+            /// that changes what this holds changes what may be shared.</para></summary>
             public ITypeSymbol DynamicBodyModel { get; }
 
             public BodyContext WithProps(PropLayoutInfo props) =>
@@ -716,6 +721,15 @@ namespace Heddle.Generator.Emit
 
             if (name == "list")
             {
+                // The engine checks the value against the extension's declared accepted type before it compiles the
+                // call, and refuses the whole template when a statically-typed value is not enumerable. Without the
+                // same check here a template the engine will not compile precompiled and rendered.
+                if (!EnumerableValueAccepted(CallSiteValueType(cp, bctx)))
+                {
+                    reason = "'list' value is not an enumerable type";
+                    return null;
+                }
+
                 // Element body on the dynamic tier; the enclosing prop layout, slot mode and fill scope propagate,
                 // and BodyModelRules' ElementOfData row decides the context.
                 if (!TryNestedBodyContext("list", bctx, ListElementModel(cp, bctx), out var itemCtx))
@@ -771,7 +785,8 @@ namespace Heddle.Generator.Emit
             if (callTarget == CallTargetKind.Function && string.IsNullOrEmpty(item.ParameterTemplate))
             {
                 var callNode = BuildFunctionCallNode(name, cp, item.Position);
-                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts, AllocateHopLocal);
+                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts, AllocateHopLocal,
+                    bctx.Props);
                 var expr = writer.WriteRoot(callNode);
                 DrainUnresolvable(writer);
                 if (expr == null)
@@ -1326,7 +1341,7 @@ namespace Heddle.Generator.Emit
                 return LiteralType(literal);
 
             if (cp.NativeExpression != null)
-                return ComputedValueType(cp.NativeExpression, model).Symbol;
+                return ComputedValueType(cp.NativeExpression, model, bctx.Props).Symbol;
 
             if (bctx.IsDynamic && model == null)
                 return null;
@@ -1388,6 +1403,29 @@ namespace Heddle.Generator.Emit
             return element ?? _compilation.DynamicType;
         }
 
+        /// <summary>
+        /// Whether the engine's accepted-type check would let this value reach <c>@list</c>. The engine asks whether
+        /// the value's static type is assignable to <c>IEnumerable</c>, after unwrapping a nullable and with a value
+        /// that has no static type exempt — a <c>dynamic</c> value is decided at render, not at compile.
+        /// <para>"Cannot say" is exempt for the same reason it is everywhere else: refusing on a type the emitter
+        /// never established would cost the precompiled tier over templates that are fine.</para>
+        /// </summary>
+        private bool EnumerableValueAccepted(ITypeSymbol valueType)
+        {
+            if (valueType == null || valueType.TypeKind == TypeKind.Dynamic || valueType.TypeKind == TypeKind.Error)
+                return true;
+            if (TryGetNullableUnderlying(valueType, out var underlying))
+                valueType = underlying;
+
+            if (valueType.SpecialType == SpecialType.System_Collections_IEnumerable)
+                return true;
+            foreach (var iface in valueType.AllInterfaces)
+                if (iface.SpecialType == SpecialType.System_Collections_IEnumerable)
+                    return true;
+
+            return false;
+        }
+
         private static IEnumerable<ITypeSymbol> SelfAndInterfaces(ITypeSymbol type)
         {
             yield return type;
@@ -1416,7 +1454,7 @@ namespace Heddle.Generator.Emit
         /// operator, an operand read off a <c>dynamic</c> receiver — is "cannot say", and the caller degrades rather
         /// than guessing at a model the engine has typed statically.</para>
         /// </summary>
-        private ComputedValue ComputedValueType(ExprNode node, ITypeSymbol model)
+        private ComputedValue ComputedValueType(ExprNode node, ITypeSymbol model, PropLayoutInfo props)
         {
             switch (node)
             {
@@ -1431,9 +1469,18 @@ namespace Heddle.Generator.Emit
 
                 case PathNode path:
                 {
+                    // A body prop read wins over the model on the first segment, the way the engine's own compiler
+                    // tries the active layout before it ever looks at the scope type. Typing this off the model
+                    // instead gave a shadowed name the shadowed member's type, and the value the call site was
+                    // judged by was not the value it passes.
+                    var propType = PropRootType(path, props);
+                    if (propType != null)
+                        return new ComputedValue(propType, SymbolFacts.Classify(propType));
+
                     // A target-rooted or `::`-rooted path, and any path over a scope with no static type, is where
                     // the engine's own compiler stops resolving — it refuses the expression rather than typing it.
-                    if (path.Target != null || path.RootRef || model == null || model.TypeKind == TypeKind.Dynamic)
+                    if (path.Target != null || path.RootRef || model == null || model.TypeKind == TypeKind.Dynamic ||
+                        IsPropName(path, props))
                         return ComputedValue.None;
                     var resolved = ResolvedTypeOf(model, path.Segments);
                     return resolved == null
@@ -1443,14 +1490,14 @@ namespace Heddle.Generator.Emit
 
                 case UnaryNode unary:
                 {
-                    var operand = ComputedValueType(unary.Operand, model);
+                    var operand = ComputedValueType(unary.Operand, model, props);
                     return FromKind(NativeOperatorRules.UnaryResult(unary.Operator, operand.Kind));
                 }
 
                 case BinaryNode binary:
                 {
-                    var left = ComputedValueType(binary.Left, model);
-                    var right = ComputedValueType(binary.Right, model);
+                    var left = ComputedValueType(binary.Left, model, props);
+                    var right = ComputedValueType(binary.Right, model, props);
                     var result = NativeOperatorRules.BinaryResult(binary.Operator, left.Kind, right.Kind);
                     // `x ?? null` is `x`'s own type, identity included — the one supported result the descriptor
                     // alone could not name.
@@ -1462,9 +1509,9 @@ namespace Heddle.Generator.Emit
 
                 case TernaryNode ternary:
                 {
-                    var condition = ComputedValueType(ternary.Condition, model);
-                    var whenTrue = ComputedValueType(ternary.WhenTrue, model);
-                    var whenFalse = ComputedValueType(ternary.WhenFalse, model);
+                    var condition = ComputedValueType(ternary.Condition, model, props);
+                    var whenTrue = ComputedValueType(ternary.WhenTrue, model, props);
+                    var whenFalse = ComputedValueType(ternary.WhenFalse, model, props);
                     if (NativeOperatorRules.ClassifyTernary(condition.Kind, whenTrue.Kind, whenFalse.Kind) !=
                         OperatorVerdict.Supported)
                         return ComputedValue.None;
@@ -1474,6 +1521,32 @@ namespace Heddle.Generator.Emit
                 default:
                     return ComputedValue.None;
             }
+        }
+
+        /// <summary>True when this path resolves prop-first: no target, no <c>::</c> root, and a first segment the
+        /// active layout carries. Once that holds the model is out of the picture — a first segment naming a prop
+        /// never falls back to the member it shadows.</summary>
+        private static bool IsPropName(PathNode path, PropLayoutInfo props) =>
+            path.Target == null && !path.RootRef && props != null && path.Segments.Count != 0 &&
+            props.ByName.ContainsKey(path.Segments[0]);
+
+        /// <summary>The static type of a prop-rooted path, or null when the path is not prop-rooted or its remaining
+        /// segments do not resolve off the slot's declared type.</summary>
+        private ITypeSymbol PropRootType(PathNode path, PropLayoutInfo props)
+        {
+            if (!IsPropName(path, props))
+                return null;
+            var slot = props.ByName[path.Segments[0]];
+            if (slot.Type == null)
+                return null;
+            if (path.Segments.Count == 1)
+                return slot.Type;
+            if (slot.Type.TypeKind == TypeKind.Dynamic)
+                return null;
+            var rest = new string[path.Segments.Count - 1];
+            for (int i = 1; i < path.Segments.Count; i++)
+                rest[i - 1] = path.Segments[i];
+            return ResolvedTypeOf(slot.Type, rest);
         }
 
         /// <summary>Names the type a shared result descriptor stands for. Only the categories the descriptor
@@ -1891,7 +1964,7 @@ namespace Heddle.Generator.Emit
             return false;
         }
 
-        private sealed class PropSlotInfo
+        internal sealed class PropSlotInfo
         {
             public string Name;
             public ITypeSymbol Type;
@@ -1901,7 +1974,7 @@ namespace Heddle.Generator.Emit
             public int Index;
         }
 
-        private sealed class PropLayoutInfo
+        internal sealed class PropLayoutInfo
         {
             public readonly List<PropSlotInfo> Slots = new List<PropSlotInfo>();
             public readonly Dictionary<string, PropSlotInfo> ByName =
@@ -2199,7 +2272,8 @@ namespace Heddle.Generator.Emit
                 return false;
             }
 
-            var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts, AllocateHopLocal);
+            var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts, AllocateHopLocal,
+                bctx.Props);
             var body = writer.WriteRoot(arg.Value);
             DrainUnresolvable(writer);
             if (body == null) { reason = "unwritable dynamic arg"; return false; }
@@ -2420,7 +2494,8 @@ namespace Heddle.Generator.Emit
                     return false;
                 }
 
-                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts, AllocateHopLocal);
+                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts, AllocateHopLocal,
+                    bctx.Props);
                 var expr = writer.WriteRoot(cp.NativeExpression);
                 DrainUnresolvable(writer);
                 if (expr == null)
@@ -2520,7 +2595,8 @@ namespace Heddle.Generator.Emit
             if (innerTarget == CallTargetKind.Function)
             {
                 var callNode = BuildFunctionCallNode(name, inner.CallParameter, inner.Position);
-                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts, AllocateHopLocal);
+                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts, AllocateHopLocal,
+                    bctx.Props);
                 var expr = writer.WriteRoot(callNode);
                 DrainUnresolvable(writer);
                 if (expr == null)
@@ -2569,7 +2645,7 @@ namespace Heddle.Generator.Emit
             return expr;
         }
 
-        private static IReadOnlyList<MemberPathWriter.HopEmit> MapHops(SymbolTypeResolver.PathResolution resolution)
+        internal static IReadOnlyList<MemberPathWriter.HopEmit> MapHops(SymbolTypeResolver.PathResolution resolution)
         {
             var hops = new List<MemberPathWriter.HopEmit>(resolution.Hops.Count);
             foreach (var hop in resolution.Hops)
