@@ -480,4 +480,41 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
     {
         public static string Title => "static";
     }
+
+    /// <summary>A collection reaching <c>IEnumerable&lt;T&gt;</c> at two different <c>T</c>. The runtime's
+    /// reflection walk picks one of them and compiles the whole <c>@list</c> body against it; which one it picks is
+    /// an order no build-time walk can reproduce, so the emitter has to know it cannot say rather than proceed with
+    /// no element type at all.</summary>
+    public sealed class AmbiguousEnumerable :
+        System.Collections.Generic.IEnumerable<int>, System.Collections.Generic.IEnumerable<string>
+    {
+        System.Collections.Generic.IEnumerator<int>
+            System.Collections.Generic.IEnumerable<int>.GetEnumerator()
+        {
+            yield return 1;
+            yield return 2;
+        }
+
+        System.Collections.Generic.IEnumerator<string>
+            System.Collections.Generic.IEnumerable<string>.GetEnumerator()
+        {
+            yield return "x";
+            yield return "y";
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        {
+            yield return 1;
+            yield return 2;
+        }
+    }
+
+    public sealed class AmbiguousElementHolder
+    {
+        public AmbiguousEnumerable Multi { get; set; } = new AmbiguousEnumerable();
+        public System.Collections.Generic.List<string> Single { get; set; } =
+            new System.Collections.Generic.List<string> { "x", "y" };
+        public System.Collections.Generic.List<int> Numbers { get; set; } =
+            new System.Collections.Generic.List<int> { 1, 2 };
+    }
 }

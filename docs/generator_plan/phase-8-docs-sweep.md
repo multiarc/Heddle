@@ -2832,3 +2832,180 @@ else was standing on that loss. Anything downstream that keys on the lossy value
 coarser key than it asked for, and the fix is a sharpening it never consented to. The place to look is
 every cache, every dedup key and every equality comparison the corrected value flows into; here it was one
 dictionary key three hundred lines away, and the engine had a name for the invariant it broke.
+## Twenty-first review cycle (2026-07-31)
+
+Nine findings. One regression introduced by the previous commit — a build-time refusal turned into a
+shipped template that throws at render. Four pre-existing divergences, **three of them silently wrong
+output**, and two of those in code the register had already predicted was uninspected. Two terms of the
+previous commit's new rule that nothing held. One unreachable arm, decided.
+
+The reviewers worked to a new protocol: **enumerate the whole class before reporting the instance.**
+Recent cycles produced two findings each. This one produced nine — including the severity-1
+`System.Object` half that nobody would have found from the `dynamic` repro, because that half only
+appears once you ask what the declaration *resolves to* rather than which words it is spelled with.
+
+### The order two texts are built in
+
+A definition call has two texts: the definition's body, and the content the caller wrote inside the
+call. The engine compiles the caller content first and the body second. The emitter did the reverse.
+
+That was inert for as long as it was, and stopped being inert the moment the previous commit made
+**first arrival** decide the typing of a body two call sites share. After that the order settles which
+of the two call sites types the shared body, and the emitter was picking the wrong one:
+
+```
+@model(){{…RegionArticle}}@%
+<frame>{{[@(Title)]}} :: dynamic
+<outer>{{@frame(this){{@frame(5)}}}} :: …RegionArticle
+%@
+@outer()
+```
+
+The engine refuses at compile — `HED0001: Property Title not found in Type [Int32]`. The commit under
+review **precompiled** it, and threw `InvalidCastException: 'System.Int32' to '…RegionArticle'` at
+render; the parent commit degraded it. Seven order-sensitive constructs were built and measured, and
+exactly one site is inverted: the caller content of the *same* call. The mirror, an unrelated call,
+`@if`/`@else`, `@list`-then-direct and chains in both directions all matched already. All three
+spellings that resolve to `System.Object` reproduce it.
+
+### A spelling where the engine has a resolved answer
+
+The largest finding of the cycle, and the one the protocol earned.
+
+A region's body is typed either by a model it declares or by the value its call site passes. The engine
+decides which by resolving the declaration and asking whether the answer is `System.Object` — so
+`dynamic`, `object`, `System.Object` and declaring nothing at all are one case, and every one of them
+is typed from the call site. The emitter decided by looking at the *text*: empty or the word `object`
+went one way, everything else the other. Two of the four spellings therefore came out with no model at
+all, and **no region path called the call-site typing at all**.
+
+Both faces, on a host whose element shadows one member, with a single call site and no sharing:
+
+* `@%<row>{{[@(Tag)] [@(Missing)]}} :: dynamic%@@list(Items){{@row(this)}}` — the engine refuses at
+  compile (`HED0001`, naming the element type); the generated tier precompiled, the consumer's build
+  was green, and it threw `RuntimeBinderException` at render.
+* `@%<row>{{[@(Tag)]}} :: dynamic%@@row(this)|@list(Items){{@row(this)}}` — the engine prints
+  `[host]|[host]`, the generated tier `[host]|[element]`. Both render. Nothing is reported by either
+  tier. That is the silent-wrong-output face.
+
+Measured over 24 cells per spelling: nothing and `:: object` correct; `:: dynamic` eleven
+generator-renders-where-engine-refuses plus two different-bytes; **`:: System.Object` fifteen and
+three**. Widening the string test to include the word `dynamic` was measured and is *not* the fix — it
+closes thirteen of thirty-one cells and leaves every `System.Object` cell open, which is precisely the
+mistake this defect class is made of. The fix re-keys on the resolved answer and routes that arm
+through the same call-site typing a non-region definition takes.
+
+**Reach is wide, not exotic:** a definition is a region exactly when it is nested inside a component
+body, so every such definition is one.
+
+### A body identity with a term the engine does not have
+
+The engine memoizes each item of a definition body by the parsed item it came from, and saves and
+restores the region fill scope around the body compile **without putting it in that memo**. So two call
+sites inside one component body that fill the same region differently still run one body — the first
+site's, fills included.
+
+```
+<panel>{{@%<:head>{{[d]}}%@@head()}} :: …RegionFeed
+<outer>{{@panel(){{@%<head:head>{{[A]}}%@}}|@panel(){{@%<head:head>{{[B]}}%@}}}} :: …RegionFeed
+```
+
+Engine `[A]|[A]`; generated `[A]|[B]`. Both render, nothing reported. Eleven of seventeen enclosing-body
+shapes diverge — every shape that is not a parser isolation boundary. Document scope, `@if` at document
+scope and a document with no definitions block match, because the parser hands each call site its own
+copy of the definition tree there.
+
+A one-line fix does not work: dropping the fill scope from the sharing key alone leaves the equality
+check succeeding without transplanting the first context, so the emitted-body cache key still splits.
+It had to come out of **both** keys — and once it had, the two keys were the same string, which is what
+they should always have been. They are now computed once, and the identity they carry is the engine's:
+the definition, and the parse context it was reached through.
+
+### An answer the engine has and this side cannot name
+
+A collection reaching `IEnumerable<T>` at two different `T` is a shape the emitter cannot resolve,
+because the host picks one by reflection order. The emitter said "cannot say" — and "cannot say" is the
+answer every gate downstream exempts. `@list(Multi){{@list(this){{y}}}}` precompiled and rendered empty
+where the engine refuses (`HED0004`, `System.Int32` against `IEnumerable`); `@list(Multi){{[@(Nope)]}}`
+precompiled and threw where the engine refuses (`HED0001`).
+
+The engine *does* pick one, so it has a definite element type and compiles the whole body against it.
+There are three answers here, not two: a type, "I cannot say", and **"the engine has one and I cannot
+name it"** — and only the second is exempt. Not being able to reproduce the order the runtime chose in
+is a reason to leave the body to the dynamic tier, not to emit one against no type at all.
+
+### A slot the region declared and never entered
+
+The engine swaps the slot parameter type around every definition body it compiles and does **not**
+exempt a region — in contrast to the prop layout on the line immediately above it, which it does. The
+emitter never set it for a region, so both `@out` gates took the wrong branch: a valueless `@out()`
+inside such a region rendered `[]` where the engine refuses with `HED5013`, and the same region with
+`@out(this)` degraded where the engine renders. One line, two faces, opposite directions.
+
+### Two terms that decided nothing
+
+Of the four terms in the previous commit's new sharing rule, two were load-bearing (collapsing the
+parse-context identity reddens 2; deleting the degrade arm reddens 1) and two reddened nothing at all
+out of 847. Both were removed rather than pinned. The fill-scope term is the defect above. The
+`DynamicBodyModel` equality term is **redundant by construction, not merely untested**: which arm gives
+a body its model is a property of the definition rather than of the call site, and both arms leave the
+model symbol and the dynamic body model in step, so agreement on the first two already implies
+agreement on the third. Re-adding it changes nothing over 879 tests, which is what that argument
+predicts.
+
+The rule this leaves: **when a term cannot be reddened, say which of the two it is — untested, or
+unable to decide anything — and delete it if it is the second.** A term that cannot decide is a claim,
+and the reader will believe it.
+
+### The register's own predicted residual was live
+
+Cycle 16's `BodyContext` tables are the series' one enumeration success, and the register recorded, in
+plain words, that they answered only one of the seven columns and that a future cycle should write the
+rest. Two of the uninspected columns each held a defect: the slot column at both region sites, and the
+model columns at the typed-region site for the two spellings that resolve to `System.Object`. The grid
+is now written out in the register, along with the question that produced the fill-scope finding —
+*what is the emitter's body identity, term by term, and does the engine key on the same terms?*
+
+### The unreachable arm
+
+`IntegralText`'s `char` case cannot be reached: its two callers are the enum branch — C# admits no enum
+over `char` — and the narrow-integral writer, whose switch has no `char` arm. **Deleted**, and the
+method's contract written down. That is the opposite decision from the export guard's container arm,
+and for the reason given there: that arm is symmetric with a live one and reads as a pair, so labelling
+it costs nothing. This one is symmetric with nothing — it is a case in a list of cases, and a reader
+counting the list would conclude the callers accept `char`.
+
+### The sweep
+
+214 rows, captured with the committed emitter and with the emitter at `HEAD` and diffed on
+classification and on rendered bytes: the region-spelling grid (5 declared spellings × 18 body-and-call
+shapes × both region declaration syntaxes), the emission-order set, the enclosing-body set for fills,
+the ambiguous-element set and the region-slot set. Plus the 63-template corpus through its
+classification and render-parity gates, and the ten samples' goldens.
+
+* **Newly degrading: 27.** Twenty-four had been **divergences** — the generated tier rendering or
+  throwing where the engine refuses at compile. **Three had been matching**: two are a `:: dynamic`
+  region reached bare and then from a `@list` body, which the sharing rule's existing degrade arm now
+  sees for the first time, and one is an `@list` body over an ambiguous element that both tiers
+  happened to render.
+* **Bytes moved while still precompiling: 21.** All twenty-one moved *to* the engine's behaviour —
+  fifteen from differing bytes to identical bytes, six from one tier throwing to both throwing the same
+  exception.
+* **Newly precompiling: 25.** Seventeen render the engine's bytes exactly; eight reproduce the engine's
+  `InvalidCastException`, message included.
+* Corpus classification and render parity unchanged; all ten sample goldens unchanged.
+
+### The durable lesson
+
+Two, and they are the same one seen from either end.
+
+**A class is not enumerated until it is enumerated over the thing the engine keys on.** The reviewers
+did not report `:: dynamic` and stop; they resolved every spelling a region can carry and measured the
+grid, and that is the only reason the `System.Object` half exists in this record at all. It is a
+severity-1 silent wrong output, it is not exotic, and a repro-driven cycle would have closed thirteen
+cells of thirty-one and written "fixed" beside it.
+
+**And a residual written down is a finding waiting to be collected.** The register said, three cycles
+ago, that only one of seven `BodyContext` columns had ever been checked, and named the other six. Two
+of them held defects. The cheapest work in this cycle was reading the register's own list of what it
+had not looked at.

@@ -21,6 +21,7 @@ namespace Heddle.Generator.IntegrationTests
     public class DynamicDefinitionBodyTests
     {
         private const string ArticleType = "Heddle.Generator.IntegrationTests.Fixtures.Article";
+        private const string RegionArticleType = "Heddle.Generator.IntegrationTests.Fixtures.RegionArticle";
         private const string MenuType = "Heddle.Generator.IntegrationTests.Fixtures.Menu";
         private const string CartType = "Heddle.Generator.IntegrationTests.Fixtures.Cart";
         private const string OrderType = "Heddle.Generator.IntegrationTests.Fixtures.Order";
@@ -355,6 +356,50 @@ namespace Heddle.Generator.IntegrationTests
             var precompiledThrow = Assert.ThrowsAny<Exception>(
                 () => DifferentialHarness.RenderGenerated(dynGen, dynKey, model));
             Assert.Equal(engineThrow.GetType(), precompiledThrow.GetType());
+        }
+
+        /// <summary>The two texts a definition call has to build — its body and the content the caller wrote inside
+        /// the call — and the order they are built in. The engine compiles the caller content first, and inside a
+        /// component body two call sites into one definition share a single compiled body, so the order settles
+        /// which of the two types it. Built body-first, the emitter typed the shared body from the outer call and
+        /// precompiled a template the engine refuses at compile time; it then threw the engine's own
+        /// <c>InvalidCastException</c> at render, on a page the reader was told had built cleanly.</summary>
+        [Theory]
+        [InlineData("dynamic")]
+        [InlineData("object")]
+        [InlineData("System.Object")]
+        [InlineData("")]
+        public void CallerContentTypesASharedBodyBeforeTheCallsOwnBodyDoes(string spelling)
+        {
+            var declared = spelling.Length == 0 ? string.Empty : " :: " + spelling;
+            var t = "@model(){{" + RegionArticleType + "}}@%\n" +
+                    "<frame>{{[@(Title)]}}" + declared + "\n" +
+                    "<outer>{{@frame(this){{@frame(5)}}}} :: " + RegionArticleType + "\n%@\n@outer()\n";
+            var key = "views/order-caller-content-first-" + (spelling.Length == 0 ? "none" : spelling) + ".heddle";
+
+            var compiled = new HeddleTemplate(t, new CompileContext(new TemplateOptions(), typeof(RegionArticle)));
+            Assert.False(compiled.CompileResult.Success);
+            Assert.Contains("HED0001", compiled.CompileResult.ToString());
+
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            Assert.Empty(gen.TemplateSources);
+            var reported = gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
+            Assert.Contains(reported, d => d.Id == "HED7008" && d.GetMessage().Contains("Title"));
+        }
+
+        /// <summary>The near neighbour the order must not cost: both call sites hand the shared body the same
+        /// model, so there is nothing to disagree about and the template still precompiles and renders the engine's
+        /// bytes.</summary>
+        [Fact]
+        public void TwoCallSitesOfOneModelStillPrecompileWhateverTheOrder()
+        {
+            const string key = "views/order-caller-content-agrees.heddle";
+            var t = "@model(){{" + RegionArticleType + "}}@%\n<frame>{{[@(Title)]}} :: dynamic\n" +
+                    "<outer>{{@frame(this){{@frame(this)}}}} :: " + RegionArticleType + "\n%@\n@outer()\n";
+            var (pre, dyn) = DifferentialHarness.Render(key, t, typeof(RegionArticle),
+                new RegionArticle { Title = "T", Id = 9 });
+            Assert.Equal("[T]\n", dyn);
+            Assert.Equal(dyn, pre);
         }
     }
 }

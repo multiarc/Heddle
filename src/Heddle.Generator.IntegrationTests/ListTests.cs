@@ -190,5 +190,73 @@ namespace Heddle.Generator.IntegrationTests
             Assert.False(dynamicTemplate.CompileResult.Success);
             Assert.Contains("Heddle.Models.Range", dynamicTemplate.CompileResult.ToString(), StringComparison.Ordinal);
         }
+
+        private const string AmbiguousHolderType =
+            "Heddle.Generator.IntegrationTests.Fixtures.AmbiguousElementHolder";
+
+        /// <summary>
+        /// A collection reaching <c>IEnumerable&lt;T&gt;</c> at two different <c>T</c>. The host's reflection walk
+        /// picks one of them and the whole body is compiled against it, so the engine has an element type here —
+        /// just not one this side can reproduce, since the order it was picked in is the runtime's.
+        /// <para>Read as an ordinary "cannot say" the body went onto the dynamic tier with no model behind it, and
+        /// every gate downstream exempts that: <c>@list(this)</c> over an <c>int</c> element precompiled and
+        /// rendered empty where the engine refuses the template (<c>HED0004</c>), and a member the element does not
+        /// have precompiled and threw at render where the engine refuses it (<c>HED0001</c>). Not being able to
+        /// name the type the engine chose is a reason to leave the body alone, not to emit one against nothing.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("@list(this){{y}}", "HED0004")]
+        [InlineData("[@(Nope)]", "HED0001")]
+        public void AnAmbiguousElementTypeIsRefusedRatherThanTreatedAsUntyped(string body, string diagnostic)
+        {
+            var key = "views/list-ambiguous-element-" + diagnostic + ".heddle";
+            var t = "@model(){{" + AmbiguousHolderType + "}}@\\\n@list(Multi){{" + body + "}}\n";
+
+            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, t) }), key);
+
+            var dynamicTemplate = new HeddleTemplate(t,
+                new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(),
+                    typeof(AmbiguousElementHolder)));
+            Assert.False(dynamicTemplate.CompileResult.Success);
+            Assert.Contains(diagnostic, dynamicTemplate.CompileResult.ToString(), StringComparison.Ordinal);
+        }
+
+        /// <summary>The near neighbour: the same two bodies over a collection that reaches
+        /// <c>IEnumerable&lt;T&gt;</c> once. The element type is nameable there, so the first still degrades — for
+        /// the reason it always did, not for this one — and the second precompiles and renders the engine's bytes.
+        /// Without this the rule above would be indistinguishable from refusing every <c>@list</c>.</summary>
+        [Fact]
+        public void AnUnambiguousElementTypeIsUnaffected()
+        {
+            const string readKey = "views/list-unambiguous-element-read.heddle";
+            const string readTemplate =
+                "@model(){{" + AmbiguousHolderType + "}}@\\\n@list(Single){{[@()]}}\n";
+            var (pre, dyn) = DifferentialHarness.Render(readKey, readTemplate, typeof(AmbiguousElementHolder),
+                new AmbiguousElementHolder());
+            Assert.Equal("[x][y]\n", dyn);
+            Assert.Equal(dyn, pre);
+
+            // The very body the ambiguous rule refuses, over an element type that is nameable and enumerable.
+            const string nestedOkKey = "views/list-unambiguous-element-nested-ok.heddle";
+            const string nestedOkTemplate =
+                "@model(){{" + AmbiguousHolderType + "}}@\\\n@list(Single){{@list(this){{y}}}}\n";
+            var (nestedPre, nestedDyn) = DifferentialHarness.Render(nestedOkKey, nestedOkTemplate,
+                typeof(AmbiguousElementHolder), new AmbiguousElementHolder());
+            Assert.Equal("yy\n", nestedDyn);
+            Assert.Equal(nestedDyn, nestedPre);
+
+            // And over one that is nameable and not enumerable, where both tiers refuse — for the enumerability
+            // rule, which is a different rule and was already there.
+            const string nestedKey = "views/list-unambiguous-element-nested.heddle";
+            const string nestedTemplate =
+                "@model(){{" + AmbiguousHolderType + "}}@\\\n@list(Numbers){{@list(this){{y}}}}\n";
+            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (nestedKey, nestedTemplate) }),
+                nestedKey);
+            var nestedDynamic = new HeddleTemplate(nestedTemplate,
+                new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(),
+                    typeof(AmbiguousElementHolder)));
+            Assert.False(nestedDynamic.CompileResult.Success);
+            Assert.Contains("HED0004", nestedDynamic.CompileResult.ToString(), StringComparison.Ordinal);
+        }
     }
 }

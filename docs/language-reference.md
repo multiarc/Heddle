@@ -966,7 +966,10 @@ Rules:
 - **Region-context scope.** An override body runs in the **region's own context** — the
   component's props (`@(theme)`, `@(title)`) plus the region's model (`@(Title)` against
   `Article`) — exactly like the default body it replaces. An `@out(value)` inside a region body
-  is the ordinary "no slot" error (**HED5012**); a region is not the host of the component's slot.
+  is the ordinary "no slot" error (**HED5012**); a region does not inherit the component's slot.
+  A region that declares a slot **of its own** (`<r(out:: T)>`) is a slot definition like any other:
+  inside it `@out(value)` projects that region's caller content, and a bare `@out()` there is
+  **HED5013**.
 - **Self- and sibling calls.** Inside a fill body, calling the region's **own** name renders the
   region's *default* (no recursion); calling a **sibling** region resolves that sibling's fill
   (or default) — exactly like the default body it replaces.
@@ -985,6 +988,14 @@ Rules:
   renders the *component's* members at both call sites — and if the element's type is not the
   component's, the cast fails at render. Declare a separate region per model rather than calling one
   region from two places that hand it different types.
+  The **fill scope is not part of that identity either**: two calls in one component body that fill the
+  same region differently share the body the first of them compiled, fills included. Fill once per
+  component body, or move the second call to document scope, where each call parses its own copy.
+- **What the model is.** A region declaring `:: T` runs its body against `T`. A region declaring
+  `dynamic`, `object`, `System.Object` — or nothing at all — runs it against the value its call site
+  passes, because all four resolve to `System.Object` and none of them says anything about the model.
+  The one thing `dynamic` still changes is a call site that passes a member path: as everywhere else,
+  that reaches the model accessor's dynamic exit and the body's reads bind at render.
 - **Both backends.** Region defaults **and** overridden fills precompile natively under the
   source generator and render byte-identically to the dynamic engine.
 

@@ -379,9 +379,9 @@ namespace Heddle.Generator.Emit
             /// same reason — the reads are emitted dynamically, but the call sites inside the body are typed by it.
             /// Where the value is the compilation's <c>dynamic</c> the body genuinely has no static model, and that
             /// is what the <c>@out</c> check reads. Null on the typed tier and in a body with neither source.</para>
-            /// <para>This is part of the definition-body cache key (see <c>DynamicBodyModelId</c>): two call sites
-            /// that hand the same <c>:: dynamic</c> definition different models get different bodies, so anything
-            /// that changes what this holds changes what may be shared.</para></summary>
+            /// <para>Two call sites that hand the same <c>:: dynamic</c> definition different models do not get
+            /// different bodies — the engine gives them one, and <see cref="TryShareBodyTyping"/> is where that is
+            /// decided.</para></summary>
             public ITypeSymbol DynamicBodyModel { get; }
 
             public BodyContext WithProps(PropLayoutInfo props) =>
@@ -740,7 +740,14 @@ namespace Heddle.Generator.Emit
             {
                 // Element body on the dynamic tier; the enclosing prop layout, slot mode and fill scope propagate,
                 // and BodyModelRules' ElementOfData row decides the context.
-                if (!TryNestedBodyContext("list", bctx, ListElementModel(cp, bctx), out var itemCtx))
+                var elementModel = ListElementModel(cp, bctx, out var elementAmbiguous);
+                if (elementAmbiguous)
+                {
+                    reason = "collection reaches IEnumerable<T> at more than one element type";
+                    return null;
+                }
+
+                if (!TryNestedBodyContext("list", bctx, elementModel, out var itemCtx))
                 {
                     reason = "no pinned body model-typing row for 'list'";
                     return null;
@@ -1191,12 +1198,29 @@ namespace Heddle.Generator.Emit
                 return null;
             }
 
-            // Region body borrows enclosing component's model/props; non-region keeps declared :: T + own layout + slot mode.
+            ITypeSymbol slotType = null;
+            if (slotMode)
+            {
+                // The slot type first, and unconditionally: it is written into the caller-content cast, so it
+                // has to pass the same gate as any other type the emitter spells — including reporting HED7030
+                // for one this assembly may not name, which a refusal ordered before it would swallow.
+                var slotCtx = SlotBodyContext(def, out reason);
+                if (reason != null)
+                    return null;
+                slotType = slotCtx.ModelSymbol;
+            }
+
+            // Region body borrows enclosing component's model/props; non-region keeps declared :: T + own layout.
+            // Slot mode is the region's own, not the caller's: the engine swaps the slot parameter type around
+            // every definition body it compiles and does not exempt a region, though it does exempt one from the
+            // prop-layout swap on the line above it.
             BodyContext defBodyCtx;
             if (def.IsRegion)
             {
-                if (!TryRegionBodyContext(def, cp, bctx, out defBodyCtx, out reason))
+                if (!TryRegionBodyContext(def, cp, bctx, item.Position, out defBodyCtx, out reason))
                     return null;
+                if (slotMode)
+                    defBodyCtx = defBodyCtx.AsSlot(slotType);
                 defBodyCtx = defBodyCtx.WithFills(bodyFills, bctx.RegionHostProps);
             }
             else
@@ -1206,18 +1230,6 @@ namespace Heddle.Generator.Emit
                     return null;
                 if (layout.Count > 0)
                     defBodyCtx = defBodyCtx.WithProps(layout);
-
-                ITypeSymbol slotType = null;
-                if (slotMode)
-                {
-                    // The slot type first, and unconditionally: it is written into the caller-content cast, so it
-                    // has to pass the same gate as any other type the emitter spells — including reporting HED7030
-                    // for one this assembly may not name, which a refusal ordered before it would swallow.
-                    var slotCtx = SlotBodyContext(def, out reason);
-                    if (reason != null)
-                        return null;
-                    slotType = slotCtx.ModelSymbol;
-                }
 
                 if (defBodyCtx.IsDynamic &&
                     !TryTypeCallSiteBody(def, cp, bctx, item.Position, ref defBodyCtx, out reason))
@@ -1231,18 +1243,16 @@ namespace Heddle.Generator.Emit
             if (!DeclaredModelAcceptsCallSiteValue(def, cp, bctx, out reason))
                 return null;
 
-            // Compiled once per (definition identity, fill-scope digest); filled bodies are distinct from unfilled.
-            var bodyInfo = GetOrBuildDefinitionBody(def, defBodyCtx, out reason);
-            if (bodyInfo == null || bodyInfo.Failed)
-            {
-                reason = reason ?? bodyInfo?.Reason ?? "definition body";
-                return null;
-            }
-
             if (!BuildParamExpr(cp, bctx, out var paramExpr, out var usesModel, out var usesCsModel, out reason))
                 return null;
 
             // Caller content typed by :: T (or slot type in slot mode); ambient fill scope stays active (lexical).
+            // It is built BEFORE the body, because that is the order the engine compiles the two in, and the order
+            // decides which of two call sites into one definition gets to type a body they share: the first to
+            // arrive. Built the other way round, a call inside this caller content reached a shared definition
+            // after this call's own body had already typed it, and the emitter typed the body from the wrong one
+            // of the two — precompiling a template the engine refuses at compile time and throwing the engine's
+            // own InvalidCastException at render instead.
             BodyClass callerBody = null;
             if (!string.IsNullOrEmpty(item.ParameterTemplate) && item.Context != null)
             {
@@ -1280,6 +1290,15 @@ namespace Heddle.Generator.Emit
                 callerBody = BuildBody(item.ParameterTemplate, item.Context, callerCtx, out reason);
                 if (callerBody == null)
                     return null;
+            }
+
+            // Compiled once per (definition identity, parse context); the fill scope is not part of that identity,
+            // any more than it is part of the engine's.
+            var bodyInfo = GetOrBuildDefinitionBody(def, defBodyCtx, out reason);
+            if (bodyInfo == null || bodyInfo.Failed)
+            {
+                reason = reason ?? bodyInfo?.Reason ?? "definition body";
+                return null;
             }
 
             // Each carrier uses its own body's flag (not OR'd); two different documents, separate derivation.
@@ -1419,11 +1438,17 @@ namespace Heddle.Generator.Emit
         /// hands it: the host resolves <c>IEnumerable&lt;T&gt;</c> and falls back to <c>dynamic</c> for a collection
         /// that implements no generic form. Null is "cannot say" — the data expression itself has no static type
         /// here — and is not the same answer as <c>dynamic</c>.
-        /// <para>A type reaching <c>IEnumerable&lt;T&gt;</c> more than once is "cannot say" too: the host picks one
-        /// by reflection order, which is not an order this can reproduce.</para>
+        /// <para>A collection reaching <c>IEnumerable&lt;T&gt;</c> at more than one <c>T</c> is a third answer and
+        /// sets <paramref name="ambiguous"/>. The host picks one of them by reflection order, which is not an order
+        /// this can reproduce — but it does pick one, so the engine has an element type here and compiles the whole
+        /// body against it. Treating that as an ordinary "cannot say" put the body on the dynamic tier with no
+        /// model behind it, which every gate downstream exempts: the template precompiled and rendered where the
+        /// engine refuses it at compile time. The emitter not being able to name the type the engine chose is a
+        /// reason to leave the body to the dynamic tier, not to emit one against no type at all.</para>
         /// </summary>
-        private ITypeSymbol ListElementModel(CallParameter cp, BodyContext bctx)
+        private ITypeSymbol ListElementModel(CallParameter cp, BodyContext bctx, out bool ambiguous)
         {
+            ambiguous = false;
             var dataType = CallSiteValueType(cp, bctx);
             if (dataType == null)
                 return null;
@@ -1438,7 +1463,11 @@ namespace Heddle.Generator.Emit
                     named.TypeArguments.Length != 1)
                     continue;
                 if (element != null && !SymbolEqualityComparer.Default.Equals(element, named.TypeArguments[0]))
+                {
+                    ambiguous = true;
                     return null;
+                }
+
                 element = named.TypeArguments[0];
             }
 
@@ -1843,18 +1872,24 @@ namespace Heddle.Generator.Emit
             };
         }
 
+        /// <summary>
+        /// The body a call site gets, built once per body identity. There is exactly one such identity and both the
+        /// sharing rule and the emitted-code cache are keyed by it, because they are two halves of one question:
+        /// which call sites the engine gives one compiled body to.
+        /// <para>That identity is the definition and the parse context it was reached through, and nothing else —
+        /// in particular <b>not</b> the fill scope. The engine memoizes each item of a body by the parsed
+        /// <c>OutputItem</c> it came from, and saves and restores the region fill scope around the body compile
+        /// without putting it in that memo, so a second call site filling a region differently still gets the first
+        /// site's body, fills included. Keyed with the fill scope on this side, the two call sites got two bodies
+        /// and the page rendered each site's own fill where the engine renders the first site's twice.</para>
+        /// </summary>
         private DefBodyInfo GetOrBuildDefinitionBody(DefinitionItem def, BodyContext bodyCtx, out string reason)
         {
             reason = null;
-            if (!TryShareBodyTyping(def, ref bodyCtx, out reason))
+            var key = def.Name + "@" + def.Position + "@" + ParseContextId(def.Context);
+            if (!TryShareBodyTyping(key, ref bodyCtx, out reason))
                 return null;
 
-            // Dedup key: definition identity + fill-scope digest (filled bodies are distinct from unfilled) + the
-            // call-site model, because a `:: dynamic` body is typed and type-checked against it and two call sites
-            // into one such definition can pass different types. Without it the first call site's body stood for all
-            // of them, and the second reused code emitted against a type it never passes.
-            var key = def.Name + "@" + def.Position + "@" + (def.Context?.AbsoluteOffset ?? 0) +
-                      "#" + FillsDigest(bodyCtx.Fills) + "$" + DynamicBodyModelId(bodyCtx.DynamicBodyModel);
             if (_definitionBodies.TryGetValue(key, out var existing))
             {
                 reason = existing.Failed ? existing.Reason : null;
@@ -1890,21 +1925,23 @@ namespace Heddle.Generator.Emit
         /// reproduces it exactly, failure included. Where it is on the dynamic tier there is no cast to reproduce —
         /// its reads bind to whatever they are handed — so a later call site of another model degrades instead of
         /// reading members off a value the engine would have refused to cast.</para>
+        /// <para>Two typings are the same when they agree on the tier and on the model symbol. A third term for
+        /// <c>DynamicBodyModel</c> would decide nothing: every context that reaches here got its model from
+        /// <see cref="DefinitionBodyContext"/> or <see cref="TryTypeCallSiteBody"/>, and both leave the two in
+        /// step — a typed body carries its own model in both, and an untyped one is untyped precisely because the
+        /// model is the compilation's <c>dynamic</c>.</para>
         /// </summary>
-        private bool TryShareBodyTyping(DefinitionItem def, ref BodyContext bodyCtx, out string reason)
+        private bool TryShareBodyTyping(string key, ref BodyContext bodyCtx, out string reason)
         {
             reason = null;
-            var shareKey = def.Name + "@" + def.Position + "@" + ParseContextId(def.Context) +
-                           "#" + FillsDigest(bodyCtx.Fills);
-            if (!_sharedBodyTyping.TryGetValue(shareKey, out var first))
+            if (!_sharedBodyTyping.TryGetValue(key, out var first))
             {
-                _sharedBodyTyping[shareKey] = bodyCtx;
+                _sharedBodyTyping[key] = bodyCtx;
                 return true;
             }
 
             if (first.IsDynamic == bodyCtx.IsDynamic &&
-                SymbolEqualityComparer.Default.Equals(first.ModelSymbol, bodyCtx.ModelSymbol) &&
-                SymbolEqualityComparer.Default.Equals(first.DynamicBodyModel, bodyCtx.DynamicBodyModel))
+                SymbolEqualityComparer.Default.Equals(first.ModelSymbol, bodyCtx.ModelSymbol))
                 return true;
 
             if (first.IsDynamic)
@@ -1931,34 +1968,6 @@ namespace Heddle.Generator.Emit
             if (!_parseContextIds.TryGetValue(context, out var id))
                 _parseContextIds[context] = id = _parseContextIds.Count + 1;
             return id;
-        }
-
-        private readonly Dictionary<ITypeSymbol, int> _dynamicBodyModelIds =
-            new Dictionary<ITypeSymbol, int>(SymbolEqualityComparer.Default);
-
-        /// <summary>A small stable id per call-site model. The body key is a string, and a display name is not an
-        /// identity — two distinct types sharing a fully-qualified name is ordinary in a large reference closure,
-        /// and here that would hand one call site the other's body.</summary>
-        private int DynamicBodyModelId(ITypeSymbol type)
-        {
-            if (type == null)
-                return 0;
-            if (!_dynamicBodyModelIds.TryGetValue(type, out var id))
-                _dynamicBodyModelIds[type] = id = _dynamicBodyModelIds.Count + 1;
-            return id;
-        }
-
-        /// <summary>The fill-scope digest of the per-run body key: each fill's override-declaration span (an
-        /// absolute, per-override-unique position) plus its body context offset, name-ordered.</summary>
-        private static string FillsDigest(Dictionary<string, DefinitionItem> fills)
-        {
-            if (fills == null || fills.Count == 0)
-                return string.Empty;
-            var parts = new List<string>(fills.Count);
-            foreach (var pair in fills)
-                parts.Add(pair.Key + "=" + pair.Value.Position + "/" + (pair.Value.Context?.AbsoluteOffset ?? 0));
-            parts.Sort(System.StringComparer.Ordinal);
-            return string.Join(";", parts);
         }
 
         /// <summary>The rebind for the generator's fill scope: while building region
@@ -2071,46 +2080,38 @@ namespace Heddle.Generator.Emit
             new HashSet<Heddle.Data.HeddleCompileError>();
 
         /// <summary>
-        /// The body context of a region. Typed region (:: T) types by declared model; untyped bare region types by enclosing model.
-        /// Either way, body borrows enclosing prop layout and never enclosing slot mode. Untyped with explicit value degrades.
-        /// <para>"The enclosing model" includes the one behind a body emitted on the dynamic tier. Rebuilding the
-        /// context without it kept the host's prop layout while dropping the host's model, and a definition called
-        /// from such a region body with one of those props looked untyped — the one shape that reaches the
-        /// model-less arm of <see cref="ObjectDefinitionBodyModel"/>, which is written for a caller that has no
-        /// model rather than for one whose model was thrown away here.</para>
+        /// The body context of a region: the declared <c>:: T</c> where there is one, otherwise the model this call
+        /// site hands it. Either way the body borrows the enclosing component's prop layout, because a region
+        /// declares none of its own.
+        /// <para>Which of the two it is turns on the type the declaration <b>resolves to</b>, never on how it is
+        /// spelled. The engine asks <c>ResolveType(ModelType) != typeof(object)</c>, and <c>dynamic</c>,
+        /// <c>object</c>, <c>System.Object</c> and a region that declares nothing all answer the same — every one
+        /// of them leaves the body to be typed by the call site. Keyed on the spelling instead, two of the four
+        /// went to the declared-type arm and the body came out untyped with no model behind it: its reads bound
+        /// dynamically and threw at render where the engine, which had typed that body from the call site, refused
+        /// the template outright — and where both tiers did render, a body shared by two call sites printed the
+        /// members of the wrong one of the two models.</para>
+        /// <para>The call-site typing is <see cref="TryTypeCallSiteBody"/>, the same rule and the same code a
+        /// non-region definition takes, so <c>:: dynamic</c> keeps sending the engine's model accessor down its
+        /// dynamic exit here exactly as it does there.</para>
         /// </summary>
         private bool TryRegionBodyContext(DefinitionItem def, CallParameter cp, BodyContext bctx,
-            out BodyContext ctx, out string reason)
+            BlockPosition position, out BodyContext ctx, out string reason)
         {
-            reason = null;
-            var modelTypeName = def.ModelType;
-            if (string.IsNullOrEmpty(modelTypeName) ||
-                string.Equals(modelTypeName, "object", System.StringComparison.Ordinal))
-            {
-                bool bareCall = cp.IsModelTypeParameter &&
-                                (cp.ModelParameter == null || cp.ModelParameter.Length == 0 ||
-                                 string.IsNullOrEmpty(cp.ModelParameter[0])) &&
-                                (cp.PropArguments == null || cp.PropArguments.Count == 0);
-                if (!bareCall)
-                {
-                    ctx = default;
-                    reason = "untyped region called with a value";
-                    return false;
-                }
-
-                ctx = new BodyContext(bctx.ModelCast, bctx.ModelSymbol, bctx.IsDynamic, props: bctx.RegionHostProps,
-                    dynamicBodyModel: bctx.DynamicBodyModel);
-                return true;
-            }
-
-            var inner = DefinitionBodyContext(def, out reason);
+            ctx = DefinitionBodyContext(def, out reason);
             if (reason != null)
             {
                 ctx = default;
                 return false;
             }
 
-            ctx = inner.WithProps(bctx.RegionHostProps);
+            ctx = ctx.WithProps(bctx.RegionHostProps);
+            if (ctx.IsDynamic && !TryTypeCallSiteBody(def, cp, bctx, position, ref ctx, out reason))
+            {
+                ctx = default;
+                return false;
+            }
+
             return true;
         }
 
@@ -2375,7 +2376,8 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>The invariant decimal text of an integral box, for the inside of a cast. Null for anything an
-        /// enum cannot be built on.</summary>
+        /// enum cannot be built on — which is what both callers are asking about, so <c>char</c> is not among the
+        /// cases: C# admits no enum over it, and the narrow-literal caller has no arm for it either.</summary>
         private static string IntegralText(object value)
         {
             switch (value)
@@ -2388,7 +2390,6 @@ namespace Heddle.Generator.Emit
                 case uint v: return v.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 case long v: return v.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 case ulong v: return v.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                case char v: return ((ushort) v).ToString(System.Globalization.CultureInfo.InvariantCulture);
                 default: return null;
             }
         }
