@@ -2584,6 +2584,14 @@ sweep, thirteen in another, all the same family. The engine renders them; the ge
 Not a regression — the nominal comparison the adapter replaced refused the same rows — but it made the
 previous cycle's "by construction rather than by list" false as written.
 
+*Two scope claims in the two paragraphs above were corrected the following cycle.* "Each signed/unsigned
+integer pair" named three pairs and omitted the pointer-width one — `nint`/`nuint` are not in the C#
+numeric-conversion table the reduction reads from, so `IntPtr[] ↔ UIntPtr[]` stayed refused. And
+"reducing both sides answers the array interfaces" is half of that sentence's claim: reducing the arrays
+answers `uint[] → IList<int>`, where the *source* is what reduces, and leaves `int[] → IList<uint>`
+refused, where the interface's own type argument is. Both are written up under "Where the reduction
+stopped short" below.
+
 The rule is one clause: reduce both sides' element types and re-ask. The re-ask is what answers the
 propagated forms without naming them, and it terminates because the reduction is idempotent. Direction
 safety is pinned from the other side too: `int[] → object[]` is false at runtime for value-type elements,
@@ -2623,6 +2631,14 @@ support.
 * **Newly degrading: 30.** The engine refuses all thirty, and at `HEAD` all thirty were divergences —
   twenty-four rendering a page the engine will not compile, six throwing at render. No template that both
   tiers agreed on stopped precompiling.
+
+  *Corrected the following cycle.* That result is this grid's, and it does not generalise: an independent
+  572-row population run afterwards found **135** newly degrading, of which **4 had been matching** — the
+  array-reduction under-acceptances written up under "Where the reduction stopped short" below. "No
+  template that both tiers agreed on stopped" was true of the population that was measured and was read as
+  a claim about the change. A degrade count is only ever a fact about the grid that produced it, so the
+  breakdown that matters — how many of the newly degrading were *previously matching*, not how many the
+  engine refuses — has to be stated per population.
 * **Bytes moved while still precompiling: 0.**
 * **Newly precompiling: 22.** All twenty-two are region bodies that can now be typed because the region
   carries its host's model, and every one renders the engine's bytes exactly.
@@ -2649,3 +2665,170 @@ So: a correction bolted onto a fix needs its own reachability question, asked ou
 satisfy this condition?* Here the answer was one, and that one context reached it only because it had
 been built with half its information thrown away. The condition was not the bug; it was the place the
 bug became visible. When a new arm turns out to have exactly one caller, suspect the caller.
+
+## Twentieth review cycle (2026-07-31)
+
+One regression, introduced by the previous commit and introduced by the *fix* this time, not by a
+correction beside it. Three pre-existing divergences, one of them silently wrong output. Three lines
+shipped last cycle that no test held. One clause presented as load-bearing that was not.
+
+### One region body, two call sites, two bodies
+
+The engine compiles a definition body **once per parsed body**, not once per call site. Every item it
+compiles is memoized for the whole compile in `CompileContext.CompiledItems`, so a second call site into
+one definition re-uses the code the first one produced and its own value is simply cast to the model that
+first call site typed it against. Two call sites reach two compiles only where the parser isolated the
+definition tree between them — a document-scope output chain isolates, and so does a subtemplate outside
+a definition body; inside a definition body nothing does, and one body there serves every call however
+many models the calls hand it.
+
+The emitter's body cache had a call-site model in its key. Before the previous commit that model was
+always absent for a region body, because `TryRegionBodyContext` dropped the host's `DynamicBodyModel`, so
+every region body keyed the same and the emitter *accidentally* reproduced the engine's single compile.
+Carrying the model — which is what closed the previous cycle's regression, and is right — made two call
+sites key differently and built two differently-typed bodies.
+
+Measured, with a component whose element shadows the host's `Tag` with `new`:
+
+* `@r()|@list(Items){{@r()}}` — engine `[host]|[host]`, both calls through the host-typed body it
+  compiled first. The commit rendered `[host]|[element]`. Both tiers compiled, both rendered, the bytes
+  differed and nothing was reported.
+* The same with an element that is not the host's type at all — no shadowing needed — engine
+  `InvalidCastException` at render, the commit rendered both.
+* Mirror order, `@list(Items){{@r()}}|@r()` — the engine's one body is the element's, and the direct
+  call's host is cast to it and fails. The commit rendered `[element]|[host]`. This face diverged at
+  `HEAD` *and* with the carry removed, so it was not the commit's.
+
+Reverting the carry restores the accident and reinstates the previous cycle's regression. The fix is to
+mirror the memoisation instead: the emitter shares a body by the measure the engine shares one — the
+identity of the `ParseContext` the definition was reached through, which is exactly what isolation
+creates a second of — and re-types the call site that arrives second to the body that already exists.
+Where that body is typed, its `(T)scope.ModelData` **is** the engine's cast and reproduces it exactly,
+failure included; the second and third faces close on bytes, not on a degrade. Where the body is on the
+dynamic tier there is no cast to reproduce, so a later call site of another model degrades. That closes
+the mirror-order face too, by degrade rather than by bytes.
+
+The parse-context identity is what keeps this from over-sharing: two document-scope chains calling one
+definition with different models are two isolated copies, two contexts, two bodies — the engine's answer,
+and two existing tests already pin it.
+
+**Degrade cost: 2 rows of 997.** Both are a region reached first from a `@list` body and then from a
+differently-typed call site, with a body that reads nothing from its model at all — the case where reuse
+would in fact have been harmless. The rule cannot tell, because it decides before the body exists, and
+`NeedsModelLocal` is not a sound proxy: a nested branch body reads the enclosing model without the
+enclosing body's flag ever being set. Four rows that were *divergences* stopped precompiling in the same
+family.
+
+### An `object` prop with an enum default
+
+`[Prop("e", typeof(object), Default = DayOfWeek.Tuesday)]`, called `@ext(this)`: the engine renders
+`e=Tuesday/DayOfWeek` and the generated tier rendered `e=2/Int32`. Roslyn's `TypedConstant` for an enum
+constant carries the **underlying primitive**, and the `object` arm of the prop-value writer passed the
+literal straight through on the reasoning that it "matches `ConvertValue`'s pass-through" — which it does,
+except that what the runtime passes through is a boxed `DayOfWeek` read by reflection and what the
+emitter wrote was a boxed `int`. Same digits for some values, different type for all of them, and every
+read that formats or types the value diverges.
+
+The value alone cannot say which of the two it is, so the declaration's own type now travels with it. An
+enum default reaches a layout only by identity, by lift, or boxed into `object` — no conversion the
+runtime performs turns it into anything else — so the box it stores is always the enum, and the emitter
+writes the enum's name. Which means the name goes into generated source: an enum this assembly cannot
+spell degrades here rather than emitting a file the consumer's build rejects (CS0122, demonstrated).
+
+### Prop defaults with no literal form
+
+Wider than the row above and the same root. A `[Prop]` default with no case in the literal writer degraded
+the **whole template, silently** — no diagnostic, no manifest entry. Eight measured shapes the engine
+renders: an enum-typed prop with an enum default (zero and non-zero), a `byte`-backed enum, a
+`Nullable<enum>`, and plain `byte`, `sbyte`, `short` and `ushort` props with same-typed defaults.
+
+Two mechanisms. The literal writer has no case for the four integral types narrower than `int`, because
+C# gives them no literal suffix and that writer's own contract is that what it writes round-trips through
+the expression parser, which has no such form to parse — so those are written as a cast here instead of
+there. And for an enum target the underlying `SpecialType` is `None`, so neither the identity nor the
+widening arm could fire; the enum rule above answers those.
+
+The contrast that keeps this about the enum *type* rather than the default machinery:
+`[Prop("e", typeof(DayOfWeek), Default = 2)]` is `HED5009` on the engine and `HED7017` on the generator,
+and stays refused by both.
+
+### Where the reduction stopped short
+
+The array-element reduction the previous cycle added was right in the dangerous direction — two
+independent sweeps, 99,856 and 3,364 pairs, found zero over-acceptances — and short in two places, both of
+which cost templates the engine renders:
+
+* It reduced the element of a type that **is** an array, and never a constructed array-**interface**
+  target's type argument. So `uint[] → IList<int>` worked, because the source reduces, and
+  `int[] → IList<uint>` did not, because the interface's argument is what has to. The argument now
+  reduces too — against an array source and nowhere else, because `IList<int> → IList<uint>` is not a
+  conversion the CLR makes, and the re-ask still has to find the interface on the array before anything is
+  admitted.
+* It omitted the pointer-width pair. `nint`/`nuint` are not in the C# numeric-conversion table the
+  reduction otherwise reads from, so `IntPtr[] ↔ UIntPtr[]` was refused.
+
+Six declared-model rows over these two families precompile and render the engine's bytes now, plus four
+more that the reduction already handled and no test held. The guard rows are unchanged and still false:
+`int[] → object[]`, `int[] → ValueType[]`, `DayOfWeek[] → Enum[]`, `char[] → ushort[]`,
+`bool[] → byte[]`, `uint?[] → int?[]`, and every rank mismatch.
+
+### Three lines shipped unpinned
+
+Each of these could be deleted with all five suites staying green, and each changes a template's tier:
+
+* The 16-bit case of the element reduction. The corpus had `Byte`/`SByte`, `UInt32`/`Int32` and
+  `Int64`/`UInt64` array rows and no 16-bit row at all.
+* The rank argument in the reduction's array rebuild. Rebuilding at rank 1 leaves every suite green and
+  makes the adapter **over-accept** more than twenty pairs against live reflection (`int[] → uint[,]`,
+  `DayOfWeek[,] → int[]`, `int[][] → uint[][,]`). The corpus had no multi-dimensional row at all.
+* The nullable unwrap in the declared-model check. Nothing in the previous cycle's new rows passed a
+  `Nullable<T>` value at all.
+
+All three are now corpus rows or declared-model rows, and each reddens under its own deletion. The
+corpus's reflection-side driver re-derives every expectation from the live CLR relation on each run, so
+the added values are generated data, not belief.
+
+### A clause that only looked load-bearing
+
+The declared-model check opened with `cp.NativeExpression != null || (cp.ChainParameter != null &&
+cp.ChainParameter.Count != 0)`, which is strictly subsumed by the guard beneath it —
+`IsModelTypeParameter` is *defined* as those three fields being null. Deleting it left all 817
+integration tests green and every grid row unchanged. The previous cycle's entry describes a mutation
+that reddens the three must-precompile rows, and that description is true — of the intended mutation,
+which removes the member-path test entirely. It is not true of the clause the commit message pointed at.
+The clause is gone, and what remains is one test with a comment saying plainly that its two halves agree
+on every input the grammar produces, so neither carries it alone. The `RootReference` disjunct beside it
+went the same way: the value-type lookup already answers `null` for a root reference, so the guard was
+inert and read as though it were not.
+
+### The sweep
+
+997 rows, captured at `HEAD` and in the working tree and diffed on classification and rendered bytes:
+a declared-model grid (39 declared spellings × 24 call-site arguments over a model carrying every array
+element type the CLR reduces, a jagged array, a lifted scalar and a shadowing pair), every
+parameter-declaring extension fixture called bare and with an argument, and a region grid (3 bodies × 9
+call-site orders). Plus the 63-template corpus through its classification and render-parity gates, and
+the ten samples' goldens.
+
+* **Newly degrading: 6.** Four had been **divergences** — the generated tier rendering where the engine
+  throws `InvalidCastException`. **Two had been matching**: the degrade cost above.
+* **Bytes moved while still precompiling: 3.** All three moved *to* the engine's bytes — the `object`
+  prop with an enum default, and the two region orders where the host-typed body now serves both calls.
+* **Newly precompiling: 15.** All fifteen render the engine's bytes exactly: ten declared-model rows over
+  the two reduction families, and five prop-default shapes.
+* Corpus classification and render parity unchanged; sample goldens unchanged.
+
+### The durable lesson
+
+A fix can be correct in isolation and wrong in combination, because the thing it corrects was
+compensating for something else. Dropping the region body's host model was a bug — it is what sent a
+prop-typed body down the model-less arm — and it was also, by accident, the only thing reproducing the
+engine's single compile. Restoring the model was right and split a body the engine keeps whole. Neither
+the fix nor the revert is the answer; the answer was to find the invariant the accident had been
+maintaining and maintain it deliberately.
+
+So: when a fix removes a *lossy* step — a field dropped, a type widened, a name flattened — ask what
+else was standing on that loss. Anything downstream that keys on the lossy value has been getting a
+coarser key than it asked for, and the fix is a sharpening it never consented to. The place to look is
+every cache, every dedup key and every equality comparison the corrected value flows into; here it was one
+dictionary key three hundred lines away, and the engine had a name for the invariant it broke.

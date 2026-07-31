@@ -126,6 +126,53 @@ namespace Heddle.Language.Binding
                 "array-covariance"),
             new AssignabilityRow("System.Char[]", "System.UInt16[]", false, "array-covariance"),
             new AssignabilityRow("System.Boolean[]", "System.Byte[]", false, "array-covariance"),
+
+            // The 16-bit pair. The other three widths were here from the start; this one was not, and its case in
+            // the reduction could be deleted without a single test noticing.
+            new AssignabilityRow("System.UInt16[]", "System.Int16[]", true, "array-covariance"),
+            new AssignabilityRow("System.Int16[]", "System.UInt16[]", true, "array-covariance"),
+
+            // The pointer-width pair, which the C# numeric-conversion table the reduction otherwise reads from
+            // does not name at all.
+            new AssignabilityRow("System.IntPtr[]", "System.UIntPtr[]", true, "array-covariance"),
+            new AssignabilityRow("System.UIntPtr[]", "System.IntPtr[]", true, "array-covariance"),
+            new AssignabilityRow("System.IntPtr[]", "System.Int64[]", false, "array-covariance"),
+
+            // Reducing the arrays alone answers only the direction where the source is what reduces. These are the
+            // other one: the array interface's own type argument reduces, against an array and nothing else.
+            new AssignabilityRow("System.Int32[]", "System.Collections.Generic.IList<System.UInt32>", true,
+                "array-interface-covariance"),
+            new AssignabilityRow("System.Int32[]", "System.Collections.Generic.IEnumerable<System.UInt32>", true,
+                "array-interface-covariance"),
+            new AssignabilityRow("System.Int32[]", "System.Collections.Generic.IReadOnlyList<System.UInt32>", true,
+                "array-interface-covariance"),
+            new AssignabilityRow("System.Int32[]", "System.Collections.Generic.IList<System.DayOfWeek>", true,
+                "array-interface-covariance"),
+            new AssignabilityRow("System.DayOfWeek[]", "System.Collections.Generic.IEnumerable<System.UInt32>", true,
+                "array-interface-covariance"),
+            new AssignabilityRow("System.UInt32[]", "System.Collections.Generic.IList<System.DayOfWeek>", true,
+                "array-interface-covariance"),
+
+            // The neighbours that keep it a rule about arrays and about reduction: an interface source is not an
+            // array however its argument reduces, a differing width still differs, and a lifted element reduces
+            // to nothing.
+            new AssignabilityRow("System.Collections.Generic.IList<System.Int32>",
+                "System.Collections.Generic.IList<System.UInt32>", false, "array-interface-covariance"),
+            new AssignabilityRow("System.Int32[]", "System.Collections.Generic.IList<System.Int64>", false,
+                "array-interface-covariance"),
+            new AssignabilityRow("System.Nullable<System.UInt32>[]", "System.Nullable<System.Int32>[]", false,
+                "array-covariance"),
+
+            // Rank. The reduction rebuilds the array around the reduced element, and rebuilding it at rank 1
+            // would make every one of these true.
+            new AssignabilityRow("System.Int32[,]", "System.UInt32[,]", true, "array-rank"),
+            new AssignabilityRow("System.DayOfWeek[,]", "System.Int32[,]", true, "array-rank"),
+            new AssignabilityRow("System.Int32[]", "System.UInt32[,]", false, "array-rank"),
+            new AssignabilityRow("System.Int32[,]", "System.UInt32[]", false, "array-rank"),
+            new AssignabilityRow("System.DayOfWeek[,]", "System.Int32[]", false, "array-rank"),
+            new AssignabilityRow("System.Int32[][]", "System.UInt32[][,]", false, "array-rank"),
+            new AssignabilityRow("System.Int32[,]", "System.Collections.Generic.IList<System.UInt32>", false,
+                "array-rank"),
         };
     }
 }

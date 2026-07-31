@@ -1030,6 +1030,7 @@ namespace Heddle.Generator.Emit
                     TypeFq = SymbolTypeResolver.FullyQualified(slot.Type),
                     HasDefault = slot.HasDefault,
                     DefaultValue = slot.DefaultBoxed,
+                    DefaultSourceType = (slot.Declaration?.Tag as ExtensionBinder.PropParameter)?.DefaultType,
                     Index = slot.Index
                 };
                 layout.Slots.Add(info2);
@@ -1845,6 +1846,9 @@ namespace Heddle.Generator.Emit
         private DefBodyInfo GetOrBuildDefinitionBody(DefinitionItem def, BodyContext bodyCtx, out string reason)
         {
             reason = null;
+            if (!TryShareBodyTyping(def, ref bodyCtx, out reason))
+                return null;
+
             // Dedup key: definition identity + fill-scope digest (filled bodies are distinct from unfilled) + the
             // call-site model, because a `:: dynamic` body is typed and type-checked against it and two call sites
             // into one such definition can pass different types. Without it the first call site's body stood for all
@@ -1871,6 +1875,62 @@ namespace Heddle.Generator.Emit
             }
 
             return info;
+        }
+
+        /// <summary>
+        /// The engine compiles a definition body once per <see cref="ParseContext"/> the definition is reached
+        /// through — not once per call site. Every item it compiles is memoized for the whole compile, so a second
+        /// call site into one definition re-uses the code the first one produced, and its own value is simply cast
+        /// to the model the first one typed that code against. Two call sites reach two contexts, and so two
+        /// compiles, only where the parser isolated the definition tree between them: a document-scope output chain
+        /// and a subtemplate outside a definition body both isolate, and inside a definition body nothing does — one
+        /// body there serves every call, however many models the calls hand it.
+        /// <para>So the emitter shares by the same measure, and the call site that arrives second is re-typed to the
+        /// body that already exists. Where that body is typed, its <c>(T)scope.ModelData</c> is the engine's cast and
+        /// reproduces it exactly, failure included. Where it is on the dynamic tier there is no cast to reproduce —
+        /// its reads bind to whatever they are handed — so a later call site of another model degrades instead of
+        /// reading members off a value the engine would have refused to cast.</para>
+        /// </summary>
+        private bool TryShareBodyTyping(DefinitionItem def, ref BodyContext bodyCtx, out string reason)
+        {
+            reason = null;
+            var shareKey = def.Name + "@" + def.Position + "@" + ParseContextId(def.Context) +
+                           "#" + FillsDigest(bodyCtx.Fills);
+            if (!_sharedBodyTyping.TryGetValue(shareKey, out var first))
+            {
+                _sharedBodyTyping[shareKey] = bodyCtx;
+                return true;
+            }
+
+            if (first.IsDynamic == bodyCtx.IsDynamic &&
+                SymbolEqualityComparer.Default.Equals(first.ModelSymbol, bodyCtx.ModelSymbol) &&
+                SymbolEqualityComparer.Default.Equals(first.DynamicBodyModel, bodyCtx.DynamicBodyModel))
+                return true;
+
+            if (first.IsDynamic)
+            {
+                reason = "definition body already compiled untyped for a call site of another model";
+                return false;
+            }
+
+            bodyCtx = first;
+            return true;
+        }
+
+        private readonly Dictionary<string, BodyContext> _sharedBodyTyping =
+            new Dictionary<string, BodyContext>(System.StringComparer.Ordinal);
+
+        // ParseContext declares no equality of its own, so the dictionary keys by reference — which is the
+        // question being asked: whether the two call sites reached the same parsed body or an isolated copy of it.
+        private readonly Dictionary<ParseContext, int> _parseContextIds = new Dictionary<ParseContext, int>();
+
+        private int ParseContextId(ParseContext context)
+        {
+            if (context == null)
+                return 0;
+            if (!_parseContextIds.TryGetValue(context, out var id))
+                _parseContextIds[context] = id = _parseContextIds.Count + 1;
+            return id;
         }
 
         private readonly Dictionary<ITypeSymbol, int> _dynamicBodyModelIds =
@@ -2074,16 +2134,14 @@ namespace Heddle.Generator.Emit
                 string.Equals(modelTypeName, "object", System.StringComparison.Ordinal))
                 return true;
 
-            if (cp.NativeExpression != null || (cp.ChainParameter != null && cp.ChainParameter.Count != 0))
-                return true;
-
-            // A root reference resolves against the root scope, which the engine does type — but every one of them
-            // is refused outright before anything is emitted, so this answers a question already settled.
-            if (!cp.IsModelTypeParameter || cp.RootReference)
-                return true;
-
+            // Only a member path is compared. A native expression (where a literal, `this` and every computed form
+            // arrive), a chain and embedded C# are the three shapes that are not one, and for every call the
+            // grammar produces they also leave no path behind — so the two halves of this test agree on every input
+            // and neither carries it alone. Both are here because each states a condition this comparison needs,
+            // not because the second covers a case the first misses.
             var segments = cp.ModelParameter;
-            if (segments == null || segments.Length == 0 || string.IsNullOrEmpty(segments[0]))
+            if (!cp.IsModelTypeParameter || segments == null || segments.Length == 0 ||
+                string.IsNullOrEmpty(segments[0]))
                 return true;
 
             var declared = _resolver.ResolveModelType(modelTypeName, _usings);
@@ -2169,6 +2227,11 @@ namespace Heddle.Generator.Emit
             public string TypeFq;
             public bool HasDefault;
             public object DefaultValue;   // decoded literal (pre-conversion CLR value)
+
+            /// <summary>The default's own declared type, where the declaration named one. Metadata hands an enum
+            /// constant over as its underlying primitive, so the value alone cannot say which of the two the
+            /// runtime will box. Null for a template-declared prop, whose default is a parsed literal.</summary>
+            public ITypeSymbol DefaultSourceType;
             public int Index;
         }
 
@@ -2237,8 +2300,14 @@ namespace Heddle.Generator.Emit
 
         /// <summary>Formats a decoded prop literal as the exact boxed C# value the runtime prototype stores. Returns
         /// false (→ fall back) whenever reproducing the boxing is not trivially safe — the byte-for-byte contract
-        /// forbids guessing a numeric widening or a lossy conversion.</summary>
-        private static bool TryFormatPropValue(ITypeSymbol targetType, bool hasDefault, object value, out string expr)
+        /// forbids guessing a numeric widening or a lossy conversion.
+        /// <para><paramref name="sourceType"/> is the default's own declared type where the declaration named one.
+        /// It is not redundant with <paramref name="value"/>: metadata represents an enum constant as its underlying
+        /// primitive, while the runtime reads the same attribute through reflection and boxes the enum. Only the
+        /// declared type distinguishes the two, and the prototype has to hold whichever one the runtime holds.</para>
+        /// </summary>
+        private bool TryFormatPropValue(ITypeSymbol targetType, bool hasDefault, object value, out string expr,
+            ITypeSymbol sourceType = null)
         {
             expr = null;
             if (targetType == null)
@@ -2259,8 +2328,22 @@ namespace Heddle.Generator.Emit
                 return false;
             }
 
+            // An enum default reaches the layout only by identity, by lift, or boxed into `object` — no conversion
+            // the runtime performs turns it into anything else — so the box it stores is always the enum itself.
+            if (sourceType != null && sourceType.TypeKind == TypeKind.Enum)
+            {
+                var text = IntegralText(value);
+                // The enum's name goes into the emitted source, so one this assembly cannot spell degrades here
+                // rather than emitting a file the consumer's build rejects.
+                if (text == null || _resolver.ClassifyModelType(sourceType, out _) != SymbolTypeResolver.NameFault.None)
+                    return false;
+                expr = "(" + SymbolTypeResolver.FullyQualified(sourceType) + ")(" + text + ")";
+                return true;
+            }
+
             // Reproduce only when literal CLR type matches target's underlying (no conversion) or target is object/string.
-            var literal = LiteralFormatter.Format(value);
+            var valueSpecial = SpecialTypeOf(value);
+            var literal = LiteralFormatter.Format(value) ?? NarrowIntegralLiteral(valueSpecial, value);
             if (literal == null)
                 return false;
 
@@ -2270,7 +2353,6 @@ namespace Heddle.Generator.Emit
                 return true;
             }
 
-            var valueSpecial = SpecialTypeOf(value);
             if (valueSpecial != SpecialType.None && valueSpecial == underlying.SpecialType)
             {
                 expr = literal;
@@ -2290,6 +2372,43 @@ namespace Heddle.Generator.Emit
             }
 
             return false;
+        }
+
+        /// <summary>The invariant decimal text of an integral box, for the inside of a cast. Null for anything an
+        /// enum cannot be built on.</summary>
+        private static string IntegralText(object value)
+        {
+            switch (value)
+            {
+                case sbyte v: return v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                case byte v: return v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                case short v: return v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                case ushort v: return v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                case int v: return v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                case uint v: return v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                case long v: return v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                case ulong v: return v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                case char v: return ((ushort) v).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                default: return null;
+            }
+        }
+
+        /// <summary>C# has no literal suffix for the four integral types narrower than <c>int</c>, so a value of one
+        /// of them is written as a cast. <see cref="LiteralFormatter"/> stays out of it: its own contract is that a
+        /// literal it writes round-trips through the expression parser, which has no such form to parse.</summary>
+        private static string NarrowIntegralLiteral(SpecialType special, object value)
+        {
+            switch (special)
+            {
+                case SpecialType.System_SByte:
+                case SpecialType.System_Byte:
+                case SpecialType.System_Int16:
+                case SpecialType.System_UInt16:
+                    var text = IntegralText(value);
+                    return text == null ? null : "(" + NumericKeyword(special) + ")(" + text + ")";
+                default:
+                    return null;
+            }
         }
 
         /// <summary>C#'s implicit numeric conversions (spec §10.2.3). Adapter over shared <see cref="NumericTable.IsImplicit"/>.</summary>
@@ -2322,6 +2441,10 @@ namespace Heddle.Generator.Emit
                 case string _: return SpecialType.System_String;
                 case bool _: return SpecialType.System_Boolean;
                 case char _: return SpecialType.System_Char;
+                case sbyte _: return SpecialType.System_SByte;
+                case byte _: return SpecialType.System_Byte;
+                case short _: return SpecialType.System_Int16;
+                case ushort _: return SpecialType.System_UInt16;
                 case int _: return SpecialType.System_Int32;
                 case long _: return SpecialType.System_Int64;
                 case uint _: return SpecialType.System_UInt32;
@@ -2407,7 +2530,7 @@ namespace Heddle.Generator.Emit
                     return false;
                 }
 
-                if (!TryFormatPropValue(slot.Type, true, slot.DefaultValue, out var expr))
+                if (!TryFormatPropValue(slot.Type, true, slot.DefaultValue, out var expr, slot.DefaultSourceType))
                 {
                     reason = "unreproducible prop default '" + slot.Name + "'";
                     return false;

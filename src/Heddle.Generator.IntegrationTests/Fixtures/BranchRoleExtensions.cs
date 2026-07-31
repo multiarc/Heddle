@@ -43,7 +43,15 @@ using Heddle.Runtime;
     typeof(Heddle.Generator.IntegrationTests.Fixtures.TakesObjectArrayExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.TakesIntArrayExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.TakesStringOrIntExtension),
-    typeof(Heddle.Generator.IntegrationTests.Fixtures.BadgedExtension))]
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.BadgedExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.EnumDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.EnumZeroDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.ByteEnumDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableEnumDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.ObjectEnumDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.EnumIntDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.InternalEnumDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NarrowDefaultsExtension))]
 
 namespace Heddle.Generator.IntegrationTests.Fixtures
 {

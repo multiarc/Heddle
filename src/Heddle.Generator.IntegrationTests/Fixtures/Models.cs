@@ -239,6 +239,47 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public bool ShowHeading { get; set; }
     }
 
+    /// <summary>Members whose types the CLR relates to one another and C# does not — arrays over element types the
+    /// runtime reduces to a common representative, plus a lifted scalar. These are what a <c>:: T</c> call site is
+    /// checked against, so the check's answer for each of them is observable as a whole template.</summary>
+    public sealed class ArrayAcceptanceModel
+    {
+        public int[] Ints { get; set; } = { 1, 2 };
+        public uint[] UInts { get; set; } = { 1, 2 };
+        public ushort[] UShorts { get; set; } = { 1 };
+        public System.DayOfWeek[] Days { get; set; } = { System.DayOfWeek.Monday };
+        public System.IntPtr[] NInts { get; set; } = { (System.IntPtr) 1 };
+        public System.UIntPtr[] NUInts { get; set; } = { (System.UIntPtr) 1 };
+        public int? Lifted { get; set; } = 7;
+    }
+
+    /// <summary>A host whose element shadows one member with <c>new</c>, so a body compiled against the host and
+    /// one compiled against the element print different text. That difference is what makes it observable which
+    /// model a body shared by two call sites was actually compiled against.</summary>
+    public class RegionShadowHost
+    {
+        public string Tag => "host";
+        public System.Collections.Generic.List<RegionShadowElement> Items { get; set; }
+    }
+
+    public sealed class RegionShadowElement : RegionShadowHost
+    {
+        public new string Tag => "element";
+    }
+
+    /// <summary>An element that is not the host's own type at all: a body compiled against one cannot take the
+    /// other, so a shared body makes the engine's cast fail rather than print the other text.</summary>
+    public sealed class RegionUnrelatedHost
+    {
+        public string Tag { get; set; }
+        public System.Collections.Generic.List<RegionUnrelatedElement> Items { get; set; }
+    }
+
+    public sealed class RegionUnrelatedElement
+    {
+        public string Tag { get; set; }
+    }
+
     /// <summary>A model whose property type has no nullable form. Emitting `?.` against one does not compile,
     /// which the generated tier learned the hard way.</summary>
     public sealed class RefStructModel

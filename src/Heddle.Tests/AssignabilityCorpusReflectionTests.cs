@@ -57,7 +57,7 @@ namespace Heddle.Tests
                      {
                          "identity", "reference", "boxing", "nullable", "nullable-correction-A",
                          "nullable-correction-C", "numeric", "hierarchy", "variance", "valuetuple", "array",
-                         "array-covariance"
+                         "array-covariance", "array-interface-covariance", "array-rank"
                      })
                 Assert.Contains(required, families);
         }
