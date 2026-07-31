@@ -75,6 +75,20 @@ namespace Heddle.Generator.Binding
                 !SymbolEqualityComparer.Default.Equals(reducedTarget, target))
                 return IsAssignableFrom(reducedTarget, reducedSource);
 
+            // The other half of that reduction: reducing the arrays alone answers `uint[] -> IList<int>`, where the
+            // source is what reduces, and leaves `int[] -> IList<uint>` refused, where the interface's own argument
+            // is. Only an array asks this — `IList<int> -> IList<uint>` is not a conversion the CLR makes, so the
+            // argument reduces against an array source and nowhere else, and the re-ask still has to find the
+            // interface on the array before this admits anything.
+            if (source is IArrayTypeSymbol && target is INamedTypeSymbol constructed &&
+                constructed.TypeKind == TypeKind.Interface && constructed.TypeArguments.Length == 1)
+            {
+                var argument = constructed.TypeArguments[0];
+                var reducedArgument = ReduceElement(ReduceArrayElements(argument));
+                if (!SymbolEqualityComparer.Default.Equals(reducedArgument, argument))
+                    return IsAssignableFrom(constructed.ConstructedFrom.Construct(reducedArgument), source);
+            }
+
             return false;
         }
 
@@ -92,12 +106,16 @@ namespace Heddle.Generator.Binding
         }
 
         /// <summary>An enum stands for its underlying primitive, and each signed/unsigned integer pair for one
-        /// representative of the pair. <c>char</c> and <c>bool</c> stand for nothing: the CLR refuses
+        /// representative of the pair — the pointer-width pair included, which the C# numeric-conversion table this
+        /// otherwise reads from does not name. <c>char</c> and <c>bool</c> stand for nothing: the CLR refuses
         /// <c>char[] -> ushort[]</c> and <c>bool[] -> byte[]</c> though the widths agree.</summary>
         private ITypeSymbol ReduceElement(ITypeSymbol element)
         {
             if (element is INamedTypeSymbol named && named.EnumUnderlyingType != null)
                 element = named.EnumUnderlyingType;
+
+            if (element.SpecialType == SpecialType.System_UIntPtr)
+                return _compilation.GetSpecialType(SpecialType.System_IntPtr);
 
             var kind = SymbolFacts.ToNumericKind(element.SpecialType);
             NumericKind reduced;

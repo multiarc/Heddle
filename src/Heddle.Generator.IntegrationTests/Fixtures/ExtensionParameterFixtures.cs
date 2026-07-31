@@ -296,4 +296,102 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
             scope.Renderer.Render((string) ProcessData(scope));
         }
     }
+
+    /// <summary>Renders the <c>day</c> parameter <b>with its runtime type</b>. A default stored under the wrong
+    /// CLR type still prints the right digits for some values, so the type is the part worth asserting.</summary>
+    public abstract class DayEchoExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope)
+        {
+            var value = scope.GetParameter("day");
+            return "day=" + value + "/" + (value?.GetType().Name ?? "null");
+        }
+
+        public override void RenderData(in Scope scope) => scope.Renderer.Render((string) ProcessData(scope));
+    }
+
+    /// <summary>A prop of an enum type with a default of that same enum — the identity arm of the conversion.</summary>
+    [ExtensionName("enumDefault")]
+    [Prop("day", typeof(DayOfWeek), Default = DayOfWeek.Tuesday)]
+    public sealed class EnumDefaultExtension : DayEchoExtension
+    {
+    }
+
+    /// <summary>The same with the enum's zero member: the underlying primitive is then the default value of every
+    /// integral type, which is exactly the value a dropped type hides behind.</summary>
+    [ExtensionName("enumZeroDefault")]
+    [Prop("day", typeof(DayOfWeek), Default = DayOfWeek.Sunday)]
+    public sealed class EnumZeroDefaultExtension : DayEchoExtension
+    {
+    }
+
+    /// <summary>An enum whose underlying type is not <c>int</c>, so a default written as an <c>int</c> literal
+    /// would be a differently-sized box as well as a differently-named one.</summary>
+    public enum Rung : byte
+    {
+        Low = 0,
+        High = 7
+    }
+
+    [ExtensionName("byteEnumDefault")]
+    [Prop("day", typeof(Rung), Default = Rung.High)]
+    public sealed class ByteEnumDefaultExtension : DayEchoExtension
+    {
+    }
+
+    /// <summary>The lifted form: a <c>Nullable&lt;enum&gt;</c> prop boxes the enum itself, not the nullable.</summary>
+    [ExtensionName("nullableEnumDefault")]
+    [Prop("day", typeof(DayOfWeek?), Default = DayOfWeek.Friday)]
+    public sealed class NullableEnumDefaultExtension : DayEchoExtension
+    {
+    }
+
+    /// <summary>The boxing arm: an enum default on an <c>object</c>-typed prop passes through unconverted, so what
+    /// the prop holds is a boxed enum and every read that formats or types it can tell.</summary>
+    [ExtensionName("objectEnumDefault")]
+    [Prop("day", typeof(object), Default = DayOfWeek.Tuesday)]
+    public sealed class ObjectEnumDefaultExtension : DayEchoExtension
+    {
+    }
+
+    /// <summary>The contrast that proves the enum <em>type</em> is what the other fixtures are about, not the
+    /// default machinery: an <c>int</c> default against the same enum prop is a declaration both tiers refuse.</summary>
+    [ExtensionName("enumIntDefault")]
+    [Prop("day", typeof(DayOfWeek), Default = 2)]
+    public sealed class EnumIntDefaultExtension : DayEchoExtension
+    {
+    }
+
+    /// <summary>An enum this assembly keeps to itself: naming it in generated code would be CS0122 in the
+    /// consumer's build, so its default has no reproducible form.</summary>
+    internal enum InternalRung
+    {
+        One = 1
+    }
+
+    [ExtensionName("internalEnumDefault")]
+    [Prop("day", typeof(InternalRung), Default = InternalRung.One)]
+    public sealed class InternalEnumDefaultExtension : DayEchoExtension
+    {
+    }
+
+    /// <summary>The four integral types narrower than <c>int</c>, which C# gives no literal suffix.</summary>
+    [ExtensionName("narrowDefaults")]
+    [Prop("b", typeof(byte), Default = (byte) 5)]
+    [Prop("sb", typeof(sbyte), Default = (sbyte) -5)]
+    [Prop("s", typeof(short), Default = (short) -300)]
+    [Prop("us", typeof(ushort), Default = (ushort) 400)]
+    public sealed class NarrowDefaultsExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) =>
+            One(scope, "b") + ";" + One(scope, "sb") + ";" + One(scope, "s") + ";" + One(scope, "us");
+
+        private static string One(in Scope scope, string name)
+        {
+            var value = scope.GetParameter(name);
+            return name + "=" + value + "/" + (value?.GetType().Name ?? "null");
+        }
+
+        public override void RenderData(in Scope scope) => scope.Renderer.Render((string) ProcessData(scope));
+    }
 }

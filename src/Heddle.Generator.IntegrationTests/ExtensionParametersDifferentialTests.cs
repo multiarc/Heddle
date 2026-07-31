@@ -173,6 +173,81 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("n=5:z", dyn);
         }
 
+        // ---- Prop defaults whose CLR type the value alone does not give away ----
+        //
+        // The runtime reads a [Prop] default through reflection and boxes whatever the attribute holds; the emitter
+        // reads the same declaration out of metadata, where an enum constant is represented by its underlying
+        // primitive. Writing that primitive into the frozen prototype stores a differently-typed box, which the
+        // rendered text gives away the moment anything formats or types the value.
+
+        [Theory]
+        [InlineData("enumDefault", "day=Tuesday/DayOfWeek")]
+        [InlineData("enumZeroDefault", "day=Sunday/DayOfWeek")]
+        [InlineData("byteEnumDefault", "day=High/Rung")]
+        [InlineData("nullableEnumDefault", "day=Friday/DayOfWeek")]
+        [InlineData("objectEnumDefault", "day=Tuesday/DayOfWeek")]
+        public void AnEnumPropDefaultPrecompilesAsTheEnumItAndNotItsUnderlyingPrimitive(string extension,
+            string expected)
+        {
+            var t = "@model(){{System.String}}@\\\n@" + extension + "(this)\n";
+            var key = "views/enumdefault-" + extension + ".heddle";
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+
+            var (pre, dyn) = DifferentialHarness.Render(key, t, typeof(string), "z");
+            Assert.Equal(expected, dyn.Trim());
+            Assert.Equal(dyn, pre);
+        }
+
+        /// <summary>The near neighbour that must keep being refused, and by both tiers: an <c>int</c> default
+        /// against an enum-typed prop is not convertible, so the enum rows above are about the default's type and
+        /// not about relaxing the conversion.</summary>
+        [Fact]
+        public void AnIntDefaultOnAnEnumPropStaysRefusedOnBothTiers()
+        {
+            const string t = "@model(){{System.String}}@\\\n@enumIntDefault(this)\n";
+            var gen = DifferentialHarness.Generate(new[] { ("views/enumintdefault.heddle", t) });
+            Assert.Contains(gen.Diagnostics, d => d.Id == "HED7017");
+            DifferentialHarness.ExpectDegrade(gen, "views/enumintdefault.heddle");
+
+            var dynamicTemplate = new HeddleTemplate(t,
+                new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(), typeof(string)));
+            Assert.False(dynamicTemplate.CompileResult.Success);
+            Assert.Contains(dynamicTemplate.CompileResult.ErrorList, e => e.DiagnosticId == "HED5009");
+        }
+
+        /// <summary>An enum default is reproduced by writing the enum's name, so one this assembly keeps internal
+        /// has to cost the precompiled tier rather than a generated file the consumer's build rejects.</summary>
+        [Fact]
+        public void AnEnumDefaultThisAssemblyCannotNameDegrades()
+        {
+            const string t = "@model(){{System.String}}@\\\n@internalEnumDefault(this)\n";
+            var gen = DifferentialHarness.Generate(new[] { ("views/internalenumdefault.heddle", t) });
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+            DifferentialHarness.ExpectDegrade(gen, "views/internalenumdefault.heddle");
+
+            var dynamicTemplate = new HeddleTemplate(t,
+                new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(), typeof(string)));
+            Assert.True(dynamicTemplate.CompileResult.Success, dynamicTemplate.CompileResult.ToString());
+            Assert.Equal("day=One/InternalRung", dynamicTemplate.Generate("z").Trim());
+        }
+
+        /// <summary>The four integral types C# gives no literal suffix. Each prop is its default's own type, so
+        /// the prototype holds it unconverted and the box has to carry that exact width and signedness.</summary>
+        [Fact]
+        public void NarrowIntegralPropDefaultsPrecompileWithTheirOwnBoxedTypes()
+        {
+            const string t = "@model(){{System.String}}@\\\n@narrowDefaults(this)\n";
+            var gen = DifferentialHarness.Generate(new[] { ("views/narrowdefaults.heddle", t) });
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+            DifferentialHarness.ExpectPrecompiled(gen, "views/narrowdefaults.heddle");
+
+            var (pre, dyn) = DifferentialHarness.Render("views/narrowdefaults.heddle", t, typeof(string), "z");
+            Assert.Equal("b=5/Byte;sb=-5/SByte;s=-300/Int16;us=400/UInt16", dyn.Trim());
+            Assert.Equal(dyn, pre);
+        }
+
         [Fact]
         public void NamedArgsOnParameterLessExtensionDegradeToDynamicHed5005()
         {

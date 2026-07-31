@@ -979,6 +979,12 @@ Rules:
   scope at the call site stays a **normal override** (the local override wins — it is never
   rerouted to a region fill); a `<x:x>` naming neither a region nor anything in scope keeps
   today's *"Base definition x couldn't be found"* error.
+- **One body, whatever calls it.** A region's body is compiled **once per component body**, against
+  the model of whichever call site inside that body reaches it first; a later call site's value is cast
+  to that same model. So an untyped `<:r>` called both directly and from inside `@list(Items){{@r()}}`
+  renders the *component's* members at both call sites — and if the element's type is not the
+  component's, the cast fails at render. Declare a separate region per model rather than calling one
+  region from two places that hand it different types.
 - **Both backends.** Region defaults **and** overridden fills precompile natively under the
   source generator and render byte-identically to the dynamic engine.
 

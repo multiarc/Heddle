@@ -166,5 +166,67 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal(expected, dyn);
             Assert.Equal(dyn, precompiled);
         }
+
+        private const string ArrayModelType = "Heddle.Generator.IntegrationTests.Fixtures.ArrayAcceptanceModel";
+
+        private static string ArrayDeclaredModelDoc(string declared, string argument) =>
+            "@model(){{" + ArrayModelType + "}}@%\n<frame>{{[@()]}} :: " + declared + "\n%@\n@frame(" +
+            argument + ")\n";
+
+        /// <summary>
+        /// The <c>:: T</c> check runs over the whole type relation, so every element pair the runtime reduces to a
+        /// common representative has to be a pair the check accepts too — including the direction where it is the
+        /// declared interface's own type argument that reduces, the pointer-width pair, the 16-bit pair, and a
+        /// lifted value the runtime compares by its underlying type. Each of these is a template the engine
+        /// compiles and renders, so a check that refused it would cost the precompiled tier for nothing.
+        /// </summary>
+        [Theory]
+        [InlineData("System.Collections.Generic.IList<System.UInt32>", "Ints", "[System.Int32[]]\n")]
+        [InlineData("System.Collections.Generic.IEnumerable<System.UInt32>", "Ints", "[System.Int32[]]\n")]
+        [InlineData("System.Collections.Generic.IReadOnlyList<System.UInt32>", "Ints", "[System.Int32[]]\n")]
+        [InlineData("System.Collections.Generic.IList<System.DayOfWeek>", "Ints", "[System.Int32[]]\n")]
+        [InlineData("System.Collections.Generic.IEnumerable<System.UInt32>", "Days", "[System.DayOfWeek[]]\n")]
+        [InlineData("System.Collections.Generic.IList<System.DayOfWeek>", "UInts", "[System.UInt32[]]\n")]
+        [InlineData("System.IntPtr[]", "NUInts", "[System.UIntPtr[]]\n")]
+        [InlineData("System.UIntPtr[]", "NInts", "[System.IntPtr[]]\n")]
+        [InlineData("System.Int16[]", "UShorts", "[System.UInt16[]]\n")]
+        [InlineData("System.Int32", "Lifted", "[7]\n")]
+        public void ADeclaredModelTheRuntimeAcceptsKeepsThePrecompiledTier(string declared, string argument,
+            string expected)
+        {
+            var template = ArrayDeclaredModelDoc(declared, argument);
+            var key = "views/declared-model-array-" + Sanitize(declared) + "-" + argument + ".heddle";
+            DifferentialHarness.ExpectPrecompiled(DifferentialHarness.Generate(new[] { (key, template) }), key);
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template, typeof(ArrayAcceptanceModel),
+                new ArrayAcceptanceModel());
+            Assert.Equal(expected, dyn);
+            Assert.Equal(dyn, precompiled);
+        }
+
+        /// <summary>The neighbour that says the rows above are a reduction and not a surrender: a width the runtime
+        /// does not reduce is still refused, and by both tiers.</summary>
+        [Fact]
+        public void AnElementWidthTheRuntimeDoesNotReduceStaysRefused()
+        {
+            var template = ArrayDeclaredModelDoc("System.Int64[]", "Ints");
+            const string key = "views/declared-model-array-widened.heddle";
+            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
+
+            var dynamicTemplate = new HeddleTemplate(template,
+                new CompileContext(new TemplateOptions(), typeof(ArrayAcceptanceModel)));
+            Assert.False(dynamicTemplate.CompileResult.Success);
+            Assert.Contains(HeddleDiagnosticIds.ReturnTypeMismatch, dynamicTemplate.CompileResult.ToString(),
+                StringComparison.Ordinal);
+        }
+
+        private static string Sanitize(string spelling)
+        {
+            var chars = spelling.ToCharArray();
+            for (int i = 0; i < chars.Length; i++)
+                if (!char.IsLetterOrDigit(chars[i]))
+                    chars[i] = '-';
+            return new string(chars);
+        }
     }
 }

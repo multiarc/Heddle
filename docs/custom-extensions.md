@@ -509,7 +509,7 @@ Declared in [src/Heddle/Attributes](../src/Heddle/Attributes):
 | Attribute | Target | Purpose |
 | --- | --- | --- |
 | `[ExtensionName("name")]` | class | The verb used in templates (`@name(...)`). Required. The empty name `""` is the unnamed `@(...)` carrier; `raw` is its always‑verbatim alias. |
-| `[DataType(typeof(T))]` | class | The model type the extension expects. Repeatable (e.g. `int` *and* `long` on `IntegerExtension`); inherited by subclasses. A call whose value has a static type assignable to none of them is refused when the template is compiled (`HED0004`, naming the value's type and every accepted one) — on both tiers, so a template that does not compile does not precompile either. Assignability is reflection's (`Type.IsAssignableFrom`) in full, with a `Nullable<T>` value unwrapped first — so it includes generic variance (`List<string>` reaches `IEnumerable<object>`) and array covariance, including the element types the CLR reduces to one (`uint[]` reaches `int[]`, `DayOfWeek[]` reaches `int[]`). It is not a conversion relation: there is **no** numeric widening, so `[DataType(typeof(int))]` refuses a `long`, and a value-type element never covaries to a reference-type one, so `int[]` does not reach `object[]`. A value with no static type (`dynamic`) is decided at render instead. |
+| `[DataType(typeof(T))]` | class | The model type the extension expects. Repeatable (e.g. `int` *and* `long` on `IntegerExtension`); inherited by subclasses. A call whose value has a static type assignable to none of them is refused when the template is compiled (`HED0004`, naming the value's type and every accepted one) — on both tiers, so a template that does not compile does not precompile either. Assignability is reflection's (`Type.IsAssignableFrom`) in full, with a `Nullable<T>` value unwrapped first — so it includes generic variance (`List<string>` reaches `IEnumerable<object>`) and array covariance, including the element types the CLR reduces to one — each signed/unsigned integer pair (`nint`/`nuint` included) and an enum with its underlying primitive, in either direction and through the array's own generic interfaces (`uint[]` reaches `int[]`, `DayOfWeek[]` reaches `int[]`, `int[]` reaches `IList<uint>`). It is not a conversion relation: there is **no** numeric widening, so `[DataType(typeof(int))]` refuses a `long`, and a value-type element never covaries to a reference-type one, so `int[]` does not reach `object[]`. A value with no static type (`dynamic`) is decided at render instead. |
 | `[ChainedType(typeof(T))]` | class | The expected chained‑input type. |
 | `[EncodeOutput]` | class | HTML‑encode the output (pairs with `AbstractHtmlExtension`). This encodes under **both** output profiles — it is independent of `OutputProfile`, which only governs the unnamed `@(...)` carrier. Keep `[EncodeOutput]` on value formatters that emit user text; leave it off for containers that merely forward a body (so encoding stays at the emitting leaf). |
 | `[ExtensionReplace]` | class | Marks an extension intended to replace another of the same name. |
@@ -590,6 +590,12 @@ reproduces:
   `HED7015` error — a bodied call to it degrades quietly to the dynamic tier instead (see
   [Building your own branch set](#building-your-own-branch-set)). Keep custom logic in `ProcessData`/`RenderData` — the
   render‑time methods both backends share. A plain, non‑encoding extension (the common case) needs no changes.
+- **A `[Prop]` default whose type generated code can name.** Defaults are frozen into the generated
+  source as the exact boxed value the runtime would build from the attribute, so a default of an `enum`
+  type — including on an `object`‑typed prop, where the box keeps the enum, not its underlying number —
+  is written by naming that enum. A default whose type is `internal` to your assembly cannot be named
+  there, so a template calling that extension quietly runs on the dynamic tier instead. Make the enum
+  `public` if such templates must precompile.
 
 **Build‑time binding covers only bodiless custom calls.** A bodiless value transform (`@ext(x)`) binds
 directly to your extension at build time; a call that carries a `{{ … }}` body falls back to the dynamic

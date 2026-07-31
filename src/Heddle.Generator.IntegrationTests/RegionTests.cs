@@ -291,5 +291,105 @@ namespace Heddle.Generator.IntegrationTests
             var (pre, dyn) = RenderBoth("views/region-flagship.heddle", t, model);
             Assert.Equal(dyn, pre);
         }
+
+        // ---- One region body, two call sites of different models ----
+        //
+        // Everything inside a component body shares one parsed region, so the engine compiles that region's body
+        // once — at whichever call site reaches it first — and every later call site's value is cast to the model
+        // that first one typed it against. These fixtures make the model observable: the element shadows the host's
+        // `Tag`, so a body typed by the host prints "host" for both calls and one typed by the element prints
+        // "element" for both.
+
+        private const string ShadowHostType = "Heddle.Generator.IntegrationTests.Fixtures.RegionShadowHost";
+        private const string UnrelatedHostType = "Heddle.Generator.IntegrationTests.Fixtures.RegionUnrelatedHost";
+
+        private static string ShadowTemplate(string calls) =>
+            "@model(){{" + ShadowHostType + "}}@\\\n" +
+            "@%<comp>{{@%<:r>{{[@(Tag)]}}%@" + calls + "}} :: " + ShadowHostType + "%@\n@comp()";
+
+        private static RegionShadowHost ShadowModel() => new RegionShadowHost
+        {
+            Items = new List<RegionShadowElement> { new RegionShadowElement() }
+        };
+
+        private static (string precompiled, string dynamic) RenderShadow(string key, string content)
+            => DifferentialHarness.Render(key, content, typeof(RegionShadowHost), ShadowModel());
+
+        [Fact]
+        public void RegionBodyTypedByFirstCallSiteServesTheSecond()
+        {
+            // The direct call reaches the region first, so both calls run the host-typed body — the element's own
+            // `Tag` is never read, even inside the @list body that hands the region an element.
+            var t = ShadowTemplate("@r()|@list(Items){{@r()}}");
+            var gen = DifferentialHarness.Generate(new[] { ("views/region-share-direct-first.heddle", t) });
+            DifferentialHarness.ExpectPrecompiled(gen, "views/region-share-direct-first.heddle");
+            var (pre, dyn) = RenderShadow("views/region-share-direct-first.heddle", t);
+            Assert.Equal("[host]|[host]", dyn.Trim());
+            Assert.Equal(dyn, pre);
+        }
+
+        [Fact]
+        public void RegionBodyReachedOnlyFromAListIsTypedByTheElement()
+        {
+            // The near neighbour: one call site, so the element's model is the body's and the shadowed member is
+            // the one that renders. Sharing must not cost this its precompiled tier.
+            var t = ShadowTemplate("@list(Items){{@r()}}");
+            var gen = DifferentialHarness.Generate(new[] { ("views/region-share-list-only.heddle", t) });
+            DifferentialHarness.ExpectPrecompiled(gen, "views/region-share-list-only.heddle");
+            var (pre, dyn) = RenderShadow("views/region-share-list-only.heddle", t);
+            Assert.Equal("[element]", dyn.Trim());
+            Assert.Equal(dyn, pre);
+        }
+
+        [Fact]
+        public void RegionBodyCalledTwiceUnderOneModelPrecompiles()
+        {
+            var t = ShadowTemplate("@r()|@r()");
+            var gen = DifferentialHarness.Generate(new[] { ("views/region-share-twice.heddle", t) });
+            DifferentialHarness.ExpectPrecompiled(gen, "views/region-share-twice.heddle");
+            var (pre, dyn) = RenderShadow("views/region-share-twice.heddle", t);
+            Assert.Equal("[host]|[host]", dyn.Trim());
+            Assert.Equal(dyn, pre);
+        }
+
+        [Fact]
+        public void RegionBodySharedWithAnUnrelatedElementCastsAsTheEngineDoes()
+        {
+            // No shadowing needed: the host-typed body casts the element and the cast fails, which is exactly what
+            // the engine's own compiled accessor does with it.
+            var t = "@model(){{" + UnrelatedHostType + "}}@\\\n" +
+                    "@%<comp>{{@%<:r>{{[@(Tag)]}}%@@r()|@list(Items){{@r()}}}} :: " + UnrelatedHostType + "%@\n" +
+                    "@comp()";
+            var key = "views/region-share-unrelated.heddle";
+            var model = new RegionUnrelatedHost
+            {
+                Tag = "host",
+                Items = new List<RegionUnrelatedElement> { new RegionUnrelatedElement { Tag = "element" } }
+            };
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+
+            var dynamic = new HeddleTemplate(t, new CompileContext(new TemplateOptions(), typeof(RegionUnrelatedHost)));
+            Assert.True(dynamic.CompileResult.Success, dynamic.CompileResult.ToString());
+            var engineThrow = Assert.Throws<InvalidCastException>(() => dynamic.Generate(model));
+            var generatedThrow = Assert.Throws<InvalidCastException>(
+                () => DifferentialHarness.RenderGenerated(gen, key, model));
+            Assert.Equal(engineThrow.Message, generatedThrow.Message);
+        }
+
+        [Fact]
+        public void RegionBodyReachedFirstFromAListDegrades()
+        {
+            // Mirror order: the @list body reaches the region first, so the engine's one body is typed by the
+            // element and the direct call's host is cast to it — a cast that fails. The emitter emits that body on
+            // the dynamic tier, where there is no cast to fail, so it declines the template instead.
+            var t = ShadowTemplate("@list(Items){{@r()}}|@r()");
+            var gen = DifferentialHarness.Generate(new[] { ("views/region-share-list-first.heddle", t) });
+            DifferentialHarness.ExpectDegrade(gen, "views/region-share-list-first.heddle");
+
+            var dynamic = new HeddleTemplate(t, new CompileContext(new TemplateOptions(), typeof(RegionShadowHost)));
+            Assert.True(dynamic.CompileResult.Success, dynamic.CompileResult.ToString());
+            Assert.Throws<InvalidCastException>(() => dynamic.Generate(ShadowModel()));
+        }
     }
 }
