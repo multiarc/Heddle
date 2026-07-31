@@ -150,6 +150,42 @@ namespace Heddle.Generator.Binding
         }
 
         /// <summary>
+        /// Whether <paramref name="text"/> names a namespace this compilation can see, walked segment by segment
+        /// from the merged global namespace, which already spans the source and every reference.
+        /// <para>Asked of a <c>@using</c> body, which is free text on the engine's side: its only effect there is to
+        /// be compared against a namespace when a model type name has to be resolved, so a body naming nothing — or
+        /// not being a name at all — is simply never consulted and the template renders. Anything the generated file
+        /// could do with such a text is worse than doing nothing with it.</para>
+        /// </summary>
+        public bool NamespaceExists(string text)
+        {
+            if (string.IsNullOrEmpty(text) || _compilation == null)
+                return false;
+
+            var current = _compilation.GlobalNamespace;
+            foreach (var segment in text.Split('.'))
+            {
+                if (segment.Length == 0)
+                    return false;
+
+                INamespaceSymbol next = null;
+                foreach (var child in current.GetNamespaceMembers())
+                {
+                    if (!string.Equals(child.Name, segment, System.StringComparison.Ordinal))
+                        continue;
+                    next = child;
+                    break;
+                }
+
+                if (next == null)
+                    return false;
+                current = next;
+            }
+
+            return true;
+        }
+
+        /// <summary>
         /// Whether any type in the compilation or its references answers to <paramref name="text"/> — the last gate
         /// before HED7007 calls a <c>@model</c> spelling a typo, so it has to be generous about the ways the runtime
         /// finds a type and exact about the ways it does not.

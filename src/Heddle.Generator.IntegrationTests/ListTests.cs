@@ -221,6 +221,34 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains(diagnostic, dynamicTemplate.CompileResult.ToString(), StringComparison.Ordinal);
         }
 
+        /// <summary>
+        /// What the refusal costs, stated rather than left to be discovered. It is taken before the body is looked
+        /// at, so it declines every <c>@list</c> over such a collection — including bodies that could not have
+        /// needed the element type: one that iterates the element without reading a member of it, and one that
+        /// reads nothing at all. The engine renders both.
+        /// <para>Narrowing it to the bodies that do need the type means building the body first against no type and
+        /// asking afterwards whether it consulted one, which is the state the refusal exists to prevent: a body on
+        /// the dynamic tier with no model behind it, exempted by every gate downstream. So the cost is recorded
+        /// here instead, and a cycle that narrows the rule reddens these rows and has to say what it did.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("iterates", "@for(this){{y}}", "[yyy]\n")]
+        [InlineData("reads-nothing", "[x]", "[[x][x]]\n")]
+        public void TheAmbiguityRefusalAlsoDeclinesBodiesThatDoNotNeedTheElementType(string name, string body,
+            string engineOutput)
+        {
+            var key = "views/list-ambiguous-cost-" + name + ".heddle";
+            var t = "@model(){{" + AmbiguousHolderType + "}}@\\\n[@list(Multi){{" + body + "}}]\n";
+
+            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, t) }), key);
+
+            var dynamicTemplate = new HeddleTemplate(t,
+                new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(),
+                    typeof(AmbiguousElementHolder)));
+            Assert.True(dynamicTemplate.CompileResult.Success, dynamicTemplate.CompileResult.ToString());
+            Assert.Equal(engineOutput, dynamicTemplate.Generate(new AmbiguousElementHolder()));
+        }
+
         /// <summary>The near neighbour: the same two bodies over a collection that reaches
         /// <c>IEnumerable&lt;T&gt;</c> once. The element type is nameable there, so the first still degrades — for
         /// the reason it always did, not for this one — and the second precompiles and renders the engine's bytes.

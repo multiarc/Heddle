@@ -388,8 +388,13 @@ namespace Heddle.Generator
             // Resolving imports by template key while identifying them by file path gave one document as many
             // identities as it had spellings — `views/a`, `~/views/a.heddle`, `/views/a.heddle` are all the same
             // template here — and the guard then walked their permutations before noticing the repeat.
+            // A '..' is applied before the key is derived, because the engine's identity applies it: it reads an
+            // import through Path.GetFullPath, which cancels a '..' against the segment before it, while a template
+            // key may not contain one at all. Without this step `x/../lib.heddle` — one file the engine reads and
+            // renders — was an import nobody had included, and the build failed over a working template. The raw
+            // spelling is still what a miss is reported with, so the message names what the author wrote.
             Func<string, string> identity = importPath =>
-                TemplateKey.TryNormalize(importPath, out var key) ? key : importPath;
+                TemplateKey.TryNormalize(ApplyParentSegments(importPath), out var key) ? key : importPath;
 
             var settings = new ParserSettings
             {
@@ -471,6 +476,42 @@ namespace Heddle.Generator
             }
 
             return parseContext;
+        }
+
+        /// <summary>
+        /// Cancels each <c>..</c> segment against the one before it, as <c>Path.GetFullPath</c> does when the engine
+        /// resolves the same import against the resolver root. <c>.</c> and repeated separators name the directory
+        /// they are in and drop out on the way, so <c>sub/./../lib.heddle</c> and <c>lib.heddle</c> are one file here
+        /// exactly as they are on disk.
+        /// <para>A <c>..</c> with nothing to cancel against is kept: it reaches outside the root, where the engine
+        /// finds no file either, and keeping it means the key derivation refuses the spelling rather than quietly
+        /// resolving it to something inside. A spelling with no <c>..</c> in it at all is returned untouched, so
+        /// every other form is normalised by exactly the rule it was before.</para>
+        /// </summary>
+        private static string ApplyParentSegments(string importPath)
+        {
+            if (string.IsNullOrEmpty(importPath) ||
+                importPath.IndexOf("..", StringComparison.Ordinal) < 0)
+                return importPath;
+
+            var segments = importPath.Replace('\\', '/').Split('/');
+            var kept = new List<string>(segments.Length);
+            for (var i = 0; i < segments.Length; i++)
+            {
+                var segment = segments[i];
+                if (segment == "." || (segment.Length == 0 && i != 0))
+                    continue;
+
+                if (segment == ".." && kept.Count != 0 && kept[kept.Count - 1] != "..")
+                {
+                    kept.RemoveAt(kept.Count - 1);
+                    continue;
+                }
+
+                kept.Add(segment);
+            }
+
+            return string.Join("/", kept);
         }
 
         /// <summary>Finds the <c>@&lt;&lt;{{rawPath}}</c> import block in <paramref name="content"/> for the missing
