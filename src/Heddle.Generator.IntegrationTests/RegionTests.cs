@@ -252,14 +252,17 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         [Fact]
-        public void UntypedRegionWithValueArgumentSilentlyDegrades()
+        public void RegionDeclaringNoModelTakesTheValueItsCallSitePasses()
         {
-            // Untyped region with explicit value: emitter cannot reproduce, silently un-precompiled.
+            // A region that declares no model is not a region with no model: the engine compiles its body against
+            // whatever the call site hands it, an explicit value included.
             var t = "@model(){{" + FeedType + "}}@\\\n" +
                     "@%<panel>{{@%<:head>{{[x]}}%@@head(Articles)}} :: " + FeedType + "%@\n@panel()";
-            var dynamic = AssertNotPrecompiledAndCompileDynamic("views/region-abstract.heddle", t);
-            Assert.True(dynamic.CompileResult.Success, dynamic.CompileResult.ToString());
-            Assert.Equal("[x]", dynamic.Generate(Model()).Trim());
+            var gen = DifferentialHarness.Generate(new[] { ("views/region-abstract.heddle", t) });
+            DifferentialHarness.ExpectPrecompiled(gen, "views/region-abstract.heddle");
+            var (pre, dyn) = RenderBoth("views/region-abstract.heddle", t, Model());
+            Assert.Equal("[x]", dyn.Trim());
+            Assert.Equal(dyn, pre);
         }
 
         [Fact]
@@ -378,18 +381,207 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         [Fact]
-        public void RegionBodyReachedFirstFromAListDegrades()
+        public void RegionBodyReachedFirstFromAListCastsAsTheEngineDoes()
         {
             // Mirror order: the @list body reaches the region first, so the engine's one body is typed by the
-            // element and the direct call's host is cast to it — a cast that fails. The emitter emits that body on
-            // the dynamic tier, where there is no cast to fail, so it declines the template instead.
+            // element and the direct call's host is cast to it — a cast that fails. The emitted body is typed by
+            // the same first call site and writes the same cast, so the reader gets the engine's own exception.
             var t = ShadowTemplate("@list(Items){{@r()}}|@r()");
-            var gen = DifferentialHarness.Generate(new[] { ("views/region-share-list-first.heddle", t) });
-            DifferentialHarness.ExpectDegrade(gen, "views/region-share-list-first.heddle");
+            var key = "views/region-share-list-first.heddle";
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            DifferentialHarness.ExpectPrecompiled(gen, key);
 
             var dynamic = new HeddleTemplate(t, new CompileContext(new TemplateOptions(), typeof(RegionShadowHost)));
             Assert.True(dynamic.CompileResult.Success, dynamic.CompileResult.ToString());
-            Assert.Throws<InvalidCastException>(() => dynamic.Generate(ShadowModel()));
+            var engineThrow = Assert.Throws<InvalidCastException>(() => dynamic.Generate(ShadowModel()));
+            var generatedThrow = Assert.Throws<InvalidCastException>(
+                () => DifferentialHarness.RenderGenerated(gen, key, ShadowModel()));
+            Assert.Equal(engineThrow.Message, generatedThrow.Message);
+        }
+
+        // ---- What a region's declared model resolves to, not how it is spelled ----
+        //
+        // The engine asks whether the declaration resolves to something other than `System.Object`. `dynamic`,
+        // `object`, `System.Object` and declaring nothing at all all answer no, and for every one of them the body
+        // is compiled against the value the call site passes.
+
+        public static IEnumerable<object[]> ObjectResolvingSpellings()
+        {
+            yield return new object[] { "none", "" };
+            yield return new object[] { "object", " :: object" };
+            yield return new object[] { "dynamic", " :: dynamic" };
+            yield return new object[] { "system-object", " :: System.Object" };
+        }
+
+        private static string ShadowSpelledTemplate(string spelling, string regionBody, string calls) =>
+            "@model(){{" + ShadowHostType + "}}@\\\n" +
+            "@%<comp>{{@%<r>{{" + regionBody + "}}" + spelling + "%@" + calls + "}} :: " + ShadowHostType + "%@\n" +
+            "@comp()";
+
+        /// <summary>A member the element type does not have, read in a region body the <c>@list</c> hands an
+        /// element. The engine types that body from the call site and refuses the template; spelled `:: dynamic` or
+        /// `:: System.Object` the emitter typed it from the declaration instead, came out with no model at all, and
+        /// bound the read dynamically — precompiling a template the engine will not compile and throwing at
+        /// render.</summary>
+        [Theory]
+        [MemberData(nameof(ObjectResolvingSpellings))]
+        public void ARegionWhoseModelResolvesToObjectIsTypedByItsCallSite(string name, string spelling)
+        {
+            var t = ShadowSpelledTemplate(spelling, "[@(Missing)]", "@list(Items){{@r(this)}}");
+            var key = "views/region-spelling-missing-" + name + ".heddle";
+
+            var compiled = new HeddleTemplate(t, new CompileContext(new TemplateOptions(), typeof(RegionShadowHost)));
+            Assert.False(compiled.CompileResult.Success, "the engine types this body and has no 'Missing' on it");
+            Assert.Contains("HED0001", compiled.CompileResult.ToString());
+
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            Assert.Empty(gen.TemplateSources);
+        }
+
+        /// <summary>The near neighbour, one cell away: the same region body reading a member the element does have.
+        /// Every spelling must still precompile and render the engine's bytes, or the rule above is a blanket
+        /// refusal of regions rather than a rule about the model.</summary>
+        [Theory]
+        [MemberData(nameof(ObjectResolvingSpellings))]
+        public void ARegionReadingAMemberTheElementHasStillPrecompiles(string name, string spelling)
+        {
+            var t = ShadowSpelledTemplate(spelling, "[@(Tag)]", "@list(Items){{@r(this)}}");
+            var key = "views/region-spelling-present-" + name + ".heddle";
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+            var (pre, dyn) = RenderShadow(key, t);
+            Assert.Equal("[element]", dyn.Trim());
+            Assert.Equal(dyn, pre);
+        }
+
+        /// <summary>And the same again where two call sites share the region body, which is where the wrong model
+        /// prints rather than throws: the direct call reaches it first, so both calls run the host-typed body and
+        /// the element's own shadowing <c>Tag</c> is never read.</summary>
+        [Theory]
+        [MemberData(nameof(ObjectResolvingSpellings))]
+        public void ASharedRegionBodyPrintsTheFirstCallSitesModelWhateverTheSpelling(string name, string spelling)
+        {
+            var t = ShadowSpelledTemplate(spelling, "[@(Tag)]", "@r(this)|@list(Items){{@r(this)}}");
+            var key = "views/region-spelling-shared-" + name + ".heddle";
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+            var (pre, dyn) = RenderShadow(key, t);
+            Assert.Equal("[host]|[host]", dyn.Trim());
+            Assert.Equal(dyn, pre);
+        }
+
+        /// <summary>And the spelling that does declare a model still types the body by it, so the re-keying did not
+        /// simply route every region down one arm.</summary>
+        [Fact]
+        public void ARegionDeclaringARealTypeIsStillTypedByIt()
+        {
+            const string key = "views/region-spelling-declared.heddle";
+            var t = ShadowSpelledTemplate(" :: " + ShadowHostType, "[@(Tag)]", "@r(this)");
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+            var (pre, dyn) = RenderShadow(key, t);
+            Assert.Equal("[host]", dyn.Trim());
+            Assert.Equal(dyn, pre);
+        }
+
+        // ---- A region declaring a slot of its own ----
+
+        /// <summary>The engine swaps the slot parameter type around every definition body it compiles and does not
+        /// exempt a region — unlike the prop layout on the line above it, which it does. Without the swap here a
+        /// valueless <c>@out()</c> inside such a region looked like an ordinary content splice and rendered, where
+        /// the engine refuses the whole template.</summary>
+        [Fact]
+        public void AValuelessOutInsideARegionsOwnSlotIsRefusedByBothTiers()
+        {
+            const string key = "views/region-own-slot-valueless.heddle";
+            var t = "@model(){{" + ShadowHostType + "}}@\\\n" +
+                    "@%<comp>{{@%<r(out:: " + ShadowHostType + ")>{{[@out()]}}%@@r(){{<@(Tag)>}}}} :: " +
+                    ShadowHostType + "%@\n@comp()";
+
+            var compiled = new HeddleTemplate(t, new CompileContext(new TemplateOptions(), typeof(RegionShadowHost)));
+            Assert.False(compiled.CompileResult.Success);
+            Assert.Contains("HED5013", compiled.CompileResult.ToString());
+
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            Assert.Empty(gen.TemplateSources);
+        }
+
+        /// <summary>Its near neighbour, and the half the slot mode was costing: the same region with a value on the
+        /// <c>@out</c> is a slot projection the engine renders, and it now precompiles rather than degrading.</summary>
+        [Fact]
+        public void AValuedOutInsideARegionsOwnSlotProjectsTheCallerContent()
+        {
+            const string key = "views/region-own-slot-valued.heddle";
+            var t = "@model(){{" + ShadowHostType + "}}@\\\n" +
+                    "@%<comp>{{@%<r(out:: " + ShadowHostType + ")>{{[@out(this)]}}%@@r(){{<@(Tag)>}}}} :: " +
+                    ShadowHostType + "%@\n@comp()";
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+            var (pre, dyn) = RenderShadow(key, t);
+            Assert.Equal("[<host>]", dyn.Trim());
+            Assert.Equal(dyn, pre);
+        }
+
+        // ---- One body, one fill scope ----
+        //
+        // The engine memoizes each item of a definition body by the parsed item it came from and saves and restores
+        // the region fill scope around the body compile without putting it in that memo. So two call sites inside
+        // one component body that fill the same region differently still run one body — the first site's, fills
+        // included — and only the parser isolating the definition tree between them makes two.
+
+        private static string FillRaceTemplate(string outerBody) =>
+            "@model(){{" + FeedType + "}}@\\\n@%<panel>{{@%<:head>{{[d]}}%@@head()}} :: " + FeedType + "\n" +
+            outerBody + "\n%@\n@outer()";
+
+        public static IEnumerable<object[]> EnclosingBodies()
+        {
+            const string twoCalls = "@panel(){{@%<head:head>{{[A]}}%@}}|@panel(){{@%<head:head>{{[B]}}%@}}";
+            yield return new object[] { "<outer>{{" + twoCalls + "}} :: " + FeedType, "[A]|[A]" };
+            yield return new object[]
+            {
+                "<outer>{{@panel(){{@%<head:head>{{[A]}}%@}}|@panel()}} :: " + FeedType, "[A]|[A]"
+            };
+            yield return new object[]
+            {
+                "<outer>{{@panel()|@panel(){{@%<head:head>{{[A]}}%@}}}} :: " + FeedType, "[d]|[d]"
+            };
+            yield return new object[] { "<outer>{{@if(ShowHeading){{" + twoCalls + "}}}} :: " + FeedType, "[A]|[A]" };
+            // Two articles, so the body runs twice — and both runs are the one shared body.
+            yield return new object[] { "<outer>{{@list(Articles){{" + twoCalls + "}}}} :: " + FeedType, "[A]|[A][A]|[A]" };
+            yield return new object[] { "<outer>{{@%<:reg>{{" + twoCalls + "}}%@@reg()}} :: " + FeedType, "[A]|[A]" };
+            yield return new object[]
+            {
+                "<box>{{[@out()]}} :: " + FeedType + "\n<outer>{{@box(){{" + twoCalls + "}}}} :: " + FeedType,
+                "[[A]|[A]]"
+            };
+        }
+
+        /// <summary>Every enclosing body the parser does not isolate. Keyed with the fill scope on the emitter's
+        /// side, each call site got a body of its own and the page rendered its own fill — the engine renders the
+        /// first site's twice.</summary>
+        [Theory]
+        [MemberData(nameof(EnclosingBodies))]
+        public void TwoFillsOfOneRegionInOneBodyRunTheFirstFill(string outerBody, string expected)
+        {
+            var t = FillRaceTemplate(outerBody);
+            var key = "views/region-fill-race-" + outerBody.GetHashCode().ToString("x8") + ".heddle";
+            var (pre, dyn) = RenderBoth(key, t, Model());
+            Assert.Equal(expected, dyn.Trim());
+            Assert.Equal(dyn, pre);
+        }
+
+        /// <summary>The near neighbour that must keep both fills: at document scope the parser hands each call site
+        /// its own copy of the definition tree, so the engine compiles two bodies and each renders its own fill.
+        /// Dropping the fill scope from the body identity must not collapse these two into one.</summary>
+        [Fact]
+        public void TwoFillsAtDocumentScopeEachRunTheirOwn()
+        {
+            const string key = "views/region-fill-race-document.heddle";
+            var t = "@model(){{" + FeedType + "}}@\\\n@%<panel>{{@%<:head>{{[d]}}%@@head()}} :: " + FeedType +
+                    "\n%@\n@panel(){{@%<head:head>{{[A]}}%@}}|@panel(){{@%<head:head>{{[B]}}%@}}";
+            var (pre, dyn) = RenderBoth(key, t, Model());
+            Assert.Equal("[A]|[B]", dyn.Trim());
+            Assert.Equal(dyn, pre);
         }
     }
 }

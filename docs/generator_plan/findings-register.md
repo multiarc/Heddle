@@ -7,7 +7,7 @@ from two sources that disagree in places:
 - `docs/generator_plan/phase-8-docs-sweep.md` — the per-cycle prose record, written after each cycle.
   Believed over a commit message wherever the two conflict: several commit messages were later
   measured wrong and corrected there, and a future reader may hit the uncorrected message first.
-- the commit messages of the review series, `cd3a665 .. f990a9c` on this branch.
+- the commit messages of the review series, `cd3a665 .. 74d1055` on this branch.
 
 Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tests`,
 `src/Heddle.Generator.IntegrationTests`, `src/Heddle.LanguageServices.Tests`) and
@@ -72,7 +72,7 @@ Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tes
 
 ## Contents, by status
 
-### FIXED (147)
+### FIXED (153)
 
 | id | severity | title | note |
 | --- | --- | --- | --- |
@@ -223,6 +223,12 @@ Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tes
 | F-162 | 1 | `Nullable<TEnum>` reached `System.Enum` through a boxing correction |  |
 | F-163 | 4 | Array covariance over element types the CLR reduces to one |  |
 | F-164 | 1 | A declared `:: T` was never checked against what the call site passed |  |
+| F-169 | 3 | The callee's body was built before the caller's content; the engine compiles them the other way round |  |
+| F-170 | 1 | A region's model was keyed on how the declaration is spelled, not on what it resolves to |  |
+| F-171 | 1 | The emitter's body identity had a term the engine's does not: the fill scope |  |
+| F-172 | 1 | An element type the emitter cannot name exempted the gates the engine's answer fails |  |
+| F-173 | 3 | A region that declares its own slot never entered slot mode |  |
+| F-174 | 6 | Two of the four terms of the body-sharing rule decided nothing |  |
 
 ### KNOWN-OPEN — do not re-report (11)
 
@@ -234,7 +240,7 @@ Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tes
 | F-081 | 6 | A declared target framework runs zero tests and the run still exits 0 |  |
 | F-101 | 2 | A hop whose property *type* is internal still emits a name the consumer cannot compile |  |
 | F-140 | 6 | Two verdict rows that cannot be honestly pinned | (recorded rather than pretended) |
-| F-147 | 4 | A native expression reading the element's own member inside an `@list` body degrades |  |
+| F-147 | 4 and 3 | A native expression reading the element's own member inside an `@list` body degrades — and a plain path to a member it lacks throws at render | (severity amended in cycle 21) |
 | F-154 | 4 | Three caller-content shapes degrade under a `:: dynamic` callee |  |
 | F-166 | 3 | A `bool`/`bool?` bitwise operand pair has no diagnostic of its own | (partially closed) |
 | F-167 | 3 | `floor(3)` / `ceil(3)` / `round`-on-`int` are compile errors |  |
@@ -250,7 +256,7 @@ Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tes
 | F-145 | 6 | A type-name gate added to a layout on suspicion, with no demonstrated red | (removed in cycle 18 — F-158) |
 | F-158 | 4 | The extension prop-layout guard, reversed | (removed) — closes F-145 and F-153 |
 
-### NOT-A-DEFECT — measured and dismissed; do not re-report (5)
+### NOT-A-DEFECT — measured and dismissed; do not re-report (6)
 
 | id | severity | title | note |
 | --- | --- | --- | --- |
@@ -259,6 +265,7 @@ Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tes
 | F-128 | — | A root reference as a slot value, reported as a latent hole |  |
 | F-152 | — | Two constructs examined rather than assumed | (both), with one cleanup |
 | F-165 | — | An unreachable guard arm, kept and labelled | (documented decision) |
+| F-175 | — | A second unreachable arm, deleted rather than labelled | (documented decision) |
 
 
 ---
@@ -486,7 +493,7 @@ Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tes
   option that affects analysis has a key here".
 - **fixed by:** `7fd1999`.
 - **pinned by:** `WorkspaceOptionParityTests` (the doc-facing legs added by the sweep).
-- **regression check:** `dotnet test src/Heddle.LanguageServices.Tests -f net8.0 --filter FullyQualifiedName~WorkspaceOptionParityTests`.
+- **regression check:** `dotnet test src/Heddle.LanguageServices.Tests --filter FullyQualifiedName~WorkspaceOptionParityTests`.
 
 ### F-016 — Test names claiming more than the test checks
 
@@ -1190,7 +1197,7 @@ Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tes
 - **pinned by:** `ImportCycleTests.AnImportThatCannotBeReadIsReportedAndTheRestOfTheDocumentStillParses`;
   `LanguageServiceDiagnosticsTests.AMissingImportIsReportedInsteadOfEndingTheAnalysis`.
 - **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter Name~AnImportThatCannotBeRead`
-  and `dotnet test src/Heddle.LanguageServices.Tests -f net8.0 --filter Name~AMissingImportIsReported`.
+  and `dotnet test src/Heddle.LanguageServices.Tests --filter Name~AMissingImportIsReported`.
 
 ### F-062 — A guard written for the disk reader's exception set, over a public seam
 
@@ -1237,7 +1244,7 @@ Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tes
   `UnregisterModelAssemblies` clears it alongside the registrations.
 - **pinned by:** `ModelAssemblyReloadTests.ReloadCollectsPreviousModelContextAfterACSharpTierAnalysis`
   (red on the leak).
-- **regression check:** `dotnet test src/Heddle.LanguageServices.Tests -f net8.0 --filter Name~ReloadCollectsPreviousModelContext`.
+- **regression check:** `dotnet test src/Heddle.LanguageServices.Tests --filter Name~ReloadCollectsPreviousModelContext`.
 - **notes:** two comments claiming metadata references never pin a collectible context were corrected
   rather than the anchor removed: `RoslynReferenceProvider` **does** anchor an assembly to any
   reference built over its in-memory metadata, on purpose — the anchor defers the unload until the
@@ -2639,9 +2646,15 @@ Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tes
 - **fixed by:** — deferred: typing the writer off `DynamicBodyModel` "is a change of a different shape
   and was left for a later cycle".
 - **regression check:** none — it is a degrade, so nothing reddens.
-- **notes:** the plain path `@(Name)` and the function form `@upper(Name)` are unaffected. Do not
-  re-report; do estimate the cost before doing it, since it is precompilation left on the table rather
-  than a divergence.
+- **notes:** the function form `@upper(Name)` is unaffected. **The plain path `@(Name)` is not, and the
+  entry said it was.** Measured in cycle 21: `@list(Products){{[@(Nope)]}}` precompiles and throws
+  `RuntimeBinderException` at render where the engine refuses at compile with `HED0001` naming
+  `Product` — and the same for a `string` element, and for the ambiguous-element case (closed
+  separately as F-172, which refuses the body outright because there the emitter cannot name the type
+  at all). **So this entry carries a severity-3 divergence as well as the severity-4 degrade it
+  records:** a member the element type lacks is a build-time refusal on the engine and a render-time
+  throw on the generated tier. Still do not re-report; the fix is the same one deferred here, typing
+  the `@list` body's reads off `DynamicBodyModel`, and it is now worth more than the entry says.
 
 ### F-148 — A kind funnel cannot say what a name says
 
@@ -2831,6 +2844,8 @@ Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tes
 - **notes:** the arm added alongside this fix — a caller whose own scope has no static type gives the
   body `dynamic` — **was itself the next cycle's regression** (F-161). A model-less document is nothing
   but that shape, so answering "cannot say" there took every one off the precompiled tier.
+  **The fix also stopped one path short:** it re-keyed `DefinitionBodyContext` and never touched
+  `TryRegionBodyContext`, which carried the same spelling test for two more cycles — F-170.
 
 ### F-157 — An `[Obsolete(…, error: true)]` exported function breaks the consumer's build
 
@@ -2943,6 +2958,8 @@ Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tes
 - **notes:** the durable lesson of the cycle: **a correction bolted onto a fix inherits the fix's
   credibility and carries none of its measurement. When a new arm turns out to have exactly one caller,
   suspect the caller.**
+  **This fix also stopped one path short:** it corrected `TryRegionBodyContext`'s *untyped* arm and
+  left its *typed* arm keyed on the spelling, which is F-170.
 
 ### F-162 — `Nullable<TEnum>` reached `System.Enum` through a boxing correction
 
@@ -3065,6 +3082,190 @@ Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tes
 - **fixed by:** — escalated, not fixed. It is a live, golden-checked user-facing artefact.
 - **regression check:** grep `samples/**/*.csproj` for `Name=` on `HeddleTemplate` items.
 
+### F-169 — The callee's body was built before the caller's content; the engine compiles them the other way round
+
+- **status:** FIXED
+- **severity:** 3
+- **found:** cycle 21 — a regression introduced by the previous commit
+- **symptom:** `<frame>{{[@(Title)]}} :: dynamic` and, inside one component body,
+  `<outer>{{@frame(this){{@frame(5)}}}}`. The engine refuses at compile — `HED0001: Property Title not
+  found in Type [Int32]`. The commit under review **precompiled** it, and threw
+  `InvalidCastException: Unable to cast 'System.Int32' to '…RegionArticle'` at render. The parent
+  commit degraded it. **A build-time refusal became a shipped template that throws at render.**
+- **root cause:** the emitter built a callee's body at `TemplateEmitter.cs:1235` and the content the
+  caller wrote inside the call at `:1280`; `HeddleCompiler.CreateExtension` compiles the caller content
+  first (`:1136`) and the body second (`:1147`). The inversion was inert until the same commit made
+  first arrival decide the typing of a body two call sites share — after which the order settled which
+  of the two typed it, and the emitter picked the wrong one.
+- **class expansion:** seven order-sensitive constructs were built and measured. Exactly one site is
+  inverted — the caller content of the *same* call. The mirror, an unrelated call, `@if`/`@else`,
+  `@list`-then-direct and chains in both directions all matched before the fix. The three spellings
+  that resolve to `System.Object` (`dynamic`, `object`, none at all) all reproduce it.
+- **fixed by:** cycle 21 — the caller-content block moved above the body build, and the slot-type
+  resolution hoisted above both arms so it still runs unconditionally.
+- **pinned by:** `DynamicDefinitionBodyTests.CallerContentTypesASharedBodyBeforeTheCallsOwnBodyDoes`
+  (four spellings) with `.TwoCallSitesOfOneModelStillPrecompileWhateverTheOrder` as the neighbour that
+  must keep precompiling. Restoring the old order reddens 4 of 4, each reporting that the template
+  precompiled.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~DynamicDefinitionBodyTests`.
+
+### F-170 — A region's model was keyed on how the declaration is spelled, not on what it resolves to
+
+- **status:** FIXED
+- **severity:** 1 and 3
+- **found:** cycle 21
+- **symptom:** with a host whose element shadows one member, and a single call site:
+  - `@%<row>{{[@(Tag)] [@(Missing)]}} :: dynamic%@@list(Items){{@row(this)}}` inside a component body —
+    the engine refuses at compile (`HED0001`, naming the element type); the generated tier
+    precompiled, the consumer's build was green, and it threw `RuntimeBinderException` at render.
+  - the silent-wrong-output face, with two call sites:
+    `@%<row>{{[@(Tag)]}} :: dynamic%@@row(this)|@list(Items){{@row(this)}}` — the engine prints
+    `[host]|[host]`, the generated tier `[host]|[element]`. Both render; no diagnostic on either tier.
+- **root cause:** `TryRegionBodyContext` branched on the *text* of the declaration — empty or the word
+  `object` took the arm that types the body from the call site, and everything else went to
+  `DefinitionBodyContext`, whose untyped answer for `dynamic` and for any spelling resolving to
+  `System.Object` left the body with no model at all. **No region path called `TryTypeCallSiteBody`.**
+  The engine's predicate is `ResolveType(definition.ModelType) != typeof(object)` — a resolved answer,
+  which `dynamic`, `object`, `System.Object` and declaring nothing all fail alike, so the engine types
+  every one of those bodies from the call site.
+- **class expansion:** 24 cells per spelling, five spellings, both region declaration syntaxes.
+  Measured before: nothing / `:: object` correct; `:: dynamic` 11 generator-renders-where-engine-refuses
+  and 2 different-bytes; `:: System.Object` 15 and 3; a declared real type correct. Measured after:
+  every one of those closed — 18 cells moved to both-refuse, 4 different-bytes to matching, and a
+  further 16 that had been degrading now precompile and render the engine's bytes.
+- **fixed by:** cycle 21 — `TryRegionBodyContext` resolves the declaration first and asks whether the
+  answer is `System.Object`, then routes that arm through `TryTypeCallSiteBody`: the same rule and the
+  same code a non-region definition takes. **Widening the string test to include `dynamic` is not the
+  fix** and was measured: it closes the `dynamic` cells and leaves every `System.Object` cell open.
+- **pinned by:** `RegionTests.ARegionWhoseModelResolvesToObjectIsTypedByItsCallSite` (four spellings),
+  `.ARegionReadingAMemberTheElementHasStillPrecompiles` and
+  `.ASharedRegionBodyPrintsTheFirstCallSitesModelWhateverTheSpelling` as the neighbours that must keep
+  precompiling and rendering the engine's bytes, `.ARegionDeclaringARealTypeIsStillTypedByIt` for the
+  arm that must not have moved, and `.RegionDeclaringNoModelTakesTheValueItsCallSitePasses`.
+  Restoring the spelling test reddens 10; widening it to `dynamic` still reddens the `System.Object`
+  rows.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~RegionTests`.
+- **notes:** the direct continuation of two entries whose fixes stopped one path short — F-156 re-keyed
+  `DefinitionBodyContext` and never touched `TryRegionBodyContext`; F-161 fixed
+  `TryRegionBodyContext`'s untyped arm and not its typed one. **Reach is wide, not exotic:**
+  `IsRegion` is `InDefintionContext`, so every definition nested inside a component body is a region.
+
+### F-171 — The emitter's body identity had a term the engine's does not: the fill scope
+
+- **status:** FIXED
+- **severity:** 1
+- **found:** cycle 21
+- **symptom:** inside one definition body,
+  `@panel(){{@%<head:head>{{[A]}}%@}}|@panel(){{@%<head:head>{{[B]}}%@}}` — the engine renders
+  `[A]|[A]`, the generated tier `[A]|[B]`. Both render; no diagnostic.
+- **root cause:** the fill-scope digest was a term of both the sharing key and the emitted-body cache
+  key. The engine memoizes each compiled item by the parsed `OutputItem` it came from and saves and
+  restores the region fill scope around the body compile **without putting it in that memo**, so a
+  second call site filling a region differently still runs the first site's body, fills included.
+- **class expansion:** 17 enclosing-body shapes; 11 diverged — every shape that is not a parser
+  isolation boundary (definition body, filled-then-unfilled, unfilled-then-filled, three calls,
+  `@if`/`@list`/`@for` bodies inside a definition body, a region body, a slot-definition body, the
+  caller content of a third call, two regions filled differently). Document scope, `@if` at document
+  scope and a document with no definitions block matched, because the parser hands each call site its
+  own copy of the definition tree there.
+- **fixed by:** cycle 21 — the fill scope came **out of both keys**, and the two keys were folded into
+  one string computed once, because they were two spellings of one question. The remaining terms are
+  the definition and the parse context it was reached through, which is the engine's own identity. The
+  cache key's parse-context term moved from the context's absolute offset to its reference identity,
+  the term the sharing key already used; without that the document-scope neighbour collapses too.
+- **pinned by:** `RegionTests.TwoFillsOfOneRegionInOneBodyRunTheFirstFill` (seven enclosing bodies)
+  and `.TwoFillsAtDocumentScopeEachRunTheirOwn` as the neighbour that must keep both fills. Putting
+  the digest back reddens 7 of 7 and leaves the neighbour green; keying by absolute offset instead of
+  parse-context identity reddens the neighbour and `.TwoCallsAreIndependentlyScoped`.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~RegionTests`.
+- **notes:** a one-line fix does not work. Dropping the digest from the sharing key alone leaves the
+  equality check succeeding without transplanting the first context, so the cache key still splits.
+
+### F-172 — An element type the emitter cannot name exempted the gates the engine's answer fails
+
+- **status:** FIXED
+- **severity:** 1
+- **found:** cycle 21
+- **symptom:** over a collection implementing `IEnumerable<int>` and `IEnumerable<string>`:
+  - `@list(Multi){{@list(this){{y}}}}` — the engine refuses (`HED0004`, `System.Int32` against
+    `System.Collections.IEnumerable`); the generated tier precompiled and rendered empty.
+  - `@list(Multi){{[@(Nope)]}}` — the engine refuses (`HED0001`, on `System.Int32`); the generated
+    tier precompiled and threw at render.
+- **root cause:** `ListElementModel` returned null for a collection reaching `IEnumerable<T>` twice.
+  The `@list` body then carried the dynamic flag with **no** model behind it, `CallSiteValueType`
+  answered "cannot say", and `AcceptedTypeSatisfied` exempts that. The engine's reflection walk does
+  pick one of the two (confirmed independently by a `HED5014` message naming `System.Int32`), so the
+  engine has a definite element type here and compiles the whole body against it.
+- **fixed by:** cycle 21 — ambiguity is now a third answer, distinct from "cannot say", and the body
+  is refused. Not being able to reproduce the order the runtime chose in is a reason to leave the body
+  to the dynamic tier, not to emit one against no type at all.
+- **pinned by:** `ListTests.AnAmbiguousElementTypeIsRefusedRatherThanTreatedAsUntyped` (two bodies)
+  with `.AnUnambiguousElementTypeIsUnaffected` as the neighbour — the same nested `@list` body over a
+  nameable enumerable element still precompiles and renders the engine's bytes, and over a nameable
+  non-enumerable element both tiers refuse for the enumerability rule, which is a different rule.
+  Removing the ambiguity arm reddens 2 of 2, both reporting that the template precompiled.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~ListTests`.
+- **notes:** the surviving member of F-148, which closed "the *call* returns a type the descriptor
+  cannot name" and left "the *element model* is null". Degrade cost: one measured cell —
+  `@list(Multi){{@for(this){{y}}}}`, which both tiers rendered before and the generated tier now
+  declines.
+
+### F-173 — A region that declares its own slot never entered slot mode
+
+- **status:** FIXED
+- **severity:** 3 and 4
+- **found:** cycle 21
+- **symptom:** `@%<comp>{{@%<r(out:: …Host)>{{[@out()]}}%@@r(){{<@(Tag)>}}}} :: …Host%@`
+  - as written — the engine refuses (`HED5013`: a definition with a slot parameter requires a value on
+    its `@out`); the generated tier precompiled and rendered `[]`.
+  - with `[@out(this)]` — the engine renders `[<host>]`; the generated tier degraded.
+- **root cause:** `TryRegionBodyContext` never set the slot type, so a region body was never in slot
+  mode and both of `BuildOutCall`'s gates took the wrong branch. The engine's
+  `compileContext.SlotParameterType = slotType` is **not** region-special-cased — in contrast to
+  `ActivePropLayout = definition.IsRegion ? savedLayout : layout` on the line immediately above it,
+  which is.
+- **fixed by:** cycle 21 — the region arm applies the definition's own slot type, as the non-region arm
+  does. The *enclosing* slot mode was already correctly cleared on both tiers; this is the region's own
+  declaration.
+- **pinned by:** `RegionTests.AValuelessOutInsideARegionsOwnSlotIsRefusedByBothTiers` and
+  `.AValuedOutInsideARegionsOwnSlotProjectsTheCallerContent`. Removing the slot application reddens
+  both — one because the template precompiled, one because it degraded.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~RegionTests`.
+
+### F-174 — Two of the four terms of the body-sharing rule decided nothing
+
+- **status:** FIXED
+- **severity:** 6
+- **found:** cycle 21 — both introduced by the commit under review
+- **symptom:** dropping the fill-scope digest from the sharing key reddened 0 of 847; dropping the
+  `DynamicBodyModel` equality term from the sharing test reddened 0 of 847 and 0 of 555. The other two
+  terms are load-bearing: collapsing the parse-context identity to an absolute offset reddens 2, and
+  deleting the degrade arm reddens 1.
+- **fixed by:** cycle 21 — **both terms were removed rather than pinned.** The fill-scope digest went
+  with F-171, where it is the defect. The `DynamicBodyModel` term is redundant by construction and not
+  merely untested: every context reaching the sharing rule got its model from `DefinitionBodyContext`
+  or `TryTypeCallSiteBody`, which arm is taken is a property of the definition rather than of the call
+  site, and both arms leave the model symbol and the dynamic body model in step — so agreement on the
+  tier and the model symbol already implies agreement on the third. Re-adding it changes nothing over
+  879 tests, which is what the argument predicts.
+- **pinned by:** F-171's fixtures pin the identity the two keys now share.
+- **notes:** the rule for a term nobody can redden: **say which it is — untested, or unable to decide
+  anything — and delete it if it is the second.** A term that cannot decide is a claim the reader will
+  believe.
+
+### F-175 — A second unreachable arm, deleted rather than labelled
+
+- **status:** NOT-A-DEFECT (documented decision)
+- **severity:** —
+- **found:** cycle 21
+- **detail:** `IntegralText`'s `char` case is unreachable. Its two callers are the enum branch — and C#
+  admits no enum over `char` — and the narrow-integral literal writer, whose own switch has no `char`
+  arm. It was deleted and the method's contract written down instead.
+- **notes:** the opposite decision from F-165, and the difference is the reason given there: that arm
+  is symmetric with a live one and reads as a pair, so labelling it costs nothing and deleting it would
+  make the pair look deliberate when it is not. This one is symmetric with nothing — it is a case in a
+  list of cases, and a reader counting the list would conclude the callers accept `char`.
+
 ---
 
 ## Defect classes
@@ -3078,7 +3279,8 @@ member is findable by construction — write the enumeration before fixing the r
 **Members:** F-037 (cycle key = raw path text), F-063 (import identity vs the reader's own
 normaliser), F-102 (path memo keyed on a display string), F-113 (body cache keyed on a display string),
 F-120 (a `?` suffix the shared grammar does not have), F-123 (dotted `@model` matched by suffix),
-F-156 (`:: object` vs the word `dynamic`).
+F-156 (`:: object` vs the word `dynamic`), F-170 (the same again, one path over — a region's own
+declaration), F-171 (a body identity term the engine does not key on).
 
 **Enumerated?** **No.** Each was fixed where it was found. Nobody has listed every place a *string* is
 used as the identity of a thing the engine resolves to a symbol, a type or a normalised key. The
@@ -3100,11 +3302,23 @@ two reviewers; both came back complete with no wrong verdict — the first compl
 series to survive two independent re-derivations. **Three cycles of "fixed it, and the same defect
 turned up one path over" ended when the lists were written out in full.**
 
-**The residual, and it is live:** the tables answer *does this context carry the prop layout*. They do
-not answer *what else does a context carry*. F-161 is exactly that gap — a region body carried the
-layout and dropped the model. **A future cycle should extend Table A with a column per piece of state a
-`BodyContext` holds** (`Props`, `RegionHostProps`, `ModelSymbol`, `DynamicBodyModel`, slot mode, the
-dynamic flag), because only the first column has ever been checked.
+**The residual was live, and held two defects.** The tables answered *does this context carry the prop
+layout* and not *what else does a context carry*; F-161 was already that gap. Cycle 21 wrote the
+missing grid — the eleven `BodyContext` construction sites against the seven pieces of state one holds
+— and the two uninspected columns each produced a finding:
+
+| column | verdict |
+| --- | --- |
+| `Props`, `RegionHostProps`, `Fills` | correct at all eleven sites |
+| `SlotType` | **wrong at both region sites** — a region never entered its own slot mode (F-173) |
+| `ModelSymbol`, `ModelCast`, `IsDynamic`, `DynamicBodyModel` | **wrong at the typed-region site** for the two spellings that resolve to `System.Object` (F-170) |
+
+**The register's own predicted residual was the finding.** Two further questions the grid does not
+answer, and the second is where F-171 came from:
+- *what does each site carry that it should not* — the mirror of the question above.
+- *what is the emitter's body identity, term by term, and does the engine key on the same terms?* The
+  emitter had a term the engine does not (the fill scope), and it moved bytes on eleven of seventeen
+  enclosing-body shapes.
 
 ### C — can generated code in the consumer's assembly name this type?
 
@@ -3150,20 +3364,27 @@ tier and not the other), F-130 (the emitter's "I cannot type this" read as "the 
 F-148 (a kind funnel that answers "cannot say" for every non-primitive), F-155 (a declared `int?` that
 accepted nothing), F-161 (a body model of `dynamic` took the accepted-type gate's dynamic exemption).
 
-**Enumerated?** **No, and this is the class most likely to yield the next silent-wrong-output finding.**
-Every gate in the emitter exempts a value it cannot type; nothing lists those gates or asks, per gate,
-what the engine does with the same value. The record's own lesson: *where two tiers must agree, every
-"cannot say" belongs on the refusing side of the branch, and the way to keep that from costing the
-precompiled tier is to shrink the set of things that cannot be said, not to widen what "cannot say" is
-allowed to mean.* **Suggested sweep: enumerate every call site that treats a null/"unknown" type answer
-as permission to proceed.**
+**Enumerated in cycle 21, and it yielded a silent-wrong-output finding as predicted.** The emitter has
+fourteen gates that consult a call-site value's type. Eleven put "cannot say" on the refusing side.
+**Three do not:** `SlotValueAssignable`, `AcceptedTypeSatisfied`, and `IsUntypedReceiver`. Two of the
+three are demonstrated divergent — F-172 reaches `AcceptedTypeSatisfied`, and the `@list`-body member
+read recorded under F-147 reaches the reads `IsUntypedReceiver` governs. **`SlotValueAssignable`'s
+exemption remains unclosed:** no divergence could be reached through it, because on every shape tried
+`TryTypeCallSiteBody` refuses first — which is a statement about the shapes tried, not a proof.
+
+The record's own lesson stands: *where two tiers must agree, every "cannot say" belongs on the refusing
+side of the branch, and the way to keep that from costing the precompiled tier is to shrink the set of
+things that cannot be said, not to widen what "cannot say" is allowed to mean.* F-172 is the shape of
+the answer — a third answer, "the engine has one and I cannot name it", which is neither a type nor
+"cannot say".
 
 ### F — the fix that introduced the next defect
 
 **Chains:** F-056 → F-069 → F-072/F-073 → F-082 (four commits, each introducing the next, ending in a
 silent-wrong-output regression that the intermediate commit had made *loud*); F-023 → F-033 and F-034;
 F-005 → F-020; F-050 → F-067; F-057 → F-058 and F-071; F-099 → F-102; F-074 → F-093; F-112 → F-117;
-F-124 → F-130; F-136 → F-142; F-145 → F-153 → F-158; F-156 → F-161.
+F-124 → F-130; F-136 → F-142; F-145 → F-153 → F-158; F-156 → F-161 → F-170; F-169 and F-174 (both
+introduced by the commit under review in cycle 21, alongside a fix that was measured sound).
 
 **Enumerated?** Not a code class — a process property, and the strongest single signal in this
 register. The record notes it four separate times; in cycle 10, **four of eight findings were
@@ -3180,7 +3401,8 @@ cycle's commit first*, and specifically the arms and guards it added rather than
 - *an exemption satisfied by any exception at all*: F-090 (`Assert.ThrowsAny<Exception>`, including the
   harness falling over), F-076.
 - *the property was never pinned at all, and mutation proved it*: F-021, F-028, F-029, F-030, F-041,
-  F-044, F-060, F-088, F-090, F-100, F-116, F-160.
+  F-044, F-060, F-088, F-090, F-100, F-116, F-160, F-174 (where two of the terms turned out to be
+  undecidable rather than untested, and were deleted).
 
 **Enumerated?** **No — but the instrument is known and works:** mutate one production arm at a time and
 watch the suite. Cycles 12, 13 and 16 each ran a full mutation matrix over a verdict table (nineteen
@@ -3261,7 +3483,7 @@ entry first, because several were deliberately not fixed rather than missed.
 | F-081 | a declared target framework runs zero tests and the run exits 0 | 6 | build wiring, not engine code; named the highest-value item on the platform page and still not done |
 | F-101 | a hop whose *property type* is internal still emits a name the consumer cannot compile | 2 | checking it where the member check sits would falsely degrade the ordinary `m?.Inner?.Name` shape; doing it properly needs a form-aware check at the point of emission. **Status uncertain — later cycles may have subsumed it; verify before reporting** |
 | F-140 | two type-kind verdict rows that cannot be honestly pinned (`Structure`, `Extension`) | 6 | `Structure` is a Roslyn alias no change here can move; `Extension` is not declared by the Roslyn the generator compiles against, so a case for it is `CS0117` |
-| F-147 | a native expression reading the element's own member inside an `@list` body degrades | 4 | typing the writer off `DynamicBodyModel` is a change of a different shape; left for a later cycle |
+| F-147 | a native expression reading the element's own member inside an `@list` body degrades, and a plain path to a member the element lacks throws at render where the engine refuses | 4 and 3 | typing the writer off `DynamicBodyModel` is a change of a different shape; left for a later cycle. Cycle 21 measured the severity-3 face and raised the entry's value |
 | F-154 | three caller-content shapes under a `:: dynamic` callee degrade where the engine renders (a native expression, a function call, an `@if`) | 4 | reported rather than hidden; not attempted |
 | F-166 | a `bool`/`bool?` bitwise operand pair has no `HED1008` of its own | 3 | both tiers agree, so it is a matched defect needing a ruling rather than an edit. Partially closed: it now carries `HED0005` with a real message and position |
 | F-167 | `floor(3)` / `ceil(3)` / `round`-on-`int` are `HED1013` | 3 | the fix (C# betterness in the runtime binder) is a filed next-window candidate; it widens accepted behaviour |
