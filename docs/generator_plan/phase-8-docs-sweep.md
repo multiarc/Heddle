@@ -3009,3 +3009,164 @@ cells of thirty-one and written "fixed" beside it.
 ago, that only one of seven `BodyContext` columns had ever been checked, and named the other six. Two
 of them held defects. The cheapest work in this cycle was reading the register's own list of what it
 had not looked at.
+
+## Twenty-second review cycle (2026-07-31)
+
+Two reviewers, both working from the register's defect-class section rather than from probes. Both
+picked a class the register said was **not enumerated**, enumerated it, and each enumeration
+immediately produced a severity-2 defect — generated code that stops the consumer's build — that no
+prior cycle's probing had reached. That is the cycle's result, and it is worth more than the three
+fixes.
+
+### Class C, enumerated by position: the extension type nobody asked about
+
+Defect class C is *can generated code in the consumer's assembly name this type?* The register said it
+was enumerated over `TypeKind` and **not** over positions, and told the next cycle to write the
+position list. Written, it closes on sinks rather than call sites: everything that reaches a `.g.cs`
+goes through `CodeWriter.Line`/`Raw`, the `_fieldDecls` buffer, the `_methodDecls` buffer or the
+manifest builder, and that grep reaches two files.
+
+The position that had never been asked is the **bound host extension's own type**. `ExtensionBinder`
+contains no accessibility or `[Obsolete]` check at all, and the emitter spells the type twice per call
+site — the field's declared type and the `new` that fills it. The engine's discovery filters a type on
+the extension interface and the name attribute alone (`TemplateFactory.cs:245-262`) and
+`Activator.CreateInstance` instantiates a non-public type with a public constructor and ignores
+`[Obsolete]` outright. So against a referenced assembly carrying the parameterless
+`[assembly: ExportExtensions]` — which needs no cooperation from the extension's author:
+
+| template | engine | generated |
+| --- | --- | --- |
+| `@secret(Name)` — `internal sealed class SecretExtension` | renders `<ab>` | `CS0122` ×2 |
+| `@boxed(Name, width: 7)` — `internal` + `[Prop]` | renders `{7:ab}` | `CS0122` ×1 |
+| `@legacy(Name)` — `[Obsolete("gone", true)]` | renders `[ab]` | `CS0619` ×2 |
+
+No diagnostic and no degrade: the manifest said precompiled and the build stopped on a file the
+consumer cannot edit. The question is now asked once, at the choke point in `BuildCall`, before any of
+the three writers allocates a field — which also covers the fourth write, reachable only through a host
+assembly whose simple name is literally `Heddle`, without needing a measurement nobody can construct.
+`ClassifyTypeName` and not `ClassifyModelType`: no extension is boxed into a model and none could be a
+ref struct. Four neighbours must keep pre-compiling, and one of them is deliberate: an extension whose
+declared `[Prop]` **type** is unnameable, a gate a prior cycle measured and removed.
+
+### And class C is not a class of types
+
+The second member of the same enumeration is `@using`. Its body was copied into the generated file
+verbatim as a C# `using` directive, with nothing between the parse and the emission:
+
+| template | engine | generated |
+| --- | --- | --- |
+| `@using(){{Zork.Nope}}@\` | renders | `CS0246` |
+| `@using(){{1 + 2}}@\` | renders | `CS1001`+`CS1002`+`CS8805`+`CS0201` — **the file no longer parses** |
+| `@using(){{System.Linq}}@\` | renders | precompiles, clean |
+
+The second row is worse than one bad name: an unparseable compilation unit takes every other template
+in the same compilation with it. To the engine a `@using` body is advice about resolving a model type
+name — `UsingExtension.InitStart` only calls `CSharpContext.ImportNamespace` — so a body naming nothing
+is simply never consulted. The directive is now omitted when the text names no namespace this
+compilation can see. The **collected list is untouched**, because that is what a model type name is
+resolved through; filtering the list instead was measured equivalent and reddens nothing, and the
+emission site was chosen as the narrower change rather than because they differ.
+
+**A position list built by asking "which types does the emitter spell" would have missed this
+entirely.** It is a name that is never resolved to a symbol at all.
+
+### Class A, enumerated: the import identity
+
+Defect class A is *the emitter keys on a spelling where the engine keys on a resolved answer* — nine
+members, none enumerated. Enumerated, the row that diverged is the `@<<` import identity. The generator
+installs `TemplateKey.TryNormalize` as both the cycle-guard identity and the import-map lookup; the
+engine resolves through `Path.GetFullPath(Path.Combine(RootPath, path))`. Thirteen spellings of one
+file:
+
+| spelling | engine | generator |
+| --- | --- | --- |
+| `lib.heddle`, `./lib.heddle`, `.//lib.heddle` | renders | precompiled, matches |
+| `x\lib.heddle`, `LIB.heddle`, `./../outside/lib.heddle` | refuses | `HED7011` + degrade (both refuse) |
+| `x/../lib.heddle`, `sub/../lib.heddle`, `sub/./../lib.heddle` | **renders** | **`error HED7011` — breaks the build** |
+| `/lib.heddle`, `~/lib.heddle`, `lib` | **refuses** | **precompiled, renders** |
+
+`TryNormalize` rejects `..` outright and falls back to the raw spelling, so the map misses. **The `..`
+direction is fixed**: a `..` is applied before the key is derived, the way `GetFullPath` applies it,
+with `.` and repeated separators dropped on the way, and a `..` with nothing left to cancel against
+**kept**, so a spelling reaching above the root still refuses as the engine does. `TryNormalize` itself
+is untouched — a template key genuinely may not contain a `..`, and widening it would reach the
+resolver and the registry. `HED7011`'s message was wrong for every row here ("Add it as a
+`<HeddleTemplate>` item" — the file *is* an item) and now says what the spelling is matched against.
+
+**The other direction is recorded, not closed.** Closing it means refusing `lib`, `~/lib.heddle` and
+`/lib.heddle`, and the first two are spellings the documentation teaches. Taking working precompiled
+templates off the tier to match a refusal is the wrong trade at severity 3, and the register carries it
+with its measurement.
+
+**The LSP needed no treatment, and that is a source fact rather than a hope.** `grep -rn
+"ImportIdentifier"` gives five hits; the LanguageServices facade sets neither `ImportReader` nor
+`ImportIdentifier` and parses through `DocumentParser.Runtime`, so it already had the engine's rule
+exactly.
+
+### The trap the enumeration disarmed
+
+Enumerating class A also walked into something that looks exactly like a defect and is not. The
+emitter compares `def.ModelType == "dynamic"` — a raw spelling test, in the same shape as the finding
+the previous cycle fixed one path over. It is **correct**, because `HeddleCompiler.cs:585` compares the
+same text: the engine keys on the spelling in that position too, and resolving it would be the
+divergence. This is now written down in the register with the citation, so the next cycle spends
+nothing on it.
+
+### A term that decides nothing, resolved the way the register says to
+
+The previous cycle wrote the rule — *when a term cannot be reddened, say which of the two it is:
+untested, or unable to decide anything* — and then, in its very next key, wrote two terms of the second
+kind. The folded body key was `Name@Position@ParseContextId`; dropping the name reddened 0 of 1431,
+dropping the span reddened 0 of 1431, and the context id alone as the whole key reddened 0 of 1431.
+
+They are redundant **by construction**, not merely untested, and the argument is enumerable: a
+`DefinitionItem` gets a fresh `ParseContext` in its constructor, and every path that hands two live
+items one context — the copy constructor, `OverrideWith`, and the region-fill materializer, which takes
+its name and its span from the same candidate — carries the name and the span across with it. The one
+path that does not, `ParseContext.IsolateContext`, gives the copy a *new* context, which only splits
+further. Both terms are deleted and the argument is in the method's contract. The surviving term
+reddens thirty-odd tests.
+
+### The ambiguity refusal's price, measured rather than assumed
+
+The register recorded the `@list`-over-an-ambiguous-element refusal as costing "one measured cell". It
+costs two, because the refusal is taken **before the body is inspected** and so declines bodies that
+could not have needed the element type — including one that reads nothing at all, which the engine
+renders. A third shape the adversary reported, a slot projection, refuses on both tiers in the spelling
+constructed for it and is not a cost cell.
+
+It is **recorded rather than narrowed**, and the reason is in the finding it came from: narrowing means
+building the body first against no type and asking afterwards whether it consulted one, which is
+precisely the state that refusal exists to prevent. The cost now has rows of its own, so a cycle that
+narrows the rule reddens them and has to say what it did.
+
+### The sweep
+
+Three grids captured against the emitter at `HEAD` and against the committed one, plus the corpus:
+the 13-spelling import grid, the 7-row extension-nameability grid, the 5-row `@using` grid, and the
+63-template corpus through its classification, its `.g.cs` byte hashes and its full diagnostic list.
+
+* **Newly degrading: 3.** All three are the unnameable-extension rows. **None had been matching** —
+  each previously *broke the consumer's build* with `CS0122`/`CS0619` against a generated file, so the
+  degrade is not a loss of a working precompiled template but the replacement of a build failure by a
+  warning and a render.
+* **Bytes moved while still precompiling: 0.** The corpus dump — classification, per-file source hash
+  and diagnostics — is byte-identical to `HEAD`'s across all 63 templates, and that is the sweep that
+  would see the body-key change if it moved anything.
+* **Newly precompiling: 5.** Two `@using` rows and three import spellings. All five previously produced
+  a **build error**, and all five now render the engine's bytes exactly.
+
+Corpus classification and render parity unchanged; all ten sample goldens unchanged.
+
+### The durable lesson
+
+**Two defect classes were enumerated to closure this cycle, and each one immediately yielded a
+severity-2 defect that no prior cycle's probing had reached** — the extension type and the `@using`
+text for class C, the import identity for class A. Neither is exotic. An `internal` extension is what a
+host writes when it does not intend the type to be public API; `x/../lib.heddle` is what a path
+concatenation produces. Both had been sitting in front of twenty-one cycles of probes.
+
+And the enumeration pays a second way: it **disarms traps**. The `"dynamic"` string test looks exactly
+like the defect the previous cycle fixed, and is correct, because the engine compares the same text.
+Only a cycle that walked the whole class could tell them apart, and now the register says which is
+which so the next one does not have to.

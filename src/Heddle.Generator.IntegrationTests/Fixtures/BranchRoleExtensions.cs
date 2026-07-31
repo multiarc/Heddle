@@ -5,6 +5,10 @@ using Heddle.Data;
 using Heddle.Exceptions;
 using Heddle.Runtime;
 
+// AgingExtension is deprecated on purpose — naming it here is the warning a host would get, and the point of the
+// fixture is that a warning does not make the name unwritable.
+#pragma warning disable 618
+
 [assembly: ExportExtensions(
     typeof(Heddle.Generator.IntegrationTests.Fixtures.YellExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.BeginExtension),
@@ -51,7 +55,10 @@ using Heddle.Runtime;
     typeof(Heddle.Generator.IntegrationTests.Fixtures.ObjectEnumDefaultExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.EnumIntDefaultExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.InternalEnumDefaultExtension),
-    typeof(Heddle.Generator.IntegrationTests.Fixtures.NarrowDefaultsExtension))]
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NarrowDefaultsExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.SecretExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.BoxedExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.AgingExtension))]
 
 namespace Heddle.Generator.IntegrationTests.Fixtures
 {

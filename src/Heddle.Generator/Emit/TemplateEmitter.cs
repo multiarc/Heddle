@@ -694,6 +694,14 @@ namespace Heddle.Generator.Emit
             if (name == "partial")
                 return BuildPartialCall(item, cp, bctx, out reason);
 
+            // Every route below spells the bound extension's own type into the consumer's assembly, so the one
+            // question that decides whether the generated file compiles at all is asked once, here, before any of
+            // them allocates a field. The engine asks it nowhere: its discovery filters on the interface and the
+            // name attribute alone, and Activator.CreateInstance is indifferent to accessibility and [Obsolete].
+            if (_extensionBinder.TryResolve(name, out var boundInfo) &&
+                !CanWriteExtensionTypeName(boundInfo.TypeSymbol, item.Position, out reason))
+                return null;
+
             // The engine checks the call value against every type the extension declares it accepts, before it
             // compiles the call, and refuses the whole template when a statically-typed value fits none of them.
             // Without the same check here a template the engine will not compile precompiled and rendered.
@@ -1876,17 +1884,24 @@ namespace Heddle.Generator.Emit
         /// The body a call site gets, built once per body identity. There is exactly one such identity and both the
         /// sharing rule and the emitted-code cache are keyed by it, because they are two halves of one question:
         /// which call sites the engine gives one compiled body to.
-        /// <para>That identity is the definition and the parse context it was reached through, and nothing else —
-        /// in particular <b>not</b> the fill scope. The engine memoizes each item of a body by the parsed
-        /// <c>OutputItem</c> it came from, and saves and restores the region fill scope around the body compile
-        /// without putting it in that memo, so a second call site filling a region differently still gets the first
-        /// site's body, fills included. Keyed with the fill scope on this side, the two call sites got two bodies
-        /// and the page rendered each site's own fill where the engine renders the first site's twice.</para>
+        /// <para>That identity is the definition's own parse context, and nothing else — in particular <b>not</b>
+        /// the fill scope. The engine memoizes each item of a body by the parsed <c>OutputItem</c> it came from, and
+        /// saves and restores the region fill scope around the body compile without putting it in that memo, so a
+        /// second call site filling a region differently still gets the first site's body, fills included. Keyed with
+        /// the fill scope on this side, the two call sites got two bodies and the page rendered each site's own fill
+        /// where the engine renders the first site's twice.</para>
+        /// <para>The name and the declaration span are not terms of it either, and not because nothing tests them:
+        /// they cannot decide anything a definition's context has not already decided. A <c>DefinitionItem</c> gets a
+        /// fresh <c>ParseContext</c> in its constructor, and every path that hands two live items one context —
+        /// the copy constructor, <c>OverrideWith</c>, and the region-fill materializer, which takes its name and its
+        /// span from the same candidate — carries the name and the span across with it. The one path that does not,
+        /// <c>ParseContext.IsolateContext</c>, gives the copy a <em>new</em> context, which only splits further.
+        /// </para>
         /// </summary>
         private DefBodyInfo GetOrBuildDefinitionBody(DefinitionItem def, BodyContext bodyCtx, out string reason)
         {
             reason = null;
-            var key = def.Name + "@" + def.Position + "@" + ParseContextId(def.Context);
+            var key = ParseContextId(def.Context).ToString(System.Globalization.CultureInfo.InvariantCulture);
             if (!TryShareBodyTyping(key, ref bodyCtx, out reason))
                 return null;
 
@@ -3189,9 +3204,24 @@ namespace Heddle.Generator.Emit
         /// saying so. Every other refusal is a property of the type itself with no remedy but a different model, so
         /// it degrades silently to the tier that can serve it.</para>
         /// </summary>
-        private bool CanWriteTypeName(ITypeSymbol type, BlockPosition position, out string reason)
+        private bool CanWriteTypeName(ITypeSymbol type, BlockPosition position, out string reason) =>
+            ReportUnnameable(_resolver.ClassifyModelType(type, out reason), type, position);
+
+        /// <summary>
+        /// The same question for a type the emitter spells but never holds a <b>model</b> value of: a bound host
+        /// extension, whose type is written twice at every call site — the declared type of the field the binding
+        /// lives in, and the <c>new</c> that fills it.
+        /// <para>The engine's discovery asks a type only whether it implements the extension interface and carries
+        /// the name attribute, and <c>Activator.CreateInstance</c> instantiates a non-public type with a public
+        /// constructor and ignores <c>[Obsolete]</c> — so the engine registers the extension and renders, while the
+        /// consumer's build stops on a <c>.g.cs</c> they cannot edit. The ref-struct restriction is the one that
+        /// does not apply here: nothing boxes the extension, and no extension could be a ref struct anyway.</para>
+        /// </summary>
+        private bool CanWriteExtensionTypeName(ITypeSymbol type, BlockPosition position, out string reason) =>
+            ReportUnnameable(_resolver.ClassifyTypeName(type, out reason), type, position);
+
+        private bool ReportUnnameable(SymbolTypeResolver.NameFault fault, ITypeSymbol type, BlockPosition position)
         {
-            var fault = _resolver.ClassifyModelType(type, out reason);
             if (fault == SymbolTypeResolver.NameFault.None)
                 return true;
 
@@ -3259,8 +3289,15 @@ namespace Heddle.Generator.Emit
             // which a symbolizer/IDE/LSP can actually read, and duplicating it as prose would be two carriers
             // for one fact.
             w.Raw("#pragma warning disable");
+            // A @using body is free text to the engine: the only thing it ever does with one is compare it against
+            // a namespace while resolving a model type name, so a body that names nothing this compilation can see
+            // is never consulted and the template renders. Copied out as a C# directive the same body is CS0246 —
+            // or, when it is not a name at all, stops the whole generated file from parsing. Omitting it costs
+            // nothing: everything generated code writes is fully qualified, and code that did need the namespace
+            // could not have compiled against a compilation that does not contain it.
             foreach (var ns in _usings)
-                w.Raw("using " + ns + ";");
+                if (_resolver.NamespaceExists(ns))
+                    w.Raw("using " + ns + ";");
             w.Line();
             w.Line("namespace " + _namespace);
             w.Line("{");

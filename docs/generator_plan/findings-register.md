@@ -72,7 +72,7 @@ Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tes
 
 ## Contents, by status
 
-### FIXED (153)
+### FIXED (157)
 
 | id | severity | title | note |
 | --- | --- | --- | --- |
@@ -229,8 +229,12 @@ Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tes
 | F-172 | 1 | An element type the emitter cannot name exempted the gates the engine's answer fails |  |
 | F-173 | 3 | A region that declares its own slot never entered slot mode |  |
 | F-174 | 6 | Two of the four terms of the body-sharing rule decided nothing |  |
+| F-101 | 2 | A hop whose property *type* is internal still emits a name the consumer cannot compile | (closed in cycle 22 as subsumed; the literal shape is not expressible in C#) |
+| F-176 | 2 | A host extension type the consumer's assembly may not name, written into `.g.cs` |  |
+| F-177 | 2 | `@using` text copied into `.g.cs` as a C# `using` directive |  |
+| F-178 | 2 and 3 | The generator's import identity is a template key; the engine's is a canonical disk path | (the `..` direction fixed; the strip direction known-open) |
 
-### KNOWN-OPEN — do not re-report (11)
+### KNOWN-OPEN — do not re-report (12)
 
 | id | severity | title | note |
 | --- | --- | --- | --- |
@@ -238,13 +242,14 @@ Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tes
 | F-079 | 3 | `Path.Combine` rejects characters on .NET Framework that .NET Core accepts |  |
 | F-080 | 3 | On `netstandard2.0` an assembly with no file yields no metadata reference | (by design; there is no API to fix it with) |
 | F-081 | 6 | A declared target framework runs zero tests and the run still exits 0 |  |
-| F-101 | 2 | A hop whose property *type* is internal still emits a name the consumer cannot compile |  |
 | F-140 | 6 | Two verdict rows that cannot be honestly pinned | (recorded rather than pretended) |
 | F-147 | 4 and 3 | A native expression reading the element's own member inside an `@list` body degrades — and a plain path to a member it lacks throws at render | (severity amended in cycle 21) |
 | F-154 | 4 | Three caller-content shapes degrade under a `:: dynamic` callee |  |
 | F-166 | 3 | A `bool`/`bool?` bitwise operand pair has no diagnostic of its own | (partially closed) |
 | F-167 | 3 | `floor(3)` / `ceil(3)` / `round`-on-`int` are compile errors |  |
 | F-168 | off-scale | A shipped sample still uses removed MSBuild item metadata |  |
+| F-178 (open half) | 3 | The generator resolves an import spelled `/lib.heddle`, `~/lib.heddle` or `lib` where the engine refuses all three | (the `..` half is FIXED; see the entry) |
+| F-179 | 3 | An import-only library compiled standalone turns its matched engine error into a build error | (both tiers agree, so not drift; documented opt-out) |
 
 ### SUPERSEDED — the fix or guard was later replaced, removed or reversed (5)
 
@@ -1827,20 +1832,30 @@ Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tes
 
 ### F-101 — A hop whose property *type* is internal still emits a name the consumer cannot compile
 
-- **status:** KNOWN-OPEN
+- **status:** FIXED (subsumed) — closed in cycle 22 after the check the entry asked for was found
+  already in place
 - **severity:** 2
 - **found:** cycle 9; declined deliberately
 - **symptom:** the emitted code names the property's type; if that type is internal to another
   assembly the consumer's build fails. Checking it where the member check sits would falsely degrade
   the ordinary `m?.Inner?.Name` shape, where no type name is ever written.
-- **fixed by:** — recorded rather than half-fixed. Doing it properly needs a form-aware check at the
-  point of emission.
-- **pinned by:** nothing.
-- **regression check:** none.
-- **notes:** **status uncertain.** Later cycles rebuilt type nameability wholesale (F-110, F-119) and
-  reworked property-type handling (F-122); the record never says whether either subsumed this case. If
-  you are about to report it, first check whether `Classify`/`ClassifyTypeName` is consulted at the
-  point where a hop's property type is spelled.
+- **subsumed by:** the form-aware check the entry asked for exists. `SymbolTypeResolver.cs:319-322`
+  asks `ClassifyTypeName(prop.Type)` for **every** hop before `ResolvePath` returns `Resolved`, and
+  `MemberPathWriter.cs:87`/`:93` is where that type is written — `default(T)` in the null-safe form and
+  the receiver's own name in the ref-struct form. The model-only restrictions are deliberately not asked
+  there, so the ordinary shape the entry was declined to protect still precompiles.
+- **measured (cycle 22):** an error-obsolete property type degrades with `HED7030`; a merely *unusable*
+  property type — a pointer — degrades in silence, which is the split F-122 introduced; a public-typed
+  neighbour precompiles and renders byte-identically.
+- **the literal shape the entry names is not expressible in C#.** A *public* property whose type is
+  `internal` is `CS0053: Inconsistent accessibility`, which is why no cycle in thirteen ever produced its
+  repro — the reachable shapes are the error-obsolete and unusable ones above, and those are gated.
+- **pinned by:** the property-type rows of `UnnameableModelSymbolTests` and
+  `InaccessibleModelSymbolTests`.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~UnnameableModelSymbolTests`.
+- **residual cost, recorded:** the error-obsolete row is a **degrade where the engine renders** —
+  severity 4, exactly the cost this entry predicted when it declined the fix. It is not free; it is
+  cheaper than the `CS0619` it replaces.
 
 ### F-102 — A memo keyed on a display string
 
@@ -3206,9 +3221,29 @@ Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tes
   Removing the ambiguity arm reddens 2 of 2, both reporting that the template precompiled.
 - **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~ListTests`.
 - **notes:** the surviving member of F-148, which closed "the *call* returns a type the descriptor
-  cannot name" and left "the *element model* is null". Degrade cost: one measured cell —
-  `@list(Multi){{@for(this){{y}}}}`, which both tiers rendered before and the generated tier now
-  declines.
+  cannot name" and left "the *element model* is null".
+- **degrade cost — remeasured in cycle 22, and it is more than the one cell recorded.** The refusal is
+  taken **before the body is inspected**, so it declines every `@list` over such a collection, including
+  bodies that could not have needed the element type:
+
+  | body | engine | generated |
+  | --- | --- | --- |
+  | `@list(Multi){{@for(this){{y}}}}` | renders `[yyy]` | degrade (the cell first recorded) |
+  | `@list(Multi){{[x]}}` — **reads nothing at all** | renders `[[x][x]]` | degrade |
+  | `@list(Multi){{@list(this){{y}}}}` / `[@(Nope)]` / `@for(Multi)` | refuses | degrade (correct) |
+  | `@list(Single){{[@(Length)]}}` (neighbour) | renders `[[1][1]]` | precompiles, matches |
+
+  A third shape was reported by cycle 22's adversary — a slot projection, `@list(Multi){{@box(this){{c}}}}`
+  — and the spelling constructed to reproduce it refuses on **both** tiers (`HED5014`), so it is not
+  recorded as a cost cell. Two cells, not one and not three.
+- **why it is recorded rather than narrowed:** narrowing to the bodies that do need the element type
+  means building the body first against no type and asking afterwards whether it consulted one — which
+  is exactly the state this finding exists to prevent, a body on the dynamic tier with no model behind
+  it that every gate downstream exempts. The cost is pinned instead by
+  `ListTests.TheAmbiguityRefusalAlsoDeclinesBodiesThatDoNotNeedTheElementType`, so a cycle that narrows
+  the rule reddens those rows and has to say what it did. This is the register's own lesson from F-112
+  ("a blanket refusal charges the cost to working templates") recorded with its price rather than
+  acted on blind.
 
 ### F-173 — A region that declares its own slot never entered slot mode
 
@@ -3266,6 +3301,158 @@ Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tes
   make the pair look deliberate when it is not. This one is symmetric with nothing — it is a case in a
   list of cases, and a reader counting the list would conclude the callers accept `char`.
 
+### F-176 — A host extension type the consumer's assembly may not name, written into `.g.cs`
+
+- **status:** FIXED
+- **severity:** 2
+- **found:** cycle 22
+- **symptom:** against a referenced assembly carrying `[assembly: ExportExtensions]` (the parameterless
+  *All* form, which needs no cooperation from the extension author):
+
+  | template | engine | generated (before) |
+  | --- | --- | --- |
+  | `@secret(Name)` — `internal sealed class SecretExtension` | renders `<ab>` | `error CS0122` ×2 |
+  | `@boxed(Name, width: 7)` — `internal` + `[Prop]` | renders `{7:ab}` | `error CS0122` ×1 |
+  | `@legacy(Name)` — `[Obsolete("gone", true)] public sealed class LegacyExtension` | renders `[ab]` | `error CS0619` ×2 |
+
+  No diagnostic and no degrade: the manifest said precompiled and the consumer's build stopped on a
+  generated file they cannot edit.
+- **root cause:** `ExtensionBinder` asks nothing about accessibility or `[Obsolete]` — the whole file has
+  no `Accessibility`, `IsObsolete` or `Public` outside the `internal` keyword — and the emitter spells
+  `Info.GlobalName` into the field's declared type and into the `new` that fills it. The engine's
+  discovery is `assembly.GetTypes()` filtered only by `IsImplement<IExtension>() &&
+  IsHaveAttribute<ExtensionNameAttribute>` (`src/Heddle/Runtime/TemplateFactory.cs:245-262`), and
+  `Activator.CreateInstance` instantiates a non-public type with a public constructor and ignores
+  `[Obsolete]` outright.
+- **class expansion:** `grep -n "GlobalName" src/Heddle.Generator --include=*.cs` gives exactly four
+  emission sites — the branch-role body extension, the two writes of the plain custom writer, and the
+  parameterized writer — plus one diagnostic-text use. All three unguarded ones were demonstrated. The
+  fourth was reachable only through `Info.IsEngineAssembly`, which is `string.Equals(assemblyName,
+  "Heddle")`, so a host assembly whose simple name is literally `Heddle` would route a role extension
+  to it; the fix is placed before that branch, so it is covered without needing the measurement.
+- **fixed by:** cycle 22 — the question is asked once at the choke point in `BuildCall`, before any of
+  the three writers allocates a field, through `ClassifyTypeName` and the existing `HED7030`
+  author-facing warning. `ClassifyTypeName` and not `ClassifyModelType`: no extension is boxed into a
+  model, and no extension could be a ref struct.
+- **pinned by:** `UnnameableExtensionTypeTests` — three degrade rows and four neighbours that must keep
+  pre-compiling and rendering the engine's bytes: a public extension in the *same probe assembly*, an
+  ordinary public host extension, a warning-level `[Obsolete]` one, and one whose declared `[Prop]`
+  **type** is unnameable (a gate a prior cycle deliberately removed, and this row says so).
+  Removing the check reddens 3 of 3 with `CS0122` ×2, `CS0122` ×1 and `CS0619` ×2 — the exact messages
+  the finding reports.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~UnnameableExtensionTypeTests`.
+- **notes:** the position defect class C predicted. The error-obsolete row needs a probe assembly built
+  at test time, because an error-obsolete type cannot appear in a `typeof` export list in C# at all —
+  which is the property under test.
+
+### F-177 — `@using` text copied into `.g.cs` as a C# `using` directive
+
+- **status:** FIXED
+- **severity:** 2
+- **found:** cycle 22
+- **symptom:**
+
+  | template | engine | generated (before) |
+  | --- | --- | --- |
+  | `@using(){{Zork.Nope}}@\` + `hello` | renders `hello` | `error CS0246` |
+  | `@using(){{1 + 2}}@\` + `hello` | renders `hello` | `CS1001`+`CS1002`+`CS8805`+`CS0201` — **the `.g.cs` no longer parses** |
+  | `@using(){{System.Linq}}@\` + `hello` | renders `hello` | precompiles, clean |
+
+  The second row is worse than one bad name: an unparseable compilation unit takes every other template
+  in the same compilation down with it.
+- **root cause:** the collected `@using` bodies were written out verbatim as `using <text>;`, with no
+  validation anywhere between the parse and the emission. To the engine a `@using` body is advice about
+  resolving a model type name — `UsingExtension.InitStart` only calls `CSharpContext.ImportNamespace` —
+  so a body naming nothing is never consulted and the template renders.
+- **class expansion:** exactly two members — this, and the verbatim embedded-C# expression. The second
+  is a documented opt-in (`FullCSharp` says "this text is C#"); `@using` is not.
+- **fixed by:** cycle 22 — the directive is omitted when the text names no namespace this compilation
+  can see (`SymbolTypeResolver.NamespaceExists`, walked from the merged global namespace). The
+  **collected list is untouched**: it is what `SymbolTypeIndex` resolves a model type name through.
+  Omitting costs nothing — generated code is fully qualified everywhere except embedded C#, and code
+  that needed a namespace the compilation does not contain could not have compiled against it either.
+- **pinned by:** `UsingDirectiveTests` — the three rows above plus the pair that says the collected list
+  still decides: a `@model(){{Fixtures.Cart}}` that resolves only because a `@using` qualifies it, and
+  the same spelling without the `@using`, which degrades. Removing the guard reddens 2 of 894 with the
+  CS0246 and the CS1001/CS1002/CS8805/CS0201 above.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~UsingDirectiveTests`.
+- **notes:** filtering the *list* instead of the emission was measured equivalent — a namespace that does
+  not exist can match nothing in either resolver arm — and reddens nothing. The emission site was chosen
+  as the narrower change, not because the two differ.
+
+### F-178 — The generator's import identity is a template key; the engine's is a canonical disk path
+
+- **status:** FIXED in one direction; the other recorded as known-open
+- **severity:** 2 (the direction fixed) and 3 (the direction left open)
+- **found:** cycle 22
+- **symptom:** one `lib.heddle` on disk and as an `AdditionalFile`, target `@<<{{SPELLING}}` + `@greet()`,
+  13 spellings:
+
+  | spelling | engine | generator (before) |
+  | --- | --- | --- |
+  | `lib.heddle`, `./lib.heddle`, `.//lib.heddle` | renders `[[hello]]` | precompiled, matches |
+  | `x\lib.heddle`, `LIB.heddle`, `Lib.heddle`, `./../outside/lib.heddle` | refuses `HED4009`+`HED1001` | `HED7011` + degrade (both refuse) |
+  | `x/../lib.heddle`, `sub/../lib.heddle`, `sub/./../lib.heddle` | **renders** | **`error HED7011` — breaks the build** |
+  | `/lib.heddle`, `~/lib.heddle`, `lib` | **refuses** `HED4009`+`HED1001` | **precompiled, renders** |
+
+- **root cause:** the generator installs `TemplateKey.TryNormalize` as both `ImportIdentifier` and the
+  import-map lookup. `ParserSettings.ImportIdentity` otherwise falls back to
+  `Path.GetFullPath(Path.Combine(RootPath, importPath))`, and the disk reader takes the path verbatim.
+  `TryNormalize` strips `~/`, `./` and a leading `/`, appends `.heddle` to an extension-less final
+  segment, and **rejects** `..` — falling back to the raw spelling, so the map misses. `GetFullPath`
+  resolves `..`, keeps a leading `/` as absolute, and appends nothing.
+- **fixed by:** cycle 22 — `..` is applied before the key is derived
+  (`HeddleTemplateGenerator.ApplyParentSegments`), the way `GetFullPath` applies it, with `.` and
+  repeated separators dropped on the way. A `..` with nothing left to cancel against is **kept**, so a
+  spelling reaching above the root still fails key derivation and still refuses, as the engine does.
+  `TemplateKey.TryNormalize` is untouched: a template key genuinely may not contain a `..`, and widening
+  it would reach the resolver and the registry. `HED7011`'s message was wrong for every one of these
+  rows ("Add it as a `<HeddleTemplate>` item" — the file *is* an item) and now also says what the
+  spelling is matched against.
+- **class expansion:** `grep -rn "ImportIdentifier"` gives 5 hits: the property, two reads in
+  `ParserSettings`, the one generator assignment, and a doc line. The **LanguageServices facade sets
+  neither `ImportReader` nor `ImportIdentifier`** — it parses through `DocumentParser.Runtime`, whose
+  `ImportReader` is `null` — so the LSP already had the engine's semantics exactly and needed no
+  treatment. That is the third spelling of the question, and it is closed by grep.
+- **pinned by:** `ImportSpellingTests` — four spellings the engine resolves to the same file (including
+  the three that only resolve once `..` is applied), each asserted to render the engine's bytes through
+  both tiers, and three that name nothing on either tier (`./../outside/…`, a case difference, and a
+  `..` that escapes). Dropping `ApplyParentSegments` reddens 3 of 893 with the `HED7011` build error;
+  letting an uncancellable `..` be swallowed reddens the escaping row.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~ImportSpellingTests`.
+- **notes:** the remaining direction is in the known-open register: the generator resolves `/lib.heddle`,
+  `~/lib.heddle` and `lib` where the engine refuses all three. Narrowing it would take working
+  precompiled templates off the tier over spellings the documentation teaches — `@partial(){{child}}`
+  already spells a template without its extension, and `~/` is a documented host idiom in
+  `TemplateKey`'s own contract — so it is recorded rather than closed. `LIB.heddle` under a
+  case-insensitive filesystem is a fourth divergent row this box cannot produce; not guessed at.
+
+
+### F-179 — An import-only library compiled standalone reports an error it would never raise in place
+
+- **status:** KNOWN-OPEN (a trap, not a divergence)
+- **severity:** 3
+- **found:** cycle 22
+- **detail:** a `.heddle` file meant only to be imported is also a `<HeddleTemplate>` item, so the
+  generator parses and compiles it **on its own**. A fragment that is only well-formed inside an
+  importer then fails that standalone pass, and the front end's error is forwarded as `HED7012`, an
+  error against the consumer's build.
+- **why it is not drift:** both tiers refuse that file when it is compiled standalone — the engine's
+  own compiler would raise the same error given the same input, so there is nothing between the tiers
+  to diverge. The trap is that **the engine never compiles that file standalone in production**: in a
+  real host it only ever reaches the compiler already expanded into the document that imports it, so
+  the error is one no run of the application can produce.
+- **opt-out, and it is documented:** `Precompile="false"` on the `<HeddleTemplate>` item. The item stays
+  in the import map — importers still resolve it — and the standalone pass runs in advisory mode only.
+  `HED7011`'s own message names it.
+- **recorded because:** a future cycle will find this and report it as a tier divergence. It is not one,
+  and the answer is a build-file change rather than an emitter change.
+- **not re-measured by the fixer of cycle 22:** the shape is recorded as the reviewer reported it,
+  together with the opt-out verified in the generator (`ParseAndReport`'s `advisoryOnly` path) and in
+  `HED7011`'s message text. The measurement to add, if it is ever escalated, is which fragment shapes
+  actually fail the standalone pass.
+
+
 ---
 
 ## Defect classes
@@ -3282,10 +3469,26 @@ F-120 (a `?` suffix the shared grammar does not have), F-123 (dotted `@model` ma
 F-156 (`:: object` vs the word `dynamic`), F-170 (the same again, one path over — a region's own
 declaration), F-171 (a body identity term the engine does not key on).
 
-**Enumerated?** **No.** Each was fixed where it was found. Nobody has listed every place a *string* is
-used as the identity of a thing the engine resolves to a symbol, a type or a normalised key. The
-cheapest sweep: grep for dictionary keys and comparisons built from `ToDisplayString`, fully-qualified
-name text, or raw directive text, and ask what the engine compares in the same position.
+F-178 (the import identity — a normalised template key where the engine has a canonical disk path) is
+the member cycle 22 added.
+
+**Enumerated in cycle 22, and it produced a severity-2 defect too.** The grid of every place a *string*
+stands as the identity of something the engine resolves — dictionary keys and comparisons built from
+`ToDisplayString`, fully-qualified name text, or raw directive text — was written out against what the
+engine compares in the same position. The row that diverged was the import identity (F-178), and it is
+closed by `grep -rn "ImportIdentifier"`: five hits, one of which is the generator's own assignment. The
+**LanguageServices facade sets neither `ImportReader` nor `ImportIdentifier`** and parses through
+`DocumentParser.Runtime`, so the LSP already had the engine's rule exactly and needed no treatment.
+
+**Record explicitly that the `"dynamic"` string test is NOT a member of this class.** The emitter's
+`def.ModelType == "dynamic"` looks exactly like F-156, which was the same comparison one path over and
+*was* a defect. It is correct here, and for a reason a future cycle must not re-derive by intuition:
+`HeddleCompiler.cs:585` compares the same text, so the engine keys on the spelling in that position too.
+Resolving it would be the divergence. This trap has now been walked into once and disarmed once.
+
+**Residual, named:** `SignatureKey` versus `Type.FullName`; `SymbolTypeIndex`'s name maps against
+`ReflectionHelper`'s — **the largest unexamined surface left in this class, and where a prior finding
+lived**; diagnostic position located by text search; and two key shapes sharing one dedup set.
 
 ### B — a reader that does not consult the prop layout, and a context that does not carry it
 
@@ -3326,18 +3529,39 @@ answer, and the second is where F-171 came from:
 class), F-110 (`void`, unbound generics, pointers, error-obsolete containing and property types),
 F-111 and F-127 (a spelling that resolves to no symbol), F-119 (type arguments), F-122 (a property type
 that is merely unusable), F-125 (an enclosing type's arguments), F-157 (an obsolete-error *method*),
-F-101 (**open** — a hop's internal property type).
+F-101 (a hop's property type — closed in cycle 22 as subsumed).
 
 **Enumerated?** **Yes for `TypeKind`, no for positions.** Cycle 11 replaced the kind-by-kind widening
 with two predicates, and cycle 14 made the kind table a function of `TypeKind` with a row asserting the
 rows cover the enum — so a kind Roslyn adds later arrives with no verdict and the theory does not
 compile past it. Recursion covers array elements, pointer elements, type arguments and containing
 types.
-**What was never enumerated is the set of *positions* where the emitter spells a name**: cycle 9 fixed
-four (`@model`, definition, slot, prop) ad hoc, cycle 13 found the entry-point parameter still written
-verbatim, and cycle 18 found the *method* of an exported call had never been asked. F-101 is the known
-survivor. **Write the position list — every place the emitter writes an identifier into `.g.cs` — and
-check each against `Classify`.**
+**Positions were enumerated in cycle 22, and the enumeration immediately produced two severity-2
+defects that eleven cycles of probing had not reached.** Before it, positions were fixed one reported
+instance at a time: cycle 9 fixed four (`@model`, definition, slot, prop), cycle 13 found the
+entry-point parameter still written verbatim, cycle 18 found the *method* of an exported call had never
+been asked.
+
+The enumeration closes on the **sinks**, not on a list of call sites: everything that reaches `.g.cs`
+goes through `CodeWriter.Line`/`Raw`, the `_fieldDecls` buffer, the `_methodDecls` buffer, or the
+manifest builder, and `grep -rn "w\.Line(\|w\.Raw(\|_fieldDecls\.\|_methodDecls\." src/Heddle.Generator
+--include=*.cs` reaches exactly two files (`Emit/TemplateEmitter.cs`, `Emit/PieceWriter.cs`). Walking the
+positions against `Classify` found the **bound extension's own type** unguarded at three of its four
+writes (F-176) — the fourth reachable only through an assembly literally named `Heddle`, and covered by
+placing the check before that branch rather than by measuring it.
+
+**The class is not limited to types.** `@using` (F-177) has the same failure mode for a name that is
+never resolved to a symbol at all: text from the template written into a compilation unit, where a name
+resolving to nothing is `CS0246` and text that is not a name stops the file parsing. A position list
+built by asking "which *types* does the emitter spell" would have missed it.
+
+**Residual: one position has no gate and no demonstrated reach.** The export argument cast
+(`Binding/ExportFunctionBinder.cs:133`) writes `parameterType.ToDisplayString(FullyQualifiedFormat)`
+straight into a cast with no `Classify` call. It is safe today only because of the *range* of the
+argument estimator — the parameter types it can reach are the ones `ToSymbol` produces — rather than
+because anything checks. **Widening the estimator re-opens it**, and nothing in the build would say so.
+
+F-101 was the last recorded survivor and is now closed as subsumed; see its entry.
 
 ### D — a rule implemented for the one case in front of the author
 
@@ -3369,8 +3593,12 @@ fourteen gates that consult a call-site value's type. Eleven put "cannot say" on
 **Three do not:** `SlotValueAssignable`, `AcceptedTypeSatisfied`, and `IsUntypedReceiver`. Two of the
 three are demonstrated divergent — F-172 reaches `AcceptedTypeSatisfied`, and the `@list`-body member
 read recorded under F-147 reaches the reads `IsUntypedReceiver` governs. **`SlotValueAssignable`'s
-exemption remains unclosed:** no divergence could be reached through it, because on every shape tried
-`TryTypeCallSiteBody` refuses first — which is a statement about the shapes tried, not a proof.
+exemption remains unclosed, and is now twice-unclosed:** no divergence could be reached through it,
+because on every shape tried `TryTypeCallSiteBody` refuses first — which is a statement about the shapes
+tried, not a proof. Cycle 22 failed to reach one by probing as well. **Two independent reviewers failing
+to construct a case is evidence that the closure needs an argument from source — that
+`TryTypeCallSiteBody` refuses first for every shape, derived from its predicate — rather than more
+shapes.** Probing here has now been tried twice and returned nothing both times.
 
 The record's own lesson stands: *where two tiers must agree, every "cannot say" belongs on the refusing
 side of the branch, and the way to keep that from costing the precompiled tier is to shrink the set of
@@ -3408,6 +3636,18 @@ cycle's commit first*, and specifically the arms and guards it added rather than
 watch the suite. Cycles 12, 13 and 16 each ran a full mutation matrix over a verdict table (nineteen
 arms, then seventeen/eighteen reddening, then a seven-kind matrix) and each found real dead rows.
 Nothing runs that matrix routinely.
+
+**Cycle 21 is the register's first commit where every arm it added is load-bearing:** all six were
+mutated and all six reddened (14, 2, 7, 4, 2 and 4 tests). **And the very next key that commit wrote is
+the counter-example.** The folded body key carried three terms; dropping the definition's name reddened
+0 of 1431, dropping its declaration span reddened 0 of 1431, and the parse-context term alone as the
+whole key reddened 0 of 1431. Cycle 22 resolved it the way F-174 says to. The two terms are redundant
+**by construction**: every path that hands two live `DefinitionItem`s one `ParseContext` — the copy
+constructor, `OverrideWith`, and the region-fill materializer, which takes its name and its span from
+the same candidate — carries the name and the span across with it, and the one path that does not,
+`ParseContext.IsolateContext`, gives the copy a *new* context, which only splits further. So they were
+deleted and the argument written down. The surviving term reddens 30+ tests. A commit where every arm
+reddens is a property of that commit, not of its author.
 
 ### H — the instrument did not have a category for the defect
 
@@ -3481,13 +3721,14 @@ entry first, because several were deliberately not fixed rather than missed.
 | F-079 | `Path.Combine` rejects characters on .NET Framework that .NET Core accepts | 3 | the development box cannot make it throw; the mitigation in place is reasoning, not evidence |
 | F-080 | on `netstandard2.0` an assembly with no file yields no metadata reference | 3 | there is no API to fix it with (`TryGetRawMetadata` does not exist there); no `netstandard2.0` path executes on this box at all |
 | F-081 | a declared target framework runs zero tests and the run exits 0 | 6 | build wiring, not engine code; named the highest-value item on the platform page and still not done |
-| F-101 | a hop whose *property type* is internal still emits a name the consumer cannot compile | 2 | checking it where the member check sits would falsely degrade the ordinary `m?.Inner?.Name` shape; doing it properly needs a form-aware check at the point of emission. **Status uncertain — later cycles may have subsumed it; verify before reporting** |
 | F-140 | two type-kind verdict rows that cannot be honestly pinned (`Structure`, `Extension`) | 6 | `Structure` is a Roslyn alias no change here can move; `Extension` is not declared by the Roslyn the generator compiles against, so a case for it is `CS0117` |
 | F-147 | a native expression reading the element's own member inside an `@list` body degrades, and a plain path to a member the element lacks throws at render where the engine refuses | 4 and 3 | typing the writer off `DynamicBodyModel` is a change of a different shape; left for a later cycle. Cycle 21 measured the severity-3 face and raised the entry's value |
 | F-154 | three caller-content shapes under a `:: dynamic` callee degrade where the engine renders (a native expression, a function call, an `@if`) | 4 | reported rather than hidden; not attempted |
 | F-166 | a `bool`/`bool?` bitwise operand pair has no `HED1008` of its own | 3 | both tiers agree, so it is a matched defect needing a ruling rather than an edit. Partially closed: it now carries `HED0005` with a real message and position |
 | F-167 | `floor(3)` / `ceil(3)` / `round`-on-`int` are `HED1013` | 3 | the fix (C# betterness in the runtime binder) is a filed next-window candidate; it widens accepted behaviour |
 | F-168 | a shipped sample still uses removed MSBuild item metadata | off-scale | escalated to the owning effort; the sample silently loses its intended key |
+| F-178 (open half) | an import spelled `/lib.heddle`, `~/lib.heddle` or `lib` precompiles and renders where the engine refuses all three (`HED4009`+`HED1001`) | 3 | closing it means refusing spellings the documentation teaches — `@partial(){{child}}` already spells a template without its extension, and `~/` is a documented host idiom in `TemplateKey`'s own contract — so the fix would take working precompiled templates off the tier to match a refusal. Measured over 13 spellings; the `..` direction, which broke the build over a template the engine renders, is FIXED |
+| F-179 | an **import-only** library file is compiled standalone, so an error it only ever raises in isolation becomes a build error (`HED7012`) | 3 | **not drift** — both tiers refuse the file when it is compiled on its own, so there is nothing to diverge. It is a trap because the engine never compiles that file standalone in production: it only ever reaches the compiler expanded into an importer. The documented opt-out is `Precompile="false"` on the `<HeddleTemplate>` item, which keeps the file in the import map and out of the standalone pass. Recorded so a future cycle does not report it as a divergence |
 
 **Also open, and recorded inside their entries rather than as separate findings:**
 

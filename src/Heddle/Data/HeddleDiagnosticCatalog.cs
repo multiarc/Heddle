@@ -293,7 +293,9 @@ namespace Heddle.Data
                 "Templates '{0}' and '{1}' sanitize to the same entry-class identifier '{2}'");
             Add(HeddleDiagnosticIds.BuildImportNotIncluded, "Heddle import not included in compilation", error,
                 "Import '{0}' is not included in this compilation. Add it as a <HeddleTemplate> item (use " +
-                "Precompile=\"false\" for import-only files).");
+                "Precompile=\"false\" for import-only files), or correct the spelling: an import is matched " +
+                "against the item's key, which is case-sensitive, separated by '/', and cannot reach above the " +
+                "template root.");
             Add(HeddleDiagnosticIds.BuildForwardedError, "Heddle template error", error, "{0}");
             Add(HeddleDiagnosticIds.BuildForwardedWarning, "Heddle template warning", warning, "{0}");
             Add(HeddleDiagnosticIds.BuildUnresolvableFunction, "Unresolvable function in precompiled template",
@@ -350,12 +352,12 @@ namespace Heddle.Data
                 "Named Heddle template imported by key rather than by its registered name", warning,
                 "Import '{0}' resolves a template that has a registered Name '{1}'. Both spellings resolve; prefer " +
                 "'{1}' for a template with a registered name.");
-            // One id for the type and the member, and for accessibility and error-obsolescence, because from the
-            // consumer's side they are one situation with one shape: something the engine reads by reflection is
-            // spelled in a way this assembly's compiler rejects. Splitting them would say the same sentence at
-            // several ids.
+            // One id for a model type, a member, and a bound extension's own type, and for accessibility and
+            // error-obsolescence alike, because from the consumer's side they are one situation with one shape:
+            // something the engine reads by reflection is spelled in a way this assembly's compiler rejects.
+            // Splitting them would say the same sentence at several ids.
             Add(HeddleDiagnosticIds.BuildInaccessibleModelSymbol,
-                "Model symbol cannot be named by generated code", warning,
+                "Symbol cannot be named by generated code", warning,
                 "'{0}' cannot be named by code generated into this compilation, so this template cannot be " +
                 "precompiled and renders through the dynamic path at run time. The engine binds it by reflection, " +
                 "which ignores both assembly boundaries and [Obsolete], so the rendered output is unchanged. Make " +
