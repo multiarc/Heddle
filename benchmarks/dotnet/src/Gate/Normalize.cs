@@ -200,7 +200,7 @@ namespace Heddle.Benchmarks.Dotnet.Gate
 
         /// <summary>
         /// Non-overlapping ordinal occurrence count. Mirrors the reference implementations in
-        /// normalize.mjs and the retired IdiomaticChecks.CountOccurrences.
+        /// normalize.mjs, which is this pipeline's reference implementation.
         /// </summary>
         public static int CountOccurrences(string haystack, string needle)
         {

@@ -19,7 +19,7 @@ java -cp target/benchmarks.jar heddle.benchmarks.jvm.gate.GateCli calibrate   # 
 java -cp target/benchmarks.jar heddle.benchmarks.jvm.gate.GateCli gate        # all 32 parity cells
 ```
 
-The corpus is read from `../../src/Heddle.Performance/GoldenCorpus/` (override with
+The corpus is read from `../../benchmarks/dotnet/GoldenCorpus/` (override with
 `-Dheddle.corpus=<path>`); every entry is SHA-256-verified against `manifest.json` at load
 (exit 2 on mismatch or absence).
 

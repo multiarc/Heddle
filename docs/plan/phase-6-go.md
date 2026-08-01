@@ -254,7 +254,7 @@ resolutions referenced above, not duplicated here.
 | Controlled-track methodology: semantically-equivalent, disclosed-idiom implementations so the engine, not the algorithm, is measured | Marr, Daloze & Mössenböck, "Cross-Language Compiler Benchmarking: Are We Fast Yet?" (DLS 2016); [smarr/are-we-fast-yet](https://github.com/smarr/are-we-fast-yet) |
 | Encoded-workload shape (untrusted rows, `<script>` payload, Japanese UTF-8) and its context-confinement constraint | [Phase 1](phase-1-cross-stack-foundation.md) design direction; [TechEmpower/FrameworkBenchmarks](https://github.com/TechEmpower/FrameworkBenchmarks) Fortunes rules |
 | Honest-reporting posture and report style this phase's publication must match | [docs/benchmarks/2026-07-18/index.md](../benchmarks/2026-07-18/index.md) |
-| Parity gate mechanics (byte-identical after documented normalization, asserted before timing) | [src/Heddle.Performance/Runners/README.md](../../src/Heddle.Performance/Runners/README.md); [Phase 1](phase-1-cross-stack-foundation.md) contract v2 |
+| Parity gate mechanics (byte-identical after documented normalization, asserted before timing) | [benchmarks/dotnet/GoldenCorpus/README.md](../../benchmarks/dotnet/GoldenCorpus/README.md); [Phase 1](phase-1-cross-stack-foundation.md) contract v2 |
 
 Assumptions to verify in the spec (flagged, not grounded here): templ's and quicktemplate's exact
 whitespace-control syntax; the concrete escaped-entity output of html/template's and templ's

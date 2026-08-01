@@ -7,7 +7,7 @@ The specs are the source of truth; nothing in this file overrides them:
 
 | Ecosystem | Harness | Normative spec |
 |---|---|---|
-| .NET (anchor) | `src/Heddle.Performance` (BenchmarkDotNet) | [phase 1 — metrics-protocol.md](../docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/metrics-protocol.md) |
+| .NET (anchor) | `benchmarks/dotnet` (BenchmarkDotNet) | [phase 1 — metrics-protocol.md](../docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/metrics-protocol.md) |
 | Rust | `benchmarks/rust` (Criterion) | [phase 2 — README.md](../docs/spec/cross-stack-benchmarks/phase-2-rust/README.md) (D9/WI10) |
 | JVM | `benchmarks/jvm` (JMH) | [phase 3 — harness-and-jmh.md](../docs/spec/cross-stack-benchmarks/phase-3-jvm/harness-and-jmh.md) |
 | JS | `benchmarks/js` (mitata) | [phase 4 — harness-and-run.md](../docs/spec/cross-stack-benchmarks/phase-4-js/harness-and-run.md) |
@@ -123,7 +123,8 @@ aborting with instructions unless all of the following hold:
 **Phase 1 — gates, all selected ecosystems, stop on first red** (same rule as
 `linux-crosscheck/run-all.sh`: a red gate is triaged before anything later runs):
 
-1. .NET: `parity` + `verify-corpus` (golden-corpus freshness + verifier calibration)
+1. .NET: `gate` (every registered cell), `selftest` (the gate's own checks, including the
+   six-technique differential), `verify-corpus` (corpus freshness + verifier calibration)
 2. Rust: `cargo run --release --bin gate`
 3. JVM: `mvnw -q clean verify` (gates wired into `verify`)
 4. JS: `npm ci`, `npm run selftest`, `npm run gate`
@@ -137,7 +138,7 @@ overall exit at the end.
 
 | Ecosystem | Full mode (protocol shape) | Smoke mode |
 |---|---|---|
-| .NET | 8 suites, one `--filter *<Suite>*` run each, BDN defaults + MemoryDiagnoser | same, `--job Dry` |
+| .NET | `bench-crossstack`, 8 suites, one `--filter *<Suite>*` run each, both fairness tracks, ShortRun + MemoryDiagnoser; then the `bench-techniques`, `bench-cold` and `bench-internal` sidebars | same, `--job Dry` |
 | Rust | `cargo bench --bench controlled --bench idiomatic --bench cold -- --noplot`, then `alloc_report` (alloc-count feature), then `summarize` (non-fatal while the Phase 1 Heddle reference rows are pending) | `cargo bench … -- --test` |
 | JVM | `java -jar target/benchmarks.jar -prof gc -rf json -rff <out>` — committed annotation regime (Fork 3, 1×2 s / 3×1 s), **~9 min**; `baseline` adds `-wi 2 -i 9` | `-f 1 -wi 1 -i 1 -w 1s -r 1s -foe true` |
 | JS | `run.ps1` / `run.sh` per bench script (`--expose-gc --allow-natives-syntax`, priority posture per platform); the two render tracks run `-Repeat <passes>` and are aggregated by `bench/aggregate.mjs`, which emits the D13 `STABILITY:` verdict every run | the three scripts once via the launcher |
@@ -179,7 +180,7 @@ changes about *what* is measured — only how many times.
 
 | Ecosystem | Knob | `short` (committed default) | `baseline` override | short | baseline |
 |---|---|---|---|---:|---:|
-| .NET | BenchmarkDotNet job | `[ShortRunJob]` — L1 / W3 / I3 | `--warmupCount 7 --iterationCount 15` | ~9 min | ~21 min |
+| .NET | BenchmarkDotNet job | ShortRun — L1 / W3 / I3 | `--warmupCount 7 --iterationCount 15` | ~9 min† | ~21 min† |
 | Rust | criterion | warmup 3 s, measure 10 s, 100 samples | `--warm-up-time 4 --measurement-time 30` | 8.3 min | ~20 min |
 | JVM | JMH annotations | `@Fork(3)`, `@Warmup(1×2s)`, `@Measurement(3×1s)` | `-wi 2 -i 9` | **8.6 min** ✓ | ~23 min |
 | JS | aggregated passes | 18 passes per render track | 54 passes | **9.6 min** ✓ | ~29 min |
@@ -191,6 +192,14 @@ against 5.45 h before. .NET is the one leg that does not scale with sample count
 process per benchmark method and pays JIT plus `[MemoryDiagnoser]` each time, so its `baseline`
 values are simply BenchmarkDotNet's own adaptive-default shape, the regime the protocol pinned
 before E6.
+
+† **The .NET figures predate the harness rebuild and are now low.** The leg used to measure one
+fairness track and 41 cells; it now measures both tracks across 96 cross-stack cells plus three
+sidebars (render techniques, cold compile, Heddle-internal), so budget roughly 2–3× those numbers
+until a real run replaces them. The default job moved from a `[ShortRunJob]` attribute to the
+harness's own configuration for the same reason `--job Dry` now means what it says: an attribute
+job cannot be replaced from the command line, only added to, so a smoke pass used to run the full
+measurement as well as the dry one.
 
 **JS is a different mechanism, and deliberately so.** mitata exposes no per-cell time budget:
 `B.run()` builds its own options object and `run()` forwards only `throw`, so the 642 ms
@@ -243,7 +252,7 @@ per platform, the Windows form is given first and the Linux twin second.
 
 | Ecosystem | Directory | Gate | Measurement |
 |---|---|---|---|
-| .NET | `src/Heddle.Performance` | `dotnet run -c Release -f net10.0 -- parity` then `… -- verify-corpus` | `dotnet run -c Release -f net10.0 -- --filter *<Suite>*` (8 suites; `export-corpus` rewrites goldens — never run it casually) |
+| .NET | `benchmarks/dotnet` | `dotnet run -c Release -- gate`, then `… -- selftest`, then `… -- verify-corpus` | `dotnet run -c Release -- bench-crossstack --filter *<Suite>*` (8 suites), then `bench-techniques`, `bench-cold`, `bench-internal` (`export-corpus` rewrites the goldens — never run it casually) |
 | Rust | `benchmarks/rust` | `cargo run --release --bin gate` | `cargo bench --bench controlled --bench idiomatic --bench cold -- --noplot`; `cargo run --release --features alloc-count --bin alloc_report`; `cargo run --release --bin summarize` |
 | JVM | `benchmarks/jvm` | `.\mvnw.cmd -q clean verify` / `./mvnw -q clean verify` (add `-Dmaven.compiler.release=23` on a JDK < 25) | `java -jar target/benchmarks.jar -prof gc -rf json -rff jmh-result.json` |
 | JS | `benchmarks/js` | `npm ci` + `npm run selftest` + `npm run gate` | `./run.ps1 bench/controlled.mjs` / `./run.sh bench/controlled.mjs` (also `idiomatic.mjs`, `cold-compile.mjs`); stability: `-Repeat 5` / `--repeat 5` |

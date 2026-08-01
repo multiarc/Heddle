@@ -173,7 +173,7 @@ must not erode it:
 - `[MethodImpl(MethodImplOptions.AggressiveInlining)]` on tiny, provably-hot transforms
   only — with a benchmark that justifies it.
 - **Perf claims are proven by BenchmarkDotNet** in
-  [src/Heddle.Performance](../../../src/Heddle.Performance), not asserted. Any change that
+  [benchmarks/dotnet](../../../benchmarks/dotnet), not asserted. Any change that
   touches a hot path runs the suite as part of its regression gate (see
   [testing standards](testing-standards.md#regression-gates)).
 - Compile-time cost is "compile once, render many" — moderate compile-path allocation is
@@ -297,7 +297,7 @@ warning never blocks running the code or the tests — which is exactly when you
 them. The discipline is the gate, not the compiler.
 
 Sweep both configurations and the whole tree, not just the solution: `Heddle.sln` does not contain
-the `samples/`, `benchmarks/dotnet/` or `Heddle.Performance/ThirdParty/` projects, so a solution
+the `samples/`, `benchmarks/dotnet/` or `benchmarks/third-party/` projects, so a solution
 build reports clean while they warn.
 
 A warning you are deliberately keeping is **recorded, not silenced**: a `#pragma warning disable`

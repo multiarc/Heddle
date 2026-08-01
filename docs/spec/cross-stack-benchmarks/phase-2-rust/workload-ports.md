@@ -57,8 +57,8 @@ pins the counts and distinctive values ([README testing plan](README.md#testing-
 ### Composed-page fragment data files (`data/composed-page/`)
 
 The composed-page model data is Heddle's own fragment set, exactly as the .NET twins consume it
-from [`TwinContent.cs`](../../../../src/Heddle.Performance/Runners/TwinContent.cs) and
-[`AreaComponent.cs`](../../../../src/Heddle.Performance/TestSuite/Extensions/AreaComponent.cs)
+from [`TwinContent.cs`](../../../../benchmarks/dotnet/src/Models/TwinContent.cs) and
+[`AreaComponent.cs`](../../../../benchmarks/dotnet/src/Models/AreaData.cs)
 (`AreaComponent.Areas` — the very dictionary Heddle renders from). The Rust port cannot
 reference C# statics, so the fragments are committed as data files consumed via `include_str!`:
 
@@ -97,7 +97,7 @@ dictionary actually holds.)*
 **Construct mapping.** Heddle composes via `@<<{{layout.heddle}}` (documented fragment-sequence
 output, Q1.4/D5 in Phase 1); the .NET twins mirror it as *home = one include of layout; layout =
 ordered concatenation of section/component substitutions + one real loop over the ordered area
-names with a per-name lookup* ([`LiquidTemplates.cs`](../../../../src/Heddle.Performance/Runners/LiquidTemplates.cs)).
+names with a per-name lookup* ([`LiquidTemplates.cs`](../../../../benchmarks/dotnet/templates/controlled/liquid/composed-page.liquid)).
 The Rust controlled ports keep exactly that construct set: `{% include %}` for the layout, scalar
 substitutions for sections/components, `{% for %}` over `area_names`, and a per-name lookup —
 Tera via documented bracket indexing (`areas[name]`), Askama via a documented `self` method call
@@ -221,7 +221,7 @@ Idiomatic × 2: `trivial-substitution.verify.json`.
 
 `templates/controlled/askama/trivial-substitution.html` and
 `templates/controlled/tera/trivial-substitution.html` (one line, mirroring
-[`trivial-substitution.heddle`](../../../../src/Heddle.Performance/TestTemplates/trivial-substitution.heddle)):
+[`trivial-substitution.heddle`](../../../../benchmarks/dotnet/templates/controlled/heddle/trivial-substitution.heddle)):
 
 ```jinja
 <article><h1>{{ title }}</h1><p class="sku">{{ sku }}</p><p class="price">{{ price }}</p><p class="brand">{{ brand }}</p><p class="cat">{{ category }}</p><p class="avail">{{ availability }}</p><a class="link" href="{{ url }}"><img src="{{ image_url }}"></a><p class="sum">{{ summary }}</p><p class="rating">{{ rating }}</p></article>
@@ -251,7 +251,7 @@ Doc citations: Askama book *Getting started* / *Creating templates*; Tera docs *
 {% for item in items %}<tr><td>{{ item.name }}</td><td>{{ item.value }}</td></tr>{% endfor %}
 ```
 
-(Mirrors [`large-loop.heddle`](../../../../src/Heddle.Performance/TestTemplates/large-loop.heddle).
+(Mirrors [`large-loop.heddle`](../../../../benchmarks/dotnet/templates/controlled/heddle/large-loop.heddle).
 Askama: `items: &[LoopRow]`, `escape = "none"`. Tera: controlled-raw instance.)
 
 ### Idiomatic — both engines
@@ -477,9 +477,9 @@ Same loop, multi-line, rows tight; default escaping on. Doc citations as workloa
 | fortunes-encoded | `fortunes-encoded.golden.html` | `fortunes-encoded.verify.json` | yes | yes |
 | encoded-loop | `encoded-loop.golden.html` | `encoded-loop.verify.json` | yes | yes |
 
-All gate assets live at `src/Heddle.Performance/GoldenCorpus/` (Phase 1
+All gate assets live at `benchmarks/dotnet/GoldenCorpus/` (Phase 1
 [golden-corpus.md](../phase-1-cross-stack-foundation/golden-corpus.md#location-and-layout)),
 read by the harness via the repo-relative path from `benchmarks/rust/`
-(`../../src/Heddle.Performance/GoldenCorpus/`). Both gates run per cell **in the same process
+(`../../benchmarks/dotnet/GoldenCorpus/`). Both gates run per cell **in the same process
 before its timing loop** and again standalone via `cargo run --release --bin gate`
 ([README D11](README.md#d11--parity-before-timing-gates-run-inside-every-bench-binary-and-standalone)).

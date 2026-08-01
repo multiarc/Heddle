@@ -5,7 +5,7 @@
 - **Status:** in progress
 - **Goal (one line):** A parity-proven, expanded workload set with a Heddle golden-output corpus, a cross-language parity contract (v2), and a metrics/publication protocol that every ecosystem phase (2–6) measures against.
 - **Depends on:** nothing
-- **Changes an externally-visible contract:** yes — introduces parity contract v2 and the golden oracle corpus as the contract every later phase consumes; the existing intra-.NET parity contract ([Runners README](../../src/Heddle.Performance/Runners/README.md)) remains valid for the existing suites and is extended, not broken.
+- **Changes an externally-visible contract:** yes — introduces parity contract v2 and the golden oracle corpus as the contract every later phase consumes; the existing intra-.NET parity contract ([Runners README](../../benchmarks/dotnet/GoldenCorpus/README.md)) remains valid for the existing suites and is extended, not broken.
 
 ## Goal
 
@@ -64,7 +64,7 @@ parity failures across five ecosystems simultaneously.
   project fills.
 - **No changes to the Heddle engine.** The composed-page workload's documented fragment-sequence
   shape (the `@<<` entry-point behavior recorded in the
-  [Runners README](../../src/Heddle.Performance/Runners/README.md)) is carried as-is; changing
+  [Runners README](../../benchmarks/dotnet/GoldenCorpus/README.md)) is carried as-is; changing
   composition semantics is an engine concern outside the benchmark workstream.
 - **No new .NET competitor engines** and no re-litigation of the engine cast (standing ruling: two
   engines per ecosystem, already chosen).
@@ -312,9 +312,9 @@ and Q6.2 presentation rules folded into the metrics/publication protocol above) 
 | Rust per-ecosystem precedent (Criterion, "big table" and "teams" workloads) | [askama-rs/template-benchmark](https://github.com/askama-rs/template-benchmark) |
 | Go per-ecosystem precedent (interpreted vs precompiled organization) | [slinso/goTemplateBenchmark](https://github.com/slinso/goTemplateBenchmark) |
 | Python realistic-template precedent (~65 KB e-commerce template, transparent scripts, Oct 2025) | simonw/research, minijinja-vs-jinja2 study |
-| Existing parity contract v1: byte-identical after documented normalization (line endings, inter-tag whitespace collapse, trim), asserted before timing; templates authored whitespace-free; raw path on every engine | [src/Heddle.Performance/Runners/README.md](../../src/Heddle.Performance/Runners/README.md) |
+| Existing parity contract v1: byte-identical after documented normalization (line endings, inter-tag whitespace collapse, trim), asserted before timing; templates authored whitespace-free; raw path on every engine | [benchmarks/dotnet/GoldenCorpus/README.md](../../benchmarks/dotnet/GoldenCorpus/README.md) |
 | Results are workload-shape-dependent: Handlebars.Net 0.46x alloc on trivial substitution, within ~8% on large-loop time; honest-reporting posture modeled | [docs/benchmarks/2026-07-18/index.md](../benchmarks/2026-07-18/index.md) |
-| Composed-page anchor: ~35 K normalized chars, four twins parity-checked, 2.0x time lead; fragment-sequence fidelity note and `@<<` root cause documented | [docs/benchmarks/2026-07-11/index.md](../benchmarks/2026-07-11/index.md); [Runners README](../../src/Heddle.Performance/Runners/README.md) |
+| Composed-page anchor: ~35 K normalized chars, four twins parity-checked, 2.0x time lead; fragment-sequence fidelity note and `@<<` root cause documented | [docs/benchmarks/2026-07-11/index.md](../benchmarks/2026-07-11/index.md); [Runners README](../../benchmarks/dotnet/GoldenCorpus/README.md) |
 | Contextual vs flat escaping split among cast engines (Heddle and JTE contextual at compile time; Go html/template contextual at runtime; others flat HTML) — grounds the encoded-suite context-confinement constraint | Research spike 2 engine notes (grounding dossier, 2026-07-19); Go html/template documentation; [jte.gg](https://jte.gg/) |
 
 Assumptions to verify in the spec (flagged, not grounded here): exact whitespace-control syntax for

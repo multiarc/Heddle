@@ -88,7 +88,7 @@ trusted from the plan or the spikes where a first-hand check was possible.
 - **Decision.** All Go-side code is one Go module at `benchmarks/go/`
   ([layout](harness-and-measurement.md#module-layout)); `benchmarks/<ecosystem>/` is hereby the
   cross-phase convention for phases 2–6 harnesses. The corpus stays at
-  `src/Heddle.Performance/GoldenCorpus/`, read via repo-relative path.
+  `benchmarks/dotnet/GoldenCorpus/`, read via repo-relative path.
 - **Rationale.** No stronger repo convention exists (verified: no `benchmarks/` dir, no Go code;
   `src/` is the .NET solution tree and a Go module inside it would entangle .NET tooling
   globs). Phase 1's D6 declined a top-level `benchmarks/` directory *for the corpus*, explicitly
@@ -191,7 +191,7 @@ trusted from the plan or the spikes where a first-hand check was possible.
   (not the cached-render path); string-concatenating fragments in Go code outside the template
   (bypasses the engine's composition machinery — the thing measured).
 - **Grounding.** pkg.go.dev/text/template (associated templates); templ.guide composition page
-  (F6); [Runners README fidelity note](../../../../src/Heddle.Performance/Runners/README.md)
+  (F6); [Runners README fidelity note](../../../../benchmarks/dotnet/GoldenCorpus/README.md)
   *(read)*; LiquidTemplates.cs *(read)*.
 
 ### D8 — Benchmark shape: `b.Loop`, `b.ReportAllocs`, nested naming, prebuilt binary
@@ -514,7 +514,7 @@ outside this folder, sanctioned by the convention itself).
 |---|---|
 | quicktemplate twins (WI7) | D10 rule: templ controlled track fully green **and** zero-harness-work confirmed; cut first under pressure |
 | CCD0 affinity pinning as default | benchstat variation > ±5% on any suite in WI8 (then: per-suite re-run, recorded — D9) |
-| Moving the corpus out of `src/Heddle.Performance/GoldenCorpus/` | Not triggered — the relative-path consumption works (Phase 1 D6's trigger condition remains unmet) |
+| Moving the corpus out of `benchmarks/dotnet/GoldenCorpus/` | Not triggered — the relative-path consumption works (Phase 1 D6's trigger condition remains unmet) |
 | Go-side cold-cost beyond the stdlib parse sidebar | A ratified protocol change adding cold-cost columns (Q1.3 currently confines it) |
 | Linux re-run of this suite | Phase 8 (Q5.2), consuming this phase's shipped artifacts |
 

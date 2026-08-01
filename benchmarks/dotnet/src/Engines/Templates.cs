@@ -8,9 +8,9 @@ namespace Heddle.Benchmarks.Dotnet.Engines
     /// <summary>
     /// Template-source loader. Templates live as files under
     /// <c>benchmarks/dotnet/templates/&lt;track&gt;/&lt;engine&gt;/</c>, matching every other
-    /// ecosystem harness, rather than as C# string constants the way the retired project stored
-    /// them. Files make the idiomatic track reviewable as templates instead of as escaped literals,
-    /// and they let a reader diff one engine's authoring against another's.
+    /// ecosystem harness, rather than as C# string constants. Files make the idiomatic track
+    /// reviewable as templates instead of as escaped literals, and they let a reader diff one
+    /// engine's authoring against another's.
     ///
     /// Read once at startup and cached: template *parse* cost belongs to the cold-compile sidebar,
     /// never to a render measurement.

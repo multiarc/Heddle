@@ -140,7 +140,7 @@ of them:
   prose, which is the exact failure mode it exists to prevent.
 - **`src/Heddle.Performance` is not touched at all** (Q7.2 ruling, inherited verbatim). A benchmark
   effort is mid-flight there. Note the consequence: two broken doc links point at the deleted
-  `src/Heddle.Performance/GoldenCorpus` path from `docs/benchmarks/2026-07-25/index.md`. They are
+  `benchmarks/dotnet/GoldenCorpus` path from `docs/benchmarks/2026-07-25/index.md`. They are
   **reported to the benchmark effort, not fixed here**, because that report and its evidence tree
   belong to it.
 - **`docs/generator_plan/phase-*.md` are not edited by this phase.** Their corrections belong to
@@ -825,7 +825,7 @@ documents.
 | All 830 file:line citations sit in `docs/generator_plan/**` (471) and `docs/research/**` (359); **86 cite past EOF**; published docs, `docs/spec/**` and `docs/plan/**` carry **zero** | Scripted scan of 102 markdown files (excluding `node_modules`). Worst clusters: `DocumentShaper.cs` (119 lines) cited ~30× incl. `:375-396`; `PieceWriter.cs` (24 lines) 8×; `HeddleCompiler.cs` (1690) cited `:1963-1965` |
 | "In range" ≠ correct: silent wrong anchors exist that no line check catches | `phase-3-binding-layer.md:645` cites `AqnSansVersion` at `PrecompiledGauntlet.cs:207-212`; the symbol is at `:213` and `207-212` is now a doc comment |
 | Dangling symbols: `DocumentsCache` (10 mentions, 0 in source), `ReflectionHelper.CSharpTypes` (6, 0 in source, and `ReflectionHelper.cs:32-49` is now `Reconfigure()`); `AqnSansVersion` is **not** dangling (25 live sites) | Greps over `src/`; `src/Heddle/Helpers/CSharpTypeNames.cs` is the replacement |
-| 2 genuinely broken doc links, both to the deleted `src/Heddle.Performance/GoldenCorpus` | `docs/benchmarks/2026-07-25/index.md:109`, `:333` — owned by the benchmark effort |
+| 2 genuinely broken doc links, both to the deleted `benchmarks/dotnet/GoldenCorpus` | `docs/benchmarks/2026-07-25/index.md:109`, `:333` — owned by the benchmark effort |
 | Nine `<Version>` elements, no central property, all CI-overridden from the tag; 13 files must change for 2.1.0 and 5 more are coupled | The nine csproj; `Directory.Build.props` (header comment excludes Version deliberately); `.github/workflows/dotnet.yml:97-101`; `editors/vscode/src/extension.ts:13` `PINNED_VERSION`; `.github/workflows/lsp.yml:59`; `PipelineDiagnosticsTests.cs:104` + `HeddleGeneratorTests.cs:30` + 8 `Snapshots/*.verified.txt` asserting `engineVersion: "2.0.0"`; `docs/building.md:38`, `docs/README.md:19`, `coming-from-razor.md:8`, `coming-from-liquid.md:8` |
 | CHANGELOG has one entry (`## [2.0.0] - 2026-07-19`) and no `## [Unreleased]`, so 2.1 needs a heading and a compare link | `CHANGELOG.md:8`, `:134` |
 | `precompilation.md` states no schema version number anywhere, so `MinSupportedSchemaVersion = 4` has no documented home; the code is `Min = 1`, `Max = Current = 5` | `grep -n schema docs/precompilation.md` → `:154`, `:191` only; `src/Heddle/Precompiled/PrecompiledSchema.cs:18,22,25` |

@@ -162,10 +162,10 @@ namespace Heddle.Tests
         [Fact]
         public void EveryFirstPartyProjectUnderSrcIsStrongNamed()
         {
-            var accepted = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                "Heddle.Performance.ThirdParty.csproj"
-            };
+            // No exceptions. The one project that used to be here — a vendored third-party benchmark
+            // harness, deliberately unsigned to match the upstream methodology it reproduces — now
+            // lives under benchmarks/, which this walk does not reach.
+            var accepted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             var src = Path.Combine(RepoRoot, "src");
             var unsigned = new List<string>();
@@ -188,13 +188,18 @@ namespace Heddle.Tests
                 "signed project that references it): " + string.Join(", ", unsigned));
         }
 
-        /// <summary>Unsigned third-party references are declared in Directory.Build.targets, not blanket-suppressed.</summary>
+        /// <summary>
+        /// CS8002 is never blanket-suppressed. The repository used to carry a per-reference acceptance
+        /// mechanism in <c>Directory.Build.targets</c>, needed because one SIGNED project under
+        /// <c>src/</c> referenced unsigned Scriban to benchmark against it. No project under
+        /// <c>src/</c> references a competitor engine any more — the benchmark harnesses live under
+        /// <c>benchmarks/</c> and are unsigned, where CS8002 cannot arise — so the mechanism is gone
+        /// and what remains to pin is the property it protected: no project buys silence with a
+        /// project-wide NoWarn.
+        /// </summary>
         [Fact]
-        public void UnsignedThirdPartyReferencesAreAcceptedByNameAndNotByABlanketNoWarn()
+        public void CS8002IsNeverBlanketSuppressed()
         {
-            var targets = Read("Directory.Build.targets");
-            Assert.Contains("<HeddleAcceptedUnsignedReference Include=\"Scriban\" />", targets);
-
             foreach (var project in Directory.EnumerateFiles(Path.Combine(RepoRoot, "src"), "*.csproj",
                 SearchOption.AllDirectories).Concat(new[] { Path.Combine(RepoRoot, "Directory.Build.props") }))
             {

@@ -46,7 +46,7 @@ benchmarks/js/
   artifacts/                   ← gitignored run outputs (copied into docs/benchmarks/<date>/)
 ```
 
-The corpus is read from `src/Heddle.Performance/GoldenCorpus/` via a repo-relative path
+The corpus is read from `benchmarks/dotnet/GoldenCorpus/` via a repo-relative path
 resolved from `import.meta.url` (the harness never copies corpus files — one source of truth).
 
 ## Dependency pinning and install story

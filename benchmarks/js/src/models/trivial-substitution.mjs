@@ -1,5 +1,5 @@
 // trivial-substitution model — Phase 4 WI2 (spec: templates-and-models.md §Models rule 4).
-// Pinned scalar values transcribed from src/Heddle.Performance/Runners/SubstitutionContent.cs
+// Pinned scalar values transcribed from benchmarks/dotnet/src/Models/SubstitutionContent.cs
 // (snake_case keys per the Phase 1 dictionary-view convention; price is a .NET int -> JS
 // number, rating is the pinned string "4.8").
 import { deepFreeze } from "./_deep-freeze.mjs";

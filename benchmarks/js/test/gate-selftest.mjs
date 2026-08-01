@@ -5,7 +5,7 @@
 // leading zeros and hex case, no-rescan, non-five-char NCRs untouched) plus the verifier
 // calibration re-run: for each workload the verifier accepts the committed golden and rejects
 // the Phase 1 canonical corruptions — two per raw workload, three per encoded — each with the
-// correct failing check kind (pins mirror src/Heddle.Performance/Runners/IdiomaticChecks.cs
+// correct failing check kind (pins mirror benchmarks/dotnet/src/Corpus/VerifierDefinitions.cs
 // and the synthesis rules of GoldenCorpus.cs / golden-corpus.md §Verification).
 // Also runs the WI2 model smoke (pinned cardinalities and spot values).
 import {

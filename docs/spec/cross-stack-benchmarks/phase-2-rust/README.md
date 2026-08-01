@@ -49,7 +49,7 @@ order).
 
 | Seam | Verified state |
 |---|---|
-| Golden corpus location/format | `src/Heddle.Performance/GoldenCorpus/<id>.golden.html` — **normalized** oracle bytes, UTF-8 no BOM, no trailing newline; `manifest.json` with `byteLength`/`sha256`/`generatingCommit`; `<id>.verify.json` per workload ([golden-corpus.md — location, on-disk format, manifest](../phase-1-cross-stack-foundation/golden-corpus.md#location-and-layout)). Consumers normalize their own output (N1–N5), then N3b removes every whitespace run from both that output and the loaded oracle before the byte compare |
+| Golden corpus location/format | `benchmarks/dotnet/GoldenCorpus/<id>.golden.html` — **normalized** oracle bytes, UTF-8 no BOM, no trailing newline; `manifest.json` with `byteLength`/`sha256`/`generatingCommit`; `<id>.verify.json` per workload ([golden-corpus.md — location, on-disk format, manifest](../phase-1-cross-stack-foundation/golden-corpus.md#location-and-layout)). Consumers normalize their own output (N1–N5), then N3b removes every whitespace run from both that output and the loaded oracle before the byte compare |
 | Normalization pipeline | Closed list N1–N5; whitespace = the six ASCII chars TAB/LF/VT/FF/CR/SPACE; N5 (encoded only) canonicalizes the five-char entity spellings per a closed table with leading-zero/hex-case tolerance and a no-rescan rule ([parity-contract-v2.md — normalization pipeline, N5](../phase-1-cross-stack-foundation/parity-contract-v2.md#normalization-pipeline)) |
 | Gate ordering & failure surface | Gate runs before any timing in the same process; failure reports workload id, engine, byte lengths, first-diff index, ±40-char excerpt; failed suite publishes no numbers ([parity-contract-v2.md — controlled-track gate](../phase-1-cross-stack-foundation/parity-contract-v2.md#controlled-track-gate); [metrics-protocol.md — honest-reporting rule 5](../phase-1-cross-stack-foundation/metrics-protocol.md#honest-reporting-rules)) |
 | Idiomatic gate | Verifier semantics (values / ordered markers / forbidden / required over N1–N4(+N5)-normalized output) and the Q1.7 authoring standard (official-doc patterns, doc pages cited per implementation file) ([parity-contract-v2.md — idiomatic-track gate](../phase-1-cross-stack-foundation/parity-contract-v2.md#idiomatic-track-gate)) |
@@ -107,7 +107,7 @@ order).
   ```
 
   The corpus stays where Phase 1 put it and is read via the repo-relative path
-  `../../src/Heddle.Performance/GoldenCorpus/` (resolved from `CARGO_MANIFEST_DIR`), so Phase 1
+  `../../benchmarks/dotnet/GoldenCorpus/` (resolved from `CARGO_MANIFEST_DIR`), so Phase 1
   D6's revisit trigger ("harness cannot conveniently reach into `src/`") is **not** fired — a
   relative read is convenient. `.gitattributes` gains two lines in the same change:
   `benchmarks/rust/data/** -text` (fragment bytes must round-trip exactly) and
@@ -573,7 +573,7 @@ produced contracts:
 | `cargo bench -- --noplot` | Gates (fatal on failure), then times 33 cells (32 render + 1 Tera cold-parse) under the D9 config; artifacts at `target/criterion/<group>/<fn>/new/estimates.json` |
 | `cargo run --release --features alloc-count --bin alloc_report` | Gates, then prints 32 allocation lines (D10 format) |
 | `cargo run --release --bin summarize` | Prints the two report tables as GitHub-flavored Markdown to stdout; reads `target/criterion` + `heddle-reference.toml`; exits non-zero if any expected cell's estimates file is missing |
-| Corpus (consumed) | `src/Heddle.Performance/GoldenCorpus/<id>.golden.html` + `<id>.verify.json`, read-only, per Phase 1 [golden-corpus.md](../phase-1-cross-stack-foundation/golden-corpus.md) |
+| Corpus (consumed) | `benchmarks/dotnet/GoldenCorpus/<id>.golden.html` + `<id>.verify.json`, read-only, per Phase 1 [golden-corpus.md](../phase-1-cross-stack-foundation/golden-corpus.md) |
 | Report (produced) | One immutable `docs/benchmarks/<date>/` directory per D13 |
 
 Thread-safety: all model and engine singletons are `OnceLock`-initialized and immutable

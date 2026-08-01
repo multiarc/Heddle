@@ -35,7 +35,7 @@ tree is just a placeholder.
   like‑for‑like comparison is against the four parity‑checked Liquid/Handlebars engines, which
   Heddle leads on render time and where it allocates the least or tied‑least memory —
   Handlebars.Net is within ~0.3 KB). See [Architecture → Performance](architecture.md#performance-characteristics)
-  and the [benchmark project](../src/Heddle.Performance).
+  and the [benchmark harnesses](../benchmarks/README.md).
 - **Composable without coupling.** Reusable templates are declarative extension points, so a
   page can be split into independent pieces recombined by a layout — at no runtime cost — and
   any page can serve as a base for another. See

@@ -7,7 +7,7 @@ using Heddle.Benchmarks.Dotnet.Models;
 namespace Heddle.Benchmarks.Dotnet.Engines
 {
     /// <summary>
-    /// DotLiquid (Liquid) twin, all eight workloads (ported from the retired *DotLiquidTest.cs).
+    /// DotLiquid (Liquid) twin, all eight workloads (ledger E8).
     ///
     /// Shares <c>templates/controlled/liquid/</c> with <see cref="FluidEngine"/>. DotLiquid does not
     /// HTML-encode output, matching Heddle's <c>OutputProfile.Text</c>; the encoded workloads escape

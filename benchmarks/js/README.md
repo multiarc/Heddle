@@ -7,7 +7,7 @@ and [harness-and-run.md](../../docs/spec/cross-stack-benchmarks/phase-4-js/harne
 the parity contract and golden corpus it implements are Phase 1's
 [parity-contract-v2.md](../../docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/parity-contract-v2.md)
 and [golden-corpus.md](../../docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/golden-corpus.md).
-The golden corpus is consumed read-only from `src/Heddle.Performance/GoldenCorpus/`.
+The golden corpus is consumed read-only from `benchmarks/dotnet/GoldenCorpus/`.
 
 ## Pins
 

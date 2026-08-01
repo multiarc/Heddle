@@ -14,7 +14,7 @@ with **pyperf 2.10.0**, plus a separate tracemalloc memory pass.
   (directory layout, gate mechanics, run protocol, report instantiation)
 
 Gates run against the Phase 1 golden corpus at
-[`src/Heddle.Performance/GoldenCorpus/`](../../src/Heddle.Performance/GoldenCorpus/)
+[`benchmarks/dotnet/GoldenCorpus/`](../dotnet/GoldenCorpus/)
 (read-only; every consumed file is SHA-256-verified against `manifest.json`).
 
 ## Environment

@@ -106,7 +106,7 @@ rather than fair-fight standing.
 ## The workloads, and why they are presented in two tiers
 
 Eight workloads. "Golden output" is the byte length of the shared oracle in
-[src/Heddle.Performance/GoldenCorpus](../../../src/Heddle.Performance/GoldenCorpus), verified by
+[benchmarks/dotnet/GoldenCorpus](../../../benchmarks/dotnet/GoldenCorpus), verified by
 SHA-256 against `manifest.json` by every harness before it measures anything.
 
 This report presents them in **two tiers rather than the normative protocol order**, because three

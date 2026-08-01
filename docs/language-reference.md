@@ -905,7 +905,7 @@ rendered entry point must be the final page and a page can't easily become a bas
 In Heddle the relationship is symmetric — `layout` knows nothing about `home`, any template that
 exposes regions can serve as a base for anything, and because it all compiles into a single
 execution‑ready document, **this composition costs nothing at render time**. (The
-[performance benchmark](../src/Heddle.Performance) uses exactly this `home` + `layout`
+[performance benchmark](../benchmarks/dotnet) uses exactly this `home` + `layout`
 shape.) See [Architecture → Performance](architecture.md#performance-characteristics).
 
 ---

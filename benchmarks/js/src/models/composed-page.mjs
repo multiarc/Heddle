@@ -1,7 +1,7 @@
 // composed-page model — Phase 4 WI2 (spec: docs/spec/cross-stack-benchmarks/phase-4-js/
 // templates-and-models.md §Models rule 5). Transcribed from the intra-.NET sources
-// src/Heddle.Performance/Runners/TwinContent.cs (Section*/Comp* consts, AreaOrder) and
-// src/Heddle.Performance/TestSuite/Extensions/AreaComponent.cs (Areas), unescaping C# string
+// benchmarks/dotnet/src/Models/TwinContent.cs (Section*/Comp* consts, AreaOrder) and
+// benchmarks/dotnet/src/Models/AreaData.cs (Areas), unescaping C# string
 // syntax only; CRLF inside verbatim literals is stored as LF (whitespace-only — erased by the
 // contract's N2/N3b pipeline). Snake_case keys per the Phase 1 dictionary-view convention.
 // Deep-frozen at module load; transcription exactness is proven by the WI4/WI5 byte gate.

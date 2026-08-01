@@ -45,7 +45,7 @@ psutil==7.2.2
 
 Corpus access: `runner/gates.py` resolves the repo root as
 `Path(__file__).resolve().parents[3]` and reads
-`src/Heddle.Performance/GoldenCorpus/manifest.json`, `<id>.golden.html`, `<id>.verify.json`
+`benchmarks/dotnet/GoldenCorpus/manifest.json`, `<id>.golden.html`, `<id>.verify.json`
 from it. Every consumed corpus file's SHA-256 is verified against the manifest before use.
 
 ## Gate runner mechanics

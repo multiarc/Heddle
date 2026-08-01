@@ -66,4 +66,4 @@ in this directory.
   (+ `Heddle.Performance.LoopRenderBenchmarks-report.csv`, `Heddle.Performance.LoopRenderBenchmarks-report.html`)
 
 The parity contract that makes the comparison apples-to-apples is documented in
-[src/Heddle.Performance/Runners](../../../src/Heddle.Performance/Runners/README.md).
+[src/Heddle.Performance/Runners](../../../benchmarks/dotnet/GoldenCorpus/README.md).

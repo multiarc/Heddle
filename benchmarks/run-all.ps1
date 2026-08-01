@@ -103,19 +103,21 @@ foreach ($e in $AllOrder) {
     if ($Ecosystem -contains $e) { $Selected += $e }
 }
 
-# The eight protocol suites (phase 1 metrics-protocol: 'The protocol's first exercise').
+# The eight protocol suites (phase 1 metrics-protocol: 'The protocol's first exercise'), named
+# after the workloads they measure. Each is one `bench-crossstack --filter` step, so a suite gets
+# its own log, its own exit code and its own place to resume from.
 $DotnetSuites = @(
-    'TextRenderBenchmarks',
-    'SubstitutionRenderBenchmarks',
-    'LoopRenderBenchmarks',
-    'MixedRenderBenchmarks',
-    'ConditionalRenderBenchmarks',
-    'FragmentRenderBenchmarks',
-    'FortunesRenderBenchmarks',
-    'EncodedLoopRenderBenchmarks'
+    'ComposedPageBenchmarks',
+    'TrivialSubstitutionBenchmarks',
+    'LargeLoopBenchmarks',
+    'MixedPageBenchmarks',
+    'ConditionalHeavyBenchmarks',
+    'FragmentHeavyBenchmarks',
+    'FortunesEncodedBenchmarks',
+    'EncodedLoopBenchmarks'
 )
 
-$PerfDir = Join-Path $RepoRoot 'src\Heddle.Performance'
+$DotnetDir = Join-Path $BenchRoot 'dotnet'
 $RustDir = Join-Path $BenchRoot 'rust'
 $JvmDir = Join-Path $BenchRoot 'jvm'
 $JsDir = Join-Path $BenchRoot 'js'
@@ -343,11 +345,18 @@ if (-not $NodeIsPinned) { $NpmCiSuffix = ' --engine-strict=false' }
 foreach ($eco in $Selected) {
     switch ($eco) {
         'dotnet' {
-            [void](Invoke-Step -Eco 'dotnet' -Phase 'gate' -Name 'gate-parity' -WorkDir $PerfDir `
-                -Command 'dotnet run -c Release -f net10.0 -- parity')
+            # The full cell registry: byte gate on the controlled track, functional verifier on the
+            # idiomatic one, security floor on the encoded workloads, plus the materialisation
+            # trailer and the precompiled-coverage statement.
+            [void](Invoke-Step -Eco 'dotnet' -Phase 'gate' -Name 'gate' -WorkDir $DotnetDir `
+                -Command 'dotnet run -c Release -- gate')
             if ($script:Failed) { break }
-            [void](Invoke-Step -Eco 'dotnet' -Phase 'gate' -Name 'gate-verify-corpus' -WorkDir $PerfDir `
-                -Command 'dotnet run -c Release -f net10.0 -- verify-corpus')
+            # The gate itself, gated: harness self-checks including the six-technique differential.
+            [void](Invoke-Step -Eco 'dotnet' -Phase 'gate' -Name 'gate-selftest' -WorkDir $DotnetDir `
+                -Command 'dotnet run -c Release -- selftest')
+            if ($script:Failed) { break }
+            [void](Invoke-Step -Eco 'dotnet' -Phase 'gate' -Name 'gate-verify-corpus' -WorkDir $DotnetDir `
+                -Command 'dotnet run -c Release -- verify-corpus')
         }
         'rust' {
             [void](Invoke-Step -Eco 'rust' -Phase 'gate' -Name 'gate' -WorkDir $RustDir `
@@ -450,16 +459,29 @@ if ($Smoke) { $measurePhase = 'smoke' }
 foreach ($eco in $Selected) {
     switch ($eco) {
         'dotnet' {
-            # Phase 1 protocol shape: Release, net10.0, BenchmarkDotNet defaults,
-            # MemoryDiagnoser via suite attributes; one --filter run per protocol suite.
+            # Phase 1 protocol shape: Release, net10.0, the harness's own ShortRun default,
+            # MemoryDiagnoser via suite attributes; one --filter run per protocol suite. Each suite
+            # measures BOTH fairness tracks (the Track parameter), which is why the .NET measure
+            # phase is about twice the length it was when the leg was controlled-track only.
             foreach ($suite in $DotnetSuites) {
-                $bdnCmd = 'dotnet run -c Release -f net10.0 -- --filter *' + $suite + '*'
+                $bdnCmd = 'dotnet run -c Release -- bench-crossstack --filter *' + $suite + '*'
                 if ($Smoke) { $bdnCmd = $bdnCmd + ' --job Dry' }
                 elseif ($dotnetProfileArgs -ne '') { $bdnCmd = $bdnCmd + $dotnetProfileArgs }
-                [void](Invoke-Step -Eco 'dotnet' -Phase $measurePhase -Name ('suite-' + $suite) -WorkDir $PerfDir -Command $bdnCmd)
+                [void](Invoke-Step -Eco 'dotnet' -Phase $measurePhase -Name ('suite-' + $suite) -WorkDir $DotnetDir -Command $bdnCmd)
             }
+            # The three sidebars. None of them contributes a cross-stack row -- techniques is Heddle
+            # against itself, cold measures a different step of the same engines, and internal pins
+            # engine properties no other ecosystem has an analogue for -- so they run last, where a
+            # failure in them cannot mask a missing comparison row.
+            foreach ($sidebar in @('bench-techniques', 'bench-cold', 'bench-internal')) {
+                $cmd = 'dotnet run -c Release -- ' + $sidebar
+                if ($Smoke) { $cmd = $cmd + ' --job Dry' }
+                elseif ($dotnetProfileArgs -ne '') { $cmd = $cmd + $dotnetProfileArgs }
+                [void](Invoke-Step -Eco 'dotnet' -Phase $measurePhase -Name $sidebar -WorkDir $DotnetDir -Command $cmd)
+            }
+
             Copy-Artifacts -Eco 'dotnet' -Name 'copy-bdn-artifacts' `
-                -Source (Join-Path $PerfDir 'BenchmarkDotNet.Artifacts') -Dest (Join-Path $OutDir 'dotnet')
+                -Source (Join-Path $DotnetDir 'BenchmarkDotNet.Artifacts') -Dest (Join-Path $OutDir 'dotnet')
         }
         'rust' {
             # Phase 2 D9 via the WI5 finding (mirrored from linux-crosscheck/run-rust.sh):

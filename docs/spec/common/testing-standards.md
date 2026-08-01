@@ -77,7 +77,7 @@ acceptance — and confirm the assertion is answered by the arm it names, not by
 | Home | Framework | Role |
 | --- | --- | --- |
 | [src/Heddle.Tests](../../../src/Heddle.Tests) | xUnit v3 (MTP), `dotnet test --project` | Unit, integration, golden-file, negative/security, and concurrency tests. Multi-targets `net8.0;net10.0` (+ `net48` on Windows) — new tests must pass on **all** TFMs. |
-| [src/Heddle.Performance](../../../src/Heddle.Performance) | BenchmarkDotNet (`[MemoryDiagnoser]`) | Render/compile benchmarks incl. the Razor head-to-head. Hot-path changes add or extend benchmarks here. |
+| [benchmarks/dotnet](../../../benchmarks/dotnet) | BenchmarkDotNet (`[MemoryDiagnoser]`), behind a gate | The cross-stack .NET leg and the Heddle-internal suites. Not in `Heddle.sln`, and it reaches the engine through its public surface only. Hot-path changes add or extend benchmarks here; a cell cannot be timed without passing the parity gate first. |
 | [`samples/` gallery](../../../samples/README.md) | Per-sample CI jobs with golden assertions | The demo/integration item of each user-visible change. The harness (comparer, workflow, conventions) exists; each spec owns its sample per the gallery conventions. |
 
 ## Fixtures and goldens
@@ -123,7 +123,7 @@ The gate every spec runs before merge, in one combined invocation:
    `src/Heddle.Language/generated/` has no diff. A spec licensed to change grammar instead commits exactly one regen
    alongside the `.g4` change and diff-reviews it.
 4. **Benchmarks when a hot path is touched**: run the affected
-   [Heddle.Performance](../../../src/Heddle.Performance) benchmarks before/after on the
+   [benchmarks/dotnet](../../../benchmarks/dotnet) suites before/after on the
    same machine. Acceptance: allocated bytes must not increase, and mean time must not
    regress beyond BenchmarkDotNet's reported error for that benchmark. An intentional
    trade-off needs maintainer ratification recorded in the owning spec.

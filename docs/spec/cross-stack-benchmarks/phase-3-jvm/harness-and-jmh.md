@@ -39,7 +39,7 @@ benchmarks/jvm/
     composed-page/*.txt                    ← fragment model resources (construct-mapping.md)
 ```
 
-Corpus path resolution: default `../../src/Heddle.Performance/GoldenCorpus/` relative to the
+Corpus path resolution: default `../../benchmarks/dotnet/GoldenCorpus/` relative to the
 harness working directory (`benchmarks/jvm/`), overridable with
 `-Dheddle.corpus=<absolute-or-relative path>`; `Corpus` verifies every entry's bytes against
 the manifest's `sha256` at load and fails fast (exit 2) on mismatch or absence.

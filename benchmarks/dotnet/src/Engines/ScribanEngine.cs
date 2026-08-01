@@ -8,7 +8,7 @@ using Scriban.Runtime;
 namespace Heddle.Benchmarks.Dotnet.Engines
 {
     /// <summary>
-    /// Scriban twin, all eight workloads (ported from the retired *ScribanTest.cs).
+    /// Scriban twin, all eight workloads (ledger E8).
     ///
     /// Scriban does not HTML-encode output, matching Heddle's <c>OutputProfile.Text</c>; the encoded
     /// workloads escape in-template with the <c>| html.escape</c> filter. Composed-page pulls its

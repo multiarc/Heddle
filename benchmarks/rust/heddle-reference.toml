@@ -21,7 +21,7 @@
 # run had CPU boost off), even though ordering has so far proved stable.
 #
 # Provenance: each value is the BenchmarkDotNet `Mean` of `RenderHeddle` from
-# `docs/benchmarks/2026-07-25/dotnet/results/Heddle.Performance.<Suite>RenderBenchmarks-report.csv`,
+# `docs/benchmarks/2026-07-25/dotnet/results/<the .NET leg's per-workload report CSV>`,
 # converted to ns/render (the only arithmetic applied). The harness dispersion published
 # alongside these figures is BDN's `Error` and `StdDev`, quoted in the comments below.
 # Suite mapping is pinned in metrics-protocol.md; do not re-derive it here.

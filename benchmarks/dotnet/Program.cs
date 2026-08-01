@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Heddle.Benchmarks.Dotnet.Bench;
 using Heddle.Benchmarks.Dotnet.Corpus;
 using Heddle.Benchmarks.Dotnet.Engines;
 using Heddle.Benchmarks.Dotnet.Gate;
@@ -16,10 +17,15 @@ namespace Heddle.Benchmarks.Dotnet
     ///   verify-corpus     re-prove corpus freshness and recalibrate the verifier.
     ///   export-corpus     regenerate the corpus from the Heddle oracles.
     ///   selftest          harness self-checks, including the six-technique differential.
-    ///   bench-crossstack  the leg run-all drives: one row per engine.
+    ///   bench-crossstack  the leg run-all drives: one row per engine, both tracks, per workload.
     ///   bench-techniques  Heddle's six render techniques against each other. NOT in run-all.
-    ///   bench-internal    Heddle-internal suites (parse, props, branch, language service).
+    ///   bench-internal    Heddle-internal suites (props, branching, language-service metadata).
     ///   bench-cold        cold parse/compile sidebar.
+    ///
+    /// Every bench verb passes its remaining arguments straight to BenchmarkDotNet, so a master
+    /// runner selects one suite per step and layers the measurement budget on top:
+    ///
+    ///   dotnet run -c Release -- bench-crossstack --filter *MixedPageBenchmarks* --warmupCount 7
     /// </summary>
     public static class Program
     {
@@ -33,13 +39,14 @@ namespace Heddle.Benchmarks.Dotnet
                 return verb.ToLowerInvariant() switch
                 {
                     "gate" => RunGate(),
-                    "verify-corpus" => NotYetImplemented("verify-corpus", "W3 (needs the ported models)"),
-                    "export-corpus" => NotYetImplemented("export-corpus", "W3 (needs the ported models)"),
+                    "verify-corpus" => CorpusMaintenance.Verify(),
+                    "export-corpus" => CorpusMaintenance.Export(
+                        rest.Any(a => string.Equals(a, "--allow-dirty", StringComparison.OrdinalIgnoreCase))),
                     "selftest" => SelfTest.Run(),
-                    "bench-crossstack" => NotYetImplemented("bench-crossstack", "W9"),
-                    "bench-techniques" => NotYetImplemented("bench-techniques", "W9"),
-                    "bench-internal" => NotYetImplemented("bench-internal", "W8"),
-                    "bench-cold" => NotYetImplemented("bench-cold", "W8"),
+                    "bench-crossstack" => BenchRunner.Run("bench-crossstack", BenchRunner.CrossStackTypes, rest),
+                    "bench-techniques" => BenchRunner.Run("bench-techniques", BenchRunner.TechniqueTypes, rest),
+                    "bench-internal" => BenchRunner.Run("bench-internal", BenchRunner.InternalTypes, rest),
+                    "bench-cold" => BenchRunner.Run("bench-cold", BenchRunner.ColdTypes, rest),
                     "--help" or "-h" or "help" => Usage(0),
                     _ => Usage(2, $"unknown verb '{verb}'"),
                 };
@@ -67,7 +74,7 @@ namespace Heddle.Benchmarks.Dotnet
                 // Loud rather than a vacuous pass: an empty registry means the engine modules did
                 // not register, and "0 failed" would read as success.
                 Console.Error.WriteLine(
-                    "gate: no cells registered — engine modules have not landed yet (W4-W7). " +
+                    "gate: no cells registered — the engine modules did not contribute anything. " +
                     "Refusing to report a pass over an empty set.");
                 return 1;
             }
@@ -123,19 +130,22 @@ namespace Heddle.Benchmarks.Dotnet
             return failed == 0 && materialisation.Clean ? 0 : 1;
         }
 
-        private static int NotYetImplemented(string verb, string workItem)
-        {
-            Console.Error.WriteLine($"{verb}: not implemented yet — lands in {workItem}.");
-            return 2;
-        }
-
         private static int Usage(int code, string message = null)
         {
             if (message != null) Console.Error.WriteLine("dotnet-benchmarks: " + message);
             var w = code == 0 ? Console.Out : Console.Error;
-            w.WriteLine("usage: dotnet run -c Release -- <verb>");
-            w.WriteLine("  gate | verify-corpus | export-corpus | selftest");
-            w.WriteLine("  bench-crossstack | bench-techniques | bench-internal | bench-cold");
+            w.WriteLine("usage: dotnet run -c Release -- <verb> [args]");
+            w.WriteLine("  gate                 every registered cell; nothing may be timed behind a red gate");
+            w.WriteLine("  selftest             the gate's own checks, incl. the six-technique differential");
+            w.WriteLine("  verify-corpus        corpus freshness + verifier calibration");
+            w.WriteLine("  export-corpus [--allow-dirty]   regenerate the corpus from the Heddle oracles");
+            w.WriteLine("  bench-crossstack     the sweep: 8 suites x 6 engines x 2 tracks");
+            w.WriteLine("  bench-techniques     Heddle's six render techniques against each other");
+            w.WriteLine("  bench-cold           cold parse/compile, per engine");
+            w.WriteLine("  bench-internal       props, branching, language-service metadata");
+            w.WriteLine("");
+            w.WriteLine("Every bench verb forwards its remaining args to BenchmarkDotNet, e.g.");
+            w.WriteLine("  dotnet run -c Release -- bench-crossstack --filter *MixedPageBenchmarks* --job Dry");
             return code;
         }
     }

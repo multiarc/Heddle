@@ -1,4 +1,4 @@
-// Ported verbatim from the retired src/Heddle.Performance/Runners/FiveEntityTextEncoder.cs
+// The five-entity encoder the encoded workloads are gated on.
 // (ledger E8). This is engine CONFIGURATION, not a normalization carve-out: contract v2 D2
 // prefers configuring an engine to its documented behaviour over widening the gate.
 using System.Collections.Generic;

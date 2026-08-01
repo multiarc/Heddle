@@ -1,14 +1,13 @@
 // The composed-page area fragments (ledger E8).
 //
-// Ported verbatim from the retired src/Heddle.Performance/TestSuite/Extensions/AreaComponent.cs,
-// where this 56 KB dictionary was a private detail of a Heddle extension. The dependency is
-// INVERTED here: the data is a standalone public class and the Heddle extension reads from it,
-// rather than the extension owning it and every other engine needing a copy.
+// This 56 KB dictionary is standalone public data and the Heddle extension reads FROM it. The
+// dependency runs that way deliberately: were the extension to own it, every other engine would
+// need a copy, and a copy is free to drift.
 //
-// That inversion is the whole point. The predecessor of the Razor twin carried a hand-duplicated
-// copy of this dictionary and had already drifted from it unnoticed -- an empty `logo-holder`
-// against Heddle's `<a href="/">` -- precisely because nothing compared the two. One public source
-// makes that class of bug impossible rather than merely unlikely.
+// That is not hypothetical. An earlier Razor twin carried a hand-duplicated copy of this dictionary
+// and had already drifted from it unnoticed -- an empty `logo-holder` against Heddle's
+// `<a href="/">` -- precisely because nothing compared the two. One public source makes that class
+// of bug impossible rather than merely unlikely.
 using System;
 using System.Collections.Generic;
 

@@ -129,20 +129,33 @@ def evidence_of(cell: Cell) -> str:
     return EVIDENCE[cell.ecosystem]
 
 
-# .NET suite -> workload (pinned in metrics-protocol.md; not re-derived here).
+# .NET cross-stack suite class -> workload (pinned in metrics-protocol.md; not re-derived here).
+# The class names are the workload ids in Pascal case, matching the JVM harness's convention;
+# renaming a suite in benchmarks/dotnet means renaming its row here.
 DOTNET_SUITES = {
-    "Text": "composed-page",
-    "Substitution": "trivial-substitution",
-    "Loop": "large-loop",
-    "Mixed": "mixed-page",
-    "Conditional": "conditional-heavy",
-    "Fragment": "fragment-heavy",
-    "Fortunes": "fortunes-encoded",
-    "EncodedLoop": "encoded-loop",
+    "ComposedPageBenchmarks": "composed-page",
+    "TrivialSubstitutionBenchmarks": "trivial-substitution",
+    "LargeLoopBenchmarks": "large-loop",
+    "MixedPageBenchmarks": "mixed-page",
+    "ConditionalHeavyBenchmarks": "conditional-heavy",
+    "FragmentHeavyBenchmarks": "fragment-heavy",
+    "FortunesEncodedBenchmarks": "fortunes-encoded",
+    "EncodedLoopBenchmarks": "encoded-loop",
 }
-# Heddle-internal suites in the same directory — not competitor tables, excluded from the
-# comparison and surfaced only in the .NET sidebar.
-DOTNET_NON_COMPETITOR = ("Props", "Sink")
+# Every .NET artifact is namespaced by the harness assembly.
+DOTNET_PREFIX = "Heddle.Benchmarks.Dotnet.Bench."
+# Sidebar suites in the same directory: Heddle against itself (render techniques, props,
+# branching, language-service metadata). Not competitor tables — excluded from every comparison
+# and every ranking, surfaced only in the .NET sidebar.
+DOTNET_NON_COMPETITOR = (
+    "TechniqueRuntimeBenchmarks",
+    "TechniquePrecompiledBenchmarks",
+    "PropsBenchmarks",
+    "BranchBenchmarks",
+    "LanguageServiceBenchmarks",
+)
+# The cold parse/compile sidebar, which does contribute cold-compile cells.
+DOTNET_COLD_SUITE = "ColdCompileBenchmarks"
 
 # JMH class prefix -> workload.
 JVM_CLASSES = {
@@ -350,17 +363,25 @@ def name(ecosystem: str, engine: str) -> str:
 # ---- per-ecosystem parsers ------------------------------------------------------------------
 
 
+def _dotnet_dispersion(row: dict) -> str:
+    """`Error` plus `StdDev` (metrics-protocol Q2.1). A one-iteration job reports no StdDev
+    column at all, so it degrades rather than raising a KeyError on an otherwise readable row."""
+    sd = (row.get("StdDev") or "").strip()
+    return f"±{row['Error'].strip()}" + (f" (SD {sd})" if sd else "")
+
+
 def load_dotnet(run: Path) -> tuple[list[Cell], list[list[str]]]:
     """BenchmarkDotNet CSV: `Mean`, dispersion `Error` + `StdDev` (metrics-protocol Q2.1).
 
-    Values are formatted strings with units that vary per row and per suite. Row sets vary too:
-    the Text suite carries a sixth `RenderRazor` row that is not parity-checked.
+    Values are formatted strings with units that vary per row and per suite. Each suite carries
+    BOTH fairness tracks — the `Track` column is a BenchmarkDotNet parameter — so one artifact
+    holds six engines twice over.
     """
     cells: list[Cell] = []
     alloc: list[list[str]] = []
     results = run / "dotnet" / "results"
     for suite, workload in DOTNET_SUITES.items():
-        path = results / f"Heddle.Performance.{suite}RenderBenchmarks-report.csv"
+        path = results / f"{DOTNET_PREFIX}{suite}-report.csv"
         if not path.exists():
             raise Fail(f"missing .NET artifact: {path.relative_to(run)}")
         with path.open(encoding="utf-8-sig", newline="") as fh:
@@ -372,34 +393,57 @@ def load_dotnet(run: Path) -> tuple[list[Cell], list[list[str]]]:
             if not method.startswith("Render"):
                 raise Fail(f"unexpected .NET method {method!r} in {suite}")
             engine = method[len("Render") :]
+            track = (row.get("Track") or "").strip()
+            if track not in ("controlled", "idiomatic"):
+                raise Fail(f"unexpected .NET track {track!r} in {suite} ({method})")
             ns = parse_quantity(row["Mean"], TIME_UNITS)
-            disp = f"±{row['Error'].strip()} (SD {row['StdDev'].strip()})"
             cells.append(
-                Cell(".NET", name(".NET", engine), "controlled", workload, ns,
-                     row["Mean"].strip(), disp)
+                Cell(".NET", name(".NET", engine), track, workload, ns,
+                     row["Mean"].strip(), _dotnet_dispersion(row))
             )
             allocated = (row.get("Allocated") or "").strip()
             if allocated and allocated != "NA":
                 alloc.append([
-                    workload, name(".NET", engine), allocated,
+                    workload, name(".NET", engine), track, allocated,
                     (row.get("Alloc Ratio") or "").strip() or "—",
                     " / ".join((row.get(g) or "-").strip() or "-" for g in ("Gen0", "Gen1", "Gen2")),
                 ])
     return cells, alloc
 
 
+def load_dotnet_cold(run: Path) -> list[Cell]:
+    """The .NET cold parse/compile sidebar. Per-ecosystem only, never cross-compared (Q1.3).
+
+    The method name carries the disclosure the table needs: `Parse*` rows produce an
+    interpretable tree, `Compile*` rows produce executable code, and those are different steps.
+    """
+    cells: list[Cell] = []
+    path = run / "dotnet" / "results" / f"{DOTNET_PREFIX}{DOTNET_COLD_SUITE}-report.csv"
+    if not path.exists():
+        return cells
+    with path.open(encoding="utf-8-sig", newline="") as fh:
+        for row in csv.DictReader(fh):
+            ns = parse_quantity(row["Mean"], TIME_UNITS)
+            cells.append(Cell(".NET", row["Method"].strip(), "cold-compile", "composed-page", ns,
+                              row["Mean"].strip(), _dotnet_dispersion(row)))
+    return cells
+
+
 def load_dotnet_internal(run: Path) -> list[list[str]]:
-    """The two Heddle-internal .NET suites, for the .NET sidebar only."""
+    """The Heddle-internal .NET suites, for the .NET sidebar only."""
     rows: list[list[str]] = []
     results = run / "dotnet" / "results"
     for suite in DOTNET_NON_COMPETITOR:
-        path = results / f"Heddle.Performance.{suite}RenderBenchmarks-report.csv"
+        path = results / f"{DOTNET_PREFIX}{suite}-report.csv"
         if not path.exists():
             continue
         with path.open(encoding="utf-8-sig", newline="") as fh:
             for row in csv.DictReader(fh):
+                # The technique suites parameterize on Workload; the rest have no parameter.
+                subject = (row.get("Workload") or "").strip()
+                method = row["Method"] + (f" ({subject})" if subject else "")
                 rows.append([
-                    f"{suite}RenderBenchmarks", row["Method"], row["Mean"].strip(),
+                    suite, method, row["Mean"].strip(),
                     (row.get("Allocated") or "—").strip() or "—",
                 ])
     return rows
@@ -727,6 +771,7 @@ def render(run: Path) -> str:
     size_bytes = {w: rendered_chars(w, golden_bytes)[0] for w in workloads}
 
     dotnet, dotnet_alloc = load_dotnet(run)
+    dotnet_cold = load_dotnet_cold(run)
     rust, rust_cold = load_rust(run)
     jvm, jvm_alloc = load_jvm(run)
     js, js_cold = load_js(run)
@@ -738,7 +783,11 @@ def render(run: Path) -> str:
         if c.workload not in golden_bytes:
             raise Fail(f"{c.ecosystem}/{c.engine}: unknown workload {c.workload!r}")
 
-    heddle = {c.workload: c.ns for c in dotnet if c.engine == "Heddle"}
+    # The anchor is the CONTROLLED-track Heddle row. The .NET leg now measures both tracks, and an
+    # unfiltered comprehension would silently let whichever appeared last become the baseline every
+    # ratio in the report is divided by.
+    heddle = {c.workload: c.ns for c in dotnet
+              if c.engine == "Heddle" and c.track == "controlled"}
     missing = [w for w in workloads if w not in heddle]
     if missing:
         raise Fail(f"no Heddle anchor for: {', '.join(missing)}")
@@ -907,11 +956,12 @@ def render(run: Path) -> str:
     out += [
         "## Cold compile / parse — per ecosystem",
         "",
-        "Per-ecosystem only, never cross-compared (Q1.3). The .NET anchor measured no cold",
-        "suite in this run, so there is no Heddle row and no ratio column here.",
+        "Per-ecosystem only, never cross-compared (Q1.3). Within the .NET table the rows are not",
+        "comparable with each other either: a `Parse*` row produces an interpretable tree and a",
+        "`Compile*` row produces executable code, which are different steps of a first use.",
         "",
     ]
-    for eco, cold in ((".NET", []), ("Rust", rust_cold), ("JVM", []), ("JS", js_cold),
+    for eco, cold in ((".NET", dotnet_cold), ("Rust", rust_cold), ("JVM", []), ("JS", js_cold),
                       ("Python", python_cold), ("Go", go_cold)):
         out += [f"### {eco}", ""]
         if not cold:
@@ -933,8 +983,8 @@ def render(run: Path) -> str:
         "",
     ]
     out += ["### .NET — allocation (BenchmarkDotNet `[MemoryDiagnoser]`)", ""]
-    out += table(["Workload", "Engine", "Allocated", "Alloc ratio", "Gen0 / Gen1 / Gen2"],
-                 ["l", "l", "r", "r", "r"], dotnet_alloc)
+    out += table(["Workload", "Engine", "Track", "Allocated", "Alloc ratio", "Gen0 / Gen1 / Gen2"],
+                 ["l", "l", "l", "r", "r", "r"], dotnet_alloc)
     internal = load_dotnet_internal(run)
     if internal:
         out += ["", "#### .NET — Heddle-internal suites (not competitor tables)", ""]
