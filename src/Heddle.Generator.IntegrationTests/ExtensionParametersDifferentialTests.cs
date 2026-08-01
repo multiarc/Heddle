@@ -248,6 +248,61 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal(dyn, pre);
         }
 
+        /// <summary>
+        /// Prop names carrying the characters a C# string literal escapes. The ordered name array the generated
+        /// <c>BindExtension</c> call site hands the runtime was the one literal site in the emitter that spelled the
+        /// escape by hand, and it covered the quote only: a name containing <c>\b</c> compiled cleanly and decoded
+        /// to a different name, so the runtime's name→index map bound the wrong slot with nothing reported anywhere.
+        /// </summary>
+        [Theory]
+        // A backslash written through unescaped is still legal C#, and the emitted name decodes to something else:
+        // the row that reads the wrong slot with nothing reported on either side.
+        [InlineData("escapedNames", "views/escapednames.heddle", "1,2")]
+        // A newline and a trailing backslash end the literal where it stands and stop the consumer's build.
+        [InlineData("unspellableNames", "views/unspellablenames.heddle", "3,4")]
+        public void PropNamesNeedingEscapesSurviveIntoTheNameIndexMap(string extension, string key, string expected)
+        {
+            var t = "@model(){{System.String}}@\\\n@" + extension + "(this)\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+
+            var (pre, dyn) = DifferentialHarness.Render(key, t, typeof(string), "z");
+            Assert.Equal(expected, dyn.Trim());
+            Assert.Equal(dyn, pre);
+        }
+
+        /// <summary>
+        /// A real default C# has no literal for. <c>G17</c> spells an infinity <c>Infinity</c>, and the emitter
+        /// appended the <c>D</c> suffix to it and wrote <c>InfinityD</c> into the generated file — <c>CS0103</c> in
+        /// the consumer's build, with the manifest still claiming the template had precompiled.
+        /// </summary>
+        [Theory]
+        [InlineData("nonFiniteDefaults", "views/nonfinite.heddle")]
+        [InlineData("nonFiniteFloatDefaults", "views/nonfinitef.heddle")]
+        public void ARealDefaultWithNoLiteralFormDegrades(string extension, string key)
+        {
+            var t = "@model(){{System.String}}@\\\n@" + extension + "(this)\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+            DifferentialHarness.ExpectDegrade(gen, key);
+        }
+
+        /// <summary>The near neighbour: a finite <c>double</c> default, including the smallest one there is, still
+        /// precompiles and renders the engine's bytes — so the row above is about the values with no literal and
+        /// not about real defaults at all.</summary>
+        [Fact]
+        public void AFiniteRealDefaultStillPrecompiles()
+        {
+            const string t = "@model(){{System.String}}@\\\n@finiteDefaults(this)\n";
+            var gen = DifferentialHarness.Generate(new[] { ("views/finitedefaults.heddle", t) });
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+            DifferentialHarness.ExpectPrecompiled(gen, "views/finitedefaults.heddle");
+
+            var (pre, dyn) = DifferentialHarness.Render("views/finitedefaults.heddle", t, typeof(string), "z");
+            Assert.Equal(dyn, pre);
+        }
+
         [Fact]
         public void NamedArgsOnParameterLessExtensionDegradeToDynamicHed5005()
         {

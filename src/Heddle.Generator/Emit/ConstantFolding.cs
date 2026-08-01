@@ -25,12 +25,29 @@ namespace Heddle.Generator.Emit
     /// <c>(2147483647+0)+(1+0)</c> looked like it fitted and did not, while <c>2147483647+1L</c> looked like it
     /// overflowed and does not. The fold therefore tracks the type C# would evaluate in, including its promotion
     /// rules, and reports "not constant" only where it genuinely cannot decide.</para>
+    /// <para><b>One pairing is not a fault on either tier and still cannot be written through.</b> An <c>int</c>
+    /// meeting a <c>uint</c> is evaluated in <c>uint</c> by C# — the implicit constant conversion — and in
+    /// <c>long</c> by the engine. Both reach the same number while it fits in a <c>uint</c>, so the value alone is
+    /// safe to print; the <i>type</i> is not, and it is what the next operator promotes from. That is why the flag
+    /// travels on the folded result instead of being consumed where the pairing arose.</para>
     /// </summary>
     internal static class ConstantFolding
     {
         internal static bool CompilerWouldReject(ExprNode node)
         {
             return Fold(node).Rejected;
+        }
+
+        /// <summary>
+        /// Whether the two tiers evaluate <paramref name="node"/> in different types even though they reach the same
+        /// number. The value is safe to render — a <c>uint</c> and a <c>long</c> holding the same number print the
+        /// same bytes — but it is not safe to hand to anything that keys on its type, because the next promotion
+        /// starts from <c>uint</c> here and from <c>long</c> there. Callers that place the value in such a position
+        /// ask this and degrade.
+        /// </summary>
+        internal static bool TiersEvaluateDifferently(ExprNode node)
+        {
+            return Fold(node).TiersDiffer;
         }
 
         private static Folded Fold(ExprNode node)
@@ -70,7 +87,15 @@ namespace Heddle.Generator.Emit
             // long, and folding it as an int would refuse arithmetic C# accepts.
             if (!Numeric.Unify(whenTrue.Value, whenFalse.Value, out var a, out var b))
                 return Folded.Unknown;
-            return Folded.Constant(taken ? a : b);
+            var csharp = taken ? a : b;
+            if (!Numeric.UnifyAsEngine(whenTrue.EngineValue, whenFalse.EngineValue, out var ea, out var eb))
+            {
+                return whenTrue.TiersDiffer || whenFalse.TiersDiffer
+                    ? Folded.Refused
+                    : Folded.Constant(csharp);
+            }
+
+            return Agreed(csharp, taken ? ea : eb);
         }
 
         private static Folded FoldUnary(UnaryNode node)
@@ -79,23 +104,47 @@ namespace Heddle.Generator.Emit
             if (!operand.IsConstant)
                 return operand;
 
-            var value = operand.Value;
-            switch (node.Operator)
+            if (!TryUnary(operand.Value, node.Operator, out var csharp, out var faulted))
+                return faulted ? Folded.Refused : Folded.Unknown;
+            if (!operand.TiersDiffer)
+                return Folded.Constant(csharp);
+            // `-` promotes both tiers' operands to the same type again, so the taint ends there; `~` does not, and
+            // the complement of a uint 0 is 4294967295 where the complement of a long 0 is -1.
+            if (!TryUnary(operand.EngineValue, node.Operator, out var engine, out _))
+                return Folded.Refused;
+            return Agreed(csharp, engine);
+        }
+
+        /// <summary>
+        /// One tier's unary result. Returns false with <paramref name="faulted"/> set for an arithmetic fault the
+        /// consumer's compiler reports, and false without it for an operand this fold cannot decide.
+        /// </summary>
+        private static bool TryUnary(Numeric value, ExprOperator op, out Numeric result, out bool faulted)
+        {
+            result = default;
+            faulted = false;
+            switch (op)
             {
                 case ExprOperator.UnaryPlus:
-                    return Folded.Constant(value.Promoted());
+                    result = value.Promoted();
+                    return true;
                 case ExprOperator.OnesComplement:
-                    return value.IsIntegral
-                        ? Apply(value.Promoted(), Numeric.Zero(value.Promoted().Kind), ExprOperator.OnesComplement)
-                        : Folded.Unknown;
+                    if (!value.IsIntegral)
+                        return false;
+                    return TryEvaluate(value.Promoted(), Numeric.Zero(value.Promoted().Kind),
+                        ExprOperator.OnesComplement, out result, out faulted);
                 case ExprOperator.Negate:
                     if (value.Kind == NumericKind.UInt)
-                        return Folded.Constant(Numeric.LongFrom(value));   // C# converts a negated uint to long
+                    {
+                        result = Numeric.LongFrom(value);   // C# converts a negated uint to long
+                        return true;
+                    }
+
                     if (value.Kind == NumericKind.ULong)
-                        return Folded.Unknown;   // negating a ulong is a type error, not an overflow one
-                    return Apply(value, Numeric.Zero(value.Kind), ExprOperator.Negate);
+                        return false;   // negating a ulong is a type error, not an overflow one
+                    return TryEvaluate(value, Numeric.Zero(value.Kind), ExprOperator.Negate, out result, out faulted);
                 default:
-                    return Folded.Unknown;
+                    return false;
             }
         }
 
@@ -109,9 +158,9 @@ namespace Heddle.Generator.Emit
             // A shift is not a promoted pair: the left operand keeps its own type and the count is taken modulo the
             // operand's width, so unifying the two would give the result the wrong type.
             if (node.Operator == ExprOperator.LeftShift || node.Operator == ExprOperator.RightShift)
-                return FoldShift(left.Value, right.Value, node.Operator);
+                return FoldShift(left, right, node.Operator);
 
-            if (!Numeric.Unify(left.Value, right.Value, out var a, out var b, out var tiersDiffer))
+            if (!Numeric.Unify(left.Value, right.Value, out var a, out var b))
                 return Folded.Unknown;
 
             switch (node.Operator)
@@ -130,17 +179,17 @@ namespace Heddle.Generator.Emit
                     // produces.
                     if (Numeric.DivisionOverflows(a, b))
                         return Folded.Refused;
-                    return Apply(a, b, node.Operator, tiersDiffer);
+                    return Apply(left, right, a, b, node.Operator);
                 case ExprOperator.Add:
                 case ExprOperator.Subtract:
                 case ExprOperator.Multiply:
-                    return Apply(a, b, node.Operator, tiersDiffer);
+                    return Apply(left, right, a, b, node.Operator);
                 case ExprOperator.And:
                 case ExprOperator.Or:
                 case ExprOperator.ExclusiveOr:
                     // Bitwise on integers cannot fault, but its result feeds operators that can, and leaving it
                     // undecided is what let `(1&1)/0` reach the host's compiler as a division by constant zero.
-                    return a.IsIntegral ? Folded.Constant(Numeric.Evaluate(a, b, node.Operator)) : Folded.Unknown;
+                    return a.IsIntegral ? Apply(left, right, a, b, node.Operator) : Folded.Unknown;
                 default:
                     return Folded.Unknown;
             }
@@ -150,33 +199,69 @@ namespace Heddle.Generator.Emit
         /// Shifts never overflow or throw — the count is masked to the operand's width — so the fold always
         /// succeeds, and what it is for is giving the operators above it a value to decide on.
         /// </summary>
-        private static Folded FoldShift(Numeric value, Numeric count, ExprOperator op)
+        private static Folded FoldShift(Folded value, Folded count, ExprOperator op)
         {
-            if (!value.IsIntegral || !count.TryAsShiftCount(out var places))
+            if (!value.Value.IsIntegral || !count.Value.TryAsShiftCount(out var places))
                 return Folded.Unknown;
-            return Folded.Constant(Numeric.Shift(value, places, op));
+            if (count.TiersDiffer)
+                return Folded.Refused;   // the two tiers would mask a differently-typed count to different widths
+            var csharp = Numeric.Shift(value.Value, places, op);
+            if (!value.TiersDiffer)
+                return Folded.Constant(csharp);
+            return Agreed(csharp, Numeric.Shift(value.EngineValue, places, op));
         }
 
         /// <summary>
-        /// Evaluates in the unified type. Integral arithmetic wraps, because the emitted expression is written
-        /// inside an <c>unchecked</c> and C# folds a constant there by wrapping too — the same value the engine's
-        /// <c>Expression.Add</c> produces at render. <c>decimal</c> is the exception and still refuses: its overflow
-        /// is not governed by the checked context at all, so a constant that overflows one is a compile error in the
-        /// consumer's build whatever it is wrapped in.
+        /// Evaluates in each tier's own unified type. Integral arithmetic wraps, because the emitted expression is
+        /// written inside an <c>unchecked</c> and C# folds a constant there by wrapping too — the same value the
+        /// engine's <c>Expression.Add</c> produces at render. <c>decimal</c> is the exception and still refuses: its
+        /// overflow is not governed by the checked context at all, so a constant that overflows one is a compile
+        /// error in the consumer's build whatever it is wrapped in.
+        /// <para>The engine's promotion is asked separately, over the operand <i>types</i> rather than their values,
+        /// and the two results are compared. Where they disagree the expression belongs to the engine; where they
+        /// agree on the number but not the type, the difference travels on with the folded value.</para>
         /// </summary>
-        private static Folded Apply(Numeric a, Numeric b, ExprOperator op, bool tiersPromoteDifferently = false)
+        private static Folded Apply(Folded left, Folded right, Numeric a, Numeric b, ExprOperator op)
         {
+            if (!TryEvaluate(a, b, op, out var csharp, out _))
+                return Folded.Refused;
+            if (!Numeric.UnifyAsEngine(left.EngineValue, right.EngineValue, out var ea, out var eb))
+            {
+                // A pairing the engine has no promotion for. Where an operand already carries a type difference the
+                // expression belongs to the engine; where neither does, this is the long-standing reading of a
+                // non-negative constant against a `ulong` and it stays as it was.
+                return left.TiersDiffer || right.TiersDiffer ? Folded.Refused : Folded.Constant(csharp);
+            }
+
+            if (!TryEvaluate(ea, eb, op, out var engine, out _))
+                return Folded.Refused;
+            return Agreed(csharp, engine);
+        }
+
+        /// <summary>The folded constant when the two tiers reach the same number, and a refusal when they do not.
+        /// The result keeps both types, because a number the tiers hold as <c>uint</c> and <c>long</c> prints the
+        /// same and promotes differently.</summary>
+        private static Folded Agreed(Numeric csharp, Numeric engine) =>
+            Numeric.SameValue(csharp, engine) ? Folded.Constant(csharp, engine) : Folded.Refused;
+
+        private static bool TryEvaluate(Numeric a, Numeric b, ExprOperator op, out Numeric result, out bool faulted)
+        {
+            result = default;
+            faulted = false;
             try
             {
-                return Folded.Constant(Numeric.Evaluate(a, b, op, wrap: !tiersPromoteDifferently));
+                result = Numeric.Evaluate(a, b, op);
+                return true;
             }
             catch (OverflowException)
             {
-                return Folded.Refused;
+                faulted = true;
+                return false;
             }
             catch (DivideByZeroException)
             {
-                return Folded.Refused;
+                faulted = true;
+                return false;
             }
         }
 
@@ -328,24 +413,83 @@ namespace Heddle.Generator.Emit
             /// <c>double</c> the result is <c>double</c>, else <c>decimal</c>, else <c>ulong</c>, else <c>long</c>,
             /// <c>uint</c>, else <c>int</c>. A pairing C# genuinely rejects — <c>ulong</c> with a negative signed
             /// constant — falls out of <see cref="Convert"/>'s checked cast, which overflows and reports the pair as
-            /// undecidable. An explicit guard for it here was dead code: the cast already covered every case.            /// </summary>
-            internal static bool Unify(Numeric x, Numeric y, out Numeric a, out Numeric b) =>
-                Unify(x, y, out a, out b, out _);
-
-            /// <summary><paramref name="tiersPromoteDifferently"/> marks the one pairing where the two tiers do not
-            /// evaluate in the same type at all: an <c>int</c> meeting a <c>uint</c>. C# converts a non-negative
-            /// <b>constant</b> int to <c>uint</c> and computes there, while the engine builds an expression tree over
-            /// two operand types and gets <c>long</c> — so the same pair wraps on one tier and does not on the other,
-            /// and only a result that fits in <c>uint</c> comes out the same on both.</summary>
-            internal static bool Unify(Numeric x, Numeric y, out Numeric a, out Numeric b,
-                out bool tiersPromoteDifferently)
+            /// undecidable. An explicit guard for it here was dead code: the cast already covered every case.
+            /// </summary>
+            internal static bool Unify(Numeric x, Numeric y, out Numeric a, out Numeric b)
             {
                 a = default;
                 b = default;
                 var kind = Wider(x, y);
-                tiersPromoteDifferently = kind == NumericKind.UInt &&
-                                          (x.Kind != NumericKind.UInt || y.Kind != NumericKind.UInt);
                 return Convert(x, kind, out a) && Convert(y, kind, out b);
+            }
+
+            /// <summary>
+            /// The same promotion asked the way the <b>engine</b> asks it. The engine builds a
+            /// <c>System.Linq.Expressions</c> tree over the two operand <i>types</i>, so the implicit conversion C#
+            /// grants a non-negative integer <i>constant</i> never applies: an <c>int</c> meeting a <c>uint</c> is
+            /// evaluated in <c>long</c> there and in <c>uint</c> here. Returns false for a pairing the engine has no
+            /// promotion for — a <c>ulong</c> with a signed operand — where C#'s constant conversion may still have
+            /// one.
+            /// </summary>
+            internal static bool UnifyAsEngine(Numeric x, Numeric y, out Numeric a, out Numeric b)
+            {
+                a = default;
+                b = default;
+                return TryWiderAsEngine(x.Kind, y.Kind, out var kind) &&
+                       Convert(x, kind, out a) && Convert(y, kind, out b);
+            }
+
+            private static bool TryWiderAsEngine(NumericKind x, NumericKind y, out NumericKind kind)
+            {
+                kind = NumericKind.Int;
+                if (x == NumericKind.Double || y == NumericKind.Double)
+                {
+                    kind = NumericKind.Double;
+                    return true;
+                }
+
+                if (x == NumericKind.Decimal || y == NumericKind.Decimal)
+                {
+                    kind = NumericKind.Decimal;
+                    return true;
+                }
+
+                if (x == NumericKind.ULong || y == NumericKind.ULong)
+                {
+                    if (IsSignedKind(x) || IsSignedKind(y))
+                        return false;
+                    kind = NumericKind.ULong;
+                    return true;
+                }
+
+                if (x == NumericKind.Long || y == NumericKind.Long)
+                {
+                    kind = NumericKind.Long;
+                    return true;
+                }
+
+                if (x == NumericKind.UInt && IsSignedKind(y) || y == NumericKind.UInt && IsSignedKind(x))
+                {
+                    kind = NumericKind.Long;
+                    return true;
+                }
+
+                if (x == NumericKind.UInt || y == NumericKind.UInt)
+                    kind = NumericKind.UInt;
+                return true;
+            }
+
+            private static bool IsSignedKind(NumericKind kind) =>
+                kind == NumericKind.Int || kind == NumericKind.Long;
+
+            /// <summary>Whether two constants hold the same number whatever type each is held in. <c>decimal</c>
+            /// carries every <c>long</c> and <c>ulong</c> exactly, which is what makes it the comparison type for the
+            /// integral kinds.</summary>
+            internal static bool SameValue(Numeric x, Numeric y)
+            {
+                if (x.Kind == NumericKind.Double || y.Kind == NumericKind.Double)
+                    return x.ToDouble().Equals(y.ToDouble());
+                return x.ToDecimal() == y.ToDecimal();
             }
 
             internal static Numeric LongFrom(Numeric value)
@@ -432,7 +576,7 @@ namespace Heddle.Generator.Emit
                 }
             }
 
-            internal static Numeric Evaluate(Numeric a, Numeric b, ExprOperator op, bool wrap = true)
+            internal static Numeric Evaluate(Numeric a, Numeric b, ExprOperator op)
             {
                 switch (a.Kind)
                 {
@@ -443,9 +587,7 @@ namespace Heddle.Generator.Emit
                     case NumericKind.UInt:
                         return op == ExprOperator.OnesComplement
                             ? Unsigned(a.Kind, ~(uint)a._unsigned)
-                            : Unsigned(a.Kind, wrap
-                                ? unchecked((uint)Unsigneds(a._unsigned, b._unsigned, op))
-                                : checked((uint)Unsigneds(a._unsigned, b._unsigned, op)));
+                            : Unsigned(a.Kind, unchecked((uint)Unsigneds(a._unsigned, b._unsigned, op)));
                     case NumericKind.ULong:
                         return Unsigned(a.Kind, Unsigneds(a._unsigned, b._unsigned, op));
                     case NumericKind.Int:
@@ -524,20 +666,36 @@ namespace Heddle.Generator.Emit
 
         private readonly struct Folded
         {
-            private Folded(bool isConstant, bool rejected, Numeric value)
+            private Folded(bool isConstant, bool rejected, Numeric value, Numeric engineValue)
             {
                 IsConstant = isConstant;
                 Rejected = rejected;
                 Value = value;
+                EngineValue = engineValue;
             }
 
             internal bool IsConstant { get; }
             internal bool Rejected { get; }
+
+            /// <summary>The constant with the type <b>C#</b> evaluates it in — the type the emitted text will have
+            /// in the consumer's build.</summary>
             internal Numeric Value { get; }
 
-            internal static Folded Unknown => new Folded(false, false, default);
-            internal static Folded Refused => new Folded(false, true, default);
-            internal static Folded Constant(Numeric value) => new Folded(true, false, value);
+            /// <summary>The same constant with the type the <b>engine</b> evaluates it in. Equal to
+            /// <see cref="Value"/> except where the two promotions part company.</summary>
+            internal Numeric EngineValue { get; }
+
+            /// <summary>Whether the two tiers hold this constant in different types. The number is the same on both
+            /// — a pair that disagrees on the number is refused where it arises — but the type is not, and it is
+            /// what the next promotion starts from.</summary>
+            internal bool TiersDiffer => IsConstant && Value.Kind != EngineValue.Kind;
+
+            internal static Folded Unknown => new Folded(false, false, default, default);
+            internal static Folded Refused => new Folded(false, true, default, default);
+            internal static Folded Constant(Numeric value) => new Folded(true, false, value, value);
+
+            internal static Folded Constant(Numeric value, Numeric engineValue) =>
+                new Folded(true, false, value, engineValue);
         }
     }
 }

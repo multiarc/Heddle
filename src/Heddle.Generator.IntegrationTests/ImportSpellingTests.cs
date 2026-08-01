@@ -142,23 +142,35 @@ namespace Heddle.Generator.IntegrationTests
         /// <c>lib.heddle</c> on a host where the engine looks for a file whose name contains backslashes and finds
         /// none. What the assertion pins is the agreement; the rows above pin the outcomes that do not vary.
         /// </summary>
+        /// <para><b>The corpus is what makes these rows reach anything.</b> Three of the four original spellings
+        /// carry a <c>..</c> that key derivation refuses outright, and the fourth collapsed to a key no template in
+        /// the corpus had — so the class was measured entirely against misses. The rows added below collapse to keys
+        /// the corpus <em>does</em> hold, which is where a backslash silently bound the wrong file.</para>
         [Theory]
         [InlineData("x\\..\\lib.heddle")]
         [InlineData("x\\../lib.heddle")]
         [InlineData("x/..\\lib.heddle")]
         [InlineData("x\\lib.heddle")]
+        // Collapses to `sub/lib.heddle`, which is in the corpus: off Windows the build tier bound the sub-directory
+        // library while the engine looked for a file whose name is `sub\lib.heddle` and found none.
+        [InlineData("sub\\lib.heddle")]
+        // Collapses to `lib.heddle`, likewise present.
+        [InlineData(".\\lib.heddle")]
+        [InlineData("sub\\..\\lib.heddle")]
         public void ABackslashIsReadTheSameWayByBothTiers(string spelling)
         {
+            var corpus = new[] { (LibraryKey, Library), (SubLibraryKey, SubLibrary), (TargetKey, Target(spelling)) };
             var engine = Engine(spelling);
-            var gen = DifferentialHarness.Generate(Corpus(spelling));
-            bool engineResolved = engine.CompileResult.Success;
+            var gen = DifferentialHarness.Generate(corpus);
 
-            if (engineResolved)
+            if (engine.CompileResult.Success)
             {
-                Assert.Equal("[[hello]]\n", engine.Generate(null));
+                // Which file it is differs by platform; that the two tiers read the same one does not.
+                var expected = engine.Generate(null);
                 Assert.Empty(gen.Diagnostics.Where(d => d.Id == "HED7011"));
-                var (precompiled, dyn) = DifferentialHarness.RenderInCorpus(Corpus(spelling), TargetKey,
+                var (precompiled, dyn) = DifferentialHarness.RenderInCorpus(corpus, TargetKey,
                     Target(spelling), null, null, _root);
+                Assert.Equal(expected, dyn);
                 Assert.Equal(dyn, precompiled);
             }
             else

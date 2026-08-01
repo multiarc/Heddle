@@ -11,6 +11,17 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public string City { get; set; }
     }
 
+    /// <summary>An unsigned member beside a signed one. Which of the two an arithmetic expression meets decides
+    /// whether a constant the two tiers hold in different types can still be written through: promoting a
+    /// <c>uint</c> against <c>int</c> reaches <c>long</c> on both tiers, and promoting it against another
+    /// <c>uint</c> does not.</summary>
+    public sealed class UnsignedMemberModel
+    {
+        public uint Ticks { get; set; }
+        public int Count { get; set; }
+        public string Label { get; set; }
+    }
+
     /// <summary>A reference hop onto a nullable value, then a member of that value. The engine substitutes a default
     /// at the hop that failed and keeps walking, so <c>Inner.Maybe.HasValue</c> over a null <c>Inner</c> reads
     /// <c>HasValue</c> off <c>default(int?)</c>.</summary>

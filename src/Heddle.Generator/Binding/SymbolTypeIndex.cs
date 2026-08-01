@@ -181,9 +181,18 @@ namespace Heddle.Generator.Binding
         /// assemblies. A template spells a nested type with dots because the lexer rejects <c>+</c>, and the runtime
         /// retries the CLR name one <c>.</c>-to-<c>+</c> conversion at a time; the index already carries the dotted
         /// alias beside the metadata form, so both spellings are looked up by the one map read.
-        /// <para>The assembly half is parsed by Roslyn's own display-name parser rather than by cutting the string,
-        /// and every component the spelling states has to match: a version or a public key token it does not state
-        /// binds to any, which is what the CLR's own load does with it.</para>
+        /// <para>The assembly half is parsed by Roslyn's own display-name parser rather than by cutting the string.
+        /// A component the spelling does not state binds to any, which is what the CLR's own load does with it.</para>
+        /// <para><b>A stated version binds nothing.</b> Measured against the loader the engine goes through:
+        /// <c>Type.GetType("X, Asm, Version=99.0.0.0")</c> resolves whenever <c>Asm</c> is already loaded in the
+        /// default load context, strong-named or not — the loaded assembly is matched by simple name and the rest of
+        /// the identity is advice. An assembly the template names is one the host runs on, so that is the case that
+        /// happens; requiring an exact match instead took a template off the precompiled tier every time a host
+        /// bumped an assembly version without editing the template, silently and with nothing reported.
+        /// <para>The public key token is still required when stated, and the asymmetry is deliberate: a version
+        /// drifts on its own with every build, a public key token does not. For an assembly the default context has
+        /// <b>not</b> loaded the CLR's binder is stricter than either rule — it refuses a version above the one on
+        /// disk — but which assemblies are loaded is not a question a build can ask.</para></para>
         /// </summary>
         private bool TryResolveAssemblyQualified(string name, out INamedTypeSymbol type, out TypeSpellingFault fault)
         {
@@ -209,8 +218,6 @@ namespace Heddle.Generator.Binding
                 if (identity == null ||
                     !string.Equals(identity.Name, wanted.Name, System.StringComparison.OrdinalIgnoreCase))
                     continue;
-                if (wanted.Version != NoVersionStated && identity.Version != wanted.Version)
-                    continue;
                 if (!wanted.PublicKeyToken.IsDefaultOrEmpty &&
                     !SameToken(identity.PublicKeyToken, wanted.PublicKeyToken))
                     continue;
@@ -222,10 +229,6 @@ namespace Heddle.Generator.Binding
 
             return false;
         }
-
-        /// <summary>What <see cref="AssemblyIdentity.TryParseDisplayName"/> leaves the version at when the display
-        /// name states none.</summary>
-        private static readonly System.Version NoVersionStated = new System.Version(0, 0, 0, 0);
 
         /// <summary>Byte-wise, because <c>ImmutableArray&lt;byte&gt;.Equals</c> compares the underlying array
         /// reference and two identities never share one.</summary>

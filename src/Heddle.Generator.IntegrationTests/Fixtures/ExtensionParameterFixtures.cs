@@ -375,6 +375,70 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
     {
     }
 
+    /// <summary>Prop names carrying the characters a C# string literal has to escape. The names travel into the
+    /// generated ordered-name array the runtime builds its name→index map from, so a name that survives the trip
+    /// altered binds the wrong slot, and one that does not survive at all fails the consumer's build.</summary>
+    /// <summary>The face that fails <b>silently</b>: a backslash written through unescaped stays legal C# and
+    /// decodes to a different name.</summary>
+    [ExtensionName("escapedNames")]
+    [Prop("a\\b", typeof(int), Default = 1)]
+    [Prop("q\"t", typeof(int), Default = 2)]
+    public sealed class EscapedPropNamesExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) =>
+            scope.GetParameter("a\\b") + "," + scope.GetParameter("q\"t");
+
+        public override void RenderData(in Scope scope) => scope.Renderer.Render((string) ProcessData(scope));
+    }
+
+    /// <summary>The face that fails <b>loudly</b>: a newline or a trailing backslash ends the literal early and
+    /// the consumer's build stops.</summary>
+    [ExtensionName("unspellableNames")]
+    [Prop("nl\nx", typeof(int), Default = 3)]
+    [Prop("tail\\", typeof(int), Default = 4)]
+    public sealed class UnspellablePropNamesExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) =>
+            scope.GetParameter("nl\nx") + "," + scope.GetParameter("tail\\");
+
+        public override void RenderData(in Scope scope) => scope.Renderer.Render((string) ProcessData(scope));
+    }
+
+    /// <summary>Real defaults C# has no literal for. <c>double.PositiveInfinity</c> and friends are <c>const</c>
+    /// fields, so they are legal attribute arguments and the host's own source compiles; what has no spelling is
+    /// the value written back out into generated code.</summary>
+    [ExtensionName("nonFiniteDefaults")]
+    [Prop("w", typeof(double), Default = double.PositiveInfinity)]
+    public sealed class NonFiniteDoubleDefaultExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) => "w=" + scope.GetParameter("w");
+
+        public override void RenderData(in Scope scope) => scope.Renderer.Render((string) ProcessData(scope));
+    }
+
+    /// <summary>The <c>float</c> twin of the row above — the same expression one line up in the formatter.</summary>
+    [ExtensionName("nonFiniteFloatDefaults")]
+    [Prop("w", typeof(float), Default = float.NaN)]
+    public sealed class NonFiniteFloatDefaultExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) => "w=" + scope.GetParameter("w");
+
+        public override void RenderData(in Scope scope) => scope.Renderer.Render((string) ProcessData(scope));
+    }
+
+    /// <summary>The finite near neighbour, so the two rows above read as a rule about non-finite values rather
+    /// than a refusal of every real default.</summary>
+    [ExtensionName("finiteDefaults")]
+    [Prop("w", typeof(double), Default = 1.5)]
+    [Prop("e", typeof(double), Default = double.Epsilon)]
+    public sealed class FiniteDoubleDefaultExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) =>
+            "w=" + scope.GetParameter("w") + ";e=" + scope.GetParameter("e");
+
+        public override void RenderData(in Scope scope) => scope.Renderer.Render((string) ProcessData(scope));
+    }
+
     /// <summary>The four integral types narrower than <c>int</c>, which C# gives no literal suffix.</summary>
     [ExtensionName("narrowDefaults")]
     [Prop("b", typeof(byte), Default = (byte) 5)]

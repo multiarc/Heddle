@@ -537,7 +537,7 @@ namespace Heddle.Language {
                 };
             }
 
-            var oneLineStyle = text.StartsWith("@:");
+            var oneLineStyle = text.StartsWith("@:", StringComparison.Ordinal);
             if (oneLineStyle && text.Length < 2 || !oneLineStyle && text.Length < 4)
                 throw new TemplateParseException("Raw block is wrongly formatted".ToError(GetAbsoluteBlockPosition(context)));
             return new RawOutputItem
