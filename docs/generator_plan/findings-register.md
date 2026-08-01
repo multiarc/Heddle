@@ -521,7 +521,7 @@ in the second column holds its repro, its citations and its regression check as 
   loaded assembly, but not itself loaded, must still be unloadable after the engine has observed,
   compiled and rendered.
 - **pinned by:** `AssemblyRegistrationTests.ObservingAndRenderingLoadsNoReferencedAssembly`.
-- **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter Name~ObservingAndRenderingLoadsNoReferencedAssembly`;
+- **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~ObservingAndRenderingLoadsNoReferencedAssembly`;
   mutation: reintroduce a load on the observation pass and confirm a red.
 - **notes:** **the pin cannot catch a one-shot startup walk**, which has already run before the probe
   can be built — verified, not assumed, and written in the test. Catching that shape needs a child
@@ -561,8 +561,8 @@ in the second column holds its repro, its citations and its regression check as 
 
 - **pinned by:** `CSharpTierMetadataTests.TheSameFailingExpressionReportsTheSameDiagnosticsEveryTime`;
   `.ARepeatedFailingExpressionIsReportedAtEachCallersOwnPosition`.
-- **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter Name~TheSameFailingExpressionReportsTheSameDiagnostics`
-  and `dotnet test src/Heddle.Tests -f net8.0 --filter Name~ARepeatedFailingExpressionIsReportedAtEachCallersOwnPosition`.
+- **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~TheSameFailingExpressionReportsTheSameDiagnostics`
+  and `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~ARepeatedFailingExpressionIsReportedAtEachCallersOwnPosition`.
 - **notes:** **both pins are guards, not red-verified pins, and both tests say so.** Once the public
   keys were fixed (F-022) both paths produced identical text and positions, so removing the replay
   leaves the suite green; and replaying a fixed position also leaves the suite green, because two
@@ -606,7 +606,7 @@ in the second column holds its repro, its citations and its regression check as 
   the *legal* set.
 - **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~ConstantArithmeticDifferentialTests`
   — this one command covers every row above. Narrower checks that still work:
-  `--filter Name~AnUnsignedLongMeetingAChar` (F-048). Deleting the fold reddens 17 of 32 rows.
+  `--filter FullyQualifiedName~AnUnsignedLongMeetingAChar` (F-048). Deleting the fold reddens 17 of 32 rows.
 - **notes:** the fold's narrowness is pinned deliberately, because a fix that quietly moved arithmetic
   off the fast tier would be its own regression. **A test had already enshrined the wrong answer**
   before F-049 — asserting a degrade for an expression the emitted code compiles and the engine
@@ -644,8 +644,8 @@ in the second column holds its repro, its citations and its regression check as 
   `PipelineDiagnosticsTests` (the end-to-end generator half of F-063).
 - **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~ImportCycleTests`
   covers every row. Narrower:
-  `dotnet test src/Heddle.Tests -f net8.0 --filter Name~ACycleWhoseSpellingsNeverRepeatIsStillCaught` (F-044),
-  `dotnet test src/Heddle.Tests -f net8.0 --filter Name~CycleGuard` (F-063).
+  `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~ACycleWhoseSpellingsNeverRepeatIsStillCaught` (F-044),
+  `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~CycleGuard` (F-063).
 - **notes:** the identity question came back a fourth time in cycle 22, from the other side — the
   generator's key against the engine's canonical disk path (F-178, class A). Read F-178 before
   touching `ImportIdentifier` again. The *fan-out* dimension is F-057; per-parse *state* is F-043.
@@ -679,7 +679,7 @@ in the second column holds its repro, its citations and its regression check as 
   `.AnOrdinarilyDeepTemplateStillPrecompiles`; the import-depth message rows in `ImportCycleTests`.
 - **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~DeepNestingTests`
   and `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~DeepNestingGeneratorTests`.
-  Narrower: `dotnet test src/Heddle.Tests -f net8.0 --filter Name~TheGuardsLimitIsTheValueMeasuredAgainstTheSmallestSupportedStack`
+  Narrower: `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~TheGuardsLimitIsTheValueMeasuredAgainstTheSmallestSupportedStack`
   (F-042/F-051). Mutation: change the limit constant and confirm the value assertion reddens.
   **Re-measure in Release, on a 1 MB stack, if the bound is ever revisited.**
 - **two pins this entry used to name no longer exist, and the checks that ran them ran nothing.**
@@ -776,7 +776,7 @@ in the second column holds its repro, its citations and its regression check as 
   `.AReaderFromASupersededSetDoesNotDragTheMapBackToIt`,
   `.TheSuiteLeavesTheCacheUsableAtTheLiveGeneration`.
 - **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~PreparseCacheGenerationTests`
-  and `dotnet test src/Heddle.Tests -f net8.0 --filter Name~AFailureCachedBeforeRegistrationDoesNotSurviveIt`.
+  and `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~AFailureCachedBeforeRegistrationDoesNotSurviveIt`.
 - **notes:** cycle 8 recorded the ordering claims as **unpinnable**: reversing either ordering left
   every suite green, and a test that races to observe the difference passes by luck when it is wrong.
   The fix's merit is that the reversible orderings no longer exist to be reversed. The note lives in
@@ -859,9 +859,9 @@ in the second column holds its repro, its citations and its regression check as 
 - **pinned by:** `ImportCycleTests.ReusingOneSettingsObjectKeepsReportingCycles`,
   `.OneSettingsObjectServesConcurrentParsesWithoutCrossTalk`,
   `.AParseBegunInsideAnImportReaderIsIndependentOfTheOuterParse`.
-- **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter Name~ReusingOneSettingsObjectKeepsReportingCycles`,
-  `dotnet test src/Heddle.Tests -f net8.0 --filter Name~OneSettingsObjectServesConcurrentParses`,
-  `dotnet test src/Heddle.Tests -f net8.0 --filter Name~AParseBegunInsideAnImportReader`.
+- **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~ReusingOneSettingsObjectKeepsReportingCycles`,
+  `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~OneSettingsObjectServesConcurrentParses`,
+  `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~AParseBegunInsideAnImportReader`.
 - **notes:** **F-070's pin does not redden, and says so**: an import is read before its name is pushed,
   so at the nesting this fixture reaches the outer stack is empty and the inner parse resets anyway.
   The review reproduced the false cycle from a deeper outer parse; the fixer could not get this shape
@@ -881,7 +881,7 @@ in the second column holds its repro, its citations and its regression check as 
   | id | bound | symptom | fixed by | regression check |
   | --- | --- | --- | --- | --- |
   | F-046 | parse depth | the suite tolerated any limit value from 125 to 1499, so the previous cycle's headline change (1000 → 300) could have been skipped entirely and 2,766 tests would still have passed. The test constant mirroring the production value was left at 1000, under a comment saying it exists as a copy precisely so a change cannot pass unnoticed | `25b2554` — the value is asserted directly, and the property it was chosen for is stated as a test | change the limit constant by one and confirm a red |
-  | F-050 | cycle-report budget | the assertion was set at 64, which is exactly what that fixture produces with the budget deleted, so it could not fail | `25b2554` — compares against the budget | `dotnet test src/Heddle.Tests -f net8.0 --filter Name~CycleReportingIsBounded` |
+  | F-050 | cycle-report budget | the assertion was set at 64, which is exactly what that fixture produces with the budget deleted, so it could not fail | `25b2554` — compares against the budget | `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~CycleReportingIsBounded` |
   | F-067 | cycle-report budget again | **F-050's fix was itself unfalsifiable**: comparing the diagnostic count against the budget *constant* agrees with any budget — including one raised past the 64 the fixture can produce, at which point it observes nothing | `66b86df` — the bound is written out and the constant's value asserted; raising the budget to 512 now reddens | raise the budget constant and confirm a red |
   | F-058 | import fan-out | both tests read `MaxImportExpansions` itself, so they agreed with any value it was raised to; raising it to 65536 left them green. **The same commit that added them had diagnosed and fixed exactly this defect for the cycle-report budget two hunks away** | `e46d0b6` — the value is asserted | change `MaxImportExpansions` and confirm a red |
 
@@ -955,9 +955,9 @@ in the second column holds its repro, its citations and its regression check as 
 - **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~NullSafeHopEvaluationTests`,
   `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~MemberHopEvaluationCountTests`,
   `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~NullSafeHopChainTests`.
-  Narrower: `--filter Name~ARefStructPropertyEmitsCodeThatCompiles` (F-069),
-  `--filter Name~ARefStructHopBehindAReferenceHopCompiles` (F-073),
-  `--filter Name~APathEndingOnARefStruct` (F-083), all in `Heddle.Generator.IntegrationTests -f net8.0`.
+  Narrower: `--filter FullyQualifiedName~ARefStructPropertyEmitsCodeThatCompiles` (F-069),
+  `--filter FullyQualifiedName~ARefStructHopBehindAReferenceHopCompiles` (F-073),
+  `--filter FullyQualifiedName~APathEndingOnARefStruct` (F-083), all in `Heddle.Generator.IntegrationTests -f net8.0`.
 - **notes:** the commit that introduced F-069 asserted the new spelling "says the same thing".
   **A first draft of the record claimed the engine can render F-083's template. It cannot** — measured
   afterwards: the engine refuses with `HED0005` at compile time. Reading *through* a ref struct to a
@@ -981,7 +981,7 @@ in the second column holds its repro, its citations and its regression check as 
 - **pinned by:** `ImportCycleTests.AnAcyclicImportFanOutIsBoundedAndReported`,
   `.TheFanOutOverflowIsDescribedOnce`, `.TheFanOutBudgetIsRestoredForEachTopLevelParse`,
   `.TheFanOutBoundIsTheValueThatWasChosen` (value assertion).
-- **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter Name~FanOut`.
+- **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~FanOut`.
 - **notes:** the bound was also unpinned — F-058, a row of F-046. **A bound is a policy number; measure
   it against a realistic graph, not only against the attack it was written for.** Class K.
 
@@ -1019,9 +1019,9 @@ in the second column holds its repro, its citations and its regression check as 
   `.AnImportReaderThatReturnsNullIsReportedRatherThanThrown`,
   `.AnImportReaderThatThrowsIsReportedRatherThanThrown`;
   `LanguageServiceDiagnosticsTests.AMissingImportIsReportedInsteadOfEndingTheAnalysis`.
-- **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter Name~AnImportThatCannotBeRead`,
-  `dotnet test src/Heddle.Tests -f net8.0 --filter Name~AnImportReaderThat`, and
-  `dotnet test src/Heddle.LanguageServices.Tests --filter Name~AMissingImportIsReported`
+- **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~AnImportThatCannotBeRead`,
+  `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~AnImportReaderThat`, and
+  `dotnet test src/Heddle.LanguageServices.Tests --filter FullyQualifiedName~AMissingImportIsReported`
   — **no `-f` flag on the last: that project is `net10.0`-only.**
 - **notes:** class D — **a guard scoped to the implementation in front of you rather than to the
   seam's contract.** Same class as F-091's F-096/F-097 rows.
@@ -1039,7 +1039,7 @@ in the second column holds its repro, its citations and its regression check as 
   `UnregisterModelAssemblies` clears it alongside the registrations.
 - **pinned by:** `ModelAssemblyReloadTests.ReloadCollectsPreviousModelContextAfterACSharpTierAnalysis`
   (red on the leak).
-- **regression check:** `dotnet test src/Heddle.LanguageServices.Tests --filter Name~ReloadCollectsPreviousModelContext`
+- **regression check:** `dotnet test src/Heddle.LanguageServices.Tests --filter FullyQualifiedName~ReloadCollectsPreviousModelContext`
   — **no `-f` flag: that project is `net10.0`-only.**
 - **notes:** two comments claiming metadata references never pin a collectible context were corrected
   rather than the anchor removed: `RoslynReferenceProvider` **does** anchor an assembly to any
@@ -1211,7 +1211,7 @@ in the second column holds its repro, its citations and its regression check as 
   | F-107 | `InvalidateObservation` exists for a loaded assembly that **lost** a name collision — exactly the case where `TryAdd` fails — and two of its three call sites sat inside the *success* branch, where that case cannot occur. Plus a full re-classification pass per `Configure` that could not reach a different answer | `4680907` — both removed; the one in `UnregisterModelAssemblies`, where a name is actually freed, is real and pinned |
 
 - **pinned by:** `AssemblyRegistrationTests.AFreedNameIsRetakenByTheLoadedAssemblyThatLostIt` (`31e618d`).
-- **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter Name~AFreedNameIsRetaken`.
+- **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~AFreedNameIsRetaken`.
 - **notes:** class J.
 
 ### F-090 — Properties claimed and pinned by nothing, found by mutation
@@ -1236,7 +1236,7 @@ in the second column holds its repro, its citations and its regression check as 
   `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~NullSafeHopChainTests`,
   `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~PrecompiledDefinitionRecursionTests`,
   `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~PreparseCacheGenerationTests`,
-  `dotnet test src/Heddle.Tests -f net8.0 --filter Name~AFreedNameIsRetaken`,
+  `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~AFreedNameIsRetaken`,
   `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~AcceptedTypeTests`,
   `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~ObjectDefinitionBodyTests`.
 - **notes:** **two of the `AssemblyHelper` orderings cannot be pinned** — they are claims about what no
@@ -1277,7 +1277,7 @@ in the second column holds its repro, its citations and its regression check as 
   `.AGrantedInternalMemberResolvesInsteadOfDegrading` for `[InternalsVisibleTo]`.
 - **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~InaccessibleModelSymbolTests`
   and `dotnet test src/Heddle.Generator.Tests -f net8.0 --filter FullyQualifiedName~MetadataAccessibilityProbeTests`.
-  Narrower: `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter Name~AnInternalModelTypeWithAPublicInheritedMember` (F-103).
+  Narrower: `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~AnInternalModelTypeWithAPublicInheritedMember` (F-103).
 - **notes:** the obvious fix for F-091 — degrade whenever the receiver came from metadata — was
   rejected: models normally live in referenced assemblies, so that is precisely where `HED7008` earns
   its keep. The lesson the record draws from F-092: **when a report names one half of a mechanism,
@@ -1369,7 +1369,7 @@ in the second column holds its repro, its citations and its regression check as 
   `SlotValueTypeTests.TheSecondCallSiteIntoADynamicSlotDefinitionIsCheckedOnItsOwnValue`;
   `DynamicDefinitionBodyTests.TheSecondCallSiteIntoADynamicDefinitionIsTypedOnItsOwnValue`.
 - **regression check:** `dotnet test src/Heddle.Generator.Tests -f net8.0 --filter FullyQualifiedName~PathMemoizationTests`
-  and `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter Name~SecondCallSiteInto`.
+  and `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~SecondCallSiteInto`.
 - **notes:** **nothing end-to-end reaches F-102 today**, which is why it is pinned at the resolver
   rather than through a template, and the test says so. Class A. The body key's *other* two defects —
   a term the engine does not have, and two terms that decide nothing — are F-171.
@@ -1437,7 +1437,7 @@ in the second column holds its repro, its citations and its regression check as 
   `DynamicDefinitionBodyTests.AnOutValueInsideAListBodyIsCheckedAgainstTheElementType`.
 - **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~SlotValueTypeTests`,
   `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~DynamicDefinitionBodyTests`.
-  Narrower: `--filter Name~ANullSlotValue` (F-121).
+  Narrower: `--filter FullyQualifiedName~ANullSlotValue` (F-121).
 - **notes:** typing the null literal (F-121) is what made the *next* cycle's divergence reachable — a
   `null` call-site value produced a page the engine will not compile at all (F-112's F-124 row).
   F-135 was **a declared cost in cycle 10** that turned out to be the reverse — the gap was not a
@@ -2738,7 +2738,7 @@ in the second column holds its repro, its citations and its regression check as 
   `#line hidden` instead: the source mapping is lost, the build is kept.
 - **pinned by:** `TemplateNameMetadataTests.ATemplatePathWithNoLineDirectiveSpellingLosesTheMappingNotTheBuild`
   and `.ABackslashInATemplatePathKeepsItsLineMapping`.
-- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~TemplateNameMetadataTests`.
+- **regression check:** `dotnet test src/Heddle.Generator.Tests -f net8.0 --filter FullyQualifiedName~TemplateNameMetadataTests`.
 - **notes:** **record explicitly that the backslash is not a member of this class.** It looks exactly like the
   class-D string-surgery pattern and it is measurably fine, because `pp_string` does not process escapes — so
   Windows paths need no treatment and "fixing" them would be the defect. The second pin exists to stop a
@@ -2821,7 +2821,7 @@ in the second column holds its repro, its citations and its regression check as 
 - **fixed by:** cycle 24 (`08872ff`) — the build-side key loses the same two distinctions.
 - **pinned by:** `ExportBookkeepingTests.TheRuntimeSignatureKeyLosesWhatMetadataDoesNotCarry` — **the runtime
   half is now executed, not derived.** Reverting `SignatureKey` reddens 2.
-- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~ExportBookkeepingTests`.
+- **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~ExportBookkeepingTests`.
 - **notes:** closes the class-A residual named as `SignatureKey` versus `Type.FullName`. Residual: a tuple
   NESTED inside another type argument still carries its element names, because `ExpandValueTuple` does not
   exist in the Roslyn the generator compiles against; stated in the doc comment.
@@ -2919,6 +2919,20 @@ in the second column holds its repro, its citations and its regression check as 
   which XML forbids, so the settings file was rejected and a real filter also exited 1. Caught because the
   positive control was run beside the negative one. **A guard is not verified until both of its answers are
   measured** — the same rule this register keeps applying to production code applies to the harness.
+- **what the guard found the moment it was switched on:** **26 checks — every one written as
+  `--filter Name~…` — matched zero tests.** Not because a name was stale: `Name~` with the exact, correct,
+  full method name also matches nothing, because this xUnit adapter supports only `FullyQualifiedName`. A
+  quarter of this register's regression checks had therefore never executed anything, and had passed silently
+  every time. Two further checks named the wrong project (`ExportBookkeepingTests` lives in `Heddle.Tests` and
+  `TemplateNameMetadataTests` in `Heddle.Generator.Tests`; both checks pointed at
+  `Heddle.Generator.IntegrationTests`) — merged verbatim from proposed deltas without the project being
+  verified. All 28 corrected; the whole set of 74 unique checks now runs and passes.
+- **how it survived the consolidation that was supposed to catch it:** that pass explicitly claimed *"all 65
+  runnable filters validated against `dotnet test --list-tests`; every one matches ≥1 test"* — and it did that
+  by **reimplementing the filter grammar** (its own `~`, `=`, `!~`, `!=`, `&`, `|` matcher) against a list of
+  names, rather than running the tool. Its reimplementation assumed `Name` worked. **That is defect class D's
+  sub-class — restating a grammar its owner already implements — committed by the verification harness while
+  verifying.** The lesson generalises past this file: a check on a tool's behaviour must invoke the tool.
 
 ### F-200 — A `@using` alias and a `using static` bound nothing, because the type resolver read every body as a namespace
 
@@ -3263,7 +3277,7 @@ component of a stated assembly identity to match, on the stated premise that thi
 does with it" — and `Type.GetType` does not: for an already-loaded assembly it binds by simple name and
 ignores version, culture and public key token (F-185's amendment, fixed as part of F-192's cycle). The same
 commit also **broke one of this register's own regression checks** by renaming a test, so
-`--filter Name~AUnsignedLongMeetingAChar` matched nothing and exited 0 — the failure mode the consolidation
+`--filter FullyQualifiedName~AUnsignedLongMeetingAChar` matched nothing and exited 0 — the failure mode the consolidation
 had just cleaned up twice.
 
 **Enumerated?** Not a code class — a process property, and the strongest single signal in this
