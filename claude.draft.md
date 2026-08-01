@@ -8,7 +8,7 @@ Normative sources (read before non-trivial work): [docs/spec/README.md](docs/spe
 
 - Build: `dotnet build -c Release` (whole solution, all TFMs)
 - Test: `dotnet test src/Heddle.Tests` (all TFMs, zero failures)
-- Benchmarks: BenchmarkDotNet in `src/Heddle.Performance`
+- Benchmarks: BenchmarkDotNet in `benchmarks/dotnet` (not in the solution; gate first: `dotnet run -c Release --project benchmarks/dotnet -- gate`)
 - Docs site: `cd docs && npm run docs:build`
 - Merge gate (one combined run): build → test → no diff in `src/Heddle.Language/generated/` → benchmarks if a hot path was touched → docs build if docs changed
 - Grammar: edit `.g4` → `src/Heddle.Language/generate_cs.cmd` (ANTLR 4.13.1) → commit both. Never hand-edit `src/Heddle.Language/generated/`.

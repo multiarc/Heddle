@@ -19,7 +19,7 @@ using Microsoft.Extensions.ObjectPool;
 namespace Heddle.Benchmarks.Dotnet.Engines
 {
     /// <summary>
-    /// The MVC host the Razor twin renders through (ported from the retired RazorHost.cs).
+    /// The MVC host the Razor twin renders through.
     ///
     /// Razor is the one engine in this harness that renders through dependency injection, so it
     /// needs a host where the others need a parser. The host's content root is pointed at

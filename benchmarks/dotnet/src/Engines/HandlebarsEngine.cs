@@ -5,7 +5,7 @@ using Heddle.Benchmarks.Dotnet.Models;
 namespace Heddle.Benchmarks.Dotnet.Engines
 {
     /// <summary>
-    /// Handlebars.Net twin, all eight workloads (ported from the retired *HandlebarsTest.cs).
+    /// Handlebars.Net twin, all eight workloads (ledger E8).
     ///
     /// Raw workloads use triple mustaches (<c>{{{member}}}</c>) so fragments stay unencoded,
     /// matching Heddle's <c>OutputProfile.Text</c>; the encoded workloads use double mustaches and

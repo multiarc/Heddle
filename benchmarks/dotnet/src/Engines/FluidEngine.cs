@@ -10,7 +10,7 @@ using Microsoft.Extensions.Primitives;
 namespace Heddle.Benchmarks.Dotnet.Engines
 {
     /// <summary>
-    /// Fluid (Liquid) twin, all eight workloads (ported from the retired *FluidTest.cs).
+    /// Fluid (Liquid) twin, all eight workloads (ledger E8).
     ///
     /// Shares its Liquid sources with <see cref="DotLiquidEngine"/> — both consume the same dialect,
     /// so the templates are authored once under <c>templates/controlled/liquid/</c>. The one
@@ -78,8 +78,9 @@ namespace Heddle.Benchmarks.Dotnet.Engines
                 Engine = Name, Track = track, Workload = workload, InCrossStack = true,
                 Render = () =>
                 {
-                    // A fresh context per render is Fluid's documented usage and is what the retired
-                    // harness measured; hoisting it would measure a shape no caller writes.
+                    // A fresh context per render is Fluid's documented usage. Hoisting it would
+                    // measure a shape no caller writes, and would quietly move per-render work into
+                    // setup -- the one flattering mistake a twin's author is most tempted to make.
                     var ctx = options == null ? new TemplateContext() : new TemplateContext(options);
                     foreach (var kv in model) ctx.SetValue(kv.Key, kv.Value);
                     return template.Render(ctx);

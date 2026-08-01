@@ -12,13 +12,22 @@ per the [spec conventions](../common/spec-conventions.md); every plan open quest
 open-questions register** — none is needed, per the
 [no-open-questions discipline](../common/spec-conventions.md#no-open-questions).
 
+> **Read this before following any path in these specs.** The .NET leg they were written against —
+> `src/Heddle.Performance` — is **decommissioned and deleted**; the leg is rebuilt from scratch at
+> [`benchmarks/dotnet/`](../../../benchmarks/README.md). Every *link* below has been repointed at the
+> replacement file, so nothing dangles; the surrounding prose is a ratified record and still names
+> the old project where it describes what was researched at authoring time. The full mapping — and
+> the two consequences that are not merely notational, workload-named suites and .NET now measuring
+> **both** fairness tracks (discharging Phase 1 D15) — is recorded once as
+> [ledger E12](../records.md#cross-spec-amendments-ledger).
+
 ## Phases
 
 All eight phases share one status: **Specified — ready for implementation.**
 
 | # | Phase | Purpose and most consequential decisions | Status |
 |---|---|---|---|
-| 1 | [cross-stack-foundation](phase-1-cross-stack-foundation/README.md) | The keystone every later phase consumes: eight workloads (three anchors byte-unchanged + five new incl. the encoding-ON pair), the exported golden corpus under `src/Heddle.Performance/GoldenCorpus/` (D6), parity contract v2 with the N1–N5 pipeline and the N3b strip-at-comparison rule (D8), the metrics & publication protocol (D12–D14), a Handlebars.Net five-entity `ITextEncoder` (D3), and controlled-track-only intra-.NET scope (D15) | Specified — ready for implementation |
+| 1 | [cross-stack-foundation](phase-1-cross-stack-foundation/README.md) | The keystone every later phase consumes: eight workloads (three anchors byte-unchanged + five new incl. the encoding-ON pair), the exported golden corpus under `benchmarks/dotnet/GoldenCorpus/` (D6), parity contract v2 with the N1–N5 pipeline and the N3b strip-at-comparison rule (D8), the metrics & publication protocol (D12–D14), a Handlebars.Net five-entity `ITextEncoder` (D3), and controlled-track-only intra-.NET scope (D15) | Specified — ready for implementation |
 | 2 | [rust](phase-2-rust/README.md) | Askama 0.16.0 + Tera 2.0.0 under Criterion 0.8.2 on Rust 1.97.1 — the fair-fight peer ecosystem and the contract's first external consumer; establishes the top-level `benchmarks/<ecosystem>/` harness convention (D2), reconciles Askama's decimal spellings via N5 in the gate runner rather than a custom escaper (D4), and files errata upstream through the amendments ledger, never patching locally (D14) | Specified — ready for implementation |
 | 3 | [jvm](phase-3-jvm/README.md) | JTE 3.2.4 + Thymeleaf 3.1.5.RELEASE under JMH 1.37 on Temurin 25 — the phase's riskiest port (Thymeleaf controlled track) is feasibility-probed first via a block-only authoring pattern and probe ladder (D1); JTE's encoded suite renders through a custom `FiveEntityHtmlOutput` (D4); Maven harness at `benchmarks/jvm/` (D8); one verifier-needle erratum settled directly in the unshipped Phase 1 spec (D6) | Specified — ready for implementation |
 | 4 | [js](phase-4-js/README.md) | Handlebars 4.7.9 + Eta 4.6.0 under mitata 1.0.34 on Node 24.18.0 — reach/context evidence with explicit not-fair-fight framing; the suite is time-only (D3, closing Q4.1), stock Handlebars is reconciled by N5 in the gate with no monkey-patching (D4), and a five-run Windows stability procedure gates first publication (D13) | Specified — ready for implementation |

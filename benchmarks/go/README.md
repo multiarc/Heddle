@@ -4,7 +4,7 @@ The Go module for the cross-stack benchmarks Phase 6
 ([spec](../../docs/spec/cross-stack-benchmarks/phase-6-go/README.md)): the stdlib engine
 (text/template on the raw suites, html/template on the encoded suite — Q6.1) and templ, both
 fairness tracks, gated against the Phase 1 golden corpus at
-`src/Heddle.Performance/GoldenCorpus/` (read repo-relative; the corpus does not move).
+`benchmarks/dotnet/GoldenCorpus/` (read repo-relative; the corpus does not move).
 
 Module: `heddle.dev/benchmarks/go` (repo-local, never published). Pins (spec D3): `go 1.26` /
 `toolchain go1.26.5`; `github.com/a-h/templ v0.3.1020` (runtime require + CLI `tool`

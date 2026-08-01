@@ -10,7 +10,7 @@
   Q2.2 = A, Q6.2)
 - **Assumes merged:** the complete Phase 1 implementation
   ([Phase 1 spec](../phase-1-cross-stack-foundation/README.md), WI1–WI8): the eight-entry golden
-  corpus with manifest and `.verify.json` files under `src/Heddle.Performance/GoldenCorpus/`,
+  corpus with manifest and `.verify.json` files under `benchmarks/dotnet/GoldenCorpus/`,
   [parity contract v2](../phase-1-cross-stack-foundation/parity-contract-v2.md),
   the [metrics & publication protocol](../phase-1-cross-stack-foundation/metrics-protocol.md),
   and the published Phase 1 protocol run under `docs/benchmarks/<date>/` (the source of the
@@ -53,7 +53,7 @@ spike D (Criterion/JMH harness research) — every claim below marked *(read)*, 
 
 | Seam | Verified state |
 |---|---|
-| Phase 1 artifacts | **Normatively defined, not yet implemented** at authoring time: `src/Heddle.Performance/GoldenCorpus/` does not exist in the working tree *(read — directory listing)*. This spec binds to the Phase 1 spec's normative definitions (corpus format, manifest fields, `.verify.json` schema, N1–N5, gate semantics) and its **Assumes merged** line above; the implementer re-confirms the corpus exists and `verify-corpus` passes before WI2 |
+| Phase 1 artifacts | **Normatively defined, not yet implemented** at authoring time: `benchmarks/dotnet/GoldenCorpus/` does not exist in the working tree *(read — directory listing)*. This spec binds to the Phase 1 spec's normative definitions (corpus format, manifest fields, `.verify.json` schema, N1–N5, gate semantics) and its **Assumes merged** line above; the implementer re-confirms the corpus exists and `verify-corpus` passes before WI2 |
 | Repo layout | No top-level `benchmarks/` directory exists *(read — repo root listing: `docs/`, `src/`, `samples/`, `lib/`, `editors/`)*. `docs/benchmarks/<date>/` holds published reports (2026-07-11, 2026-07-18). Phase 1 D6 deliberately did **not** create a top-level benchmark directory for the corpus; its recorded revisit trigger (a phase 2–6 harness that cannot conveniently reach into `src/`) is **not** met here — the JVM harness reads the corpus by relative path (D8) |
 | JTE version | `gg.jte:jte` **3.2.4** is `<latest>`/`<release>` on Maven Central *(fetched — `repo1.maven.org/maven2/gg/jte/jte/maven-metadata.xml`, lastUpdated 2026-04-29)*; `gg.jte:jte-maven-plugin` and `gg.jte:jte-runtime` are also 3.2.4 *(fetched)* — the plugin/dependency version alignment jte's docs require holds at this pin. This closes spike D open item 3 for JTE |
 | Thymeleaf version | `org.thymeleaf:thymeleaf` **3.1.5.RELEASE** is `<latest>`/`<release>` on Maven Central *(fetched — `repo1.maven.org/maven2/org/thymeleaf/thymeleaf/maven-metadata.xml`, lastUpdated 2026-04-21)*. Closes spike D open item 3 for Thymeleaf |
@@ -66,7 +66,7 @@ spike D (Criterion/JMH harness research) — every claim below marked *(read)*, 
 | Thymeleaf mechanisms | 3.1 tutorial *(fetched — thymeleaf.org/doc/tutorials/3.1/usingthymeleaf.html)*: `th:block` is the synthetic tag (§11.4); `th:switch`/`th:case` evaluate cases in order, first true wins, default is `th:case="*"` (§7.2, quoted verbatim in the [feasibility doc](thymeleaf-controlled-feasibility.md)); escaped inlining `[[...]]` ≡ `th:text`, unescaped `[(...)]` ≡ `th:utext`, active by default in tag bodies (§12.1); fragments `th:fragment="name(arg)"` invoked with `th:replace="~{tmpl :: name(${arg})}"` (§8.1); `xmlns:th` is an optional IDE incantation, not required (§3.1); the tutorial's own §3.1 processed-output example shows `<!DOCTYPE html>` preserved in output |
 | Standalone Thymeleaf API | `new TemplateEngine()` + `ClassLoaderTemplateResolver` + `org.thymeleaf.context.Context` + `process(name, context, writer)` — the non-web entry point *(spike D §6, tutorial)* |
 | JDK | Eclipse Temurin 25 (LTS) is the current recommended pin (spike D §5); latest Windows x64 GA build at authoring time is `jdk-25.0.3+9` *(fetched — api.adoptium.net v3 assets query)* |
-| Composed-page twin shape | `src/Heddle.Performance/Runners/FluidTest.cs` + `Runners/README.md` *(read)*: the composed-page twins render layout-include + `section.*`/`comp.*` member lookups + `areas[name]` map lookups + one real loop over `area_names`; the multi-KB area fragments are **model data** (from `TwinContent.Areas`/`AreaComponent.Areas`), never template literals. The JVM ports mirror this construct set (construct-mapping.md §composed-page) |
+| Composed-page twin shape | `benchmarks/dotnet/src/Engines/FluidEngine.cs` + `Runners/README.md` *(read)*: the composed-page twins render layout-include + `section.*`/`comp.*` member lookups + `areas[name]` map lookups + one real loop over `area_names`; the multi-KB area fragments are **model data** (from `TwinContent.Areas`/`AreaComponent.Areas`), never template literals. The JVM ports mirror this construct set (construct-mapping.md §composed-page) |
 | Corpus markup attribute shape | The eight workloads' normative markup ([workloads.md](../phase-1-cross-stack-foundation/workloads.md) template texts plus `trivial-substitution.heddle`, read end-to-end) carries at most one attribute per element **except** trivial-substitution's `<a class="link" href="…">` (two attributes, one substituted) — so attribute-*ordering* exposure is confined to that single tag, and every other element is single-attribute (load-bearing for the Thymeleaf feasibility analysis, divergence class B2) |
 | Support tooling versions | Maven Central `<latest>/<release>` *(fetched)*: `jackson-databind` 2.22.1 (gate-runner JSON parsing), `maven-shade-plugin` 3.6.2, `maven-compiler-plugin` 3.14.1 (last stable 3.x; 4.0.0-beta excluded) |
 
@@ -355,7 +355,7 @@ Ordered by the plan's internal ordering: Thymeleaf controlled-track feasibility 
   `benchmarks/rust/`); the two specs agree. No stronger existing repo convention exists (Assumed state:
   no top-level `benchmarks/`; `src/` is the .NET solution and MSBuild-owned — a Maven project
   inside it would sit under a foreign build system's root). The corpus stays where Phase 1 put
-  it: the harness reads `../../src/Heddle.Performance/GoldenCorpus/` relative to
+  it: the harness reads `../../benchmarks/dotnet/GoldenCorpus/` relative to
   `benchmarks/jvm/` (overridable via `-Dheddle.corpus=<path>`), so Phase 1's corpus-move
   trigger is not pulled. Build system: **Maven** (`pom.xml` + committed `mvnw` wrapper,
   Maven Wrapper distribution current at implementation), producing one shaded

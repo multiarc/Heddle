@@ -3,7 +3,7 @@
 Supplementary document of the [Phase 1 — cross-stack-foundation spec](README.md). This is the
 **normative cross-language parity contract** that phases 2–6 implement and phase 7 aggregates
 under. It supersedes nothing: contract v1
-([src/Heddle.Performance/Runners/README.md](../../../../src/Heddle.Performance/Runners/README.md),
+([benchmarks/dotnet/GoldenCorpus/README.md](../../../../benchmarks/dotnet/GoldenCorpus/README.md),
 "Parity rule (D1-R3)") remains the accurate description of the existing intra-.NET raw suites; v2
 is a superset that extends v1 to cross-language use and to the encoded suite. Workload shapes are
 in [workloads.md](workloads.md); the oracle artifacts are in the
@@ -87,7 +87,7 @@ whitespace step introduced after N3, so every existing "N3" reference across the
 valid and unchanged, and the range notations (`N2–N4`, `N1–N4`, `N1–N5`) transparently include N3b.
 
 Steps N2–N4 (excluding N3b) are v1's three steps carried forward verbatim
-(`TwinContent.Normalize`, [TwinContent.cs](../../../../src/Heddle.Performance/Runners/TwinContent.cs));
+(`TwinContent.Normalize`, [TwinContent.cs](../../../../benchmarks/dotnet/src/Models/TwinContent.cs));
 N1 (defined output encoding), N3b (the 2026-07-20 whitespace comparison step), and N5 are the v2
 extensions. Raw-suite comparisons remain v1-compatible for every existing golden by construction:
 N1 adds only the encoding definition cross-language use demands, N3b changes no stored bytes (it is

@@ -103,12 +103,12 @@ embedded C# to Roslyn delegates). Rendering walks that document, so it does not 
 or pay per‑call activation, section, or dependency‑injection overhead at run time.
 
 The repository includes a [BenchmarkDotNet](https://benchmarkdotnet.org/) suite
-([src/Heddle.Performance](src/Heddle.Performance)) that measures Heddle head‑to‑head against four
+([benchmarks/dotnet](benchmarks/dotnet)) that measures Heddle head‑to‑head against four
 other .NET template engines — **Fluid**, **Scriban**, **DotLiquid**, and **Handlebars.Net** — plus
 ASP.NET Core **Razor**. Every one of the four Liquid/Handlebars twins is held to **byte‑identical
 output** with Heddle by a parity assertion that runs before any timing, so the render and
 compile numbers below compare identical work (see
-[src/Heddle.Performance/Runners](src/Heddle.Performance/Runners/README.md)). Heddle is the ratio
+[benchmarks/README.md](benchmarks/README.md)). Heddle is the ratio
 baseline (`[Benchmark(Baseline = true)]`, `[MemoryDiagnoser]` enabled).
 
 **The measured workload.** The parity‑checked page is the static composition of
@@ -165,7 +165,7 @@ Raw BenchmarkDotNet artifacts (md/csv/html) for this run are committed under
 reproduce them yourself with:
 
 ```
-dotnet run -c Release --project src/Heddle.Performance
+dotnet run -c Release --project benchmarks/dotnet -- bench-crossstack
 ```
 
 **Workload breadth.** The composition page above is one of three published workloads. A

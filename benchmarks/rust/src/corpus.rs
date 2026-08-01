@@ -21,7 +21,7 @@ pub fn load_golden(workload: &str) -> Result<String, String> {
     let bytes = std::fs::read(&path).map_err(|e| {
         format!(
             "[FAIL] corpus {workload}: cannot read {}: {e} (regenerate via the Phase 1 \
-             export-corpus tool: dotnet run -c Release --project src/Heddle.Performance \
+             export-corpus tool: dotnet run -c Release --project benchmarks/dotnet \
              -f net10.0 -- export-corpus)",
             path.display()
         )
@@ -36,7 +36,7 @@ pub fn load_verify(workload: &str) -> Result<VerifyDef, String> {
     let bytes = std::fs::read(&path).map_err(|e| {
         format!(
             "[FAIL] corpus {workload}: cannot read {}: {e} (regenerate via the Phase 1 \
-             export-corpus tool: dotnet run -c Release --project src/Heddle.Performance \
+             export-corpus tool: dotnet run -c Release --project benchmarks/dotnet \
              -f net10.0 -- export-corpus)",
             path.display()
         )

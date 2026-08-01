@@ -41,11 +41,11 @@ cited from its spec, not re-specified.
 
 | Seam | Verified state |
 |---|---|
-| Golden corpus | Assumed merged per [golden-corpus.md](../phase-1-cross-stack-foundation/golden-corpus.md): eight `src/Heddle.Performance/GoldenCorpus/<id>.golden.html` (normalized, UTF-8 no BOM, no trailing newline), eight `<id>.verify.json`, `manifest.json`. Not present in the working tree at authoring time — Phase 1 is the prior item; *(verify at implementation: files exist and `verify-corpus` passes before any JS gate work starts)* |
+| Golden corpus | Assumed merged per [golden-corpus.md](../phase-1-cross-stack-foundation/golden-corpus.md): eight `benchmarks/dotnet/GoldenCorpus/<id>.golden.html` (normalized, UTF-8 no BOM, no trailing newline), eight `<id>.verify.json`, `manifest.json`. Not present in the working tree at authoring time — Phase 1 is the prior item; *(verify at implementation: files exist and `verify-corpus` passes before any JS gate work starts)* |
 | Contract v2 | [parity-contract-v2.md](../phase-1-cross-stack-foundation/parity-contract-v2.md) *(read)* — N1–N5 pipeline; N5 (encoded suite only) canonicalizes the five characters' spellings to `&amp; &lt; &gt; &quot; &#39;`; the contract **already names Handlebars-JS's fixed hex family as an N5-in-gate-runner case** (§Entity canonicalization rule 3); untrusted-data alphabet excludes `+`, `=`, `` ` `` and the `&#` substring; exclusion policy Q1.2 |
 | Metrics protocol | [metrics-protocol.md](../phase-1-cross-stack-foundation/metrics-protocol.md) *(read)* — mitata's `avg` is the wall-time statistic with the printed percentile spread as dispersion (per [Phase 1 README D12 — Wall-time statistic mapping (Q2.1)](../phase-1-cross-stack-foundation/README.md#d12--wall-time-statistic-mapping-q21), which selects this mapping from the protocol's table); Heddle reference-row label format and ratio anchor; required verbatim label texts; publication format; honest-reporting rules 1–6 |
-| Handlebars.Net twins (template seeds) | *(read)* [HandlebarsTest.cs](../../../../src/Heddle.Performance/Runners/HandlebarsTest.cs) (composed-page: `layout` registered template, `area` helper writing `TwinContent.Areas[name]` as a safe string, triple-mustache literals), [SubstitutionHandlebarsTest.cs](../../../../src/Heddle.Performance/Runners/SubstitutionHandlebarsTest.cs) (`CardTemplate`), [LoopHandlebarsTest.cs](../../../../src/Heddle.Performance/Runners/LoopHandlebarsTest.cs) (`LoopTemplate`); workloads 4–8 Handlebars twin texts are normative in [workloads.md](../phase-1-cross-stack-foundation/workloads.md) |
-| Composed-page model source | *(read)* [TwinContent.cs](../../../../src/Heddle.Performance/Runners/TwinContent.cs) — `SectionMeta/SectionSocial/SectionPageScripts/SectionEndPageScripts` consts, `Comp*` consts, `AreaOrder`, `Areas` (delegates to `AreaComponent.Areas`), `Sections()`/`Components()` dictionaries — the literals the JS model transcribes |
+| Handlebars.Net twins (template seeds) | *(read)* [HandlebarsTest.cs](../../../../benchmarks/dotnet/src/Engines/HandlebarsEngine.cs) (composed-page: `layout` registered template, `area` helper writing `TwinContent.Areas[name]` as a safe string, triple-mustache literals), [SubstitutionHandlebarsTest.cs](../../../../benchmarks/dotnet/templates/controlled/handlebars/trivial-substitution.hbs) (`CardTemplate`), [LoopHandlebarsTest.cs](../../../../benchmarks/dotnet/templates/controlled/handlebars/large-loop.hbs) (`LoopTemplate`); workloads 4–8 Handlebars twin texts are normative in [workloads.md](../phase-1-cross-stack-foundation/workloads.md) |
+| Composed-page model source | *(read)* [TwinContent.cs](../../../../benchmarks/dotnet/src/Models/TwinContent.cs) — `SectionMeta/SectionSocial/SectionPageScripts/SectionEndPageScripts` consts, `Comp*` consts, `AreaOrder`, `Areas` (delegates to `AreaComponent.Areas`), `Sections()`/`Components()` dictionaries — the literals the JS model transcribes |
 | conditional-heavy helper story | *(read)* Phase 1 [D1](../phase-1-cross-stack-foundation/README.md#d1--the-five-new-workloads-and-their-exact-shapes) + workloads.md workload 5: branching is on **precomputed booleans** with chained `{{else if}}` precisely so the four-way chain stays inside vanilla Handlebars — **no comparison helpers exist anywhere in the intra-.NET suite**, and none are needed in JS (D6 below) |
 | Handlebars-JS versions/facts | npm registry *(fetched 2026-07-20)*: latest `4.7.9`; weekly downloads **39,494,320** (week 2026-07-13 → 2026-07-19, `api.npmjs.org/downloads/point/last-week/handlebars`); chained `{{else if}}` ("Chained else blocks") shipped in v3.0.0 (release-notes.md); partial-with-context `{{> myPartial myOtherContext }}` documented (handlebarsjs.com/guide/partials.html); `escapeExpression` table `& < > " ' `` ` `` =` → `&amp; &lt; &gt; &quot; &#x27; &#x60; &#x3D;`, no configuration surface (lib/handlebars/utils.js, spike C); precompilation documented as the production-canonical path, `--knownOnly` "smallest generated code that also provides the fastest execution" (handlebarsjs.com/guide/installation/precompilation.html) |
 | Eta versions/facts | npm registry *(fetched 2026-07-20)*: latest **4.6.0** (v3 superseded — plan-era premise corrected), dual CJS/ESM, `engines.node >= 20`. Docs (eta.js.org, v4.x.x) *(fetched)*: `new Eta({...})`; `autoEscape` default `true`; `autoTrim` default `[false, 'nl']`; `escapeFunction` overridable; `varName` default `it`; tags `<% %>`, `=` interpolate, `~` raw; `render`/`renderString`/`loadTemplate("@name", src)` (`@`-prefixed names are cached, not filesystem); `include("name", data)`; `layout("name", data)` + `<%~ it.body %>`; default escaper `XMLEscape` emits exactly `&amp; &lt; &gt; &quot; &#39;` (src/utils.ts, spike C) — **byte-canonical against the corpus, N5 is an identity transform on Eta output** |
@@ -71,7 +71,7 @@ Every plan lean, flagged assumption, and spec-territory delegation for this phas
 - **Alternatives rejected.** `src/Heddle.Performance.Js/` (inside the .NET solution tree, not a
   .NET project — misleading); a per-phase ad-hoc location (phase 7 wants one predictable root);
   moving the golden corpus alongside (unnecessary — the JS gate reads
-  `src/Heddle.Performance/GoldenCorpus/` by repo-relative path without difficulty, so Phase 1's
+  `benchmarks/dotnet/GoldenCorpus/` by repo-relative path without difficulty, so Phase 1's
   corpus-move trigger has *not* fired).
 - **Grounding.** Repo listing (Assumed state); [Phase 1 D6](../phase-1-cross-stack-foundation/README.md#d6--the-corpus-stores-the-normalized-oracle-under-srcheddleperformancegoldencorpus).
 
@@ -173,7 +173,7 @@ Every plan lean, flagged assumption, and spec-territory delegation for this phas
   equivalently-authored discipline and the side-note symmetry).
 - **Grounding.** [Phase 1 D1](../phase-1-cross-stack-foundation/README.md#d1--the-five-new-workloads-and-their-exact-shapes);
   [workloads.md workload 5](../phase-1-cross-stack-foundation/workloads.md#workload-5--conditional-heavy-raw);
-  handlebars.js release-notes.md v3.0.0 *(fetched)*; [HandlebarsTest.cs](../../../../src/Heddle.Performance/Runners/HandlebarsTest.cs) *(read)*.
+  handlebars.js release-notes.md v3.0.0 *(fetched)*; [HandlebarsTest.cs](../../../../benchmarks/dotnet/src/Engines/HandlebarsEngine.cs) *(read)*.
 
 ### D6 — Controlled templates are seeded from the Handlebars.Net twins; JS models are pinned transcriptions
 - **Decision.** Handlebars controlled-track template texts are the intra-.NET Handlebars.Net
@@ -224,7 +224,7 @@ Every plan lean, flagged assumption, and spec-territory delegation for this phas
   difference — the render path is `Handlebars.template(spec)` either way; in-process
   `precompile` at startup is the same compiler producing the same spec).
 - **Grounding.** handlebarsjs.com precompilation guide (Assumed state; spike E §2);
-  [SubstitutionHandlebarsTest.cs](../../../../src/Heddle.Performance/Runners/SubstitutionHandlebarsTest.cs) *(read)*;
+  [SubstitutionHandlebarsTest.cs](../../../../benchmarks/dotnet/templates/controlled/handlebars/trivial-substitution.hbs) *(read)*;
   [metrics-protocol §Metric rules](../phase-1-cross-stack-foundation/metrics-protocol.md#metric-rules) rule 1.
 
 ### D8 — Eta port strategy: default-config instance, `<%~ %>` raw / `<%= %>` escaped, `@`-cached templates, `eta.render` as the measured path
@@ -634,7 +634,7 @@ diagnostic registry is untouched. The harness's own error surface (all host-side
 | Controlled byte gate | 1, before `run()` | `[FAIL] <engine> <workload>: length exp <n> / act <m>; first diff at <i>` + ±40-char excerpt (`\n`-escaped) | normalized candidate bytes ≠ corpus entry |
 | Encoded security floor | 1, before `run()` | `[FAIL] <engine> <workload> security: raw "<script>alert(" found <M> times (expected 0)` | raw payload in un-normalized output, or escaped-form count mismatch |
 | Idiomatic verifier | 1, before `run()` | `[FAIL] <engine> <workload> <value\|marker\|forbidden\|required>: expected <…>, found <…>` | any verifier check miss |
-| Corpus loader | 1 | `corpus entry <id> not found under src/Heddle.Performance/GoldenCorpus/ — run Phase 1 export-corpus first` | missing corpus/verify files |
+| Corpus loader | 1 | `corpus entry <id> not found under benchmarks/dotnet/GoldenCorpus/ — run Phase 1 export-corpus first` | missing corpus/verify files |
 | Node version guard | 1 (npm) | npm engine-strict refusal | `node --version` ≠ pinned engines value |
 | DEOPT-CHECK | 0 (advisory; publication-blocking via checklist) | `DEOPT-CHECK: clean` / `DEOPT-CHECK: flagged <names>` | `!` marker in captured output |
 | Stability verdict | recorded, not an exit code | `STABILITY: verified \| verified-with-disclosure \| failed` | D13 thresholds |
@@ -648,7 +648,7 @@ the same discipline as the intra-.NET suite. No xUnit additions; `src/` and `Hed
 untouched.
 
 **Named checks.**
-- Goldens: consumed read-only from `src/Heddle.Performance/GoldenCorpus/` — this phase adds
+- Goldens: consumed read-only from `benchmarks/dotnet/GoldenCorpus/` — this phase adds
   none and never regenerates them.
 - Gate commands: `npm run gate` (both tracks, all 32 cells), `node test/gate-selftest.mjs`
   (normalization fixtures + calibration re-run against the Phase 1 corruption definitions).
@@ -717,7 +717,7 @@ untouched.
 | Harness swap to tinybench | D13 stability verdict `failed` (ledger escalation as specified there) |
 | Bun/Deno runtime rows | Out of plan scope by standing ruling; only a plan-level re-ruling reopens it |
 | mitata `format: 'markdown'` artifacts alongside text+JSON | A phase 7 ingestion need the JSON artifact does not already satisfy |
-| Moving the golden corpus out of `src/Heddle.Performance/GoldenCorpus/` | Not triggered by this phase (D1) — the JS gate consumes the current path without difficulty |
+| Moving the golden corpus out of `benchmarks/dotnet/GoldenCorpus/` | Not triggered by this phase (D1) — the JS gate consumes the current path without difficulty |
 
 ## External references
 

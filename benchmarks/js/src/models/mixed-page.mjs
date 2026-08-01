@@ -1,6 +1,6 @@
 // mixed-page model — Phase 4 WI2 (spec: templates-and-models.md §Models rules 3–4; pinned
 // scalars and product formulas from Phase 1 workloads.md workload 4 /
-// src/Heddle.Performance/Runners/MixedContent.cs). 36 products, i in [1, 36].
+// benchmarks/dotnet/src/Models/MixedContent.cs). 36 products, i in [1, 36].
 import { deepFreeze } from "./_deep-freeze.mjs";
 
 const products = [];

@@ -108,7 +108,6 @@ project.lock.json
 /packages
 /.idea/.idea.Templating
 /src/Heddle.Language/js/ace/build
-/src/Heddle.Performance/BenchmarkDotNet.Artifacts
 /src/Heddle.Language/ace_build
 /build
 

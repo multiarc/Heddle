@@ -140,10 +140,10 @@ namespace Heddle.Benchmarks.Dotnet.Gate
         }
 
         /// <summary>
-        /// Model-fidelity check for the composed-page fixtures, and the one that matters most in
-        /// the W3 port: <see cref="Models.AreaData"/> is a 56 KB dictionary that was moved by
-        /// script, and its predecessor in the retired harness had already silently drifted from the
-        /// engine it was compared against.
+        /// Model-fidelity check for the composed-page fixtures, and the one that matters most:
+        /// <see cref="Models.AreaData"/> is a 56 KB dictionary, far too large to review by eye, and
+        /// an earlier copy of it had already silently drifted from the engine it was compared
+        /// against without anything failing.
         ///
         /// The golden composed-page output IS the ordered concatenation of these 17 fragments — no
         /// loop body, no branch, no chrome — so the fixtures can be proven byte-exact without a

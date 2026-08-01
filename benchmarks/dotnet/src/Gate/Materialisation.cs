@@ -9,9 +9,9 @@ namespace Heddle.Benchmarks.Dotnet.Gate
     /// De-optimization guards for the sink render techniques.
     ///
     /// A sink that only COUNTS what it is handed does not prove the characters were produced: it
-    /// proves a length was computed. The retired harness's sink suite used exactly that shape
-    /// (<c>Write(char[] buffer, int index, int count) =&gt; Count += count</c>), and the JS harness
-    /// shipped a whole run whose "render" never walked the rope it built. The lesson generalises:
+    /// proves a length was computed. That defect has shipped in this repository twice: a sink suite
+    /// whose writer was <c>Write(char[] buffer, int index, int count) =&gt; Count += count</c>, and a
+    /// whole published JS run whose "render" never walked the rope it built. The lesson generalises:
     /// a benchmark's sink has to touch every unit of output, or the measurement is of the plumbing.
     ///
     /// The writers here fold every char and every byte into a rolling FNV-1a hash. Reading each unit

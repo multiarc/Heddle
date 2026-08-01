@@ -18,8 +18,7 @@ using Heddle.Data;
 namespace Heddle.Benchmarks.Dotnet.Engines.HeddleExtensions
 {
     /// <summary>
-    /// The Heddle extensions the composed-page templates call (ledger E8), ported from the retired
-    /// src/Heddle.Performance/TestSuite/Extensions/.
+    /// The Heddle extensions the composed-page templates call (ledger E8).
     ///
     /// Each one returns exactly the fragment the corresponding competitor twin reads from
     /// <see cref="Models.TwinContent"/>, so "the twins render what Heddle renders" is true by

@@ -10,7 +10,7 @@
   Q1.3, Q1.5, Q1.6, Q1.7)
 - **Assumes merged:** [Phase 1 — cross-stack-foundation](../phase-1-cross-stack-foundation/README.md)
   in full — the exported golden corpus + manifest + `.verify.json` files under
-  `src/Heddle.Performance/GoldenCorpus/`, [parity contract v2](../phase-1-cross-stack-foundation/parity-contract-v2.md),
+  `benchmarks/dotnet/GoldenCorpus/`, [parity contract v2](../phase-1-cross-stack-foundation/parity-contract-v2.md),
   the [metrics & publication protocol](../phase-1-cross-stack-foundation/metrics-protocol.md),
   and the published Phase 1 protocol run under `docs/benchmarks/<date>/` (the source of this
   report's Heddle reference row). Harness code may be authored before the corpus lands, but no
@@ -64,7 +64,7 @@ probe H (partial/include mechanisms, both engines, both tracks).
 | pyperf run shape defaults | `Runner(values=3, warmups=1, processes=20, loops=0, min_time=0.1)` — [API docs](https://pyperf.readthedocs.io/en/latest/api.html); loops auto-calibrated so a raw value takes ≥ 100 ms ([runner CLI docs](https://pyperf.readthedocs.io/en/latest/runner.html)). `bench_func` **rejects keyword arguments** (executed: `TypeError: unexpected keyword argument`) — render calls are registered as positional-arg callables. Timing is normalized per loop iteration (outer loops × `inner_loops`) |
 | Timing and memory are separate passes | pyperf `--track-memory` is documented as "use the maximum RSS memory of the command **instead of** the time"; `--tracemalloc` records `tracemalloc_peak` metadata; tracemalloc instrumentation carries documented CPython-side overhead — so the memory pass must not share an invocation with the timing pass (spike E §4; CPython [tracemalloc docs](https://docs.python.org/3/library/tracemalloc.html)) |
 | Version pins current at authoring | CPython 3.14.6 (current stable), Jinja2 3.1.6, Mako 1.3.12, pyperf 2.10.0 (all PyPI-verified, spike E); MarkupSafe 3.0.3 and psutil 7.2.2 verified as the current resolved transitive/support pins by installing into the probe venv on this machine |
-| Repo layout | No top-level `benchmarks/` directory exists *(listed)*; `src/` is the .NET solution surface; `docs/benchmarks/<date>/` holds published reports (2026-07-11, 2026-07-18). Phase 1's D6 kept the corpus under `src/Heddle.Performance/GoldenCorpus/` and recorded a top-level-directory revisit trigger |
+| Repo layout | No top-level `benchmarks/` directory exists *(listed)*; `src/` is the .NET solution surface; `docs/benchmarks/<date>/` holds published reports (2026-07-11, 2026-07-18). Phase 1's D6 kept the corpus under `benchmarks/dotnet/GoldenCorpus/` and recorded a top-level-directory revisit trigger |
 
 ## Design decisions
 
@@ -76,7 +76,7 @@ template texts are normative in [templates.md](templates.md); harness mechanics 
 - **Decision.** All Phase 5 code and templates live under **`benchmarks/python/`** (layout in
   [harness.md](harness.md#directory-layout)). This creates the top-level `benchmarks/` directory
   as the cross-phase convention for ecosystem harnesses (phases 2–6: `benchmarks/<ecosystem>/`).
-  The golden corpus **stays** at `src/Heddle.Performance/GoldenCorpus/`; the Python gate runner
+  The golden corpus **stays** at `benchmarks/dotnet/GoldenCorpus/`; the Python gate runner
   reads it by repo-relative path exactly as Phase 1's corpus spec prescribes.
 - **Rationale.** A Python harness cannot live inside the .NET solution surface (`src/` is
   project-per-directory .NET; a venv, requirements file, and `.py` sources there would pollute
@@ -85,7 +85,7 @@ template texts are normative in [templates.md](templates.md); harness mechanics 
   The choice is reversible (moving a directory of scripts is one ordinary versioned change) and
   does not move the corpus, so Phase 1's D6 trigger ("a harness cannot conveniently consume the
   current path") is explicitly **not** fired — probe-verified `pathlib` access to
-  `src/Heddle.Performance/GoldenCorpus/` from any repo path is trivial.
+  `benchmarks/dotnet/GoldenCorpus/` from any repo path is trivial.
 - **Alternatives rejected.** `src/Heddle.Performance/python/` (mixes ecosystems into the .NET
   project directory; solution tooling and `.csproj` globbing would see it);
   `docs/benchmarks/python/` (docs tree is immutable published output, not code);
@@ -228,11 +228,11 @@ template texts are normative in [templates.md](templates.md); harness mechanics 
   workloads 4–8 from the exact generation formulas pinned in
   [workloads.md](../phase-1-cross-stack-foundation/workloads.md); the three anchors by
   transcription from the existing C# sources
-  ([SubstitutionContent.cs](../../../../src/Heddle.Performance/Runners/SubstitutionContent.cs),
-  [LoopContent.cs](../../../../src/Heddle.Performance/Runners/LoopContent.cs),
-  [TwinContent.cs](../../../../src/Heddle.Performance/Runners/TwinContent.cs) +
+  ([SubstitutionContent.cs](../../../../benchmarks/dotnet/src/Models/SubstitutionContent.cs),
+  [LoopContent.cs](../../../../benchmarks/dotnet/src/Models/LoopContent.cs),
+  [TwinContent.cs](../../../../benchmarks/dotnet/src/Models/TwinContent.cs) +
   `AreaComponent.Areas` in
-  [AreaComponent.cs](../../../../src/Heddle.Performance/TestSuite/Extensions/AreaComponent.cs)).
+  [AreaComponent.cs](../../../../benchmarks/dotnet/src/Models/AreaData.cs)).
   Composed-page fragments (sections, components, the seven ordered area fragments) are
   transcribed as Python string constants. No numeric formatting is needed for any model value:
   the numeric fields (e.g. `Price`) are ints and render via `str(int)` (invariant by

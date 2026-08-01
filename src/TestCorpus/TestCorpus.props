@@ -27,9 +27,9 @@
   directory. A directory several projects copy from must not also be one tests write into, because "the corpus
   is input" is what makes byte-neutrality checkable — see TestCorpusIndex.WrittenArtifactPath.
 
-  OUT OF SCOPE BY RULING: `src/Heddle.Performance` (change nothing there; a benchmark effort is mid-flight and
-  its own path-traversal helper is accepted residue, not an oversight). `benchmarks/**` and `samples/**` have
-  their own contracts. `src/Heddle.LanguageServices.Tests/Corpus` stays separate — editor-tier templates.
+  OUT OF SCOPE: `benchmarks/**` and `samples/**` have their own contracts — the benchmark harnesses carry a
+  separate, gated corpus of their own under `benchmarks/dotnet/GoldenCorpus/`, and nothing here feeds it.
+  `src/Heddle.LanguageServices.Tests/Corpus` stays separate — editor-tier templates.
 -->
 <Project>
 

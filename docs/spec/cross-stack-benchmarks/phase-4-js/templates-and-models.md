@@ -40,10 +40,10 @@ object (deep-frozen at module load). Rules:
 4. **Pinned literal sets are transcribed verbatim:** the 12 fortunes rows (ids 1–12, messages
    byte-for-byte from workloads.md, including the XSS payload row 11 and Japanese row 12); the
    trivial-substitution scalar values (from
-   [SubstitutionContent.cs](../../../../src/Heddle.Performance/Runners/SubstitutionContent.cs)
+   [SubstitutionContent.cs](../../../../benchmarks/dotnet/src/Models/SubstitutionContent.cs)
    — `Heddle Handbook`, `HB-2001`, `4.8`, etc.); the mixed-page page scalars (workloads.md).
 5. **Composed-page** transcribes the fragment literals from
-   [TwinContent.cs](../../../../src/Heddle.Performance/Runners/TwinContent.cs) and
+   [TwinContent.cs](../../../../benchmarks/dotnet/src/Models/TwinContent.cs) and
    `AreaComponent.Areas` into:
 
    ```js
@@ -78,7 +78,7 @@ hb.registerHelper("area", function (name) {
 ```
 
 **.NET twin equivalence.** This mirrors the Handlebars.Net twin's helper byte-for-byte in
-behavior ([HandlebarsTest.cs](../../../../src/Heddle.Performance/Runners/HandlebarsTest.cs)):
+behavior ([HandlebarsTest.cs](../../../../benchmarks/dotnet/src/Engines/HandlebarsEngine.cs)):
 the .NET helper does `output.WriteSafeString(TwinContent.Areas.TryGetValue(name, out var v) ? v : string.Empty)`
 — a name→fragment lookup emitting the fragment unescaped, empty string on a miss. Same lookup
 table (transcribed `AreaComponent.Areas`), same miss behavior, same safe-string (no-escape)

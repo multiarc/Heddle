@@ -37,7 +37,7 @@ func LoadVerify(workload string) (*VerifyDef, error) {
 	path := filepath.Join(Dir(), workload+".verify.json")
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("gate: corpus %s: cannot read %s: %w (regenerate via the Phase 1 export-corpus tool: dotnet run -c Release --project src/Heddle.Performance -f net10.0 -- export-corpus)", workload, path, err)
+		return nil, fmt.Errorf("gate: corpus %s: cannot read %s: %w (regenerate via the Phase 1 export-corpus tool: dotnet run -c Release --project benchmarks/dotnet -- export-corpus)", workload, path, err)
 	}
 	var def VerifyDef
 	if err := json.Unmarshal(raw, &def); err != nil {

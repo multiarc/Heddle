@@ -25,8 +25,11 @@ namespace Heddle.Benchmarks.Dotnet.Engines
     /// <list type="bullet">
     ///   <item>The two ENCODED workloads are excluded at the project level: HeddleOutputProfile is
     ///   compilation-wide and they need Html where the raw workloads need Text.</item>
-    ///   <item><c>home.heddle</c> (<c>@&lt;&lt;</c> layout extend) and <c>fragment-heavy.heddle</c>
-    ///   (<c>@%</c> definition blocks) are not covered by the emitter yet.</item>
+    ///   <item><c>home.heddle</c> (the <c>composed-page</c> workload) is refused twice: the layout it
+    ///   extends passes embedded C# as component arguments, which the emitter refuses outside
+    ///   <c>FullCSharp</c>, and <c>home.heddle</c> full-overrides the layout's <c>body</c> region,
+    ///   which the emitter refuses outright. <c>fragment-heavy.heddle</c> (<c>@%</c> definition
+    ///   blocks) was in this list and is now covered, so coverage is 5/8 rather than 4/8.</item>
     /// </list>
     /// </summary>
     public static class Precompiled

@@ -15,7 +15,7 @@ Commit 8341bb67
 The formatted results tables (render + compile) with ratios live in the
 [README Performance section](../../../README.md#performance). The parity contract that makes the
 comparison apples-to-apples is documented in
-[src/Heddle.Performance/Runners](../../../src/Heddle.Performance/Runners/README.md).
+[src/Heddle.Performance/Runners](../../../benchmarks/dotnet/GoldenCorpus/README.md).
 
 ## Files
 

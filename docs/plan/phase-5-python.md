@@ -239,7 +239,7 @@ idiomatic evidence standard).
 | Controlled-track methodology: semantically-equivalent, equivalently-authored implementations so the engine, not the algorithm, is measured | Marr, Daloze & Mössenböck, "Cross-Language Compiler Benchmarking: Are We Fast Yet?" (DLS 2016); [smarr/are-we-fast-yet](https://github.com/smarr/are-we-fast-yet) |
 | Allocation/GC numbers are not comparable across runtimes with different allocator designs; wall time per render is the sole cross-comparable metric | Standing ruling 5 (grounding dossier); [phase 1 metrics & publication protocol](phase-1-cross-stack-foundation.md) |
 | Honest-reporting posture: losses and narrowings reported as prominently as wins; no universal-superiority claims; numbers hardware- and date-specific | [docs/benchmarks/2026-07-18/index.md](../benchmarks/2026-07-18/index.md) |
-| Parity gate, golden corpus, dual-track definitions, exclusion policy, workload set (eight workloads incl. two encoded) | [phase 1 — cross-stack-foundation](phase-1-cross-stack-foundation.md); parity contract v1 in [src/Heddle.Performance/Runners/README.md](../../src/Heddle.Performance/Runners/README.md) |
+| Parity gate, golden corpus, dual-track definitions, exclusion policy, workload set (eight workloads incl. two encoded) | [phase 1 — cross-stack-foundation](phase-1-cross-stack-foundation.md); parity contract v1 in [benchmarks/dotnet/GoldenCorpus/README.md](../../benchmarks/dotnet/GoldenCorpus/README.md) |
 
 Assumptions to verify in the spec (flagged, not grounded here): Mako's exact whitespace-control
 semantics for controlled-track authoring; the concrete escaped-entity output of MarkupSafe and

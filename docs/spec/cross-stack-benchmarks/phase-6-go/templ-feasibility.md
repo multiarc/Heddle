@@ -56,9 +56,9 @@ removed by N3b from both sides and, being whitespace-only, passes by constructio
 Track: controlled. "Oracle shape" facts below are read from the pinned normative template texts
 and models in [workloads.md](../phase-1-cross-stack-foundation/workloads.md) and — for
 `composed-page` — from the live twin sources
-([TwinContent.cs](../../../../src/Heddle.Performance/Runners/TwinContent.cs),
-[LiquidTemplates.cs](../../../../src/Heddle.Performance/Runners/LiquidTemplates.cs),
-[AreaComponent.cs](../../../../src/Heddle.Performance/TestSuite/Extensions/AreaComponent.cs),
+([TwinContent.cs](../../../../benchmarks/dotnet/src/Models/TwinContent.cs),
+[LiquidTemplates.cs](../../../../benchmarks/dotnet/templates/controlled/liquid/composed-page.liquid),
+[AreaComponent.cs](../../../../benchmarks/dotnet/src/Models/AreaData.cs),
 all read for this spec).
 
 | Workload | Text-node exposure in the pinned shape | templ verdict |
@@ -95,7 +95,7 @@ and committed (spec [assumed state](README.md#assumed-state)).
   (per [port-mapping.md](port-mapping.md#workload-2--trivial-substitution)), `go tool templ generate`
   (the pinned CLI via `go tool`, per [D3](README.md#d3--toolchain-and-dependency-pins)),
   render, run the full N1–N4 pipeline, byte-compare against
-  `src/Heddle.Performance/GoldenCorpus/trivial-substitution.golden.html`. Also author one line
+  `benchmarks/dotnet/GoldenCorpus/trivial-substitution.golden.html`. Also author one line
   containing `{ a } { b } { c }` string expressions separated by single spaces and assert the
   single spaces survive verbatim (the mixed-page footer construct; F3 fixed point).
 - **P2 — escaper bytes.** Render a one-row fortunes-shaped fragment and an encoded-loop-shaped

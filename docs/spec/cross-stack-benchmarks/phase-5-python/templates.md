@@ -37,8 +37,8 @@ identical for both engines and both tracks:
 
 | Workload | Context |
 |---|---|
-| composed-page | `section` (dict: `meta, social, page_scripts, endpage_scripts`), `comp` (dict: `assets_styles, custom_styles, head_scripts, body_scripts, assets_scripts, body_end_scripts`), `areas` (dict keyed by area name), `area_names` (the seven-entry ordered list) — values transcribed from [TwinContent.cs](../../../../src/Heddle.Performance/Runners/TwinContent.cs) and `AreaComponent.Areas` |
-| trivial-substitution | top-level scalars `title, sku, price, brand, category, availability, url, image_url, summary, rating` — values from [SubstitutionContent.cs](../../../../src/Heddle.Performance/Runners/SubstitutionContent.cs) |
+| composed-page | `section` (dict: `meta, social, page_scripts, endpage_scripts`), `comp` (dict: `assets_styles, custom_styles, head_scripts, body_scripts, assets_scripts, body_end_scripts`), `areas` (dict keyed by area name), `area_names` (the seven-entry ordered list) — values transcribed from [TwinContent.cs](../../../../benchmarks/dotnet/src/Models/TwinContent.cs) and `AreaComponent.Areas` |
+| trivial-substitution | top-level scalars `title, sku, price, brand, category, availability, url, image_url, summary, rating` — values from [SubstitutionContent.cs](../../../../benchmarks/dotnet/src/Models/SubstitutionContent.cs) |
 | large-loop | `items` — 5,000 dicts `{name: "row-"+i, value: i}` |
 | mixed-page | `page_title, store_name, hero_heading, hero_tagline, show_banner, banner_text, show_debug_panel, footer_note, year, support_email, products` (36 product dicts `{name, sku, price, on_sale, blurb}`) |
 | conditional-heavy | `rows` — 200 dicts `{name, note, is_bronze, is_silver, is_gold, has_note, is_active}` |
@@ -92,14 +92,14 @@ ${areas[name]}\
 ${comp["assets_scripts"]}${section["page_scripts"]}${section["endpage_scripts"]}${comp["body_end_scripts"]}
 ```
 
-This is the [LiquidTemplates.cs](../../../../src/Heddle.Performance/Runners/LiquidTemplates.cs)
+This is the [LiquidTemplates.cs](../../../../benchmarks/dotnet/templates/controlled/liquid/composed-page.liquid)
 twin shape one-for-one: layout as an include, sections/components as lookups, the ordered area
 menus as a real loop.
 
 ### Workload 2 — `trivial-substitution`
 
 Both engines: the exact
-[SubstitutionLiquidTemplates.cs](../../../../src/Heddle.Performance/Runners/SubstitutionLiquidTemplates.cs)
+[SubstitutionLiquidTemplates.cs](../../../../benchmarks/dotnet/templates/controlled/liquid/trivial-substitution.liquid)
 card literal, one line, no whitespace between tags. Jinja2 `trivial-substitution.jinja` is that
 Liquid text verbatim (the pure-substitution subset of Liquid is valid Jinja2):
 
@@ -112,7 +112,7 @@ Mako `trivial-substitution.mako`: the same literal with each `{{ x }}` replaced 
 ### Workload 3 — `large-loop`
 
 Jinja2 `large-loop.jinja` (the
-[LoopLiquidTemplates.cs](../../../../src/Heddle.Performance/Runners/LoopLiquidTemplates.cs)
+[LoopLiquidTemplates.cs](../../../../benchmarks/dotnet/templates/controlled/liquid/large-loop.liquid)
 text, itself valid Jinja2):
 
 ```jinja

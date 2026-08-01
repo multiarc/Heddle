@@ -59,7 +59,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
 
         private static readonly UTF8Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
-        /// <summary>Per-workload compile settings, ported from the retired *HeddleTest.cs.</summary>
+        /// <summary>Per-workload compile settings: output profile, expression tier, model type.</summary>
         private static readonly (string Workload, OutputProfile Profile, ExpressionMode Mode, Type ModelType)[] Specs =
         {
             // composed-page's model is an empty object and its expressions are extension calls, so
@@ -84,7 +84,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         public static object ModelFor(string workload) => workload switch
         {
             // composed-page renders entirely from extensions and layout section defaults, so its
-            // model is genuinely empty -- the same `new object()` the retired harness passed.
+            // model is genuinely empty rather than merely unused.
             "composed-page" => EmptyModel,
             "trivial-substitution" => SubstitutionContent.Model(),
             "large-loop" => LoopContent.Model(),
@@ -107,10 +107,10 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             if (!_extensionsConfigured)
             {
                 // Registers this assembly's [ExportExtensions] set (area_component and friends).
-                // HeddleTemplate.Configure is the public entry point; the retired harness reached
-                // the internal AssemblyHelper directly, which it could only do because it was
-                // strong-named and named in Heddle's InternalsVisibleTo list. This harness is not,
-                // and should not need to be, a friend assembly of the engine it measures.
+                // HeddleTemplate.Configure is the public entry point, and the public one is all
+                // this harness will use: a benchmark that needs private access to the thing it
+                // measures is measuring something no caller can reach. The engine grants this
+                // assembly no InternalsVisibleTo, deliberately.
                 HeddleTemplate.Configure(typeof(HeddleEngine).Assembly);
                 _extensionsConfigured = true;
             }

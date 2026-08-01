@@ -31,10 +31,10 @@ cannot be parity-gated (plan constraint, carried).
 ## Anchors (workloads 1–3) — retained byte-unchanged
 
 The three existing workloads are **not modified in any way**: their templates
-([home.heddle](../../../../src/Heddle.Performance/TestTemplates/home.heddle),
-[layout.heddle](../../../../src/Heddle.Performance/TestTemplates/layout.heddle),
-[trivial-substitution.heddle](../../../../src/Heddle.Performance/TestTemplates/trivial-substitution.heddle),
-[large-loop.heddle](../../../../src/Heddle.Performance/TestTemplates/large-loop.heddle)), their
+([home.heddle](../../../../benchmarks/dotnet/templates/controlled/heddle/home.heddle),
+[layout.heddle](../../../../benchmarks/dotnet/templates/controlled/heddle/layout.heddle),
+[trivial-substitution.heddle](../../../../benchmarks/dotnet/templates/controlled/heddle/trivial-substitution.heddle),
+[large-loop.heddle](../../../../benchmarks/dotnet/templates/controlled/heddle/large-loop.heddle)), their
 runner classes, their models, and their benchmark classes stay untouched, so historical numbers
 remain comparable run-to-run. This spec adds a corpus export and verifier definition for each —
 nothing else.
@@ -42,7 +42,7 @@ nothing else.
 - **`composed-page`** — `home.heddle` extends `layout.heddle` via `@<<{{layout.heddle}}`; the
   output is the documented ordered fragment sequence (not a full HTML page). The fidelity note
   and `@<<` root cause in the
-  [Runners README](../../../../src/Heddle.Performance/Runners/README.md) are carried **verbatim**
+  [Runners README](../../../../benchmarks/dotnet/GoldenCorpus/README.md) are carried **verbatim**
   into the corpus documentation (decision [D5](README.md#d5--the-composed-page-anchor-keeps-its-fragment-sequence-shape-q14),
   per Q1.4). Confirmed size: 55,456 raw / 34,837 normalized chars for every gated engine (Heddle plus the four
 twins on net8.0/net10.0; the Scriban twin is `#if !NET6_0`, so on net6.0 four engines are gated).
@@ -77,7 +77,7 @@ twins on net8.0/net10.0; the Scriban twin is `#if !NET6_0`, so on net6.0 four en
    [untrusted-data alphabet](parity-contract-v2.md#untrusted-data-alphabet) instead.
 5. **Per-engine model views are materialized once** (static fields), never per benchmark op —
    the established `Shared` / `SharedDotLiquid` / `SharedDictionary` pattern of
-   `LoopContent` ([LoopContent.cs](../../../../src/Heddle.Performance/Runners/LoopContent.cs)).
+   `LoopContent` ([LoopContent.cs](../../../../benchmarks/dotnet/src/Models/LoopContent.cs)).
    Dictionary views use lowercase snake_case keys (`image_url` precedent in
    `SubstitutionContent`).
 6. **Heddle compile options** for every new workload mirror the anchors:
@@ -102,7 +102,7 @@ loop + page-level and row-level conditionals in one template; output between the
 extremes. This workload carries the realistic-full-page duty the composed-page anchor cannot
 (Q1.4).
 
-### Model — `MixedContent` (new file `src/Heddle.Performance/Runners/MixedContent.cs`)
+### Model — `MixedContent` (new file `benchmarks/dotnet/src/Models/MixedContent.cs`)
 
 ```csharp
 public sealed class MixedModel
@@ -134,7 +134,7 @@ public sealed class MixedProduct
 `SupportEmail` is exactly `"support at mercantile.example"` (a plain phrase, so no engine or
 idiomatic port is tempted to treat it as a linkable address).
 
-### Heddle template — `src/Heddle.Performance/TestTemplates/mixed-page.heddle`
+### Heddle template — `benchmarks/dotnet/templates/controlled/heddle/mixed-page.heddle`
 
 ```heddle
 <!DOCTYPE html>

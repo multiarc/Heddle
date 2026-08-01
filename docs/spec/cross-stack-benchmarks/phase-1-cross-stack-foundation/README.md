@@ -149,10 +149,10 @@ mechanisms and close the spec-territory details the plan delegated.)
 - **Alternatives rejected.** New full-page composition workload (engine change, out of scope);
   compiling `layout.heddle` as entry point (drops the `<body:body>` override and forces twins to
   embed layout HTML verbatim — parity-drift risk documented in the Runners README).
-- **Grounding.** [Runners README fidelity note + root cause](../../../../src/Heddle.Performance/Runners/README.md);
+- **Grounding.** [Runners README fidelity note + root cause](../../../../benchmarks/dotnet/GoldenCorpus/README.md);
   [open-questions Q1.4](../../../plan/open-questions.md).
 
-### D6 — The corpus stores the normalized oracle under `src/Heddle.Performance/GoldenCorpus/`
+### D6 — The corpus stores the normalized oracle under `benchmarks/dotnet/GoldenCorpus/`
 - **Decision.** One `<id>.golden.html` per workload containing the **normalized** Heddle output
   as UTF-8 without BOM and without an appended trailing newline; `manifest.json` records
   `byteLength`, `sha256`, `generatingCommit`, `generatedUtc` per entry; `.gitattributes` pins
@@ -349,9 +349,9 @@ runner/content classes follow the existing file-per-concern layout of
 `src/Heddle.Performance/Runners/`.
 
 ### WI1 — Models and Heddle oracles for the five new workloads
-- **Files.** New: `src/Heddle.Performance/Runners/MixedContent.cs`, `ConditionalContent.cs`,
+- **Files.** New: `benchmarks/dotnet/src/Models/MixedContent.cs`, `ConditionalContent.cs`,
   `FragmentContent.cs`, `FortunesContent.cs`, `EncodedLoopContent.cs`;
-  `src/Heddle.Performance/TestTemplates/mixed-page.heddle`, `conditional-heavy.heddle`,
+  `benchmarks/dotnet/templates/controlled/heddle/mixed-page.heddle`, `conditional-heavy.heddle`,
   `fragment-heavy.heddle`, `fortunes-encoded.heddle`, `encoded-loop.heddle`;
   `src/Heddle.Performance/Runners/MixedHeddleTest.cs`, `ConditionalHeddleTest.cs`,
   `FragmentHeddleTest.cs`, `FortunesHeddleTest.cs`, `EncodedLoopHeddleTest.cs`.
@@ -428,7 +428,7 @@ runner/content classes follow the existing file-per-concern layout of
 
 ### WI6 — Golden corpus: export tool, verifier, freshness wiring
 - **Files.** New: `Runners/GoldenCorpus.cs`, `Runners/IdiomaticChecks.cs`,
-  `src/Heddle.Performance/GoldenCorpus/README.md` (+ the exported corpus files and manifest);
+  `benchmarks/dotnet/GoldenCorpus/README.md` (+ the exported corpus files and manifest);
   changed: `Program.cs` (verbs `export-corpus [--allow-dirty]`, `verify-corpus`),
   `.gitattributes` (corpus pin rules per [golden-corpus.md](golden-corpus.md#on-disk-format)),
   the eight render-benchmark classes' `[GlobalSetup]` (add
@@ -447,7 +447,7 @@ runner/content classes follow the existing file-per-concern layout of
   any benchmark class passes its `AssertFresh`.
 
 ### WI7 — Documentation cross-links
-- **Files.** Changed: `src/Heddle.Performance/Runners/README.md` (append a short "Contract v2"
+- **Files.** Changed: `benchmarks/dotnet/GoldenCorpus/README.md` (append a short "Contract v2"
   section: one paragraph stating v1 remains authoritative for the intra-.NET raw suites and
   linking to `docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/parity-contract-v2.md`
   and the corpus directory); `docs/spec/README.md` (master-index row for this initiative, per
@@ -481,7 +481,7 @@ The **externally consumed contract** this phase creates is artifact-shaped, not 
 
 | Artifact | Consumers | Normative definition |
 |---|---|---|
-| `src/Heddle.Performance/GoldenCorpus/*.golden.html` + `manifest.json` | phases 2–6 gate runners | [golden-corpus.md](golden-corpus.md) |
+| `benchmarks/dotnet/GoldenCorpus/*.golden.html` + `manifest.json` | phases 2–6 gate runners | [golden-corpus.md](golden-corpus.md) |
 | `GoldenCorpus/*.verify.json` | phases 2–6 idiomatic verifiers | [golden-corpus.md](golden-corpus.md#idiomatic-verifier-definitions) |
 | Parity contract v2 | phases 2–7 | [parity-contract-v2.md](parity-contract-v2.md) |
 | Metrics & publication protocol | phases 2–8 | [metrics-protocol.md](metrics-protocol.md) |
@@ -608,7 +608,7 @@ verdict the existing suite operates under.
 | Item | Trigger |
 |---|---|
 | Intra-.NET idiomatic-track implementations (D15) | .NET being presented as an ecosystem row in phase 7's idiomatic tables, or a user request for a .NET idiomatic comparison |
-| Moving the corpus out of `src/Heddle.Performance/GoldenCorpus/` | A phase 2–6 spec demonstrating its harness cannot conveniently consume the current path (then: one ordinary versioned move under D7) |
+| Moving the corpus out of `benchmarks/dotnet/GoldenCorpus/` | A phase 2–6 spec demonstrating its harness cannot conveniently consume the current path (then: one ordinary versioned move under D7) |
 | A .NET implementation of N5 entity canonicalization | Any intra-.NET engine's default escaping spellings changing on a package upgrade (today all five configured paths are canonical byte-for-byte — D3) |
 | quicktemplate whitespace-control confirmation (spike C could not confirm either way) | Phase 6 spec authoring, which owns quicktemplate's conditional inclusion |
 | Thymeleaf controlled-track feasibility evidence | Phase 3 spec (sequenced first there by plan); this phase only supplies the D11 policy it will apply |

@@ -156,7 +156,7 @@ esac
 LOG_DIR="$OUT_DIR/logs"
 mkdir -p "$LOG_DIR" || bench_die "cannot create $LOG_DIR"
 
-PERF_DIR="$REPO_ROOT/src/Heddle.Performance"
+DOTNET_DIR="$BENCH_ROOT_SELF/dotnet"
 RUST_DIR="$BENCH_ROOT_SELF/rust"
 JVM_DIR="$BENCH_ROOT_SELF/jvm"
 JS_DIR="$BENCH_ROOT_SELF/js"
@@ -165,17 +165,22 @@ GO_DIR="$BENCH_ROOT_SELF/go"
 LCX_DIR="$BENCH_ROOT_SELF/linux-crosscheck"
 VENV_PY="$PY_DIR/.venv/bin/python"
 
-# The eight protocol suites (phase 1 metrics-protocol: 'The protocol's first exercise').
+# The eight protocol suites (phase 1 metrics-protocol: 'The protocol's first exercise'), named
+# after the workloads they measure. Each is one `bench-crossstack --filter` step, so a suite gets
+# its own log, its own exit code and its own place to resume from.
 DOTNET_SUITES=(
-  TextRenderBenchmarks
-  SubstitutionRenderBenchmarks
-  LoopRenderBenchmarks
-  MixedRenderBenchmarks
-  ConditionalRenderBenchmarks
-  FragmentRenderBenchmarks
-  FortunesRenderBenchmarks
-  EncodedLoopRenderBenchmarks
+  ComposedPageBenchmarks
+  TrivialSubstitutionBenchmarks
+  LargeLoopBenchmarks
+  MixedPageBenchmarks
+  ConditionalHeavyBenchmarks
+  FragmentHeavyBenchmarks
+  FortunesEncodedBenchmarks
+  EncodedLoopBenchmarks
 )
+
+# The sidebars: measured, published, but never cross-stack rows.
+DOTNET_SIDEBARS=(bench-techniques bench-cold bench-internal)
 
 # --- Step machinery ---------------------------------------------------------------------------
 RESULTS=()
@@ -507,11 +512,15 @@ NPM_CI_ARGS=()
 for eco in "${SELECTED[@]}"; do
   case "$eco" in
     dotnet)
-      run_step dotnet gate gate-parity "$PERF_DIR" -- \
-        dotnet run -c Release -f net10.0 -- parity
+      # The full cell registry: byte gate on the controlled track, functional verifier on the
+      # idiomatic one, security floor on the encoded workloads, plus the materialisation trailer
+      # and the precompiled-coverage statement.
+      run_step dotnet gate gate "$DOTNET_DIR" -- dotnet run -c Release -- gate
       [ "$FAILED" = "1" ] && break
-      run_step dotnet gate gate-verify-corpus "$PERF_DIR" -- \
-        dotnet run -c Release -f net10.0 -- verify-corpus
+      # The gate itself, gated: harness self-checks including the six-technique differential.
+      run_step dotnet gate gate-selftest "$DOTNET_DIR" -- dotnet run -c Release -- selftest
+      [ "$FAILED" = "1" ] && break
+      run_step dotnet gate gate-verify-corpus "$DOTNET_DIR" -- dotnet run -c Release -- verify-corpus
       ;;
     rust)
       run_step rust gate gate "$RUST_DIR" -- cargo run --release --bin gate
@@ -606,18 +615,30 @@ PRIORITY_ARGS=()
 for eco in "${SELECTED[@]}"; do
   case "$eco" in
     dotnet)
-      # Phase 1 protocol shape: Release, net10.0, BenchmarkDotNet defaults,
-      # MemoryDiagnoser via suite attributes; one --filter run per protocol suite.
+      # Phase 1 protocol shape: Release, net10.0, the harness's own ShortRun default,
+      # MemoryDiagnoser via suite attributes; one --filter run per protocol suite. Each suite
+      # measures BOTH fairness tracks (the Track parameter), which is why the .NET measure phase is
+      # about twice the length it was when the leg was controlled-track only.
       for suite in "${DOTNET_SUITES[@]}"; do
-        BDN_ARGS=(dotnet run -c Release -f net10.0 -- --filter "*$suite*")
+        BDN_ARGS=(dotnet run -c Release -- bench-crossstack --filter "*$suite*")
         if [ "$SMOKE" = "1" ]; then
           BDN_ARGS+=(--job Dry)
         else
           BDN_ARGS+=(${DOTNET_PROFILE_ARGS[@]+"${DOTNET_PROFILE_ARGS[@]}"})
         fi
-        run_step dotnet "$MEASURE_PHASE" "suite-$suite" "$PERF_DIR" -- "${BDN_ARGS[@]}"
+        run_step dotnet "$MEASURE_PHASE" "suite-$suite" "$DOTNET_DIR" -- "${BDN_ARGS[@]}"
       done
-      copy_artifacts dotnet copy-bdn-artifacts "$PERF_DIR/BenchmarkDotNet.Artifacts" "$OUT_DIR/dotnet"
+      # The sidebars run last, where a failure in them cannot mask a missing comparison row.
+      for sidebar in "${DOTNET_SIDEBARS[@]}"; do
+        BDN_ARGS=(dotnet run -c Release -- "$sidebar")
+        if [ "$SMOKE" = "1" ]; then
+          BDN_ARGS+=(--job Dry)
+        else
+          BDN_ARGS+=(${DOTNET_PROFILE_ARGS[@]+"${DOTNET_PROFILE_ARGS[@]}"})
+        fi
+        run_step dotnet "$MEASURE_PHASE" "$sidebar" "$DOTNET_DIR" -- "${BDN_ARGS[@]}"
+      done
+      copy_artifacts dotnet copy-bdn-artifacts "$DOTNET_DIR/BenchmarkDotNet.Artifacts" "$OUT_DIR/dotnet"
       ;;
     rust)
       # Phase 2 D9 via the WI5 finding (as in linux-crosscheck/run-rust.sh): the lib target

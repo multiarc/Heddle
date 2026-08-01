@@ -187,7 +187,7 @@ length‑based on net8+ and count‑based on older targets).
 
 ## Performance characteristics
 
-The repository's [BenchmarkDotNet suite](../src/Heddle.Performance) measures Heddle against five
+The repository's [BenchmarkDotNet suite](../benchmarks/dotnet) measures Heddle against five
 other .NET template engines (Fluid, Scriban, DotLiquid, Handlebars.Net and ASP.NET Core Razor) over
 a component‑heavy composition workload, every one of them rendering byte‑identical parity‑checked
 output (`[MemoryDiagnoser]` enabled). Razor joined the parity assertion on 2026‑07‑25
@@ -231,9 +231,9 @@ compilation (member accessors), and Roslyn (embedded C#), so it is not cheap —
 "compile once, render many." In the same 2026‑07‑11 run, cold‑compiling the layout + home
 templates took **264.99 μs / 1,339.67 KB** for Heddle versus single‑digit microseconds for the
 Liquid engines (Fluid 3.65 μs, Scriban 4.68 μs, DotLiquid 7.21 μs) — a cost amortized across every
-cached render. Compile cost is benchmarked via
-[TemplateParseBenchmarks](../src/Heddle.Performance/TemplateParseBenchmarks.cs) and the runners in
-[src/Heddle.Performance/Runners](../src/Heddle.Performance/Runners/README.md); full table in the
+cached render. Compile cost is benchmarked by the harness's cold sidebar
+(`dotnet run -c Release --project benchmarks/dotnet -- bench-cold`), which measures parse and
+compile as separate rows because they are separate steps; full table in the
 [README](../README.md#performance).
 
 ---
@@ -253,7 +253,7 @@ cached render. Compile cost is benchmarked via
 | `Heddle/LanguageTemplates` | `.tcs` resources used to emit C# for Roslyn. |
 | [src/Heddle.Language](../src/Heddle.Language) | ANTLR grammar + generated lexer/parser + editor assets. |
 | [src/Heddle.Tests](../src/Heddle.Tests) | xUnit tests + `.heddle` fixtures. |
-| [src/Heddle.Performance](../src/Heddle.Performance) | BenchmarkDotNet benchmarks. |
+| [benchmarks/dotnet](../benchmarks/dotnet) | BenchmarkDotNet benchmarks — the cross-stack .NET leg. Not in `Heddle.sln`. |
 
 ---
 

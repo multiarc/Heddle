@@ -11,7 +11,7 @@ regeneration policy. The gate that consumes the corpus is defined in
 ## Location and layout
 
 ```
-src/Heddle.Performance/GoldenCorpus/
+benchmarks/dotnet/GoldenCorpus/
   README.md                      ← corpus contract summary + the composed-page fidelity note (verbatim)
   manifest.json                  ← one entry per workload: length, hash, generating commit
   composed-page.golden.html
@@ -28,7 +28,7 @@ src/Heddle.Performance/GoldenCorpus/
 
 Rationale for the location: the corpus is produced by and re-verified against the code that
 lives in `src/Heddle.Performance`, so it sits beside its generator; phases 2–6 read the files by
-repo-relative path (`src/Heddle.Performance/GoldenCorpus/<id>.golden.html`). No new top-level
+repo-relative path (`benchmarks/dotnet/GoldenCorpus/<id>.golden.html`). No new top-level
 repo directory is introduced (most reversible choice; the trigger to revisit is a phase 2–6 spec
 demonstrating that its harness cannot conveniently reach into `src/` — then the corpus *moves*
 in one ordinary versioned change, exactly as Q1.5 allows).
@@ -56,7 +56,7 @@ loaded oracle and compare — no consumer re-implements Heddle-side normalizatio
 remains reproducible at any time from the recorded generating commit.
 
 Git handling: the spec adds a `.gitattributes` rule
-`src/Heddle.Performance/GoldenCorpus/*.golden.html -text` (and `*.verify.json` / `manifest.json`
+`benchmarks/dotnet/GoldenCorpus/*.golden.html -text` (and `*.verify.json` / `manifest.json`
 as `text eol=lf`) in the same change that introduces the directory, so no checkout smudging can
 alter the golden bytes (per the
 [testing-standards line-ending rule](../../common/testing-standards.md#fixtures-and-goldens);

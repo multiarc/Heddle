@@ -1,9 +1,13 @@
-// Ported verbatim from the retired src/Heddle.Performance/Runners/FragmentContent.cs (ledger E8).
-// Values are byte-identical to the originals: this is a relocation and a visibility change, not a
-// re-authoring. The types are PUBLIC here, which is the point -- Razor's runtime-compiled views
-// live in a separate assembly and could not reach the old `internal` models, which is why the old
-// harness needed a bespoke RazorTwinModel projection for the one workload Razor covered. Public
-// models let every engine, Razor included, read the same fixtures and make drift impossible.
+// The fixtures every engine renders this workload from (ledger E8).
+//
+// Load-bearing values: the golden corpus is Heddle's render OF THESE, so changing one changes the
+// oracle every ecosystem is gated against. Change them only with a corpus re-export in the same
+// commit.
+//
+// The types are PUBLIC, and that is the point rather than an accident: Razor's views are compiled
+// at runtime into a separate assembly, so an `internal` model would be unreachable to exactly one
+// engine and would force a bespoke projection for it -- a second copy of the data, free to drift.
+// One public fixture, read by all six, makes drift impossible instead of merely unlikely.
 using System.Collections.Generic;
 using DotLiquid;
 

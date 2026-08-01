@@ -5,13 +5,12 @@
     harnesses under benchmarks/: models, templates, a gate, and bench targets, all under one
     project with a verb-dispatching entry point.
 
-    net10.0 only, unlike the retired src/Heddle.Performance which multi-targeted net6/net8/net10.
-    The cross-stack protocol pins a single runtime for the .NET leg, and the multi-TFM matrix
-    existed for the intra-.NET historical comparison rather than for this program.
+    net10.0 only. The cross-stack protocol pins a single runtime for the .NET leg; a multi-TFM
+    matrix answers an intra-.NET historical question this program does not ask.
 
     Deliberately NOT strong-name signed: three of the five competitor packages ship unsigned, and
-    signing this assembly only buys a CS8002 warning per unsigned reference (as the retired
-    project emitted for Scriban). Nothing consumes this assembly.
+    signing this assembly only buys a CS8002 warning per unsigned reference. Nothing consumes it,
+    and it is granted no access to the engine's internals (see the engine's AssemblyInfo.cs).
   -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -35,8 +34,8 @@
     <!--
       The build-time precompilation generator. Referenced as an ANALYZER (no runtime assembly
       reference) so it runs during compilation and emits an entry class per template. This is what
-      makes the precompiled render techniques measurable at all; the retired harness never
-      referenced it, so half of Heddle's render surface went unmeasured.
+      makes the precompiled render techniques measurable at all; without it half of Heddle's
+      render surface goes unmeasured.
     -->
     <ProjectReference Include="..\..\src\Heddle.Generator\Heddle.Generator.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
@@ -89,11 +88,13 @@
       precompiled template that would not escape. That is a real constraint of the generator's
       MSBuild contract, so it is disclosed rather than worked around.
 
-      Of the six remaining, the emitter currently covers five: home.heddle (@&lt;&lt; layout extend)
-      and fragment-heavy.heddle (@% definition blocks) are silently left un-precompiled and fall
-      back to the dynamic path. The harness DETECTS coverage from the manifest at runtime instead of
-      assuming it. A fallback measured and labelled "precompiled" would be reporting the runtime
-      backend under the wrong name.
+      Of the six remaining, the emitter currently covers five: home.heddle is silently left
+      un-precompiled and falls back to the dynamic path, refused both because the layout it extends
+      passes embedded C# as component arguments (rejected outside FullCSharp) and because it
+      full-overrides the layout's body region (rejected outright). fragment-heavy.heddle was
+      uncovered when this harness landed and is now emitted. The harness DETECTS coverage from the
+      manifest at runtime instead of assuming it. A fallback measured and labelled "precompiled"
+      would be reporting the runtime backend under the wrong name.
     -->
     <HeddleTemplate Include="templates\controlled\heddle\*.heddle"
                     Exclude="templates\controlled\heddle\fortunes-encoded.heddle;templates\controlled\heddle\encoded-loop.heddle">

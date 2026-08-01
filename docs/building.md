@@ -73,38 +73,51 @@ authoritative examples used throughout this documentation.
 
 ## Performance benchmarks
 
-[src/Heddle.Performance](../src/Heddle.Performance) contains a **BenchmarkDotNet** suite
-that compares Heddle against four other .NET template engines (Fluid, Scriban, DotLiquid,
-Handlebars.Net) on byte‑identical parity‑checked output, plus ASP.NET Core **Razor** on a
-comparable — but larger and not parity‑checked — page. Run it in Release:
+[benchmarks/dotnet](../benchmarks/dotnet) is the **BenchmarkDotNet** harness: the .NET leg of the
+cross-stack benchmark program, structured like the five other ecosystem harnesses under
+[benchmarks/](../benchmarks/README.md). It compares Heddle against five other .NET engines — Fluid,
+Scriban, DotLiquid, Handlebars.Net and ASP.NET Core **Razor** — across eight workloads and two
+fairness tracks. It is deliberately **not** in `Heddle.sln`, and it reaches the engine through its
+public surface only.
+
+**Nothing is timed until it is gated.** Run the gates first; each verb exits non-zero on failure:
 
 ```bash
-dotnet run -c Release --project src/Heddle.Performance
+cd benchmarks/dotnet
+dotnet run -c Release -- gate            # every registered cell: byte gate, verifier, security floor
+dotnet run -c Release -- selftest        # the gate's own checks, incl. the six-technique differential
+dotnet run -c Release -- verify-corpus   # corpus freshness + verifier calibration
 ```
 
-What it measures
-([TextRenderBenchmarks.cs](../src/Heddle.Performance/TextRenderBenchmarks.cs),
-`[MemoryDiagnoser]` enabled):
+Then measure. Remaining arguments pass straight through to BenchmarkDotNet, so a single workload or
+a shorter job is one flag away:
 
-- **`RenderHeddle`** (published in the linked 2026‑07‑11 report under its former name,
-  `RenderTemplateEngine`) renders the Heddle home page
-  ([TestTemplates/home.heddle](../src/Heddle.Performance/TestTemplates/home.heddle) +
-  [layout.heddle](../src/Heddle.Performance/TestTemplates/layout.heddle)) through
-  [`HeddleTest`](../src/Heddle.Performance/Runners/HeddleTest.cs).
-- **`RenderRazor`** renders the same page through ASP.NET Core Razor with runtime compilation
-  ([Views/twin-home.cshtml](../src/Heddle.Performance/Views) + `twin-layout.cshtml`, via
-  [`RazorTest`](../src/Heddle.Performance/Runners/RazorTest.cs)). Since 2026‑07‑25 it is a full
-  parity twin like the four Liquid/Handlebars engines — held to the same byte‑identical assertion
-  and rendering from the same shared fixtures. Before that it rendered a larger, different page and
-  sat outside every gate; any Razor figure published earlier describes that old workload, not this
-  one.
+```bash
+dotnet run -c Release -- bench-crossstack                          # all eight suites, both tracks
+dotnet run -c Release -- bench-crossstack --filter *MixedPageBenchmarks*
+dotnet run -c Release -- bench-techniques   # Heddle's six render techniques against each other
+dotnet run -c Release -- bench-cold         # cold parse/compile, per engine
+dotnet run -c Release -- bench-internal     # props, branching, language-service metadata
+```
 
-Both pages are shaped alike: one layout, several reusable templates/sections, and a dozen
-component invocations. The Heddle components live in
-[TestSuite/Extensions](../src/Heddle.Performance/TestSuite/Extensions); every twin — Razor
-included — renders the same fragments straight from
-[TwinContent](../src/Heddle.Performance/Runners/TwinContent.cs) rather than from its own copy, so
-no twin can drift from the engine it is compared against.
+What the cross-stack suites measure, with `[MemoryDiagnoser]` enabled: one `[Benchmark]` per engine
+per workload, on the **controlled** track (every engine authored to produce byte-identical output)
+and the **idiomatic** track (every engine authored the way its own documentation teaches). Heddle is
+the ratio baseline. The controlled track's byte gate runs in `[GlobalSetup]`, so a twin that drifted
+fails the run rather than contributing a number for different work.
+
+Two things about Heddle's own row are worth knowing before quoting it. It is the **UTF-8 sink**,
+because that is the path comparable with the other five ecosystems — they all emit UTF-8 or Latin-1,
+while a .NET `string` is UTF-16 and crosses the CLR's Large Object Heap threshold on the three
+largest workloads, an allocator cliff no other ecosystem pays. And every technique is measured
+through a checksum folded from the bytes the engine actually wrote, never a materialised string, so
+a sink cannot win by eliding work.
+
+The fixtures every engine renders from live in [`src/Models/`](../benchmarks/dotnet/src/Models); the
+templates are files under [`templates/`](../benchmarks/dotnet/templates), one directory per track per
+engine, so the idiomatic track is reviewable as templates instead of as escaped literals. No engine
+carries its own copy of the data, so no twin can drift from the engine it is compared against.
+
 In the published cross‑stack run of 2026‑07‑25 **Heddle rendered the composed page 1.37× faster
 than ASP.NET Core Razor (30.52 μs vs 41.66 μs) and allocated less memory**, on byte‑identical
 output under the same parity gate — and led all five other .NET engines on seven of the eight
@@ -117,9 +130,6 @@ protocol workloads. For the numbers see the
 > and with a page shaped like your real one to get figures you can quote. The repository
 > benchmark is a representative, component‑heavy page where the compiled document's advantage
 > is most visible.
-
-There are extra runners (compilation cost, memory) in
-[src/Heddle.Performance/Runners](../src/Heddle.Performance/Runners).
 
 ## Packaging
 

@@ -14,11 +14,11 @@ namespace Heddle.Benchmarks.Dotnet.Engines
     /// <summary>
     /// ASP.NET Core Razor twin, ALL EIGHT workloads (ledger E9).
     ///
-    /// The retired harness measured Razor on <c>composed-page</c> and nothing else, so the
-    /// repository's "faster than Razor" claim rested on the single least favourable workload in the
-    /// set — a bulk-concatenation shape whose UTF-16 output crosses the Large Object Heap threshold.
-    /// There was no realistic-sized Razor figure at all, and the gap had to be published as a
-    /// caveat. This closes it.
+    /// <b>All eight, and that matters.</b> Razor was once measured on <c>composed-page</c> alone, so
+    /// the repository's "faster than Razor" claim rested on the single least favourable workload in
+    /// the set — a bulk-concatenation shape whose UTF-16 output crosses the Large Object Heap
+    /// threshold — with no realistic-sized Razor figure anywhere and the gap published as a caveat.
+    /// Covering the whole set is what retires that caveat.
     ///
     /// Razor renders through MVC DI, so unlike every other engine here it needs a host. The host is
     /// built once and its views compiled once, both in setup: view compilation is Razor's parse

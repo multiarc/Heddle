@@ -44,7 +44,7 @@ func LoadGolden(workload string) (string, error) {
 	path := filepath.Join(Dir(), workload+".golden.html")
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		return "", fmt.Errorf("gate: corpus %s: cannot read %s: %w (regenerate via the Phase 1 export-corpus tool: dotnet run -c Release --project src/Heddle.Performance -f net10.0 -- export-corpus)", workload, path, err)
+		return "", fmt.Errorf("gate: corpus %s: cannot read %s: %w (regenerate via the Phase 1 export-corpus tool: dotnet run -c Release --project benchmarks/dotnet -- export-corpus)", workload, path, err)
 	}
 	if !utf8.Valid(raw) {
 		return "", fmt.Errorf("gate: corpus %s: golden is not valid UTF-8", workload)

@@ -25,7 +25,7 @@ benchmarks/go/                       ← D2: new top-level benchmarks/<ecosystem
 ```
 
 Corpus files are read at gate time from the repo-relative path
-`../../src/Heddle.Performance/GoldenCorpus/` (resolved from the module root via
+`../../benchmarks/dotnet/GoldenCorpus/` (resolved from the module root via
 `runtime.Caller`-anchored path, so `go test` works from any working directory). The corpus does
 not move (Phase 1 [D6](../phase-1-cross-stack-foundation/README.md#d6--the-corpus-stores-the-normalized-oracle-under-srcheddleperformancegoldencorpus)
 names relocation only if a consumer *cannot* reach it — a relative path within one repo can).
