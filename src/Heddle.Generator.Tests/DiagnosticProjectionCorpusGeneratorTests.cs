@@ -10,10 +10,11 @@ namespace Heddle.Generator.Tests
     /// The build-tier arm of the projection-equivalence corpus. Same <see cref="DiagnosticCorpusVectors"/> table
     /// as the run tier and the editor, asserted against what the generator actually reports for the same template
     /// bytes.
-    /// <para>The build tier has two deltas, measured per fixture: it forwards only the <b>parse</b> channel, because
-    /// it runs no compile-channel stage; and where a front-end diagnostic is out of its reach it raises its own
-    /// <c>HED7xxx</c> twin instead. Both are columns in the corpus, so a diagnostic that changes channel or a twin
-    /// that stops firing turns this red on the fixture that moved.</para>
+    /// <para>The build tier has two deltas, measured per fixture: it forwards the parse channel plus the
+    /// compile-channel warnings its own walk reaches, which is less than the run tier drains; and where a front-end
+    /// diagnostic is out of its reach it raises its own <c>HED7xxx</c> twin instead. Both are columns in the corpus,
+    /// so a diagnostic that stops being forwarded or a twin that stops firing turns this red on the fixture that
+    /// moved.</para>
     /// </summary>
     public class DiagnosticProjectionCorpusGeneratorTests
     {
@@ -39,7 +40,7 @@ namespace Heddle.Generator.Tests
 
         [Theory]
         [MemberData(nameof(Names))]
-        public void TheBuildTierForwardsExactlyTheParseChannelSubset(string name)
+        public void TheBuildTierForwardsExactlyWhatTheCorpusDeclares(string name)
         {
             var c = DiagnosticCorpusVectors.Cases.First(x => x.Name == name);
 
@@ -50,7 +51,7 @@ namespace Heddle.Generator.Tests
                              $"@{d.Location.SourceSpan.Start},{d.Location.SourceSpan.Length}")
                 .ToList();
 
-            Assert.Equal(c.ParseChannel, forwarded);
+            Assert.Equal(c.BuildForwarded, forwarded);
         }
 
         [Theory]
@@ -69,22 +70,45 @@ namespace Heddle.Generator.Tests
             Assert.Equal(c.BuildTwins.OrderBy(id => id, StringComparer.Ordinal).ToList(), twins);
         }
 
-        /// <summary>The gap itself, stated once as an executable fact: everything the run tier reports that the
-        /// build tier does not forward is compile-channel. If the generator ever gains compile-channel stages,
-        /// this test is the one that should be deleted — and it names why.</summary>
+        /// <summary>What the build tier forwards is a subset of what the run tier drains, never a superset: the
+        /// build may say less than the engine — a registry built at run time, a compile stage it does not run —
+        /// but it may not invent an entry the engine would not raise for the same bytes.</summary>
         [Fact]
-        public void EveryEntryTheBuildTierMissesIsCompileChannel()
+        public void NothingIsForwardedThatTheRunTierWouldNotRaise()
         {
             foreach (var c in DiagnosticCorpusVectors.Cases)
-            {
-                var missed = c.Entries.Except(c.ParseChannel).ToList();
-                foreach (var entry in missed)
-                    Assert.DoesNotContain(entry, c.ParseChannel);
-            }
+                Assert.Empty(c.BuildForwarded.Except(c.Entries));
+        }
 
-            // …and at least one fixture actually exercises the gap, so the assertion above is not vacuous.
-            Assert.Contains(DiagnosticCorpusVectors.Cases,
-                c => c.Entries.Length > 0 && c.ParseChannel.Length == 0);
+        /// <summary>The compile channel is no longer wholly out of the build tier's reach: fixtures whose only
+        /// entries are compile-channel are forwarded now. Stated as an executable fact so that a regression which
+        /// silently restores the old parse-channel-only posture cannot pass.</summary>
+        [Fact]
+        public void CompileChannelWarningsReachTheBuildTier()
+        {
+            var drained = DiagnosticCorpusVectors.Cases
+                .Where(c => c.ParseChannel.Length == 0 && c.BuildForwarded.Length > 0)
+                .ToList();
+
+            Assert.NotEmpty(drained);
+            foreach (var c in drained)
+                Assert.All(c.BuildForwarded, entry => Assert.Contains(entry, c.Entries));
+        }
+
+        /// <summary>The residue, named: entries the run tier raises and the build tier still does not. Every one
+        /// is a compile-channel entry that needs something a build cannot have — an instantiated extension, a
+        /// registry the host fills at run time, or an evaluated expression — so the list is expected to be
+        /// non-empty, and this states which fixtures are in it rather than leaving it to be inferred.</summary>
+        [Fact]
+        public void TheResidueIsNamedPerFixture()
+        {
+            var residue = DiagnosticCorpusVectors.Cases
+                .Where(c => c.Entries.Except(c.BuildForwarded).Any())
+                .Select(c => c.Name)
+                .OrderBy(n => n, StringComparer.Ordinal)
+                .ToList();
+
+            Assert.Equal(new[] { "orphanElse", "rangeStep", "unknownFunction", "unknownProfile" }, residue);
         }
     }
 }

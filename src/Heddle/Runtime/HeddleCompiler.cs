@@ -76,7 +76,7 @@ namespace Heddle.Runtime
             bool trimDirectiveLines = compileScope.Options.TrimDirectiveLines;
             DocumentShaping.ShiftBySkippedTokens(parseContext);
             // HED4005 scan runs here when coordinates are consistent with exclusion spans.
-            ScanBraceMisreads(parseContext, compileScope, workingDocument);
+            OutputLints.ScanBraceMisreads(parseContext, compileScope.CompileWarnings, workingDocument);
             if (trimDirectiveLines)
                 DocumentShaping.TrimHiddenRemnantLines(parseContext, ref workingDocument);
             DocumentShaping.RemoveDefinitions(parseContext, ref workingDocument, trimDirectiveLines);
@@ -118,7 +118,9 @@ namespace Heddle.Runtime
                 else
                 {
                     // Profile and coordinates are consistent here.
-                    ScanHtmlContextLint(extensions, htmlLintLeftSpans, compileScope, workingDocument);
+                    OutputLints.ScanHtmlContextLint(extensions, htmlLintLeftSpans, compileScope.CompileWarnings,
+                        workingDocument,
+                        compileScope.CompileContext.OutputProfile == OutputProfile.Html);
                     documentElements.Add(element);
                     htmlLintLeftSpans.Add(extensions.BlockPosition);
                 }
@@ -178,14 +180,6 @@ namespace Heddle.Runtime
             };
         }
 
-        private enum OrphanState
-        {
-            None,
-            Open,
-            Closed,
-            Unknown
-        }
-
         /// <summary>
         /// Compile-time branch-set scan: classifies blocks and runs orphan state machine for HED3001/3002/3003/3004/3005.
         /// Called between ReplaceRawOutput and chain-compile loop where coordinates are consistent.
@@ -195,102 +189,12 @@ namespace Heddle.Runtime
         {
             DocumentShaping.StripBranchSets(parseContext, ref workingDocument,
                 chain => Classify(chain, chain.Chain != null && chain.Chain.Count > 0 ? chain.Chain[0] : null),
-                new BranchSetDiagnostics(compileScope));
+                new BranchSetLint(compileScope.CompileWarnings, compileScope.CompileErrors, HasScopeChannel));
         }
 
-        /// <summary>
-        /// Runtime-only branch-set observer: emits HED300x diagnostics and orphan state machine over the shared strip machine's event stream.
-        /// </summary>
-        private sealed class BranchSetDiagnostics : DocumentShaping.IBranchStripObserver
-        {
-            private readonly CompileScope _compileScope;
-            private OrphanState _state = OrphanState.None;
-
-            internal BranchSetDiagnostics(CompileScope compileScope) => _compileScope = compileScope;
-
-            public void OnClassified(OutputChain chain, OutputItem leftmost, DocumentShaping.BranchKind kind)
-            {
-                if (kind == DocumentShaping.BranchKind.Continuation || kind == DocumentShaping.BranchKind.Terminal)
-                    WarnIfMissingScopeChannel(leftmost, _compileScope);
-            }
-
-            public void OnGapCollected(OutputChain prev, OutputChain next, OutputItem nextLeftmost,
-                BlockPosition gap, string gapText)
-            {
-                if (!string.IsNullOrWhiteSpace(gapText) && nextLeftmost != null)
-                {
-                    _compileScope.CompileWarnings.Add(new HeddleCompileWarning
-                    {
-                        Error = "Text between branch blocks is never rendered.",
-                        Fix = "Move it before the '@if', after the last branch, or into a branch body.",
-                        Position = nextLeftmost.Position,
-                        DiagnosticId = HeddleDiagnosticIds.BranchTextStripped
-                    });
-                }
-            }
-
-            public void OnBlockCompleted(OutputChain chain, OutputItem leftmost, DocumentShaping.BranchKind kind)
-            {
-                switch (kind)
-                {
-                    case DocumentShaping.BranchKind.Opener:
-                        _state = OrphanState.Open;
-                        break;
-
-                    case DocumentShaping.BranchKind.Continuation:
-                        if (_state == OrphanState.None || _state == OrphanState.Closed)
-                        {
-                            _compileScope.CompileWarnings.Add(new HeddleCompileWarning
-                            {
-                                Error =
-                                    $"'@{leftmost.ExtensionName}' is a branch continuation with no preceding opener in this scope — it starts a new set.",
-                                Fix =
-                                    "Open the set with a branch opener (such as '@if(...)'), or use a standalone opener if an independent condition is intended.",
-                                Position = leftmost.Position,
-                                DiagnosticId = HeddleDiagnosticIds.ElifWithoutIf
-                            });
-                        }
-
-                        _state = OrphanState.Open;
-                        break;
-
-                    case DocumentShaping.BranchKind.Terminal:
-                        if (leftmost != null && !IsEmptyParameter(leftmost))
-                        {
-                            _compileScope.CompileWarnings.Add(new HeddleCompileWarning
-                            {
-                                Error = "A branch terminal takes no condition — its parameter is ignored.",
-                                Fix = "Use a branch continuation (such as '@elif(...)') for a conditional branch, or remove the parameter.",
-                                Position = leftmost.Position,
-                                DiagnosticId = HeddleDiagnosticIds.ElseConditionIgnored
-                            });
-                        }
-
-                        if (_state == OrphanState.None || _state == OrphanState.Closed)
-                        {
-                            _compileScope.CompileErrors.Add(
-                                $"'@{leftmost?.ExtensionName}' is a branch terminal with no matching opener in this scope."
-                                    .ToError(leftmost?.Position ?? chain.BlockPosition,
-                                        HeddleDiagnosticIds.ElseWithoutIf));
-                            // state unchanged — a further orphan @else errors again.
-                        }
-                        else
-                        {
-                            _state = OrphanState.Closed;
-                        }
-
-                        break;
-
-                    case DocumentShaping.BranchKind.Participant:
-                        _state = OrphanState.Unknown;
-                        break;
-
-                    default: // Other
-                        // Non-branch blocks leave runtime frame intact so following @else can still bind.
-                        break;
-                }
-            }
-        }
+        private static bool HasScopeChannel(string name) =>
+            TemplateFactory.TryGetExtensionType(name, out var extensionType) &&
+            extensionType.IsHaveAttribute<ScopeChannelAttribute>(true);
 
         private static DocumentShaping.BranchKind Classify(OutputChain chain, OutputItem leftmost)
         {
@@ -317,92 +221,6 @@ namespace Heddle.Runtime
                 return DocumentShaping.BranchKind.Participant;  // Declared role wins over Participant.
 
             return DocumentShaping.BranchKind.Other;
-        }
-
-        private static void WarnIfMissingScopeChannel(OutputItem leftmost, CompileScope compileScope)
-        {
-            if (leftmost == null)
-                return;
-            var name = leftmost.ExtensionName;
-            if (string.IsNullOrEmpty(name) || !TemplateFactory.TryGetExtensionType(name, out var extensionType))
-                return;
-            if (extensionType.IsHaveAttribute<ScopeChannelAttribute>(true))
-                return;
-
-            compileScope.CompileWarnings.Add(new HeddleCompileWarning
-            {
-                Error =
-                    $"A branch continuation/terminal '@{name}' does not carry [ScopeChannel]; it cannot read the branch state at render time.",
-                Fix = "Add [ScopeChannel] to the extension so it can read the branch state.",
-                Position = leftmost.Position,
-                DiagnosticId = HeddleDiagnosticIds.BranchRoleMissingScopeChannel
-            });
-        }
-
-        private static bool IsEmptyParameter(OutputItem item)
-        {
-            var callParameter = item.CallParameter;
-            if (!callParameter.IsModelTypeParameter)
-                return false; // chain / C# / native expression parameter — non-empty
-            return callParameter.ModelParameter == null || callParameter.ModelParameter.Length == 0 ||
-                   string.IsNullOrEmpty(callParameter.ModelParameter[0]);
-        }
-
-        /// <summary>
-        /// Matches Liquid/Jinja style braces around a single ASCII identifier or dotted path.
-        /// </summary>
-        private static readonly System.Text.RegularExpressions.Regex BraceMisreadRegex =
-            new System.Text.RegularExpressions.Regex(
-                @"\{\{[ \t]*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)[ \t]*\}\}",
-                System.Text.RegularExpressions.RegexOptions.CultureInvariant |
-                System.Text.RegularExpressions.RegexOptions.Compiled);
-
-        /// <summary>
-        /// HED4005 lint: warns when <c>{{ … }}</c> in text renders literal braces instead of interpolating.
-        /// Skips matches inside exclusion spans. Warning-only; never blocks compilation or changes bytes.
-        /// </summary>
-        private static void ScanBraceMisreads(ParseContext parseContext, CompileScope compileScope,
-            string workingDocument)
-        {
-            static bool Contains(BlockPosition b, int i) => i >= b.StartIndex && i < b.StartIndex + b.Length;
-
-            foreach (System.Text.RegularExpressions.Match m in BraceMisreadRegex.Matches(workingDocument))
-            {
-                int at = m.Index;
-                bool excluded = false;
-                foreach (var chain in parseContext.OutputChains)
-                {
-                    if (Contains(chain.BlockPosition, at)) { excluded = true; break; }
-                }
-
-                if (!excluded)
-                {
-                    foreach (var raw in parseContext.RawOutputItems)
-                    {
-                        if (Contains(raw.BlockPosition, at)) { excluded = true; break; }
-                    }
-                }
-
-                if (!excluded)
-                {
-                    foreach (var definition in parseContext.DefinitionsBlock.Positions)
-                    {
-                        if (Contains(definition, at)) { excluded = true; break; }
-                    }
-                }
-
-                if (excluded)
-                    continue;
-
-                var path = m.Groups[1].Value;
-                compileScope.CompileWarnings.Add(new HeddleCompileWarning
-                {
-                    Error = $"'{{{{ {path} }}}}' in text renders literal braces — '{{{{ … }}}}' is a subtemplate body, not interpolation, so the value of '{path}' is not printed.",
-                    Fix = $"To output the value, use '@({path})'.",
-                    Position = new BlockPosition(parseContext.AbsoluteOffset + at, 2),
-                    DiagnosticId = HeddleDiagnosticIds.LiquidStyleInterpolationMisread
-                });
-            }
         }
 
         private static TemplateChain CompileParameterChain(IEnumerable<OutputItem> items, CompileScope compileContext,
@@ -494,14 +312,9 @@ namespace Heddle.Runtime
             // (once here, once at document end); exempt synthetic default-chain self-calls.
             if (definitionItem != null && definitionItem.HasDefaultOutput && !extensionItem.IsDefaultChainSelfCall)
             {
-                compileScope.CompileContext.CompileWarnings.Add(new HeddleCompileWarning
-                {
-                    Error =
-                        $"Definition '{extensionItem.ExtensionName}' (declared at {definitionItem.Position}) has a default output ('->') and is also called by name — it renders twice.",
-                    Fix = "Remove the '->' from the definition, or remove this call.",
-                    Position = extensionItem.Position,
-                    DiagnosticId = HeddleDiagnosticIds.DefinitionRendersTwice
-                });
+                compileScope.CompileContext.CompileWarnings.Add(
+                    CompileWarningFactory.DefinitionRendersTwice(extensionItem.ExtensionName,
+                        definitionItem.Position, extensionItem.Position));
             }
 
             // Fallback: definition → extension → registered function (native tier only, off under MemberPathsOnly).
@@ -520,15 +333,9 @@ namespace Heddle.Runtime
 
                 if (nameIsExtension && nameInRegistry)
                 {
-                    compileScope.CompileWarnings.Add(new HeddleCompileWarning
-                    {
-                        Error =
-                            $"Registered function '{extensionItem.ExtensionName}' is shadowed by the extension with the same name; standalone calls '@{extensionItem.ExtensionName}(...)' resolve to the extension.",
-                        Fix =
-                            $"Rename the function, or invoke it inside an expression: '@( {extensionItem.ExtensionName}(...) )'.",
-                        Position = extensionItem.Position,
-                        DiagnosticId = HeddleDiagnosticIds.FunctionShadowedByExtension
-                    });
+                    compileScope.CompileWarnings.Add(
+                        CompileWarningFactory.FunctionShadowedByExtension(extensionItem.ExtensionName,
+                            extensionItem.Position));
                 }
                 else if (!nameIsExtension && nameInRegistry)
                 {
@@ -828,237 +635,9 @@ namespace Heddle.Runtime
                 return;
 
             var producerItem = extensionItem.CallParameter.ChainParameter[0];
-            compileScope.CompileWarnings.Add(new HeddleCompileWarning
-            {
-                Error =
-                    $"'{producerItem.ExtensionName}()' output feeds the unnamed @(...) output, which already HTML-encodes under the Html profile — the value is encoded twice.",
-                Fix = $"Remove '{producerItem.ExtensionName}()', or output the trusted value through @raw(...).",
-                Position = producerItem.Position,
-                DiagnosticId = HeddleDiagnosticIds.RedundantEncodingExtension
-            });
+            compileScope.CompileWarnings.Add(
+                CompileWarningFactory.RedundantEncodingExtension(producerItem.ExtensionName, producerItem.Position));
         }
-
-        /// <summary>Classification of bare <c>@(value)</c> block position for HED2004 lint.</summary>
-        private enum HtmlContext
-        {
-            None,
-            Attribute,
-            Script,
-            Url
-        }
-
-        /// <summary>Attributes carrying URL values for HED2004 classification.</summary>
-        private static readonly HashSet<string> UrlAttributes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "href", "src", "action", "formaction", "cite", "poster", "background", "manifest",
-            "data", "longdesc", "usemap", "srcset"
-        };
-
-        /// <summary>
-        /// HED2004 warning-only lint for bare <c>@(value)</c> blocks under Html profile; classifies surrounding HTML position.
-        /// </summary>
-        private static void ScanHtmlContextLint(OutputChain chain, List<BlockPosition> leftSpans,
-            CompileScope compileScope, string workingDocument)
-        {
-            if (compileScope.CompileContext.OutputProfile != OutputProfile.Html)
-                return; // the explicit Html profile is the sole gate; cheapest check first.
-
-            var leftmost = chain.Chain != null && chain.Chain.Count > 0 ? chain.Chain[0] : null;
-            if (leftmost == null)
-                return;
-            // Only bodiless unnamed carriers warn; named encoders and bodied calls never do.
-            if (leftmost.ExtensionName.Length != 0 || !string.IsNullOrEmpty(leftmost.ParameterTemplate))
-                return;
-
-            var context = ClassifyHtmlContext(workingDocument, chain.BlockPosition.StartIndex, leftSpans);
-            if (context == HtmlContext.None)
-                return;
-
-            string error, fix;
-            switch (context)
-            {
-                case HtmlContext.Script:
-                    error = "A bare '@(...)' output is inside a <script> block under the Html profile; HTML element-text encoding is wrong for a JavaScript context.";
-                    fix = "Use '@js(...)' for the JavaScript-string context, or '@raw(...)' if the value is trusted.";
-                    break;
-                case HtmlContext.Url:
-                    error = "A bare '@(...)' output is in a URL component under the Html profile; element-text encoding does not percent-encode it.";
-                    fix = "Use '@url(...)' for the URL-component context, or '@raw(...)' if the value is trusted.";
-                    break;
-                default:
-                    error = "A bare '@(...)' output is inside an HTML tag under the Html profile (attribute value or an unquoted/name position); element-text encoding is insufficient there.";
-                    fix = "Use '@attr(...)' for the attribute context, or '@raw(...)' if the value is trusted.";
-                    break;
-            }
-
-            compileScope.CompileWarnings.Add(new HeddleCompileWarning
-            {
-                Error = error,
-                Fix = fix,
-                Position = leftmost.Position, // original-source coordinates for reporting.
-                DiagnosticId = HeddleDiagnosticIds.MissingContextEncoder
-            });
-        }
-
-        /// <summary>
-        /// Left-only literal heuristic (earlier blocks excised): Step 1 check <c>&lt;script&gt;</c> containment.
-        /// Step 2 find nearest tag boundary. Step 3 detect quote parity and URL attribute.
-        /// </summary>
-        private static HtmlContext ClassifyHtmlContext(string workingDocument, int blockStart,
-            List<BlockPosition> leftSpans)
-        {
-            if (blockStart < 0 || blockStart > workingDocument.Length)
-                return HtmlContext.None; // bounds discipline — a shifted position overshot; never dereference.
-
-            var left = BuildLiteralLeft(workingDocument, blockStart, leftSpans);
-
-            // Step 1: <script>-element containment.
-            int open = -1;
-            for (int m = 0; (m = left.IndexOf("<script", m, StringComparison.OrdinalIgnoreCase)) >= 0; m++)
-            {
-                int after = m + 7;
-                if (after >= left.Length)
-                    continue;  // Tag name interrupted.
-                char c = left[after];
-                if (c != '/' && c != '>' && !char.IsWhiteSpace(c))
-                    continue;  // Not a script tag (e.g., <script-loader>).
-                if (!HasUnquotedGreaterThan(left, after))
-                    continue;  // Start tag not yet closed.
-                open = m;
-            }
-
-            if (open >= 0)
-            {
-                int close = -1;
-                for (int m = 0; (m = left.IndexOf("</script", m, StringComparison.OrdinalIgnoreCase)) >= 0; m++)
-                {
-                    int after = m + 8;
-                    if (after < left.Length)
-                    {
-                        char c = left[after];
-                        if (c != '/' && c != '>' && !char.IsWhiteSpace(c))
-                            continue; // </scriptx> is not an end tag; EOF is a valid boundary.
-                    }
-
-                    close = m;
-                }
-
-                if (close < 0 || close < open)
-                    return HtmlContext.Script;
-            }
-
-            // Step 2: nearest tag boundary (unquoted '>' only counts as tag close).
-            int tagStart = left.LastIndexOf('<');
-            if (tagStart < 0 || HasUnquotedGreaterThan(left, tagStart + 1))
-                return HtmlContext.None; // element text — the default element-text encoder is correct.
-
-            // Step 3: classify by quote parity and attribute name.
-            string tagText = left.Substring(tagStart);
-            int doubleQuotes = CountChar(tagText, '"');
-            int singleQuotes = CountChar(tagText, '\'');
-            int quote;
-            if (doubleQuotes % 2 == 1)
-                quote = tagText.LastIndexOf('"');
-            else if (singleQuotes % 2 == 1)
-                quote = tagText.LastIndexOf('\'');
-            else
-                return HtmlContext.Attribute; // unquoted position or between attributes — generic in-tag signal.
-
-            string valueSoFar = tagText.Substring(quote + 1);
-            int i = quote - 1;
-            while (i >= 0 && char.IsWhiteSpace(tagText[i]))
-                i--;
-            if (i < 0 || tagText[i] != '=')
-                return HtmlContext.Attribute;
-            i--;
-            while (i >= 0 && char.IsWhiteSpace(tagText[i]))
-                i--;
-            int nameEnd = i;
-            while (i >= 0 && IsAttributeNameChar(tagText[i]))
-                i--;
-            if (i == nameEnd)
-                return HtmlContext.Attribute; // no identifier run — not a recognizable attribute value.
-
-            string attributeName = tagText.Substring(i + 1, nameEnd - i);
-            bool componentSignal = valueSoFar.IndexOf('?') >= 0 || valueSoFar.IndexOf('&') >= 0 ||
-                                   valueSoFar.IndexOf('=') >= 0 ||
-                                   (valueSoFar.Length > 0 && valueSoFar[valueSoFar.Length - 1] == '/');
-            return UrlAttributes.Contains(attributeName) && componentSignal
-                ? HtmlContext.Url
-                : HtmlContext.Attribute;
-        }
-
-        /// <summary>
-        /// Left text of <paramref name="blockStart"/> with earlier producing blocks' source spans excised.
-        /// </summary>
-        private static string BuildLiteralLeft(string workingDocument, int blockStart, List<BlockPosition> leftSpans)
-        {
-            if (leftSpans == null || leftSpans.Count == 0)
-                return workingDocument.Substring(0, blockStart);
-
-            var builder = new StringBuilder(blockStart);
-            int position = 0;
-            foreach (var span in leftSpans)
-            {
-                int start = span.StartIndex;
-                int end = span.StartIndex + span.Length;
-                if (start >= blockStart)
-                    break;
-                if (start < position)
-                    continue; // defensive — spans are ascending and non-overlapping by construction.
-                if (end > blockStart)
-                    end = blockStart;
-                builder.Append(workingDocument, position, start - position);
-                position = end;
-            }
-
-            if (position < blockStart)
-                builder.Append(workingDocument, position, blockStart - position);
-            return builder.ToString();
-        }
-
-        /// <summary>
-        /// Returns true if an unquoted <c>&gt;</c> exists from <paramref name="from"/> onward.
-        /// </summary>
-        private static bool HasUnquotedGreaterThan(string text, int from)
-        {
-            char quote = '\0';
-            for (int i = from; i < text.Length; i++)
-            {
-                char c = text[i];
-                if (quote != '\0')
-                {
-                    if (c == quote)
-                        quote = '\0';
-                }
-                else if (c == '"' || c == '\'')
-                {
-                    quote = c;
-                }
-                else if (c == '>')
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private static int CountChar(string text, char c)
-        {
-            int count = 0;
-            for (int i = 0; i < text.Length; i++)
-            {
-                if (text[i] == c)
-                    count++;
-            }
-
-            return count;
-        }
-
-        private static bool IsAttributeNameChar(char c) =>
-            (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
-            c == ':' || c == '_' || c == '-';
 
         /// <summary>
         /// Resolves carrier name: Html profile redirects bodiless unnamed carriers to EmptyHtmlExtension.

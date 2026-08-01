@@ -36,13 +36,8 @@ namespace Heddle.Extensions
             var context = initContext.CompileScope.CompileContext;
             if (context.UnnamedOutputCompiled)
             {
-                initContext.CompileScope.CompileWarnings.Add(new HeddleCompileWarning
-                {
-                    Error = "@profile() appears after output has already been compiled; earlier output keeps the previous profile.",
-                    Fix = "Move @profile() to the top of the template.",
-                    Position = Position,
-                    DiagnosticId = HeddleDiagnosticIds.ProfileDirectiveAfterOutput
-                });
+                initContext.CompileScope.CompileWarnings.Add(
+                    Heddle.Language.CompileWarningFactory.ProfileDirectiveAfterOutput(Position));
             }
 
             context.OutputProfile = profile;

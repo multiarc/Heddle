@@ -108,6 +108,33 @@ namespace Heddle.Generator.Emit
         // Collected regardless of emit outcome.
         private readonly List<EmitDiagnostic> _diagnostics = new List<EmitDiagnostic>();
 
+        // The front end's own compile-channel warnings, raised here by the shared rule that raises them at run
+        // time and reported under the runtime's own id, message and fix so one authoring mistake reads the same
+        // on both tiers. Filled by whichever shared scan produced them, then drained by DrainLints.
+        private readonly List<HeddleCompileWarning> _lints = new List<HeddleCompileWarning>();
+
+        // A body is walked more than once (a definition emitted for several call sites, a region filled twice),
+        // and the second walk rediscovers the first walk's warnings at the same source offset. One mistake is one
+        // squiggle, so identity is the pair the user can see: the diagnostic and where it points.
+        private readonly HashSet<string> _reportedLints = new HashSet<string>(System.StringComparer.Ordinal);
+
+        /// <summary>Moves everything the shared scans collected into the reported set, in the order the shared
+        /// passes produced it.</summary>
+        private void DrainLints()
+        {
+            foreach (var lint in _lints)
+            {
+                if (string.IsNullOrEmpty(lint.DiagnosticId) ||
+                    !_reportedLints.Add(lint.DiagnosticId + "@" + lint.Position.StartIndex))
+                    continue;
+                _diagnostics.Add(new EmitDiagnostic(
+                    GeneratorDiagnostics.Forwarded(lint.DiagnosticId, isWarning: true), lint.Position,
+                    GeneratorDiagnostics.ForwardedMessage(lint.Error, lint.Fix)));
+            }
+
+            _lints.Clear();
+        }
+
         internal readonly struct EmitDiagnostic
         {
             public EmitDiagnostic(DiagnosticDescriptor descriptor, BlockPosition position, params object[] args)
@@ -532,9 +559,14 @@ namespace Heddle.Generator.Emit
             // internal @profile flips must not leak back to the parent (save/restore around the whole body walk).
             var savedProfile = _profileHtml;
             var profileByChain = MapProfilePerChain(ctx);
+            var inheritedProfile = _profileHtml;
 
             var shape = DocumentShaper.Shape(doc, ctx, _config.TrimDirectiveLines,
-                chain => IsZeroOutput(chain), ctx.DefenitionExists, RoleOf, HasScopeChannel);
+                chain => IsZeroOutput(chain), ctx.DefenitionExists, RoleOf, HasScopeChannel, _lints,
+                chain => profileByChain != null && profileByChain.TryGetValue(chain, out var chainProfile)
+                    ? chainProfile
+                    : inheritedProfile);
+            DrainLints();
             var working = shape.WorkingDocument;
 
             // The piece walk itself is shared with RuntimeDocument.GetDocumentPieces, so the
@@ -606,6 +638,10 @@ namespace Heddle.Generator.Emit
             Dictionary<OutputChain, bool> map = null;
             bool running = _profileHtml;
             bool sawFlip = false;
+            // The directive only sets the profile for output compiled after it, so the runtime tracks whether a
+            // bodiless unnamed carrier has already been resolved in this compile context and warns when one has.
+            // The flag is per body — a nested body compiles under its own context and never sets its parent's.
+            bool unnamedOutputCompiled = false;
             foreach (var chain in ctx.OutputChains)
             {
                 var lm = chain.Chain != null && chain.Chain.Count > 0 ? chain.Chain[0] : null;
@@ -615,6 +651,12 @@ namespace Heddle.Generator.Emit
                     var v = (lm.ParameterTemplate ?? string.Empty).Trim();
                     if (OutputProfileRules.TryParseProfile(v, out var parsed))
                     {
+                        if (unnamedOutputCompiled)
+                        {
+                            _lints.Add(CompileWarningFactory.ProfileDirectiveAfterOutput(lm.Position));
+                            DrainLints();
+                        }
+
                         running = parsed == Heddle.Data.OutputProfile.Html;
                         sawFlip = true;
                     }
@@ -629,6 +671,15 @@ namespace Heddle.Generator.Emit
                 }
                 else
                 {
+                    foreach (var carrier in chain.Chain)
+                    {
+                        if (carrier.ExtensionName.Length == 0 && string.IsNullOrEmpty(carrier.ParameterTemplate))
+                        {
+                            unnamedOutputCompiled = true;
+                            break;
+                        }
+                    }
+
                     (map ??= new Dictionary<OutputChain, bool>())[chain] = running;
                 }
             }
@@ -650,6 +701,71 @@ namespace Heddle.Generator.Emit
 
         /// <summary>The shared branch-role source: strip machine and emitter both read roles through the single
         /// <see cref="ExtensionBinder"/>, so classification can never drift between them.</summary>
+        /// <summary>A by-name call to a definition that also carries a default output renders it twice — once
+        /// here and once at document end. The synthetic self-call the default chain itself makes is exempt.</summary>
+        private void WarnOnDoubleRender(OutputItem item, DefinitionItem definitionItem)
+        {
+            if (definitionItem == null || !definitionItem.HasDefaultOutput || item.IsDefaultChainSelfCall)
+                return;
+
+            _lints.Add(CompileWarningFactory.DefinitionRendersTwice(item.ExtensionName, definitionItem.Position,
+                item.Position));
+            DrainLints();
+        }
+
+        /// <summary>A standalone call whose name is both an extension and a registered function resolves to the
+        /// extension — the precedence the shared call-target rule applies for both tiers. The build tier sees the
+        /// default table and the assemblies' <c>[ExportFunctions]</c>; a registry the host builds at run time is
+        /// beyond it, so this can only ever say less than the run tier, never more.</summary>
+        private void WarnOnShadowedFunction(OutputItem item, CallTargetKind callTarget, DefinitionItem definitionItem)
+        {
+            if (string.IsNullOrEmpty(item.ExtensionName) || definitionItem != null ||
+                _config.ExpressionMode == Heddle.Data.ExpressionMode.MemberPathsOnly)
+                return;
+            if (callTarget != CallTargetKind.Extension)
+                return;
+            var name = item.ExtensionName;
+            if (!NativeExpressionWriter.IsDefaultFunction(name) && !_exports.TryGet(name, out _))
+                return;
+
+            _lints.Add(CompileWarningFactory.FunctionShadowedByExtension(name, item.Position));
+            DrainLints();
+        }
+
+        /// <summary>A producer that encodes its own output, feeding the bodiless unnamed sink that already encodes
+        /// under the Html profile, encodes the value twice. The producer is the chain parameter's first item — the
+        /// one the runtime reaches as the last of its reversed execution list. At build time a name resolves
+        /// straight to the extension type, which is what the runtime arrives at by unwrapping its carrier.</summary>
+        private void WarnOnRedundantEncoding(CallParameter cp)
+        {
+            if (!_profileHtml)
+                return;
+            var chainParameter = cp.ChainParameter;
+            if (chainParameter == null || chainParameter.Count == 0)
+                return;
+            var producer = chainParameter[0];
+            if (!_extensionBinder.TryResolve(producer.ExtensionName, out var producerInfo) ||
+                !producerInfo.HasEncodeOutput)
+                return;
+
+            _lints.Add(CompileWarningFactory.RedundantEncodingExtension(producer.ExtensionName, producer.Position));
+            DrainLints();
+        }
+
+        /// <summary>A prop whose name also names a readable model member hides it: the read takes the prop, and
+        /// the member stays reachable only through an explicit <c>this.</c>. The prop still wins on both tiers —
+        /// this only says so out loud.</summary>
+        private void WarnOnPropShadowsMember(ITypeSymbol scope, string name, BlockPosition position)
+        {
+            if (string.IsNullOrEmpty(name) || !SymbolTypeResolver.BindsReadableProperty(scope, name))
+                return;
+
+            _lints.Add(CompileWarningFactory.PropShadowsModelMember(name,
+                SymbolTypeIdentity.FullName(scope as INamedTypeSymbol) ?? SymbolTypeResolver.FullyQualified(scope),
+                position));
+            DrainLints();
+        }
+
         private BranchRole? RoleOf(string name)
             => _extensionBinder.TryResolve(name, out var i) ? i.Role : null;
 
@@ -692,7 +808,8 @@ namespace Heddle.Generator.Emit
                     return null;
                 }
 
-                if (!BuildParamExpr(cp, bctx, out var uParam, out var uUses, out var uCs, out reason))
+                WarnOnRedundantEncoding(cp);
+                if (!BuildParamExpr(cp, bctx, out var uParam, out var uUses, out var uCs, out reason, item.Position))
                     return null;
                 var uField = AllocateEmptyExtension(item.Position);
                 return MakeCall(uField, uParam, uUses, item.Position, uCs);
@@ -709,10 +826,16 @@ namespace Heddle.Generator.Emit
                 n => _extensionBinder.TryResolve(n, out _),
                 n => NativeExpressionWriter.IsDefaultFunction(n) || _exports.TryGet(n, out _));
 
+            var definitionItem = callTarget == CallTargetKind.Fill ? bctx.Fills[name]
+                : callTarget == CallTargetKind.Definition ? resolutionCtx.GetDefenition(name)
+                : null;
+            WarnOnDoubleRender(item, definitionItem);
+            WarnOnShadowedFunction(item, callTarget, definitionItem);
+
             if (callTarget == CallTargetKind.Fill)
-                return BuildDefinitionCall(bctx.Fills[name], item, cp, bctx, isFill: true, out reason);
+                return BuildDefinitionCall(definitionItem, item, cp, bctx, isFill: true, out reason);
             if (callTarget == CallTargetKind.Definition)
-                return BuildDefinitionCall(resolutionCtx.GetDefenition(name), item, cp, bctx, isFill: false, out reason);
+                return BuildDefinitionCall(definitionItem, item, cp, bctx, isFill: false, out reason);
 
             if (name == "out")
                 return BuildOutCall(item, cp, bctx, out reason);
@@ -751,7 +874,7 @@ namespace Heddle.Generator.Emit
                     return null;
                 }
 
-                if (!BuildParamExpr(cp, bctx, out var bParam, out var bUses, out var bCs, out reason))
+                if (!BuildParamExpr(cp, bctx, out var bParam, out var bUses, out var bCs, out reason, item.Position))
                     return null;
 
                 BodyClass branchBody = null;
@@ -795,7 +918,7 @@ namespace Heddle.Generator.Emit
                     return null;
                 }
 
-                if (!BuildParamExpr(cp, bctx, out var lParam, out var lUses, out var lCs, out reason))
+                if (!BuildParamExpr(cp, bctx, out var lParam, out var lUses, out var lCs, out reason, item.Position))
                     return null;
 
                 BodyClass itemBody = null;
@@ -821,7 +944,7 @@ namespace Heddle.Generator.Emit
                     return null;
                 }
 
-                if (!BuildParamExpr(cp, bctx, out var fParam, out var fUses, out var fCs, out reason))
+                if (!BuildParamExpr(cp, bctx, out var fParam, out var fUses, out var fCs, out reason, item.Position))
                     return null;
 
                 BodyClass forBody = null;
@@ -938,7 +1061,7 @@ namespace Heddle.Generator.Emit
                         out reason))
                     return null;   // unknown/duplicate/missing/unreproducible → safe dynamic fallback
 
-                if (!BuildParamExpr(cp, bctx, out var extParamExpr, out var extUses, out var extCs, out reason))
+                if (!BuildParamExpr(cp, bctx, out var extParamExpr, out var extUses, out var extCs, out reason, item.Position))
                     return null;
 
                 var namesRef = EmitParameterNamesField(extLayout);
@@ -947,7 +1070,7 @@ namespace Heddle.Generator.Emit
                 return MakeCall(extField, extParamExpr, extUses, item.Position, extCs);
             }
 
-            if (!BuildParamExpr(cp, bctx, out var paramExpr, out var uses, out var cs, out reason))
+            if (!BuildParamExpr(cp, bctx, out var paramExpr, out var uses, out var cs, out reason, item.Position))
                 return null;
 
             var field = AllocateCustomExtension(name, info, item.Position);
@@ -1285,7 +1408,7 @@ namespace Heddle.Generator.Emit
             if (!DeclaredModelAcceptsCallSiteValue(def, cp, bctx, out reason))
                 return null;
 
-            if (!BuildParamExpr(cp, bctx, out var paramExpr, out var usesModel, out var usesCsModel, out reason))
+            if (!BuildParamExpr(cp, bctx, out var paramExpr, out var usesModel, out var usesCsModel, out reason, item.Position))
                 return null;
 
             // Caller content typed by :: T (or slot type in slot mode); ambient fill scope stays active (lexical).
@@ -1366,7 +1489,7 @@ namespace Heddle.Generator.Emit
                 if (cp.PropArguments != null && cp.PropArguments.Count != 0) { reason = "@out prop arguments"; return null; }
                 if (!SlotValueAssignable(cp, bctx, out reason))
                     return null;
-                if (!BuildParamExpr(cp, bctx, out var vParam, out var vUses, out var vCs, out reason))
+                if (!BuildParamExpr(cp, bctx, out var vParam, out var vUses, out var vCs, out reason, item.Position))
                     return null;
                 var slotField = AllocateOutExtension(slotMode: true, item.Position);
                 return MakeCall(slotField, vParam, vUses, item.Position, vCs);
@@ -1912,7 +2035,7 @@ namespace Heddle.Generator.Emit
                 return null;
             }
 
-            if (!BuildParamExpr(cp, bctx, out var modelExpr, out var usesModel, out var usesCs, out reason))
+            if (!BuildParamExpr(cp, bctx, out var modelExpr, out var usesModel, out var usesCs, out reason, item.Position))
                 return null;
 
             var field = "_partial" + _partialCounter++;
@@ -2797,11 +2920,13 @@ namespace Heddle.Generator.Emit
         }
 
         private bool BuildParamExpr(CallParameter cp, BodyContext bctx, out string paramExpr, out bool usesModel,
-            out string reason)
-            => BuildParamExpr(cp, bctx, out paramExpr, out usesModel, out _, out reason);
+            out string reason, BlockPosition callPosition)
+            => BuildParamExpr(cp, bctx, out paramExpr, out usesModel, out _, out reason, callPosition);
 
+        /// <param name="callPosition">The call this parameter belongs to — where the runtime positions a
+        /// prop-shadowing warning raised off the same read.</param>
         private bool BuildParamExpr(CallParameter cp, BodyContext bctx, out string paramExpr, out bool usesModel,
-            out bool usesCSharpModel, out string reason)
+            out bool usesCSharpModel, out string reason, BlockPosition callPosition)
         {
             reason = null;
             usesModel = false;
@@ -2822,6 +2947,7 @@ namespace Heddle.Generator.Emit
                 // resolved prop-first, syntactically, so both backends agree by rule.
                 if (!cp.RootReference && bctx.Props != null && bctx.Props.ByName.TryGetValue(segments[0], out var slot))
                 {
+                    WarnOnPropShadowsMember(bctx.ModelSymbol, slot.Name, callPosition);
                     var propRead = "global::Heddle.Precompiled.PrecompiledRuntime.Prop(in scope, " + slot.Index + ")";
                     if (segments.Length == 1)
                     {
@@ -3037,7 +3163,7 @@ namespace Heddle.Generator.Emit
             var name = inner.ExtensionName;
             if (name.Length == 0)
                 return BuildParamExpr(inner.CallParameter, bctx, out paramExpr, out usesModel, out usesCSharpModel,
-                    out reason);
+                    out reason, inner.Position);
 
             // Use same precedence as top-level dispatch (HeddleCompiler.CompileItem).
             var innerTarget = CallTargetRules.ResolveCallTarget(name, inner.CallParameter, null,
@@ -3186,6 +3312,8 @@ namespace Heddle.Generator.Emit
         /// <summary>Drains writer's recorded remainders into template-level channels (unresolvable functions, member failures, unbindable calls).</summary>
         private void DrainUnresolvable(NativeExpressionWriter writer)
         {
+            foreach (var propRead in writer.PropReads)
+                WarnOnPropShadowsMember(writer.ModelSymbol, propRead.Name, propRead.Position);
             foreach (var fn in writer.UnresolvableFunctions)
                 _unresolvableFunctions.Add(fn);
             foreach (var mf in writer.MemberFailures)

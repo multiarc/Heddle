@@ -47,9 +47,9 @@ namespace Heddle.Tests
         {
             var root = RepoRoot();
             var compileBody = MethodBody(Path.Combine(root, "Heddle", "Runtime", "HeddleCompiler.cs"),
-                "private static RuntimeDocument CompileBody(", "private enum OrphanState");
+                "private static RuntimeDocument CompileBody(", "private static HeddleCompileError CompileItemFault(");
             var processBranchSets = MethodBody(Path.Combine(root, "Heddle", "Runtime", "HeddleCompiler.cs"),
-                "private static void ProcessBranchSets(", "private sealed class BranchSetDiagnostics");
+                "private static void ProcessBranchSets(", "private static bool HasScopeChannel(");
 
             var calls = new List<string>(SharedPassCalls(compileBody));
             calls.Insert(calls.IndexOf("RemoveEmptyItem"), SharedPassCalls(processBranchSets)[0]);

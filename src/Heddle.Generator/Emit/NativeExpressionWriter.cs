@@ -44,6 +44,8 @@ namespace Heddle.Generator.Emit
             new List<(string, Heddle.Strings.Core.BlockPosition)>();
         private readonly List<SymbolMemberResolver.MemberFailure> _memberFailures =
             new List<SymbolMemberResolver.MemberFailure>();
+        private readonly List<(string Name, Heddle.Strings.Core.BlockPosition Position)> _propReads =
+            new List<(string, Heddle.Strings.Core.BlockPosition)>();
 
         private readonly List<(string Name, Heddle.Strings.Core.BlockPosition Position, string Detail,
             string RuntimeDiagnosticId)> _unbindableCalls =
@@ -93,6 +95,14 @@ namespace Heddle.Generator.Emit
         /// non-dynamic receiver (<c>HED7008</c>). Drained by the emitter and reported at the <c>.heddle</c>
         /// span.</summary>
         public IReadOnlyList<SymbolMemberResolver.MemberFailure> MemberFailures => _memberFailures;
+
+        /// <summary>Every path in this expression that rooted at a body prop, with its <c>.heddle</c> position.
+        /// The emitter drains these to ask whether the prop's name also names a model member it hides — the
+        /// question the runtime asks at the same point of its own prop-root walk.</summary>
+        public IReadOnlyList<(string Name, Heddle.Strings.Core.BlockPosition Position)> PropReads => _propReads;
+
+        /// <summary>The model this expression's paths root at — the scope type the shadowing question is asked of.</summary>
+        public ITypeSymbol ModelSymbol => _modelType;
 
         /// <summary>Function calls the <b>shared</b> overload ranker <i>proved</i> illegal — an
         /// ambiguous flat-Pareto front or no applicable overload, over arguments the estimator typed — each with its
@@ -282,7 +292,9 @@ namespace Heddle.Generator.Emit
         {
             if (path.Target != null || path.RootRef || _props == null || path.Segments.Count == 0)
                 return null;
-            _props.ByName.TryGetValue(path.Segments[0], out var slot);
+            if (!_props.ByName.TryGetValue(path.Segments[0], out var slot) || slot == null)
+                return slot;
+            _propReads.Add((slot.Name, path.Position));
             return slot;
         }
 

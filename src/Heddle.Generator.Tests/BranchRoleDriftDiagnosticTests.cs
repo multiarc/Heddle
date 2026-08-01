@@ -143,7 +143,7 @@ namespace OkBranch
             public override Microsoft.CodeAnalysis.Diagnostics.AnalyzerConfigOptions GetOptions(AdditionalText textFile) => new Options();
         }
 
-        private static ImmutableArray<Diagnostic> RunGenerator(string csharpSource)
+        private static ImmutableArray<Diagnostic> RunGenerator(string csharpSource, string template = "hello")
         {
             var trees = csharpSource == null
                 ? Array.Empty<SyntaxTree>()
@@ -151,7 +151,7 @@ namespace OkBranch
             var compilation = CSharpCompilation.Create("DriftGenTest", trees, References,
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-            var texts = ImmutableArray.Create<AdditionalText>(new TemplateText("Home.heddle", "hello"));
+            var texts = ImmutableArray.Create<AdditionalText>(new TemplateText("Home.heddle", template));
 
             var driver = CSharpGeneratorDriver.Create(
                 new[] { new HeddleTemplateGenerator().AsSourceGenerator() },
@@ -186,6 +186,25 @@ namespace OkBranch
             Assert.Empty(RunGenerator(CompliantTrioSource).Where(d => d.Id == "HED7016"));
             // No custom source at all — only the engine built-ins, which all carry the pairing.
             Assert.Empty(RunGenerator(null).Where(d => d.Id == "HED7016"));
+        }
+
+        /// <summary>HED7016 names the drifting <i>type</i> once per compilation; the front end's own HED3005 names
+        /// the <i>call</i>, so a template that actually uses the drifting continuation now carries a positioned
+        /// squiggle at it. The compliant continuation in the same trio draws neither.</summary>
+        [Fact]
+        public void Hed3005IsForwardedAtTheCallThatUsesTheDriftingContinuation()
+        {
+            const string drifting = "@begin(true){{a}}@driftbetween(true){{b}}";
+
+            var reported = RunGenerator(DriftSource, drifting);
+            var warning = Assert.Single(reported, d => d.Id == "HED3005");
+            Assert.Equal(DiagnosticSeverity.Warning, warning.Severity);
+            Assert.Equal(drifting.IndexOf("driftbetween", StringComparison.Ordinal),
+                warning.Location.SourceSpan.Start);
+            Assert.Contains("[ScopeChannel]", warning.GetMessage(), StringComparison.Ordinal);
+
+            var compliant = RunGenerator(DriftSource, "@begin(true){{a}}@okbetween(true){{b}}");
+            Assert.DoesNotContain(compliant, d => d.Id == "HED3005");
         }
 
         [Fact]

@@ -985,10 +985,15 @@ differential, corpus-render-parity, resolver-sweep and hosted-registry suites in
 
 ### Not implemented, and why
 
-- **The compile-channel drain (`README`'s known program-level gap) is still open.** Nothing in
+- ~~**The compile-channel drain (`README`'s known program-level gap) is still open.** Nothing in
   WI9–WI11 touches the generator's drain, so the eleven id-carrying warnings still never reach a
   build diagnostic. Closing it is not a phase-6 remainder: it needs the generator to *run*
-  compile-channel stages, which is pipeline work no phase 0–6 schedules.
+  compile-channel stages, which is pipeline work no phase 0–6 schedules.~~
+  (**closed 2026-08-01**, and not the way this predicted.) The generator still runs no
+  compile-channel stage; the eleven were reachable from what its own walk already decided, so the
+  shaping-time conditions moved into shared cores both compilers drive and the rest kept their text
+  in one factory. D5's forwarded-ID path is no longer latent — it now carries eleven ids. See the
+  README's gap section for the per-id disposition and the three that stay narrower at build time.
 - **`PropFaults.FaultOrder` and the twin-vocabulary message unification** remain phase 3's, per the
   first pass's hand-off. Unchanged here.
 
