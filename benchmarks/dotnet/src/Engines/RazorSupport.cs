@@ -84,8 +84,12 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             // seeded from IWebHostEnvironment.ContentRootFileProvider only for the default host.
             // Setting it explicitly is what makes views resolve out of templates/ instead of the
             // process working directory.
+            // Obsolete upstream, and used deliberately: runtime compilation is the Razor mode this harness
+            // benchmarks Heddle's dynamic tier against. Dropping it would remove the comparison, not modernise it.
+#pragma warning disable ASPDEPR003
             services.Configure<Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation.MvcRazorRuntimeCompilationOptions>(
                 options => options.FileProviders.Add(fileProvider));
+#pragma warning restore ASPDEPR003
         }
 
         private sealed class HarnessHostingEnvironment : IWebHostEnvironment

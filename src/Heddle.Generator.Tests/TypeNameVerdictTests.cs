@@ -304,7 +304,7 @@ namespace Verdict
                 .Concat(KindNamesWithoutARow)
                 .ToHashSet(StringComparer.Ordinal);
 
-            Assert.Empty(Enum.GetNames(typeof(TypeKind)).Where(n => !covered.Contains(n)));
+            Assert.DoesNotContain(Enum.GetNames(typeof(TypeKind)), n => !covered.Contains(n));
         }
 
         private static IEnumerable<string> RowNames(string methodName) =>

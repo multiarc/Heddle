@@ -173,7 +173,7 @@ namespace Heddle.Generator.IntegrationTests
 
             var dynamic = new HeddleTemplate(t, new CompileContext(new TemplateOptions(), typeof(RegionFeed)));
             Assert.False(dynamic.CompileResult.Success);
-            var runtimeError = Assert.Single(dynamic.CompileResult.ErrorList.Where(e => e.DiagnosticId == "HED5019"));
+            var runtimeError = Assert.Single(dynamic.CompileResult.ErrorList, e => e.DiagnosticId == "HED5019");
             Assert.Equal(runtimeError.Position.StartIndex,
                 TemplateOffsetOf(t, "views/region-private.heddle", build));
         }
@@ -192,8 +192,8 @@ namespace Heddle.Generator.IntegrationTests
 
             var dynamic = new HeddleTemplate(t, new CompileContext(new TemplateOptions(), typeof(RegionFeed)));
             Assert.False(dynamic.CompileResult.Success);
-            var runtimeError = Assert.Single(dynamic.CompileResult.ErrorList.Where(
-                e => e.Error == "Base definition ghost couldn't be found"));
+            var runtimeError = Assert.Single(dynamic.CompileResult.ErrorList,
+                e => e.Error == "Base definition ghost couldn't be found");
             Assert.Equal(runtimeError.Position.StartIndex,
                 TemplateOffsetOf(t, "views/region-dangling.heddle", build));
         }

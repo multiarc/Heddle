@@ -115,7 +115,7 @@ namespace Probe
             var resolver = Resolve(CollapsingSignaturesSource);
 
             Assert.True(resolver.TryGet(name, out var entry));
-            Assert.Equal(1, entry.Overloads.Count);
+            Assert.Single(entry.Overloads);
             Assert.Equal(1, entry.ManifestRows.Sum(r => r.OverloadCount));
         }
 

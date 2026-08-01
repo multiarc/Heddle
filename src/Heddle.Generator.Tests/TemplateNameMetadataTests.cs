@@ -645,9 +645,8 @@ namespace Heddle.Generator.Tests
             var source = run.GeneratedSourceTexts.First(s => !s.Contains("__HeddleManifest"));
             Assert.DoesNotContain("#line (", source);
             Assert.Contains("#line hidden", source);
-            Assert.Empty(Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(source)
-                .GetDiagnostics()
-                .Where(d => d.Severity == DiagnosticSeverity.Error));
+            Assert.DoesNotContain(Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(source)
+                .GetDiagnostics(), d => d.Severity == DiagnosticSeverity.Error);
         }
 
         /// <summary>The near neighbour: a backslash is <b>not</b> one of those characters. A <c>pp_string</c> does
@@ -663,9 +662,8 @@ namespace Heddle.Generator.Tests
             var source = run.GeneratedSourceTexts.First(s => !s.Contains("__HeddleManifest"));
             Assert.Contains("#line (", source);
             Assert.Contains("\"" + path + "\"", source);
-            Assert.Empty(Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(source)
-                .GetDiagnostics()
-                .Where(d => d.Severity == DiagnosticSeverity.Error));
+            Assert.DoesNotContain(Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(source)
+                .GetDiagnostics(), d => d.Severity == DiagnosticSeverity.Error);
         }
 
         /// <summary>One compilation containing both rooted and out-of-root templates records a different form for each.</summary>

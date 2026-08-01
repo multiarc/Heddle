@@ -285,6 +285,27 @@ features*, never to tests, refactoring, or keeping code easy to change
 - No speculative configuration knobs: an option is added when a scenario in the spec needs
   both values, not "for flexibility".
 
+## Build warnings
+
+**Warnings are swept per change, not per release.** A piece of work is not done while it leaves new
+build warnings behind. Sweep them while the context that produced them is still fresh: the author
+knows in a minute what a later reader spends an hour reconstructing, and a warning left to settle
+becomes indistinguishable from the hundred already there.
+
+The build deliberately does **not** enforce this. `TreatWarningsAsErrors` is unset on purpose, so a
+warning never blocks running the code or the tests — which is exactly when you most need to run
+them. The discipline is the gate, not the compiler.
+
+Sweep both configurations and the whole tree, not just the solution: `Heddle.sln` does not contain
+the `samples/`, `benchmarks/dotnet/` or `Heddle.Performance/ThirdParty/` projects, so a solution
+build reports clean while they warn.
+
+A warning you are deliberately keeping is **recorded, not silenced**: a `#pragma warning disable`
+scoped to the site, or a `NoWarn` in the csproj, with the reason written beside it. "Deliberate" is
+a claim the next reader must be able to check — an obsolete API used because it is the subject of
+the test, an analyzer rule that does not fit this suite. A bare suppression with no reason is the
+same as leaving the warning.
+
 ## Sources
 
 - [Martin Fowler — Yagni](https://martinfowler.com/bliki/Yagni.html) (presumptive

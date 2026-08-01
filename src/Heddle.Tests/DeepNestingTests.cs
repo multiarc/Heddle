@@ -98,8 +98,8 @@ namespace Heddle.Tests
         {
             var context = DocumentParser.Parse(document, new ParserSettings { RootPath = "<none>" }, out _);
 
-            var reported = Assert.Single(context.Errors
-                .Where(e => e.DiagnosticId == HeddleDiagnosticIds.TemplateNestedTooDeeply));
+            var reported = Assert.Single(context.Errors,
+                e => e.DiagnosticId == HeddleDiagnosticIds.TemplateNestedTooDeeply);
             Assert.Contains("nested too deeply to compile (limit " + ParseDepthGuardLimit + " levels)",
                 reported.Error);
             Assert.Contains("expression, chain, or block nesting", reported.Error);

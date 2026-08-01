@@ -54,8 +54,8 @@ namespace Heddle.Generator.IntegrationTests
             var dynamic = new HeddleTemplate(t,
                 new CompileContext(new Heddle.Data.TemplateOptions(), typeof(Product)));
             Assert.False(dynamic.CompileResult.Success);
-            var runtimeError = Assert.Single(dynamic.CompileResult.ErrorList.Where(
-                e => e.DiagnosticId == Heddle.Data.HeddleDiagnosticIds.UnknownOutputProfile));
+            var runtimeError = Assert.Single(dynamic.CompileResult.ErrorList,
+                e => e.DiagnosticId == Heddle.Data.HeddleDiagnosticIds.UnknownOutputProfile);
 
             // Both tiers anchor to the @profile directive (block position starts past '@').
             Assert.Equal(t.IndexOf("@profile", StringComparison.Ordinal) + 1, build.Location.SourceSpan.Start);
