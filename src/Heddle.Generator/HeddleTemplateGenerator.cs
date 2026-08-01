@@ -149,6 +149,25 @@ namespace Heddle.Generator
                     importMap[key] = template.Content;
             }
 
+            // The spellings a `<HeddleTemplate>` item explicitly REGISTERED, as opposed to the ones its file path
+            // happens to produce. These live in template-key space by construction and are the documented way to
+            // import a template under a name that is not its path, so the key grammar may be applied to them; a
+            // bare path spelling gets no such licence, because renaming it would bind a file the engine never reads.
+            var registeredSpellings = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var template in templates)
+            {
+                if (string.IsNullOrEmpty(template.KeyMetadata))
+                    continue;
+                var explicitKey = DeriveKey(template, config.TemplateRoot);
+                // Only a key that actually RENAMES the template is a registration. A `Key` restating what the file
+                // path already produces registers nothing, and treating it as licence would re-admit the key grammar
+                // for every template that carries the metadata at all.
+                if (explicitKey != null &&
+                    !string.Equals(explicitKey, DerivePathKey(template, config.TemplateRoot, out _),
+                        StringComparison.Ordinal))
+                    registeredSpellings.Add(explicitKey);
+            }
+
             // Maps template key to its registered name for HED7028 advisory (non-preferred import spellings).
             var aliasOwners = new Dictionary<string, string>(StringComparer.Ordinal);
             var nameByKeySpelling = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -170,12 +189,21 @@ namespace Heddle.Generator
 
                 importMap[alias] = template.Content;
                 aliasOwners[alias] = template.Text.Path;
+                registeredSpellings.Add(alias);
                 if (key != null)
                     nameByKeySpelling[key] = alias;
             }
 
             var seenKeys = new Dictionary<string, string>(StringComparer.Ordinal);
             var sanitizedOwners = new Dictionary<string, string>(StringComparer.Ordinal);
+            // Every key some other template actually imported, and the standalone-pass errors waiting on that
+            // answer. A fragment that is only well-formed inside an importer fails its own standalone pass, and in
+            // production the engine never runs that pass — it only ever reaches the compiler already expanded into
+            // the document that imports it. Reporting those errors would red a build over a state no run of the
+            // application can reach, so they are held until the whole item set has been parsed and the import graph
+            // is known. The template is still dropped from precompilation; only the diagnostic is withheld.
+            var importedKeys = new HashSet<string>(StringComparer.Ordinal);
+            var deferredStandaloneErrors = new List<KeyValuePair<string, Diagnostic>>();
             var manifestEntries = new List<string>();
             var usedHintNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -247,7 +275,8 @@ namespace Heddle.Generator
                 // Still parsed advisoryOnly for HED7028; missing imports inside opted-out files don't error.
                 if (!template.Precompile)
                 {
-                    ParseAndReport(spc, template, importMap, nameByKeySpelling, out _, out _, advisoryOnly: true);
+                    ParseAndReport(spc, template, importMap, nameByKeySpelling, out _, out _, advisoryOnly: true,
+                        importedKeys: importedKeys, registeredNames: registeredSpellings, selfKey: key);
                     continue;
                 }
 
@@ -286,8 +315,13 @@ namespace Heddle.Generator
                 }
                 sanitizedOwners[sanitized] = key;
 
+                var deferred = new List<Diagnostic>();
                 var parsed = ParseAndReport(spc, template, importMap, nameByKeySpelling,
-                    out var cleanDocument, out var hadErrors);
+                    out var cleanDocument, out var hadErrors, advisoryOnly: false,
+                    importedKeys: importedKeys, deferredErrors: deferred, registeredNames: registeredSpellings,
+                    selfKey: key);
+                foreach (var pending in deferred)
+                    deferredStandaloneErrors.Add(new KeyValuePair<string, Diagnostic>(key, pending));
                 if (parsed == null || hadErrors)
                     continue;
 
@@ -305,13 +339,21 @@ namespace Heddle.Generator
                         registeredName: registeredNameForManifest);
                     var result = emitter.Emit(ContentHash.HashText(template.Content));
 
-                    // Emitter diagnostics (HED7006, HED7015).
+                    // Emitter diagnostics (HED7006, HED7015). An error here is as unreachable for an import-only
+                    // fragment as a parse error is — a bodied call to a definition the importer supplies is one of
+                    // the shapes that only fails standalone — so errors join the same held channel.
                     if (result.Diagnostics != null)
                     {
                         var text = template.Text.GetText();
                         foreach (var d in result.Diagnostics)
-                            spc.ReportDiagnostic(Diagnostic.Create(d.Descriptor,
-                                ToLocation(template.Text, text, d.Position), d.Args));
+                        {
+                            var emitted = Diagnostic.Create(d.Descriptor,
+                                ToLocation(template.Text, text, d.Position), d.Args);
+                            if (emitted.Severity == DiagnosticSeverity.Error)
+                                deferredStandaloneErrors.Add(new KeyValuePair<string, Diagnostic>(key, emitted));
+                            else
+                                spc.ReportDiagnostic(emitted);
+                        }
                     }
 
                     // Forward candidate errors the emitter did not retract (gated on completed body build).
@@ -323,10 +365,11 @@ namespace Heddle.Generator
                         {
                             if (candidate.Error == null || result.RetractedCandidateErrors.Contains(candidate.Error))
                                 continue;
-                            spc.ReportDiagnostic(Diagnostic.Create(
-                                GeneratorDiagnostics.Forwarded(candidate.Error.DiagnosticId, isWarning: false),
-                                ToLocation(template.Text, candidateText, candidate.Error.Position),
-                                candidate.Error.Error));
+                            deferredStandaloneErrors.Add(new KeyValuePair<string, Diagnostic>(key,
+                                Diagnostic.Create(
+                                    GeneratorDiagnostics.Forwarded(candidate.Error.DiagnosticId, isWarning: false),
+                                    ToLocation(template.Text, candidateText, candidate.Error.Position),
+                                    candidate.Error.Error)));
                         }
                     }
 
@@ -365,6 +408,12 @@ namespace Heddle.Generator
                 }
             }
 
+            // The import graph is complete now, so a held error can be judged: report it only where nothing in the
+            // compilation imports the template it came from, which is the only case a consumer could ever hit.
+            foreach (var pending in deferredStandaloneErrors)
+                if (!importedKeys.Contains(pending.Key))
+                    spc.ReportDiagnostic(pending.Value);
+
             EmitManifest(spc, ns, engineVersion, manifestEntries);
         }
 
@@ -372,9 +421,16 @@ namespace Heddle.Generator
         /// When <paramref name="advisoryOnly"/> is true (<c>Precompile="false"</c> mode),
         /// the parse runs to advise on imports (HED7028) but missing-import errors and other parse channels stay silent.
         /// </summary>
+        /// <param name="importedKeys">Collects every key this template's imports resolved to, so the caller can
+        /// tell an import-only fragment from a template nobody imports.</param>
+        /// <param name="deferredErrors">When supplied, forwarded <b>errors</b> are buffered here instead of being
+        /// reported, so the caller can withhold them for a template something else imports. Warnings and the
+        /// missing-import channel are unaffected — those are reachable whatever the import graph says.</param>
         private static ParseContext ParseAndReport(SourceProductionContext spc, TemplateFile template,
             Dictionary<string, string> importMap, Dictionary<string, string> nameByKeySpelling,
-            out string cleanDocument, out bool hadErrors, bool advisoryOnly = false)
+            out string cleanDocument, out bool hadErrors, bool advisoryOnly = false,
+            HashSet<string> importedKeys = null, List<Diagnostic> deferredErrors = null,
+            ICollection<string> registeredNames = null, string selfKey = null)
         {
             cleanDocument = template.Content;
             hadErrors = false;
@@ -396,10 +452,18 @@ namespace Heddle.Generator
             Func<string, string> identity = importPath =>
             {
                 var canonical = CanonicalizeImportPath(importPath);
-                return !SpellingSurvivesKeyDerivation(canonical) ||
-                       !TemplateKey.TryNormalize(canonical, out var key)
-                    ? importPath
-                    : key;
+                if (!SpellingSurvivesKeyDerivation(canonical) ||
+                    !TemplateKey.TryNormalize(canonical, out var key))
+                    return importPath;
+
+                // The key grammar may rename the spelling only when what it arrives at is a name a
+                // `<HeddleTemplate Name="...">` explicitly registered. A registered name lives in key space by
+                // construction, and importing by one is the documented idiom; a path spelling does not, and
+                // renaming it would bind a file the engine never reads.
+                return KeyNamesTheSameFile(canonical, key) ||
+                       (registeredNames != null && registeredNames.Contains(key))
+                    ? key
+                    : importPath;
             };
 
             var settings = new ParserSettings
@@ -412,6 +476,12 @@ namespace Heddle.Generator
                     var k = identity(importPath);
                     if (importMap.TryGetValue(k, out var content))
                     {
+                        // A template importing ITSELF is not somebody else's library, and its errors — a
+                        // composition cycle above all — are reached by every build and every render. Only an
+                        // import from another document makes a file one that never compiles standalone in
+                        // production.
+                        if (importedKeys != null && !string.Equals(k, selfKey, StringComparison.Ordinal))
+                            importedKeys.Add(k);
                         if (nameByKeySpelling.TryGetValue(k, out var preferred) &&
                             !nonPreferredImports.Exists(p => string.Equals(p.Key, importPath, StringComparison.Ordinal)))
                         {
@@ -469,8 +539,29 @@ namespace Heddle.Generator
             foreach (var candidate in parseContext.RegionFillCandidates)
                 candidateErrors.Add(candidate.Error);
 
+            // Errors an importer could have satisfied — a base definition this file does not declare — are held
+            // rather than drained when the caller asked for that. They are the errors that exist only because the
+            // build tier compiles an import-only fragment on its own, and the caller reports them only if nothing
+            // in the compilation imports it. Everything else, a syntax error above all, fails the same way in
+            // either setting and is drained as before.
+            var heldErrors = deferredErrors == null
+                ? null
+                : new HashSet<Heddle.Data.HeddleCompileError>(parseContext.ImporterSatisfiableErrors);
+            if (heldErrors != null)
+            {
+                foreach (var held in heldErrors)
+                {
+                    if (candidateErrors.Contains(held))
+                        continue;
+                    deferredErrors.Add(Diagnostic.Create(
+                        GeneratorDiagnostics.Forwarded(held.DiagnosticId, isWarning: false),
+                        ToLocation(template.Text, sourceText, held.Position), held.Error));
+                }
+            }
+
             // Drain policy is in HeddleDiagnosticProjection; generator pre-filter above, location mapping below.
-            foreach (var entry in HeddleDiagnosticProjection.Drain(parseContext, e => !candidateErrors.Contains(e)))
+            foreach (var entry in HeddleDiagnosticProjection.Drain(parseContext,
+                         e => !candidateErrors.Contains(e) && (heldErrors == null || !heldErrors.Contains(e))))
             {
                 if (!entry.IsWarning)
                     hadErrors = true;
@@ -480,6 +571,10 @@ namespace Heddle.Generator
                     GeneratorDiagnostics.Forwarded(entry.Id, entry.IsWarning), location,
                     GeneratorDiagnostics.ForwardedMessage(entry.Message, entry.Fix)));
             }
+
+            // A held error still drops the template from precompilation — only the diagnostic waits.
+            if (heldErrors != null && deferredErrors.Count > 0)
+                hadErrors = true;
 
             return parseContext;
         }
@@ -520,6 +615,24 @@ namespace Heddle.Generator
             string.IsNullOrEmpty(canonical) ||
             canonical.IndexOf('\\') < 0 ||
             System.Array.IndexOf(PathSeparators, '\\') >= 0;
+
+        /// <summary>
+        /// Whether the derived key still names the file the import spelling names.
+        /// <para>An import is not a template key. The documented contract for <c>@&lt;&lt;</c> is that the spelling is
+        /// taken verbatim and resolved with <c>Path.Combine(RootPath, spelling)</c>, "an absolute path wins" — which
+        /// is exactly what the engine does. The key grammar is a different grammar for a different job: it strips a
+        /// leading <c>~/</c>, strips a leading <c>/</c>, and appends <c>.heddle</c> to an extension-less final
+        /// segment. Each of those three renames the file. <c>/lib.heddle</c> is an <b>absolute</b> path to
+        /// <c>Path.Combine</c> and the root-relative <c>lib.heddle</c> to the key grammar; they are not the same
+        /// file, and binding the second while the engine reads the first is a silently different answer rather than
+        /// a convenience.</para>
+        /// <para>The canonical spelling has already had <c>.</c>, <c>..</c> and repeated separators reduced out of
+        /// it the way <c>Path.GetFullPath</c> reduces them, so any <i>remaining</i> difference between it and the key
+        /// is one of the three renames. Comparing the two is therefore the whole test, and it needs no second copy
+        /// of the key grammar to stay in step with the first.</para>
+        /// </summary>
+        private static bool KeyNamesTheSameFile(string canonical, string key) =>
+            string.Equals(canonical, key, StringComparison.Ordinal);
 
         private static string CanonicalizeImportPath(string importPath)
         {
@@ -732,6 +845,14 @@ namespace Heddle.Generator
                 return fromKey;
             }
 
+            return DerivePathKey(template, templateRoot, out outOfRoot);
+        }
+
+        /// <summary>The key the template's <b>file path</b> produces, ignoring any <c>Key</c> metadata. Stated once
+        /// so "did the metadata actually rename this template" has a single answer.</summary>
+        private static string DerivePathKey(TemplateFile template, string templateRoot, out bool outOfRoot)
+        {
+            outOfRoot = false;
             if (TemplateKey.TryMakeRelative(template.Text.Path, templateRoot, out var rooted))
                 return rooted;
 

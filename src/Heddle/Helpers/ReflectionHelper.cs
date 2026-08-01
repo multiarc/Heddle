@@ -218,18 +218,27 @@ namespace Heddle.Helpers
                 throw ResolveSimpleError(typeName, imports, globalAmbiguity);
             }
 
+            var directives = UsingDirectives.Parse(imports);
+
+            // An alias binds the head ahead of the name index, because that is the order C# reads a
+            // namespace-or-type-name in: the scope's alias directives, then the namespaces the scope imports.
+            // Claiming the head commits — the index is not consulted afterwards — for the same reason.
+            if (directives.ClaimsHead(typeName))
+            {
+                if (TryResolveThroughAlias(typeName, directives, maps, out var aliased, out var aliasAmbiguity))
+                    return aliased;
+                throw ResolveSimpleError(typeName, imports, aliasAmbiguity);
+            }
+
             var resolved = ResolveIndexedType(typeName, imports, maps, out var failure);
             if (resolved != null)
                 return resolved;
 
-            var directives = UsingDirectives.Parse(imports);
             if (!directives.IsEmpty)
             {
-                if (TryResolveThroughAlias(typeName, directives, maps, out var aliased, out var aliasAmbiguity))
-                    return aliased;
-                if (aliasAmbiguity)
-                    throw ResolveSimpleError(typeName, imports, true);
-
+                // A `using static` target's nested types stay behind the index. C# puts them in the same bucket
+                // as an imported namespace's types, and the index is a superset of that bucket, so moving this
+                // arm forward would narrow rather than reorder.
                 if (TryResolveThroughStaticImport(typeName, directives, maps, out var nested,
                         out var staticAmbiguity))
                     return nested;

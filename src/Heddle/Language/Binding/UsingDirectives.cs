@@ -46,6 +46,23 @@ namespace Heddle.Language.Binding
         internal bool IsEmpty => Aliases.Count == 0 && StaticTargets.Count == 0;
 
         /// <summary>
+        /// Whether an alias claims the <b>head</b> of <paramref name="spelling"/> — the first segment of a dotted
+        /// name, or the whole of a simple one.
+        /// <para>C# resolves that head through the scope's alias directives before it consults the namespaces the
+        /// scope imports, and once an alias claims the head the binding <b>commits</b>: a target that names nothing
+        /// is an error, not a fallback to an import. Both tiers ask this one question, so neither can drift from
+        /// the other on where the alias arm sits.</para>
+        /// </summary>
+        internal bool ClaimsHead(string spelling)
+        {
+            if (spelling == null || Aliases.Count == 0)
+                return false;
+
+            var dot = spelling.IndexOf('.');
+            return Aliases.ContainsKey(dot < 0 ? spelling : spelling.Substring(0, dot));
+        }
+
+        /// <summary>
         /// Reads the alias and <c>static</c> bodies out of <paramref name="bodies"/>; every other body is a plain
         /// namespace import and is left where it is.
         /// <para>A name aliased twice to different targets is dropped rather than picked between: C# refuses the

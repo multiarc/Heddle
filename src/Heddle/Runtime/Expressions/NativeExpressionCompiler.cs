@@ -809,7 +809,15 @@ namespace Heddle.Runtime.Expressions
             bool lifted = left.Type != leftU || right.Type != rightU;
 
             if (leftU == typeof(bool) && rightU == typeof(bool))
+            {
+                // The enum and integral arms below both spend `lifted` on a common nullable target; bool has no
+                // promotion to spend it on, so a mismatched pair is refused here instead. Matching nullability is
+                // what the shared operator table already answers for this shape, and what `&&`/`||` and `==` answer
+                // one arm over.
+                if (left.Type != right.Type)
+                    return FailBinary(node, left.Type, right.Type);
                 return BitwiseFactory(node.Operator, left, right);
+            }
 
             if (leftU.IsEnum && rightU.IsEnum && leftU == rightU)
             {
