@@ -7,7 +7,7 @@ from two sources that disagree in places:
 - `docs/generator_plan/phase-8-docs-sweep.md` — the per-cycle prose record, written after each cycle.
   Believed over a commit message wherever the two conflict: several commit messages were later
   measured wrong and corrected there, and a future reader may hit the uncorrected message first.
-- the commit messages of the review series, `cd3a665 .. ec613c2` on this branch.
+- the commit messages of the review series, `cd3a665 .. 08872ff` on this branch.
 
 Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tests`,
 `src/Heddle.Generator.IntegrationTests`, `src/Heddle.LanguageServices.Tests`) and
@@ -99,7 +99,7 @@ fixed and the other is deferred; that is why that table has twelve rows.
 
 ## Contents, by status
 
-### FIXED (68 entries, holding 164 ids)
+### FIXED (77 entries, holding 174 ids)
 
 | id | absorbs | severity | title |
 | --- | --- | --- | --- |
@@ -171,8 +171,17 @@ fixed and the other is deferred; that is why that table has twelve rows.
 | F-184 | — | 1 | `CallSiteValueType` had no arm for an embedded-C# call parameter |
 | F-185 | — | 3 and 4 | The build tier's name index dropped the leading dot of a namespace-less type, and had no assembly-qualified arm |
 | F-188 | — | 4 | The constant-overflow refusal went stale when the emission became `unchecked` |
+| F-189 | F-187 | 1 | The fold reported agreement on a number and called it agreement on a type |
+| F-190 | — | 1 and 2 | The one C# string literal the emitter wrote by hand |
+| F-191 | — | 2 | Nothing asked whether an embedded C# expression compiles |
+| F-192 | — | 2 and 4 | A `@using` body judged by a name walk rather than by whether its directive compiles |
+| F-193 | — | 2 | A `#line` file name is a `pp_string` and was written unescaped |
+| F-194 | — | 2 | `LiteralFormatter` had no non-finite arm, and the guard lived on the other caller |
+| F-195 | — | 3 | The hosted resolver could not read a template from disk on Linux or macOS |
+| F-196 | — | 4 | The build tier's signature key told apart what reflection cannot |
+| F-197 | — | 4 | The refusal of `chained` and `root` was a word-boundary regex over raw text |
 
-### KNOWN-OPEN — do not re-report (14)
+### KNOWN-OPEN — do not re-report (15)
 
 | id | severity | title |
 | --- | --- | --- |
@@ -189,7 +198,8 @@ fixed and the other is deferred; that is why that table has twelve rows.
 | F-178 (open half) | 3 | The generator resolves an import spelled `/lib.heddle`, `~/lib.heddle` or `lib` where the engine refuses all three |
 | F-179 | 3 | An import-only library compiled standalone reports an error it would never raise in place |
 | F-186 | 2 | An untypeable argument still binds a sole exported overload, and the emitted call does not compile |
-| F-187 | 1 if uncontained; 4 as contained | An `int` meeting a `uint` is evaluated in `uint` by the build tier and in `long` by the engine |
+| F-198 | 3 | The embedded-C# probe sees consumer internals the engine's standalone compile cannot |
+| F-199 | 3 | A hosted `GetTemplate` cannot load the file its own search found |
 
 ### SUPERSEDED — the fix or guard was later replaced, removed or reversed (6 ids)
 
@@ -587,13 +597,13 @@ in the second column holds its repro, its citations and its regression check as 
   `.ConstantOverflowDegradesInsteadOfBreakingTheBuild`,
   `.ConstantDivisionByZeroDegradesInsteadOfBreakingTheBuild`, `.LegalArithmeticStillPrecompiles`,
   the mixed-width rows added by `1b64d10` (eleven), the unary-minus-on-`uint` rows,
-  `.AUnsignedLongMeetingACharDegradesInsteadOfBreakingTheBuild`, the twenty-one rows added by
+  `.AnUnsignedLongMeetingACharWrapsToTheEnginesNumber`, the twenty-one rows added by
   `8010e2a` (each red before, since the harness compiles the emitted code) and the fourteen pinning
   the other direction, `.AShiftProducesTheSameNumberOnBothTiers` (F-090), and F-049's case moved into
   the *legal* set.
 - **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~ConstantArithmeticDifferentialTests`
   — this one command covers every row above. Narrower checks that still work:
-  `--filter Name~AUnsignedLongMeetingAChar` (F-048). Deleting the fold reddens 17 of 32 rows.
+  `--filter Name~AnUnsignedLongMeetingAChar` (F-048). Deleting the fold reddens 17 of 32 rows.
 - **notes:** the fold's narrowness is pinned deliberately, because a fix that quietly moved arithmetic
   off the fast tier would be its own regression. **A test had already enshrined the wrong answer**
   before F-049 — asserting a degrade for an expression the emitted code compiles and the engine
@@ -2154,7 +2164,7 @@ in the second column holds its repro, its citations and its regression check as 
   IsHaveAttribute<ExtensionNameAttribute>` (`src/Heddle/Runtime/TemplateFactory.cs:245-262`), and
   `Activator.CreateInstance` instantiates a non-public type with a public constructor and ignores
   `[Obsolete]` outright.
-- **class expansion:** `grep -n "GlobalName" src/Heddle.Generator --include=*.cs` gives exactly four
+- **class expansion:** `grep -rn "GlobalName" src/Heddle.Generator --include=*.cs` gives exactly four
   emission sites — the branch-role body extension, the two writes of the plain custom writer, and the
   parameterized writer — plus one diagnostic-text use. All three unguarded ones were demonstrated. The
   fourth was reachable only through `Info.IsEngineAssembly`, which is `string.Equals(assemblyName,
@@ -2243,7 +2253,8 @@ in the second column holds its repro, its citations and its regression check as 
   it would reach the resolver and the registry. `HED7011`'s message was wrong for every one of these
   rows ("Add it as a `<HeddleTemplate>` item" — the file *is* an item) and now also says what the
   spelling is matched against.
-- **class expansion:** `grep -rn "ImportIdentifier"` gives 5 hits: the property, two reads in
+- **class expansion:** `grep -rn "ImportIdentifier"` gives 5 hits in the generator (7 across `src/**/*.cs`):
+  the property, two reads in
   `ParserSettings`, the one generator assignment, and a doc line. The **LanguageServices facade sets
   neither `ImportReader` nor `ImportIdentifier`** — it parses through `DocumentParser.Runtime`, whose
   `ImportReader` is `null` — so the LSP already had the engine's semantics exactly and needed no
@@ -2316,7 +2327,8 @@ in the second column holds its repro, its citations and its regression check as 
   `ContextCompilation.Compile` compiles — but only when `ExpressionMode == FullCSharp && Methods.Count > 0`. So
   a body naming nothing makes the ENGINE refuse the template as soon as one embedded expression exists.
 - **class expansion:** the class is what the generator does with the collected list, and it has exactly two
-  members (`grep -n "_usings" src/Heddle.Generator`, 8 hits): the emission in `RenderFile`, and the list handed
+  members (`grep -rn "_usings" src/Heddle.Generator`, 14 hits — **this grep was written without `-r`, so as
+  printed it produced no output at all**): the emission in `RenderFile`, and the list handed
   to `ResolveModelType` at five sites. The resolution list was correct and is untouched.
 - **fixed by:** cycle 23 (`ec613c2`) — `NamespaceExists` parses (`SyntaxFactory.ParseName`, rejecting a parse
   diagnostic or a trailing remainder, flattening identifier / qualified / `global::` alias-qualified nodes) and
@@ -2363,6 +2375,22 @@ in the second column holds its repro, its citations and its regression check as 
 - **notes:** the Windows half of the backslash rows is unexecuted here and belongs on
   `unverified-platform-surface.md` beside the case-insensitive-filesystem row F-178 records. The pin is written
   as an agreement assertion so it is meaningful on either host rather than encoding this box's answer.
+- **amended, cycle 24:** **the fix was half-applied along its own call chain.** `HeddleTemplateGenerator.cs:397`
+  composes the two layers in a single expression —
+  `TemplateKey.TryNormalize(CanonicalizeImportPath(importPath), out var key) ? key : importPath` — and
+  `TemplateKey.TryNormalizeCore:112` does `relativePath.Replace('\\', '/')` unconditionally on every platform.
+  So on Linux the outer call keeps `a\b.heddle` as one segment and the inner call splits it into two.
+  Measured: `sub\lib.heddle` and `.\lib.heddle` bound a DIFFERENT FILE than the engine reads — engine
+  `HED4009`+`HED1001`, generator no diagnostics and manifest `Precompiled`. Fixed in cycle 24 (`08872ff`) at
+  the generator's call rather than inside `TemplateKey`: the `\`→`/` unification is deliberate for KEYS (a host
+  may spell a registry lookup `Views\Home`) and `TemplateKey` is public API that also drives the runtime
+  registry, whereas an import spelling is resolved against disk. **The population, not the assertion, was the
+  defect**: this entry's four backslash rows were measured entirely against corpus misses — three carry a `..`
+  that `TryNormalize` rejects outright, and the fourth collapsed to a key absent from the test's corpus, so no
+  row existed where a backslash-collapsed key actually resolved. Unchecked residual: `TryMakeRelative:83-88`
+  does the same replace on real discovered file paths and matches the root prefix `OrdinalIgnoreCase`, so on a
+  case-sensitive filesystem a template under `/proj/Views` with root `/proj/views` gets a key whose `ToPath`
+  does not exist; it needs a real MSBuild layout to construct.
 
 ### F-182 — A public `[ExportFunctions]` container nested in an internal one failed the whole build
 
@@ -2502,6 +2530,16 @@ in the second column holds its repro, its citations and its regression check as 
 - **notes:** (c) is fixed BY CONSTRUCTION and not by measurement — it needs two assemblies declaring the same
   `Ns.Type`, which this reference closure does not contain. This entry is the "largest unexamined surface left"
   that defect class A named as its residual; that residual is now closed.
+- **amended, cycle 24:** the claim that the arm "requires every component the spelling states to match, which is
+  what the CLR's own load does with it" is **measurably false**. `Type.GetType` against an ALREADY-LOADED
+  assembly binds by simple name and treats the rest of the identity as advice: `Heddle, Version=99.0.0.0`
+  resolves, and so do a wrong `Culture` and a wrong `PublicKeyToken` — the fixtures assembly is strong-named
+  and still resolves. For an assembly the context has NOT loaded the binder is stricter
+  (`System.Linq, Version=99.0.0.0` → null, `Version=1.0.0.0` → resolves). So the generator refused
+  `Version=99.0.0.0` where the engine resolved it, a silent severity-4 introduced by this very entry's fix.
+  Cycle 24 (`08872ff`) dropped the version comparison — a version drifts on its own with every build — and
+  kept the public-key-token check, with the asymmetry and the unloaded-assembly caveat in the doc comment.
+  `NoVersionStated` is gone with it. Class F, the fourth consecutive cycle.
 
 ### F-188 — The constant-overflow refusal went stale when the emission became `unchecked`
 
@@ -2530,6 +2568,277 @@ in the second column holds its repro, its citations and its regression check as 
   into silent wrong output — the generator would render a number the engine raises on. It was caught by
   compiling the snippets against Roslyn before believing the fold, and is the reason the `DivisionOverflows`
   guard exists.
+
+### F-189 — The fold reported agreement on a number and called it agreement on a type
+
+- **status:** FIXED
+- **absorbs:** F-187, which moves here from the known-open register
+- **severity:** 1 (silent wrong output)
+- **found:** cycle 24
+- **symptom:** template `@model(){{string}}@(Length + (E))` over `"hello"`:
+
+  | E | engine | generated (before) |
+  | --- | --- | --- |
+  | `(0u)-(1u)` | 4294967300 | 4294967300 — matches |
+  | `(0)-(1u)` | 4 | degrades — the containment works |
+  | **`(0-0u)-(1u)`** | **4** | **4294967300** |
+  | `(0+0u)-(1u)`, `(0*1u)-(1u)`, `(1u-1)-(1u)`, `((0-0u)-(0u))-(1u)`, `(0&0u)-(1u)` | 4 | 4294967300 |
+  | `~(0-0u)` | 4 | 4294967300 |
+  | `(4294967295u-0)<<31` | 9223372034707292165 | 2147483653 |
+
+  Measured over a 2880-cell matrix (12 operands × 2 unary forms × 10 operators × 12 operands): 1971 match,
+  809 degrade-where-engine-renders, 96 degrade-where-engine-refuses, **4 different-bytes**, 0 build breaks.
+  The rendering probe over the pre-fix behaviour gives 8 of 8 different bytes.
+- **root cause:** `tiersPromoteDifferently` was computed in `Numeric.Unify` and consumed where it arose;
+  `Folded` carried only a `Numeric` (kind + value), so the flag could not travel to an enclosing operation.
+  The outer operation saw two `UInt` kinds and wrapped, where the engine had evaluated the inner pair in
+  `long`. **The containment F-187 recorded was never removed — it leaked**, and F-187's own note said
+  "severity 1 if the containment is removed".
+- **class expansion:** every place a folded constant's TYPE, not its value, escapes into something that
+  promotes from it. Members, from `src/Heddle.Generator/Emit/ConstantFolding.cs`: `FoldBinary` (the reported
+  path), `FoldTernary:71` (the flag-less `Unify` overload), the bitwise arm `:143` (discarded the flag),
+  `FoldShift:157` (never unified), `FoldUnary` (`~` does not reconverge, `-` does) — and, found by expanding
+  the class rather than the repro, `NativeExpressionWriter.WriteCall`'s arguments and `WriteBinary` against a
+  NON-CONSTANT operand.
+- **predicate, side by side:** the code keyed on *did this one operation's unsigned arithmetic wrap?* The
+  engine keys on *what does binary numeric promotion over the two operand TYPES give?* (`NumericTable.TryPromote`:
+  `uint` + signed → `long`; C# converts a non-negative int CONSTANT to `uint` and evaluates there.)
+- **fixed by:** cycle 24 (`08872ff`) — `Folded` carries both tiers' `Numeric`, the engine promotion is computed
+  separately (`Numeric.UnifyAsEngine`), the fold refuses when the two numbers differ, and a surviving TYPE
+  difference travels with the value. At the non-constant boundary the writer asks `Estimate(partner)`: signed
+  integral, real and string reconverge on `long`; everything else does not.
+- **pinned by:** `ConstantArithmeticDifferentialTests.AMixedPairFeedingASecondOperatorDegrades` (11 rows),
+  `.AMixedPairWhoseSecondOperatorReconvergesStillPrecompiles` (6), `.AMixedPairMeetingAMemberFollowsThatMembersType`
+  (5). Making the engine promotion equal C#'s reddens **18 of 129**, including six of F-024's own rows;
+  forcing `TiersDiffer => false` reddens 4.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~ConstantArithmeticDifferentialTests`.
+- **notes:** checked against the defect it replaces (F-024, needless degrades): the four
+  `LegalArithmeticStillPrecompiles` rows carrying a mixed pair — `5-1u`, `4294967295u-1`, `3000000000+1`,
+  `3000000000/2` — all still precompile, which is what the writer-side partner check exists for.
+  `AnIntMeetingAUintThatDoesNotWrapPrecompilesAndMatches` asserted bytes only and its name lied; it now
+  asserts precompiled too. Classes A and D.
+
+### F-190 — The one C# string literal the emitter wrote by hand
+
+- **status:** FIXED
+- **severity:** 1 (the silent face) and 2 (the build face)
+- **found:** cycle 24
+- **symptom:** a host declaring `[Prop("<name>", typeof(int), Default = 3)]`:
+
+  | prop name | emitted | result |
+  | --- | --- | --- |
+  | `cols`, `a"b`, a raw tab, a raw NUL | correct | 0 errors |
+  | **`a\b`** | `"a\b"` | **0 errors, decodes to `a` + U+0008** — `ArgumentException: 'a\b' is not a declared [Prop] parameter` at render, where the engine renders |
+  | **`a\`** | `"a\"` | CS1010, CS1513, CS1002 |
+  | **`a\rb`, `a\nb`** | a raw CR/LF inside the literal | 7 errors each |
+
+- **root cause:** `TemplateEmitter.cs:985` built the literal itself —
+  `"\"" + s.Name.Replace("\"", "\\\"") + "\""` — covering only the quote. The grammar's owner is
+  `CSharpEscape.StringLiteral` (`src/Heddle/Language/Expressions/CSharpEscape.cs:13`), which the emitter uses
+  at **every other** literal site. Reachable from any host `[Prop]` name: `PropLayoutCore.Build` admits
+  arbitrary strings, refusing only null/whitespace, reserved and duplicate names.
+- **class expansion:** the 11 string sinks that reach `.g.cs` in a position with an escaping grammar, closed by
+  grep over `Emit/TemplateEmitter.cs` and `Emit/PieceWriter.cs`. Ten already delegated to the owner
+  (`CSharpEscape` for literals, `ClassifyTypeName`/`FullyQualified` for type names); this one restated it. The
+  two other uncovered positions found in the same pass are F-193 (the `#line` file name) and F-194 (a prop
+  default's literal form).
+- **fixed by:** cycle 24 (`08872ff`) — the site calls `CSharpEscape.StringLiteral`.
+- **pinned by:** `ExtensionParametersDifferentialTests.PropNamesNeedingEscapesSurviveIntoTheNameIndexMap`.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~ExtensionParametersDifferentialTests`.
+- **notes:** **class G as well as class D — the arm was executed by nothing.** Deleting the escape entirely
+  reddened **0 of 554** Generator.Tests and **0 of 939** IntegrationTests. A hand-rolled restatement of a
+  grammar someone else owns, unpinned, is the exact shape class D's sub-class names.
+
+### F-191 — Nothing asked whether an embedded C# expression compiles
+
+- **status:** FIXED, with one term of the engine's compilation unit still unreproduced (see notes)
+- **severity:** 2
+- **found:** cycle 24
+- **symptom:** under `ExpressionMode.FullCSharp`, 25 shapes measured, 8 divergent. Six break the consumer's
+  build where the ENGINE REFUSES: `@(@model.NoSuchMember)` → CS1061; `@(@model.Title +)` → CS1525;
+  `@(@model.Title.Substring(1,2,3))` → CS1501; `@(@model.Products.Where(…))` with no `@using` → CS1061;
+  `@(@model.Dead)` on an `[Obsolete(error:true)]` member → CS0619; `@(@checked(2147483647+1))` → CS0220.
+  Two break the build where the engine RENDERS: `@(@new Product().Name)` and `@(@new CSharpContext()…)` → CS0246.
+  Two more render where the engine refuses: `@out(@default(string))` and `@out(@null)` into an `out:: string` slot.
+- **root cause:** `CSharpExpressionTyper` checked only whether the expression's own symbol was an error type and
+  otherwise returned null — and null is "cannot say", which is the EXEMPTING answer at `SlotValueAssignable`,
+  `AcceptedTypeSatisfied` and `IsUntypedReceiver`. The engine instead bails on `compilation.GetDiagnostics()`
+  reporting ANY error (`src/Heddle/Runtime/CSharpContext.cs:192`). Cycle 23 built the probe compilation that
+  answers this and routed its answer to the permitting side.
+- **class expansion:** the engine's compilation unit term by term, from `CSharpContext.ParseAndGetResultType`
+  (:121-183) and `Preparse` (:185-226) — that pair is the whole of the engine's answer, so the population is
+  closed. Four terms were unreproduced: the model type's namespace import (:140), the model's generic type
+  arguments' namespaces (:145-148), the whole-unit diagnostics check (:192-199), and `GetConstantValue` read
+  FIRST with `Value?.GetType() ?? typeof(object)` (:209-214).
+- **fixed by:** cycle 24 (`08872ff`) — the typer returns a three-field answer and `BuildCSharpExpr` refuses on
+  `!Compiles`. Three of the four terms are added: the model and generic-argument namespaces (in the probe AND
+  in `.g.cs`, gated on the file actually containing pasted C#), and the constant arm.
+- **pinned by:** `EmbeddedCSharpCompilesTests` (21 rows). Removing the gate reddens 7 with the exact CS ids;
+  removing the constant rule reddens the two `out:: string` rows; removing the namespace emission reddens the
+  `new Product()` row.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~EmbeddedCSharpCompilesTests`.
+- **notes:** **the strongest instance of class E yet.** F-184 enumerated the eight CONSUMERS of
+  `CallSiteValueType`'s answer and never asked whether the answer was FAITHFUL; this is that residual. The
+  fourth term is recorded in the source rather than inherited silently: the probe uses
+  `_compilation.AddSyntaxTrees`, so consumer internals are visible to it where they are not to the engine's
+  standalone compile. It is in the known-open register.
+
+### F-192 — A `@using` body judged by a name walk rather than by whether its directive compiles
+
+- **status:** FIXED
+- **absorbs:** the unpinned-guard finding of the same cycle (the `ParseName` guard reddened 0 of 11)
+- **severity:** 2 (the build break) and 4 (three legal forms refused)
+- **found:** cycle 24
+- **symptom:** 26 bodies measured against the real oracle — does `using <body>;` compile in the engine's own
+  unit shape? 22 agree, 4 do not:
+
+  | body | generator (before) | engine | consequence |
+  | --- | --- | --- | --- |
+  | `System.Linq //c` | accepted | does not compile | `.g.cs` emits `using System.Linq //c;` — the `;` is commented out → **consumer build CS1002** |
+  | `static System.Math` | rejected | compiles | engine renders; generator omits and refuses any embedded C# |
+  | `X = System.Linq`, `Alias = global::System.Linq` | rejected | compiles | as above |
+
+- **root cause:** the guard was `parsed.ContainsDiagnostics || parsed.FullSpan.Length != text.Length`. A
+  trailing `//` comment is trivia INSIDE `FullSpan`, so both terms pass — and the guard's own doc comment says
+  it exists to stop a body that is not a name from breaking the generated file. A name walk also cannot see a
+  `using static` or a using-alias, which are legal directives that name no namespace.
+- **fixed by:** cycle 24 (`08872ff`) — the predicate is now "does `using <body>;` compile here": parse
+  diagnostics, a one-directive shape check, and semantic diagnostics.
+- **pinned by:** `UsingDirectiveTests.AUsingBodyIsJudgedByWhetherItsDirectiveCompiles` (9),
+  `.AUsingBodyWithEmbeddedCSharpFollowsTheEnginesVerdict` (4). Removing the guard reddens 9; dropping the
+  one-directive check reddens 1.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~UsingDirectiveTests`.
+- **notes:** found while writing the pin — a body carrying its own `;` would have **declared a type into the
+  consumer's assembly**. Refused and pinned. The `ParseName` guard cycle 23 installed was itself executed by
+  nothing (0 of 11 under mutation), which is why the `//` face survived a cycle; class G again.
+
+### F-193 — A `#line` file name is a `pp_string` and was written unescaped
+
+- **status:** FIXED
+- **severity:** 2
+- **found:** cycle 24
+- **symptom:** varying only the template's path:
+
+  | path | result |
+  | --- | --- |
+  | `views/ok.heddle` | 0 errors |
+  | **`views/o"k.heddle`** | **CS1025 ×2** |
+  | **`views/o<LF>k.heddle`** | **CS1010 ×N** |
+  | `views/o\k.heddle` | **0 errors — a backslash is NOT a defect here** |
+
+- **root cause:** `TemplateEmitter.cs:3492` and `:3497` wrote `_lineDirectiveFile` straight into
+  `#line (…) "<path>"`. That file name is a C# `pp_string`: escape sequences are NOT processed and the string
+  is terminated by `"` or a newline. `_lineDirectiveFile` is the raw `AdditionalText.Path` when the template
+  is out of root (`HeddleTemplateGenerator.cs:674-684`), and both `"` and a newline are legal filename
+  characters on Linux and macOS.
+- **fixed by:** cycle 24 (`08872ff`) — a path carrying `"` or any of the five C# line terminators emits
+  `#line hidden` instead: the source mapping is lost, the build is kept.
+- **pinned by:** `TemplateNameMetadataTests.ATemplatePathWithNoLineDirectiveSpellingLosesTheMappingNotTheBuild`
+  and `.ABackslashInATemplatePathKeepsItsLineMapping`.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~TemplateNameMetadataTests`.
+- **notes:** **record explicitly that the backslash is not a member of this class.** It looks exactly like the
+  class-D string-surgery pattern and it is measurably fine, because `pp_string` does not process escapes — so
+  Windows paths need no treatment and "fixing" them would be the defect. The second pin exists to stop a
+  future cycle escaping it.
+
+### F-194 — `LiteralFormatter` had no non-finite arm, and the guard lived on the other caller
+
+- **status:** FIXED
+- **severity:** 2
+- **found:** cycle 24
+- **symptom:** `[Prop("w", typeof(double), Default = <expr>)]`:
+
+  | default | emitted | result |
+  | --- | --- | --- |
+  | `1.5`, `double.Epsilon` | `1.5D` | 0 errors |
+  | **`double.PositiveInfinity`** | `new object[] { InfinityD }` | **CS0103, and the manifest still says precompiled** |
+  | **`double.NegativeInfinity`, `double.NaN`** | `-InfinityD`, `NaND` | **CS0103** |
+
+  `double.PositiveInfinity` and `NaN` are `const double` fields, so they are legal attribute arguments and the
+  host source compiles cleanly.
+- **root cause:** `src/Heddle/Language/Expressions/LiteralFormatter.cs:25-26` emits
+  `f.ToString("G9", …) + "F"` / `d.ToString("G17", …) + "D"`, which for a non-finite value yields `InfinityD`
+  or `NaND` — not a C# literal.
+- **class expansion:** both callers of `LiteralFormatter.Format`, closed by
+  `grep -rn "LiteralFormatter.Format" src` (2 production sites). `NativeExpressionWriter.cs:180` is fed a
+  parsed template literal and is GUARDED at parse time (`ExpressionAstBuilder.cs:389,397,409` refuse a
+  non-finite). `TemplateEmitter.cs:2374` is fed a Roslyn `TypedConstant` prop default and had no guard.
+- **fixed by:** cycle 24 (`08872ff`) — both `float` and `double`.
+- **pinned by:** `ExtensionParametersDifferentialTests.ARealDefaultWithNoLiteralFormDegrades` and
+  `.AFiniteRealDefaultStillPrecompiles`.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~ExtensionParametersDifferentialTests`.
+- **notes:** textbook class D — the rule was written for the one caller in front of the author, and the other
+  caller is the one that can actually see the value.
+
+### F-195 — The hosted resolver could not read a template from disk on Linux or macOS
+
+- **status:** FIXED (a third defect in the same function is known-open)
+- **severity:** 3
+- **found:** cycle 24
+- **symptom:** with real files at `<root>/views/home/index.heddle` and `<root>/views/index.heddle`, on Linux:
+  `Search("index", "home", View)` → **null**; `Search("home/index", "", View)` → **null**. 0 of 4 candidate
+  locations resolve. The precompiled first loop still works (it runs `TemplateKey.TryNormalize`), so on Linux
+  a hosted resolver serves ONLY precompiled templates and silently never falls back to disk.
+- **root cause:** `src/Heddle/Runtime/TemplateResolver.cs:11-14` hard-codes Windows separators —
+  `@"\views\{1}\{0}"`, `@"\views\base\{1}\{0}", `@"\views\partial\{1}\{0}"` — and `:172` does
+  `viewName.Replace("~/", "/").Replace('/', '\\')` on every platform. On Unix `\` is an ordinary filename
+  character, so `Path.Combine` and `File.Exists` never see a separator. Engine side; the same mistake as F-181.
+- **fixed by:** cycle 24 (`08872ff`) — the patterns are root-relative and `/`-separated, and `searched` reports
+  the paths actually probed rather than the un-substituted pattern.
+- **pinned by:** `HostedTemplateResolverTests` (13 tests; the arms previously had **zero**). Restoring
+  `\views\{1}\{0}` reddens 6.
+- **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~HostedTemplateResolverTests`.
+- **notes:** a secondary defect in the same function, also fixed: `:226` added
+  `Path.Combine(path, viewName)` with the UN-substituted pattern, so the "searched locations" in the error read
+  `\views\{1}\{0}/index.heddle` — a path nobody probed. **Class G: `grep -rn "TemplatePathType" src/Heddle.Tests`
+  showed only `TemplatePathType.None` was ever exercised**, which is why this survived to cycle 24.
+
+### F-196 — The build tier's signature key told apart what reflection cannot
+
+- **status:** FIXED
+- **severity:** 4
+- **found:** cycle 24
+- **symptom:** ten signature shapes measured on both sides. Two collapse differently:
+
+  | shape | build-tier `SignatureKey` | runtime `Type.FullName` |
+  | --- | --- | --- |
+  | `(int a, int b)` vs `(int x, int y)` | **distinct** (element names carried) | **identical** — `System.ValueTuple``2[[System.Int32,…]]` |
+  | `object` vs `dynamic` | **distinct** (`System.Object` vs `dynamic`) | **identical** — `System.Object` |
+  | `nint`/`IntPtr`, `int?`, `List<int>`, `string[]`, nested types | agree | agree |
+
+  Build side end-to-end with two containers exporting a CLR-identical signature: 2 overloads, 2 manifest rows,
+  `overloadCount=1` each — where the runtime's `SameSignature` returns true and `AddOrReplace` keeps ONE.
+  `PrecompiledGauntlet.cs:152-160` then sees `liveCount=0 < row.OverloadCount=1` → `FunctionBindingMismatch`
+  → the whole template falls back at run time.
+- **root cause:** `FunctionExportResolver.cs:276` keys on
+  `type.ToDisplayString(FullyQualifiedFormat, global omitted, EscapeKeywordIdentifiers)`;
+  `FunctionRegistry.cs:164` keys on `type.FullName ?? type.Name`. Both feed the SAME dedup rule
+  (`ExportRules.SameSignature` → `ExportBookkeeping.AddOrReplace`), and metadata does not carry tuple element
+  names or the `dynamic` attribute in a `FullName`.
+- **fixed by:** cycle 24 (`08872ff`) — the build-side key loses the same two distinctions.
+- **pinned by:** `ExportBookkeepingTests.TheRuntimeSignatureKeyLosesWhatMetadataDoesNotCarry` — **the runtime
+  half is now executed, not derived.** Reverting `SignatureKey` reddens 2.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~ExportBookkeepingTests`.
+- **notes:** closes the class-A residual named as `SignatureKey` versus `Type.FullName`. Residual: a tuple
+  NESTED inside another type argument still carries its element names, because `ExpandValueTuple` does not
+  exist in the Roslyn the generator compiles against; stated in the doc comment.
+
+### F-197 — The refusal of `chained` and `root` was a word-boundary regex over raw text
+
+- **status:** FIXED
+- **severity:** 4
+- **found:** cycle 24
+- **symptom:** `@("root".Length)` — engine renders `4`, generator degraded.
+  `@(model.Args.Select(chained => chained.Name).Count())` — engine renders `1`, generator degraded.
+- **root cause:** `TemplateEmitter.cs:2932-2933` used `Regex.IsMatch(csharp, @"\b" + …Chained + @"\b")`. The
+  class is every occurrence of those two words that is not the engine's parameter: string literals, lambda
+  parameters, member names, comments.
+- **fixed by:** cycle 24 (`08872ff`) — a binder question asked over the probe tree, so a lambda parameter
+  shadows and a literal is not an identifier.
+- **pinned by:** `CSharpVerbatimTests` — restoring the regex reddens 3.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~CSharpVerbatimTests`.
+- **notes:** class D's sub-class — a language question (is this identifier bound to that parameter?) restated
+  as text matching. The probe compilation F-191 built is what made the real question askable.
 
 
 ---
@@ -2587,8 +2896,16 @@ full-name key carries a **leading dot** for a namespace-less type and the index 
 runtime's `import + "." + typeName` retry. Two were measured divergent, the third is fixed by construction —
 it needs two assemblies declaring the same `Ns.Type`, which this reference closure does not contain.
 
-**Residual, named:** `SignatureKey` versus `Type.FullName`; diagnostic position located by text search; and
-two key shapes sharing one dedup set. The largest unexamined surface in this class is now gone.
+**Residual, resolved in cycle 24 — the class has no unexamined surface left.** `SignatureKey` versus
+`Type.FullName` was the last one carrying a defect: the two feed the SAME dedup rule and collapse differently
+on tuple element names and on `object`/`dynamic` (F-196). The other two were located and closed by argument
+rather than by edit: the **diagnostic position by text search** squiggles the first textual match and its
+dedup key makes two distinct failures collapse into one — real, off-scale, recorded; and the **two key shapes
+sharing one dedup set** (`_seenInaccessibleTypes`, written at `TemplateEmitter.cs:3143` with a method display
+and at `:3256` with a fully-qualified type) are disjoint by construction, since a method display always
+carries `(` and a fully-qualified type always starts `global::`. That argument is now a comment in the code,
+**with its own caveat recorded**: it was not proved over every `ITypeSymbol` shape, and a tuple type's
+fully-qualified name does contain parentheses.
 
 ### B — a reader that does not consult the prop layout, and a context that does not carry it
 
@@ -2700,6 +3017,29 @@ rather than by cutting on the comma. The pattern is findable by grep — a `Spli
 the grammar, or mirror the engine's own code path exactly and say which.** Restating it is how the two tiers
 drift, and on a path it also makes the answer wrong on two of the three supported operating systems.
 
+**ENUMERATED in cycle 24.** Method:
+`grep -rnE '\.(Split|Replace|IndexOf|LastIndexOf|Substring|TrimStart|TrimEnd|EndsWith|StartsWith|Contains)\(' src/Heddle.Generator src/Heddle --include=*.cs`
+→ **37 generator sites and 77 engine sites**, every one classified by "who owns this grammar, and does this
+agree on all three operating systems". The sweep yielded **four new members** — F-190 (a C# string literal
+written by hand where `CSharpEscape` is the owner), F-193 (a `#line` file name, a `pp_string`, written
+unescaped), F-195 (the hosted resolver's Windows-only path patterns, engine side), F-197 (a language question
+answered by a word-boundary regex) — plus the layer of F-181 that survived its own fix.
+
+**Six sites were closed with a stated argument rather than a guess**, which is what makes the enumeration
+worth keeping: `ReflectionHelper.cs:396` matches an exception message thrown by the same file and not
+localized (a text coupling worth a constant, not a defect); `ParseContext.cs:540` compares `StartsWith("@:")`
+without a `StringComparison`, and the lexer's token alphabet closes it — `HeddleLexer.g4:43-44,65` admits
+exactly `@{…}@`, `@:…` and `@@`, so the second character is always `{` or `:`, neither ignorable under any
+collation (given `StringComparison.Ordinal` anyway, for hygiene); `TemplateKey.cs:83-88` is deliberate and
+documented; `DefaultFunctionBinder.cs:211-261` walks a closed hand-written table; `HeddleTemplateGenerator.cs:623-632`
+splits a normalized key rather than a path; and the diagnostic-position text searches
+(`HeddleTemplateGenerator.cs:536-545`, `TemplateEmitter.cs:3189`) are off-scale — they squiggle the first
+textual match, so two distinct failures spelled alike collapse to one diagnostic.
+
+**And record what is NOT a member, because it looks exactly like one:** a backslash in a `#line` file name is
+measurably fine — `pp_string` does not process escapes — so Windows paths need no treatment and "fixing" them
+would itself be the defect. F-193 carries a second pin whose only job is to stop a future cycle escaping it.
+
 **Consolidation note: this class and class A are largely the same findings seen from two sides.** A
 rule keyed on the wrong predicate (A) and a rule applied at one of several sites (D) produced the same
 merges. Where they differ is the fix: A is fixed by asking the engine's question; D is fixed by
@@ -2748,6 +3088,13 @@ shape `TryTypeCallSiteBody` does not refuse first, which is exactly why two cycl
 it, and it is the shape where the engine has the **most** definite answer it ever has (it hands the text to
 Roslyn). Six divergent rows, spanning `SlotValueAssignable` **and** `AcceptedTypeSatisfied`.
 
+**And cycle 24 found the residual that closure left.** F-184 enumerated the eight CONSUMERS of
+`CallSiteValueType`'s answer and never asked whether the answer was FAITHFUL. It was not: the typer checked
+only whether the expression's own symbol was an error type, so an expression that does not compile at all
+returned "cannot say" — the exempting answer — and six shapes the engine refuses reached the consumer's build
+as raw C# errors (F-191). **Enumerating who reads an answer is not the same as establishing that the answer is
+right.**
+
 **Two lessons, both already written here and both confirmed:** the fix shrank the set of things that cannot
 be said rather than widening what "cannot say" may mean; and *an exemption that survives two rounds of
 probing should be attacked by closing the population from source, not by probing a third time.* `FullCSharp`
@@ -2777,6 +3124,14 @@ new defects: an unconditional `\`→`/` replacement, and a `.` that only ever dr
 consumer's compiler accepts left behind a refusal that existed only because it did not**, and nothing
 re-derived that refusal for fifteen cycles.
 
+**Cycle 24 makes it four consecutive cycles.** `ec613c2`'s new assembly-qualified arm required every
+component of a stated assembly identity to match, on the stated premise that this "is what the CLR's own load
+does with it" — and `Type.GetType` does not: for an already-loaded assembly it binds by simple name and
+ignores version, culture and public key token (F-185's amendment, fixed as part of F-192's cycle). The same
+commit also **broke one of this register's own regression checks** by renaming a test, so
+`--filter Name~AUnsignedLongMeetingAChar` matched nothing and exited 0 — the failure mode the consolidation
+had just cleaned up twice.
+
 **Enumerated?** Not a code class — a process property, and the strongest single signal in this
 register. The record notes it four separate times; in cycle 10, **four of eight findings were
 introduced by the commit under review**, and cycles 21, 22 and 23 each found defects introduced by the
@@ -2787,7 +3142,15 @@ closes.** Both of cycle 22's headline fixes would have been caught by that one q
 
 ### G — tests that cannot fail
 
-**Sub-patterns, with members as merged. This is the largest class in the register — 24 ids.**
+**Sub-patterns, with members as merged. This is the largest class in the register — now 27 ids.**
+
+**Cycle 24 added three, and all three are the same shape: a guard nothing executes.** Deleting
+`TemplateEmitter.cs:985`'s hand-rolled escape entirely reddened **0 of 554 + 0 of 939** (F-190). Cycle 23's
+`ParseName` guard on a `@using` body reddened **0 of 11** (F-192) — which is why its `//`-comment face
+survived a whole cycle. And `grep -rn "TemplatePathType" src/Heddle.Tests` showed only `TemplatePathType.None`
+was ever exercised, so the hosted resolver's View/PartialView/Master arms — every one of them broken on Linux
+and macOS — had **zero** coverage (F-195). **The mutation that reddens nothing is the cheapest instrument in
+this series and the most consistently skipped.**
 - *the test reads the production constant it is checking*: **F-046 in full** (rows F-046, F-050,
   F-058, F-067). Four bounds, four cycles.
 - *a degrade-only assertion, which any blanket refusal satisfies*: **F-036 in full** (rows F-036,
@@ -2926,7 +3289,8 @@ entry first, because several were deliberately not fixed rather than missed.
 | F-168 | a shipped sample still uses removed MSBuild item metadata | off-scale | escalated to the owning effort; the sample silently loses its intended key |
 | F-178 (open half) | an import spelled `/lib.heddle`, `~/lib.heddle` or `lib` precompiles and renders where the engine refuses all three (`HED4009`+`HED1001`) | 3 | closing it means refusing spellings the documentation teaches — `@partial(){{child}}` already spells a template without its extension, and `~/` is a documented host idiom in `TemplateKey`'s own contract — so the fix would take working precompiled templates off the tier to match a refusal. Measured over 13 spellings; the `..` direction, which broke the build over a template the engine renders, is FIXED |
 | F-186 | an argument the operand estimator cannot type still binds a sole exported overload, and the emitted call is `error CS1503` ×2 | 2 | the cure is not the shortcut. Deleting it degrades every `f(this)` and every `f(ModelMember)` — a broad severity-4 across ordinary host functions — and sends a single `params` overload down the expanded tier this writer does not emit. The real cure is to stop the estimator being lossy at this seam: `ExportFunctionBinder` is handed `OperandKind` where the emitter already holds an `ITypeSymbol` for a resolved member path (`ComputedValueType` / `ResolvedTypeOf`). Handing it symbols shrinks "cannot say" instead of widening what it may mean, which is what class E prescribes — and it is a change of a different shape from cycle 23's. **Measured:** `@model(){{…Order}}` + `@(rokstr(Total))` over a `Money` struct with a sole `ROkStr(int)` — engine `HED1012`, generator `CS1503` ×2; the control `@(rokstr(Count))` renders `os3` on both |
-| F-187 | an `int` meeting a `uint` is evaluated in `uint` by the build tier and in `long` by the engine | 1 if the containment is removed; 4 as contained | **contained, so nothing diverges today.** C# converts a non-negative CONSTANT int to `uint` and evaluates there; the engine builds an expression tree over two operand types and gets `long`. The two agree exactly while the result fits in a `uint`. `Numeric.Unify` now reports whether the promotion used that mixed arm and `Apply` keeps the CHECKED evaluation for it, so a mixed pair whose unsigned arithmetic wraps degrades and one that does not keeps pre-compiling and is asserted byte-identical. Closing it means making the two tiers agree on the promotion, which is an engine change (or a ruling that the engine's `long` is wrong), not an emitter change. Six wrapping spellings and four non-wrapping neighbours are pinned; removing the flag reddens 6. Found while fixing F-188 — the stale overflow refusal had been hiding it |
+| F-198 | the embedded-C# probe compiles INSIDE the consumer's compilation, so consumer internals are visible to it where the engine's standalone compile cannot see them | 3 | `CSharpExpressionTyper` adds its probe tree via `_compilation.AddSyntaxTrees`; `CSharpContext.Preparse` builds a fresh `CSharpCompilation.Create(null, {tree}, refs)` in which the consumer is a metadata reference. An expression naming a consumer `internal` therefore compiles for the build tier and would not for the engine. **Unmeasured** — `DifferentialHarness` seeds no consumer source, so the shape cannot be constructed there — and not fixable by adding a standalone compilation, because the model type lives in the consumer's SOURCE, not its references. Recorded in the source at the probe rather than inherited silently. Opened by F-191's fix |
+| F-199 | a hosted `GetTemplate` cannot load the file its own search just found | 3 | `TemplateResolver.GetTemplate`'s hosted arms build `TemplateOptions(Path.GetFileNameWithoutExtension(path))` with `RootPath = _rootPath`, so `FullPath` composes `<root>/<filename>` rather than the path the search returned. Found while fixing F-195 and deliberately not fixed with it: the answer turns on what `TemplateName` and `RootPath` mean for a hosted view, and changing them moves the options fingerprint `PrecompiledGauntlet` compares. Needs a ruling, not an edit |
 | F-179 | an **import-only** library file is compiled standalone, so an error it only ever raises in isolation becomes a build error (`HED7012`) | 3 | **not drift** — both tiers refuse the file when it is compiled on its own, so there is nothing to diverge. It is a trap because the engine never compiles that file standalone in production: it only ever reaches the compiler expanded into an importer. The documented opt-out is `Precompile="false"` on the `<HeddleTemplate>` item, which keeps the file in the import map and out of the standalone pass. Recorded so a future cycle does not report it as a divergence |
 
 **Also open, and recorded inside their entries rather than as separate findings:**

@@ -88,10 +88,31 @@ child process comparing exit codes, which no suite here does.
 
 The ten sample goldens are captured and compared on Linux/net8.0. Line endings are governed by
 `.gitattributes` (`eol=lf`), so the obvious hazard is handled, but no golden has ever been
-produced on Windows. Culture is a second unmeasured axis: the samples run under whatever
-culture this box defaults to, and formatting extensions (`DateExtension`, `MoneyExtension`,
-`IntegerExtension`, `TimeExtension`) are exactly where a culture difference would show up as a
-byte difference.
+produced on Windows.
+
+**Culture is no longer unmeasured, and the suspects named here were the wrong ones.** Three
+cultures were run across three suites: `de-DE`, `tr-TR` and `ar-SA`.
+
+- **The two tiers do not diverge.** `Heddle.Generator.Tests` passes 554/554 and
+  `Heddle.Generator.IntegrationTests` 939/939 under `de-DE` and `tr-TR`, and a purpose-built
+  differential under `ar-SA` agrees byte-for-byte on every numeric shape tried. Culture
+  dependence in rendered output is real but **matched** — both tiers reach it through the same
+  `value.ToString()` — so it is off the severity scale rather than a defect.
+- **The formatting extensions are not the sensitive path.** `DateExtension`, `MoneyExtension`,
+  `IntegerExtension` and `TimeExtension` all format with `CultureInfo.InvariantCulture`
+  (`grep -rn "CultureInfo" src/Heddle --include=*.cs`). The culture-sensitive path is the
+  **default numeric-to-text render** of a bare `@(expr)` (`PrecompiledRuntime.cs:153` and its
+  engine twin): under `ar-SA` the negative sign becomes U+061C+`-` and the decimal separator
+  U+066B; under `de-DE` the decimal separator is `,`.
+- **So the conclusion above was right for the wrong reason.** The goldens *would* differ on a
+  `de-DE` or `ar-SA` box — but through the plain numeric render, not through the extensions.
+
+What the sweep did expose is a test-suite defect rather than an engine one: ten tests fail under
+a non-invariant culture, and every one is an **engine golden with a hard-coded invariant
+string**. `ExtensionParametersDifferentialTests.NarrowIntegralPropDefaults…` is the sharpest —
+it fails on a hard-coded assertion one line *before* the differential it exists to run, so under
+a non-invariant culture the comparison it is named for never executes. Those assertions should
+be made culture-explicit.
 
 ## What would close this
 
