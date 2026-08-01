@@ -427,37 +427,46 @@ namespace Heddle.Tests
         /// re-enters the parser on the same thread while an import stack is already on it. That inner parse is its
         /// own: it must not see the outer parse's imports as its own and report a cycle that is not there, and it
         /// must hand the outer parse's state back untouched.
-        /// <para><b>A guard, not a red-verified pin.</b> Removing the isolation leaves this green: the import is read
-        /// before its name is pushed, so at this nesting the outer stack is empty and the inner parse resets anyway.
-        /// A review reproduced the false cycle from a deeper outer parse; this fixture does not reach that shape, and
-        /// saying so is better than a test that implies it does.</para>
+        /// <para>The reader that re-enters runs one level down (an import inside an import), because a reader runs
+        /// before its own import's name is pushed — a top-level reader sees an empty stack and proves nothing. The
+        /// captured depth is asserted so the fixture cannot silently fall back to the shallow shape that made an
+        /// earlier version of this test unable to fail.</para>
         /// </summary>
         [Fact]
         public void AParseBegunInsideAnImportReaderIsIndependentOfTheOuterParse()
         {
-            var inner = new Dictionary<string, string> { ["a.heddle"] = "inner body" };
+            var innerLibrary = new Dictionary<string, string> { ["x.heddle"] = "inner body" };
             var innerErrors = new List<string>();
+            var importsOnStackWhenReaderRan = -1;
 
             var settings = new ParserSettings
             {
                 RootPath = "<none>",
                 ImportReader = path =>
                 {
-                    // Resolving by parsing, with a document that imports the same name the outer parse is expanding.
-                    var nested = DocumentParser.Parse("@<<{{a.heddle}}@\\\nnested", new ParserSettings
+                    if (path == "x.heddle")
+                        return "@<<{{y.heddle}}@\\\nmiddle";
+
+                    // The reader for y.heddle runs while x.heddle is being expanded, so the outer parse's import
+                    // stack is non-empty here. Resolving by parsing, with a document that imports the same name
+                    // the outer parse is expanding.
+                    importsOnStackWhenReaderRan = ImportParseState.Current.ActiveImports.Count;
+                    var nested = DocumentParser.Parse("@<<{{x.heddle}}@\\\nnested", new ParserSettings
                     {
                         RootPath = "<none>",
-                        ImportReader = p => inner.TryGetValue(p, out var t) ? t : string.Empty
+                        ImportReader = p => innerLibrary.TryGetValue(p, out var t) ? t : string.Empty
                     }, out _);
                     innerErrors.AddRange(nested.Errors.Select(e => e.DiagnosticId));
-                    return "outer body";
+                    return "leaf";
                 }
             };
 
-            var context = DocumentParser.Parse("@<<{{a.heddle}}@\\\nroot", settings, out _);
+            var context = DocumentParser.Parse("@<<{{x.heddle}}@\\\nroot", settings, out _);
 
+            Assert.Equal(1, importsOnStackWhenReaderRan);
             Assert.DoesNotContain(HeddleDiagnosticIds.ComposeImportCycle, innerErrors);
-            Assert.DoesNotContain(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.ComposeImportCycle);
+            Assert.Empty(context.Errors);
+            Assert.Empty(ImportParseState.Current.ActiveImports);
         }
 
         /// <summary>

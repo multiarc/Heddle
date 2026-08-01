@@ -99,12 +99,11 @@ namespace Heddle.Tests
         /// <summary>
         /// Compiling the same broken template twice in one process must report the same thing twice — a long-running
         /// host, and an editor recompiling on each keystroke, get the second answer far more often than the first.
-        /// <para><b>This is a guard, not a red-verified pin, and the distinction is worth stating.</b> The preparse
-        /// cache did drop its diagnostics, so a repeat fell through to the full compile instead of replaying them;
-        /// that is fixed. But with the public keys no longer corrupt, both paths now produce identical text and
-        /// positions, so removing the replay leaves this test green. It is kept because the property it states is the
-        /// one the two paths must keep agreeing on, and it is the divergence — not the mechanism — that would
-        /// matter.</para>
+        /// <para><b>This is the end-to-end divergence guard, not the mechanism pin.</b> Both the replay path and a
+        /// recompile produce identical text here, so removing the replay leaves this green; the replay itself — and
+        /// each caller receiving its own position — is pinned at the unit level by
+        /// <see cref="PreparseDiagnosticReplayTests"/>, which reddens on either reversion. This one is kept because
+        /// the property it states is the one the two paths must keep agreeing on.</para>
         /// </summary>
         [Fact]
         public void TheSameFailingExpressionReportsTheSameDiagnosticsEveryTime()
@@ -118,31 +117,6 @@ namespace Heddle.Tests
             Assert.NotEmpty(first);
             Assert.Equal(first, second);
             Assert.Equal(first, third);
-        }
-
-        /// <summary>
-        /// The cache key is the generated C#, which says nothing about where the expression sits, so a replayed
-        /// diagnostic must take the position of the caller receiving it. Storing the first caller's position stamped
-        /// a one-line document with an error on line four — worse than the missing diagnostics it replaced, because
-        /// an editor navigates by position.
-        /// <para><b>A guard, not a red-verified pin.</b> Replaying a fixed position instead of the caller's leaves
-        /// this green, because two documents sharing an expression do not reliably share a cache entry here. The
-        /// re-stamp is still correct — a stored position is meaningless against a key that does not encode one — but
-        /// the reproduction the reviewers built is not one this suite can hold, and saying so is better than a test
-        /// that implies otherwise.</para>
-        /// </summary>
-        [Fact]
-        public void ARepeatedFailingExpressionIsReportedAtEachCallersOwnPosition()
-        {
-            const string expression = "@(@ shared_missing_symbol )";
-            var early = "@model(){{dynamic}}" + expression;
-            var late = "@model(){{dynamic}}\n\n\nfiller text\n" + expression;
-
-            var earlyFirst = Position(early);
-            var lateAfter = Position(late);
-
-            Assert.NotEqual(earlyFirst, lateAfter);
-            Assert.Equal(earlyFirst, Position(early));
         }
 
         /// <summary>
@@ -173,14 +147,6 @@ namespace Heddle.Tests
             using var template = new HeddleTemplate(document,
                 new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp }));
             return template.CompileResult.Success;
-        }
-
-        private static int Position(string document)
-        {
-            using var template = new HeddleTemplate(document,
-                new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp }));
-            Assert.False(template.CompileResult.Success);
-            return template.CompileResult.ErrorList.First().Position.StartIndex;
         }
 
         private static byte[] EmitNamed(string source, out string assemblyName)

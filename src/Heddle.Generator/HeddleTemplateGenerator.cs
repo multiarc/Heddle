@@ -22,6 +22,11 @@ namespace Heddle.Generator
     [Generator(LanguageNames.CSharp)]
     public sealed class HeddleTemplateGenerator : IIncrementalGenerator
     {
+        /// <summary>Test-only fault injection: invoked with the template path just before the parse so the
+        /// parse-fault error path can be exercised without a real defect. Never assigned by the generator — the
+        /// field is <c>internal</c> and only the white-box test project sets it.</summary>
+        internal static Action<string> ParseFaultInjector;
+
         private sealed class TemplateFile
         {
             public TemplateFile(AdditionalText text, string content, string keyMetadata, string nameMetadata,
@@ -500,12 +505,16 @@ namespace Heddle.Generator
             ParseContext parseContext;
             try
             {
+                ParseFaultInjector?.Invoke(template.Text.Path);
                 parseContext = DocumentParser.Parse(template.Content, settings, out cleanDocument);
             }
             catch (Exception ex)
             {
+                // Positioned at the template's start, like the emitter's last-resort handler: Location.None left
+                // the IDE's error list with nothing to navigate to.
                 spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.ForwardedError,
-                    Location.None, "Internal parse error: " + ex.Message));
+                    ToLocation(template.Text, SafeText(template.Text), default),
+                    "Internal parse error: " + ex.Message));
                 hadErrors = true;
                 return null;
             }

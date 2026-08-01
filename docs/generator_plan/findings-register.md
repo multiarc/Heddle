@@ -2,7 +2,8 @@
 
 Short by design. It lists only: mistake patterns that recur, code that looks wrong but is not,
 open items, and fixes whose tests would not catch a regression. One-off fixed bugs are not listed —
-the test suite is their record.
+the test suite is their record. **A finding becomes a test, not a row here** — see
+`review-protocol.md` § Findings land as tests; rows exist only for what no test can hold.
 
 - Full history (179 ids, every RCA, repro and commit): `git show fac16a1:docs/generator_plan/findings-register.md`,
   and the per-cycle prose in `docs/generator_plan/phase-8-docs-sweep.md`. Look up any `F-xxx` there.
@@ -107,30 +108,24 @@ finding. Six former known-opens died exactly that way.
 | id | one line | severity | check / status |
 | --- | --- | --- | --- |
 | F-027 | runs of thousands of prefix operators exhaust ANTLR's own lookahead | 3 | upstream (antlr/antlr4#744); unreachable by any bound of ours |
-| F-079 | `Path.Combine` rejects characters on .NET Framework that .NET Core accepts | 3 | cannot be made to throw on this box; mitigation is reasoning, not evidence |
-| F-080 | on `netstandard2.0` an assembly with no file yields no metadata reference | 3 | no API exists there to fix it |
+| F-079 | `Path.Combine` rejects characters on .NET Framework that .NET Core accepts | 3 | degrade pinned on the net48 CI leg: `NetFrameworkDegradePathTests.AnImportPathWithCharactersTheFrameworkRejectsStillParses` asserts the framework's throw and the parse surviving it |
+| F-080 | on `netstandard2.0` an assembly with no file yields no metadata reference | 3 | no API exists there to fix it; pinned both ways by `NetFrameworkDegradePathTests.AnAssemblyWithNoFileYieldsAReferenceOnlyWhereTheRuntimeExposesItsMetadata` — empty on net48, served on modern TFMs |
 | F-140 | two type-kind verdict rows cannot be honestly pinned (`Structure`, `Extension`) | 6 | `grep -n 'Microsoft.CodeAnalysis.CSharp' src/Heddle.Generator/Heddle.Generator.csproj` — re-test if the version moves past 4.x |
 | F-198 | the embedded-C# probe compiles inside the consumer's compilation, so it sees consumer internals the engine cannot | 3 | measured; `ConsumerParseOptionsTests` is the one test that observes the constraint |
-| F-201 | a ref-struct model throws raw `InvalidCastException` — Release only, full-suite run only | 6 / 3 | pre-existing; Debug 1016/1016 vs Release 1015/1016; passes alone in Release |
+| F-201 | a ref-struct model throws raw `InvalidCastException` where the engine's contract is the wrapped `TemplateProcessingException` | 6 / 3 | red test checked in skipped: `NullSafeHopChainTests.ARefStructModelFaultsWithTheEnginesOwnExceptionEvenWithoutTheGuard` — deterministic in Release with `ValidateModelType=false`, no full-suite ordering needed; un-skip is the fix's acceptance evidence |
 
 Also open, without their own ids:
 
 - Two `AssemblyHelper` orderings cannot be pinned; a racing test passes by luck. Stated in
   `AssemblyRegistrationTests` and `PreparseCacheGenerationTests`.
-- The no-load pin cannot catch a one-shot startup walk; catching it needs a child process.
+- The no-load pin cannot catch a one-shot startup walk; catching it needs a child process comparing
+  the loaded set before and after first touch (the future-work shape; no suite spawns one today).
 - The export argument cast has no gate (class C above); widening the argument estimator re-opens it
   silently.
 
 ## Weak pins — a regression here is invisible
 
-These are fixed, but their tests pass with the fix reverted or removed. Cheapest review targets.
-
-| area | fix | pin gap |
-| --- | --- | --- |
-| extension scan (`GetTypes()` guard), double-built reference | in place | no test at all |
-| depth bound before the error return in `DocumentParser.cs` | in place | named test does not exist; nothing executes the guard. Was a process death (exit 134) |
-| unbalanced closers (`catch (InvalidOperationException)` in `DocumentParser.cs`) | in place | named test does not exist. One-liner closes it: parse `@(1)}}`, assert one `SyntaxError` |
-| repeated failing expression: replayed diagnostics and per-caller position | in place | removing the replay stays green |
-| parse inside an import reader isolated from the outer parse | in place | fixture cannot reach the nesting that reproduced it |
-| shared-registry read-during-register | in place | guard, not a demonstration (never reproduced pre-fix) |
-| diagnostic at `Location.None` | in place | reverted green when last checked; no later pin recorded |
+None at present. A fix whose test cannot catch its regression does not stay here — write the pin,
+or move the item to Open with the reason no pin can exist (`review-protocol.md` § Findings land as
+tests). Every row this section held is now a mutation-rehearsed test; two rows turned out stale
+(their named tests already existed and rehearsed red).

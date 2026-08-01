@@ -9,6 +9,11 @@ namespace Heddle.Generator.IntegrationTests
     /// The engine substitutes <c>default(T)</c> at the hop that failed and keeps walking, so the read lands on that
     /// default; C#'s <c>?.</c> abandons the whole rest of the chain instead. The two answers are different values,
     /// and for <c>HasValue</c> they are both renderable — the divergence shows up as wrong output, not as an error.
+    /// <para><b>Quarantined (open — skip-listed):</b>
+    /// <see cref="ARefStructModelFaultsWithTheEnginesOwnExceptionEvenWithoutTheGuard"/> — a red test for a known
+    /// defect, checked in skipped. Rehearsed red in Release (raw <see cref="System.InvalidCastException"/> from the
+    /// compiled accessor's cast) and green in Debug (the guard is forced on there); un-skipping it is the fix's
+    /// acceptance evidence.</para>
     /// </summary>
     public class NullSafeHopChainTests
     {
@@ -167,7 +172,7 @@ namespace Heddle.Generator.IntegrationTests
                 new Heddle.Runtime.CompileContext(
                     new TemplateOptions { ValidateModelType = true }, typeof(System.ReadOnlySpan<char>)));
             Assert.True(dynamicTemplate.CompileResult.Success, dynamicTemplate.CompileResult.ToString());
-            var error = Assert.ThrowsAny<Heddle.Exceptions.TemplateProcessingException>(
+            var error = Assert.Throws<Heddle.Exceptions.TemplateProcessingException>(
                 () => dynamicTemplate.Generate("hello"));
             Assert.Contains("Type mismatch", error.Message, System.StringComparison.OrdinalIgnoreCase);
         }
@@ -190,12 +195,38 @@ namespace Heddle.Generator.IntegrationTests
                     new TemplateOptions { ValidateModelType = false }, typeof(System.ReadOnlySpan<char>)));
             Assert.True(dynamicTemplate.CompileResult.Success, dynamicTemplate.CompileResult.ToString());
 #if DEBUG
-            var error = Assert.ThrowsAny<Heddle.Exceptions.TemplateProcessingException>(
+            var error = Assert.Throws<Heddle.Exceptions.TemplateProcessingException>(
                 () => dynamicTemplate.Generate("hello"));
             Assert.Contains("Type mismatch", error.Message, System.StringComparison.OrdinalIgnoreCase);
 #else
             Assert.Throws<System.InvalidCastException>(() => dynamicTemplate.Generate("hello"));
 #endif
+        }
+
+        /// <summary>
+        /// What the engine's contract says the unguarded path should do, and today does not: a wrong-typed model
+        /// reaching the compiled accessor's cast escapes as a raw <see cref="System.InvalidCastException"/> instead
+        /// of the wrapped, Heddle-shaped <see cref="Heddle.Exceptions.TemplateProcessingException"/> every other
+        /// render fault produces. The desired contract does not depend on configuration, so there is no
+        /// <c>#if</c> here: in Debug the forced guard happens to satisfy it, in Release the raw cast escapes and
+        /// this is red. When it is fixed, <see cref="ARefStructModelWithoutTheGuardFaultsAtTheCastInstead"/>
+        /// loses its <c>#if</c> split — both configurations then expect the wrapped exception.
+        /// </summary>
+        [Fact(Skip = "known defect — dynamic-tier model guard: in Release with ValidateModelType=false a " +
+                     "ref-struct model faults with a raw InvalidCastException instead of the wrapped " +
+                     "TemplateProcessingException; un-skip with that fix and collapse the #if split in " +
+                     "ARefStructModelWithoutTheGuardFaultsAtTheCastInstead")]
+        public void ARefStructModelFaultsWithTheEnginesOwnExceptionEvenWithoutTheGuard()
+        {
+            const string template = "@model(){{System.ReadOnlySpan<char>}}@\\\n@(Length)";
+
+            var dynamicTemplate = new Heddle.HeddleTemplate(template,
+                new Heddle.Runtime.CompileContext(
+                    new TemplateOptions { ValidateModelType = false }, typeof(System.ReadOnlySpan<char>)));
+            Assert.True(dynamicTemplate.CompileResult.Success, dynamicTemplate.CompileResult.ToString());
+            var error = Assert.Throws<Heddle.Exceptions.TemplateProcessingException>(
+                () => dynamicTemplate.Generate("hello"));
+            Assert.Contains("mismatch", error.Message, System.StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>A ref struct as a <b>definition's</b> model type — the same refusal one level down, where the
