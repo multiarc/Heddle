@@ -31,6 +31,8 @@ Before you probe anything:
    your area touches, serially, and include a Release leg for the generator
    suites. The register's *weak pins* section lists the fixes the suites
    cannot defend — if your area touches one, re-check that fix by hand.
+   (That section trends to empty; anything added to it comes with the test
+   that empties it, or an open row saying why none can exist.)
 3. **Do not re-report** anything in the *open* or *do not "fix"* sections —
    but **"do not re-report" does NOT mean "do not re-measure".** Run the
    checks for your area. If a check passes or a stated reason tests false,
@@ -120,6 +122,54 @@ Then, explicitly:
 - Every mutation: what you changed, which tests reddened, and the failure
   message. A mutation that reddens NOTHING is a finding — report it.
 
+## Findings land as tests
+
+Every confirmed finding leaves review as a test, not as a register entry.
+Decide by this tree, in order:
+
+1. **Fixed** → a green regression test whose reversion was rehearsed red (the
+   mutation bullet above already applies). No register entry — the suite is
+   the record.
+2. **Real, unfixed, deterministically reproducible in-process** → write the
+   red test NOW and check it in skipped:
+   `[Fact(Skip = "known defect — <owner>: <defect>; un-skip with that fix")]`.
+   Rehearse it red locally first, record what failed, then skip. The suite's
+   skip list IS the pending-work list — gates report the count, and un-skipping
+   is the fixer's acceptance evidence. Mechanics are written once each:
+   skip-string form and un-skip-as-acceptance in
+   `phase-0-test-fallback-guardrails.md` (D6); "quarantined, never weakened —
+   an unexplained or orphaned skip is a review failure" in
+   `docs/spec/common/testing-standards.md` (precompiled-tier posture).
+3. **Not testable in-process** — needs a child process, is an ordering the
+   register's class J forbids racing for, or needs a platform absent from
+   CI → an open-table row in the findings register with the reason and a
+   re-measure check. This is the ONLY shape that may add a register row.
+4. **A documented limitation, not a defect** — an upstream library bug, a
+   platform or API absence, a stated performance bound, or an edge case no
+   realistic use of this project reaches → record it with its reason (a
+   degrade-pinning test where one is possible) and do NOT demand a fix.
+
+**Be reasonable in what you require.** A required change must be realistic
+and proportionate to its severity. If you are unsure whether a fix is
+feasible, or whether anyone would ever hit the defect, ASK THE MAINTAINER
+instead of requiring the work — building what may never be used is exactly
+the waste YAGNI names. The repo's stance is already written down: see
+`docs/spec/common/coding-standards.md` § "SOLID, DRY, and YAGNI in balanced
+mode" (precedence: correctness → sandbox security → simplicity → measured
+performance → abstraction last; a seam is added when a second consumer
+exists, not because one might appear). Precedent for recorded limitations:
+`unverified-platform-surface.md`.
+
+**The register may not grow with instances.** A new row is one of: a new
+recurring class (two or more independent members), a correction or status
+change to an existing line, or an untestable open item per branches 3–4. An
+instance of anything else gets a test.
+
+**Weak pins are the fixer's debt.** A fix whose test survives the fix's
+reversion is unfinished: land the honest pin, or move the item to the open
+table with the reason no pin can exist. The register's weak-pins section
+exists only to shrink.
+
 ## Anti-stop rule
 
 Do not stop when you find something interesting. Finding a severity-1 defect
@@ -141,12 +191,10 @@ have not finished the inventories, you are in the wrong phase.
 5. Coverage ledger + not-checked + could-not-close (Phase 4)
 6. Claim-by-claim verdicts on the commit (verifier) or attack list with
    outcomes (adversary)
-7. **Register deltas you propose**: a one-off fixed defect gets a test, not
-   an entry. Propose an entry only for: a new member of a listed mistake
-   class (name the class), a new recurring class (two or more independent
-   instances), a new open item, or a status change to an existing line —
-   each with the measurement. Keep proposed lines as short as the register's
-   existing ones
+7. **Tests you land or propose**, per *Findings land as tests*: the green
+   pins for what was fixed, the skipped red tests for what was not, and —
+   only for branches 3–4 of the tree — register rows with the measurement.
+   Keep proposed rows as short as the register's existing ones
 
 "No new defects" remains a valid and valuable result — but only when it
 arrives with the inventories and the ledger that make it credible. An empty

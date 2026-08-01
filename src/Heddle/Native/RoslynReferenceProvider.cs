@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -71,8 +72,15 @@ namespace Heddle.Native
         private static readonly ConditionalWeakTable<MetadataReference, Assembly> Owners =
             new ConditionalWeakTable<MetadataReference, Assembly>();
 
+        /// <summary>Test-only observation: invoked with the assembly at the top of <see cref="CreateSafe"/> so the
+        /// build-once-per-miss property can be counted — reference identity alone cannot see a double build whose
+        /// second result is discarded. Never assigned by the engine — the field is <c>internal</c> and only the
+        /// white-box test project sets it.</summary>
+        internal static Action<Assembly> CreateObserver;
+
         private static MetadataReference CreateSafe(Assembly assembly)
         {
+            CreateObserver?.Invoke(assembly);
             try
             {
                 if (assembly.IsDynamic)

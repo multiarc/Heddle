@@ -240,9 +240,52 @@ namespace Heddle.Generator.Tests
             Assert.Contains("t3.heddle", error.GetMessage());
             Assert.Contains(nameof(InvalidOperationException), error.GetMessage());
             Assert.Contains("seeded emitter defect", error.GetMessage());
+            // An IDE navigates by location; Location.None strands the reader at the top of nothing.
+            Assert.NotEqual(Location.None, error.Location);
+            Assert.Equal("/repo/app/t3.heddle", error.Location.GetLineSpan().Path);
 
             var manifest = run.GeneratedSourceTexts.First(s => s.Contains("__HeddleManifest"));
             Assert.DoesNotContain("key: \"t3.heddle\"", manifest);
+            for (var i = 0; i < 10; i++)
+            {
+                if (i == 3) continue;
+                Assert.Contains($"key: \"t{i}.heddle\"", manifest);
+            }
+        }
+
+        /// <summary>The parser's last-resort handler is the same contract as the emitter's: a per-template error
+        /// at the template's start, with the rest of the pass still emitting. It reported at
+        /// <c>Location.None</c> long after the emitter's twin was fixed — the same defect, one catch block over.</summary>
+        [Fact]
+        public void AParserFaultIsReportedAtTheTemplateItCameFromNotAtNowhere()
+        {
+            var templates = Enumerable.Range(0, 10)
+                .Select(i => ($"/repo/app/t{i}.heddle", Simple))
+                .ToList();
+
+            HeddleTemplateGenerator.ParseFaultInjector = path =>
+            {
+                if (path.EndsWith("t3.heddle", StringComparison.Ordinal))
+                    throw new InvalidOperationException("seeded parser defect");
+            };
+
+            GeneratorRun run;
+            try
+            {
+                run = GeneratorHarness.Run(templates, globalOptions: Root("/repo/app"));
+            }
+            finally
+            {
+                HeddleTemplateGenerator.ParseFaultInjector = null;
+            }
+
+            var error = Assert.Single(run.GeneratorDiagnostics.Where(d =>
+                d.GetMessage().Contains("Internal parse error")));
+            Assert.Contains("seeded parser defect", error.GetMessage());
+            Assert.NotEqual(Location.None, error.Location);
+            Assert.Equal("/repo/app/t3.heddle", error.Location.GetLineSpan().Path);
+
+            var manifest = run.GeneratedSourceTexts.First(s => s.Contains("__HeddleManifest"));
             for (var i = 0; i < 10; i++)
             {
                 if (i == 3) continue;
