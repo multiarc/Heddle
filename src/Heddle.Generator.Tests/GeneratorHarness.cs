@@ -149,11 +149,13 @@ namespace Heddle.Generator.Tests
             IReadOnlyList<(string path, string content)> templates,
             IReadOnlyList<string> sources,
             Dictionary<string, string> globalOptions = null,
-            Dictionary<string, Dictionary<string, string>> perFileOptions = null)
+            Dictionary<string, Dictionary<string, string>> perFileOptions = null,
+            CSharpParseOptions parseOptions = null)
         {
-            var trees = sources.Select(src => CSharpSyntaxTree.ParseText(src)).ToArray();
+            var options = parseOptions ?? CSharpParseOptions.Default;
+            var trees = sources.Select(src => CSharpSyntaxTree.ParseText(src, options)).ToArray();
             return RunTexts(templates.Select(t => (AdditionalText)new TestAdditionalText(t.path, t.content)).ToList(),
-                globalOptions, perFileOptions, syntaxTrees: trees);
+                globalOptions, perFileOptions, syntaxTrees: trees, parseOptions: options);
         }
 
         /// <summary>A compilation in which the <c>Heddle</c> assembly is not visible among
@@ -177,7 +179,8 @@ namespace Heddle.Generator.Tests
             Dictionary<string, string> globalOptions = null,
             Dictionary<string, Dictionary<string, string>> perFileOptions = null,
             IReadOnlyList<MetadataReference> references = null,
-            IReadOnlyList<SyntaxTree> syntaxTrees = null)
+            IReadOnlyList<SyntaxTree> syntaxTrees = null,
+            CSharpParseOptions parseOptions = null)
         {
             var compilation = CSharpCompilation.Create("HeddleGenTest",
                 syntaxTrees ?? (IEnumerable<SyntaxTree>) Array.Empty<SyntaxTree>(),
@@ -193,7 +196,9 @@ namespace Heddle.Generator.Tests
             var driver = CSharpGeneratorDriver.Create(
                 new[] { new HeddleTemplateGenerator().AsSourceGenerator() },
                 additionalTexts,
-                parseOptions: CSharpParseOptions.Default,
+                // The driver parses generated sources into this same compilation, so it has to agree with the
+                // trees already in it exactly as the real build's driver does.
+                parseOptions: parseOptions ?? CSharpParseOptions.Default,
                 optionsProvider: optionsProvider);
 
             var updated = driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out var diagnostics);

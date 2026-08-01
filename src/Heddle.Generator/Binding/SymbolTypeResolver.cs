@@ -18,8 +18,13 @@ namespace Heddle.Generator.Binding
     internal sealed class SymbolTypeResolver
     {
         private readonly Compilation _compilation;
+        private readonly CSharpParseOptions _parseOptions;
 
-        public SymbolTypeResolver(Compilation compilation) => _compilation = compilation;
+        public SymbolTypeResolver(Compilation compilation)
+        {
+            _compilation = compilation;
+            _parseOptions = ProbeParseOptions.For(compilation);
+        }
 
         /// <summary><see cref="Inaccessible"/> is a <see cref="Failed"/> this compilation is not entitled to call a
         /// failure: the member is there in metadata and the engine's own visibility policy accepts it, but nothing
@@ -180,7 +185,7 @@ namespace Heddle.Generator.Binding
         private bool UsingDirectiveCompilesCore(string text)
         {
             var source = "using " + text + ";";
-            var tree = CSharpSyntaxTree.ParseText(source);
+            var tree = CSharpSyntaxTree.ParseText(source, _parseOptions);
             foreach (var diagnostic in tree.GetDiagnostics())
             {
                 if (diagnostic.Severity == DiagnosticSeverity.Error)
