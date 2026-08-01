@@ -164,7 +164,8 @@ wall-clock durations are simply how long each harness took, which is what this c
 | JVM | 32 | **4.47 h** | **503** | 16–34× above the band; **83% of the whole session** |
 
 Neither extreme was chosen — both are what the harness happened to default to. E6 replaced that
-with **one budget per ecosystem**, selectable:
+with one selectable budget; [E13](../docs/spec/records.md#cross-spec-amendments-ledger) then changed
+the unit it is measured in from **one ecosystem** to **one engine**:
 
 ```bash
 ./benchmarks/run-all.sh                    # --budget short    ~10 min each  (default)
@@ -178,28 +179,57 @@ Every harness's **committed source/script default is the `short` shape**, so a b
 any single harness is already the ~10 min regime; `baseline` layers CLI overrides on top. Nothing
 changes about *what* is measured — only how many times.
 
+**The unit is one engine, and the .NET leg total floats (E13).** Five ecosystems carry two or three
+engines each, so their leg total and their per-engine share are nearly the same number and the
+distinction never mattered. .NET carries **six** — Heddle, Fluid, Scriban, DotLiquid, Handlebars.Net
+and Razor — so holding its *leg* to the same figure would give each of its engines a third of the
+sampling every other ecosystem's engines get, and the cross-engine comparison this program exists to
+make would rest on its worst-sampled rows. The budget therefore sizes **an engine's share**, and the
+.NET leg is longer than the others by construction rather than by accident.
+
 | Ecosystem | Knob | `short` (committed default) | `baseline` override | short | baseline |
 |---|---|---|---|---:|---:|
-| .NET | BenchmarkDotNet job | ShortRun — L1 / W3 / I3 | `--warmupCount 7 --iterationCount 15` | ~9 min† | ~21 min† |
+| .NET | BenchmarkDotNet job | ShortRun + **`LaunchCount 2`** | `--launchCount 6` | **66 min**✓† | ~175 min† |
 | Rust | criterion | warmup 3 s, measure 10 s, 100 samples | `--warm-up-time 4 --measurement-time 30` | 8.3 min | ~20 min |
 | JVM | JMH annotations | `@Fork(3)`, `@Warmup(1×2s)`, `@Measurement(3×1s)` | `-wi 2 -i 9` | **8.6 min** ✓ | ~23 min |
 | JS | aggregated passes | 18 passes per render track | 54 passes | **9.6 min** ✓ | ~29 min |
 | Python | pyperf | render 20×3×1; cold-compile `--processes 7` | `--values 9 --warmups 2`; cold-compile at default 20 | ~11 min | ~32 min |
 | Go | `go test -count` | `14` | `--count 42` | ~9.7 min | ~29 min |
 
-✓ = measured on this repo, not projected. Session total: **~1 h** short, **~2.5 h** baseline,
-against 5.45 h before. .NET is the one leg that does not scale with sample count — it launches a
-process per benchmark method and pays JIT plus `[MemoryDiagnoser]` each time, so its `baseline`
-values are simply BenchmarkDotNet's own adaptive-default shape, the regime the protocol pinned
-before E6.
+✓ = measured on this repo, not projected.
 
-† **The .NET figures predate the harness rebuild and are now low.** The leg used to measure one
-fairness track and 41 cells; it now measures both tracks across 96 cross-stack cells plus three
-sidebars (render techniques, cold compile, Heddle-internal), so budget roughly 2–3× those numbers
-until a real run replaces them. The default job moved from a `[ShortRunJob]` attribute to the
-harness's own configuration for the same reason `--job Dry` now means what it says: an attribute
-job cannot be replaced from the command line, only added to, so a smoke pass used to run the full
-measurement as well as the dry one.
+† **.NET, and why its figures are the shape they are.** The leg is **151 cells**: 96 cross-stack
+(8 workloads × 6 engines × 2 tracks) plus the techniques, cold and internal sidebars. Per engine the
+table's totals are **11 min short / ~29 min baseline** —
+that is the budget; the leg total is six times it.
+
+.NET spends its budget on **launches**, and only on launches. Two reasons. The practical one: the leg
+is overhead-bound (one process per benchmark case, plus JIT and `[MemoryDiagnoser]`), so wall clock
+is very nearly linear in `LaunchCount`, which makes the knob predictable — measured here on one
+12-cell suite, **139 s at 1 launch, 316 s at 2, 704 s at 5**, about 10.8 s per cell per additional
+launch. Raising the iteration counts instead runs through BenchmarkDotNet's pilot stage and does
+not: a trial at `--launchCount 4 --warmupCount 5 --iterationCount 8` overshot its projection by more
+than 2× and was abandoned.
+
+The substantive reason: `LaunchCount 1` samples the **within-process term only** — one process, one
+JIT, one heap layout — and never samples the cross-process term at all. E6 established that this is
+the term worth paying for, keeping JMH's forks plural after measuring fork-to-fork RSD at 1.18%
+median against a within-fork 0.18%, and re-spending the whole JS budget on independent processes for
+exactly this reason. The .NET leg was the one that had never bought it.
+
+The `baseline` figure is the one number in this table that is **projected**, not measured: `L6` is
+one launch beyond the last measured point. Replace it with the real duration after the first
+protocol run.
+
+The default job lives in the harness's configuration rather than in a `[SimpleJob]` attribute, for
+the same reason `--job Dry` now means what it says: an attribute job cannot be *replaced* from the
+command line, only added to, so a smoke pass used to run the full measurement as well as the dry
+one.
+
+**Not yet uniform.** The other five legs are still sized per *ecosystem*, which leaves them at
+roughly 3–5 min per engine against .NET's 11. Making the program uniform per
+engine means roughly doubling every one of them — a session-length decision, recorded in E13 and
+deliberately not taken there.
 
 **JS is a different mechanism, and deliberately so.** mitata exposes no per-cell time budget:
 `B.run()` builds its own options object and `run()` forwards only `throw`, so the 642 ms
