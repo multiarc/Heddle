@@ -18,11 +18,16 @@ namespace Heddle.Generator.Binding
     internal sealed class CSharpExpressionTyper
     {
         private readonly Compilation _compilation;
+        private readonly CSharpParseOptions _parseOptions;
 
         private readonly Dictionary<(ITypeSymbol Model, string Expression), Answer> _typed =
             new Dictionary<(ITypeSymbol, string), Answer>(KeyComparer.Instance);
 
-        internal CSharpExpressionTyper(Compilation compilation) => _compilation = compilation;
+        internal CSharpExpressionTyper(Compilation compilation)
+        {
+            _compilation = compilation;
+            _parseOptions = ProbeParseOptions.For(compilation);
+        }
 
         /// <summary>What this compilation can say about one embedded expression.</summary>
         private readonly struct Answer
@@ -90,7 +95,7 @@ namespace Heddle.Generator.Binding
 
         private Answer Resolve(string expression, ITypeSymbol modelType, IReadOnlyList<string> usings)
         {
-            var tree = CSharpSyntaxTree.ParseText(Wrapper(expression, modelType, usings));
+            var tree = CSharpSyntaxTree.ParseText(Wrapper(expression, modelType, usings), _parseOptions);
             // The consumer's own compilation, because the model type and everything the expression reaches through
             // it are declared in its source rather than in a reference. The engine compiles standalone against the
             // consumer's assembly as a reference, where its internals are not visible; that difference is not
