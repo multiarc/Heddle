@@ -48,6 +48,11 @@ namespace Heddle.Generator.IntegrationTests
                 fileBacked: false, renderDynamicReference: true, globalOptions: null,
                 extraReferences: DifferentialHarness.EngineTestModelReferences());
 
+            // What the loop below actually iterates. The count above pins the targets going in, which is not
+            // the same claim: a sweep that returned fewer results than it was given would still leave every
+            // assertion that ran passing, on a quietly smaller set.
+            Assert.Equal(targets.Count, swept.Count);
+
             foreach (var result in swept)
                 Assert.True(result.Dynamic == result.Precompiled,
                     "Resolver-served precompiled output diverged from the dynamic reference for " + result.Key);
@@ -60,10 +65,15 @@ namespace Heddle.Generator.IntegrationTests
             var corpus = Corpus();
             var names = new HashSet<string>(StandaloneRenderable(), StringComparer.Ordinal);
             var targets = Targets(corpus, k => names.Contains(Path.GetFileName(k)));
+            Assert.Equal(names.Count, targets.Count);
 
             var swept = DifferentialHarness.SweepViaResolver(corpus, targets, TestCorpusIndex.CorpusDir,
                 fileBacked: true, renderDynamicReference: true, globalOptions: null,
                 extraReferences: DifferentialHarness.EngineTestModelReferences());
+
+            // As above. This test had neither count, so emptying the target set left it passing without
+            // rendering anything at all — its twin caught the same mutation on the first line of the body.
+            Assert.Equal(targets.Count, swept.Count);
 
             foreach (var result in swept)
                 Assert.True(result.Dynamic == result.Precompiled,
