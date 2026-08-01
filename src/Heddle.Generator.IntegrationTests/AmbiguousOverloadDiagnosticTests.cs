@@ -195,16 +195,38 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("'shout'", single.GetMessage());
         }
 
-        /// <summary>The export side condition, mirroring the built-in one: an argument the estimator cannot type
-        /// keeps the merged export set a silent degrade.</summary>
+        /// <summary>
+        /// The export path does not take the built-in path's exit here, and the difference is measured rather than
+        /// assumed. <c>Payload</c> is <c>object</c>-typed; the shared <i>descriptor</i> calls that
+        /// <see cref="OperandCategory.Unknown"/> on purpose, but the export binder is handed the resolved
+        /// <b>symbol</b>, which is the same <c>object</c> the engine ranks — <c>NativeExpressionCompiler</c> gives
+        /// <c>OverloadRank</c> the compiled expression's own <c>Type</c>. So the generator has proved what the
+        /// runtime will do, and the runtime is asserted here doing it, with the same sentence.
+        /// <para>The side condition itself is unchanged and still pinned, by the built-in twin above: the
+        /// name-keyed rank model has no symbol to be handed, so <c>min(1, Payload)</c> stays the silent degrade it
+        /// always was.</para>
+        /// </summary>
         [Fact]
-        public void AnUnknownArgumentEstimateStaysSilentOnTheExportPathToo()
+        public void AnObjectTypedArgumentIsAProofOnTheExportPathBecauseTheBinderRanksTheSameSymbol()
         {
             const string key = "overload/export-unknown.heddle";
-            var gen = DifferentialHarness.Generate(new[] { (key, Template(PayloadType, "blend(1, Payload)")) });
+            var content = Template(PayloadType, "blend(1, Payload)");
+            var gen = DifferentialHarness.Generate(new[] { (key, content) });
 
-            Assert.Empty(Unbindable(gen));
-            Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+            var single = Assert.Single(Unbindable(gen));
+            Assert.Equal(DiagnosticSeverity.Error, single.Severity);
+            Assert.Contains("(int, object)", single.GetMessage());
+            DifferentialHarness.ExpectDegrade(gen, key);
+
+            var options = new TemplateOptions();
+            var registry = new Runtime.Expressions.FunctionRegistry();
+            registry.RegisterFrom(typeof(TemplateFunctions).Assembly);
+            options.Functions = registry;
+            var compiled = new HeddleTemplate(content, new Runtime.CompileContext(options, typeof(OverloadPayload)));
+            Assert.False(compiled.CompileResult.Success);
+            Assert.Contains(compiled.CompileResult.ErrorList,
+                e => e.DiagnosticId == HeddleDiagnosticIds.NoFunctionOverload &&
+                     e.Error.Contains("(int, object)"));
         }
 
         /// <summary>The binder is consulted twice per call — once by the operand-kind estimator that guards the
