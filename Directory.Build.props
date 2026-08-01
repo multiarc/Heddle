@@ -28,9 +28,9 @@
          a symbol package for the RID-specific-tool wrapper packages, which have no assembly, so NuGet
          fails with NU5017. Setting IncludeSymbols per-project lets the tools/generator opt out. -->
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <!-- net6.0 is intentionally kept as a supported target for back-compat despite being out of Microsoft
-         support; acknowledge it so NETSDK1138 does not warn on every build. Dropping net6.0 would be a
-         consumer-facing breaking change, decided separately from this build-hygiene pass. -->
+    <!-- No target is out of support today: net6.0 is retired, and netstandard2.0 and net48 never raise
+         NETSDK1138. Kept because net8.0's LTS window closes 2026-11-10, after which every net8.0 build
+         would warn; this acknowledges that in advance rather than reddening the build on a date. -->
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
     <!-- Every test project runs under tests.runsettings, which fails a run that executes no tests.
          Harmless on non-test projects, which never read it. -->

@@ -11,7 +11,7 @@ namespaces:
 - [`HeddleCompileResult`](../src/Heddle/Data/HeddleCompileResult.cs) — success/errors with source positions.
 - [`Scope`](../src/Heddle/Data/Scope.cs) — the data view extensions see while rendering.
 
-The library targets `netstandard2.0;net6.0;net8.0;net10.0`
+The library targets `netstandard2.0;net8.0;net10.0`
 ([Heddle.csproj](../src/Heddle/Heddle.csproj)).
 
 ---

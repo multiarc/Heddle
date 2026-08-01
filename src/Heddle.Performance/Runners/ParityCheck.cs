@@ -28,9 +28,7 @@ namespace Heddle.Performance.Runners
         public static IEnumerable<(string Name, Func<string> Render)> Twins(IServiceProvider services = null)
         {
             yield return ("Fluid", () => new FluidTest().Render());
-#if !NET6_0
             yield return ("Scriban", () => new ScribanTest().Render());
-#endif
             yield return ("DotLiquid", () => new DotLiquidTest().Render());
             yield return ("Handlebars", () => new HandlebarsTest().Render());
             if (services != null)
@@ -80,9 +78,7 @@ namespace Heddle.Performance.Runners
         public static IEnumerable<(string Name, Func<string> Render)> TwinsSubstitution()
         {
             yield return ("Fluid", () => new SubstitutionFluidTest().Render());
-#if !NET6_0
             yield return ("Scriban", () => new SubstitutionScribanTest().Render());
-#endif
             yield return ("DotLiquid", () => new SubstitutionDotLiquidTest().Render());
             yield return ("Handlebars", () => new SubstitutionHandlebarsTest().Render());
         }
@@ -90,9 +86,7 @@ namespace Heddle.Performance.Runners
         public static IEnumerable<(string Name, Func<string> Render)> TwinsLoop()
         {
             yield return ("Fluid", () => new LoopFluidTest().Render());
-#if !NET6_0
             yield return ("Scriban", () => new LoopScribanTest().Render());
-#endif
             yield return ("DotLiquid", () => new LoopDotLiquidTest().Render());
             yield return ("Handlebars", () => new LoopHandlebarsTest().Render());
         }
@@ -120,9 +114,7 @@ namespace Heddle.Performance.Runners
         public static IEnumerable<(string Name, Func<string> Render)> TwinsMixed()
         {
             yield return ("Fluid", () => new MixedFluidTest().Render());
-#if !NET6_0
             yield return ("Scriban", () => new MixedScribanTest().Render());
-#endif
             yield return ("DotLiquid", () => new MixedDotLiquidTest().Render());
             yield return ("Handlebars", () => new MixedHandlebarsTest().Render());
         }
@@ -130,9 +122,7 @@ namespace Heddle.Performance.Runners
         public static IEnumerable<(string Name, Func<string> Render)> TwinsConditional()
         {
             yield return ("Fluid", () => new ConditionalFluidTest().Render());
-#if !NET6_0
             yield return ("Scriban", () => new ConditionalScribanTest().Render());
-#endif
             yield return ("DotLiquid", () => new ConditionalDotLiquidTest().Render());
             yield return ("Handlebars", () => new ConditionalHandlebarsTest().Render());
         }
@@ -140,9 +130,7 @@ namespace Heddle.Performance.Runners
         public static IEnumerable<(string Name, Func<string> Render)> TwinsFragment()
         {
             yield return ("Fluid", () => new FragmentFluidTest().Render());
-#if !NET6_0
             yield return ("Scriban", () => new FragmentScribanTest().Render());
-#endif
             yield return ("DotLiquid", () => new FragmentDotLiquidTest().Render());
             yield return ("Handlebars", () => new FragmentHandlebarsTest().Render());
         }
@@ -150,9 +138,7 @@ namespace Heddle.Performance.Runners
         public static IEnumerable<(string Name, Func<string> Render)> TwinsFortunes()
         {
             yield return ("Fluid", () => new FortunesFluidTest().Render());
-#if !NET6_0
             yield return ("Scriban", () => new FortunesScribanTest().Render());
-#endif
             yield return ("DotLiquid", () => new FortunesDotLiquidTest().Render());
             yield return ("Handlebars", () => new FortunesHandlebarsTest().Render());
         }
@@ -160,9 +146,7 @@ namespace Heddle.Performance.Runners
         public static IEnumerable<(string Name, Func<string> Render)> TwinsEncodedLoop()
         {
             yield return ("Fluid", () => new EncodedLoopFluidTest().Render());
-#if !NET6_0
             yield return ("Scriban", () => new EncodedLoopScribanTest().Render());
-#endif
             yield return ("DotLiquid", () => new EncodedLoopDotLiquidTest().Render());
             yield return ("Handlebars", () => new EncodedLoopHandlebarsTest().Render());
         }

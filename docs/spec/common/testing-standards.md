@@ -29,7 +29,7 @@ must not weaken it.
 
 | Home | Framework | Role |
 | --- | --- | --- |
-| [src/Heddle.Tests](../../../src/Heddle.Tests) | xUnit, `dotnet test` | Unit, integration, golden-file, negative/security, and concurrency tests. Multi-targets `net6.0;net8.0;net10.0` (+ `net48` on Windows) — new tests must pass on **all** TFMs. |
+| [src/Heddle.Tests](../../../src/Heddle.Tests) | xUnit, `dotnet test` | Unit, integration, golden-file, negative/security, and concurrency tests. Multi-targets `net8.0;net10.0` (+ `net48` on Windows) — new tests must pass on **all** TFMs. |
 | [src/Heddle.Performance](../../../src/Heddle.Performance) | BenchmarkDotNet (`[MemoryDiagnoser]`) | Render/compile benchmarks incl. the Razor head-to-head. Hot-path changes add or extend benchmarks here. |
 | [`samples/` gallery](../../../samples/README.md) | Per-sample CI jobs with golden assertions | The demo/integration item of each user-visible change. The harness (comparer, workflow, conventions) exists; each spec owns its sample per the gallery conventions. |
 

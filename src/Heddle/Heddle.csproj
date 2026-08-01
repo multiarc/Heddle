@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net6.0;net8.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net8.0;net10.0</TargetFrameworks>
     <Product>Heddle</Product>
     <Description>Text Template Engine</Description>
     <PackageId>Heddle</PackageId>
@@ -15,21 +15,18 @@
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.1.0" />
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
-    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="6.0.36" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.29" />
     <!-- Pinned explicitly rather than resolved transitively: the sink adapters use IBufferWriter<byte>,
          BuffersExtensions.Write and the span/Encoder APIs from it. -->
     <PackageReference Include="System.Memory" Version="4.6.3" />
-    <!-- TemplateOptions.Encoder is System.Text.Encodings.Web.TextEncoder — in-box on net6.0+, but a package
-         reference on netstandard2.0 (and its net48 consumers, who resolve it transitively from this nupkg). -->
-    <PackageReference Include="System.Text.Encodings.Web" Version="6.0.1" />
-  </ItemGroup>
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' ">
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.9.2" />
-    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="6.0.36" />
+    <!-- TemplateOptions.Encoder is System.Text.Encodings.Web.TextEncoder — in-box on net8.0+, but a package
+         reference on netstandard2.0 (and its net48 consumers, who resolve it transitively from this nupkg;
+         net48 binds the package's net462 asset). -->
+    <PackageReference Include="System.Text.Encodings.Web" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'net8.0' ">
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
-    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.28" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.29" />
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'net10.0' ">
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.3.0" />

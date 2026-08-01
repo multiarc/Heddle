@@ -59,10 +59,8 @@ namespace Heddle.Performance
         [Benchmark]
         public void ParseFluid() => FluidTest.ColdParse();
 
-#if !NET6_0
         [Benchmark]
         public void ParseScriban() => ScribanTest.ColdParse();
-#endif
 
         [Benchmark]
         public void ParseDotLiquid() => DotLiquidTest.ColdParse();

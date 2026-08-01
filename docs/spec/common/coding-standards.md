@@ -136,7 +136,7 @@ and where the code is *why* they would not have known, fix the code instead.
 
 - Libraries ([Heddle](../../../src/Heddle/Heddle.csproj),
   [Heddle.Language](../../../src/Heddle.Language/Heddle.Language.csproj)) target
-  `netstandard2.0;net6.0;net8.0;net10.0`; tests add `net48` on Windows. **New engine code
+  `netstandard2.0;net8.0;net10.0`; tests add `net48` on Windows. **New engine code
   must compile and behave correctly on `netstandard2.0`** — modern BCL APIs need either a
   conditional package reference (the csproj already has per-TFM groups) or an `#if` fallback.
 - `LangVersion` is `latest`: C# 14 language features are usable on **all** TFMs when they

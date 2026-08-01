@@ -19,9 +19,7 @@ public class MixedRenderBenchmarks
 {
     private MixedHeddleTest _heddleTest;
     private MixedFluidTest _fluidTest;
-#if !NET6_0
     private MixedScribanTest _scribanTest;
-#endif
     private MixedDotLiquidTest _dotLiquidTest;
     private MixedHandlebarsTest _handlebarsTest;
 
@@ -30,9 +28,7 @@ public class MixedRenderBenchmarks
     {
         _heddleTest = new MixedHeddleTest();
         _fluidTest = new MixedFluidTest();
-#if !NET6_0
         _scribanTest = new MixedScribanTest();
-#endif
         _dotLiquidTest = new MixedDotLiquidTest();
         _handlebarsTest = new MixedHandlebarsTest();
 
@@ -50,10 +46,8 @@ public class MixedRenderBenchmarks
     [Benchmark]
     public string RenderFluid() => _fluidTest.Render();
 
-#if !NET6_0
     [Benchmark]
     public string RenderScriban() => _scribanTest.Render();
-#endif
 
     [Benchmark]
     public string RenderDotLiquid() => _dotLiquidTest.Render();

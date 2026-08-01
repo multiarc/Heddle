@@ -36,9 +36,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: |
-          6.0.x
-          8.0.x
+        dotnet-version: 8.0.x
         global-json-file: global.json
     - name: Restore dependencies
       run: dotnet restore
@@ -78,9 +76,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: |
-          6.0.x
-          8.0.x
+        dotnet-version: 8.0.x
         global-json-file: global.json
     - name: Restore dependencies
       run: dotnet restore
@@ -135,9 +131,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: |
-          6.0.x
-          8.0.x
+        dotnet-version: 8.0.x
         global-json-file: global.json
     - name: Resolve version from tag
       id: ver

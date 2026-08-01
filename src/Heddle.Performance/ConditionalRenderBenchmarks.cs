@@ -20,9 +20,7 @@ public class ConditionalRenderBenchmarks
 {
     private ConditionalHeddleTest _heddleTest;
     private ConditionalFluidTest _fluidTest;
-#if !NET6_0
     private ConditionalScribanTest _scribanTest;
-#endif
     private ConditionalDotLiquidTest _dotLiquidTest;
     private ConditionalHandlebarsTest _handlebarsTest;
 
@@ -31,9 +29,7 @@ public class ConditionalRenderBenchmarks
     {
         _heddleTest = new ConditionalHeddleTest();
         _fluidTest = new ConditionalFluidTest();
-#if !NET6_0
         _scribanTest = new ConditionalScribanTest();
-#endif
         _dotLiquidTest = new ConditionalDotLiquidTest();
         _handlebarsTest = new ConditionalHandlebarsTest();
 
@@ -51,10 +47,8 @@ public class ConditionalRenderBenchmarks
     [Benchmark]
     public string RenderFluid() => _fluidTest.Render();
 
-#if !NET6_0
     [Benchmark]
     public string RenderScriban() => _scribanTest.Render();
-#endif
 
     [Benchmark]
     public string RenderDotLiquid() => _dotLiquidTest.Render();

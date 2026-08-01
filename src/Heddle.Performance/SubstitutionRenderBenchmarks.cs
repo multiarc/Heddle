@@ -20,9 +20,7 @@ public class SubstitutionRenderBenchmarks
 {
     private SubstitutionHeddleTest _heddleTest;
     private SubstitutionFluidTest _fluidTest;
-#if !NET6_0
     private SubstitutionScribanTest _scribanTest;
-#endif
     private SubstitutionDotLiquidTest _dotLiquidTest;
     private SubstitutionHandlebarsTest _handlebarsTest;
 
@@ -31,9 +29,7 @@ public class SubstitutionRenderBenchmarks
     {
         _heddleTest = new SubstitutionHeddleTest();
         _fluidTest = new SubstitutionFluidTest();
-#if !NET6_0
         _scribanTest = new SubstitutionScribanTest();
-#endif
         _dotLiquidTest = new SubstitutionDotLiquidTest();
         _handlebarsTest = new SubstitutionHandlebarsTest();
 
@@ -57,13 +53,11 @@ public class SubstitutionRenderBenchmarks
         await _fluidTest.Run();
     }
 
-#if !NET6_0
     [Benchmark]
     public async Task RenderScriban()
     {
         await _scribanTest.Run();
     }
-#endif
 
     [Benchmark]
     public async Task RenderDotLiquid()
