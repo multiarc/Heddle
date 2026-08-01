@@ -18,42 +18,27 @@ that found its sibling. None was found, because nobody enumerated the class.
 
 ## Phase 0 — Read the findings register FIRST
 
-`docs/generator_plan/findings-register.md` is the durable record of every
-finding this review series has produced: what it was, how it was measured,
-what fixed it, which test pins it, and whether it is closed, known-open, or
-judged not-a-defect.
+`docs/generator_plan/findings-register.md` is short and is kept short. It
+holds four things: the recurring mistake classes, the code that looks wrong
+but is correct, the open items, and the fixes whose tests would not catch a
+regression. Fixed one-off defects are NOT in it — the test suite is their
+record, and full history is in git (the register says where).
 
 Before you probe anything:
 
-1. Read it end to end.
-2. **Regression duty.** For every finding marked FIXED whose area your review
-   touches, re-run its repro and confirm it is still fixed. Report these as a
-   table — this is part of your coverage ledger, not optional. A defect that
-   returns after being fixed is the most expensive kind, and only you can
-   catch it.
-3. **Do not re-report** anything marked KNOWN-OPEN or NOT-A-DEFECT — but
-   **"do not re-report" does NOT mean "do not re-measure".** These are the
-   two most expensive mistakes this instruction has caused, and both have
-   now happened:
-
-   - A known-open was recorded in cycle 17, fixed incidentally by unrelated
-     work two cycles later, and sat in the register for eight more cycles
-     because every reviewer read "do not re-report" and skipped it. It took
-     233 measured cells to establish it had been closed all along.
-   - Four known-opens were parked on a *stated reason* that measurement
-     later showed to be false — a cure that would not have worked, a
-     documentation contract that governed a different feature on a
-     different code path, and a fingerprint that did not contain the fields
-     it was said to contain.
-
-   **A known-open with no regression check is a claim with an expiry date.**
-   Every entry now carries one; run the ones in your area, exactly as you
-   run a FIXED entry's. If a known-open's check passes, the defect is gone —
-   report that. If its stated *reason* is something you can test, test it.
-   Overturning an entry, in either direction, is a legitimate and valuable
-   finding.
-4. Use it to aim: an area where several findings clustered is where the next
-   one lives.
+1. Read it in full. It is a few pages; there is no excuse to skip any part.
+2. **Regression duty.** The suites are the regression record: run the ones
+   your area touches, serially, and include a Release leg for the generator
+   suites. The register's *weak pins* section lists the fixes the suites
+   cannot defend — if your area touches one, re-check that fix by hand.
+3. **Do not re-report** anything in the *open* or *do not "fix"* sections —
+   but **"do not re-report" does NOT mean "do not re-measure".** Run the
+   checks for your area. If a check passes or a stated reason tests false,
+   the entry is wrong — report that; overturning an entry in either
+   direction is a legitimate and valuable finding. Six former known-opens
+   died exactly that way.
+4. Use the mistake classes to aim: a new finding is usually another member
+   of a listed class. Check membership before writing it up as new.
 
 **The register is documentation and may cite code, tests and commits. Code
 and tests must NEVER cite the register** — no finding ids in comments or test
@@ -148,16 +133,20 @@ have not finished the inventories, you are in the wrong phase.
 
 ## What a good report looks like
 
-1. Register regression table (Phase 0) — every FIXED finding in your area,
-   re-run, still-fixed or not
+1. Phase 0 results — suites run (with configuration), weak pins re-checked,
+   open-item checks run, each with its outcome
 2. Inventories (Phase 1 tables, with the exhaustiveness method stated)
 3. Sweep matrices and tallies (Phase 2)
 4. Findings, each WITH its class expansion, ranked by severity (Phase 3)
 5. Coverage ledger + not-checked + could-not-close (Phase 4)
 6. Claim-by-claim verdicts on the commit (verifier) or attack list with
    outcomes (adversary)
-7. **Register deltas you propose**: new entries for what you found, and any
-   existing entry you believe should change status, each with the measurement
+7. **Register deltas you propose**: a one-off fixed defect gets a test, not
+   an entry. Propose an entry only for: a new member of a listed mistake
+   class (name the class), a new recurring class (two or more independent
+   instances), a new open item, or a status change to an existing line —
+   each with the measurement. Keep proposed lines as short as the register's
+   existing ones
 
 "No new defects" remains a valid and valuable result — but only when it
 arrives with the inventories and the ledger that make it credible. An empty
