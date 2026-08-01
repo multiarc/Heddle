@@ -7,7 +7,7 @@ from two sources that disagree in places:
 - `docs/generator_plan/phase-8-docs-sweep.md` — the per-cycle prose record, written after each cycle.
   Believed over a commit message wherever the two conflict: several commit messages were later
   measured wrong and corrected there, and a future reader may hit the uncorrected message first.
-- the commit messages of the review series, `cd3a665 .. 08872ff` on this branch.
+- the commit messages of the review series, `cd3a665 .. cde2a29` on this branch.
 
 Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tests`,
 `src/Heddle.Generator.IntegrationTests`, `src/Heddle.LanguageServices.Tests`) and
@@ -99,7 +99,7 @@ fixed and the other is deferred; that is why that table has twelve rows.
 
 ## Contents, by status
 
-### FIXED (77 entries, holding 174 ids)
+### FIXED (78 entries, holding 175 ids)
 
 | id | absorbs | severity | title |
 | --- | --- | --- | --- |
@@ -180,8 +180,9 @@ fixed and the other is deferred; that is why that table has twelve rows.
 | F-195 | — | 3 | The hosted resolver could not read a template from disk on Linux or macOS |
 | F-196 | — | 4 | The build tier's signature key told apart what reflection cannot |
 | F-197 | — | 4 | The refusal of `chained` and `root` was a word-boundary regex over raw text |
+| F-200 | — | 3 and 2 | A `@using` alias and a `using static` bound nothing, because the resolver read every body as a namespace |
 
-### KNOWN-OPEN — do not re-report (15)
+### KNOWN-OPEN — do not re-report (16)
 
 | id | severity | title |
 | --- | --- | --- |
@@ -200,6 +201,7 @@ fixed and the other is deferred; that is why that table has twelve rows.
 | F-186 | 2 | An untypeable argument still binds a sole exported overload, and the emitted call does not compile |
 | F-198 | 3 | The embedded-C# probe sees consumer internals the engine's standalone compile cannot |
 | F-199 | 3 | A hosted `GetTemplate` cannot load the file its own search found |
+| F-201 | 6 (the pin) / 3 (the behaviour) | A ref-struct model throws a raw `InvalidCastException`, and only in Release, and only in a full-suite run |
 
 ### SUPERSEDED — the fix or guard was later replaced, removed or reversed (6 ids)
 
@@ -2840,6 +2842,60 @@ in the second column holds its repro, its citations and its regression check as 
 - **notes:** class D's sub-class — a language question (is this identifier bound to that parameter?) restated
   as text matching. The probe compilation F-191 built is what made the real question askable.
 
+### F-200 — A `@using` alias and a `using static` bound nothing, because the type resolver read every body as a namespace
+
+- **status:** FIXED
+- **severity:** 3 (a spelling the engine refuses that a language resolves) and 2 (the build tier calling a legal
+  spelling a typo)
+- **found:** cycle 25, **by the maintainer, not by a review cycle** — "type should not be resolved by
+  exclusively full name; this is a language, not a metadata storage"
+- **symptom:** with a body the cycle-24 gate now accepts as legal, both tiers refuse everything needing it:
+
+  | template | engine (672ab71) | generated (672ab71) |
+  | --- | --- | --- |
+  | `@using(){{X = Ns}}` + `@model(){{X.Article}}` | **refuses** | **`error HED7007`** |
+  | `@using(){{X = Ns.Article}}` + `@model(){{X}}` | **refuses** | **`error HED7007`** |
+  | `@using(){{static Ns.Outer}}` + `@model(){{Inner}}` | **refuses** | **`error HED7007`** |
+  | `@model(){{global::Ns.Article}}` | **refuses** | degrades |
+
+  Twelve spellings measured directly against both resolvers: all UNRESOLVED on both tiers.
+- **root cause:** one wrong model, faithfully mirrored. `UsingExtension.InitStart` → `CSharpContext.ImportNamespace`
+  collects every body into an `ICollection<string>`, and `ResolveSimpleType` asks that collection only two
+  questions: `imports.Contains(t.Namespace)` and `import + "." + typeName`. An alias body answers neither, so it
+  is inert; `global::` is a qualifier no index key carries, so every arm refuses it. **The list is not a list of
+  namespaces — it is a list of C# using-directive headers, two of whose three forms bind a name.** F-192 made
+  those two forms legal without making either mean anything, so the door stood half-open for one cycle.
+- **class expansion:** every consumer of the collected list, from
+  `grep -rn "CSharpContext.Namespaces\|_namespaces" src --include=*.cs`. Three: the verbatim emission into the
+  preparse and class templates (correct — the C# compiler reads it), the reflection resolver (wrong, fixed), and
+  `DocumentAnalyzer`, which reaches the same resolver through the same carrier and was fixed by the same change.
+  The build tier's mirror (`SymbolTypeIndex.TryResolve`) is the fourth and was fixed arm for arm.
+- **fixed by:** cycle 25 (`cde2a29`) — `Heddle.Language.Binding.UsingDirectives` classifies a body into alias /
+  `static` target / namespace; `ResolveSimpleType` and `SymbolTypeIndex.TryResolve` gain a `global::` arm BEFORE
+  the index and alias / `static` arms AFTER it. **After the index is what makes it additive by construction
+  rather than by testing.** The classifier is hand-written because type resolution outlives the C# tier in a
+  trimmed publish (`HeddleFeatures.CSharpTierEnabled=false` links the whole `Microsoft.CodeAnalysis` graph away),
+  so the grammar is asked of the compiler in a GATE instead: `UsingDirectiveClassificationTests` parses
+  `using <body>;` with Roslyn over 20 bodies and asserts the classifier agrees with Roslyn's own verdict.
+- **pinned by:** `TypeSpellingLockstepTests` / `TypeSpellingSymbolLockstepTests` (24 new rows each side including
+  controls that must stay unresolved), `UsingDirectiveClassificationTests`, `AliasTypeResolutionTests` (10
+  end-to-end differentials byte-compared on both tiers), `AliasTypeProjectionTests` (the editor path). 13
+  mutations red, each on the tier it belongs to — including one whose only job is additivity: moving the alias
+  arm BEFORE the index reddens with `imports ["…TieAlpha", "TieProbe = …TieBeta.TieProbe"] — Expected
+  …TieAlpha.TieProbe, Actual …TieBeta.TieProbe`.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~AliasTypeResolutionTests`.
+- **notes:** additivity was the ratified constraint and it is proved, not asserted — every new spelling was
+  UNRESOLVED on both tiers before, and `git diff -U0` over both lockstep suites has exactly one `-` line (the
+  closing quote of an extended literal). **Where C# and Heddle still disagree is recorded rather than fixed:**
+  C# gives an alias precedence over an imported namespace (measured), Heddle keeps the index's answer, because
+  changing it would move a spelling that resolves today. That is a row in the breaking-windows candidate
+  register, pinned on both tiers, folded together with head-first scope walking for `A.B.C` since it is the same
+  ordering question.
+  **The general lesson, and the reason this entry exists at all: a differential review cannot find a wrong
+  model.** The generator mirrored the engine exactly, so 24 cycles scored this green. What found it was asking
+  what the C# compiler does with the same text — and the fix is only trustworthy because that question is now a
+  gate rather than a memory.
+
 
 ---
 
@@ -3215,6 +3271,13 @@ assembly-qualified `@model`, and no overflowing constant. A zero sweep was there
 per-shape matrix run against both tiers before and after. State which of the two a sweep count is; they are
 not interchangeable.
 
+**A fifth instrument defect, and the one with the longest reach: every baseline in this series was taken in
+DEBUG.** At `cde2a29` the integration suite is 1016/1016 in Debug and **1015/1016 in Release** — and the failing
+test passes ALONE in Release, so it needs both the configuration and the ordering. The same split is present at
+the parent commit, so it is not new; it has simply never been visible. Roughly twenty-five cycles of "all suites
+green" were therefore a Debug measurement reported as a suite measurement. `Heddle.Tests` has had a Release leg
+for some time; the generator suites have not. Recorded as F-201.
+
 **A fourth instrument defect, added here because it cost this consolidation a false alarm:** running
 two `dotnet test` processes over this solution **concurrently** can fail every row of an unrelated
 suite. The suites share process-global registration state and write probe assemblies beside the test
@@ -3289,6 +3352,7 @@ entry first, because several were deliberately not fixed rather than missed.
 | F-168 | a shipped sample still uses removed MSBuild item metadata | off-scale | escalated to the owning effort; the sample silently loses its intended key |
 | F-178 (open half) | an import spelled `/lib.heddle`, `~/lib.heddle` or `lib` precompiles and renders where the engine refuses all three (`HED4009`+`HED1001`) | 3 | closing it means refusing spellings the documentation teaches — `@partial(){{child}}` already spells a template without its extension, and `~/` is a documented host idiom in `TemplateKey`'s own contract — so the fix would take working precompiled templates off the tier to match a refusal. Measured over 13 spellings; the `..` direction, which broke the build over a template the engine renders, is FIXED |
 | F-186 | an argument the operand estimator cannot type still binds a sole exported overload, and the emitted call is `error CS1503` ×2 | 2 | the cure is not the shortcut. Deleting it degrades every `f(this)` and every `f(ModelMember)` — a broad severity-4 across ordinary host functions — and sends a single `params` overload down the expanded tier this writer does not emit. The real cure is to stop the estimator being lossy at this seam: `ExportFunctionBinder` is handed `OperandKind` where the emitter already holds an `ITypeSymbol` for a resolved member path (`ComputedValueType` / `ResolvedTypeOf`). Handing it symbols shrinks "cannot say" instead of widening what it may mean, which is what class E prescribes — and it is a change of a different shape from cycle 23's. **Measured:** `@model(){{…Order}}` + `@(rokstr(Total))` over a `Money` struct with a sole `ROkStr(int)` — engine `HED1012`, generator `CS1503` ×2; the control `@(rokstr(Count))` renders `os3` on both |
+| F-201 | a `ref struct` model throws a raw `InvalidCastException` where the test asserts a `TemplateProcessingException` — **in Release only, and only in a full-suite run** | 6 for the pin, 3 for the behaviour underneath | measured at `cde2a29` and at its parent `672ab71`, so it is not this cycle's: Debug 1016/1016 green, Release 1015/1016; the same test passes ALONE in Release. `ModelParameter.GetParameter` casts a `string` to `ReadOnlySpan<char>` through a compiled lambda and the raw `InvalidCastException` escapes instead of being wrapped. Order-dependent, so something earlier in the suite changes the path taken. **Not fixed because the instrument finding matters more than the row** — see class H: every baseline in this series was taken in Debug for this suite, so a Release-only failure was invisible to ~25 cycles of verification |
 | F-198 | the embedded-C# probe compiles INSIDE the consumer's compilation, so consumer internals are visible to it where the engine's standalone compile cannot see them | 3 | `CSharpExpressionTyper` adds its probe tree via `_compilation.AddSyntaxTrees`; `CSharpContext.Preparse` builds a fresh `CSharpCompilation.Create(null, {tree}, refs)` in which the consumer is a metadata reference. An expression naming a consumer `internal` therefore compiles for the build tier and would not for the engine. **Unmeasured** — `DifferentialHarness` seeds no consumer source, so the shape cannot be constructed there — and not fixable by adding a standalone compilation, because the model type lives in the consumer's SOURCE, not its references. Recorded in the source at the probe rather than inherited silently. Opened by F-191's fix |
 | F-199 | a hosted `GetTemplate` cannot load the file its own search just found | 3 | `TemplateResolver.GetTemplate`'s hosted arms build `TemplateOptions(Path.GetFileNameWithoutExtension(path))` with `RootPath = _rootPath`, so `FullPath` composes `<root>/<filename>` rather than the path the search returned. Found while fixing F-195 and deliberately not fixed with it: the answer turns on what `TemplateName` and `RootPath` mean for a hosted view, and changing them moves the options fingerprint `PrecompiledGauntlet` compares. Needs a ruling, not an edit |
 | F-179 | an **import-only** library file is compiled standalone, so an error it only ever raises in isolation becomes a build error (`HED7012`) | 3 | **not drift** — both tiers refuse the file when it is compiled on its own, so there is nothing to diverge. It is a trap because the engine never compiles that file standalone in production: it only ever reaches the compiler expanded into an importer. The documented opt-out is `Precompile="false"` on the `<HeddleTemplate>` item, which keeps the file in the import map and out of the standalone pass. Recorded so a future cycle does not report it as a divergence |
