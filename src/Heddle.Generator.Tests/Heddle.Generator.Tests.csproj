@@ -10,7 +10,12 @@
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
-  </PropertyGroup>
+      <!-- xUnit1051 wants TestContext.Current.CancellationToken threaded through every call that accepts one.
+         Here those are synchronous Roslyn calls (ParseText, GetDiagnostics) and short-lived fixture I/O in a
+         suite whose tests run in milliseconds, so there is no hang for a token to shorten, only 46 call sites
+         to churn. Revisit if a long-running or genuinely cancellable test is added. -->
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+</PropertyGroup>
 
   <ItemGroup>
     <!-- Microsoft.CodeAnalysis.CSharp (with CSharpGeneratorDriver) flows transitively from the Heddle runtime

@@ -2,6 +2,11 @@ using System.Collections.Generic;
 using Heddle.Tests;
 using Xunit;
 
+// The vector tables carry a row label as their first argument. It is not read by the body -- its job is to
+// name the failing row in the runner's output, which is what makes a red row in a table of dozens
+// identifiable at all. Dropping it to satisfy the analyzer would trade that for nothing.
+#pragma warning disable xUnit1026
+
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>The LSP's line map is a wrapper over the shared <c>LineIndex</c>, so it must report the shared

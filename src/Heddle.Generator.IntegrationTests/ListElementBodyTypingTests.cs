@@ -210,11 +210,14 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains(gen.Diagnostics, d => d.Id == HeddleDiagnosticIds.BuildInaccessibleModelSymbol);
             DifferentialHarness.ExpectDegrade(gen, key);
 
+            // The retired type is the subject: this pins that a model the build tier refuses still renders on the
+            // dynamic one. Naming it is the test, so the obsoletion is suppressed over every mention of it, not
+            // only the construction — the typeof below is the same deliberate use.
 #pragma warning disable CS0618
             var model = new RetiredItems();
-#pragma warning restore CS0618
             var compiled = new HeddleTemplate(content,
                 new Runtime.CompileContext(new TemplateOptions(), typeof(RetiredItems)));
+#pragma warning restore CS0618
             Assert.True(compiled.CompileResult.Success, compiled.CompileResult.ToString());
             Assert.Equal(expected, compiled.Generate(model));
         }

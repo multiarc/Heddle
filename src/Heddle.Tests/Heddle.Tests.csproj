@@ -21,14 +21,17 @@
     <!-- The corpus reaches the output directory through TestCorpus.props' Content glob, on identical terms to
          every other consumer. Excluding it from the default None glob keeps exactly one item per corpus file. -->
     <DefaultItemExcludes>$(DefaultItemExcludes);TestTemplate\**;TestOutput\**</DefaultItemExcludes>
-  </PropertyGroup>
+      <!-- xUnit1051 wants TestContext.Current.CancellationToken threaded through every call that accepts one.
+         Here those are synchronous Roslyn calls (ParseText, GetDiagnostics) and short-lived fixture I/O in a
+         suite whose tests run in milliseconds, so there is no hang for a token to shorten, only 46 call sites
+         to churn. Revisit if a long-running or genuinely cancellable test is added. -->
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+</PropertyGroup>
 
   
   <ItemGroup>
     
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-    <PackageReference Include="System.Net.Http" Version="4.3.4" />
-    <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
     <PackageReference Include="xunit.v3" Version="3.2.2" />
   </ItemGroup>
 

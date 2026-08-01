@@ -78,7 +78,12 @@ namespace Heddle.Tests
             finally
             {
                 Volatile.Write(ref stop, true);
+                // Joined synchronously on purpose: the writer races this thread over process-global registration
+                // state, and the assertions below are only meaningful once it has actually stopped. An async test
+                // would hand the wait back to the runner and let the next test start against a mutating registry.
+#pragma warning disable xUnit1031
                 writer.Wait();
+#pragma warning restore xUnit1031
             }
 
             Assert.Null(caught);
@@ -134,7 +139,12 @@ namespace Heddle.Tests
             finally
             {
                 Volatile.Write(ref stop, true);
+                // Joined synchronously on purpose: the writer races this thread over process-global registration
+                // state, and the assertions below are only meaningful once it has actually stopped. An async test
+                // would hand the wait back to the runner and let the next test start against a mutating registry.
+#pragma warning disable xUnit1031
                 writer.Wait();
+#pragma warning restore xUnit1031
             }
 
             return failures;
