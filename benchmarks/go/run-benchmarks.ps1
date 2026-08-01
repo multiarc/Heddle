@@ -15,7 +15,7 @@
 #
 # Windows PowerShell 5.1 compatible (no pipeline chain operators, ASCII only).
 param(
-    [int]$Count = 14,
+    [int]$Count = 28,
     [string]$BenchTime = "1s",
     [switch]$VersionCheckOnly
 )

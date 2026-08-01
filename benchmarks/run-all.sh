@@ -92,20 +92,20 @@ fi
 # roughly 3x the capture samples and one extra warmup run -- for the ~30 min shape. Nothing
 # below changes what is measured, only how many times.
 #
-# The budget unit is ONE ENGINE, not one ecosystem (E13). Five ecosystems carry two or three
-# engines, so their leg totals and their per-engine shares are nearly the same number; .NET
-# carries SIX, so budgeting its leg total the same way would give each of its engines a third of
-# the sampling every other ecosystem's engines get. The .NET leg total therefore floats -- it is
-# six engines' worth of measurement, and it is longer than the other legs by construction.
+# The budget unit is ONE ENGINE, not one ecosystem (E13, resized program-wide by E14). An engine
+# is 16 cells -- 8 workloads x 2 fairness tracks -- so a leg's budget is 16 x (engines) cells'
+# worth of measurement: ~10 min per engine at `short`, ~30 min at `baseline`. Five legs carry two
+# engines, .NET carries six, so the .NET leg is about three times the others by construction
+# rather than by accident. Every leg's committed source/script default IS its `short` shape.
 case "$BUDGET" in
   short)
-    DOTNET_PROFILE_ARGS=()                                   # harness default job: L2/W3/I3
-    RUST_PROFILE_ARGS=()                                     # source: warmup 3 s, measure 10 s
-    JMH_PROFILE_ARGS=()                                      # annotations: F3, W 1x2s, M 3x1s
-    PY_VALUES_ARGS=()                                         # pyperf default 3 values
+    DOTNET_PROFILE_ARGS=()                                   # harness default job: L3/W3/I3
+    RUST_PROFILE_ARGS=()                                     # source: warm-up 5 s, measure 26 s
+    JMH_PROFILE_ARGS=()                                      # annotations: F5, W 1x2s, M 5x1s
+    PY_VALUES_ARGS=(--values 6 --warmups 1)
     PY_COLD_ARGS=(--processes 7)
-    GO_PROFILE_ARGS=()                                        # script default --count 14
-    BUDGET_JS_PASSES=18
+    GO_PROFILE_ARGS=()                                        # script default --count 28
+    BUDGET_JS_PASSES=38
     ;;
   baseline)
     # .NET spends its increment on LAUNCHES, and only on launches. It is overhead-bound (one
@@ -115,13 +115,13 @@ case "$BUDGET" in
     # a single launch never samples the cross-process term AT ALL: one process, one JIT, one heap
     # layout. That is the same gap JMH closes with plural forks and JS with repeat passes, and
     # the .NET leg was the one that had never bought it.
-    DOTNET_PROFILE_ARGS=(--launchCount 6)
-    RUST_PROFILE_ARGS=(--warm-up-time 4 --measurement-time 30)
-    JMH_PROFILE_ARGS=(-wi 2 -i 9)
-    PY_VALUES_ARGS=(--values 9 --warmups 2)
+    DOTNET_PROFILE_ARGS=(--launchCount 10)
+    RUST_PROFILE_ARGS=(--warm-up-time 10 --measurement-time 84)
+    JMH_PROFILE_ARGS=(-f 5 -wi 2 -i 17)
+    PY_VALUES_ARGS=(--values 20 --warmups 2)
     PY_COLD_ARGS=()                                           # pyperf default 20 processes
-    GO_PROFILE_ARGS=(--count 42)
-    BUDGET_JS_PASSES=54
+    GO_PROFILE_ARGS=(--count 84)
+    BUDGET_JS_PASSES=114
     ;;
   *) bench_die "unknown --budget '$BUDGET' (valid: short, baseline)" ;;
 esac

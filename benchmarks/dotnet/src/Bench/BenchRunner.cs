@@ -70,14 +70,16 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         /// The committed default job: the <c>short</c> measurement budget, spent where .NET's
         /// variance actually lives.
         ///
-        /// <para><b>Two launches, not one.</b> BenchmarkDotNet's <c>ShortRun</c> is
+        /// <para><b>Three launches, not one.</b> BenchmarkDotNet's <c>ShortRun</c> is
         /// <c>LaunchCount 1</c>, and a single launch samples the within-process term only — the
         /// cross-process term is never sampled at all. That is the same gap JMH closes with plural
         /// forks and the JS harness with repeat passes, and it is the term most likely to move a
-        /// .NET number: one process, one JIT, one heap layout. Measured on this repo, wall clock is
-        /// very nearly linear in <c>LaunchCount</c> (~13.2 s per cell per launch, one suite of 12
-        /// cells: 139 s at 1 launch, 316 s at 2), so the second launch is also exactly the budget
-        /// increment that brings each engine's share up to the other ecosystems'.</para>
+        /// .NET number: one process, one JIT, one heap layout. It is also the only knob whose cost
+        /// is predictable here: measured on one 12-cell suite of this repo, wall clock is very
+        /// nearly linear in <c>LaunchCount</c> — 139 s at 1, 316 s at 2, 704 s at 5, about 10.8 s
+        /// per cell per additional launch — where raising the iteration counts instead runs through
+        /// the pilot stage and is not. Three launches is what puts each engine's 16 cells at the
+        /// program's ~10-minute per-engine budget (ledger E14).</para>
         ///
         /// <para><b>Supplied as configuration, not as a <c>[SimpleJob]</c> attribute.</b> An
         /// attribute job cannot be replaced from the command line — BenchmarkDotNet ADDS the CLI job
@@ -88,7 +90,7 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         private static IConfig Config(string[] args)
         {
             if (Has(args, "--job")) return null;
-            return ManualConfig.Create(DefaultConfig.Instance).AddJob(Job.ShortRun.WithLaunchCount(2));
+            return ManualConfig.Create(DefaultConfig.Instance).AddJob(Job.ShortRun.WithLaunchCount(3));
         }
 
         private static bool Has(IEnumerable<string> args, string option)

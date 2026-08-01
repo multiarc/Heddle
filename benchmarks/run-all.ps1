@@ -54,11 +54,11 @@ $ErrorActionPreference = 'Continue'
 # defaults are the 'short' shape; 'baseline' layers CLI overrides for roughly 3x the capture
 # samples plus one extra warmup run.
 #
-# The budget unit is ONE ENGINE, not one ecosystem (E13). Five ecosystems carry two or three
-# engines, so their leg totals and their per-engine shares are nearly the same number; .NET
-# carries SIX, so budgeting its leg total the same way would give each of its engines a third of
-# the sampling every other ecosystem's engines get. The .NET leg total therefore floats -- it is
-# six engines' worth of measurement, and it is longer than the other legs by construction.
+# The budget unit is ONE ENGINE, not one ecosystem (E13, resized program-wide by E14). An engine
+# is 16 cells -- 8 workloads x 2 fairness tracks -- so a leg's budget is 16 x (engines) cells'
+# worth of measurement: ~10 min per engine at `short`, ~30 min at `baseline`. Five legs carry two
+# engines, .NET carries six, so the .NET leg is about three times the others by construction
+# rather than by accident. Every leg's committed source/script default IS its `short` shape.
 #
 # .NET spends its increment on LAUNCHES, and only on launches. It is overhead-bound (one process
 # per benchmark case, plus JIT and MemoryDiagnoser), so wall clock is very nearly linear in
@@ -68,22 +68,22 @@ $ErrorActionPreference = 'Continue'
 # same gap JMH closes with plural forks and JS with repeat passes, and the .NET leg was the one
 # that had never bought it.
 if ($Budget -eq 'baseline') {
-    $dotnetProfileArgs = ' --launchCount 6'
-    $rustProfileArgs   = ' --warm-up-time 4 --measurement-time 30'
-    $jmhProfileArgs    = ' -wi 2 -i 9'
-    $pyValuesArgs      = ' --values 9 --warmups 2'
+    $dotnetProfileArgs = ' --launchCount 10'
+    $rustProfileArgs   = ' --warm-up-time 10 --measurement-time 84'
+    $jmhProfileArgs    = ' -f 5 -wi 2 -i 17'
+    $pyValuesArgs      = ' --values 20 --warmups 2'
     $pyColdArgs        = ''            # pyperf default 20 processes
-    $goProfileArgs     = ' -Count 42'
-    $profileJsPasses   = 54
+    $goProfileArgs     = ' -Count 84'
+    $profileJsPasses   = 114
 }
 else {
-    $dotnetProfileArgs = ''            # harness default job: LaunchCount 2 / W3 / I3
-    $rustProfileArgs   = ''            # source: warmup 3 s, measurement 10 s
-    $jmhProfileArgs    = ''            # annotations: Fork 3, W 1x2s, M 3x1s
-    $pyValuesArgs      = ''            # pyperf default 3 values
+    $dotnetProfileArgs = ''            # harness default job: LaunchCount 3 / W3 / I3
+    $rustProfileArgs   = ''            # source: warm-up 5 s, measurement 26 s
+    $jmhProfileArgs    = ''            # annotations: Fork 5, W 1x2s, M 5x1s
+    $pyValuesArgs      = ' --values 6 --warmups 1'
     $pyColdArgs        = ' --processes 7'
-    $goProfileArgs     = ''            # script default -Count 14
-    $profileJsPasses   = 18
+    $goProfileArgs     = ''            # script default -Count 28
+    $profileJsPasses   = 38
 }
 if ($JsPasses -eq 0) { $JsPasses = $profileJsPasses }
 if ($JsPasses -lt 5) {

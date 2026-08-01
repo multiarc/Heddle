@@ -68,12 +68,13 @@ row for the idiomatic tables to anchor to.
 
 And the measurement budget changed unit.
 [Ledger E13](../spec/records.md#cross-spec-amendments-ledger) makes it **per engine** rather than per
-ecosystem: five legs carry two or three engines, .NET carries six, and holding its leg total to the
-same figure would have sampled every .NET cell about a third as well as a Rust cell. The .NET leg
-therefore runs **66 min short / ~175 min baseline** — 11 and ~29 min *per engine* — spending its
-budget on launches, which is the term a single-launch job never samples at all. The other five legs
-are still sized per ecosystem, so they sit at roughly 3–5 min per engine; making the program uniform
-means roughly doubling each of them, which E13 records as a maintainer decision rather than taking.
+ecosystem, and [E14](../spec/records.md#cross-spec-amendments-ledger) resizes every leg to it: an
+engine is 16 cells — eight workloads × two tracks — and each gets ~10 min at `short`, ~30 min at
+`baseline`, wherever it lives. Five legs carry two engines; .NET carries six, so its leg is about
+three times the others by construction (~93 min short / ~284 min baseline, against ~20 / ~60 for the
+rest). Session totals become **~3.2 h short and ~9.7 h baseline**. Every duration there is projected
+from E6's measured per-leg figures except .NET's per-cell cost, which was measured — so the first
+protocol run is also what replaces those projections.
 
 ### 2. The generator gaps that cap precompiled coverage
 

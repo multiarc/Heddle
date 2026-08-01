@@ -83,7 +83,7 @@ sudo ./tune.sh && ./run-all.sh; ./untune.sh
 | `-Smoke` | short functional flags everywhere (see table below) |
 | `-Ecosystem dotnet,rust,jvm,js,python,go` | subset (any combination; program order is preserved) |
 | `-OutDir <path>` | artifact/log destination (default `benchmarks\out\windows-run-<timestamp>`, git-ignored; the path must not contain spaces) |
-| `-Budget short\|baseline` | measurement budget per ecosystem: `short` ~10 min each (default), `baseline` ~30 min each. Named `-Budget` because `$PROFILE` is a PowerShell automatic variable |
+| `-Budget short\|baseline` | measurement budget **per engine**: `short` ~10 min each (default), `baseline` ~30 min each. A leg's total is its engine count times that, so the .NET leg is about 3x the others. Named `-Budget` because `$PROFILE` is a PowerShell automatic variable |
 | `-JsPasses <n>` | JS repeat passes per render track (default: the budget's — 18 short / 54 baseline; minimum 5, D13's verdict floor) |
 
 ### Linux runner options
@@ -93,7 +93,7 @@ sudo ./tune.sh && ./run-all.sh; ./untune.sh
 | `--smoke` | short functional flags everywhere (same shapes as `-Smoke`); also skips the bare-metal pre-flight, recorded in the log |
 | `--ecosystem dotnet,rust,jvm,js,python,go` | subset (any combination; program order is preserved) |
 | `--out-dir <path>` | artifact/log destination (default `benchmarks/out/linux-run-<timestamp>`, git-ignored) |
-| `--budget short\|baseline` | measurement budget per ecosystem, exactly as `-Budget` |
+| `--budget short\|baseline` | measurement budget per engine, exactly as `-Budget` |
 | `--js-passes <n>` | JS repeat passes per render track, exactly as `-JsPasses` |
 | `--tune` | run the committed `linux-crosscheck/tune.sh` under `sudo` before the run and `untune.sh` from an `EXIT` trap afterwards (so an aborted run still restores the machine). Those two scripts are invoked unmodified. Requires the isolation boot entry — `tune.sh` refuses without it |
 | `--tune-no-isolation` | tune what needs no reboot: `performance` governors, `cpufreq/boost=0`, `kernel.perf_event_max_sample_rate=1`. Every prior value is captured to `logs/tune-prior-state.txt` first and restored from an `EXIT` trap. The absent isolated SMT pair is recorded, the pre-flight accepts it, timed runs are not pinned, and pyperf falls back to `--affinity=4`. Mutually exclusive with `--tune` |
@@ -168,40 +168,47 @@ with one selectable budget; [E13](../docs/spec/records.md#cross-spec-amendments-
 the unit it is measured in from **one ecosystem** to **one engine**:
 
 ```bash
-./benchmarks/run-all.sh                    # --budget short    ~10 min each  (default)
-./benchmarks/run-all.sh --budget baseline   # ~30 min each: 3x capture samples, +1 warmup run
+./benchmarks/run-all.sh                    # --budget short    ~10 min per engine  (default)
+./benchmarks/run-all.sh --budget baseline   # ~30 min per engine: ~3x the capture samples
 ```
 ```powershell
 .\benchmarks\run-all.ps1 -Budget baseline   # same on Windows (-Budget, not -Profile: $PROFILE is reserved)
 ```
 
 Every harness's **committed source/script default is the `short` shape**, so a bare invocation of
-any single harness is already the ~10 min regime; `baseline` layers CLI overrides on top. Nothing
+any single harness is already the budgeted regime; `baseline` layers CLI overrides on top. Nothing
 changes about *what* is measured — only how many times.
 
-**The unit is one engine, and the .NET leg total floats (E13).** Five ecosystems carry two or three
-engines each, so their leg total and their per-engine share are nearly the same number and the
-distinction never mattered. .NET carries **six** — Heddle, Fluid, Scriban, DotLiquid, Handlebars.Net
-and Razor — so holding its *leg* to the same figure would give each of its engines a third of the
-sampling every other ecosystem's engines get, and the cross-engine comparison this program exists to
-make would rest on its worst-sampled rows. The budget therefore sizes **an engine's share**, and the
-.NET leg is longer than the others by construction rather than by accident.
+**The unit is one engine (E13, resized program-wide by E14).** An *engine* is **16 cells** — eight
+workloads × two fairness tracks — and every engine in the program gets **~10 min at `short` and
+~30 min at `baseline`**, whichever ecosystem it lives in. Five legs carry two engines each; .NET
+carries **six** (Heddle, Fluid, Scriban, DotLiquid, Handlebars.Net, Razor), so its leg is about three
+times the others *by construction*. Budgeting the leg instead would have given each .NET engine a
+third of the sampling every other ecosystem's engines get, and the cross-engine comparison this
+program exists to make would rest on its worst-sampled rows.
 
 | Ecosystem | Knob | `short` (committed default) | `baseline` override | short | baseline |
 |---|---|---|---|---:|---:|
-| .NET | BenchmarkDotNet job | ShortRun + **`LaunchCount 2`** | `--launchCount 6` | **66 min**✓† | ~175 min† |
-| Rust | criterion | warmup 3 s, measure 10 s, 100 samples | `--warm-up-time 4 --measurement-time 30` | 8.3 min | ~20 min |
-| JVM | JMH annotations | `@Fork(3)`, `@Warmup(1×2s)`, `@Measurement(3×1s)` | `-wi 2 -i 9` | **8.6 min** ✓ | ~23 min |
-| JS | aggregated passes | 18 passes per render track | 54 passes | **9.6 min** ✓ | ~29 min |
-| Python | pyperf | render 20×3×1; cold-compile `--processes 7` | `--values 9 --warmups 2`; cold-compile at default 20 | ~11 min | ~32 min |
-| Go | `go test -count` | `14` | `--count 42` | ~9.7 min | ~29 min |
+| .NET | BenchmarkDotNet job | ShortRun + **`LaunchCount 3`** | `--launchCount 10` | ~93 min† | ~284 min† |
+| Rust | criterion | warm-up 5 s, measure 26 s, 100 samples | `--warm-up-time 10 --measurement-time 84` | ~20 min | ~60 min |
+| JVM | JMH annotations | `@Fork(5)`, `@Warmup(1×2s)`, `@Measurement(5×1s)` | `-f 5 -wi 2 -i 17` | ~20 min | ~60 min |
+| JS | aggregated passes | 38 passes per render track | 114 passes | ~20 min | ~61 min |
+| Python | pyperf | render 20 processes × 6 values × 1 warmup; cold-compile `--processes 7` | `--values 20 --warmups 2`; cold-compile at default 20 | ~19 min | ~61 min |
+| Go | `go test -count` | `28` | `--count 84` | ~19 min | ~58 min |
 
-✓ = measured on this repo, not projected.
+**Every figure in that table is projected**, and deliberately so: they are the E6-measured durations
+scaled by the knob change, not fresh measurements. Only the .NET per-cell cost was measured directly
+for this resize (below). Replace the whole column with real durations after the first protocol run.
+
+Session totals at these settings: **~3.2 h short, ~9.7 h baseline** — against ~1 h and ~2.5 h when
+the budget was per *ecosystem*, and 5.45 h before E6. That is the price of sampling seventeen
+engines' worth of comparison rows equally instead of sampling six of them a third as well as the
+rest.
 
 † **.NET, and why its figures are the shape they are.** The leg is **151 cells**: 96 cross-stack
-(8 workloads × 6 engines × 2 tracks) plus the techniques, cold and internal sidebars. Per engine the
-table's totals are **11 min short / ~29 min baseline** —
-that is the budget; the leg total is six times it.
+(8 workloads × 6 engines × 2 tracks) plus the techniques, cold and internal sidebars. Only the 96
+cross-stack cells carry an engine's comparison rows, so those are what the per-engine budget sizes:
+**~9.9 min short / ~30.1 min baseline** for each engine's 16 cells.
 
 .NET spends its budget on **launches**, and only on launches. Two reasons. The practical one: the leg
 is overhead-bound (one process per benchmark case, plus JIT and `[MemoryDiagnoser]`), so wall clock
@@ -217,19 +224,14 @@ the term worth paying for, keeping JMH's forks plural after measuring fork-to-fo
 median against a within-fork 0.18%, and re-spending the whole JS budget on independent processes for
 exactly this reason. The .NET leg was the one that had never bought it.
 
-The `baseline` figure is the one number in this table that is **projected**, not measured: `L6` is
-one launch beyond the last measured point. Replace it with the real duration after the first
-protocol run.
-
 The default job lives in the harness's configuration rather than in a `[SimpleJob]` attribute, for
 the same reason `--job Dry` now means what it says: an attribute job cannot be *replaced* from the
 command line, only added to, so a smoke pass used to run the full measurement as well as the dry
 one.
 
-**Not yet uniform.** The other five legs are still sized per *ecosystem*, which leaves them at
-roughly 3–5 min per engine against .NET's 11. Making the program uniform per
-engine means roughly doubling every one of them — a session-length decision, recorded in E13 and
-deliberately not taken there.
+`LaunchCount 3` puts an engine's 16 cells at ~9.9 min and `LaunchCount 10` at ~30.1 min. The leg
+totals in the table are larger because they also carry the 55 Heddle-only sidebar cells, which ride
+at the same job shape but belong to no engine's comparison share.
 
 **JS is a different mechanism, and deliberately so.** mitata exposes no per-cell time budget:
 `B.run()` builds its own options object and `run()` forwards only `throw`, so the 642 ms

@@ -16,12 +16,13 @@ fn main() {
         gates::assert_controlled(cell);
     }
 
-    // D9: defaults except measurement_time 5 s -> 10 s; the trailing `.configure_from_args()`
+    // D9 as amended by ledger E14 (per-engine budget): criterion defaults except warm_up_time 3 s
+    // -> 5 s and measurement_time 5 s -> 26 s; the trailing `.configure_from_args()`
     // is mandatory and last, so `--test` / `--noplot` / name filters take effect while the
     // pinned settings survive when no CLI flag overrides them.
     let mut criterion = Criterion::default()
-        .warm_up_time(Duration::from_secs(3))
-        .measurement_time(Duration::from_secs(10))
+        .warm_up_time(Duration::from_secs(5))
+        .measurement_time(Duration::from_secs(26))
         .sample_size(100)
         .confidence_level(0.95)
         .configure_from_args();
