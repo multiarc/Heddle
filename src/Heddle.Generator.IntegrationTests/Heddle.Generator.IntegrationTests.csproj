@@ -46,6 +46,12 @@
                       OutputItemType="Content" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The projection-equivalence corpus, linked as the other two host suites link it. This suite is the only
+         one that can run both tiers over the same bytes in one process, which is what the text-parity arm needs. -->
+    <Compile Include="..\Heddle.Tests\DiagnosticCorpusVectors.cs" Link="Shared\DiagnosticCorpusVectors.cs" />
+  </ItemGroup>
+
   <!-- The shared test corpus, copied into this project's output directory under TestTemplate\, replacing the
        assembly-path rewrite plus `../../..` climb out of bin/<cfg>/<tfm> that three suites triplicated. The files
        stay in src/Heddle.Tests/TestTemplate/; this is a build copy, not a second home for the input. -->

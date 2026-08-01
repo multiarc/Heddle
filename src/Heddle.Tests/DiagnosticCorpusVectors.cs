@@ -28,7 +28,7 @@ namespace Heddle.Tests
         internal sealed class Case
         {
             public Case(string name, string template, string[] entries, string[] textProfileEntries,
-                string[] parseChannel, string[] buildTwins)
+                string[] parseChannel, string[] buildTwins, string[] buildForwarded = null)
             {
                 Name = name;
                 Template = template;
@@ -36,6 +36,7 @@ namespace Heddle.Tests
                 TextProfileEntries = textProfileEntries ?? entries;
                 ParseChannel = parseChannel;
                 BuildTwins = buildTwins;
+                BuildForwarded = buildForwarded ?? parseChannel;
             }
 
             /// <summary>Fixture name, used in assertion messages.</summary>
@@ -52,10 +53,15 @@ namespace Heddle.Tests
             /// profile default a user-visible choice rather than a detail.</summary>
             public string[] TextProfileEntries { get; }
 
-            /// <summary>The subset reachable from the parse channel alone — i.e. exactly what the generator can
-            /// forward today, because it runs no compile-channel stage. Declaring it per fixture turns the
-            /// program's recorded compile-channel gap from prose into a measured, gated fact.</summary>
+            /// <summary>The subset reachable from the parse channel alone. It stopped being the same thing as
+            /// what the build tier forwards once the generator gained the shaping-time compile warnings, so the
+            /// two are separate columns and the difference between them is legible per fixture.</summary>
             public string[] ParseChannel { get; }
+
+            /// <summary>What the <b>build</b> tier forwards under the front end's own ids. It is the parse channel
+            /// plus whichever compile-channel warnings the generator's own walk reaches; a fixture where the two
+            /// columns differ is one the build tier used to report nothing for.</summary>
+            public string[] BuildForwarded { get; }
 
             /// <summary>Ids the build tier raises <i>itself</i> for this fixture instead of forwarding the front
             /// end's — the <c>HED7xxx</c> twins. Not a drain delta; a deliberate build-tier diagnostic.</summary>
@@ -82,11 +88,11 @@ namespace Heddle.Tests
 
             new Case("encodingLint", "<a href=\"@(1)\">t</a>",
                 new[] { "HED2004/W@10,3" }, None,
-                None, None),
+                None, None, new[] { "HED2004/W@10,3" }),
 
             new Case("orphanElif", "@elif(true){{1}}",
                 new[] { "HED3002/W@1,10" }, null,
-                None, None),
+                None, None, new[] { "HED3002/W@1,10" }),
 
             new Case("orphanElse", "@else(){{1}}",
                 new[] { "HED3003/E@1,6" }, null,
@@ -99,6 +105,26 @@ namespace Heddle.Tests
             new Case("legacyImport", "@import(){{gone}}\nhello\n",
                 new[] { "HED4003/E@1,8" }, null,
                 new[] { "HED4003/E@1,8" }, None),
+
+            new Case("braceMisread", "hello {{ Title }} world",
+                new[] { "HED4005/W@6,2" }, null,
+                None, None, new[] { "HED4005/W@6,2" }),
+
+            new Case("strippedGap", "@if(true){{a}}GAP@else(){{b}}",
+                new[] { "HED3001/W@18,6" }, null,
+                None, None, new[] { "HED3001/W@18,6" }),
+
+            new Case("elseCondition", "@if(true){{a}}@else(true){{b}}",
+                new[] { "HED3004/W@15,10" }, null,
+                None, None, new[] { "HED3004/W@15,10" }),
+
+            new Case("profileAfterOutput", "@(1)\n@profile(){{text}}\nx",
+                new[] { "HED2002/W@6,9" }, null,
+                None, None, new[] { "HED2002/W@6,9" }),
+
+            new Case("doubleRender", "@%\n<card> -> ()\n{{CARD}}\n%@\n@card()",
+                new[] { "HED4002/W@29,6" }, null,
+                None, None, new[] { "HED4002/W@29,6" }),
 
             new Case("clean", "hello world", None, None, None, None),
         };

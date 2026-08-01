@@ -26,7 +26,7 @@ mapping from claim block to owning document is
 
   | Question | State |
   | --- | --- |
-  | Q8.6 | No ruling; stands at its stated default (leave the compile-channel drain unscheduled). |
+  | Q8.6 | Closed 2026-08-01 without the phase its default assumed; all eleven warnings now surface at build time. |
   | Q8.8 | Ruled; **formally unclosable on this box** — needs a Windows `net48` run. |
   | Q8.13 | Ruled ("implement it"); **not implemented**. |
   | Q8.15 | Ruled ("root-cause it"); reproduction failed, root cause unestablished, **stays open**. |
@@ -364,14 +364,18 @@ which is the bookkeeping failure this section exists to correct.
   [`TemplateEmitter.cs`](../../src/Heddle.Generator/Emit/TemplateEmitter.cs);
   [phase 1 D14 row 2](phase-1-template-emitter.md).
 
-- **Q8.6 — Should the compile-channel drain be scheduled? (open, at default)** The generator runs no
+- **Q8.6 — Should the compile-channel drain be scheduled? (closed 2026-08-01)** The generator ran no
   compile-channel stage, so eleven id-carrying warnings (`HED1016`, `HED2002`–`HED2004`,
-  `HED3001`–`HED3005`, `HED4002`, `HED4005`, `HED5011`) never reach a build diagnostic, and phase 6's
-  forwarded-ID fix is correct but **latent** — nothing can fire it.
-  **Default (no ruling).** Leave unscheduled and recorded. Q6.1's early-surfacing principle is
-  therefore knowingly unmet for those eleven, which is a disposition rather than an oversight.
-  Phase 6's assessment: realistically a small phase, not a work item.
-  *Where it lives:* **no owning spec** — this register and [phase 6](phase-6-diagnostics-utilities.md).
+  `HED3001`–`HED3005`, `HED4002`, `HED4005`, `HED5011`) never reached a build diagnostic, and phase 6's
+  forwarded-ID fix was correct but **latent** — nothing could fire it.
+  **Resolved without the phase the default assumed.** Running `HeddleCompiler` at build time was
+  never the requirement: ten of the eleven conditions were already decided by the generator's own
+  walk, and the eleventh (`HED3005`) by a predicate it already supplied. The shaping-time
+  conditions became shared cores driven by both compilers; the rest kept one copy of their text.
+  Q6.1's early-surfacing principle is now met for all eleven, three of them narrower at build time
+  for reasons a build cannot remove. `HED3003` — the *error* on the same event stream — is
+  deliberately not drained.
+  *Where it lives:* the README's gap section and [phase 6](phase-6-diagnostics-utilities.md).
 
 - **Q8.7 — `docs/native-expressions.md` deviation 1 is wrong; how far does the correction go?** It
   claims `==`/`!=` on unrelated reference/**mixed** types compiles to a total `object.Equals`, while

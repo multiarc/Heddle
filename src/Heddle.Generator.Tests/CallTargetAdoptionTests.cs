@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Xunit;
@@ -29,6 +30,29 @@ namespace Heddle.Generator.Tests
 
             Assert.Contains("Heddle.Extensions.EmptyExtension", source);   // the type behind @raw
             Assert.DoesNotContain("Probe.Colliding", source);
+        }
+
+        /// <summary>Binding the extension is the right answer, and the build tier now says out loud that it
+        /// shadowed a function of the same name — the runtime's own diagnostic, at the call. Without the export
+        /// there is no collision and nothing is said.</summary>
+        [Fact]
+        public void TheShadowedFunctionIsReportedAtTheCall()
+        {
+            const string template = "@model(){{System.String}}@\\\nx@raw(this)y\n";
+
+            var shadowed = GeneratorHarness.RunWithSources(
+                new[] { ("views/collide.heddle", template) }, new[] { CollidingExport }).GeneratorDiagnostics;
+
+            var warning = Assert.Single(shadowed, d => d.Id == "HED1016");
+            Assert.Equal(DiagnosticSeverity.Warning, warning.Severity);
+            Assert.Equal(template.IndexOf("raw(this)", StringComparison.Ordinal),
+                warning.Location.SourceSpan.Start);
+            Assert.Contains("resolve to the extension", warning.GetMessage(), StringComparison.Ordinal);
+
+            var noCollision = GeneratorHarness.RunWithSources(
+                new[] { ("views/collide.heddle", template) },
+                new[] { "namespace Probe { public static class Alone { } }" }).GeneratorDiagnostics;
+            Assert.DoesNotContain(noCollision, d => d.Id == "HED1016");
         }
     }
 }

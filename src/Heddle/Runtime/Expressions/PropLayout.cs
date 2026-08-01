@@ -55,13 +55,9 @@ namespace Heddle.Runtime.Expressions
             var property = scopeType.Type.GetProperty(name, MemberPathResolver.MemberBindingFlags);
             if (!MemberPathResolver.IsAccessible(property))
                 return;
-            compileScope.CompileWarnings.Add(new HeddleCompileWarning
-            {
-                Error = $"Prop '{name}' hides the model member '{scopeType.Type}.{name}' — '{name}' reads the prop.",
-                Fix = $"Rename the prop, or read the member explicitly with 'this.{name}' in an expression.",
-                Position = position,
-                DiagnosticId = HeddleDiagnosticIds.PropShadowsModelMember
-            });
+            compileScope.CompileWarnings.Add(
+                Heddle.Language.CompileWarningFactory.PropShadowsModelMember(name, scopeType.Type.ToString(),
+                    position));
         }
 
         /// <summary>

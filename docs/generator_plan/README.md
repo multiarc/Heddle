@@ -15,9 +15,10 @@ F11, was *reshaped*; see that phase's record). Suite: **5348 passed / 0 failed /
 against a pre-program baseline of 2630 / 0 / 0 — the count more than doubled, and most of the growth
 came *after* the phases, from the post-implementation audits and rulings adding coverage the phases
 had claimed but not held (see the findings section). Diagnostic IDs `HED7018`–`HED7028` were claimed
-in registry order. Two items are recorded as **not delivered** and are named here rather than buried
-in a phase: the [compile-channel drain gap](#known-program-level-gap--the-compile-channel-drain-is-unscheduled)
-below, and phase 2's WI9 paired before/after benchmark (argued structurally, not measured).
+in registry order. One item is recorded as **not delivered** and named here rather than buried in a
+phase: phase 2's WI9 paired before/after benchmark (argued structurally, not measured). The
+[compile-channel drain gap](#closed-program-level-gap--the-compile-channel-drain) below was the
+second, and is now closed.
 Phase numbering follows the research-document
 numbering (area 0N → phase N), not execution order; execution order is governed by phase 0
 (the program's step 0 and gate), the fix-first groups, and the artifact-ownership
@@ -199,15 +200,22 @@ fire. Findings that survived orchestrator verification, most severe first:
    PrecompiledExtensionBinding("a", "b")` binds to the three-parameter constructor against today's assembly,
    so it exercised a new-schema call wearing an old-schema shape — the substitution through which this break
    reached release behind a green suite.
-2. **Three "shared" cores have no runtime caller** — `ExtensionRegistrationRules` (runtime keeps its
-   own copy in `TemplateFactory.AddExtensions`), `TypeSpelling` (a re-implementation; the original
-   survives in `ReflectionHelper`), and ~~the numeric widening table (a live second copy in
-   `TemplateEmitter`, with *no* test referencing it)~~ (**closed 2026-07-26** by the phase-4 audit —
-   `TemplateEmitter.IsImplicitNumericWidening` now delegates to `NumericTable.IsImplicit` through the
-   Roslyn facts adapter, with the deleted body kept as an exhaustive `SpecialType`-squared
-   characterization pin in `GeneratorNumericTableAdoptionTests`; the plan's false "the lockstep test
-   covers both copies" parenthetical is corrected in place). Mutating `ExtensionRegistrationRules`
-   reddens one generator test and zero runtime tests. The two remaining ones read as fixed and are not.
+2. ~~**Three "shared" cores have no runtime caller**~~ (**closed 2026-08-01** — all three, and the
+   mutation sentence that closed the item was itself wrong.) ~~the numeric widening table (a live
+   second copy in `TemplateEmitter`, with *no* test referencing it)~~ (**closed 2026-07-26** by the
+   phase-4 audit — `TemplateEmitter.IsImplicitNumericWidening` now delegates to
+   `NumericTable.IsImplicit` through the Roslyn facts adapter, with the deleted body kept as an
+   exhaustive `SpecialType`-squared characterization pin in `GeneratorNumericTableAdoptionTests`; the
+   plan's false "the lockstep test covers both copies" parenthetical is corrected in place).
+   ~~`TypeSpelling` (a re-implementation; the original survives in `ReflectionHelper`)~~ — the
+   original does not survive: `ReflectionHelper.ResolveType` (`ReflectionHelper.cs:537`) *is* a call
+   to `TypeSpelling.TryResolve`, and the surrounding message mapping reads the shared
+   `TypeSpellingFault`; the only other caller is the generator's. ~~`ExtensionRegistrationRules`
+   (runtime keeps its own copy in `TemplateFactory.AddExtensions`)~~ — there is no second copy:
+   `TemplateFactory.cs:131` calls `Resolve` and `:250` calls `OrderingKey`. **The mutation claim was
+   measured and is false in both directions:** dropping the more-derived arm of `Resolve` reddens
+   three runtime tests, three generator tests and eight integration rows; inverting `OrderingKey`
+   reddens one runtime test and zero generator ones — the opposite of what this line said.
 3. ~~**`[ExportExtensions]` is unmodelled by the generator.** The runtime only scans assemblies
    carrying the attribute; the generator scans all referenced assemblies, so it precompiles
    extensions the runtime never registers → permanent silent per-request fallback.~~
@@ -300,9 +308,12 @@ fire. Findings that survived orchestrator verification, most severe first:
    path did gain one closure and two capturing delegates per body, which the WI9 note had glossed
    as zero. Not measured: a credible paired run means holding a two-file revert of landed code
    across a multi-minute BenchmarkDotNet run, and this box's paired timings are untrustworthy).
-   Also: three blanket `catch (Exception)`
-   sites survive in the generator (the phase-5 one now *reports* rather than degrades, so intent
-   holds, but the "no blanket catch" claim is literally false); the catalog is 82 rows, not 80.
+   Also: **two** blanket `catch (Exception)`
+   sites survive in the generator (`HeddleTemplateGenerator.cs:404` and `:511` — the phase-5 one now
+   *reports* rather than degrades, so intent holds, but the "no blanket catch" claim is literally
+   false); the catalog is **91** rows, not 80 — it was 82 when this was written and has grown with
+   every id claimed since (re-count with `grep -c 'Add(HeddleDiagnosticIds\.'`, which is the shape
+   `DiagnosticIdTests` gates).
 
 10. **Phase 1's coverage was thinner than its claims (found by the phase-1 audit, 2026-07-26; all
    fixed except where noted).** `BodyModelRules` was enforced only by a `Debug.Assert`, so in Release
@@ -364,29 +375,67 @@ re-derived, the gate has to be re-derived with them, or the gate quietly stops g
 **Standing lesson:** a build-surface contract verified only through injected analyzer-config values
 is unverified. Where a claim depends on MSBuild evaluation, something must actually evaluate MSBuild.
 
-## Known program-level gap — the compile-channel drain is unscheduled
+## Closed program-level gap — the compile-channel drain
 
-Recorded during implementation (2026-07-25), because no phase owns it.
+Recorded unscheduled 2026-07-25 because no phase owned it; **closed 2026-08-01**.
 
 Q6.1's ruling states the principle *"if diagnostics can surface early, they must — on both
-tiers."* Phase 6's D5/WI6 delivers the **structural** half: one shared
+tiers."* Phase 6's D5/WI6 delivered the **structural** half: one shared
 [`HeddleDiagnosticProjection`](../../src/Heddle/Language/HeddleDiagnosticProjection.cs) that
-drains parse *and* compile channels, so a generator that runs compile-channel stages gets
-channel-completeness by construction. But D5 is explicit that this only pays out *"once the
-generator (in any later phase) runs compile-channel stages"* — and **no phase 0–6 schedules
-that.** Phase 6 deliberately keeps the generator on the parse-channel overload.
+drains parse *and* compile channels. D5 was explicit that this only pays out *"once the generator
+runs compile-channel stages"*, and no phase 0–6 scheduled that, so the generator stayed on the
+parse-channel overload — and the two channels are separate lists. `ParseContext.Warnings` still
+has exactly one producer (the id-less SLL-fallback warning at `DocumentParser.cs:147`);
+everything else went to `CompileContext.CompileWarnings`, which the generator never read. That is
+why eleven id-carrying warnings reached no build-time diagnostic, and it was a scope gap in the
+program rather than a defect in phase 6.
 
-Consequence, verified against the tree: `ParseContext.Warnings` has exactly one producer (the
-id-less SLL-fallback warning), so the eleven id-carrying warnings — `HED1016`, `HED2002`,
-`HED2003`, `HED2004`, `HED3001`, `HED3002`, `HED3004`, `HED3005`, `HED4002`, `HED4005`,
-`HED5011` — are added to `CompileWarnings` and **still never reach a build-time diagnostic**.
-Phase 6's forwarded-ID fix is therefore correct but *latent*: its only day-one user-visible
-effect is the appended `Fix` sentence on the SLL-fallback warning. The ID-collapse defect is
-fixed by construction, not by observation — the program has no test that can fire it.
+**All eleven now surface at build time** — `HED1016`, `HED2002`, `HED2003`, `HED2004`, `HED3001`,
+`HED3002`, `HED3004`, `HED3005`, `HED4002`, `HED4005`, `HED5011` — under the front end's own ids,
+so a report is the same identity, sentence and fix on both tiers. The generator still does not run
+`HeddleCompiler`; what changed is that the conditions it already decides now say so:
 
-This is a scope gap in the program, not a defect in phase 6. Closing it means giving some phase
-the work of running compile-channel stages in the generator and draining them through the shared
-projection; until then the early-surfacing principle is unmet for those eleven diagnostics.
+- The shaping-time three are raised by the **shared** machine the generator was already driving.
+  [`BranchSetLint`](../../src/Heddle/Language/BranchSetLint.cs) is the observer
+  `DocumentShaping.StripBranchSets` always accepted and the generator always passed `null` for
+  (`HED3001`/`HED3002`/`HED3004`/`HED3005`), and
+  [`OutputLints`](../../src/Heddle/Language/OutputLints.cs) holds the two document scans that read
+  nothing but text and parse spans (`HED4005`/`HED2004`). Both were lifted out of `HeddleCompiler`,
+  which now drives them instead of owning them.
+- The remaining five are decided per tier — the run tier from instantiated extensions and reflected
+  types, the build tier from parse data and Roslyn symbols — but their text is written once, in
+  [`CompileWarningFactory`](../../src/Heddle/Language/CompileWarningFactory.cs). Mutating a sentence
+  there reddens the *runtime's* own test while the cross-tier parity test stays green, which is the
+  demonstration that there is one source and not two.
+
+**What a build still cannot decide**, and why — three of the eleven are narrower on the build tier
+than at run time, and the corpus names the residue per fixture rather than leaving it to be
+inferred:
+
+- `HED1016` sees the default function table and each assembly's `[ExportFunctions]`, which is all a
+  build has. A registry the host fills at run time is invisible to it, so the build tier can only
+  ever say *less* here, never more — the same bound `HED7014` already lives under.
+- `HED5011` asks the shared member walk, so it answers for the symbols the compilation can see; a
+  model type the generator cannot resolve degrades before the question is reached.
+- `HED2003` reads `[EncodeOutput]` off the bound extension type. A producer the binder cannot
+  resolve is a template that degrades anyway.
+
+Nothing here widens a warning the engine does not raise: `NothingIsForwardedThatTheRunTierWouldNotRaise`
+gates that direction, and `AForwardedEntrySaysWhatTheRunTierSays` compares both tiers' live output
+for the same bytes rather than restating either. The early-surfacing principle is met for all
+eleven; `HED3003`, the orphan-terminal **error** on the same event stream, is deliberately still
+run-tier-only (see the note below).
+
+**Not taken, deliberately — and it is a live defect, not a tidy exclusion.** The branch-set observer
+also carries `HED3003`: an orphan `@else` is a compile *error*, and measuring it showed the engine
+refusing the template (`CompileResult.Success == false`) while the generator emits an entry class,
+writes the manifest row and reports nothing — so the precompiled tier renders bytes the dynamic tier
+will not compile. Draining that arm was declined here because turning it on makes a consumer build
+fail on the strength of the generator's own classification, which is a different class of risk from
+the eleven warnings and a different blast radius. It is checked in as a skipped red test —
+`CompileChannelDrainTests.ATemplateTheEngineRefusesIsNotSilentlyPrecompiled`, rehearsed red — and
+either half of a fix satisfies it: surface the refusal, or leave the template on the dynamic tier.
+The shared observer already takes an optional error sink; the generator passes `null`.
 
 ## Unverified platform surface
 

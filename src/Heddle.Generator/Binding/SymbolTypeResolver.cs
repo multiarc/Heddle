@@ -406,6 +406,12 @@ namespace Heddle.Generator.Binding
         private static IPropertySymbol FindProperty(ITypeSymbol type, string name) =>
             MemberPathWalk.TryFind(SymbolMemberModel.Instance, type, name, out var found) ? found : null;
 
+        /// <summary>Whether <paramref name="name"/> binds to a readable, visible property of
+        /// <paramref name="type"/> — asked through the same shared walk that resolves a member path, so the
+        /// build tier's answer to "does this prop hide a model member" is the walk's answer, not a second one.</summary>
+        internal static bool BindsReadableProperty(ITypeSymbol type, string name) =>
+            type != null && type.TypeKind != TypeKind.Dynamic && FindProperty(type, name) != null;
+
         /// <summary>
         /// Whether <paramref name="symbol"/> carries <c>[Obsolete(…, error: true)]</c> — the attribute form that
         /// makes every mention of the name a compile <b>error</b> (CS0619/CS0672) rather than a warning.

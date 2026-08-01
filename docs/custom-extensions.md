@@ -318,7 +318,8 @@ There are three roles:
 **`[ScopeChannel]` goes on Continuation and Terminal, not on the Opener** (R11). Continuation and
 terminal extensions *read* the channel (`TryRead`), and locals‑frame provisioning keys off
 `[ScopeChannel]`; omit it and their read always misses at render time (the engine warns —
-**HED3005** at runtime, **HED7016** at build time — but cannot fix it for you). An opener publishes
+**HED3005** at the call on both tiers, plus **HED7016** once per drifting type at build time — but
+cannot fix it for you). An opener publishes
 *opportunistically*: it carries no `[ScopeChannel]`, so a set with no continuation/terminal sibling
 provisions no frame and the publish is a harmless no‑op — this is exactly what keeps templates that
 use no branch allocation‑identical.
