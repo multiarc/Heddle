@@ -10,7 +10,7 @@
 #   4. `go test ./...` (gates + unit tests; TestMain gates before anything can time).
 #   5. Prebuild: `go test -c -o bench ./suites`.
 #   6. Two timed invocations: BenchmarkRender, then the BenchmarkColdParse sidebar.
-#      Defaults: -test.count=14, -test.benchtime=1s (ledger E6 uniform budget; was 20).
+#      Defaults: -test.count=28, -test.benchtime=1s (ledger E14 per-engine budget; E6 had 14).
 #   7. benchstat over each output.
 #
 # Priority posture: run-benchmarks.ps1 launches through `cmd /c start /high`; this twin
@@ -26,13 +26,13 @@ HARNESS_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd
 
 usage() {
   echo "usage: run-benchmarks.sh [--count N] [--benchtime D] [--version-check-only] [--no-priority]"
-  echo "  --count N              -test.count for both timed runs (default 14)"
+  echo "  --count N              -test.count for both timed runs (default 28)"
   echo "  --benchtime D          -test.benchtime for both timed runs (default 1s)"
   echo "  --version-check-only   run the toolchain asserts and exit"
   echo "  --no-priority          plain launch, no taskset/nice (Phase 8 D2 posture)"
 }
 
-COUNT=14
+COUNT=28
 BENCHTIME="1s"
 VERSION_CHECK_ONLY=0
 while [ $# -gt 0 ]; do

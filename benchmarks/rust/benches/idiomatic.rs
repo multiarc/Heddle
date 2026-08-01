@@ -17,8 +17,8 @@ fn main() {
 
     // D9 config; the trailing `.configure_from_args()` is mandatory and last.
     let mut criterion = Criterion::default()
-        .warm_up_time(Duration::from_secs(3))
-        .measurement_time(Duration::from_secs(10))
+        .warm_up_time(Duration::from_secs(5))
+        .measurement_time(Duration::from_secs(26))
         .sample_size(100)
         .confidence_level(0.95)
         .configure_from_args();
