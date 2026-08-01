@@ -58,7 +58,7 @@ namespace Heddle.Data
         private void RenderSingle(ReadOnlySpan<char> chars)
         {
             var span = _writer.GetSpan(chars.Length * 3);
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
             int bytesWritten = Encoding.UTF8.GetBytes(chars, span);
             _writer.Advance(bytesWritten);
 #else
@@ -78,7 +78,7 @@ namespace Heddle.Data
         {
             // Stateful Encoder prevents surrogate-pair corruption at boundaries; state resets per Render call.
             _encoder = _encoder ?? Encoding.UTF8.GetEncoder();
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
             while (true)
             {
                 Span<byte> span = _writer.GetSpan(MaxUtf8SizeHint);   // GetSpan contract: ≥ hint bytes.

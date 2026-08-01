@@ -82,7 +82,7 @@ namespace Heddle.Extensions
             // resolve NumberFormatInfo.CurrentInfo), so the current-culture no-locale branch survives byte-exact.
             if (scope.ModelData is decimal decimalValue)
             {
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
                 scope.Renderer.Render(decimalValue, "c", localeInfo);
 #else
                 scope.Renderer.Render(localeInfo != null ? decimalValue.ToString("c", localeInfo) : decimalValue.ToString("c"));
@@ -93,7 +93,7 @@ namespace Heddle.Extensions
             try
             {
                 decimalValue = (decimal) Convert.ChangeType(scope.ModelData, typeof(decimal), CultureInfo.InvariantCulture);
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
                 scope.Renderer.Render(decimalValue, "c", localeInfo);
 #else
                 scope.Renderer.Render(localeInfo != null ? decimalValue.ToString("c", localeInfo) : decimalValue.ToString("c"));

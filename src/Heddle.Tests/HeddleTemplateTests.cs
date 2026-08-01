@@ -175,7 +175,7 @@ namespace Heddle.Tests
             NoErrors("@(@" + new string('"', 20) + "x" + new string('"', 20) + ".Length)");
             NoErrors("@(@" + new string('"', 5) + "a" + new string('"', 4) + "b" + new string('"', 5) + ".Length)");
 
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
             // C# 11 evaluation requires Roslyn support available only on net6.0+.
             var options = new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp };
             string Render(string template)

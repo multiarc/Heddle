@@ -36,7 +36,7 @@ namespace Heddle.Extensions
             // Guid ignores the provider (culture-insensitive by contract). Not [EncodeOutput] — the only formatter
             // that never runs under an encode proxy, so it takes the full fast path on every profile.
             // Empty format ≡ "D"; an invalid specifier throws FormatException on every tier.
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
             scope.Renderer.Render(guid, format, null);
 #else
             scope.Renderer.Render(guid.ToString(format));
