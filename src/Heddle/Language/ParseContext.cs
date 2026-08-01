@@ -34,6 +34,8 @@ namespace Heddle.Language {
             Errors = parentContext?.Errors ?? new List<HeddleCompileError>();
             Warnings = parentContext?.Warnings ?? new List<HeddleCompileWarning>();
             RegionFillCandidates = parentContext?.RegionFillCandidates ?? new List<RegionFillCandidate>();
+            ImporterSatisfiableErrors = parentContext?.ImporterSatisfiableErrors ??
+                                        new HashSet<HeddleCompileError>();
             ImportOrigin = parentContext?.ImportOrigin;
         }
 
@@ -66,6 +68,18 @@ namespace Heddle.Language {
         /// call-site fill step without any sub-context sweep.
         /// </summary>
         internal List<RegionFillCandidate> RegionFillCandidates { get; }
+
+        /// <summary>
+        /// The subset of <see cref="Errors"/> that names something this document does not itself declare and an
+        /// <b>importer</b> could have declared — today, a base definition that was not found. Shared up the chain
+        /// the same way <see cref="Errors"/> is.
+        /// <para>A file meant only to be imported is compiled on its own by the build tier, and a fragment that is
+        /// only well-formed inside an importer fails that pass. The engine never runs that pass in production — an
+        /// imported file only ever reaches the compiler already expanded into the document importing it — so a
+        /// caller that knows something imports the file can tell these errors from the ones the file owns whatever
+        /// its surroundings. Nothing here changes what the engine itself reports.</para>
+        /// </summary>
+        internal HashSet<HeddleCompileError> ImporterSatisfiableErrors { get; }
 
         /// <summary>
         /// The regions declared directly in this context (a component body), in declaration order,
@@ -241,6 +255,7 @@ namespace Heddle.Language {
                 {
                     baseNotFound = $"Base definition {baseName} couldn't be found".ToError(GetAbsoluteBlockPosition(context));
                     Errors.Add(baseNotFound);
+                    ImporterSatisfiableErrors.Add(baseNotFound);
                 }
                 AddToken(defBase.ID(), HeddleTokenType.Id);
                 AddToken(context.DEF_ENDNAME(), HeddleTokenType.DefEndName);

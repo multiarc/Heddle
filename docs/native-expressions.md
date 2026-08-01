@@ -154,7 +154,7 @@ render throws, because the alternative is a loop that never terminates — see [
 | `format(fmt, args…)` | composite `string.Format(InvariantCulture, …)` |
 | `str(value)` | invariant `Convert.ToString` |
 | `abs`, `min`, `max` | `int`, `long`, `double`, `decimal` (one overload per type); clamped, non‑throwing |
-| `round`, `floor`, `ceil` | **`double` and `decimal` only** — `round` also takes a digit count. An `int` argument is `HED1013` (see below) |
+| `round`, `floor`, `ceil` | `int`, `long`, `double`, `decimal` (as `abs`/`min`/`max`); `round` also takes a digit count. The integral overloads are the identity |
 | `range(start, last[, step])` | builds a `Heddle.Models.Range` for `@for` — iterates `start … last‑1` by `step` (default 1) |
 
 <a id="range"></a>
@@ -190,11 +190,14 @@ var options = new TemplateOptions { Functions = functions };
   binds identically at run time and a tie is `HED1013` on both.
   The consequence is narrower acceptance than C#, not a different winner: measured over the shipped
   built‑in table, **0 of 480** argument combinations would change which overload wins under C#'s rule,
-  **82** would become bindable that are ties today, and **62** stay ambiguous either way (`double`
-  and `decimal` are mutually non‑convertible, so neither is closer). `floor(3)` is in the 82:
-  `int→double` and `int→decimal` tie, so it is `HED1013`. Adopting C#'s rule would *widen* what
-  compiles, which cannot be withdrawn later, so it is a **window‑gated** change rather than a fix to
-  make casually.
+  **100** would become bindable that are ties today, and **38** stay ambiguous either way (`double`
+  and `decimal` are mutually non‑convertible, so neither is closer). Adopting C#'s rule would *widen*
+  what compiles, which cannot be withdrawn later, so it is a **window‑gated** change rather than a fix
+  to make casually.
+  Note that betterness is not what makes an integral argument bind to `floor`/`ceil`/`round`: with only
+  a `double` and a `decimal` overload the two are mutually non‑convertible, so C# reports the tie too —
+  `Math.Floor(3)` is `CS0121`. What binds `floor(3)` is that those three carry an `int` and a `long`
+  overload, exactly as `abs`/`min`/`max` do.
 - The registry **freezes when a native expression is first compiled against it** — not when a
   template is merely compiled, so a template containing no native expression leaves it open.
   Registering after the freeze throws `InvalidOperationException`. Frozen registries are immutable
@@ -275,7 +278,7 @@ dynamic tier instead of guessing.
 | `HED1010` | error | An indexer target has no accessible indexer matching the argument types. |
 | `HED1011` | error | The `?:` condition is not `bool`. |
 | `HED1012` | error | No overload of a registered function binds to the supplied argument types. |
-| `HED1013` | error | A registered‑function call is ambiguous — two candidates tie under the flat rank. `floor(3)` is the canonical case; see [Registering your own](#registering-your-own). |
+| `HED1013` | error | A registered‑function call is ambiguous — two candidates tie under the flat rank. `min(1, 2u)` is the canonical case; see [Registering your own](#registering-your-own). |
 | `HED1014` | error | An expression beyond a bare member path is used while `ExpressionMode` is `MemberPathsOnly`. |
 | `HED1015` | error | A composite `format` literal references an argument index beyond the supplied count. |
 | `HED1016` | warning | A standalone `@name(...)` resolved to an extension that shadows a registered function of the same name. Write `@( name(...) )` to reach the function. |

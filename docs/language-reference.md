@@ -1113,6 +1113,13 @@ The path between `{{ }}` is resolved relative to `TemplateOptions.RootPath` (an 
 wins, per `Path.Combine`). The path is taken **verbatim** — no trimming — so keep the braces
 tight (`@<<{{layout.heddle}}`); a stray space inside becomes part of the filename.
 
+An import path is **not** a template key, and the key idioms do not apply to it: write the
+extension (`@<<{{lib.heddle}}`, not `@<<{{lib}}`), and do not spell it `~/lib.heddle` or
+`/lib.heddle` expecting "from the root" — `Path.Combine` reads the first as a literal `~`
+directory and the second as an absolute path. `.` and `..` segments *are* reduced, because
+`Path.GetFullPath` reduces them. The precompiler refuses the spellings the key grammar would
+rename, so a template that resolves on one tier resolves on both.
+
 **`@<<{{ path }}` — the composition import.** Handled at parse time by dedicated `@<<` syntax
 ([HeddleMainListener.ExitImport_block](../src/Heddle/Language/HeddleMainListener.cs)). It parses
 the referenced file, **merges its definitions** into the current document (callable after the

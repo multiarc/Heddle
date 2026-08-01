@@ -126,14 +126,26 @@ namespace Heddle.Runtime.Expressions
         internal static double Max(double a, double b) => Math.Max(a, b);
         internal static decimal Max(decimal a, decimal b) => Math.Max(a, b);
 
+        // Rounding an integer is the identity. The integral tiers exist so an integral argument binds at all:
+        // with only the double and decimal tiers, int->double and int->decimal are both widening and neither is
+        // closer, so the call is ambiguous — which is what C# reports for Math.Floor(3) for the same reason.
+        // min/max already carry these four tiers; these three carried two.
+        internal static int Round(int value) => value;
+        internal static int Round(int value, int digits) => value;
+        internal static long Round(long value) => value;
+        internal static long Round(long value, int digits) => value;
         internal static double Round(double value) => Math.Round(value);
         internal static double Round(double value, int digits) => Math.Round(value, Clamp(digits, 0, 15));
         internal static decimal Round(decimal value) => Math.Round(value);
         internal static decimal Round(decimal value, int digits) => Math.Round(value, Clamp(digits, 0, 28));
 
+        internal static int Floor(int value) => value;
+        internal static long Floor(long value) => value;
         internal static double Floor(double value) => Math.Floor(value);
         internal static decimal Floor(decimal value) => Math.Floor(value);
 
+        internal static int Ceil(int value) => value;
+        internal static long Ceil(long value) => value;
         internal static double Ceil(double value) => Math.Ceiling(value);
         internal static decimal Ceil(decimal value) => Math.Ceiling(value);
 
@@ -198,12 +210,20 @@ namespace Heddle.Runtime.Expressions
             yield return Bind("max", nameof(Max), typeof(long), typeof(long));
             yield return Bind("max", nameof(Max), typeof(double), typeof(double));
             yield return Bind("max", nameof(Max), typeof(decimal), typeof(decimal));
+            yield return Bind("round", nameof(Round), typeof(int));
+            yield return Bind("round", nameof(Round), typeof(int), typeof(int));
+            yield return Bind("round", nameof(Round), typeof(long));
+            yield return Bind("round", nameof(Round), typeof(long), typeof(int));
             yield return Bind("round", nameof(Round), typeof(double));
             yield return Bind("round", nameof(Round), typeof(double), typeof(int));
             yield return Bind("round", nameof(Round), typeof(decimal));
             yield return Bind("round", nameof(Round), typeof(decimal), typeof(int));
+            yield return Bind("floor", nameof(Floor), typeof(int));
+            yield return Bind("floor", nameof(Floor), typeof(long));
             yield return Bind("floor", nameof(Floor), typeof(double));
             yield return Bind("floor", nameof(Floor), typeof(decimal));
+            yield return Bind("ceil", nameof(Ceil), typeof(int));
+            yield return Bind("ceil", nameof(Ceil), typeof(long));
             yield return Bind("ceil", nameof(Ceil), typeof(double));
             yield return Bind("ceil", nameof(Ceil), typeof(decimal));
             yield return Bind("range", nameof(Range), typeof(int), typeof(int));

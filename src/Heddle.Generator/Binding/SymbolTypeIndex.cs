@@ -110,9 +110,10 @@ namespace Heddle.Generator.Binding
         /// assembly-qualified spelling first, then a dotted one, then a bare short name. The three arms disambiguate
         /// differently and swapping one for another changes the answer — the dotted arm re-qualifies the whole
         /// spelling with each import, where the short-name arm asks which candidate's own namespace was imported.
-        /// <para>Then the runtime's directive arms, in the runtime's order: an alias, and a <c>using static</c>
-        /// target's nested types. Both come <b>after</b> the index, so neither can move a spelling the index already
-        /// answers; <c>global::</c> comes before it, being a qualifier no index key carries.</para>
+        /// <para>The runtime's directive arms sit around the index in the runtime's order, which is C#'s: an
+        /// alias claiming the head binds <b>before</b> the index and commits, and a <c>using static</c> target's
+        /// nested types come <b>after</b> it. <c>global::</c> precedes both, being a qualifier no index key
+        /// carries and one C# reads past every alias.</para>
         /// </summary>
         internal bool TryResolve(string name, IReadOnlyList<string> imports, out INamedTypeSymbol type,
             out TypeSpellingFault fault)
@@ -131,25 +132,32 @@ namespace Heddle.Generator.Binding
                 return false;
             }
 
+            var directives = UsingDirectives.Parse(imports);
+
+            // An alias binds the head ahead of the name index, because that is the order C# reads a
+            // namespace-or-type-name in: the scope's alias directives, then the namespaces the scope imports.
+            // Claiming the head commits — the index is not consulted afterwards — for the same reason.
+            if (directives.ClaimsHead(name))
+            {
+                if (TryResolveThroughAlias(name, directives, out type, out var claimedAmbiguity))
+                {
+                    fault = TypeSpellingFault.None;
+                    return true;
+                }
+
+                fault = claimedAmbiguity ? TypeSpellingFault.Ambiguous : TypeSpellingFault.Unresolved;
+                return false;
+            }
+
             if (TryResolveIndexed(name, imports, out type, out fault))
                 return true;
 
-            var directives = UsingDirectives.Parse(imports);
             if (directives.IsEmpty)
                 return false;
 
-            if (TryResolveThroughAlias(name, directives, out type, out var aliasAmbiguity))
-            {
-                fault = TypeSpellingFault.None;
-                return true;
-            }
-
-            if (aliasAmbiguity)
-            {
-                fault = TypeSpellingFault.Ambiguous;
-                return false;
-            }
-
+            // A `using static` target's nested types stay behind the index. C# puts them in the same bucket
+            // as an imported namespace's types, and the index is a superset of that bucket, so moving this
+            // arm forward would narrow rather than reorder.
             if (TryResolveThroughStaticImport(name, directives, out type, out var staticAmbiguity))
             {
                 fault = TypeSpellingFault.None;
@@ -161,8 +169,9 @@ namespace Heddle.Generator.Binding
             return false;
         }
 
-        /// <summary>The name-index arms, unchanged. Kept apart from the directive arms so the directive arms can
-        /// only fire where these already had no answer — the property that makes them additive.</summary>
+        /// <summary>The name-index arms. Kept apart from the directive arms so each can be ordered against the
+        /// index on its own: the <c>static</c> arm still fires only where these had no answer, while the alias arm
+        /// is reached before them.</summary>
         private bool TryResolveIndexed(string name, IReadOnlyList<string> imports, out INamedTypeSymbol type,
             out TypeSpellingFault fault)
         {

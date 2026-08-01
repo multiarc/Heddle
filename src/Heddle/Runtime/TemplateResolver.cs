@@ -70,6 +70,7 @@ namespace Heddle.Runtime {
             HeddleTemplate result;
             TemplateOptions options;
             string path;
+            string relative;
             // The effective profile/trimming for this operation: the caller's context options win, else the
             // resolver default. Probe and write always agree because Create keys on
             // the same values.
@@ -89,7 +90,7 @@ namespace Heddle.Runtime {
                     return result;
                 }
                 if (File.Exists(Path.Combine(_rootPath, viewName))) {
-                    options = new TemplateOptions(Path.GetFileNameWithoutExtension(viewName))
+                    options = new TemplateOptions(Path.ChangeExtension(viewName, null))
                     {
                         EnableFileChangeCheck = _checkFileChange,
                         FileNamePostfix = Path.GetExtension(viewName),
@@ -106,7 +107,7 @@ namespace Heddle.Runtime {
                         searchedLocations = null;
                         return Create(viewName, context);
                     }
-                    result = Create(viewName, new CompileContext(context, context.ScopeType, Path.GetFileNameWithoutExtension(viewName)) { ControllerName = controllerName });
+                    result = Create(viewName, new CompileContext(context, context.ScopeType, Path.ChangeExtension(viewName, null)) { ControllerName = controllerName });
                     searchedLocations = null;
                     return result;
                 }
@@ -115,35 +116,20 @@ namespace Heddle.Runtime {
             case TemplatePathType.View:
                 // The View arm builds its own options below and ignores the caller's context, so the registry
                 // consult inside Search synthesizes the same ones (null = synthesize).
-                path = Search(viewName, controllerName, searchType, profile, trim, null, out searchedLocations, out result);
+                path = Search(viewName, controllerName, searchType, profile, trim, null, out searchedLocations,
+                    out result, out relative);
                 if (result != null)
                     return result;
-                options = new TemplateOptions(Path.GetFileNameWithoutExtension(path))
-                {
-                    EnableFileChangeCheck = _checkFileChange,
-                    FileNamePostfix = Path.GetExtension(path),
-                    RootPath = _rootPath,
-                    ExpressionMode = ExpressionMode.FullCSharp,
-                    OutputProfile = profile,
-                    TrimDirectiveLines = trim
-                };
+                options = HostedOptions(relative, profile, trim);
                 return Create(path, new CompileContext(options) { ControllerName = controllerName });
             case TemplatePathType.PartialView:
                 // The PartialView arm hands the caller's context straight to Create when it has one, so the consult
                 // must run the gauntlet against exactly those options.
                 path = Search(viewName, controllerName, searchType, profile, trim, context?.Options,
-                    out searchedLocations, out result);
+                    out searchedLocations, out result, out relative);
                 if (result != null)
                     return result;
-                options = new TemplateOptions(Path.GetFileNameWithoutExtension(path))
-                {
-                    EnableFileChangeCheck = _checkFileChange,
-                    FileNamePostfix = Path.GetExtension(path),
-                    RootPath = _rootPath,
-                    ExpressionMode = ExpressionMode.FullCSharp,
-                    OutputProfile = profile,
-                    TrimDirectiveLines = trim
-                };
+                options = HostedOptions(relative, profile, trim);
                 if (context != null) {
                     context.ControllerName = controllerName;
                     return Create(path, context);
@@ -160,12 +146,12 @@ namespace Heddle.Runtime {
             out IEnumerable<string> searchedLocations, out HeddleTemplate cached)
         {
             return Search(viewName, controllerName, searchType, _defaultProfile, _trimDirectiveLines, null,
-                out searchedLocations, out cached);
+                out searchedLocations, out cached, out _);
         }
 
         private string Search(string viewName, string controllerName, TemplatePathType searchType,
             OutputProfile profile, bool trim, TemplateOptions requestOptions,
-            out IEnumerable<string> searchedLocations, out HeddleTemplate cached)
+            out IEnumerable<string> searchedLocations, out HeddleTemplate cached, out string relativePath)
         {
             if (viewName == null) throw new ArgumentNullException(nameof(viewName));
             if (controllerName == null) throw new ArgumentNullException(nameof(controllerName));
@@ -184,11 +170,14 @@ namespace Heddle.Runtime {
                 case TemplatePathType.None:
                     throw new TemplateCreateException("Search is not eligiable to non hosted views.");
                 case TemplatePathType.View:
-                    return Search(viewName, controllerName, _viewPath, profile, trim, requestOptions, out searchedLocations, out cached);
+                    return Search(viewName, controllerName, _viewPath, profile, trim, requestOptions, out searchedLocations,
+                        out cached, out relativePath);
                 case TemplatePathType.PartialView:
-                    return Search(viewName, controllerName, _partialPath, profile, trim, requestOptions, out searchedLocations, out cached);
+                    return Search(viewName, controllerName, _partialPath, profile, trim, requestOptions, out searchedLocations,
+                        out cached, out relativePath);
                 case TemplatePathType.Master:
-                    return Search(viewName, controllerName, _masterPath, profile, trim, requestOptions, out searchedLocations, out cached);
+                    return Search(viewName, controllerName, _masterPath, profile, trim, requestOptions, out searchedLocations,
+                        out cached, out relativePath);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(searchType));
             }
@@ -199,39 +188,44 @@ namespace Heddle.Runtime {
         /// the registry ahead of both tiers. Tier order beats location order, exactly as it already
         /// did for the cache: a cached location-2 template has always won over a location-1 file on disk.</summary>
         private string Search(string viewName, string controllerName, string[] locations, OutputProfile profile, bool trim,
-            TemplateOptions requestOptions, out IEnumerable<string> searchedLocations, out HeddleTemplate cached) {
+            TemplateOptions requestOptions, out IEnumerable<string> searchedLocations, out HeddleTemplate cached,
+            out string relativePath) {
             if (viewName == null) throw new ArgumentNullException(nameof(viewName));
             if (controllerName == null) throw new ArgumentNullException(nameof(controllerName));
             if (locations == null) throw new ArgumentNullException(nameof(locations));
             List<string> searched = new List<string>();
+            relativePath = null;
             foreach (var path in locations) {
-                var relativePath = string.Format(path, viewName, controllerName);
+                var candidate = string.Format(path, viewName, controllerName);
                 // Candidate path uses the same shared TemplateKey normalization as the generator.
-                if (!TemplateKey.TryNormalize(relativePath, out var key))
+                if (!TemplateKey.TryNormalize(candidate, out var key))
                     continue;
-                var options = requestOptions ?? HostedOptions(Path.Combine(_rootPath, relativePath), profile, trim);
+                var options = requestOptions ?? HostedOptions(candidate, profile, trim);
                 // A miss, or a Fallback-policy gauntlet failure (an options fingerprint built Native cannot answer
                 // these arms' FullCSharp request), falls through to the unchanged cache/disk ladder.
                 if (PrecompiledTemplates.TryResolve(key, options, out var entry)) {
                     cached = new HeddleTemplate(entry.Strategy, options.Encoder, options.RenderBudget);
                     searchedLocations = null;
-                    return Path.Combine(_rootPath, relativePath);
+                    relativePath = candidate;
+                    return Path.Combine(_rootPath, candidate);
                 }
             }
             foreach (var path in locations) {
-                var relativePath = string.Format(path, viewName, controllerName);
-                var fullPath = Path.Combine(_rootPath, relativePath);
+                var candidate = string.Format(path, viewName, controllerName);
+                var fullPath = Path.Combine(_rootPath, candidate);
                 if (TemplatesCache.TryGetValue(CacheKey(fullPath, profile, trim), out cached)) {
                     searchedLocations = null;
+                    relativePath = candidate;
                     return fullPath;
                 }
             }
             foreach (var path in locations) {
-                var relativePath = string.Format(path, viewName, controllerName);
-                var fullPath = Path.Combine(_rootPath, relativePath);
+                var candidate = string.Format(path, viewName, controllerName);
+                var fullPath = Path.Combine(_rootPath, candidate);
                 if (File.Exists(fullPath)) {
                     cached = null;
                     searchedLocations = null;
+                    relativePath = candidate;
                     return fullPath;
                 }
                 // The path that was probed, not the pattern it came from: the un-substituted form reported
@@ -243,15 +237,18 @@ namespace Heddle.Runtime {
             return null;
         }
 
-        /// <summary>The effective options a hosted (<c>View</c>/<c>PartialView</c>/<c>Master</c>) arm would hand to
-        /// <see cref="Create"/> — the same shape the View arm builds below, including
-        /// <see cref="ExpressionMode.FullCSharp"/>, so the gauntlet's fingerprint step judges the registry entry
-        /// against the request that would actually be compiled.</summary>
-        private TemplateOptions HostedOptions(string fullPath, OutputProfile profile, bool trim) =>
-            new TemplateOptions(Path.GetFileNameWithoutExtension(fullPath))
+        /// <summary>The effective options a hosted (<c>View</c>/<c>PartialView</c>/<c>Master</c>) arm hands to
+        /// <see cref="Create"/>, including <see cref="ExpressionMode.FullCSharp"/>, so the gauntlet's fingerprint
+        /// step judges a registry entry against the request that would actually be compiled.
+        /// <para><paramref name="relativePath"/> is the candidate the search matched, <b>relative to the resolver
+        /// root</b> — which is what <see cref="TemplateOptions.TemplateName"/> means. Keeping only its file name
+        /// would drop the <c>views/{controller}/</c> segment the search itself inserted, and
+        /// <see cref="TemplateOptions.FullPath"/> would then name a file nobody probed.</para></summary>
+        private TemplateOptions HostedOptions(string relativePath, OutputProfile profile, bool trim) =>
+            new TemplateOptions(Path.ChangeExtension(relativePath, null))
             {
                 EnableFileChangeCheck = _checkFileChange,
-                FileNamePostfix = Path.GetExtension(fullPath),
+                FileNamePostfix = Path.GetExtension(relativePath),
                 RootPath = _rootPath,
                 ExpressionMode = ExpressionMode.FullCSharp,
                 OutputProfile = profile,
@@ -266,7 +263,7 @@ namespace Heddle.Runtime {
             out HeddleTemplate result)
         {
             result = null;
-            var options = context?.Options ?? new TemplateOptions(Path.GetFileNameWithoutExtension(viewName))
+            var options = context?.Options ?? new TemplateOptions(Path.ChangeExtension(viewName, null))
             {
                 EnableFileChangeCheck = _checkFileChange,
                 FileNamePostfix = Path.GetExtension(viewName),
