@@ -60,14 +60,22 @@ jobs:
     - name: Test generator integration suite (Release)
       run: dotnet test src/Heddle.Generator.IntegrationTests/Heddle.Generator.IntegrationTests.csproj -c Release --no-build
 
+  # Every commit in a contributed pull request must carry its Signed-off-by before anything
+  # built from it is published. Releases from main are not gated — they are the maintainer's
+  # own, and a tag push carries no pull request to check.
+  dco:
+    if: ${{ github.event_name == 'pull_request' }}
+    uses: ./.github/workflows/dco.yml
+    permissions:
+      contents: read
+
   # Internal (non-fork) pull requests publish a beta prerelease to nuget.org.
-  prerelease:
+  # Packing is separated from pushing: this job produces the packages and holds no
+  # publishing credentials, so a build failure cannot happen mid-publish.
+  prerelease-pack:
     needs: build
     if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write   # OIDC token for nuget.org Trusted Publishing
     steps:
     - uses: actions/checkout@v7
     - name: Setup .NET
@@ -88,6 +96,27 @@ jobs:
     # while every project spelled `2.0.0$(VersionSuffix)` by hand. Pinned by VersionConsistencyTests.
     - name: Pack beta packages
       run: dotnet pack -c Release -o ${{ runner.temp }}/pkg --version-suffix "beta.${{ github.run_number }}"
+    - uses: actions/upload-artifact@v7
+      with:
+        name: nupkg-beta
+        path: ${{ runner.temp }}/pkg/*.nupkg
+        if-no-files-found: error
+
+  prerelease-publish:
+    needs: [ prerelease-pack, dco ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # OIDC token for nuget.org Trusted Publishing
+    steps:
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: 8.0.x
+    - uses: actions/download-artifact@v7
+      with:
+        name: nupkg-beta
+        path: ${{ runner.temp }}/pkg
     - name: NuGet login (OIDC -> short-lived API key)
       uses: NuGet/login@v1
       id: nuget-login
@@ -98,13 +127,12 @@ jobs:
 
   # Production release: triggered by pushing a `vX.Y.Z` tag. Publishes that exact version
   # (becomes "latest" on nuget.org automatically) and creates a GitHub Release.
-  release:
+  release-pack:
     needs: build
     if: ${{ startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: write   # create the GitHub Release
-      id-token: write   # OIDC token for nuget.org Trusted Publishing
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
     steps:
     - uses: actions/checkout@v7
     - name: Setup .NET
@@ -121,6 +149,27 @@ jobs:
       run: dotnet restore
     - name: Pack release packages
       run: dotnet pack -c Release -p:Version=${{ steps.ver.outputs.version }} -o ${{ runner.temp }}/pkg
+    - uses: actions/upload-artifact@v7
+      with:
+        name: nupkg-release
+        path: ${{ runner.temp }}/pkg/*.nupkg
+        if-no-files-found: error
+
+  release-publish:
+    needs: release-pack
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # create the GitHub Release
+      id-token: write   # OIDC token for nuget.org Trusted Publishing
+    steps:
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: 8.0.x
+    - uses: actions/download-artifact@v7
+      with:
+        name: nupkg-release
+        path: ${{ runner.temp }}/pkg
     - name: NuGet login (OIDC -> short-lived API key)
       uses: NuGet/login@v1
       id: nuget-login
