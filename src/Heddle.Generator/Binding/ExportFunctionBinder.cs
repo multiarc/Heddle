@@ -52,10 +52,16 @@ namespace Heddle.Generator.Binding
         /// <summary>Ranks the merged overload set. Returns null (degrade to dynamic) when any argument cannot be
         /// typed, no overload is applicable, or when multiple overloads tie (the flat Pareto front has &gt; 1 member).
         /// <paramref name="refusal"/> distinguishes ambiguous/inapplicable over typed arguments (reports <c>HED7025</c>)
-        /// from untypeable arguments (silent degrade).</summary>
-        internal static Binding TryBind(SymbolTypeFacts facts, string name,
+        /// from untypeable arguments (silent degrade).
+        /// <para><paramref name="argTypes"/> carries the caller's own symbol for an argument it resolved — a member
+        /// path, a call's declared return — and is what the engine ranks on: <c>NativeExpressionCompiler</c> hands
+        /// <c>OverloadRank</c> the compiled expression's <c>Type</c>, not a descriptor of it. The
+        /// <see cref="OperandKind"/> estimate names the numeric primitives, <c>bool</c> and <c>string</c> and nothing
+        /// else, so a struct, an enum, a class and <c>object</c> all arrived here indistinguishable from an argument
+        /// nothing had resolved. Entries may be null, and then the descriptor answers as before.</para></summary>
+        internal static Binding TryBind(SymbolTypeFacts facts, SymbolTypeResolver resolver, string name,
             IReadOnlyList<FunctionExportResolver.ExportOverloadInfo> overloads, IReadOnlyList<OperandKind> argKinds,
-            out BindRefusal refusal)
+            IReadOnlyList<ITypeSymbol> argTypes, out BindRefusal refusal)
         {
             refusal = BindRefusal.Unproven;
             if (facts?.Compilation == null || overloads == null || overloads.Count == 0)
@@ -74,8 +80,10 @@ namespace Heddle.Generator.Binding
                     continue;
                 }
 
-                var type = ToSymbol(facts.Compilation, argKinds[i]);
-                if (type == null)
+                var type = argTypes != null && i < argTypes.Count && argTypes[i] != null
+                    ? argTypes[i]
+                    : ToSymbol(facts.Compilation, argKinds[i]);
+                if (type == null || type.TypeKind == TypeKind.Dynamic || type.TypeKind == TypeKind.Error)
                 {
                     allTyped = false;
                     continue;
@@ -86,12 +94,15 @@ namespace Heddle.Generator.Binding
             }
 
             // One candidate — no overload to choose, so no ranking is imposed, and the ordinary single-overload
-            // export stays in reach with arguments the estimator often cannot type at all (`this`, a member path
-            // to a model type). What is NOT skipped with the choice is whether the candidate is applicable: the
-            // engine runs the ranker over one candidate as over ten, so `only("ab")` against a sole `only(int)`
-            // is HED1012 there, while binding it here emitted CS1503 into the consumer's build. An argument the
-            // estimator did type and that converts to nothing rules the candidate out on its own, whatever the
-            // others turn out to be, because applicability is decided argument by argument.
+            // export stays in reach with the arguments nothing here can type (`this`, a chained value, embedded C#).
+            // What is NOT skipped with the choice is whether the candidate is applicable: the engine runs the ranker
+            // over one candidate as over ten, so `only("ab")` against a sole `only(int)` is HED1012 there, while
+            // binding it here emitted CS1503 into the consumer's build. An argument that WAS typed and converts to
+            // nothing rules the candidate out on its own, whatever the others turn out to be, because applicability
+            // is decided argument by argument — which is why the cure for the arguments this used to bind past is to
+            // type them (see `argTypes`) rather than to delete the shortcut: deleting it sends every single-`params`
+            // export down the expanded tier the writer does not emit, and every genuinely untypeable argument to a
+            // degrade.
             if (overloads.Count == 1 && overloads[0].Method.Parameters.Length == argKinds.Count &&
                 !ExcludedByTypedArguments(model, overloads[0].Method, args, typed))
             {
@@ -143,10 +154,20 @@ namespace Heddle.Generator.Binding
             for (int i = 0; i < casts.Length; i++)
             {
                 var parameterType = winner.Method.Parameters[i].Type;
-                casts[i] = args[i].IsNullLiteral ||
-                           SymbolEqualityComparer.Default.Equals(args[i].Type, parameterType)
-                    ? null
-                    : parameterType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                if (args[i].IsNullLiteral || SymbolEqualityComparer.Default.Equals(args[i].Type, parameterType))
+                    continue;
+
+                // The cast target is a name written into the consumer's assembly, so it goes through the same
+                // classifier every other spelled name does. It used to be safe only because of what the argument
+                // estimator could reach — the primitives — and an argument that carries its own symbol reaches the
+                // whole of a host's signature set, where a parameter type this assembly may not name is CS0122 or
+                // CS0619 against a .g.cs nobody can edit. Unproven, so the template degrades in silence: the call is
+                // one the engine binds and renders, and only the writing of it is out of reach.
+                if (resolver != null && resolver.ClassifyTypeName(parameterType, out _) !=
+                    SymbolTypeResolver.NameFault.None)
+                    return null;
+
+                casts[i] = parameterType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             }
 
             refusal = BindRefusal.Bound;

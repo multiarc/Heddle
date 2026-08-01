@@ -392,9 +392,10 @@ namespace Heddle.Generator.IntegrationTests
         /// compiler tries the active layout <b>before</b> it asks whether the scope has a static type, so an
         /// expression rooted at a prop needs no model and the whole template was dropped for nothing.
         /// <para>The rows either side are what make this a rule rather than a blanket admission: a plain prop path
-        /// and a function over a prop always worked, an expression that needs no model at all is fine, and an
-        /// expression that reads the element's own member still degrades, because that model is one the emitter has
-        /// not established here.</para>
+        /// and a function over a prop always worked, and an expression that needs no model at all is fine. The last
+        /// row reads the <b>element's</b> own member, which is a different model from the prop layout — and it is
+        /// now the element type the body is typed by, so it precompiles and renders the engine's bytes rather than
+        /// costing the whole template its tier.</para>
         /// </summary>
         [Fact]
         public void APropRootedExpressionNeedsNoModelInsideAListBody()
@@ -423,8 +424,18 @@ namespace Heddle.Generator.IntegrationTests
             const string element = "@model(){{" + catalogType + "}}@%\n" +
                                    "<host(n: int = 5)>{{@list(Products){{[@(Name + \"!\")]}}}} :: " + catalogType +
                                    "\n%@\n@host(this)\n";
-            var gen = DifferentialHarness.Generate(new[] { (elementKey, element) });
-            DifferentialHarness.ExpectDegrade(gen, elementKey);
+            var withProducts = new Catalog
+            {
+                Tags = new[] { "x" },
+                Products = new System.Collections.Generic.List<Product>
+                {
+                    new Product { Name = "a" }, new Product { Name = "b" }
+                }
+            };
+            var (elementPrecompiled, elementDynamic) =
+                DifferentialHarness.Render(elementKey, element, typeof(Catalog), withProducts);
+            Assert.Equal("[a!][b!]\n", elementDynamic);
+            Assert.Equal(elementDynamic, elementPrecompiled);
         }
     }
 }
