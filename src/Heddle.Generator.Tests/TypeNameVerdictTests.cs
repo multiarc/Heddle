@@ -312,7 +312,9 @@ namespace Verdict
                 .GetMethod(methodName)
                 .GetCustomAttributes(typeof(InlineDataAttribute), false)
                 .Cast<InlineDataAttribute>()
-                .Select(d => (string) d.GetData(null).Single().First());
+                // The attribute's own arguments, not GetData: that overload became asynchronous and wants a
+                // disposal tracker, neither of which this needs to read a row's first argument.
+                .Select(d => (string) d.Data.First());
 
         /// <summary>
         /// The other verdict a type argument of an <b>enclosing</b> type can carry, and the one a C# author can

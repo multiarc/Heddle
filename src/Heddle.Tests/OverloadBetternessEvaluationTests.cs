@@ -4,7 +4,6 @@ using System.Linq;
 using Heddle.Language.Expressions;
 using Heddle.Precompiled;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Heddle.Tests
 {

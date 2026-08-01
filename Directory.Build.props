@@ -32,9 +32,6 @@
          NETSDK1138. Kept because net8.0's LTS window closes 2026-11-10, after which every net8.0 build
          would warn; this acknowledges that in advance rather than reddening the build on a date. -->
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
-    <!-- Every test project runs under tests.runsettings, which fails a run that executes no tests.
-         Harmless on non-test projects, which never read it. -->
-    <RunSettingsFilePath Condition="'$(RunSettingsFilePath)' == ''">$(MSBuildThisFileDirectory)tests.runsettings</RunSettingsFilePath>
   </PropertyGroup>
 
 </Project>

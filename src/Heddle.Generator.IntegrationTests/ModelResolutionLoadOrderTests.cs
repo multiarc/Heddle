@@ -25,13 +25,24 @@ namespace Heddle.Generator.IntegrationTests
     public class ModelResolutionLoadOrderTests : IDisposable
     {
         private const string Key = "views/late-bound.heddle";
-        private const string Template = "@model(){{LateBoundModels.Doc}}@\\\n<p>@(Title)</p>\n";
 
-        /// <summary>An assembly no run of this suite has loaded before: the name carries a fresh GUID, so "not
-        /// loaded yet" is a fact rather than an assumption about test ordering.</summary>
-        private static string BuildUnloadedModelAssembly(out string assemblyName)
+        /// <summary>The template for one probe. The model's namespace carries the probe's own GUID, so the type
+        /// each test names can only ever be satisfied by the assembly that test built.</summary>
+        private static string TemplateFor(string ns) =>
+            "@model(){{" + ns + ".Doc}}@\\\n<p>@(Title)</p>\n";
+
+        /// <summary>An assembly no run of this suite has loaded before, carrying a type no other test can supply:
+        /// both the assembly name and the model's namespace carry a fresh GUID.
+        /// <para>The namespace has to vary too, not just the assembly name. These tests assert that a model type is
+        /// <i>not</i> resolvable before its assembly loads, and the engine resolves a type by name over everything
+        /// loaded — so a sibling that had already loaded its own probe under a shared namespace would satisfy the
+        /// lookup and quietly turn "the engine cannot see it" into "the engine can". That made the outcome depend on
+        /// which test ran first, which held only for as long as the runner's ordering did.</para></summary>
+        private static string BuildUnloadedModelAssembly(out string assemblyName, out string modelNamespace)
         {
-            assemblyName = "HeddleLateBoundModels" + Guid.NewGuid().ToString("N");
+            var id = Guid.NewGuid().ToString("N");
+            assemblyName = "HeddleLateBoundModels" + id;
+            modelNamespace = "LateBoundModels" + id;
             var references = ((string) AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))
                 .Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
@@ -41,7 +52,8 @@ namespace Heddle.Generator.IntegrationTests
                 new[]
                 {
                     CSharpSyntaxTree.ParseText(
-                        "namespace LateBoundModels { public class Doc { public string Title => \"late\"; } }")
+                        "namespace " + modelNamespace +
+                        " { public class Doc { public string Title => \"late\"; } }")
                 },
                 references, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
@@ -89,19 +101,20 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void AModelTypeBindsAtBuildTimeFromAReferenceAndAtRunTimeOnlyOnceItsAssemblyIsLoaded()
         {
-            var path = BuildUnloadedModelAssembly(out var assemblyName);
+            var path = BuildUnloadedModelAssembly(out var assemblyName, out var ns);
+            var template = TemplateFor(ns);
             Assert.Null(Loaded(assemblyName));
 
             // Run tier, before the load: the engine resolves model types over loaded assemblies, and there is no
             // registration for this one, so the template does not compile at all.
-            var beforeLoad = new HeddleTemplate(Template,
+            var beforeLoad = new HeddleTemplate(template,
                 new CompileContext(new TemplateOptions(), ExType.Dynamic));
             Assert.False(beforeLoad.CompileResult.Success);
-            Assert.Contains(beforeLoad.CompileResult.Errors, e => e.Error.Contains("LateBoundModels.Doc"));
+            Assert.Contains(beforeLoad.CompileResult.Errors, e => e.Error.Contains(ns + ".Doc"));
 
             // Build tier, at the same moment: a metadata reference is all it needs, so it precompiles the template
             // the engine has just refused.
-            var gen = DifferentialHarness.Generate(new[] { (Key, Template) },
+            var gen = DifferentialHarness.Generate(new[] { (Key, template) },
                 extraReferences: new[] { MetadataReference.CreateFromFile(path) });
             Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
             DifferentialHarness.ExpectPrecompiled(gen, Key);
@@ -110,9 +123,9 @@ namespace Heddle.Generator.IntegrationTests
             // template changed — only what the process had touched.
             var assembly = Loaded(assemblyName);
             Assert.NotNull(assembly);
-            var model = Activator.CreateInstance(assembly.GetType("LateBoundModels.Doc"));
+            var model = Activator.CreateInstance(assembly.GetType(ns + ".Doc"));
 
-            var afterLoad = new HeddleTemplate(Template, new CompileContext(new TemplateOptions(), ExType.Dynamic));
+            var afterLoad = new HeddleTemplate(template, new CompileContext(new TemplateOptions(), ExType.Dynamic));
             Assert.True(afterLoad.CompileResult.Success, afterLoad.CompileResult.ToString());
             var dynamic = afterLoad.Generate(model);
 
@@ -130,10 +143,10 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void TheHarnessLoadsExtraReferencesSoDifferentialSuitesDoNotDependOnTestOrder()
         {
-            var path = BuildUnloadedModelAssembly(out var assemblyName);
+            var path = BuildUnloadedModelAssembly(out var assemblyName, out var ns);
             Assert.Null(Loaded(assemblyName));
 
-            DifferentialHarness.Generate(new[] { (Key, Template) },
+            DifferentialHarness.Generate(new[] { (Key, TemplateFor(ns)) },
                 extraReferences: new[] { MetadataReference.CreateFromFile(path) });
 
             Assert.NotNull(Loaded(assemblyName));
