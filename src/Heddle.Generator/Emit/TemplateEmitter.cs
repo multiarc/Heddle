@@ -62,6 +62,7 @@ namespace Heddle.Generator.Emit
         /// formatting, all stated once. The shared rule-cores ask their type questions through this.</summary>
         internal SymbolTypeFacts TypeFacts { get; private set; }
         private readonly SymbolTypeResolver _resolver;
+        private readonly CSharpExpressionTyper _csharpTyper;
         private readonly FunctionExportResolver _exports;
         private readonly ExtensionBinder _extensionBinder;
 
@@ -130,6 +131,7 @@ namespace Heddle.Generator.Emit
             _compilation = compilation;
             TypeFacts = new SymbolTypeFacts(compilation);
             _resolver = new SymbolTypeResolver(compilation);
+            _csharpTyper = new CSharpExpressionTyper(compilation);
             _exports = exports ?? FunctionExportResolver.Build(compilation);
             _extensionBinder = ExtensionBinder.Build(compilation);
         }
@@ -1404,6 +1406,16 @@ namespace Heddle.Generator.Emit
 
             if (cp.NativeExpression != null)
                 return ComputedValueType(cp.NativeExpression, model, bctx.Props).Symbol;
+
+            // Embedded C#. The engine sends this same text to Roslyn and reads the semantic type back, so it is the
+            // most definite type it ever has for a call-site value — and answering "cannot say" for it exempted the
+            // value from every gate that reads this, which is how `@out(@model.Products.Count)` into a `string` slot
+            // and `@list(@model.Products.Count)` pre-compiled and rendered where the engine refuses the template.
+            // Asked only under FullCSharp: in any other mode the expression is not emitted at all.
+            if (cp.CSharpExpression != null)
+                return _config.ExpressionMode == Heddle.Data.ExpressionMode.FullCSharp
+                    ? _csharpTyper.TypeOf(cp.CSharpExpression, model, _usings)
+                    : null;
 
             // A chain call-parameter's value is the chain's render type, not the producer's own type: the engine
             // reads `callParameter.RenderType`, which is the last item's InitStart return, and every chain the
@@ -2924,6 +2936,19 @@ namespace Heddle.Generator.Emit
                 return false;
             }
 
+            // Every collected @using becomes a `using` directive of the code the ENGINE compiles for this
+            // expression, so a body naming no namespace makes the engine refuse the whole template — and a body that
+            // is not a name at all stops its compilation unit from parsing. Neither is a refusal this tier can
+            // position against the .heddle file, so the template goes back to the tier whose diagnostic is the
+            // contract instead of pre-compiling something the engine would never run.
+            foreach (var ns in _usings)
+            {
+                if (_resolver.NamespaceExists(ns))
+                    continue;
+                reason = "embedded C# under a @using naming no namespace ('" + ns + "')";
+                return false;
+            }
+
             // Wrapped, for the same reason the native writer wraps: the engine compiles this very text into an
             // assembly of its own with overflow checking off, unconditionally, while this copy is compiled by the
             // consumer under whatever <CheckForOverflowUnderflow> that project happens to set. Pasted bare, the same
@@ -3289,12 +3314,13 @@ namespace Heddle.Generator.Emit
             // which a symbolizer/IDE/LSP can actually read, and duplicating it as prose would be two carriers
             // for one fact.
             w.Raw("#pragma warning disable");
-            // A @using body is free text to the engine: the only thing it ever does with one is compare it against
-            // a namespace while resolving a model type name, so a body that names nothing this compilation can see
-            // is never consulted and the template renders. Copied out as a C# directive the same body is CS0246 —
-            // or, when it is not a name at all, stops the whole generated file from parsing. Omitting it costs
-            // nothing: everything generated code writes is fully qualified, and code that did need the namespace
-            // could not have compiled against a compilation that does not contain it.
+            // A collected @using is what makes a pasted-in embedded expression bind, so the directive is written out
+            // — but only where the name resolves here. To the engine a body naming nothing is never consulted at all
+            // unless an embedded expression sends it to the C# compiler, and a document with none renders whatever
+            // the body says; copied out as a directive the same body is CS0246, or, when it is not a name at all,
+            // stops the generated file from parsing. Omitting it costs nothing: everything else generated code writes
+            // is fully qualified, and a template that did need the namespace is turned down where the expression is
+            // built, because the engine's own compile of the same text is what fails.
             foreach (var ns in _usings)
                 if (_resolver.NamespaceExists(ns))
                     w.Raw("using " + ns + ";");

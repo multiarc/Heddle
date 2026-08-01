@@ -174,7 +174,14 @@ namespace Heddle.Generator.Binding
                 return;
 
             bool isStaticClass = container.TypeKind == TypeKind.Class && container.IsStatic;
-            bool isPublic = IsPubliclyVisible(container);
+            // The shared table spells "public" as reflection does — `IsPublic || IsNestedPublic` — and both halves
+            // of that are one question about the type's OWN declared accessibility: a public class nested in an
+            // internal one is `IsNestedPublic`, so the runtime registers its functions. Walking the containing chain
+            // and demanding public at every level answered a different question, and the container the runtime
+            // accepts became a build error at Location.None, which fails the whole compilation rather than one
+            // template. Whether generated code may spell the name is a separate question, asked where the call is
+            // written (NativeExpressionWriter.CanWriteCallTo) rather than by refusing the registration.
+            bool isPublic = container.DeclaredAccessibility == Accessibility.Public;
             if (!ExportRules.IsContainerEligible(isStaticClass, isPublic))
             {
                 var display = SymbolTypeIdentity.FullName(container);
@@ -210,14 +217,6 @@ namespace Heddle.Generator.Binding
                         Payload = new ExportOverloadInfo(container, method)
                     });
             }
-        }
-
-        private static bool IsPubliclyVisible(INamedTypeSymbol type)
-        {
-            for (var t = type; t != null; t = t.ContainingType)
-                if (t.DeclaredAccessibility != Accessibility.Public)
-                    return false;
-            return true;
         }
 
         /// <summary>

@@ -153,5 +153,102 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
             DifferentialHarness.ExpectPrecompiled(gen, key);
         }
+
+        /// <summary>
+        /// A model type with <b>no namespace</b>. The runtime keys its full-name index on
+        /// <c>type.Namespace + "." + shortName</c> and <c>Type.Namespace</c> is null for such a type, so its full
+        /// name carries a leading dot — <c>.GlobalNamespaceModel</c> is a spelling the engine resolves and
+        /// <c>GlobalNamespaceModel.Inner</c> is one it does not, because the nested alias is keyed under the leading
+        /// dot too. Dropping that dot on the build side diverged in both directions at once.
+        /// </summary>
+        [Theory]
+        [InlineData("global-leading-dot", ".GlobalNamespaceModel", "[@(Name)]\n")]
+        [InlineData("global-bare", "GlobalNamespaceModel", "[@(Name)]\n")]
+        public void ANamespacelessModelSpellingResolvesTheWayTheEngineResolvesIt(string name, string spelling,
+            string body)
+        {
+            var key = "views/global-model-" + name + ".heddle";
+            var template = "@model(){{" + spelling + "}}@\\\n" + body;
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template, typeof(GlobalNamespaceModel),
+                new GlobalNamespaceModel { Name = "ab" });
+            Assert.Equal("[ab]\n", dyn);
+            Assert.Equal(dyn, precompiled);
+        }
+
+        /// <summary>The nested half of the same rule, where the dot decides the opposite way: the engine indexes the
+        /// dotted alias of a namespace-less nested type under <c>.Outer.Inner</c>, so the undotted spelling answers
+        /// to nothing on either tier and the dotted one answers on both.</summary>
+        [Fact]
+        public void ANamespacelessNestedSpellingWithoutItsLeadingDotIsRefusedOnBothTiers()
+        {
+            const string key = "views/global-model-nested-bare.heddle";
+            const string template = "@model(){{GlobalNamespaceModel.Inner}}@\\\n[@(Tag)]\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, template) });
+
+            Assert.Single(gen.Diagnostics.Where(d => d.Id == "HED7007"));
+            Assert.False(EngineCompiles(template, typeof(GlobalNamespaceModel.Inner)));
+        }
+
+        /// <summary>And with the leading dot both tiers bind it, which is what keeps the row above a rule about the
+        /// dot rather than a refusal of nested spellings.</summary>
+        [Fact]
+        public void ANamespacelessNestedSpellingWithItsLeadingDotBindsOnBothTiers()
+        {
+            const string key = "views/global-model-nested-dotted.heddle";
+            const string template = "@model(){{.GlobalNamespaceModel.Inner}}@\\\n[@(Tag)]\n";
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template, typeof(GlobalNamespaceModel.Inner),
+                new GlobalNamespaceModel.Inner { Tag = "ab" });
+            Assert.Equal("[ab]\n", dyn);
+            Assert.Equal(dyn, precompiled);
+        }
+
+        /// <summary>
+        /// An assembly-qualified spelling. The runtime hands one straight to <c>Type.GetType</c>, retrying the CLR
+        /// name one <c>.</c>-to-<c>+</c> conversion at a time because the template lexer rejects <c>+</c>; the build
+        /// tier had no arm for a comma at all, so a spelling the engine binds left the whole template on the dynamic
+        /// tier with nothing said about it.
+        /// </summary>
+        [Fact]
+        public void AnAssemblyQualifiedModelSpellingBindsOnBothTiers()
+        {
+            const string key = "views/aqn-model.heddle";
+            var assembly = typeof(Article).Assembly.GetName().Name;
+            var template = "@model(){{" + ArticleType + ", " + assembly + "}}@\\\n[@(Title)]\n";
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template, typeof(Article),
+                new Article { Title = "T" });
+            Assert.Equal("[T]\n", dyn);
+            Assert.Equal(dyn, precompiled);
+        }
+
+        /// <summary>The same, for a <b>nested</b> type in the global namespace: the two halves of the rule — the
+        /// dotted alias standing for the CLR's <c>+</c>, and the missing namespace — meet in one spelling.</summary>
+        [Fact]
+        public void AnAssemblyQualifiedNestedNamespacelessSpellingBindsOnBothTiers()
+        {
+            const string key = "views/aqn-model-nested.heddle";
+            var assembly = typeof(GlobalNamespaceModel).Assembly.GetName().Name;
+            var template = "@model(){{GlobalNamespaceModel.Inner, " + assembly + "}}@\\\n[@(Tag)]\n";
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template, typeof(GlobalNamespaceModel.Inner),
+                new GlobalNamespaceModel.Inner { Tag = "ab" });
+            Assert.Equal("[ab]\n", dyn);
+            Assert.Equal(dyn, precompiled);
+        }
+
+        /// <summary>The cost control for the arm above: an assembly-qualified spelling naming an assembly that is
+        /// not there binds on neither tier, so the arm is a lookup and not a way of ignoring the qualifier.</summary>
+        [Fact]
+        public void AnAssemblyQualifiedSpellingNamingAnAbsentAssemblyBindsOnNeitherTier()
+        {
+            const string key = "views/aqn-model-wrong-assembly.heddle";
+            var template = "@model(){{" + ArticleType + ", Zork.Nope}}@\\\nstatic text\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, template) });
+
+            DifferentialHarness.ExpectDegrade(gen, key);
+            Assert.False(EngineCompiles(template, typeof(object)));
+        }
     }
 }

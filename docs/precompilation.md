@@ -421,7 +421,7 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 | `HED7008` | A member path does not resolve on the model type (milestone‑2 native diagnostic). |
 | `HED7009` | An MSBuild option value is unparsable. |
 | `HED7010` | Two keys sanitize to one generated class identifier. |
-| `HED7011` | An `@<<` import is not among the compilation's `.heddle` `AdditionalFiles`. The spelling is matched against the item's key, so it is case-sensitive and separated by `/`; a `..` is applied first, the way the engine's own `Path.GetFullPath` applies it, and one that reaches above the template root names nothing on either tier. |
+| `HED7011` | An `@<<` import is not among the compilation's `.heddle` `AdditionalFiles`. The spelling is matched against the item's key, so it is case-sensitive; it is first reduced the way the engine's own `Path.GetFullPath` reduces it — `.` segments and repeated separators drop out, a `..` cancels the segment before it, and a trailing separator survives (so `lib.heddle/.` names the file and `lib.heddle/` names a directory neither tier can read). Which characters separate segments is the platform's answer: a backslash separates on Windows and is an ordinary file-name character elsewhere, on both tiers. A `..` that reaches above the template root names nothing on either tier. |
 | `HED7012`/`HED7013` | A forwarded front‑end error/warning carrying no id. |
 | `HED7014` | A called function is delegate‑only (not precompilable) — the template falls back (warning). |
 | `HED7015` | A bound extension overrides a compile‑time hook — unevaluable at build. |

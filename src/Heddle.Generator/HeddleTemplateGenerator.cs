@@ -388,13 +388,13 @@ namespace Heddle.Generator
             // Resolving imports by template key while identifying them by file path gave one document as many
             // identities as it had spellings — `views/a`, `~/views/a.heddle`, `/views/a.heddle` are all the same
             // template here — and the guard then walked their permutations before noticing the repeat.
-            // A '..' is applied before the key is derived, because the engine's identity applies it: it reads an
-            // import through Path.GetFullPath, which cancels a '..' against the segment before it, while a template
-            // key may not contain one at all. Without this step `x/../lib.heddle` — one file the engine reads and
-            // renders — was an import nobody had included, and the build failed over a working template. The raw
-            // spelling is still what a miss is reported with, so the message names what the author wrote.
+            // The spelling is reduced the way Path.GetFullPath reduces it before the key is derived, because that is
+            // what the engine's identity does with it, while a template key may contain neither a '..' nor a '.' at
+            // all. Without this step `x/../lib.heddle` and `sub/./lib.heddle` — files the engine reads and renders —
+            // were imports nobody had included, and the build failed over a working template. The raw spelling is
+            // still what a miss is reported with, so the message names what the author wrote.
             Func<string, string> identity = importPath =>
-                TemplateKey.TryNormalize(ApplyParentSegments(importPath), out var key) ? key : importPath;
+                TemplateKey.TryNormalize(CanonicalizeImportPath(importPath), out var key) ? key : importPath;
 
             var settings = new ParserSettings
             {
@@ -478,28 +478,39 @@ namespace Heddle.Generator
             return parseContext;
         }
 
+        /// <summary>The characters that separate one path segment from the next, asked of the platform rather than
+        /// assumed. On Windows both are separators; everywhere else a backslash is an ordinary file-name character,
+        /// which is what <c>Path.GetFullPath</c> does with it and therefore what the engine does with it.</summary>
+        private static readonly char[] PathSeparators =
+            { System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar };
+
         /// <summary>
-        /// Cancels each <c>..</c> segment against the one before it, as <c>Path.GetFullPath</c> does when the engine
-        /// resolves the same import against the resolver root. <c>.</c> and repeated separators name the directory
-        /// they are in and drop out on the way, so <c>sub/./../lib.heddle</c> and <c>lib.heddle</c> are one file here
-        /// exactly as they are on disk.
-        /// <para>A <c>..</c> with nothing to cancel against is kept: it reaches outside the root, where the engine
-        /// finds no file either, and keeping it means the key derivation refuses the spelling rather than quietly
-        /// resolving it to something inside. A spelling with no <c>..</c> in it at all is returned untouched, so
-        /// every other form is normalised by exactly the rule it was before.</para>
+        /// Reduces an import spelling to the one form the engine reads it as. The engine resolves the same spelling
+        /// through <c>Path.GetFullPath</c> over the resolver root, which drops a <c>.</c> segment and a run of
+        /// repeated separators and cancels a <c>..</c> against the segment before it — so <c>sub/./../lib.heddle</c>,
+        /// <c>sub/lib.heddle/.</c> and <c>lib.heddle</c> are one file on disk and have to be one key here.
+        /// <para>Which characters separate segments is the platform's answer and is taken from <c>Path</c>: on
+        /// Windows <c>x\..\lib.heddle</c> names <c>lib.heddle</c> and off Windows it names a file whose name contains
+        /// backslashes, and the build tier has to agree with the run tier on whichever host it is running on.</para>
+        /// <para>A trailing separator survives, because <c>GetFullPath</c> keeps it and the read then fails on a
+        /// directory: <c>lib.heddle/</c> is refused by both tiers where <c>lib.heddle/.</c> is read by both. A
+        /// <c>..</c> with nothing left to cancel against is kept for a related reason — it reaches outside the root,
+        /// where the engine finds no file either, so key derivation refuses the spelling instead of quietly resolving
+        /// it to something inside.</para>
         /// </summary>
-        private static string ApplyParentSegments(string importPath)
+        private static string CanonicalizeImportPath(string importPath)
         {
-            if (string.IsNullOrEmpty(importPath) ||
-                importPath.IndexOf("..", StringComparison.Ordinal) < 0)
+            if (string.IsNullOrEmpty(importPath))
                 return importPath;
 
-            var segments = importPath.Replace('\\', '/').Split('/');
+            var segments = importPath.Split(PathSeparators);
             var kept = new List<string>(segments.Length);
             for (var i = 0; i < segments.Length; i++)
             {
                 var segment = segments[i];
-                if (segment == "." || (segment.Length == 0 && i != 0))
+                if (segment == ".")
+                    continue;
+                if (segment.Length == 0 && i != 0 && i != segments.Length - 1)
                     continue;
 
                 if (segment == ".." && kept.Count != 0 && kept[kept.Count - 1] != "..")
