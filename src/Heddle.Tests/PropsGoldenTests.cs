@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using Heddle;
@@ -37,7 +38,20 @@ namespace Heddle.Tests
             var t = new HeddleTemplate(document,
                 new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.Native }, model.GetType()));
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
-            return t.Generate(model);
+
+            // props-defaults renders a negative int default, and the negative sign is a culture property (ar-SA
+            // prefixes U+061C). The goldens are committed in invariant form and are not this suite's to regenerate,
+            // so the render is pinned to the culture they hold.
+            var previous = CultureInfo.CurrentCulture;
+            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+            try
+            {
+                return t.Generate(model);
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = previous;
+            }
         }
 
         private static void AssertGolden(string name, string actual)

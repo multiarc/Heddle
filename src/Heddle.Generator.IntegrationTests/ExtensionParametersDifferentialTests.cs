@@ -234,7 +234,13 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>The four integral types C# gives no literal suffix. Each prop is its default's own type, so
-        /// the prototype holds it unconverted and the box has to carry that exact width and signedness.</summary>
+        /// the prototype holds it unconverted and the box has to carry that exact width and signedness.
+        /// <para>The tier comparison is asserted first because it is the one this test exists to make; it used to
+        /// sit behind the value assertion, which spelled its numbers invariantly and therefore failed ahead of it
+        /// under any culture with a non-ASCII negative sign. The value assertion now builds its expectation from
+        /// C#-typed literals under the same ambient culture the render used, so it still pins each default's value,
+        /// width and signedness without also pinning the host's regional settings — and the differential keeps
+        /// running under whatever culture the host has, which is the one thing only it can observe.</para></summary>
         [Fact]
         public void NarrowIntegralPropDefaultsPrecompileWithTheirOwnBoxedTypes()
         {
@@ -244,8 +250,9 @@ namespace Heddle.Generator.IntegrationTests
             DifferentialHarness.ExpectPrecompiled(gen, "views/narrowdefaults.heddle");
 
             var (pre, dyn) = DifferentialHarness.Render("views/narrowdefaults.heddle", t, typeof(string), "z");
-            Assert.Equal("b=5/Byte;sb=-5/SByte;s=-300/Int16;us=400/UInt16", dyn.Trim());
             Assert.Equal(dyn, pre);
+            var expected = $"b={(byte)5}/Byte;sb={(sbyte)-5}/SByte;s={(short)-300}/Int16;us={(ushort)400}/UInt16";
+            Assert.Equal(expected, dyn.Trim());
         }
 
         /// <summary>
