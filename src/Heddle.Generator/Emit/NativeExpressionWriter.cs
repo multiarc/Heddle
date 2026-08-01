@@ -178,6 +178,8 @@ namespace Heddle.Generator.Emit
             {
                 case LiteralNode literal:
                     return literal.LiteralError != null ? null : LiteralFormatter.Format(literal.Value);
+                case ThisNode _:
+                    return WriteThis();
                 case PathNode path:
                     return WritePath(path);
                 case UnaryNode unary:
@@ -189,8 +191,27 @@ namespace Heddle.Generator.Emit
                 case CallNode call:
                     return WriteCall(call);
                 default:
-                    return null; // IndexNode / MethodCallNode / ThisNode handled elsewhere or unsupported
+                    return null; // IndexNode / MethodCallNode handled elsewhere or unsupported
             }
+        }
+
+        /// <summary>
+        /// Emits <c>this</c> as an operand: the model local itself, which the enclosing method declares cast to the
+        /// model type.
+        /// <para>What it denotes is the enclosing body's own model, whatever built that body — a <c>@list</c>
+        /// element, a definition's caller model, the template's declared model — because every one of them arrives
+        /// here as the model type. A body with no static model has no <c>this</c> either: the engine's compiler
+        /// refuses the whole expression with "native expressions require a typed model", so nothing is emitted and
+        /// the template meets that same refusal on the tier that renders it.</para>
+        /// <para>Distinct from <c>this</c> as a <b>whole</b> call parameter, which the emitter passes through as the
+        /// scope's model and which needs no static type at all — that is the empty member path, not an operand.</para>
+        /// </summary>
+        private string WriteThis()
+        {
+            if (_modelType == null)
+                return null;
+            _usedModel = true;
+            return _modelLocal;
         }
 
         private string WriteCall(CallNode call)
@@ -265,13 +286,23 @@ namespace Heddle.Generator.Emit
             return slot;
         }
 
+        /// <summary>Whether a path's target puts it out of this writer's reach. <c>this.</c> does not: the path
+        /// roots at the model exactly as a bare one does, because that is what the engine's compiler converts the
+        /// target to. Every other target is an expression this tier does not root a member walk at.
+        /// <para>Prop-first resolution needs no exception for it — a path with a target is not a prop read on
+        /// either tier, so <c>this.Name</c> reads the model member a prop named <c>Name</c> shadows.</para></summary>
+        private static bool TargetIsOutOfReach(PathNode path) => path.Target != null && !(path.Target is ThisNode);
+
         private string WritePath(PathNode path)
         {
+            if (TargetIsOutOfReach(path))
+                return null;
+
             var prop = PropRoot(path);
             if (prop != null)
                 return WritePropPath(prop, path);
 
-            if (path.Target != null || path.RootRef || _modelType == null)
+            if (path.RootRef || _modelType == null)
                 return null;
 
             var resolution = _resolver.ResolvePath(_modelType, path.Segments);
@@ -477,6 +508,8 @@ namespace Heddle.Generator.Emit
             {
                 case LiteralNode literal:
                     return literal.LiteralError != null ? OperandKind.Unknown : EstimateLiteral(literal.Value);
+                case ThisNode _:
+                    return SymbolFacts.Classify(_modelType);
                 case PathNode path:
                     return EstimatePath(path);
                 case CallNode call:
@@ -493,7 +526,7 @@ namespace Heddle.Generator.Emit
                     return NativeOperatorRules.TernaryResult(whenTrue, whenFalse);
                 }
                 default:
-                    return OperandKind.Unknown;   // IndexNode / MethodCallNode / ThisNode — never emitted here
+                    return OperandKind.Unknown;   // IndexNode / MethodCallNode — never emitted here
             }
         }
 
@@ -515,11 +548,14 @@ namespace Heddle.Generator.Emit
         /// where nothing resolves — the same condition <see cref="EstimatePath"/> answers <c>Unknown</c> for.</summary>
         private ITypeSymbol PathType(PathNode path)
         {
+            if (TargetIsOutOfReach(path))
+                return null;
+
             var prop = PropRoot(path);
             if (prop != null)
                 return PropPathType(prop, path);
 
-            if (path.Target != null || path.RootRef || _modelType == null)
+            if (path.RootRef || _modelType == null)
                 return null;
             var resolution = _resolver.ResolvePath(_modelType, path.Segments);
             return resolution.Kind == SymbolTypeResolver.PathKind.Resolved ? resolution.ResultType : null;
@@ -539,6 +575,8 @@ namespace Heddle.Generator.Emit
         {
             switch (node)
             {
+                case ThisNode _:
+                    return _modelType;
                 case PathNode path:
                     return PathType(path);
                 case CallNode call:
@@ -643,9 +681,14 @@ namespace Heddle.Generator.Emit
             if (!shadowedByExport && DefaultShims.ContainsKey(call.Name))
             {
                 var argKinds = new OperandKind[call.Arguments.Count];
+                var argTypes = new ITypeSymbol[call.Arguments.Count];
                 for (int i = 0; i < argKinds.Length; i++)
+                {
                     argKinds[i] = Estimate(call.Arguments[i]);
-                binding = DefaultFunctionBinder.TryBind(call.Name, argKinds, out var refusal);
+                    argTypes[i] = ArgumentType(call.Arguments[i]);
+                }
+
+                binding = DefaultFunctionBinder.TryBind(call.Name, argKinds, argTypes, out var refusal);
                 RecordIfProvenIllegal(call, refusal);
             }
 

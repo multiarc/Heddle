@@ -567,12 +567,21 @@ resolved through them too:
 A type name may also carry the `global::` qualifier, which names the global namespace and
 consults no import and no alias — `@model(){{global::MyBlog.Models.Post}}`.
 
+Where a name answers to both an alias and an ordinary import, the **alias wins**, as it does in
+C#, whichever order the directives appear in; and an alias that claims the leading name commits to
+it, so the import is not consulted as a fallback when the alias reaches nothing.
+
+A plain namespace import brings in the types **declared in** that namespace, and not the
+namespaces nested inside it — the same rule C# follows. So `@using(){{MyBlog}}` lets you write
+`@model(){{Post}}` if `MyBlog.Post` is a type, and lets you reach a type nested inside it
+(`@model(){{Post.Draft}}`), but it does **not** let you write `@model(){{Models.Post}}` for a
+`MyBlog.Models.Post`: import `MyBlog.Models`, alias it (`@using(){{Models = MyBlog.Models}}`, which
+names the namespace itself and does reach through it), or spell the type in full.
+
 Three limits, each because the spelling means something the resolver does not model rather than
 because it was overlooked: an alias target carrying type arguments (`X = List<int>`), an alias
 target with whitespace inside it (`X = My . Ns`), and an extern-alias qualifier (`A::B`). Each is
-treated as an ordinary namespace body, so a spelling that needs it does not resolve. And where a
-name answers to **both** an alias and an ordinary import, the import wins here where C# gives the
-alias precedence; spell the type out to be certain which you get.
+treated as an ordinary namespace body, so a spelling that needs it does not resolve.
 
 For **static members** — `using static System.Math;` then `Max(a, b)` — the directive contributes
 nothing: `@using(){{static …}}` reaches that type's nested *types* only. Register a

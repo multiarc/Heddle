@@ -1607,6 +1607,15 @@ namespace Heddle.Generator.Emit
                         literal.Value == null ? OperandKind.Null : SymbolFacts.Classify(symbol));
                 }
 
+                // `this` INSIDE a computed value is the enclosing body's own model as an operand, which the engine's
+                // compiler types statically and refuses outright where the scope has no static type. That is not the
+                // same question as `this` standing alone as the whole call parameter, which is the model passthrough
+                // and keeps its meaning on the dynamic tier — see CallSiteValueType.
+                case ThisNode _:
+                    return model == null || model.TypeKind == TypeKind.Dynamic
+                        ? ComputedValue.None
+                        : new ComputedValue(model, SymbolFacts.Classify(model));
+
                 case PathNode path:
                 {
                     // A body prop read wins over the model on the first segment, the way the engine's own compiler
@@ -1617,10 +1626,11 @@ namespace Heddle.Generator.Emit
                     if (propType != null)
                         return new ComputedValue(propType, SymbolFacts.Classify(propType));
 
-                    // A target-rooted or `::`-rooted path, and any path over a scope with no static type, is where
-                    // the engine's own compiler stops resolving — it refuses the expression rather than typing it.
-                    if (path.Target != null || path.RootRef || model == null || model.TypeKind == TypeKind.Dynamic ||
-                        IsPropName(path, props))
+                    // A `::`-rooted path, a path over a scope with no static type, and a path hung off any target
+                    // but `this` are where the engine's own compiler stops resolving — it refuses the expression
+                    // rather than typing it. `this.` roots at the model, so it types like a bare path.
+                    if ((path.Target != null && !(path.Target is ThisNode)) || path.RootRef || model == null ||
+                        model.TypeKind == TypeKind.Dynamic || IsPropName(path, props))
                         return ComputedValue.None;
                     var resolved = ResolvedTypeOf(model, path.Segments);
                     return resolved == null

@@ -79,6 +79,7 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("ternary", "Products){{[@(Name == \"a\" ? 1 : 2)]}}", "[1][2]\n")]
         [InlineData("hop", "Products){{[@(Manufacturer.Name)]}}", "[m][n]\n")]
         [InlineData("string-element-expression", "Tags){{[@(Length + 1)]}}", "[3]\n")]
+        [InlineData("this-as-an-argument", "Tags){{[@upper(this)]}}", "[XY]\n")]
         public void AReadOfTheElementsOwnMemberPrecompilesAndRendersTheEnginesBytes(string name, string body,
             string expected)
         {

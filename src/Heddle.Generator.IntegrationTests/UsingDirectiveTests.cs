@@ -73,31 +73,62 @@ namespace Heddle.Generator.IntegrationTests
         /// <summary>What the collected namespaces are actually for: a <c>@model</c> spelling that only resolves
         /// once one of them qualifies it. This is the row that reddens if the list itself — rather than the emitted
         /// directive — is filtered, and the row below is its counterpart with the <c>@using</c> taken away.
+        /// <para>The spelling is a <b>nested type</b>, which is what an imported namespace reaches through a dotted
+        /// name: the import brings <c>AliasHost</c> into scope and the second segment is a type inside it. Its
+        /// short name alone is ambiguous — two namespaces declare an <c>AliasHost</c> — so the import is doing the
+        /// deciding here and not the index.</para>
         /// </summary>
         [Fact]
         public void AModelTypeNameQualifiedByACollectedNamespaceStillResolves()
         {
             const string key = "views/using-model-resolution.heddle";
             const string template =
-                "@using(){{Heddle.Generator.IntegrationTests}}@\\\n@model(){{Fixtures.Cart}}@\\\n[@(Name)]\n";
+                "@using(){{" + Fixtures + ".AliasNestAlpha}}@\\\n@model(){{AliasHost.AliasNested}}@\\\n[@(Tag)]\n";
 
-            var (precompiled, dyn) = DifferentialHarness.Render(key, template, typeof(Cart),
-                new Cart { Name = "ab" });
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template,
+                typeof(Heddle.Generator.IntegrationTests.Fixtures.AliasNestAlpha.AliasHost.AliasNested),
+                new Heddle.Generator.IntegrationTests.Fixtures.AliasNestAlpha.AliasHost.AliasNested { Tag = "ab" });
             Assert.Equal("[ab]\n", dyn);
             Assert.Equal(dyn, precompiled);
         }
 
-        /// <summary>The same spelling with no <c>@using</c> to qualify it resolves to nothing and the template
-        /// degrades. Without this row the one above cannot say whether the import decided anything.</summary>
+        /// <summary>The same spelling with no <c>@using</c> to qualify it resolves to nothing on either tier, so the
+        /// build says so and the template does not precompile. Without this row the one above cannot say whether the
+        /// import decided anything.</summary>
         [Fact]
         public void TheSameModelTypeNameWithoutTheUsingDoesNotResolve()
         {
             const string key = "views/using-model-no-import.heddle";
-            const string template = "@model(){{Fixtures.Cart}}@\\\n[@(Name)]\n";
+            const string template = "@model(){{AliasHost.AliasNested}}@\\\n[@(Tag)]\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, template) });
+
+            DifferentialHarness.ExpectDegrade(gen, key);
+            Assert.Contains(gen.Diagnostics, d => d.Id == HeddleDiagnosticIds.BuildUnresolvableModelType);
+            Assert.Throws<System.InvalidOperationException>(() =>
+                Heddle.Helpers.ReflectionHelper.ResolveType("AliasHost.AliasNested", new string[0]));
+        }
+
+        /// <summary>
+        /// The other side of the same rule, and a spelling this repository used to resolve. A <c>using</c> namespace
+        /// directive imports the types <b>declared in</b> that namespace, not the namespaces nested inside it, so
+        /// <c>Fixtures</c> is not a name the import above brings into scope and <c>Fixtures.Cart</c> reaches
+        /// nothing. C# says the same thing about the same text — <c>CS0246</c> — which is the reason this is a
+        /// refusal rather than a limitation, and both tiers had to be narrowed together to keep saying it.
+        /// </summary>
+        [Fact]
+        public void AUsingDoesNotBringItsNestedNamespacesIntoScope()
+        {
+            const string key = "views/using-nested-namespace.heddle";
+            const string template =
+                "@using(){{Heddle.Generator.IntegrationTests}}@\\\n@model(){{Fixtures.Cart}}@\\\n[@(Name)]\n";
             var gen = DifferentialHarness.Generate(new[] { (key, template) });
 
             Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
             DifferentialHarness.ExpectDegrade(gen, key);
+
+            Assert.Throws<System.InvalidOperationException>(() =>
+                Heddle.Helpers.ReflectionHelper.ResolveType("Fixtures.Cart",
+                    new[] { "Heddle.Generator.IntegrationTests" }));
         }
 
         private const string CatalogType = "Heddle.Generator.IntegrationTests.Fixtures.Catalog";
