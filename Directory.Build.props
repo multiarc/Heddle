@@ -32,6 +32,9 @@
          support; acknowledge it so NETSDK1138 does not warn on every build. Dropping net6.0 would be a
          consumer-facing breaking change, decided separately from this build-hygiene pass. -->
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <!-- Every test project runs under tests.runsettings, which fails a run that executes no tests.
+         Harmless on non-test projects, which never read it. -->
+    <RunSettingsFilePath Condition="'$(RunSettingsFilePath)' == ''">$(MSBuildThisFileDirectory)tests.runsettings</RunSettingsFilePath>
   </PropertyGroup>
 
 </Project>
